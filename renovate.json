@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests", ":semanticCommits"],
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "minimumReleaseAge": "1 day",
+  "rangeStrategy": "pin",
+  "dependencyDashboard": true,
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 6am on monday"] },
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "non-major dependencies",
+      "groupSlug": "non-major"
+    }
+  ]
+}
