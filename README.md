@@ -1,18 +1,12 @@
 # auto-brain
 
-**The runtime for business brains: your team's expertise, made executable.**
+**The runtime for business brains.**
 
 [![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/BeOnAuto/auto-brain/badge)](https://scorecard.dev/viewer/?uri=github.com/BeOnAuto/auto-brain)
 [![License: ELv2](https://img.shields.io/badge/license-ELv2-blue)](LICENSING.md)
 
-Right now, your AI runs on people. Someone still carries context between tools, directs the agents, pulls the evidence together and makes the call. That coordination is where the hours disappear.
-
-A brain turns how your team works into a running system:
-
-- Primitives do the preparation and coordination.
-- A ledger records every step.
-- Your people review and approve the decisions that need their judgment.
+A business brain carries out the way your team works. It gathers context, calls models, runs deterministic steps, and asks people or systems for input when it needs it. Every step lands on a ledger, so the brain's work can be recalled, explained and improved.
 
 auto-brain is the server a brain runs on. Run it yourself from one container image, or use it inside the [Auto studio](https://on.auto).
 
@@ -34,26 +28,28 @@ A brain is made of **primitives** that share one **ledger**.
 
 The [ledger](packages/ledger) records every input and output of every primitive. That record lets a brain recall what happened and explain its decisions. It also lets you evaluate and improve the method over time.
 
-```
-people and machines ◀──▶ interaction
-                              │
-                        orchestration ── events · by hand · schedule
-                  ┌───────────┼───────────┐
-              inference   prediction   computation
-                  └───────────┼───────────┘
-                              ▼
-                           ledger ──▶ recollection · dream
+```mermaid
+flowchart TD
+    outside(["People and machines"]) <--> interaction["Interaction"]
+    triggers(["Events, manual runs and schedules"]) --> orchestration
+    interaction --> orchestration["Orchestration"]
+    orchestration --> inference["Inference"]
+    orchestration --> prediction["Prediction"]
+    orchestration --> computation["Computation"]
+    interaction & orchestration & inference & prediction & computation --> ledger[("Ledger")]
+    ledger --> recollection["Recollection"]
+    ledger --> dream["Dream"]
+    recollection -. context .-> inference
 ```
 
 ## Where it fits
 
 - **Auto studio.** Design and run brains at [on.auto](https://on.auto). The studio runs this same server as a managed service.
 - **Self-hosted.** Run the same image on your own infrastructure, free up to a usage threshold (see [Licensing](#licensing)).
-- **Build Brains.** [Xolvio and 10kR](https://buildbrains.co) work with your experts to design a brain around your team's method, build it and hand it over.
 
 ## Run it
 
-The image is published to Docker Hub and GitHub Container Registry from the first release:
+Every release publishes the image to Docker Hub (`beonauto/auto-brain`) and GitHub Container Registry (`ghcr.io/beonauto/auto-brain`):
 
 ```bash
 docker run --rm --publish 8080:8080 beonauto/auto-brain:latest

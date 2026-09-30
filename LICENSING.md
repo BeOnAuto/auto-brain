@@ -8,7 +8,7 @@ This page explains the license in plain language. If anything here conflicts wit
 
 - Read, build and modify the source.
 - Run auto-brain on your own infrastructure, in development and in production, up to the free usage threshold.
-- Build brains on it for your own business, or for clients who run them in their own environments.
+- Create brains with it for your own business, or for clients who run them in their own environments.
 - Redistribute it, including modified versions. Anyone who gets a copy from you must also get the license terms, and you must mark what you changed.
 
 ## When you need a commercial license

@@ -15,7 +15,6 @@ Setup work that couldn't be finished yet, and why.
   - the definitions of "operation" and "managed service"
   - the registered legal name of the licensor (currently "BeOnAuto")
   - whether the ELv2 license-key clause makes the threshold binding
-- [ ] **Stop calling the platform open source on buildbrains.co.** It says "Auto is our open-source platform". ELv2 isn't an OSI open source license, so use "source-available" instead.
 
 ## Community
 
@@ -31,11 +30,9 @@ Setup work that couldn't be finished yet, and why.
 - [ ] **Move harden-runner from audit to block.** Once a few weeks of runs show which endpoints each job calls, switch `egress-policy` to `block` with that allowlist.
 - [ ] **Review the first OpenSSF Scorecard report.** It publishes after the Scorecard workflow's first run on `main`. Fix the findings worth fixing.
 
-## First release
+## Releases
 
-- [ ] **Choose the first version.** Merge #49 and then #47 for `0.1.0`, or close #49 and merge #47 for `1.0.0`. `applications/brain` in on.auto pins `0.1.0`.
-- [ ] **Make the GHCR package public** after the first release publishes it, so on-prem users can pull without logging in.
-- [ ] **Check release-please against immutable releases** on that first release (immutable releases were enabled before any release existed).
+- [ ] **Make the GHCR package public.** v1.0.0 published `ghcr.io/beonauto/auto-brain`, but new packages start private, so anonymous pulls fail. Change it in the package settings on GitHub.
 
 ## Tests
 
