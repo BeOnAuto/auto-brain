@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/BeOnAuto/auto-brain/security/advisories/new
+    about: Report vulnerabilities privately, never in a public issue.
+  - name: Have a brain built for your team
+    url: https://buildbrains.co
+    about: Xolvio and 10kR design and build brains around your team's method.
