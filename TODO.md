@@ -15,7 +15,6 @@ Setup work that couldn't be finished yet, and why.
   - the definitions of "operation" and "managed service"
   - the registered legal name of the licensor (currently "BeOnAuto")
   - whether the ELv2 license-key clause makes the threshold binding
-- [ ] **Stop calling the platform open source on buildbrains.co.** It says "Auto is our open-source platform". ELv2 isn't an OSI open source license, so use "source-available" instead.
 
 ## Community
 
