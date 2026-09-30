@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node --watch src/main.ts",
     "start": "node src/main.ts",
+    "container:build": "docker build --file Dockerfile --tag beonauto/auto-brain:local ../..",
+    "container:run": "docker run --rm --publish 8080:8080 beonauto/auto-brain:local",
     "lint": "oxlint -c ../../.oxlintrc.json",
     "typecheck": "tsc",
     "test": "vitest run --coverage"

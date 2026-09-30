@@ -6,6 +6,13 @@
   "semi": true,
   "arrowParens": "always",
   "sortImports": {},
-  "ignorePatterns": ["**/coverage/**", "**/dist/**", "**/.wrangler/**", "pnpm-lock.yaml", "CHANGELOG.md"],
-  "overrides": [{ "files": ["**/*.json", "**/*.jsonc"], "options": { "trailingComma": "none" } }]
+  "ignorePatterns": ["**/coverage/**", "**/dist/**", "pnpm-lock.yaml", "CHANGELOG.md"],
+  "overrides": [
+    {
+      "files": ["**/*.json", "**/*.jsonc"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
 }

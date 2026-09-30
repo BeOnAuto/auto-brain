@@ -1,5 +1,4 @@
 packages:
-  - apps/*
   - packages/*
 
 catalog:
@@ -13,4 +12,3 @@ trustPolicy: no-downgrade
 allowBuilds:
   esbuild: true
   lefthook: true
-  workerd: true

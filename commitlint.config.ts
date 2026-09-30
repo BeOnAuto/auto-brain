@@ -3,8 +3,8 @@ import { basename, dirname } from 'node:path';
 
 import type { UserConfig } from '@commitlint/types';
 
-const workspaceScopes = globSync(['apps/*/package.json', 'packages/*/package.json'], { cwd: import.meta.dirname }).map(
-  (manifest) => basename(dirname(manifest)),
+const workspaceScopes = globSync('packages/*/package.json', { cwd: import.meta.dirname }).map((manifest) =>
+  basename(dirname(manifest)),
 );
 
 export default {

@@ -12,7 +12,7 @@
     "denyWarnings": true,
     "reportUnusedDisableDirectives": "error"
   },
-  "ignorePatterns": ["**/node_modules/**", "**/coverage/**", "**/dist/**", "**/.wrangler/**"],
+  "ignorePatterns": ["**/node_modules/**", "**/coverage/**", "**/dist/**"],
   "rules": {
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
