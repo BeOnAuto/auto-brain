@@ -3,9 +3,13 @@ import { basename, dirname } from 'node:path';
 
 import type { UserConfig } from '@commitlint/types';
 
-const workspaceScopes = globSync('packages/*/package.json', { cwd: import.meta.dirname }).map((manifest) =>
-  basename(dirname(manifest)),
-);
+const workspaceScopes = [
+  ...new Set(
+    globSync(['{packages,primitives}/*/package.json', '{packages,primitives}/*/README.md'], {
+      cwd: import.meta.dirname,
+    }).map((file) => basename(dirname(file))),
+  ),
+];
 
 export default {
   extends: ['@commitlint/config-conventional'],
