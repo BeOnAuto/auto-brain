@@ -3,9 +3,6 @@ dist
 coverage
 .turbo
 *.tsbuildinfo
-.wrangler
-.dev.vars*
-!.dev.vars.example
 .env
 .env.*
 !.env.example

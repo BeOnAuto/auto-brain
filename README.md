@@ -1,11 +1,11 @@
 # auto-brain
 
-The Auto server runtime. One container image, deployed on Cloudflare Containers and runnable on-prem.
+The Auto server runtime, packaged as one container image you can run anywhere.
 
 ## Run it
 
 ```bash
-docker run --rm --publish 8080:8080 ghcr.io/beonauto/auto-brain:latest
+docker run --rm --publish 8080:8080 beonauto/auto-brain:latest
 curl http://localhost:8080/health
 ```
 

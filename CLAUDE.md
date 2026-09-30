@@ -2,16 +2,16 @@
 
 ## What this is
 
-`auto-brain` is a pnpm monorepo for a Node.js server runtime. The same container image runs on Cloudflare Containers (the public offering) and on-prem.
+`auto-brain` is the open-source Auto server runtime, a pnpm monorepo. Its container image runs on-prem and behind the private Auto studio on Cloudflare Containers; the Cloudflare side lives in the private `on.auto` repo, not here.
 
-- `apps/server`: the Node.js server (`@beonauto/server`)
-- `apps/cloudflare`: the Cloudflare Worker that fronts the server container (`@beonauto/cloudflare`)
-- `packages/*`: internal libraries (`@beonauto/*`)
+- `packages/server`: the Node.js server (`@beonauto/server`), plus everything that packages it into a container (`Dockerfile`, `Dockerfile.dockerignore`)
+- `packages/*`: the server's libraries (`@beonauto/*`)
 
 ## Commands
 
 ```bash
 pnpm dev               # server with node --watch
+pnpm --filter @beonauto/server container:build   # build the image locally
 pnpm test:watch        # every package's tests in one Vitest watch process
 pnpm typecheck:watch   # TypeScript 7 over the whole repo
 pnpm check             # the full gate: format, lint, typecheck, test (100% coverage), knip, sherif
