@@ -1,0 +1,1 @@
+This allows input and output to and from humans and machines, so if the brain needs to talk to a human or machine, it can call out, and if a human/machine need to call and talk to the brain, they can do so through this primitive.

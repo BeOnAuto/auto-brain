@@ -1,0 +1,1 @@
+An LLM call to a given model with the front matter of a markdown showing the metadata such as the model to use, the skills, the tools, the input schema, the output schema and so on. And then a body of a liquid template that is able to get content in text injected from the brain operating within, so it can access data from other primitives within that same brain.
