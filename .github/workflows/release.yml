@@ -19,6 +19,9 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       version: ${{ steps.release.outputs.version }}
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
       - id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -44,6 +47,9 @@ jobs:
       contents: read
       packages: write
     steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -68,6 +74,8 @@ jobs:
             type=semver,pattern={{version}},value=${{ needs.release-please.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.version }}
             type=raw,value=latest
+          labels: |
+            org.opencontainers.image.licenses=Elastic-2.0
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
