@@ -8,7 +8,7 @@
 
 A business brain carries out the way your team works. It gathers context, calls models, runs deterministic steps, and asks people or systems for input when it needs it. Every step lands on a ledger, so the brain's work can be recalled, explained and improved.
 
-auto-brain is the server a brain runs on. Run it yourself from one container image, or use it inside the [Auto studio](https://on.auto).
+auto-brain is the server a brain runs on. Auto can host it for you, or you can run it yourself from one container image.
 
 > **Status: early development.** The server, its container image and the release pipeline are in place. The primitives below are being designed and built, so auto-brain isn't ready for production use yet.
 
@@ -45,8 +45,11 @@ flowchart TD
 
 ## Where it fits
 
-- **Auto studio.** Design and run brains at [on.auto](https://on.auto). The studio runs this same server as a managed service.
-- **Self-hosted.** Run the same image on your own infrastructure, free up to a usage threshold (see [Licensing](#licensing)).
+Three separate things:
+
+- **Auto Studio** is the management plane at [on.auto](https://on.auto), with governance and observability for your brains.
+- **Cloud hosting** means Auto runs auto-brain for you, so there's no infrastructure to operate.
+- **Self-hosting** means you run the same image on your own infrastructure, free up to a usage threshold (see [Licensing](#licensing)).
 
 ## Run it
 
