@@ -25,7 +25,7 @@
     "@vitest/coverage-v8": "catalog:",
     "czg": "1.14.0",
     "knip": "6.38.0",
-    "lefthook": "2.1.14",
+    "lefthook": "2.1.15",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "oxlint-tsgolint": "7.0.2003",
