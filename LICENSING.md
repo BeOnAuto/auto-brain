@@ -25,9 +25,9 @@ For a commercial license, contact us through [on.auto](https://on.auto).
 - **Getting around the license key.** You can't move, change, disable or circumvent the license key functionality, or remove functionality the key protects.
 - **Removing notices.** You can't alter, remove or obscure licensing, copyright or other notices.
 
-## The hosted offering
+## Cloud hosting
 
-Auto runs auto-brain as part of the Auto studio at [on.auto](https://on.auto). If you'd rather not operate it yourself, that's the managed way to use it.
+Auto also runs auto-brain for you as a cloud-hosted service. If you'd rather not operate it yourself, that's the managed way to use it.
 
 ## Contributing
 

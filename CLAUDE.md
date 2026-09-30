@@ -2,7 +2,7 @@
 
 ## What this is
 
-`auto-brain` is the runtime for business brains, a pnpm monorepo. It is source-available under the Elastic License 2.0 (see `LICENSING.md`); never call it open source. Its container image runs on-prem and behind the private Auto studio on Cloudflare Containers; the Cloudflare side lives in the private `on.auto` repo, not here.
+`auto-brain` is the runtime for business brains, a pnpm monorepo. It is source-available under the Elastic License 2.0 (see `LICENSING.md`); never call it open source. Its container image runs self-hosted and in Auto's cloud hosting on Cloudflare Containers. Auto Studio (the management plane, with governance and observability) and the Cloudflare side live in the private `on.auto` repo, not here.
 
 - `packages/server`: the Node.js server (`@beonauto/server`), plus everything that packages it into a container (`Dockerfile`, `Dockerfile.dockerignore`)
 - `packages/*`: the server's libraries (`@beonauto/*`), including the ledger
