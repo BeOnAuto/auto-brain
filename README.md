@@ -30,7 +30,8 @@ The [ledger](packages/ledger) records every input and output of every primitive.
 
 ```mermaid
 flowchart TD
-    outside(["People and machines"]) <--> interaction["Interaction"]
+    people(["People"]) <--> interaction["Interaction"]
+    machines(["Machines"]) <--> interaction
     triggers(["Events, manual runs and schedules"]) --> orchestration
     interaction --> orchestration["Orchestration"]
     orchestration --> inference["Inference"]
