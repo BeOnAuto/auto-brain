@@ -13,6 +13,10 @@
   },
   "packageRules": [
     {
+      "matchDepTypes": ["engines"],
+      "enabled": false
+    },
+    {
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "non-major dependencies",
       "groupSlug": "non-major"
