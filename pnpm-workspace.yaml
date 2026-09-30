@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+
+catalog:
+  vitest: 5.0.2
+  '@vitest/coverage-v8': 5.0.2
+
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: false
+trustPolicy: no-downgrade
+
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  workerd: true

@@ -1,93 +1,116 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  merge_group:
+  push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 20
-          cache: 'pnpm'
-          cache-dependency-path: cli/pnpm-lock.yaml
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format, lint, type-check, test with 100% coverage, knip, sherif
+        run: pnpm check
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
-      - name: Install dependencies
-        run: cd cli && pnpm install
-
-      - name: Type-check
-        run: cd cli && pnpm type-check
-
-      - name: Test
-        run: cd cli && pnpm test
-
-      - name: Build
-        run: cd cli && pnpm build
-
-  release:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: test
+  container:
+    name: Container
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get version
-        id: version
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: auto-brain:ci
+      - name: Smoke test the image
         run: |
-          VERSION=$(jq -r .version .claude-plugin/plugin.json)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          docker run --detach --name smoke --publish 8080:8080 auto-brain:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:8080/health && break
+            sleep 1
+          done
+          test "$(curl --silent --fail http://127.0.0.1:8080/health)" = '{"status":"ok"}'
+          test "$(docker exec smoke id -un)" = node
+          docker stop smoke
+          test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
 
-          # Check if tag already exists
-          if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Tag v${VERSION} already exists, skipping release"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "New version v${VERSION} detected"
-          fi
-
-      - name: Create Git Tag
-        if: steps.version.outputs.exists == 'false'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          VERSION="${{ steps.version.outputs.version }}"
-          git tag -a "v${VERSION}" -m "Release v${VERSION}"
-          git push origin "v${VERSION}"
-
-      - name: Create GitHub Release
-        if: steps.version.outputs.exists == 'false'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
-            --generate-notes \
-            --latest
+  pull-request-title:
+    name: Pull request title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: The squash commit title must be a conventional commit
+        run: printf '%s\n' "$TITLE" | pnpm exec commitlint
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: ${{ github.event.pull_request.title }}
 
-      - name: Update marketplace
-        if: steps.version.outputs.exists == 'false'
+  workflows:
+    name: Workflow security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          advanced-security: false
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [verify, container, pull-request-title, workflows]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Every required job succeeded or was skipped
         run: |
-          gh api repos/BeOnAuto/auto-plugins/dispatches \
-            -f event_type=plugin-release \
-            -f 'client_payload[plugin_name]=auto-agent' \
-            -f 'client_payload[plugin_version]=${{ steps.version.outputs.version }}'
+          for result in $RESULTS; do
+            case "$result" in
+              success | skipped) ;;
+              *) exit 1 ;;
+            esac
+          done
         env:
-          GITHUB_TOKEN: ${{ secrets.MARKETPLACE_TOKEN }}
+          RESULTS: ${{ join(needs.*.result, ' ') }}

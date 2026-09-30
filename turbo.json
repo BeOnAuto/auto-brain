@@ -1,0 +1,33 @@
+{
+  "$schema": "./node_modules/turbo/schema.json",
+  "ui": "stream",
+  "agentGuidance": false,
+  "globalDependencies": ["tsconfig.base.json", ".oxlintrc.json", "vitest.shared.ts", ".nvmrc", "pnpm-lock.yaml"],
+  "tasks": {
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
+    "lint": {
+      "dependsOn": ["transit"]
+    },
+    "typecheck": {
+      "dependsOn": ["transit"]
+    },
+    "test": {
+      "dependsOn": ["transit"],
+      "outputs": ["coverage/**"]
+    },
+    "//#format:check": {
+      "cache": false
+    },
+    "//#knip": {
+      "cache": false
+    },
+    "//#sherif": {
+      "cache": false
+    },
+    "//#lint": {
+      "cache": false
+    }
+  }
+}

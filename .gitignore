@@ -1,10 +1,17 @@
-node_modules/
-cli/dist/
-cli/node_modules/
-cli/coverage
-.auto-agent/
-.turbo/
-.claude-auto
-# Ketchup plans
-ketchup-plan.md
-.ketchup/
+node_modules
+dist
+coverage
+.turbo
+*.tsbuildinfo
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.log

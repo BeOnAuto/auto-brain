@@ -1,0 +1,9 @@
+**/node_modules
+**/coverage
+**/.turbo
+**/.wrangler
+**/*.test.ts
+.git
+.github
+.vscode
+apps/cloudflare
