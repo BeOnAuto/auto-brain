@@ -8,9 +8,11 @@ COPY packages/config/package.json packages/config/
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/server...
 
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
+LABEL org.opencontainers.image.licenses="Elastic-2.0"
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
 WORKDIR /app
 COPY --from=dependencies --chown=node:node /app ./
+COPY --chown=node:node LICENSE ./
 COPY --chown=node:node packages/config/src packages/config/src
 COPY --chown=node:node packages/server/src packages/server/src
 USER node

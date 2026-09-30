@@ -2,6 +2,7 @@
   "name": "@beonauto/server",
   "version": "0.0.0",
   "private": true,
+  "license": "Elastic-2.0",
   "type": "module",
   "scripts": {
     "dev": "node --watch src/main.ts",
