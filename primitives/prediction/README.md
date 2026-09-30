@@ -1,0 +1,1 @@
+A machine learning model that runs to create a prediction, this is independent from an inference where an inference might be used to do prediction, but it's based on large language models, whereas this prediction is based on machine learning models.
