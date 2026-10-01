@@ -1,9 +1,9 @@
 import { defineCommand } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-import { BrainSchema } from '../roster/brain.ts';
+import { BrainSchema } from '../registry/brain.ts';
 import { BrainIdField } from './brain-fields.ts';
-import { recordOnRoster } from './roster-recording.ts';
+import { recordInRegistry } from './registry-recording.ts';
 
 export const retireBrain = defineCommand('org', {
   name: 'retire_brain',
@@ -21,5 +21,5 @@ export const retireBrain = defineCommand('org', {
   inputSchema: Schema.Struct({ brain: BrainIdField }),
   outputSchema: BrainSchema,
   reasons: ['not_found', 'conflict'],
-  handle: ({ brain }) => recordOnRoster({ type: 'retire', brain }),
+  handle: ({ brain }) => recordInRegistry({ type: 'retire', brain }),
 });

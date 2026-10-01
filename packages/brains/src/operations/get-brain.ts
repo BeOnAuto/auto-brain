@@ -1,10 +1,10 @@
 import { defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { BrainSchema } from '../roster/brain.ts';
-import { brainIn } from '../roster/roster-lookup.ts';
+import { BrainSchema } from '../registry/brain.ts';
+import { brainIn } from '../registry/registry-lookup.ts';
 import { BrainIdField } from './brain-fields.ts';
-import { readRoster } from './roster-reading.ts';
+import { readRegistry } from './registry-reading.ts';
 
 export const getBrain = defineQuery('org', {
   name: 'get_brain',
@@ -18,5 +18,5 @@ export const getBrain = defineQuery('org', {
   inputSchema: Schema.Struct({ brain: BrainIdField }),
   outputSchema: BrainSchema,
   reasons: ['not_found'],
-  handle: ({ brain }) => readRoster.pipe(Effect.flatMap((roster) => brainIn(roster, brain))),
+  handle: ({ brain }) => readRegistry.pipe(Effect.flatMap((registry) => brainIn(registry, brain))),
 });

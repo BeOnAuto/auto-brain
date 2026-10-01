@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { BrainCommand } from './brain-commands.ts';
 import type { BrainEvent } from './brain-events.ts';
-import { brainRoster } from './brain-roster.ts';
+import { brainRegistry } from './brain-registry.ts';
 
 const creation = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -20,12 +20,12 @@ const alphaCreated: BrainEvent = {
 
 const alphaRetired: BrainEvent = { type: 'brain_retired', brain: 'alpha', ...change };
 
-function rosterAfter(...events: readonly BrainEvent[]) {
-  return events.reduce((roster, event) => brainRoster.evolve(roster, event), brainRoster.initialState);
+function registryAfter(...events: readonly BrainEvent[]) {
+  return events.reduce((registry, event) => brainRegistry.evolve(registry, event), brainRegistry.initialState);
 }
 
 function decided(command: BrainCommand, ...history: readonly BrainEvent[]) {
-  return brainRoster.decide(command, rosterAfter(...history));
+  return brainRegistry.decide(command, registryAfter(...history));
 }
 
 function updating(name: string, description: string): BrainCommand {
@@ -104,13 +104,13 @@ describe('retiring a brain', () => {
   });
 });
 
-describe('the roster of an org', () => {
+describe("an org's brain registry", () => {
   it('starts empty', () => {
-    expect(brainRoster.initialState.size).toBe(0);
+    expect(brainRegistry.initialState.size).toBe(0);
   });
 
   it('holds each brain as its facts left it', () => {
-    const roster = rosterAfter(
+    const registry = registryAfter(
       alphaCreated,
       { type: 'brain_created', brain: 'beta', name: 'Beta', description: '', ...creation },
       { type: 'brain_updated', brain: 'alpha', name: 'Alpha Sales', ...change },
@@ -118,7 +118,7 @@ describe('the roster of an org', () => {
       { ...alphaRetired, at: '2026-10-03T08:00:00.000Z' },
     );
 
-    expect([...roster.values()]).toStrictEqual([
+    expect([...registry.values()]).toStrictEqual([
       {
         id: 'alpha',
         name: 'Alpha Sales',
@@ -143,14 +143,16 @@ describe('the roster of an org', () => {
 });
 
 describe('a fact', () => {
-  it('about a brain the roster never saw created leaves the roster as it was', () => {
-    expect(rosterAfter(alphaRetired, { type: 'brain_updated', brain: 'alpha', name: 'Ghost', ...change }).size).toBe(0);
+  it('about a brain the registry never saw created leaves the registry as it was', () => {
+    expect(registryAfter(alphaRetired, { type: 'brain_updated', brain: 'alpha', name: 'Ghost', ...change }).size).toBe(
+      0,
+    );
   });
 
-  it('leaves the roster it evolves from untouched', () => {
-    const before = rosterAfter(alphaCreated);
+  it('leaves the registry it evolves from untouched', () => {
+    const before = registryAfter(alphaCreated);
 
-    brainRoster.evolve(before, alphaRetired);
+    brainRegistry.evolve(before, alphaRetired);
 
     expect(before.get('alpha')?.status).toBe('active');
   });

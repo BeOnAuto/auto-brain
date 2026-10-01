@@ -5,4 +5,4 @@ export { getBrain } from './operations/get-brain.ts';
 export { listBrains } from './operations/list-brains.ts';
 export { retireBrain } from './operations/retire-brain.ts';
 export { updateBrain } from './operations/update-brain.ts';
-export { BrainSchema, type Brain } from './roster/brain.ts';
+export { BrainSchema, type Brain } from './registry/brain.ts';

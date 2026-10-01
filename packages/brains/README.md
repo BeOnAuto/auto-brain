@@ -43,7 +43,7 @@ Before a handler runs, the dispatcher refuses with `forbidden` a caller of anoth
 
 ## Storage
 
-The brains of an org live in one stream, named `brains` relative to the org. Its facts carry a `type`, the brain id, who recorded it (`by`) and when (`at`):
+The full set of an org's brains is the org's brain registry. It lives in one stream, named `brains` relative to the org. Its facts carry a `type`, the brain id, who recorded it (`by`) and when (`at`):
 
 - `brain_created`, with the name and the description
 - `brain_updated`, with only the fields that changed
@@ -57,4 +57,4 @@ There is no read model: each call folds the stream. A pure decider holds the rul
 
 ## Source
 
-`src/index.ts` is the only entry point. `src/roster` holds a brain, the facts and commands of the `brains` stream, its rules and its name. `src/operations` holds the five operations and how they read and record the roster. `src/directory` holds the brain directory. `src/testing` holds what the tests share. `operations` and `directory` depend on `roster`, never on each other.
+`src/index.ts` is the only entry point. `src/registry` holds a brain, the facts and commands of the `brains` stream, the rules of the registry and the stream's name. `src/operations` holds the five operations and how they read the registry and record in it. `src/directory` holds the brain directory. `src/testing` holds what the tests share. `operations` and `directory` depend on `registry`, never on each other.

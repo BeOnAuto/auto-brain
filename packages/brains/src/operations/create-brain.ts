@@ -1,9 +1,9 @@
 import { defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { BrainSchema } from '../roster/brain.ts';
+import { BrainSchema } from '../registry/brain.ts';
 import { BrainDescriptionField, BrainIdField, BrainNameField } from './brain-fields.ts';
-import { recordOnRoster } from './roster-recording.ts';
+import { recordInRegistry } from './registry-recording.ts';
 
 export const createBrain = defineCommand('org', {
   name: 'create_brain',
@@ -29,5 +29,5 @@ export const createBrain = defineCommand('org', {
   outputSchema: BrainSchema,
   reasons: ['conflict'],
   handle: ({ brain, name, description = '' }) =>
-    recordOnRoster({ type: 'create', brain, name, description }).pipe(Effect.catchTag('not_found', Effect.die)),
+    recordInRegistry({ type: 'create', brain, name, description }).pipe(Effect.catchTag('not_found', Effect.die)),
 });
