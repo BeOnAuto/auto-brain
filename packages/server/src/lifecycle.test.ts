@@ -163,6 +163,16 @@ describe('stopping a started server', () => {
     expect(performance.now() - stopping).toBeLessThan(2000);
   });
 
+  it('closes a keep-alive connection that is idle, instead of waiting for it until the shutdown timeout', async () => {
+    const server = await startServer(loopback, defaultServerOptions);
+    await (await fetch(`http://127.0.0.1:${server.port}/health`)).text();
+    const stopping = performance.now();
+
+    await server.stop();
+
+    expect(performance.now() - stopping).toBeLessThan(2000);
+  });
+
   it('cuts off a request still running at the shutdown timeout', async () => {
     const server = await startServer(loopback, {
       ...defaultServerOptions,

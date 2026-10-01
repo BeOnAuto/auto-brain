@@ -12,7 +12,6 @@ const graceMs = 100;
 export async function shutDown(server: Server, hooks: ShutdownHooks, timeoutMs: number): Promise<void> {
   const closed = once(server, 'close');
   server.close();
-  server.closeIdleConnections();
   await Promise.race([closed, elapsed(timeoutMs)]);
   await hooks.closeApi();
   await hooks.disposeRuntime();
