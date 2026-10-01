@@ -147,7 +147,7 @@ The interpreter runs in Temporal's workflow sandbox and must make the same decis
 
 ## Running it
 
-The server's composition root wires the primitive in when the settings name a Temporal server:
+The server does not wire the primitive in yet, so it serves no workflows. A composition root wires it in like this when the settings name a Temporal server:
 
 ```ts
 import {
