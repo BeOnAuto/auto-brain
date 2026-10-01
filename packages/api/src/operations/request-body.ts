@@ -11,7 +11,7 @@ interface MediaType {
 
 const bodyLimit = 1024 * 1024;
 
-const tooLarge = Result.fail(problemOf('payload_too_large', 'The body is larger than 1 MiB'));
+const tooLarge = Result.fail(problemOf('content_too_large', 'The body is larger than 1 MiB'));
 
 const notJson = Result.fail(problemOf('unsupported_media_type', 'A body must be sent as application/json'));
 

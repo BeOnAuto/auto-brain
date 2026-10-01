@@ -12,7 +12,7 @@ const statusAndTitleByReason: ReadonlyArray<readonly [ProblemReason, number, str
   ['unauthenticated', 401, 'Unauthenticated'],
   ['origin_not_allowed', 403, 'Origin not allowed'],
   ['method_not_allowed', 405, 'Method not allowed'],
-  ['payload_too_large', 413, 'Payload too large'],
+  ['content_too_large', 413, 'Content too large'],
   ['unsupported_media_type', 415, 'Unsupported media type'],
   ['internal', 500, 'Internal error'],
 ];

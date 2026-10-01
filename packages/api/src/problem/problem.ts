@@ -8,7 +8,7 @@ export type ProblemReason =
   | 'unauthenticated'
   | 'origin_not_allowed'
   | 'method_not_allowed'
-  | 'payload_too_large'
+  | 'content_too_large'
   | 'unsupported_media_type'
   | 'internal';
 
@@ -44,7 +44,7 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
   unauthenticated: { status: 401, title: 'Unauthenticated' },
   origin_not_allowed: { status: 403, title: 'Origin not allowed' },
   method_not_allowed: { status: 405, title: 'Method not allowed' },
-  payload_too_large: { status: 413, title: 'Payload too large' },
+  content_too_large: { status: 413, title: 'Content too large' },
   unsupported_media_type: { status: 415, title: 'Unsupported media type' },
   internal: { status: 500, title: 'Internal error' },
 };

@@ -116,7 +116,7 @@ describe('the size of a body', () => {
 
     expect(await call(handler, notes, { method: 'POST', headers: jsonAsAdmin, body })).toMatchObject({
       status: 413,
-      body: { reason: 'payload_too_large' },
+      body: { reason: 'content_too_large' },
     });
   });
 
