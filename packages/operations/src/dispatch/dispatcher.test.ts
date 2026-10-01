@@ -56,7 +56,7 @@ describe('a dispatched handler', () => {
     });
   });
 
-  it('is refused with conflict when its stream moved while it decided', async () => {
+  it('is refused with conflict when a concurrent write to its stream causes a version conflict', async () => {
     const { dispatcher, run } = harness();
     const adding = (name: string) => dispatcher.inBrain(addNote.registration, toAlpha(acmeAdmin, { name, text: name }));
 
