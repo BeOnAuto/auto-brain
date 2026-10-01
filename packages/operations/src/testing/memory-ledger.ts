@@ -25,7 +25,7 @@ export function memoryLedger(): MemoryLedger {
   const streams = new Map<string, readonly unknown[]>();
   const storedIn = (stream: string): readonly unknown[] => streams.get(stream) ?? [];
   const service = Ledger.of({
-    load: (stream, decider) => folded(decider, storedIn(stream)),
+    load: (stream, decider) => Effect.suspend(() => folded(decider, storedIn(stream))),
     execute: (stream, decider, command) =>
       Effect.gen(function* () {
         const { state, version } = yield* folded(decider, storedIn(stream));
