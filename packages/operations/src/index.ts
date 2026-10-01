@@ -1,4 +1,4 @@
-export { streamPrefixOfOrg } from './ledger/bound-ports.ts';
+export { streamPrefixOfBrain, streamPrefixOfOrg } from './ledger/bound-ports.ts';
 export { BrainAccessSchema, canAccessBrain, type BrainAccess } from './caller/brain-access.ts';
 export { BrainRegistry } from './ledger/brain-registry.ts';
 export { BrainReader } from './ledger/brain-reader.ts';

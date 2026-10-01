@@ -110,7 +110,7 @@ A `Decider` holds the event-sourced rules of a stream: its initial state, how an
 
 For each call the dispatcher binds the ledger to the call's address. `OrgReader` and `OrgWriter` prefix a stream name with `org/{org}/`; `BrainReader` and `BrainWriter` with `brain/{org}/{brain}/`. A handler names its streams relative to its org or brain: one or more segments of letters, digits, `_` and `-`, each at most 64 characters, joined by `/`, at most 256 characters in all. Any other name fails the call. So a handler has no way to name another org's or brain's streams. Stream names are case-sensitive, and a ledger implementation must treat them as opaque strings.
 
-`streamPrefixOfOrg({ org })` returns the prefix of an org's streams, so code that holds the unbound `Ledger`, such as a `BrainRegistry`, reads the same stream a handler names relative to its org.
+`streamPrefixOfOrg({ org })` returns the prefix of an org's streams, so code that holds the unbound `Ledger`, such as a `BrainRegistry`, reads the same stream a handler names relative to its org. `streamPrefixOfBrain({ org, brain })` does the same for a brain's streams. Such code must accept only well-formed org and brain ids (`OrgIdSchema`, `BrainIdSchema`), as the dispatcher does, so that a prefix names exactly one org or brain.
 
 ## Testing
 
