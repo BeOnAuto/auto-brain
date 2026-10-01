@@ -17,7 +17,10 @@ function routeOf({ scope, route }: Registration): string {
 }
 
 function routeShapeOf(registration: Registration): string {
-  return routeOf(registration).replaceAll(/\{[^}]*\}/gu, '{}');
+  return routeOf(registration)
+    .split('/')
+    .map((segment) => (segment.startsWith('{') ? '{}' : segment))
+    .join('/');
 }
 
 function requireUniqueNames(registrations: readonly Registration[]): void {
