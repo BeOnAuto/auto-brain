@@ -62,7 +62,7 @@ A primitive has:
 - `title`, and a `description` written for an AI agent: what a spec of the primitive is and how its document is written. The operation descriptions repeat it, so the catalog documents every primitive without an operation to discover them.
 - `mediaType`: the media type of its spec documents, such as `text/markdown`.
 - `parse(source)`: turns the document into the primitive's own value. Parsing is validation: everything that can be checked without running is checked here. It fails with `InvalidInput`, whose issues each say in `detail` where in the document and what is wrong (line and problem). An issue's `pointer` addresses the document as a whole, so it is `''`; the operations answer it under `/source`.
-- `summarize(parsed)`: what the operations show about a spec without knowing the primitive: an optional `description`, and optional JSON Schemas of the input an execution takes (`inputSchema`) and the output it gives (`outputSchema`).
+- `summarize(parsed)`: what the operations show about a spec without knowing the primitive: an optional `description`, optional JSON Schemas of the input an execution takes (`inputSchema`) and the output it gives (`outputSchema`), and optional `warnings`: what `parse` found that does not stop the spec from being accepted but may not work everywhere, each a line of text that says where in the document (for inference: a schema some providers reject or do not enforce).
 - `execute(parsed, input, execution)`: runs the spec. `input` is the caller's JSON value; `execution` carries its `id`, the `org`, the `brain`, and the `spec` that runs, by `name` and `version`. It answers with the `output`, a JSON value returned to the caller, and a `record`, a JSON object of what happened, stored with the execution (for inference: the rendered prompt, the model, token usage). It fails with `InvalidInput`, with pointers into the input (`/name` above; the operations answer them under `/input`); with `Unavailable` when something the primitive depends on cannot serve now and retrying may work; or with `Conflict` when the spec cannot run as written, which only running it can tell (for inference: a model the provider does not have), so the spec must be updated before it can run. A primitive that starts work which finishes after the call returns, such as a workflow, answers `{ finishesLater: true, record }` instead, the record saying what it started (for a workflow: its run reference); see [Executions that finish later](#executions-that-finish-later).
 
 The compiler holds a primitive to its contract. The value `parse` gives is the value `summarize` and `execute` take. `parse` may fail only with `InvalidInput`, and `execute` only with `InvalidInput`, `Unavailable` or `Conflict` (the union `PrimitiveRejection`). Neither may ask for a service: whatever a primitive needs, such as a model client, it closes over when it is made. The output must be JSON and the record a JSON object.
@@ -85,7 +85,7 @@ TypeScript infers the parsed value from `parse` when `parse` is a function decla
 | `execute_spec`  | command | `POST /specs/{primitive}/{name}/execute` | `primitive`, `name`, `input` (any JSON, default `{}`), `execution_id` (optional UUID) | the execution                              | `not_found`, `conflict`, `invalid_input`, `unavailable` |
 | `get_execution` | query   | `GET /executions/{execution_id}`         | `execution_id`                                                                        | the execution, with its record             | `not_found`                                             |
 
-A spec carries `primitive`, `name`, `version`, `status` (`active` or `retired`), `media_type`, the `description`, `input_schema` and `output_schema` its primitive gives when it gives them, `created_at`, `created_by`, `updated_at`, `retired_at` on a retired spec, and its document as `source`. A listed spec is the same without `source`. Times are ISO 8601 UTC strings read from Effect's `Clock`. `SpecSchema`, `ListedSpecSchema`, `ExecutionSchema` and `ExecutionDetailSchema` are the schemas.
+A spec carries `primitive`, `name`, `version`, `status` (`active` or `retired`), `media_type`, the `description`, `input_schema`, `output_schema` and `warnings` its primitive gives when it gives them, `created_at`, `created_by`, `updated_at`, `retired_at` on a retired spec, and its document as `source`. A listed spec is the same without `source`. Times are ISO 8601 UTC strings read from Effect's `Clock`. `SpecSchema`, `ListedSpecSchema`, `ExecutionSchema` and `ExecutionDetailSchema` are the schemas.
 
 - `primitive` is the name of a primitive. The published JSON Schema of the field is a plain `{ "type": "string", "enum": [...], "description": ... }` of the known names. Decoding accepts any well-formed name, so a name the server does not know is `not_found` on every operation, and a malformed one `invalid_input`. Effect would publish the names under `allOf`, because it inlines no `enum` from a check, so each operation replaces that one property of its input's JSON Schema.
 - `name` is 3 to 48 lowercase letters, digits and hyphens, starting with a letter: unique among the specs of the primitive in the brain, and never reused.
@@ -152,7 +152,7 @@ The settlement is recorded as done by the caller who started the execution. A de
 
 The specs of one primitive in a brain are one stream, named `specs/{primitive}` relative to the brain. Its events carry a `type`, the spec `name`, who recorded them (`by`) and when (`at`):
 
-- `spec_created`, with `version` 1 and the `content`: the `source` and the `description`, `input_schema` and `output_schema` its primitive gave
+- `spec_created`, with `version` 1 and the `content`: the `source` and the `description`, `input_schema`, `output_schema` and `warnings` its primitive gave
 - `spec_updated`, with the new `version` and the whole new `content`
 - `spec_retired`
 
@@ -168,7 +168,7 @@ There is no read model: each call folds the streams it needs. Pure deciders hold
 
 ## Testing
 
-`@beonauto/specs/testing` exports `echo`, a small real primitive for the tests of this and other packages. Its spec document is a JSON object with a string `greeting` and an optional string `description`; an execution takes a JSON object and answers `{ greeting, input }`.
+`@beonauto/specs/testing` exports `echo`, a small real primitive for the tests of this and other packages. Its spec document is a JSON object with a string `greeting`, an optional string `description` and optional `warnings`, a list of strings its summary gives back; an execution takes a JSON object and answers `{ greeting, input }`.
 
 ## Source
 

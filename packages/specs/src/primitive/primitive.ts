@@ -5,6 +5,7 @@ export interface SpecSummary {
   readonly description?: string;
   readonly inputSchema?: Schema.JsonObject;
   readonly outputSchema?: Schema.JsonObject;
+  readonly warnings?: readonly string[];
 }
 
 export interface ExecutionContext {
