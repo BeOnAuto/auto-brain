@@ -60,10 +60,17 @@ docker run --rm --publish 8080:8080 beonauto/auto-brain:latest
 curl http://localhost:8080/health
 ```
 
-| Variable | Default   | Purpose                       |
-| -------- | --------- | ----------------------------- |
-| `PORT`   | `8080`    | Port the server listens on    |
-| `HOST`   | `0.0.0.0` | Interface the server binds to |
+| Variable              | Default      | Purpose                                                                                                      |
+| --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
+| `PORT`                | `8080`       | Port the server listens on                                                                                   |
+| `HOST`                | `0.0.0.0`    | Interface the server binds to                                                                                |
+| `TEMPORAL_ADDRESS`    |              | Address of the [Temporal](https://temporal.io) server that runs workflows; without it there are no workflows |
+| `TEMPORAL_NAMESPACE`  | `default`    | Temporal namespace                                                                                           |
+| `TEMPORAL_TASK_QUEUE` | `auto-brain` | Temporal task queue the server's worker polls                                                                |
+| `TEMPORAL_API_KEY`    |              | Temporal API key, as for Temporal Cloud; implies TLS                                                         |
+| `TEMPORAL_TLS`        | `false`      | Whether to connect to Temporal with TLS                                                                      |
+
+The `TEMPORAL_*` settings belong to the [orchestration primitive](primitives/orchestration), which the server does not wire in yet.
 
 The image is multi-arch (amd64 and arm64), runs as a non-root user, and shuts down cleanly on `SIGTERM`.
 
@@ -91,12 +98,13 @@ pnpm check        # everything CI checks
 
 ## Repository layout
 
-| Path                  | What's there                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------ |
-| `packages/server`     | The HTTP server (`@beonauto/server`) and its container build (`Dockerfile`)                |
-| `packages/config`     | Reads the server's configuration from the environment                                      |
-| `packages/operations` | The application layer: where operations are defined and run                                |
-| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                |
-| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives |
-| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                  |
-| `primitives/*`        | One package per primitive                                                                  |
+| Path                       | What's there                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------ |
+| `packages/server`          | The HTTP server (`@beonauto/server`) and its container build (`Dockerfile`)                |
+| `packages/config`          | Reads the server's configuration from the environment                                      |
+| `packages/operations`      | The application layer: where operations are defined and run                                |
+| `packages/brains`          | The brain operations: create, list, read, update and retire an org's brains                |
+| `packages/specs`           | The spec operations: define, version, retire and execute the specs of a brain's primitives |
+| `packages/ledger`          | The ledger every primitive records to: event streams on Emmett and SQLite                  |
+| `primitives/orchestration` | Workflow specs in the Open Workflow DSL, run on Temporal by one interpreter workflow       |
+| `primitives/*`             | One package per primitive                                                                  |
