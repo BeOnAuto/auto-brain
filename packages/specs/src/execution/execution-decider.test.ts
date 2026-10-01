@@ -161,6 +161,7 @@ describe('an execution', () => {
         finished_at: finish.at,
       },
       finishesLater: false,
+      record: { model: 'x' },
       result: { type: 'execution_succeeded', output: 'Hello Ada', record: { model: 'x' } },
     });
   });

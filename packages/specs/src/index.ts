@@ -16,7 +16,7 @@ export {
 } from './primitive/primitive.ts';
 export { defineRetireSpec } from './operations/retire-spec.ts';
 export { defineUpdateSpec } from './operations/update-spec.ts';
-export { ExecutionSchema, type Execution } from './execution/execution.ts';
+export { ExecutionDetailSchema, ExecutionSchema, type Execution, type ExecutionDetail } from './execution/execution.ts';
 export {
   executionSettler,
   type ExecutionAddress,

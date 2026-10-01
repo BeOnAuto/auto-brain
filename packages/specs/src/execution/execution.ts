@@ -39,3 +39,18 @@ export const ExecutionSchema = Schema.Struct({
 export type Execution = typeof ExecutionSchema.Type;
 
 export type ExecutionRecord = Omit<Execution, 'execution_id'>;
+
+export const ExecutionDetailSchema = Schema.Struct({
+  ...ExecutionSchema.fields,
+  record: Schema.optionalKey(
+    Schema.JsonObject.annotate({
+      description:
+        'What the primitive recorded of what it did: of the run that succeeded, or of the work it started that finishes later',
+    }),
+  ),
+}).annotate({
+  identifier: 'ExecutionDetail',
+  description: 'One run of a spec with an input, how it ended, and what the primitive recorded of it',
+});
+
+export type ExecutionDetail = typeof ExecutionDetailSchema.Type;

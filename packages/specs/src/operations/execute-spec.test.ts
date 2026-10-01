@@ -16,6 +16,18 @@ const uuidV7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
+const greeted = {
+  execution_id: executionId,
+  primitive: 'echo',
+  name: 'greet',
+  spec_version: 1,
+  status: 'succeeded',
+  output: { greeting: 'Hello', input: {} },
+  started_at: firstMoment,
+  started_by: 'acme-admin',
+  finished_at: firstMoment,
+};
+
 async function withGreetAndPlain() {
   const specs = harness();
   await specs.call(
@@ -68,13 +80,17 @@ describe('execute_spec', () => {
     });
   });
 
-  it('answers with the execution that get_execution reads', async () => {
+  it('answers with the execution that get_execution reads, without the record that get_execution adds', async () => {
     const { call } = await withGreetAndPlain();
 
-    const executed = await call(executeSpec, executing('greet', { execution_id: executionId }));
-
-    expect(executed).toMatchObject({ status: 'succeeded', output: { execution_id: executionId } });
-    expect(await call(getExecution, toAlpha(acmeAdmin, { execution_id: executionId }))).toEqual(executed);
+    expect(await call(executeSpec, executing('greet', { execution_id: executionId }))).toStrictEqual({
+      status: 'succeeded',
+      output: greeted,
+    });
+    expect(await call(getExecution, toAlpha(acmeAdmin, { execution_id: executionId }))).toStrictEqual({
+      status: 'succeeded',
+      output: { ...greeted, record: { greeting: 'Hello' } },
+    });
   });
 });
 

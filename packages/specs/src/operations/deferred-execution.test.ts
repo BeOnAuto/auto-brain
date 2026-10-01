@@ -21,7 +21,10 @@ describe('an execution whose primitive finishes it after the call returns', () =
     const { executing, reading } = await withHandOn();
 
     expect(await executing()).toStrictEqual(waiting);
-    expect(await reading()).toStrictEqual(waiting);
+    expect(await reading()).toStrictEqual({
+      status: 'succeeded',
+      output: { ...waiting.output, record: { handed_on: relayedId } },
+    });
   });
 
   it('is not started a second time by a call with its id while it waits to be settled', async () => {

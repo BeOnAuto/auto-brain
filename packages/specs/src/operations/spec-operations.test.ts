@@ -63,7 +63,7 @@ describe('a catalog of the spec operations', () => {
       ['Spec'],
       ['Spec'],
       ['Execution'],
-      ['Execution'],
+      ['ExecutionDetail'],
     ]);
   });
 });
