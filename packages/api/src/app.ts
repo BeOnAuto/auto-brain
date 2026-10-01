@@ -20,7 +20,7 @@ export function createApp(options: ApiOptions): Hono<ApiEnv> {
         }),
     }),
   );
-  app.get('/health', (c) => c.json({ status: 'ok' }));
+  app.get('/health', (c) => c.json({ status: 'ok' }, 200, { 'cache-control': 'no-store' }));
   app.use(...middlewareFor(options));
   for (const register of options.routes) {
     register({

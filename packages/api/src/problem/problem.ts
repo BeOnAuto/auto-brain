@@ -63,6 +63,6 @@ export function internalErrorProblem(incident: string): Problem {
 export function problemResponse(problem: Problem, headers: Readonly<Record<string, string>> = {}): Response {
   return new Response(JSON.stringify(problem), {
     status: problem.status,
-    headers: { 'content-type': problemMediaType, ...headers },
+    headers: { 'content-type': problemMediaType, 'cache-control': 'no-store', ...headers },
   });
 }

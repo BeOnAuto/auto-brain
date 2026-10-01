@@ -42,6 +42,7 @@ describe('problemResponse', () => {
 
     expect(response.status).toBe(409);
     expect(response.headers.get('content-type')).toBe('application/problem+json');
+    expect(response.headers.get('cache-control')).toBe('no-store');
     expect(await response.json()).toEqual(problem);
   });
 

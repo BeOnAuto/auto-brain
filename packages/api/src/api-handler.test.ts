@@ -75,6 +75,12 @@ describe('the health check', () => {
     });
   });
 
+  it.each(['GET', 'HEAD'])('answers %s with a response that may not be cached', async (method) => {
+    const answer = await call(createTestHandler().handler, '/health', { method });
+
+    expect(answer.headers.get('cache-control')).toBe('no-store');
+  });
+
   it('ignores a query string', async () => {
     expect(await call(createTestHandler().handler, '/health?probe=1')).toMatchObject({
       status: 200,
