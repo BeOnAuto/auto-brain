@@ -25,9 +25,33 @@ const rejectedBodies: ReadonlyArray<readonly [string, Headers, string, ExpectedR
     'name=a',
     { status: 415, reason: 'unsupported_media_type' },
   ],
+  [
+    'a body with a Content-Encoding',
+    { ...jsonAsAdmin, 'content-encoding': 'gzip' },
+    '{"name":"a","text":"b"}',
+    { status: 415, reason: 'unsupported_media_type' },
+  ],
+  [
+    'a JSON body in another charset',
+    { ...asAdmin, 'content-type': 'application/json; charset=iso-8859-1' },
+    '{"name":"a","text":"b"}',
+    { status: 415, reason: 'unsupported_media_type' },
+  ],
+  [
+    'a JSON body in another quoted charset',
+    { ...asAdmin, 'content-type': 'application/json; charset="utf-16"' },
+    '{"name":"a","text":"b"}',
+    { status: 415, reason: 'unsupported_media_type' },
+  ],
   ['text that is not JSON', jsonAsAdmin, '{nope', { status: 400, reason: 'bad_request' }],
   ['a JSON array', jsonAsAdmin, '[1]', { status: 400, reason: 'bad_request' }],
   ['JSON null', jsonAsAdmin, 'null', { status: 400, reason: 'bad_request' }],
+];
+
+const acceptedEncodings: ReadonlyArray<readonly [string, Headers]> = [
+  ['an identity Content-Encoding', { ...jsonAsAdmin, 'content-encoding': ' Identity ' }],
+  ['a quoted UTF-8 charset', { ...asAdmin, 'content-type': 'application/json; charset="UTF-8"' }],
+  ['other parameters beside the charset', { ...asAdmin, 'content-type': 'application/json; q=1; charset=utf-8' }],
 ];
 
 describe('the encoding of a body', () => {
@@ -71,6 +95,16 @@ describe('the encoding of a body', () => {
     expect({ status: answer.status, body: await answer.json() }).toMatchObject({
       status: 400,
       body: { reason: 'bad_request', detail: 'The body could not be read as UTF-8 text' },
+    });
+  });
+});
+
+describe('the content coding and charset of a body', () => {
+  it.each(acceptedEncodings)('accepts %s', async (_case, headers) => {
+    const { handler } = await operationServer();
+
+    expect(await call(handler, notes, { method: 'POST', headers, body: '{"name":"a","text":"b"}' })).toMatchObject({
+      status: 201,
     });
   });
 });

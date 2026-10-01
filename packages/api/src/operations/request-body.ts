@@ -4,19 +4,53 @@ import { problemOf, type Problem } from '../problem/problem.ts';
 
 export type JsonObject = Readonly<Record<string, unknown>>;
 
+interface MediaType {
+  readonly type: string;
+  readonly charset: string | undefined;
+}
+
 const bodyLimit = 1024 * 1024;
 
 const tooLarge = Result.fail(problemOf('payload_too_large', 'The body is larger than 1 MiB'));
 
 const notJson = Result.fail(problemOf('unsupported_media_type', 'A body must be sent as application/json'));
 
+const encoded = Result.fail(
+  problemOf('unsupported_media_type', 'A body must be sent without a Content-Encoding other than identity'),
+);
+
+const notUtf8 = Result.fail(problemOf('unsupported_media_type', 'A JSON body must be encoded as UTF-8'));
+
 const notAnObject = Result.fail(problemOf('bad_request', 'The body must be a JSON object'));
 
 const unreadable = Result.fail(problemOf('bad_request', 'The body could not be read as UTF-8 text'));
 
+function mediaTypeOf(contentType: string | null): MediaType {
+  const [type = '', ...parameters] = (contentType ?? '').split(';');
+  const charset = parameters
+    .map((parameter) => parameter.trim().toLowerCase())
+    .find((parameter) => parameter.startsWith('charset='))
+    ?.slice('charset='.length);
+  return { type: type.trim().toLowerCase(), charset: charset?.replace(/^"(.*)"$/u, '$1') };
+}
+
+function isIdentity(contentEncoding: string | null): boolean {
+  return contentEncoding === null || ['', 'identity'].includes(contentEncoding.trim().toLowerCase());
+}
+
+function declaresAnotherCharset({ type, charset }: MediaType): boolean {
+  return type === 'application/json' && charset !== undefined && charset !== 'utf-8';
+}
+
 async function bodyTextOf(request: Request): Promise<Result.Result<string, Problem>> {
   if (request.body === null) {
     return Result.succeed('');
+  }
+  if (!isIdentity(request.headers.get('content-encoding'))) {
+    return encoded;
+  }
+  if (declaresAnotherCharset(mediaTypeOf(request.headers.get('content-type')))) {
+    return notUtf8;
   }
   if (Number(request.headers.get('content-length')) > bodyLimit) {
     return tooLarge;
@@ -38,10 +72,6 @@ async function bodyTextOf(request: Request): Promise<Result.Result<string, Probl
   return Result.succeed(text);
 }
 
-function isJson(contentType: string | null): boolean {
-  return (contentType ?? '').split(';', 1).join('').trim().toLowerCase() === 'application/json';
-}
-
 function parsed(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -54,7 +84,7 @@ function fieldsOf(text: string, contentType: string | null): Result.Result<JsonO
   if (text === '') {
     return Result.succeed({});
   }
-  if (!isJson(contentType)) {
+  if (mediaTypeOf(contentType).type !== 'application/json') {
     return notJson;
   }
   const body = parsed(text);
