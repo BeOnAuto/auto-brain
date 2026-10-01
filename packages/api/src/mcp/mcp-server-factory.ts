@@ -34,8 +34,6 @@ export interface ToolServing extends McpServing {
 
 export type McpServerFactory = (context: HandedOff) => McpServer;
 
-const servedProtocolVersions: readonly string[] = ['2026-07-28', '2025-11-25'];
-
 interface ToolContext {
   readonly mcpReq: { readonly signal: AbortSignal };
 }
@@ -70,11 +68,7 @@ function serverWithTools(
 ): McpServer {
   const server = new McpServer(
     { ...serving.serverInfo },
-    {
-      capabilities: { tools: { listChanged: false } },
-      instructions,
-      supportedProtocolVersions: [...servedProtocolVersions],
-    },
+    { capabilities: { tools: { listChanged: false } }, instructions },
   );
   for (const { registration, dispatch } of tools) {
     server.registerTool(registration.name, toolDefinitionOf(registration), callbackFor(serving, requestId, dispatch));

@@ -136,7 +136,7 @@ Every org is also an [MCP](https://modelcontextprotocol.io) server, so an agent 
 }
 ```
 
-Most MCP clients take an entry of this shape; in [local mode](#local-mode), leave out the headers. The endpoint speaks streamable HTTP without sessions, in the current protocol revision (`2026-07-28`) and the previous one (`2025-11-25`), so clients built on either major version of the official SDK connect.
+Most MCP clients take an entry of this shape; in [local mode](#local-mode), leave out the headers. The endpoint speaks streamable HTTP without sessions. It serves the current stateless revision (`2026-07-28`) and the earlier ones the SDK supports (`2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`), so agents built on older SDKs connect too.
 
 | Endpoint                              | Tools                                                                         |
 | ------------------------------------- | ----------------------------------------------------------------------------- |

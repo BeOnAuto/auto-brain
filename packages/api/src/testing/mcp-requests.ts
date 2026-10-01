@@ -8,16 +8,31 @@ export interface RawAnswer {
 
 const mcpHeaders = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
 
-const initializeRequest = JSON.stringify({
-  jsonrpc: '2.0',
-  id: 1,
-  method: 'initialize',
-  params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'auto-brain-tests', version: '1' } },
-});
+export function initializeAt(protocolVersion: string): string {
+  return JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: { protocolVersion, capabilities: {}, clientInfo: { name: 'auto-brain-tests', version: '1' } },
+  });
+}
+
+const initializeRequest = initializeAt('2025-11-25');
+
+export function requestOf(id: number, method: string, params: Readonly<Record<string, unknown>> = {}): string {
+  return JSON.stringify({ jsonrpc: '2.0', id, method, params });
+}
 
 export function jsonOf(text: string): unknown {
   const parsed: unknown = JSON.parse(text);
   return parsed;
+}
+
+export function messagesIn({ text }: RawAnswer): readonly unknown[] {
+  return text
+    .split('\n')
+    .filter((line) => line.startsWith('data: '))
+    .map((line) => jsonOf(line.slice('data: '.length)));
 }
 
 export async function postMcp(

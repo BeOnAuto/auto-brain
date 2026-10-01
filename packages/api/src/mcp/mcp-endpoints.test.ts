@@ -17,15 +17,6 @@ function pingWithPadding(size: number): string {
   return JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1, padding: 'a'.repeat(size) });
 }
 
-function initializeAt(protocolVersion: string): string {
-  return JSON.stringify({
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'initialize',
-    params: { protocolVersion, capabilities: {}, clientInfo: { name: 'auto-brain-tests', version: '1' } },
-  });
-}
-
 function sdkError(message: string): Readonly<Record<string, unknown>> {
   return { jsonrpc: '2.0', error: { code: -32_000, message }, id: null };
 }
@@ -94,35 +85,6 @@ describe('the methods of an MCP endpoint', () => {
     const answer = await call(handler, '/orgs/acme/brains/alpha/mcp', { method: 'HEAD', headers: asAdmin });
 
     expect({ status: answer.status, allow: answer.headers.get('allow') }).toEqual({ status: 405, allow: 'POST' });
-  });
-});
-
-describe('the protocol revisions of an MCP endpoint', () => {
-  it('offers the previous revision to a client that asks for an older one', async () => {
-    const { handler } = await operationServer();
-
-    const answer = await postMcp(handler, '/orgs/acme/mcp', asAdmin, initializeAt('2025-06-18'));
-
-    expect(answer.status).toBe(200);
-    expect(answer.text).toContain('"protocolVersion":"2025-11-25"');
-  });
-
-  it('rejects a request made under an older revision with the SDK’s own JSON-RPC error and 400', async () => {
-    const { handler } = await operationServer();
-
-    const answer = await postMcp(
-      handler,
-      '/orgs/acme/mcp',
-      { ...asAdmin, 'mcp-protocol-version': '2025-06-18' },
-      JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }),
-    );
-
-    expect({ status: answer.status, body: jsonOf(answer.text) }).toEqual({
-      status: 400,
-      body: sdkError(
-        'Bad Request: Unsupported protocol version: 2025-06-18 (supported versions: 2026-07-28, 2025-11-25)',
-      ),
-    });
   });
 });
 
