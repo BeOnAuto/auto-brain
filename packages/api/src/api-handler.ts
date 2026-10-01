@@ -16,7 +16,7 @@ export interface ApiHandler {
 }
 
 export function createApiHandler(options: ApiOptions): ApiHandler {
-  const app = createApp(options);
+  const { app, close } = createApp(options);
   const handleError = errorHandler(options.reportIncident);
   const handle = async (request: Request): Promise<Response> => {
     try {
@@ -32,6 +32,6 @@ export function createApiHandler(options: ApiOptions): ApiHandler {
       overrideGlobalObjects: false,
       errorHandler: () => withRequestIdAndSecurityHeaders(badRequestHandler(), randomUUIDv7()),
     }),
-    close: () => Promise.resolve(),
+    close,
   };
 }
