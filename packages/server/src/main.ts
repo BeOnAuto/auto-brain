@@ -1,3 +1,3 @@
-import { runServer } from './lifecycle.ts';
+import { runServer, withoutOperations } from './lifecycle.ts';
 
-await runServer(process);
+await runServer(process, withoutOperations);

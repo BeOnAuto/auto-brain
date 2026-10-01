@@ -1,8 +1,10 @@
 export { createApiHandler } from './api-handler.ts';
 export type { ApiHandler } from './api-handler.ts';
-export type { ApiOptions, ReportIncident } from './api-options.ts';
-export { problemOf, problemResponse } from './problem.ts';
-export type { Problem, ProblemExtensions, ProblemIssue, ProblemReason } from './problem.ts';
+export type { ApiOptions } from './api-options.ts';
+export { operationRoutes, type OperationRoutesOptions, type RunCall } from './operations/operation-routes.ts';
+export type { ReportIncident } from './problem/fault-boundary.ts';
+export { problemOf, problemResponse } from './problem/problem.ts';
+export type { Problem, ProblemExtensions, ProblemIssue, ProblemReason } from './problem/problem.ts';
 export type { RegisterRoutes, RouteHandler, Routes } from './routes.ts';
 export { makeRunner } from './runner.ts';
-export type { Runner, Settled } from './runner.ts';
+export type { Runner } from './runner.ts';

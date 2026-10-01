@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { call, echoRequestId, handlerWith } from './testing/api-calls.ts';
+import { call, echoRequestId, handlerWith } from '../testing/api-calls.ts';
 
 const allowed = 'https://app.example';
 
@@ -26,7 +26,7 @@ describe('the Origin check', () => {
 
     expect(await call(handler, '/nowhere', { headers: { origin } })).toMatchObject({
       status: 403,
-      body: { reason: 'origin_not_allowed', detail: `The origin ${origin} is not allowed` },
+      body: { reason: 'origin_not_allowed', detail: 'The origin of this request is not allowed' },
     });
   });
 

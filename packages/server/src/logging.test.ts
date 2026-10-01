@@ -20,7 +20,7 @@ const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-route
 
 describe('announceAccess', () => {
   it('says local mode is on', async () => {
-    const [line] = await linesLoggedBy(announceAccess({ localMode: true, apiKeysConfigured: false }));
+    const [line] = await linesLoggedBy(announceAccess('local'));
 
     expect(line).toContain('"level":"INFO"');
     expect(line).toContain(
@@ -29,24 +29,37 @@ describe('announceAccess', () => {
   });
 
   it('warns when the server is not in local mode and has no API keys', async () => {
-    const [line] = await linesLoggedBy(announceAccess({ localMode: false, apiKeysConfigured: false }));
+    const [line] = await linesLoggedBy(announceAccess('closed'));
 
     expect(line).toContain('"level":"WARN"');
     expect(line).toContain('"message":"Local mode is off and no API keys are configured"');
   });
 
   it('says nothing when API keys are configured', async () => {
-    expect(await linesLoggedBy(announceAccess({ localMode: false, apiKeysConfigured: true }))).toEqual([]);
+    expect(await linesLoggedBy(announceAccess('keys'))).toEqual([]);
   });
 });
 
 describe('logIncident', () => {
   it('logs the error with its stack under the incident id', async () => {
-    const [line] = await linesLoggedBy(logIncident('incident-1', new Error('the ledger is unreachable')));
+    const [line] = await linesLoggedBy(
+      logIncident({ id: 'incident-1', original: new Error('the ledger is unreachable') }),
+    );
 
     expect(line).toContain('"level":"ERROR"');
     expect(line).toContain('"annotations":{"incident":"incident-1"}');
     expect(line).toContain('Error: the ledger is unreachable\\n    at ');
+  });
+
+  it('logs the operation, the org, the brain and the caller of the call that faulted', async () => {
+    const call = { operation: 'add_note', org: 'acme', brain: 'alpha', caller: 'acme-admin' };
+
+    const [line] = await linesLoggedBy(logIncident({ id: 'incident-2', original: 'not an error', call }));
+
+    expect(line).toContain(
+      '"annotations":{"incident":"incident-2","operation":"add_note","org":"acme","brain":"alpha","caller":"acme-admin"}',
+    );
+    expect(line).toContain('not an error');
   });
 });
 

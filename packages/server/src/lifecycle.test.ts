@@ -2,10 +2,11 @@ import { get } from 'node:http';
 import { setTimeout } from 'node:timers/promises';
 
 import type { Environment } from '@beonauto/config';
+import { createApiKey } from '@beonauto/identity';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { runServer, startServer, tcpPort, type ServerProcess } from './lifecycle.ts';
+import { runServer, startServer, tcpPort, withoutOperations, type ServerProcess } from './lifecycle.ts';
 import { testRoutes } from './testing/test-routes.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0' };
@@ -59,14 +60,14 @@ function statusOf(port: number, path: string, headers: Readonly<Record<string, s
 
 describe('startServer', () => {
   it('listens on the port the operating system assigns for port 0', async () => {
-    const server = await startServer({ HOST: '127.0.0.1', PORT: '0' });
+    const server = await startServer({ HOST: '127.0.0.1', PORT: '0' }, withoutOperations);
 
     expect(await isAcceptingConnections(server.port)).toBe(true);
     await server.stop();
   });
 
   it('stops accepting connections once stopped, and stopping again is harmless', async () => {
-    const server = await startServer({ HOST: '127.0.0.1', PORT: '0' });
+    const server = await startServer({ HOST: '127.0.0.1', PORT: '0' }, withoutOperations);
     await server.stop();
     await server.stop();
 
@@ -74,17 +75,24 @@ describe('startServer', () => {
   });
 
   it('rejects when the port is already taken', async () => {
-    const first = await startServer({ HOST: '127.0.0.1', PORT: '0' });
+    const first = await startServer({ HOST: '127.0.0.1', PORT: '0' }, withoutOperations);
 
-    await expect(startServer({ HOST: '127.0.0.1', PORT: String(first.port) })).rejects.toThrow('EADDRINUSE');
+    await expect(startServer({ HOST: '127.0.0.1', PORT: String(first.port) }, withoutOperations)).rejects.toThrow(
+      'EADDRINUSE',
+    );
     await first.stop();
   });
+});
 
-  it('disposes the runtime before it rejects because the port is already taken', async () => {
-    const first = await startServer(loopback);
+describe('the runtime of a started server', () => {
+  it('is disposed before start-up rejects because the port is already taken', async () => {
+    const first = await startServer(loopback, withoutOperations);
     const { runtimeLayer, events } = recordingDisposal();
 
-    const failure = await startServer({ ...loopback, PORT: String(first.port) }, { runtimeLayer }).then(
+    const failure = await startServer(
+      { ...loopback, PORT: String(first.port) },
+      { ...withoutOperations, runtimeLayer },
+    ).then(
       () => 'started',
       (error: unknown) => {
         events.push('start-up rejected');
@@ -97,10 +105,10 @@ describe('startServer', () => {
     expect(events).toEqual(['runtime disposed', 'start-up rejected']);
   });
 
-  it('keeps the runtime it was given until it stops', async () => {
+  it('is kept until the server stops', async () => {
     const { runtimeLayer, events } = recordingDisposal();
 
-    const server = await startServer(loopback, { runtimeLayer });
+    const server = await startServer(loopback, { ...withoutOperations, runtimeLayer });
     const whileRunning = [...events];
     await server.stop();
 
@@ -110,7 +118,7 @@ describe('startServer', () => {
 
 describe('startServer guards requests from browsers', () => {
   it('is in local mode on loopback without API keys, so it refuses a Host header that is not localhost', async () => {
-    const server = await startServer(loopback);
+    const server = await startServer(loopback, withoutOperations);
 
     const foreign = await statusOf(server.port, '/nowhere', { host: 'evil.example' });
     const local = await statusOf(server.port, '/nowhere', { host: `localhost:${server.port}` });
@@ -119,17 +127,22 @@ describe('startServer guards requests from browsers', () => {
     expect({ foreign, local }).toEqual({ foreign: 403, local: 404 });
   });
 
-  it('is not in local mode once API keys are configured, so it does not check the Host header', async () => {
-    const server = await startServer({ ...loopback, API_KEYS: '[]' });
+  it('is not in local mode once API keys are configured, so it checks the key and not the Host header', async () => {
+    const { key, entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], brains: '*' });
+    const server = await startServer({ ...loopback, API_KEYS: JSON.stringify([entry]) }, withoutOperations);
 
-    const foreign = await statusOf(server.port, '/nowhere', { host: 'evil.example' });
+    const withoutKey = await statusOf(server.port, '/v1/orgs/acme/brains', { host: 'evil.example' });
+    const withKey = await statusOf(server.port, '/v1/orgs/acme/brains', {
+      host: 'evil.example',
+      authorization: `Bearer ${key}`,
+    });
     await server.stop();
 
-    expect(foreign).toBe(404);
+    expect({ withoutKey, withKey }).toEqual({ withoutKey: 401, withKey: 404 });
   });
 
   it('refuses a request from an origin ALLOWED_ORIGINS does not list', async () => {
-    const server = await startServer({ ...loopback, ALLOWED_ORIGINS: 'https://app.example.com' });
+    const server = await startServer({ ...loopback, ALLOWED_ORIGINS: 'https://app.example.com' }, withoutOperations);
 
     const allowed = await statusOf(server.port, '/nowhere', { origin: 'https://app.example.com' });
     const foreign = await statusOf(server.port, '/nowhere', { origin: 'https://evil.example' });
@@ -141,7 +154,7 @@ describe('startServer guards requests from browsers', () => {
 
 describe('startServer with routes', () => {
   it('serves the routes it is given', async () => {
-    const server = await startServer(loopback, { routes: [testRoutes] });
+    const server = await startServer(loopback, { ...withoutOperations, routes: () => [testRoutes] });
 
     const response = await fetch(`http://127.0.0.1:${server.port}/slow?ms=1`);
     await server.stop();
@@ -150,7 +163,7 @@ describe('startServer with routes', () => {
   });
 
   it('answers an unexpected error with a 500 problem document', async () => {
-    const server = await startServer(loopback, { routes: [testRoutes] });
+    const server = await startServer(loopback, { ...withoutOperations, routes: () => [testRoutes] });
 
     const response = await fetch(`http://127.0.0.1:${server.port}/fail`);
     await server.stop();
@@ -164,7 +177,7 @@ describe('startServer with routes', () => {
 
 describe('stopping a started server', () => {
   it('lets a request in flight finish, then stops without waiting for the deadline', async () => {
-    const server = await startServer(loopback, { routes: [testRoutes] });
+    const server = await startServer(loopback, { ...withoutOperations, routes: () => [testRoutes] });
     const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`);
     await setTimeout(50);
     const stopping = performance.now();
@@ -177,7 +190,11 @@ describe('stopping a started server', () => {
   });
 
   it('cuts off a request still running at the shutdown deadline', async () => {
-    const server = await startServer(loopback, { routes: [testRoutes], shutdownDeadlineMs: 100 });
+    const server = await startServer(loopback, {
+      ...withoutOperations,
+      routes: () => [testRoutes],
+      shutdownDeadlineMs: 100,
+    });
     const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=60000`).then(
       () => 'answered',
       () => 'cut off',
@@ -195,7 +212,7 @@ describe('stopping a started server', () => {
 describe('runServer', () => {
   it('announces the port it listens on', async () => {
     const { serverProcess, written } = fakeProcess();
-    const server = await runServer(serverProcess);
+    const server = await runServer(serverProcess, withoutOperations);
 
     expect(written).toEqual([`auto-brain listening on port ${server.port}\n`]);
     await server.stop();
@@ -203,7 +220,7 @@ describe('runServer', () => {
 
   it.each(['SIGTERM', 'SIGINT'])('shuts down gracefully on %s', async (signal) => {
     const { serverProcess, signals } = fakeProcess();
-    const server = await runServer(serverProcess);
+    const server = await runServer(serverProcess, withoutOperations);
 
     signals.dispatchEvent(new Event(signal));
     await server.stop();
@@ -214,7 +231,14 @@ describe('runServer', () => {
   it('refuses invalid settings before it listens, with a named error, and announces nothing', async () => {
     const { serverProcess, written } = fakeProcess({ ...loopback, ALLOWED_ORIGINS: 'app.example.com' });
 
-    await expect(runServer(serverProcess)).rejects.toMatchObject({ name: 'InvalidSettingsError' });
+    await expect(runServer(serverProcess, withoutOperations)).rejects.toMatchObject({ name: 'InvalidSettingsError' });
+    expect(written).toEqual([]);
+  });
+
+  it('refuses invalid API keys before it listens, with a named error, and announces nothing', async () => {
+    const { serverProcess, written } = fakeProcess({ ...loopback, API_KEYS: '[{"id":"ci-1"}]' });
+
+    await expect(runServer(serverProcess, withoutOperations)).rejects.toMatchObject({ name: 'InvalidApiKeysError' });
     expect(written).toEqual([]);
   });
 });

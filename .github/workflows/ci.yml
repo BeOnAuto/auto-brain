@@ -67,6 +67,9 @@ jobs:
           done
           test "$(curl --silent --fail http://127.0.0.1:8080/health)" = '{"status":"ok"}'
           test "$(docker exec smoke id -un)" = node
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 401
+          curl --silent --include http://127.0.0.1:8080/v1/orgs/demo/brains | grep --ignore-case --quiet '^www-authenticate: Bearer'
+          docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo | grep --quiet --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$'
           docker stop smoke
           test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
 

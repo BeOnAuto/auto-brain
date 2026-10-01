@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RegisterRoutes } from './index.ts';
-import { call, handlerWith } from './testing/api-calls.ts';
+import type { RegisterRoutes } from '../index.ts';
+import { call, handlerWith } from '../testing/api-calls.ts';
 
-const uuid = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
+const uuid = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
 
 const notAnError: Error = { name: 'Secret', message: 'database password is hunter2' };
 
@@ -58,5 +58,18 @@ describe('a thrown value that is not an Error', () => {
     expect(reported).toEqual([
       { incident: report?.incident, message: 'A value that is not an Error was thrown', cause: notAnError },
     ]);
+  });
+
+  it('answers with the request id and the security headers every other response carries', async () => {
+    const { handler } = handlerWith({ routes: [failing] });
+
+    const { headers } = await call(handler, '/not-an-error');
+
+    expect(headers.get('x-request-id')).toMatch(uuid);
+    expect({
+      contentTypeOptions: headers.get('x-content-type-options'),
+      frameOptions: headers.get('x-frame-options'),
+      strictTransportSecurity: headers.get('strict-transport-security'),
+    }).toEqual({ contentTypeOptions: 'nosniff', frameOptions: 'SAMEORIGIN', strictTransportSecurity: null });
   });
 });

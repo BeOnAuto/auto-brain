@@ -13,6 +13,8 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@beonauto/identity": "workspace:*",
+    "@beonauto/operations": "workspace:*",
     "@hono/node-server": "2.1.3",
     "effect": "catalog:",
     "hono": "catalog:"

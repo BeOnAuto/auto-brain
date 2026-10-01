@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
+import { createApiKey } from '@beonauto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { spawnEntry } from './testing/spawned.ts';
@@ -11,7 +12,10 @@ const loopback = { HOST: '127.0.0.1', PORT: '0' };
 const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>, string]> = [
   [{ PORT: 'eighty' }, 'InvalidPortError: PORT must be an integer from 0 to 65535, received "eighty"'],
   [{ ALLOWED_ORIGINS: 'app.example.com' }, 'InvalidSettingsError'],
+  [{ API_KEYS: '[{"id":"ci-1"}]' }, 'InvalidApiKeysError: API_KEYS[0].org: Missing key'],
 ];
+
+const protectedPath = '/v1/orgs/demo/brains';
 
 describe('main', () => {
   it('serves health checks when launched with node and exits cleanly on SIGTERM', async () => {
@@ -51,6 +55,25 @@ describe('main', () => {
       expect(performance.now() - signalled).toBeLessThan(3000);
     },
   );
+});
+
+describe('main with settings', () => {
+  it('requires an API key on protected paths once keys are configured, and says nothing about access', async () => {
+    const { key, entry } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
+    const child = spawnEntry(mainModule, { ...loopback, API_KEYS: JSON.stringify([entry]) });
+    const port = await child.port;
+
+    const withoutKey = await fetch(`http://127.0.0.1:${port}${protectedPath}`);
+    const withKey = await fetch(`http://127.0.0.1:${port}${protectedPath}`, {
+      headers: { authorization: `Bearer ${key}` },
+    });
+    child.signal('SIGTERM');
+    await child.exited;
+
+    expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 404 });
+    expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
+    expect(child.output()).toEqual({ stdout: `auto-brain listening on port ${port}\n`, stderr: '' });
+  });
 
   it.each(invalidSettings)(
     'refuses to start with %o, naming the error on stderr and writing nothing to stdout',

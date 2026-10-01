@@ -1,10 +1,11 @@
-import type { RegisterRoutes } from './routes.ts';
+import type { Authenticator } from '@beonauto/identity';
 
-export type ReportIncident = (incident: string, error: Readonly<Error>) => void;
+import type { ReportIncident } from './problem/fault-boundary.ts';
+import type { RegisterRoutes } from './routes.ts';
 
 export interface ApiOptions {
   readonly allowedOrigins: readonly string[];
-  readonly localMode: boolean;
+  readonly authenticator: Authenticator;
   readonly routes: readonly RegisterRoutes[];
   readonly reportIncident: ReportIncident;
 }

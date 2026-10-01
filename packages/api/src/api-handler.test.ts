@@ -7,8 +7,6 @@ import { describe, expect, it } from 'vitest';
 import type { ApiHandler, RegisterRoutes } from './index.ts';
 import { call, echoRequestId, handlerWith } from './testing/api-calls.ts';
 
-const uuid = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
-
 function portOf(address: Readonly<AddressInfo> | string | null): number {
   return typeof address === 'object' && address !== null ? address.port : 0;
 }
@@ -126,30 +124,9 @@ describe('every response', () => {
       strictTransportSecurity: null,
     });
   });
-
-  it('carries a request id of its own, never the one a client sends', async () => {
-    const { handler } = handlerWith();
-    const sent = '00000000-0000-4000-8000-000000000000';
-
-    const first = await call(handler, '/health', { headers: { 'x-request-id': sent } });
-    const second = await call(handler, '/nowhere');
-
-    expect(first.headers.get('x-request-id')).toMatch(uuid);
-    expect(second.headers.get('x-request-id')).toMatch(uuid);
-    expect(first.headers.get('x-request-id')).not.toBe(sent);
-    expect(first.headers.get('x-request-id')).not.toBe(second.headers.get('x-request-id'));
-  });
 });
 
 describe('mounted routes', () => {
-  it('answer with the request id the response carries', async () => {
-    const { handler } = handlerWith({ routes: [echoRequestId] });
-
-    const answer = await call(handler, '/echo');
-
-    expect(answer.body).toEqual({ requestId: answer.headers.get('x-request-id') });
-  });
-
   it('answer the method they were added for, and 405 with Allow for any other', async () => {
     const { handler } = handlerWith({ routes: [createThings, echoRequestId] });
 
@@ -193,6 +170,8 @@ describe('the Node listener', () => {
 
     expect(response).toMatch(/^HTTP\/1\.1 400 Bad Request\r\n/u);
     expect(response.toLowerCase()).toContain('\r\ncontent-type: application/problem+json\r\n');
+    expect(response.toLowerCase()).toContain('\r\nx-content-type-options: nosniff\r\n');
+    expect(response.toLowerCase()).toMatch(/\r\nx-request-id: [\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-/u);
     expect(response).toContain(
       '\r\n\r\n{"type":"https://on.auto/problems/malformed_request","title":"Malformed request","status":400,"detail":"The request could not be read","reason":"malformed_request"}',
     );

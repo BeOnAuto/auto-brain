@@ -60,13 +60,30 @@ docker run --rm --publish 8080:8080 beonauto/auto-brain:latest
 curl http://localhost:8080/health
 ```
 
-| Variable          | Default   | Purpose                                                           |
-| ----------------- | --------- | ----------------------------------------------------------------- |
-| `PORT`            | `8080`    | Port the server listens on                                        |
-| `HOST`            | `0.0.0.0` | Interface the server binds to                                     |
-| `ALLOWED_ORIGINS` | none      | Comma-separated origins allowed to call the server from a browser |
+| Variable          | Default   | Purpose                                                                                     |
+| ----------------- | --------- | ------------------------------------------------------------------------------------------- |
+| `PORT`            | `8080`    | Port the server listens on                                                                  |
+| `HOST`            | `0.0.0.0` | Interface the server binds to                                                               |
+| `ALLOWED_ORIGINS` | none      | Comma-separated origins allowed to call the server from a browser                           |
+| `API_KEYS`        | none      | The API keys the server accepts, as a compact JSON array of entries made by the key command |
 
 The image is multi-arch (amd64 and arm64), runs as a non-root user, and shuts down cleanly on `SIGTERM`.
+
+### API keys
+
+Every path except `/health` needs an API key, sent as `Authorization: Bearer <key>`. Each key belongs to one org and carries its permissions and the brains it may reach. The key command creates one:
+
+```bash
+docker run --rm beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org <org>
+```
+
+Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `brain:read`, `brain:write`; all four by default) and `--brains` (comma-separated brain ids, or `*` for every brain, the default). The command prints the key once and the entry to add to `API_KEYS`; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file.
+
+Without `API_KEYS`, a server that listens on all interfaces, as the container does, refuses every path except `/health` with `401`.
+
+### Local mode
+
+When the server listens only on a loopback address (`localhost`, `127.0.0.1` or `::1`) and `API_KEYS` is not set, it runs in local mode: every request acts as a local developer with every permission in whichever org it names, and no key is needed. To stop a web page from driving it, local mode refuses a request whose `Host` header is not a localhost name, and, as always, a request whose `Origin` is not in `ALLOWED_ORIGINS`. `pnpm dev` listens on `127.0.0.1`, so it runs in local mode; `pnpm key -- --org <org>` creates a key from a checkout.
 
 ## Licensing
 
@@ -97,6 +114,7 @@ pnpm check        # everything CI checks
 | `packages/server`     | The HTTP server (`@beonauto/server`) and its container build (`Dockerfile`) |
 | `packages/api`        | The API (`@beonauto/api`) the server answers every request with             |
 | `packages/config`     | Reads the server's configuration from the environment                       |
+| `packages/identity`   | API keys, local mode and the key command                                    |
 | `packages/operations` | The application layer: where operations are defined and run                 |
 | `packages/ledger`     | The ledger every primitive records to                                       |
 | `primitives/*`        | One package per primitive                                                   |

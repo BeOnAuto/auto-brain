@@ -1,33 +1,27 @@
 import { Hono } from 'hono';
 import { methodNotAllowed } from 'hono/method-not-allowed';
-import { secureHeaders } from 'hono/secure-headers';
 
 import type { ApiEnv } from './api-env.ts';
 import type { ApiOptions } from './api-options.ts';
-import { answerFaults } from './fault-boundary.ts';
-import { refuseForeignHosts } from './local-host-check.ts';
-import { refuseForeignOrigins } from './origin-check.ts';
-import { problemOf, problemResponse } from './problem.ts';
-import { assignRequestId } from './request-id.ts';
+import { standardHeaders } from './checks/standard-headers.ts';
+import { guardsFor } from './guards.ts';
+import { answerFaults } from './problem/fault-boundary.ts';
+import { problemOf, problemResponse } from './problem/problem.ts';
 
 export function createApp(options: ApiOptions): Hono<ApiEnv> {
   const app = new Hono<ApiEnv>();
-  app.use(assignRequestId);
-  app.use(secureHeaders({ strictTransportSecurity: false }));
+  app.use(...standardHeaders);
   app.use(
     methodNotAllowed({
       app,
       onMethodNotAllowed: (_c, methods: readonly string[]) =>
         problemResponse(problemOf('method_not_allowed', 'The path does not support this method'), {
-          allow: methods.join(', '),
+          allow: methods.toSorted().join(', '),
         }),
     }),
   );
   app.get('/health', (c) => c.json({ status: 'ok' }));
-  app.use(refuseForeignOrigins(options.allowedOrigins));
-  if (options.localMode) {
-    app.use(refuseForeignHosts);
-  }
+  app.use(...guardsFor(options));
   for (const register of options.routes) {
     register({
       add: (method, path, handler) => {

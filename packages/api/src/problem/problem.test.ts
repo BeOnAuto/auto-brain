@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { problemOf, problemResponse, type ProblemReason } from './index.ts';
+import { problemOf, problemResponse, type ProblemReason } from '../index.ts';
 
 const statusAndTitleByReason: ReadonlyArray<readonly [ProblemReason, number, string]> = [
   ['invalid_input', 422, 'Invalid input'],

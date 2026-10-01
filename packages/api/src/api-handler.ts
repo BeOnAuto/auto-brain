@@ -4,8 +4,9 @@ import { getRequestListener } from '@hono/node-server';
 
 import type { ApiOptions } from './api-options.ts';
 import { createApp } from './app.ts';
-import { answerFaults } from './fault-boundary.ts';
-import { answerUnreadableRequest } from './unreadable-request.ts';
+import { withStandardHeaders } from './checks/standard-headers.ts';
+import { answerFaults } from './problem/fault-boundary.ts';
+import { answerUnreadableRequest } from './problem/unreadable-request.ts';
 
 export interface ApiHandler {
   readonly fetch: (request: Request) => Promise<Response>;
@@ -20,12 +21,15 @@ export function createApiHandler(options: ApiOptions): ApiHandler {
     try {
       return await app.fetch(request);
     } catch (thrown) {
-      return answerFault(thrown);
+      return withStandardHeaders(answerFault(thrown));
     }
   };
   return {
     fetch: answer,
-    listener: getRequestListener(answer, { overrideGlobalObjects: false, errorHandler: answerUnreadableRequest }),
+    listener: getRequestListener(answer, {
+      overrideGlobalObjects: false,
+      errorHandler: () => withStandardHeaders(answerUnreadableRequest()),
+    }),
     close: () => Promise.resolve(),
   };
 }

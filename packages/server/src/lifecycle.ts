@@ -1,11 +1,11 @@
 import type { AddressInfo } from 'node:net';
 
-import { createApiHandler, makeRunner, type RegisterRoutes } from '@beonauto/api';
+import { createApiHandler, makeRunner, type RegisterRoutes, type Runner } from '@beonauto/api';
 import type { Environment } from '@beonauto/config';
+import { authenticatorFor } from '@beonauto/identity';
 import { Layer } from 'effect';
 
 import { createHttpServer, listen } from './http-server.ts';
-import { isLocalMode } from './local-mode.ts';
 import { announceAccess, jsonLogsToStderr, logIncident } from './logging.ts';
 import { readSettings } from './settings.ts';
 import { shutDown } from './shutdown.ts';
@@ -21,29 +21,29 @@ export interface ServerProcess {
   once(signal: 'SIGINT' | 'SIGTERM', listener: () => void): unknown;
 }
 
-export interface ServerOptions {
-  readonly routes: readonly RegisterRoutes[];
+export interface ServerOptions<R> {
+  readonly runtimeLayer: Layer.Layer<R>;
+  readonly routes: (runner: Runner<R>) => readonly RegisterRoutes[];
   readonly shutdownDeadlineMs: number;
-  readonly runtimeLayer: Layer.Layer<never>;
 }
 
-const defaultOptions: ServerOptions = { routes: [], shutdownDeadlineMs: 8000, runtimeLayer: Layer.empty };
+export const withoutOperations: ServerOptions<never> = {
+  runtimeLayer: Layer.empty,
+  routes: () => [],
+  shutdownDeadlineMs: 8000,
+};
 
-export async function startServer(
-  environment: Environment,
-  options: Partial<ServerOptions> = {},
-): Promise<RunningServer> {
-  const { routes, shutdownDeadlineMs, runtimeLayer } = { ...defaultOptions, ...options };
+export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
-  const localMode = isLocalMode(settings);
-  const runner = await makeRunner(runtimeLayer.pipe(Layer.provideMerge(jsonLogsToStderr)));
-  await runner.run(announceAccess({ localMode, apiKeysConfigured: settings.apiKeysConfigured }));
+  const authenticator = authenticatorFor(settings);
+  const runner = await makeRunner(options.runtimeLayer.pipe(Layer.provideMerge(jsonLogsToStderr)));
+  await runner.run(announceAccess(authenticator.mode));
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,
-    localMode,
-    routes,
-    reportIncident: (incident, error) => {
-      void runner.run(logIncident(incident, error));
+    authenticator,
+    routes: options.routes(runner),
+    reportIncident: (id, error) => {
+      void runner.run(logIncident({ id, original: error }));
     },
   });
   const server = createHttpServer(api.listener);
@@ -57,16 +57,17 @@ export async function startServer(
   return {
     port: tcpPort(server.address()),
     stop: async () => {
-      stopping ??= shutDown(server, { closeApi: api.close, disposeRuntime: runner.dispose }, shutdownDeadlineMs);
+      stopping ??= shutDown(
+        server,
+        { closeApi: api.close, disposeRuntime: runner.dispose },
+        options.shutdownDeadlineMs,
+      );
       await stopping;
     },
   };
 }
 
-export async function runServer(
-  serverProcess: ServerProcess,
-  options: Partial<ServerOptions> = {},
-): Promise<RunningServer> {
+export async function runServer<R>(serverProcess: ServerProcess, options: ServerOptions<R>): Promise<RunningServer> {
   const server = await startServer(serverProcess.env, options);
   serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
   const stopOnSignal = (): void => {

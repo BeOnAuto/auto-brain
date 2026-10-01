@@ -6,6 +6,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json packages/server/
 COPY packages/api/package.json packages/api/
 COPY packages/config/package.json packages/config/
+COPY packages/identity/package.json packages/identity/
+COPY packages/operations/package.json packages/operations/
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/server...
 
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
@@ -16,6 +18,8 @@ COPY --from=dependencies --chown=node:node /app ./
 COPY --chown=node:node LICENSE ./
 COPY --chown=node:node packages/api/src packages/api/src
 COPY --chown=node:node packages/config/src packages/config/src
+COPY --chown=node:node packages/identity/src packages/identity/src
+COPY --chown=node:node packages/operations/src packages/operations/src
 COPY --chown=node:node packages/server/src packages/server/src
 USER node
 EXPOSE 8080

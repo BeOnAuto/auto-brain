@@ -232,6 +232,12 @@ importers:
 
   packages/api:
     dependencies:
+      '@beonauto/identity':
+        specifier: workspace:*
+        version: link:../identity
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../operations
       '@hono/node-server':
         specifier: 2.1.3
         version: 2.1.3(hono@4.13.12)
@@ -250,6 +256,22 @@ importers:
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/config:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/identity:
+    dependencies:
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../operations
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -279,6 +301,12 @@ importers:
       '@beonauto/config':
         specifier: workspace:*
         version: link:../config
+      '@beonauto/identity':
+        specifier: workspace:*
+        version: link:../identity
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../operations
       effect:
         specifier: 'catalog:'
         version: 4.0.0

@@ -16,6 +16,8 @@
   "dependencies": {
     "@beonauto/api": "workspace:*",
     "@beonauto/config": "workspace:*",
+    "@beonauto/identity": "workspace:*",
+    "@beonauto/operations": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

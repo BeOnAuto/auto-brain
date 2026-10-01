@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from 'hono';
 
-import type { ApiEnv } from './api-env.ts';
-import { problemOf, problemResponse } from './problem.ts';
+import type { ApiEnv } from '../api-env.ts';
+import { problemOf, problemResponse } from '../problem/problem.ts';
 
 const localHost = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/iu;
 

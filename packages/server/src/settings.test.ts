@@ -1,4 +1,5 @@
 import { InvalidPortError, type Environment } from '@beonauto/config';
+import { createApiKey } from '@beonauto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { readSettings } from './settings.ts';
@@ -12,9 +13,11 @@ function errorFrom(environment: Environment): unknown {
   return undefined;
 }
 
+const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], brains: '*' });
+
 describe('readSettings', () => {
   it('listens on every interface at port 8080, allows no origin and has no API keys when nothing is configured', () => {
-    expect(readSettings({})).toEqual({ host: '0.0.0.0', port: 8080, allowedOrigins: [], apiKeysConfigured: false });
+    expect(readSettings({})).toEqual({ host: '0.0.0.0', port: 8080, allowedOrigins: [], apiKeys: undefined });
   });
 
   it('reads every setting from the environment it is given', () => {
@@ -23,25 +26,25 @@ describe('readSettings', () => {
         HOST: '127.0.0.1',
         PORT: '3000',
         ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
-        API_KEYS: '[]',
+        API_KEYS: JSON.stringify([entry]),
       }),
     ).toEqual({
       host: '127.0.0.1',
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
-      apiKeysConfigured: true,
+      apiKeys: [entry],
     });
   });
 
   it('treats empty variables as not set', () => {
     expect(readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '' })).toMatchObject({
       allowedOrigins: [],
-      apiKeysConfigured: false,
+      apiKeys: undefined,
     });
   });
 
   it.each([' ', '\t', '  \n  '])('treats API_KEYS=%j, only whitespace, as no API keys', (keys) => {
-    expect(readSettings({ API_KEYS: keys })).toMatchObject({ apiKeysConfigured: false });
+    expect(readSettings({ API_KEYS: keys })).toMatchObject({ apiKeys: undefined });
   });
 });
 
@@ -61,6 +64,10 @@ describe('readSettings refuses invalid settings', () => {
     expect(error).toMatchObject({ name: 'InvalidSettingsError', _tag: 'InvalidSettingsError' });
     expect(String(error)).toContain('ALLOWED_ORIGINS');
     expect(String(error)).toContain('Expected an origin such as https://app.example.com');
+  });
+
+  it('refuses invalid API keys with the named error from the identity settings', () => {
+    expect(String(errorFrom({ API_KEYS: '[{"id":"ci-1"}]' }))).toContain('InvalidApiKeysError: API_KEYS[0].org');
   });
 
   it('refuses an invalid port with the named error from the server configuration', () => {

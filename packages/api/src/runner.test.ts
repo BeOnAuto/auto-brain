@@ -6,16 +6,16 @@ import { makeRunner } from './index.ts';
 class LayerFailed extends Data.TaggedError('LayerFailed')<{ readonly message: string }> {}
 
 describe('makeRunner', () => {
-  it('settles an effect with its value', async () => {
+  it('resolves an effect to its value', async () => {
     const runner = await makeRunner(Layer.empty);
 
-    expect(await runner.run(Effect.succeed(42))).toEqual({ status: 'settled', value: 42 });
+    expect(await runner.run(Effect.succeed(42))).toBe(42);
   });
 
-  it('reports an interrupted effect as stopped', async () => {
+  it('reports an effect that interrupts itself as stopped', async () => {
     const runner = await makeRunner(Layer.empty);
 
-    expect(await runner.run(Effect.never, AbortSignal.timeout(10))).toEqual({ status: 'stopped' });
+    expect(await runner.run(Effect.interrupt)).toEqual({ status: 'stopped' });
   });
 
   it('stops an effect in flight when disposed, and refuses new ones', async () => {
