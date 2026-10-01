@@ -40,8 +40,6 @@ export const getLabel = defineQuery('org', {
 });
 ```
 
-This example is `src/testing/readme-example.ts`; `src/readme.test.ts` fails if the two differ, and runs it.
-
 The compiler holds a definition to these rules:
 
 - A query's route uses `GET` and a command's `POST` or `PUT`. Only a command may answer `201` instead of `200`.
