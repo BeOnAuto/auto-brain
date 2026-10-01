@@ -24,5 +24,6 @@ export {
   type Settlement,
 } from './execution/execution-settler.ts';
 export { getExecution } from './operations/get-execution.ts';
+export { mostInputBytes, mostResultBytes } from './execution/recorded-size.ts';
 export { ListedSpecSchema, SpecSchema, type ListedSpec, type Spec } from './registry/spec.ts';
 export { makeSpecOperations, type BrainOperation } from './operations/spec-operations.ts';

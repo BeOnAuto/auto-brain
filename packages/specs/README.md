@@ -112,7 +112,7 @@ The ledger's cloud store holds at most 2 MB in a row, so an execution records bo
 - The `input` may take at most 262144 bytes (256 KiB). A larger input is rejected with `invalid_input` at `/input` when the call is decoded, before anything is recorded.
 - The `output` and the `record` of a primitive may take at most 1048576 bytes (1 MiB) together. A primitive that answers with more breaks down: the call fails with an incident and the execution is recorded as `failed`. The same holds for the record of work that finishes later, and for the output and record it is settled with.
 
-JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`, and in the description of `execute_spec`.
+JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`, and in the description of `execute_spec`. `mostInputBytes` and `mostResultBytes` export them, so that a primitive can keep what it answers within them.
 
 ### Execution ids and retries
 
