@@ -3,6 +3,7 @@
 **/.turbo
 **/*.test.ts
 packages/*/src/testing
+primitives/*/src/testing
 .git
 .github
 .vscode
