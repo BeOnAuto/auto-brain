@@ -167,6 +167,9 @@ catalogs:
     '@vitest/coverage-v8':
       specifier: 5.0.2
       version: 5.0.2
+    effect:
+      specifier: 4.0.0
+      version: 4.0.0
     vitest:
       specifier: 5.0.2
       version: 5.0.2
@@ -225,6 +228,19 @@ importers:
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/config:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/operations:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -1423,6 +1439,9 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+
+  effect@4.0.0:
+    resolution: {integrity: sha512-ooc1TG5t+FfzgYnFz2ff6BBKyZ7EwBRVXC7c4RhQUAD6/TZ2gTXXMeb4WX7a19ozQo4J73/QW+S00YAIresoMQ==}
 
   emoji-regex@10.6.0:
     resolution: {integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==}
@@ -2753,6 +2772,8 @@ snapshots:
   czg@1.14.0: {}
 
   detect-libc@2.1.2: {}
+
+  effect@4.0.0: {}
 
   emoji-regex@10.6.0: {}
 

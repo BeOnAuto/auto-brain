@@ -91,9 +91,10 @@ pnpm check        # everything CI checks
 
 ## Repository layout
 
-| Path              | What's there                                                                |
-| ----------------- | --------------------------------------------------------------------------- |
-| `packages/server` | The HTTP server (`@beonauto/server`) and its container build (`Dockerfile`) |
-| `packages/config` | Reads the server's configuration from the environment                       |
-| `packages/ledger` | The ledger every primitive records to                                       |
-| `primitives/*`    | One package per primitive                                                   |
+| Path                  | What's there                                                                |
+| --------------------- | --------------------------------------------------------------------------- |
+| `packages/server`     | The HTTP server (`@beonauto/server`) and its container build (`Dockerfile`) |
+| `packages/config`     | Reads the server's configuration from the environment                       |
+| `packages/operations` | The application layer: where operations are defined and run                 |
+| `packages/ledger`     | The ledger every primitive records to                                       |
+| `primitives/*`        | One package per primitive                                                   |
