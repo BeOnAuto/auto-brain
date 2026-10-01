@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 
 import { runOrchestrationWorker } from './src/worker/orchestration-worker.ts';
 
-Runtime.install({ logger: new DefaultLogger('WARN') });
+Runtime.install({ logger: new DefaultLogger('WARN'), shutdownSignals: [] });
 
 const settings = {
   address: process.env['TEMPORAL_ADDRESS'] ?? '',
@@ -19,6 +19,9 @@ await Effect.runPromise(
         settings,
         executeSpec: () => Effect.die(new Error('This worker executes no specs')),
         settle: () => Effect.die(new Error('This worker settles no executions')),
+        onFailure: (detail) => {
+          process.stderr.write(`${detail}\n`);
+        },
       });
       process.stdout.write('ready\n');
       return yield* Effect.never;

@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 import { recordHistory } from '../../replay-corpus.ts';
 import { connectOrchestration } from '../primitive/orchestration-client.ts';
-import { runFor, settingsFor, temporalHarness } from '../testing/temporal.ts';
-import { workflow } from '../testing/workflows.ts';
+import { settingsFor, temporalHarness } from '../testing/temporal.ts';
+import { runFor, workflow } from '../testing/workflows.ts';
 
 const taskQueue = 'worker-restart';
 

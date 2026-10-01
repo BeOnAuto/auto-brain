@@ -3,8 +3,8 @@ import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { recordHistory } from '../../replay-corpus.ts';
-import { runFor, temporalHarness, type TemporalHarness } from '../testing/temporal.ts';
-import { workflow } from '../testing/workflows.ts';
+import { temporalHarness, type TemporalHarness } from '../testing/temporal.ts';
+import { runFor, workflow } from '../testing/workflows.ts';
 
 let harness: TemporalHarness;
 

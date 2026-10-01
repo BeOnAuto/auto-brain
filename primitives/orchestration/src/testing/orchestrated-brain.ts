@@ -7,6 +7,7 @@ import { makeOrchestration } from '../primitive/orchestration-primitive.ts';
 import { runOrchestrationWorker } from '../worker/orchestration-worker.ts';
 import type { TemporalSettings } from '../worker/temporal-settings.ts';
 import { brainWith, type Brain } from './brain.ts';
+import { failureRecorder } from './failure-recorder.ts';
 import { settingsFor } from './temporal.ts';
 
 export interface OrchestratedBrain extends Brain {
@@ -21,9 +22,12 @@ export async function orchestratedBrain(taskQueue: string): Promise<Orchestrated
   const client = await Effect.runPromise(connectOrchestration(settings).pipe(Scope.provide(scope)));
   const brain = brainWith([makeOrchestration({ client }), echo]);
   await Effect.runPromise(
-    runOrchestrationWorker({ settings, executeSpec: brain.executeNested, settle: brain.settle }).pipe(
-      Scope.provide(scope),
-    ),
+    runOrchestrationWorker({
+      settings,
+      executeSpec: brain.executeNested,
+      settle: brain.settle,
+      onFailure: failureRecorder().onFailure,
+    }).pipe(Scope.provide(scope)),
   );
   const connection = await Connection.connect({ address: settings.address });
   return {

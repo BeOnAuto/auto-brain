@@ -1,6 +1,7 @@
 import { Effect, Exit, Scope } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { failureRecorder } from '../testing/failure-recorder.ts';
 import { settingsFor } from '../testing/temporal.ts';
 import { runOrchestrationWorker } from './orchestration-worker.ts';
 import type { TemporalSettings } from './temporal-settings.ts';
@@ -8,7 +9,12 @@ import type { TemporalSettings } from './temporal-settings.ts';
 const notCalled = () => Effect.die(new Error('not called'));
 
 function workerWith(settings: TemporalSettings) {
-  return runOrchestrationWorker({ settings, executeSpec: notCalled, settle: notCalled });
+  return runOrchestrationWorker({
+    settings,
+    executeSpec: notCalled,
+    settle: notCalled,
+    onFailure: failureRecorder().onFailure,
+  });
 }
 
 async function failureOf(settings: TemporalSettings): Promise<string> {

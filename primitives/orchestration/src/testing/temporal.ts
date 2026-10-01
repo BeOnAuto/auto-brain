@@ -4,11 +4,11 @@ import { DefaultLogger, Runtime } from '@temporalio/worker';
 import { Effect, Exit, Scope } from 'effect';
 import { inject } from 'vitest';
 
-import type { WorkflowRun } from '../interpreter/workflow-run.ts';
 import { connectOrchestration, type OrchestrationClient } from '../primitive/orchestration-client.ts';
 import type { ExecuteSpec, SpecExecution, SpecExecutionResult } from '../worker/dependencies.ts';
 import { runOrchestrationWorker } from '../worker/orchestration-worker.ts';
 import type { TemporalSettings } from '../worker/temporal-settings.ts';
+import { failureRecorder } from './failure-recorder.ts';
 
 interface Settled {
   readonly address: ExecutionAddress;
@@ -29,7 +29,7 @@ export interface HarnessOptions {
   readonly settle?: SettleExecution;
 }
 
-Runtime.install({ logger: new DefaultLogger('WARN') });
+Runtime.install({ logger: new DefaultLogger('WARN'), shutdownSignals: [] });
 
 export function settingsFor(taskQueue: string): TemporalSettings {
   return { address: inject('temporalAddress'), namespace: 'default', taskQueue, tls: false };
@@ -62,7 +62,7 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
   const scope = Effect.runSync(Scope.make());
   const orchestration = await Effect.runPromise(
     Effect.gen(function* () {
-      yield* runOrchestrationWorker({ settings, executeSpec, settle });
+      yield* runOrchestrationWorker({ settings, executeSpec, settle, onFailure: failureRecorder().onFailure });
       return yield* connectOrchestration(settings, { requestTimeout: 5000 });
     }).pipe(Scope.provide(scope)),
   );
@@ -77,18 +77,5 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
       await connection.close();
       await Effect.runPromise(Scope.close(scope, Exit.void));
     },
-  };
-}
-
-export function runFor(
-  document: WorkflowRun['document'],
-  executionId: string,
-  input: WorkflowRun['input'] = {},
-): WorkflowRun {
-  return {
-    document,
-    input,
-    execution: { id: executionId, org: 'acme', brain: 'alpha', spec: { name: 'test-flow', version: 1 } },
-    caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:read', 'brain:write'], brains: '*' },
   };
 }

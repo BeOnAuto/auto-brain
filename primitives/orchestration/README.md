@@ -190,10 +190,15 @@ const executeSpec: ExecuteSpec = ({ org, brain, caller, primitive, name, input, 
       encoding: 'json',
     })
     .pipe(Effect.provide(services), Effect.map(specExecutionResultOf));
-yield * runOrchestrationWorker({ settings, executeSpec, settle: executionSettler(ledger) }); // scoped
+const onFailure = (detail: string) => logIncident(detail); // the server decides what follows
+yield * runOrchestrationWorker({ settings, executeSpec, settle: executionSettler(ledger), onFailure }); // scoped
 ```
 
-`runOrchestrationWorker` connects to Temporal, bundles the workflow code when it starts (there is no build step), runs the worker inside the server process, and shuts it down when its scope closes: activities in flight get 10 seconds to finish, and are then left to Temporal's retries. It fails with `OrchestrationWorkerError` when Temporal cannot be reached or the worker cannot be made.
+`runOrchestrationWorker` connects to Temporal, bundles the workflow code when it starts (there is no build step), runs the worker inside the server process, and shuts it down when its scope closes: activities in flight get 10 seconds to finish, and are then left to Temporal's retries, and then its connection closes. It fails with `OrchestrationWorkerError` when Temporal cannot be reached or the worker cannot be made, closing the connection it opened.
+
+The server owns the process's signals. The worker installs Temporal's runtime with no `shutdownSignals`, so a `SIGTERM` does not stop the worker behind the server's back; it refuses to start under a runtime installed earlier with shutdown signals. Stopping a worker that already stopped is harmless.
+
+A worker that stops on its own, because its run fails (Temporal unreachable for good, a fatal worker error) or ends without being asked to, calls `onFailure` once with a detail saying why; stopping it when its scope closes calls nothing. While the worker is down, executing a workflow spec still answers `started` whenever Temporal accepts the start, and `unavailable` only when it does not; the workflow waits on its task queue until a worker polls it again.
 
 ### Settings
 

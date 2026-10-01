@@ -46,13 +46,17 @@ export function workflow(source: string): JsonObject {
   return { document: header, ...yamlObject(source) };
 }
 
-export function runOf(document: JsonObject, input: Json = {}): WorkflowRun {
+export function runFor(document: JsonObject, id: string, input: Json = {}): WorkflowRun {
   return {
     document,
     input,
-    execution: { id: executionId, org: 'acme', brain: 'alpha', spec: { name: 'test-flow', version: 1 } },
+    execution: { id, org: 'acme', brain: 'alpha', spec: { name: 'test-flow', version: 1 } },
     caller: acmeCaller,
   };
+}
+
+export function runOf(document: JsonObject, input: Json = {}): WorkflowRun {
+  return runFor(document, executionId, input);
 }
 
 export function neverAnswers(): Promise<SpecCallResult> {
