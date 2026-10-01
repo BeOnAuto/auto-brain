@@ -127,10 +127,14 @@ describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
     const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
     const port = await child.port;
 
-    const abandoned = await fetch(`http://127.0.0.1:${port}/slow?ms=300`, { signal: AbortSignal.timeout(50) }).then(
+    const client = new AbortController();
+    const requesting = fetch(`http://127.0.0.1:${port}/slow?ms=300`, { signal: client.signal }).then(
       () => 'answered',
       () => 'abandoned',
     );
+    await setTimeout(50);
+    client.abort();
+    const abandoned = await requesting;
     await setTimeout(500);
     child.signal('SIGTERM');
 
