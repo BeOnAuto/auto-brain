@@ -116,5 +116,6 @@ pnpm check        # everything CI checks
 | `packages/config`     | Reads the server's configuration from the environment                       |
 | `packages/identity`   | API keys, local mode and the key command                                    |
 | `packages/operations` | The application layer: where operations are defined and run                 |
-| `packages/ledger`     | The ledger every primitive records to                                       |
+| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains |
+| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite   |
 | `primitives/*`        | One package per primitive                                                   |

@@ -14,11 +14,15 @@ const LabelSchema = Schema.Struct({ name: Schema.String, text: Schema.String });
 
 type Label = typeof LabelSchema.Type;
 
-export const labels: Decider<readonly Label[], Label, Label> = {
+const LabelWrittenSchema = Schema.Struct({ type: Schema.Literal('label_written'), label: LabelSchema });
+
+type LabelWritten = typeof LabelWrittenSchema.Type;
+
+export const labels: Decider<readonly Label[], Label, LabelWritten> = {
   initialState: [],
-  evolve: (written, label) => [...written, label],
-  decide: (label) => Result.succeed([label]),
-  eventSchema: LabelSchema,
+  evolve: (written, { label }) => [...written, label],
+  decide: (label) => Result.succeed([{ type: 'label_written', label }]),
+  eventSchema: LabelWrittenSchema,
 };
 
 export const getLabel = defineQuery('org', {
@@ -39,8 +43,6 @@ export const getLabel = defineQuery('org', {
   }),
 });
 ```
-
-This example is `src/testing/readme-example.ts`; `src/readme.test.ts` fails if the two differ, and runs it.
 
 The compiler holds a definition to these rules:
 
@@ -75,6 +77,8 @@ At run time a handler that fails with a reason it did not declare is a fault, no
 
 An org operation addresses at most one brain, and names it `brain`. When its input declares a `brain` field, the dispatcher checks that the caller may reach that brain, wherever the field arrives from: path, query or body. A second field that names a brain is not checked and must not be used. Whether that brain exists, and whether its id is well formed, is the handler's business at org scope, because the org's brain records are the handler's.
 
+`mayReachBrain(access, brain)` is the reach rule the dispatcher applies, for a handler that lists only the brains its caller may reach.
+
 ## The dispatcher
 
 `makeDispatcher(steps)` returns `inOrg` and `inBrain`, which run one call through this pipeline:
@@ -98,11 +102,13 @@ The dispatcher needs a `Ledger`, a `BrainDirectory` and an `IncidentReporter`. H
 
 ## The ledger ports
 
-A `Decider` holds the event-sourced rules of a stream: its initial state, how an event evolves the state, how a command decides on new events or a refusal, and the schema of its events.
+A `Decider` holds the event-sourced rules of a stream: its initial state, how an event evolves the state, how a command decides on new events or a refusal, and the schema of its events. Every event has a string `type` naming what happened, which the ledger records beside it.
 
 `Ledger` is the unbound port. It addresses streams by full name, loads a stream's state and version by folding its events, and runs a command through a decider, refusing with `conflict` when the stream moved. The version of a stream is the number of events in it, 0 for a stream that does not exist. A conflict's detail must not name the stream. Its implementation lives with the ledger.
 
 For each call the dispatcher binds the ledger to the call's address. `OrgReader` and `OrgWriter` prefix a stream name with `org/{org}/`; `BrainReader` and `BrainWriter` with `brain/{org}/{brain}/`. A handler names its streams relative to its org or brain: one or more segments of letters, digits, `_` and `-`, each at most 64 characters, joined by `/`, at most 256 characters in all. Any other name is a fault. So a handler has no way to name another org's or brain's streams. Stream names are case-sensitive, and a ledger implementation must treat them as opaque strings.
+
+`streamPrefixOfOrg({ org })` returns the prefix of an org's streams, so code that holds the unbound `Ledger`, such as a `BrainDirectory`, reads the same stream a handler names relative to its org.
 
 ## Testing
 

@@ -20,14 +20,18 @@ type Note = typeof NoteSchema.Type;
 
 const Nothing = Schema.Record(Schema.String, Schema.Never);
 
-const notebook: Decider<readonly Note[], Note, Note, 'conflict'> = {
+const NoteAddedSchema = Schema.Struct({ type: Schema.Literal('note_added'), note: NoteSchema });
+
+type NoteAdded = typeof NoteAddedSchema.Type;
+
+const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   initialState: [],
-  evolve: (notes, added) => [...notes, added],
+  evolve: (notes, { note }) => [...notes, note],
   decide: (note, notes) =>
     notes.some(({ name }) => name === note.name)
       ? Result.fail(new Conflict({ detail: `A note named ${note.name} exists` }))
-      : Result.succeed([note]),
-  eventSchema: NoteSchema,
+      : Result.succeed([{ type: 'note_added', note }]),
+  eventSchema: NoteAddedSchema,
 };
 
 export const addNote = defineCommand('brain', {
@@ -123,11 +127,15 @@ const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.Str
 
 type BrainLabel = typeof BrainLabelSchema.Type;
 
-const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabel> = {
+const BrainLabelledSchema = Schema.Struct({ type: Schema.Literal('brain_labelled'), labelled: BrainLabelSchema });
+
+type BrainLabelled = typeof BrainLabelledSchema.Type;
+
+const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabelled> = {
   initialState: [],
-  evolve: (labels, labelled) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
-  decide: (labelled) => Result.succeed([labelled]),
-  eventSchema: BrainLabelSchema,
+  evolve: (labels, { labelled }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
+  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', labelled }]),
+  eventSchema: BrainLabelledSchema,
 };
 
 const labelBrain = defineCommand('org', {
