@@ -51,9 +51,9 @@ describe('writers racing on one stream', () => {
     );
 
     const versions = outcomes.filter((outcome) => typeof outcome === 'number');
-    const movedOn = outcomes.filter((outcome) => typeof outcome === 'string');
+    const conflicts = outcomes.filter((outcome) => typeof outcome === 'string');
     expect(versions.toSorted((left, right) => left - right)).toEqual(Array.from(versions.keys(), (index) => index + 1));
-    expect(movedOn).toEqual(movedOn.map(() => changedWhileDeciding));
+    expect(conflicts).toEqual(conflicts.map(() => changedWhileDeciding));
     expect(await Effect.runPromise(ledger.load(tallies, tally))).toEqual({
       state: versions.length,
       version: versions.length,
@@ -84,7 +84,7 @@ describe('a writer that another writer got ahead of', () => {
     expect(await Effect.runPromise(ledger.load(tallies, tally))).toEqual({ state: 0, version: 2 });
   });
 
-  it('gives up with conflict after three retries when the stream keeps moving', async () => {
+  it('gives up with conflict after three retries when every append meets a version conflict', async () => {
     const ledger = await aLedger();
     const addOneFirst = Effect.orDie(ledger.execute(tallies, tally, [1]));
 

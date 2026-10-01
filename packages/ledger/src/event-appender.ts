@@ -4,7 +4,7 @@ import { Effect, type Schema } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';
 import type { EventStore, RecordedEvent } from './event-store.ts';
-import { StreamMoved } from './stream-moved.ts';
+import { VersionConflict } from './version-conflict.ts';
 
 const mostEventsInOneAppend = 8;
 
@@ -13,7 +13,7 @@ export type EventAppender = <Event extends TypedEvent>(
   eventSchema: Schema.ConstraintCodec<Event, unknown>,
   events: readonly Event[],
   expectedVersion: number,
-) => Effect.Effect<void, StreamMoved>;
+) => Effect.Effect<void, VersionConflict>;
 
 export function eventAppenderOf(store: EventStore): EventAppender {
   return (stream, eventSchema, events, expectedVersion) => {
@@ -27,7 +27,7 @@ export function eventAppenderOf(store: EventStore): EventAppender {
         Effect.tryPromise({ try: () => store.append(stream, recorded, expectedVersion), catch: (error) => error }),
       ),
       Effect.catch((error) =>
-        isExpectedVersionConflictError(error) ? Effect.fail(new StreamMoved()) : Effect.die(error),
+        isExpectedVersionConflictError(error) ? Effect.fail(new VersionConflict()) : Effect.die(error),
       ),
     );
   };
