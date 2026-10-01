@@ -1,4 +1,4 @@
-import { Conflict, type Refusal } from '@beonauto/operations';
+import { Conflict, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { BrainCommand, BrainCreation, BrainRetirement, BrainUpdate, CommandMetadata } from './brain-commands.ts';
@@ -7,7 +7,7 @@ import type { Brain } from './brain.ts';
 import { brainNotFound } from './registry-lookup.ts';
 import type { Registry } from './registry.ts';
 
-type Decision = Result.Result<readonly BrainEvent[], Refusal<'not_found' | 'conflict'>>;
+type Decision = Result.Result<readonly BrainEvent[], Rejection<'not_found' | 'conflict'>>;
 
 const nothingToRecord: Decision = Result.succeed([]);
 

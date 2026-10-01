@@ -29,7 +29,7 @@ describe('get_brain', () => {
     await call(retireBrain, toAcme(acmeAdmin, { brain: 'beta' }), later);
 
     expect(await reading('alpha')).toStrictEqual({
-      status: 'done',
+      status: 'succeeded',
       output: {
         id: 'alpha',
         name: 'Alpha',
@@ -40,16 +40,19 @@ describe('get_brain', () => {
         updated_at: firstMoment,
       },
     });
-    expect(await reading('beta')).toMatchObject({ status: 'done', output: { status: 'retired', retired_at: later } });
+    expect(await reading('beta')).toMatchObject({
+      status: 'succeeded',
+      output: { status: 'retired', retired_at: later },
+    });
   });
 });
 
-describe('get_brain refusing', () => {
+describe('get_brain rejecting', () => {
   it('a brain the org does not have', async () => {
     const { call } = harness();
 
     expect(await call(getBrain, toAcme(acmeAdmin, { brain: 'nowhere' }))).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'not_found',
       detail: 'There is no brain nowhere in this org',
     });

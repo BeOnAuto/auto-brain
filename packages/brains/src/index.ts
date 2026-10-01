@@ -1,4 +1,4 @@
-export { ledgerBrainDirectory } from './directory/ledger-brain-directory.ts';
+export { ledgerBrainRegistry } from './registry/ledger-brain-registry.ts';
 export { brainOperations } from './operations/brain-operations.ts';
 export { createBrain } from './operations/create-brain.ts';
 export { getBrain } from './operations/get-brain.ts';

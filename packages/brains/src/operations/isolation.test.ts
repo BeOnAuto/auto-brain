@@ -28,10 +28,10 @@ describe('the brains of two orgs', () => {
     expect(await call(listBrains, toGlobex(globexAdmin))).toMatchObject({ output: { brains: [] } });
   });
 
-  it('are out of reach of a caller of the other org, whether they exist or not', async () => {
+  it('cannot be accessed by a caller of the other org, whether they exist or not', async () => {
     const { call } = harness();
     await call(createBrain, toGlobex(globexAdmin, { brain: 'gamma', name: 'Gamma' }));
-    const foreign = { status: 'refused', reason: 'forbidden', detail: 'The caller does not belong to this org' };
+    const foreign = { status: 'rejected', reason: 'forbidden', detail: 'The caller does not belong to this org' };
     const attempts = ['gamma', 'nowhere'].flatMap((brain) => [
       call(getBrain, toGlobex(acmeAdmin, { brain })),
       call(updateBrain, toGlobex(acmeAdmin, { brain, ...renamed })),
@@ -48,11 +48,11 @@ describe('the brains of two orgs', () => {
 });
 
 describe('a caller limited to some brains', () => {
-  it('is refused every other brain, whether it exists or not, and sees only its own listed', async () => {
+  it('is denied every other brain, whether it exists or not, and sees only its own listed', async () => {
     const { call } = harness();
     await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
     await call(createBrain, toAcme(acmeAdmin, { brain: 'beta', name: 'Beta' }));
-    const outOfReach = { status: 'refused', reason: 'forbidden', detail: 'The caller may not reach this brain' };
+    const accessDenied = { status: 'rejected', reason: 'forbidden', detail: 'The caller may not access this brain' };
     const attempts = ['beta', 'nowhere'].flatMap((brain) => [
       call(getBrain, toAcme(acmeAlphaKeeper, { brain })),
       call(updateBrain, toAcme(acmeAlphaKeeper, { brain, ...renamed })),
@@ -60,12 +60,12 @@ describe('a caller limited to some brains', () => {
     ]);
 
     expect(await Promise.all(attempts)).toEqual([
-      outOfReach,
-      outOfReach,
-      outOfReach,
-      outOfReach,
-      outOfReach,
-      outOfReach,
+      accessDenied,
+      accessDenied,
+      accessDenied,
+      accessDenied,
+      accessDenied,
+      accessDenied,
     ]);
     expect(await call(listBrains, toAcme(acmeAlphaKeeper, { include_retired: true }))).toMatchObject({
       output: { brains: [{ id: 'alpha' }] },
@@ -85,31 +85,31 @@ describe('creating a brain', () => {
     await call(createBrain, toAcme(acmeAdmin, { brain: 'beta', name: 'Beta' }));
 
     expect(await call(createBrain, toAcme(acmeAlphaKeeper, { brain: 'beta', name: 'Beta' }))).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'forbidden',
-      detail: 'The caller may not reach this brain',
+      detail: 'The caller may not access this brain',
     });
     expect(await call(createBrain, toAcme(acmeAlphaKeeper, { brain: 'delta', name: 'Delta' }))).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'forbidden',
-      detail: 'The caller may not reach this brain',
+      detail: 'The caller may not access this brain',
     });
     expect(await call(createBrain, toAcme(acmeAlphaKeeper, { brain: 'alpha', name: 'Alpha' }))).toMatchObject({
-      status: 'done',
+      status: 'succeeded',
       output: { id: 'alpha', created_by: 'acme-alpha-keeper' },
     });
     expect(await call(createBrain, toAcme(acmeAdmin, { brain: 'delta', name: 'Delta' }))).toMatchObject({
-      status: 'done',
+      status: 'succeeded',
       output: { id: 'delta', created_by: 'acme-admin' },
     });
   });
 });
 
 describe('a caller that may only read', () => {
-  it('is refused the commands and served the queries', async () => {
+  it('is rejected for the commands and served the queries', async () => {
     const { call } = harness();
     await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
-    const readOnly = { status: 'refused', reason: 'forbidden', detail: 'The caller lacks the org:write permission' };
+    const readOnly = { status: 'rejected', reason: 'forbidden', detail: 'The caller lacks the org:write permission' };
 
     expect(await call(createBrain, toAcme(acmeReader, { brain: 'beta', name: 'Beta' }))).toEqual(readOnly);
     expect(await call(updateBrain, toAcme(acmeReader, { brain: 'alpha', ...renamed }))).toEqual(readOnly);

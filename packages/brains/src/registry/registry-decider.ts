@@ -5,7 +5,7 @@ import { BrainEventSchema, type BrainEvent } from './brain-events.ts';
 import { decideOnRegistry } from './registry-decisions.ts';
 import { initialRegistry, evolveRegistry, type Registry } from './registry.ts';
 
-export const brainRegistry: Decider<Registry, BrainCommand, BrainEvent, 'not_found' | 'conflict'> = {
+export const registryDecider: Decider<Registry, BrainCommand, BrainEvent, 'not_found' | 'conflict'> = {
   initialState: initialRegistry,
   evolve: evolveRegistry,
   decide: decideOnRegistry,

@@ -1,6 +1,6 @@
 import {
   makeDispatcher,
-  type BrainDirectory,
+  type BrainRegistry,
   type CallerIdentity,
   type DispatcherServices,
   type Ledger,
@@ -8,7 +8,7 @@ import {
   type Outcome,
   type Registration,
 } from '@beonauto/operations';
-import { memoryBrainDirectory, memoryLedger, recordingReporter, type MemoryLedger } from '@beonauto/operations/testing';
+import { memoryBrainRegistry, memoryLedger, recordingReporter, type MemoryLedger } from '@beonauto/operations/testing';
 import { DateTime, Effect, Layer } from 'effect';
 import { TestClock } from 'effect/testing';
 
@@ -28,16 +28,17 @@ export interface Harness {
   readonly call: (operation: OrgOperation, request: OrgRequest, at?: string) => Promise<Outcome>;
 }
 
-export function harness(directory: Layer.Layer<BrainDirectory, never, Ledger> = memoryBrainDirectory([])): Harness {
+export function harness(brainRegistry: Layer.Layer<BrainRegistry, never, Ledger> = memoryBrainRegistry([])): Harness {
   const ledger = memoryLedger();
   const services = Layer.mergeAll(
     ledger.layer,
-    Layer.provide(directory, ledger.layer),
+    Layer.provide(brainRegistry, ledger.layer),
     recordingReporter().layer,
     TestClock.layer(),
   );
   const dispatcher = makeDispatcher([]);
-  const dispatch: Harness['dispatch'] = (operation, request) => dispatcher.inOrg(operation.registration, request);
+  const dispatch: Harness['dispatch'] = (operation, request) =>
+    dispatcher.dispatchToOrg(operation.registration, request);
   const run: Harness['run'] = (calls, at = firstMoment) =>
     Effect.runPromise(
       TestClock.setTime(DateTime.toEpochMillis(DateTime.makeUnsafe(at))).pipe(
@@ -49,9 +50,9 @@ export function harness(directory: Layer.Layer<BrainDirectory, never, Ledger> = 
 }
 
 export function toOrg(org: string): (caller: CallerIdentity, input?: unknown) => OrgRequest {
-  return (caller, input = {}) => ({ caller, org, input, form: 'json' });
+  return (caller, input = {}) => ({ caller, org, input, encoding: 'json' });
 }
 
 export function asQueryString(request: OrgRequest): OrgRequest {
-  return { ...request, form: 'strings' };
+  return { ...request, encoding: 'strings' };
 }

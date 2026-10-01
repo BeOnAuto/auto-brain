@@ -12,7 +12,7 @@ export const getBrain = defineQuery('org', {
   description: [
     'Reads one brain of the org and returns it, active or retired.',
     '`brain` is the id of the brain.',
-    'Refused with not_found when the org has no brain with that id.',
+    'Rejected with not_found when the org has no brain with that id.',
   ].join(' '),
   route: { method: 'GET', path: '/brains/{brain}' },
   inputSchema: Schema.Struct({ brain: BrainIdField }),

@@ -8,10 +8,10 @@ const toAcme = toOrg('acme');
 
 const later = '2026-10-02T14:15:00.000Z';
 
-const activeOnly = { status: 'done', output: { brains: [{ id: 'alpha' }, { id: 'gamma' }] } };
+const activeOnly = { status: 'succeeded', output: { brains: [{ id: 'alpha' }, { id: 'gamma' }] } };
 
 const retiredToo = {
-  status: 'done',
+  status: 'succeeded',
   output: { brains: [{ id: 'alpha' }, { id: 'beta', status: 'retired', retired_at: later }, { id: 'gamma' }] },
 };
 
@@ -37,7 +37,7 @@ async function withGammaAlphaAndRetiredBeta() {
 }
 
 describe('list_brains', () => {
-  it('is an org query at GET /brains that declares no refusal', () => {
+  it('is an org query at GET /brains that declares no rejection', () => {
     expect(listBrains.registration).toMatchObject({
       scope: 'org',
       kind: 'query',
@@ -52,14 +52,14 @@ describe('list_brains', () => {
   it('lists nothing for an org without brains', async () => {
     const { call } = harness();
 
-    expect(await call(listBrains, toAcme(acmeAdmin))).toEqual({ status: 'done', output: { brains: [] } });
+    expect(await call(listBrains, toAcme(acmeAdmin))).toEqual({ status: 'succeeded', output: { brains: [] } });
   });
 
   it('lists the active brains sorted by id', async () => {
     const { call } = await withGammaAlphaAndRetiredBeta();
 
     expect(await call(listBrains, toAcme(acmeAdmin))).toStrictEqual({
-      status: 'done',
+      status: 'succeeded',
       output: { brains: [activeBrain('alpha', 'Alpha'), activeBrain('gamma', 'Gamma')] },
     });
   });

@@ -16,7 +16,7 @@ export const createBrain = defineCommand('org', {
     '`description` is optional text on what the brain is for, up to 2000 characters; it defaults to empty.',
     'Both are stored with surrounding whitespace trimmed.',
     'A caller limited to a list of brains may create only a brain whose id is on that list.',
-    'Refused with conflict when the org already has or had a brain with that id,',
+    'Rejected with conflict when the org already has or had a brain with that id,',
     "or when another change to the org's brains landed at the same moment, in which case try again.",
   ].join(' '),
   route: { method: 'POST', path: '/brains' },
