@@ -7,7 +7,7 @@ export { BrainWriter } from './ledger/brain-writer.ts';
 export { Caller, CallerIdentitySchema, type CallerIdentity } from './caller/caller.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
 export { Conflict } from './outcome/conflict.ts';
-export type { Decider, StreamState } from './ledger/decider.ts';
+export type { Decider, StreamState, TypedEvent } from './ledger/decider.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';
 export type { HandlerServices } from './definition/handler-services.ts';

@@ -1,6 +1,6 @@
 import { Effect, Layer, Result, Schema } from 'effect';
 
-import { Conflict, Ledger, type Decider, type DeclarableReason, type StreamState } from '../index.ts';
+import { Conflict, Ledger, type Decider, type DeclarableReason, type StreamState, type TypedEvent } from '../index.ts';
 
 export interface MemoryLedger {
   readonly service: Ledger['Service'];
@@ -8,7 +8,7 @@ export interface MemoryLedger {
   readonly streamNames: () => readonly string[];
 }
 
-function folded<State, Command, Event, R extends DeclarableReason>(
+function folded<State, Command, Event extends TypedEvent, R extends DeclarableReason>(
   decider: Decider<State, Command, Event, R>,
   stored: readonly unknown[],
 ): Effect.Effect<StreamState<State>> {
@@ -25,7 +25,7 @@ export function memoryLedger(): MemoryLedger {
   const streams = new Map<string, readonly unknown[]>();
   const storedIn = (stream: string): readonly unknown[] => streams.get(stream) ?? [];
   const service = Ledger.of({
-    load: (stream, decider) => folded(decider, storedIn(stream)),
+    load: (stream, decider) => Effect.suspend(() => folded(decider, storedIn(stream))),
     execute: (stream, decider, command) =>
       Effect.gen(function* () {
         const { state, version } = yield* folded(decider, storedIn(stream));
