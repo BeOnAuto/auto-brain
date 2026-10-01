@@ -1,0 +1,206 @@
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+import { connect, type AddressInfo } from 'node:net';
+
+import { describe, expect, it } from 'vitest';
+
+import type { ApiHandler, RegisterRoutes } from './index.ts';
+import { call, echoRequestId, handlerWith } from './testing/api-calls.ts';
+
+const uuid = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
+
+function portOf(address: Readonly<AddressInfo> | string | null): number {
+  return typeof address === 'object' && address !== null ? address.port : 0;
+}
+
+async function serve(handler: ApiHandler): Promise<{ port: number; close: () => void }> {
+  const server = createServer((request, response) => {
+    void handler.listener(request, response);
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  return {
+    port: portOf(server.address()),
+    close: () => {
+      server.close();
+    },
+  };
+}
+
+function exchange(port: number, raw: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let received = '';
+    const socket = connect(port, '127.0.0.1', () => {
+      socket.write(raw);
+    });
+    socket.setEncoding('utf8');
+    socket.on('data', (chunk: string) => {
+      received += chunk;
+    });
+    socket.on('end', () => {
+      resolve(received);
+    });
+    socket.on('error', reject);
+  });
+}
+
+const createThings: RegisterRoutes = (routes) => {
+  routes.add('POST', '/things', (c) => c.json({ created: true }, 201));
+};
+
+const notAnError: Error = { name: 'Secret', message: 'database password is hunter2' };
+
+const failWithoutAnError: RegisterRoutes = (routes) => {
+  routes.add('GET', '/fail', () => {
+    throw notAnError;
+  });
+};
+
+describe('the health check', () => {
+  it('answers GET with exactly the JSON body it has always had', async () => {
+    const answer = await call(handlerWith().handler, '/health');
+
+    expect({ status: answer.status, type: answer.headers.get('content-type'), text: answer.text }).toEqual({
+      status: 200,
+      type: 'application/json',
+      text: '{"status":"ok"}',
+    });
+  });
+
+  it('answers HEAD with the same status and headers and no body', async () => {
+    const answer = await call(handlerWith().handler, '/health', { method: 'HEAD' });
+
+    expect({ status: answer.status, type: answer.headers.get('content-type'), text: answer.text }).toEqual({
+      status: 200,
+      type: 'application/json',
+      text: '',
+    });
+  });
+
+  it('ignores a query string', async () => {
+    expect(await call(handlerWith().handler, '/health?probe=1')).toMatchObject({ status: 200, body: { status: 'ok' } });
+  });
+
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])('refuses %s with 405 and Allow: GET, HEAD', async (method) => {
+    const answer = await call(handlerWith().handler, '/health', { method });
+
+    expect(answer).toMatchObject({ status: 405, body: { reason: 'method_not_allowed', status: 405 } });
+    expect(answer.headers.get('allow')).toBe('GET, HEAD');
+    expect(answer.headers.get('content-type')).toBe('application/problem+json');
+  });
+});
+
+describe('an unknown path', () => {
+  it('answers 404 with a problem document', async () => {
+    const answer = await call(handlerWith().handler, '/nowhere');
+
+    expect(answer.status).toBe(404);
+    expect(answer.headers.get('content-type')).toBe('application/problem+json');
+    expect(answer.body).toEqual({
+      type: 'https://on.auto/problems/not_found',
+      title: 'Not found',
+      status: 404,
+      detail: 'No route matches the path',
+      reason: 'not_found',
+    });
+  });
+});
+
+describe('every response', () => {
+  it.each([
+    ['GET', '/health'],
+    ['GET', '/nowhere'],
+    ['POST', '/health'],
+  ])('to %s %s carries the security headers without HSTS', async (method, path) => {
+    const { headers } = await call(handlerWith().handler, path, { method });
+
+    expect({
+      contentTypeOptions: headers.get('x-content-type-options'),
+      frameOptions: headers.get('x-frame-options'),
+      referrerPolicy: headers.get('referrer-policy'),
+      strictTransportSecurity: headers.get('strict-transport-security'),
+    }).toEqual({
+      contentTypeOptions: 'nosniff',
+      frameOptions: 'SAMEORIGIN',
+      referrerPolicy: 'no-referrer',
+      strictTransportSecurity: null,
+    });
+  });
+
+  it('carries a request id of its own, never the one a client sends', async () => {
+    const { handler } = handlerWith();
+    const sent = '00000000-0000-4000-8000-000000000000';
+
+    const first = await call(handler, '/health', { headers: { 'x-request-id': sent } });
+    const second = await call(handler, '/nowhere');
+
+    expect(first.headers.get('x-request-id')).toMatch(uuid);
+    expect(second.headers.get('x-request-id')).toMatch(uuid);
+    expect(first.headers.get('x-request-id')).not.toBe(sent);
+    expect(first.headers.get('x-request-id')).not.toBe(second.headers.get('x-request-id'));
+  });
+});
+
+describe('mounted routes', () => {
+  it('answer with the request id the response carries', async () => {
+    const { handler } = handlerWith({ routes: [echoRequestId] });
+
+    const answer = await call(handler, '/echo');
+
+    expect(answer.body).toEqual({ requestId: answer.headers.get('x-request-id') });
+  });
+
+  it('answer the method they were added for, and 405 with Allow for any other', async () => {
+    const { handler } = handlerWith({ routes: [createThings, echoRequestId] });
+
+    expect(await call(handler, '/things', { method: 'POST' })).toMatchObject({ status: 201, body: { created: true } });
+    const refused = await call(handler, '/things');
+    expect(refused).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
+    expect(refused.headers.get('allow')).toBe('POST');
+  });
+});
+
+describe('the Node listener', () => {
+  it('serves the same API over node:http', async () => {
+    const { port, close } = await serve(handlerWith().handler);
+
+    const response = await fetch(`http://127.0.0.1:${port}/health`);
+    close();
+
+    expect({ status: response.status, text: await response.text() }).toEqual({ status: 200, text: '{"status":"ok"}' });
+  });
+
+  it('answers a thrown value that is not an Error with the 500 problem document, not plain text', async () => {
+    const { handler, reported } = handlerWith({ routes: [failWithoutAnError] });
+    const { port, close } = await serve(handler);
+
+    const response = await fetch(`http://127.0.0.1:${port}/fail`);
+    close();
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get('content-type')).toBe('application/problem+json');
+    expect(await response.json()).toMatchObject({ reason: 'internal', incident: reported[0]?.incident });
+  });
+
+  it.each([
+    ['a Host header that is not a host name', 'GET /health HTTP/1.1\r\nHost: auto brain\r\nConnection: close\r\n\r\n'],
+    ['no Host header at all', 'GET /health HTTP/1.0\r\n\r\n'],
+  ])('answers a request with %s with a 400 problem document', async (_case, raw) => {
+    const { port, close } = await serve(handlerWith().handler);
+
+    const response = await exchange(port, raw);
+    close();
+
+    expect(response).toMatch(/^HTTP\/1\.1 400 Bad Request\r\n/u);
+    expect(response.toLowerCase()).toContain('\r\ncontent-type: application/problem+json\r\n');
+    expect(response).toContain(
+      '\r\n\r\n{"type":"https://on.auto/problems/malformed_request","title":"Malformed request","status":400,"detail":"The request could not be read","reason":"malformed_request"}',
+    );
+  });
+});
+
+describe('closing the handler', () => {
+  it('resolves', async () => {
+    await expect(handlerWith().handler.close()).resolves.toBeUndefined();
+  });
+});

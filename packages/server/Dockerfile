@@ -4,6 +4,7 @@ WORKDIR /app
 RUN npm install --global --no-fund --no-audit pnpm@12.8.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json packages/server/
+COPY packages/api/package.json packages/api/
 COPY packages/config/package.json packages/config/
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/server...
 
@@ -13,6 +14,7 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
 WORKDIR /app
 COPY --from=dependencies --chown=node:node /app ./
 COPY --chown=node:node LICENSE ./
+COPY --chown=node:node packages/api/src packages/api/src
 COPY --chown=node:node packages/config/src packages/config/src
 COPY --chown=node:node packages/server/src packages/server/src
 USER node

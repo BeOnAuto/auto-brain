@@ -19,11 +19,20 @@ describe('HTTP server', () => {
     expect(await request('/health')).toEqual({ status: 200, body: { status: 'ok' } });
   });
 
-  it('answers 404 for unknown paths', async () => {
-    expect(await request('/nope')).toEqual({ status: 404, body: { error: 'not_found' } });
+  it('answers 404 with a problem document for unknown paths', async () => {
+    expect(await request('/nope')).toEqual({
+      status: 404,
+      body: {
+        type: 'https://on.auto/problems/not_found',
+        title: 'Not found',
+        status: 404,
+        detail: 'No route matches the path',
+        reason: 'not_found',
+      },
+    });
   });
 
-  it('answers 404 for non-GET requests to /health', async () => {
-    expect(await request('/health', 'POST')).toEqual({ status: 404, body: { error: 'not_found' } });
+  it('answers 405 for non-GET requests to /health', async () => {
+    expect(await request('/health', 'POST')).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
   });
 });

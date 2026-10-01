@@ -1,13 +1,25 @@
+import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
 
-const jsonHeaders = { 'content-type': 'application/json' };
+import type { ApiHandler } from '@beonauto/api';
 
-export function createHttpServer(): Server {
-  return createServer((request, response) => {
-    if (request.method === 'GET' && request.url === '/health') {
-      response.writeHead(200, jsonHeaders).end(JSON.stringify({ status: 'ok' }));
-      return;
-    }
-    response.writeHead(404, jsonHeaders).end(JSON.stringify({ error: 'not_found' }));
+export function createHttpServer(listener: ApiHandler['listener']): Server {
+  const server = createServer((request, response) => {
+    response.once('finish', () => {
+      closeIdleConnectionsOnceClosing(server);
+    });
+    void listener(request, response);
   });
+  return server;
+}
+
+export async function listen(server: Server, port: number, host: string): Promise<void> {
+  server.listen(port, host);
+  await once(server, 'listening');
+}
+
+function closeIdleConnectionsOnceClosing(server: Server): void {
+  if (!server.listening) {
+    server.closeIdleConnections();
+  }
 }

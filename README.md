@@ -60,10 +60,11 @@ docker run --rm --publish 8080:8080 beonauto/auto-brain:latest
 curl http://localhost:8080/health
 ```
 
-| Variable | Default   | Purpose                       |
-| -------- | --------- | ----------------------------- |
-| `PORT`   | `8080`    | Port the server listens on    |
-| `HOST`   | `0.0.0.0` | Interface the server binds to |
+| Variable          | Default   | Purpose                                                           |
+| ----------------- | --------- | ----------------------------------------------------------------- |
+| `PORT`            | `8080`    | Port the server listens on                                        |
+| `HOST`            | `0.0.0.0` | Interface the server binds to                                     |
+| `ALLOWED_ORIGINS` | none      | Comma-separated origins allowed to call the server from a browser |
 
 The image is multi-arch (amd64 and arm64), runs as a non-root user, and shuts down cleanly on `SIGTERM`.
 
@@ -94,6 +95,7 @@ pnpm check        # everything CI checks
 | Path              | What's there                                                                |
 | ----------------- | --------------------------------------------------------------------------- |
 | `packages/server` | The HTTP server (`@beonauto/server`) and its container build (`Dockerfile`) |
+| `packages/api`    | The API (`@beonauto/api`) the server answers every request with             |
 | `packages/config` | Reads the server's configuration from the environment                       |
 | `packages/ledger` | The ledger every primitive records to                                       |
 | `primitives/*`    | One package per primitive                                                   |

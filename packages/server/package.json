@@ -5,7 +5,7 @@
   "license": "Elastic-2.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/main.ts",
+    "dev": "node --watch --env-file=dev.env src/main.ts",
     "start": "node src/main.ts",
     "container:build": "docker build --file Dockerfile --tag beonauto/auto-brain:local ../..",
     "container:run": "docker run --rm --publish 8080:8080 beonauto/auto-brain:local",
@@ -14,7 +14,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@beonauto/config": "workspace:*"
+    "@beonauto/api": "workspace:*",
+    "@beonauto/config": "workspace:*",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",

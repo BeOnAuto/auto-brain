@@ -1,10 +1,14 @@
-import { once } from 'node:events';
-import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { readServerConfig, type Environment } from '@beonauto/config';
+import { createApiHandler, makeRunner, type RegisterRoutes } from '@beonauto/api';
+import type { Environment } from '@beonauto/config';
+import { Layer } from 'effect';
 
-import { createHttpServer } from './http-server.ts';
+import { createHttpServer, listen } from './http-server.ts';
+import { isLocalMode } from './local-mode.ts';
+import { announceAccess, jsonLogsToStderr, logIncident } from './logging.ts';
+import { readSettings } from './settings.ts';
+import { shutDown } from './shutdown.ts';
 
 export interface RunningServer {
   readonly port: number;
@@ -17,23 +21,53 @@ export interface ServerProcess {
   once(signal: 'SIGINT' | 'SIGTERM', listener: () => void): unknown;
 }
 
-export async function startServer(environment: Environment): Promise<RunningServer> {
-  const { host, port } = readServerConfig(environment);
-  const server = createHttpServer();
-  server.listen(port, host);
-  await once(server, 'listening');
+export interface ServerOptions {
+  readonly routes: readonly RegisterRoutes[];
+  readonly shutdownDeadlineMs: number;
+  readonly runtimeLayer: Layer.Layer<never>;
+}
+
+const defaultOptions: ServerOptions = { routes: [], shutdownDeadlineMs: 8000, runtimeLayer: Layer.empty };
+
+export async function startServer(
+  environment: Environment,
+  options: Partial<ServerOptions> = {},
+): Promise<RunningServer> {
+  const { routes, shutdownDeadlineMs, runtimeLayer } = { ...defaultOptions, ...options };
+  const settings = readSettings(environment);
+  const localMode = isLocalMode(settings);
+  const runner = await makeRunner(runtimeLayer.pipe(Layer.provideMerge(jsonLogsToStderr)));
+  await runner.run(announceAccess({ localMode, apiKeysConfigured: settings.apiKeysConfigured }));
+  const api = createApiHandler({
+    allowedOrigins: settings.allowedOrigins,
+    localMode,
+    routes,
+    reportIncident: (incident, error) => {
+      void runner.run(logIncident(incident, error));
+    },
+  });
+  const server = createHttpServer(api.listener);
+  try {
+    await listen(server, settings.port, settings.host);
+  } catch (error) {
+    await runner.dispose();
+    throw error;
+  }
   let stopping: Promise<void> | undefined;
   return {
     port: tcpPort(server.address()),
     stop: async () => {
-      stopping ??= close(server);
+      stopping ??= shutDown(server, { closeApi: api.close, disposeRuntime: runner.dispose }, shutdownDeadlineMs);
       await stopping;
     },
   };
 }
 
-export async function runServer(serverProcess: ServerProcess): Promise<RunningServer> {
-  const server = await startServer(serverProcess.env);
+export async function runServer(
+  serverProcess: ServerProcess,
+  options: Partial<ServerOptions> = {},
+): Promise<RunningServer> {
+  const server = await startServer(serverProcess.env, options);
   serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
   const stopOnSignal = (): void => {
     void server.stop();
@@ -48,11 +82,4 @@ export function tcpPort(address: Readonly<AddressInfo> | string | null): number 
     throw new TypeError('The server is not listening on a TCP port');
   }
   return address.port;
-}
-
-async function close(server: Server): Promise<void> {
-  const closed = once(server, 'close');
-  server.close();
-  server.closeIdleConnections();
-  await closed;
 }

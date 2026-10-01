@@ -5,6 +5,8 @@ packages:
 catalog:
   vitest: 5.0.2
   '@vitest/coverage-v8': 5.0.2
+  effect: 4.0.0
+  hono: 4.13.12
 
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: false
@@ -13,3 +15,5 @@ trustPolicy: no-downgrade
 allowBuilds:
   esbuild: true
   lefthook: true
+minimumReleaseAgeExclude:
+  - effect@4.0.0
