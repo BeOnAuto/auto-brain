@@ -26,6 +26,12 @@ const rejectedBodies: ReadonlyArray<readonly [string, Headers, string, ExpectedR
     { status: 415, reason: 'unsupported_media_type' },
   ],
   [
+    'a media type that only starts with application/json',
+    { ...asAdmin, 'content-type': 'application/jsonx' },
+    '{"name":"a","text":"b"}',
+    { status: 415, reason: 'unsupported_media_type' },
+  ],
+  [
     'a body with a Content-Encoding',
     { ...jsonAsAdmin, 'content-encoding': 'gzip' },
     '{"name":"a","text":"b"}',
@@ -133,5 +139,18 @@ describe('the size of a body', () => {
     const body = JSON.stringify({ name: 'big', text: 'x'.repeat(mebibyte - envelope.length) });
 
     expect(await call(handler, notes, { method: 'POST', headers: jsonAsAdmin, body })).toMatchObject({ status: 201 });
+  });
+
+  it('is counted in bytes, so a body of fewer than 1 Mi characters but more than 1 MiB is rejected', async () => {
+    const { handler } = await operationServer();
+    const text = 'é'.repeat(mebibyte / 2 + 1);
+    const body = JSON.stringify({ name: 'big', text });
+
+    expect(body.length).toBeLessThan(mebibyte);
+    expect(Buffer.byteLength(body)).toBeGreaterThan(mebibyte);
+    expect(await call(handler, notes, { method: 'POST', headers: jsonAsAdmin, body })).toMatchObject({
+      status: 413,
+      body: { reason: 'content_too_large' },
+    });
   });
 });

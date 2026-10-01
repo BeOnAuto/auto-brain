@@ -19,6 +19,8 @@ const malformedAuthorization: ReadonlyArray<readonly [string, ReadonlyArray<read
   ['a Bearer header without a key', [['authorization', 'Bearer']]],
   ['an empty Authorization header', [['authorization', '']]],
   ['two words after Bearer', [['authorization', 'Bearer abc def']]],
+  ['text before Bearer and a valid key', [['authorization', `xBearer ${acme.key}`]]],
+  ['text after a valid key', [['authorization', `Bearer ${acme.key} junk`]]],
   [
     'two Authorization headers',
     [
@@ -109,6 +111,15 @@ describe('the public /health path', () => {
       (await call(handler, '/health', { method: 'HEAD' })).status,
     ]).toEqual([200, 200]);
   });
+
+  it.each(['/healthz', '/health/details', '/healthcheck'])(
+    'is exactly /health, so %s still needs a key',
+    async (path) => {
+      const { handler } = createTestHandler({ authenticator: keyHolders });
+
+      expect(await call(handler, path)).toMatchObject({ status: 401, body: { reason: 'unauthenticated' } });
+    },
+  );
 
   it('answers any other method on /health with 405 and Allow, not 401', async () => {
     const { handler } = createTestHandler({ authenticator: keyHolders });

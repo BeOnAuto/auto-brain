@@ -21,7 +21,8 @@ describe('the Origin check', () => {
     'https://app.example:8443',
     'https://app.example.evil',
     'null',
-  ])('rejects the origin %s with 403', async (origin) => {
+    '',
+  ])('rejects the origin "%s" with 403', async (origin) => {
     const { handler } = createTestHandler({ allowedOrigins: [allowed] });
 
     expect(await call(handler, '/nowhere', { headers: { origin } })).toMatchObject({
