@@ -1,5 +1,5 @@
 import { createApiKey } from '@beonauto/identity';
-import { everyPermission } from '@beonauto/operations';
+import { allPermissions } from '@beonauto/operations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from './composition-root.ts';
@@ -7,7 +7,7 @@ import { startServer, type RunningServer } from './lifecycle.ts';
 import { request } from './testing/http-client.ts';
 import { temporaryLedger, type TemporaryLedger } from './testing/temporary-ledger.ts';
 
-const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: everyPermission, brains: '*' });
+const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
 
 const acmeReader = createApiKey({
   id: 'acme-reader',
@@ -19,11 +19,11 @@ const acmeReader = createApiKey({
 const acmeAlphaAndDelta = createApiKey({
   id: 'acme-alpha-delta',
   org: 'acme',
-  permissions: everyPermission,
+  permissions: allPermissions,
   brains: ['alpha', 'delta'],
 });
 
-const globexAdmin = createApiKey({ id: 'globex-admin', org: 'globex', permissions: everyPermission, brains: '*' });
+const globexAdmin = createApiKey({ id: 'globex-admin', org: 'globex', permissions: allPermissions, brains: '*' });
 
 const apiKeys = JSON.stringify([acmeAdmin.entry, acmeReader.entry, acmeAlphaAndDelta.entry, globexAdmin.entry]);
 

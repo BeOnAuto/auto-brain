@@ -1,7 +1,7 @@
 import type { Effect } from 'effect';
 
 import type { Conflict } from '../outcome/conflict.ts';
-import type { DeclarableReason, Refusal } from '../outcome/refusal.ts';
+import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { Decider, StreamState, TypedEvent } from './decider.ts';
 
 export interface StreamReader {
@@ -16,5 +16,5 @@ export interface StreamWriter {
     stream: string,
     decider: Decider<State, Command, Event, R>,
     command: Command,
-  ) => Effect.Effect<StreamState<State>, Refusal<R> | Conflict>;
+  ) => Effect.Effect<StreamState<State>, Rejection<R> | Conflict>;
 }

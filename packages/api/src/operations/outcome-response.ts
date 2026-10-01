@@ -1,21 +1,21 @@
-import type { Refused, Settled } from '@beonauto/operations';
+import type { Rejected, Settled } from '@beonauto/operations';
 
 import { internalErrorProblem, problemOf, problemResponse, type OptionalProblemMembers } from '../problem/problem.ts';
 
 const stopping = problemOf('unavailable', 'The server is stopping');
 
-function optionalMembersOf({ issues }: Refused): OptionalProblemMembers {
+function optionalMembersOf({ issues }: Rejected): OptionalProblemMembers {
   return issues === undefined ? {} : { errors: issues };
 }
 
 export function responseTo(settled: Settled, successStatus: number): Response {
-  if (settled.status === 'done') {
+  if (settled.status === 'succeeded') {
     return Response.json(settled.output, { status: successStatus, headers: { 'cache-control': 'no-store' } });
   }
-  if (settled.status === 'refused') {
+  if (settled.status === 'rejected') {
     return problemResponse(problemOf(settled.reason, settled.detail, optionalMembersOf(settled)));
   }
-  if (settled.status === 'faulted') {
+  if (settled.status === 'failed') {
     return problemResponse(internalErrorProblem(settled.incident));
   }
   return problemResponse(stopping);

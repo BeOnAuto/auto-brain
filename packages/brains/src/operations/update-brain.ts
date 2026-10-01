@@ -1,9 +1,9 @@
 import { defineCommand } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-import { BrainSchema } from '../roster/brain.ts';
+import { BrainSchema } from '../registry/brain.ts';
 import { BrainDescriptionField, BrainIdField, BrainNameField } from './brain-fields.ts';
-import { recordOnRoster } from './roster-recording.ts';
+import { recordInRegistry } from './registry-recording.ts';
 
 export const updateBrain = defineCommand('org', {
   name: 'update_brain',
@@ -15,12 +15,12 @@ export const updateBrain = defineCommand('org', {
     'and `description`, up to 2000 characters or empty to clear it, even when only one of them changes.',
     'Both are stored with surrounding whitespace trimmed.',
     'An update that changes nothing succeeds and records nothing.',
-    'Refused with not_found when the org has no brain with that id, and with conflict when the brain is retired',
+    'Rejected with not_found when the org has no brain with that id, and with conflict when the brain is retired',
     "or when another change to the org's brains landed at the same moment, in which case try again.",
   ].join(' '),
   route: { method: 'PUT', path: '/brains/{brain}' },
   inputSchema: Schema.Struct({ brain: BrainIdField, name: BrainNameField, description: BrainDescriptionField }),
   outputSchema: BrainSchema,
   reasons: ['not_found', 'conflict'],
-  handle: ({ brain, name, description }) => recordOnRoster({ type: 'update', brain, name, description }),
+  handle: ({ brain, name, description }) => recordInRegistry({ type: 'update', brain, name, description }),
 });

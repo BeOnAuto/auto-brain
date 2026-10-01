@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { BrainCommand } from './brain-commands.ts';
 import type { BrainEvent } from './brain-events.ts';
-import { brainRoster } from './brain-roster.ts';
+import { registryDecider } from './registry-decider.ts';
 
 const creation = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -20,12 +20,12 @@ const alphaCreated: BrainEvent = {
 
 const alphaRetired: BrainEvent = { type: 'brain_retired', brain: 'alpha', ...change };
 
-function rosterAfter(...events: readonly BrainEvent[]) {
-  return events.reduce((roster, event) => brainRoster.evolve(roster, event), brainRoster.initialState);
+function registryAfter(...events: readonly BrainEvent[]) {
+  return events.reduce((registry, event) => registryDecider.evolve(registry, event), registryDecider.initialState);
 }
 
 function decided(command: BrainCommand, ...history: readonly BrainEvent[]) {
-  return brainRoster.decide(command, rosterAfter(...history));
+  return registryDecider.decide(command, registryAfter(...history));
 }
 
 function updating(name: string, description: string): BrainCommand {
@@ -47,13 +47,13 @@ describe('creating a brain', () => {
     expect(decided(creating)).toStrictEqual(Result.succeed([alphaCreated]));
   });
 
-  it('is refused while an active brain holds the id', () => {
+  it('is rejected while an active brain holds the id', () => {
     expect(decided(creating, alphaCreated)).toEqual(
       Result.fail(new Conflict({ detail: 'There is already a brain alpha in this org' })),
     );
   });
 
-  it('is refused for the id of a retired brain, because an id is never reused', () => {
+  it('is rejected for the id of a retired brain, because an id is never reused', () => {
     expect(decided(creating, alphaCreated, alphaRetired)).toEqual(
       Result.fail(new Conflict({ detail: 'The brain alpha was retired, and a brain id is never reused' })),
     );
@@ -61,13 +61,13 @@ describe('creating a brain', () => {
 });
 
 describe('updating a brain', () => {
-  it('is refused for a brain the org does not have', () => {
+  it('is rejected for a brain the org does not have', () => {
     expect(decided(updating('Alpha', ''))).toEqual(
       Result.fail(new NotFound({ detail: 'There is no brain alpha in this org' })),
     );
   });
 
-  it('is refused for a retired brain', () => {
+  it('is rejected for a retired brain', () => {
     expect(decided(updating('Alpha Sales', ''), alphaCreated, alphaRetired)).toEqual(
       Result.fail(new Conflict({ detail: 'The brain alpha is retired and can no longer change' })),
     );
@@ -91,7 +91,7 @@ describe('updating a brain', () => {
 });
 
 describe('retiring a brain', () => {
-  it('is refused for a brain the org does not have', () => {
+  it('is rejected for a brain the org does not have', () => {
     expect(decided(retiring)).toEqual(Result.fail(new NotFound({ detail: 'There is no brain alpha in this org' })));
   });
 
@@ -104,13 +104,13 @@ describe('retiring a brain', () => {
   });
 });
 
-describe('the roster of an org', () => {
+describe("an org's brain registry", () => {
   it('starts empty', () => {
-    expect(brainRoster.initialState.size).toBe(0);
+    expect(registryDecider.initialState.size).toBe(0);
   });
 
   it('holds each brain as its facts left it', () => {
-    const roster = rosterAfter(
+    const registry = registryAfter(
       alphaCreated,
       { type: 'brain_created', brain: 'beta', name: 'Beta', description: '', ...creation },
       { type: 'brain_updated', brain: 'alpha', name: 'Alpha Sales', ...change },
@@ -118,7 +118,7 @@ describe('the roster of an org', () => {
       { ...alphaRetired, at: '2026-10-03T08:00:00.000Z' },
     );
 
-    expect([...roster.values()]).toStrictEqual([
+    expect([...registry.values()]).toStrictEqual([
       {
         id: 'alpha',
         name: 'Alpha Sales',
@@ -143,14 +143,16 @@ describe('the roster of an org', () => {
 });
 
 describe('a fact', () => {
-  it('about a brain the roster never saw created leaves the roster as it was', () => {
-    expect(rosterAfter(alphaRetired, { type: 'brain_updated', brain: 'alpha', name: 'Ghost', ...change }).size).toBe(0);
+  it('about a brain the registry never saw created leaves the registry as it was', () => {
+    expect(registryAfter(alphaRetired, { type: 'brain_updated', brain: 'alpha', name: 'Ghost', ...change }).size).toBe(
+      0,
+    );
   });
 
-  it('leaves the roster it evolves from untouched', () => {
-    const before = rosterAfter(alphaCreated);
+  it('leaves the registry it evolves from untouched', () => {
+    const before = registryAfter(alphaCreated);
 
-    brainRoster.evolve(before, alphaRetired);
+    registryDecider.evolve(before, alphaRetired);
 
     expect(before.get('alpha')?.status).toBe('active');
   });

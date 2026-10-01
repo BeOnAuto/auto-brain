@@ -1,4 +1,4 @@
-import type { Catalog, Registration, Scope } from '@beonauto/operations';
+import type { Catalog, OperationScope, Registration } from '@beonauto/operations';
 
 export interface MountedOperation {
   readonly registration: Registration;
@@ -10,7 +10,7 @@ interface Templated {
   readonly template: string;
 }
 
-const prefixes: Readonly<Record<Scope, string>> = {
+const prefixes: Readonly<Record<OperationScope, string>> = {
   org: '/v1/orgs/{org}',
   brain: '/v1/orgs/{org}/brains/{brain}',
 };

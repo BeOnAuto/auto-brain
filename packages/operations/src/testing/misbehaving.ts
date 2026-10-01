@@ -20,7 +20,7 @@ export const explode = defineQuery('brain', {
 export const breakAndGiveUp = defineQuery('brain', {
   name: 'break_and_give_up',
   title: 'Break and give up',
-  description: 'Interrupts itself and fails with a defect as it stops.',
+  description: 'Interrupts itself, and a finalizer fails with a defect.',
   route: { method: 'GET', path: '/break-and-give-up' },
   inputSchema: Empty,
   outputSchema: Empty,
@@ -65,11 +65,11 @@ export const overshare = defineQuery('brain', {
   },
 });
 
-export const refuseUndeclared = defineCommand('brain', {
-  name: 'refuse_undeclared',
-  title: 'Refuse undeclared',
-  description: 'Refuses with a reason it does not declare.',
-  route: { method: 'POST', path: '/refuse-undeclared' },
+export const rejectUndeclared = defineCommand('brain', {
+  name: 'reject_undeclared',
+  title: 'Reject undeclared',
+  description: 'Rejects with a reason it does not declare.',
+  route: { method: 'POST', path: '/reject-undeclared' },
   inputSchema: Empty,
   outputSchema: Empty,
   reasons: noReasonsDeclared,

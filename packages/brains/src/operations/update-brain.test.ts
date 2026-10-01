@@ -33,7 +33,7 @@ describe('update_brain', () => {
     const update = { brain: 'alpha', name: ' Alpha Sales ', description: ' ' };
 
     expect(await call(updateBrain, toAcme(acmeAlphaKeeper, update), later)).toStrictEqual({
-      status: 'done',
+      status: 'succeeded',
       output: {
         id: 'alpha',
         name: 'Alpha Sales',
@@ -51,7 +51,7 @@ describe('update_brain', () => {
     const sameAgain = { brain: 'alpha', name: 'Alpha', description: 'Answers sales' };
 
     expect(await call(updateBrain, toAcme(acmeAdmin, sameAgain), later)).toMatchObject({
-      status: 'done',
+      status: 'succeeded',
       output: { name: 'Alpha', updated_at: firstMoment },
     });
   });
@@ -72,7 +72,7 @@ describe('the input of update_brain', () => {
     });
   });
 
-  it('refuses a field the operation does not know', async () => {
+  it('rejects a field the operation does not know', async () => {
     const { call } = await withAlpha();
 
     expect(
@@ -84,7 +84,7 @@ describe('the input of update_brain', () => {
   });
 });
 
-describe('update_brain refusing', () => {
+describe('update_brain rejecting', () => {
   it('a brain the org does not have, and a retired brain', async () => {
     const { call } = await withAlpha();
     const renaming = (brain: string) =>
@@ -92,12 +92,12 @@ describe('update_brain refusing', () => {
     await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }));
 
     expect(await renaming('nowhere')).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'not_found',
       detail: 'There is no brain nowhere in this org',
     });
     expect(await renaming('alpha')).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'conflict',
       detail: 'The brain alpha is retired and can no longer change',
     });
@@ -110,8 +110,8 @@ describe('update_brain refusing', () => {
       dispatch(updateBrain, toAcme(acmeAdmin, { brain, name: 'Renamed', description: '' }));
 
     expect(await run(Effect.all([renaming('alpha'), renaming('beta')], { concurrency: 'unbounded' }))).toMatchObject([
-      { status: 'done', output: { id: 'alpha', name: 'Renamed' } },
-      { status: 'refused', reason: 'conflict' },
+      { status: 'succeeded', output: { id: 'alpha', name: 'Renamed' } },
+      { status: 'rejected', reason: 'conflict' },
     ]);
   });
 });

@@ -1,9 +1,9 @@
 import { defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { BrainSchema } from '../roster/brain.ts';
+import { BrainSchema } from '../registry/brain.ts';
 import { BrainDescriptionField, BrainIdField, BrainNameField } from './brain-fields.ts';
-import { recordOnRoster } from './roster-recording.ts';
+import { recordInRegistry } from './registry-recording.ts';
 
 export const createBrain = defineCommand('org', {
   name: 'create_brain',
@@ -16,7 +16,7 @@ export const createBrain = defineCommand('org', {
     '`description` is optional text on what the brain is for, up to 2000 characters; it defaults to empty.',
     'Both are stored with surrounding whitespace trimmed.',
     'A caller limited to a list of brains may create only a brain whose id is on that list.',
-    'Refused with conflict when the org already has or had a brain with that id,',
+    'Rejected with conflict when the org already has or had a brain with that id,',
     "or when another change to the org's brains landed at the same moment, in which case try again.",
   ].join(' '),
   route: { method: 'POST', path: '/brains' },
@@ -29,5 +29,5 @@ export const createBrain = defineCommand('org', {
   outputSchema: BrainSchema,
   reasons: ['conflict'],
   handle: ({ brain, name, description = '' }) =>
-    recordOnRoster({ type: 'create', brain, name, description }).pipe(Effect.catchTag('not_found', Effect.die)),
+    recordInRegistry({ type: 'create', brain, name, description }).pipe(Effect.catchTag('not_found', Effect.die)),
 });

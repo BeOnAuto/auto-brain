@@ -1,6 +1,6 @@
-import { everyPermission, type CallerIdentity } from '@beonauto/operations';
+import { allPermissions, type CallerIdentity } from '@beonauto/operations';
 
-export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: everyPermission, brains: '*' };
+export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
 export const acmeAlphaKeeper: CallerIdentity = {
   id: 'acme-alpha-keeper',

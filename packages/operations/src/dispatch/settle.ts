@@ -1,20 +1,20 @@
 import { Cause, Effect } from 'effect';
 
-import { stopped, type Outcome, type Settled } from '../outcome/outcome.ts';
-import { faultOf } from './fault-boundary.ts';
+import { cancelled, type Outcome, type Settled } from '../outcome/outcome.ts';
+import { failureOf } from './error-boundary.ts';
 import type { IncidentReporter } from './incident-reporter.ts';
 
 function stoppedWhenAborted(signal: AbortSignal): Effect.Effect<Settled> {
   return Effect.callback<Settled>((resume) => {
-    const stop = () => {
-      resume(Effect.succeed(stopped()));
+    const cancel = () => {
+      resume(Effect.succeed(cancelled()));
     };
-    signal.addEventListener('abort', stop, { once: true });
+    signal.addEventListener('abort', cancel, { once: true });
     if (signal.aborted) {
-      stop();
+      cancel();
     }
     return Effect.sync(() => {
-      signal.removeEventListener('abort', stop);
+      signal.removeEventListener('abort', cancel);
     });
   });
 }
@@ -25,7 +25,7 @@ export function settle<R>(
 ): Effect.Effect<Settled, never, R | IncidentReporter> {
   const settled: Effect.Effect<Settled, never, R | IncidentReporter> = call.pipe(
     Effect.catchCause((cause): Effect.Effect<Settled, never, IncidentReporter> =>
-      Cause.hasInterruptsOnly(cause) ? Effect.succeed(stopped()) : faultOf(cause),
+      Cause.hasInterruptsOnly(cause) ? Effect.succeed(cancelled()) : failureOf(cause),
     ),
   );
   return signal === undefined ? settled : settled.pipe(Effect.raceFirst(stoppedWhenAborted(signal)));

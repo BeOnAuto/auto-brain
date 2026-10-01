@@ -1,7 +1,7 @@
 import { authenticatorFor, createApiKey, type Authenticator } from '@beonauto/identity';
-import { everyPermission, makeCatalog, makeDispatcher, type DispatcherServices } from '@beonauto/operations';
+import { allPermissions, makeCatalog, makeDispatcher, type DispatcherServices } from '@beonauto/operations';
 import {
-  memoryBrainDirectory,
+  memoryBrainRegistry,
   memoryLedger,
   recordingReporter,
   type ReportedIncident,
@@ -24,7 +24,7 @@ const knownBrains = [
   { org: 'globex', brain: 'gamma' },
 ];
 
-export const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: everyPermission, brains: '*' });
+export const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
 
 export const acmeReader = createApiKey({
   id: 'acme-reader',
@@ -36,14 +36,14 @@ export const acmeReader = createApiKey({
 export const acmeAlphaWriter = createApiKey({
   id: 'acme-alpha-writer',
   org: 'acme',
-  permissions: everyPermission,
+  permissions: allPermissions,
   brains: ['alpha'],
 });
 
 export const globexAdmin = createApiKey({
   id: 'globex-admin',
   org: 'globex',
-  permissions: everyPermission,
+  permissions: allPermissions,
   brains: '*',
 });
 
@@ -63,7 +63,7 @@ export async function operationServer({
 }: OperationServerOptions = {}): Promise<OperationServer> {
   const ledger = memoryLedger();
   const recording = recordingReporter();
-  const runner = await makeRunner(Layer.mergeAll(ledger.layer, memoryBrainDirectory(knownBrains), recording.layer));
+  const runner = await makeRunner(Layer.mergeAll(ledger.layer, memoryBrainRegistry(knownBrains), recording.layer));
   const routes = operationRoutes({
     catalog: makeCatalog(operations),
     dispatcher: makeDispatcher([]),

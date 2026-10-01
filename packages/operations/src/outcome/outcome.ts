@@ -1,51 +1,51 @@
 import type { Schema } from 'effect';
 
-import type { DeclarableReason } from './refusal.ts';
+import type { DeclarableReason } from './rejection.ts';
 
-export type RefusalReason = 'invalid_input' | 'forbidden' | DeclarableReason;
+export type RejectionReason = 'invalid_input' | 'forbidden' | DeclarableReason;
 
 export interface Issue {
   readonly detail: string;
   readonly pointer: string;
 }
 
-export interface Done {
-  readonly status: 'done';
+export interface Succeeded {
+  readonly status: 'succeeded';
   readonly output: Schema.JsonObject;
 }
 
-export interface Refused {
-  readonly status: 'refused';
-  readonly reason: RefusalReason;
+export interface Rejected {
+  readonly status: 'rejected';
+  readonly reason: RejectionReason;
   readonly detail: string;
   readonly issues?: readonly Issue[];
 }
 
-export interface Faulted {
-  readonly status: 'faulted';
+export interface Failed {
+  readonly status: 'failed';
   readonly incident: string;
 }
 
-export interface Stopped {
-  readonly status: 'stopped';
+export interface Cancelled {
+  readonly status: 'cancelled';
 }
 
-export type Outcome = Done | Refused | Faulted;
+export type Outcome = Succeeded | Rejected | Failed;
 
-export type Settled = Outcome | Stopped;
+export type Settled = Outcome | Cancelled;
 
-export function done(output: Schema.JsonObject): Done {
-  return { status: 'done', output };
+export function succeeded(output: Schema.JsonObject): Succeeded {
+  return { status: 'succeeded', output };
 }
 
-export function refused(reason: RefusalReason, detail: string, issues?: readonly Issue[]): Refused {
-  return issues === undefined ? { status: 'refused', reason, detail } : { status: 'refused', reason, detail, issues };
+export function rejected(reason: RejectionReason, detail: string, issues?: readonly Issue[]): Rejected {
+  return issues === undefined ? { status: 'rejected', reason, detail } : { status: 'rejected', reason, detail, issues };
 }
 
-export function faulted(incident: string): Faulted {
-  return { status: 'faulted', incident };
+export function failed(incident: string): Failed {
+  return { status: 'failed', incident };
 }
 
-export function stopped(): Stopped {
-  return { status: 'stopped' };
+export function cancelled(): Cancelled {
+  return { status: 'cancelled' };
 }

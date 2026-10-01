@@ -1,5 +1,5 @@
 import { operationRoutes } from '@beonauto/api';
-import { brainOperations, ledgerBrainDirectory } from '@beonauto/brains';
+import { brainOperations, ledgerBrainRegistry } from '@beonauto/brains';
 import { ledgerLayer } from '@beonauto/ledger';
 import { IncidentReporter, makeCatalog, makeDispatcher, type DispatcherServices } from '@beonauto/operations';
 import { Layer } from 'effect';
@@ -11,7 +11,7 @@ const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter
 
 export function applicationLayer(ledgerFile: string): Layer.Layer<DispatcherServices> {
   const ledger = ledgerLayer({ fileName: ledgerFile });
-  return Layer.mergeAll(ledger, ledgerBrainDirectory.pipe(Layer.provide(ledger)), loggingIncidentReporter);
+  return Layer.mergeAll(ledger, ledgerBrainRegistry.pipe(Layer.provide(ledger)), loggingIncidentReporter);
 }
 
 export const compositionRoot: ServerOptions<DispatcherServices> = {

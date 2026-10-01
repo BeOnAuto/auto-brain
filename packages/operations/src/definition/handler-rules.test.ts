@@ -80,7 +80,7 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
     ...emptyInputAndOutput,
     answering,
   ]),
-  'declared-refusal.ts': defined('defineCommand', 'brain', [
+  'declared-rejection.ts': defined('defineCommand', 'brain', [
     post,
     '  inputSchema: Empty,',
     '  outputSchema: Empty,',
@@ -99,43 +99,43 @@ interface Rejection {
 }
 
 const rejected: Readonly<Record<string, Rejection>> = {
-  'org-query-asks-brain-scope.ts': {
-    because: "Type 'BrainScope' is not assignable to type 'Caller | OrgReader | OrgScope'",
-    source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('BrainScope')]),
+  'org-query-asks-brain-context.ts': {
+    because: "Type 'BrainContext' is not assignable to type 'Caller | OrgContext | OrgReader'",
+    source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('BrainContext')]),
   },
   'org-command-asks-brain-writer.ts': {
-    because: "Type 'BrainWriter' is not assignable to type 'Caller | OrgReader | OrgScope | OrgWriter'",
+    because: "Type 'BrainWriter' is not assignable to type 'Caller | OrgContext | OrgReader | OrgWriter'",
     source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('BrainWriter')]),
   },
   'brain-query-asks-org-reader.ts': {
-    because: "Type 'OrgReader' is not assignable to type 'BrainReader | BrainScope | Caller'",
+    because: "Type 'OrgReader' is not assignable to type 'BrainContext | BrainReader | Caller'",
     source: defined('defineQuery', 'brain', [get, ...emptyInputAndOutput, asking('OrgReader')]),
   },
   'org-query-asks-org-writer.ts': {
-    because: "Type 'OrgWriter' is not assignable to type 'Caller | OrgReader | OrgScope'",
+    because: "Type 'OrgWriter' is not assignable to type 'Caller | OrgContext | OrgReader'",
     source: defined('defineQuery', 'org', [get, ...emptyInputAndOutput, asking('OrgWriter')]),
   },
   'brain-query-asks-brain-writer.ts': {
-    because: "Type 'BrainWriter' is not assignable to type 'BrainReader | BrainScope | Caller'",
+    because: "Type 'BrainWriter' is not assignable to type 'BrainContext | BrainReader | Caller'",
     source: defined('defineQuery', 'brain', [get, ...emptyInputAndOutput, asking('BrainWriter')]),
   },
   'query-calls-command.ts': {
-    because: "Type 'BrainWriter' is not assignable to type 'BrainReader | BrainScope | Caller'",
+    because: "Type 'BrainWriter' is not assignable to type 'BrainContext | BrainReader | Caller'",
     source: [...callingOther('defineCommand', post, 'BrainWriter'), ...callerOfOther('defineQuery', get)],
   },
   'command-asks-ledger.ts': {
-    because: "Type 'Ledger' is not assignable to type 'BrainReader | BrainScope | BrainWriter | Caller'",
+    because: "Type 'Ledger' is not assignable to type 'BrainContext | BrainReader | BrainWriter | Caller'",
     source: defined('defineCommand', 'brain', [post, ...emptyInputAndOutput, asking('Ledger')]),
   },
-  'command-asks-brain-directory.ts': {
-    because: "Type 'BrainDirectory' is not assignable to type 'Caller | OrgReader | OrgScope | OrgWriter'",
-    source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('BrainDirectory')]),
+  'command-asks-brain-registry.ts': {
+    because: "Type 'BrainRegistry' is not assignable to type 'Caller | OrgContext | OrgReader | OrgWriter'",
+    source: defined('defineCommand', 'org', [post, ...emptyInputAndOutput, asking('BrainRegistry')]),
   },
   'query-asks-incident-reporter.ts': {
-    because: "Type 'IncidentReporter' is not assignable to type 'BrainReader | BrainScope | Caller'",
+    because: "Type 'IncidentReporter' is not assignable to type 'BrainContext | BrainReader | Caller'",
     source: defined('defineQuery', 'brain', [get, ...emptyInputAndOutput, asking('IncidentReporter')]),
   },
-  'undeclared-refusal.ts': {
+  'undeclared-rejection.ts': {
     because: "Type 'Conflict' is not assignable to type 'NotFound'",
     source: defined('defineCommand', 'brain', [
       post,

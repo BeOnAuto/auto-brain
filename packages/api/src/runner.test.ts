@@ -15,7 +15,7 @@ describe('makeRunner', () => {
   it('reports an effect that interrupts itself as stopped', async () => {
     const runner = await makeRunner(Layer.empty);
 
-    expect(await runner.run(Effect.interrupt)).toEqual({ status: 'stopped' });
+    expect(await runner.run(Effect.interrupt)).toEqual({ status: 'cancelled' });
   });
 
   it('stops an effect in flight when disposed, and refuses new ones', async () => {
@@ -23,8 +23,8 @@ describe('makeRunner', () => {
     const inFlight = runner.run(Effect.never);
     await runner.dispose();
 
-    expect(await inFlight).toEqual({ status: 'stopped' });
-    expect(await runner.run(Effect.succeed(1))).toEqual({ status: 'stopped' });
+    expect(await inFlight).toEqual({ status: 'cancelled' });
+    expect(await runner.run(Effect.succeed(1))).toEqual({ status: 'cancelled' });
   });
 
   it('rejects with the cause of a defect', async () => {

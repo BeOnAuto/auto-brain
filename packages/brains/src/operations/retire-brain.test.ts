@@ -40,7 +40,7 @@ describe('retire_brain', () => {
     await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
 
     expect(await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }), later)).toStrictEqual({
-      status: 'done',
+      status: 'succeeded',
       output: retiredAlpha,
     });
   });
@@ -51,18 +51,18 @@ describe('retire_brain', () => {
     await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }), later);
 
     expect(await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }), muchLater)).toStrictEqual({
-      status: 'done',
+      status: 'succeeded',
       output: retiredAlpha,
     });
   });
 });
 
-describe('retire_brain refusing', () => {
+describe('retire_brain rejecting', () => {
   it('a brain the org does not have', async () => {
     const { call } = harness();
 
     expect(await call(retireBrain, toAcme(acmeAdmin, { brain: 'nowhere' }))).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'not_found',
       detail: 'There is no brain nowhere in this org',
     });
@@ -84,8 +84,8 @@ describe('retire_brain refusing', () => {
     const retiring = (brain: string) => dispatch(retireBrain, toAcme(acmeAdmin, { brain }));
 
     expect(await run(Effect.all([retiring('alpha'), retiring('beta')], { concurrency: 'unbounded' }))).toMatchObject([
-      { status: 'done', output: { id: 'alpha', status: 'retired' } },
-      { status: 'refused', reason: 'conflict' },
+      { status: 'succeeded', output: { id: 'alpha', status: 'retired' } },
+      { status: 'rejected', reason: 'conflict' },
     ]);
   });
 });

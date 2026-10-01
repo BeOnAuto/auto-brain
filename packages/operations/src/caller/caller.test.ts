@@ -22,7 +22,7 @@ describe('a caller identity', () => {
     ['an ill-formed brain', { ...keyHolder, brains: ['Alpha'] }],
   ];
 
-  it.each(malformed)('refuses %s', (_case, identity) => {
+  it.each(malformed)('rejects %s', (_case, identity) => {
     expect(isCallerIdentity(identity)).toBe(false);
   });
 });

@@ -1,12 +1,12 @@
-import type { Stopped } from '@beonauto/operations';
+import type { Cancelled } from '@beonauto/operations';
 import { Cause, Exit, ManagedRuntime, type Effect, type Layer } from 'effect';
 
 export interface Runner<R> {
-  readonly run: <A>(effect: Effect.Effect<A, never, R>) => Promise<A | Stopped>;
+  readonly run: <A>(effect: Effect.Effect<A, never, R>) => Promise<A | Cancelled>;
   readonly dispose: () => Promise<void>;
 }
 
-const stopped: Stopped = { status: 'stopped' };
+const stopped: Cancelled = { status: 'cancelled' };
 
 export async function makeRunner<R, E>(layer: Layer.Layer<R, E>): Promise<Runner<R>> {
   const runtime = ManagedRuntime.make(layer);

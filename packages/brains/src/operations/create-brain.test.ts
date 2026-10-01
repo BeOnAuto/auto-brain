@@ -30,7 +30,7 @@ describe('create_brain', () => {
     expect(
       await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha', description: 'Answers sales' })),
     ).toStrictEqual({
-      status: 'done',
+      status: 'succeeded',
       output: {
         id: 'alpha',
         name: 'Alpha',
@@ -64,9 +64,9 @@ describe('the input of create_brain', () => {
   });
 
   it('takes a name of 1 to 100 characters, not all whitespace, and a description of up to 2000', async () => {
-    expect(await creating({ name: 'A', description: '' })).toMatchObject({ status: 'done' });
+    expect(await creating({ name: 'A', description: '' })).toMatchObject({ status: 'succeeded' });
     expect(await creating({ name: 'n'.repeat(100), description: 'd'.repeat(2000) })).toMatchObject({
-      status: 'done',
+      status: 'succeeded',
     });
     expect(await creating({ name: '   ', description: 'd'.repeat(2001) })).toMatchObject({
       reason: 'invalid_input',
@@ -87,7 +87,7 @@ describe('the input of create_brain', () => {
   });
 });
 
-describe('create_brain refusing input', () => {
+describe('create_brain rejecting input', () => {
   it('with a malformed id or a field the operation does not know', async () => {
     expect(await creating({ brain: 'Alpha', name: 'Alpha', colour: 'red' })).toMatchObject({
       reason: 'invalid_input',
@@ -109,20 +109,20 @@ describe('the JSON Schema of the input of create_brain', () => {
   });
 });
 
-describe('create_brain refusing with conflict', () => {
+describe('create_brain rejecting with conflict', () => {
   it('meets an id held by an active or a retired brain', async () => {
     const { call } = harness();
     const creatingAlpha = () => call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
     await creatingAlpha();
 
     expect(await creatingAlpha()).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'conflict',
       detail: 'There is already a brain alpha in this org',
     });
     await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }));
     expect(await creatingAlpha()).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'conflict',
       detail: 'The brain alpha was retired, and a brain id is never reused',
     });
@@ -134,8 +134,8 @@ describe('create_brain refusing with conflict', () => {
     const bothAtOnce = Effect.all([creatingBrain('alpha'), creatingBrain('beta')], { concurrency: 'unbounded' });
 
     expect(await run(bothAtOnce)).toMatchObject([
-      { status: 'done', output: { id: 'alpha' } },
-      { status: 'refused', reason: 'conflict' },
+      { status: 'succeeded', output: { id: 'alpha' } },
+      { status: 'rejected', reason: 'conflict' },
     ]);
   });
 });

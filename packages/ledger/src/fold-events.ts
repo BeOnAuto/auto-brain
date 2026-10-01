@@ -1,4 +1,4 @@
-export function evolved<State, Event>(
+export function foldEvents<State, Event>(
   evolve: (state: State, event: Event) => State,
   state: State,
   events: readonly Event[],

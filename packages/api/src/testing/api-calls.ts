@@ -1,5 +1,5 @@
 import type { Authenticator } from '@beonauto/identity';
-import { everyPermission } from '@beonauto/operations';
+import { allPermissions } from '@beonauto/operations';
 
 import { createApiHandler, type ApiHandler, type ApiOptions, type RegisterRoutes } from '../index.ts';
 
@@ -24,7 +24,7 @@ export interface Reported {
 
 const admitEveryone: Authenticator = {
   mode: 'keys',
-  authenticate: () => ({ callerIn: (org) => ({ id: 'anyone', org, permissions: everyPermission, brains: '*' }) }),
+  authenticate: () => ({ callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, brains: '*' }) }),
 };
 
 export function handlerWith(options: Partial<ApiOptions> = {}): { handler: ApiHandler; reported: Reported[] } {

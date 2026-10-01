@@ -1,8 +1,8 @@
-import { Caller, defineQuery, mayReachBrain } from '@beonauto/operations';
+import { Caller, defineQuery, canAccessBrain } from '@beonauto/operations';
 import { Effect, Order, Schema } from 'effect';
 
-import { BrainSchema, type Brain } from '../roster/brain.ts';
-import { readRoster } from './roster-reading.ts';
+import { BrainSchema, type Brain } from '../registry/brain.ts';
+import { loadRegistry } from './registry-loading.ts';
 
 const byId = Order.mapInput(Order.String, ({ id }: Brain) => id);
 
@@ -10,7 +10,7 @@ export const listBrains = defineQuery('org', {
   name: 'list_brains',
   title: 'List brains',
   description: [
-    'Lists the brains of the org that the caller may reach, sorted by id.',
+    'Lists the brains of the org that the caller may access, sorted by id.',
     'Retired brains are left out unless `include_retired` is true.',
     'Each brain carries its id, name, description, status (active or retired), the id of the caller who created it,',
     'when it was created and last changed, and when it was retired.',
@@ -25,9 +25,9 @@ export const listBrains = defineQuery('org', {
   reasons: [],
   handle: Effect.fnUntraced(function* ({ include_retired: includeRetired = false }) {
     const { brains: access } = yield* Caller;
-    const roster = yield* readRoster;
-    const brains = [...roster.values()].filter(
-      ({ id, status }) => mayReachBrain(access, id) && (includeRetired || status === 'active'),
+    const registry = yield* loadRegistry;
+    const brains = [...registry.values()].filter(
+      ({ id, status }) => canAccessBrain(access, id) && (includeRetired || status === 'active'),
     );
     return { brains: brains.toSorted(byId) };
   }),

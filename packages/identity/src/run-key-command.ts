@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { parseArgs } from 'node:util';
 
-import { everyPermission } from '@beonauto/operations';
+import { allPermissions } from '@beonauto/operations';
 import { Result, Schema } from 'effect';
 
 import { KeyGrantSchema, createApiKey, type KeyGrant } from './api-key.ts';
@@ -58,7 +58,7 @@ function grantFrom(args: readonly string[]): KeyGrant | string {
   const decoded = decodeGrant({
     id: options.id ?? randomBytes(4).toString('hex'),
     ...(options.org === undefined ? {} : { org: options.org }),
-    permissions: options.permissions?.split(',') ?? everyPermission,
+    permissions: options.permissions?.split(',') ?? allPermissions,
     brains: brainsFrom(options.brains),
   });
   return Result.isSuccess(decoded) ? decoded.success : describeIssues(failureOf(decoded.failure.issue), asOption);

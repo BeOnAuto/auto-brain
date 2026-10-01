@@ -1,15 +1,15 @@
 import { createBrain } from '@beonauto/brains';
-import { BrainDirectory, everyPermission, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
+import { BrainRegistry, allPermissions, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
 import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { applicationLayer } from './composition-root.ts';
 import { jsonLogsToStderr } from './logging.ts';
 
-const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: everyPermission, brains: '*' };
+const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
 const alphaExists = Effect.gen(function* () {
-  const directory = yield* BrainDirectory;
+  const directory = yield* BrainRegistry;
   return yield* directory.exists({ org: 'acme', brain: 'alpha' });
 });
 
@@ -21,7 +21,7 @@ describe('the services the brain operations run on', () => {
     await runtime.dispose();
 
     expect(keys.filter((key) => !key.startsWith('effect/')).toSorted()).toEqual([
-      '@beonauto/operations/BrainDirectory',
+      '@beonauto/operations/BrainRegistry',
       '@beonauto/operations/IncidentReporter',
       '@beonauto/operations/Ledger',
     ]);
@@ -29,17 +29,17 @@ describe('the services the brain operations run on', () => {
 
   it('share one ledger, so the brain directory finds a brain the operations created', async () => {
     const runtime = ManagedRuntime.make(applicationLayer(':memory:'));
-    const created = makeDispatcher([]).inOrg(createBrain.registration, {
+    const created = makeDispatcher([]).dispatchToOrg(createBrain.registration, {
       caller: acmeAdmin,
       org: 'acme',
       input: { brain: 'alpha', name: 'Alpha' },
-      form: 'json',
+      encoding: 'json',
     });
 
     const outcome = await runtime.runPromise(created);
     const exists = await runtime.runPromise(alphaExists);
     await runtime.dispose();
 
-    expect({ status: outcome.status, exists }).toEqual({ status: 'done', exists: true });
+    expect({ status: outcome.status, exists }).toEqual({ status: 'succeeded', exists: true });
   });
 });

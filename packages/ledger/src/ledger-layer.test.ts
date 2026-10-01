@@ -95,7 +95,7 @@ describe('a ledger whose database is gone', () => {
     );
   });
 
-  it('turns a write that fails for a reason other than a moved stream into a defect', async () => {
+  it('turns a write that fails for a reason other than a version conflict into a defect', async () => {
     const { ledger, dispose } = await openLedger();
     const closeTheDatabaseFirst = Effect.promise(dispose);
 

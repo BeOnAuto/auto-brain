@@ -3,13 +3,13 @@ import { Effect } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';
 import type { EventStore } from './event-store.ts';
-import { evolved } from './evolved.ts';
+import { foldEvents } from './fold-events.ts';
 
-export function streamLoaderOf(store: EventStore): StreamReader['load'] {
+export function streamReaderOf(store: EventStore): StreamReader['load'] {
   return (stream, decider) =>
     Effect.gen(function* () {
       const recorded = yield* Effect.promise(() => store.read(stream));
-      const events = yield* Effect.forEach(recorded.events, eventCodecOf(decider.eventSchema).recall);
-      return { state: evolved(decider.evolve, decider.initialState, events), version: recorded.version };
+      const events = yield* Effect.forEach(recorded.events, eventCodecOf(decider.eventSchema).decode);
+      return { state: foldEvents(decider.evolve, decider.initialState, events), version: recorded.version };
     });
 }

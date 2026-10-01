@@ -1,7 +1,7 @@
 import { Ledger } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
-import { ledgerOver } from './ledger-service.ts';
+import { makeLedger } from './ledger-service.ts';
 import { openEventStore, type LedgerOptions } from './open-event-store.ts';
 
 export function ledgerLayer(options: LedgerOptions): Layer.Layer<Ledger> {
@@ -13,7 +13,7 @@ export function ledgerLayer(options: LedgerOptions): Layer.Layer<Ledger> {
         (opened) => Effect.promise(() => opened.close()),
       );
       yield* Effect.promise(() => store.migrate());
-      return ledgerOver(store);
+      return makeLedger(store);
     }),
   );
 }

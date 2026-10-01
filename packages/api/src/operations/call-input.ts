@@ -1,4 +1,4 @@
-import type { InputForm, Registration } from '@beonauto/operations';
+import type { InputEncoding, Registration } from '@beonauto/operations';
 import { Result } from 'effect';
 import type { Context } from 'hono';
 
@@ -8,7 +8,7 @@ import { jsonBodyOf, type Fields } from './request-body.ts';
 
 export interface CallInput {
   readonly input: Fields;
-  readonly form: InputForm;
+  readonly encoding: InputEncoding;
 }
 
 function givenTwice(name: string): Result.Result<never, Problem> {
@@ -21,9 +21,11 @@ function queryFieldsOf(query: URLSearchParams): Result.Result<Fields, Problem> {
   return repeated === undefined ? Result.succeed(Object.fromEntries(query)) : givenTwice(repeated);
 }
 
-function combined(pathFields: Fields, given: Fields, form: InputForm): Result.Result<CallInput, Problem> {
+function combined(pathFields: Fields, given: Fields, encoding: InputEncoding): Result.Result<CallInput, Problem> {
   const repeated = Object.keys(given).find((name) => Object.hasOwn(pathFields, name));
-  return repeated === undefined ? Result.succeed({ input: { ...given, ...pathFields }, form }) : givenTwice(repeated);
+  return repeated === undefined
+    ? Result.succeed({ input: { ...given, ...pathFields }, encoding })
+    : givenTwice(repeated);
 }
 
 export async function callInputOf(
