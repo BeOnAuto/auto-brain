@@ -4,11 +4,13 @@ import { internalErrorProblem, problemOf, problemResponse, type OptionalProblemM
 
 const serverStopping = problemOf('unavailable', 'The server is stopping');
 
+const clientClosed = problemOf('client_closed_request', 'The client closed the request before it was answered');
+
 function optionalMembersOf({ issues }: Rejected): OptionalProblemMembers {
   return issues === undefined ? {} : { errors: issues };
 }
 
-export function toHttpResponse(settled: Settled, successStatus: number): Response {
+export function toHttpResponse(settled: Settled, successStatus: number, clientClosedRequest: boolean): Response {
   if (settled.status === 'succeeded') {
     return Response.json(settled.output, { status: successStatus, headers: { 'cache-control': 'no-store' } });
   }
@@ -18,5 +20,5 @@ export function toHttpResponse(settled: Settled, successStatus: number): Respons
   if (settled.status === 'failed') {
     return problemResponse(internalErrorProblem(settled.incident));
   }
-  return problemResponse(serverStopping);
+  return problemResponse(clientClosedRequest ? clientClosed : serverStopping);
 }

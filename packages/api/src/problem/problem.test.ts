@@ -8,6 +8,7 @@ const statusAndTitleByReason: ReadonlyArray<readonly [ProblemReason, number, str
   ['not_found', 404, 'Not found'],
   ['conflict', 409, 'Conflict'],
   ['unavailable', 503, 'Unavailable'],
+  ['client_closed_request', 499, 'Client closed request'],
   ['bad_request', 400, 'Bad request'],
   ['unauthenticated', 401, 'Unauthenticated'],
   ['origin_not_allowed', 403, 'Origin not allowed'],
@@ -44,6 +45,13 @@ describe('problemResponse', () => {
     expect(response.headers.get('content-type')).toBe('application/problem+json');
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(await response.json()).toEqual(problem);
+  });
+
+  it('asks the client to retry an unavailable server after 5 seconds, and no other problem', () => {
+    const unavailable = problemResponse(problemOf('unavailable', 'The server is stopping'));
+    const conflict = problemResponse(problemOf('conflict', 'The name is taken'));
+
+    expect([unavailable.headers.get('retry-after'), conflict.headers.get('retry-after')]).toEqual(['5', null]);
   });
 
   it('adds the headers it is given', () => {

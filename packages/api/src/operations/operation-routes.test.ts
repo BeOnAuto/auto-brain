@@ -114,10 +114,13 @@ describe('a call that cannot run', () => {
     const { handler, runtime } = await operationServer();
     await runtime.dispose();
 
-    expect(await call(handler, notes, { headers: asAdmin })).toMatchObject({
+    const answer = await call(handler, notes, { headers: asAdmin });
+
+    expect(answer).toMatchObject({
       status: 503,
-      body: { reason: 'unavailable', type: 'https://on.auto/problems/unavailable' },
+      body: { reason: 'unavailable', type: 'https://on.auto/problems/unavailable', detail: 'The server is stopping' },
     });
+    expect(answer.headers.get('retry-after')).toBe('5');
   });
 
   it('is cancelled when the client goes away, and reports no incident', async () => {
@@ -129,7 +132,10 @@ describe('a call that cannot run', () => {
 
     const answer = await handler.fetch(request);
 
-    expect(answer.status).toBe(503);
+    expect({ status: answer.status, body: await answer.json() }).toMatchObject({
+      status: 499,
+      body: { reason: 'client_closed_request', detail: 'The client closed the request before it was answered' },
+    });
     expect(incidents()).toEqual([]);
   });
 });

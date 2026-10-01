@@ -4,6 +4,7 @@ export type ProblemReason =
   | 'not_found'
   | 'conflict'
   | 'unavailable'
+  | 'client_closed_request'
   | 'bad_request'
   | 'unauthenticated'
   | 'origin_not_allowed'
@@ -40,6 +41,7 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
   not_found: { status: 404, title: 'Not found' },
   conflict: { status: 409, title: 'Conflict' },
   unavailable: { status: 503, title: 'Unavailable' },
+  client_closed_request: { status: 499, title: 'Client closed request' },
   bad_request: { status: 400, title: 'Bad request' },
   unauthenticated: { status: 401, title: 'Unauthenticated' },
   origin_not_allowed: { status: 403, title: 'Origin not allowed' },
@@ -50,6 +52,8 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
 };
 
 const problemMediaType = 'application/problem+json';
+
+const retryAfterSeconds = '5';
 
 export function problemOf(reason: ProblemReason, detail: string, optional: OptionalProblemMembers = {}): Problem {
   const { status, title } = problemTypes[reason];
@@ -63,6 +67,11 @@ export function internalErrorProblem(incident: string): Problem {
 export function problemResponse(problem: Problem, headers: Readonly<Record<string, string>> = {}): Response {
   return new Response(JSON.stringify(problem), {
     status: problem.status,
-    headers: { 'content-type': problemMediaType, 'cache-control': 'no-store', ...headers },
+    headers: {
+      'content-type': problemMediaType,
+      'cache-control': 'no-store',
+      ...(problem.reason === 'unavailable' ? { 'retry-after': retryAfterSeconds } : {}),
+      ...headers,
+    },
   });
 }

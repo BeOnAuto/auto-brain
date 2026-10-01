@@ -45,7 +45,7 @@ function handlerFor(registration: Registration, { dispatcher, runCall }: Operati
       return problemResponse(given.failure);
     }
     const settled = await runCall(settle(dispatched(dispatcher, registration, c, given.success), c.req.raw.signal));
-    return toHttpResponse(settled, registration.successStatus);
+    return toHttpResponse(settled, registration.successStatus, c.req.raw.signal.aborted);
   };
 }
 
