@@ -231,14 +231,15 @@ describe('runServer', () => {
     await server.stop();
   });
 
-  it.each(['SIGTERM', 'SIGINT'])('shuts down gracefully on %s', async (signal) => {
+  it.each(['SIGTERM', 'SIGINT'])('stops accepting connections on %s, before anything else stops it', async (signal) => {
     const { serverProcess, signals } = fakeProcess();
     const server = await runServer(serverProcess, defaultServerOptions);
 
     signals.dispatchEvent(new Event(signal));
+    const acceptingAfterSignal = await isAcceptingConnections(server.port);
     await server.stop();
 
-    expect(await isAcceptingConnections(server.port)).toBe(false);
+    expect(acceptingAfterSignal).toBe(false);
   });
 
   it.each(['SIGTERM', 'SIGINT'] as const)(
