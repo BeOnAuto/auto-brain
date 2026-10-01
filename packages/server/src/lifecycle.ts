@@ -78,12 +78,12 @@ export async function startServer<R>(environment: Environment, options: ServerOp
 
 export async function runServer<R>(serverProcess: ServerProcess, options: ServerOptions<R>): Promise<RunningServer> {
   const server = await startServer(serverProcess.env, options);
-  serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
   const stopOnSignal = (): void => {
     void server.stop();
   };
   serverProcess.once('SIGTERM', stopOnSignal);
   serverProcess.once('SIGINT', stopOnSignal);
+  serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
   return server;
 }
 

@@ -28,6 +28,19 @@ function fakeProcess(env: Environment = loopback): {
   return { serverProcess, signals, written };
 }
 
+function signalledOnAnnouncement(signal: 'SIGINT' | 'SIGTERM'): ServerProcess {
+  const { serverProcess, signals } = fakeProcess();
+  return {
+    ...serverProcess,
+    stdout: {
+      write: (message) => {
+        serverProcess.stdout.write(message);
+        signals.dispatchEvent(new Event(signal));
+      },
+    },
+  };
+}
+
 async function isAcceptingConnections(port: number): Promise<boolean> {
   try {
     await fetch(`http://127.0.0.1:${port}/health`);
@@ -227,6 +240,18 @@ describe('runServer', () => {
 
     expect(await isAcceptingConnections(server.port)).toBe(false);
   });
+
+  it.each(['SIGTERM', 'SIGINT'] as const)(
+    'stops on %s sent the moment it announces the port, because it handles the signal before announcing',
+    async (signal) => {
+      const server = await runServer(signalledOnAnnouncement(signal), defaultServerOptions);
+
+      const acceptingAfterSignal = await isAcceptingConnections(server.port);
+      await server.stop();
+
+      expect(acceptingAfterSignal).toBe(false);
+    },
+  );
 
   it('rejects invalid settings before it listens, with a named error, and announces nothing', async () => {
     const { serverProcess, written } = fakeProcess({ ...loopback, ALLOWED_ORIGINS: 'app.example.com' });
