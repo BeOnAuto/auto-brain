@@ -1,5 +1,5 @@
 import type { AccessMode } from '@beonauto/identity';
-import type { ProviderStatus } from '@beonauto/inference';
+import type { ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
 import type { Incident } from '@beonauto/operations';
 import { Cause, Effect, Logger } from 'effect';
 
@@ -58,5 +58,17 @@ export function logModelProviders({ configured, unconfigured }: ProviderStatus):
       ),
     ],
     { discard: true },
+  );
+}
+
+export function logProviderMessage({
+  provider,
+  model,
+  status,
+  message,
+  execution_id,
+}: ProviderMessageReport): Effect.Effect<void> {
+  return Effect.logWarning(`Model provider ${provider} answered with an error`).pipe(
+    Effect.annotateLogs({ provider, model, status, execution_id, provider_message: message }),
   );
 }

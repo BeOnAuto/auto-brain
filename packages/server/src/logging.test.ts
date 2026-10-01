@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { logAccessMode, logIncident, logMcpError } from './logging.ts';
+import { logAccessMode, logIncident, logMcpError, logProviderMessage } from './logging.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 
 async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
@@ -140,5 +140,24 @@ describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
 
     expect({ abandoned, exitCode: await child.exited }).toEqual({ abandoned: 'abandoned', exitCode: 0 });
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+  });
+});
+
+describe('logProviderMessage', () => {
+  it('warns with the provider, the model, the status, the execution and what the provider said', async () => {
+    const [line] = await linesLoggedBy(
+      logProviderMessage({
+        provider: 'gateway',
+        model: 'gateway/no-such-model',
+        status: 404,
+        message: 'No fallback model group found',
+        execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+      }),
+    );
+
+    expect(line).toContain('"message":"Model provider gateway answered with an error","level":"WARN"');
+    expect(line).toContain(
+      '"annotations":{"provider":"gateway","model":"gateway/no-such-model","status":404,"execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","provider_message":"No fallback model group found"}',
+    );
   });
 });

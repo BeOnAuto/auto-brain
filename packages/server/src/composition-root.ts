@@ -7,7 +7,7 @@ import { makeSpecOperations } from '@beonauto/specs';
 import { Effect, Layer } from 'effect';
 
 import { defaultServerOptions, type ServerOptions } from './lifecycle.ts';
-import { logIncident, logMcpError, logModelProviders } from './logging.ts';
+import { logIncident, logMcpError, logModelProviders, logProviderMessage } from './logging.ts';
 import { release } from './release.ts';
 
 type Operations = Parameters<typeof makeCatalog>[0];
@@ -55,4 +55,6 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
   };
 }
 
-export const compositionRoot = compositionRootWith((settings) => makeModelAccess(settings));
+export const compositionRoot = compositionRootWith((settings) =>
+  makeModelAccess(settings, { reportProviderMessage: logProviderMessage }),
+);
