@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';
@@ -169,12 +171,16 @@ describe('a call that cannot run', () => {
 
   it('is cancelled when the client goes away, and reports no incident', async () => {
     const { handler, incidents } = await operationServer();
+    const client = new AbortController();
     const request = new Request('http://localhost/v1/orgs/acme/brains/alpha/waiting', {
       headers: asAdmin,
-      signal: AbortSignal.timeout(50),
+      signal: client.signal,
     });
 
-    const answer = await handler.fetch(request);
+    const answering = handler.fetch(request);
+    await setTimeout(50);
+    client.abort();
+    const answer = await answering;
 
     expect({ status: answer.status, body: await answer.json() }).toMatchObject({
       status: 499,
