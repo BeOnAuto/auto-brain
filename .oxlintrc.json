@@ -78,6 +78,11 @@
             "from": "package",
             "package": "node:http",
             "name": ["Server", "IncomingMessage", "ServerResponse"]
+          },
+          {
+            "from": "package",
+            "package": "effect",
+            "name": ["Effect", "Layer"]
           }
         ]
       }
