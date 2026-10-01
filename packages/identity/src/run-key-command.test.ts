@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncOptionsWithStringEncoding } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -34,6 +34,11 @@ function issued({ logged }: Session): { readonly key: string; readonly entry: st
 }
 
 const keyCommand = fileURLToPath(new URL('key-command.ts', import.meta.url));
+
+const asAProcess: SpawnSyncOptionsWithStringEncoding = {
+  encoding: 'utf8',
+  env: { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] },
+};
 
 const badArguments: ReadonlyArray<readonly [readonly string[], string]> = [
   [['--id', 'ci-1'], '--org: Missing key'],
@@ -98,7 +103,7 @@ describe('the key command with bad arguments', () => {
 
 describe('the key command as a process', () => {
   it('prints the key and the entry to stdout and exits 0', () => {
-    const { status, stdout, stderr } = spawnSync(process.execPath, [keyCommand, '--org', 'demo'], { encoding: 'utf8' });
+    const { status, stdout, stderr } = spawnSync(process.execPath, [keyCommand, '--org', 'demo'], asAProcess);
 
     expect({ status, stderr }).toEqual({ status: 0, stderr: '' });
     expect(stdout).toMatch(
@@ -107,7 +112,7 @@ describe('the key command as a process', () => {
   });
 
   it('explains bad arguments on stderr, prints nothing on stdout and exits non-zero', () => {
-    const { status, stdout, stderr } = spawnSync(process.execPath, [keyCommand], { encoding: 'utf8' });
+    const { status, stdout, stderr } = spawnSync(process.execPath, [keyCommand], asAProcess);
 
     expect({ status, stdout }).toEqual({ status: 1, stdout: '' });
     expect(stderr).toContain('--org: Missing key');
