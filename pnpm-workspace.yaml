@@ -10,10 +10,10 @@ catalog:
 
 minimumReleaseAge: 1440
 minimumReleaseAgeStrict: false
+minimumReleaseAgeExclude:
+  - effect@4.0.0
 trustPolicy: no-downgrade
 
 allowBuilds:
   esbuild: true
   lefthook: true
-minimumReleaseAgeExclude:
-  - effect@4.0.0
