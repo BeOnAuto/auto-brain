@@ -1,0 +1,57 @@
+import { Effect, Schema } from 'effect';
+
+import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
+import { withinResultLimit } from '../execution/recorded-size.ts';
+import type { ExecutionContext, Executed, PreparedSpec } from '../primitive/primitive.ts';
+import { issuesUnder, type Refusal } from './issue-pointers.ts';
+
+const decodeExecuted = Schema.decodeUnknownEffect(
+  Schema.Union([
+    Schema.Struct({ output: Schema.Json, record: Schema.JsonObject }),
+    Schema.Struct({ finishesLater: Schema.Literal(true), record: Schema.JsonObject }),
+  ]),
+);
+
+export const failedAttempt: ExecutionResult = { type: 'execution_failed' };
+
+function recordedOutcome(executed: Executed): Effect.Effect<ExecutionOutcome> {
+  return 'finishesLater' in executed
+    ? withinResultLimit(executed.record).pipe(
+        Effect.map((): ExecutionOutcome => ({ type: 'execution_deferred', record: executed.record })),
+      )
+    : withinResultLimit(executed.output, executed.record).pipe(
+        Effect.map((): ExecutionOutcome => ({
+          type: 'execution_succeeded',
+          output: executed.output,
+          record: executed.record,
+        })),
+      );
+}
+
+function outcomeOf(executed: Executed): Effect.Effect<ExecutionOutcome> {
+  return decodeExecuted(executed).pipe(Effect.orDie, Effect.flatMap(recordedOutcome));
+}
+
+function rejectedForInput({ detail, issues }: Refusal): Effect.Effect<ExecutionResult> {
+  return Effect.succeed({
+    type: 'execution_rejected',
+    rejection: { reason: 'invalid_input', detail, issues: issuesUnder('input', issues) },
+  });
+}
+
+function rejectedAsUnavailable({ detail }: { readonly detail: string }): Effect.Effect<ExecutionResult> {
+  return Effect.succeed({ type: 'execution_rejected', rejection: { reason: 'unavailable', detail } });
+}
+
+export function attempt(
+  prepared: PreparedSpec,
+  input: Schema.Json,
+  execution: ExecutionContext,
+): Effect.Effect<ExecutionOutcome> {
+  return prepared
+    .execute(input, execution)
+    .pipe(
+      Effect.flatMap(outcomeOf),
+      Effect.catchTags({ invalid_input: rejectedForInput, unavailable: rejectedAsUnavailable }),
+    );
+}

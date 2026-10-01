@@ -9,8 +9,6 @@ type IssueSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
 
 const strictly: SchemaAST.ParseOptions = { onExcessProperty: 'error', errors: 'all' };
 
-const mostIssues = 100;
-
 const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 
 const asJsonObject = Schema.decodeUnknownEffect(Schema.Record(Schema.String, Schema.Json));
@@ -23,7 +21,7 @@ function invalidInput({ issues }: StandardSchema.StandardSchemaV1.FailureResult)
   return rejected(
     'invalid_input',
     'The input does not match the input schema',
-    issues.slice(0, mostIssues).map(({ message, path = [] }) => ({
+    issues.map(({ message, path = [] }) => ({
       detail: message,
       pointer: pointerOf(path.filter((segment) => isPropertyKey(segment))),
     })),

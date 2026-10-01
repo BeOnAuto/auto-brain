@@ -1,8 +1,9 @@
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainReader, BrainWriter, NotFound, defineQuery } from '../index.ts';
+import { BrainReader, BrainWriter, InvalidInput, NotFound, defineQuery } from '../index.ts';
 import { labelBrain } from '../testing/brain-labels.ts';
+import { publishDraft } from '../testing/drafts.ts';
 import { memoryLedger } from '../testing/memory-ledger.ts';
 import { misreport, overshare } from '../testing/misbehaving.ts';
 import { addNote, getNote } from '../testing/notes.ts';
@@ -164,5 +165,22 @@ describe('the typed call', () => {
 
     expect(await Effect.runPromise(withNotes(schemaDefectOf(addNote.call(anvilWithExtra))))).toBe(true);
     expect(await Effect.runPromise(schemaDefectOf(overshare.call({})))).toBe(true);
+  });
+});
+
+describe('invalid input from a handler', () => {
+  it('is a reason a definition declares like any other', () => {
+    expect(publishDraft.registration).toMatchObject({ kind: 'command', reasons: ['invalid_input'] });
+  });
+
+  it('reaches the typed call as the handler gives it', async () => {
+    const rejection = await Effect.runPromise(Effect.flip(publishDraft.call({ lines: ['wrong'] })));
+
+    expect(rejection).toEqual(
+      new InvalidInput({
+        detail: 'The draft has lines to fix',
+        issues: [{ detail: 'Line 1 must start with a capital letter', pointer: '/lines/0' }],
+      }),
+    );
   });
 });

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { rejected, type PipelineStep } from '../index.ts';
 import { labelBrain } from '../testing/brain-labels.ts';
 import { acmeAdmin } from '../testing/callers.ts';
+import { publishDraft } from '../testing/drafts.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
 import { addNote, copyNote, getNote, listNotes } from '../testing/notes.ts';
 
@@ -68,6 +69,40 @@ describe('a dispatched handler', () => {
   });
 });
 
+describe('a dispatched handler rejecting with invalid input', () => {
+  it('is rejected with invalid_input, its detail and the issues it points at', async () => {
+    const { dispatcher, run } = harness();
+    const publishing = (lines: readonly string[]) =>
+      run(dispatcher.dispatchToBrain(publishDraft.registration, toAlpha(acmeAdmin, { lines })));
+
+    expect(await publishing(['Fine', 'wrong', 'Good', 'bad'])).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'The draft has lines to fix',
+      issues: [
+        { detail: 'Line 2 must start with a capital letter', pointer: '/lines/1' },
+        { detail: 'Line 4 must start with a capital letter', pointer: '/lines/3' },
+      ],
+    });
+    expect(await publishing(['Fine', 'Good'])).toEqual({ status: 'succeeded', output: { published: 2 } });
+  });
+
+  it('answers at most one hundred of its issues', async () => {
+    const { dispatcher, run } = harness();
+    const lines = Array.from({ length: 150 }, () => 'lowercase');
+
+    expect(await run(dispatcher.dispatchToBrain(publishDraft.registration, toAlpha(acmeAdmin, { lines })))).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'The draft has lines to fix',
+      issues: Array.from({ length: 100 }, (_unused, index) => ({
+        detail: `Line ${index + 1} must start with a capital letter`,
+        pointer: `/lines/${index}`,
+      })),
+    });
+  });
+});
+
 describe('pipeline steps', () => {
   it('run in order once a call is authorized and its brain exists, before its input is decoded', async () => {
     const { steps, passed } = recordedSteps();
@@ -83,6 +118,21 @@ describe('pipeline steps', () => {
 
     expect(invalid).toMatchObject({ reason: 'invalid_input' });
     expect(passed()).toEqual(['first get_note in acme', 'second get_note in acme']);
+  });
+
+  it('reject with at most one hundred issues, each holding only its detail and pointer', async () => {
+    const issues = Array.from({ length: 150 }, (_unused, index) => ({ detail: 'busy', pointer: `/${index}`, at: 1 }));
+    const crowded: PipelineStep = () => Effect.fail(rejected('unavailable', 'The org is busy', issues));
+    const { dispatcher, run } = harness({ steps: [crowded] });
+
+    const outcome = await run(dispatcher.dispatchToBrain(listNotes.registration, toAlpha(acmeAdmin)));
+
+    expect(outcome).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'The org is busy',
+      issues: Array.from({ length: 100 }, (_unused, index) => ({ detail: 'busy', pointer: `/${index}` })),
+    });
   });
 
   it('may reject a call before its handler runs', async () => {
