@@ -47,9 +47,16 @@ function retryAfterMs(headers: Readonly<Record<string, string>> | undefined, now
   return after === undefined ? null : retryAfterSeconds(after, now);
 }
 
+const documentStart = /^[[{<]/u;
+
+function quotesBody(message: string, responseBody: string | undefined): boolean {
+  return responseBody !== undefined && responseBody.trim() !== '' && message.includes(responseBody.trim());
+}
+
 function providerMessage(message: string, responseBody: string | undefined): string | null {
-  const quotesBody = responseBody !== undefined && responseBody.trim() !== '' && message.includes(responseBody.trim());
-  return quotesBody || message.trim() === '' ? null : message.slice(0, mostProviderMessageCharacters);
+  const trimmed = message.trim();
+  const unusable = trimmed === '' || documentStart.test(trimmed) || quotesBody(trimmed, responseBody);
+  return unusable ? null : trimmed.slice(0, mostProviderMessageCharacters);
 }
 
 function rejectedRequest({ provider, message, responseBody, data }: ApiCallDetails, code: number): ModelFailure {

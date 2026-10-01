@@ -22,6 +22,10 @@ async function failureFor(response: () => Response): Promise<ModelFailure> {
   return failure;
 }
 
+function staticAwsCredentials() {
+  return Promise.resolve({ accessKeyId: 'AKIDEXAMPLE', secretAccessKey: 'secret' });
+}
+
 function retryAfterOf(failure: unknown): number | null {
   return failure instanceof RateLimited ? failure.retry_after_ms : null;
 }
@@ -38,13 +42,31 @@ describe('a provider that rejects the request', () => {
       detail: `openai rejected the request as invalid (HTTP ${status})`,
     });
   });
+});
 
+describe('the provider message of a rejected request', () => {
   it('never quotes a raw response body', async () => {
     const failure = await failureFor(() => new Response('upstream said no', { status: 400 }));
 
     expect(failure).toMatchObject({ _tag: 'spec_invalid', provider_message: null });
   });
 
+  it('never quotes a body that the SDK passes on as the message', async () => {
+    const body = JSON.stringify({ upstream: { echoed: promptText } });
+    const recording = recordingFetch(() => new Response(body, { status: 400 }));
+    const access = await accessFor(
+      { AWS_REGION: 'us-east-1' },
+      { fetch: recording.fetch, credentials: { aws: staticAwsCredentials } },
+    );
+
+    const failure = await failed(access, textRequest('bedrock-anthropic/us.anthropic.claude-sonnet-4-5-20250929-v1:0'));
+
+    expect(failure).toMatchObject({ _tag: 'spec_invalid', provider: 'bedrock-anthropic', provider_message: null });
+    expect(exposedText(failure)).not.toContain(promptText);
+  });
+});
+
+describe('a provider that refuses or will not authorise the request', () => {
   it('fails as content_refused when the request breaks the content policy', async () => {
     const failure = await failureFor(() => jsonResponse(openAiError('The prompt was filtered', 'content_filter'), 400));
 
