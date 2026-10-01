@@ -20,18 +20,18 @@ export { OrgReader } from './ledger/org-reader.ts';
 export { OrgScope, type OrgAddress } from './caller/org-scope.ts';
 export { OrgWriter } from './ledger/org-writer.ts';
 export {
-  refused,
-  type Done,
-  type Faulted,
+  rejected,
+  type Succeeded,
+  type Failed,
   type Issue,
   type Outcome,
-  type Refused,
-  type RefusalReason,
+  type Rejected,
+  type RejectionReason,
   type Settled,
-  type Stopped,
+  type Cancelled,
 } from './outcome/outcome.ts';
 export { PermissionSchema, everyPermission, permissionFor, type Permission } from './caller/permission.ts';
-export type { DeclarableReason, Refusal } from './outcome/refusal.ts';
+export type { DeclarableReason, Rejection } from './outcome/rejection.ts';
 export type { InputForm, Registration, RegistrationOf } from './definition/registration.ts';
 export type { BrainRequest, OrgRequest } from './dispatch/request.ts';
 export type { Method, Route } from './definition/route.ts';

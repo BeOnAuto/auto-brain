@@ -1,7 +1,7 @@
 import type { Effect, Schema } from 'effect';
 
 import type { Kind, Scope } from '../caller/scope.ts';
-import type { DeclarableReason, Refusal } from '../outcome/refusal.ts';
+import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { PathParameters, Route } from './route.ts';
 
 interface ObjectValue {
@@ -46,5 +46,5 @@ export interface Definition<
   readonly inputSchema: In;
   readonly outputSchema: Out;
   readonly reasons: readonly R[];
-  readonly handle: (input: In['Type']) => Effect.Effect<Out['Type'], NoInfer<Refusal<R>>, Services>;
+  readonly handle: (input: In['Type']) => Effect.Effect<Out['Type'], NoInfer<Rejection<R>>, Services>;
 }

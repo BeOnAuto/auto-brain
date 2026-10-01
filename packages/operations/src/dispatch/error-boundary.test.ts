@@ -6,7 +6,7 @@ import { IncidentReporter, makeDispatcher, type Outcome } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
 import { memoryBrainDirectory, memoryLedger } from '../testing/index.ts';
-import { breakAndGiveUp, explode, misreport, overshare, refuseUndeclared } from '../testing/misbehaving.ts';
+import { breakAndGiveUp, explode, misreport, overshare, rejectUndeclared } from '../testing/misbehaving.ts';
 
 const toAlpha = toBrain('acme', 'alpha');
 
@@ -41,7 +41,7 @@ describe('a defect in a call', () => {
 
     const outcome = await run(dispatcher.inBrain(explode.registration, toAlpha(acmeAdmin)));
 
-    expect(outcome).toEqual({ status: 'faulted', incident: reported()[0]?.id });
+    expect(outcome).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(reported()[0]?.id).toMatch(incidentId);
     expect(reported()).toEqual([
       { id: reported()[0]?.id, original: new Error('the store password is hunter2'), call: callOnAlpha },
@@ -54,15 +54,15 @@ describe('a defect in a call', () => {
     const misreported = await run(dispatcher.inOrg(misreport.registration, toOrg('acme')(acmeAdmin)));
     const overshared = await run(dispatcher.inBrain(overshare.registration, toAlpha(acmeAdmin)));
 
-    expect([misreported, overshared]).toEqual(reported().map(({ id }) => ({ status: 'faulted', incident: id })));
+    expect([misreported, overshared]).toEqual(reported().map(({ id }) => ({ status: 'failed', incident: id })));
     expect(reported()[0]?.call).toEqual({ operation: 'misreport', org: 'acme', caller: 'acme-admin' });
   });
 
-  it('includes a refusal the handler did not declare', async () => {
+  it('includes a rejection the handler did not declare', async () => {
     const { dispatcher, reported, run } = harness();
 
-    expect(await run(dispatcher.inBrain(refuseUndeclared.registration, toAlpha(acmeAdmin)))).toMatchObject({
-      status: 'faulted',
+    expect(await run(dispatcher.inBrain(rejectUndeclared.registration, toAlpha(acmeAdmin)))).toMatchObject({
+      status: 'failed',
     });
     expect(reported().map(({ original }) => original)).toMatchObject([{ detail: 'taken' }]);
   });
@@ -71,14 +71,14 @@ describe('a defect in a call', () => {
     const { dispatcher, reported, run } = harness();
 
     expect(await run(dispatcher.inBrain(breakAndGiveUp.registration, toAlpha(acmeAdmin)))).toEqual({
-      status: 'faulted',
+      status: 'failed',
       incident: reported()[0]?.id,
     });
   });
 });
 
 describe('the incident reporter', () => {
-  it('is given two seconds, after which the incident id is logged and the call still faults', async () => {
+  it('is given two seconds, after which the incident id is logged and the call still fails', async () => {
     const { incident, logged } = await explodingWith(() => Effect.never);
 
     expect(incident).toMatch(incidentId);

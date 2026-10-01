@@ -80,7 +80,7 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
     ...emptyInputAndOutput,
     answering,
   ]),
-  'declared-refusal.ts': defined('defineCommand', 'brain', [
+  'declared-rejection.ts': defined('defineCommand', 'brain', [
     post,
     '  inputSchema: Empty,',
     '  outputSchema: Empty,',
@@ -135,7 +135,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
     because: "Type 'IncidentReporter' is not assignable to type 'BrainReader | BrainScope | Caller'",
     source: defined('defineQuery', 'brain', [get, ...emptyInputAndOutput, asking('IncidentReporter')]),
   },
-  'undeclared-refusal.ts': {
+  'undeclared-rejection.ts': {
     because: "Type 'Conflict' is not assignable to type 'NotFound'",
     source: defined('defineCommand', 'brain', [
       post,

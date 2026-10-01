@@ -2,18 +2,18 @@ import { Effect } from 'effect';
 
 import type { Registration } from '../definition/registration.ts';
 import { Ledger } from '../ledger/ledger.ts';
-import type { Outcome, Refused } from '../outcome/outcome.ts';
+import type { Outcome, Rejected } from '../outcome/outcome.ts';
 import { admitToBrain, admitToOrg } from './admission.ts';
 import { runInBrain } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
-import { concluded } from './fault-boundary.ts';
+import { concluded } from './error-boundary.ts';
 import { runInOrg } from './org-binding.ts';
 import type { BrainRequest, OrgRequest } from './request.ts';
 
 export type PipelineStep = (
   registration: Registration,
   request: OrgRequest | BrainRequest,
-) => Effect.Effect<void, Refused>;
+) => Effect.Effect<void, Rejected>;
 
 export interface Dispatcher {
   readonly inOrg: (

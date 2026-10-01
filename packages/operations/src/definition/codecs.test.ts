@@ -30,13 +30,13 @@ function treeNested(depth: number): unknown {
 }
 
 describe('the input of a call', () => {
-  it('is refused with a pointer to every problem', async () => {
+  it('is rejected with a pointer to every problem', async () => {
     const { dispatcher, run } = harness();
 
     expect(
       await run(dispatcher.inBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'Anvil', 'a/b': 1 }))),
     ).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'invalid_input',
       detail: 'The input does not match the input schema',
       issues: [
@@ -58,7 +58,7 @@ describe('the input of a call', () => {
 });
 
 describe('an input that cannot be decoded', () => {
-  it('is refused with at most one hundred issues', async () => {
+  it('is rejected with at most one hundred issues', async () => {
     const { dispatcher, run } = harness();
     const manyUnknownKeys = Object.fromEntries(Array.from({ length: 150 }, (_unused, index) => [`key${index}`, index]));
 
@@ -68,17 +68,17 @@ describe('an input that cannot be decoded', () => {
     });
   });
 
-  it('is refused, not faulted, when it is nested too deeply to decode', async () => {
+  it('is rejected, without failing the call, when it is nested too deeply to decode', async () => {
     const { dispatcher, reported, run } = harness();
 
     expect(await run(dispatcher.inBrain(holdTree.registration, toAlpha(acmeAdmin, { tree: treeNested(10) })))).toEqual({
-      status: 'done',
+      status: 'succeeded',
       output: { held: true },
     });
     expect(
       await run(dispatcher.inBrain(holdTree.registration, toAlpha(acmeAdmin, { tree: treeNested(5_000) }))),
     ).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'invalid_input',
       detail: 'The input is nested too deeply',
       issues: [{ detail: 'The input is nested too deeply', pointer: '' }],
@@ -94,14 +94,14 @@ function listing(input: unknown) {
 
 describe('the input of a call as strings', () => {
   it('is decoded through the input schema, as from a query string', async () => {
-    expect(await listing({ limit: '1' })).toEqual({ status: 'done', output: { notes: [] } });
+    expect(await listing({ limit: '1' })).toEqual({ status: 'succeeded', output: { notes: [] } });
     expect(await listing({ limit: 'many' })).toMatchObject({
       reason: 'invalid_input',
       issues: [{ pointer: '/limit' }],
     });
   });
 
-  it('refuses keys the schema does not declare, pointing at every problem', async () => {
+  it('rejects keys the schema does not declare, pointing at every problem', async () => {
     expect(await listing({ limit: 'many', other: 'x' })).toMatchObject({
       reason: 'invalid_input',
       issues: [{ detail: 'Expected no excess property', pointer: '/other' }, { pointer: '/limit' }],

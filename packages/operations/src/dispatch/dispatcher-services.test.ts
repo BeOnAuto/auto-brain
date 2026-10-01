@@ -12,19 +12,19 @@ describe('a handler at run time', () => {
     const view = { caller: 'acme-admin', org: 'acme' };
 
     expect(await run(dispatcher.inOrg(peekOrgQuery.registration, toAcme(acmeAdmin)))).toEqual({
-      status: 'done',
+      status: 'succeeded',
       output: { ...view, visible: ['Caller', 'OrgScope', 'OrgReader'] },
     });
     expect(await run(dispatcher.inOrg(peekOrgCommand.registration, toAcme(acmeAdmin)))).toEqual({
-      status: 'done',
+      status: 'succeeded',
       output: { ...view, visible: ['Caller', 'OrgScope', 'OrgReader', 'OrgWriter'] },
     });
     expect(await run(dispatcher.inBrain(peekBrainQuery.registration, toAlpha(acmeAdmin)))).toEqual({
-      status: 'done',
+      status: 'succeeded',
       output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainScope', 'BrainReader'] },
     });
     expect(await run(dispatcher.inBrain(peekBrainCommand.registration, toAlpha(acmeAdmin)))).toEqual({
-      status: 'done',
+      status: 'succeeded',
       output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainScope', 'BrainReader', 'BrainWriter'] },
     });
   });

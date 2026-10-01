@@ -1,8 +1,8 @@
 import { Effect, Result } from 'effect';
 
 import type { Kind, Scope } from '../caller/scope.ts';
-import { done, refused } from '../outcome/outcome.ts';
-import type { DeclarableReason, Refusal } from '../outcome/refusal.ts';
+import { succeeded, rejected } from '../outcome/outcome.ts';
+import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import { inputDecoder, outputEncoder, typeValidator } from './codecs.ts';
 import { checkedDefinition } from './definition-checks.ts';
 import type { Definition, InputSchemaFor, ObjectSchema, RelativePath } from './definition.ts';
@@ -12,7 +12,7 @@ import type { InputForm, RegistrationOf } from './registration.ts';
 
 export interface Operation<S extends Scope, K extends Kind, Input, Output, R extends DeclarableReason, Services> {
   readonly registration: RegistrationOf<S, K>;
-  readonly call: (input: Input) => Effect.Effect<Output, Refusal<R>, Services>;
+  readonly call: (input: Input) => Effect.Effect<Output, Rejection<R>, Services>;
 }
 
 export function defineQuery<
@@ -80,9 +80,9 @@ function defineOperation<
         const handled = yield* Effect.result(handle(yield* decodeInput(input, form)));
         if (Result.isFailure(handled)) {
           const { _tag: reason, detail } = handled.failure;
-          return yield* reasons.includes(reason) ? Effect.fail(refused(reason, detail)) : Effect.die(handled.failure);
+          return yield* reasons.includes(reason) ? Effect.fail(rejected(reason, detail)) : Effect.die(handled.failure);
         }
-        return done(yield* encodeOutput(handled.success));
+        return succeeded(yield* encodeOutput(handled.success));
       }),
     },
     call: (input) => validateInput(input).pipe(Effect.flatMap(handle), Effect.tap(validateOutput)),

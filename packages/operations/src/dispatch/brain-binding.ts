@@ -7,14 +7,14 @@ import { readerWithin, streamPrefixOfBrain, writerWithin } from '../ledger/bound
 import { BrainReader } from '../ledger/brain-reader.ts';
 import { BrainWriter } from '../ledger/brain-writer.ts';
 import type { StreamReader, StreamWriter } from '../ledger/stream-ports.ts';
-import type { Done, Refused } from '../outcome/outcome.ts';
+import type { Succeeded, Rejected } from '../outcome/outcome.ts';
 import type { BrainRequest } from './request.ts';
 
 export function runInBrain(
   registration: Registration<'brain'>,
   { caller, org, brain, input, form }: BrainRequest,
   ledger: StreamReader & StreamWriter,
-): Effect.Effect<Done, Refused> {
+): Effect.Effect<Succeeded, Rejected> {
   const prefix = streamPrefixOfBrain({ org, brain });
   const forQueries = Context.make(Caller, caller).pipe(
     Context.add(BrainScope, { org, brain }),

@@ -7,14 +7,14 @@ import { readerWithin, streamPrefixOfOrg, writerWithin } from '../ledger/bound-p
 import { OrgReader } from '../ledger/org-reader.ts';
 import { OrgWriter } from '../ledger/org-writer.ts';
 import type { StreamReader, StreamWriter } from '../ledger/stream-ports.ts';
-import type { Done, Refused } from '../outcome/outcome.ts';
+import type { Succeeded, Rejected } from '../outcome/outcome.ts';
 import type { OrgRequest } from './request.ts';
 
 export function runInOrg(
   registration: Registration<'org'>,
   { caller, org, input, form }: OrgRequest,
   ledger: StreamReader & StreamWriter,
-): Effect.Effect<Done, Refused> {
+): Effect.Effect<Succeeded, Rejected> {
   const prefix = streamPrefixOfOrg({ org });
   const forQueries = Context.make(Caller, caller).pipe(
     Context.add(OrgScope, { org }),

@@ -10,7 +10,7 @@ const toAcme = toOrg('acme');
 
 const alphaWriter: CallerIdentity = { ...acmeAlphaReader, id: 'acme-alpha-writer', permissions: ['org:write'] };
 
-const outOfReach = { status: 'refused', reason: 'forbidden', detail: 'The caller may not reach this brain' };
+const outOfReach = { status: 'rejected', reason: 'forbidden', detail: 'The caller may not reach this brain' };
 
 describe('the brain an org operation addresses', () => {
   it('is its input field named brain, wherever that field arrives from', async () => {
@@ -24,7 +24,7 @@ describe('the brain an org operation addresses', () => {
     ).toEqual(outOfReach);
     expect(
       await run(dispatcher.inOrg(relabelBrain.registration, toAcme(alphaWriter, { brain: 'alpha', label: 'x' }))),
-    ).toEqual({ status: 'done', output: { brain: 'alpha', label: 'x' } });
+    ).toEqual({ status: 'succeeded', output: { brain: 'alpha', label: 'x' } });
   });
 
   it('is reached only by a caller whose list holds it, whatever the field carries', async () => {
@@ -38,7 +38,7 @@ describe('the brain an org operation addresses', () => {
       outOfReach,
     ]);
     expect(await asking({ brain: 'alpha' })).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'not_found',
       detail: 'The brain alpha has no label',
     });
@@ -53,7 +53,7 @@ describe('the brain an org operation addresses', () => {
       false,
     ]);
     expect(await run(dispatcher.inOrg(listBrainLabels.registration, toAcme(acmeAlphaReader)))).toEqual({
-      status: 'done',
+      status: 'succeeded',
       output: { labels: [] },
     });
   });

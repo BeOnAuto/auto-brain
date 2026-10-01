@@ -1,6 +1,6 @@
 import { Cause, Effect, Result, Schema, SchemaIssue, type SchemaAST, type StandardSchema } from 'effect';
 
-import { refused, type Refused } from '../outcome/outcome.ts';
+import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { pointerOf } from '../outcome/pointer.ts';
 import type { ObjectSchema } from './definition.ts';
 import type { InputForm } from './registration.ts';
@@ -19,8 +19,8 @@ function isPropertyKey(segment: IssueSegment): segment is PropertyKey {
   return typeof segment !== 'object';
 }
 
-function invalidInput({ issues }: StandardSchema.StandardSchemaV1.FailureResult): Refused {
-  return refused(
+function invalidInput({ issues }: StandardSchema.StandardSchemaV1.FailureResult): Rejected {
+  return rejected(
     'invalid_input',
     'The input does not match the input schema',
     issues.slice(0, mostIssues).map(({ message, path = [] }) => ({
@@ -30,8 +30,8 @@ function invalidInput({ issues }: StandardSchema.StandardSchemaV1.FailureResult)
   );
 }
 
-function nestedTooDeeply(): Refused {
-  return refused('invalid_input', 'The input is nested too deeply', [
+function nestedTooDeeply(): Rejected {
+  return rejected('invalid_input', 'The input is nested too deeply', [
     { detail: 'The input is nested too deeply', pointer: '' },
   ]);
 }
@@ -42,7 +42,7 @@ function overflowedTheStack<E>(cause: Cause.Cause<E>): boolean {
 
 export function inputDecoder<In extends ObjectSchema>(
   schema: In,
-): (input: unknown, form: InputForm) => Effect.Effect<In['Type'], Refused> {
+): (input: unknown, form: InputForm) => Effect.Effect<In['Type'], Rejected> {
   const decoders = {
     json: Schema.decodeUnknownEffect(Schema.toCodecJson(schema), strictly),
     strings: Schema.decodeUnknownEffect(Schema.toCodecStringTree(schema), strictly),

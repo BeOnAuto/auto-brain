@@ -1,8 +1,8 @@
 import type { Effect } from 'effect';
 
 import type { Kind, Scope } from '../caller/scope.ts';
-import type { Done, Refused } from '../outcome/outcome.ts';
-import type { DeclarableReason } from '../outcome/refusal.ts';
+import type { Succeeded, Rejected } from '../outcome/outcome.ts';
+import type { DeclarableReason } from '../outcome/rejection.ts';
 import type { SuccessStatusByKind } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import type { JsonSchemaDocument } from './json-schema.ts';
@@ -23,7 +23,7 @@ export interface RegistrationOf<S extends Scope, K extends Kind> {
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly output: JsonSchemaDocument;
-  readonly run: (input: unknown, form: InputForm) => Effect.Effect<Done, Refused, HandlerServices<S, K>>;
+  readonly run: (input: unknown, form: InputForm) => Effect.Effect<Succeeded, Rejected, HandlerServices<S, K>>;
 }
 
 export type Registration<S extends Scope = Scope> = {

@@ -15,14 +15,14 @@ function holding(...permissions: CallerIdentity['permissions']): CallerIdentity 
 }
 
 describe('admission of a caller', () => {
-  it('refuses a caller of another org identically for an existing and a missing brain', async () => {
+  it('rejects a caller of another org identically for an existing and a missing brain', async () => {
     const { dispatcher, run } = harness();
 
     const existing = await run(dispatcher.inBrain(getNote.registration, toBrain('globex', 'gamma')(acmeAdmin)));
     const missing = await run(dispatcher.inBrain(getNote.registration, toBrain('globex', 'nowhere')(acmeAdmin)));
 
     expect(existing).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'forbidden',
       detail: 'The caller does not belong to this org',
     });
@@ -57,13 +57,17 @@ describe('admission of a caller', () => {
 });
 
 describe('admission to a brain', () => {
-  it('refuses a brain out of reach identically whether it exists or not', async () => {
+  it('rejects a brain out of reach identically whether it exists or not', async () => {
     const { dispatcher, run } = harness();
 
     const existing = await run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'beta')(acmeAlphaReader)));
     const missing = await run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'nowhere')(acmeAlphaReader)));
 
-    expect(existing).toEqual({ status: 'refused', reason: 'forbidden', detail: 'The caller may not reach this brain' });
+    expect(existing).toEqual({
+      status: 'rejected',
+      reason: 'forbidden',
+      detail: 'The caller may not reach this brain',
+    });
     expect(missing).toEqual(existing);
   });
 
@@ -71,17 +75,17 @@ describe('admission to a brain', () => {
     const { dispatcher, run } = harness();
 
     expect(await run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'nowhere')(acmeAdmin)))).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'not_found',
       detail: 'There is no brain nowhere in this org',
     });
   });
 
-  it('refuses an ill-formed brain id before asking the directory, without echoing it', async () => {
+  it('rejects an ill-formed brain id before asking the directory, without echoing it', async () => {
     const { dispatcher, run } = harness({ brains: [{ org: 'acme', brain: 'No Brain' }] });
 
     expect(await run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'No Brain')(acmeAdmin)))).toEqual({
-      status: 'refused',
+      status: 'rejected',
       reason: 'not_found',
       detail: 'There is no such brain in this org',
     });
@@ -114,7 +118,7 @@ describe('the org id of a call', () => {
 
   it('must be well formed, at org and at brain scope', async () => {
     const { dispatcher, run } = harness({ brains: [{ org: illFormed, brain: 'alpha' }] });
-    const noSuchOrg = { status: 'refused', reason: 'not_found', detail: 'There is no such org' };
+    const noSuchOrg = { status: 'rejected', reason: 'not_found', detail: 'There is no such org' };
 
     expect(await run(dispatcher.inOrg(listBrainLabels.registration, toOrg(illFormed)(localDeveloper)))).toEqual(
       noSuchOrg,
@@ -125,7 +129,7 @@ describe('the org id of a call', () => {
   });
 });
 
-describe('a refusal of admission', () => {
+describe('a rejection of admission', () => {
   it('is a value of its own that a consumer may not spoil for later calls', async () => {
     const { dispatcher, run } = harness();
     const outOfReach = () => run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'beta')(acmeAlphaReader)));
