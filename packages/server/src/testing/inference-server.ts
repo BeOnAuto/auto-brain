@@ -8,6 +8,7 @@ import { request, type RequestOptions, type TestResponse } from './http-client.t
 import { temporaryLedger } from './temporary-ledger.ts';
 
 export interface InferenceServer {
+  readonly origin: string;
   readonly call: (method: string, path: string, options?: RequestOptions) => Promise<TestResponse>;
   readonly modelCalls: () => number;
   readonly stop: () => Promise<void>;
@@ -30,6 +31,7 @@ export async function servingInference(
     ),
   );
   return {
+    origin: `http://127.0.0.1:${server.port}`,
     call: (method, path, options) => request(server.port, method, path, options),
     modelCalls: () => scripted.requests().length,
     stop: async () => {
