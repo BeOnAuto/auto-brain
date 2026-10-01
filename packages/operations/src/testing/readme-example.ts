@@ -5,11 +5,15 @@ const LabelSchema = Schema.Struct({ name: Schema.String, text: Schema.String });
 
 type Label = typeof LabelSchema.Type;
 
-export const labels: Decider<readonly Label[], Label, Label> = {
+const LabelWrittenSchema = Schema.Struct({ type: Schema.Literal('label_written'), label: LabelSchema });
+
+type LabelWritten = typeof LabelWrittenSchema.Type;
+
+export const labels: Decider<readonly Label[], Label, LabelWritten> = {
   initialState: [],
-  evolve: (written, label) => [...written, label],
-  decide: (label) => Result.succeed([label]),
-  eventSchema: LabelSchema,
+  evolve: (written, { label }) => [...written, label],
+  decide: (label) => Result.succeed([{ type: 'label_written', label }]),
+  eventSchema: LabelWrittenSchema,
 };
 
 export const getLabel = defineQuery('org', {

@@ -14,11 +14,15 @@ const LabelSchema = Schema.Struct({ name: Schema.String, text: Schema.String });
 
 type Label = typeof LabelSchema.Type;
 
-export const labels: Decider<readonly Label[], Label, Label> = {
+const LabelWrittenSchema = Schema.Struct({ type: Schema.Literal('label_written'), label: LabelSchema });
+
+type LabelWritten = typeof LabelWrittenSchema.Type;
+
+export const labels: Decider<readonly Label[], Label, LabelWritten> = {
   initialState: [],
-  evolve: (written, label) => [...written, label],
-  decide: (label) => Result.succeed([label]),
-  eventSchema: LabelSchema,
+  evolve: (written, { label }) => [...written, label],
+  decide: (label) => Result.succeed([{ type: 'label_written', label }]),
+  eventSchema: LabelWrittenSchema,
 };
 
 export const getLabel = defineQuery('org', {
@@ -98,7 +102,7 @@ The dispatcher needs a `Ledger`, a `BrainDirectory` and an `IncidentReporter`. H
 
 ## The ledger ports
 
-A `Decider` holds the event-sourced rules of a stream: its initial state, how an event evolves the state, how a command decides on new events or a refusal, and the schema of its events.
+A `Decider` holds the event-sourced rules of a stream: its initial state, how an event evolves the state, how a command decides on new events or a refusal, and the schema of its events. Every event has a string `type` naming what happened, which the ledger records beside it.
 
 `Ledger` is the unbound port. It addresses streams by full name, loads a stream's state and version by folding its events, and runs a command through a decider, refusing with `conflict` when the stream moved. The version of a stream is the number of events in it, 0 for a stream that does not exist. A conflict's detail must not name the stream. Its implementation lives with the ledger.
 
