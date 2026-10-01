@@ -8,7 +8,7 @@ import { spawnServer } from './testing/spawned-server.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-routes.ts', import.meta.url));
 
-const loopback = { HOST: '127.0.0.1', PORT: '0' };
+const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
 
 describe('shutting down the server process', () => {
   it('lets a slow request finish after SIGTERM and exits 0 before the shutdown timeout', async () => {

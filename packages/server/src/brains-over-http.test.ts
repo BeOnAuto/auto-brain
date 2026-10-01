@@ -12,7 +12,10 @@ let server: RunningServer;
 
 beforeEach(async () => {
   ledger = temporaryLedger();
-  server = await startServer({ HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName }, compositionRoot);
+  server = await startServer(
+    { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, LOCAL_MODE: 'true' },
+    compositionRoot,
+  );
 });
 
 afterEach(async () => {

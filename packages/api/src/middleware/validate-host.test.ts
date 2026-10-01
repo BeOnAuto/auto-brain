@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { call, echoRequestId, createTestHandler } from '../testing/api-calls.ts';
 
-const localAccess = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined });
+const localAccess = authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true });
 
 describe('the Host check in local mode', () => {
   it.each(['localhost', 'localhost:8080', '127.0.0.1', '127.0.0.1:1', '[::1]', '[::1]:443', 'LocalHost:3000'])(

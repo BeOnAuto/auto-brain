@@ -10,7 +10,7 @@ describe('HTTP server', () => {
   });
 
   async function request(path: string, method = 'GET'): Promise<{ status: number; body: unknown }> {
-    server = await startServer({ HOST: '127.0.0.1', PORT: '0' }, defaultServerOptions);
+    server = await startServer({ HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' }, defaultServerOptions);
     const response = await fetch(`http://127.0.0.1:${server.port}${path}`, { method });
     return { status: response.status, body: await response.json() };
   }

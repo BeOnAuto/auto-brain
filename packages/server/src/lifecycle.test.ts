@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { runServer, startServer, tcpPort, defaultServerOptions, type ServerProcess } from './lifecycle.ts';
 import { testRoutes } from './testing/test-routes.ts';
 
-const loopback = { HOST: '127.0.0.1', PORT: '0' };
+const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
 
 function fakeProcess(env: Environment = loopback): {
   serverProcess: ServerProcess;

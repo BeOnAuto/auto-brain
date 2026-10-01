@@ -5,13 +5,19 @@ import { Cause, Effect, Logger } from 'effect';
 export const jsonLogsToStderr = Logger.layer([Logger.withConsoleError(Logger.formatJson)]);
 
 const accessNotices: Readonly<Record<AccessMode, Effect.Effect<void>>> = {
-  local: Effect.logInfo('Local mode is on: the server listens only on loopback and no API keys are configured'),
+  local: Effect.logWarning(
+    'Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy',
+  ),
   closed: Effect.logWarning('Local mode is off and no API keys are configured'),
   keys: Effect.void,
 };
 
-export function logAccessMode(mode: AccessMode): Effect.Effect<void> {
-  return accessNotices[mode];
+const localModeIgnored = Effect.logWarning('LOCAL_MODE is ignored because API keys are configured');
+
+export function logAccessMode(mode: AccessMode, localModeRequested: boolean): Effect.Effect<void> {
+  return localModeRequested && mode !== 'local'
+    ? Effect.andThen(accessNotices[mode], localModeIgnored)
+    : accessNotices[mode];
 }
 
 export function logIncident({ id, original, call }: Incident): Effect.Effect<void> {

@@ -46,7 +46,7 @@ export async function startServer<R>(environment: Environment, options: ServerOp
   const settings = readSettings(environment);
   const authenticator = authenticatorFor(settings);
   const runtime = await startRuntime(options.runtimeLayer(settings));
-  await runtime.run(logAccessMode(authenticator.mode));
+  await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,
     authenticator,

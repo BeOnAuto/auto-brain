@@ -1,4 +1,5 @@
 import type { ApiKey } from './api-key.ts';
+import { InvalidLocalModeError } from './invalid-local-mode-error.ts';
 import { listensOnlyOnLoopback } from './loopback.ts';
 import { localDeveloper, principalOf, type Principal } from './principal.ts';
 import { verifyKey } from './verify-key.ts';
@@ -13,6 +14,7 @@ export interface Authenticator {
 export interface AccessSettings {
   readonly host: string;
   readonly apiKeys: readonly ApiKey[] | undefined;
+  readonly localMode: boolean;
 }
 
 function keyHolderOf(keys: readonly ApiKey[], presentedKey: string | undefined): Principal | undefined {
@@ -24,9 +26,14 @@ const localAccess: Authenticator = { mode: 'local', authenticate: () => localDev
 
 const closedAccess: Authenticator = { mode: 'closed', authenticate: (presentedKey) => keyHolderOf([], presentedKey) };
 
-export function authenticatorFor({ host, apiKeys }: AccessSettings): Authenticator {
+export function authenticatorFor({ host, apiKeys, localMode }: AccessSettings): Authenticator {
+  if (localMode && !listensOnlyOnLoopback(host)) {
+    throw new InvalidLocalModeError({
+      message: `LOCAL_MODE is on, but HOST ${host} is not a loopback address; local mode trusts every request, so it runs only on localhost, 127.0.0.1 or ::1`,
+    });
+  }
   if (apiKeys !== undefined) {
     return { mode: 'keys', authenticate: (presentedKey) => keyHolderOf(apiKeys, presentedKey) };
   }
-  return listensOnlyOnLoopback(host) ? localAccess : closedAccess;
+  return localMode ? localAccess : closedAccess;
 }

@@ -23,6 +23,7 @@ describe('readSettings', () => {
       allowedOrigins: [],
       apiKeys: undefined,
       ledgerFile: 'data/ledger.db',
+      localMode: false,
     });
   });
 
@@ -34,6 +35,7 @@ describe('readSettings', () => {
         ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
         API_KEYS: JSON.stringify([entry]),
         LEDGER_FILE: '/data/ledger.db',
+        LOCAL_MODE: 'true',
       }),
     ).toEqual({
       host: '127.0.0.1',
@@ -41,14 +43,16 @@ describe('readSettings', () => {
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
       apiKeys: [entry],
       ledgerFile: '/data/ledger.db',
+      localMode: true,
     });
   });
 
   it('treats empty variables as not set', () => {
-    expect(readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '', LEDGER_FILE: '' })).toMatchObject({
+    expect(readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '', LEDGER_FILE: '', LOCAL_MODE: '' })).toMatchObject({
       allowedOrigins: [],
       apiKeys: undefined,
       ledgerFile: 'data/ledger.db',
+      localMode: false,
     });
   });
 
@@ -73,6 +77,13 @@ describe('readSettings rejects invalid settings', () => {
     expect(error).toMatchObject({ name: 'InvalidSettingsError', _tag: 'InvalidSettingsError' });
     expect(String(error)).toContain('ALLOWED_ORIGINS');
     expect(String(error)).toContain('Expected an origin such as https://app.example.com');
+  });
+
+  it.each(['enabled', 'TRUE!', '2'])('rejects LOCAL_MODE="%s", which is not a boolean, with a named error', (value) => {
+    const error = errorFrom({ LOCAL_MODE: value });
+
+    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
+    expect(String(error)).toContain('LOCAL_MODE');
   });
 
   it('rejects invalid API keys with the named error from the identity settings', () => {

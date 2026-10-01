@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 function onLoopback(fileName: string): Readonly<Record<string, string>> {
-  return { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: fileName };
+  return { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: fileName, LOCAL_MODE: 'true' };
 }
 
 function aPathUnderAFile(): string {

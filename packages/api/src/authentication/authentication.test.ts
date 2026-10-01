@@ -6,7 +6,7 @@ import { call, createTestHandler } from '../testing/api-calls.ts';
 
 const acme = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' });
 
-const keyHolders = authenticatorFor({ host: '0.0.0.0', apiKeys: [acme.entry] });
+const keyHolders = authenticatorFor({ host: '0.0.0.0', apiKeys: [acme.entry], localMode: false });
 
 const whoIsCalling: RegisterRoutes = (routes) => {
   routes.add('GET', '/v1/orgs/:org/whoami', (c) => c.json(c.get('principal').callerIn(c.req.param('org') ?? '')));
@@ -96,7 +96,7 @@ describe('the public /health path', () => {
 describe('authentication without API keys', () => {
   it('admits nobody outside local mode, whatever key is presented', async () => {
     const { handler } = createTestHandler({
-      authenticator: authenticatorFor({ host: '0.0.0.0', apiKeys: undefined }),
+      authenticator: authenticatorFor({ host: '0.0.0.0', apiKeys: undefined, localMode: false }),
       routes: [whoIsCalling],
     });
 
@@ -108,7 +108,7 @@ describe('authentication without API keys', () => {
 
   it('admits every request in local mode as the local developer of the org it names', async () => {
     const { handler } = createTestHandler({
-      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
+      authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }),
       routes: [whoIsCalling],
     });
 

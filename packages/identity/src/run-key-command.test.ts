@@ -56,7 +56,9 @@ describe('the key command', () => {
       { org: 'demo', permissions: ['org:read', 'org:write', 'brain:read', 'brain:write'], brains: '*' },
     ]);
     expect(apiKeys?.[0]?.id).toMatch(/^[0-9a-f]{8}$/u);
-    expect(authenticatorFor({ host: '0.0.0.0', apiKeys }).authenticate(key)?.callerIn('demo').org).toBe('demo');
+    expect(
+      authenticatorFor({ host: '0.0.0.0', apiKeys, localMode: false }).authenticate(key)?.callerIn('demo').org,
+    ).toBe('demo');
   });
 
   it('takes the id, the permissions and the brains it is given, after an optional --', () => {

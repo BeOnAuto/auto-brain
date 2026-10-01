@@ -50,6 +50,7 @@ export const globexAdmin = createApiKey({
 const keyHolders = authenticatorFor({
   host: '0.0.0.0',
   apiKeys: [acmeAdmin.entry, acmeReader.entry, acmeAlphaWriter.entry, globexAdmin.entry],
+  localMode: false,
 });
 
 export interface OperationServerOptions {

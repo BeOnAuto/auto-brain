@@ -19,24 +19,31 @@ async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly stri
 const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-routes.ts', import.meta.url));
 
 describe('logAccessMode', () => {
-  it('says local mode is on', async () => {
-    const [line] = await linesLoggedBy(logAccessMode('local'));
+  it('warns that local mode trusts every request', async () => {
+    const [line] = await linesLoggedBy(logAccessMode('local', true));
 
-    expect(line).toContain('"level":"INFO"');
+    expect(line).toContain('"level":"WARN"');
     expect(line).toContain(
-      '"message":"Local mode is on: the server listens only on loopback and no API keys are configured"',
+      '"message":"Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy"',
     );
   });
 
   it('warns when the server is not in local mode and has no API keys', async () => {
-    const [line] = await linesLoggedBy(logAccessMode('closed'));
+    const [line] = await linesLoggedBy(logAccessMode('closed', false));
 
     expect(line).toContain('"level":"WARN"');
     expect(line).toContain('"message":"Local mode is off and no API keys are configured"');
   });
 
   it('says nothing when API keys are configured', async () => {
-    expect(await linesLoggedBy(logAccessMode('keys'))).toEqual([]);
+    expect(await linesLoggedBy(logAccessMode('keys', false))).toEqual([]);
+  });
+
+  it('warns that LOCAL_MODE is ignored when API keys are configured', async () => {
+    const lines = await linesLoggedBy(logAccessMode('keys', true));
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('"message":"LOCAL_MODE is ignored because API keys are configured"');
   });
 });
 
@@ -65,7 +72,7 @@ describe('logIncident', () => {
 
 describe('the server process', () => {
   it('logs an unexpected error to stderr under the incident id it answers with', async () => {
-    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
+    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
     const port = await child.port;
 
     const response = await fetch(`http://127.0.0.1:${port}/fail`);
@@ -81,7 +88,7 @@ describe('the server process', () => {
   });
 
   it('writes nothing more to stdout when a client abandons a slow request', async () => {
-    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
+    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
     const port = await child.port;
 
     const abandoned = await fetch(`http://127.0.0.1:${port}/slow?ms=300`, { signal: AbortSignal.timeout(50) }).then(

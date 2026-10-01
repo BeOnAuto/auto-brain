@@ -37,7 +37,7 @@ describe('main', () => {
   });
 
   it('writes exactly the listening line to stdout, and its logs as JSON lines to stderr', async () => {
-    const child = spawnServer(mainModule, loopback);
+    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true' });
     const port = await child.port;
 
     await fetch(`http://127.0.0.1:${port}/health`);
@@ -45,7 +45,7 @@ describe('main', () => {
     await child.exited;
 
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
-    expect(child.output().stderr).toMatch(/^\{"message":"Local mode is on: .*"level":"INFO".*\}\n$/u);
+    expect(child.output().stderr).toMatch(/^\{"message":"Local mode is on: .*"level":"WARN".*\}\n$/u);
   });
 
   it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
