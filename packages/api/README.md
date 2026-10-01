@@ -58,7 +58,7 @@ Both endpoints sit behind the same chain as every other path. Before the SDK run
 | succeeded                   | `structuredContent` is the output, and the one text content is the same output as JSON                                    |
 | rejected, failed, cancelled | `isError: true`, and the one text content is the problem document HTTP would answer with, as JSON; no `structuredContent` |
 
-So invalid arguments are a tool result with `isError` and an `invalid_input` problem pointing at each field, as the protocol asks, and an agent can correct them. A tool the endpoint does not list is a JSON-RPC error, `-32602`, from the SDK. A call still running when the server stops gets a `503` `unavailable` problem.
+So invalid arguments are a tool result with `isError` and an `invalid_input` problem pointing at each field, as the protocol asks, and an agent can correct them. A tool the endpoint does not list is a JSON-RPC error, `-32602`, from the SDK. A call still running when the server stops gets a `503` `unavailable` problem. A tool that throws instead of settling is reported as an incident, as an HTTP request would be, and answered with the `500` `internal` problem, so the SDK never puts an error message of its own in the result.
 
 **Server identity.** `serverInfo` carries the name and version the server passes in, which are the product name and the release version. The instructions are `orgEndpointInstructions` and `brainEndpointInstructions`:
 

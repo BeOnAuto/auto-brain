@@ -47,8 +47,9 @@ function handlerFor(factory: McpServerFactory, { reportError }: McpRoutesOptions
 
 export function mcpRoutes(options: McpRoutesOptions): RegisterRoutes {
   return (routes) => {
-    const org = handlerFor(orgServerFactory(options), options);
-    const brain = handlerFor(brainServerFactory(options), options);
+    const serving = { ...options, reportThrown: routes.reportThrown };
+    const org = handlerFor(orgServerFactory(serving), options);
+    const brain = handlerFor(brainServerFactory(serving), options);
     routes.add('POST', '/orgs/:org/mcp', endpoint(org.fetch, 'org'));
     routes.add('POST', '/orgs/:org/brains/:brain/mcp', endpoint(brain.fetch, 'brain'));
     routes.onClose(async () => {

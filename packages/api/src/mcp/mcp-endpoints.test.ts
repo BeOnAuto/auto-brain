@@ -87,6 +87,14 @@ describe('the methods of an MCP endpoint', () => {
     expect(answer).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
     expect(answer.headers.get('allow')).toBe('POST');
   });
+
+  it('answers HEAD with 405 and Allow: POST', async () => {
+    const { handler } = await operationServer();
+
+    const answer = await call(handler, '/orgs/acme/brains/alpha/mcp', { method: 'HEAD', headers: asAdmin });
+
+    expect({ status: answer.status, allow: answer.headers.get('allow') }).toEqual({ status: 405, allow: 'POST' });
+  });
 });
 
 describe('the protocol revisions of an MCP endpoint', () => {
