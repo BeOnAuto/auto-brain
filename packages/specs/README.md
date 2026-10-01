@@ -87,7 +87,7 @@ TypeScript infers the parsed value from `parse` when `parse` is a function decla
 
 A spec carries `primitive`, `name`, `version`, `status` (`active` or `retired`), `media_type`, the `description`, `input_schema` and `output_schema` its primitive gives when it gives them, `created_at`, `created_by`, `updated_at`, `retired_at` on a retired spec, and its document as `source`. A listed spec is the same without `source`. Times are ISO 8601 UTC strings read from Effect's `Clock`. `SpecSchema`, `ListedSpecSchema` and `ExecutionSchema` are the schemas.
 
-- `primitive` is the name of a primitive. The JSON Schema of the field lists the known names; a well-formed name the server does not know is `not_found` on every operation.
+- `primitive` is the name of a primitive. The published JSON Schema of the field is a plain `{ "type": "string", "enum": [...], "description": ... }` of the known names. Decoding accepts any well-formed name, so a name the server does not know is `not_found` on every operation, and a malformed one `invalid_input`. Effect would publish the names under `allOf`, because it inlines no `enum` from a check, so each operation replaces that one property of its input's JSON Schema.
 - `name` is 3 to 48 lowercase letters, digits and hyphens, starting with a letter: unique among the specs of the primitive in the brain, and never reused.
 - `source` is at most 65536 bytes in UTF-8, checked at decoding. The JSON Schema says `maxLength: 65536`, which every such document meets.
 - A document the primitive's `parse` rejects is `invalid_input` with the primitive's issues under `/source`, and nothing is stored.

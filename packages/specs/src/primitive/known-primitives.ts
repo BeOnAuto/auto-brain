@@ -1,22 +1,22 @@
-import { NotFound } from '@beonauto/operations';
+import { NotFound, type JsonSchemaDocument, type Registration } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { isPrimitiveName, type Primitive } from './primitive.ts';
 
-function primitiveFieldOf(names: readonly string[]) {
-  return Schema.String.annotate({
-    description: `The name of the primitive the spec belongs to: ${names.join(', ')}`,
-  }).check(
-    Schema.makeFilter(isPrimitiveName, {
-      expected: 'a primitive name: 3 to 32 lowercase letters, digits and hyphens, starting with a letter',
-      toJsonSchema: () => ({ enum: [...names] }),
-    }),
-  );
+interface PublishedOperation {
+  readonly registration: Registration<'brain'>;
 }
 
+const PrimitiveField = Schema.String.check(
+  Schema.makeFilter(isPrimitiveName, {
+    expected: 'a primitive name: 3 to 32 lowercase letters, digits and hyphens, starting with a letter',
+  }),
+);
+
 export interface KnownPrimitives {
-  readonly field: ReturnType<typeof primitiveFieldOf>;
+  readonly field: typeof PrimitiveField;
   readonly describe: (sentences: readonly string[]) => string;
+  readonly publish: <Operation extends PublishedOperation>(operation: Operation) => Operation;
   readonly primitiveNamed: (name: string) => Effect.Effect<Primitive, NotFound>;
 }
 
@@ -43,6 +43,15 @@ function guideTo(primitives: readonly Primitive[]): string {
   ].join('\n');
 }
 
+function withPrimitiveField({ schema, definitions }: JsonSchemaDocument, names: readonly string[]): JsonSchemaDocument {
+  const primitive = {
+    type: 'string',
+    enum: [...names],
+    description: `The name of the primitive the spec belongs to: ${names.join(', ')}`,
+  };
+  return { schema: { ...schema, properties: Object.assign({}, schema['properties'], { primitive }) }, definitions };
+}
+
 export function knownPrimitives(primitives: readonly Primitive[]): KnownPrimitives {
   const names = primitives.map(({ name }) => name);
   requireSomePrimitive(names);
@@ -50,8 +59,12 @@ export function knownPrimitives(primitives: readonly Primitive[]): KnownPrimitiv
   const byName = new Map(primitives.map((primitive) => [primitive.name, primitive]));
   const guide = guideTo(primitives);
   return {
-    field: primitiveFieldOf(names),
+    field: PrimitiveField,
     describe: (sentences) => `${sentences.join(' ')}\n\n${guide}`,
+    publish: (operation) => ({
+      ...operation,
+      registration: { ...operation.registration, input: withPrimitiveField(operation.registration.input, names) },
+    }),
     primitiveNamed: (name) => {
       const primitive = byName.get(name);
       return primitive === undefined

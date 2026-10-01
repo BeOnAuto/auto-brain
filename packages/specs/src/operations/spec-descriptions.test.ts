@@ -24,13 +24,23 @@ describe('the description of every operation that takes a primitive', () => {
 });
 
 describe('the JSON Schema of the input of the operations', () => {
-  it('lists the known primitives for the primitive field', () => {
+  it('lists the known primitives for the primitive field as a plain enum', () => {
     for (const { input } of takingAPrimitive) {
-      expect(input.schema).toMatchObject({
-        properties: { primitive: { type: 'string', allOf: [{ enum: ['echo', 'probe'] }] } },
-        additionalProperties: false,
+      expect(input.schema).toHaveProperty(['properties', 'primitive'], {
+        type: 'string',
+        enum: ['echo', 'probe'],
+        description: 'The name of the primitive the spec belongs to: echo, probe',
       });
+      expect(input.schema).toMatchObject({ type: 'object', additionalProperties: false });
     }
+  });
+
+  it('keeps every other field of the input as its schema gives it', () => {
+    expect(operations[1]?.input.schema).toHaveProperty(['properties', 'include_retired'], {
+      type: 'boolean',
+      description: 'Whether to list retired specs as well; false when left out',
+    });
+    expect(operations[2]?.input.schema).toHaveProperty('required', ['primitive', 'name']);
   });
 
   it('holds a spec name to its pattern and a document to at most 65536 characters', () => {
