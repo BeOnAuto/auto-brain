@@ -52,6 +52,27 @@ describe('an execution the primitive cannot serve now', () => {
   });
 });
 
+describe('an execution of a spec the primitive cannot run as written', () => {
+  it('is rejected with conflict, and the rejection is recorded', async () => {
+    const { call, executing, getExecution, prober } = await withPlain();
+    prober.sufferOnNextRun('conflict');
+
+    expect(await executing({})).toEqual({
+      status: 'rejected',
+      reason: 'conflict',
+      detail: 'The probe cannot run this spec as written; update it',
+    });
+    expect(await call(getExecution, readingTheExecution)).toStrictEqual({
+      status: 'succeeded',
+      output: {
+        ...failedExecution,
+        status: 'rejected',
+        rejection: { reason: 'conflict', detail: 'The probe cannot run this spec as written; update it' },
+      },
+    });
+  });
+});
+
 describe('an execution whose primitive breaks down', () => {
   it('fails with an incident that holds the defect, and is recorded as failed', async () => {
     const { call, executing, getExecution, prober, reported } = await withPlain();

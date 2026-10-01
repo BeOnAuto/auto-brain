@@ -1,9 +1,15 @@
-import { InvalidInput, Unavailable } from '@beonauto/operations';
+import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
 import { Effect, Predicate, type Schema } from 'effect';
 
-import { definePrimitive, type Executed, type ExecutionContext, type Primitive } from '../index.ts';
+import {
+  definePrimitive,
+  type Executed,
+  type ExecutionContext,
+  type Primitive,
+  type PrimitiveRejection,
+} from '../index.ts';
 
-type Mishap = 'stall' | 'unavailable' | 'breakdown';
+type Mishap = 'stall' | 'unavailable' | 'conflict' | 'breakdown';
 
 export interface Probe {
   readonly primitive: Primitive;
@@ -22,9 +28,10 @@ function linesOf(source: string, refusing: boolean): Effect.Effect<readonly stri
     : Effect.fail(new InvalidInput({ detail: 'The probe document has lines it does not accept', issues }));
 }
 
-const mishaps: Readonly<Record<Mishap, Effect.Effect<never, Unavailable>>> = {
+const mishaps: Readonly<Record<Mishap, Effect.Effect<never, Unavailable | Conflict>>> = {
   stall: Effect.never,
   unavailable: Effect.fail(new Unavailable({ detail: 'The probe cannot answer now' })),
+  conflict: Effect.fail(new Conflict({ detail: 'The probe cannot run this spec as written; update it' })),
   breakdown: Effect.die(new Error('The probe broke down')),
 };
 
@@ -65,7 +72,7 @@ export function probe(): Probe {
     parse: (source: string) => linesOf(source, refusing),
     summarize: () => ({}),
     execute: (_lines, input, execution) =>
-      Effect.suspend((): Effect.Effect<Executed, InvalidInput | Unavailable> => {
+      Effect.suspend((): Effect.Effect<Executed, PrimitiveRejection> => {
         runs += 1;
         const mishap = nextMishap;
         nextMishap = undefined;

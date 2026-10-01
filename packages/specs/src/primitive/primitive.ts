@@ -1,4 +1,4 @@
-import type { InvalidInput, Unavailable } from '@beonauto/operations';
+import type { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
 import { Effect, type Schema } from 'effect';
 
 export interface SpecSummary {
@@ -26,6 +26,8 @@ export interface FinishesLater {
 
 export type Executed = Finished | FinishesLater;
 
+export type PrimitiveRejection = InvalidInput | Unavailable | Conflict;
+
 export interface PrimitiveDefinition<Parsed> {
   readonly name: string;
   readonly title: string;
@@ -37,15 +39,12 @@ export interface PrimitiveDefinition<Parsed> {
     parsed: NoInfer<Parsed>,
     input: Schema.Json,
     execution: ExecutionContext,
-  ) => Effect.Effect<Executed, InvalidInput | Unavailable>;
+  ) => Effect.Effect<Executed, PrimitiveRejection>;
 }
 
 export interface PreparedSpec {
   readonly summary: SpecSummary;
-  readonly execute: (
-    input: Schema.Json,
-    execution: ExecutionContext,
-  ) => Effect.Effect<Executed, InvalidInput | Unavailable>;
+  readonly execute: (input: Schema.Json, execution: ExecutionContext) => Effect.Effect<Executed, PrimitiveRejection>;
 }
 
 export interface Primitive {

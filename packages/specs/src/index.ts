@@ -11,6 +11,7 @@ export {
   type PreparedSpec,
   type Primitive,
   type PrimitiveDefinition,
+  type PrimitiveRejection,
   type SpecSummary,
 } from './primitive/primitive.ts';
 export { defineRetireSpec } from './operations/retire-spec.ts';

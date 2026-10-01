@@ -9,7 +9,7 @@ const IssueSchema = Schema.Struct({
 
 export const ExecutionRejectionSchema = Schema.Union([
   Schema.Struct({ reason: Schema.Literal('invalid_input'), detail: Schema.String, issues: Schema.Array(IssueSchema) }),
-  Schema.Struct({ reason: Schema.Literal('unavailable'), detail: Schema.String }),
+  Schema.Struct({ reason: Schema.Literals(['unavailable', 'conflict']), detail: Schema.String }),
 ]).annotate({ description: 'Why the primitive rejected the execution' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;

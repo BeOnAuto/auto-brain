@@ -112,6 +112,16 @@ describe('an execution without a final result', () => {
     expect(prober.runs()).toBe(2);
   });
 
+  it('runs the updated spec again for its id after the primitive found it could not run as written', async () => {
+    const { call, executing, prober, updateSpec } = await withPlain();
+    prober.sufferOnNextRun('conflict');
+
+    expect(await executing()).toMatchObject({ status: 'rejected', reason: 'conflict' });
+    await call(updateSpec, toAlpha(acmeAdmin, { primitive: 'probe', name: 'plain', source: 'fixed' }));
+    expect(await executing()).toMatchObject({ status: 'succeeded', output: { spec_version: 2, status: 'succeeded' } });
+    expect(prober.runs()).toBe(2);
+  });
+
   it('runs again for its id after the primitive was unavailable or broke down', async () => {
     const { executing, prober } = await withPlain();
     prober.sufferOnNextRun('unavailable');

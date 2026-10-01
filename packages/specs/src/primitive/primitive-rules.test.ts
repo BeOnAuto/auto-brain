@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 const header = [
   "import * as Operations from '@beonauto/operations';",
-  'export const { Caller, Conflict, InvalidInput, Unavailable } = Operations;',
+  'export const { Caller, Conflict, InvalidInput, NotFound, Unavailable } = Operations;',
   "import { Effect } from 'effect';",
   "import { definePrimitive } from '../../../src/index.ts';",
   "export const about = { name: 'probe', title: 'Probe', description: 'Probe.', mediaType: 'text/plain' };",
@@ -31,6 +31,7 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
     "  parse: (source: string) => source === '' ? Effect.fail(new InvalidInput({ detail: 'empty', issues: [] })) : parse(source),",
     '  summarize,',
     '  execute: ({ lines }) =>',
+    "    lines.length > 2 ? Effect.fail(new Conflict({ detail: 'cannot run as written' })) :",
     "    lines.length > 1 ? Effect.fail(new Unavailable({ detail: 'busy' })) : Effect.fail(new InvalidInput({ detail: 'no', issues: [] })),",
   ]),
   'finishes-later.ts': defined([
@@ -71,8 +72,8 @@ const rejected: Readonly<Record<string, Rejection>> = {
     ]),
   },
   'execute-rejects-undeclared.ts': {
-    because: "Type 'Conflict' is not assignable to type 'InvalidInput | Unavailable'",
-    source: defined(['  parse,', '  summarize,', "  execute: () => Effect.fail(new Conflict({ detail: 'taken' })),"]),
+    because: "Type 'NotFound' is not assignable to type 'PrimitiveRejection'",
+    source: defined(['  parse,', '  summarize,', "  execute: () => Effect.fail(new NotFound({ detail: 'gone' })),"]),
   },
   'execute-asks-a-service.ts': {
     because: "Type 'Caller' is not assignable to type 'never'",

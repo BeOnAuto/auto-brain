@@ -39,8 +39,10 @@ function rejectedForInput({ detail, issues }: Refusal): Effect.Effect<ExecutionR
   });
 }
 
-function rejectedAsUnavailable({ detail }: { readonly detail: string }): Effect.Effect<ExecutionResult> {
-  return Effect.succeed({ type: 'execution_rejected', rejection: { reason: 'unavailable', detail } });
+function rejectedFor(
+  reason: 'unavailable' | 'conflict',
+): (rejection: { readonly detail: string }) => Effect.Effect<ExecutionResult> {
+  return ({ detail }) => Effect.succeed({ type: 'execution_rejected', rejection: { reason, detail } });
 }
 
 export function attempt(
@@ -48,10 +50,12 @@ export function attempt(
   input: Schema.Json,
   execution: ExecutionContext,
 ): Effect.Effect<ExecutionOutcome> {
-  return prepared
-    .execute(input, execution)
-    .pipe(
-      Effect.flatMap(outcomeOf),
-      Effect.catchTags({ invalid_input: rejectedForInput, unavailable: rejectedAsUnavailable }),
-    );
+  return prepared.execute(input, execution).pipe(
+    Effect.flatMap(outcomeOf),
+    Effect.catchTags({
+      invalid_input: rejectedForInput,
+      unavailable: rejectedFor('unavailable'),
+      conflict: rejectedFor('conflict'),
+    }),
+  );
 }
