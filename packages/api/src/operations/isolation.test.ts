@@ -1,7 +1,7 @@
 import { authenticatorFor } from '@beonauto/identity';
 import { describe, expect, it } from 'vitest';
 
-import { call } from '../testing/api-calls.ts';
+import { call, type Call } from '../testing/api-calls.ts';
 import { acmeAdmin, acmeAlphaWriter, acmeReader, globexAdmin, operationServer } from '../testing/operation-server.ts';
 
 function as(key: string): Readonly<Record<string, string>> {
@@ -9,6 +9,16 @@ function as(key: string): Readonly<Record<string, string>> {
 }
 
 const alphaNotes = '/v1/orgs/acme/brains/alpha/notes';
+
+const lackingCalls: ReadonlyArray<readonly [string, string, Call]> = [
+  [
+    'a missing permission',
+    alphaNotes,
+    { method: 'POST', headers: as(acmeReader.key), body: '{"name":"a","text":"b"}' },
+  ],
+  ['a brain the key may not access', '/v1/orgs/acme/brains/beta/notes', { headers: as(acmeAlphaWriter.key) }],
+  ['another org', '/v1/orgs/globex/brains/gamma/notes', { headers: as(acmeAdmin.key) }],
+];
 
 describe('isolation between orgs over HTTP', () => {
   it('rejects a key of one org identically for an existing and a missing brain of another org', async () => {
@@ -72,5 +82,16 @@ describe('isolation between brains and permissions over HTTP', () => {
       body: { detail: 'The caller lacks the brain:write permission' },
     });
     expect(await call(handler, alphaNotes, { headers: as(acmeReader.key) })).toMatchObject({ status: 200 });
+  });
+});
+
+describe('a key that lacks what a call needs', () => {
+  it.each(lackingCalls)('is answered for %s with an insufficient_scope challenge', async (_case, path, request) => {
+    const { handler } = await operationServer();
+
+    const answer = await call(handler, path, request);
+
+    expect(answer.status).toBe(403);
+    expect(answer.headers.get('www-authenticate')).toBe('Bearer error="insufficient_scope"');
   });
 });

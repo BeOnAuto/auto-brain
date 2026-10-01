@@ -4,9 +4,14 @@ import type { MiddlewareHandler } from 'hono';
 import type { ApiEnv } from '../api-env.ts';
 import { problemOf, problemResponse } from '../problem/problem.ts';
 
-const bearerCredentials = /^Bearer +(\S+) *$/iu;
+const bearerCredentials = /^Bearer +([\w.~+/-]+=*) *$/iu;
 
 const missingKey = problemOf('unauthenticated', 'A valid API key is required');
+
+const malformedCredentials = problemOf(
+  'bad_request',
+  'The Authorization header must hold exactly one API key, as Bearer <key>',
+);
 
 function unauthenticated(presentedKey: string | undefined): Response {
   return problemResponse(missingKey, {
@@ -14,9 +19,17 @@ function unauthenticated(presentedKey: string | undefined): Response {
   });
 }
 
+function malformed(): Response {
+  return problemResponse(malformedCredentials, { 'www-authenticate': 'Bearer error="invalid_request"' });
+}
+
 export function authenticate(authenticator: Authenticator): MiddlewareHandler<ApiEnv> {
   return (c, next) => {
-    const presentedKey = bearerCredentials.exec(c.req.header('authorization') ?? '')?.[1];
+    const authorization = c.req.header('authorization');
+    const presentedKey = authorization === undefined ? undefined : bearerCredentials.exec(authorization)?.[1];
+    if (authorization !== undefined && presentedKey === undefined) {
+      return Promise.resolve(malformed());
+    }
     const principal = authenticator.authenticate(presentedKey);
     if (principal === undefined) {
       return Promise.resolve(unauthenticated(presentedKey));

@@ -14,10 +14,18 @@ const whoIsCalling: RegisterRoutes = (routes) => {
 
 const protectedPath = '/v1/orgs/acme/whoami';
 
-const withoutAValidKey: ReadonlyArray<readonly [string, Readonly<Record<string, string>>]> = [
-  ['no Authorization header', {}],
-  ['credentials of another scheme', { authorization: 'Basic YWNtZTpzZWNyZXQ=' }],
-  ['a Bearer header without a key', { authorization: 'Bearer' }],
+const malformedAuthorization: ReadonlyArray<readonly [string, ReadonlyArray<readonly [string, string]>]> = [
+  ['credentials of another scheme', [['authorization', 'Basic YWNtZTpzZWNyZXQ=']]],
+  ['a Bearer header without a key', [['authorization', 'Bearer']]],
+  ['an empty Authorization header', [['authorization', '']]],
+  ['two words after Bearer', [['authorization', 'Bearer abc def']]],
+  [
+    'two Authorization headers',
+    [
+      ['authorization', `Bearer ${acme.key}`],
+      ['authorization', `Bearer ${acme.key}`],
+    ],
+  ],
 ];
 
 describe('authentication with API keys', () => {
@@ -39,11 +47,30 @@ describe('authentication with API keys', () => {
   });
 });
 
-describe('a request without a valid API key', () => {
-  it.each(withoutAValidKey)('answers %s with 401 and a bare Bearer challenge', async (_case, headers) => {
+describe('a malformed Authorization header', () => {
+  it.each(malformedAuthorization)('answers %s with 400 and an invalid_request challenge', async (_case, headers) => {
     const { handler } = createTestHandler({ authenticator: keyHolders, routes: [whoIsCalling] });
 
-    const answer = await call(handler, protectedPath, { headers });
+    const answer = await handler.fetch(
+      new Request(`http://localhost${protectedPath}`, { headers: headers.map(([name, value]) => [name, value]) }),
+    );
+
+    expect({ status: answer.status, body: await answer.json() }).toMatchObject({
+      status: 400,
+      body: {
+        reason: 'bad_request',
+        detail: 'The Authorization header must hold exactly one API key, as Bearer <key>',
+      },
+    });
+    expect(answer.headers.get('www-authenticate')).toBe('Bearer error="invalid_request"');
+  });
+});
+
+describe('a request without a valid API key', () => {
+  it('answers a request without an Authorization header with 401 and a bare Bearer challenge', async () => {
+    const { handler } = createTestHandler({ authenticator: keyHolders, routes: [whoIsCalling] });
+
+    const answer = await call(handler, protectedPath);
 
     expect(answer).toMatchObject({
       status: 401,
