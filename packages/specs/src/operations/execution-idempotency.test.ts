@@ -52,10 +52,10 @@ describe('an execution that succeeded', () => {
 describe('an execution whose input the primitive rejected', () => {
   it('is rejected again for its id the same way, without running the primitive again', async () => {
     const { executing, prober } = await withPlain();
-    const first = await executing({ refuse: true });
+    const first = await executing({ reject: true });
 
     expect(first).toMatchObject({ status: 'rejected', reason: 'invalid_input' });
-    expect(await executing({ refuse: true })).toEqual(first);
+    expect(await executing({ reject: true })).toEqual(first);
     expect(prober.runs()).toBe(1);
   });
 });

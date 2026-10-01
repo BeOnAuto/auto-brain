@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @beonauto/server dev",
+    "key": "pnpm --filter @beonauto/identity key",
     "test:watch": "vitest",
     "typecheck:watch": "tsc --watch",
     "check": "turbo run format:check lint typecheck test knip sherif",

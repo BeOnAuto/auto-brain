@@ -1,3 +1,6 @@
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+
 import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
 
@@ -11,7 +14,16 @@ const pageCacheOfEightMebibytes = -8192;
 
 const modestConnections = { pragmaOptions: { cache_size: pageCacheOfEightMebibytes, mmap_size: 0 } };
 
+const privateMemory = ':memory:';
+
+function prepareDirectoryOf(fileName: string): void {
+  if (fileName !== privateMemory) {
+    mkdirSync(dirname(fileName), { recursive: true });
+  }
+}
+
 export function openEventStore({ fileName }: LedgerOptions): EventStore {
+  prepareDirectoryOf(fileName);
   const store = getSQLiteEventStore({
     driver: sqlite3EventStoreDriver,
     fileName,

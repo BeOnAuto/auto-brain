@@ -3,7 +3,7 @@ import { Effect, Schema } from 'effect';
 import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
 import { withinResultLimit } from '../execution/recorded-size.ts';
 import type { ExecutionContext, Executed, PreparedSpec } from '../primitive/primitive.ts';
-import { issuesUnder, type Refusal } from './issue-pointers.ts';
+import { issuesUnder, type Rejection } from './issue-pointers.ts';
 
 const decodeExecuted = Schema.decodeUnknownEffect(
   Schema.Union([
@@ -32,7 +32,7 @@ function outcomeOf(executed: Executed): Effect.Effect<ExecutionOutcome> {
   return decodeExecuted(executed).pipe(Effect.orDie, Effect.flatMap(recordedOutcome));
 }
 
-function rejectedForInput({ detail, issues }: Refusal): Effect.Effect<ExecutionResult> {
+function rejectedForInput({ detail, issues }: Rejection): Effect.Effect<ExecutionResult> {
   return Effect.succeed({
     type: 'execution_rejected',
     rejection: { reason: 'invalid_input', detail, issues: issuesUnder('input', issues) },

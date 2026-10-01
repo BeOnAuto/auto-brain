@@ -1,22 +1,45 @@
 # syntax=docker/dockerfile:1
-FROM --platform=$BUILDPLATFORM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1 AS dependencies
+FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1 AS dependencies
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends g++ make python3 \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --no-fund --no-audit pnpm@12.8.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json packages/server/
+COPY packages/api/package.json packages/api/
+COPY packages/brains/package.json packages/brains/
 COPY packages/config/package.json packages/config/
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/server...
+COPY packages/identity/package.json packages/identity/
+COPY packages/ledger/package.json packages/ledger/
+COPY packages/operations/package.json packages/operations/
+RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
+RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/local \
+  pnpm rebuild --filter @beonauto/server... sqlite3 \
+  && find node_modules/.pnpm -path '*/node_modules/sqlite3/build/Release/*' -prune ! -name node_sqlite3.node \
+    -exec rm -rf {} +
 
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
 LABEL org.opencontainers.image.licenses="Elastic-2.0"
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 LEDGER_FILE=/data/ledger.db
 WORKDIR /app
-COPY --from=dependencies --chown=node:node /app ./
-COPY --chown=node:node LICENSE ./
-COPY --chown=node:node packages/config/src packages/config/src
-COPY --chown=node:node packages/server/src packages/server/src
+COPY --from=dependencies /app ./
+COPY LICENSE ./
+COPY packages/api/src packages/api/src
+COPY packages/brains/src packages/brains/src
+COPY packages/config/src packages/config/src
+COPY packages/identity/src packages/identity/src
+COPY packages/ledger/src packages/ledger/src
+COPY packages/operations/src packages/operations/src
+COPY packages/server/src packages/server/src
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends tini \
+  && rm -rf /var/lib/apt/lists/* \
+  && install --directory --owner=node --group=node /data
 USER node
+VOLUME /data
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT}/health`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+ENTRYPOINT ["/usr/bin/tini", "-e", "143", "--"]
 CMD ["node", "packages/server/src/main.ts"]
