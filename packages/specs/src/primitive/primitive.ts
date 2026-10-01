@@ -1,4 +1,4 @@
-import type { InvalidInput, Unavailable } from '@beonauto/operations';
+import type { CallerIdentity, InvalidInput, Unavailable } from '@beonauto/operations';
 import { Effect, type Schema } from 'effect';
 
 export interface SpecSummary {
@@ -11,6 +11,7 @@ export interface ExecutionContext {
   readonly id: string;
   readonly org: string;
   readonly brain: string;
+  readonly caller: CallerIdentity;
   readonly spec: { readonly name: string; readonly version: number };
 }
 

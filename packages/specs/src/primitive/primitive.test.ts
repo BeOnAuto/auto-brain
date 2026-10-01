@@ -26,6 +26,7 @@ const execution: ExecutionContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
   brain: 'alpha',
+  caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:write'], brains: '*' },
   spec: { name: 'count', version: 3 },
 };
 
