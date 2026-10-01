@@ -31,6 +31,13 @@ const answering = '  handle: () => Effect.succeed({}),';
 
 const conflicting = "  handle: () => Effect.fail(new Operations.Conflict({ detail: 'taken' })),";
 
+const refusingInput =
+  "  handle: () => Effect.fail(new Operations.InvalidInput({ detail: 'wrong', issues: [{ detail: 'wrong', pointer: '' }] })),";
+
+function declaring(reason: string, handle: string): readonly string[] {
+  return ['  inputSchema: Empty,', '  outputSchema: Empty,', `  reasons: ['${reason}'],`, handle];
+}
+
 function asking(service: string): string {
   return `  handle: () => Effect.gen(function* () { yield* Operations.${service}; return {}; }),`;
 }
@@ -80,13 +87,8 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
     ...emptyInputAndOutput,
     answering,
   ]),
-  'declared-rejection.ts': defined('defineCommand', 'brain', [
-    post,
-    '  inputSchema: Empty,',
-    '  outputSchema: Empty,',
-    "  reasons: ['conflict'],",
-    conflicting,
-  ]),
+  'declared-rejection.ts': defined('defineCommand', 'brain', [post, ...declaring('conflict', conflicting)]),
+  'declared-invalid-input.ts': defined('defineQuery', 'brain', [get, ...declaring('invalid_input', refusingInput)]),
   'command-calls-query.ts': [
     ...callingOther('defineQuery', get, 'BrainReader'),
     ...callerOfOther('defineCommand', post),
@@ -137,13 +139,11 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
   'undeclared-rejection.ts': {
     because: "Type 'Conflict' is not assignable to type 'NotFound'",
-    source: defined('defineCommand', 'brain', [
-      post,
-      '  inputSchema: Empty,',
-      '  outputSchema: Empty,',
-      "  reasons: ['not_found'],",
-      conflicting,
-    ]),
+    source: defined('defineCommand', 'brain', [post, ...declaring('not_found', conflicting)]),
+  },
+  'undeclared-invalid-input.ts': {
+    because: "Type 'InvalidInput' is not assignable to type 'Conflict'",
+    source: defined('defineCommand', 'brain', [post, ...declaring('conflict', refusingInput)]),
   },
   'org-input-names-org.ts': {
     because: "Types of property 'org' are incompatible",

@@ -49,7 +49,7 @@ The compiler holds a definition to these rules:
 - A query's route uses `GET` and a command's `POST` or `PUT`. Only a command may answer `201` instead of `200`.
 - The route path is relative to the scope's prefix. Each `{parameter}` must be a string field of the input.
 - The input may not have an `org` field, nor a `brain` field at brain scope.
-- The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict` or `Unavailable`.
+- The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict`, `Unavailable` or `InvalidInput`.
 - The handler may ask only for the services of its scope and kind:
 
 | Scope   | Query                                   | Command also gets |
@@ -66,6 +66,8 @@ When an operation is defined, it checks again what the compiler cannot see, on t
 - a field the handler calls `brain` also travels as `brain`.
 
 At run time, when a handler fails with a reason it did not declare, the call fails; it is not rejected.
+
+`InvalidInput` is for input that matches the input schema but that the handler finds wrong, such as a document it parses. It carries a detail and its issues, each a `detail` and a JSON Pointer `pointer` into the input. A handler that declares `invalid_input` and fails with it is rejected with reason `invalid_input` and those issues, the same rejection the dispatcher gives input that breaks the schema. Every rejection carries at most 100 issues, and each issue only its `detail` and `pointer`.
 
 `getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, whether the operation targets a brain, and JSON Schema for the input and output with their definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
 

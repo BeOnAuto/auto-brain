@@ -13,6 +13,8 @@ export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/d
 export type { HandlerServices } from './definition/handler-services.ts';
 export { BrainIdSchema, OrgIdSchema } from './caller/identifiers.ts';
 export { IncidentReporter, type CallSummary, type Incident } from './dispatch/incident-reporter.ts';
+export { InvalidInput } from './outcome/invalid-input.ts';
+export type { Issue } from './outcome/issue.ts';
 export type { JsonSchemaDocument } from './definition/json-schema.ts';
 export { Ledger } from './ledger/ledger.ts';
 export { NotFound } from './outcome/not-found.ts';
@@ -24,7 +26,6 @@ export {
   rejected,
   type Succeeded,
   type Failed,
-  type Issue,
   type Outcome,
   type Rejected,
   type RejectionReason,
