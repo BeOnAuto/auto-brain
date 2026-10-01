@@ -12,3 +12,5 @@ coverage
 !.vscode/extensions.json
 !.vscode/settings.json
 *.log
+/data/
+/packages/server/.data/

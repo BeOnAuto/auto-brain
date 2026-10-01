@@ -10,7 +10,7 @@ A business brain carries out the way your team works. It gathers context, calls 
 
 auto-brain is the server a brain runs on. Auto can host it for you, or you can run it yourself from one container image.
 
-> **Status: early development.** The server, its container image and the release pipeline are in place. The primitives below are being designed and built, so auto-brain isn't ready for production use yet.
+> **Status: early development.** The server, its container image and the release pipeline are in place, and the server can create, list, read, update and retire an org's brains on the ledger. The primitives below are being designed and built, so auto-brain isn't ready for production use yet.
 
 ## How a brain works
 
@@ -53,33 +53,76 @@ Three separate things:
 
 ## Run it
 
-Every release publishes the image to Docker Hub (`beonauto/auto-brain`) and GitHub Container Registry (`ghcr.io/beonauto/auto-brain`):
+### Quick start
+
+From a checkout, `pnpm dev` runs the server in [local mode](#local-mode), so it needs no key. Create a brain, then read it back:
 
 ```bash
-docker run --rm --publish 8080:8080 beonauto/auto-brain:latest
-curl http://localhost:8080/health
+pnpm install
+pnpm dev
+curl --request POST http://localhost:8080/v1/orgs/acme/brains \
+  --header 'content-type: application/json' \
+  --data '{"brain":"sales","name":"Sales","description":"Answers questions about the pipeline"}'
+curl http://localhost:8080/v1/orgs/acme/brains
+curl http://localhost:8080/v1/orgs/acme/brains/sales
 ```
 
-| Variable | Default   | Purpose                       |
-| -------- | --------- | ----------------------------- |
-| `PORT`   | `8080`    | Port the server listens on    |
-| `HOST`   | `0.0.0.0` | Interface the server binds to |
+`PUT /v1/orgs/acme/brains/sales` replaces the name and the description, and `POST /v1/orgs/acme/brains/sales/retire` retires the brain for good. `pnpm dev` keeps the ledger in `packages/server/.data/ledger.db`, so the brains are still there after a restart.
 
-The [inference primitive](primitives/inference) calls language models with these settings, all optional. A provider whose settings are absent is not configured, and a spec that names it fails; the primitive's README has an example for each deployment shape.
+### In a container
 
-| Variable                                                                                         | Purpose                                                                                                    |
-| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`                              | Anthropic (`anthropic/...`)                                                                                |
-| `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_API`                                                | OpenAI (`openai/...`); `OPENAI_API=chat_completions` for endpoints without the Responses API               |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                                                   | Gemini API (`google/...`)                                                                                  |
-| `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_ENDPOINT_URL_BEDROCK_RUNTIME`, `AWS_ENDPOINT_URL` | Amazon Bedrock (`bedrock/...`, `bedrock-anthropic/...`), with the AWS default credential chain             |
-| `AZURE_RESOURCE_NAME` or `AZURE_BASE_URL`, `AZURE_API_KEY`, `AZURE_API_VERSION`                  | Azure OpenAI (`azure/...`); without a key, Microsoft Entra ID in an image built with optional dependencies |
-| `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`                                                | Vertex AI (`vertex/...`, `vertex-anthropic/...`), with Google application default credentials              |
-| `MODEL_GATEWAYS`                                                                                 | JSON list of OpenAI-compatible gateways, each its own provider prefix                                      |
-| `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another                                                               |
-| `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                              |
+Every release publishes the image to Docker Hub (`beonauto/auto-brain`) and GitHub Container Registry (`ghcr.io/beonauto/auto-brain`). A container needs two things: an [API key](#api-keys), because it listens on every interface, and a volume on `/data`, where it keeps the ledger.
 
-The image is multi-arch (amd64 and arm64), runs as a non-root user, and shuts down cleanly on `SIGTERM`.
+```bash
+docker run --rm --log-driver none beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org acme
+echo 'API_KEYS=[<the API_KEYS entry it printed>]' > auto-brain.env
+docker volume create auto-brain-data
+docker run --rm --publish 8080:8080 --env-file auto-brain.env --volume auto-brain-data:/data beonauto/auto-brain:latest
+curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080/v1/orgs/acme/brains
+```
+
+Without a named volume, Docker gives each container a fresh anonymous volume, so its brains last only as long as that container.
+
+| Variable          | Default                                          | Purpose                                                                                                                        |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`            | `8080`                                           | Port the server listens on                                                                                                     |
+| `HOST`            | `0.0.0.0`                                        | Interface the server binds to                                                                                                  |
+| `ALLOWED_ORIGINS` | none                                             | Comma-separated origins a browser page may call the API from, with CORS; see [Calling from a browser](#calling-from-a-browser) |
+| `API_KEYS`        | none                                             | The API keys the server accepts, as a compact JSON array of entries made by the key command                                    |
+| `LEDGER_FILE`     | `data/ledger.db`; `/data/ledger.db` in the image | The SQLite database file of the ledger; its directory is created when missing                                                  |
+| `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)                                              |
+
+The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, the only place that user may write, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built.
+
+### API keys
+
+Every path except `/health` needs an API key, sent as `Authorization: Bearer <key>`. Each key belongs to one org and carries its permissions and the brains it may access. The key command creates one:
+
+```bash
+docker run --rm --log-driver none beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org <org>
+```
+
+Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `brain:read`, `brain:write`; all four by default) and `--brains` (comma-separated brain ids, or `*` for every brain, the default). The command prints the key once and the entry to add to `API_KEYS`; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file. `--log-driver none` keeps the key out of Docker's log driver, which could otherwise store or ship it; the command still prints it to your terminal.
+
+Following [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), a request without an `Authorization` header gets `401` with `WWW-Authenticate: Bearer`, a key that is not valid gets `401` with `error="invalid_token"`, an `Authorization` header that is not exactly one `Bearer <key>` gets `400` with `error="invalid_request"`, and a key that lacks the permission, brain or org a call needs gets `403` with `error="insufficient_scope"`.
+
+Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path except `/health` with `401`, on any address, and warns at start-up that no request can authenticate.
+
+### Local mode
+
+Local mode is for development on your own machine. It is on only when `LOCAL_MODE=true`, the server listens only on a loopback address (`localhost`, `127.0.0.1` or `::1`), and `API_KEYS` is not set. Then every request acts as a local developer with every permission in whichever org it names, and no key is needed; the server logs a warning saying so when it starts. To stop a web page from driving it, local mode rejects a request whose `Host` header is not a localhost name, and, as always, a request whose `Origin` is not in `ALLOWED_ORIGINS`.
+
+> **Warning:** never enable local mode on a machine that can be reached through a proxy. A reverse proxy on the same machine, such as nginx with its default settings, forwards remote requests to the loopback address with a localhost `Host` header, so the server would trust every remote client as the local developer.
+
+`LOCAL_MODE=true` with an address that is not loopback stops the server at start-up with an `InvalidLocalModeError`. With `API_KEYS` set, keys are enforced and the server warns that `LOCAL_MODE` is ignored. `pnpm dev` sets `LOCAL_MODE=true` and listens on `127.0.0.1`, so it runs in local mode; `pnpm key -- --org <org>` creates a key from a checkout.
+
+### Calling from a browser
+
+A page may call the API only from an origin listed in `ALLOWED_ORIGINS`; a request with any other `Origin` header gets `403`. For a listed origin the server answers CORS: a preflight (`OPTIONS` with `Access-Control-Request-Method`) gets `204` before any key is checked, allowing `GET`, `HEAD`, `POST` and `PUT` with the `authorization` and `content-type` headers, and every response carries `Access-Control-Allow-Origin` with that origin, `Vary: Origin`, and `x-request-id` among the headers the page may read. There is no wildcard and no credentials mode: the page sends its API key in the `Authorization` header.
+
+### Errors
+
+Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document (`application/problem+json`) with a machine-readable `reason`, such as `bad_request`, `invalid_input` (with an `errors` list of JSON pointers), `forbidden`, `not_found` or `conflict`. A `500` says nothing about the cause; its `instance` is `urn:uuid:<id>`, and the server logs the error to stderr under `"incident":"<id>"` together with `"requestId"`, the value of the response's `x-request-id` header, so either id finds the log line. A request that Node's HTTP parser rejects before the API sees it, such as one with oversized headers or invalid framing, gets a bare status line, such as `431` or `400`, and no problem document.
 
 ## Licensing
 
@@ -105,12 +148,14 @@ pnpm check        # everything CI checks
 
 ## Repository layout
 
-| Path                  | What's there                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------ |
-| `packages/server`     | The HTTP server (`@beonauto/server`) and its container build (`Dockerfile`)                |
-| `packages/config`     | Reads the server's configuration from the environment                                      |
-| `packages/operations` | The application layer: where operations are defined and run                                |
-| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                |
-| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives |
-| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                  |
-| `primitives/*`        | One package per primitive; `primitives/inference` calls language models                    |
+| Path                  | What's there                                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `packages/server`     | The HTTP server (`@beonauto/server`), which serves the brain operations on the ledger, and its container build (`Dockerfile`) |
+| `packages/api`        | The API (`@beonauto/api`) the server answers every request with                                                               |
+| `packages/config`     | Reads the server's configuration from the environment                                                                         |
+| `packages/identity`   | API keys, local mode and the key command                                                                                      |
+| `packages/operations` | The application layer: where operations are defined and run                                                                   |
+| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                                                   |
+| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives                                    |
+| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                                                     |
+| `primitives/*`        | One package per primitive                                                                                                     |

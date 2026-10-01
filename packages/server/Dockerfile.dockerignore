@@ -2,6 +2,7 @@
 **/coverage
 **/.turbo
 **/*.test.ts
+packages/*/src/testing
 .git
 .github
 .vscode
