@@ -1,10 +1,10 @@
 import type { Refused, Settled } from '@beonauto/operations';
 
-import { problemOf, problemResponse, type ProblemExtensions } from '../problem/problem.ts';
+import { internalErrorProblem, problemOf, problemResponse, type OptionalProblemMembers } from '../problem/problem.ts';
 
 const stopping = problemOf('unavailable', 'The server is stopping');
 
-function extensionsOf({ issues }: Refused): ProblemExtensions {
+function optionalMembersOf({ issues }: Refused): OptionalProblemMembers {
   return issues === undefined ? {} : { errors: issues };
 }
 
@@ -13,10 +13,10 @@ export function responseTo(settled: Settled, successStatus: number): Response {
     return Response.json(settled.output, { status: successStatus, headers: { 'cache-control': 'no-store' } });
   }
   if (settled.status === 'refused') {
-    return problemResponse(problemOf(settled.reason, settled.detail, extensionsOf(settled)));
+    return problemResponse(problemOf(settled.reason, settled.detail, optionalMembersOf(settled)));
   }
   if (settled.status === 'faulted') {
-    return problemResponse(problemOf('internal', 'An unexpected fault occurred', { incident: settled.incident }));
+    return problemResponse(internalErrorProblem(settled.incident));
   }
   return problemResponse(stopping);
 }

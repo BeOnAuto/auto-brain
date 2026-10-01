@@ -68,10 +68,48 @@ jobs:
           test "$(curl --silent --fail http://127.0.0.1:8080/health)" = '{"status":"ok"}'
           test "$(docker exec smoke id -un)" = node
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 401
-          curl --silent --include http://127.0.0.1:8080/v1/orgs/demo/brains | grep --ignore-case --quiet '^www-authenticate: Bearer'
-          docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo | grep --quiet --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$'
+          test "$(curl --silent --include http://127.0.0.1:8080/v1/orgs/demo/brains | grep --ignore-case --count '^www-authenticate: Bearer')" = 1
+          test "$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo | grep --count --extended-regexp '^API key, shown only this once: abk_[0-9a-f]{8}_[A-Za-z0-9_-]{43}$')" = 1
           docker stop smoke
           test "$(docker inspect smoke --format '{{.State.ExitCode}}')" = 0
+      - name: Keep a brain on a volume across a restart
+        run: |
+          wait_for_health() {
+            for attempt in $(seq 1 30); do
+              curl --silent --fail http://127.0.0.1:8080/health > /dev/null && return 0
+              sleep 1
+            done
+            return 1
+          }
+          start_server() {
+            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume brains:/data auto-brain:ci
+            wait_for_health
+          }
+          stop_server() {
+            docker stop "$1"
+            test "$(docker inspect "$1" --format '{{.State.ExitCode}}')" = 0
+          }
+          read_brain() {
+            curl --silent --fail --header "authorization: Bearer $key" http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          }
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker volume create brains
+          start_server first
+          test "$(curl --silent --output created.json --write-out '%{http_code}' \
+            --header "authorization: Bearer $key" --header 'content-type: application/json' \
+            --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          read_brain > before-restart.json
+          grep --quiet '"id":"smoke"' before-restart.json
+          cmp created.json before-restart.json
+          stop_server first
+          start_server second
+          read_brain > after-restart.json
+          cmp before-restart.json after-restart.json
+          stop_server second
 
   pull-request-title:
     name: Pull request title

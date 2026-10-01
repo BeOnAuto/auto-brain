@@ -1,13 +1,20 @@
 import { fileURLToPath } from 'node:url';
 
 import { createApiKey } from '@beonauto/identity';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { spawnEntry } from './testing/spawned.ts';
+import { temporaryLedger } from './testing/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
 
-const loopback = { HOST: '127.0.0.1', PORT: '0' };
+const ledger = temporaryLedger();
+
+afterAll(() => {
+  ledger.remove();
+});
+
+const loopback = { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName };
 
 const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>, string]> = [
   [{ PORT: 'eighty' }, 'InvalidPortError: PORT must be an integer from 0 to 65535, received "eighty"'],
@@ -70,7 +77,7 @@ describe('main with settings', () => {
     child.signal('SIGTERM');
     await child.exited;
 
-    expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 404 });
+    expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
     expect(child.output()).toEqual({ stdout: `auto-brain listening on port ${port}\n`, stderr: '' });
   });

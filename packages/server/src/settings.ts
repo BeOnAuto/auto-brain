@@ -9,6 +9,7 @@ export interface Settings {
   readonly port: number;
   readonly allowedOrigins: readonly string[];
   readonly apiKeys: readonly ApiKey[] | undefined;
+  readonly ledgerFile: string;
 }
 
 const Origin = Schema.String.check(
@@ -18,12 +19,16 @@ const Origin = Schema.String.check(
   ),
 );
 
-const allowedOriginsSetting = Config.Array(Origin, 'ALLOWED_ORIGINS').pipe(Config.withDefault([]));
+const serverSettings = Config.all({
+  allowedOrigins: Config.Array(Origin, 'ALLOWED_ORIGINS').pipe(Config.withDefault([])),
+  ledgerFile: Config.String('LEDGER_FILE').pipe(Config.withDefault('data/ledger.db')),
+});
 
 export function readSettings(environment: Environment): Settings {
   const { host, port } = readServerConfig(environment);
-  const allowedOrigins = allowedOriginsSetting
+  const read = serverSettings
     .parse(ConfigProvider.fromEnvRecord(environment))
     .pipe(Effect.mapError(({ message }: { readonly message: string }) => new InvalidSettingsError({ message })));
-  return { host, port, allowedOrigins: Effect.runSync(allowedOrigins), apiKeys: readApiKeys(environment) };
+  const { allowedOrigins, ledgerFile } = Effect.runSync(read);
+  return { host, port, allowedOrigins, apiKeys: readApiKeys(environment), ledgerFile };
 }

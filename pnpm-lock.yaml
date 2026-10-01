@@ -339,12 +339,18 @@ importers:
       '@beonauto/api':
         specifier: workspace:*
         version: link:../api
+      '@beonauto/brains':
+        specifier: workspace:*
+        version: link:../brains
       '@beonauto/config':
         specifier: workspace:*
         version: link:../config
       '@beonauto/identity':
         specifier: workspace:*
         version: link:../identity
+      '@beonauto/ledger':
+        specifier: workspace:*
+        version: link:../ledger
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../operations

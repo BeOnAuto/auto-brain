@@ -7,7 +7,7 @@ import {
   type Registration,
   type Settled,
 } from '@beonauto/operations';
-import type { Effect } from 'effect';
+import { Result, type Effect } from 'effect';
 import type { Context } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
@@ -41,10 +41,10 @@ function dispatched(
 function handlerFor(registration: Registration, { dispatcher, runCall }: OperationRoutesOptions): RouteHandler {
   return async (c) => {
     const given = await callInputOf(c, registration);
-    if (given.status === 'refused') {
-      return problemResponse(given.problem);
+    if (Result.isFailure(given)) {
+      return problemResponse(given.failure);
     }
-    const settled = await runCall(settle(dispatched(dispatcher, registration, c, given.value), c.req.raw.signal));
+    const settled = await runCall(settle(dispatched(dispatcher, registration, c, given.success), c.req.raw.signal));
     return responseTo(settled, registration.successStatus);
   };
 }

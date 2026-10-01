@@ -156,7 +156,10 @@ describe('the Node listener', () => {
 
     expect(response.status).toBe(500);
     expect(response.headers.get('content-type')).toBe('application/problem+json');
-    expect(await response.json()).toMatchObject({ reason: 'internal', incident: reported[0]?.incident });
+    expect(await response.json()).toMatchObject({
+      reason: 'internal',
+      instance: `urn:uuid:${String(reported[0]?.incident)}`,
+    });
   });
 
   it.each([
@@ -173,7 +176,7 @@ describe('the Node listener', () => {
     expect(response.toLowerCase()).toContain('\r\nx-content-type-options: nosniff\r\n');
     expect(response.toLowerCase()).toMatch(/\r\nx-request-id: [\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-/u);
     expect(response).toContain(
-      '\r\n\r\n{"type":"https://on.auto/problems/malformed_request","title":"Malformed request","status":400,"detail":"The request could not be read","reason":"malformed_request"}',
+      '\r\n\r\n{"type":"https://on.auto/problems/bad_request","title":"Bad request","status":400,"detail":"The request could not be read","reason":"bad_request"}',
     );
   });
 });

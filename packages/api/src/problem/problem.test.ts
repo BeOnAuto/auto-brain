@@ -8,7 +8,7 @@ const statusAndTitleByReason: ReadonlyArray<readonly [ProblemReason, number, str
   ['not_found', 404, 'Not found'],
   ['conflict', 409, 'Conflict'],
   ['unavailable', 503, 'Unavailable'],
-  ['malformed_request', 400, 'Malformed request'],
+  ['bad_request', 400, 'Bad request'],
   ['unauthenticated', 401, 'Unauthenticated'],
   ['origin_not_allowed', 403, 'Origin not allowed'],
   ['method_not_allowed', 405, 'Method not allowed'],
@@ -32,12 +32,6 @@ describe('problemOf', () => {
     const errors = [{ detail: 'Expected a string', pointer: '/name' }];
 
     expect(problemOf('invalid_input', 'The input is invalid', { errors })).toMatchObject({ errors });
-  });
-
-  it('carries an incident id', () => {
-    expect(problemOf('internal', 'An unexpected fault occurred', { incident: 'incident-1' })).toMatchObject({
-      incident: 'incident-1',
-    });
   });
 });
 

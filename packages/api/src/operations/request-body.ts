@@ -1,22 +1,22 @@
-import { Predicate } from 'effect';
+import { Predicate, Result } from 'effect';
 
-import { read, refusedWith, type Readout } from './readout.ts';
+import { problemOf, type Problem } from '../problem/problem.ts';
 
 export type Fields = Readonly<Record<string, unknown>>;
 
 const bodyLimit = 1024 * 1024;
 
-const tooLarge = refusedWith('payload_too_large', 'The body is larger than 1 MiB');
+const tooLarge = Result.fail(problemOf('payload_too_large', 'The body is larger than 1 MiB'));
 
-const notJson = refusedWith('unsupported_media_type', 'A body must be sent as application/json');
+const notJson = Result.fail(problemOf('unsupported_media_type', 'A body must be sent as application/json'));
 
-const notAnObject = refusedWith('malformed_request', 'The body must be a JSON object');
+const notAnObject = Result.fail(problemOf('bad_request', 'The body must be a JSON object'));
 
-const unreadable = refusedWith('malformed_request', 'The body could not be read as UTF-8 text');
+const unreadable = Result.fail(problemOf('bad_request', 'The body could not be read as UTF-8 text'));
 
-async function bodyTextOf(request: Request): Promise<Readout<string>> {
+async function bodyTextOf(request: Request): Promise<Result.Result<string, Problem>> {
   if (request.body === null) {
-    return read('');
+    return Result.succeed('');
   }
   if (Number(request.headers.get('content-length')) > bodyLimit) {
     return tooLarge;
@@ -35,7 +35,7 @@ async function bodyTextOf(request: Request): Promise<Readout<string>> {
   } catch {
     return unreadable;
   }
-  return read(text);
+  return Result.succeed(text);
 }
 
 function isJson(contentType: string | null): boolean {
@@ -50,17 +50,17 @@ function parsed(text: string): unknown {
   }
 }
 
-export async function jsonBodyOf(request: Request): Promise<Readout<Fields>> {
-  const text = await bodyTextOf(request);
-  if (text.status === 'refused') {
-    return text;
+function fieldsOf(text: string, contentType: string | null): Result.Result<Fields, Problem> {
+  if (text === '') {
+    return Result.succeed({});
   }
-  if (text.value === '') {
-    return read({});
-  }
-  if (!isJson(request.headers.get('content-type'))) {
+  if (!isJson(contentType)) {
     return notJson;
   }
-  const body = parsed(text.value);
-  return Predicate.isReadonlyObject(body) ? read(body) : notAnObject;
+  const body = parsed(text);
+  return Predicate.isReadonlyObject(body) ? Result.succeed(body) : notAnObject;
+}
+
+export async function jsonBodyOf(request: Request): Promise<Result.Result<Fields, Problem>> {
+  return Result.flatMap(await bodyTextOf(request), (text) => fieldsOf(text, request.headers.get('content-type')));
 }

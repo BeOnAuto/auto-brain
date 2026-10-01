@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@beonauto/api": "workspace:*",
+    "@beonauto/brains": "workspace:*",
     "@beonauto/config": "workspace:*",
     "@beonauto/identity": "workspace:*",
+    "@beonauto/ledger": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "effect": "catalog:"
   },

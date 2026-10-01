@@ -72,7 +72,7 @@ describe('the server process', () => {
     const text = await response.text();
     child.signal('SIGTERM');
     await child.exited;
-    const incident = /"incident":"([^"]+)"/u.exec(text)?.[1];
+    const incident = /"instance":"urn:uuid:([^"]+)"/u.exec(text)?.[1];
 
     expect(text).not.toContain('hunter2');
     expect(child.output().stderr).toContain(`"annotations":{"incident":"${String(incident)}"}`);

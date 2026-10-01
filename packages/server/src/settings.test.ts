@@ -16,8 +16,14 @@ function errorFrom(environment: Environment): unknown {
 const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], brains: '*' });
 
 describe('readSettings', () => {
-  it('listens on every interface at port 8080, allows no origin and has no API keys when nothing is configured', () => {
-    expect(readSettings({})).toEqual({ host: '0.0.0.0', port: 8080, allowedOrigins: [], apiKeys: undefined });
+  it('listens on every interface at port 8080, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
+    expect(readSettings({})).toEqual({
+      host: '0.0.0.0',
+      port: 8080,
+      allowedOrigins: [],
+      apiKeys: undefined,
+      ledgerFile: 'data/ledger.db',
+    });
   });
 
   it('reads every setting from the environment it is given', () => {
@@ -27,19 +33,22 @@ describe('readSettings', () => {
         PORT: '3000',
         ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
         API_KEYS: JSON.stringify([entry]),
+        LEDGER_FILE: '/data/ledger.db',
       }),
     ).toEqual({
       host: '127.0.0.1',
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
       apiKeys: [entry],
+      ledgerFile: '/data/ledger.db',
     });
   });
 
   it('treats empty variables as not set', () => {
-    expect(readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '' })).toMatchObject({
+    expect(readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '', LEDGER_FILE: '' })).toMatchObject({
       allowedOrigins: [],
       apiKeys: undefined,
+      ledgerFile: 'data/ledger.db',
     });
   });
 

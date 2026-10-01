@@ -23,12 +23,12 @@ function internalProblemWith(incident: string | undefined): Readonly<Record<stri
     status: 500,
     detail: 'An unexpected fault occurred',
     reason: 'internal',
-    incident,
+    instance: `urn:uuid:${String(incident)}`,
   };
 }
 
 describe('an unexpected error', () => {
-  it('answers 500 with only an incident id, and reports the error under that id', async () => {
+  it('answers 500 identified only by the urn:uuid of an incident, and reports the error under that id', async () => {
     const { handler, reported } = handlerWith({ routes: [failing] });
 
     const answer = await call(handler, '/error');

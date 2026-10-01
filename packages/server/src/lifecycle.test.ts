@@ -37,16 +37,16 @@ async function isAcceptingConnections(port: number): Promise<boolean> {
   }
 }
 
-function recordingDisposal(): { runtimeLayer: Layer.Layer<never>; events: string[] } {
+function recordingDisposal(): { runtimeLayer: () => Layer.Layer<never>; events: string[] } {
   const events: string[] = [];
-  const runtimeLayer = Layer.effectDiscard(
+  const recording = Layer.effectDiscard(
     Effect.addFinalizer(() =>
       Effect.sync(() => {
         events.push('runtime disposed');
       }),
     ),
   );
-  return { runtimeLayer, events };
+  return { runtimeLayer: () => recording, events };
 }
 
 function statusOf(port: number, path: string, headers: Readonly<Record<string, string>>): Promise<number | undefined> {

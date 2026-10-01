@@ -1,3 +1,4 @@
-import { runServer, withoutOperations } from './lifecycle.ts';
+import { compositionRoot } from './composition-root.ts';
+import { runServer } from './lifecycle.ts';
 
-await runServer(process, withoutOperations);
+await runServer(process, compositionRoot);

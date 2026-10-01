@@ -34,12 +34,12 @@ describe('the input of a GET operation', () => {
   it.each([
     ['in the query string twice', `${notes}?limit=1&limit=2`, 'limit'],
     ['in the path and the query string', `${notes}/first?name=other`, 'name'],
-  ])('is refused as malformed for a field given %s', async (_case, path, field) => {
+  ])('is refused as a bad request for a field given %s', async (_case, path, field) => {
     const { handler } = await operationServer();
 
     expect(await call(handler, path, { headers: asAdmin })).toMatchObject({
       status: 400,
-      body: { reason: 'malformed_request', detail: `The field ${field} is given in more than one place` },
+      body: { reason: 'bad_request', detail: `The field ${field} is given in more than one place` },
     });
   });
 });
@@ -56,13 +56,13 @@ describe('the input of a POST or PUT operation', () => {
     });
   });
 
-  it('refuses a field given in the path and in the body as malformed', async () => {
+  it('refuses a field given in the path and in the body as a bad request', async () => {
     const { handler } = await operationServer();
     const body = '{"brain":"alpha","label":"b"}';
 
     expect(await call(handler, betaLabel, { method: 'PUT', headers: jsonAsAdmin, body })).toMatchObject({
       status: 400,
-      body: { reason: 'malformed_request', detail: 'The field brain is given in more than one place' },
+      body: { reason: 'bad_request', detail: 'The field brain is given in more than one place' },
     });
   });
 

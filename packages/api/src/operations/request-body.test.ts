@@ -25,9 +25,9 @@ const refusedBodies: ReadonlyArray<readonly [string, Headers, string, Refusal]> 
     'name=a',
     { status: 415, reason: 'unsupported_media_type' },
   ],
-  ['text that is not JSON', jsonAsAdmin, '{nope', { status: 400, reason: 'malformed_request' }],
-  ['a JSON array', jsonAsAdmin, '[1]', { status: 400, reason: 'malformed_request' }],
-  ['JSON null', jsonAsAdmin, 'null', { status: 400, reason: 'malformed_request' }],
+  ['text that is not JSON', jsonAsAdmin, '{nope', { status: 400, reason: 'bad_request' }],
+  ['a JSON array', jsonAsAdmin, '[1]', { status: 400, reason: 'bad_request' }],
+  ['JSON null', jsonAsAdmin, 'null', { status: 400, reason: 'bad_request' }],
 ];
 
 describe('the encoding of a body', () => {
@@ -70,7 +70,7 @@ describe('the encoding of a body', () => {
 
     expect({ status: answer.status, body: await answer.json() }).toMatchObject({
       status: 400,
-      body: { reason: 'malformed_request', detail: 'The body could not be read as UTF-8 text' },
+      body: { reason: 'bad_request', detail: 'The body could not be read as UTF-8 text' },
     });
   });
 });

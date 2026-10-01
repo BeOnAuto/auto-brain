@@ -95,12 +95,16 @@ describe('a call that is refused or faults', () => {
     });
   });
 
-  it('answers a fault with a 500 problem that carries only the incident id it was reported under', async () => {
+  it('answers a fault with a 500 problem identified by the urn:uuid of the incident it was reported under', async () => {
     const { handler, incidents } = await operationServer();
 
     const answer = await call(handler, '/v1/orgs/acme/brains/alpha/broken', { headers: asAdmin });
 
-    expect(answer).toMatchObject({ status: 500, body: { reason: 'internal', incident: incidents()[0]?.id } });
+    expect(answer).toMatchObject({
+      status: 500,
+      body: { reason: 'internal', instance: `urn:uuid:${String(incidents()[0]?.id)}` },
+    });
+    expect(answer.body).not.toHaveProperty('incident');
     expect(answer.text).not.toContain('hunter2');
   });
 });

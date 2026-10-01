@@ -7,8 +7,9 @@ import { Layer } from 'effect';
 
 import { createHttpServer, listen } from './http-server.ts';
 import { announceAccess, jsonLogsToStderr, logIncident } from './logging.ts';
-import { readSettings } from './settings.ts';
+import { readSettings, type Settings } from './settings.ts';
 import { shutDown } from './shutdown.ts';
+import { StartupError } from './startup-error.ts';
 
 export interface RunningServer {
   readonly port: number;
@@ -22,21 +23,29 @@ export interface ServerProcess {
 }
 
 export interface ServerOptions<R> {
-  readonly runtimeLayer: Layer.Layer<R>;
+  readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
   readonly routes: (runner: Runner<R>) => readonly RegisterRoutes[];
   readonly shutdownDeadlineMs: number;
 }
 
 export const withoutOperations: ServerOptions<never> = {
-  runtimeLayer: Layer.empty,
+  runtimeLayer: () => Layer.empty,
   routes: () => [],
   shutdownDeadlineMs: 8000,
 };
 
+async function startRuntime<R>(services: Layer.Layer<R>): Promise<Runner<R>> {
+  try {
+    return await makeRunner(services.pipe(Layer.provideMerge(jsonLogsToStderr)));
+  } catch (failure) {
+    throw new StartupError({ message: `The server's services could not start: ${String(failure)}` });
+  }
+}
+
 export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
   const authenticator = authenticatorFor(settings);
-  const runner = await makeRunner(options.runtimeLayer.pipe(Layer.provideMerge(jsonLogsToStderr)));
+  const runner = await startRuntime(options.runtimeLayer(settings));
   await runner.run(announceAccess(authenticator.mode));
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,

@@ -28,7 +28,7 @@ import { ledgerLayer } from '@beonauto/ledger';
 const layer = ledgerLayer({ fileName: '/data/ledger.db' });
 ```
 
-Building the layer opens the database and migrates its tables before the ledger is ready; a database that cannot be opened is a defect at that point. Disposing the runtime closes every connection. `fileName: ':memory:'` gives a private in-memory database, which is what the tests use.
+Building the layer creates the directory of the database file if it is missing, then opens the database and migrates its tables before the ledger is ready; a directory that cannot be created or a database that cannot be opened is a defect at that point. Disposing the runtime closes every connection. `fileName: ':memory:'` gives a private in-memory database, which is what the tests use.
 
 Each SQLite connection may cache up to 8 MiB of pages and maps none of the file into memory, where the driver's defaults allow about 1 GB of cache and 256 MiB of mapped file per connection.
 
