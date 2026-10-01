@@ -3,12 +3,14 @@ import {
   BrainReader,
   BrainWriter,
   Conflict,
+  InvalidInput,
   NotFound,
   OrgReader,
   OrgWriter,
   defineCommand,
   defineQuery,
   type Decider,
+  type Issue,
 } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 
@@ -166,8 +168,29 @@ const listLabels = defineQuery('org', {
   }),
 });
 
+const checkLines = defineCommand('brain', {
+  name: 'check_lines',
+  title: 'Check lines',
+  description: 'Accepts lines that all start with a capital letter, and rejects every other line.',
+  route: { method: 'POST', path: '/lines' },
+  inputSchema: Schema.Struct({ lines: Schema.Array(Schema.String) }),
+  outputSchema: Schema.Struct({ accepted: Schema.Int }),
+  reasons: ['invalid_input'],
+  handle: ({ lines }) => {
+    const issues = lines.flatMap((line, index): readonly Issue[] =>
+      /^[A-Z]/u.test(line)
+        ? []
+        : [{ detail: `Line ${index + 1} must start with a capital letter`, pointer: `/lines/${index}` }],
+    );
+    return issues.length === 0
+      ? Effect.succeed({ accepted: lines.length })
+      : Effect.fail(new InvalidInput({ detail: 'Some lines need fixing', issues }));
+  },
+});
+
 export const notebookOperations = [
   addNote,
+  checkLines,
   listNotes,
   getNote,
   latestNote,

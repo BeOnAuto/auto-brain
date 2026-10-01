@@ -86,8 +86,12 @@ function defineOperation<
       run: Effect.fnUntraced(function* (input: unknown, encoding: InputEncoding) {
         const handled = yield* Effect.result(handle(yield* decodeInput(input, encoding)));
         if (Result.isFailure(handled)) {
-          const { _tag: reason, detail } = handled.failure;
-          return yield* reasons.includes(reason) ? Effect.fail(rejected(reason, detail)) : Effect.die(handled.failure);
+          const rejection = handled.failure;
+          const { _tag: reason, detail } = rejection;
+          const issues = 'issues' in rejection ? rejection.issues : undefined;
+          return yield* reasons.includes(reason)
+            ? Effect.fail(rejected(reason, detail, issues))
+            : Effect.die(rejection);
         }
         return succeeded(yield* encodeOutput(handled.success));
       }),

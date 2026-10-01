@@ -1,13 +1,9 @@
 import type { Schema } from 'effect';
 
+import { cappedIssues, type Issue } from './issue.ts';
 import type { DeclarableReason } from './rejection.ts';
 
-export type RejectionReason = 'invalid_input' | 'forbidden' | DeclarableReason;
-
-export interface Issue {
-  readonly detail: string;
-  readonly pointer: string;
-}
+export type RejectionReason = 'forbidden' | DeclarableReason;
 
 export interface Succeeded {
   readonly status: 'succeeded';
@@ -39,7 +35,9 @@ export function succeeded(output: Schema.JsonObject): Succeeded {
 }
 
 export function rejected(reason: RejectionReason, detail: string, issues?: readonly Issue[]): Rejected {
-  return issues === undefined ? { status: 'rejected', reason, detail } : { status: 'rejected', reason, detail, issues };
+  return issues === undefined
+    ? { status: 'rejected', reason, detail }
+    : { status: 'rejected', reason, detail, issues: cappedIssues(issues) };
 }
 
 export function failed(incident: string): Failed {

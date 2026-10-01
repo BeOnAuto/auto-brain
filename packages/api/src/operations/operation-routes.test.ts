@@ -109,6 +109,50 @@ describe('a call that is rejected or fails', () => {
   });
 });
 
+describe('a handler that checks the input', () => {
+  const lines = '/v1/orgs/acme/brains/alpha/lines';
+
+  it('answers input it accepts', async () => {
+    const { handler } = await operationServer();
+    const body = JSON.stringify({ lines: ['Fine', 'Also fine'] });
+
+    expect(await call(handler, lines, { method: 'POST', headers: jsonAsAdmin, body })).toMatchObject({
+      status: 200,
+      body: { accepted: 2 },
+    });
+  });
+
+  it('has its issues carried as errors with pointers', async () => {
+    const { handler } = await operationServer();
+    const body = JSON.stringify({ lines: ['Fine', 'lower', 'Fine', 'also lower'] });
+
+    const answer = await call(handler, lines, { method: 'POST', headers: jsonAsAdmin, body });
+
+    expect(answer.status).toBe(422);
+    expect(answer.body).toEqual({
+      type: 'https://on.auto/problems/invalid_input',
+      title: 'Invalid input',
+      status: 422,
+      detail: 'Some lines need fixing',
+      reason: 'invalid_input',
+      errors: [
+        { detail: 'Line 2 must start with a capital letter', pointer: '/lines/1' },
+        { detail: 'Line 4 must start with a capital letter', pointer: '/lines/3' },
+      ],
+    });
+  });
+
+  it('has at most 100 of its issues carried', async () => {
+    const { handler } = await operationServer();
+    const body = JSON.stringify({ lines: Array.from({ length: 150 }, () => 'lower') });
+
+    const answer = await call(handler, lines, { method: 'POST', headers: jsonAsAdmin, body });
+
+    expect(answer).toMatchObject({ status: 422, body: { reason: 'invalid_input' } });
+    expect(answer.body).toHaveProperty('errors.length', 100);
+  });
+});
+
 describe('a call that cannot run', () => {
   it('answers 503 once the runtime is disposed', async () => {
     const { handler, runtime } = await operationServer();

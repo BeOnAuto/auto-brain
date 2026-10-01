@@ -49,7 +49,7 @@ The compiler holds a definition to these rules:
 - A query's route uses `GET` and a command's `POST` or `PUT`. Only a command may answer `201` instead of `200`.
 - The route path is relative to the scope's prefix. Each `{parameter}` must be a string field of the input.
 - The input may not have an `org` field, nor a `brain` field at brain scope.
-- The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict` or `Unavailable`.
+- The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict`, `Unavailable` or `InvalidInput`.
 - The handler may ask only for the services of its scope and kind:
 
 | Scope   | Query                                   | Command also gets |
@@ -66,6 +66,8 @@ When an operation is defined, it checks again what the compiler cannot see, on t
 - a field the handler calls `brain` also travels as `brain`.
 
 At run time, when a handler fails with a reason it did not declare, the call fails; it is not rejected.
+
+`InvalidInput` is for input that matches the input schema but that the handler finds wrong, such as a document it parses. It carries a detail and its issues, each a `detail` and a JSON Pointer `pointer` into the input. A handler that declares `invalid_input` and fails with it is rejected with reason `invalid_input` and those issues, the same rejection the dispatcher gives input that breaks the schema. Every rejection carries at most 100 issues, and each issue only its `detail` and `pointer`.
 
 `getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, whether the operation targets a brain, and JSON Schema for the input and output with their definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
 
@@ -108,7 +110,7 @@ A `Decider` holds the event-sourced rules of a stream: its initial state, how an
 
 For each call the dispatcher binds the ledger to the call's address. `OrgReader` and `OrgWriter` prefix a stream name with `org/{org}/`; `BrainReader` and `BrainWriter` with `brain/{org}/{brain}/`. A handler names its streams relative to its org or brain: one or more segments of letters, digits, `_` and `-`, each at most 64 characters, joined by `/`, at most 256 characters in all. Any other name fails the call. So a handler has no way to name another org's or brain's streams. Stream names are case-sensitive, and a ledger implementation must treat them as opaque strings.
 
-`streamPrefixOfOrg({ org })` returns the prefix of an org's streams, so code that holds the unbound `Ledger`, such as a `BrainRegistry`, reads the same stream a handler names relative to its org.
+`streamPrefixOfOrg({ org })` returns the prefix of an org's streams, so code that holds the unbound `Ledger`, such as a `BrainRegistry`, reads the same stream a handler names relative to its org. `streamPrefixOfBrain({ org, brain })` does the same for a brain's streams. Such code must accept only well-formed org and brain ids (`OrgIdSchema`, `BrainIdSchema`), as the dispatcher does, so that a prefix names exactly one org or brain.
 
 ## Testing
 

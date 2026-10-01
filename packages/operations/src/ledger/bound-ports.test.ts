@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { streamPrefixOfOrg } from '../index.ts';
+import { streamPrefixOfBrain, streamPrefixOfOrg } from '../index.ts';
 import { getBrainLabel, labelBrain, listBrainLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader, globexAdmin } from '../testing/callers.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
@@ -54,6 +54,21 @@ describe('the ports bound to a call', () => {
     );
 
     expect(ledger.streamNames()).toEqual([`${streamPrefixOfOrg({ org: 'acme' })}brain-labels`]);
+  });
+});
+
+describe('the prefix of a brain', () => {
+  it('is shared with code that holds the unbound ledger', async () => {
+    const { dispatcher, ledger, run } = harness();
+
+    await run(
+      dispatcher.dispatchToBrain(
+        addNote.registration,
+        toBrain('acme', 'alpha')(acmeAdmin, { name: 'anvil', text: 'x' }),
+      ),
+    );
+
+    expect(ledger.streamNames()).toEqual([`${streamPrefixOfBrain({ org: 'acme', brain: 'alpha' })}notes`]);
   });
 });
 
