@@ -119,7 +119,7 @@ describe('execute_spec rejecting', () => {
 
   it('a spec whose document its primitive no longer parses, recording nothing', async () => {
     const { executing, ledger, prober } = await withPlain();
-    prober.refuseEveryDocument();
+    prober.rejectEveryDocument();
 
     expect(await executing({})).toEqual({
       status: 'rejected',

@@ -9,7 +9,7 @@ interface MediaType {
   readonly charset: string | undefined;
 }
 
-const bodyLimit = 1024 * 1024;
+export const requestBodyLimit = 1024 * 1024;
 
 const tooLarge = Result.fail(problemOf('content_too_large', 'The body is larger than 1 MiB'));
 
@@ -52,7 +52,7 @@ async function bodyTextOf(request: Request): Promise<Result.Result<string, Probl
   if (declaresAnotherCharset(mediaTypeOf(request.headers.get('content-type')))) {
     return notUtf8;
   }
-  if (Number(request.headers.get('content-length')) > bodyLimit) {
+  if (Number(request.headers.get('content-length')) > requestBodyLimit) {
     return tooLarge;
   }
   const chunks = request.body.pipeThrough(new TextDecoderStream('utf-8', { fatal: true }));
@@ -61,7 +61,7 @@ async function bodyTextOf(request: Request): Promise<Result.Result<string, Probl
   try {
     for await (const chunk of chunks) {
       size += Buffer.byteLength(chunk);
-      if (size > bodyLimit) {
+      if (size > requestBodyLimit) {
         return tooLarge;
       }
       text += chunk;

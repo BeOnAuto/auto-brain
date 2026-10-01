@@ -8,7 +8,7 @@ import {
 } from '@beonauto/operations/testing';
 import { Layer } from 'effect';
 
-import { makeAppRuntime, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
+import { makeAppRuntime, mcpRoutes, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
 import { createTestHandler } from './api-calls.ts';
 import { notebookOperations } from './notebook.ts';
 
@@ -16,7 +16,10 @@ export interface OperationServer {
   readonly handler: ApiHandler;
   readonly runtime: AppRuntime<DispatcherServices>;
   readonly incidents: () => readonly ReportedIncident[];
+  readonly mcpErrors: () => readonly string[];
 }
+
+export const testServerInfo = { name: 'auto-brain', version: '0.0.0-test' };
 
 const knownBrains = [
   { org: 'acme', brain: 'alpha' },
@@ -67,11 +70,21 @@ export async function operationServer({
   const ledger = memoryLedger();
   const recording = recordingReporter();
   const runtime = await makeAppRuntime(Layer.mergeAll(ledger.layer, memoryBrainRegistry(knownBrains), recording.layer));
-  const routes = operationRoutes({
-    catalog: makeCatalog(operations),
-    dispatcher: makeDispatcher([]),
-    runCall: runtime.run,
-  });
-  const { handler } = createTestHandler({ authenticator, allowedOrigins, routes: [routes] });
-  return { handler, runtime, incidents: recording.reported };
+  const catalog = makeCatalog(operations);
+  const dispatcher = makeDispatcher([]);
+  const mcpErrors: string[] = [];
+  const routes = [
+    operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
+    mcpRoutes({
+      catalog,
+      dispatcher,
+      runCall: runtime.run,
+      serverInfo: testServerInfo,
+      reportError: (error) => {
+        mcpErrors.push(error.message);
+      },
+    }),
+  ];
+  const { handler } = createTestHandler({ authenticator, allowedOrigins, routes });
+  return { handler, runtime, incidents: recording.reported, mcpErrors: () => [...mcpErrors] };
 }

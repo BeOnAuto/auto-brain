@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { logAccessMode, logIncident } from './logging.ts';
+import { logAccessMode, logIncident, logMcpError } from './logging.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 
 async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
@@ -14,6 +14,17 @@ async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly stri
   });
   await Effect.runPromise(effect.pipe(Effect.provide(Logger.layer([capture]))));
   return lines;
+}
+
+function syntaxErrorParsing(text: string): SyntaxError {
+  try {
+    JSON.parse(text);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return error;
+    }
+  }
+  throw new TypeError(`${text} parsed as JSON`);
 }
 
 const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-routes.ts', import.meta.url));
@@ -72,6 +83,27 @@ describe('logIncident', () => {
   });
 });
 
+describe('logMcpError', () => {
+  it('warns with the message of an error the MCP layer reports', async () => {
+    const [line] = await linesLoggedBy(
+      logMcpError(new Error('Unsupported Media Type: Content-Type must be application/json')),
+    );
+
+    expect(line).toContain('"message":"The MCP layer reported an error","level":"WARN"');
+    expect(line).toContain('"annotations":{"error":"Unsupported Media Type: Content-Type must be application/json"}');
+  });
+
+  it('leaves out the part of the request body that a JSON syntax error quotes', async () => {
+    const error = syntaxErrorParsing('token=hunter2');
+
+    const [line] = await linesLoggedBy(logMcpError(error));
+
+    expect(error.message).toBe('Unexpected token \'o\', "token=hunter2" is not valid JSON');
+    expect(line).toContain('"annotations":{"error":"The request body is not valid JSON"}');
+    expect(line).not.toContain('hunter2');
+  });
+});
+
 describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('logs an unexpected error to stderr under the incident id it answers with', async () => {
     const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
@@ -95,10 +127,14 @@ describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
     const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
     const port = await child.port;
 
-    const abandoned = await fetch(`http://127.0.0.1:${port}/slow?ms=300`, { signal: AbortSignal.timeout(50) }).then(
+    const client = new AbortController();
+    const requesting = fetch(`http://127.0.0.1:${port}/slow?ms=300`, { signal: client.signal }).then(
       () => 'answered',
       () => 'abandoned',
     );
+    await setTimeout(50);
+    client.abort();
+    const abandoned = await requesting;
     await setTimeout(500);
     child.signal('SIGTERM');
 

@@ -36,7 +36,7 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
         'with conflict when the spec is retired, when its document no longer parses, when the primitive finds',
         'that the spec cannot run as written (update the spec, then try again), when the execution id belongs',
         'to another spec or input, or when another call recorded on the same execution at the same moment;',
-        'with invalid_input when the primitive refuses the input, with issues under /input;',
+        'with invalid_input when the primitive rejects the input, with issues under /input;',
         'and with unavailable when something the primitive depends on cannot serve now, in which case try again later.',
         'The rejections by the primitive (invalid_input, unavailable, and the conflict it finds) are recorded on the execution.',
       ]),

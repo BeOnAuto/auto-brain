@@ -21,7 +21,7 @@ const succeeded: ExecutionEvent = {
   ...finish,
 };
 
-const refused: ExecutionEvent = {
+const rejectedInput: ExecutionEvent = {
   type: 'execution_rejected',
   rejection: { reason: 'invalid_input', detail: 'No', issues: [{ detail: 'Expected a name', pointer: '/input/who' }] },
   ...finish,
@@ -80,7 +80,7 @@ describe('starting an execution', () => {
 
   it('records nothing once the execution has a final result', () => {
     expect(decided(starting(), started, succeeded)).toStrictEqual(Result.succeed([]));
-    expect(decided(starting(), started, refused)).toStrictEqual(Result.succeed([]));
+    expect(decided(starting(), started, rejectedInput)).toStrictEqual(Result.succeed([]));
   });
 
   it('takes the same input in any key order', () => {
@@ -119,7 +119,7 @@ describe('finishing an execution', () => {
 
   it('records nothing once the execution has a final result, nor for an execution that never started', () => {
     expect(decided(finishing({ type: 'execution_failed' }), started, succeeded)).toStrictEqual(Result.succeed([]));
-    expect(decided(finishing({ type: 'execution_failed' }), started, refused)).toStrictEqual(Result.succeed([]));
+    expect(decided(finishing({ type: 'execution_failed' }), started, rejectedInput)).toStrictEqual(Result.succeed([]));
     expect(decided(finishing({ type: 'execution_failed' }))).toStrictEqual(Result.succeed([]));
   });
 });

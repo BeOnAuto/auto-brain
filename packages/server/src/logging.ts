@@ -25,6 +25,16 @@ export function logAccessMode(mode: AccessMode, localModeRequested: boolean): Ef
 
 const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');
 
+function withoutRequestContent(error: Readonly<Error>): string {
+  return error instanceof SyntaxError ? 'The request body is not valid JSON' : error.message;
+}
+
+export function logMcpError(error: Readonly<Error>): Effect.Effect<void> {
+  return Effect.logWarning('The MCP layer reported an error').pipe(
+    Effect.annotateLogs({ error: withoutRequestContent(error) }),
+  );
+}
+
 export function logIncident({ id, original, call }: Incident): Effect.Effect<void> {
   return Effect.logError('Unexpected error', Cause.die(original)).pipe(
     Effect.catchCause(() => causeNotFormattable),

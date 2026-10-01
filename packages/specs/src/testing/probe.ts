@@ -15,13 +15,13 @@ export interface Probe {
   readonly primitive: Primitive;
   readonly runs: () => number;
   readonly sufferOnNextRun: (mishap: Mishap) => void;
-  readonly refuseEveryDocument: () => void;
+  readonly rejectEveryDocument: () => void;
 }
 
-function linesOf(source: string, refusing: boolean): Effect.Effect<readonly string[], InvalidInput> {
+function linesOf(source: string, rejecting: boolean): Effect.Effect<readonly string[], InvalidInput> {
   const lines = source.split('\n');
   const issues = lines.flatMap((line, index) =>
-    refusing || line.includes('oops') ? [{ detail: `Line ${index + 1} is not accepted`, pointer: '' }] : [],
+    rejecting || line.includes('oops') ? [{ detail: `Line ${index + 1} is not accepted`, pointer: '' }] : [],
   );
   return issues.length === 0
     ? Effect.succeed(lines)
@@ -40,11 +40,11 @@ function answerTo(
   execution: ExecutionContext,
   runs: number,
 ): Effect.Effect<Executed, InvalidInput> {
-  if (Predicate.hasProperty(input, 'refuse')) {
+  if (Predicate.hasProperty(input, 'reject')) {
     return Effect.fail(
       new InvalidInput({
-        detail: 'The probe refuses the input',
-        issues: [{ detail: 'Expected anything but refuse', pointer: '/refuse' }],
+        detail: 'The probe rejects the input',
+        issues: [{ detail: 'Expected anything but reject', pointer: '/reject' }],
       }),
     );
   }
@@ -63,13 +63,13 @@ function answerTo(
 export function probe(): Probe {
   let runs = 0;
   let nextMishap: Mishap | undefined;
-  let refusing = false;
+  let rejecting = false;
   const primitive = definePrimitive({
     name: 'probe',
     title: 'Probe',
     description: 'Answers with its input and the execution it runs in. A spec document of probe is plain text.',
     mediaType: 'text/plain',
-    parse: (source: string) => linesOf(source, refusing),
+    parse: (source: string) => linesOf(source, rejecting),
     summarize: () => ({}),
     execute: (_lines, input, execution) =>
       Effect.suspend((): Effect.Effect<Executed, PrimitiveRejection> => {
@@ -85,8 +85,8 @@ export function probe(): Probe {
     sufferOnNextRun: (mishap) => {
       nextMishap = mishap;
     },
-    refuseEveryDocument: () => {
-      refusing = true;
+    rejectEveryDocument: () => {
+      rejecting = true;
     },
   };
 }

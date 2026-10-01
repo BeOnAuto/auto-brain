@@ -39,8 +39,16 @@ jobs:
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
 
   container:
-    name: Container
-    runs-on: ubuntu-latest
+    name: Container (linux/${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-latest
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
     steps:
@@ -50,17 +58,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-        with:
-          image: docker.io/tonistiigi/binfmt:qemu-v10.2.3@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
-          platforms: arm64
-          cache-image: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: packages/server/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/${{ matrix.architecture }}
           load: true
           tags: auto-brain:ci
       - name: Smoke test the image
@@ -115,6 +118,33 @@ jobs:
           read_brain > after-restart.json
           cmp before-restart.json after-restart.json
           stop_server second
+      - name: Serve the brain tools over MCP
+        run: |
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker run --detach --name mcp --publish 8080:8080 --env API_KEYS auto-brain:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
+            sleep 1
+          done
+          call_mcp() {
+            curl --silent --fail --header "authorization: Bearer $key" \
+              --header 'content-type: application/json' --header 'accept: application/json, text/event-stream' \
+              --header 'mcp-protocol-version: 2025-11-25' --data "$1" http://127.0.0.1:8080/orgs/demo/mcp
+          }
+          call_mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' > tools.txt
+          for tool in create_brain list_brains get_brain update_brain retire_brain; do
+            grep --quiet "\"name\":\"$tool\"" tools.txt
+          done
+          call_mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_brain","arguments":{"brain":"smoke","name":"Smoke test"}}}' > created.txt
+          grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' created.txt
+          call_mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
+          grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
+          docker stop mcp
+          test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
       - name: Execute an inference spec without model settings
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
@@ -144,13 +174,6 @@ jobs:
             'anthropic is not configured; it needs ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'
           docker stop inference
           test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
-      - name: Build the arm64 image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: packages/server/Dockerfile
-          platforms: linux/arm64
-          outputs: type=cacheonly
 
   pull-request-title:
     name: Pull request title

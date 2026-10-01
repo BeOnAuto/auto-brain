@@ -173,6 +173,31 @@ Local mode is for development on your own machine. It is on only when `LOCAL_MOD
 
 A page may call the API only from an origin listed in `ALLOWED_ORIGINS`; a request with any other `Origin` header gets `403`. For a listed origin the server answers CORS: a preflight (`OPTIONS` with `Access-Control-Request-Method`) gets `204` before any key is checked, allowing `GET`, `HEAD`, `POST` and `PUT` with the `authorization` and `content-type` headers, and every response carries `Access-Control-Allow-Origin` with that origin, `Vary: Origin`, and `x-request-id` among the headers the page may read. There is no wildcard and no credentials mode: the page sends its API key in the `Authorization` header.
 
+### Connecting an agent over MCP
+
+Every org is also an [MCP](https://modelcontextprotocol.io) server, so an agent can call the same operations as tools. Point the agent's MCP client at the org's endpoint, with an [API key](#api-keys) of that org:
+
+```json
+{
+  "mcpServers": {
+    "auto-brain": {
+      "type": "http",
+      "url": "http://localhost:8080/orgs/acme/mcp",
+      "headers": { "Authorization": "Bearer <key>" }
+    }
+  }
+}
+```
+
+Most MCP clients take an entry of this shape; in [local mode](#local-mode), leave out the headers. The endpoint speaks streamable HTTP without sessions. It serves the current stateless revision (`2026-07-28`) and the earlier ones the SDK supports (`2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`), so agents built on older SDKs connect too.
+
+| Endpoint                              | Tools                                                                         |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| `POST /orgs/{org}/mcp`                | `create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain` |
+| `POST /orgs/{org}/brains/{brain}/mcp` | the operations inside one brain; none yet, as the server offers no primitive  |
+
+Each tool carries the operation's description and its input and output JSON Schemas, and is marked read-only when it only reads. A tool that cannot do what was asked returns `isError` with the same problem document HTTP would answer with, as text, so the agent can read the `reason` and the `detail`, and correct its arguments when the `reason` is `invalid_input`. The key's permissions and brains hold as they do over HTTP: a read-only key can call `list_brains` but gets `forbidden` from `create_brain`. [`packages/api`](packages/api) describes both mappings in full.
+
 ### Errors
 
 Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document (`application/problem+json`) with a machine-readable `reason`, such as `bad_request`, `invalid_input` (with an `errors` list of JSON pointers), `forbidden`, `not_found` or `conflict`. A `500` says nothing about the cause; its `instance` is `urn:uuid:<id>`, and the server logs the error to stderr under `"incident":"<id>"` together with `"requestId"`, the value of the response's `x-request-id` header, so either id finds the log line. A request that Node's HTTP parser rejects before the API sees it, such as one with oversized headers or invalid framing, gets a bare status line, such as `431` or `400`, and no problem document.
@@ -201,15 +226,15 @@ pnpm check        # everything CI checks
 
 ## Repository layout
 
-| Path                  | What's there                                                                                                                           |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/server`     | The HTTP server (`@beonauto/server`), which serves the brain and spec operations on the ledger, and its container build (`Dockerfile`) |
-| `packages/api`        | The API (`@beonauto/api`) the server answers every request with                                                                        |
-| `packages/config`     | Reads the server's configuration from the environment                                                                                  |
-| `packages/identity`   | API keys, local mode and the key command                                                                                               |
-| `packages/operations` | The application layer: where operations are defined and run                                                                            |
-| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                                                            |
-| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives                                             |
-| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                                                              |
-| `primitives/*`        | One package per primitive; `primitives/inference` renders prompts from specs and calls language models                                 |
-| `scripts`             | `try-inference.sh`, which creates and executes a small inference spec against a running server                                         |
+| Path                  | What's there                                                                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/server`     | The HTTP server (`@beonauto/server`), which serves the brain and spec operations on the ledger over HTTP and MCP, and its container build (`Dockerfile`) |
+| `packages/api`        | The API (`@beonauto/api`) the server answers every request with: each operation as an HTTP route and as an MCP tool                                      |
+| `packages/config`     | Reads the server's configuration from the environment                                                                                                    |
+| `packages/identity`   | API keys, local mode and the key command                                                                                                                 |
+| `packages/operations` | The application layer: where operations are defined and run                                                                                              |
+| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                                                                              |
+| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives                                                               |
+| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                                                                                |
+| `primitives/*`        | One package per primitive; `primitives/inference` renders prompts from specs and calls language models                                                   |
+| `scripts`             | `try-inference.sh`, which creates and executes a small inference spec against a running server                                                           |

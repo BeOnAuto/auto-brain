@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
+import { withMcpSession } from '@beonauto/api/testing';
 import { createApiKey } from '@beonauto/identity';
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -182,5 +183,48 @@ describe('main with secrets in settings it cannot read', { timeout: spawnedServe
       stdout: '',
       stderr: 'auto-brain could not start: InvalidApiKeysError: API_KEYS: Expected a valid JSON string\n',
     });
+  });
+});
+
+describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('serves the brain tools without a key in local mode, writing only the listening line to stdout', async () => {
+    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true' });
+    const port = await child.port;
+
+    const brain = await withMcpSession(
+      'current revision',
+      { url: `http://127.0.0.1:${port}/orgs/demo/mcp`, headers: {} },
+      async (session) => {
+        await session.callTool('create_brain', { brain: 'support', name: 'Support' });
+        return session.callTool('get_brain', { brain: 'support' });
+      },
+    );
+    child.signal('SIGTERM');
+
+    expect({ brain: brain.structuredContent, exitCode: await child.exited }).toMatchObject({
+      brain: { id: 'support', name: 'Support', created_by: 'local' },
+      exitCode: 0,
+    });
+    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+  });
+
+  it('logs what the MCP layer reports as a warning on stderr, answering with its JSON-RPC error', async () => {
+    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true' });
+    const port = await child.port;
+
+    const answer = await fetch(`http://127.0.0.1:${port}/orgs/demo/mcp`, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain', accept: 'application/json, text/event-stream' },
+      body: '{}',
+    });
+    const body: unknown = await answer.json();
+    child.signal('SIGTERM');
+    await child.exited;
+
+    expect({ status: answer.status, body }).toMatchObject({ status: 415, body: { error: { code: -32_000 } } });
+    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(child.output().stderr).toMatch(
+      /\n\{"message":"The MCP layer reported an error","level":"WARN".*"annotations":\{"error":"Unsupported Media Type: Content-Type must be application\/json"\}.*\}\n$/u,
+    );
   });
 });
