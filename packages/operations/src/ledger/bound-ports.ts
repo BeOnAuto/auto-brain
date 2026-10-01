@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 
-import type { BrainAddress } from '../caller/brain-scope.ts';
-import type { OrgAddress } from '../caller/org-scope.ts';
+import type { BrainAddress } from '../caller/brain-context.ts';
+import type { OrgAddress } from '../caller/org-context.ts';
 import type { StreamReader, StreamWriter } from './stream-ports.ts';
 
 const streamNameGrammar = /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})*$/u;
@@ -22,14 +22,14 @@ export function streamPrefixOfBrain({ org, brain }: BrainAddress): string {
   return `brain/${org}/${brain}/`;
 }
 
-export function readerWithin(ledger: StreamReader, prefix: string): StreamReader {
+export function prefixedReader(ledger: StreamReader, prefix: string): StreamReader {
   return {
     load: (stream, decider) =>
       wellFormed(stream).pipe(Effect.flatMap((relative) => ledger.load(`${prefix}${relative}`, decider))),
   };
 }
 
-export function writerWithin(ledger: StreamWriter, prefix: string): StreamWriter {
+export function prefixedWriter(ledger: StreamWriter, prefix: string): StreamWriter {
   return {
     execute: (stream, decider, command) =>
       wellFormed(stream).pipe(Effect.flatMap((relative) => ledger.execute(`${prefix}${relative}`, decider, command))),

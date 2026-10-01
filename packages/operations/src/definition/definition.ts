@@ -1,6 +1,6 @@
 import type { Effect, Schema } from 'effect';
 
-import type { Kind, Scope } from '../caller/scope.ts';
+import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { PathParameters, Route } from './route.ts';
 
@@ -26,12 +26,12 @@ export type ObjectSchema<T extends ObjectValue = ObjectValue> = Schema.Constrain
   readonly EncodingServices: never;
 };
 
-export type InputSchemaFor<S extends Scope, P extends string> = ObjectSchema<
+export type InputSchemaFor<S extends OperationScope, P extends string> = ObjectSchema<
   ObjectValue & ReservedFieldsByScope[S] & { readonly [Parameter in PathParameters<P>]: string }
 >;
 
 export interface Definition<
-  K extends Kind,
+  K extends OperationKind,
   P extends string,
   In extends ObjectSchema,
   Out extends ObjectSchema,

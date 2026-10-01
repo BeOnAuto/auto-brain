@@ -48,10 +48,10 @@ The compiler holds a definition to these rules:
 - The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict` or `Unavailable`.
 - The handler may ask only for the services of its scope and kind:
 
-| Scope   | Query                                 | Command also gets |
-| ------- | ------------------------------------- | ----------------- |
-| `org`   | `Caller`, `OrgScope`, `OrgReader`     | `OrgWriter`       |
-| `brain` | `Caller`, `BrainScope`, `BrainReader` | `BrainWriter`     |
+| Scope   | Query                                   | Command also gets |
+| ------- | --------------------------------------- | ----------------- |
+| `org`   | `Caller`, `OrgContext`, `OrgReader`     | `OrgWriter`       |
+| `brain` | `Caller`, `BrainContext`, `BrainReader` | `BrainWriter`     |
 
 When an operation is defined, it checks again what the compiler cannot see, on the encoded form of its schemas, the form that travels:
 
@@ -63,7 +63,7 @@ When an operation is defined, it checks again what the compiler cannot see, on t
 
 At run time, when a handler fails with a reason it did not declare, the call fails; it is not rejected.
 
-`getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, whether the operation addresses a brain, and JSON Schema for the input and output with their definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
+`getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, whether the operation targets a brain, and JSON Schema for the input and output with their definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
 
 `getLabel.call(input)` runs the handler in process with typed input and output, checking both against their schemas. This is how one operation calls another. The call runs with the authority of the calling operation: it does not check the permission of the operation it calls, nor run the pipeline steps.
 
@@ -71,15 +71,15 @@ At run time, when a handler fails with a reason it did not declare, the call fai
 
 ### The brain of an org operation
 
-An org operation addresses at most one brain, and names it `brain`. When its input declares a `brain` field, the dispatcher checks that the caller may reach that brain, wherever the field arrives from: path, query or body. A second field that names a brain is not checked and must not be used. Whether that brain exists, and whether its id is well formed, is the handler's business at org scope, because the org's brain records are the handler's.
+An org operation targets at most one brain, and names it `brain`. When its input declares a `brain` field, the dispatcher checks that the caller may access that brain, wherever the field arrives from: path, query or body. A second field that names a brain is not checked and must not be used. Whether that brain exists, and whether its id is well formed, is the handler's business at org scope, because the org's brain records are the handler's.
 
 ## The dispatcher
 
-`makeDispatcher(steps)` returns `inOrg` and `inBrain`, which run one call through this pipeline:
+`makeDispatcher(steps)` returns `dispatchToOrg` and `dispatchToBrain`, which run one call through this pipeline. The first three steps authorize the call; the fourth confirms that its org and brain exist.
 
 1. The caller's org must equal the org of the call, or the call is rejected with `forbidden`.
 2. The caller must hold the permission of the operation's kind and scope: `org:read`, `org:write`, `brain:read` or `brain:write`.
-3. At brain scope, and for an org operation that addresses a brain, the caller must be allowed to reach that brain.
+3. At brain scope, and for an org operation that targets a brain, the caller must have access to that brain.
 4. The org id must be well formed and, at brain scope, the brain id must be well formed and the brain must exist, or the call is rejected with `not_found`. An ill-formed id is never echoed back.
 5. The pipeline steps run in order.
 6. The input is decoded, rejecting unknown keys and pointing at every problem, up to 100 of them. Input nested too deeply to decode is rejected the same way.
@@ -92,7 +92,7 @@ The outcome is `succeeded`, `rejected` or `failed`. The error boundary turns any
 
 A transport runs a call with `settle(call, signal)` and always gets a `Settled` value: the outcome, or `cancelled` when the signal aborts the call or the call interrupts itself. Any other failure settles as `failed` with a reported incident.
 
-The dispatcher needs a `Ledger`, a `BrainDirectory` and an `IncidentReporter`. Handlers can see none of them, neither in their types nor at run time. A handler can read any other service present in the runtime's context, so the runtime must expose only these three at its top level, and an adapter must keep its own dependencies, such as a database client, inside its layer.
+The dispatcher needs a `Ledger`, a `BrainRegistry` and an `IncidentReporter`. Handlers can see none of them, neither in their types nor at run time. A handler can read any other service present in the runtime's context, so the runtime must expose only these three at its top level, and an adapter must keep its own dependencies, such as a database client, inside its layer.
 
 ## The ledger ports
 
@@ -104,4 +104,4 @@ For each call the dispatcher binds the ledger to the call's address. `OrgReader`
 
 ## Testing
 
-`@beonauto/operations/testing` exports an in-memory `Ledger`, `BrainDirectory` and `IncidentReporter` for the tests of packages that define or serve operations.
+`@beonauto/operations/testing` exports an in-memory `Ledger`, `BrainRegistry` and `IncidentReporter` for the tests of packages that define or serve operations.

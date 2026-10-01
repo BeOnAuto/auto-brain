@@ -5,4 +5,4 @@ export interface BrainAddress {
   readonly brain: string;
 }
 
-export class BrainScope extends Context.Service<BrainScope, BrainAddress>()('@beonauto/operations/BrainScope') {}
+export class BrainContext extends Context.Service<BrainContext, BrainAddress>()('@beonauto/operations/BrainContext') {}

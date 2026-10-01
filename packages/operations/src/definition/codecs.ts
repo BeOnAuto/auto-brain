@@ -3,7 +3,7 @@ import { Cause, Effect, Result, Schema, SchemaIssue, type SchemaAST, type Standa
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { pointerOf } from '../outcome/pointer.ts';
 import type { ObjectSchema } from './definition.ts';
-import type { InputForm } from './registration.ts';
+import type { InputEncoding } from './registration.ts';
 
 type IssueSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
 
@@ -42,20 +42,20 @@ function overflowedTheStack<E>(cause: Cause.Cause<E>): boolean {
 
 export function inputDecoder<In extends ObjectSchema>(
   schema: In,
-): (input: unknown, form: InputForm) => Effect.Effect<In['Type'], Rejected> {
+): (input: unknown, encoding: InputEncoding) => Effect.Effect<In['Type'], Rejected> {
   const decoders = {
     json: Schema.decodeUnknownEffect(Schema.toCodecJson(schema), strictly),
     strings: Schema.decodeUnknownEffect(Schema.toCodecStringTree(schema), strictly),
   };
-  const decode = Effect.fnUntraced(function* (input: unknown, form: InputForm) {
-    const decoded = yield* Effect.result(decoders[form](input));
+  const decode = Effect.fnUntraced(function* (input: unknown, encoding: InputEncoding) {
+    const decoded = yield* Effect.result(decoders[encoding](input));
     if (Result.isFailure(decoded)) {
       return yield* Effect.fail(invalidInput(failureOf(decoded.failure.issue)));
     }
     return decoded.success;
   });
-  return (input, form) =>
-    Effect.catchCauseIf(decode(input, form), overflowedTheStack, () => Effect.fail(nestedTooDeeply()));
+  return (input, encoding) =>
+    Effect.catchCauseIf(decode(input, encoding), overflowedTheStack, () => Effect.fail(nestedTooDeeply()));
 }
 
 export function outputEncoder<Out extends ObjectSchema>(

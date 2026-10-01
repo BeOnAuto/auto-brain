@@ -1,7 +1,7 @@
 export { BrainAccessSchema, type BrainAccess } from './caller/brain-access.ts';
-export { BrainDirectory } from './ledger/brain-directory.ts';
+export { BrainRegistry } from './ledger/brain-registry.ts';
 export { BrainReader } from './ledger/brain-reader.ts';
-export { BrainScope, type BrainAddress } from './caller/brain-scope.ts';
+export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
 export { Caller, CallerIdentitySchema, type CallerIdentity } from './caller/caller.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
@@ -17,7 +17,7 @@ export { Ledger } from './ledger/ledger.ts';
 export { NotFound } from './outcome/not-found.ts';
 export { defineCommand, defineQuery, type Operation } from './definition/operation.ts';
 export { OrgReader } from './ledger/org-reader.ts';
-export { OrgScope, type OrgAddress } from './caller/org-scope.ts';
+export { OrgContext, type OrgAddress } from './caller/org-context.ts';
 export { OrgWriter } from './ledger/org-writer.ts';
 export {
   rejected,
@@ -30,12 +30,12 @@ export {
   type Settled,
   type Cancelled,
 } from './outcome/outcome.ts';
-export { PermissionSchema, everyPermission, permissionFor, type Permission } from './caller/permission.ts';
+export { PermissionSchema, allPermissions, permissionFor, type Permission } from './caller/permission.ts';
 export type { DeclarableReason, Rejection } from './outcome/rejection.ts';
-export type { InputForm, Registration, RegistrationOf } from './definition/registration.ts';
+export type { InputEncoding, Registration, RegistrationOf } from './definition/registration.ts';
 export type { BrainRequest, OrgRequest } from './dispatch/request.ts';
 export type { Method, Route } from './definition/route.ts';
-export type { Kind, Scope } from './caller/scope.ts';
+export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';
 export type { StreamReader, StreamWriter } from './ledger/stream-ports.ts';
 export { Unavailable } from './outcome/unavailable.ts';

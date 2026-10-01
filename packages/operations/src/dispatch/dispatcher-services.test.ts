@@ -11,21 +11,21 @@ describe('a handler at run time', () => {
     const toAlpha = toBrain('acme', 'alpha');
     const view = { caller: 'acme-admin', org: 'acme' };
 
-    expect(await run(dispatcher.inOrg(peekOrgQuery.registration, toAcme(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToOrg(peekOrgQuery.registration, toAcme(acmeAdmin)))).toEqual({
       status: 'succeeded',
-      output: { ...view, visible: ['Caller', 'OrgScope', 'OrgReader'] },
+      output: { ...view, visible: ['Caller', 'OrgContext', 'OrgReader'] },
     });
-    expect(await run(dispatcher.inOrg(peekOrgCommand.registration, toAcme(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToOrg(peekOrgCommand.registration, toAcme(acmeAdmin)))).toEqual({
       status: 'succeeded',
-      output: { ...view, visible: ['Caller', 'OrgScope', 'OrgReader', 'OrgWriter'] },
+      output: { ...view, visible: ['Caller', 'OrgContext', 'OrgReader', 'OrgWriter'] },
     });
-    expect(await run(dispatcher.inBrain(peekBrainQuery.registration, toAlpha(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToBrain(peekBrainQuery.registration, toAlpha(acmeAdmin)))).toEqual({
       status: 'succeeded',
-      output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainScope', 'BrainReader'] },
+      output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainContext', 'BrainReader'] },
     });
-    expect(await run(dispatcher.inBrain(peekBrainCommand.registration, toAlpha(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToBrain(peekBrainCommand.registration, toAlpha(acmeAdmin)))).toEqual({
       status: 'succeeded',
-      output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainScope', 'BrainReader', 'BrainWriter'] },
+      output: { ...view, brain: 'alpha', visible: ['Caller', 'BrainContext', 'BrainReader', 'BrainWriter'] },
     });
   });
 });

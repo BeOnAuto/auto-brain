@@ -23,7 +23,7 @@ export const failureOf = Effect.fnUntraced(function* (cause: Cause.Cause<unknown
   return failure;
 });
 
-export function concluded<R>(
+export function withErrorBoundary<R>(
   pipeline: Effect.Effect<Succeeded, Rejected, R>,
   summary: CallSummary,
 ): Effect.Effect<Outcome, never, R | IncidentReporter> {

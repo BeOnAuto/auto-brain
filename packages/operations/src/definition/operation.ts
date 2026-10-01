@@ -1,6 +1,6 @@
 import { Effect, Result } from 'effect';
 
-import type { Kind, Scope } from '../caller/scope.ts';
+import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import { succeeded, rejected } from '../outcome/outcome.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import { inputDecoder, outputEncoder, typeValidator } from './codecs.ts';
@@ -8,15 +8,22 @@ import { checkedDefinition } from './definition-checks.ts';
 import type { Definition, InputSchemaFor, ObjectSchema, RelativePath } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import { jsonSchemaDocumentOf } from './json-schema.ts';
-import type { InputForm, RegistrationOf } from './registration.ts';
+import type { InputEncoding, RegistrationOf } from './registration.ts';
 
-export interface Operation<S extends Scope, K extends Kind, Input, Output, R extends DeclarableReason, Services> {
+export interface Operation<
+  S extends OperationScope,
+  K extends OperationKind,
+  Input,
+  Output,
+  R extends DeclarableReason,
+  Services,
+> {
   readonly registration: RegistrationOf<S, K>;
   readonly call: (input: Input) => Effect.Effect<Output, Rejection<R>, Services>;
 }
 
 export function defineQuery<
-  const S extends Scope,
+  const S extends OperationScope,
   const P extends RelativePath,
   In extends InputSchemaFor<S, P>,
   Out extends ObjectSchema,
@@ -30,7 +37,7 @@ export function defineQuery<
 }
 
 export function defineCommand<
-  const S extends Scope,
+  const S extends OperationScope,
   const P extends RelativePath,
   In extends InputSchemaFor<S, P>,
   Out extends ObjectSchema,
@@ -44,8 +51,8 @@ export function defineCommand<
 }
 
 function defineOperation<
-  S extends Scope,
-  K extends Kind,
+  S extends OperationScope,
+  K extends OperationKind,
   In extends ObjectSchema,
   Out extends ObjectSchema,
   R extends DeclarableReason,
@@ -56,7 +63,7 @@ function defineOperation<
   definition: Definition<K, string, In, Out, R, Services>,
 ): Operation<S, K, In['Type'], Out['Type'], R, Services> {
   const { name, route, inputSchema, outputSchema, handle } = definition;
-  const { pathParameters, addressesBrain } = checkedDefinition(scope, definition);
+  const { pathParameters, targetsBrain } = checkedDefinition(scope, definition);
   const reasons: readonly DeclarableReason[] = [...new Set(definition.reasons)];
   const decodeInput = inputDecoder(inputSchema);
   const encodeOutput = outputEncoder(outputSchema);
@@ -71,13 +78,13 @@ function defineOperation<
       description: definition.description,
       route,
       pathParameters,
-      addressesBrain,
+      targetsBrain,
       successStatus: definition.successStatus ?? 200,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),
-      run: Effect.fnUntraced(function* (input: unknown, form: InputForm) {
-        const handled = yield* Effect.result(handle(yield* decodeInput(input, form)));
+      run: Effect.fnUntraced(function* (input: unknown, encoding: InputEncoding) {
+        const handled = yield* Effect.result(handle(yield* decodeInput(input, encoding)));
         if (Result.isFailure(handled)) {
           const { _tag: reason, detail } = handled.failure;
           return yield* reasons.includes(reason) ? Effect.fail(rejected(reason, detail)) : Effect.die(handled.failure);

@@ -34,7 +34,7 @@ describe('the input of a call', () => {
     const { dispatcher, run } = harness();
 
     expect(
-      await run(dispatcher.inBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'Anvil', 'a/b': 1 }))),
+      await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'Anvil', 'a/b': 1 }))),
     ).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
@@ -51,7 +51,7 @@ describe('the input of a call', () => {
     const { dispatcher, run } = harness();
     const input = { nested: { 'a/b': 'x', 'c~d': 'y' }, items: [1, 'two'] };
 
-    expect(await run(dispatcher.inBrain(inspect.registration, toAlpha(acmeAdmin, input)))).toMatchObject({
+    expect(await run(dispatcher.dispatchToBrain(inspect.registration, toAlpha(acmeAdmin, input)))).toMatchObject({
       issues: [{ pointer: '/nested/a~1b' }, { pointer: '/nested/c~0d' }, { pointer: '/items/1' }],
     });
   });
@@ -62,7 +62,9 @@ describe('an input that cannot be decoded', () => {
     const { dispatcher, run } = harness();
     const manyUnknownKeys = Object.fromEntries(Array.from({ length: 150 }, (_unused, index) => [`key${index}`, index]));
 
-    expect(await run(dispatcher.inBrain(inspect.registration, toAlpha(acmeAdmin, manyUnknownKeys)))).toMatchObject({
+    expect(
+      await run(dispatcher.dispatchToBrain(inspect.registration, toAlpha(acmeAdmin, manyUnknownKeys))),
+    ).toMatchObject({
       reason: 'invalid_input',
       issues: Array.from({ length: 100 }, () => ({ detail: 'Expected no excess property' })),
     });
@@ -71,12 +73,14 @@ describe('an input that cannot be decoded', () => {
   it('is rejected, without failing the call, when it is nested too deeply to decode', async () => {
     const { dispatcher, reported, run } = harness();
 
-    expect(await run(dispatcher.inBrain(holdTree.registration, toAlpha(acmeAdmin, { tree: treeNested(10) })))).toEqual({
+    expect(
+      await run(dispatcher.dispatchToBrain(holdTree.registration, toAlpha(acmeAdmin, { tree: treeNested(10) }))),
+    ).toEqual({
       status: 'succeeded',
       output: { held: true },
     });
     expect(
-      await run(dispatcher.inBrain(holdTree.registration, toAlpha(acmeAdmin, { tree: treeNested(5_000) }))),
+      await run(dispatcher.dispatchToBrain(holdTree.registration, toAlpha(acmeAdmin, { tree: treeNested(5_000) }))),
     ).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
@@ -89,7 +93,7 @@ describe('an input that cannot be decoded', () => {
 
 function listing(input: unknown) {
   const { dispatcher, run } = harness();
-  return run(dispatcher.inBrain(listNotes.registration, { ...toAlpha(acmeAdmin, input), form: 'strings' }));
+  return run(dispatcher.dispatchToBrain(listNotes.registration, { ...toAlpha(acmeAdmin, input), encoding: 'strings' }));
 }
 
 describe('the input of a call as strings', () => {

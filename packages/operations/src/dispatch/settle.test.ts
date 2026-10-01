@@ -11,7 +11,7 @@ const toAlpha = toBrain('acme', 'alpha');
 describe('a settled call', () => {
   it('is the outcome of a call that finishes', async () => {
     const { dispatcher, run, settleWithin } = harness();
-    const quick = dispatcher.inBrain(linger.registration, toAlpha(acmeAdmin, { milliseconds: 0 }));
+    const quick = dispatcher.dispatchToBrain(linger.registration, toAlpha(acmeAdmin, { milliseconds: 0 }));
 
     expect(await settleWithin(10_000, quick)).toEqual({ status: 'succeeded', output: { lingered: 0 } });
     expect(await run(settle(quick))).toEqual({ status: 'succeeded', output: { lingered: 0 } });
@@ -19,7 +19,7 @@ describe('a settled call', () => {
 
   it('is cancelled when the signal aborts the call, and nothing is reported', async () => {
     const { dispatcher, reported, settleWithin } = harness();
-    const slow = dispatcher.inBrain(linger.registration, toAlpha(acmeAdmin, { milliseconds: 60_000 }));
+    const slow = dispatcher.dispatchToBrain(linger.registration, toAlpha(acmeAdmin, { milliseconds: 60_000 }));
 
     expect({ settled: await settleWithin(20, slow), reported: reported() }).toEqual({
       settled: { status: 'cancelled' },
@@ -29,7 +29,7 @@ describe('a settled call', () => {
 
   it('is cancelled at once when the signal has already aborted', async () => {
     const { dispatcher, run } = harness();
-    const slow = dispatcher.inBrain(linger.registration, toAlpha(acmeAdmin, { milliseconds: 60_000 }));
+    const slow = dispatcher.dispatchToBrain(linger.registration, toAlpha(acmeAdmin, { milliseconds: 60_000 }));
 
     expect(await run(settle(slow, AbortSignal.abort()))).toEqual({ status: 'cancelled' });
   });
@@ -38,7 +38,7 @@ describe('a settled call', () => {
     const { dispatcher, reported, run } = harness();
 
     expect({
-      settled: await run(settle(dispatcher.inBrain(giveUp.registration, toAlpha(acmeAdmin)))),
+      settled: await run(settle(dispatcher.dispatchToBrain(giveUp.registration, toAlpha(acmeAdmin)))),
       reported: reported(),
     }).toEqual({ settled: { status: 'cancelled' }, reported: [] });
   });

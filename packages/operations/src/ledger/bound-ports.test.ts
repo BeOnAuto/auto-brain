@@ -13,31 +13,33 @@ describe('the ports bound to a call', () => {
     const toAlpha = toBrain('acme', 'alpha');
     const toGamma = toBrain('globex', 'gamma');
 
-    await run(dispatcher.inBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
-    await run(dispatcher.inBrain(addNote.registration, toGamma(globexAdmin, { name: 'gear', text: 'round' })));
-    await run(dispatcher.inOrg(labelBrain.registration, toAcme(acmeAdmin, { brain: 'alpha', label: 'Sales' })));
-    await run(dispatcher.inOrg(labelBrain.registration, toAcme(acmeAdmin, { brain: 'beta', label: 'Support' })));
+    await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
+    await run(dispatcher.dispatchToBrain(addNote.registration, toGamma(globexAdmin, { name: 'gear', text: 'round' })));
+    await run(dispatcher.dispatchToOrg(labelBrain.registration, toAcme(acmeAdmin, { brain: 'alpha', label: 'Sales' })));
+    await run(
+      dispatcher.dispatchToOrg(labelBrain.registration, toAcme(acmeAdmin, { brain: 'beta', label: 'Support' })),
+    );
 
     expect(ledger.streamNames()).toEqual([
       'brain/acme/alpha/notes',
       'brain/globex/gamma/notes',
       'org/acme/brain-labels',
     ]);
-    expect(await run(dispatcher.inBrain(listNotes.registration, toAlpha(acmeAlphaReader)))).toEqual({
+    expect(await run(dispatcher.dispatchToBrain(listNotes.registration, toAlpha(acmeAlphaReader)))).toEqual({
       status: 'succeeded',
       output: { notes: [{ name: 'anvil', text: 'heavy' }] },
     });
-    expect(await run(dispatcher.inBrain(listNotes.registration, toGamma(globexAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToBrain(listNotes.registration, toGamma(globexAdmin)))).toEqual({
       status: 'succeeded',
       output: { notes: [{ name: 'gear', text: 'round' }] },
     });
     expect(
-      await run(dispatcher.inOrg(getBrainLabel.registration, toAcme(acmeAlphaReader, { brain: 'alpha' }))),
+      await run(dispatcher.dispatchToOrg(getBrainLabel.registration, toAcme(acmeAlphaReader, { brain: 'alpha' }))),
     ).toEqual({
       status: 'succeeded',
       output: { brain: 'alpha', label: 'Sales' },
     });
-    expect(await run(dispatcher.inOrg(listBrainLabels.registration, toOrg('globex')(globexAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToOrg(listBrainLabels.registration, toOrg('globex')(globexAdmin)))).toEqual({
       status: 'succeeded',
       output: { labels: [] },
     });
@@ -59,22 +61,28 @@ describe('a stream name a handler gives a bound port', () => {
     const { dispatcher, ledger, run } = harness();
     const toAlpha = toBrain('acme', 'alpha');
 
-    await run(dispatcher.inBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf: 'red', item: 'anvil' })));
-    await run(dispatcher.inBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf: 'Red_1-x/top', item: 'bolt' })));
+    await run(dispatcher.dispatchToBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf: 'red', item: 'anvil' })));
+    await run(
+      dispatcher.dispatchToBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf: 'Red_1-x/top', item: 'bolt' })),
+    );
 
     expect(ledger.streamNames()).toEqual(['brain/acme/alpha/shelves/red', 'brain/acme/alpha/shelves/Red_1-x/top']);
-    expect(await run(dispatcher.inBrain(readShelf.registration, toAlpha(acmeAdmin, { shelf: 'RED' })))).toEqual({
-      status: 'succeeded',
-      output: { items: [] },
-    });
+    expect(await run(dispatcher.dispatchToBrain(readShelf.registration, toAlpha(acmeAdmin, { shelf: 'RED' })))).toEqual(
+      {
+        status: 'succeeded',
+        output: { items: [] },
+      },
+    );
   });
 
   it.each(malformedStreams)('fails the call when it names the stream shelves/%j', async (shelf) => {
     const { dispatcher, ledger, reported, run } = harness();
     const toAlpha = toBrain('acme', 'alpha');
 
-    const writing = await run(dispatcher.inBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf, item: 'x' })));
-    const reading = await run(dispatcher.inBrain(readShelf.registration, toAlpha(acmeAdmin, { shelf })));
+    const writing = await run(
+      dispatcher.dispatchToBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf, item: 'x' })),
+    );
+    const reading = await run(dispatcher.dispatchToBrain(readShelf.registration, toAlpha(acmeAdmin, { shelf })));
 
     expect([writing.status, reading.status, ledger.streamNames()]).toEqual(['failed', 'failed', []]);
     expect(reported().map(({ original }) => original)).toEqual([

@@ -27,8 +27,8 @@ describe('a dispatched handler', () => {
   it('may call another operation of its scope within the same call', async () => {
     const { dispatcher, run } = harness();
     const copying = (name: string, copy: string) =>
-      run(dispatcher.inBrain(copyNote.registration, toAlpha(acmeAdmin, { name, copy })));
-    await run(dispatcher.inBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
+      run(dispatcher.dispatchToBrain(copyNote.registration, toAlpha(acmeAdmin, { name, copy })));
+    await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
 
     expect(await copying('anvil', 'twin')).toEqual({
       status: 'succeeded',
@@ -45,11 +45,11 @@ describe('a dispatched handler', () => {
     const { dispatcher, run } = harness();
     const anvil = toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' });
 
-    expect(await run(dispatcher.inBrain(addNote.registration, anvil))).toEqual({
+    expect(await run(dispatcher.dispatchToBrain(addNote.registration, anvil))).toEqual({
       status: 'succeeded',
       output: { added: { name: 'anvil', text: 'heavy' }, version: 1 },
     });
-    expect(await run(dispatcher.inBrain(addNote.registration, anvil))).toEqual({
+    expect(await run(dispatcher.dispatchToBrain(addNote.registration, anvil))).toEqual({
       status: 'rejected',
       reason: 'conflict',
       detail: 'A note named anvil exists',
@@ -58,7 +58,8 @@ describe('a dispatched handler', () => {
 
   it('is rejected with conflict when its stream moved while it decided', async () => {
     const { dispatcher, run } = harness();
-    const adding = (name: string) => dispatcher.inBrain(addNote.registration, toAlpha(acmeAdmin, { name, text: name }));
+    const adding = (name: string) =>
+      dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name, text: name }));
 
     expect(await run(Effect.all([adding('anvil'), adding('bolt')], { concurrency: 'unbounded' }))).toEqual([
       { status: 'succeeded', output: { added: { name: 'anvil', text: 'anvil' }, version: 1 } },
@@ -68,13 +69,17 @@ describe('a dispatched handler', () => {
 });
 
 describe('pipeline steps', () => {
-  it('run in order once a call is admitted and its brain exists, before its input is decoded', async () => {
+  it('run in order once a call is authorized and its brain exists, before its input is decoded', async () => {
     const { steps, passed } = recordedSteps();
     const { dispatcher, run } = harness({ steps });
 
-    await run(dispatcher.inBrain(getNote.registration, toBrain('globex', 'gamma')(acmeAdmin, { name: 'gear' })));
-    await run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'nowhere')(acmeAdmin, { name: 'gear' })));
-    const invalid = await run(dispatcher.inBrain(getNote.registration, toAlpha(acmeAdmin, { name: 7 })));
+    await run(
+      dispatcher.dispatchToBrain(getNote.registration, toBrain('globex', 'gamma')(acmeAdmin, { name: 'gear' })),
+    );
+    await run(
+      dispatcher.dispatchToBrain(getNote.registration, toBrain('acme', 'nowhere')(acmeAdmin, { name: 'gear' })),
+    );
+    const invalid = await run(dispatcher.dispatchToBrain(getNote.registration, toAlpha(acmeAdmin, { name: 7 })));
 
     expect(invalid).toMatchObject({ reason: 'invalid_input' });
     expect(passed()).toEqual(['first get_note in acme', 'second get_note in acme']);
@@ -85,12 +90,14 @@ describe('pipeline steps', () => {
     const unavailable = { status: 'rejected', reason: 'unavailable', detail: 'The org has used its operations' };
 
     expect(
-      await run(dispatcher.inBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'x' }))),
+      await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'x' }))),
     ).toEqual(unavailable);
     expect(
-      await run(dispatcher.inOrg(labelBrain.registration, toOrg('acme')(acmeAdmin, { brain: 'alpha', label: 'x' }))),
+      await run(
+        dispatcher.dispatchToOrg(labelBrain.registration, toOrg('acme')(acmeAdmin, { brain: 'alpha', label: 'x' })),
+      ),
     ).toEqual(unavailable);
-    expect(await run(dispatcher.inBrain(listNotes.registration, toAlpha(acmeAdmin)))).toEqual({
+    expect(await run(dispatcher.dispatchToBrain(listNotes.registration, toAlpha(acmeAdmin)))).toEqual({
       status: 'succeeded',
       output: { notes: [] },
     });

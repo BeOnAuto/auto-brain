@@ -1,6 +1,6 @@
 import type { Effect } from 'effect';
 
-import type { Kind, Scope } from '../caller/scope.ts';
+import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { Succeeded, Rejected } from '../outcome/outcome.ts';
 import type { DeclarableReason } from '../outcome/rejection.ts';
 import type { SuccessStatusByKind } from './definition.ts';
@@ -8,9 +8,9 @@ import type { HandlerServices } from './handler-services.ts';
 import type { JsonSchemaDocument } from './json-schema.ts';
 import type { Route } from './route.ts';
 
-export type InputForm = 'json' | 'strings';
+export type InputEncoding = 'json' | 'strings';
 
-export interface RegistrationOf<S extends Scope, K extends Kind> {
+export interface RegistrationOf<S extends OperationScope, K extends OperationKind> {
   readonly scope: S;
   readonly kind: K;
   readonly name: string;
@@ -18,14 +18,14 @@ export interface RegistrationOf<S extends Scope, K extends Kind> {
   readonly description: string;
   readonly route: Route<K>;
   readonly pathParameters: readonly string[];
-  readonly addressesBrain: boolean;
+  readonly targetsBrain: boolean;
   readonly successStatus: SuccessStatusByKind[K];
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly output: JsonSchemaDocument;
-  readonly run: (input: unknown, form: InputForm) => Effect.Effect<Succeeded, Rejected, HandlerServices<S, K>>;
+  readonly run: (input: unknown, encoding: InputEncoding) => Effect.Effect<Succeeded, Rejected, HandlerServices<S, K>>;
 }
 
-export type Registration<S extends Scope = Scope> = {
+export type Registration<S extends OperationScope = OperationScope> = {
   readonly [Each in S]: RegistrationOf<Each, 'query'> | RegistrationOf<Each, 'command'>;
 }[S];
