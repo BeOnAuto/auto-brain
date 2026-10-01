@@ -80,6 +80,30 @@ describe('a document the runtime does not run', () => {
   });
 });
 
+function nestedTasks(levels: number): string {
+  return `${header}do: ${'[{ inner: { do: '.repeat(levels - 1)}[]${' } }]'.repeat(levels - 1)}\n`;
+}
+
+describe('a workflow document that nests too deeply', () => {
+  it('is rejected before it is read when it nests values more than 512 levels deep', async () => {
+    expect(await parsed(nestedTasks(1000))).toMatchObject(
+      rejected('The workflow document is not YAML this runtime reads', [
+        'Line 6, column 2726: The document nests values more than 512 levels deep',
+      ]),
+    );
+  });
+
+  it('is rejected at the list too deep when it nests tasks more than 64 levels deep, without asking the DSL', async () => {
+    const pointer = `/do${'/0/inner/do'.repeat(64)}`;
+
+    expect(await parsed(nestedTasks(100))).toMatchObject(
+      rejected('The workflow document is not a workflow this runtime runs', [
+        `Line 6, column 1029: at ${pointer}: The document nests tasks more than 64 levels deep`,
+      ]),
+    );
+  });
+});
+
 describe('the summary of a workflow spec', () => {
   it('is the summary or title of the document, and its inline input and output schemas', () => {
     expect(

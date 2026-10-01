@@ -2,6 +2,7 @@ import { InvalidInput, type Issue } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { JsonObject } from '../dsl/json.ts';
+import { nestingRejections } from '../dsl/nesting.ts';
 import type { Rejection } from '../dsl/policy-checks.ts';
 import { rejectionsOf } from '../dsl/policy.ts';
 import { dslProblems, type Problem } from './dsl-validation.ts';
@@ -20,9 +21,10 @@ export function parseWorkflowDocument(source: string): Effect.Effect<JsonObject,
     }
     const { value, locate } = reading.document;
     const rejections = rejectionsOf(value);
-    const versionRejected = rejections.some(({ pointer }) => pointer === '/document/dsl');
+    const unreadable =
+      nestingRejections(value).length > 0 || rejections.some(({ pointer }) => pointer === '/document/dsl');
     const problems = [
-      ...(versionRejected
+      ...(unreadable
         ? []
         : dslProblems(value, { connecting: rejections.length === 0 }).filter(
             (problem) => !isShadowed(problem, rejections),

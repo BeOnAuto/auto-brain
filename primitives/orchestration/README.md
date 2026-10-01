@@ -91,6 +91,8 @@ do:
 | `then: continue`, `exit`, `end`, or the name of a task in the same list       | executing an orchestration spec from a workflow                                                          |
 | `if`, `input.from`, `output.as`, `export.as`, `timeout`                       | the jq builtins `localtime` and `strflocaltime`; durations in years or months                            |
 
+A document may nest task lists (`do`, `for`, `try`, `catch.do`, `fork.branches`) at most 64 levels deep and any value at most 512 levels; a deeper document is rejected at the list or value that is too deep, before anything else is checked, and a workflow refuses to start with one however it was stored.
+
 Creating or updating a spec checks its document fully: it reads the YAML without aliases, anchors or tags, validates it against the DSL schema and its rules, builds its graph of tasks, and applies the policy above. Every problem is an issue under `/source` with the line, the column and the JSON Pointer of the place: `Line 8, column 12: at /do/0/loop/for: It needs in`. When a workflow starts, the interpreter applies again only the policy's prohibitions, what this runtime does not allow at all: the tasks, calls, components, `schedule` and `listen` options of the rejected column above, executing another workflow, schemas that are not inline JSON Schema, and a DSL version other than 1.0.x. So a document that never went through the spec operations cannot use what the policy forbids. The other problems the spec operations reject, such as an expression that does not parse or uses `localtime`, a duration in years, or a `then` that names no task, are not checked again: they fail the task that has them when it runs.
 
 ### Expressions

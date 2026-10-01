@@ -1,6 +1,6 @@
-import { isAlias, isMap, isNode, isPair, isScalar, isSeq, LineCounter, parseDocument } from 'yaml';
+import { isAlias, isMap, isNode, isPair, isScalar, isSeq, LineCounter, parseDocument, Parser } from 'yaml';
 
-import { isJson, isObject, type JsonObject } from '../dsl/json.ts';
+import { isJson, isObject, mostValueDepth, type JsonObject } from '../dsl/json.ts';
 
 export interface Position {
   readonly line: number;
@@ -26,11 +26,54 @@ interface ParserMessage {
 
 type Locator = (offset: number) => Position;
 
+interface Nested {
+  readonly token: object;
+  readonly depth: number;
+}
+
 type Lookup = (path: readonly (string | number)[]) => unknown;
 
 const start: Position = { line: 1, column: 1 };
 
 export function readYaml(source: string): YamlReading {
+  const tooDeep = tooDeepIn(source);
+  return tooDeep === undefined
+    ? readDocument(source)
+    : {
+        problems: [{ position: tooDeep, detail: `The document nests values more than ${mostValueDepth} levels deep` }],
+      };
+}
+
+function tooDeepIn(source: string): Position | undefined {
+  const lines = new LineCounter();
+  const parser = new Parser((offset: number) => {
+    lines.addNewLine(offset);
+  });
+  const pending: Nested[] = [...parser.parse(source)].map((token: object) => ({ token, depth: 0 }));
+  for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
+    const items = tokenField(next.token, 'items');
+    const depth = Array.isArray(items) ? next.depth + 1 : next.depth;
+    if (depth > mostValueDepth) {
+      const { line, col } = lines.linePos(Number(tokenField(next.token, 'offset')));
+      return { line, column: col };
+    }
+    const children: readonly unknown[] = Array.isArray(items)
+      ? items.flatMap((item: object) => [tokenField(item, 'key'), tokenField(item, 'value')])
+      : [tokenField(next.token, 'value')];
+    pending.push(...children.filter((child) => isToken(child)).map((token) => ({ token, depth })));
+  }
+  return undefined;
+}
+
+function tokenField(token: object, key: string): unknown {
+  return Reflect.get(token, key);
+}
+
+function isToken(value: unknown): value is object {
+  return typeof value === 'object' && value !== null;
+}
+
+function readDocument(source: string): YamlReading {
   const lines = new LineCounter();
   const parsed = parseDocument(source, {
     lineCounter: lines,

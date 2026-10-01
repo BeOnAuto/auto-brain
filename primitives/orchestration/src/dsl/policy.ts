@@ -8,6 +8,7 @@ import {
   type JsonEntry,
   type JsonObject,
 } from './json.ts';
+import { nestingRejections } from './nesting.ts';
 import {
   durationRejections,
   forbidden,
@@ -34,6 +35,11 @@ const rejectedComponents: Readonly<Record<string, string>> = {
 const flowDirectives = new Set(['continue', 'exit', 'end']);
 
 export function rejectionsOf(document: JsonObject): readonly Rejection[] {
+  const nesting = nestingRejections(document);
+  return nesting.length > 0 ? nesting : walkedRejectionsOf(document);
+}
+
+function walkedRejectionsOf(document: JsonObject): readonly Rejection[] {
   const use = objectField(document, 'use') ?? {};
   const components = {
     errors: objectField(use, 'errors') ?? {},
