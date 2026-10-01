@@ -12,7 +12,11 @@ import { nestedExecutionId } from './nested-execution-id.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const run: ActivityRun = { workflowId: `acme/alpha/flow/${executionId}`, runId: 'run-1' };
+const run: ActivityRun = { workflowId: `acme/alpha/flow/${executionId}`, runId: 'run-1', attempt: 1 };
+
+function ignore(): void {
+  return undefined;
+}
 
 const call = {
   org: 'acme',
@@ -36,6 +40,7 @@ function activitiesAnswering(
         return result;
       }),
     settle: () => Effect.die('not settling'),
+    reportUnsettled: ignore,
     currentRun: () => run,
   });
 }
@@ -117,6 +122,7 @@ function activitiesSettling(settle: SettleExecution) {
   return makeActivities({
     executeSpec: () => Effect.die('not executing'),
     settle,
+    reportUnsettled: ignore,
     currentRun: () => run,
   });
 }
@@ -161,8 +167,12 @@ describe('an execution that cannot be settled', () => {
 });
 
 describe('the workflow run an activity acts for', () => {
-  it('is the run of the workflow that scheduled it, and there must be one', () => {
-    expect(workflowRunOf({ workflowExecution: run })).toBe(run);
-    expect(() => workflowRunOf({})).toThrow('An orchestration activity runs only for a workflow');
+  it('is the run of the workflow that scheduled it, with the attempt, and there must be one', () => {
+    expect(workflowRunOf({ workflowExecution: { workflowId: 'w', runId: 'r' }, attempt: 2 })).toStrictEqual({
+      workflowId: 'w',
+      runId: 'r',
+      attempt: 2,
+    });
+    expect(() => workflowRunOf({ attempt: 1 })).toThrow('An orchestration activity runs only for a workflow');
   });
 });

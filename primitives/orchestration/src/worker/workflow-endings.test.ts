@@ -113,5 +113,13 @@ describe('a run that names another brain than its workflow', () => {
     expect(failure).toBeInstanceOf(WorkflowFailedError);
     expect(harness.executions().filter(({ executionId: id }) => id === executionId)).toEqual([]);
     expect(settledFor(executionId)).toEqual([]);
+    expect(harness.unsettled()).toStrictEqual([
+      {
+        org: 'acme',
+        brain: 'alpha',
+        executionId,
+        reason: `The run ${workflowId} may not act for the brain alpha of the org acme`,
+      },
+    ]);
   }, 60_000);
 });

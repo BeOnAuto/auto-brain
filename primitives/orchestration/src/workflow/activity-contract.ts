@@ -15,6 +15,8 @@ export const executionNotFound = 'ExecutionNotFound';
 
 export const executionConflict = 'ExecutionConflict';
 
+export const mostSettleAttempts = 20;
+
 export function workflowIdOf(org: string, brain: string, spec: string, executionId: string): string {
   return `${org}/${brain}/${spec}/${executionId}`;
 }

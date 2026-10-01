@@ -8,12 +8,15 @@ import type { TemporalSettings } from './temporal-settings.ts';
 
 const notCalled = () => Effect.die(new Error('not called'));
 
+const recorder = failureRecorder();
+
 function workerWith(settings: TemporalSettings) {
   return runOrchestrationWorker({
     settings,
     executeSpec: notCalled,
     settle: notCalled,
-    onFailure: failureRecorder().onFailure,
+    onFailure: recorder.onFailure,
+    reportUnsettled: recorder.reportUnsettled,
   });
 }
 

@@ -18,6 +18,7 @@ describe('the orchestration worker in a process with no Temporal runtime yet', (
         executeSpec: notCalled,
         settle: notCalled,
         onFailure: recorder.onFailure,
+        reportUnsettled: recorder.reportUnsettled,
       }).pipe(Scope.provide(scope)),
     );
     const { shutdownSignals } = Runtime.instance().options;

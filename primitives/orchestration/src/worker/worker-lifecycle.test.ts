@@ -21,6 +21,7 @@ async function startedWith(fake: FakeTemporalWorkers) {
         executeSpec: notCalled,
         settle: notCalled,
         onFailure: recorder.onFailure,
+        reportUnsettled: recorder.reportUnsettled,
         temporal: fake.temporal,
       }).pipe(Scope.provide(scope)),
     ),

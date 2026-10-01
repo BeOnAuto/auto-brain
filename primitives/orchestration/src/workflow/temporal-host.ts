@@ -1,5 +1,5 @@
 import type { WorkflowHost } from '../interpreter/host.ts';
-import type { OrchestrationActivities } from './activity-contract.ts';
+import { mostSettleAttempts, type OrchestrationActivities } from './activity-contract.ts';
 
 export interface ActivitySettings {
   readonly activityId: string;
@@ -53,7 +53,7 @@ export const settleSettings: ActivitySettings = {
   activityId: 'settle',
   summary: 'settle the execution',
   startToCloseTimeout: '1 minute',
-  retry: { ...retryTransientFailures, maximumAttempts: 20 },
+  retry: { ...retryTransientFailures, maximumAttempts: mostSettleAttempts },
 };
 
 export function temporalHost(api: WorkflowApi): WorkflowHost {

@@ -7,7 +7,7 @@ import { Data, Effect, type Scope } from 'effect';
 
 import type { OrchestrationActivities } from '../workflow/activity-contract.ts';
 import { makeActivities, workflowRunOf } from './activities.ts';
-import type { ExecuteSpec } from './dependencies.ts';
+import type { ExecuteSpec, ReportUnsettled } from './dependencies.ts';
 import { connectionOptionsOf, type TemporalSettings } from './temporal-settings.ts';
 
 export class OrchestrationWorkerError extends Data.TaggedError('OrchestrationWorkerError')<{
@@ -43,6 +43,7 @@ export interface OrchestrationWorkerOptions {
   readonly settings: TemporalSettings;
   readonly executeSpec: ExecuteSpec;
   readonly settle: SettleExecution;
+  readonly reportUnsettled: ReportUnsettled;
   readonly onFailure: (detail: string) => void;
   readonly temporal?: TemporalWorkers;
 }
@@ -99,7 +100,7 @@ export const runOrchestrationWorker = Effect.fnUntraced(function* (
 });
 
 async function startWorker(
-  { settings, executeSpec, settle }: OrchestrationWorkerOptions,
+  { settings, executeSpec, settle, reportUnsettled }: OrchestrationWorkerOptions,
   temporal: TemporalWorkers,
 ): Promise<RunningWorker> {
   const signals = temporal.shutdownSignals();
@@ -114,7 +115,12 @@ async function startWorker(
       namespace: settings.namespace,
       taskQueue: settings.taskQueue,
       workflowsPath,
-      activities: makeActivities({ executeSpec, settle, currentRun: () => workflowRunOf(activityInfo()) }),
+      activities: makeActivities({
+        executeSpec,
+        settle,
+        reportUnsettled,
+        currentRun: () => workflowRunOf(activityInfo()),
+      }),
       dataConverter: { failureConverterPath },
       shutdownGraceTime: '10 seconds',
     });

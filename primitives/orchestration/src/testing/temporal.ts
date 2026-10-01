@@ -5,7 +5,7 @@ import { Effect, Exit, Scope } from 'effect';
 import { inject } from 'vitest';
 
 import { connectOrchestration, type OrchestrationClient } from '../primitive/orchestration-client.ts';
-import type { ExecuteSpec, SpecExecution, SpecExecutionResult } from '../worker/dependencies.ts';
+import type { ExecuteSpec, SpecExecution, SpecExecutionResult, UnsettledExecution } from '../worker/dependencies.ts';
 import { runOrchestrationWorker } from '../worker/orchestration-worker.ts';
 import type { TemporalSettings } from '../worker/temporal-settings.ts';
 import { failureRecorder } from './failure-recorder.ts';
@@ -21,6 +21,7 @@ export interface TemporalHarness {
   readonly temporal: Client;
   readonly executions: () => readonly SpecExecution[];
   readonly settled: () => readonly Settled[];
+  readonly unsettled: () => readonly UnsettledExecution[];
   readonly close: () => Promise<void>;
 }
 
@@ -59,10 +60,17 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
         settled.push({ address, settlement });
         return settledExecution(address, settlement);
       }));
+  const recorder = failureRecorder();
   const scope = Effect.runSync(Scope.make());
   const orchestration = await Effect.runPromise(
     Effect.gen(function* () {
-      yield* runOrchestrationWorker({ settings, executeSpec, settle, onFailure: failureRecorder().onFailure });
+      yield* runOrchestrationWorker({
+        settings,
+        executeSpec,
+        settle,
+        onFailure: recorder.onFailure,
+        reportUnsettled: recorder.reportUnsettled,
+      });
       return yield* connectOrchestration(settings, { requestTimeout: 5000 });
     }).pipe(Scope.provide(scope)),
   );
@@ -73,6 +81,7 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
     temporal: new Client({ connection }),
     executions: () => executions,
     settled: () => settled,
+    unsettled: recorder.unsettled,
     close: async () => {
       await connection.close();
       await Effect.runPromise(Scope.close(scope, Exit.void));

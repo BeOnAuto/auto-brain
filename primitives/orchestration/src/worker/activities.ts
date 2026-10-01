@@ -1,37 +1,48 @@
+import { Conflict, NotFound } from '@beonauto/operations';
 import type { SettleExecution, Settlement } from '@beonauto/specs';
 import { ApplicationFailure } from '@temporalio/activity';
-import { Effect, Result } from 'effect';
+import { Cause, Effect, Exit } from 'effect';
 
 import { jsonBytesOf } from '../dsl/json.ts';
 import type { RunSettlement, SettleRequest, SpecCall, SpecCallResult } from '../interpreter/host.ts';
 import {
   executionConflict,
   executionNotFound,
+  mostSettleAttempts,
   tenancyViolation,
   workflowIdOf,
   type OrchestrationActivities,
 } from '../workflow/activity-contract.ts';
-import type { ExecuteSpec, SpecExecutionResult } from './dependencies.ts';
+import type { ExecuteSpec, ReportUnsettled, SpecExecutionResult } from './dependencies.ts';
 import { nestedExecutionId } from './nested-execution-id.ts';
 
 export interface ActivityRun {
   readonly workflowId: string;
   readonly runId: string;
+  readonly attempt: number;
 }
 
 export interface ActivityDependencies {
   readonly executeSpec: ExecuteSpec;
   readonly settle: SettleExecution;
+  readonly reportUnsettled: ReportUnsettled;
   readonly currentRun: () => ActivityRun;
+}
+
+interface ActivityInfo {
+  readonly workflowExecution?: { readonly workflowId: string; readonly runId: string };
+  readonly attempt: number;
 }
 
 const mostSpecOutputBytes = 1_048_576;
 
-export function workflowRunOf({ workflowExecution }: { readonly workflowExecution?: ActivityRun }): ActivityRun {
+const settlementBroken = 'SettlementBroken';
+
+export function workflowRunOf({ workflowExecution, attempt }: ActivityInfo): ActivityRun {
   if (workflowExecution === undefined) {
     throw ApplicationFailure.nonRetryable('An orchestration activity runs only for a workflow', tenancyViolation);
   }
-  return workflowExecution;
+  return { workflowId: workflowExecution.workflowId, runId: workflowExecution.runId, attempt };
 }
 
 export function makeActivities(dependencies: ActivityDependencies): OrchestrationActivities {
@@ -79,20 +90,32 @@ function rejectionDetail(
 }
 
 async function settleFor(dependencies: ActivityDependencies, request: SettleRequest): Promise<void> {
-  const { workflowId } = dependencies.currentRun();
+  const { workflowId, attempt } = dependencies.currentRun();
   const { org, brain, spec, executionId, settlement } = request;
+  const unsettled = (reason: string): void => {
+    dependencies.reportUnsettled({ org, brain, executionId, reason });
+  };
   if (workflowId !== workflowIdOf(org, brain, spec, executionId)) {
-    throw rejectedTenancy(workflowId, org, brain);
+    const violation = rejectedTenancy(workflowId, org, brain);
+    unsettled(violation.message);
+    throw violation;
   }
   const settled = await Effect.runPromise(
-    Effect.result(dependencies.settle({ org, brain, id: executionId }, settlementOf(settlement))),
+    Effect.exit(dependencies.settle({ org, brain, id: executionId }, settlementOf(settlement))),
   );
-  if (Result.isFailure(settled)) {
-    const { _tag: reason, detail } = settled.failure;
-    throw reason === 'not_found'
-      ? ApplicationFailure.nonRetryable(detail, executionNotFound)
-      : ApplicationFailure.retryable(detail, executionConflict);
+  if (Exit.isSuccess(settled)) {
+    return;
   }
+  const failure = Cause.squash(settled.cause);
+  if (failure instanceof NotFound) {
+    unsettled(`The ledger has no such execution: ${failure.detail}`);
+    throw ApplicationFailure.nonRetryable(failure.detail, executionNotFound);
+  }
+  const detail = failure instanceof Conflict ? failure.detail : `Settling broke down: ${String(failure)}`;
+  if (attempt >= mostSettleAttempts) {
+    unsettled(`Settling failed on all ${mostSettleAttempts} attempts: ${detail}`);
+  }
+  throw ApplicationFailure.retryable(detail, failure instanceof Conflict ? executionConflict : settlementBroken);
 }
 
 function settlementOf(settlement: RunSettlement): Settlement {

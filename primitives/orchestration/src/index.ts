@@ -7,7 +7,13 @@ export {
   type StartedRun,
 } from './primitive/orchestration-client.ts';
 export { makeOrchestration, type OrchestrationDependencies } from './primitive/orchestration-primitive.ts';
-export type { ExecuteSpec, SpecExecution, SpecExecutionResult } from './worker/dependencies.ts';
+export type {
+  ExecuteSpec,
+  ReportUnsettled,
+  SpecExecution,
+  SpecExecutionResult,
+  UnsettledExecution,
+} from './worker/dependencies.ts';
 export { specExecutionResultOf } from './worker/spec-results.ts';
 export {
   OrchestrationWorkerError,

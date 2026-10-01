@@ -19,6 +19,8 @@ export interface OrchestratedBrain extends Brain {
 export async function orchestratedBrain(taskQueue: string): Promise<OrchestratedBrain> {
   const settings: TemporalSettings = settingsFor(taskQueue);
   const scope = Effect.runSync(Scope.make());
+  const { onFailure, reportUnsettled } = failureRecorder();
+  const observers = { onFailure, reportUnsettled };
   const client = await Effect.runPromise(connectOrchestration(settings).pipe(Scope.provide(scope)));
   const brain = brainWith([makeOrchestration({ client }), echo]);
   await Effect.runPromise(
@@ -26,7 +28,7 @@ export async function orchestratedBrain(taskQueue: string): Promise<Orchestrated
       settings,
       executeSpec: brain.executeNested,
       settle: brain.settle,
-      onFailure: failureRecorder().onFailure,
+      ...observers,
     }).pipe(Scope.provide(scope)),
   );
   const connection = await Connection.connect({ address: settings.address });

@@ -19,6 +19,9 @@ await Effect.runPromise(
         settings,
         executeSpec: () => Effect.die(new Error('This worker executes no specs')),
         settle: () => Effect.die(new Error('This worker settles no executions')),
+        reportUnsettled: ({ executionId, reason }) => {
+          process.stderr.write(`${executionId}: ${reason}\n`);
+        },
         onFailure: (detail) => {
           process.stderr.write(`${detail}\n`);
         },

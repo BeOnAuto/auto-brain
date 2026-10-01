@@ -22,3 +22,12 @@ export type SpecExecutionResult =
   | { readonly status: 'failed'; readonly detail: string };
 
 export type ExecuteSpec = (execution: SpecExecution) => Effect.Effect<SpecExecutionResult>;
+
+export interface UnsettledExecution {
+  readonly org: string;
+  readonly brain: string;
+  readonly executionId: string;
+  readonly reason: string;
+}
+
+export type ReportUnsettled = (execution: UnsettledExecution) => void;

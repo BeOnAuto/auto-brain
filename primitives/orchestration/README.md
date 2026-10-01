@@ -149,7 +149,9 @@ When the workflow ends, a last activity settles the execution through `execution
 - **rejected** when an error is not caught: `invalid_input` for an error of a 4xx status other than 408 and 429 (the input led to it, and retrying the execution answers the same), and `unavailable` for every other status (a timeout, a failure to reach a spec, a server error: retrying the execution may succeed). The detail is the title or type, the detail and the instance of the error;
 - **failed** when the workflow is cancelled, when it breaks down, or when its output is larger than an execution records (1048574 bytes as JSON).
 
-Settling is an activity, so it happens once per execution however the worker fails: Temporal retries it, and settling again with the same result records nothing. A conflict, such as a workflow that ends before its execution recorded that it finishes later, is retried for about 15 minutes. A workflow that fails or is cancelled ends failed or cancelled in Temporal too, after settling.
+Settling is an activity, so it happens once per execution however the worker fails: Temporal retries it, and settling again with the same result records nothing. A conflict, such as a workflow that ends before its execution recorded that it finishes later, is retried for 20 attempts, from 1 second apart doubling up to 1 minute, about 14 minutes in all. A workflow that fails or is cancelled ends failed or cancelled in Temporal too, after settling.
+
+When settling fails for good, because the ledger has no such execution, because the run may not settle it, or because its last attempt failed, the workflow fails in Temporal and the execution stays `started` in the ledger. The activity tells the `reportUnsettled` the worker was given, with the org, the brain, the execution id and the reason, never the input or output, so an operator sees an error in the log of the server and a failed workflow in Temporal under the same id. Reconciling such an execution is manual in this version. A last attempt that times out instead of failing is not reported; it shows only in Temporal.
 
 Limits keep a workflow inside what Temporal holds: a call rejects an input larger than an execution takes, an activity fails an output larger than 1 MiB, and a workflow stops with a `runtime` error before its history passes 40 MiB or 40000 events, or once it has run 10000 tasks without waiting for anything (the timers that let other workflows run do not count as waiting). [The work of expressions](#the-work-of-expressions) has its own limits.
 
@@ -172,6 +174,7 @@ import {
   specExecutionResultOf,
   TemporalSettingsConfig,
   type ExecuteSpec,
+  type UnsettledExecution,
 } from '@beonauto/orchestration';
 import { executionSettler } from '@beonauto/specs';
 
@@ -191,7 +194,9 @@ const executeSpec: ExecuteSpec = ({ org, brain, caller, primitive, name, input, 
     })
     .pipe(Effect.provide(services), Effect.map(specExecutionResultOf));
 const onFailure = (detail: string) => logIncident(detail); // the server decides what follows
-yield * runOrchestrationWorker({ settings, executeSpec, settle: executionSettler(ledger), onFailure }); // scoped
+const reportUnsettled = ({ org, brain, executionId, reason }: UnsettledExecution) =>
+  logError('An execution stays started', { org, brain, executionId, reason });
+yield * runOrchestrationWorker({ settings, executeSpec, settle: executionSettler(ledger), reportUnsettled, onFailure }); // scoped
 ```
 
 `runOrchestrationWorker` connects to Temporal, bundles the workflow code when it starts (there is no build step), runs the worker inside the server process, and shuts it down when its scope closes: activities in flight get 10 seconds to finish, and are then left to Temporal's retries, and then its connection closes. It fails with `OrchestrationWorkerError` when Temporal cannot be reached or the worker cannot be made, closing the connection it opened.
