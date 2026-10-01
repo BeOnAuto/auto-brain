@@ -23,15 +23,15 @@ FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9
 LABEL org.opencontainers.image.licenses="Elastic-2.0"
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 LEDGER_FILE=/data/ledger.db
 WORKDIR /app
-COPY --from=dependencies --chown=node:node /app ./
-COPY --chown=node:node LICENSE ./
-COPY --chown=node:node packages/api/src packages/api/src
-COPY --chown=node:node packages/brains/src packages/brains/src
-COPY --chown=node:node packages/config/src packages/config/src
-COPY --chown=node:node packages/identity/src packages/identity/src
-COPY --chown=node:node packages/ledger/src packages/ledger/src
-COPY --chown=node:node packages/operations/src packages/operations/src
-COPY --chown=node:node packages/server/src packages/server/src
+COPY --from=dependencies /app ./
+COPY LICENSE ./
+COPY packages/api/src packages/api/src
+COPY packages/brains/src packages/brains/src
+COPY packages/config/src packages/config/src
+COPY packages/identity/src packages/identity/src
+COPY packages/ledger/src packages/ledger/src
+COPY packages/operations/src packages/operations/src
+COPY packages/server/src packages/server/src
 RUN install --directory --owner=node --group=node /data
 USER node
 VOLUME /data
