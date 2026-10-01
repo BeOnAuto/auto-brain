@@ -11,6 +11,10 @@ export interface CallInput {
   readonly encoding: InputEncoding;
 }
 
+const queryOnCommand = Result.fail(
+  problemOf('bad_request', 'A command takes no query parameters; send its input in the JSON body'),
+);
+
 function givenTwice(name: string): Result.Result<never, Problem> {
   return Result.fail(problemOf('bad_request', `The field ${name} is given in more than one place`));
 }
@@ -37,7 +41,12 @@ export async function parseCallInput(
   registration: Registration,
 ): Promise<Result.Result<CallInput, Problem>> {
   const pathFields = Object.fromEntries(registration.pathParameters.map((name) => [name, c.req.param(name)]));
-  return registration.route.method === 'GET'
-    ? Result.flatMap(queryFieldsOf(new URL(c.req.url).searchParams), (given) => combined(pathFields, given, 'strings'))
-    : Result.flatMap(await parseJsonBody(c.req.raw), (given) => combined(pathFields, given, 'json'));
+  const query = new URL(c.req.url).searchParams;
+  if (registration.route.method === 'GET') {
+    return Result.flatMap(queryFieldsOf(query), (given) => combined(pathFields, given, 'strings'));
+  }
+  if (query.size > 0) {
+    return queryOnCommand;
+  }
+  return Result.flatMap(await parseJsonBody(c.req.raw), (given) => combined(pathFields, given, 'json'));
 }

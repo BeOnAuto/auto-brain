@@ -66,6 +66,19 @@ describe('the input of a POST or PUT operation', () => {
     });
   });
 
+  it.each([
+    ['POST', `${notes}?name=first`, '{"name":"first","text":"t"}'],
+    ['PUT', `${betaLabel}?label=b`, '{"label":"b"}'],
+    ['PUT', `${betaLabel}?unrelated=1`, '{"label":"b"}'],
+  ])('rejects any query parameter on %s %s as a bad request', async (method, path, body) => {
+    const { handler } = await operationServer();
+
+    expect(await call(handler, path, { method, headers: jsonAsAdmin, body })).toMatchObject({
+      status: 400,
+      body: { reason: 'bad_request', detail: 'A command takes no query parameters; send its input in the JSON body' },
+    });
+  });
+
   it('is {} when the body is empty, whatever the content type', async () => {
     const { handler } = await operationServer();
 
