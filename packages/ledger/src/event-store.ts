@@ -1,6 +1,6 @@
 import type { Schema } from 'effect';
 
-export interface RecordedEvent {
+export interface EncodedEvent {
   readonly type: string;
   readonly data: Schema.JsonObject;
 }
@@ -12,7 +12,7 @@ interface RecordedStream {
 
 export interface EventStore {
   readonly read: (stream: string) => Promise<RecordedStream>;
-  readonly append: (stream: string, events: readonly RecordedEvent[], expectedVersion: number) => Promise<void>;
+  readonly append: (stream: string, events: readonly EncodedEvent[], expectedVersion: number) => Promise<void>;
   readonly migrate: () => Promise<void>;
   readonly close: () => Promise<void>;
 }

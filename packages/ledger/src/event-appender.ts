@@ -3,7 +3,7 @@ import { isExpectedVersionConflictError } from '@event-driven-io/emmett';
 import { Effect, type Schema } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';
-import type { EventStore, RecordedEvent } from './event-store.ts';
+import type { EventStore, EncodedEvent } from './event-store.ts';
 import { VersionConflict } from './version-conflict.ts';
 
 const mostEventsInOneAppend = 8;
@@ -22,9 +22,9 @@ export function eventAppenderOf(store: EventStore): EventAppender {
         new RangeError(`A decision on ${stream} gave ${events.length} events, more than ${mostEventsInOneAppend}`),
       );
     }
-    return Effect.forEach(events, eventCodecOf(eventSchema).record).pipe(
-      Effect.flatMap((recorded: readonly RecordedEvent[]) =>
-        Effect.tryPromise({ try: () => store.append(stream, recorded, expectedVersion), catch: (error) => error }),
+    return Effect.forEach(events, eventCodecOf(eventSchema).encode).pipe(
+      Effect.flatMap((encoded: readonly EncodedEvent[]) =>
+        Effect.tryPromise({ try: () => store.append(stream, encoded, expectedVersion), catch: (error) => error }),
       ),
       Effect.catch((error) =>
         isExpectedVersionConflictError(error) ? Effect.fail(new VersionConflict()) : Effect.die(error),
