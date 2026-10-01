@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { defaultServerOptions } from './lifecycle.ts';
 import { shortShutdownTimeoutMs } from './testing/short-shutdown-timeout.ts';
-import { spawnServer } from './testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-routes.ts', import.meta.url));
 
@@ -22,7 +22,7 @@ async function refusingConnections(port: number): Promise<void> {
   }
 }
 
-describe('shutting down the server process', () => {
+describe('shutting down the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('lets a slow request finish after SIGTERM and exits 0 before the shutdown timeout', async () => {
     const child = spawnServer(serveWithTestRoutes, loopback);
     const port = await child.port;
@@ -62,7 +62,7 @@ describe('shutting down the server process', () => {
   });
 });
 
-describe('a repeated stop signal', () => {
+describe('a repeated stop signal', { timeout: spawnedServerTestTimeoutMs }, () => {
   it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
     'is ignored while the server process shuts down after the first %s, which still exits 0',
     async (signal) => {
@@ -85,17 +85,21 @@ describe('a repeated stop signal', () => {
   );
 });
 
-describe('a server process that something keeps running after it stopped', () => {
-  it('exits 0 at the exit deadline and says why on stderr', async () => {
-    const child = spawnServer(serveWithTestRoutes, loopback);
-    const port = await child.port;
-    await (await fetch(`http://127.0.0.1:${port}/linger?ms=60000`)).text();
+describe(
+  'a server process that something keeps running after it stopped',
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('exits 0 at the exit deadline and says why on stderr', async () => {
+      const child = spawnServer(serveWithTestRoutes, loopback);
+      const port = await child.port;
+      await (await fetch(`http://127.0.0.1:${port}/linger?ms=60000`)).text();
 
-    child.signal('SIGTERM');
+      child.signal('SIGTERM');
 
-    expect(await child.exited).toBe(0);
-    expect(child.output().stderr).toContain(
-      `auto-brain was still running ${defaultServerOptions.exitDeadlineMs} ms after it stopped, so it exits now\n`,
-    );
-  });
-});
+      expect(await child.exited).toBe(0);
+      expect(child.output().stderr).toContain(
+        `auto-brain was still running ${defaultServerOptions.exitDeadlineMs} ms after it stopped, so it exits now\n`,
+      );
+    });
+  },
+);

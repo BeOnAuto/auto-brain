@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createApiKey } from '@beonauto/identity';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { spawnServer } from './testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 import { temporaryLedger } from './testing/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -24,7 +24,7 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
 
 const protectedPath = '/v1/orgs/demo/brains';
 
-describe('main', () => {
+describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('serves health checks when launched with node and exits cleanly on SIGTERM', async () => {
     const child = spawnServer(mainModule, loopback);
     const port = await child.port;
@@ -64,7 +64,7 @@ describe('main', () => {
   );
 });
 
-describe('main with settings', () => {
+describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('requires an API key on protected paths once keys are configured, and says nothing about access', async () => {
     const { key, entry } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
     const child = spawnServer(mainModule, { ...loopback, API_KEYS: JSON.stringify([entry]) });

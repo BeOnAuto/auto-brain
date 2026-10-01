@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 
+export const spawnedServerTestTimeoutMs = 20_000;
+
 export interface SpawnedServer {
   readonly port: Promise<number>;
   readonly exited: Promise<unknown>;

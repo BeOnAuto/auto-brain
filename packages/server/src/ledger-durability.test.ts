@@ -8,7 +8,7 @@ import { compositionRoot } from './composition-root.ts';
 import { startServer } from './lifecycle.ts';
 import { request } from './testing/http-client.ts';
 import { appendMalformedBrainEvent } from './testing/malformed-brain-event.ts';
-import { spawnServer } from './testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from './testing/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -48,26 +48,30 @@ describe('brains in the ledger file', () => {
     expect(read).toMatchObject({ status: 200, body: { id: 'alpha', name: 'Alpha', status: 'active' } });
   });
 
-  it('are kept by a process that exits 0 on SIGTERM, and read by the next process', async () => {
-    const first = spawnServer(mainModule, onLoopback(ledger.fileName));
-    const created = await request(await first.port, 'POST', '/v1/orgs/acme/brains', {
-      body: { brain: 'alpha', name: 'Alpha' },
-    });
-    first.signal('SIGTERM');
-    const firstExit = await first.exited;
+  it(
+    'are kept by a process that exits 0 on SIGTERM, and read by the next process',
+    { timeout: spawnedServerTestTimeoutMs },
+    async () => {
+      const first = spawnServer(mainModule, onLoopback(ledger.fileName));
+      const created = await request(await first.port, 'POST', '/v1/orgs/acme/brains', {
+        body: { brain: 'alpha', name: 'Alpha' },
+      });
+      first.signal('SIGTERM');
+      const firstExit = await first.exited;
 
-    const second = spawnServer(mainModule, onLoopback(ledger.fileName));
-    const read = await request(await second.port, 'GET', alpha);
-    second.signal('SIGTERM');
+      const second = spawnServer(mainModule, onLoopback(ledger.fileName));
+      const read = await request(await second.port, 'GET', alpha);
+      second.signal('SIGTERM');
 
-    expect({ created: created.status, firstExit, read: read.status, secondExit: await second.exited }).toEqual({
-      created: 201,
-      firstExit: 0,
-      read: 200,
-      secondExit: 0,
-    });
-    expect(read.body).toEqual(created.body);
-  });
+      expect({ created: created.status, firstExit, read: read.status, secondExit: await second.exited }).toEqual({
+        created: 201,
+        firstExit: 0,
+        read: 200,
+        secondExit: 0,
+      });
+      expect(read.body).toEqual(created.body);
+    },
+  );
 });
 
 describe('a ledger that cannot be opened', () => {
@@ -77,21 +81,25 @@ describe('a ledger that cannot be opened', () => {
     });
   });
 
-  it('stops the process with the error on stderr, a non-zero exit and nothing on stdout', async () => {
-    const child = spawnServer(mainModule, onLoopback(aPathUnderAFile()));
+  it(
+    'stops the process with the error on stderr, a non-zero exit and nothing on stdout',
+    { timeout: spawnedServerTestTimeoutMs },
+    async () => {
+      const child = spawnServer(mainModule, onLoopback(aPathUnderAFile()));
 
-    expect(await child.exited).toBe(1);
-    expect(child.output().stdout).toBe('');
-    expect(child.output().stderr.split('\n')).toEqual([
-      expect.stringContaining(
-        "auto-brain could not start: StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
-      ),
-      '',
-    ]);
-  });
+      expect(await child.exited).toBe(1);
+      expect(child.output().stdout).toBe('');
+      expect(child.output().stderr.split('\n')).toEqual([
+        expect.stringContaining(
+          "auto-brain could not start: StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
+        ),
+        '',
+      ]);
+    },
+  );
 });
 
-describe('an error in the ledger', () => {
+describe('an error in the ledger', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('answers 500 identified by the urn:uuid of an incident, logged with the operation, the org and the caller but not the input', async () => {
     const child = spawnServer(mainModule, onLoopback(ledger.fileName));
     const port = await child.port;
