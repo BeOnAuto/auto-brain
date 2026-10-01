@@ -84,5 +84,5 @@ describe('a worker killed while it runs a workflow', () => {
         settlement: { status: 'succeeded', output, record: {} },
       },
     ]);
-  }, 60_000);
+  }, 120_000);
 });

@@ -203,7 +203,7 @@ Starting workflows from schedules or events, `run`, `emit`, outbound calls, cata
 
 ## Testing
 
-The integration tests run against a Temporal dev server that `@temporalio/testing` starts once for the test run (`temporal-test-server.ts`), downloading the Temporal CLI on first use into the temp directory. The unit tests run the interpreter over a fake host with a virtual clock (`src/testing/fake-host.ts`), and the Temporal adapter over a fake of the workflow API.
+The integration tests run against a Temporal dev server that `@temporalio/testing` starts once for the test run (`temporal-test-server.ts`), downloading the Temporal CLI on first use into the temp directory. Stopping it waits at most 10 seconds, so a dev server whose exit is never reported, as under emulation of another architecture, cannot hold the test run open. The unit tests run the interpreter over a fake host with a virtual clock (`src/testing/fake-host.ts`), and the Temporal adapter over a fake of the workflow API.
 
 ## Source
 
