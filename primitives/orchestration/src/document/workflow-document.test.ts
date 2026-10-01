@@ -1,0 +1,96 @@
+import { InvalidInput } from '@beonauto/operations';
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { parseWorkflowDocument } from './workflow-document.ts';
+import { summaryOf } from './workflow-summary.ts';
+
+const header = `document:
+  dsl: '1.0.3'
+  namespace: acme
+  name: greeting
+  version: '1.0.0'
+`;
+
+function parsed(source: string) {
+  return Effect.runPromise(Effect.result(parseWorkflowDocument(source)));
+}
+
+function refused(detail: string, issues: readonly string[]) {
+  return {
+    _tag: 'Failure',
+    failure: new InvalidInput({ detail, issues: issues.map((issue) => ({ detail: issue, pointer: '' })) }),
+  };
+}
+
+describe('parsing a workflow document', () => {
+  it('gives the document as JSON when it is valid and allowed', async () => {
+    expect(await parsed(`${header}do:\n  - greet: { set: { a: 1 } }\n`)).toMatchObject({
+      _tag: 'Success',
+      success: { do: [{ greet: { set: { a: 1 } } }] },
+    });
+  });
+
+  it('refuses YAML it does not read, with the line of each problem', async () => {
+    expect(await parsed('a: 1\na: 2\n')).toMatchObject(
+      refused('The workflow document is not YAML this runtime reads', ['Line 2, column 1: Map keys must be unique']),
+    );
+  });
+});
+
+describe('a document that breaks the DSL', () => {
+  it('is refused with each problem at its line', async () => {
+    expect(await parsed(`${header}do:\n  - loop:\n      for: { each: item }\n      do: []\n`)).toMatchObject(
+      refused('The workflow document is not a workflow this runtime runs', [
+        'Line 8, column 12: at /do/0/loop/for: It needs in',
+      ]),
+    );
+  });
+
+  it('is refused for steps that do not connect', async () => {
+    const source = `${header}do:\n  - s: { switch: [{ always: { then: nowhere } }] }\n`;
+
+    expect(await parsed(source)).toMatchObject(
+      refused('The workflow document is not a workflow this runtime runs', [
+        "Line 1, column 1: The steps of the workflow do not connect: Unable to find task to transition to 'nowhere' from 's'",
+      ]),
+    );
+  });
+});
+
+describe('a document the runtime does not run', () => {
+  it('is refused for what the policy refuses, reported once where the DSL agrees', async () => {
+    const source = `${header}do:\n  - a: { set: { x: 1 }, then: nowhere }\n  - b: { wait: soon, if: .a + }\n`;
+
+    expect(await parsed(source)).toMatchObject(
+      refused('The workflow document is not a workflow this runtime runs', [
+        'Line 7, column 31: at /do/0/a/then: then: nowhere names no task in the same list',
+        'Line 8, column 16: at /do/1/b/wait: soon is not an ISO 8601 duration',
+        'Line 8, column 26: at /do/1/b/if: .a +: ParseError: Unexpected token',
+      ]),
+    );
+  });
+
+  it('is refused for a DSL version other than 1.0.x, without asking the DSL', async () => {
+    expect(await parsed(header.replace("'1.0.3'", "'0.9.0'") + 'do: []\n')).toMatchObject(
+      refused('The workflow document is not a workflow this runtime runs', [
+        'Line 2, column 8: at /document/dsl: This runtime runs documents of DSL 1.0.x, not 0.9.0',
+      ]),
+    );
+  });
+});
+
+describe('the summary of a workflow spec', () => {
+  it('is the summary or title of the document, and its inline input and output schemas', () => {
+    expect(
+      summaryOf({
+        document: { summary: 'Greets', title: 'Greeting' },
+        input: { schema: { document: { type: 'object' } } },
+        output: { schema: { document: { type: 'string' } } },
+        do: [],
+      }),
+    ).toEqual({ description: 'Greets', inputSchema: { type: 'object' }, outputSchema: { type: 'string' } });
+    expect(summaryOf({ document: { title: 'Greeting' }, do: [] })).toEqual({ description: 'Greeting' });
+    expect(summaryOf({ do: [] })).toEqual({});
+  });
+});

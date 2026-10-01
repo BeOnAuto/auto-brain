@@ -1,0 +1,96 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-10-01T21:16:31.824005Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1048587",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "temporalGlobalProbe"
+        },
+        "taskQueue": {
+          "name": "temporal-global",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {},
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a0f953-76d0-7013-9e6d-088ae8a7b937",
+        "identity": "recorded-worker",
+        "firstExecutionRunId": "01a0f953-76d0-7013-9e6d-088ae8a7b937",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "header": {},
+        "workflowId": "temporal-global"
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-10-01T21:16:31.824064Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1048588",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "temporal-global",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-10-01T21:16:31.825996Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1048593",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "recorded-worker",
+        "requestId": "183a4175-b2da-4135-8558-572fb0774328",
+        "historySizeBytes": "262",
+        "workerVersion": {
+          "buildId": "@temporalio/worker@1.24.0+e91943c5a214f2617ae13f2079c4110b2314dbfa1273cff42ff7cee163fc8215"
+        }
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-10-01T21:16:31.854349Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1048597",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "recorded-worker",
+        "workerVersion": {
+          "buildId": "@temporalio/worker@1.24.0+e91943c5a214f2617ae13f2079c4110b2314dbfa1273cff42ff7cee163fc8215"
+        },
+        "sdkMetadata": {
+          "coreUsedFlags": [2, 1, 3],
+          "sdkName": "temporal-typescript",
+          "sdkVersion": "1.24.0"
+        },
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-10-01T21:16:31.854448Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+      "taskId": "1048598",
+      "workflowExecutionCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "InVuZGVmaW5lZCI="
+            }
+          ]
+        },
+        "workflowTaskCompletedEventId": "4"
+      }
+    }
+  ]
+}

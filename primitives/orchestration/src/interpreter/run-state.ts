@@ -1,0 +1,121 @@
+import { isJson, isObject, objectField, type Json, type JsonObject } from '../dsl/json.ts';
+import type { Components } from '../dsl/policy-checks.ts';
+import type { WorkflowHost } from './host.ts';
+import { raised } from './raised-error.ts';
+import type { WorkflowRun } from './workflow-run.ts';
+
+export type EventFilter = (event: JsonObject) => boolean;
+
+export interface RunState {
+  readonly run: WorkflowRun;
+  readonly host: WorkflowHost;
+  readonly components: Components;
+  readonly workflow: JsonObject;
+  readonly context: () => Json;
+  readonly replaceContext: (next: Json) => void;
+  readonly nextRun: (reference: string) => number;
+  readonly step: (reference: string) => void;
+  readonly checkHistory: (reference: string) => void;
+  readonly beforeWaiting: (reference: string) => void;
+  readonly deliver: (event: unknown) => void;
+  readonly eventsDelivered: () => number;
+  readonly takeEvent: (accepts: EventFilter) => JsonObject | undefined;
+}
+
+export const runtimeDescriptor: JsonObject = {
+  name: 'auto-brain',
+  version: '1',
+  metadata: { primitive: 'orchestration' },
+};
+
+export const mostHistoryBytes = 41_943_040;
+
+export const mostHistoryEvents = 40_000;
+
+export const mostStepsWithoutWaiting = 10_000;
+
+export function dateTimeOf(milliseconds: number): JsonObject {
+  return {
+    iso8601: new Date(milliseconds).toISOString(),
+    epoch: { seconds: Math.floor(milliseconds / 1000), milliseconds },
+  };
+}
+
+export function makeRunState(run: WorkflowRun, host: WorkflowHost): RunState {
+  const use = objectField(run.document, 'use') ?? {};
+  const runs = new Map<string, number>();
+  let context: Json = {};
+  let stepsWithoutWaiting = 0;
+  return {
+    run,
+    host,
+    components: {
+      errors: objectField(use, 'errors') ?? {},
+      retries: objectField(use, 'retries') ?? {},
+      timeouts: objectField(use, 'timeouts') ?? {},
+    },
+    workflow: { id: run.execution.id, definition: run.document, input: run.input, startedAt: dateTimeOf(host.now()) },
+    context: () => context,
+    replaceContext: (next) => {
+      context = next;
+    },
+    nextRun: (reference) => {
+      const next = (runs.get(reference) ?? 0) + 1;
+      runs.set(reference, next);
+      return next;
+    },
+    step: (reference) => {
+      stepsWithoutWaiting += 1;
+      if (stepsWithoutWaiting > mostStepsWithoutWaiting) {
+        throw raised(
+          'runtime',
+          500,
+          `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end`,
+          reference,
+        );
+      }
+    },
+    checkHistory: (reference) => {
+      requireRoomInHistory(host, reference);
+    },
+    beforeWaiting: (reference) => {
+      requireRoomInHistory(host, reference);
+      stepsWithoutWaiting = 0;
+    },
+    ...makeInbox(),
+  };
+}
+
+function makeInbox(): Pick<RunState, 'deliver' | 'eventsDelivered' | 'takeEvent'> {
+  const inbox: JsonObject[] = [];
+  const delivered = new Set<string>();
+  return {
+    deliver: (event) => {
+      if (isEvent(event) && !delivered.has(event['id'])) {
+        delivered.add(event['id']);
+        inbox.push(event);
+      }
+    },
+    eventsDelivered: () => delivered.size,
+    takeEvent: (accepts) => {
+      const position = inbox.findIndex((event) => accepts(event));
+      return position === -1 ? undefined : inbox.splice(position, 1)[0];
+    },
+  };
+}
+
+function requireRoomInHistory(host: WorkflowHost, reference: string): void {
+  const { bytes, events } = host.historySize();
+  if (bytes > mostHistoryBytes || events > mostHistoryEvents) {
+    throw raised(
+      'runtime',
+      500,
+      `The workflow's history holds ${events} events in ${bytes} bytes, near the most Temporal keeps; it cannot do more`,
+      reference,
+    );
+  }
+}
+
+function isEvent(value: unknown): value is JsonObject & { readonly id: string; readonly type: string } {
+  return isJson(value) && isObject(value) && typeof value['id'] === 'string' && typeof value['type'] === 'string';
+}

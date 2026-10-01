@@ -14,6 +14,7 @@ minimumReleaseAgeExclude:
 trustPolicy: no-downgrade
 
 allowBuilds:
+  '@swc/core': false
   esbuild: true
   lefthook: true
   protobufjs: false

@@ -1,0 +1,24 @@
+import type { CallerIdentity, Issue, RejectionReason } from '@beonauto/operations';
+import type { Effect, Schema } from 'effect';
+
+export interface SpecExecution {
+  readonly org: string;
+  readonly brain: string;
+  readonly caller: CallerIdentity;
+  readonly primitive: string;
+  readonly name: string;
+  readonly input: Schema.Json;
+  readonly executionId: string;
+}
+
+export type SpecExecutionResult =
+  | { readonly status: 'succeeded'; readonly output: Schema.Json }
+  | {
+      readonly status: 'rejected';
+      readonly reason: RejectionReason;
+      readonly detail: string;
+      readonly issues?: readonly Issue[];
+    }
+  | { readonly status: 'failed'; readonly detail: string };
+
+export type ExecuteSpec = (execution: SpecExecution) => Effect.Effect<SpecExecutionResult>;

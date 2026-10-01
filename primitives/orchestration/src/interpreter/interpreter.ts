@@ -1,0 +1,99 @@
+import { field, jsonBytesOf, objectField, type Json } from '../dsl/json.ts';
+import { refusalsOf } from '../dsl/policy.ts';
+import { transform } from './evaluation.ts';
+import type { WorkflowHost } from './host.ts';
+import { RaisedError, errorType } from './raised-error.ts';
+import { runtimeDescriptor, makeRunState, type RunState } from './run-state.ts';
+import { endingOf, settlementOf, type RunOutcome, type WorkflowEnding } from './settlement.ts';
+import { runList } from './task-runner.ts';
+import { timeoutOf, withTimeout } from './timeouts.ts';
+import { readWorkflowRun } from './workflow-run.ts';
+
+export interface WorkflowStart {
+  readonly deliver: (event: unknown) => void;
+  readonly ending: Promise<WorkflowEnding>;
+}
+
+const mostOutputBytes = 1_048_574;
+
+const root = '/';
+
+export function startWorkflow(input: unknown, host: WorkflowHost): WorkflowStart {
+  const run = readWorkflowRun(input);
+  if (run === undefined) {
+    return {
+      deliver: ignoreEvent,
+      ending: Promise.resolve({
+        kind: 'failed',
+        type: 'InvalidRun',
+        message: 'The workflow was started without a run it can read',
+      }),
+    };
+  }
+  const state = makeRunState(run, host);
+  return { deliver: state.deliver, ending: finish(state) };
+}
+
+function ignoreEvent(): void {}
+
+async function finish(state: RunState): Promise<WorkflowEnding> {
+  const outcome = await outcomeOf(state);
+  const { org, brain, id, spec } = state.run.execution;
+  await state.host.settle({ org, brain, spec: spec.name, executionId: id, settlement: settlementOf(outcome) });
+  return endingOf(outcome);
+}
+
+async function outcomeOf(state: RunState): Promise<RunOutcome> {
+  try {
+    return withinOutputLimit(await interpret(state));
+  } catch (error) {
+    if (error instanceof RaisedError) {
+      return { kind: 'raised', error: error.error };
+    }
+    return state.host.isCancellation(error)
+      ? { kind: 'cancelled', cause: error }
+      : { kind: 'broken', reason: `The workflow broke down: ${String(error)}` };
+  }
+}
+
+async function interpret(state: RunState): Promise<Json> {
+  const { document, input } = state.run;
+  const refusals = refusalsOf(document).filter(({ forbidden }) => forbidden);
+  if (refusals.length > 0) {
+    throw new RaisedError({
+      type: errorType('configuration'),
+      status: 400,
+      title: 'The workflow document is not allowed by this runtime',
+      detail: refusals.map(({ pointer, detail }) => `${pointer}: ${detail}`).join('; '),
+      instance: root,
+    });
+  }
+  const variables = { workflow: state.workflow, runtime: runtimeDescriptor };
+  const place = { reference: root, now: state.host.now() };
+  const transformed = transform(field(objectField(document, 'input') ?? {}, 'from'), input, variables, place);
+  const timeout = timeoutOf(state, {
+    declared: field(document, 'timeout'),
+    data: transformed,
+    variables,
+    reference: root,
+  });
+  const result = await withTimeout(state, { milliseconds: timeout, reference: root }, () =>
+    runList(field(document, 'do'), '/do', transformed, { state, variables: {} }),
+  );
+  return transform(
+    field(objectField(document, 'output') ?? {}, 'as'),
+    result.output,
+    { ...variables, context: state.context() },
+    { reference: root, now: state.host.now() },
+  );
+}
+
+function withinOutputLimit(output: Json): RunOutcome {
+  const bytes = jsonBytesOf(output);
+  return bytes > mostOutputBytes
+    ? {
+        kind: 'broken',
+        reason: `The workflow's output takes ${bytes} bytes as JSON, more than the ${mostOutputBytes} an execution records`,
+      }
+    : { kind: 'completed', output };
+}
