@@ -3,10 +3,10 @@ import { Effect } from 'effect';
 import { admitToBrain, admitToOrg } from './admission.ts';
 import { runInBrain } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
-import { withFaultBoundary } from './fault-boundary.ts';
+import { concluded } from './fault-boundary.ts';
 import { Ledger } from './ledger.ts';
 import { runInOrg } from './org-binding.ts';
-import type { Done, Outcome, Refused } from './outcome.ts';
+import type { Outcome, Refused } from './outcome.ts';
 import type { Registration } from './registration.ts';
 import type { BrainRequest, OrgRequest } from './request.ts';
 
@@ -26,12 +26,6 @@ export interface Dispatcher {
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
 }
 
-function concluded(
-  pipeline: Effect.Effect<Done, Refused, DispatcherServices>,
-): Effect.Effect<Outcome, never, DispatcherServices> {
-  return withFaultBoundary(pipeline.pipe(Effect.catch((refusal) => Effect.succeed(refusal))));
-}
-
 export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
   const passSteps = (registration: Registration, request: OrgRequest | BrainRequest) =>
     Effect.forEach(steps, (step) => step(registration, request), { discard: true });
@@ -44,6 +38,7 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
           const ledger = yield* Ledger;
           return yield* runInOrg(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
+        { operation: registration.name, org: request.org, caller: request.caller.id },
       ),
     inBrain: (registration, request) =>
       concluded(
@@ -53,6 +48,7 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
           const ledger = yield* Ledger;
           return yield* runInBrain(registration, request, ledger).pipe(withoutDispatcherServices);
         }),
+        { operation: registration.name, org: request.org, brain: request.brain, caller: request.caller.id },
       ),
   };
 }

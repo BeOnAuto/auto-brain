@@ -7,7 +7,7 @@ interface MethodsByKind {
   readonly command: 'POST' | 'PUT';
 }
 
-export interface Route<K extends Kind, P extends string = string> {
+export interface Route<K extends Kind = Kind, P extends string = string> {
   readonly method: MethodsByKind[K];
   readonly path: P;
 }

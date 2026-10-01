@@ -4,6 +4,7 @@ import { getBrainLabel, labelBrain, listBrainLabels } from './testing/brain-labe
 import { acmeAdmin, acmeAlphaReader, globexAdmin } from './testing/callers.ts';
 import { harness, toBrain, toOrg } from './testing/harness.ts';
 import { addNote, listNotes } from './testing/notes.ts';
+import { putOnShelf, readShelf } from './testing/shelves.ts';
 
 describe('the ports bound to a call', () => {
   it('prefix every stream with the org or brain of the call, so each reads and writes only its own', async () => {
@@ -40,5 +41,45 @@ describe('the ports bound to a call', () => {
       status: 'done',
       output: { labels: [] },
     });
+  });
+});
+
+const malformedStreams = [
+  '../../beta/specs',
+  '',
+  'red/',
+  'red//blue',
+  'a\u0000b',
+  'r'.repeat(65),
+  Array.from({ length: 5 }, () => 'r'.repeat(60)).join('/'),
+];
+
+describe('a stream name a handler gives a bound port', () => {
+  it('is one or more segments of letters, digits, _ and -, compared case-sensitively', async () => {
+    const { dispatcher, ledger, run } = harness();
+    const toAlpha = toBrain('acme', 'alpha');
+
+    await run(dispatcher.inBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf: 'red', item: 'anvil' })));
+    await run(dispatcher.inBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf: 'Red_1-x/top', item: 'bolt' })));
+
+    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/shelves/red', 'brain/acme/alpha/shelves/Red_1-x/top']);
+    expect(await run(dispatcher.inBrain(readShelf.registration, toAlpha(acmeAdmin, { shelf: 'RED' })))).toEqual({
+      status: 'done',
+      output: { items: [] },
+    });
+  });
+
+  it.each(malformedStreams)('faults the call when it names the stream shelves/%j', async (shelf) => {
+    const { dispatcher, ledger, reported, run } = harness();
+    const toAlpha = toBrain('acme', 'alpha');
+
+    const writing = await run(dispatcher.inBrain(putOnShelf.registration, toAlpha(acmeAdmin, { shelf, item: 'x' })));
+    const reading = await run(dispatcher.inBrain(readShelf.registration, toAlpha(acmeAdmin, { shelf })));
+
+    expect([writing.status, reading.status, ledger.streamNames()]).toEqual(['faulted', 'faulted', []]);
+    expect(reported().map(({ original }) => original)).toEqual([
+      new Error(`The stream name ${JSON.stringify(`shelves/${shelf}`)} is malformed`),
+      new Error(`The stream name ${JSON.stringify(`shelves/${shelf}`)} is malformed`),
+    ]);
   });
 });

@@ -18,6 +18,7 @@ export interface RegistrationOf<S extends Scope, K extends Kind> {
   readonly description: string;
   readonly route: Route<K>;
   readonly pathParameters: readonly string[];
+  readonly addressesBrain: boolean;
   readonly successStatus: SuccessStatusByKind[K];
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;

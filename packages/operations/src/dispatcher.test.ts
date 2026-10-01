@@ -62,7 +62,7 @@ describe('a dispatched handler', () => {
 
     expect(await run(Effect.all([adding('anvil'), adding('bolt')], { concurrency: 'unbounded' }))).toEqual([
       { status: 'done', output: { added: { name: 'anvil', text: 'anvil' }, version: 1 } },
-      { status: 'refused', reason: 'conflict', detail: 'The stream brain/acme/alpha/notes moved' },
+      { status: 'refused', reason: 'conflict', detail: 'The state changed while the command was decided' },
     ]);
   });
 });

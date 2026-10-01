@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CallerIdentity } from './index.ts';
-import { getBrainLabel, labelBrain, listBrainLabels } from './testing/brain-labels.ts';
+import { labelBrain, listBrainLabels } from './testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader } from './testing/callers.ts';
 import { harness, toBrain, toOrg } from './testing/harness.ts';
 import { addNote, getNote } from './testing/notes.ts';
@@ -75,45 +75,66 @@ describe('admission to a brain', () => {
       reason: 'not_found',
       detail: 'There is no brain nowhere in this org',
     });
+  });
+
+  it('refuses an ill-formed brain id before asking the directory, without echoing it', async () => {
+    const { dispatcher, run } = harness({ brains: [{ org: 'acme', brain: 'No Brain' }] });
+
     expect(await run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'No Brain')(acmeAdmin)))).toEqual({
       status: 'refused',
       reason: 'not_found',
-      detail: 'There is no brain No Brain in this org',
+      detail: 'There is no such brain in this org',
     });
   });
 });
 
-describe('admission to an org', () => {
-  it('checks the reach of an org operation whose route names a brain', async () => {
-    const { dispatcher, run } = harness();
-    const asking = (input: unknown) =>
-      run(dispatcher.inOrg(getBrainLabel.registration, toAcme(acmeAlphaReader, input)));
-    const outOfReach = { status: 'refused', reason: 'forbidden', detail: 'The caller may not reach this brain' };
+describe('the org id of a call', () => {
+  const illFormed = 'ac/me';
+  const localDeveloper = { ...acmeAdmin, org: illFormed };
 
-    expect([await asking({ brain: 'beta' }), await asking({ brain: 7 }), await asking({})]).toEqual([
-      outOfReach,
-      outOfReach,
-      outOfReach,
-    ]);
-    expect(await asking({ brain: 'alpha' })).toEqual({
-      status: 'refused',
-      reason: 'not_found',
-      detail: 'The brain alpha has no label',
+  it('is checked after the caller, at org and at brain scope', async () => {
+    const { dispatcher, run } = harness();
+    const writingOnly: CallerIdentity = { ...localDeveloper, permissions: ['brain:write'] };
+
+    expect(await run(dispatcher.inOrg(listBrainLabels.registration, toOrg(illFormed)(acmeAdmin)))).toMatchObject({
+      detail: 'The caller does not belong to this org',
     });
-    expect(await run(dispatcher.inOrg(listBrainLabels.registration, toAcme(acmeAlphaReader)))).toEqual({
-      status: 'done',
-      output: { labels: [] },
+    expect(await run(dispatcher.inBrain(getNote.registration, toBrain(illFormed, 'alpha')(acmeAdmin)))).toMatchObject({
+      detail: 'The caller does not belong to this org',
     });
+    expect(await run(dispatcher.inOrg(listBrainLabels.registration, toOrg(illFormed)(writingOnly)))).toMatchObject({
+      detail: 'The caller lacks the org:read permission',
+    });
+    expect(await run(dispatcher.inBrain(getNote.registration, toBrain(illFormed, 'alpha')(writingOnly)))).toMatchObject(
+      {
+        detail: 'The caller lacks the brain:read permission',
+      },
+    );
   });
 
-  it('treats an org id that breaks the grammar as an org that does not exist', async () => {
-    const { dispatcher, run } = harness();
-    const localDeveloper = { ...acmeAdmin, org: 'ac/me' };
+  it('must be well formed, at org and at brain scope', async () => {
+    const { dispatcher, run } = harness({ brains: [{ org: illFormed, brain: 'alpha' }] });
+    const noSuchOrg = { status: 'refused', reason: 'not_found', detail: 'There is no such org' };
 
-    expect(await run(dispatcher.inOrg(listBrainLabels.registration, toOrg('ac/me')(localDeveloper)))).toEqual({
-      status: 'refused',
-      reason: 'not_found',
-      detail: 'There is no org ac/me',
-    });
+    expect(await run(dispatcher.inOrg(listBrainLabels.registration, toOrg(illFormed)(localDeveloper)))).toEqual(
+      noSuchOrg,
+    );
+    expect(await run(dispatcher.inBrain(getNote.registration, toBrain(illFormed, 'alpha')(localDeveloper)))).toEqual(
+      noSuchOrg,
+    );
+  });
+});
+
+describe('a refusal of admission', () => {
+  it('is a value of its own that a consumer may not spoil for later calls', async () => {
+    const { dispatcher, run } = harness();
+    const outOfReach = () => run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'beta')(acmeAlphaReader)));
+    const abroad = () => run(dispatcher.inBrain(getNote.registration, toBrain('globex', 'gamma')(acmeAdmin)));
+
+    Reflect.set(await outOfReach(), 'detail', 'spoiled');
+    Reflect.set(await abroad(), 'detail', 'spoiled');
+
+    expect(await outOfReach()).toMatchObject({ detail: 'The caller may not reach this brain' });
+    expect(await abroad()).toMatchObject({ detail: 'The caller does not belong to this org' });
   });
 });

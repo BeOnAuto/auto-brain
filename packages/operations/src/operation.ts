@@ -56,7 +56,8 @@ function defineOperation<
   definition: Definition<K, string, In, Out, R, Services>,
 ): Operation<S, K, In['Type'], Out['Type'], R, Services> {
   const { name, route, inputSchema, outputSchema, handle } = definition;
-  const { pathParameters } = checkedDefinition(definition);
+  const { pathParameters, addressesBrain } = checkedDefinition(scope, definition);
+  const reasons: readonly DeclarableReason[] = [...new Set(definition.reasons)];
   const decodeInput = inputDecoder(inputSchema);
   const encodeOutput = outputEncoder(outputSchema);
   const validateInput = typeValidator(inputSchema);
@@ -70,15 +71,16 @@ function defineOperation<
       description: definition.description,
       route,
       pathParameters,
+      addressesBrain,
       successStatus: definition.successStatus ?? 200,
-      reasons: definition.reasons,
+      reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),
       run: Effect.fnUntraced(function* (input: unknown, form: InputForm) {
         const handled = yield* Effect.result(handle(yield* decodeInput(input, form)));
         if (Result.isFailure(handled)) {
           const { _tag: reason, detail } = handled.failure;
-          return yield* Effect.fail(refused(reason, detail));
+          return yield* reasons.includes(reason) ? Effect.fail(refused(reason, detail)) : Effect.die(handled.failure);
         }
         return done(yield* encodeOutput(handled.success));
       }),

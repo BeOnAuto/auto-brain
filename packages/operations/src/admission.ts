@@ -9,13 +9,9 @@ import { permissionFor } from './permission.ts';
 import type { Registration } from './registration.ts';
 import type { BrainRequest, OrgRequest } from './request.ts';
 
-const foreignOrg = refused('forbidden', 'The caller does not belong to this org');
-
-const brainOutOfReach = refused('forbidden', 'The caller may not reach this brain');
-
 function refusalOfCaller(registration: Registration, { caller, org }: OrgRequest): Refused | undefined {
   if (caller.org !== org) {
-    return foreignOrg;
+    return refused('forbidden', 'The caller does not belong to this org');
   }
   const permission = permissionFor(registration.kind, registration.scope);
   return caller.permissions.includes(permission)
@@ -24,11 +20,15 @@ function refusalOfCaller(registration: Registration, { caller, org }: OrgRequest
 }
 
 function refusalOfBrainReach({ brains }: CallerIdentity, brain: unknown): Refused | undefined {
-  return mayReachBrain(brains, brain) ? undefined : brainOutOfReach;
+  return mayReachBrain(brains, brain) ? undefined : refused('forbidden', 'The caller may not reach this brain');
 }
 
 function refusalOfOrgId(org: string): Refused | undefined {
-  return isOrgId(org) ? undefined : refused('not_found', `There is no org ${org}`);
+  return isOrgId(org) ? undefined : refused('not_found', 'There is no such org');
+}
+
+function refusalOfBrainId(brain: string): Refused | undefined {
+  return isBrainId(brain) ? undefined : refused('not_found', 'There is no such brain in this org');
 }
 
 function brainFieldOf(input: unknown): unknown {
@@ -40,17 +40,21 @@ function failWith(refusal: Refused | undefined): Effect.Effect<void, Refused> {
 }
 
 export function admitToOrg(registration: Registration<'org'>, request: OrgRequest): Effect.Effect<void, Refused> {
-  const reachesBrain = registration.pathParameters.includes('brain');
   return failWith(
     refusalOfCaller(registration, request) ??
-      (reachesBrain ? refusalOfBrainReach(request.caller, brainFieldOf(request.input)) : undefined) ??
+      (registration.addressesBrain ? refusalOfBrainReach(request.caller, brainFieldOf(request.input)) : undefined) ??
       refusalOfOrgId(request.org),
   );
 }
 
 export const admitToBrain = Effect.fnUntraced(function* (registration: Registration<'brain'>, request: BrainRequest) {
   const { caller, org, brain } = request;
-  yield* failWith(refusalOfCaller(registration, request) ?? refusalOfBrainReach(caller, brain) ?? refusalOfOrgId(org));
-  const exists = isBrainId(brain) && (yield* (yield* BrainDirectory).exists({ org, brain }));
+  yield* failWith(
+    refusalOfCaller(registration, request) ??
+      refusalOfBrainReach(caller, brain) ??
+      refusalOfOrgId(org) ??
+      refusalOfBrainId(brain),
+  );
+  const exists = yield* (yield* BrainDirectory).exists({ org, brain });
   return yield* failWith(exists ? undefined : refused('not_found', `There is no brain ${brain} in this org`));
 });

@@ -35,7 +35,7 @@ export function memoryLedger(): MemoryLedger {
           return yield* Effect.fail(decided.failure);
         }
         if (storedIn(stream).length !== version) {
-          return yield* Effect.fail(new Conflict({ detail: `The stream ${stream} moved` }));
+          return yield* Effect.fail(new Conflict({ detail: 'The state changed while the command was decided' }));
         }
         const encodeEvent = Schema.encodeUnknownEffect(Schema.toCodecJson(decider.eventSchema));
         const encoded = yield* Effect.forEach(decided.success, (event) => Effect.orDie(encodeEvent(event)));

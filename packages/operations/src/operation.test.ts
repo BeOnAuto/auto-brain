@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { BrainReader, BrainWriter, NotFound, defineQuery } from './index.ts';
 import { labelBrain } from './testing/brain-labels.ts';
 import { memoryLedger } from './testing/memory-ledger.ts';
+import { misreport, overshare } from './testing/misbehaving.ts';
 import { addNote, getNote } from './testing/notes.ts';
-import { misreport } from './testing/probes.ts';
 
 const Empty = Schema.Record(Schema.String, Schema.Never);
 
@@ -119,21 +119,6 @@ describe('a definition', () => {
       `The route path ${path} is malformed`,
     );
   });
-
-  it('may not have an input or output that accepts keys it does not declare', () => {
-    const route: { readonly method: 'GET'; readonly path: '/probe' } = { method: 'GET', path: '/probe' };
-    const probe = { ...about, name: 'probe', route };
-
-    expect(() => defineQuery('org', { ...probe, inputSchema: Schema.Struct({}) })).toThrow(
-      'The input of probe accepts keys it does not declare',
-    );
-    expect(() => defineQuery('org', { ...probe, inputSchema: Schema.Record(Schema.String, Schema.String) })).toThrow(
-      'The input of probe accepts keys it does not declare',
-    );
-    expect(() => defineQuery('org', { ...probe, outputSchema: Schema.Struct({}) })).toThrow(
-      'The output of probe accepts keys it does not declare',
-    );
-  });
 });
 
 describe('the typed call', () => {
@@ -172,5 +157,12 @@ describe('the typed call', () => {
 
   it('treats output that breaks the output schema as a defect', async () => {
     expect(await Effect.runPromise(schemaDefectOf(misreport.call({})))).toBe(true);
+  });
+
+  it('treats a field the schemas do not declare as a defect, in the input and in the output', async () => {
+    const anvilWithExtra = { name: 'anvil', text: 'heavy', extra: 1 };
+
+    expect(await Effect.runPromise(withNotes(schemaDefectOf(addNote.call(anvilWithExtra))))).toBe(true);
+    expect(await Effect.runPromise(schemaDefectOf(overshare.call({})))).toBe(true);
   });
 });

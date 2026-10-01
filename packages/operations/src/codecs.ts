@@ -1,22 +1,43 @@
-import { Effect, Result, Schema, SchemaIssue, type SchemaAST, type StandardSchema } from 'effect';
+import { Cause, Effect, Result, Schema, SchemaIssue, type SchemaAST, type StandardSchema } from 'effect';
 
 import type { ObjectSchema } from './definition.ts';
 import { refused, type Refused } from './outcome.ts';
 import { pointerOf } from './pointer.ts';
 import type { InputForm } from './registration.ts';
 
+type IssueSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
+
 const strictly: SchemaAST.ParseOptions = { onExcessProperty: 'error', errors: 'all' };
+
+const mostIssues = 100;
 
 const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 
 const asJsonObject = Schema.decodeUnknownEffect(Schema.Record(Schema.String, Schema.Json));
 
+function isPropertyKey(segment: IssueSegment): segment is PropertyKey {
+  return typeof segment !== 'object';
+}
+
 function invalidInput({ issues }: StandardSchema.StandardSchemaV1.FailureResult): Refused {
   return refused(
     'invalid_input',
     'The input does not match the input schema',
-    issues.map(({ message, path }) => ({ detail: message, pointer: pointerOf(path) })),
+    issues.slice(0, mostIssues).map(({ message, path = [] }) => ({
+      detail: message,
+      pointer: pointerOf(path.filter((segment) => isPropertyKey(segment))),
+    })),
   );
+}
+
+function nestedTooDeeply(): Refused {
+  return refused('invalid_input', 'The input is nested too deeply', [
+    { detail: 'The input is nested too deeply', pointer: '' },
+  ]);
+}
+
+function overflowedTheStack<E>(cause: Cause.Cause<E>): boolean {
+  return Cause.squash(cause) instanceof RangeError;
 }
 
 export function inputDecoder<In extends ObjectSchema>(
@@ -26,13 +47,15 @@ export function inputDecoder<In extends ObjectSchema>(
     json: Schema.decodeUnknownEffect(Schema.toCodecJson(schema), strictly),
     strings: Schema.decodeUnknownEffect(Schema.toCodecStringTree(schema), strictly),
   };
-  return Effect.fnUntraced(function* (input: unknown, form: InputForm) {
+  const decode = Effect.fnUntraced(function* (input: unknown, form: InputForm) {
     const decoded = yield* Effect.result(decoders[form](input));
     if (Result.isFailure(decoded)) {
       return yield* Effect.fail(invalidInput(failureOf(decoded.failure.issue)));
     }
     return decoded.success;
   });
+  return (input, form) =>
+    Effect.catchCauseIf(decode(input, form), overflowedTheStack, () => Effect.fail(nestedTooDeeply()));
 }
 
 export function outputEncoder<Out extends ObjectSchema>(

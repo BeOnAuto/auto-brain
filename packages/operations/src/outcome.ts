@@ -46,13 +46,6 @@ export function faulted(incident: string): Faulted {
   return { status: 'faulted', incident };
 }
 
-type ExitOfCall =
-  | { readonly _tag: 'Success'; readonly value: Outcome }
-  | { readonly _tag: 'Failure'; readonly value?: undefined };
-
-const stopped: Stopped = { status: 'stopped' };
-
-export function settle(exit: ExitOfCall): Settled {
-  const { _tag: ending, value } = exit;
-  return ending === 'Success' ? value : stopped;
+export function stopped(): Stopped {
+  return { status: 'stopped' };
 }

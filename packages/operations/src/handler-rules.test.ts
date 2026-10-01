@@ -183,6 +183,36 @@ const rejected: Readonly<Record<string, Rejection>> = {
       answering,
     ]),
   },
+  'record-keys-name-org-and-brain.ts': {
+    because: "Types of property 'org' are incompatible",
+    source: defined('defineQuery', 'brain', [
+      get,
+      "  inputSchema: Schema.Record(Schema.Literals(['brain', 'org']), Schema.String),",
+      '  outputSchema: Empty,',
+      '  reasons: [],',
+      answering,
+    ]),
+  },
+  'path-parameter-missing-from-a-member.ts': {
+    because: "Property 'name' is missing",
+    source: defined('defineQuery', 'brain', [
+      "  route: { method: 'GET', path: '/probe/{name}' },",
+      '  inputSchema: Schema.Union([Schema.Struct({ name: Schema.String }), Schema.Struct({ other: Schema.String })]),',
+      '  outputSchema: Empty,',
+      '  reasons: [],',
+      answering,
+    ]),
+  },
+  'path-parameter-optional.ts': {
+    because: "Property 'name' is optional",
+    source: defined('defineQuery', 'brain', [
+      "  route: { method: 'GET', path: '/probe/{name}' },",
+      '  inputSchema: Schema.Struct({ name: Schema.optionalKey(Schema.String) }),',
+      '  outputSchema: Empty,',
+      '  reasons: [],',
+      answering,
+    ]),
+  },
   'path-not-relative-to-scope.ts': {
     because: "Type '\"probe\"' is not assignable to type '`/${string}`'",
     source: defined('defineQuery', 'brain', [
