@@ -1,13 +1,12 @@
 import { Effect } from 'effect';
 
-import { LanguageModel } from '../model/language-model.ts';
+import type { LanguageModel } from '../model/language-model.ts';
 import type { ModelSettings } from '../settings/model-settings.ts';
 import { providerStatus, type ProviderStatus } from '../settings/provider-status.ts';
 import { azureTokensFor, loadEntraIdentity } from './entra-id.ts';
-import { generation } from './generation.ts';
 import type { ModelAccessOptions } from './model-access-options.ts';
 import { modelFactories } from './model-factories.ts';
-import { modelResolution } from './model-resolution.ts';
+import { resolvedLanguageModel } from './resolved-language-model.ts';
 import { installSdkGlobals } from './sdk-globals.ts';
 
 export interface ModelAccess {
@@ -26,9 +25,7 @@ export const makeModelAccess = Effect.fnUntraced(function* (settings: ModelSetti
   const status = providerStatus(settings, { entraId: azureTokens !== undefined });
   const models = modelFactories(settings, { fetch: options.fetch ?? globalThis.fetch, credentials, azureTokens });
   const access: ModelAccess = {
-    languageModel: LanguageModel.of({
-      generate: generation(modelResolution(models, settings.aliases, status), status.configured),
-    }),
+    languageModel: resolvedLanguageModel(models, settings, status, options.reportProviderMessage),
     status,
   };
   return access;

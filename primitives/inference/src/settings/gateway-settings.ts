@@ -18,6 +18,7 @@ export interface GatewaySettings {
   readonly query_params: ReadonlyMap<string, Redacted.Redacted>;
   readonly structured_outputs: boolean;
   readonly include_usage: boolean;
+  readonly expose_provider_messages: boolean;
 }
 
 interface GatewayReading {
@@ -33,6 +34,7 @@ interface GatewayEntry {
   readonly query_params?: Readonly<Record<string, string>>;
   readonly structured_outputs?: boolean;
   readonly include_usage?: boolean;
+  readonly expose_provider_messages?: boolean;
 }
 
 interface ReadGateway {
@@ -65,6 +67,7 @@ const decodeGateways = Schema.decodeUnknownResult(
       query_params: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
       structured_outputs: Schema.optionalKey(Schema.Boolean),
       include_usage: Schema.optionalKey(Schema.Boolean),
+      expose_provider_messages: Schema.optionalKey(Schema.Boolean),
     }),
   ),
   strictly,
@@ -114,6 +117,7 @@ const gatewayFrom = Effect.fnUntraced(function* (environment: Environment, entry
       query_params: secretsOf(entry.query_params),
       structured_outputs: entry.structured_outputs ?? false,
       include_usage: entry.include_usage ?? false,
+      expose_provider_messages: entry.expose_provider_messages ?? false,
     },
   };
   return read;

@@ -48,8 +48,8 @@ export function rejections(maxOutputTokens: number) {
   return {
     cancelled: () => Effect.interrupt,
     spec_invalid: ({ detail, provider_message, issues }: RejectedSpec) => {
-      const said = provider_message === null ? '' : `: ${provider_message}`;
-      return Effect.fail(new Conflict({ detail: `${detail}${said}${listed(issues)}; update the spec` }));
+      const said = provider_message === null ? '' : `. The provider said: ${provider_message}`;
+      return Effect.fail(new Conflict({ detail: `${detail}${listed(issues)}; update the spec${said}` }));
     },
     output_invalid: ({ detail, provider, finish_reason, issues }: InvalidAnswer) =>
       finish_reason === 'length'

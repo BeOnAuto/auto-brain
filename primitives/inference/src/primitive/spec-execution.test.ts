@@ -79,6 +79,7 @@ describe('executing an inference spec', () => {
         settings: { max_output_tokens: 300, temperature: 0.1, stop_sequences: ['END'] },
         provider_options: { anthropic: { sendReasoning: false } },
         timeout_ms: 67_500,
+        execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
       },
     ]);
   });

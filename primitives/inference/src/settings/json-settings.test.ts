@@ -25,6 +25,7 @@ const internal = {
   query_params: { 'api-version': '1' },
   structured_outputs: true,
   include_usage: true,
+  expose_provider_messages: true,
 };
 
 describe('MODEL_GATEWAYS', () => {
@@ -42,6 +43,7 @@ describe('MODEL_GATEWAYS', () => {
         query_params: new Map([['api-version', Redacted.make('1')]]),
         structured_outputs: true,
         include_usage: true,
+        expose_provider_messages: true,
       },
       {
         name: 'local',
@@ -51,6 +53,7 @@ describe('MODEL_GATEWAYS', () => {
         query_params: new Map(),
         structured_outputs: false,
         include_usage: false,
+        expose_provider_messages: false,
       },
     ]);
     expect(exposedText(settings.gateways)).not.toContain(secret);

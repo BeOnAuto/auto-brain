@@ -15,9 +15,18 @@ export interface ApiCallDetails {
   readonly headers: Readonly<Record<string, string>> | undefined;
   readonly data: unknown;
   readonly now: number;
+  readonly showsMessage: boolean;
+  readonly scrub: (text: string) => string;
 }
 
-const mostProviderMessageCharacters = 1000;
+const mostShownCharacters = 300;
+
+const statusReadings: ReadonlyMap<number, string> = new Map([
+  [400, 'the request was rejected as invalid'],
+  [404, 'the model was not found'],
+  [413, 'the request was too large'],
+  [422, 'the request was rejected as invalid'],
+]);
 
 const contentFilterCodes: ReadonlySet<unknown> = new Set(['content_filter', 'content_policy_violation']);
 
@@ -49,17 +58,20 @@ function retryAfterMs(headers: Readonly<Record<string, string>> | undefined, now
 
 const documentStart = /^[[{<]/u;
 
+const laterLines = /\s*\n[\s\S]*$/u;
+
 function quotesBody(message: string, responseBody: string | undefined): boolean {
   return responseBody !== undefined && responseBody.trim() !== '' && message.includes(responseBody.trim());
 }
 
-function providerMessage(message: string, responseBody: string | undefined): string | null {
+function providerMessage({ message, responseBody, showsMessage, scrub }: ApiCallDetails): string | null {
   const trimmed = message.trim();
-  const unusable = trimmed === '' || documentStart.test(trimmed) || quotesBody(trimmed, responseBody);
-  return unusable ? null : trimmed.slice(0, mostProviderMessageCharacters);
+  const unusable = !showsMessage || trimmed === '' || documentStart.test(trimmed) || quotesBody(trimmed, responseBody);
+  return unusable ? null : scrub(trimmed.replace(laterLines, '')).slice(0, mostShownCharacters);
 }
 
-function rejectedRequest({ provider, message, responseBody, data }: ApiCallDetails, code: number): ModelFailure {
+function rejectedRequest(details: ApiCallDetails, code: number): ModelFailure {
+  const { provider, data } = details;
   if (contentFilterCodes.has(errorCodeOf(data))) {
     return new ContentRefused({
       detail: `${provider} refused the request under its content policy`,
@@ -70,10 +82,10 @@ function rejectedRequest({ provider, message, responseBody, data }: ApiCallDetai
     });
   }
   return new SpecInvalid({
-    detail: `${provider} rejected the request as invalid (HTTP ${code})`,
+    detail: `${provider} answered HTTP ${code}: ${statusReadings.get(code) ?? 'the request was not accepted'}`,
     provider,
     status: code,
-    provider_message: providerMessage(message, responseBody),
+    provider_message: providerMessage(details),
     issues: [],
   });
 }

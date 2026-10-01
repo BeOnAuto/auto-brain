@@ -27,7 +27,16 @@ export interface FailureContext {
   readonly provider: string;
   readonly configured: readonly string[];
   readonly now: number;
+  readonly showsProviderMessages: boolean;
+  readonly scrub: (text: string) => string;
 }
+
+export interface ProviderText {
+  readonly status: number | null;
+  readonly message: string;
+}
+
+const mostReportedCharacters = 2000;
 
 type Recognizer = (error: unknown, context: FailureContext) => ModelFailure | null;
 
@@ -58,7 +67,7 @@ const outbound: Recognizer = (error, { provider, configured }) => {
 const wrappedCredentials: Recognizer = (error, { provider }) =>
   error instanceof Error && error.message.includes(credentialLookupMarker) ? credentialsUnavailable(provider) : null;
 
-const apiCall: Recognizer = (error, { provider, now }) =>
+const apiCall: Recognizer = (error, { provider, now, showsProviderMessages, scrub }) =>
   APICallError.isInstance(error)
     ? apiCallFailure({
         provider,
@@ -68,6 +77,8 @@ const apiCall: Recognizer = (error, { provider, now }) =>
         headers: error.responseHeaders,
         data: error.data,
         now,
+        showsMessage: showsProviderMessages,
+        scrub,
       })
     : null;
 
@@ -151,4 +162,15 @@ export function classified(error: unknown, context: FailureContext): ModelFailur
     }
   }
   return new UnclassifiedModelError(context.provider, kindOf(attempt));
+}
+
+export function providerTextOf(error: unknown, scrub: (text: string) => string): ProviderText | null {
+  const attempt = lastAttempt(error);
+  if (!APICallError.isInstance(attempt) || attempt.message.trim() === '') {
+    return null;
+  }
+  return {
+    status: attempt.statusCode ?? null,
+    message: scrub(attempt.message.trim()).slice(0, mostReportedCharacters),
+  };
 }

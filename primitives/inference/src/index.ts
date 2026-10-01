@@ -1,6 +1,10 @@
 export { languageModelLayer } from './adapter/language-model-layer.ts';
 export { makeModelAccess, type ModelAccess } from './adapter/model-access.ts';
-export type { ModelAccessOptions } from './adapter/model-access-options.ts';
+export type {
+  ModelAccessOptions,
+  ProviderMessageReport,
+  ReportProviderMessage,
+} from './adapter/model-access-options.ts';
 export type { AccessTokenSource, AwsCredentials, CredentialSources } from './adapter/credential-sources.ts';
 export { Cancelled } from './failure/cancelled.ts';
 export { ContentRefused } from './failure/content-refused.ts';

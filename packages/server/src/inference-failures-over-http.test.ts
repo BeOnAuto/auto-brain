@@ -30,7 +30,7 @@ const aDinner = { expense: 'a dinner' };
 
 function rejectedSpec(): ModelFailure {
   return new SpecInvalid({
-    detail: 'openai rejected the request as invalid (HTTP 400)',
+    detail: 'openai answered HTTP 400: the request was rejected as invalid',
     provider: 'openai',
     status: 400,
     provider_message: "Unsupported parameter: 'temperature'",
@@ -137,7 +137,7 @@ describe('an execution of a spec the provider rejects', () => {
   it('answers 409 with the message of the provider, and records the conflict', async () => {
     const response = await failingWith(rejectedSpec, aDinner);
     const detail =
-      "openai rejected the request as invalid (HTTP 400): Unsupported parameter: 'temperature'; update the spec";
+      "openai answered HTTP 400: the request was rejected as invalid; update the spec. The provider said: Unsupported parameter: 'temperature'";
 
     expect(response).toMatchObject({ status: 409, body: { reason: 'conflict', detail } });
     expect(await server.call('GET', `${alpha}/executions/${executionId}`)).toMatchObject({

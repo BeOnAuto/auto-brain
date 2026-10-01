@@ -1,3 +1,5 @@
+import type { ExecutionContext } from '@beonauto/specs';
+
 import type { ModelRequest } from '../model/model-request.ts';
 import type { InferenceSpec } from '../spec/inference-spec.ts';
 import type { RenderedPrompt } from '../template/compiled-template.ts';
@@ -10,7 +12,11 @@ function timeoutFor(maxOutputTokens: number): number {
   return firstAnswerMilliseconds + millisecondsPerOutputToken * maxOutputTokens;
 }
 
-export function requestFor(spec: InferenceSpec, { instructions, message }: RenderedPrompt): ModelRequest {
+export function requestFor(
+  spec: InferenceSpec,
+  { instructions, message }: RenderedPrompt,
+  execution: ExecutionContext,
+): ModelRequest {
   return {
     model: spec.model,
     ...(instructions === undefined ? {} : { instructions }),
@@ -19,5 +25,6 @@ export function requestFor(spec: InferenceSpec, { instructions, message }: Rende
     settings: spec.settings,
     ...(spec.provider_options === undefined ? {} : { provider_options: spec.provider_options }),
     timeout_ms: timeoutFor(spec.settings.max_output_tokens),
+    execution_id: execution.id,
   };
 }

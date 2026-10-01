@@ -31,17 +31,26 @@ function retryAfterOf(failure: unknown): number | null {
 }
 
 describe('a provider that rejects the request', () => {
-  it.each([400, 404, 413, 422])('fails as spec_invalid on HTTP %i, quoting the provider', async (status) => {
-    const failure = await failureFor(() => jsonResponse(openAiError('Unsupported parameter: temperature'), status));
+  it.each([
+    [400, 'the request was rejected as invalid'],
+    [404, 'the model was not found'],
+    [413, 'the request was too large'],
+    [422, 'the request was rejected as invalid'],
+    [418, 'the request was not accepted'],
+  ])(
+    'fails as spec_invalid on HTTP %i, saying what the status means and quoting the provider',
+    async (status, reading) => {
+      const failure = await failureFor(() => jsonResponse(openAiError('Unsupported parameter: temperature'), status));
 
-    expect(failure).toMatchObject({
-      _tag: 'spec_invalid',
-      provider: 'openai',
-      status,
-      provider_message: 'Unsupported parameter: temperature',
-      detail: `openai rejected the request as invalid (HTTP ${status})`,
-    });
-  });
+      expect(failure).toMatchObject({
+        _tag: 'spec_invalid',
+        provider: 'openai',
+        status,
+        provider_message: 'Unsupported parameter: temperature',
+        detail: `openai answered HTTP ${status}: ${reading}`,
+      });
+    },
+  );
 });
 
 describe('the provider message of a rejected request', () => {

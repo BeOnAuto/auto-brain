@@ -1,4 +1,4 @@
-import type { Finished } from '@beonauto/specs';
+import type { ExecutionContext, Finished } from '@beonauto/specs';
 import { Clock, Effect, type Schema } from 'effect';
 
 import type { LanguageModel } from '../model/language-model.ts';
@@ -21,14 +21,18 @@ function outputOf({ text, json }: { readonly text: string; readonly json?: Schem
 export function specExecution({
   languageModel,
   clock,
-}: ExecutionServices): (spec: InferenceSpec, input: Schema.Json) => Effect.Effect<Finished, SpecRejection> {
+}: ExecutionServices): (
+  spec: InferenceSpec,
+  input: Schema.Json,
+  execution: ExecutionContext,
+) => Effect.Effect<Finished, SpecRejection> {
   const currentTime = clock === undefined ? Clock.currentTimeMillis : clock.currentTimeMillis;
-  return Effect.fnUntraced(function* (spec: InferenceSpec, input: Schema.Json) {
+  return Effect.fnUntraced(function* (spec: InferenceSpec, input: Schema.Json, execution: ExecutionContext) {
     const fields = yield* preparedInput(input, spec.input);
     const now = new Date(yield* currentTime).toISOString();
     const prompt = yield* renderedPrompt(spec.template, { input: fields, today: now.slice(0, 10), now });
     const result = yield* languageModel
-      .generate(requestFor(spec, prompt))
+      .generate(requestFor(spec, prompt, execution))
       .pipe(Effect.catchTags(rejections(spec.settings.max_output_tokens)));
     return yield* finishedWith(outputOf(result), {
       prompt,

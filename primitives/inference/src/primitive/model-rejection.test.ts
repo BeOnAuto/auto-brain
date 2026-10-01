@@ -28,7 +28,7 @@ function failingWith(failure: () => ModelFailure): Promise<Execution> {
 describe('a provider that rejects the spec', () => {
   it('is a conflict that carries the bounded message of the provider', async () => {
     const failure = new SpecInvalid({
-      detail: 'openai rejected the request as invalid (HTTP 404)',
+      detail: 'openai answered HTTP 404: the model was not found',
       provider: 'openai',
       status: 404,
       provider_message: 'The model gpt-6 does not exist',
@@ -38,7 +38,8 @@ describe('a provider that rejects the spec', () => {
     expect(await failingWith(() => failure)).toEqual(
       Exit.fail(
         new Conflict({
-          detail: 'openai rejected the request as invalid (HTTP 404): The model gpt-6 does not exist; update the spec',
+          detail:
+            'openai answered HTTP 404: the model was not found; update the spec. The provider said: The model gpt-6 does not exist',
         }),
       ),
     );

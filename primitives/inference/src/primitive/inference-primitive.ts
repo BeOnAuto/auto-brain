@@ -41,6 +41,6 @@ export function makeInference(options: InferenceOptions): Primitive {
     mediaType: 'text/markdown',
     parse,
     summarize,
-    execute: (spec, input) => execute(spec, input),
+    execute: (spec, input, execution) => execute(spec, input, execution),
   });
 }

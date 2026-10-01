@@ -54,4 +54,5 @@ export interface ModelRequest {
   readonly timeout_ms?: number;
   readonly signal?: Readonly<AbortSignal>;
   readonly retries?: RetryOwner;
+  readonly execution_id?: string;
 }

@@ -28,7 +28,12 @@ export function generatedText(text: string): GenerateResult {
 export function mockGeneration(model: () => MockLanguageModelV4) {
   installSdkGlobals();
   const status = { configured: ['mock'], unconfigured: [] };
-  const generate = generation(modelResolution(new Map([['mock', model]]), new Map(), status), ['mock']);
+  const generate = generation(modelResolution(new Map([['mock', model]]), new Map(), status), {
+    configured: ['mock'],
+    showsProviderMessages: () => true,
+    scrub: (text) => text,
+    report: () => Effect.void,
+  });
   return {
     succeeded: (request: ModelRequest): Promise<ModelResult> => Effect.runPromise(generate(request)),
     failed: (request: ModelRequest): Promise<ModelFailure> => Effect.runPromise(Effect.flip(generate(request))),
