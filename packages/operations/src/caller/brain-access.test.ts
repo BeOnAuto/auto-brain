@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CallerIdentity } from '../index.ts';
+import { mayReachBrain, type CallerIdentity } from '../index.ts';
 import { getBrainLabel, labelBrain, listBrainLabels, relabelBrain } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader } from '../testing/callers.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
@@ -70,5 +70,14 @@ describe('the brains a caller may reach', () => {
     expect(
       await run(dispatcher.inBrain(getNote.registration, toBrain('acme', 'beta')(acmeAdmin, { name: 'anvil' }))),
     ).toMatchObject({ reason: 'not_found', detail: 'There is no note anvil' });
+  });
+
+  it('are checked by mayReachBrain, the rule a handler uses to list only those brains', () => {
+    expect([mayReachBrain('*', 'alpha'), mayReachBrain(['alpha'], 'alpha')]).toEqual([true, true]);
+    expect([mayReachBrain(['alpha'], 'beta'), mayReachBrain([], 'alpha'), mayReachBrain(['alpha'], 7)]).toEqual([
+      false,
+      false,
+      false,
+    ]);
   });
 });

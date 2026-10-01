@@ -1,4 +1,5 @@
-export { BrainAccessSchema, type BrainAccess } from './caller/brain-access.ts';
+export { streamPrefixOfOrg } from './ledger/bound-ports.ts';
+export { BrainAccessSchema, mayReachBrain, type BrainAccess } from './caller/brain-access.ts';
 export { BrainDirectory } from './ledger/brain-directory.ts';
 export { BrainReader } from './ledger/brain-reader.ts';
 export { BrainScope, type BrainAddress } from './caller/brain-scope.ts';
