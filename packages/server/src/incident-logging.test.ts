@@ -62,6 +62,8 @@ describe('a server whose route throws an error that is its own cause', () => {
       exitCode: 0,
     });
     expect(stderr).toContain('"message":"Unexpected error whose cause could not be formatted"');
-    expect(stderr).toContain(`"annotations":{"incident":"${String(incident)}"}`);
+    expect(stderr).toContain(
+      `"annotations":{"requestId":"${String(failed.headers.get('x-request-id'))}","incident":"${String(incident)}"}`,
+    );
   });
 });

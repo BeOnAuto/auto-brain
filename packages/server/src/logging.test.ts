@@ -84,7 +84,9 @@ describe('the server process', () => {
     const incident = /"instance":"urn:uuid:([^"]+)"/u.exec(text)?.[1];
 
     expect(text).not.toContain('hunter2');
-    expect(child.output().stderr).toContain(`"annotations":{"incident":"${String(incident)}"}`);
+    expect(child.output().stderr).toContain(
+      `"annotations":{"requestId":"${String(response.headers.get('x-request-id'))}","incident":"${String(incident)}"}`,
+    );
     expect(child.output().stderr).toContain('database password is hunter2');
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
   });

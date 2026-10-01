@@ -7,7 +7,7 @@ import {
   type Registration,
   type Settled,
 } from '@beonauto/operations';
-import { Result, type Effect } from 'effect';
+import { Effect, Result } from 'effect';
 import type { Context } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
@@ -44,7 +44,8 @@ function handlerFor(registration: Registration, { dispatcher, runCall }: Operati
     if (Result.isFailure(given)) {
       return problemResponse(given.failure);
     }
-    const settled = await runCall(settle(dispatched(dispatcher, registration, c, given.success), c.req.raw.signal));
+    const call = settle(dispatched(dispatcher, registration, c, given.success), c.req.raw.signal);
+    const settled = await runCall(call.pipe(Effect.annotateLogs({ requestId: c.get('requestId') })));
     return toHttpResponse(settled, registration.successStatus, c.req.raw.signal.aborted);
   };
 }

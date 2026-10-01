@@ -112,7 +112,7 @@ describe('an error in the ledger', () => {
       instance: `urn:uuid:${String(incident)}`,
     });
     expect(child.output().stderr).toContain(
-      `"annotations":{"incident":"${String(incident)}","operation":"create_brain","org":"acme","caller":"local"}`,
+      `"annotations":{"requestId":"${String(response.headers.get('x-request-id'))}","incident":"${String(incident)}","operation":"create_brain","org":"acme","caller":"local"}`,
     );
     expect(child.output().stderr).not.toContain('a name only the caller knows');
   });

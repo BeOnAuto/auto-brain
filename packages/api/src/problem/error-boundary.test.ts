@@ -38,7 +38,13 @@ describe('an unexpected error', () => {
     expect(report?.incident).toMatch(uuid);
     expect(answer.body).toEqual(internalProblemWith(report?.incident));
     expect(answer.text).not.toContain('hunter2');
-    expect(reported).toEqual([{ incident: report?.incident, message: 'database password is hunter2' }]);
+    expect(reported).toEqual([
+      {
+        incident: report?.incident,
+        requestId: answer.headers.get('x-request-id'),
+        message: 'database password is hunter2',
+      },
+    ]);
     expect(answer.headers.get('x-request-id')).toMatch(uuid);
   });
 });
@@ -56,7 +62,12 @@ describe('a thrown value that is not an Error', () => {
     expect(answer.body).toEqual(internalProblemWith(report?.incident));
     expect(answer.text).not.toContain('hunter2');
     expect(reported).toEqual([
-      { incident: report?.incident, message: 'A value that is not an Error was thrown', cause: notAnError },
+      {
+        incident: report?.incident,
+        requestId: answer.headers.get('x-request-id'),
+        message: 'A value that is not an Error was thrown',
+        cause: notAnError,
+      },
     ]);
   });
 

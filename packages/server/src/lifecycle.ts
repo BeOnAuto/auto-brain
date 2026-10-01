@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@beonauto/api';
 import type { Environment } from '@beonauto/config';
 import { authenticatorFor } from '@beonauto/identity';
-import { Layer } from 'effect';
+import { Effect, Layer } from 'effect';
 
 import { createHttpServer, listen } from './http-server.ts';
 import { logAccessMode, jsonLogsToStderr, logIncident } from './logging.ts';
@@ -51,8 +51,8 @@ export async function startServer<R>(environment: Environment, options: ServerOp
     allowedOrigins: settings.allowedOrigins,
     authenticator,
     routes: options.routes(runtime),
-    reportIncident: (id, error) => {
-      void runtime.run(logIncident({ id, original: error }));
+    reportIncident: (id, error, requestId) => {
+      void runtime.run(logIncident({ id, original: error }).pipe(Effect.annotateLogs({ requestId })));
     },
   });
   const server = createHttpServer(api.listener);

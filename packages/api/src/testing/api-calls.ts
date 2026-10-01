@@ -18,6 +18,7 @@ export interface Answer {
 
 export interface ReportedIncident {
   readonly incident: string;
+  readonly requestId: string;
   readonly message: string;
   readonly cause: unknown;
 }
@@ -36,8 +37,8 @@ export function createTestHandler(options: Partial<ApiOptions> = {}): {
     allowedOrigins: [],
     authenticator: admitEveryone,
     routes: [],
-    reportIncident: (incident, error) => {
-      reported.push({ incident, message: error.message, cause: error.cause });
+    reportIncident: (incident, error, requestId) => {
+      reported.push({ incident, requestId, message: error.message, cause: error.cause });
     },
     ...options,
   });

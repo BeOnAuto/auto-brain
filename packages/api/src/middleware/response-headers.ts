@@ -12,9 +12,11 @@ const securityHeaders = secureHeaders({
 
 export const requestIdAndSecurityHeaders: readonly MiddlewareHandler<ApiEnv>[] = [assignRequestId, securityHeaders];
 
-export function withRequestIdAndSecurityHeaders(response: Response): Promise<Response> {
+export async function withRequestIdAndSecurityHeaders(response: Response, requestId: string): Promise<Response> {
   const headersApp = new Hono<ApiEnv>();
-  headersApp.use(...requestIdAndSecurityHeaders);
+  headersApp.use(securityHeaders);
   headersApp.all('*', () => response);
-  return Promise.resolve(headersApp.fetch(new Request('http://localhost/')));
+  const secured = await headersApp.fetch(new Request('http://localhost/'));
+  secured.headers.set('x-request-id', requestId);
+  return secured;
 }

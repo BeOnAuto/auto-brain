@@ -30,6 +30,7 @@ export function createApp(options: ApiOptions): Hono<ApiEnv> {
     });
   }
   app.notFound(() => problemResponse(problemOf('not_found', 'No route matches the path')));
-  app.onError(errorHandler(options.reportIncident));
+  const handleError = errorHandler(options.reportIncident);
+  app.onError((error: Readonly<Error>, c) => handleError(error, c.get('requestId')));
   return app;
 }

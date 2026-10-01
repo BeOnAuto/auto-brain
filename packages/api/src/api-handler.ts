@@ -1,3 +1,4 @@
+import { randomUUIDv7 } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { getRequestListener } from '@hono/node-server';
@@ -21,14 +22,15 @@ export function createApiHandler(options: ApiOptions): ApiHandler {
     try {
       return await app.fetch(request);
     } catch (thrown) {
-      return withRequestIdAndSecurityHeaders(handleError(thrown));
+      const requestId = randomUUIDv7();
+      return withRequestIdAndSecurityHeaders(handleError(thrown, requestId), requestId);
     }
   };
   return {
     fetch: handle,
     listener: getRequestListener(handle, {
       overrideGlobalObjects: false,
-      errorHandler: () => withRequestIdAndSecurityHeaders(badRequestHandler()),
+      errorHandler: () => withRequestIdAndSecurityHeaders(badRequestHandler(), randomUUIDv7()),
     }),
     close: () => Promise.resolve(),
   };
