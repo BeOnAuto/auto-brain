@@ -122,12 +122,12 @@ describe('execute_spec rejected by the primitive', () => {
   it('for invalid input, with the issues under /input, and records the rejection', async () => {
     const { call } = await withGreetAndPlain();
 
-    expect(await call(executeSpec, executing('plain', { input: { refuse: true }, execution_id: executionId }))).toEqual(
+    expect(await call(executeSpec, executing('plain', { input: { reject: true }, execution_id: executionId }))).toEqual(
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'The probe refuses the input',
-        issues: [{ detail: 'Expected anything but refuse', pointer: '/input/refuse' }],
+        detail: 'The probe rejects the input',
+        issues: [{ detail: 'Expected anything but reject', pointer: '/input/reject' }],
       },
     );
     expect(await call(getExecution, toAlpha(acmeAdmin, { execution_id: executionId }))).toStrictEqual({
@@ -140,8 +140,8 @@ describe('execute_spec rejected by the primitive', () => {
         status: 'rejected',
         rejection: {
           reason: 'invalid_input',
-          detail: 'The probe refuses the input',
-          issues: [{ detail: 'Expected anything but refuse', pointer: '/input/refuse' }],
+          detail: 'The probe rejects the input',
+          issues: [{ detail: 'Expected anything but reject', pointer: '/input/reject' }],
         },
         started_at: firstMoment,
         started_by: 'acme-admin',
