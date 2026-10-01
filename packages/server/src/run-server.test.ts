@@ -3,7 +3,7 @@ import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defaultServerOptions } from './lifecycle.ts';
-import { runServer, type ServerProcess } from './run-server.ts';
+import { exitOnStartupFailure, runServer, type ServerProcess } from './run-server.ts';
 import { stopRequestedBy, type StopSignal } from './stop-request.ts';
 import { isAcceptingConnections } from './testing/accepting-connections.ts';
 
@@ -142,6 +142,28 @@ describe('runServer on a stop signal', () => {
       await server.stop();
 
       expect(acceptingAfterStartUp).toBe(false);
+    },
+  );
+});
+
+const startUpFailures: ReadonlyArray<readonly [Readonly<Record<string, string>>, string]> = [
+  [{ API_KEYS: 'abk_ci-1_not-a-list-of-keys' }, 'InvalidApiKeysError: API_KEYS: Expected a valid JSON string'],
+  [
+    { ALLOWED_ORIGINS: 'app.example.com' },
+    'InvalidSettingsError: SchemaError(Expected an origin such as https://app.example.com, received "app.example.com" at ["ALLOWED_ORIGINS"][0] Expected array at ["ALLOWED_ORIGINS"])',
+  ],
+];
+
+describe('a server that cannot start', () => {
+  it.each(startUpFailures)(
+    'names the error in one line on stderr, announces nothing and exits 1 with %o',
+    async (settings, error) => {
+      const { serverProcess, written, errors, exited, stopRequested } = fakeProcess({ ...loopback, ...settings });
+
+      await runServer(serverProcess, defaultServerOptions, stopRequested).catch(exitOnStartupFailure(serverProcess));
+
+      expect(await exited).toBe(1);
+      expect({ written, errors }).toEqual({ written: [], errors: [`auto-brain could not start: ${error}\n`] });
     },
   );
 });

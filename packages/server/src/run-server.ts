@@ -11,6 +11,12 @@ export interface ServerProcess {
   exit(code: number): void;
 }
 
+function sayThenExit(serverProcess: ServerProcess, line: string, exitCode: number): void {
+  serverProcess.stderr.write(`${line}\n`, () => {
+    serverProcess.exit(exitCode);
+  });
+}
+
 async function stopThenExit(
   server: RunningServer,
   serverProcess: ServerProcess,
@@ -18,12 +24,7 @@ async function stopThenExit(
 ): Promise<void> {
   await server.stop();
   await setTimeout(exitDeadlineMs, undefined, { ref: false });
-  serverProcess.stderr.write(
-    `auto-brain was still running ${exitDeadlineMs} ms after it stopped, so it exits now\n`,
-    () => {
-      serverProcess.exit(0);
-    },
-  );
+  sayThenExit(serverProcess, `auto-brain was still running ${exitDeadlineMs} ms after it stopped, so it exits now`, 0);
 }
 
 export async function runServer<R>(
@@ -35,4 +36,10 @@ export async function runServer<R>(
   void stopRequested.then(() => stopThenExit(server, serverProcess, options));
   serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
   return server;
+}
+
+export function exitOnStartupFailure(serverProcess: ServerProcess): (failure: unknown) => void {
+  return (failure) => {
+    sayThenExit(serverProcess, `auto-brain could not start: ${String(failure).replaceAll(/\s*\n\s*/gu, ' ')}`, 1);
+  };
 }

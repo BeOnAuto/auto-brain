@@ -82,9 +82,12 @@ describe('a ledger that cannot be opened', () => {
 
     expect(await child.exited).toBe(1);
     expect(child.output().stdout).toBe('');
-    expect(child.output().stderr).toContain(
-      "StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
-    );
+    expect(child.output().stderr.split('\n')).toEqual([
+      expect.stringContaining(
+        "auto-brain could not start: StartupError: The server's services could not start: Error: EEXIST: file already exists, mkdir",
+      ),
+      '',
+    ]);
   });
 });
 
