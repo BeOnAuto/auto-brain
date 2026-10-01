@@ -10,7 +10,7 @@ export interface SpawnedServer {
 
 export function spawnServer(entry: string, env: Readonly<Record<string, string>>): SpawnedServer {
   const child = spawn(process.execPath, [entry], {
-    env: { ...process.env, ...env },
+    env: { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'], ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const output = { stdout: '', stderr: '' };
