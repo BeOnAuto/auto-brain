@@ -12,7 +12,16 @@ const wrongSecret = `abk_acme-reader_${'A'.repeat(43)}`;
 
 const loopbackHosts = ['127.0.0.1', '127.1.2.3', '127.255.255.255', '::1', '0:0:0:0:0:0:0:1', 'localhost'];
 
-const otherHosts = ['0.0.0.0', '::', '10.0.0.1', '192.168.1.10', '128.0.0.1', 'auto-brain.example'];
+const otherHosts = [
+  '0.0.0.0',
+  '::',
+  '10.0.0.1',
+  '192.168.1.10',
+  '128.0.0.1',
+  'auto-brain.example',
+  'localhost.example.com',
+  'localhost.evil',
+];
 
 describe('authenticatorFor with local mode on and no API keys', () => {
   it.each(loopbackHosts)('is in local mode on the loopback address %s', (host) => {
