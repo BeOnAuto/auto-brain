@@ -157,3 +157,34 @@ describe('the limits of a render', () => {
     ).toEqual({ reason: 'limit_exceeded', limit: 'time', line: 1 });
   });
 });
+
+describe('what a template reads from the input', () => {
+  const input = { list: [{ a: 1 }, ['x']] };
+
+  it('is never a property the input inherits, named by a variable', () => {
+    expect(failureOf('{% assign k = "constructor" %}{{ input[k] }}', input)).toEqual({
+      reason: 'missing_variable',
+      variable: 'input.constructor',
+      line: 1,
+    });
+    expect(failureOf('{% assign k = "__proto__" %}{{ input[k] }}', input)).toEqual({
+      reason: 'missing_variable',
+      variable: 'input.__proto__',
+      line: 1,
+    });
+    expect(rendered('{% assign k = "constructor" %}{% assign v = input.list[0][k] %}[{{ v | json }}]', input)).toEqual({
+      message: '[null]',
+    });
+  });
+
+  it('is never a property the items inherit, named to a filter', () => {
+    expect(rendered('[{{ input.list | map: "constructor" }}]', input)).toEqual({ message: '[]' });
+    expect(rendered('{{ input.list | map: "__proto__" | json }}', input)).toEqual({ message: '[null,null]' });
+    expect(failureOf('{{ input.list | where: "constructor" | json }}', input)).toEqual({
+      reason: 'missing_variable',
+      variable: 'constructor',
+      line: 1,
+    });
+    expect(rendered('{{ input.list | sort: "constructor" | json }}', input)).toEqual({ message: '[{"a":1},["x"]]' });
+  });
+});
