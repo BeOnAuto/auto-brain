@@ -114,7 +114,7 @@ const breakDown = defineQuery('brain', {
   handle: () => Effect.die(new Error('database password is hunter2')),
 });
 
-const waitForever = defineQuery('brain', {
+export const waitForever = defineQuery('brain', {
   name: 'wait_forever',
   title: 'Wait forever',
   description: 'Never finishes on its own.',
