@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from 'hono';
 import type { ApiEnv } from '../api-env.ts';
 import type { ApiOptions } from '../api-options.ts';
 import { authenticate } from '../authentication/authentication.ts';
+import { corsFor } from './cors.ts';
 import { validateHost } from './validate-host.ts';
 import { validateOrigin } from './validate-origin.ts';
 
@@ -14,7 +15,9 @@ function exceptOnPublicPaths(middleware: MiddlewareHandler<ApiEnv>): MiddlewareH
 
 export function middlewareFor({ allowedOrigins, authenticator }: ApiOptions): readonly MiddlewareHandler<ApiEnv>[] {
   const hostValidation = authenticator.mode === 'local' ? [validateHost] : [];
-  return [validateOrigin(allowedOrigins), ...hostValidation, authenticate(authenticator)].map((middleware) =>
-    exceptOnPublicPaths(middleware),
-  );
+  return [
+    ...[validateOrigin(allowedOrigins), ...hostValidation].map((middleware) => exceptOnPublicPaths(middleware)),
+    ...corsFor(allowedOrigins),
+    exceptOnPublicPaths(authenticate(authenticator)),
+  ];
 }

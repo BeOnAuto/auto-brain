@@ -11,6 +11,7 @@ import { problemOf, problemResponse } from './problem/problem.ts';
 export function createApp(options: ApiOptions): Hono<ApiEnv> {
   const app = new Hono<ApiEnv>();
   app.use(...requestIdAndSecurityHeaders);
+  app.use(...middlewareFor(options));
   app.use(
     methodNotAllowed({
       app,
@@ -21,7 +22,6 @@ export function createApp(options: ApiOptions): Hono<ApiEnv> {
     }),
   );
   app.get('/health', (c) => c.json({ status: 'ok' }, 200, { 'cache-control': 'no-store' }));
-  app.use(...middlewareFor(options));
   for (const register of options.routes) {
     register({
       add: (method, path, handler) => {

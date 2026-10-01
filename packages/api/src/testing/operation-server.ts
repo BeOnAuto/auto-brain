@@ -55,11 +55,13 @@ const keyHolders = authenticatorFor({
 
 export interface OperationServerOptions {
   readonly authenticator?: Authenticator;
+  readonly allowedOrigins?: readonly string[];
   readonly operations?: Parameters<typeof makeCatalog>[0];
 }
 
 export async function operationServer({
   authenticator = keyHolders,
+  allowedOrigins = [],
   operations = notebookOperations,
 }: OperationServerOptions = {}): Promise<OperationServer> {
   const ledger = memoryLedger();
@@ -70,6 +72,6 @@ export async function operationServer({
     dispatcher: makeDispatcher([]),
     runCall: runtime.run,
   });
-  const { handler } = createTestHandler({ authenticator, routes: [routes] });
+  const { handler } = createTestHandler({ authenticator, allowedOrigins, routes: [routes] });
   return { handler, runtime, incidents: recording.reported };
 }

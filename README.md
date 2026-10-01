@@ -83,14 +83,14 @@ curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080
 
 Without a named volume, Docker gives each container a fresh anonymous volume, so its brains last only as long as that container.
 
-| Variable          | Default                                          | Purpose                                                                                     |
-| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `PORT`            | `8080`                                           | Port the server listens on                                                                  |
-| `HOST`            | `0.0.0.0`                                        | Interface the server binds to                                                               |
-| `ALLOWED_ORIGINS` | none                                             | Comma-separated origins allowed to call the server from a browser                           |
-| `API_KEYS`        | none                                             | The API keys the server accepts, as a compact JSON array of entries made by the key command |
-| `LEDGER_FILE`     | `data/ledger.db`; `/data/ledger.db` in the image | The SQLite database file of the ledger; its directory is created when missing               |
-| `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)           |
+| Variable          | Default                                          | Purpose                                                                                                                        |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`            | `8080`                                           | Port the server listens on                                                                                                     |
+| `HOST`            | `0.0.0.0`                                        | Interface the server binds to                                                                                                  |
+| `ALLOWED_ORIGINS` | none                                             | Comma-separated origins a browser page may call the API from, with CORS; see [Calling from a browser](#calling-from-a-browser) |
+| `API_KEYS`        | none                                             | The API keys the server accepts, as a compact JSON array of entries made by the key command                                    |
+| `LEDGER_FILE`     | `data/ledger.db`; `/data/ledger.db` in the image | The SQLite database file of the ledger; its directory is created when missing                                                  |
+| `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)                                              |
 
 The image is multi-arch (amd64 and arm64), runs as a non-root user, keeps the ledger on the `/data` volume, and shuts down cleanly on `SIGTERM`.
 
@@ -115,6 +115,10 @@ Local mode is for development on your own machine. It is on only when `LOCAL_MOD
 > **Warning:** never enable local mode on a machine that can be reached through a proxy. A reverse proxy on the same machine, such as nginx with its default settings, forwards remote requests to the loopback address with a localhost `Host` header, so the server would trust every remote client as the local developer.
 
 `LOCAL_MODE=true` with an address that is not loopback stops the server at start-up with an `InvalidLocalModeError`. With `API_KEYS` set, keys are enforced and the server warns that `LOCAL_MODE` is ignored. `pnpm dev` sets `LOCAL_MODE=true` and listens on `127.0.0.1`, so it runs in local mode; `pnpm key -- --org <org>` creates a key from a checkout.
+
+### Calling from a browser
+
+A page may call the API only from an origin listed in `ALLOWED_ORIGINS`; a request with any other `Origin` header gets `403`. For a listed origin the server answers CORS: a preflight (`OPTIONS` with `Access-Control-Request-Method`) gets `204` before any key is checked, allowing `GET`, `HEAD`, `POST` and `PUT` with the `authorization` and `content-type` headers, and every response carries `Access-Control-Allow-Origin` with that origin, `Vary: Origin`, and `x-request-id` among the headers the page may read. There is no wildcard and no credentials mode: the page sends its API key in the `Authorization` header.
 
 ### Errors
 
