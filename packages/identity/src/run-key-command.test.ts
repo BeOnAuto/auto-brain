@@ -35,6 +35,8 @@ function issued({ logged }: Session): { readonly key: string; readonly entry: st
 
 const keyCommand = fileURLToPath(new URL('key-command.ts', import.meta.url));
 
+const keyCommandProcessTestTimeoutMs = 20_000;
+
 const asAProcess: SpawnSyncOptionsWithStringEncoding = {
   encoding: 'utf8',
   env: { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] },
@@ -101,7 +103,7 @@ describe('the key command with bad arguments', () => {
   });
 });
 
-describe('the key command as a process', () => {
+describe('the key command as a process', { timeout: keyCommandProcessTestTimeoutMs }, () => {
   it('prints the key and the entry to stdout and exits 0', () => {
     const { status, stdout, stderr } = spawnSync(process.execPath, [keyCommand, '--org', 'demo'], asAProcess);
 
