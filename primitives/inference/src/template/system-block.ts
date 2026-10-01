@@ -13,12 +13,14 @@ interface Marker {
 
 interface Node {
   readonly marker: Marker | undefined;
+  readonly blank: boolean;
   readonly children: readonly Template[];
 }
 
 export interface Outline {
   readonly top: readonly Marker[];
   readonly nested: readonly Marker[];
+  readonly hasMessage: boolean;
 }
 
 function markerNamed(name: string): MarkerName | undefined {
@@ -32,6 +34,7 @@ function nodeOf(template: () => Template, firstLine: number): Node {
   return {
     marker:
       name === undefined ? undefined : { name, line: lineAt(token.getPosition(), firstLine), offset: token.begin },
+    blank: TypeGuards.isHTMLToken(token) && token.getContent().trim() === '',
     children: current.children === undefined ? [] : toValueSync(current.children(false, true)),
   };
 }
@@ -40,9 +43,13 @@ export function outlineOf(templates: () => readonly Template[], firstLine: numbe
   const top: Marker[] = [];
   const nested: Marker[] = [];
   const pending: Template[] = [];
+  let inside = false;
+  let hasMessage = false;
   for (const template of templates()) {
-    const { marker, children } = nodeOf(() => template, firstLine);
+    const { marker, blank, children } = nodeOf(() => template, firstLine);
     top.push(...(marker === undefined ? [] : [marker]));
+    inside = marker === undefined ? inside : marker.name === 'system';
+    hasMessage ||= !inside && marker === undefined && !blank;
     pending.push(...children);
   }
   let template = pending.pop();
@@ -53,7 +60,7 @@ export function outlineOf(templates: () => readonly Template[], firstLine: numbe
     pending.push(...children);
     template = pending.pop();
   }
-  return { top, nested: nested.toSorted((first, second) => first.offset - second.offset) };
+  return { top, nested: nested.toSorted((first, second) => first.offset - second.offset), hasMessage };
 }
 
 function nestedIssues(nested: readonly Marker[]): readonly TemplateIssue[] {

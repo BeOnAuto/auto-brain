@@ -14,8 +14,17 @@ function issuesOf(body: string, firstLine = 1): readonly TemplateIssue[] {
 
 describe('a template', () => {
   it('compiles plain text and Liquid', () => {
-    expect(compiled('Hello {{ input.name }}').hasInstructions).toBe(false);
-    expect(compiled('{% system %}Be brief.{% endsystem %}Hello').hasInstructions).toBe(true);
+    expect(compiled('Hello {{ input.name }}')).toMatchObject({ hasInstructions: false, hasMessage: true });
+    expect(compiled('{% system %}Be brief.{% endsystem %}Hello')).toMatchObject({
+      hasInstructions: true,
+      hasMessage: true,
+    });
+  });
+
+  it('knows when it writes nothing outside the system block', () => {
+    expect(compiled('\n  \n').hasMessage).toBe(false);
+    expect(compiled(' {% system %}Be brief. {{ input.x }}{% endsystem %}\n').hasMessage).toBe(false);
+    expect(compiled('{% system %}Be brief.{% endsystem %}{{ input.x }}').hasMessage).toBe(true);
   });
 
   it('is rejected for Liquid syntax errors, with the line in the document', () => {

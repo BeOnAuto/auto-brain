@@ -1,0 +1,97 @@
+import { Result, type Schema } from 'effect';
+
+import type { OutputRequest } from '../model/model-request.ts';
+import { checkAnswerSchema, compileAnswerSchema } from '../schema/answer-schema.ts';
+import type { SchemaIssue } from '../schema/json-bounds.ts';
+import { issueAt, issueText, type DocumentIssue, type SourceLines } from './document-issue.ts';
+import type { InputSection, OutputSection } from './front-matter-schema.ts';
+import type { InputContract } from './inference-spec.ts';
+
+export interface OutputContract {
+  readonly output: OutputRequest;
+  readonly warnings: readonly string[];
+}
+
+const mostWarnings = 100;
+
+const missingKey = 'Missing key';
+
+function issuesUnder(lines: SourceLines, at: string, issues: readonly SchemaIssue[]): readonly DocumentIssue[] {
+  return issues.map(({ pointer, detail }) => issueAt(lines, `${at}${pointer}`, detail));
+}
+
+function isRequiredAtRoot({ pointer, detail }: SchemaIssue): boolean {
+  return detail === missingKey && pointer.lastIndexOf('/') === 0;
+}
+
+function defaultsIssues(
+  validate: (value: unknown) => Result.Result<Schema.Json, readonly SchemaIssue[]>,
+  defaults: Schema.JsonObject,
+  lines: SourceLines,
+): readonly DocumentIssue[] {
+  const issues = Result.match(validate(defaults), { onSuccess: () => [], onFailure: (found) => found });
+  return issuesUnder(
+    lines,
+    '/input/default',
+    issues.filter((issue) => !isRequiredAtRoot(issue)),
+  );
+}
+
+export function inputContractOf(
+  section: InputSection,
+  lines: SourceLines,
+): Result.Result<InputContract, readonly DocumentIssue[]> {
+  const { schema: document, default: defaults = {} } = section ?? {};
+  if (document === undefined) {
+    return Result.succeed({ defaults });
+  }
+  const compiled = compileAnswerSchema(document);
+  if (document['type'] !== 'object') {
+    return Result.fail([
+      issueAt(lines, '/input/schema', 'The input schema describes an object: its root has "type": "object"'),
+      ...(Result.isFailure(compiled) ? issuesUnder(lines, '/input/schema', compiled.failure) : []),
+    ]);
+  }
+  if (Result.isFailure(compiled)) {
+    return Result.fail(issuesUnder(lines, '/input/schema', compiled.failure));
+  }
+  const issues = defaultsIssues(compiled.success.validate, defaults, lines);
+  return issues.length > 0 ? Result.fail(issues) : Result.succeed({ schema: compiled.success, defaults });
+}
+
+function warningsOf(document: Schema.JsonObject, lines: SourceLines): readonly string[] {
+  const { not_portable, unchecked } = checkAnswerSchema(document);
+  return [
+    ...not_portable.map(({ pointer, detail, providers }) =>
+      issueAt(lines, `/output/schema${pointer}`, `${detail} (${providers.join(', ')})`),
+    ),
+    ...issuesUnder(lines, '/output/schema', unchecked),
+  ]
+    .slice(0, mostWarnings)
+    .map((issue) => issueText(issue));
+}
+
+export function outputContractOf(
+  section: OutputSection,
+  lines: SourceLines,
+): Result.Result<OutputContract, readonly DocumentIssue[]> {
+  const document = section?.schema;
+  if (section?.format !== 'json') {
+    return document === undefined
+      ? Result.succeed({ output: { type: 'text' }, warnings: [] })
+      : Result.fail([
+          issueAt(
+            lines,
+            '/output/schema',
+            'A text output takes no schema; set format: json to ask for JSON that matches it',
+          ),
+        ]);
+  }
+  if (document === undefined) {
+    return Result.fail([issueAt(lines, '/output', 'A json output needs a schema of the answer')]);
+  }
+  const compiled = compileAnswerSchema(document);
+  return Result.isFailure(compiled)
+    ? Result.fail(issuesUnder(lines, '/output/schema', compiled.failure))
+    : Result.succeed({ output: { type: 'json', schema: compiled.success }, warnings: warningsOf(document, lines) });
+}

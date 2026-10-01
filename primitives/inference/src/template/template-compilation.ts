@@ -73,6 +73,7 @@ export function compileTemplate(
   const hasInstructions = outline.top.length > 0;
   return Result.succeed({
     hasInstructions,
+    hasMessage: outline.hasMessage,
     variables: variableReferences(() => engine.analyzeSync(templates, { partials: false }), firstLine),
     render: (scope) => renderTemplate(() => templates, hasInstructions, scope, firstLine),
   });

@@ -33,6 +33,7 @@ export type RenderFailure =
 
 export interface CompiledTemplate {
   readonly hasInstructions: boolean;
+  readonly hasMessage: boolean;
   readonly variables: readonly VariableReference[];
   readonly render: (scope: TemplateScope) => Result.Result<RenderedPrompt, RenderFailure>;
 }
