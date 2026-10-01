@@ -16,7 +16,7 @@ function rendered(body: string, value: Schema.Json): string {
   return Result.getOrThrow(rendering(body, value));
 }
 
-function refusal(body: string, value: Schema.Json): RenderFailure | null {
+function rejection(body: string, value: Schema.Json): RenderFailure | null {
   return Result.match(rendering(body, value), { onSuccess: () => null, onFailure: (failure) => failure });
 }
 
@@ -37,13 +37,13 @@ describe('money', () => {
     expect(rendered('{{ input.value | money }}', ' 19.99 ')).toBe('$19.99');
   });
 
-  it('refuses anything else', () => {
+  it('rejects anything else', () => {
     const detail = { reason: 'failed', detail: 'money takes a number, or text that is a decimal number', line: 1 };
 
-    expect(refusal('{{ input.value | money }}', 'twelve')).toEqual(detail);
-    expect(refusal('{{ input.value | money }}', '')).toEqual(detail);
-    expect(refusal('{{ input.value | money }}', null)).toEqual(detail);
-    expect(refusal('{{ input.value | money }}', [1])).toEqual(detail);
+    expect(rejection('{{ input.value | money }}', 'twelve')).toEqual(detail);
+    expect(rejection('{{ input.value | money }}', '')).toEqual(detail);
+    expect(rejection('{{ input.value | money }}', null)).toEqual(detail);
+    expect(rejection('{{ input.value | money }}', [1])).toEqual(detail);
   });
 });
 
@@ -72,16 +72,16 @@ describe('clip', () => {
     expect(rendered('{{ input.value | clip: 3 }}', null)).toBe('');
   });
 
-  it('refuses a length that is not a whole number of 0 or more', () => {
+  it('rejects a length that is not a whole number of 0 or more', () => {
     const detail = {
       reason: 'failed',
       detail: 'clip takes a length in characters, a whole number of 0 or more',
       line: 1,
     };
 
-    expect(refusal('{{ input.value | clip: -1 }}', 'Hello')).toEqual(detail);
-    expect(refusal('{{ input.value | clip: 2.5 }}', 'Hello')).toEqual(detail);
-    expect(refusal('{{ input.value | clip: "3" }}', 'Hello')).toEqual(detail);
+    expect(rejection('{{ input.value | clip: -1 }}', 'Hello')).toEqual(detail);
+    expect(rejection('{{ input.value | clip: 2.5 }}', 'Hello')).toEqual(detail);
+    expect(rejection('{{ input.value | clip: "3" }}', 'Hello')).toEqual(detail);
   });
 });
 

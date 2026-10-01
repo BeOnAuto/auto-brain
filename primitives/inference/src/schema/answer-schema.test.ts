@@ -129,7 +129,7 @@ describe('an answer that does not match the schema', () => {
 });
 
 describe('an answer that cannot be checked', () => {
-  it('is refused when it is nested deeper than the limit', () => {
+  it('is rejected when it is nested deeper than the limit', () => {
     const anything = compiled({});
 
     expect(answerIssues(anything, nestedObjects(schemaLimits.answerNesting + 1))).toEqual([
@@ -140,13 +140,13 @@ describe('an answer that cannot be checked', () => {
     );
   });
 
-  it('is refused, without overflowing the stack, when a recursive schema meets a deep answer', () => {
+  it('is rejected, without overflowing the stack, when a recursive schema meets a deep answer', () => {
     expect(answerIssues(compiled(tree), nestedChildren(100_000))).toEqual([
       { pointer: '', detail: `The answer nests more than ${schemaLimits.answerNesting} levels` },
     ]);
   });
 
-  it('is refused when it is not JSON', () => {
+  it('is rejected when it is not JSON', () => {
     expect(answerIssues(compiled({}), new Date(0))).toEqual([{ pointer: '', detail: 'The answer is not JSON' }]);
   });
 });

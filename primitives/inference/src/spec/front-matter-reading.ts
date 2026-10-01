@@ -48,7 +48,7 @@ const parseOptions = {
   prettyErrors: false,
 } as const;
 
-function refusalOf(node: unknown): string | undefined {
+function rejectionOf(node: unknown): string | undefined {
   if (isAlias(node)) {
     return `An alias (*${node.source}) is not allowed; write the value out`;
   }
@@ -69,9 +69,9 @@ function valueOf(node: unknown, place: Place, reading: Reading): Schema.Json {
   const line = reading.lineOf(node, place.line);
   const here = { ...place, line };
   reading.locate(place.pointer, line);
-  const refusal = refusalOf(node);
-  if (refusal !== undefined) {
-    reading.report(line, place.pointer, refusal);
+  const rejection = rejectionOf(node);
+  if (rejection !== undefined) {
+    reading.report(line, place.pointer, rejection);
     return null;
   }
   if (place.depth > frontMatterNesting) {
@@ -137,9 +137,9 @@ export function readFrontMatter(
   if (!isMap(contents)) {
     return Result.fail(rootIssue(firstLine, 'The front matter is a mapping of keys to values'));
   }
-  const refusal = refusalOf(contents);
-  if (refusal !== undefined) {
-    return Result.fail(rootIssue(firstLine, refusal));
+  const rejection = rejectionOf(contents);
+  if (rejection !== undefined) {
+    return Result.fail(rootIssue(firstLine, rejection));
   }
   const issues: DocumentIssue[] = [];
   const lines = new Map<string, number>([['', firstLine]]);

@@ -210,7 +210,7 @@ The SDK's warnings are not written to the console; they arrive in `warnings`.
 
 ## Answers that are JSON
 
-An answer schema is a JSON Schema document, draft 2020-12, or draft-07 when `$schema` says so or the document uses `definitions` without `$defs`. `compileAnswerSchema(document)` checks it and gives an `AnswerSchema`, or issues with JSON pointers into the document. The answer is validated here, against the schema as written, whatever the provider enforced. The validator is Effect's JSON Schema importer: it compiles a schema into data, not code, and it refuses regular expressions.
+An answer schema is a JSON Schema document, draft 2020-12, or draft-07 when `$schema` says so or the document uses `definitions` without `$defs`. `compileAnswerSchema(document)` checks it and gives an `AnswerSchema`, or issues with JSON pointers into the document. The answer is validated here, against the schema as written, whatever the provider enforced. The validator is Effect's JSON Schema importer: it compiles a schema into data, not code, and it rejects regular expressions.
 
 Limits on schemas, which the spec author controls:
 
@@ -329,10 +329,10 @@ Any other key, at any level, is rejected.
 Parsing is validation. Every create, update and execution parses the document, and a document with a problem is rejected with every problem found at once, each with its line in the document, and a JSON pointer into the front matter where there is one, for example `Line 4, /config/temperature: Expected number`. The operations answer them under `/source`. Parsing finds:
 
 - front matter that does not open on the first line or is never closed; a document without it is never read as a template;
-- YAML that cannot be read. The front matter is YAML 1.2 with the core schema, so `yes` and `2026-10-01` stay text. Anchors, aliases and tags are refused, a key may appear once in a mapping, numbers are finite, and nesting stops at 72 levels;
+- YAML that cannot be read. The front matter is YAML 1.2 with the core schema, so `yes` and `2026-10-01` stay text. Anchors, aliases and tags are rejected, a key may appear once in a mapping, numbers are finite, and nesting stops at 72 levels;
 - unknown keys and values of the wrong type, and a missing `model`;
 - a model not written `provider/model`, and settings out of range;
-- an input schema whose root is not an object, a schema that cannot be validated (see [Answers that are JSON](#answers-that-are-json) for what is refused), and defaults that do not match it;
+- an input schema whose root is not an object, a schema that cannot be validated (see [Answers that are JSON](#answers-that-are-json) for what is rejected), and defaults that do not match it;
 - a `json` output without a schema, and a `text` output with one;
 - Liquid that does not parse, a tag or filter that is not available, the rules of the system block, a template that writes no message outside it, and every variable it reads (see below).
 
@@ -523,7 +523,7 @@ The spec operations answer every rejection as a problem document, and record it 
 | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---- |
 | The input is not a JSON object, or does not match the input schema                                   | `invalid_input`, with the issues under `/input`                                         | 422  |
 | The template reads a field the input does not have, outside a condition                              | `invalid_input` at `/input/<field>`, naming the field and the line                      | 422  |
-| A filter refuses a value of the input, a render limit stops the render, or the message renders empty | `invalid_input`, with the line                                                          | 422  |
+| A filter rejects a value of the input, a render limit stops the render, or the message renders empty | `invalid_input`, with the line                                                          | 422  |
 | The model refuses the content under its policy                                                       | `invalid_input` at `/input`                                                             | 422  |
 | The provider rejects the spec: a model it does not have, a schema or a setting it cannot accept      | `conflict`, with the provider's own message of at most 1000 characters; update the spec | 409  |
 | A JSON answer is cut off at `max_output_tokens`                                                      | `conflict`, saying to raise `config.max_output_tokens`                                  | 409  |

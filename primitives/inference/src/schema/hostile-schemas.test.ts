@@ -83,7 +83,7 @@ describe('a hostile schema', () => {
     ]);
   });
 
-  it('may not nest deeper than the limit, and is refused without overflowing the stack', () => {
+  it('may not nest deeper than the limit, and is rejected without overflowing the stack', () => {
     expect(issuesOf(nestedSchemas(5000))).toEqual([
       { pointer: '', detail: `A schema may nest at most ${schemaLimits.nesting} levels of objects and lists` },
     ]);
@@ -109,15 +109,15 @@ describe('a malformed schema', () => {
     ['a string', 'object'],
     ['null', null],
     ['a value that is not JSON', { default: new Date(0) }],
-  ])('is refused when it is %s', (_: string, document: unknown) => {
+  ])('is rejected when it is %s', (_: string, document: unknown) => {
     expect(issuesOf(document)).toEqual([{ pointer: '', detail: 'A schema is a JSON object' }]);
   });
 
-  it.each(malformed)('is refused for %j', (document, pointer, detail) => {
+  it.each(malformed)('is rejected for %j', (document, pointer, detail) => {
     expect(issuesOf(document)).toContainEqual({ pointer, detail });
   });
 
-  it('is refused when it references a definition it does not have', () => {
+  it('is rejected when it references a definition it does not have', () => {
     expect(issuesOf({ $ref: '#/$defs/missing' })).toEqual([
       { pointer: '', detail: 'Missing definition "missing" for $ref "#/$defs/missing".' },
     ]);

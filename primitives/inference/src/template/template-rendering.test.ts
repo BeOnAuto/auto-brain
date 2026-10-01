@@ -99,7 +99,7 @@ describe('a render that fails because of the input', () => {
     expect(rendered('{{ input.items | map: "constructor" | json }}', { items: [{}] }).message).toBe('[null]');
   });
 
-  it('is a filter that refuses the value', () => {
+  it('is a filter that rejects the value', () => {
     expect(failureOf('{{ input.amount | money }}', { amount: 'many' })).toEqual({
       reason: 'failed',
       detail: 'money takes a number, or text that is a decimal number',

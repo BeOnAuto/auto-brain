@@ -51,7 +51,7 @@ describe('preparing an inference spec', () => {
 });
 
 describe('preparing an inference document that is not valid', () => {
-  it('refuses it with its problems, each with its line', () => {
+  it('rejects it with its problems, each with its line', () => {
     expect(Effect.runSyncExit(primitive.prepare(documentOf('model: gpt-5')))).toEqual(
       Exit.fail(
         new InvalidInput({

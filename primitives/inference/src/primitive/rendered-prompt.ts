@@ -17,34 +17,34 @@ function pointerOf(variable: string): string {
     : '';
 }
 
-function refusal(detail: string, issue: string, pointer = ''): InvalidInput {
+function rejection(detail: string, issue: string, pointer = ''): InvalidInput {
   return new InvalidInput({ detail, issues: [{ pointer, detail: issue }] });
 }
 
-function refusalOf(failure: RenderFailure): InvalidInput {
+function rejectionOf(failure: RenderFailure): InvalidInput {
   if (failure.reason === 'missing_variable') {
-    return refusal(
+    return rejection(
       'The template reads a field the input does not have',
       `Line ${failure.line}: the template reads ${failure.variable}, which this input does not have`,
       pointerOf(failure.variable),
     );
   }
   if (failure.reason === 'too_long') {
-    return refusal(
+    return rejection(
       `With this input the ${failure.part} of the prompt would be longer than the template may render`,
       `Line ${failure.line}: the ${failure.part} grows past 200000 characters here`,
     );
   }
   if (failure.reason === 'limit_exceeded') {
-    return refusal(
+    return rejection(
       `Rendering the template with this input takes ${exceeded[failure.limit]} than a render may`,
       `Line ${failure.line}: the render stopped here`,
     );
   }
-  return refusal('The template cannot be rendered with this input', `Line ${failure.line}: ${failure.detail}`);
+  return rejection('The template cannot be rendered with this input', `Line ${failure.line}: ${failure.detail}`);
 }
 
-const emptyMessage = refusal(
+const emptyMessage = rejection(
   'With this input the template renders an empty message',
   'The message the template renders from this input is empty',
 );
@@ -54,7 +54,7 @@ export function renderedPrompt(
   scope: TemplateScope,
 ): Effect.Effect<RenderedPrompt, InvalidInput> {
   return Result.match(template.render(scope), {
-    onFailure: (failure) => Effect.fail(refusalOf(failure)),
+    onFailure: (failure) => Effect.fail(rejectionOf(failure)),
     onSuccess: (prompt) => (prompt.message.trim() === '' ? Effect.fail(emptyMessage) : Effect.succeed(prompt)),
   });
 }
