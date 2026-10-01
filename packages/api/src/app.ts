@@ -7,9 +7,16 @@ import { middlewareFor } from './middleware/middleware-chain.ts';
 import { requestIdAndSecurityHeaders } from './middleware/response-headers.ts';
 import { errorHandler } from './problem/error-boundary.ts';
 import { problemOf, problemResponse } from './problem/problem.ts';
+import type { Close } from './routes.ts';
 
-export function createApp(options: ApiOptions): Hono<ApiEnv> {
+export interface ApiApp {
+  readonly app: Hono<ApiEnv>;
+  readonly close: Close;
+}
+
+export function createApp(options: ApiOptions): ApiApp {
   const app = new Hono<ApiEnv>();
+  const closes: Close[] = [];
   app.use(...requestIdAndSecurityHeaders);
   app.use(...middlewareFor(options));
   app.use(
@@ -27,10 +34,18 @@ export function createApp(options: ApiOptions): Hono<ApiEnv> {
       add: (method, path, handler) => {
         app.on(method, path, handler);
       },
+      onClose: (close) => {
+        closes.push(close);
+      },
     });
   }
   app.notFound(() => problemResponse(problemOf('not_found', 'No route matches the path')));
   const handleError = errorHandler(options.reportIncident);
   app.onError((error: Readonly<Error>, c) => handleError(error, c.get('requestId')));
-  return app;
+  return {
+    app,
+    close: async () => {
+      await Promise.all(closes.map((close) => close()));
+    },
+  };
 }
