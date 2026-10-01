@@ -41,7 +41,7 @@ describe('executing a command', () => {
     expect(await Effect.runPromise(ledger.load(tallies, tally))).toEqual({ state: 9, version: 3 });
   });
 
-  it('answers a refusal as the failure it is and appends nothing', async () => {
+  it('answers a rejection as the failure it is and appends nothing', async () => {
     const ledger = await aLedger();
     await Effect.runPromise(ledger.execute(tallies, tally, [5]));
 
@@ -110,7 +110,7 @@ describe('the events of a stream', () => {
     });
   });
 
-  it('are a defect, not a refusal, when a stored event no longer decodes', async () => {
+  it('are a defect, not a rejection, when a stored event no longer decodes', async () => {
     const ledger = await aLedger();
     const TextualCountedSchema = Schema.Struct({ type: Schema.Literal('counted'), by: Schema.String });
     const talliedAsText: Decider<string, string, typeof TextualCountedSchema.Type> = {

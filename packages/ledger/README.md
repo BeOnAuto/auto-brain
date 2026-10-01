@@ -14,11 +14,11 @@ This package is the event store behind the `Ledger` port of `@beonauto/operation
 
 `execute(stream, decider, command)` loads the stream, folds its events with `decider.evolve`, and asks `decider.decide`.
 
-- A refusal is returned as it is, and nothing is appended.
+- A rejection is returned as it is, and nothing is appended.
 - A decision of no events appends nothing and answers with the current state and version.
 - Otherwise the events are appended with the version that was read as the expected version. If another writer appended first, the append meets a version conflict: the stream is loaded and the command decided again, up to three more times, and then it fails with `Conflict`. Like the in-memory ledger of `@beonauto/operations`, its detail names no stream.
 - A decision of more than eight events is a defect.
-- Any other failure of the database is a defect, never a `Conflict` or a refusal.
+- Any other failure of the database is a defect, never a `Conflict` or a rejection.
 
 ## Creating the layer
 

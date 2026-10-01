@@ -73,7 +73,7 @@ describe('a writer that another writer got ahead of', () => {
     });
   });
 
-  it('is refused when the decision taken again no longer holds', async () => {
+  it('is rejected when the decision taken again no longer holds', async () => {
     const ledger = await aLedger();
     await Effect.runPromise(ledger.execute(tallies, tally, [1]));
     const takeOneFirst = Effect.orDie(ledger.execute(tallies, tally, [-1]));

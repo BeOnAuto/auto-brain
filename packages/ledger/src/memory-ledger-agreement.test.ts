@@ -69,7 +69,7 @@ async function loadAskedForBeforeAWrite(ledger: Ledger['Service']): Promise<unkn
 }
 
 describe('the ledger and the in-memory ledger of the application layer', () => {
-  it('give the same states, versions and refusals for the same decider and commands', async () => {
+  it('give the same states, versions and rejections for the same decider and commands', async () => {
     const [onSqlite, inMemory] = await bothLedgers();
 
     const expected = {

@@ -3,7 +3,7 @@ import {
   Ledger,
   type Decider,
   type DeclarableReason,
-  type Refusal,
+  type Rejection,
   type StreamState,
   type TypedEvent,
 } from '@beonauto/operations';
@@ -27,7 +27,7 @@ export function makeLedger(store: EventStore): Ledger['Service'] {
     stream: string,
     decider: Decider<State, Command, Event, R>,
     command: Command,
-  ): Effect.Effect<Result.Result<StreamState<State>, Refusal<R>>, VersionConflict> =>
+  ): Effect.Effect<Result.Result<StreamState<State>, Rejection<R>>, VersionConflict> =>
     Effect.gen(function* () {
       const { state, version } = yield* load(stream, decider);
       const decided = decider.decide(command, state);
