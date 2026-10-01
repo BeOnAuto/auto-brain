@@ -14,6 +14,7 @@ export { RateLimited } from './failure/rate-limited.ts';
 export { SpecInvalid } from './failure/spec-invalid.ts';
 export { TimedOut } from './failure/timed-out.ts';
 export { LanguageModel } from './model/language-model.ts';
+export { makeInference, type InferenceOptions } from './primitive/inference-primitive.ts';
 export { parseModelReference, type ModelReference } from './model/model-reference.ts';
 export type {
   ContentPart,
