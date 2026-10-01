@@ -22,6 +22,12 @@ export function logAccessMode(mode: AccessMode, localModeRequested: boolean): Ef
     : accessNotices[mode];
 }
 
+const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');
+
 export function logIncident({ id, original, call }: Incident): Effect.Effect<void> {
-  return Effect.logError('Unexpected error', Cause.die(original)).pipe(Effect.annotateLogs({ incident: id, ...call }));
+  return Effect.logError('Unexpected error', Cause.die(original)).pipe(
+    Effect.catchCause(() => causeNotFormattable),
+    Effect.ignoreCause,
+    Effect.annotateLogs({ incident: id, ...call }),
+  );
 }
