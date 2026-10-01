@@ -29,7 +29,7 @@ describe('a brain id', () => {
   });
 });
 
-describe('the brains a caller may reach', () => {
+describe('the brains a caller may access', () => {
   it('are every brain or a list of brain ids', () => {
     expect([isBrainAccess('*'), isBrainAccess([]), isBrainAccess(['alpha', 'beta'])]).toEqual([true, true, true]);
     expect([isBrainAccess('alpha'), isBrainAccess(['Alpha'])]).toEqual([false, false]);

@@ -1,4 +1,4 @@
-import type { Scope } from '../caller/scope.ts';
+import type { OperationScope } from '../caller/operation-scope.ts';
 import type { Registration } from '../definition/registration.ts';
 
 interface Registered {
@@ -7,10 +7,13 @@ interface Registered {
 
 export interface Catalog {
   readonly operations: readonly Registration[];
-  readonly operationsIn: <S extends Scope>(scope: S) => readonly Registration<S>[];
+  readonly operationsIn: <S extends OperationScope>(scope: S) => readonly Registration<S>[];
 }
 
-const prefixByScope: Readonly<Record<Scope, string>> = { org: '/orgs/{org}', brain: '/orgs/{org}/brains/{brain}' };
+const prefixByScope: Readonly<Record<OperationScope, string>> = {
+  org: '/orgs/{org}',
+  brain: '/orgs/{org}/brains/{brain}',
+};
 
 function routeOf({ scope, route }: Registration): string {
   return `${route.method} ${prefixByScope[scope]}${route.path}`;
@@ -47,7 +50,7 @@ export function makeCatalog(operations: readonly Registered[]): Catalog {
   const registrations = operations.map(({ registration }) => registration);
   requireUniqueNames(registrations);
   requireUniqueRoutes(registrations);
-  const byScope: { readonly [S in Scope]: readonly Registration<S>[] } = {
+  const byScope: { readonly [S in OperationScope]: readonly Registration<S>[] } = {
     org: registrations.filter((registration) => registration.scope === 'org'),
     brain: registrations.filter((registration) => registration.scope === 'brain'),
   };

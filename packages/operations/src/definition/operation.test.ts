@@ -140,10 +140,10 @@ describe('the typed call', () => {
     expect(ledger.streamNames()).toEqual(['notes']);
   });
 
-  it('fails with the refusal the handler declares', async () => {
-    const refusal = await Effect.runPromise(withNotes(Effect.flip(getNote.call({ name: 'missing' }))));
+  it('fails with the rejection the handler declares', async () => {
+    const rejection = await Effect.runPromise(withNotes(Effect.flip(getNote.call({ name: 'missing' }))));
 
-    expect(refusal).toEqual(new NotFound({ detail: 'There is no note missing' }));
+    expect(rejection).toEqual(new NotFound({ detail: 'There is no note missing' }));
   });
 
   it('decodes a union input by its members', async () => {

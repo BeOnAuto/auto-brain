@@ -1,4 +1,4 @@
-import type { Kind } from '../caller/scope.ts';
+import type { OperationKind } from '../caller/operation-scope.ts';
 
 export type Method = 'GET' | 'POST' | 'PUT';
 
@@ -7,7 +7,7 @@ interface MethodsByKind {
   readonly command: 'POST' | 'PUT';
 }
 
-export interface Route<K extends Kind = Kind, P extends string = string> {
+export interface Route<K extends OperationKind = OperationKind, P extends string = string> {
   readonly method: MethodsByKind[K];
   readonly path: P;
 }

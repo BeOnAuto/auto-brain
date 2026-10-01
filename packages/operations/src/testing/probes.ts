@@ -1,15 +1,15 @@
 import { Effect, Option, Schema } from 'effect';
 
 import {
-  BrainDirectory,
+  BrainRegistry,
   BrainReader,
-  BrainScope,
+  BrainContext,
   BrainWriter,
   Caller,
   IncidentReporter,
   Ledger,
   OrgReader,
-  OrgScope,
+  OrgContext,
   OrgWriter,
   defineCommand,
   defineQuery,
@@ -25,13 +25,13 @@ interface Sighting {
 const visibleServices = Effect.gen(function* () {
   const services: readonly Sighting[] = [
     { name: 'Ledger', found: Option.isSome(yield* Effect.serviceOption(Ledger)) },
-    { name: 'BrainDirectory', found: Option.isSome(yield* Effect.serviceOption(BrainDirectory)) },
+    { name: 'BrainRegistry', found: Option.isSome(yield* Effect.serviceOption(BrainRegistry)) },
     { name: 'IncidentReporter', found: Option.isSome(yield* Effect.serviceOption(IncidentReporter)) },
     { name: 'Caller', found: Option.isSome(yield* Effect.serviceOption(Caller)) },
-    { name: 'OrgScope', found: Option.isSome(yield* Effect.serviceOption(OrgScope)) },
+    { name: 'OrgContext', found: Option.isSome(yield* Effect.serviceOption(OrgContext)) },
     { name: 'OrgReader', found: Option.isSome(yield* Effect.serviceOption(OrgReader)) },
     { name: 'OrgWriter', found: Option.isSome(yield* Effect.serviceOption(OrgWriter)) },
-    { name: 'BrainScope', found: Option.isSome(yield* Effect.serviceOption(BrainScope)) },
+    { name: 'BrainContext', found: Option.isSome(yield* Effect.serviceOption(BrainContext)) },
     { name: 'BrainReader', found: Option.isSome(yield* Effect.serviceOption(BrainReader)) },
     { name: 'BrainWriter', found: Option.isSome(yield* Effect.serviceOption(BrainWriter)) },
   ];
@@ -44,13 +44,13 @@ const BrainView = Schema.Struct({ ...OrgView.fields, brain: Schema.String });
 
 const viewFromOrg = Effect.fnUntraced(function* () {
   const { id } = yield* Caller;
-  const { org } = yield* OrgScope;
+  const { org } = yield* OrgContext;
   return { caller: id, org, visible: yield* visibleServices };
 });
 
 const viewFromBrain = Effect.fnUntraced(function* () {
   const { id } = yield* Caller;
-  const { org, brain } = yield* BrainScope;
+  const { org, brain } = yield* BrainContext;
   return { caller: id, org, brain, visible: yield* visibleServices };
 });
 

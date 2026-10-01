@@ -1,6 +1,6 @@
-import { everyPermission, type CallerIdentity } from '../index.ts';
+import { allPermissions, type CallerIdentity } from '../index.ts';
 
-export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: everyPermission, brains: '*' };
+export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
 export const acmeAlphaReader: CallerIdentity = {
   id: 'acme-alpha-reader',
