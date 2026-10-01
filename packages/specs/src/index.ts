@@ -1,0 +1,19 @@
+export { defineCreateSpec } from './operations/create-spec.ts';
+export { defineExecuteSpec } from './operations/execute-spec.ts';
+export { defineGetSpec } from './operations/get-spec.ts';
+export { defineListSpecs } from './operations/list-specs.ts';
+export {
+  definePrimitive,
+  type Executed,
+  type ExecutionContext,
+  type PreparedSpec,
+  type Primitive,
+  type PrimitiveDefinition,
+  type SpecSummary,
+} from './primitive/primitive.ts';
+export { defineRetireSpec } from './operations/retire-spec.ts';
+export { defineUpdateSpec } from './operations/update-spec.ts';
+export { ExecutionSchema, type Execution } from './execution/execution.ts';
+export { getExecution } from './operations/get-execution.ts';
+export { ListedSpecSchema, SpecSchema, type ListedSpec, type Spec } from './registry/spec.ts';
+export { makeSpecOperations, type BrainOperation } from './operations/spec-operations.ts';
