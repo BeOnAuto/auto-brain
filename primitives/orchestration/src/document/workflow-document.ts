@@ -2,8 +2,8 @@ import { InvalidInput, type Issue } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { JsonObject } from '../dsl/json.ts';
-import type { Refusal } from '../dsl/policy-checks.ts';
-import { refusalsOf } from '../dsl/policy.ts';
+import type { Rejection } from '../dsl/policy-checks.ts';
+import { rejectionsOf } from '../dsl/policy.ts';
 import { dslProblems, type Problem } from './dsl-validation.ts';
 import { readYaml, type LocatedProblem, type Position } from './yaml-reading.ts';
 
@@ -19,15 +19,15 @@ export function parseWorkflowDocument(source: string): Effect.Effect<JsonObject,
       return Effect.fail(invalidDocument('The workflow document is not YAML this runtime reads', reading.problems));
     }
     const { value, locate } = reading.document;
-    const refusals = refusalsOf(value);
-    const versionRefused = refusals.some(({ pointer }) => pointer === '/document/dsl');
+    const rejections = rejectionsOf(value);
+    const versionRejected = rejections.some(({ pointer }) => pointer === '/document/dsl');
     const problems = [
-      ...(versionRefused
+      ...(versionRejected
         ? []
-        : dslProblems(value, { connecting: refusals.length === 0 }).filter(
-            (problem) => !isShadowed(problem, refusals),
+        : dslProblems(value, { connecting: rejections.length === 0 }).filter(
+            (problem) => !isShadowed(problem, rejections),
           )),
-      ...refusals,
+      ...rejections,
     ].map(({ pointer, detail }) => ({ position: locate(pointer), detail: `${placeOf(pointer)}${detail}` }));
     return problems.length === 0
       ? Effect.succeed(value)
@@ -35,12 +35,12 @@ export function parseWorkflowDocument(source: string): Effect.Effect<JsonObject,
   });
 }
 
-function isShadowed({ pointer }: Problem, refusals: readonly Refusal[]): boolean {
-  return refusals.some(
-    (refusal) =>
-      refusal.pointer === pointer ||
-      pointer.startsWith(`${refusal.pointer}/`) ||
-      (pointer !== '' && refusal.pointer.startsWith(`${pointer}/`)),
+function isShadowed({ pointer }: Problem, rejections: readonly Rejection[]): boolean {
+  return rejections.some(
+    (rejection) =>
+      rejection.pointer === pointer ||
+      pointer.startsWith(`${rejection.pointer}/`) ||
+      (pointer !== '' && rejection.pointer.startsWith(`${pointer}/`)),
   );
 }
 

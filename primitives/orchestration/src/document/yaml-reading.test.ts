@@ -43,14 +43,14 @@ describe('reading a YAML document', () => {
 });
 
 describe('a document that is not YAML this runtime reads', () => {
-  it('is refused with each parse error at its place', () => {
+  it('is rejected with each parse error at its place', () => {
     expect(problemsOf(readYaml('a: [1, 2\nb: 3\n'))).toEqual([
       '2:1 Flow sequence in block collection must be sufficiently indented and end with a ]',
     ]);
     expect(problemsOf(readYaml('a: 1\na: 2\n'))).toEqual(['2:1 Map keys must be unique']);
   });
 
-  it('is refused when it is not a mapping', () => {
+  it('is rejected when it is not a mapping', () => {
     const notAMapping = '1:1 A workflow document is a YAML mapping, with document and do at its top';
 
     expect(problemsOf(readYaml('- a list'))).toEqual([notAMapping]);
@@ -58,15 +58,15 @@ describe('a document that is not YAML this runtime reads', () => {
   });
 });
 
-describe('a document that uses YAML this runtime refuses', () => {
-  it('is refused for aliases and anchors', () => {
+describe('a document that uses YAML this runtime rejects', () => {
+  it('is rejected for aliases and anchors', () => {
     expect(problemsOf(readYaml('a: &shared { b: 1 }\nc: *shared\n'))).toEqual([
       '1:12 Anchors are not allowed in a workflow document',
       '2:4 Aliases are not allowed in a workflow document',
     ]);
   });
 
-  it('is refused for tags, known or not', () => {
+  it('is rejected for tags, known or not', () => {
     expect(problemsOf(readYaml('a: !!str 12\nb: !custom value\n'))).toEqual([
       '2:4 Unresolved tag: !custom',
       '1:10 Tags are not allowed in a workflow document: tag:yaml.org,2002:str',
@@ -74,7 +74,7 @@ describe('a document that uses YAML this runtime refuses', () => {
     ]);
   });
 
-  it('is refused for numbers JSON cannot carry and keys that are not plain', () => {
+  it('is rejected for numbers JSON cannot carry and keys that are not plain', () => {
     expect(problemsOf(readYaml('a: .inf\n? [x, y]\n: 1\n'))).toEqual([
       '1:4 Numbers in a workflow document are finite',
       '2:3 Keys in a workflow document are plain text',

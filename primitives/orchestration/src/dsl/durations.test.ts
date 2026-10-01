@@ -22,7 +22,7 @@ describe('a duration', () => {
     expect(readDuration({ seconds: 0 })).toEqual({ milliseconds: 0 });
   });
 
-  it.each(['P1Y', 'P2M'])('refuses %s, whose length varies', (text) => {
+  it.each(['P1Y', 'P2M'])('rejects %s, whose length varies', (text) => {
     expect(readDuration(text)).toEqual({
       problem: `${text} counts years or months, which have no fixed length; use weeks, days or less`,
     });
@@ -30,16 +30,16 @@ describe('a duration', () => {
 });
 
 describe('what is not a duration', () => {
-  it.each(['soon', 'P'])('is refused when it is the text %s', (text) => {
+  it.each(['soon', 'P'])('is rejected when it is the text %s', (text) => {
     expect(readDuration(text)).toEqual({ problem: `${text} is not an ISO 8601 duration` });
   });
 
-  it('is refused when it is neither text nor an object, or has odd units', () => {
+  it('is rejected when it is neither text nor an object, or has odd units', () => {
     expect(readDuration(5)).toEqual({ problem: 'A duration is an ISO 8601 string or an object of units' });
     expect(readDuration({ weeks: 1 })).toEqual({ problem: 'A duration has no unit weeks' });
   });
 
-  it('is refused when its units are not counts', () => {
+  it('is rejected when its units are not counts', () => {
     const problem = 'The units of a duration are numbers, none of them negative';
 
     expect(readDuration({ seconds: -1 })).toEqual({ problem });

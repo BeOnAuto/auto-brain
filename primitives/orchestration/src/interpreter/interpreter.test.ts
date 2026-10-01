@@ -79,7 +79,7 @@ describe('a workflow run that raises an error it does not catch', () => {
   it('is rejected as invalid input, and fails, for a client error', async () => {
     const document = workflow(`
 do:
-  - refuse:
+  - reject:
       raise:
         error:
           type: https://example.com/errors/no-name
@@ -92,16 +92,16 @@ do:
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The input names no one (at /do/0/refuse)',
+      detail: 'The input names no one (at /do/0/reject)',
     });
     expect(ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message: 'The input names no one (at /do/0/refuse)',
+      message: 'The input names no one (at /do/0/reject)',
     });
   });
 
-  it('refuses a document the policy forbids, even one that was never parsed', async () => {
+  it('rejects a document the policy forbids, even one that was never parsed', async () => {
     const document = workflow('do:\n  - shell:\n      run:\n        shell:\n          command: ls');
 
     expect((await interpret(document)).settlement).toEqual({

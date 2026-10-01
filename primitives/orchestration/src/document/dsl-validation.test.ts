@@ -37,13 +37,13 @@ describe('validating a document against the DSL', () => {
 });
 
 describe('the rules of the DSL beyond its schema', () => {
-  it('refuse a list of tasks with the same name twice', () => {
+  it('reject a list of tasks with the same name twice', () => {
     expect(connected(workflow('do:\n  - a: { set: { x: 1 } }\n  - a: { set: { y: 1 } }'))).toEqual([
       { pointer: '/do', detail: "The following task names are duplicated: 'a'." },
     ]);
   });
 
-  it('refuse steps that do not connect into a graph', () => {
+  it('reject steps that do not connect into a graph', () => {
     expect(connected(workflow('do:\n  - a: { set: { x: 1 }, then: nowhere }'))).toEqual([
       {
         pointer: '',
@@ -52,7 +52,7 @@ describe('the rules of the DSL beyond its schema', () => {
     ]);
   });
 
-  it('refuse a document that is not JSON at all', () => {
+  it('reject a document that is not JSON at all', () => {
     const circular: { [key: string]: Json } = { document: header, do: [] };
     circular['self'] = circular;
 

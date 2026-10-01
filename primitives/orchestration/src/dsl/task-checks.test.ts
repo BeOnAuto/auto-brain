@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { workflow } from '../testing/workflows.ts';
-import { refusalsOf } from './policy.ts';
+import { rejectionsOf } from './policy.ts';
 
-function pointersRefusedIn(tasks: string): readonly string[] {
-  return refusalsOf(workflow(`do:\n${tasks}`)).map(({ pointer }) => pointer);
+function pointersRejectedIn(tasks: string): readonly string[] {
+  return rejectionsOf(workflow(`do:\n${tasks}`)).map(({ pointer }) => pointer);
 }
 
 describe('the expressions and durations of tasks', () => {
   it('are checked in raise, wait and set', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
   - missing: { raise: { error: nowhere } }
   - broken: { raise: { error: { type: '\${ .a + }', status: 400 } } }
   - pause: { wait: soon }
@@ -28,7 +28,7 @@ describe('the expressions and durations of tasks', () => {
 
   it('are checked in switch and for', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
   - route: { switch: [{ odd: { when: .a +, then: end } }, { plain: { then: end } }, 3] }
   - loop: { for: { in: .a + }, while: .b +, do: [] }
 `),
@@ -39,7 +39,7 @@ describe('the expressions and durations of tasks', () => {
 describe('the catch of a try', () => {
   it('is checked with its retry policy', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
   - guarded:
       try: []
       catch:
@@ -62,7 +62,7 @@ describe('the catch of a try', () => {
 
   it('may reuse a retry policy', () => {
     expect(
-      refusalsOf(
+      rejectionsOf(
         workflow(`
 use:
   retries:
@@ -78,7 +78,7 @@ do:
 describe('the parts every task has', () => {
   it('are checked: guard, data, schemas and timeout', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
   - shaped:
       if: .a +
       input: { from: .b +, schema: { document: {} } }
@@ -104,7 +104,7 @@ describe('the parts every task has', () => {
 describe('tasks whose parts are not what the DSL says', () => {
   it('are read without breaking', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
   - fork: { fork: 3 }
   - loop: { for: 3, do: [] }
   - guarded: { try: [], catch: 3 }
@@ -117,15 +117,15 @@ describe('tasks whose parts are not what the DSL says', () => {
     ).toEqual([]);
   });
 
-  it('refuse a call of no name', () => {
-    expect(pointersRefusedIn('  - nameless: { call: 3 }')).toEqual(['/do/0/nameless/call']);
+  it('reject a call of no name', () => {
+    expect(pointersRejectedIn('  - nameless: { call: 3 }')).toEqual(['/do/0/nameless/call']);
   });
 });
 
 describe('the flow of tasks', () => {
   it('lets a task jump to a task of its own list only', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
   - first: { set: {}, then: third }
   - second: { set: {}, then: exit }
   - third: { set: {}, then: nowhere }
@@ -135,7 +135,7 @@ describe('the flow of tasks', () => {
 
   it('checks the lists nested in do, for, try, catch and fork', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
   - block: { do: [{ inner: { run: {} } }] }
   - loop: { for: { in: .items }, do: [{ inner: { emit: {} } }] }
   - guarded: { try: [{ inner: { run: {} } }], catch: { do: [{ handler: { run: {} } }] } }

@@ -95,9 +95,9 @@ function describe({ keyword, message, params }: SchemaError): string {
   return `It ${message ?? `breaks the rule ${keyword}`}`;
 }
 
-function distinct(refusals: readonly Problem[]): readonly Problem[] {
+function distinct(rejections: readonly Problem[]): readonly Problem[] {
   const seen = new Set<string>();
-  return refusals.filter(({ pointer, detail }) => {
+  return rejections.filter(({ pointer, detail }) => {
     const key = `${pointer}\n${detail}`;
     const fresh = !seen.has(key);
     seen.add(key);

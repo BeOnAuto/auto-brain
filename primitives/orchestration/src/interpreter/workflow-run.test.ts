@@ -29,7 +29,7 @@ describe('the run a workflow is started with', () => {
     ['no caller', { ...run, caller: 'acme-admin' }],
   ];
 
-  it.each(malformed)('is refused when it has %s', (_case, value) => {
+  it.each(malformed)('is rejected when it has %s', (_case, value) => {
     expect(readWorkflowRun(value)).toBeUndefined();
   });
 });

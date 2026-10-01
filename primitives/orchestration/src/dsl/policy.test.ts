@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { header, workflow, yamlObject } from '../testing/workflows.ts';
-import { refusalsOf } from './policy.ts';
+import { rejectionsOf } from './policy.ts';
 
-function pointersRefusedIn(source: string): readonly string[] {
-  return refusalsOf(workflow(source)).map(({ pointer }) => pointer);
+function pointersRejectedIn(source: string): readonly string[] {
+  return rejectionsOf(workflow(source)).map(({ pointer }) => pointer);
 }
 
 const allowed = workflow(`
@@ -37,14 +37,14 @@ output:
 
 describe('the policy of a document', () => {
   it('allows a workflow of the tasks this runtime runs', () => {
-    expect(refusalsOf(allowed)).toEqual([]);
+    expect(rejectionsOf(allowed)).toEqual([]);
   });
 
   it('runs documents of DSL 1.0.x only', () => {
-    expect(refusalsOf({ document: { ...header, dsl: '0.9.0' }, do: [] })).toEqual([
+    expect(rejectionsOf({ document: { ...header, dsl: '0.9.0' }, do: [] })).toEqual([
       { pointer: '/document/dsl', detail: 'This runtime runs documents of DSL 1.0.x, not 0.9.0', forbidden: true },
     ]);
-    expect(refusalsOf({ do: [] })).toEqual([
+    expect(rejectionsOf({ do: [] })).toEqual([
       {
         pointer: '/document/dsl',
         detail: 'This runtime runs documents of DSL 1.0.x, not an unnamed version',
@@ -55,9 +55,9 @@ describe('the policy of a document', () => {
 });
 
 describe('the reusable components of a document', () => {
-  it('are refused when this version does not support them', () => {
+  it('are rejected when this version does not support them', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
 use:
   authentications: {}
   secrets: [token]
@@ -71,7 +71,7 @@ do: []
 
   it('are checked when they are retries, timeouts and errors', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
 use:
   retries:
     broken: { delay: soon, when: '.a +', jitter: { from: PT1S, to: P1M } }
@@ -96,7 +96,7 @@ do: []
 describe('the data of a document', () => {
   it('has no schedule and well-formed transforms and timeout', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
 schedule: { every: PT1H }
 input:
   from: .a +
@@ -109,18 +109,18 @@ do: []
   });
 
   it('checks an inline workflow timeout', () => {
-    expect(pointersRefusedIn('timeout: { after: P1Y }\ndo: []')).toEqual(['/timeout/after']);
+    expect(pointersRejectedIn('timeout: { after: P1Y }\ndo: []')).toEqual(['/timeout/after']);
   });
 
   it('is read without breaking when its parts are not what the DSL says', () => {
-    expect(refusalsOf(yamlObject(`document: { dsl: '1.0.3' }\nuse: 3\ndo: { not: a list }\ninput: 3`))).toEqual([]);
+    expect(rejectionsOf(yamlObject(`document: { dsl: '1.0.3' }\nuse: 3\ndo: { not: a list }\ninput: 3`))).toEqual([]);
   });
 });
 
 describe('the schemas of a document', () => {
   it('are inline JSON Schemas only', () => {
     expect(
-      pointersRefusedIn(`
+      pointersRejectedIn(`
 input:
   schema:
     resource: { endpoint: https://example.com/schema.json }
@@ -134,6 +134,6 @@ do: []
   });
 
   it('may leave out their format', () => {
-    expect(refusalsOf(workflow('input: { schema: { document: { type: object } } }\ndo: []'))).toEqual([]);
+    expect(rejectionsOf(workflow('input: { schema: { document: { type: object } } }\ndo: []'))).toEqual([]);
   });
 });

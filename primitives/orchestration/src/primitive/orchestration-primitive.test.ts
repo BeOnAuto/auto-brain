@@ -96,7 +96,7 @@ describe('creating a workflow spec the runtime does not run', () => {
     });
   });
 
-  it('is rejected for tasks the policy refuses', async () => {
+  it('is rejected for tasks the policy rejects', async () => {
     expect(
       await creating(
         'fetch-flow',

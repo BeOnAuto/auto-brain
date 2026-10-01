@@ -68,7 +68,7 @@ describe('recognizing JSON', () => {
     expect(isJson(value)).toBe(true);
   });
 
-  it('refuses numbers JSON cannot carry, and values that are not data', () => {
+  it('rejects numbers JSON cannot carry, and values that are not data', () => {
     expect(isJson(Number.NaN)).toBe(false);
     expect(isJson(Infinity)).toBe(false);
     expect(isJson([1, Number.NaN])).toBe(false);

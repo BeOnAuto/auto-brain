@@ -123,7 +123,7 @@ do:
 });
 
 describe('the bodies of tasks', () => {
-  it('refuse the tasks the policy refuses', () => {
+  it('reject the tasks the policy rejects', () => {
     const entry = { name: 'shell', task: { run: {} }, reference: '/do/0/shell' };
     const state = makeRunState(runOf(workflow('do: []')), fakeHost().host);
     const scope = { state, variables: {} };

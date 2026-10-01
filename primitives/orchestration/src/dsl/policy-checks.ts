@@ -3,7 +3,7 @@ import { checkExpression, enclosedBody, expressionSource } from './expressions.t
 import { entriesOf, field, isList, isObject, objectField, type Json, type JsonEntry, type JsonObject } from './json.ts';
 import { pointerTo } from './tasks.ts';
 
-export interface Refusal {
+export interface Rejection {
   readonly pointer: string;
   readonly detail: string;
   readonly forbidden: boolean;
@@ -17,63 +17,65 @@ export interface Components {
 
 export type Located = readonly [Json | undefined, string];
 
-export function refusal(pointer: string, detail: string): Refusal {
+export function rejection(pointer: string, detail: string): Rejection {
   return { pointer, detail, forbidden: false };
 }
 
-export function forbidden(pointer: string, detail: string): Refusal {
+export function forbidden(pointer: string, detail: string): Rejection {
   return { pointer, detail, forbidden: true };
 }
 
-export function expressionRefusals(expression: Json | undefined, pointer: string): readonly Refusal[] {
+export function expressionRejections(expression: Json | undefined, pointer: string): readonly Rejection[] {
   if (typeof expression !== 'string') {
     return [];
   }
   const problem = checkExpression(expressionSource(expression));
-  return problem === undefined ? [] : [refusal(pointer, problem)];
+  return problem === undefined ? [] : [rejection(pointer, problem)];
 }
 
-export function templateRefusals(template: Json | undefined, pointer: string): readonly Refusal[] {
+export function templateRejections(template: Json | undefined, pointer: string): readonly Rejection[] {
   if (enclosedBody(template) !== undefined) {
-    return expressionRefusals(template, pointer);
+    return expressionRejections(template, pointer);
   }
   if (isList(template)) {
-    return template.flatMap((item, index) => templateRefusals(item, pointerTo(pointer, index)));
+    return template.flatMap((item, index) => templateRejections(item, pointerTo(pointer, index)));
   }
   return isObject(template)
-    ? entriesOf(template).flatMap(([key, value]: JsonEntry) => templateRefusals(value, pointerTo(pointer, key)))
+    ? entriesOf(template).flatMap(([key, value]: JsonEntry) => templateRejections(value, pointerTo(pointer, key)))
     : [];
 }
 
-export function transformRefusals(transform: Json | undefined, pointer: string): readonly Refusal[] {
-  return typeof transform === 'string' ? expressionRefusals(transform, pointer) : templateRefusals(transform, pointer);
+export function transformRejections(transform: Json | undefined, pointer: string): readonly Rejection[] {
+  return typeof transform === 'string'
+    ? expressionRejections(transform, pointer)
+    : templateRejections(transform, pointer);
 }
 
-export function durationRefusals(duration: Json | undefined, pointer: string): readonly Refusal[] {
+export function durationRejections(duration: Json | undefined, pointer: string): readonly Rejection[] {
   if (duration === undefined) {
     return [];
   }
   if (enclosedBody(duration) !== undefined) {
-    return expressionRefusals(duration, pointer);
+    return expressionRejections(duration, pointer);
   }
   const reading = readDuration(duration);
-  return 'problem' in reading ? [refusal(pointer, reading.problem)] : [];
+  return 'problem' in reading ? [rejection(pointer, reading.problem)] : [];
 }
 
-export function timeoutRefusals(
+export function timeoutRejections(
   timeout: Json | undefined,
   pointer: string,
   components: Components,
-): readonly Refusal[] {
+): readonly Rejection[] {
   if (typeof timeout === 'string') {
     return field(components.timeouts, timeout) === undefined
-      ? [refusal(pointer, `use.timeouts has no timeout ${timeout}`)]
+      ? [rejection(pointer, `use.timeouts has no timeout ${timeout}`)]
       : [];
   }
-  return isObject(timeout) ? durationRefusals(field(timeout, 'after'), `${pointer}/after`) : [];
+  return isObject(timeout) ? durationRejections(field(timeout, 'after'), `${pointer}/after`) : [];
 }
 
-export function retryPolicyRefusals(policy: JsonObject, pointer: string): readonly Refusal[] {
+export function retryPolicyRejections(policy: JsonObject, pointer: string): readonly Rejection[] {
   const limit = objectField(policy, 'limit') ?? {};
   const jitter = objectField(policy, 'jitter') ?? {};
   const durations: readonly Located[] = [
@@ -83,8 +85,8 @@ export function retryPolicyRefusals(policy: JsonObject, pointer: string): readon
     [field(limit, 'duration'), `${pointer}/limit/duration`],
     [field(objectField(limit, 'attempt') ?? {}, 'duration'), `${pointer}/limit/attempt/duration`],
   ];
-  return expressionRefusals(field(policy, 'when'), `${pointer}/when`).concat(
-    expressionRefusals(field(policy, 'exceptWhen'), `${pointer}/exceptWhen`),
-    durations.flatMap(([duration, at]: Located) => durationRefusals(duration, at)),
+  return expressionRejections(field(policy, 'when'), `${pointer}/when`).concat(
+    expressionRejections(field(policy, 'exceptWhen'), `${pointer}/exceptWhen`),
+    durations.flatMap(([duration, at]: Located) => durationRejections(duration, at)),
   );
 }

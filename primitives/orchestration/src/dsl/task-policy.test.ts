@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { workflow } from '../testing/workflows.ts';
-import { refusalsOf } from './policy.ts';
+import { rejectionsOf } from './policy.ts';
 
-function refusedIn(tasks: string): readonly string[] {
-  return refusalsOf(workflow(`do:\n${tasks}`)).map(({ pointer, detail }) => `${pointer}: ${detail}`);
+function rejectedIn(tasks: string): readonly string[] {
+  return rejectionsOf(workflow(`do:\n${tasks}`)).map(({ pointer, detail }) => `${pointer}: ${detail}`);
 }
 
 describe('the policy of the tasks of a document', () => {
-  it('refuses run and emit tasks, and a task with no type', () => {
+  it('rejects run and emit tasks, and a task with no type', () => {
     expect(
-      refusedIn(`
+      rejectedIn(`
   - shell: { run: { shell: { command: ls } } }
   - announce: { emit: { event: { with: { type: done } } } }
   - dance: { tango: true }
@@ -22,14 +22,14 @@ describe('the policy of the tasks of a document', () => {
     ]);
   });
 
-  it.each(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mcp'])('refuses call: %s', (name) => {
-    expect(refusedIn(`  - fetch: { call: ${name}, with: {} }`)).toEqual([
+  it.each(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mcp'])('rejects call: %s', (name) => {
+    expect(rejectedIn(`  - fetch: { call: ${name}, with: {} }`)).toEqual([
       `/do/0/fetch/call: call: ${name} is not allowed: a workflow reaches the world only through the specs of its brain; call execute_spec`,
     ]);
   });
 
-  it('refuses a call of a function other than execute_spec', () => {
-    expect(refusedIn('  - log: { call: log, with: {} }')).toEqual([
+  it('rejects a call of a function other than execute_spec', () => {
+    expect(rejectedIn('  - log: { call: log, with: {} }')).toEqual([
       '/do/0/log/call: call: log names no function; the one function is execute_spec',
     ]);
   });
@@ -38,7 +38,7 @@ describe('the policy of the tasks of a document', () => {
 describe('the policy of execute_spec', () => {
   it('takes a primitive, a name and an input, as expressions or literals', () => {
     expect(
-      refusedIn(`
+      rejectedIn(`
   - summarize:
       call: execute_spec
       with: { primitive: inference, name: '\${ .spec }', input: { text: '\${ .text }' } }
@@ -46,9 +46,9 @@ describe('the policy of execute_spec', () => {
     ).toEqual([]);
   });
 
-  it('refuses arguments it does not take and arguments it lacks', () => {
+  it('rejects arguments it does not take and arguments it lacks', () => {
     expect(
-      refusedIn(`
+      rejectedIn(`
   - nothing: { call: execute_spec }
   - partial: { call: execute_spec, with: { name: 3, model: big } }
 `),
@@ -60,9 +60,9 @@ describe('the policy of execute_spec', () => {
     ]);
   });
 
-  it('refuses executing another workflow, and broken expressions in its arguments', () => {
+  it('rejects executing another workflow, and broken expressions in its arguments', () => {
     expect(
-      refusedIn(`
+      rejectedIn(`
   - nested: { call: execute_spec, with: { primitive: orchestration, name: other, input: ['\${ .a + }'] } }
 `),
     ).toEqual([
@@ -75,7 +75,7 @@ describe('the policy of execute_spec', () => {
 describe('the policy of listen', () => {
   it('takes one, all or any events by their attributes', () => {
     expect(
-      refusedIn(`
+      rejectedIn(`
   - one: { listen: { to: { one: { with: { type: approved } } } } }
   - all: { listen: { to: { all: [{ with: { type: a } }, { with: { type: b } }] }, read: envelope } }
   - any: { listen: { to: { any: [{ with: { data: '\${ .ok }' } }] } } }
@@ -83,9 +83,9 @@ describe('the policy of listen', () => {
     ).toEqual([]);
   });
 
-  it('refuses until, foreach, correlation and broken filters', () => {
+  it('rejects until, foreach, correlation and broken filters', () => {
     expect(
-      refusedIn(`
+      rejectedIn(`
   - until: { listen: { to: { any: [], until: .done } } }
   - each: { listen: { to: { one: { with: { type: a } } } }, foreach: { do: [] } }
   - correlated: { listen: { to: { all: [{ with: { type: a }, correlate: { id: { from: .id } } }, 3] } } }

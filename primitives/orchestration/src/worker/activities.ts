@@ -45,7 +45,7 @@ async function executeSpecFor(dependencies: ActivityDependencies, call: SpecCall
   const { workflowId, runId } = dependencies.currentRun();
   const { org, brain, caller, primitive, name, input, reference, run } = call;
   if (!workflowId.startsWith(`${org}/${brain}/`) || caller.org !== org) {
-    throw refusedTenancy(workflowId, org, brain);
+    throw rejectedTenancy(workflowId, org, brain);
   }
   const executionId = nestedExecutionId(runId, reference, run);
   const result = await Effect.runPromise(
@@ -82,7 +82,7 @@ async function settleFor(dependencies: ActivityDependencies, request: SettleRequ
   const { workflowId } = dependencies.currentRun();
   const { org, brain, spec, executionId, settlement } = request;
   if (workflowId !== workflowIdOf(org, brain, spec, executionId)) {
-    throw refusedTenancy(workflowId, org, brain);
+    throw rejectedTenancy(workflowId, org, brain);
   }
   const settled = await Effect.runPromise(
     Effect.result(dependencies.settle({ org, brain, id: executionId }, settlementOf(settlement))),
@@ -101,7 +101,7 @@ function settlementOf(settlement: RunSettlement): Settlement {
     : settlement;
 }
 
-function refusedTenancy(workflowId: string, org: string, brain: string): ApplicationFailure {
+function rejectedTenancy(workflowId: string, org: string, brain: string): ApplicationFailure {
   return ApplicationFailure.nonRetryable(
     `The run ${workflowId} may not act for the brain ${brain} of the org ${org}`,
     tenancyViolation,

@@ -10,21 +10,21 @@ import {
   type JsonObject,
 } from './json.ts';
 import {
-  durationRefusals,
-  expressionRefusals,
+  durationRejections,
+  expressionRejections,
   forbidden,
-  refusal,
-  retryPolicyRefusals,
-  templateRefusals,
-  timeoutRefusals,
-  transformRefusals,
+  rejection,
+  retryPolicyRejections,
+  templateRejections,
+  timeoutRejections,
+  transformRejections,
   type Components,
   type Located,
-  type Refusal,
+  type Rejection,
 } from './policy-checks.ts';
 import { kindOf, pointerTo, type TaskEntry, type TaskKind } from './tasks.ts';
 
-type OwnRefusals = (task: JsonObject, reference: string, components: Components) => readonly Refusal[];
+type OwnRejections = (task: JsonObject, reference: string, components: Components) => readonly Rejection[];
 
 export const executeSpecFunction = 'execute_spec';
 
@@ -32,40 +32,40 @@ const outboundCalls = new Set(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mc
 
 const executeSpecArguments = new Set(['primitive', 'name', 'input']);
 
-const refusalsByKind: Readonly<Record<TaskKind, OwnRefusals>> = {
+const rejectionsByKind: Readonly<Record<TaskKind, OwnRejections>> = {
   run: (_task, reference) => [
     forbidden(`${reference}/run`, 'run tasks (shell, script, container, workflow) are not allowed'),
   ],
   emit: (_task, reference) => [forbidden(`${reference}/emit`, 'emit is not supported in this version')],
-  call: (task, reference) => callRefusals(task, reference),
-  listen: (task, reference) => listenRefusals(task, reference),
-  raise: (task, reference, components) => raiseRefusals(task, reference, components),
-  wait: (task, reference) => durationRefusals(field(task, 'wait'), `${reference}/wait`),
-  set: (task, reference) => templateRefusals(field(task, 'set'), `${reference}/set`),
-  switch: (task, reference) => switchRefusals(task, reference),
+  call: (task, reference) => callRejections(task, reference),
+  listen: (task, reference) => listenRejections(task, reference),
+  raise: (task, reference, components) => raiseRejections(task, reference, components),
+  wait: (task, reference) => durationRejections(field(task, 'wait'), `${reference}/wait`),
+  set: (task, reference) => templateRejections(field(task, 'set'), `${reference}/set`),
+  switch: (task, reference) => switchRejections(task, reference),
   for: (task, reference) =>
-    expressionRefusals(field(objectField(task, 'for') ?? {}, 'in'), `${reference}/for/in`).concat(
-      expressionRefusals(field(task, 'while'), `${reference}/while`),
+    expressionRejections(field(objectField(task, 'for') ?? {}, 'in'), `${reference}/for/in`).concat(
+      expressionRejections(field(task, 'while'), `${reference}/while`),
     ),
   try: (task, reference, components) =>
-    catchRefusals(objectField(task, 'catch') ?? {}, `${reference}/catch`, components),
+    catchRejections(objectField(task, 'catch') ?? {}, `${reference}/catch`, components),
   fork: () => [],
   do: () => [],
 };
 
-export function ownRefusals({ task, reference }: TaskEntry, components: Components): readonly Refusal[] {
+export function ownRejections({ task, reference }: TaskEntry, components: Components): readonly Rejection[] {
   const kind = kindOf(task);
   return kind === undefined
-    ? [refusal(reference, 'The task has no type this runtime knows')]
-    : refusalsByKind[kind](task, reference, components);
+    ? [rejection(reference, 'The task has no type this runtime knows')]
+    : rejectionsByKind[kind](task, reference, components);
 }
 
-export function commonRefusals({ task, reference }: TaskEntry, components: Components): readonly Refusal[] {
-  return expressionRefusals(field(task, 'if'), `${reference}/if`).concat(
-    dataRefusals(task, reference, 'input', 'from'),
-    dataRefusals(task, reference, 'output', 'as'),
-    dataRefusals(task, reference, 'export', 'as'),
-    timeoutRefusals(field(task, 'timeout'), `${reference}/timeout`, components),
+export function commonRejections({ task, reference }: TaskEntry, components: Components): readonly Rejection[] {
+  return expressionRejections(field(task, 'if'), `${reference}/if`).concat(
+    dataRejections(task, reference, 'input', 'from'),
+    dataRejections(task, reference, 'output', 'as'),
+    dataRejections(task, reference, 'export', 'as'),
+    timeoutRejections(field(task, 'timeout'), `${reference}/timeout`, components),
   );
 }
 
@@ -78,16 +78,16 @@ export function eventFiltersOf(to: JsonObject, pointer: string): readonly Locate
   return (listField(to, strategy) ?? []).map((filter, index): Located => [filter, `${pointer}/${strategy}/${index}`]);
 }
 
-function dataRefusals(task: JsonObject, reference: string, part: string, transform: string): readonly Refusal[] {
+function dataRejections(task: JsonObject, reference: string, part: string, transform: string): readonly Rejection[] {
   const data = objectField(task, part) ?? {};
   const schema =
     field(data, 'schema') === undefined
       ? []
       : [forbidden(`${reference}/${part}/schema`, 'Task schemas are not checked in this version; leave them out')];
-  return schema.concat(transformRefusals(field(data, transform), `${reference}/${part}/${transform}`));
+  return schema.concat(transformRejections(field(data, transform), `${reference}/${part}/${transform}`));
 }
 
-function callRefusals(task: JsonObject, reference: string): readonly Refusal[] {
+function callRejections(task: JsonObject, reference: string): readonly Rejection[] {
   const name = textField(task, 'call') ?? '';
   if (outboundCalls.has(name)) {
     return [
@@ -98,28 +98,28 @@ function callRefusals(task: JsonObject, reference: string): readonly Refusal[] {
     ];
   }
   return name === executeSpecFunction
-    ? executeSpecRefusals(field(task, 'with'), `${reference}/with`)
+    ? executeSpecRejections(field(task, 'with'), `${reference}/with`)
     : [forbidden(`${reference}/call`, `call: ${name} names no function; the one function is ${executeSpecFunction}`)];
 }
 
-function executeSpecRefusals(arguments_: Json | undefined, pointer: string): readonly Refusal[] {
+function executeSpecRejections(arguments_: Json | undefined, pointer: string): readonly Rejection[] {
   if (!isObject(arguments_)) {
-    return [refusal(pointer, `${executeSpecFunction} takes with: { primitive, name, input }`)];
+    return [rejection(pointer, `${executeSpecFunction} takes with: { primitive, name, input }`)];
   }
   const unknown = Object.keys(arguments_)
     .filter((key) => !executeSpecArguments.has(key))
-    .map((key) => refusal(pointerTo(pointer, key), `${executeSpecFunction} takes no argument ${key}`));
+    .map((key) => rejection(pointerTo(pointer, key), `${executeSpecFunction} takes no argument ${key}`));
   const missing = ['primitive', 'name']
     .filter((key) => typeof field(arguments_, key) !== 'string')
-    .map((key) => refusal(pointerTo(pointer, key), `${executeSpecFunction} needs a string ${key}`));
+    .map((key) => rejection(pointerTo(pointer, key), `${executeSpecFunction} needs a string ${key}`));
   const workflow =
     field(arguments_, 'primitive') === 'orchestration'
       ? [forbidden(`${pointer}/primitive`, 'A workflow cannot execute another workflow in this version')]
       : [];
-  return unknown.concat(missing, workflow, templateRefusals(arguments_, pointer));
+  return unknown.concat(missing, workflow, templateRejections(arguments_, pointer));
 }
 
-function listenRefusals(task: JsonObject, reference: string): readonly Refusal[] {
+function listenRejections(task: JsonObject, reference: string): readonly Rejection[] {
   const to = objectField(objectField(task, 'listen') ?? {}, 'to') ?? {};
   const pointer = `${reference}/listen/to`;
   const until =
@@ -132,11 +132,11 @@ function listenRefusals(task: JsonObject, reference: string): readonly Refusal[]
       : [forbidden(`${reference}/foreach`, 'listen foreach is not supported in this version')];
   return until.concat(
     foreach,
-    eventFiltersOf(to, pointer).flatMap(([filter, at]: Located) => eventFilterRefusals(filter, at)),
+    eventFiltersOf(to, pointer).flatMap(([filter, at]: Located) => eventFilterRejections(filter, at)),
   );
 }
 
-function eventFilterRefusals(filter: Json | undefined, pointer: string): readonly Refusal[] {
+function eventFilterRejections(filter: Json | undefined, pointer: string): readonly Rejection[] {
   if (!isObject(filter)) {
     return [];
   }
@@ -144,42 +144,44 @@ function eventFilterRefusals(filter: Json | undefined, pointer: string): readonl
     field(filter, 'correlate') === undefined
       ? []
       : [forbidden(`${pointer}/correlate`, 'Correlating events is not supported in this version')];
-  return correlate.concat(templateRefusals(field(filter, 'with'), `${pointer}/with`));
+  return correlate.concat(templateRejections(field(filter, 'with'), `${pointer}/with`));
 }
 
-function raiseRefusals(task: JsonObject, reference: string, components: Components): readonly Refusal[] {
+function raiseRejections(task: JsonObject, reference: string, components: Components): readonly Rejection[] {
   const error = field(objectField(task, 'raise') ?? {}, 'error');
   const pointer = `${reference}/raise/error`;
   if (typeof error === 'string') {
-    return field(components.errors, error) === undefined ? [refusal(pointer, `use.errors has no error ${error}`)] : [];
+    return field(components.errors, error) === undefined
+      ? [rejection(pointer, `use.errors has no error ${error}`)]
+      : [];
   }
-  return templateRefusals(error, pointer);
+  return templateRejections(error, pointer);
 }
 
-function switchRefusals(task: JsonObject, reference: string): readonly Refusal[] {
+function switchRejections(task: JsonObject, reference: string): readonly Rejection[] {
   return (listField(task, 'switch') ?? []).flatMap((item, index) =>
     isObject(item)
       ? entriesOf(item).flatMap(([name, switchCase]: JsonEntry) =>
           isObject(switchCase)
-            ? expressionRefusals(field(switchCase, 'when'), pointerTo(`${reference}/switch/${index}`, name) + '/when')
+            ? expressionRejections(field(switchCase, 'when'), pointerTo(`${reference}/switch/${index}`, name) + '/when')
             : [],
         )
       : [],
   );
 }
 
-function catchRefusals(handler: JsonObject, pointer: string, components: Components): readonly Refusal[] {
-  return expressionRefusals(field(handler, 'when'), `${pointer}/when`).concat(
-    expressionRefusals(field(handler, 'exceptWhen'), `${pointer}/exceptWhen`),
-    retryRefusals(field(handler, 'retry'), `${pointer}/retry`, components),
+function catchRejections(handler: JsonObject, pointer: string, components: Components): readonly Rejection[] {
+  return expressionRejections(field(handler, 'when'), `${pointer}/when`).concat(
+    expressionRejections(field(handler, 'exceptWhen'), `${pointer}/exceptWhen`),
+    retryRejections(field(handler, 'retry'), `${pointer}/retry`, components),
   );
 }
 
-function retryRefusals(retry: Json | undefined, pointer: string, components: Components): readonly Refusal[] {
+function retryRejections(retry: Json | undefined, pointer: string, components: Components): readonly Rejection[] {
   if (typeof retry === 'string') {
     return field(components.retries, retry) === undefined
-      ? [refusal(pointer, `use.retries has no retry policy ${retry}`)]
+      ? [rejection(pointer, `use.retries has no retry policy ${retry}`)]
       : [];
   }
-  return isObject(retry) ? retryPolicyRefusals(retry, pointer) : [];
+  return isObject(retry) ? retryPolicyRejections(retry, pointer) : [];
 }

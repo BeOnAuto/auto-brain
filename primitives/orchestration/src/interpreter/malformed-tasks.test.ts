@@ -4,8 +4,8 @@ import { interpret, workflow } from '../testing/workflows.ts';
 
 describe('tasks a document reached the interpreter with, malformed', () => {
   it('raise a configuration error for a raise of no definition', async () => {
-    expect((await interpret(workflow('do:\n  - refuse: { raise: 3 }'))).settlement).toMatchObject({
-      detail: 'raise names no error with a type and a status (at /do/0/refuse)',
+    expect((await interpret(workflow('do:\n  - reject: { raise: 3 }'))).settlement).toMatchObject({
+      detail: 'raise names no error with a type and a status (at /do/0/reject)',
     });
   });
 
@@ -79,10 +79,10 @@ do:
 
   it('let a task with a timeout raise its own error', async () => {
     const document = workflow(
-      'do:\n  - refuse: { raise: { error: { type: x, status: 400 } }, timeout: { after: PT1S } }',
+      'do:\n  - reject: { raise: { error: { type: x, status: 400 } }, timeout: { after: PT1S } }',
     );
 
-    expect((await interpret(document)).settlement).toMatchObject({ detail: 'x (at /do/0/refuse)' });
+    expect((await interpret(document)).settlement).toMatchObject({ detail: 'x (at /do/0/reject)' });
   });
 
   it('draw a jitter from zero, or up to zero, when a bound is left out', async () => {

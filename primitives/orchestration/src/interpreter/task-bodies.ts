@@ -9,19 +9,19 @@ import { setTask, waitTask } from './simple-tasks.ts';
 
 export type TaskBody = (invocation: Invocation) => Body | Promise<Body>;
 
-const refusedTask: TaskBody = ({ entry }) => {
+const rejectedTask: TaskBody = ({ entry }) => {
   throw raised('configuration', 400, 'emit and run tasks are not allowed by this runtime', entry.reference);
 };
 
 const bodies: Readonly<Record<TaskKind, TaskBody>> = {
   call: callTask,
   do: doTask,
-  emit: refusedTask,
+  emit: rejectedTask,
   for: forTask,
   fork: forkTask,
   listen: listenTask,
   raise: raiseTask,
-  run: refusedTask,
+  run: rejectedTask,
   set: setTask,
   switch: switchTask,
   try: tryTask,

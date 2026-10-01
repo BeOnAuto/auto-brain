@@ -62,11 +62,11 @@ function freshlyCompiled(source: string): Compiled {
   try {
     const program = parse(source);
     validate(program);
-    const refused = callsIn(program).find((name) => hostDependentBuiltins.has(name));
-    return refused === undefined
+    const hostDependent = callsIn(program).find((name) => hostDependentBuiltins.has(name));
+    return hostDependent === undefined
       ? { program }
       : {
-          problem: `${source}: ${refused} reads the host's time zone, so it is not deterministic; use the UTC builtins`,
+          problem: `${source}: ${hostDependent} reads the host's time zone, so it is not deterministic; use the UTC builtins`,
         };
   } catch (error) {
     return { problem: `${source}: ${String(error)}` };

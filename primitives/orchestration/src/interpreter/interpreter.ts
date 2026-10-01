@@ -1,5 +1,5 @@
 import { field, jsonBytesOf, objectField, type Json } from '../dsl/json.ts';
-import { refusalsOf } from '../dsl/policy.ts';
+import { rejectionsOf } from '../dsl/policy.ts';
 import { transform } from './evaluation.ts';
 import type { WorkflowHost } from './host.ts';
 import { RaisedError, errorType } from './raised-error.ts';
@@ -58,13 +58,13 @@ async function outcomeOf(state: RunState): Promise<RunOutcome> {
 
 async function interpret(state: RunState): Promise<Json> {
   const { document, input } = state.run;
-  const refusals = refusalsOf(document).filter(({ forbidden }) => forbidden);
-  if (refusals.length > 0) {
+  const rejections = rejectionsOf(document).filter(({ forbidden }) => forbidden);
+  if (rejections.length > 0) {
     throw new RaisedError({
       type: errorType('configuration'),
       status: 400,
       title: 'The workflow document is not allowed by this runtime',
-      detail: refusals.map(({ pointer, detail }) => `${pointer}: ${detail}`).join('; '),
+      detail: rejections.map(({ pointer, detail }) => `${pointer}: ${detail}`).join('; '),
       instance: root,
     });
   }

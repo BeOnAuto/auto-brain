@@ -65,14 +65,14 @@ describe('the activity that executes a spec', () => {
     ]);
   });
 
-  it('refuses to act for a brain or an org its workflow does not belong to', async () => {
+  it('rejects a call for a brain or an org its workflow does not belong to', async () => {
     const activities = activitiesAnswering({ status: 'succeeded', output: null });
-    const refused = ApplicationFailure.nonRetryable(
+    const violation = ApplicationFailure.nonRetryable(
       `The run acme/alpha/flow/${executionId} may not act for the brain beta of the org acme`,
       'TenancyViolation',
     );
 
-    await expect(activities.executeSpec({ ...call, brain: 'beta' })).rejects.toEqual(refused);
+    await expect(activities.executeSpec({ ...call, brain: 'beta' })).rejects.toEqual(violation);
     await expect(activities.executeSpec({ ...call, caller: { ...acmeCaller, org: 'globex' } })).rejects.toThrow(
       'may not act for',
     );
@@ -139,7 +139,7 @@ describe('the activity that settles an execution', () => {
     expect(settled).toEqual([{ status: 'succeeded', output: 1, record: {} }, { status: 'failed' }]);
   });
 
-  it('refuses to settle an execution of another workflow', async () => {
+  it('rejects settling an execution of another workflow', async () => {
     const activities = activitiesSettling(() => Effect.die('not settling'));
 
     await expect(activities.settleExecution({ ...request, spec: 'other' })).rejects.toThrow('may not act for');

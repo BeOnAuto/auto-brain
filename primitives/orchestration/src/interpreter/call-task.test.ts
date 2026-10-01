@@ -89,14 +89,14 @@ describe('the arguments of execute_spec', () => {
       'do:\n  - x: { call: execute_spec, with: { primitive: "${ \\"orchestration\\" }", name: a } }',
       'A workflow cannot execute another workflow in this version',
     ],
-  ])('are refused when they evaluate to %s', async (_case, source, title) => {
+  ])('are rejected when they evaluate to %s', async (_case, source, title) => {
     const { settlement, commands } = await interpret(workflow(source));
 
     expect(settlement).toMatchObject({ status: 'rejected', detail: `${title} (at /do/0/x)` });
     expect(callsIn(commands)).toEqual([]);
   });
 
-  it('are refused when the input is larger than an execution takes', async () => {
+  it('are rejected when the input is larger than an execution takes', async () => {
     const { settlement } = await interpret(summarizing, { input: { text: 'x'.repeat(262_200) } });
 
     expect(settlement).toEqual({

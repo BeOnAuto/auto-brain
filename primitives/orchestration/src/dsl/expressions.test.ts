@@ -36,7 +36,7 @@ describe('the time of an expression', () => {
   it.each([
     ['now | localtime', 'localtime'],
     ['now | strflocaltime("%H")', 'strflocaltime'],
-  ])('refuses %s, which reads the time zone of the host', (expression, builtin) => {
+  ])('rejects %s, which reads the time zone of the host', (expression, builtin) => {
     expect(checkExpression(expression)).toBe(
       `${expression}: ${builtin} reads the host's time zone, so it is not deterministic; use the UTC builtins`,
     );

@@ -82,7 +82,7 @@ do:
 
 ## What a workflow may do
 
-| Allowed                                                                       | Refused in this version                                                                                  |
+| Allowed                                                                       | Rejected in this version                                                                                 |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `set`, `do`, `switch`, `for` (with `while`), `fork` (with `compete`)          | `run` (shell, script, container, workflow) and `emit`                                                    |
 | `call: execute_spec`                                                          | `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a`, `mcp`, or of any other function                  |
@@ -91,7 +91,7 @@ do:
 | `then: continue`, `exit`, `end`, or the name of a task in the same list       | executing an orchestration spec from a workflow                                                          |
 | `if`, `input.from`, `output.as`, `export.as`, `timeout`                       | the jq builtins `localtime` and `strflocaltime`; durations in years or months                            |
 
-Creating or updating a spec checks its document fully: it reads the YAML without aliases, anchors or tags, validates it against the DSL schema and its rules, builds its graph of tasks, and applies the policy above. Every problem is an issue under `/source` with the line, the column and the JSON Pointer of the place: `Line 8, column 12: at /do/0/loop/for: It needs in`. The interpreter applies the refusals again when a workflow starts, so a document that never went through the spec operations cannot run what the policy refuses.
+Creating or updating a spec checks its document fully: it reads the YAML without aliases, anchors or tags, validates it against the DSL schema and its rules, builds its graph of tasks, and applies the policy above. Every problem is an issue under `/source` with the line, the column and the JSON Pointer of the place: `Line 8, column 12: at /do/0/loop/for: It needs in`. The interpreter applies the rejections again when a workflow starts, so a document that never went through the spec operations cannot run what the policy rejects.
 
 ### Expressions
 
@@ -137,11 +137,11 @@ When the workflow ends, a last activity settles the execution through `execution
 
 Settling is an activity, so it happens once per execution however the worker fails: Temporal retries it, and settling again with the same result records nothing. A conflict, such as a workflow that ends before its execution recorded that it finishes later, is retried for about 15 minutes. A workflow that fails or is cancelled ends failed or cancelled in Temporal too, after settling.
 
-Limits keep a workflow inside what Temporal holds: a call refuses an input larger than an execution takes, an activity fails an output larger than 1 MiB, and a workflow stops with a `runtime` error before its history passes 40 MiB or 40000 events, or once it has run 10000 tasks without waiting for anything.
+Limits keep a workflow inside what Temporal holds: a call rejects an input larger than an execution takes, an activity fails an output larger than 1 MiB, and a workflow stops with a `runtime` error before its history passes 40 MiB or 40000 events, or once it has run 10000 tasks without waiting for anything.
 
 ### Determinism and replay
 
-The interpreter runs in Temporal's workflow sandbox and must make the same decisions when a history is replayed. The entry module removes Node's `Temporal` global, whose clock reads real time; expressions get the time of the workflow; `localtime` and `strflocaltime`, which read the time zone of the host, are refused; jitter draws from the deterministic random of the workflow.
+The interpreter runs in Temporal's workflow sandbox and must make the same decisions when a history is replayed. The entry module removes Node's `Temporal` global, whose clock reads real time; expressions get the time of the workflow; `localtime` and `strflocaltime`, which read the time zone of the host, are rejected; jitter draws from the deterministic random of the workflow.
 
 `histories/` holds histories recorded from the integration tests, and `src/workflow/replay.test.ts` replays every one against the interpreter, so a change that alters the commands a workflow issues fails a test. To record them again, deliberately, run `RECORD_HISTORIES=1 pnpm --filter @beonauto/orchestration test` and then `pnpm format`. A change to what the interpreter issues must keep old histories replaying: guard it with Temporal's patching (`patched`), keep the old histories, and add new ones.
 
@@ -194,7 +194,7 @@ yield * runOrchestrationWorker({ settings, executeSpec, settle: executionSettler
 ### Tenancy
 
 - The workflow id names the org, the brain, the spec and the execution; the workflow carries the org, brain, spec, its version and the execution id in its memo. They are not search attributes, which a server needs set up before it accepts them.
-- The activity that executes a spec refuses a call whose org or brain is not the one of its workflow id, or whose caller belongs to another org; the activity that settles refuses an execution other than the one of its workflow id.
+- The activity that executes a spec rejects a call whose org or brain is not the one of its workflow id, or whose caller belongs to another org; the activity that settles rejects an execution other than the one of its workflow id.
 - A nested execution acts for the caller who started the workflow, with the permissions that caller had then.
 
 ## Not in this version

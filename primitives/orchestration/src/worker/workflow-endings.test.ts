@@ -28,7 +28,7 @@ describe('a workflow that fails', () => {
   it('settles its execution rejected and fails, recording no stack trace of the worker', async () => {
     const executionId = idOf(1);
     const run = runFor(
-      workflow('do:\n  - refuse: { raise: { error: { type: https://example.com/no, status: 422, title: No } } }'),
+      workflow('do:\n  - reject: { raise: { error: { type: https://example.com/no, status: 422, title: No } } }'),
       executionId,
     );
     const { workflowId } = await Effect.runPromise(harness.orchestration.start(run));
@@ -44,11 +44,11 @@ describe('a workflow that fails', () => {
     expect(settledFor(executionId)).toEqual([
       {
         address: { org: 'acme', brain: 'alpha', id: executionId },
-        settlement: { status: 'rejected', reason: 'invalid_input', detail: 'No (at /do/0/refuse)' },
+        settlement: { status: 'rejected', reason: 'invalid_input', detail: 'No (at /do/0/reject)' },
       },
     ]);
     expect(history.events?.at(-1)?.workflowExecutionFailedEventAttributes?.failure).toMatchObject({
-      message: 'No (at /do/0/refuse)',
+      message: 'No (at /do/0/reject)',
       stackTrace: '',
       applicationFailureInfo: { type: 'UncaughtError', nonRetryable: true },
     });

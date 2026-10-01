@@ -8,7 +8,7 @@ describe('raise', () => {
   it('raises the error it defines, with expressions evaluated', async () => {
     const document = workflow(`
 do:
-  - refuse:
+  - reject:
       raise:
         error:
           type: https://example.com/errors/limit
@@ -31,26 +31,26 @@ use:
   errors:
     busy: { type: https://example.com/errors/busy, status: 503 }
 do:
-  - refuse:
+  - reject:
       raise: { error: busy }
 `);
 
     expect((await interpret(document)).settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'https://example.com/errors/busy (at /do/0/refuse)',
+      detail: 'https://example.com/errors/busy (at /do/0/reject)',
     });
   });
 
   it('raises a configuration error when it names no error with a type and a status', async () => {
-    const missing = workflow('do:\n  - refuse: { raise: { error: nowhere } }');
-    const shapeless = workflow('do:\n  - refuse: { raise: { error: { type: x, status: "${ \\"500\\" }" } } }');
+    const missing = workflow('do:\n  - reject: { raise: { error: nowhere } }');
+    const shapeless = workflow('do:\n  - reject: { raise: { error: { type: x, status: "${ \\"500\\" }" } } }');
 
     expect((await interpret(missing)).settlement).toMatchObject({
-      detail: 'raise names no error with a type and a status (at /do/0/refuse)',
+      detail: 'raise names no error with a type and a status (at /do/0/reject)',
     });
     expect((await interpret(shapeless)).settlement).toMatchObject({
-      detail: 'raise names no error with a type and a status (at /do/0/refuse)',
+      detail: 'raise names no error with a type and a status (at /do/0/reject)',
     });
   });
 });

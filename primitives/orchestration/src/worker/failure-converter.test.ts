@@ -30,7 +30,7 @@ describe('the failure converter', () => {
     });
   });
 
-  it('refuses a payload converter that is not one, and a failure that is not one', () => {
+  it('rejects a payload converter that is not one, and a failure that is not one', () => {
     expect(() => failureConverter.errorToFailure(new Error('x'), 'none')).toThrow(
       'A failure is converted with a payload converter',
     );
