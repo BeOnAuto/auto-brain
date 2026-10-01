@@ -3,6 +3,7 @@ import { Schema } from 'effect';
 
 const ListedToolSchema = Schema.Struct({
   name: Schema.String,
+  description: Schema.optionalKey(Schema.String),
   annotations: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
   inputSchema: Schema.Record(Schema.String, Schema.Unknown),
   outputSchema: Schema.Record(Schema.String, Schema.Unknown),

@@ -8,4 +8,5 @@ export {
   type ToolResult,
 } from './mcp-clients.ts';
 export { waitForever } from './notebook.ts';
-export { outputConformsTo, toolNamesIn } from './tool-listing.ts';
+export { danglingReferencesIn } from './self-contained.ts';
+export { listedTools, outputConformsTo, toolNamesIn, type ListedTool } from './tool-listing.ts';
