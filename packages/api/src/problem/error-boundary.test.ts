@@ -69,7 +69,13 @@ describe('a thrown value that is not an Error', () => {
     expect({
       contentTypeOptions: headers.get('x-content-type-options'),
       frameOptions: headers.get('x-frame-options'),
+      contentSecurityPolicy: headers.get('content-security-policy'),
       strictTransportSecurity: headers.get('strict-transport-security'),
-    }).toEqual({ contentTypeOptions: 'nosniff', frameOptions: 'SAMEORIGIN', strictTransportSecurity: null });
+    }).toEqual({
+      contentTypeOptions: 'nosniff',
+      frameOptions: 'DENY',
+      contentSecurityPolicy: "default-src 'none'; frame-ancestors 'none'",
+      strictTransportSecurity: null,
+    });
   });
 });

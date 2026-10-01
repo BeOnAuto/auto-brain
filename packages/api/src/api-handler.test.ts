@@ -124,11 +124,13 @@ describe('every response', () => {
     expect({
       contentTypeOptions: headers.get('x-content-type-options'),
       frameOptions: headers.get('x-frame-options'),
+      contentSecurityPolicy: headers.get('content-security-policy'),
       referrerPolicy: headers.get('referrer-policy'),
       strictTransportSecurity: headers.get('strict-transport-security'),
     }).toEqual({
       contentTypeOptions: 'nosniff',
-      frameOptions: 'SAMEORIGIN',
+      frameOptions: 'DENY',
+      contentSecurityPolicy: "default-src 'none'; frame-ancestors 'none'",
       referrerPolicy: 'no-referrer',
       strictTransportSecurity: null,
     });

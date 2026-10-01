@@ -4,7 +4,11 @@ import { secureHeaders } from 'hono/secure-headers';
 import type { ApiEnv } from '../api-env.ts';
 import { assignRequestId } from './request-id.ts';
 
-const securityHeaders = secureHeaders({ strictTransportSecurity: false });
+const securityHeaders = secureHeaders({
+  strictTransportSecurity: false,
+  xFrameOptions: 'DENY',
+  contentSecurityPolicy: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+});
 
 export const requestIdAndSecurityHeaders: readonly MiddlewareHandler<ApiEnv>[] = [assignRequestId, securityHeaders];
 
