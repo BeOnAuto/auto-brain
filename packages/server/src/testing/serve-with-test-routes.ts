@@ -1,4 +1,5 @@
-import { runServer, defaultServerOptions } from '../lifecycle.ts';
+import { defaultServerOptions } from '../lifecycle.ts';
+import { runServer } from '../run-server.ts';
 import { shortShutdownTimeoutMs } from './short-shutdown-timeout.ts';
 import { testRoutes } from './test-routes.ts';
 
