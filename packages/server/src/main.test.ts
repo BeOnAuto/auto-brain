@@ -59,6 +59,14 @@ const unconfiguredProviders = [
   'Model provider vertex-anthropic is not configured; it needs GOOGLE_VERTEX_PROJECT and GOOGLE_VERTEX_LOCATION',
 ];
 
+function messagesOf(stderr: string): readonly string[] {
+  return logLines(stderr).map(({ message }) => message);
+}
+
+function startInLocalMode(...after: readonly string[]): readonly unknown[] {
+  return [expect.stringMatching(/^Local mode is on: /u), ...unconfiguredProviders, ...after];
+}
+
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('serves health checks when launched with node and exits cleanly on SIGTERM', async () => {
     const child = spawnServer(mainModule, loopback);
@@ -81,10 +89,7 @@ describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
 
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
     expect(child.output().stderr).toMatch(/^\{"message":"Local mode is on: .*"level":"WARN".*\}\n/u);
-    expect(logLines(child.output().stderr).map(({ message }) => message)).toEqual([
-      expect.stringMatching(/^Local mode is on: /u),
-      ...unconfiguredProviders,
-    ]);
+    expect(messagesOf(child.output().stderr)).toEqual(startInLocalMode());
   });
 });
 
@@ -206,6 +211,7 @@ describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
       exitCode: 0,
     });
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(messagesOf(child.output().stderr)).toEqual(startInLocalMode());
   });
 
   it('logs what the MCP layer reports as a warning on stderr, answering with its JSON-RPC error', async () => {
@@ -226,5 +232,6 @@ describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
     expect(child.output().stderr).toMatch(
       /\n\{"message":"The MCP layer reported an error","level":"WARN".*"annotations":\{"error":"Unsupported Media Type: Content-Type must be application\/json"\}.*\}\n$/u,
     );
+    expect(messagesOf(child.output().stderr)).toEqual(startInLocalMode('The MCP layer reported an error'));
   });
 });
