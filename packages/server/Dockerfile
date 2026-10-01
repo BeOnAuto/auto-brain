@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1 AS dependencies
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends g++ make python3 \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --no-fund --no-audit pnpm@12.8.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -10,7 +13,11 @@ COPY packages/config/package.json packages/config/
 COPY packages/identity/package.json packages/identity/
 COPY packages/ledger/package.json packages/ledger/
 COPY packages/operations/package.json packages/operations/
-RUN pnpm install --frozen-lockfile --prod --no-optional --filter @beonauto/server...
+RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
+RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/local \
+  pnpm rebuild --filter @beonauto/server... sqlite3 \
+  && find node_modules/.pnpm -path '*/node_modules/sqlite3/build/Release/*' -prune ! -name node_sqlite3.node \
+    -exec rm -rf {} +
 
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
 LABEL org.opencontainers.image.licenses="Elastic-2.0"
