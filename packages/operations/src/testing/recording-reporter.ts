@@ -1,11 +1,8 @@
 import { Effect, Layer } from 'effect';
 
-import { IncidentReporter } from '../index.ts';
+import { IncidentReporter, type Incident } from '../index.ts';
 
-export interface ReportedIncident {
-  readonly incident: string;
-  readonly original: unknown;
-}
+export type ReportedIncident = Incident;
 
 export interface RecordingReporter {
   readonly layer: Layer.Layer<IncidentReporter>;
@@ -18,9 +15,9 @@ export function recordingReporter(): RecordingReporter {
     layer: Layer.succeed(
       IncidentReporter,
       IncidentReporter.of({
-        report: (incident, original) =>
+        report: (incident) =>
           Effect.sync(() => {
-            reported.push({ incident, original });
+            reported.push(incident);
           }),
       }),
     ),

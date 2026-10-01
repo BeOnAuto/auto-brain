@@ -27,6 +27,20 @@ export const labelBrain = defineCommand('org', {
   }),
 });
 
+export const relabelBrain = defineCommand('org', {
+  name: 'relabel_brain',
+  title: 'Relabel brain',
+  description: 'Gives a brain of the org a label named in the body.',
+  route: { method: 'POST', path: '/brain-labels' },
+  inputSchema: BrainLabelSchema,
+  outputSchema: BrainLabelSchema,
+  reasons: ['conflict'],
+  handle: Effect.fnUntraced(function* (labelled) {
+    yield* (yield* OrgWriter).execute('brain-labels', labelBook, labelled);
+    return labelled;
+  }),
+});
+
 export const getBrainLabel = defineQuery('org', {
   name: 'get_brain_label',
   title: 'Get brain label',

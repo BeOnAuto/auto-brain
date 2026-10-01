@@ -3,6 +3,7 @@ import { Effect, Layer } from 'effect';
 import {
   makeDispatcher,
   settle,
+  type BrainAddress,
   type BrainRequest,
   type CallerIdentity,
   type Dispatcher,
@@ -20,6 +21,7 @@ import { recordingReporter, type ReportedIncident } from './recording-reporter.t
 export interface HarnessOptions {
   readonly steps?: readonly PipelineStep[];
   readonly reporter?: Layer.Layer<IncidentReporter>;
+  readonly brains?: readonly BrainAddress[];
 }
 
 export interface Harness {
@@ -33,25 +35,24 @@ export interface Harness {
   ) => Promise<Settled>;
 }
 
-const knownBrains = [
+const knownBrains: readonly BrainAddress[] = [
   { org: 'acme', brain: 'alpha' },
   { org: 'acme', brain: 'beta' },
   { org: 'globex', brain: 'gamma' },
 ];
 
-export function harness({ steps = [], reporter }: HarnessOptions = {}): Harness {
+export function harness({ steps = [], reporter, brains = knownBrains }: HarnessOptions = {}): Harness {
   const ledger = memoryLedger();
   const recording = recordingReporter();
-  const services = Layer.mergeAll(ledger.layer, memoryBrainDirectory(knownBrains), reporter ?? recording.layer);
+  const services = Layer.mergeAll(ledger.layer, memoryBrainDirectory(brains), reporter ?? recording.layer);
+  const run = <A>(calls: Effect.Effect<A, never, DispatcherServices>) =>
+    Effect.runPromise(calls.pipe(Effect.provide(services)));
   return {
     dispatcher: makeDispatcher(steps),
     ledger,
     reported: recording.reported,
-    run: (calls) => Effect.runPromise(calls.pipe(Effect.provide(services))),
-    settleWithin: async (milliseconds, call) =>
-      settle(
-        await Effect.runPromiseExit(call.pipe(Effect.provide(services)), { signal: AbortSignal.timeout(milliseconds) }),
-      ),
+    run,
+    settleWithin: (milliseconds, call) => run(settle(call, AbortSignal.timeout(milliseconds))),
   };
 }
 
