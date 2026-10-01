@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { defaultServerOptions } from './lifecycle.ts';
 import { shortShutdownTimeoutMs } from './testing/short-shutdown-timeout.ts';
 import { spawnServer } from './testing/spawned-server.ts';
 
@@ -82,4 +83,19 @@ describe('a repeated stop signal', () => {
       });
     },
   );
+});
+
+describe('a server process that something keeps running after it stopped', () => {
+  it('exits 0 at the exit deadline and says why on stderr', async () => {
+    const child = spawnServer(serveWithTestRoutes, loopback);
+    const port = await child.port;
+    await (await fetch(`http://127.0.0.1:${port}/linger?ms=60000`)).text();
+
+    child.signal('SIGTERM');
+
+    expect(await child.exited).toBe(0);
+    expect(child.output().stderr).toContain(
+      `auto-brain was still running ${defaultServerOptions.exitDeadlineMs} ms after it stopped, so it exits now\n`,
+    );
+  });
 });

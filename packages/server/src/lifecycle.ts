@@ -20,12 +20,14 @@ export interface ServerOptions<R> {
   readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
   readonly routes: (runtime: AppRuntime<R>) => readonly RegisterRoutes[];
   readonly shutdownTimeoutMs: number;
+  readonly exitDeadlineMs: number;
 }
 
 export const defaultServerOptions: ServerOptions<never> = {
   runtimeLayer: () => Layer.empty,
   routes: () => [],
   shutdownTimeoutMs: 8000,
+  exitDeadlineMs: 1000,
 };
 
 async function startRuntime<R>(services: Layer.Layer<R>): Promise<AppRuntime<R>> {

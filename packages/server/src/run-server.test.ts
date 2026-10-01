@@ -12,6 +12,8 @@ const loopback = { HOST: '127.0.0.1', PORT: '0' };
 interface FakeProcess {
   readonly serverProcess: ServerProcess;
   readonly written: readonly string[];
+  readonly errors: readonly string[];
+  readonly exited: Promise<number>;
   readonly stopRequested: Promise<void>;
   readonly send: (signal: StopSignal) => void;
 }
@@ -19,9 +21,23 @@ interface FakeProcess {
 function fakeProcess(env: Environment = loopback): FakeProcess {
   const signals = new EventTarget();
   const written: string[] = [];
+  const errors: string[] = [];
+  const { promise: exited, resolve: exit } = Promise.withResolvers<number>();
   return {
-    serverProcess: { env, stdout: { write: (message) => written.push(message) } },
+    serverProcess: {
+      env,
+      stdout: { write: (message) => written.push(message) },
+      stderr: {
+        write: (message, flushed) => {
+          errors.push(message);
+          flushed();
+        },
+      },
+      exit,
+    },
     written,
+    errors,
+    exited,
     stopRequested: stopRequestedBy({
       on: (signal, listener) => {
         signals.addEventListener(signal, listener);
@@ -128,4 +144,16 @@ describe('runServer on a stop signal', () => {
       expect(acceptingAfterStartUp).toBe(false);
     },
   );
+});
+
+describe('runServer after it stopped', () => {
+  it('exits 0 at the exit deadline, saying why, when the process is still running', async () => {
+    const { serverProcess, stopRequested, send, exited, errors } = fakeProcess();
+    await runServer(serverProcess, { ...defaultServerOptions, exitDeadlineMs: 10 }, stopRequested);
+
+    send('SIGTERM');
+
+    expect(await exited).toBe(0);
+    expect(errors).toEqual(['auto-brain was still running 10 ms after it stopped, so it exits now\n']);
+  });
 });
