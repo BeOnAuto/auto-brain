@@ -61,6 +61,27 @@ do:
   });
 });
 
+describe('an event delivered again with the id of one already taken', () => {
+  it('is never taken, even when another event wakes a listener for its type', async () => {
+    const document = workflow(`
+do:
+  - first: { listen: { to: { one: { with: { type: ping } } } } }
+  - second: { listen: { to: { one: { with: { type: ping } } } } }
+`);
+
+    const { ending } = await interpret(document, {
+      started: deliveringAt(
+        [1, { id: 'a', type: 'ping', data: 'first a' }],
+        [2, { id: 'a', type: 'ping', data: 'a again' }],
+        [3, { id: 'b', type: 'pong', data: 'b' }],
+        [4, { id: 'c', type: 'ping', data: 'c' }],
+      ),
+    });
+
+    expect(ending).toStrictEqual({ kind: 'completed', output: ['c'] });
+  });
+});
+
 describe('the attributes of an event', () => {
   it('are compared as JSON, an attribute the event lacks being null', async () => {
     const document = workflow(`
