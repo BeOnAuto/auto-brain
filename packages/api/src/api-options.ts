@@ -1,6 +1,6 @@
 import type { Authenticator } from '@beonauto/identity';
 
-import type { ReportIncident } from './problem/fault-boundary.ts';
+import type { ReportIncident } from './problem/error-boundary.ts';
 import type { RegisterRoutes } from './routes.ts';
 
 export interface ApiOptions {

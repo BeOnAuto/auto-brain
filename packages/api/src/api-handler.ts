@@ -4,9 +4,9 @@ import { getRequestListener } from '@hono/node-server';
 
 import type { ApiOptions } from './api-options.ts';
 import { createApp } from './app.ts';
-import { withStandardHeaders } from './checks/standard-headers.ts';
-import { answerFaults } from './problem/fault-boundary.ts';
-import { answerUnreadableRequest } from './problem/unreadable-request.ts';
+import { withRequestIdAndSecurityHeaders } from './middleware/response-headers.ts';
+import { errorHandler } from './problem/error-boundary.ts';
+import { badRequestHandler } from './problem/unreadable-request.ts';
 
 export interface ApiHandler {
   readonly fetch: (request: Request) => Promise<Response>;
@@ -16,19 +16,19 @@ export interface ApiHandler {
 
 export function createApiHandler(options: ApiOptions): ApiHandler {
   const app = createApp(options);
-  const answerFault = answerFaults(options.reportIncident);
-  const answer = async (request: Request): Promise<Response> => {
+  const handleError = errorHandler(options.reportIncident);
+  const handle = async (request: Request): Promise<Response> => {
     try {
       return await app.fetch(request);
     } catch (thrown) {
-      return withStandardHeaders(answerFault(thrown));
+      return withRequestIdAndSecurityHeaders(handleError(thrown));
     }
   };
   return {
-    fetch: answer,
-    listener: getRequestListener(answer, {
+    fetch: handle,
+    listener: getRequestListener(handle, {
       overrideGlobalObjects: false,
-      errorHandler: () => withStandardHeaders(answerUnreadableRequest()),
+      errorHandler: () => withRequestIdAndSecurityHeaders(badRequestHandler()),
     }),
     close: () => Promise.resolve(),
   };

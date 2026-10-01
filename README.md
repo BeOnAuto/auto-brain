@@ -95,7 +95,7 @@ The image is multi-arch (amd64 and arm64), runs as a non-root user, keeps the le
 
 ### API keys
 
-Every path except `/health` needs an API key, sent as `Authorization: Bearer <key>`. Each key belongs to one org and carries its permissions and the brains it may reach. The key command creates one:
+Every path except `/health` needs an API key, sent as `Authorization: Bearer <key>`. Each key belongs to one org and carries its permissions and the brains it may access. The key command creates one:
 
 ```bash
 docker run --rm beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org <org>
@@ -103,11 +103,11 @@ docker run --rm beonauto/auto-brain:latest node packages/identity/src/key-comman
 
 Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `brain:read`, `brain:write`; all four by default) and `--brains` (comma-separated brain ids, or `*` for every brain, the default). The command prints the key once and the entry to add to `API_KEYS`; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file.
 
-Without `API_KEYS`, a server that listens on all interfaces, as the container does, refuses every path except `/health` with `401`.
+Without `API_KEYS`, a server that listens on all interfaces, as the container does, rejects every path except `/health` with `401`.
 
 ### Local mode
 
-When the server listens only on a loopback address (`localhost`, `127.0.0.1` or `::1`) and `API_KEYS` is not set, it runs in local mode: every request acts as a local developer with every permission in whichever org it names, and no key is needed. To stop a web page from driving it, local mode refuses a request whose `Host` header is not a localhost name, and, as always, a request whose `Origin` is not in `ALLOWED_ORIGINS`. `pnpm dev` listens on `127.0.0.1`, so it runs in local mode; `pnpm key -- --org <org>` creates a key from a checkout.
+When the server listens only on a loopback address (`localhost`, `127.0.0.1` or `::1`) and `API_KEYS` is not set, it runs in local mode: every request acts as a local developer with every permission in whichever org it names, and no key is needed. To stop a web page from driving it, local mode rejects a request whose `Host` header is not a localhost name, and, as always, a request whose `Origin` is not in `ALLOWED_ORIGINS`. `pnpm dev` listens on `127.0.0.1`, so it runs in local mode; `pnpm key -- --org <org>` creates a key from a checkout.
 
 ### Errors
 

@@ -8,7 +8,7 @@ import { compositionRoot } from './composition-root.ts';
 import { startServer } from './lifecycle.ts';
 import { request } from './testing/http-client.ts';
 import { appendMalformedBrainEvent } from './testing/malformed-brain-event.ts';
-import { spawnEntry } from './testing/spawned.ts';
+import { spawnServer } from './testing/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from './testing/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -49,14 +49,14 @@ describe('brains in the ledger file', () => {
   });
 
   it('are kept by a process that exits 0 on SIGTERM, and read by the next process', async () => {
-    const first = spawnEntry(mainModule, onLoopback(ledger.fileName));
+    const first = spawnServer(mainModule, onLoopback(ledger.fileName));
     const created = await request(await first.port, 'POST', '/v1/orgs/acme/brains', {
       body: { brain: 'alpha', name: 'Alpha' },
     });
     first.signal('SIGTERM');
     const firstExit = await first.exited;
 
-    const second = spawnEntry(mainModule, onLoopback(ledger.fileName));
+    const second = spawnServer(mainModule, onLoopback(ledger.fileName));
     const read = await request(await second.port, 'GET', alpha);
     second.signal('SIGTERM');
 
@@ -78,7 +78,7 @@ describe('a ledger that cannot be opened', () => {
   });
 
   it('stops the process with the error on stderr, a non-zero exit and nothing on stdout', async () => {
-    const child = spawnEntry(mainModule, onLoopback(aPathUnderAFile()));
+    const child = spawnServer(mainModule, onLoopback(aPathUnderAFile()));
 
     expect(await child.exited).toBe(1);
     expect(child.output().stdout).toBe('');
@@ -88,9 +88,9 @@ describe('a ledger that cannot be opened', () => {
   });
 });
 
-describe('a fault in the ledger', () => {
+describe('an error in the ledger', () => {
   it('answers 500 identified by the urn:uuid of an incident, logged with the operation, the org and the caller but not the input', async () => {
-    const child = spawnEntry(mainModule, onLoopback(ledger.fileName));
+    const child = spawnServer(mainModule, onLoopback(ledger.fileName));
     const port = await child.port;
     await appendMalformedBrainEvent(ledger.fileName, 'acme');
 
@@ -107,7 +107,7 @@ describe('a fault in the ledger', () => {
       type: 'https://on.auto/problems/internal',
       title: 'Internal error',
       status: 500,
-      detail: 'An unexpected fault occurred',
+      detail: 'An unexpected error occurred',
       reason: 'internal',
       instance: `urn:uuid:${String(incident)}`,
     });

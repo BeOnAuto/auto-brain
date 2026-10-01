@@ -1,12 +1,12 @@
 import type { AddressInfo } from 'node:net';
 
-import { createApiHandler, makeRunner, type RegisterRoutes, type Runner } from '@beonauto/api';
+import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@beonauto/api';
 import type { Environment } from '@beonauto/config';
 import { authenticatorFor } from '@beonauto/identity';
 import { Layer } from 'effect';
 
 import { createHttpServer, listen } from './http-server.ts';
-import { announceAccess, jsonLogsToStderr, logIncident } from './logging.ts';
+import { logAccessMode, jsonLogsToStderr, logIncident } from './logging.ts';
 import { readSettings, type Settings } from './settings.ts';
 import { shutDown } from './shutdown.ts';
 import { StartupError } from './startup-error.ts';
@@ -24,19 +24,19 @@ export interface ServerProcess {
 
 export interface ServerOptions<R> {
   readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
-  readonly routes: (runner: Runner<R>) => readonly RegisterRoutes[];
-  readonly shutdownDeadlineMs: number;
+  readonly routes: (runtime: AppRuntime<R>) => readonly RegisterRoutes[];
+  readonly shutdownTimeoutMs: number;
 }
 
-export const withoutOperations: ServerOptions<never> = {
+export const defaultServerOptions: ServerOptions<never> = {
   runtimeLayer: () => Layer.empty,
   routes: () => [],
-  shutdownDeadlineMs: 8000,
+  shutdownTimeoutMs: 8000,
 };
 
-async function startRuntime<R>(services: Layer.Layer<R>): Promise<Runner<R>> {
+async function startRuntime<R>(services: Layer.Layer<R>): Promise<AppRuntime<R>> {
   try {
-    return await makeRunner(services.pipe(Layer.provideMerge(jsonLogsToStderr)));
+    return await makeAppRuntime(services.pipe(Layer.provideMerge(jsonLogsToStderr)));
   } catch (failure) {
     throw new StartupError({ message: `The server's services could not start: ${String(failure)}` });
   }
@@ -45,21 +45,21 @@ async function startRuntime<R>(services: Layer.Layer<R>): Promise<Runner<R>> {
 export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
   const authenticator = authenticatorFor(settings);
-  const runner = await startRuntime(options.runtimeLayer(settings));
-  await runner.run(announceAccess(authenticator.mode));
+  const runtime = await startRuntime(options.runtimeLayer(settings));
+  await runtime.run(logAccessMode(authenticator.mode));
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,
     authenticator,
-    routes: options.routes(runner),
+    routes: options.routes(runtime),
     reportIncident: (id, error) => {
-      void runner.run(logIncident({ id, original: error }));
+      void runtime.run(logIncident({ id, original: error }));
     },
   });
   const server = createHttpServer(api.listener);
   try {
     await listen(server, settings.port, settings.host);
   } catch (error) {
-    await runner.dispose();
+    await runtime.dispose();
     throw error;
   }
   let stopping: Promise<void> | undefined;
@@ -68,8 +68,8 @@ export async function startServer<R>(environment: Environment, options: ServerOp
     stop: async () => {
       stopping ??= shutDown(
         server,
-        { closeApi: api.close, disposeRuntime: runner.dispose },
-        options.shutdownDeadlineMs,
+        { closeApi: api.close, disposeRuntime: runtime.dispose },
+        options.shutdownTimeoutMs,
       );
       await stopping;
     },

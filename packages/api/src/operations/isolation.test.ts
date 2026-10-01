@@ -11,7 +11,7 @@ function as(key: string): Readonly<Record<string, string>> {
 const alphaNotes = '/v1/orgs/acme/brains/alpha/notes';
 
 describe('isolation between orgs over HTTP', () => {
-  it('refuses a key of one org identically for an existing and a missing brain of another org', async () => {
+  it('rejects a key of one org identically for an existing and a missing brain of another org', async () => {
     const { handler } = await operationServer();
 
     const existing = await call(handler, '/v1/orgs/globex/brains/gamma/notes', { headers: as(acmeAdmin.key) });
@@ -24,7 +24,7 @@ describe('isolation between orgs over HTTP', () => {
     });
   });
 
-  it('refuses a key of one org on an org-scoped operation of another org', async () => {
+  it('rejects a key of one org on an org-scoped operation of another org', async () => {
     const { handler } = await operationServer();
 
     expect(await call(handler, '/v1/orgs/globex/brain-labels', { headers: as(acmeAdmin.key) })).toMatchObject({
@@ -32,7 +32,7 @@ describe('isolation between orgs over HTTP', () => {
     });
   });
 
-  it('lets the local developer reach any org', async () => {
+  it('lets the local developer access any org', async () => {
     const { handler } = await operationServer({
       authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }),
     });
@@ -46,7 +46,7 @@ describe('isolation between orgs over HTTP', () => {
 });
 
 describe('isolation between brains and permissions over HTTP', () => {
-  it('refuses a key limited to one brain on another brain of its own org', async () => {
+  it('rejects a key limited to one brain on another brain of its own org', async () => {
     const { handler } = await operationServer();
 
     expect(await call(handler, '/v1/orgs/acme/brains/beta/notes', { headers: as(acmeAlphaWriter.key) })).toMatchObject({
@@ -56,14 +56,14 @@ describe('isolation between brains and permissions over HTTP', () => {
     expect(await call(handler, alphaNotes, { headers: as(acmeAlphaWriter.key) })).toMatchObject({ status: 200 });
   });
 
-  it('refuses a key limited to one brain on an org operation that names another brain', async () => {
+  it('rejects a key limited to one brain on an org operation that names another brain', async () => {
     const { handler } = await operationServer();
     const labelBeta = { method: 'PUT', headers: as(acmeAlphaWriter.key), body: '{"label":"b"}' };
 
     expect(await call(handler, '/v1/orgs/acme/brains/beta/label', labelBeta)).toMatchObject({ status: 403 });
   });
 
-  it('refuses a read-only key on a command, and serves it a query', async () => {
+  it('rejects a read-only key on a command, and serves it a query', async () => {
     const { handler } = await operationServer();
     const addNote = { method: 'POST', headers: as(acmeReader.key), body: '{"name":"a","text":"b"}' };
 

@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { announceAccess, logIncident } from './logging.ts';
-import { spawnEntry } from './testing/spawned.ts';
+import { logAccessMode, logIncident } from './logging.ts';
+import { spawnServer } from './testing/spawned-server.ts';
 
 async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
   const lines: string[] = [];
@@ -18,9 +18,9 @@ async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly stri
 
 const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-routes.ts', import.meta.url));
 
-describe('announceAccess', () => {
+describe('logAccessMode', () => {
   it('says local mode is on', async () => {
-    const [line] = await linesLoggedBy(announceAccess('local'));
+    const [line] = await linesLoggedBy(logAccessMode('local'));
 
     expect(line).toContain('"level":"INFO"');
     expect(line).toContain(
@@ -29,14 +29,14 @@ describe('announceAccess', () => {
   });
 
   it('warns when the server is not in local mode and has no API keys', async () => {
-    const [line] = await linesLoggedBy(announceAccess('closed'));
+    const [line] = await linesLoggedBy(logAccessMode('closed'));
 
     expect(line).toContain('"level":"WARN"');
     expect(line).toContain('"message":"Local mode is off and no API keys are configured"');
   });
 
   it('says nothing when API keys are configured', async () => {
-    expect(await linesLoggedBy(announceAccess('keys'))).toEqual([]);
+    expect(await linesLoggedBy(logAccessMode('keys'))).toEqual([]);
   });
 });
 
@@ -51,7 +51,7 @@ describe('logIncident', () => {
     expect(line).toContain('Error: the ledger is unreachable\\n    at ');
   });
 
-  it('logs the operation, the org, the brain and the caller of the call that faulted', async () => {
+  it('logs the operation, the org, the brain and the caller of the call that failed', async () => {
     const call = { operation: 'add_note', org: 'acme', brain: 'alpha', caller: 'acme-admin' };
 
     const [line] = await linesLoggedBy(logIncident({ id: 'incident-2', original: 'not an error', call }));
@@ -65,7 +65,7 @@ describe('logIncident', () => {
 
 describe('the server process', () => {
   it('logs an unexpected error to stderr under the incident id it answers with', async () => {
-    const child = spawnEntry(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
+    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;
 
     const response = await fetch(`http://127.0.0.1:${port}/fail`);
@@ -81,7 +81,7 @@ describe('the server process', () => {
   });
 
   it('writes nothing more to stdout when a client abandons a slow request', async () => {
-    const child = spawnEntry(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
+    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;
 
     const abandoned = await fetch(`http://127.0.0.1:${port}/slow?ms=300`, { signal: AbortSignal.timeout(50) }).then(

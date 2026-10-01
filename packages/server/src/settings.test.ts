@@ -57,7 +57,7 @@ describe('readSettings', () => {
   });
 });
 
-describe('readSettings refuses invalid settings', () => {
+describe('readSettings rejects invalid settings', () => {
   it.each([
     'https://app.example.com/',
     'app.example.com',
@@ -67,7 +67,7 @@ describe('readSettings refuses invalid settings', () => {
     'null',
     '*',
     'https://a.example,,https://b.example',
-  ])('refuses ALLOWED_ORIGINS="%s" with a named error', (origins) => {
+  ])('rejects ALLOWED_ORIGINS="%s" with a named error', (origins) => {
     const error = errorFrom({ ALLOWED_ORIGINS: origins });
 
     expect(error).toMatchObject({ name: 'InvalidSettingsError', _tag: 'InvalidSettingsError' });
@@ -75,11 +75,11 @@ describe('readSettings refuses invalid settings', () => {
     expect(String(error)).toContain('Expected an origin such as https://app.example.com');
   });
 
-  it('refuses invalid API keys with the named error from the identity settings', () => {
+  it('rejects invalid API keys with the named error from the identity settings', () => {
     expect(String(errorFrom({ API_KEYS: '[{"id":"ci-1"}]' }))).toContain('InvalidApiKeysError: API_KEYS[0].org');
   });
 
-  it('refuses an invalid port with the named error from the server configuration', () => {
+  it('rejects an invalid port with the named error from the server configuration', () => {
     expect(errorFrom({ PORT: 'eighty' })).toEqual(new InvalidPortError('eighty'));
   });
 });

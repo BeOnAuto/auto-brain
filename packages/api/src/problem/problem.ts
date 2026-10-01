@@ -57,7 +57,7 @@ export function problemOf(reason: ProblemReason, detail: string, optional: Optio
 }
 
 export function internalErrorProblem(incident: string): Problem {
-  return problemOf('internal', 'An unexpected fault occurred', { instance: `urn:uuid:${incident}` });
+  return problemOf('internal', 'An unexpected error occurred', { instance: `urn:uuid:${incident}` });
 }
 
 export function problemResponse(problem: Problem, headers: Readonly<Record<string, string>> = {}): Response {

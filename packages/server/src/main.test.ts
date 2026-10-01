@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createApiKey } from '@beonauto/identity';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { spawnEntry } from './testing/spawned.ts';
+import { spawnServer } from './testing/spawned-server.ts';
 import { temporaryLedger } from './testing/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -26,7 +26,7 @@ const protectedPath = '/v1/orgs/demo/brains';
 
 describe('main', () => {
   it('serves health checks when launched with node and exits cleanly on SIGTERM', async () => {
-    const child = spawnEntry(mainModule, loopback);
+    const child = spawnServer(mainModule, loopback);
     const port = await child.port;
 
     const health = await fetch(`http://127.0.0.1:${port}/health`);
@@ -37,7 +37,7 @@ describe('main', () => {
   });
 
   it('writes exactly the listening line to stdout, and its logs as JSON lines to stderr', async () => {
-    const child = spawnEntry(mainModule, loopback);
+    const child = spawnServer(mainModule, loopback);
     const port = await child.port;
 
     await fetch(`http://127.0.0.1:${port}/health`);
@@ -49,9 +49,9 @@ describe('main', () => {
   });
 
   it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
-    'exits 0 on %s without waiting for the shutdown deadline',
+    'exits 0 on %s without waiting for the shutdown timeout',
     async (signal) => {
-      const child = spawnEntry(mainModule, loopback);
+      const child = spawnServer(mainModule, loopback);
       await child.port;
 
       const signalled = performance.now();
@@ -67,7 +67,7 @@ describe('main', () => {
 describe('main with settings', () => {
   it('requires an API key on protected paths once keys are configured, and says nothing about access', async () => {
     const { key, entry } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
-    const child = spawnEntry(mainModule, { ...loopback, API_KEYS: JSON.stringify([entry]) });
+    const child = spawnServer(mainModule, { ...loopback, API_KEYS: JSON.stringify([entry]) });
     const port = await child.port;
 
     const withoutKey = await fetch(`http://127.0.0.1:${port}${protectedPath}`);
@@ -83,9 +83,9 @@ describe('main with settings', () => {
   });
 
   it.each(invalidSettings)(
-    'refuses to start with %o, naming the error on stderr and writing nothing to stdout',
+    'does not start with %o, naming the error on stderr and writing nothing to stdout',
     async (env, error) => {
-      const child = spawnEntry(mainModule, { ...loopback, ...env });
+      const child = spawnServer(mainModule, { ...loopback, ...env });
 
       expect(await child.exited).toBe(1);
       expect(child.output().stdout).toBe('');

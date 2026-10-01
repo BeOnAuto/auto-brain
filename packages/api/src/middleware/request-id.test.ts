@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { call, echoRequestId, handlerWith } from '../testing/api-calls.ts';
+import { call, echoRequestId, createTestHandler } from '../testing/api-calls.ts';
 
 const uuid = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
 
 describe('the request id', () => {
   it('is a fresh UUID on every response, never the one a client sends', async () => {
-    const { handler } = handlerWith();
+    const { handler } = createTestHandler();
     const sent = '00000000-0000-4000-8000-000000000000';
 
     const first = await call(handler, '/health', { headers: { 'x-request-id': sent } });
@@ -19,7 +19,7 @@ describe('the request id', () => {
   });
 
   it('is the one a mounted route reads, along with the caller', async () => {
-    const { handler } = handlerWith({ routes: [echoRequestId] });
+    const { handler } = createTestHandler({ routes: [echoRequestId] });
 
     const answer = await call(handler, '/echo');
 

@@ -5,7 +5,7 @@ import { connect, type AddressInfo } from 'node:net';
 import { describe, expect, it } from 'vitest';
 
 import type { ApiHandler, RegisterRoutes } from './index.ts';
-import { call, echoRequestId, handlerWith } from './testing/api-calls.ts';
+import { call, echoRequestId, createTestHandler } from './testing/api-calls.ts';
 
 function portOf(address: Readonly<AddressInfo> | string | null): number {
   return typeof address === 'object' && address !== null ? address.port : 0;
@@ -56,7 +56,7 @@ const failWithoutAnError: RegisterRoutes = (routes) => {
 
 describe('the health check', () => {
   it('answers GET with exactly the JSON body it has always had', async () => {
-    const answer = await call(handlerWith().handler, '/health');
+    const answer = await call(createTestHandler().handler, '/health');
 
     expect({ status: answer.status, type: answer.headers.get('content-type'), text: answer.text }).toEqual({
       status: 200,
@@ -66,7 +66,7 @@ describe('the health check', () => {
   });
 
   it('answers HEAD with the same status and headers and no body', async () => {
-    const answer = await call(handlerWith().handler, '/health', { method: 'HEAD' });
+    const answer = await call(createTestHandler().handler, '/health', { method: 'HEAD' });
 
     expect({ status: answer.status, type: answer.headers.get('content-type'), text: answer.text }).toEqual({
       status: 200,
@@ -76,11 +76,14 @@ describe('the health check', () => {
   });
 
   it('ignores a query string', async () => {
-    expect(await call(handlerWith().handler, '/health?probe=1')).toMatchObject({ status: 200, body: { status: 'ok' } });
+    expect(await call(createTestHandler().handler, '/health?probe=1')).toMatchObject({
+      status: 200,
+      body: { status: 'ok' },
+    });
   });
 
-  it.each(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])('refuses %s with 405 and Allow: GET, HEAD', async (method) => {
-    const answer = await call(handlerWith().handler, '/health', { method });
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])('rejects %s with 405 and Allow: GET, HEAD', async (method) => {
+    const answer = await call(createTestHandler().handler, '/health', { method });
 
     expect(answer).toMatchObject({ status: 405, body: { reason: 'method_not_allowed', status: 405 } });
     expect(answer.headers.get('allow')).toBe('GET, HEAD');
@@ -90,7 +93,7 @@ describe('the health check', () => {
 
 describe('an unknown path', () => {
   it('answers 404 with a problem document', async () => {
-    const answer = await call(handlerWith().handler, '/nowhere');
+    const answer = await call(createTestHandler().handler, '/nowhere');
 
     expect(answer.status).toBe(404);
     expect(answer.headers.get('content-type')).toBe('application/problem+json');
@@ -110,7 +113,7 @@ describe('every response', () => {
     ['GET', '/nowhere'],
     ['POST', '/health'],
   ])('to %s %s carries the security headers without HSTS', async (method, path) => {
-    const { headers } = await call(handlerWith().handler, path, { method });
+    const { headers } = await call(createTestHandler().handler, path, { method });
 
     expect({
       contentTypeOptions: headers.get('x-content-type-options'),
@@ -128,18 +131,18 @@ describe('every response', () => {
 
 describe('mounted routes', () => {
   it('answer the method they were added for, and 405 with Allow for any other', async () => {
-    const { handler } = handlerWith({ routes: [createThings, echoRequestId] });
+    const { handler } = createTestHandler({ routes: [createThings, echoRequestId] });
 
     expect(await call(handler, '/things', { method: 'POST' })).toMatchObject({ status: 201, body: { created: true } });
-    const refused = await call(handler, '/things');
-    expect(refused).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
-    expect(refused.headers.get('allow')).toBe('POST');
+    const rejected = await call(handler, '/things');
+    expect(rejected).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
+    expect(rejected.headers.get('allow')).toBe('POST');
   });
 });
 
 describe('the Node listener', () => {
   it('serves the same API over node:http', async () => {
-    const { port, close } = await serve(handlerWith().handler);
+    const { port, close } = await serve(createTestHandler().handler);
 
     const response = await fetch(`http://127.0.0.1:${port}/health`);
     close();
@@ -148,7 +151,7 @@ describe('the Node listener', () => {
   });
 
   it('answers a thrown value that is not an Error with the 500 problem document, not plain text', async () => {
-    const { handler, reported } = handlerWith({ routes: [failWithoutAnError] });
+    const { handler, reported } = createTestHandler({ routes: [failWithoutAnError] });
     const { port, close } = await serve(handler);
 
     const response = await fetch(`http://127.0.0.1:${port}/fail`);
@@ -166,7 +169,7 @@ describe('the Node listener', () => {
     ['a Host header that is not a host name', 'GET /health HTTP/1.1\r\nHost: auto brain\r\nConnection: close\r\n\r\n'],
     ['no Host header at all', 'GET /health HTTP/1.0\r\n\r\n'],
   ])('answers a request with %s with a 400 problem document', async (_case, raw) => {
-    const { port, close } = await serve(handlerWith().handler);
+    const { port, close } = await serve(createTestHandler().handler);
 
     const response = await exchange(port, raw);
     close();
@@ -183,6 +186,6 @@ describe('the Node listener', () => {
 
 describe('closing the handler', () => {
   it('resolves', async () => {
-    await expect(handlerWith().handler.close()).resolves.toBeUndefined();
+    await expect(createTestHandler().handler.close()).resolves.toBeUndefined();
   });
 });

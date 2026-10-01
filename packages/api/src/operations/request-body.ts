@@ -2,7 +2,7 @@ import { Predicate, Result } from 'effect';
 
 import { problemOf, type Problem } from '../problem/problem.ts';
 
-export type Fields = Readonly<Record<string, unknown>>;
+export type JsonObject = Readonly<Record<string, unknown>>;
 
 const bodyLimit = 1024 * 1024;
 
@@ -50,7 +50,7 @@ function parsed(text: string): unknown {
   }
 }
 
-function fieldsOf(text: string, contentType: string | null): Result.Result<Fields, Problem> {
+function fieldsOf(text: string, contentType: string | null): Result.Result<JsonObject, Problem> {
   if (text === '') {
     return Result.succeed({});
   }
@@ -61,6 +61,6 @@ function fieldsOf(text: string, contentType: string | null): Result.Result<Field
   return Predicate.isReadonlyObject(body) ? Result.succeed(body) : notAnObject;
 }
 
-export async function jsonBodyOf(request: Request): Promise<Result.Result<Fields, Problem>> {
+export async function parseJsonBody(request: Request): Promise<Result.Result<JsonObject, Problem>> {
   return Result.flatMap(await bodyTextOf(request), (text) => fieldsOf(text, request.headers.get('content-type')));
 }

@@ -14,7 +14,7 @@ function unauthenticated(presentedKey: string | undefined): Response {
   });
 }
 
-export function requireCaller(authenticator: Authenticator): MiddlewareHandler<ApiEnv> {
+export function authenticate(authenticator: Authenticator): MiddlewareHandler<ApiEnv> {
   return (c, next) => {
     const presentedKey = bearerCredentials.exec(c.req.header('authorization') ?? '')?.[1];
     const principal = authenticator.authenticate(presentedKey);

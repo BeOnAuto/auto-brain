@@ -8,13 +8,13 @@ import {
 } from '@beonauto/operations/testing';
 import { Layer } from 'effect';
 
-import { makeRunner, operationRoutes, type ApiHandler, type Runner } from '../index.ts';
-import { handlerWith } from './api-calls.ts';
+import { makeAppRuntime, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
+import { createTestHandler } from './api-calls.ts';
 import { notebookOperations } from './notebook.ts';
 
 export interface OperationServer {
   readonly handler: ApiHandler;
-  readonly runner: Runner<DispatcherServices>;
+  readonly runtime: AppRuntime<DispatcherServices>;
   readonly incidents: () => readonly ReportedIncident[];
 }
 
@@ -63,12 +63,12 @@ export async function operationServer({
 }: OperationServerOptions = {}): Promise<OperationServer> {
   const ledger = memoryLedger();
   const recording = recordingReporter();
-  const runner = await makeRunner(Layer.mergeAll(ledger.layer, memoryBrainRegistry(knownBrains), recording.layer));
+  const runtime = await makeAppRuntime(Layer.mergeAll(ledger.layer, memoryBrainRegistry(knownBrains), recording.layer));
   const routes = operationRoutes({
     catalog: makeCatalog(operations),
     dispatcher: makeDispatcher([]),
-    runCall: runner.run,
+    runCall: runtime.run,
   });
-  const { handler } = handlerWith({ authenticator, routes: [routes] });
-  return { handler, runner, incidents: recording.reported };
+  const { handler } = createTestHandler({ authenticator, routes: [routes] });
+  return { handler, runtime, incidents: recording.reported };
 }

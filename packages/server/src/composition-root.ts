@@ -4,7 +4,7 @@ import { ledgerLayer } from '@beonauto/ledger';
 import { IncidentReporter, makeCatalog, makeDispatcher, type DispatcherServices } from '@beonauto/operations';
 import { Layer } from 'effect';
 
-import { withoutOperations, type ServerOptions } from './lifecycle.ts';
+import { defaultServerOptions, type ServerOptions } from './lifecycle.ts';
 import { logIncident } from './logging.ts';
 
 const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter.of({ report: logIncident }));
@@ -15,9 +15,9 @@ export function applicationLayer(ledgerFile: string): Layer.Layer<DispatcherServ
 }
 
 export const compositionRoot: ServerOptions<DispatcherServices> = {
-  ...withoutOperations,
+  ...defaultServerOptions,
   runtimeLayer: ({ ledgerFile }) => applicationLayer(ledgerFile),
-  routes: (runner) => [
-    operationRoutes({ catalog: makeCatalog(brainOperations), dispatcher: makeDispatcher([]), runCall: runner.run }),
+  routes: (runtime) => [
+    operationRoutes({ catalog: makeCatalog(brainOperations), dispatcher: makeDispatcher([]), runCall: runtime.run }),
   ],
 };

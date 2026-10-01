@@ -7,9 +7,9 @@ import { Result, Schema } from 'effect';
 import { KeyGrantSchema, createApiKey, type KeyGrant } from './api-key.ts';
 import { describeIssues, failureOf } from './issues.ts';
 
-export interface Terminal {
-  readonly print: (line: string) => void;
-  readonly complain: (line: string) => void;
+export interface Console {
+  readonly log: (line: string) => void;
+  readonly error: (line: string) => void;
 }
 
 interface KeyOptions {
@@ -64,15 +64,15 @@ function grantFrom(args: readonly string[]): KeyGrant | string {
   return Result.isSuccess(decoded) ? decoded.success : describeIssues(failureOf(decoded.failure.issue), asOption);
 }
 
-export function runKeyCommand(args: readonly string[], terminal: Terminal): number {
+export function runKeyCommand(args: readonly string[], console: Console): number {
   const grant = grantFrom(args);
   if (typeof grant === 'string') {
-    terminal.complain(grant);
-    terminal.complain(usage);
+    console.error(grant);
+    console.error(usage);
     return 1;
   }
   const { key, entry } = createApiKey(grant);
-  terminal.print(`API key, shown only this once: ${key}`);
-  terminal.print(`API_KEYS entry: ${JSON.stringify(entry)}`);
+  console.log(`API key, shown only this once: ${key}`);
+  console.log(`API_KEYS entry: ${JSON.stringify(entry)}`);
   return 0;
 }

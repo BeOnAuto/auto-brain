@@ -44,7 +44,7 @@ describe('readApiKeys', () => {
     ['an unknown permission', JSON.stringify([{ ...entry, permissions: ['admin'] }]), 'API_KEYS[0].permissions[0]'],
     ['a brain that breaks the grammar', JSON.stringify([{ ...entry, brains: ['B'] }]), 'API_KEYS[0].brains'],
     ['a missing field', JSON.stringify([{ id: 'ci-1' }]), 'API_KEYS[0].org: Missing key'],
-  ])('refuses %s with a named error that points at it', (_case, value, mention) => {
+  ])('rejects %s with a named error that points at it', (_case, value, mention) => {
     const error = errorFrom(value);
 
     expect(error).toBeInstanceOf(InvalidApiKeysError);

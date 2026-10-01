@@ -8,28 +8,28 @@ import { runKeyCommand } from './run-key-command.ts';
 
 interface Session {
   readonly exitCode: number;
-  readonly printed: readonly string[];
-  readonly complaints: readonly string[];
+  readonly logged: readonly string[];
+  readonly errors: readonly string[];
 }
 
 function run(...args: readonly string[]): Session {
-  const printed: string[] = [];
-  const complaints: string[] = [];
+  const logged: string[] = [];
+  const errors: string[] = [];
   const exitCode = runKeyCommand(args, {
-    print: (line) => {
-      printed.push(line);
+    log: (line) => {
+      logged.push(line);
     },
-    complain: (line) => {
-      complaints.push(line);
+    error: (line) => {
+      errors.push(line);
     },
   });
-  return { exitCode, printed, complaints };
+  return { exitCode, logged, errors };
 }
 
-function issued({ printed }: Session): { readonly key: string; readonly entry: string } {
+function issued({ logged }: Session): { readonly key: string; readonly entry: string } {
   return {
-    key: printed[0]?.replace('API key, shown only this once: ', '') ?? '',
-    entry: printed[1]?.replace('API_KEYS entry: ', '') ?? '',
+    key: logged[0]?.replace('API key, shown only this once: ', '') ?? '',
+    entry: logged[1]?.replace('API_KEYS entry: ', '') ?? '',
   };
 }
 
@@ -51,7 +51,7 @@ describe('the key command', () => {
     const { key, entry } = issued(session);
     const apiKeys = readApiKeys({ API_KEYS: `[${entry}]` });
 
-    expect(session).toMatchObject({ exitCode: 0, complaints: [] });
+    expect(session).toMatchObject({ exitCode: 0, errors: [] });
     expect(apiKeys).toMatchObject([
       { org: 'demo', permissions: ['org:read', 'org:write', 'brain:read', 'brain:write'], brains: '*' },
     ]);
@@ -86,13 +86,13 @@ describe('the key command', () => {
 });
 
 describe('the key command with bad arguments', () => {
-  it.each(badArguments)('refuses %j, saying why and how to call it, and prints no key', (args, reason) => {
+  it.each(badArguments)('rejects %j, saying why and how to call it, and prints no key', (args, reason) => {
     const session = run(...args);
 
     expect(session.exitCode).toBe(1);
-    expect(session.printed).toEqual([]);
-    expect(session.complaints[0]).toContain(reason);
-    expect(session.complaints[1]).toMatch(/^Arguments: --org <org id>/u);
+    expect(session.logged).toEqual([]);
+    expect(session.errors[0]).toContain(reason);
+    expect(session.errors[1]).toMatch(/^Arguments: --org <org id>/u);
   });
 });
 

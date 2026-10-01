@@ -44,7 +44,7 @@ afterEach(async () => {
 });
 
 describe('the brains of an org with API keys', () => {
-  it('refuses a key of another org with the same 403 for an existing and a missing brain', async () => {
+  it('rejects a key of another org with the same 403 for an existing and a missing brain', async () => {
     await request(server.port, 'POST', '/v1/orgs/globex/brains', {
       key: globexAdmin.key,
       body: { brain: 'gamma', name: 'G' },
@@ -64,7 +64,7 @@ describe('the brains of an org with API keys', () => {
 });
 
 describe('the permissions and brains of an API key', () => {
-  it('refuse a read-only key on create, and let it list', async () => {
+  it('reject a read-only key on create, and let it list', async () => {
     const creating = await request(server.port, 'POST', '/v1/orgs/acme/brains', {
       key: acmeReader.key,
       body: { brain: 'alpha', name: 'Alpha' },

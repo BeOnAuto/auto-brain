@@ -1,14 +1,14 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 
-export interface Spawned {
+export interface SpawnedServer {
   readonly port: Promise<number>;
   readonly exited: Promise<unknown>;
   readonly output: () => { readonly stdout: string; readonly stderr: string };
   readonly signal: (name: NodeJS.Signals) => void;
 }
 
-export function spawnEntry(entry: string, env: Readonly<Record<string, string>>): Spawned {
+export function spawnServer(entry: string, env: Readonly<Record<string, string>>): SpawnedServer {
   const child = spawn(process.execPath, [entry], {
     env: { ...process.env, ...env },
     stdio: ['ignore', 'pipe', 'pipe'],

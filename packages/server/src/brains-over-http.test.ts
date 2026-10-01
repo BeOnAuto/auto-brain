@@ -67,8 +67,8 @@ describe('the brains of an org over HTTP in local mode', () => {
   });
 });
 
-describe('the refusals of the brain operations over HTTP', () => {
-  it('refuses an id the org already has, even after it is retired, with 409', async () => {
+describe('the rejections of the brain operations over HTTP', () => {
+  it('rejects an id the org already has, even after it is retired, with 409', async () => {
     await create({ brain: 'alpha', name: 'Alpha' });
     const taken = await create({ brain: 'alpha', name: 'Again' });
     await request(server.port, 'POST', `${brains}/alpha/retire`);
@@ -94,7 +94,7 @@ describe('the refusals of the brain operations over HTTP', () => {
     ]);
   });
 
-  it('refuses invalid input with 422, pointing at every problem', async () => {
+  it('rejects invalid input with 422, pointing at every problem', async () => {
     expect(await create({ brain: 'A', name: '', colour: 'red' })).toMatchObject({
       status: 422,
       body: { reason: 'invalid_input', errors: [{ pointer: '/colour' }, { pointer: '/brain' }, { pointer: '/name' }] },
@@ -103,7 +103,7 @@ describe('the refusals of the brain operations over HTTP', () => {
 });
 
 describe('a retired brain over HTTP', () => {
-  it('refuses an update with 409', async () => {
+  it('rejects an update with 409', async () => {
     await create({ brain: 'alpha', name: 'Alpha' });
     await request(server.port, 'POST', `${brains}/alpha/retire`);
 

@@ -9,8 +9,8 @@ import { jsonLogsToStderr } from './logging.ts';
 const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
 const alphaExists = Effect.gen(function* () {
-  const directory = yield* BrainRegistry;
-  return yield* directory.exists({ org: 'acme', brain: 'alpha' });
+  const registry = yield* BrainRegistry;
+  return yield* registry.exists({ org: 'acme', brain: 'alpha' });
 });
 
 describe('the services the brain operations run on', () => {
@@ -27,7 +27,7 @@ describe('the services the brain operations run on', () => {
     ]);
   });
 
-  it('share one ledger, so the brain directory finds a brain the operations created', async () => {
+  it('share one ledger, so the brain registry finds a brain the operations created', async () => {
     const runtime = ManagedRuntime.make(applicationLayer(':memory:'));
     const created = makeDispatcher([]).dispatchToOrg(createBrain.registration, {
       caller: acmeAdmin,

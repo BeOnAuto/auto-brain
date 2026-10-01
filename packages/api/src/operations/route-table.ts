@@ -1,6 +1,6 @@
 import type { Catalog, OperationScope, Registration } from '@beonauto/operations';
 
-export interface MountedOperation {
+export interface RouteEntry {
   readonly registration: Registration;
   readonly path: string;
 }
@@ -33,7 +33,7 @@ function literalsFirst(left: Templated, right: Templated): number {
   return Number(first > second) - Number(first < second);
 }
 
-export function routeTableOf(catalog: Catalog): readonly MountedOperation[] {
+export function routeTableOf(catalog: Catalog): readonly RouteEntry[] {
   return catalog.operations
     .map(templateOf)
     .toSorted(literalsFirst)

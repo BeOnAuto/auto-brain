@@ -16,7 +16,7 @@ export interface Answer {
   readonly body: unknown;
 }
 
-export interface Reported {
+export interface ReportedIncident {
   readonly incident: string;
   readonly message: string;
   readonly cause: unknown;
@@ -27,8 +27,11 @@ const admitEveryone: Authenticator = {
   authenticate: () => ({ callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, brains: '*' }) }),
 };
 
-export function handlerWith(options: Partial<ApiOptions> = {}): { handler: ApiHandler; reported: Reported[] } {
-  const reported: Reported[] = [];
+export function createTestHandler(options: Partial<ApiOptions> = {}): {
+  handler: ApiHandler;
+  reported: ReportedIncident[];
+} {
+  const reported: ReportedIncident[] = [];
   const handler = createApiHandler({
     allowedOrigins: [],
     authenticator: admitEveryone,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { startServer, withoutOperations, type RunningServer } from './lifecycle.ts';
+import { startServer, defaultServerOptions, type RunningServer } from './lifecycle.ts';
 
 describe('HTTP server', () => {
   let server: RunningServer | undefined;
@@ -10,7 +10,7 @@ describe('HTTP server', () => {
   });
 
   async function request(path: string, method = 'GET'): Promise<{ status: number; body: unknown }> {
-    server = await startServer({ HOST: '127.0.0.1', PORT: '0' }, withoutOperations);
+    server = await startServer({ HOST: '127.0.0.1', PORT: '0' }, defaultServerOptions);
     const response = await fetch(`http://127.0.0.1:${server.port}${path}`, { method });
     return { status: response.status, body: await response.json() };
   }

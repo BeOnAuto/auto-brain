@@ -1,9 +1,9 @@
-import { runServer, withoutOperations } from '../lifecycle.ts';
-import { shortShutdownDeadlineMs } from './short-shutdown-deadline.ts';
+import { runServer, defaultServerOptions } from '../lifecycle.ts';
+import { shortShutdownTimeoutMs } from './short-shutdown-timeout.ts';
 import { testRoutes } from './test-routes.ts';
 
 await runServer(process, {
-  ...withoutOperations,
+  ...defaultServerOptions,
   routes: () => [testRoutes],
-  shutdownDeadlineMs: shortShutdownDeadlineMs,
+  shutdownTimeoutMs: shortShutdownTimeoutMs,
 });

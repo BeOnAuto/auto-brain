@@ -10,7 +10,7 @@ const accessNotices: Readonly<Record<AccessMode, Effect.Effect<void>>> = {
   keys: Effect.void,
 };
 
-export function announceAccess(mode: AccessMode): Effect.Effect<void> {
+export function logAccessMode(mode: AccessMode): Effect.Effect<void> {
   return accessNotices[mode];
 }
 

@@ -15,7 +15,7 @@ const catalogOrders: ReadonlyArray<readonly [string, Parameters<typeof makeCatal
 ];
 
 describe('the order of the routes of a catalog', () => {
-  it('lets the literal path answer with its own refusal', async () => {
+  it('lets the literal path answer with its own rejection', async () => {
     const { handler } = await operationServer();
 
     expect(await call(handler, `${notes}/latest`, { headers: asAdmin })).toMatchObject({

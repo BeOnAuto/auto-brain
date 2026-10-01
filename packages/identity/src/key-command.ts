@@ -1,10 +1,10 @@
 import { runKeyCommand } from './run-key-command.ts';
 
 process.exitCode = runKeyCommand(process.argv.slice(2), {
-  print: (line) => {
+  log: (line) => {
     process.stdout.write(`${line}\n`);
   },
-  complain: (line) => {
+  error: (line) => {
     process.stderr.write(`${line}\n`);
   },
 });

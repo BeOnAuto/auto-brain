@@ -3,16 +3,16 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { shortShutdownDeadlineMs } from './testing/short-shutdown-deadline.ts';
-import { spawnEntry } from './testing/spawned.ts';
+import { shortShutdownTimeoutMs } from './testing/short-shutdown-timeout.ts';
+import { spawnServer } from './testing/spawned-server.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-routes.ts', import.meta.url));
 
 const loopback = { HOST: '127.0.0.1', PORT: '0' };
 
 describe('shutting down the server process', () => {
-  it('lets a slow request finish after SIGTERM and exits 0 before the deadline', async () => {
-    const child = spawnEntry(serveWithTestRoutes, loopback);
+  it('lets a slow request finish after SIGTERM and exits 0 before the shutdown timeout', async () => {
+    const child = spawnServer(serveWithTestRoutes, loopback);
     const port = await child.port;
     const slow = fetch(`http://127.0.0.1:${port}/slow?ms=500`);
     await setTimeout(100);
@@ -27,11 +27,11 @@ describe('shutting down the server process', () => {
       body: { slept: 500 },
       exitCode: 0,
     });
-    expect(performance.now() - signalled).toBeLessThan(shortShutdownDeadlineMs);
+    expect(performance.now() - signalled).toBeLessThan(shortShutdownTimeoutMs);
   });
 
-  it('cuts off a request still running at the deadline and exits 0', async () => {
-    const child = spawnEntry(serveWithTestRoutes, loopback);
+  it('cuts off a request still running at the shutdown timeout and exits 0', async () => {
+    const child = spawnServer(serveWithTestRoutes, loopback);
     const port = await child.port;
     const endless = fetch(`http://127.0.0.1:${port}/slow?ms=60000`).then(
       () => 'answered',
@@ -45,7 +45,7 @@ describe('shutting down the server process', () => {
     const elapsed = performance.now() - signalled;
 
     expect({ exitCode, request: await endless }).toEqual({ exitCode: 0, request: 'cut off' });
-    expect(elapsed).toBeGreaterThanOrEqual(shortShutdownDeadlineMs - 50);
-    expect(elapsed).toBeLessThan(shortShutdownDeadlineMs + 1500);
+    expect(elapsed).toBeGreaterThanOrEqual(shortShutdownTimeoutMs - 50);
+    expect(elapsed).toBeLessThan(shortShutdownTimeoutMs + 1500);
   });
 });

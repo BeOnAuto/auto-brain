@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RegisterRoutes } from '../index.ts';
-import { call, handlerWith } from '../testing/api-calls.ts';
+import { call, createTestHandler } from '../testing/api-calls.ts';
 
 const uuid = /^[\da-f]{8}-[\da-f]{4}-7[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u;
 
@@ -21,7 +21,7 @@ function internalProblemWith(incident: string | undefined): Readonly<Record<stri
     type: 'https://on.auto/problems/internal',
     title: 'Internal error',
     status: 500,
-    detail: 'An unexpected fault occurred',
+    detail: 'An unexpected error occurred',
     reason: 'internal',
     instance: `urn:uuid:${String(incident)}`,
   };
@@ -29,7 +29,7 @@ function internalProblemWith(incident: string | undefined): Readonly<Record<stri
 
 describe('an unexpected error', () => {
   it('answers 500 identified only by the urn:uuid of an incident, and reports the error under that id', async () => {
-    const { handler, reported } = handlerWith({ routes: [failing] });
+    const { handler, reported } = createTestHandler({ routes: [failing] });
 
     const answer = await call(handler, '/error');
     const [report] = reported;
@@ -45,7 +45,7 @@ describe('an unexpected error', () => {
 
 describe('a thrown value that is not an Error', () => {
   it('answers the same 500 problem document, and reports an Error whose cause is the value', async () => {
-    const { handler, reported } = handlerWith({ routes: [failing] });
+    const { handler, reported } = createTestHandler({ routes: [failing] });
 
     const answer = await call(handler, '/not-an-error');
     const [report] = reported;
@@ -61,7 +61,7 @@ describe('a thrown value that is not an Error', () => {
   });
 
   it('answers with the request id and the security headers every other response carries', async () => {
-    const { handler } = handlerWith({ routes: [failing] });
+    const { handler } = createTestHandler({ routes: [failing] });
 
     const { headers } = await call(handler, '/not-an-error');
 

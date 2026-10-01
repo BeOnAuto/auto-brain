@@ -5,7 +5,7 @@ import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
 
 type Headers = Readonly<Record<string, string>>;
 
-interface Refusal {
+interface ExpectedRejection {
   readonly status: number;
   readonly reason: string;
 }
@@ -18,7 +18,7 @@ const notes = '/v1/orgs/acme/brains/alpha/notes';
 
 const mebibyte = 1024 * 1024;
 
-const refusedBodies: ReadonlyArray<readonly [string, Headers, string, Refusal]> = [
+const rejectedBodies: ReadonlyArray<readonly [string, Headers, string, ExpectedRejection]> = [
   [
     'a body of another media type',
     { ...asAdmin, 'content-type': 'text/plain' },
@@ -40,7 +40,7 @@ describe('the encoding of a body', () => {
     });
   });
 
-  it.each(refusedBodies)('refuses %s', async (_case, headers, body, { status, reason }) => {
+  it.each(rejectedBodies)('rejects %s', async (_case, headers, body, { status, reason }) => {
     const { handler } = await operationServer();
 
     expect(await call(handler, notes, { method: 'POST', headers, body })).toMatchObject({ status, body: { reason } });
@@ -76,7 +76,7 @@ describe('the encoding of a body', () => {
 });
 
 describe('the size of a body', () => {
-  it('is refused once it passes 1 MiB while being read, whatever length the request declares', async () => {
+  it('is rejected once it passes 1 MiB while being read, whatever length the request declares', async () => {
     const { handler } = await operationServer();
     const body = JSON.stringify({ name: 'big', text: 'x'.repeat(mebibyte) });
 

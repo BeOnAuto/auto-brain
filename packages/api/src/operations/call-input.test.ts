@@ -22,7 +22,7 @@ describe('the input of a GET operation', () => {
     ['a value the schema cannot decode', `${notes}?limit=many`, '/limit'],
     ['an unknown field', `${notes}?colour=red`, '/colour'],
     ['a field named __proto__', `${notes}?__proto__=x`, '/__proto__'],
-  ])('is refused with 422 for %s, pointing at it', async (_case, path, pointer) => {
+  ])('is rejected with 422 for %s, pointing at it', async (_case, path, pointer) => {
     const { handler } = await operationServer();
 
     expect(await call(handler, path, { headers: asAdmin })).toMatchObject({
@@ -34,7 +34,7 @@ describe('the input of a GET operation', () => {
   it.each([
     ['in the query string twice', `${notes}?limit=1&limit=2`, 'limit'],
     ['in the path and the query string', `${notes}/first?name=other`, 'name'],
-  ])('is refused as a bad request for a field given %s', async (_case, path, field) => {
+  ])('is rejected as a bad request for a field given %s', async (_case, path, field) => {
     const { handler } = await operationServer();
 
     expect(await call(handler, path, { headers: asAdmin })).toMatchObject({
@@ -56,7 +56,7 @@ describe('the input of a POST or PUT operation', () => {
     });
   });
 
-  it('refuses a field given in the path and in the body as a bad request', async () => {
+  it('rejects a field given in the path and in the body as a bad request', async () => {
     const { handler } = await operationServer();
     const body = '{"brain":"alpha","label":"b"}';
 

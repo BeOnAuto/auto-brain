@@ -62,11 +62,11 @@ describe('authenticatorFor with API keys', () => {
     ['an unknown id', admin.key.replace('acme-admin', 'acme-other')],
     ['a malformed key', 'not-a-key'],
     ['the digest itself', reader.entry.sha256],
-  ])('refuses %s', (_case, presentedKey) => {
+  ])('rejects %s', (_case, presentedKey) => {
     expect(authenticatorFor({ host: '0.0.0.0', apiKeys: keys }).authenticate(presentedKey)).toBeUndefined();
   });
 
-  it('refuses every key when the configured list is empty', () => {
+  it('rejects every key when the configured list is empty', () => {
     expect(authenticatorFor({ host: '127.0.0.1', apiKeys: [] }).authenticate(reader.key)).toBeUndefined();
   });
 });

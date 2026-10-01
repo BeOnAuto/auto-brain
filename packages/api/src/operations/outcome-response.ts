@@ -2,13 +2,13 @@ import type { Rejected, Settled } from '@beonauto/operations';
 
 import { internalErrorProblem, problemOf, problemResponse, type OptionalProblemMembers } from '../problem/problem.ts';
 
-const stopping = problemOf('unavailable', 'The server is stopping');
+const serverStopping = problemOf('unavailable', 'The server is stopping');
 
 function optionalMembersOf({ issues }: Rejected): OptionalProblemMembers {
   return issues === undefined ? {} : { errors: issues };
 }
 
-export function responseTo(settled: Settled, successStatus: number): Response {
+export function toHttpResponse(settled: Settled, successStatus: number): Response {
   if (settled.status === 'succeeded') {
     return Response.json(settled.output, { status: successStatus, headers: { 'cache-control': 'no-store' } });
   }
@@ -18,5 +18,5 @@ export function responseTo(settled: Settled, successStatus: number): Response {
   if (settled.status === 'failed') {
     return problemResponse(internalErrorProblem(settled.incident));
   }
-  return problemResponse(stopping);
+  return problemResponse(serverStopping);
 }

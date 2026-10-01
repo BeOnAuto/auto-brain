@@ -13,8 +13,8 @@ import type { Context } from 'hono';
 import type { ApiEnv } from '../api-env.ts';
 import { problemResponse } from '../problem/problem.ts';
 import type { RegisterRoutes, RouteHandler } from '../routes.ts';
-import { callInputOf, type CallInput } from './call-input.ts';
-import { responseTo } from './outcome-response.ts';
+import { parseCallInput, type CallInput } from './call-input.ts';
+import { toHttpResponse } from './outcome-response.ts';
 import { routeTableOf } from './route-table.ts';
 
 export type RunCall = (call: Effect.Effect<Settled, never, DispatcherServices>) => Promise<Settled>;
@@ -40,12 +40,12 @@ function dispatched(
 
 function handlerFor(registration: Registration, { dispatcher, runCall }: OperationRoutesOptions): RouteHandler {
   return async (c) => {
-    const given = await callInputOf(c, registration);
+    const given = await parseCallInput(c, registration);
     if (Result.isFailure(given)) {
       return problemResponse(given.failure);
     }
     const settled = await runCall(settle(dispatched(dispatcher, registration, c, given.success), c.req.raw.signal));
-    return responseTo(settled, registration.successStatus);
+    return toHttpResponse(settled, registration.successStatus);
   };
 }
 

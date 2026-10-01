@@ -55,18 +55,18 @@ describe('the methods of an operation path', () => {
     expect({ status: head.status, text: head.text }).toEqual({ status: 200, text: '' });
   });
 
-  it('are listed in Allow when a method no operation answers is refused with 405', async () => {
+  it('are listed in Allow when a method no operation answers is rejected with 405', async () => {
     const { handler } = await operationServer();
 
-    const refused = await call(handler, notes, { method: 'DELETE', headers: asAdmin });
+    const rejected = await call(handler, notes, { method: 'DELETE', headers: asAdmin });
 
-    expect(refused).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
-    expect(refused.headers.get('allow')).toBe('GET, HEAD, POST');
+    expect(rejected).toMatchObject({ status: 405, body: { reason: 'method_not_allowed' } });
+    expect(rejected.headers.get('allow')).toBe('GET, HEAD, POST');
   });
 });
 
-describe('a call that is refused or faults', () => {
-  it('answers a declared refusal with its problem document', async () => {
+describe('a call that is rejected or fails', () => {
+  it('answers a declared rejection with its problem document', async () => {
     const { handler } = await operationServer();
 
     expect(await call(handler, `${notes}/missing`, { headers: asAdmin })).toMatchObject({
@@ -95,7 +95,7 @@ describe('a call that is refused or faults', () => {
     });
   });
 
-  it('answers a fault with a 500 problem identified by the urn:uuid of the incident it was reported under', async () => {
+  it('answers a failure with a 500 problem identified by the urn:uuid of the incident it was reported under', async () => {
     const { handler, incidents } = await operationServer();
 
     const answer = await call(handler, '/v1/orgs/acme/brains/alpha/broken', { headers: asAdmin });
@@ -111,8 +111,8 @@ describe('a call that is refused or faults', () => {
 
 describe('a call that cannot run', () => {
   it('answers 503 once the runtime is disposed', async () => {
-    const { handler, runner } = await operationServer();
-    await runner.dispose();
+    const { handler, runtime } = await operationServer();
+    await runtime.dispose();
 
     expect(await call(handler, notes, { headers: asAdmin })).toMatchObject({
       status: 503,
@@ -120,7 +120,7 @@ describe('a call that cannot run', () => {
     });
   });
 
-  it('is stopped when the client goes away, and reports no incident', async () => {
+  it('is cancelled when the client goes away, and reports no incident', async () => {
     const { handler, incidents } = await operationServer();
     const request = new Request('http://localhost/v1/orgs/acme/brains/alpha/waiting', {
       headers: asAdmin,
