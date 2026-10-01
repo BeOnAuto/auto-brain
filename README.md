@@ -10,7 +10,7 @@ A business brain carries out the way your team works. It gathers context, calls 
 
 auto-brain is the server a brain runs on. Auto can host it for you, or you can run it yourself from one container image.
 
-> **Status: early development.** The server, its container image and the release pipeline are in place, and the server can create, list, read, update and retire an org's brains on the ledger. The primitives below are being designed and built, so auto-brain isn't ready for production use yet.
+> **Status: early development.** The server, its container image and the release pipeline are in place. The server can create, list, read, update and retire an org's brains on the ledger, and run inference specs, which call a language model, in them. The other primitives below are being designed and built, so auto-brain isn't ready for production use yet.
 
 ## How a brain works
 
@@ -69,6 +69,45 @@ curl http://localhost:8080/v1/orgs/acme/brains/sales
 
 `PUT /v1/orgs/acme/brains/sales` replaces the name and the description, and `POST /v1/orgs/acme/brains/sales/retire` retires the brain for good. `pnpm dev` keeps the ledger in `packages/server/.data/ledger.db`, so the brains are still there after a restart.
 
+### How it works
+
+A brain does its work through specs: named, versioned documents, each for one primitive. An inference spec calls a language model, so give the server a key for a provider before it starts:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+pnpm dev
+```
+
+Write a spec, `greeting.md`: YAML front matter that names the model, then a Liquid template that renders the prompt from the input.
+
+```markdown
+---
+description: Greets a customer
+model: anthropic/claude-sonnet-4-5
+input:
+  schema: { type: object, properties: { name: { type: string } }, required: [name] }
+---
+
+{% system %}You write one warm sentence.{% endsystem %}
+Greet {{ input.name }}, whose order shipped today, {{ today }}.
+```
+
+Create a brain, create the spec in it, execute the spec, and read the execution back with the record of the call: the rendered prompt, the model, the tokens it used and how long it took.
+
+```bash
+curl --request POST http://localhost:8080/v1/orgs/acme/brains \
+  --header 'content-type: application/json' --data '{"brain":"sales","name":"Sales"}'
+jq --null-input --rawfile source greeting.md '{name: "greeting", source: $source}' |
+  curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference \
+    --header 'content-type: application/json' --data @-
+curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference/greeting/execute \
+  --header 'content-type: application/json' \
+  --data '{"input":{"name":"Ada"},"execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"}'
+curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
+```
+
+A document with a problem is rejected with every problem and its line; an input that does not match the schema is rejected before any model is called; a provider that is not configured answers `503`, naming the settings it lacks. The [inference README](primitives/inference/README.md) describes the document, the template language, every rejection and the record, and the [specs README](packages/specs/README.md) the operations. `scripts/try-inference.sh <base-url> <provider/model>` runs the same steps with a spec of its own against a server that is already running.
+
 ### In a container
 
 Every release publishes the image to Docker Hub (`beonauto/auto-brain`) and GitHub Container Registry (`ghcr.io/beonauto/auto-brain`). A container needs two things: an [API key](#api-keys), because it listens on every interface, and a volume on `/data`, where it keeps the ledger.
@@ -91,6 +130,20 @@ Without a named volume, Docker gives each container a fresh anonymous volume, so
 | `API_KEYS`        | none                                             | The API keys the server accepts, as a compact JSON array of entries made by the key command                                    |
 | `LEDGER_FILE`     | `data/ledger.db`; `/data/ledger.db` in the image | The SQLite database file of the ledger; its directory is created when missing                                                  |
 | `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)                                              |
+
+The [inference primitive](primitives/inference) calls language models with these settings, all optional. A provider whose settings are absent is not configured, and a spec that names it is rejected as `unavailable` when it runs; the server logs, when it starts, which providers are configured and what each of the others lacks. Settings it cannot read stop it at start-up, naming the setting and never its value. The primitive's README has an example for each deployment shape.
+
+| Variable                                                                                         | Purpose                                                                                                                |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`                              | Anthropic (`anthropic/...`)                                                                                            |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_API`                                                | OpenAI (`openai/...`); `OPENAI_API=chat_completions` for endpoints without the Responses API                           |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                                                   | Gemini API (`google/...`)                                                                                              |
+| `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_ENDPOINT_URL_BEDROCK_RUNTIME`, `AWS_ENDPOINT_URL` | Amazon Bedrock (`bedrock/...`, `bedrock-anthropic/...`), with the AWS default credential chain                         |
+| `AZURE_RESOURCE_NAME` or `AZURE_BASE_URL`, `AZURE_API_KEY`, `AZURE_API_VERSION`                  | Azure OpenAI (`azure/...`); without a key, Microsoft Entra ID in an image built with `--build-arg AZURE_IDENTITY=true` |
+| `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`                                                | Vertex AI (`vertex/...`, `vertex-anthropic/...`), with Google application default credentials                          |
+| `MODEL_GATEWAYS`                                                                                 | JSON list of OpenAI-compatible gateways, each its own provider prefix                                                  |
+| `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another                                                                           |
+| `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                                          |
 
 The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, the only place that user may write, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built.
 
@@ -148,14 +201,15 @@ pnpm check        # everything CI checks
 
 ## Repository layout
 
-| Path                  | What's there                                                                                                                  |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `packages/server`     | The HTTP server (`@beonauto/server`), which serves the brain operations on the ledger, and its container build (`Dockerfile`) |
-| `packages/api`        | The API (`@beonauto/api`) the server answers every request with                                                               |
-| `packages/config`     | Reads the server's configuration from the environment                                                                         |
-| `packages/identity`   | API keys, local mode and the key command                                                                                      |
-| `packages/operations` | The application layer: where operations are defined and run                                                                   |
-| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                                                   |
-| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives                                    |
-| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                                                     |
-| `primitives/*`        | One package per primitive                                                                                                     |
+| Path                  | What's there                                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/server`     | The HTTP server (`@beonauto/server`), which serves the brain and spec operations on the ledger, and its container build (`Dockerfile`) |
+| `packages/api`        | The API (`@beonauto/api`) the server answers every request with                                                                        |
+| `packages/config`     | Reads the server's configuration from the environment                                                                                  |
+| `packages/identity`   | API keys, local mode and the key command                                                                                               |
+| `packages/operations` | The application layer: where operations are defined and run                                                                            |
+| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                                                            |
+| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives                                             |
+| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                                                              |
+| `primitives/*`        | One package per primitive; `primitives/inference` renders prompts from specs and calls language models                                 |
+| `scripts`             | `try-inference.sh`, which creates and executes a small inference spec against a running server                                         |
