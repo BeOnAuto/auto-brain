@@ -33,6 +33,11 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
     '  execute: ({ lines }) =>',
     "    lines.length > 1 ? Effect.fail(new Unavailable({ detail: 'busy' })) : Effect.fail(new InvalidInput({ detail: 'no', issues: [] })),",
   ]),
+  'finishes-later.ts': defined([
+    '  parse,',
+    '  summarize,',
+    '  execute: (_parsed, _input, { id }) => Effect.succeed({ finishesLater: true, record: { run: id } }),',
+  ]),
 };
 
 interface Rejection {
@@ -84,6 +89,10 @@ const rejected: Readonly<Record<string, Rejection>> = {
       '  summarize,',
       '  execute: () => Effect.succeed({ output: new Date(), record: {} }),',
     ]),
+  },
+  'finishes-later-without-record.ts': {
+    because: "Property 'record' is missing",
+    source: defined(['  parse,', '  summarize,', '  execute: () => Effect.succeed({ finishesLater: true }),']),
   },
   'record-not-an-object.ts': {
     because: "Type 'string' is not assignable to type 'JsonObject'",

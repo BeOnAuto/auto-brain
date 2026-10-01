@@ -12,7 +12,8 @@ export const getExecution = defineQuery('brain', {
   description: [
     'Reads one execution of a spec in the brain by its id and returns it:',
     'the spec and the version that ran, who started it and when, and its status.',
-    'An execution is started while it runs, or when the server stopped before it finished;',
+    'An execution is started while it runs, while work it started finishes after the call returned,',
+    'or when the server stopped before it finished;',
     'then succeeded, with its output; rejected, with the reason, detail and issues of the rejection;',
     'or failed, when the primitive broke down.',
     '`execution_id` is the UUID that execute_spec answered with or was given.',

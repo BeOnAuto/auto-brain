@@ -14,10 +14,17 @@ export interface ExecutionContext {
   readonly spec: { readonly name: string; readonly version: number };
 }
 
-export interface Executed {
+export interface Finished {
   readonly output: Schema.Json;
   readonly record: Schema.JsonObject;
 }
+
+export interface FinishesLater {
+  readonly finishesLater: true;
+  readonly record: Schema.JsonObject;
+}
+
+export type Executed = Finished | FinishesLater;
 
 export interface PrimitiveDefinition<Parsed> {
   readonly name: string;

@@ -5,7 +5,7 @@ import { decideOnExecution } from './execution-decisions.ts';
 import { ExecutionEventSchema, type ExecutionEvent } from './execution-events.ts';
 import { evolveExecution, type ExecutionState } from './execution-state.ts';
 
-export const executionDecider: Decider<ExecutionState, ExecutionCommand, ExecutionEvent, 'conflict'> = {
+export const executionDecider: Decider<ExecutionState, ExecutionCommand, ExecutionEvent, 'not_found' | 'conflict'> = {
   initialState: undefined,
   evolve: evolveExecution,
   decide: decideOnExecution,

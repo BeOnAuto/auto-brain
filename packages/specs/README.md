@@ -63,7 +63,7 @@ A primitive has:
 - `mediaType`: the media type of its spec documents, such as `text/markdown`.
 - `parse(source)`: turns the document into the primitive's own value. Parsing is validation: everything that can be checked without running is checked here. It fails with `InvalidInput`, whose issues each say in `detail` where in the document and what is wrong (line and problem). An issue's `pointer` addresses the document as a whole, so it is `''`; the operations answer it under `/source`.
 - `summarize(parsed)`: what the operations show about a spec without knowing the primitive: an optional `description`, and optional JSON Schemas of the input an execution takes (`inputSchema`) and the output it gives (`outputSchema`).
-- `execute(parsed, input, execution)`: runs the spec. `input` is the caller's JSON value; `execution` carries its `id`, the `org`, the `brain`, and the `spec` that runs, by `name` and `version`. It answers with the `output`, a JSON value returned to the caller, and a `record`, a JSON object of what happened, stored with the execution (for inference: the rendered prompt, the model, token usage). It fails with `InvalidInput`, with pointers into the input (`/name` above; the operations answer them under `/input`), or with `Unavailable` when something the primitive depends on cannot serve now and retrying may work.
+- `execute(parsed, input, execution)`: runs the spec. `input` is the caller's JSON value; `execution` carries its `id`, the `org`, the `brain`, and the `spec` that runs, by `name` and `version`. It answers with the `output`, a JSON value returned to the caller, and a `record`, a JSON object of what happened, stored with the execution (for inference: the rendered prompt, the model, token usage). It fails with `InvalidInput`, with pointers into the input (`/name` above; the operations answer them under `/input`), or with `Unavailable` when something the primitive depends on cannot serve now and retrying may work. A primitive that starts work which finishes after the call returns, such as a workflow, answers `{ finishesLater: true, record }` instead, the record saying what it started (for a workflow: its run reference); see [Executions that finish later](#executions-that-finish-later).
 
 The compiler holds a primitive to its contract. The value `parse` gives is the value `summarize` and `execute` take. `parse` may fail only with `InvalidInput`, and `execute` only with `InvalidInput` or `Unavailable`. Neither may ask for a service: whatever a primitive needs, such as a model client, it closes over when it is made. The output must be JSON and the record a JSON object.
 
@@ -101,16 +101,16 @@ The queries need `brain:read` and the commands `brain:write`. `execute_spec` is 
 
 ## Executions
 
-An execution carries `execution_id`, `primitive`, `name`, `spec_version`, `status`, `output` when it succeeded, `rejection` (`reason`, `detail`, and `issues` for `invalid_input`) when the primitive rejected it, `started_at`, `started_by`, and `finished_at` once it ended. Its status is `started` while it runs, or when the server stopped before it finished, then `succeeded`, `rejected` or `failed`.
+An execution carries `execution_id`, `primitive`, `name`, `spec_version`, `status`, `output` when it succeeded, `rejection` (`reason`, `detail`, and `issues` for `invalid_input`) when the primitive rejected it, `started_at`, `started_by`, and `finished_at` once it ended. Its status is `started` while it runs, while work it started finishes after the call returned, or when the server stopped before it finished; then `succeeded`, `rejected` or `failed`.
 
-`execute_spec` answers with the execution when it succeeded. When the primitive rejects it with `invalid_input` or `unavailable`, the operation is rejected with that reason, detail and issues, and the rejection is recorded on the execution. When the primitive breaks down, the call fails with an incident, as any defect does, and the execution is recorded as `failed`; the defect itself goes only to the incident reporter. A rejected operation carries no execution id, so a caller that wants to read a rejected execution later gives it an id.
+`execute_spec` answers with the execution when it succeeded, and in status `started` when the primitive started work that finishes later. When the primitive rejects it with `invalid_input` or `unavailable`, the operation is rejected with that reason, detail and issues, and the rejection is recorded on the execution. When the primitive breaks down, the call fails with an incident, as any defect does, and the execution is recorded as `failed`; the defect itself goes only to the incident reporter. A rejected operation carries no execution id, so a caller that wants to read a rejected execution later gives it an id.
 
 ### Size limits
 
 The ledger's cloud store holds at most 2 MB in a row, so an execution records bounded values. Sizes are counted on the value encoded as JSON, in UTF-8 bytes.
 
 - The `input` may take at most 262144 bytes (256 KiB). A larger input is rejected with `invalid_input` at `/input` when the call is decoded, before anything is recorded.
-- The `output` and the `record` of a primitive may take at most 1048576 bytes (1 MiB) together. A primitive that answers with more breaks down: the call fails with an incident and the execution is recorded as `failed`.
+- The `output` and the `record` of a primitive may take at most 1048576 bytes (1 MiB) together. A primitive that answers with more breaks down: the call fails with an incident and the execution is recorded as `failed`. The same holds for the record of work that finishes later, and for the output and record it is settled with.
 
 JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`, and in the description of `execute_spec`.
 
@@ -118,9 +118,35 @@ JSON Schema has no keyword for the encoded size of any JSON value, so the publis
 
 A caller may name an execution with `execution_id`, a UUID; otherwise the operation makes one, a version 7 UUID. Ids are kept in lowercase. An id belongs to one execution: one primitive, one spec and one input. A call with an id of another spec or another input meets `conflict`.
 
-An execution has a **final result** once it succeeded, or once the primitive rejected its input as invalid. A call with the id of an execution that has a final result runs nothing: it answers the same execution, or the same `invalid_input` rejection, even when the spec has changed or been retired since. A call with the id of an execution that has no final result runs the active latest version of the spec again and records another attempt: when the execution started and never finished, when the primitive was unavailable, and when it failed.
+An execution has a **final result** once it succeeded, or once the primitive rejected its input as invalid. A call with the id of an execution that has a final result runs nothing: it answers the same execution, or the same `invalid_input` rejection, even when the spec has changed or been retired since. A call with the id of an execution that waits for work it started to end runs nothing either: it answers the execution as it stands, `started`. A call with the id of an execution that has no final result and waits for nothing runs the active latest version of the spec again and records another attempt: when the execution started within its call and never finished, when the primitive was unavailable, and when it failed.
 
 So execution is **at least once**: the primitive may run more than once for one id, when a call is retried after the server stopped during a run, after `unavailable` or a failure, or when two calls with the same id run at the same moment and the ledger lets both start. Each id has **exactly one recorded result**: the first final result recorded for it is never replaced, and every later call with the id answers it. A primitive that acts on the world, such as one that sends a message, must tolerate running twice for the same `execution.id`.
+
+### Executions that finish later
+
+A primitive such as a workflow starts work that completes long after the call returns. Its `execute` answers `{ finishesLater: true, record }`, the record saying what it started. The execution is recorded as deferred and stays `started`: `execute_spec` answers with it in status `started` (still `200`), `get_execution` shows it `started` until it is settled, and a retry with its id answers it as it stands without starting the work again.
+
+Whoever started the work settles the execution when the work ends, with `executionSettler`:
+
+```ts
+import { executionSettler, type SettleExecution } from '@beonauto/specs';
+
+const settle: SettleExecution = executionSettler(ledger);
+
+settle(execution, { status: 'succeeded', output, record });
+settle(execution, { status: 'rejected', reason: 'unavailable', detail: 'The worker pool is gone' });
+settle(execution, { status: 'failed' });
+```
+
+`executionSettler(ledger)` takes the unbound `Ledger` and gives a `SettleExecution`. It is not an operation and no transport reaches it: the server's composition root, the only code that holds the `Ledger`, makes it and hands it to the primitives that finish later when it makes them. Each call to `settle` names the execution by `org`, `brain` and `id` (the `ExecutionContext` a primitive got carries all three), and binds the ledger to that org and brain alone, through `streamPrefixOfBrain`, after checking the ids are well formed, so it reaches nothing but that brain's `executions/{id}` stream. It records through the same stream and decider as `execute_spec`:
+
+- a deferred execution that has not been settled is settled: `succeeded` with its output and record, `rejected` with `invalid_input` (no issues) or `unavailable`, or `failed`;
+- settling it again with the same result records nothing and answers the execution;
+- settling an execution that already ended with another result, or one that runs within its call, is `conflict`;
+- settling one the brain does not have, or an ill-formed address, is `not_found`;
+- an output and record over the size limit, or not JSON, settle it as `failed`, and the call dies with the defect.
+
+The settlement is recorded as done by the caller who started the execution. A deferred execution settled as `unavailable` or `failed` has no final result, so a call with its id runs it again, as any other.
 
 ## Storage
 
@@ -133,6 +159,7 @@ The specs of one primitive in a brain are one stream, named `specs/{primitive}` 
 Each execution is a stream of its own, named `executions/{execution_id}` relative to the brain. Its events carry a `type`, who and when:
 
 - `execution_started`, with the `primitive`, the spec `name`, the `spec_version` and the `input`; a retry records it again
+- `execution_deferred`, with the `record` of the work that finishes later; an execution that started and never finished has no such event, which is how a retry tells the two apart
 - `execution_succeeded`, with the `output` and the primitive's `record`
 - `execution_rejected`, with the `rejection`
 - `execution_failed`
@@ -145,4 +172,4 @@ There is no read model: each call folds the streams it needs. Pure deciders hold
 
 ## Source
 
-`src/index.ts` is the only entry point, and `src/testing/index.ts` the entry point of the test support. `src/primitive` holds the definition of a primitive and the list of known primitives. `src/registry` holds the specs of a primitive in a brain: a spec, the events and commands of its stream, and the decider and its rules. `src/execution` holds an execution: its events, commands, state, decider and rules. `src/operations` holds the seven operations and how they load and record specs and executions. `src/testing` holds what the tests share. `operations` depends on the others, and `registry` and `execution` on nothing in this package.
+`src/index.ts` is the only entry point, and `src/testing/index.ts` the entry point of the test support. `src/primitive` holds the definition of a primitive and the list of known primitives. `src/registry` holds the specs of a primitive in a brain: a spec, the events and commands of its stream, and the decider and its rules. `src/execution` holds an execution: its events, commands, state, decider and rules, its size limits, and `executionSettler`. `src/operations` holds the seven operations and how they load and record specs and executions. `src/testing` holds what the tests share. `operations` depends on the others, and `registry` and `execution` on nothing in this package.

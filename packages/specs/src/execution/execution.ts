@@ -20,7 +20,8 @@ export const ExecutionSchema = Schema.Struct({
   name: Schema.String.annotate({ description: 'The name of the spec' }),
   spec_version: Schema.Int.annotate({ description: 'The version of the spec that ran' }),
   status: Schema.Literals(['started', 'succeeded', 'rejected', 'failed']).annotate({
-    description: 'started while it runs or when it never finished, then succeeded, rejected or failed',
+    description:
+      'started while it runs, while work it started finishes later, or when it never finished; then succeeded, rejected or failed',
   }),
   output: Schema.optionalKey(
     Schema.Json.annotate({
