@@ -32,10 +32,14 @@ COPY packages/identity/src packages/identity/src
 COPY packages/ledger/src packages/ledger/src
 COPY packages/operations/src packages/operations/src
 COPY packages/server/src packages/server/src
-RUN install --directory --owner=node --group=node /data
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends tini \
+  && rm -rf /var/lib/apt/lists/* \
+  && install --directory --owner=node --group=node /data
 USER node
 VOLUME /data
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT}/health`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+ENTRYPOINT ["/usr/bin/tini", "-e", "143", "--"]
 CMD ["node", "packages/server/src/main.ts"]
