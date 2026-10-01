@@ -348,12 +348,18 @@ importers:
       '@beonauto/identity':
         specifier: workspace:*
         version: link:../identity
+      '@beonauto/inference':
+        specifier: workspace:*
+        version: link:../../primitives/inference
       '@beonauto/ledger':
         specifier: workspace:*
         version: link:../ledger
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../operations
+      '@beonauto/specs':
+        specifier: workspace:*
+        version: link:../specs
       effect:
         specifier: 'catalog:'
         version: 4.0.0

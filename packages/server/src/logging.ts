@@ -1,4 +1,5 @@
 import type { AccessMode } from '@beonauto/identity';
+import type { ProviderStatus } from '@beonauto/inference';
 import type { Incident } from '@beonauto/operations';
 import { Cause, Effect, Logger } from 'effect';
 
@@ -29,5 +30,23 @@ export function logIncident({ id, original, call }: Incident): Effect.Effect<voi
     Effect.catchCause(() => causeNotFormattable),
     Effect.ignoreCause,
     Effect.annotateLogs({ incident: id, ...call }),
+  );
+}
+
+export function logModelProviders({ configured, unconfigured }: ProviderStatus): Effect.Effect<void> {
+  return Effect.all(
+    [
+      ...configured.map((provider) =>
+        Effect.logInfo(`Model provider ${provider} is configured`).pipe(
+          Effect.annotateLogs({ provider, configured: true }),
+        ),
+      ),
+      ...unconfigured.map(({ provider, missing }) =>
+        Effect.logInfo(`Model provider ${provider} is not configured; it needs ${missing.join(' and ')}`).pipe(
+          Effect.annotateLogs({ provider, configured: false, missing }),
+        ),
+      ),
+    ],
+    { discard: true },
   );
 }

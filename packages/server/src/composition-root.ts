@@ -1,11 +1,15 @@
 import { operationRoutes } from '@beonauto/api';
 import { brainOperations, ledgerBrainRegistry } from '@beonauto/brains';
+import { makeInference, makeModelAccess, type ModelAccess, type ModelSettings } from '@beonauto/inference';
 import { ledgerLayer } from '@beonauto/ledger';
 import { IncidentReporter, makeCatalog, makeDispatcher, type DispatcherServices } from '@beonauto/operations';
-import { Layer } from 'effect';
+import { makeSpecOperations } from '@beonauto/specs';
+import { Effect, Layer } from 'effect';
 
 import { defaultServerOptions, type ServerOptions } from './lifecycle.ts';
-import { logIncident } from './logging.ts';
+import { logIncident, logModelProviders } from './logging.ts';
+
+export type ModelAccessOf = (settings: ModelSettings) => Effect.Effect<ModelAccess>;
 
 const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter.of({ report: logIncident }));
 
@@ -14,10 +18,23 @@ export function applicationLayer(ledgerFile: string): Layer.Layer<DispatcherServ
   return Layer.mergeAll(ledger, ledgerBrainRegistry.pipe(Layer.provide(ledger)), loggingIncidentReporter);
 }
 
-export const compositionRoot: ServerOptions<DispatcherServices> = {
-  ...defaultServerOptions,
-  runtimeLayer: ({ ledgerFile }) => applicationLayer(ledgerFile),
-  routes: (runtime) => [
-    operationRoutes({ catalog: makeCatalog(brainOperations), dispatcher: makeDispatcher([]), runCall: runtime.run }),
-  ],
-};
+export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions<DispatcherServices> {
+  return {
+    ...defaultServerOptions,
+    runtimeLayer: ({ ledgerFile }) => applicationLayer(ledgerFile),
+    routes: async (runtime, { models }) => {
+      const { languageModel, status } = await Effect.runPromise(modelAccessOf(models));
+      await runtime.run(logModelProviders(status));
+      const inference = makeInference({ languageModel });
+      return [
+        operationRoutes({
+          catalog: makeCatalog([...brainOperations, ...makeSpecOperations([inference])]),
+          dispatcher: makeDispatcher([]),
+          runCall: runtime.run,
+        }),
+      ];
+    },
+  };
+}
+
+export const compositionRoot = compositionRootWith((settings) => makeModelAccess(settings));

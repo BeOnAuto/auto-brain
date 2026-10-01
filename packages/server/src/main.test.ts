@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
 import { createApiKey } from '@beonauto/identity';
+import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
@@ -24,9 +25,38 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
     { HOST: '0.0.0.0', LOCAL_MODE: 'true' },
     'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',
   ],
+  [
+    { MODEL_ALIASES: '{"fast":"gemini"}' },
+    'model_settings_invalid: The model settings are invalid. MODEL_ALIASES: /fast: An alias and its target are each written provider/model',
+  ],
 ];
 
 const protectedPath = '/v1/orgs/demo/brains';
+
+const decodeLogLine = Schema.decodeUnknownSync(
+  Schema.fromJsonString(Schema.Struct({ message: Schema.String, level: Schema.String })),
+);
+
+function logLines(stderr: string): readonly { readonly message: string; readonly level: string }[] {
+  return stderr
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => {
+      const { message, level } = decodeLogLine(line);
+      return { message, level };
+    });
+}
+
+const unconfiguredProviders = [
+  'Model provider anthropic is not configured; it needs ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN',
+  'Model provider openai is not configured; it needs OPENAI_API_KEY',
+  'Model provider google is not configured; it needs GOOGLE_GENERATIVE_AI_API_KEY',
+  'Model provider bedrock is not configured; it needs AWS_REGION',
+  'Model provider bedrock-anthropic is not configured; it needs AWS_REGION',
+  'Model provider azure is not configured; it needs AZURE_RESOURCE_NAME or AZURE_BASE_URL',
+  'Model provider vertex is not configured; it needs GOOGLE_VERTEX_PROJECT and GOOGLE_VERTEX_LOCATION',
+  'Model provider vertex-anthropic is not configured; it needs GOOGLE_VERTEX_PROJECT and GOOGLE_VERTEX_LOCATION',
+];
 
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('serves health checks when launched with node and exits cleanly on SIGTERM', async () => {
@@ -49,9 +79,31 @@ describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
     await child.exited;
 
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
-    expect(child.output().stderr).toMatch(/^\{"message":"Local mode is on: .*"level":"WARN".*\}\n$/u);
+    expect(child.output().stderr).toMatch(/^\{"message":"Local mode is on: .*"level":"WARN".*\}\n/u);
+    expect(logLines(child.output().stderr).map(({ message }) => message)).toEqual([
+      expect.stringMatching(/^Local mode is on: /u),
+      ...unconfiguredProviders,
+    ]);
   });
+});
 
+describe('main at start', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('logs one line for each model provider: configured, or the settings it lacks', async () => {
+    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true', OPENAI_API_KEY: 'sk-test' });
+    await child.port;
+    child.signal('SIGTERM');
+    await child.exited;
+
+    expect(logLines(child.output().stderr).filter(({ message }) => message.startsWith('Model provider'))).toEqual([
+      { message: 'Model provider openai is configured', level: 'INFO' },
+      ...unconfiguredProviders
+        .filter((message) => !message.includes(' openai '))
+        .map((message) => ({ message, level: 'INFO' })),
+    ]);
+  });
+});
+
+describe('main when it is told to stop', { timeout: spawnedServerTestTimeoutMs }, () => {
   it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
     'exits 0 on %s without waiting for the shutdown timeout',
     async (signal) => {
@@ -83,7 +135,8 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
 
     expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
-    expect(child.output()).toEqual({ stdout: `auto-brain listening on port ${port}\n`, stderr: '' });
+    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(logLines(child.output().stderr).map(({ message }) => message)).toEqual(unconfiguredProviders);
   });
 
   it.each(invalidSettings)(
@@ -99,8 +152,28 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
       ]);
     },
   );
+});
 
-  it('does not echo API_KEYS when it cannot read them', async () => {
+describe('main with secrets in settings it cannot read', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('does not echo a secret of the model settings', async () => {
+    const secret = 'sk-gateway-secret-123';
+    const child = spawnServer(mainModule, {
+      ...loopback,
+      MODEL_GATEWAYS: JSON.stringify([
+        { name: 'internal', base_url: 'ftp://llm.example', headers: { 'x-key': secret } },
+      ]),
+    });
+
+    expect(await child.exited).toBe(1);
+    expect(child.output()).toEqual({
+      stdout: '',
+      stderr:
+        'auto-brain could not start: model_settings_invalid: The model settings are invalid. MODEL_GATEWAYS: /0/base_url: Expected an http or https URL\n',
+    });
+    expect(child.output().stderr).not.toContain(secret);
+  });
+
+  it('does not echo API_KEYS', async () => {
     const { key } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
     const child = spawnServer(mainModule, { ...loopback, API_KEYS: key });
 

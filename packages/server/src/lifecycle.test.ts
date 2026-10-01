@@ -79,6 +79,25 @@ describe('the runtime of a started server', () => {
     expect(events).toEqual(['runtime disposed', 'start-up rejected']);
   });
 
+  it('is disposed before start-up rejects because its routes cannot be built', async () => {
+    const { runtimeLayer, events } = recordingDisposal();
+
+    const failure = await startServer(loopback, {
+      ...defaultServerOptions,
+      runtimeLayer,
+      routes: () => Promise.reject(new Error('The routes cannot be built')),
+    }).then(
+      () => 'started',
+      (error: unknown) => {
+        events.push('start-up rejected');
+        return String(error);
+      },
+    );
+
+    expect(failure).toBe('Error: The routes cannot be built');
+    expect(events).toEqual(['runtime disposed', 'start-up rejected']);
+  });
+
   it('is kept until the server stops', async () => {
     const { runtimeLayer, events } = recordingDisposal();
 

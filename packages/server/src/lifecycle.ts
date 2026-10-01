@@ -18,7 +18,10 @@ export interface RunningServer {
 
 export interface ServerOptions<R> {
   readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
-  readonly routes: (runtime: AppRuntime<R>) => readonly RegisterRoutes[];
+  readonly routes: (
+    runtime: AppRuntime<R>,
+    settings: Settings,
+  ) => readonly RegisterRoutes[] | Promise<readonly RegisterRoutes[]>;
   readonly shutdownTimeoutMs: number;
   readonly exitDeadlineMs: number;
 }
@@ -29,6 +32,19 @@ export const defaultServerOptions: ServerOptions<never> = {
   shutdownTimeoutMs: 8000,
   exitDeadlineMs: 1000,
 };
+
+async function routesOf<R>(
+  options: ServerOptions<R>,
+  runtime: AppRuntime<R>,
+  settings: Settings,
+): Promise<readonly RegisterRoutes[]> {
+  try {
+    return await options.routes(runtime, settings);
+  } catch (failure) {
+    await runtime.dispose();
+    throw failure;
+  }
+}
 
 async function startRuntime<R>(services: Layer.Layer<R>): Promise<AppRuntime<R>> {
   try {
@@ -46,7 +62,7 @@ export async function startServer<R>(environment: Environment, options: ServerOp
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,
     authenticator,
-    routes: options.routes(runtime),
+    routes: await routesOf(options, runtime, settings),
     reportIncident: (id, error, requestId) => {
       void runtime.run(logIncident({ id, original: error }).pipe(Effect.annotateLogs({ requestId })));
     },
