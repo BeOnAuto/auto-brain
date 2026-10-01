@@ -58,17 +58,83 @@ export function jsonBytesOf(value: Json): number {
   return new TextEncoder().encode(JSON.stringify(value)).length;
 }
 
-export function isJson(value: unknown): value is Json {
+export const mostValueDepth = 512;
+
+export interface Measure {
+  readonly work: number;
+  readonly depth: number;
+}
+
+interface Part {
+  readonly keyWork: number;
+  readonly measure: Measure | undefined;
+}
+
+interface MeasuredPart {
+  readonly keyWork: number;
+  readonly measure: Measure;
+}
+
+const valueWork = 16;
+
+const measures = new WeakMap<object, Measure>();
+
+export function measureOf(value: unknown, room = mostValueDepth): Measure | undefined {
+  return Array.isArray(value) || isPlainObject(value) ? containerMeasureOf(value, room) : scalarMeasureOf(value);
+}
+
+function scalarMeasureOf(value: unknown): Measure | undefined {
+  if (typeof value === 'string') {
+    return { work: value.length + valueWork, depth: 0 };
+  }
+  return value === null || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))
+    ? { work: valueWork, depth: 0 }
+    : undefined;
+}
+
+function containerMeasureOf(value: object, room: number): Measure | undefined {
+  const known = measures.get(value);
+  if (known !== undefined) {
+    return known.depth <= room ? known : undefined;
+  }
+  return room === 0 ? undefined : measureContainer(value, room);
+}
+
+function measureContainer(value: object, room: number): Measure | undefined {
+  const parts: readonly Part[] = Array.isArray(value)
+    ? value.map((item: unknown) => ({ keyWork: 0, measure: measureOf(item, room - 1) }))
+    : Object.entries(value).map(([key, item]: readonly [string, unknown]) => ({
+        keyWork: key.length,
+        measure: measureOf(item, room - 1),
+      }));
+  const measured = parts.flatMap(({ keyWork, measure }: Part): readonly MeasuredPart[] =>
+    measure === undefined ? [] : [{ keyWork, measure }],
+  );
+  if (measured.length < parts.length) {
+    return undefined;
+  }
+  const measure = {
+    work: measured.reduce((sum: number, part: MeasuredPart) => sum + part.keyWork + part.measure.work, valueWork),
+    depth: 1 + measured.reduce((deepest: number, part: MeasuredPart) => Math.max(deepest, part.measure.depth), 0),
+  };
+  measures.set(value, measure);
+  return measure;
+}
+
+export function isJson(value: unknown, room = mostValueDepth): value is Json {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') {
     return true;
   }
   if (typeof value === 'number') {
     return Number.isFinite(value);
   }
-  if (Array.isArray(value)) {
-    return value.every((item: unknown) => isJson(item));
+  if (room === 0) {
+    return false;
   }
-  return isPlainObject(value) && Object.values(value).every((item: unknown) => isJson(item));
+  if (Array.isArray(value)) {
+    return value.every((item: unknown) => isJson(item, room - 1));
+  }
+  return isPlainObject(value) && Object.values(value).every((item: unknown) => isJson(item, room - 1));
 }
 
 function isPlainObject(value: unknown): value is object {

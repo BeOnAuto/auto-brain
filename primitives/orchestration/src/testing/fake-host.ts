@@ -45,12 +45,18 @@ interface Scopes {
   readonly run: <T>(scope: FakeScope, work: () => Promise<T>) => Promise<T>;
 }
 
+interface Activations {
+  readonly next: () => void;
+  readonly count: () => number;
+}
+
 interface Parts {
   readonly clock: VirtualClock;
   readonly scopes: Scopes;
   readonly root: FakeScope;
   readonly journal: Journal;
   readonly respond: SpecResponder;
+  readonly activations: Activations;
 }
 
 const succeedWithNull: SpecResponder = () => ({ status: 'succeeded', output: null });
@@ -70,12 +76,13 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
       entries: () => log,
     },
     respond: options.respond ?? succeedWithNull,
+    activations: countingActivations(),
   };
   const history: HistorySize = options.history ?? { bytes: 0, events: 0 };
   const host: WorkflowHost = {
     ...operationsOf(parts),
     random: () => options.random ?? 0.5,
-    historySize: () => history,
+    historySize: () => ({ bytes: history.bytes, events: history.events + parts.activations.count() }),
   };
   return {
     host,
@@ -135,7 +142,17 @@ function cancelling(forget: () => unknown, journal: Journal, summary: string): (
   };
 }
 
-function drive<T>({ clock, scopes, root }: Parts, start: () => Promise<T>): Promise<T> {
+function countingActivations(): Activations {
+  let count = 0;
+  return {
+    next: () => {
+      count += 1;
+    },
+    count: () => count,
+  };
+}
+
+function drive<T>({ clock, scopes, root, activations }: Parts, start: () => Promise<T>): Promise<T> {
   let progress: Progress<T> = { state: 'running' };
   void scopes.run(root, start).then(
     (value) => {
@@ -147,10 +164,10 @@ function drive<T>({ clock, scopes, root }: Parts, start: () => Promise<T>): Prom
       return error;
     },
   );
-  return untilDone(clock, () => progress);
+  return untilDone({ clock, activations }, () => progress);
 }
 
-async function untilDone<T>(clock: VirtualClock, progress: () => Progress<T>): Promise<T> {
+async function untilDone<T>(driver: Pick<Parts, 'clock' | 'activations'>, progress: () => Progress<T>): Promise<T> {
   await setImmediate();
   const current = progress();
   if (current.state === 'fulfilled') {
@@ -159,8 +176,9 @@ async function untilDone<T>(clock: VirtualClock, progress: () => Progress<T>): P
   if (current.state === 'rejected') {
     throw current.error;
   }
-  if (!clock.advance()) {
+  driver.activations.next();
+  if (!driver.clock.advance()) {
     throw new Error('The workflow waits for something that never comes');
   }
-  return untilDone(clock, progress);
+  return untilDone(driver, progress);
 }

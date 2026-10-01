@@ -1,10 +1,17 @@
 import { parse, runAst, validate, type Value } from '@gabrielbryk/jq-ts';
 
-import { isJson, isList, isObject, type Json, type JsonEntry } from './json.ts';
+import { isJson, isList, isObject, measureOf, mostValueDepth, type Json, type JsonEntry } from './json.ts';
 
 export type Variables = Readonly<Record<string, Json>>;
 
-export type Evaluation = { readonly value: Json } | { readonly problem: string };
+export interface Budget {
+  readonly now: number;
+  readonly mostWork: number;
+}
+
+export type Evaluation =
+  | { readonly value: Json; readonly work: number }
+  | { readonly problem: string; readonly work: number; readonly exhausted: boolean };
 
 type Compiled = { readonly program: ReturnType<typeof parse> } | { readonly problem: string };
 
@@ -13,6 +20,8 @@ const hostDependentBuiltins: ReadonlySet<string> = new Set(['localtime', 'strflo
 const enclosedExpression = /^\s*\$\{(?<body>[\s\S]*)\}\s*$/u;
 
 const limits = { maxSteps: 200_000, maxDepth: 200, maxOutputs: 10_000 };
+
+const longestProblem = 1000;
 
 const compiled = new Map<string, Compiled>();
 
@@ -31,21 +40,45 @@ export function checkExpression(source: string): string | undefined {
   return 'problem' in program ? program.problem : undefined;
 }
 
-export function runExpression(source: string, data: Json, variables: Variables, now: number): Evaluation {
+export function runExpression(source: string, data: Json, variables: Variables, budget: Budget): Evaluation {
   const program = compile(source);
   if ('problem' in program) {
-    return program;
+    return { problem: program.problem, work: 0, exhausted: false };
   }
+  const usage = { work: 0 };
   try {
     const [first = null] = runAst(program.program, toValue(data), {
       vars: Object.fromEntries(Object.entries(variables).map(([name, value]: JsonEntry) => [name, toValue(value)])),
-      now: now / 1000,
-      limits,
+      now: budget.now / 1000,
+      limits: { ...limits, maxWork: budget.mostWork },
+      usage,
     });
-    return isJson(first) ? { value: first } : { problem: `${source} gave a value that is not JSON` };
+    return resultOf(source, first, usage.work, budget.mostWork);
   } catch (error) {
-    return { problem: `${source}: ${String(error)}` };
+    return {
+      problem: shortened(`${source}: ${String(error)}`),
+      work: usage.work,
+      exhausted: usage.work > budget.mostWork,
+    };
   }
+}
+
+function resultOf(source: string, value: unknown, work: number, mostWork: number): Evaluation {
+  const measure = measureOf(value);
+  if (work > mostWork || (measure !== undefined && measure.work > mostWork)) {
+    return { problem: shortened(`${source}: Work limit exceeded`), work, exhausted: true };
+  }
+  return measure !== undefined && isJson(value)
+    ? { value, work }
+    : {
+        problem: shortened(`${source} gave a value that is not JSON or nests more than ${mostValueDepth} levels deep`),
+        work,
+        exhausted: false,
+      };
+}
+
+function shortened(problem: string): string {
+  return problem.length > longestProblem ? `${problem.slice(0, longestProblem)}…` : problem;
 }
 
 function compile(source: string): Compiled {
@@ -69,7 +102,7 @@ function freshlyCompiled(source: string): Compiled {
           problem: `${source}: ${hostDependent} reads the host's time zone, so it is not deterministic; use the UTC builtins`,
         };
   } catch (error) {
-    return { problem: `${source}: ${String(error)}` };
+    return { problem: shortened(`${source}: ${String(error)}`) };
   }
 }
 

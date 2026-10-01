@@ -3,19 +3,35 @@ import { enclosedBody, expressionSource, runExpression, type Variables } from '.
 import { entriesOf, isList, isObject, isTruthy, type Json, type JsonEntry, type JsonObject } from '../dsl/json.ts';
 import type { Invocation, Place } from './invocation.ts';
 import { RaisedError, errorType, raised } from './raised-error.ts';
+import { mostActivationWork, mostExpressionWork, type RunState } from './run-state.ts';
 
 export function evaluate(source: string, data: Json, variables: Variables, place: Place): Json {
-  const evaluation = runExpression(source, data, variables, place.now);
-  if ('problem' in evaluation) {
-    throw new RaisedError({
-      type: errorType('expression'),
-      status: 400,
-      title: 'An expression failed',
-      detail: evaluation.problem,
-      instance: place.reference,
-    });
+  const mostWork = place.meter.allowance();
+  const evaluation = runExpression(source, data, variables, { now: place.now, mostWork });
+  place.meter.record(evaluation.work);
+  if ('value' in evaluation) {
+    return evaluation.value;
   }
-  return evaluation.value;
+  if (evaluation.exhausted) {
+    throw raised('runtime', 500, exhaustionOf(evaluation.problem, mostWork), place.reference);
+  }
+  throw new RaisedError({
+    type: errorType('expression'),
+    status: 400,
+    title: 'An expression failed',
+    detail: evaluation.problem,
+    instance: place.reference,
+  });
+}
+
+export function placeIn(state: RunState, reference: string): Place {
+  return { reference, now: state.host.now(), meter: state.meter };
+}
+
+function exhaustionOf(problem: string, mostWork: number): string {
+  return mostWork < mostExpressionWork
+    ? `${problem}: the workflow did ${mostActivationWork} units of expression work in one activation; it lets other workflows run between tasks, not within one`
+    : `${problem}: an expression may do ${mostExpressionWork} units of work`;
 }
 
 export function evaluateExpression(expression: string, data: Json, variables: Variables, place: Place): Json {
@@ -55,7 +71,7 @@ export function millisecondsOf(duration: Json, data: Json, variables: Variables,
 }
 
 export function placeOf({ entry, scope }: Invocation): Place {
-  return { reference: entry.reference, now: scope.state.host.now() };
+  return placeIn(scope.state, entry.reference);
 }
 
 function evaluateObject(template: JsonObject, data: Json, variables: Variables, place: Place): JsonObject {

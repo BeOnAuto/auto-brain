@@ -1,6 +1,6 @@
 import type { Variables } from '../dsl/expressions.ts';
 import { field, isObject, objectField, type Json, type JsonObject } from '../dsl/json.ts';
-import { millisecondsOf } from './evaluation.ts';
+import { millisecondsOf, placeIn } from './evaluation.ts';
 import { raised } from './raised-error.ts';
 import type { RunState } from './run-state.ts';
 
@@ -21,7 +21,7 @@ export function timeoutOf(state: RunState, site: TimeoutSite): number | undefine
   const timeout = timeoutDefinition(declared, state, reference);
   return timeout === undefined
     ? undefined
-    : millisecondsOf(field(timeout, 'after') ?? null, data, variables, { reference, now: state.host.now() });
+    : millisecondsOf(field(timeout, 'after') ?? null, data, variables, placeIn(state, reference));
 }
 
 function timeoutDefinition(declared: Json | undefined, state: RunState, reference: string): JsonObject | undefined {

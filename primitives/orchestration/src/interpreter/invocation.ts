@@ -1,7 +1,7 @@
 import type { Variables } from '../dsl/expressions.ts';
 import type { Json } from '../dsl/json.ts';
 import type { TaskEntry } from '../dsl/tasks.ts';
-import type { RunState } from './run-state.ts';
+import type { Meter, RunState } from './run-state.ts';
 
 export interface Scope {
   readonly state: RunState;
@@ -33,6 +33,7 @@ export interface Runner {
 export interface Place {
   readonly reference: string;
   readonly now: number;
+  readonly meter: Meter;
 }
 
 export interface Invocation {

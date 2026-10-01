@@ -10,9 +10,15 @@ import {
   jsonBytesOf,
   jsonEquals,
   listField,
+  measureOf,
   objectField,
   textField,
+  type Json,
 } from './json.ts';
+
+function nested(depth: number): Json {
+  return depth === 0 ? 0 : [nested(depth - 1)];
+}
 
 describe('reading JSON', () => {
   const value = { name: 'Ada', tags: ['a'], nested: { deep: true }, nothing: null };
@@ -75,5 +81,43 @@ describe('recognizing JSON', () => {
     expect(isJson({ a: Number.NaN })).toBe(false);
     expect(isJson(new Date(0))).toBe(false);
     expect(isJson(Symbol('s'))).toBe(false);
+  });
+});
+
+describe('the depth of JSON', () => {
+  it('is at most 512 levels, past which a value is not taken for JSON', () => {
+    expect(isJson(nested(512))).toBe(true);
+    expect(isJson(nested(513))).toBe(false);
+    expect(isJson({ a: nested(512) })).toBe(false);
+  });
+});
+
+describe('measuring JSON', () => {
+  it('counts the work of visiting a value: sixteen per value, plus every string and key', () => {
+    expect(measureOf('abc')).toStrictEqual({ work: 19, depth: 0 });
+    expect(measureOf({ ab: [true, null] })).toStrictEqual({ work: 66, depth: 2 });
+  });
+
+  it('counts a shared value as often as it occurs, and remembers what it measured', () => {
+    const shared = ['x'];
+    const twice = [shared, shared];
+
+    expect(measureOf(twice)).toStrictEqual({ work: 82, depth: 2 });
+    expect(measureOf([twice, twice])).toStrictEqual({ work: 180, depth: 3 });
+  });
+
+  it('measures nothing that is not JSON or nests more than 512 levels deep', () => {
+    expect(measureOf(Number.NaN)).toBeUndefined();
+    expect(measureOf([1, Infinity])).toBeUndefined();
+    expect(measureOf(new Date(0))).toBeUndefined();
+    expect(measureOf(nested(513))).toBeUndefined();
+    expect(measureOf(nested(512))).toStrictEqual({ work: 16 * 513, depth: 512 });
+  });
+
+  it('measures a value it measured before only where it still fits', () => {
+    const deep = nested(511);
+
+    expect(measureOf(deep)).toStrictEqual({ work: 16 * 512, depth: 511 });
+    expect(measureOf([[deep]])).toBeUndefined();
   });
 });

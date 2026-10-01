@@ -1,4 +1,4 @@
-import { isJson, isObject, objectField, type Json, type JsonObject } from '../dsl/json.ts';
+import { isJson, isObject, measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '../dsl/json.ts';
 import type { Components } from '../dsl/policy-checks.ts';
 import type { WorkflowHost } from './host.ts';
 import { raised } from './raised-error.ts';
@@ -6,9 +6,17 @@ import type { WorkflowRun } from './workflow-run.ts';
 
 export type EventFilter = (event: JsonObject) => boolean;
 
+export interface Meter {
+  readonly allowance: () => number;
+  readonly record: (work: number) => void;
+  readonly shouldYield: () => boolean;
+  readonly countTask: () => void;
+}
+
 export interface RunState {
   readonly run: WorkflowRun;
   readonly host: WorkflowHost;
+  readonly meter: Meter;
   readonly components: Components;
   readonly workflow: JsonObject;
   readonly context: () => Json;
@@ -34,6 +42,14 @@ export const mostHistoryEvents = 40_000;
 
 export const mostStepsWithoutWaiting = 10_000;
 
+export const mostExpressionWork = 8_000_000;
+
+export const mostActivationWork = 16_000_000;
+
+const mostTasksPerActivation = 100;
+
+const mostValueWork = mostExpressionWork;
+
 export function dateTimeOf(milliseconds: number): JsonObject {
   return {
     iso8601: new Date(milliseconds).toISOString(),
@@ -49,6 +65,7 @@ export function makeRunState(run: WorkflowRun, host: WorkflowHost): RunState {
   return {
     run,
     host,
+    meter: makeMeter(host),
     components: {
       errors: objectField(use, 'errors') ?? {},
       retries: objectField(use, 'retries') ?? {},
@@ -83,6 +100,54 @@ export function makeRunState(run: WorkflowRun, host: WorkflowHost): RunState {
       stepsWithoutWaiting = 0;
     },
     ...makeInbox(),
+  };
+}
+
+export function admitted(value: Json, reference: string): Json {
+  const measure = measureOf(value);
+  if (measure === undefined) {
+    throw raised('runtime', 500, `A value nests more than ${mostValueDepth} levels deep`, reference);
+  }
+  if (measure.work > mostValueWork) {
+    throw raised(
+      'runtime',
+      500,
+      `A value takes ${measure.work} units of work to visit, more than the ${mostValueWork} a workflow may hold`,
+      reference,
+    );
+  }
+  return value;
+}
+
+function makeMeter(host: WorkflowHost): Meter {
+  let activation = -1;
+  let work = 0;
+  let tasks = 0;
+  const current = (): void => {
+    const { events } = host.historySize();
+    if (events !== activation) {
+      activation = events;
+      work = 0;
+      tasks = 0;
+    }
+  };
+  return {
+    allowance: () => {
+      current();
+      return Math.min(mostExpressionWork, mostActivationWork - work);
+    },
+    record: (done) => {
+      current();
+      work += done;
+    },
+    shouldYield: () => {
+      current();
+      return work >= mostExpressionWork || tasks >= mostTasksPerActivation;
+    },
+    countTask: () => {
+      current();
+      tasks += 1;
+    },
   };
 }
 

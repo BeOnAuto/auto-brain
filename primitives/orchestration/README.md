@@ -97,6 +97,18 @@ Creating or updating a spec checks its document fully: it reads the YAML without
 
 Expressions are [jq](https://jqlang.org), evaluated by `@gabrielbryk/jq-ts` inside the workflow. A string enclosed in `${ }` is an expression wherever the DSL takes a value; `if`, `when`, `exceptWhen`, `for.in`, `while`, and the strings of `input.from`, `output.as` and `export.as` are expressions even without `${ }`. They see `.` (the data of the step), `$context` (what tasks exported), `$input`, `$output` (in `export.as`), `$task` (`name`, `reference`, `definition`, `input`, `startedAt`, and `output` after the task ran), `$workflow` (`id`, the execution id; `definition`; `input`; `startedAt`), `$runtime` (`name: auto-brain`), and the variables of loops (`$item` and `$index` unless named with `each` and `at`) and catches (`$error` unless named with `as`). `now` is the time of the workflow, recorded in its history, never the clock of the host.
 
+### The work of expressions
+
+Workflows of every org share the threads of the worker, so no document may make one of them busy for long. Every operation of jq that builds or visits values charges, before it does so, the work of what it builds or visits, in units of one string character: a value, array item or object entry counts 16, copying an object entry 32, an evaluation step 128, a character encoded with a format or changed in case 16, a character searched for or in 4, a thread of the regex machine at a position 8. The count is deterministic, so it decides the same way when a history is replayed; no clock is read.
+
+- An expression may do 8000000 units. One that tries to do more stops at once, and the task fails with a `runtime` error of status 500; jq's `try` cannot catch it, and the workflow's `try` can.
+- Pure tasks run one after another without waiting. Before a task, a workflow that has done 8000000 units of expression work, or run 100 tasks, since its activation began lets other workflows run: it waits on a 1 ms timer, which ends the activation. A task cannot pause in the middle, so a workflow fails with a `runtime` error once it has done 16000000 units in one activation.
+- A value the workflow holds, its input, the output of a task, its context and its output, may take at most 8000000 units to visit and nest at most 512 levels deep; a value counts a part it shares as often as it holds it, so doubling a value from task to task fails too. An execution with an input deeper than that is rejected with `invalid_input` before the workflow starts.
+
+Measured on an Apple M-series machine, the expressions that do the most work per unit, run up to the budget, take at most about 30 ms and allocate at most about 25 MB (`@base64` of a 400000-character string); before the budget, `"x" * 40000000 | length` took 0.5 s and 0.8 GB, and `"a" * 200000 | indices("a" * 100000)` 2.5 s.
+
+The count comes from a patch of `@gabrielbryk/jq-ts` 1.7.0 (`patches/@gabrielbryk__jq-ts@1.7.0.patch` at the root of the repository), which the library offers no hook for. It adds the `maxWork` limit and the `usage` it reports, charges the operations listed above, and replaces the library's string search, which in the engine's worst case takes time in proportion to the product of the two lengths, with the Knuth-Morris-Pratt search, linear in their sum. A new version of the library needs the patch ported, and `src/dsl/expression-work.test.ts` fails for any charge that goes missing.
+
 ### Executing a spec
 
 `call: execute_spec` with `with: { primitive, name, input }` executes the active spec of that primitive and name in the same brain, for the caller who started the workflow, and outputs its output. The input is `{}` when left out and may take at most 262144 bytes as JSON. A rejection or a failure is an error the workflow can catch:
@@ -137,7 +149,7 @@ When the workflow ends, a last activity settles the execution through `execution
 
 Settling is an activity, so it happens once per execution however the worker fails: Temporal retries it, and settling again with the same result records nothing. A conflict, such as a workflow that ends before its execution recorded that it finishes later, is retried for about 15 minutes. A workflow that fails or is cancelled ends failed or cancelled in Temporal too, after settling.
 
-Limits keep a workflow inside what Temporal holds: a call rejects an input larger than an execution takes, an activity fails an output larger than 1 MiB, and a workflow stops with a `runtime` error before its history passes 40 MiB or 40000 events, or once it has run 10000 tasks without waiting for anything.
+Limits keep a workflow inside what Temporal holds: a call rejects an input larger than an execution takes, an activity fails an output larger than 1 MiB, and a workflow stops with a `runtime` error before its history passes 40 MiB or 40000 events, or once it has run 10000 tasks without waiting for anything (the timers that let other workflows run do not count as waiting). [The work of expressions](#the-work-of-expressions) has its own limits.
 
 ### Determinism and replay
 

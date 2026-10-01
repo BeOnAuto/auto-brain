@@ -1,9 +1,9 @@
 import { field, jsonBytesOf, objectField, type Json } from '../dsl/json.ts';
 import { rejectionsOf } from '../dsl/policy.ts';
-import { transform } from './evaluation.ts';
+import { placeIn, transform } from './evaluation.ts';
 import type { WorkflowHost } from './host.ts';
 import { RaisedError, errorType } from './raised-error.ts';
-import { runtimeDescriptor, makeRunState, type RunState } from './run-state.ts';
+import { admitted, runtimeDescriptor, makeRunState, type RunState } from './run-state.ts';
 import { endingOf, settlementOf, type RunOutcome, type WorkflowEnding } from './settlement.ts';
 import { runList } from './task-runner.ts';
 import { timeoutOf, withTimeout } from './timeouts.ts';
@@ -69,8 +69,13 @@ async function interpret(state: RunState): Promise<Json> {
     });
   }
   const variables = { workflow: state.workflow, runtime: runtimeDescriptor };
-  const place = { reference: root, now: state.host.now() };
-  const transformed = transform(field(objectField(document, 'input') ?? {}, 'from'), input, variables, place);
+  const place = placeIn(state, root);
+  const transformed = transform(
+    field(objectField(document, 'input') ?? {}, 'from'),
+    admitted(input, root),
+    variables,
+    place,
+  );
   const timeout = timeoutOf(state, {
     declared: field(document, 'timeout'),
     data: transformed,
@@ -80,11 +85,14 @@ async function interpret(state: RunState): Promise<Json> {
   const result = await withTimeout(state, { milliseconds: timeout, reference: root }, () =>
     runList(field(document, 'do'), '/do', transformed, { state, variables: {} }),
   );
-  return transform(
-    field(objectField(document, 'output') ?? {}, 'as'),
-    result.output,
-    { ...variables, context: state.context() },
-    { reference: root, now: state.host.now() },
+  return admitted(
+    transform(
+      field(objectField(document, 'output') ?? {}, 'as'),
+      result.output,
+      { ...variables, context: state.context() },
+      placeIn(state, root),
+    ),
+    root,
   );
 }
 

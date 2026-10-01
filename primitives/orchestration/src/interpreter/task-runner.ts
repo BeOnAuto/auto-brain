@@ -1,10 +1,10 @@
 import type { Variables } from '../dsl/expressions.ts';
 import { field, objectField, textField, type Json, type JsonObject } from '../dsl/json.ts';
 import { taskEntries, typeOf, type TaskEntry } from '../dsl/tasks.ts';
-import { holds, transform } from './evaluation.ts';
+import { holds, placeIn, transform } from './evaluation.ts';
 import type { ListResult, Place, Runner, Scope, TaskOutcome } from './invocation.ts';
 import { raised } from './raised-error.ts';
-import { dateTimeOf, runtimeDescriptor, type RunState } from './run-state.ts';
+import { admitted, dateTimeOf, runtimeDescriptor, type RunState } from './run-state.ts';
 import { bodyFor } from './task-bodies.ts';
 import { timeoutOf, withTimeout } from './timeouts.ts';
 
@@ -32,6 +32,14 @@ export function runList(list: Json | undefined, pointer: string, input: Json, sc
 
 function runTask(entry: TaskEntry, rawInput: Json, scope: Scope): Promise<TaskOutcome> {
   const { state } = scope;
+  return state.meter.shouldYield()
+    ? yieldToOthers(state, entry.reference).then(() => startTask(entry, rawInput, scope))
+    : startTask(entry, rawInput, scope);
+}
+
+function startTask(entry: TaskEntry, rawInput: Json, scope: Scope): Promise<TaskOutcome> {
+  const { state } = scope;
+  state.meter.countTask();
   const run = state.nextRun(entry.reference);
   state.step(entry.reference);
   const now = state.host.now();
@@ -49,7 +57,7 @@ function runTask(entry: TaskEntry, rawInput: Json, scope: Scope): Promise<TaskOu
     runtime: runtimeDescriptor,
     task: descriptor,
   };
-  if (!holds(field(entry.task, 'if'), rawInput, variables, { reference: entry.reference, now })) {
+  if (!holds(field(entry.task, 'if'), rawInput, variables, placeIn(state, entry.reference))) {
     return Promise.resolve({ output: rawInput, flow: 'continue' });
   }
   const milliseconds = timeoutOf(state, {
@@ -91,7 +99,7 @@ async function performTask(start: TaskStart): Promise<TaskOutcome> {
     field(objectField(task, 'input') ?? {}, 'from'),
     rawInput,
     variables,
-    placeOf(state, reference),
+    placeIn(state, reference),
   );
   const inputVariables = { ...variables, input };
   const type = typeOf(task);
@@ -107,20 +115,22 @@ async function performTask(start: TaskStart): Promise<TaskOutcome> {
     run,
     runner,
   });
-  const outputVariables = { ...inputVariables, task: { ...descriptor, output: body.output } };
-  const place = placeOf(state, reference);
+  const outputVariables = { ...inputVariables, task: { ...descriptor, output: admitted(body.output, reference) } };
+  const place = placeIn(state, reference);
   const output = transform(field(objectField(task, 'output') ?? {}, 'as'), body.output, outputVariables, place);
-  exportToContext(state, { task, output, variables: outputVariables, place });
+  exportToContext(state, { task, output: admitted(output, reference), variables: outputVariables, place });
   return { output, flow: body.flow ?? textField(task, 'then') ?? 'continue' };
 }
 
 function exportToContext(state: RunState, { task, output, variables, place }: Exported): void {
   const exported = field(objectField(task, 'export') ?? {}, 'as');
   if (exported !== undefined) {
-    state.replaceContext(transform(exported, output, { ...variables, output, context: state.context() }, place));
+    const context = transform(exported, output, { ...variables, output, context: state.context() }, place);
+    state.replaceContext(admitted(context, place.reference));
   }
 }
 
-function placeOf(state: RunState, reference: string): Place {
-  return { reference, now: state.host.now() };
+function yieldToOthers(state: RunState, reference: string): Promise<void> {
+  state.checkHistory(reference);
+  return state.host.sleep(1, `${reference} lets other workflows run`);
 }

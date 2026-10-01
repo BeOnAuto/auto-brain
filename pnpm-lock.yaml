@@ -177,6 +177,9 @@ catalogs:
       specifier: 5.0.2
       version: 5.0.2
 
+patchedDependencies:
+  '@gabrielbryk/jq-ts@1.7.0': 6b0cd1e2b6d395b64b799bf623225c6e0852f20d90393219ac87ca8797a2ce56
+
 importers:
 
   .:
@@ -406,7 +409,7 @@ importers:
         version: link:../../packages/specs
       '@gabrielbryk/jq-ts':
         specifier: 1.7.0
-        version: 1.7.0(typescript@7.0.2)
+        version: 1.7.0(patch_hash=6b0cd1e2b6d395b64b799bf623225c6e0852f20d90393219ac87ca8797a2ce56)(typescript@7.0.2)
       '@openworkflowspec/sdk':
         specifier: 1.0.3-alpha8
         version: 1.0.3-alpha8
@@ -4130,7 +4133,7 @@ snapshots:
       - snappy
       - socks
 
-  '@gabrielbryk/jq-ts@1.7.0(typescript@7.0.2)':
+  '@gabrielbryk/jq-ts@1.7.0(patch_hash=6b0cd1e2b6d395b64b799bf623225c6e0852f20d90393219ac87ca8797a2ce56)(typescript@7.0.2)':
     dependencies:
       typescript: 7.0.2
 
