@@ -56,7 +56,10 @@ describe('the JSON Schema of the input of the operations', () => {
   it('takes any JSON value as the input of an execution, and a UUID as its id', () => {
     expect(operations[5]?.input.schema).toMatchObject({
       properties: {
-        input: { description: 'The input of the execution: any JSON value the spec takes, {} when left out' },
+        input: {
+          description:
+            'The input of the execution: any JSON value the spec takes, {} when left out, at most 262144 bytes as JSON in UTF-8',
+        },
         execution_id: { type: 'string', format: 'uuid' },
       },
       required: ['primitive', 'name'],

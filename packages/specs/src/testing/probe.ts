@@ -44,6 +44,9 @@ function answerTo(
   if (Predicate.hasProperty(input, 'unmeasurable')) {
     return Effect.succeed({ output: Number.NaN, record: {} });
   }
+  if (Predicate.hasProperty(input, 'bulk') && Predicate.isNumber(input.bulk)) {
+    return Effect.succeed({ output: 'x'.repeat(input.bulk), record: {} });
+  }
   return Effect.succeed({
     output: { input, execution: { ...execution, spec: { ...execution.spec } } },
     record: { runs },

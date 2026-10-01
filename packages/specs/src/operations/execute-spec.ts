@@ -1,13 +1,11 @@
 import { defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { claimOf } from '../execution/execution-decisions.ts';
-import { answerOf } from '../execution/execution-lookup.ts';
 import { ExecutionSchema } from '../execution/execution.ts';
+import { mostInputBytes, mostResultBytes } from '../execution/recorded-size.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
-import { loadExecution, newExecutionId } from './execution-access.ts';
-import { runExecution } from './execution-running.ts';
+import { executeRequest } from './execution-running.ts';
 import { ExecutionIdField, InputField, SpecNameField } from './spec-fields.ts';
 
 export function defineExecuteSpec(primitives: readonly Primitive[]) {
@@ -21,6 +19,10 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
         'and returns it with its output when it succeeded.',
         '`primitive` names the primitive and `name` the spec.',
         '`input` is the JSON value the spec takes, {} when left out; get_spec shows its input_schema when it has one.',
+        `The input may take at most ${mostInputBytes} bytes as JSON in UTF-8, or the call is rejected with`,
+        'invalid_input at /input before anything is recorded.',
+        `The output and the record of what the primitive did may take at most ${mostResultBytes} bytes together;`,
+        'a primitive that answers with more fails the execution.',
         '`execution_id` is an optional UUID that names the execution so that a call can be retried safely;',
         'without it, a new id is made, and the execution answers with it.',
         'Once an execution succeeded, or its input was rejected as invalid, a call with its id and the same spec',
@@ -45,11 +47,7 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
       reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable'],
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name, input = {}, execution_id: suppliedId }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
-        const id = suppliedId ?? (yield* newExecutionId);
-        const request = { primitive: primitive.name, name, input };
-        const recorded = yield* loadExecution(id);
-        const claim = yield* Effect.fromResult(claimOf(recorded, request));
-        return yield* claim === 'answer' ? answerOf(id, recorded) : runExecution(primitive, id, request);
+        return yield* executeRequest(primitive, { primitive: primitive.name, name, input }, suppliedId);
       }),
     }),
   );

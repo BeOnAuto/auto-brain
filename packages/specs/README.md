@@ -105,6 +105,15 @@ An execution carries `execution_id`, `primitive`, `name`, `spec_version`, `statu
 
 `execute_spec` answers with the execution when it succeeded. When the primitive rejects it with `invalid_input` or `unavailable`, the operation is rejected with that reason, detail and issues, and the rejection is recorded on the execution. When the primitive breaks down, the call fails with an incident, as any defect does, and the execution is recorded as `failed`; the defect itself goes only to the incident reporter. A rejected operation carries no execution id, so a caller that wants to read a rejected execution later gives it an id.
 
+### Size limits
+
+The ledger's cloud store holds at most 2 MB in a row, so an execution records bounded values. Sizes are counted on the value encoded as JSON, in UTF-8 bytes.
+
+- The `input` may take at most 262144 bytes (256 KiB). A larger input is rejected with `invalid_input` at `/input` when the call is decoded, before anything is recorded.
+- The `output` and the `record` of a primitive may take at most 1048576 bytes (1 MiB) together. A primitive that answers with more breaks down: the call fails with an incident and the execution is recorded as `failed`.
+
+JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`, and in the description of `execute_spec`.
+
 ### Execution ids and retries
 
 A caller may name an execution with `execution_id`, a UUID; otherwise the operation makes one, a version 7 UUID. Ids are kept in lowercase. An id belongs to one execution: one primitive, one spec and one input. A call with an id of another spec or another input meets `conflict`.

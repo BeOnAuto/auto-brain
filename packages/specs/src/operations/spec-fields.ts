@@ -2,6 +2,8 @@ import { Buffer } from 'node:buffer';
 
 import { Schema, SchemaTransformation } from 'effect';
 
+import { jsonBytesOf, mostInputBytes } from '../execution/recorded-size.ts';
+
 const mostSourceBytes = 65_536;
 
 function fitsInSourceLimit(source: string): boolean {
@@ -27,9 +29,15 @@ export const ExecutionIdField = Schema.String.annotate({
   .check(Schema.isUUID())
   .pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toLowerCase()));
 
+function fitsInInputLimit(input: Schema.Json): boolean {
+  return jsonBytesOf(input) <= mostInputBytes;
+}
+
 export const InputField = Schema.Json.annotate({
-  description: 'The input of the execution: any JSON value the spec takes, {} when left out',
-});
+  description: `The input of the execution: any JSON value the spec takes, {} when left out, at most ${mostInputBytes} bytes as JSON in UTF-8`,
+}).check(
+  Schema.makeFilter(fitsInInputLimit, { expected: `an input of at most ${mostInputBytes} bytes as JSON in UTF-8` }),
+);
 
 export const IncludeRetiredField = Schema.Boolean.annotate({
   description: 'Whether to list retired specs as well; false when left out',

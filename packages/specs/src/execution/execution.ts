@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import { mostResultBytes } from './recorded-size.ts';
+
 const IssueSchema = Schema.Struct({
   detail: Schema.String.annotate({ description: 'What is wrong' }),
   pointer: Schema.String.annotate({ description: 'A JSON Pointer to the part of the input that is wrong' }),
@@ -20,7 +22,11 @@ export const ExecutionSchema = Schema.Struct({
   status: Schema.Literals(['started', 'succeeded', 'rejected', 'failed']).annotate({
     description: 'started while it runs or when it never finished, then succeeded, rejected or failed',
   }),
-  output: Schema.optionalKey(Schema.Json.annotate({ description: 'The output, when the execution succeeded' })),
+  output: Schema.optionalKey(
+    Schema.Json.annotate({
+      description: `The output, when the execution succeeded: with the record, at most ${mostResultBytes} bytes as JSON in UTF-8`,
+    }),
+  ),
   rejection: Schema.optionalKey(ExecutionRejectionSchema),
   started_at: Schema.String.annotate({ description: 'When the execution started, in ISO 8601 UTC' }),
   started_by: Schema.String.annotate({ description: 'The id of the caller who started the execution' }),
