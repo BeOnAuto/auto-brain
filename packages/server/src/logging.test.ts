@@ -5,7 +5,7 @@ import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { logAccessMode, logIncident } from './logging.ts';
-import { spawnServer } from './testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 
 async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
   const lines: string[] = [];
@@ -72,7 +72,7 @@ describe('logIncident', () => {
   });
 });
 
-describe('the server process', () => {
+describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('logs an unexpected error to stderr under the incident id it answers with', async () => {
     const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
     const port = await child.port;

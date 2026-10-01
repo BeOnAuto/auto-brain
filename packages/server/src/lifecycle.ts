@@ -16,22 +16,18 @@ export interface RunningServer {
   stop(): Promise<void>;
 }
 
-export interface ServerProcess {
-  readonly env: Environment;
-  readonly stdout: { write(message: string): unknown };
-  once(signal: 'SIGINT' | 'SIGTERM', listener: () => void): unknown;
-}
-
 export interface ServerOptions<R> {
   readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
   readonly routes: (runtime: AppRuntime<R>) => readonly RegisterRoutes[];
   readonly shutdownTimeoutMs: number;
+  readonly exitDeadlineMs: number;
 }
 
 export const defaultServerOptions: ServerOptions<never> = {
   runtimeLayer: () => Layer.empty,
   routes: () => [],
   shutdownTimeoutMs: 8000,
+  exitDeadlineMs: 1000,
 };
 
 async function startRuntime<R>(services: Layer.Layer<R>): Promise<AppRuntime<R>> {
@@ -74,17 +70,6 @@ export async function startServer<R>(environment: Environment, options: ServerOp
       await stopping;
     },
   };
-}
-
-export async function runServer<R>(serverProcess: ServerProcess, options: ServerOptions<R>): Promise<RunningServer> {
-  const server = await startServer(serverProcess.env, options);
-  serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
-  const stopOnSignal = (): void => {
-    void server.stop();
-  };
-  serverProcess.once('SIGTERM', stopOnSignal);
-  serverProcess.once('SIGINT', stopOnSignal);
-  return server;
 }
 
 export function tcpPort(address: Readonly<AddressInfo> | string | null): number {

@@ -11,4 +11,9 @@ export const testRoutes: RegisterRoutes = (routes) => {
   routes.add('GET', '/fail', () => {
     throw new Error('database password is hunter2');
   });
+  routes.add('GET', '/linger', (c) => {
+    const ms = Number(c.req.query('ms'));
+    void setTimeout(ms);
+    return c.json({ lingering: ms });
+  });
 };

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createApiKey } from '@beonauto/identity';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { spawnServer } from './testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 import { temporaryLedger } from './testing/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -18,13 +18,17 @@ const loopback = { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName };
 
 const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>, string]> = [
   [{ PORT: 'eighty' }, 'InvalidPortError: PORT must be an integer from 0 to 65535, received "eighty"'],
-  [{ ALLOWED_ORIGINS: 'app.example.com' }, 'InvalidSettingsError'],
+  [{ ALLOWED_ORIGINS: 'app.example.com' }, 'InvalidSettingsError: SchemaError(Expected an origin'],
   [{ API_KEYS: '[{"id":"ci-1"}]' }, 'InvalidApiKeysError: API_KEYS[0].org: Missing key'],
+  [
+    { HOST: '0.0.0.0', LOCAL_MODE: 'true' },
+    'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',
+  ],
 ];
 
 const protectedPath = '/v1/orgs/demo/brains';
 
-describe('main', () => {
+describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('serves health checks when launched with node and exits cleanly on SIGTERM', async () => {
     const child = spawnServer(mainModule, loopback);
     const port = await child.port;
@@ -64,7 +68,7 @@ describe('main', () => {
   );
 });
 
-describe('main with settings', () => {
+describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('requires an API key on protected paths once keys are configured, and says nothing about access', async () => {
     const { key, entry } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
     const child = spawnServer(mainModule, { ...loopback, API_KEYS: JSON.stringify([entry]) });
@@ -83,13 +87,27 @@ describe('main with settings', () => {
   });
 
   it.each(invalidSettings)(
-    'does not start with %o, naming the error on stderr and writing nothing to stdout',
+    'does not start with %o, naming the error in one line on stderr and writing nothing to stdout',
     async (env, error) => {
       const child = spawnServer(mainModule, { ...loopback, ...env });
 
       expect(await child.exited).toBe(1);
       expect(child.output().stdout).toBe('');
-      expect(child.output().stderr).toContain(error);
+      expect(child.output().stderr.split('\n')).toEqual([
+        expect.stringContaining(`auto-brain could not start: ${error}`),
+        '',
+      ]);
     },
   );
+
+  it('does not echo API_KEYS when it cannot read them', async () => {
+    const { key } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], brains: '*' });
+    const child = spawnServer(mainModule, { ...loopback, API_KEYS: key });
+
+    expect(await child.exited).toBe(1);
+    expect(child.output()).toEqual({
+      stdout: '',
+      stderr: 'auto-brain could not start: InvalidApiKeysError: API_KEYS: Expected a valid JSON string\n',
+    });
+  });
 });

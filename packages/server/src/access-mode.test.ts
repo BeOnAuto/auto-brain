@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from './composition-root.ts';
 import { startServer } from './lifecycle.ts';
-import { spawnServer } from './testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from './testing/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
@@ -34,7 +34,7 @@ async function servedBy(
   return { status: response.status, stderr: child.output().stderr };
 }
 
-describe('the access mode of a server on loopback', () => {
+describe('the access mode of a server on loopback', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('trusts a request without a key only when LOCAL_MODE is on, and warns that it does', async () => {
     const served = await servedBy({ LOCAL_MODE: 'true' });
 

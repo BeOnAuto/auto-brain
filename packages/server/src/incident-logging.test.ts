@@ -5,7 +5,7 @@ import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { logIncident } from './logging.ts';
-import { spawnServer, type SpawnedServer } from './testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from './testing/spawned-server.ts';
 
 const serveWithSelfCausedError = fileURLToPath(new URL('testing/serve-with-self-caused-error.ts', import.meta.url));
 
@@ -45,7 +45,7 @@ describe('logIncident for an error whose cause cannot be formatted', () => {
   });
 });
 
-describe('a server whose route throws an error that is its own cause', () => {
+describe('a server whose route throws an error that is its own cause', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('answers 500, logs the incident and keeps serving', async () => {
     const child = spawnServer(serveWithSelfCausedError, { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' });
     const port = await child.port;

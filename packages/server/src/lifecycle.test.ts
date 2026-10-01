@@ -1,41 +1,15 @@
 import { get } from 'node:http';
 import { setTimeout } from 'node:timers/promises';
 
-import type { Environment } from '@beonauto/config';
 import { createApiKey } from '@beonauto/identity';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { runServer, startServer, tcpPort, defaultServerOptions, type ServerProcess } from './lifecycle.ts';
+import { startServer, tcpPort, defaultServerOptions } from './lifecycle.ts';
+import { isAcceptingConnections } from './testing/accepting-connections.ts';
 import { testRoutes } from './testing/test-routes.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
-
-function fakeProcess(env: Environment = loopback): {
-  serverProcess: ServerProcess;
-  signals: EventTarget;
-  written: string[];
-} {
-  const signals = new EventTarget();
-  const written: string[] = [];
-  const serverProcess: ServerProcess = {
-    env,
-    stdout: { write: (message) => written.push(message) },
-    once: (signal, listener) => {
-      signals.addEventListener(signal, listener, { once: true });
-    },
-  };
-  return { serverProcess, signals, written };
-}
-
-async function isAcceptingConnections(port: number): Promise<boolean> {
-  try {
-    await fetch(`http://127.0.0.1:${port}/health`);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function recordingDisposal(): { runtimeLayer: () => Layer.Layer<never>; events: string[] } {
   const events: string[] = [];
@@ -189,6 +163,16 @@ describe('stopping a started server', () => {
     expect(performance.now() - stopping).toBeLessThan(2000);
   });
 
+  it('closes a keep-alive connection that is idle, instead of waiting for it until the shutdown timeout', async () => {
+    const server = await startServer(loopback, defaultServerOptions);
+    await (await fetch(`http://127.0.0.1:${server.port}/health`)).text();
+    const stopping = performance.now();
+
+    await server.stop();
+
+    expect(performance.now() - stopping).toBeLessThan(2000);
+  });
+
   it('cuts off a request still running at the shutdown timeout', async () => {
     const server = await startServer(loopback, {
       ...defaultServerOptions,
@@ -206,42 +190,6 @@ describe('stopping a started server', () => {
 
     expect(performance.now() - stopping).toBeLessThan(1000);
     expect(await inFlight).toBe('cut off');
-  });
-});
-
-describe('runServer', () => {
-  it('announces the port it listens on', async () => {
-    const { serverProcess, written } = fakeProcess();
-    const server = await runServer(serverProcess, defaultServerOptions);
-
-    expect(written).toEqual([`auto-brain listening on port ${server.port}\n`]);
-    await server.stop();
-  });
-
-  it.each(['SIGTERM', 'SIGINT'])('shuts down gracefully on %s', async (signal) => {
-    const { serverProcess, signals } = fakeProcess();
-    const server = await runServer(serverProcess, defaultServerOptions);
-
-    signals.dispatchEvent(new Event(signal));
-    await server.stop();
-
-    expect(await isAcceptingConnections(server.port)).toBe(false);
-  });
-
-  it('rejects invalid settings before it listens, with a named error, and announces nothing', async () => {
-    const { serverProcess, written } = fakeProcess({ ...loopback, ALLOWED_ORIGINS: 'app.example.com' });
-
-    await expect(runServer(serverProcess, defaultServerOptions)).rejects.toMatchObject({
-      name: 'InvalidSettingsError',
-    });
-    expect(written).toEqual([]);
-  });
-
-  it('rejects invalid API keys before it listens, with a named error, and announces nothing', async () => {
-    const { serverProcess, written } = fakeProcess({ ...loopback, API_KEYS: '[{"id":"ci-1"}]' });
-
-    await expect(runServer(serverProcess, defaultServerOptions)).rejects.toMatchObject({ name: 'InvalidApiKeysError' });
-    expect(written).toEqual([]);
   });
 });
 
