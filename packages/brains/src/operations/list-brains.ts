@@ -2,7 +2,7 @@ import { Caller, defineQuery, mayReachBrain } from '@beonauto/operations';
 import { Effect, Order, Schema } from 'effect';
 
 import { BrainSchema, type Brain } from '../registry/brain.ts';
-import { readRegistry } from './registry-reading.ts';
+import { loadRegistry } from './registry-loading.ts';
 
 const byId = Order.mapInput(Order.String, ({ id }: Brain) => id);
 
@@ -25,7 +25,7 @@ export const listBrains = defineQuery('org', {
   reasons: [],
   handle: Effect.fnUntraced(function* ({ include_retired: includeRetired = false }) {
     const { brains: access } = yield* Caller;
-    const registry = yield* readRegistry;
+    const registry = yield* loadRegistry;
     const brains = [...registry.values()].filter(
       ({ id, status }) => mayReachBrain(access, id) && (includeRetired || status === 'active'),
     );

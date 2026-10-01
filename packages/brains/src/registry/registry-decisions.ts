@@ -1,10 +1,10 @@
 import { Conflict, type Refusal } from '@beonauto/operations';
 import { Result } from 'effect';
 
-import type { BrainCommand, BrainCreation, BrainRetirement, BrainUpdate, Stamp } from './brain-commands.ts';
+import type { BrainCommand, BrainCreation, BrainRetirement, BrainUpdate, CommandMetadata } from './brain-commands.ts';
 import type { BrainEvent } from './brain-events.ts';
 import type { Brain } from './brain.ts';
-import { missingBrain } from './registry-lookup.ts';
+import { brainNotFound } from './registry-lookup.ts';
 import type { Registry } from './registry.ts';
 
 type Decision = Result.Result<readonly BrainEvent[], Refusal<'not_found' | 'conflict'>>;
@@ -24,17 +24,23 @@ function takenBy({ id, status }: Brain): Conflict {
   });
 }
 
-function decideCreation({ brain, name, description, by, at }: BrainCreation & Stamp, registry: Registry): Decision {
+function decideCreation(
+  { brain, name, description, by, at }: BrainCreation & CommandMetadata,
+  registry: Registry,
+): Decision {
   const existing = registry.get(brain);
   return existing === undefined
     ? recording({ type: 'brain_created', brain, name, description, by, at })
     : Result.fail(takenBy(existing));
 }
 
-function decideUpdate({ brain, name, description, by, at }: BrainUpdate & Stamp, registry: Registry): Decision {
+function decideUpdate(
+  { brain, name, description, by, at }: BrainUpdate & CommandMetadata,
+  registry: Registry,
+): Decision {
   const existing = registry.get(brain);
   if (existing === undefined) {
-    return Result.fail(missingBrain(brain));
+    return Result.fail(brainNotFound(brain));
   }
   if (existing.status === 'retired') {
     return Result.fail(new Conflict({ detail: `The brain ${brain} is retired and can no longer change` }));
@@ -54,10 +60,10 @@ function decideUpdate({ brain, name, description, by, at }: BrainUpdate & Stamp,
   });
 }
 
-function decideRetirement({ brain, by, at }: BrainRetirement & Stamp, registry: Registry): Decision {
+function decideRetirement({ brain, by, at }: BrainRetirement & CommandMetadata, registry: Registry): Decision {
   const existing = registry.get(brain);
   if (existing === undefined) {
-    return Result.fail(missingBrain(brain));
+    return Result.fail(brainNotFound(brain));
   }
   return existing.status === 'retired' ? nothingToRecord : recording({ type: 'brain_retired', brain, by, at });
 }

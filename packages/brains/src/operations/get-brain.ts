@@ -2,9 +2,9 @@ import { defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { BrainSchema } from '../registry/brain.ts';
-import { brainIn } from '../registry/registry-lookup.ts';
+import { findBrain } from '../registry/registry-lookup.ts';
 import { BrainIdField } from './brain-fields.ts';
-import { readRegistry } from './registry-reading.ts';
+import { loadRegistry } from './registry-loading.ts';
 
 export const getBrain = defineQuery('org', {
   name: 'get_brain',
@@ -18,5 +18,5 @@ export const getBrain = defineQuery('org', {
   inputSchema: Schema.Struct({ brain: BrainIdField }),
   outputSchema: BrainSchema,
   reasons: ['not_found'],
-  handle: ({ brain }) => readRegistry.pipe(Effect.flatMap((registry) => brainIn(registry, brain))),
+  handle: ({ brain }) => loadRegistry.pipe(Effect.flatMap((registry) => findBrain(registry, brain))),
 });

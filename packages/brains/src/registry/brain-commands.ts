@@ -17,11 +17,11 @@ export interface BrainRetirement {
   readonly brain: string;
 }
 
-export type BrainIntent = BrainCreation | BrainUpdate | BrainRetirement;
+export type BrainCommandData = BrainCreation | BrainUpdate | BrainRetirement;
 
-export interface Stamp {
+export interface CommandMetadata {
   readonly by: string;
   readonly at: string;
 }
 
-export type BrainCommand = BrainIntent & Stamp;
+export type BrainCommand = BrainCommandData & CommandMetadata;

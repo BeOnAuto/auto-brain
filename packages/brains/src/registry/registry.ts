@@ -3,7 +3,7 @@ import type { Brain } from './brain.ts';
 
 export type Registry = ReadonlyMap<string, Brain>;
 
-export const emptyRegistry: Registry = new Map();
+export const initialRegistry: Registry = new Map();
 
 function createdBrain({ brain, name, description, by, at }: BrainCreated): Brain {
   return { id: brain, name, description, status: 'active', created_at: at, created_by: by, updated_at: at };
