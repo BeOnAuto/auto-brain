@@ -32,7 +32,9 @@ describe('logAccessMode', () => {
     const [line] = await linesLoggedBy(logAccessMode('closed', false));
 
     expect(line).toContain('"level":"WARN"');
-    expect(line).toContain('"message":"Local mode is off and no API keys are configured"');
+    expect(line).toContain(
+      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path except /health answers 401"',
+    );
   });
 
   it('says nothing when API keys are configured', async () => {

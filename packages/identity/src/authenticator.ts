@@ -32,8 +32,8 @@ export function authenticatorFor({ host, apiKeys, localMode }: AccessSettings): 
       message: `LOCAL_MODE is on, but HOST ${host} is not a loopback address; local mode trusts every request, so it runs only on localhost, 127.0.0.1 or ::1`,
     });
   }
-  if (apiKeys !== undefined) {
+  if (apiKeys !== undefined && apiKeys.length > 0) {
     return { mode: 'keys', authenticate: (presentedKey) => keyHolderOf(apiKeys, presentedKey) };
   }
-  return localMode ? localAccess : closedAccess;
+  return localMode && apiKeys === undefined ? localAccess : closedAccess;
 }

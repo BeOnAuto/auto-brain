@@ -47,7 +47,16 @@ describe('the access mode of a server on loopback', () => {
     const served = await servedBy({}, { host: 'localhost' });
 
     expect(served.status).toBe(401);
-    expect(served.stderr).toContain('"message":"Local mode is off and no API keys are configured"');
+    expect(served.stderr).toContain(
+      '"message":"No request can authenticate: API_KEYS lists no keys and local mode is off, so every path except /health answers 401"',
+    );
+  });
+
+  it('warns that no request can authenticate when API_KEYS lists no keys', async () => {
+    const served = await servedBy({ API_KEYS: '[]' });
+
+    expect(served.status).toBe(401);
+    expect(served.stderr).toContain('"message":"No request can authenticate:');
   });
 
   it('enforces API keys when LOCAL_MODE is also on, and warns that local mode is ignored', async () => {

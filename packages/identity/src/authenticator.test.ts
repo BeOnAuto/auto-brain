@@ -86,9 +86,10 @@ describe('authenticatorFor with API keys', () => {
     ).toBeUndefined();
   });
 
-  it('rejects every key when the configured list is empty', () => {
-    expect(
-      authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode: false }).authenticate(reader.key),
-    ).toBeUndefined();
+  it.each([false, true])('is closed when the configured list is empty, with local mode %s', (localMode) => {
+    const authenticator = authenticatorFor({ host: '127.0.0.1', apiKeys: [], localMode });
+
+    expect(authenticator.mode).toBe('closed');
+    expect([authenticator.authenticate(), authenticator.authenticate(reader.key)]).toEqual([undefined, undefined]);
   });
 });

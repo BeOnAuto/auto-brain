@@ -8,7 +8,9 @@ const accessNotices: Readonly<Record<AccessMode, Effect.Effect<void>>> = {
   local: Effect.logWarning(
     'Local mode is on: every request is trusted as the local developer, with every permission in every org. Never enable LOCAL_MODE on a machine reachable through a proxy',
   ),
-  closed: Effect.logWarning('Local mode is off and no API keys are configured'),
+  closed: Effect.logWarning(
+    'No request can authenticate: API_KEYS lists no keys and local mode is off, so every path except /health answers 401',
+  ),
   keys: Effect.void,
 };
 
