@@ -19,7 +19,7 @@ export interface RunningServer {
 export interface ServerProcess {
   readonly env: Environment;
   readonly stdout: { write(message: string): unknown };
-  once(signal: 'SIGINT' | 'SIGTERM', listener: () => void): unknown;
+  on(signal: 'SIGINT' | 'SIGTERM', listener: () => void): unknown;
 }
 
 export interface ServerOptions<R> {
@@ -81,8 +81,8 @@ export async function runServer<R>(serverProcess: ServerProcess, options: Server
   const stopOnSignal = (): void => {
     void server.stop();
   };
-  serverProcess.once('SIGTERM', stopOnSignal);
-  serverProcess.once('SIGINT', stopOnSignal);
+  serverProcess.on('SIGTERM', stopOnSignal);
+  serverProcess.on('SIGINT', stopOnSignal);
   serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);
   return server;
 }

@@ -10,6 +10,17 @@ const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-route
 
 const loopback = { HOST: '127.0.0.1', PORT: '0' };
 
+async function refusingConnections(port: number): Promise<void> {
+  const accepted = await fetch(`http://127.0.0.1:${port}/health`).then(
+    () => true,
+    () => false,
+  );
+  if (accepted) {
+    await setTimeout(10);
+    await refusingConnections(port);
+  }
+}
+
 describe('shutting down the server process', () => {
   it('lets a slow request finish after SIGTERM and exits 0 before the shutdown timeout', async () => {
     const child = spawnServer(serveWithTestRoutes, loopback);
@@ -48,4 +59,27 @@ describe('shutting down the server process', () => {
     expect(elapsed).toBeGreaterThanOrEqual(shortShutdownTimeoutMs - 50);
     expect(elapsed).toBeLessThan(shortShutdownTimeoutMs + 1500);
   });
+});
+
+describe('a repeated stop signal', () => {
+  it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
+    'is ignored while the server process shuts down after the first %s, which still exits 0',
+    async (signal) => {
+      const child = spawnServer(serveWithTestRoutes, loopback);
+      const port = await child.port;
+      const slow = fetch(`http://127.0.0.1:${port}/slow?ms=1000`);
+      await setTimeout(100);
+
+      child.signal(signal);
+      await refusingConnections(port);
+      child.signal(signal);
+      const response = await slow;
+
+      expect({ status: response.status, body: await response.json(), exitCode: await child.exited }).toEqual({
+        status: 200,
+        body: { slept: 1000 },
+        exitCode: 0,
+      });
+    },
+  );
 });

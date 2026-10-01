@@ -21,8 +21,8 @@ function fakeProcess(env: Environment = loopback): {
   const serverProcess: ServerProcess = {
     env,
     stdout: { write: (message) => written.push(message) },
-    once: (signal, listener) => {
-      signals.addEventListener(signal, listener, { once: true });
+    on: (signal, listener) => {
+      signals.addEventListener(signal, listener);
     },
   };
   return { serverProcess, signals, written };
