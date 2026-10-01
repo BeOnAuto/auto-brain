@@ -65,6 +65,20 @@ curl http://localhost:8080/health
 | `PORT`   | `8080`    | Port the server listens on    |
 | `HOST`   | `0.0.0.0` | Interface the server binds to |
 
+The [inference primitive](primitives/inference) calls language models with these settings, all optional. A provider whose settings are absent is not configured, and a spec that names it fails; the primitive's README has an example for each deployment shape.
+
+| Variable                                                                                         | Purpose                                                                                                    |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`                              | Anthropic (`anthropic/...`)                                                                                |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_API`                                                | OpenAI (`openai/...`); `OPENAI_API=chat_completions` for endpoints without the Responses API               |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                                                   | Gemini API (`google/...`)                                                                                  |
+| `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_ENDPOINT_URL_BEDROCK_RUNTIME`, `AWS_ENDPOINT_URL` | Amazon Bedrock (`bedrock/...`, `bedrock-anthropic/...`), with the AWS default credential chain             |
+| `AZURE_RESOURCE_NAME` or `AZURE_BASE_URL`, `AZURE_API_KEY`, `AZURE_API_VERSION`                  | Azure OpenAI (`azure/...`); without a key, Microsoft Entra ID in an image built with optional dependencies |
+| `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`                                                | Vertex AI (`vertex/...`, `vertex-anthropic/...`), with Google application default credentials              |
+| `MODEL_GATEWAYS`                                                                                 | JSON list of OpenAI-compatible gateways, each its own provider prefix                                      |
+| `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another                                                               |
+| `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                              |
+
 The image is multi-arch (amd64 and arm64), runs as a non-root user, and shuts down cleanly on `SIGTERM`.
 
 ## Licensing
@@ -99,4 +113,4 @@ pnpm check        # everything CI checks
 | `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                |
 | `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives |
 | `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                  |
-| `primitives/*`        | One package per primitive                                                                  |
+| `primitives/*`        | One package per primitive; `primitives/inference` calls language models                    |
