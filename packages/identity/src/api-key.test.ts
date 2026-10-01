@@ -1,10 +1,16 @@
-import { createHash } from 'node:crypto';
-
 import { describe, expect, it } from 'vitest';
 
-import { createApiKey, type KeyGrant } from './index.ts';
+import { authenticatorFor, createApiKey, type ApiKey, type KeyGrant } from './index.ts';
 
 const grant: KeyGrant = { id: 'ci-1', org: 'acme', permissions: ['brain:read'], brains: ['alpha'] };
+
+const keyWithTheSecretBytes0To31 = 'abk_ci-1_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
+
+const sha256OfThatKey = '269ce89dc8b3c0eb7966560f76d53555a184aaaffe7514d545765bf14701fa6a';
+
+function admits(entries: readonly ApiKey[], presented: string): boolean {
+  return authenticatorFor({ host: '0.0.0.0', apiKeys: entries }).authenticate(presented) !== undefined;
+}
 
 describe('createApiKey', () => {
   it('creates a key of the form abk_<id>_<secret>, the secret being 32 random bytes as base64url', () => {
@@ -14,20 +20,29 @@ describe('createApiKey', () => {
     expect(Buffer.from(key.slice('abk_ci-1_'.length), 'base64url')).toHaveLength(32);
   });
 
-  it('stores the SHA-256 of the whole key as 64 hex characters, with the grant, and never the key', () => {
+  it('stores the grant and a digest of 64 hex characters, and never the key', () => {
     const { key, entry } = createApiKey(grant);
+    const { sha256, ...stored } = entry;
 
-    expect(entry).toEqual({
-      id: 'ci-1',
-      sha256: createHash('sha256').update(key).digest('hex'),
-      org: 'acme',
-      permissions: ['brain:read'],
-      brains: ['alpha'],
-    });
+    expect(stored).toEqual(grant);
+    expect(sha256).toMatch(/^[0-9a-f]{64}$/u);
     expect(JSON.stringify(entry)).not.toContain(key.slice('abk_ci-1_'.length));
+  });
+
+  it('stores a digest that admits the key it created and no other key', () => {
+    const created = createApiKey(grant);
+    const another = createApiKey(grant);
+
+    expect([admits([created.entry], created.key), admits([created.entry], another.key)]).toEqual([true, false]);
   });
 
   it('creates a different key each time', () => {
     expect(createApiKey(grant).key).not.toBe(createApiKey(grant).key);
+  });
+});
+
+describe('the digest of an API key', () => {
+  it('is the SHA-256 of the whole key in hex, so an entry holding it admits the key', () => {
+    expect(admits([{ ...grant, sha256: sha256OfThatKey }], keyWithTheSecretBytes0To31)).toBe(true);
   });
 });
