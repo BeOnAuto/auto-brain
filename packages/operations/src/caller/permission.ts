@@ -1,15 +1,15 @@
 import { Schema } from 'effect';
 
-import type { Kind, Scope } from './scope.ts';
+import type { OperationKind, OperationScope } from './operation-scope.ts';
 
 export const PermissionSchema = Schema.Literals(['org:read', 'org:write', 'brain:read', 'brain:write']);
 
 export type Permission = typeof PermissionSchema.Type;
 
-export const everyPermission: readonly Permission[] = PermissionSchema.literals;
+export const allPermissions: readonly Permission[] = PermissionSchema.literals;
 
-const accessByKind: Readonly<Record<Kind, 'read' | 'write'>> = { query: 'read', command: 'write' };
+const accessByKind: Readonly<Record<OperationKind, 'read' | 'write'>> = { query: 'read', command: 'write' };
 
-export function permissionFor(kind: Kind, scope: Scope): Permission {
+export function permissionFor(kind: OperationKind, scope: OperationScope): Permission {
   return `${scope}:${accessByKind[kind]}`;
 }

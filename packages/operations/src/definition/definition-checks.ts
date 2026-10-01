@@ -1,15 +1,15 @@
 import { Array as Arr, SchemaAST, type Schema } from 'effect';
 
-import type { Scope } from '../caller/scope.ts';
-import { pathParametersOf } from './route.ts';
+import type { OperationScope } from '../caller/operation-scope.ts';
 import {
   fieldOf,
   handlerMembersOf,
   holdsEmptyStruct,
   isClosedObject,
   isRequiredStringField,
-  wireMembersOf,
-} from './wire-shape.ts';
+  encodedMembersOf,
+} from './encoded-shape.ts';
+import { pathParametersOf } from './route.ts';
 
 interface CheckableDefinition {
   readonly name: string;
@@ -20,21 +20,24 @@ interface CheckableDefinition {
 
 interface CheckedDefinition {
   readonly pathParameters: readonly string[];
-  readonly addressesBrain: boolean;
+  readonly targetsBrain: boolean;
 }
 
 const operationName = /^[a-z][a-z0-9_]{0,63}$/u;
 
-const reservedFieldsByScope: Readonly<Record<Scope, readonly string[]>> = { org: ['org'], brain: ['org', 'brain'] };
+const reservedFieldsByScope: Readonly<Record<OperationScope, readonly string[]>> = {
+  org: ['org'],
+  brain: ['org', 'brain'],
+};
 
 function closedObjectMembers(
   name: string,
   role: 'input' | 'output',
   schema: Schema.Constraint,
 ): readonly SchemaAST.Objects[] {
-  const wireMembers = wireMembersOf(schema);
-  const members = wireMembers.filter((member) => isClosedObject(member));
-  if (members.length !== wireMembers.length) {
+  const encodedMembers = encodedMembersOf(schema);
+  const members = encodedMembers.filter((member) => isClosedObject(member));
+  if (members.length !== encodedMembers.length) {
     throw new Error(`The ${role} of ${name} must be an object that declares its fields`);
   }
   if (members.some((member) => holdsEmptyStruct(member, []))) {
@@ -43,7 +46,7 @@ function closedObjectMembers(
   return members;
 }
 
-function requireNoReservedField(name: string, scope: Scope, members: readonly SchemaAST.Objects[]): void {
+function requireNoReservedField(name: string, scope: OperationScope, members: readonly SchemaAST.Objects[]): void {
   const reserved = reservedFieldsByScope[scope].find((field) =>
     members.some((member) => fieldOf(member, field) !== undefined),
   );
@@ -71,10 +74,10 @@ function requireBrainFromBrainField(
   members: readonly SchemaAST.Objects[],
 ): void {
   const renamed = Arr.zip(handlerMembersOf(inputSchema), members).some(
-    ([handlerMember, wireMember]: readonly [SchemaAST.AST, SchemaAST.Objects]) =>
+    ([handlerMember, encodedMember]: readonly [SchemaAST.AST, SchemaAST.Objects]) =>
       SchemaAST.isObjects(handlerMember) &&
       fieldOf(handlerMember, 'brain') !== undefined &&
-      fieldOf(wireMember, 'brain') === undefined,
+      fieldOf(encodedMember, 'brain') === undefined,
   );
   if (renamed) {
     throw new Error(`The input of ${name} must take its brain field from a field named brain`);
@@ -82,7 +85,7 @@ function requireBrainFromBrainField(
 }
 
 export function checkedDefinition(
-  scope: Scope,
+  scope: OperationScope,
   { name, route, inputSchema, outputSchema }: CheckableDefinition,
 ): CheckedDefinition {
   if (!operationName.test(name)) {
@@ -96,6 +99,6 @@ export function checkedDefinition(
   requireBrainFromBrainField(name, inputSchema, inputMembers);
   return {
     pathParameters,
-    addressesBrain: inputMembers.some((member) => fieldOf(member, 'brain') !== undefined),
+    targetsBrain: inputMembers.some((member) => fieldOf(member, 'brain') !== undefined),
   };
 }

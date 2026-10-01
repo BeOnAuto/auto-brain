@@ -2,16 +2,16 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import type {
   BrainAddress,
-  BrainDirectory,
+  BrainRegistry,
   BrainReader,
-  BrainScope,
+  BrainContext,
   BrainWriter,
   HandlerServices,
   IncidentReporter,
   Ledger,
   OrgAddress,
   OrgReader,
-  OrgScope,
+  OrgContext,
   OrgWriter,
   StreamReader,
   StreamWriter,
@@ -19,13 +19,13 @@ import type {
 
 describe('the services a handler may ask for', () => {
   it('give an org handler nothing of a brain', () => {
-    expectTypeOf<BrainScope>().not.toExtend<HandlerServices<'org', 'command'>>();
+    expectTypeOf<BrainContext>().not.toExtend<HandlerServices<'org', 'command'>>();
     expectTypeOf<BrainReader>().not.toExtend<HandlerServices<'org', 'command'>>();
     expectTypeOf<BrainWriter>().not.toExtend<HandlerServices<'org', 'command'>>();
   });
 
   it('give a brain handler nothing of its org beyond the address of the call', () => {
-    expectTypeOf<OrgScope>().not.toExtend<HandlerServices<'brain', 'command'>>();
+    expectTypeOf<OrgContext>().not.toExtend<HandlerServices<'brain', 'command'>>();
     expectTypeOf<OrgReader>().not.toExtend<HandlerServices<'brain', 'command'>>();
     expectTypeOf<OrgWriter>().not.toExtend<HandlerServices<'brain', 'command'>>();
   });
@@ -37,20 +37,20 @@ describe('the services a handler may ask for', () => {
     expectTypeOf<BrainWriter>().toExtend<HandlerServices<'brain', 'command'>>();
   });
 
-  it('never include the unbound ledger, the brain directory or the incident reporter', () => {
-    expectTypeOf<Ledger | BrainDirectory | IncidentReporter>().not.toExtend<HandlerServices<'org', 'query'>>();
+  it('never include the unbound ledger, the brain registry or the incident reporter', () => {
+    expectTypeOf<Ledger | BrainRegistry | IncidentReporter>().not.toExtend<HandlerServices<'org', 'query'>>();
     expectTypeOf<Ledger>().not.toExtend<HandlerServices<'org', 'command'>>();
     expectTypeOf<Ledger>().not.toExtend<HandlerServices<'brain', 'query'>>();
     expectTypeOf<Ledger>().not.toExtend<HandlerServices<'brain', 'command'>>();
-    expectTypeOf<BrainDirectory>().not.toExtend<HandlerServices<'org', 'command'>>();
-    expectTypeOf<BrainDirectory>().not.toExtend<HandlerServices<'brain', 'command'>>();
+    expectTypeOf<BrainRegistry>().not.toExtend<HandlerServices<'org', 'command'>>();
+    expectTypeOf<BrainRegistry>().not.toExtend<HandlerServices<'brain', 'command'>>();
     expectTypeOf<IncidentReporter>().not.toExtend<HandlerServices<'org', 'command'>>();
     expectTypeOf<IncidentReporter>().not.toExtend<HandlerServices<'brain', 'command'>>();
   });
 
   it('bind every port a handler sees to the org or brain of the call', () => {
-    expectTypeOf<OrgScope['Service']>().toEqualTypeOf<OrgAddress>();
-    expectTypeOf<BrainScope['Service']>().toEqualTypeOf<BrainAddress>();
+    expectTypeOf<OrgContext['Service']>().toEqualTypeOf<OrgAddress>();
+    expectTypeOf<BrainContext['Service']>().toEqualTypeOf<BrainAddress>();
     expectTypeOf<OrgReader['Service']>().toEqualTypeOf<StreamReader>();
     expectTypeOf<OrgWriter['Service']>().toEqualTypeOf<StreamWriter>();
     expectTypeOf<BrainReader['Service']>().toEqualTypeOf<StreamReader>();

@@ -14,7 +14,7 @@ import {
   type PipelineStep,
   type Settled,
 } from '../index.ts';
-import { memoryBrainDirectory } from './memory-brain-directory.ts';
+import { memoryBrainRegistry } from './memory-brain-registry.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
 import { recordingReporter, type ReportedIncident } from './recording-reporter.ts';
 
@@ -44,7 +44,7 @@ const knownBrains: readonly BrainAddress[] = [
 export function harness({ steps = [], reporter, brains = knownBrains }: HarnessOptions = {}): Harness {
   const ledger = memoryLedger();
   const recording = recordingReporter();
-  const services = Layer.mergeAll(ledger.layer, memoryBrainDirectory(brains), reporter ?? recording.layer);
+  const services = Layer.mergeAll(ledger.layer, memoryBrainRegistry(brains), reporter ?? recording.layer);
   const run = <A>(calls: Effect.Effect<A, never, DispatcherServices>) =>
     Effect.runPromise(calls.pipe(Effect.provide(services)));
   return {
@@ -57,9 +57,9 @@ export function harness({ steps = [], reporter, brains = knownBrains }: HarnessO
 }
 
 export function toOrg(org: string): (caller: CallerIdentity, input?: unknown) => OrgRequest {
-  return (caller, input = {}) => ({ caller, org, input, form: 'json' });
+  return (caller, input = {}) => ({ caller, org, input, encoding: 'json' });
 }
 
 export function toBrain(org: string, brain: string): (caller: CallerIdentity, input?: unknown) => BrainRequest {
-  return (caller, input = {}) => ({ caller, org, brain, input, form: 'json' });
+  return (caller, input = {}) => ({ caller, org, brain, input, encoding: 'json' });
 }

@@ -6,11 +6,15 @@ const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.Str
 
 type BrainLabel = typeof BrainLabelSchema.Type;
 
-const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabel> = {
+const BrainLabelledSchema = Schema.Struct({ type: Schema.Literal('brain_labelled'), labelled: BrainLabelSchema });
+
+type BrainLabelled = typeof BrainLabelledSchema.Type;
+
+const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabelled> = {
   initialState: [],
-  evolve: (labels, labelled) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
-  decide: (labelled) => Result.succeed([labelled]),
-  eventSchema: BrainLabelSchema,
+  evolve: (labels, { labelled }) => [...labels.filter(({ brain }) => brain !== labelled.brain), labelled],
+  decide: (labelled) => Result.succeed([{ type: 'brain_labelled', labelled }]),
+  eventSchema: BrainLabelledSchema,
 };
 
 export const labelBrain = defineCommand('org', {

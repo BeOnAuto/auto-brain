@@ -62,7 +62,7 @@ describe('a catalog', () => {
     expect(makeCatalog([]).operations).toEqual([]);
   });
 
-  it('refuses a name used twice, even across scopes', () => {
+  it('rejects a name used twice, even across scopes', () => {
     expect(() => makeCatalog([addNote, labelBrain, addNote])).toThrow(
       'The operation name add_note is used more than once',
     );

@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { IncidentReporter, makeDispatcher, type Outcome } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
-import { memoryBrainDirectory, memoryLedger } from '../testing/index.ts';
-import { breakAndGiveUp, explode, misreport, overshare, refuseUndeclared } from '../testing/misbehaving.ts';
+import { memoryBrainRegistry, memoryLedger } from '../testing/index.ts';
+import { breakAndGiveUp, explode, misreport, overshare, rejectUndeclared } from '../testing/misbehaving.ts';
 
 const toAlpha = toBrain('acme', 'alpha');
 
@@ -17,13 +17,13 @@ const callOnAlpha = { operation: 'explode', org: 'acme', brain: 'alpha', caller:
 function explodingWith(report: IncidentReporter['Service']['report']) {
   const services = Layer.mergeAll(
     memoryLedger().layer,
-    memoryBrainDirectory([{ org: 'acme', brain: 'alpha' }]),
+    memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }]),
     Layer.succeed(IncidentReporter, IncidentReporter.of({ report })),
     TestClock.layer(),
     TestConsole.layer,
   );
   const watched = Effect.gen(function* () {
-    const call = yield* Effect.forkChild(makeDispatcher([]).inBrain(explode.registration, toAlpha(acmeAdmin)));
+    const call = yield* Effect.forkChild(makeDispatcher([]).dispatchToBrain(explode.registration, toAlpha(acmeAdmin)));
     yield* TestClock.adjust('2 seconds');
     const outcome: Outcome = yield* Fiber.join(call);
     return { incident: incidentOf(outcome), logged: (yield* TestConsole.logLines).join(' ') };
@@ -39,9 +39,9 @@ describe('a defect in a call', () => {
   it('becomes an incident whose original and call go to the reporter only', async () => {
     const { dispatcher, reported, run } = harness();
 
-    const outcome = await run(dispatcher.inBrain(explode.registration, toAlpha(acmeAdmin)));
+    const outcome = await run(dispatcher.dispatchToBrain(explode.registration, toAlpha(acmeAdmin)));
 
-    expect(outcome).toEqual({ status: 'faulted', incident: reported()[0]?.id });
+    expect(outcome).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(reported()[0]?.id).toMatch(incidentId);
     expect(reported()).toEqual([
       { id: reported()[0]?.id, original: new Error('the store password is hunter2'), call: callOnAlpha },
@@ -51,18 +51,18 @@ describe('a defect in a call', () => {
   it('includes output that breaks or exceeds the output schema', async () => {
     const { dispatcher, reported, run } = harness();
 
-    const misreported = await run(dispatcher.inOrg(misreport.registration, toOrg('acme')(acmeAdmin)));
-    const overshared = await run(dispatcher.inBrain(overshare.registration, toAlpha(acmeAdmin)));
+    const misreported = await run(dispatcher.dispatchToOrg(misreport.registration, toOrg('acme')(acmeAdmin)));
+    const overshared = await run(dispatcher.dispatchToBrain(overshare.registration, toAlpha(acmeAdmin)));
 
-    expect([misreported, overshared]).toEqual(reported().map(({ id }) => ({ status: 'faulted', incident: id })));
+    expect([misreported, overshared]).toEqual(reported().map(({ id }) => ({ status: 'failed', incident: id })));
     expect(reported()[0]?.call).toEqual({ operation: 'misreport', org: 'acme', caller: 'acme-admin' });
   });
 
-  it('includes a refusal the handler did not declare', async () => {
+  it('includes a rejection the handler did not declare', async () => {
     const { dispatcher, reported, run } = harness();
 
-    expect(await run(dispatcher.inBrain(refuseUndeclared.registration, toAlpha(acmeAdmin)))).toMatchObject({
-      status: 'faulted',
+    expect(await run(dispatcher.dispatchToBrain(rejectUndeclared.registration, toAlpha(acmeAdmin)))).toMatchObject({
+      status: 'failed',
     });
     expect(reported().map(({ original }) => original)).toMatchObject([{ detail: 'taken' }]);
   });
@@ -70,15 +70,15 @@ describe('a defect in a call', () => {
   it('includes a defect beside an interruption', async () => {
     const { dispatcher, reported, run } = harness();
 
-    expect(await run(dispatcher.inBrain(breakAndGiveUp.registration, toAlpha(acmeAdmin)))).toEqual({
-      status: 'faulted',
+    expect(await run(dispatcher.dispatchToBrain(breakAndGiveUp.registration, toAlpha(acmeAdmin)))).toEqual({
+      status: 'failed',
       incident: reported()[0]?.id,
     });
   });
 });
 
 describe('the incident reporter', () => {
-  it('is given two seconds, after which the incident id is logged and the call still faults', async () => {
+  it('is given two seconds, after which the incident id is logged and the call still fails', async () => {
     const { incident, logged } = await explodingWith(() => Effect.never);
 
     expect(incident).toMatch(incidentId);

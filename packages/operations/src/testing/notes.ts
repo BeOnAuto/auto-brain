@@ -10,14 +10,18 @@ const NoteSchema = Schema.Struct(noteFields).annotate({ identifier: 'Note' });
 
 type Note = typeof NoteSchema.Type;
 
-const notebook: Decider<readonly Note[], Note, Note, 'conflict'> = {
+const NoteAddedSchema = Schema.Struct({ type: Schema.Literal('note_added'), note: NoteSchema });
+
+type NoteAdded = typeof NoteAddedSchema.Type;
+
+const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   initialState: [],
-  evolve: (notes, added) => [...notes, added],
+  evolve: (notes, { note }) => [...notes, note],
   decide: (note, notes) =>
     notes.some(({ name }) => name === note.name)
       ? Result.fail(new Conflict({ detail: `A note named ${note.name} exists` }))
-      : Result.succeed([note]),
-  eventSchema: NoteSchema,
+      : Result.succeed([{ type: 'note_added', note }]),
+  eventSchema: NoteAddedSchema,
 };
 
 const Added = Schema.Struct({ added: NoteSchema, version: Schema.Int });

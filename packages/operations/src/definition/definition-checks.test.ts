@@ -97,7 +97,7 @@ describe('an input or output below its root', () => {
   });
 });
 
-describe('the fields of an input on the wire', () => {
+describe('the encoded fields of an input', () => {
   it('may not be named org, nor brain at brain scope, whatever the handler calls them', () => {
     const renaming = Schema.Struct({ organisation: Schema.String, target: Schema.String });
 
@@ -119,7 +119,7 @@ describe('the fields of an input on the wire', () => {
     ).toThrow('The input of probe may not have a field named brain');
   });
 
-  it('must carry the brain an org operation addresses under the name brain', () => {
+  it('must carry the brain an org operation targets under the name brain', () => {
     expect(() =>
       defineCommand('org', {
         ...probe,
@@ -154,7 +154,7 @@ describe('a route parameter', () => {
     ).toThrow(missing);
   });
 
-  it('must be required and a string on the wire', () => {
+  it('must be required and a string once encoded', () => {
     const route: { readonly method: 'GET'; readonly path: '/probe/{name}' } = { method: 'GET', path: '/probe/{name}' };
 
     expect(() =>
@@ -176,7 +176,7 @@ describe('a route parameter', () => {
   });
 });
 
-describe('a route parameter that is a string on the wire', () => {
+describe('a route parameter that is a string once encoded', () => {
   it('may be any kind of string', () => {
     const route: { readonly method: 'GET'; readonly path: '/brains/{brain}' } = {
       method: 'GET',
@@ -190,14 +190,14 @@ describe('a route parameter that is a string on the wire', () => {
         inputSchema: Schema.Struct({ brain: Schema.Literals(['alpha', 'beta']) }),
         outputSchema: Empty,
       }).registration,
-    ).toMatchObject({ pathParameters: ['brain'], addressesBrain: true });
+    ).toMatchObject({ pathParameters: ['brain'], targetsBrain: true });
     expect(
       defineQuery('org', {
         ...probe,
         route,
         inputSchema: Schema.Struct({ brain: Schema.TemplateLiteral(['b-', Schema.String]) }),
         outputSchema: Empty,
-      }).registration.addressesBrain,
+      }).registration.targetsBrain,
     ).toBe(true);
   });
 });

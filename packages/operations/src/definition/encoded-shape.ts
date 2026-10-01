@@ -4,7 +4,7 @@ function membersOf(ast: SchemaAST.AST): readonly SchemaAST.AST[] {
   return SchemaAST.isUnion(ast) ? ast.types : [ast];
 }
 
-export function wireMembersOf(schema: Schema.Constraint): readonly SchemaAST.AST[] {
+export function encodedMembersOf(schema: Schema.Constraint): readonly SchemaAST.AST[] {
   return membersOf(SchemaAST.toEncoded(Schema.toCodecJson(schema).ast));
 }
 
@@ -46,9 +46,9 @@ export function fieldOf(member: SchemaAST.Objects, name: string): SchemaAST.Prop
   return member.propertySignatures.find((field) => field.name === name);
 }
 
-function isStringOnTheWire(ast: SchemaAST.AST): boolean {
+function isEncodedString(ast: SchemaAST.AST): boolean {
   if (SchemaAST.isUnion(ast)) {
-    return ast.types.every((member) => isStringOnTheWire(member));
+    return ast.types.every((member) => isEncodedString(member));
   }
   return (
     SchemaAST.isString(ast) ||
@@ -58,5 +58,5 @@ function isStringOnTheWire(ast: SchemaAST.AST): boolean {
 }
 
 export function isRequiredStringField(field: SchemaAST.PropertySignature | undefined): boolean {
-  return field !== undefined && !SchemaAST.isOptional(field.type) && isStringOnTheWire(field.type);
+  return field !== undefined && !SchemaAST.isOptional(field.type) && isEncodedString(field.type);
 }
