@@ -1,0 +1,58 @@
+const introduction = [
+  'Runs a workflow: deterministic steps that execute other specs of the brain, branch, loop, run in parallel,',
+  'wait, retry and catch errors, durably, until they end.',
+  'A spec document of orchestration is a YAML workflow in the Open Workflow Specification DSL 1.0.x (the CNCF',
+  'Serverless Workflow DSL). For example, this one classifies a ticket with an inference spec, drafts an',
+  'escalation note with another only when the ticket is urgent, and then waits for the escalation to be approved:',
+].join(' ');
+
+export const orchestrationExample = [
+  "document: {dsl: '1.0.3', namespace: support, name: triage, version: '1.0.0'}",
+  'do:',
+  '  - classify:',
+  '      call: execute_spec',
+  "      with: {primitive: inference, name: classify-ticket, input: {ticket: '${ .ticket }'}}",
+  "      output: {as: '${ $input + {triage: .} }'}",
+  '  - escalate:',
+  '      if: .triage.urgency == "high"',
+  '      call: execute_spec',
+  "      with: {primitive: inference, name: draft-escalation, input: {ticket: '${ .ticket }'}}",
+  "      output: {as: '${ $input + {note: .} }'}",
+  '  - approval:',
+  '      if: .note != null',
+  '      listen: {to: {one: {with: {type: com.acme.escalation.approved}}}}',
+  "      output: {as: '${ $input + {approved_by: .[0].by} }'}",
+].join('\n');
+
+const rules = [
+  'A document is a mapping with document (dsl: 1.0.3, namespace, name, version, and an optional title and summary),',
+  'an optional input (from, and an inline JSON Schema document), a do list of named tasks,',
+  'an optional output (as, and a schema), an optional timeout, and optional use.errors, use.retries and',
+  'use.timeouts to reuse.',
+  'Tasks: set; call execute_spec with { primitive, name, input } to execute another spec of the brain and take',
+  'its output (a rejection is an error the workflow can catch); do; switch; for; fork of at most 32 branches',
+  '(compete: true races the branches); try with catch (errors.with, when, exceptWhen, retry with delay, backoff,',
+  'jitter and limits, and do); wait; raise; and listen for events sent with send_execution_event.',
+  'Data flows through the tasks: a task takes the output of the task before it as its input, the first the input',
+  'of the workflow, and . is that input in its expressions; a task whose if does not hold hands its input on unchanged.',
+  'output.as shapes what a task hands on, with . as what the task produced and $input as its input, so',
+  '${ $input + {triage: .} } keeps what came before; export.as sets $context, which later tasks read;',
+  '$workflow.input is the input of the workflow in every task.',
+  'call execute_spec produces the output of the spec it ran: the text, or the JSON value, an inference spec',
+  'answered. listen produces a list with the data of each event it consumed.',
+  'Task lists nest at most 64 levels deep. A workflow runs for at most the time the runtime is set to allow,',
+  '30 days unless told otherwise; a wait or timeout longer than that is rejected, and one computed longer fails',
+  'the workflow. An expression may do a bounded amount of work, about one pass over a few megabytes of data;',
+  'more fails the workflow with a runtime error.',
+  'Flow directives: then continue, exit, end, or the name of a task in the same list.',
+  'Expressions are jq, enclosed in ${ }; if, when, for.in and while may also be written bare.',
+  'Quote an expression that sits inside a {...} flow mapping, as above, or YAML reads its braces.',
+  'Not allowed: run, emit, call of http, grpc, openapi, asyncapi, a2a or mcp, catalogs, extensions,',
+  'reusable functions, secrets, authentications, schedules, task schemas, executing another workflow,',
+  'and the jq builtins localtime and strflocaltime.',
+  'An execution starts the workflow and answers started; get_execution shows it settled when the workflow ends:',
+  'succeeded with its output, rejected when an error is not caught (invalid_input for a 4xx status other than',
+  '408 and 429, unavailable otherwise), or failed.',
+].join(' ');
+
+export const orchestrationDescription = `${introduction}\n\n${orchestrationExample}\n\n${rules}`;
