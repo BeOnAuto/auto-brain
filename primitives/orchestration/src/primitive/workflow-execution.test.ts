@@ -114,7 +114,7 @@ describe('executing a workflow spec when Temporal cannot be reached', () => {
     expect(outcome).toMatchObject({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'Temporal could not start the workflow: Error: Temporal did not answer within 500 ms',
+      detail: 'Temporal cannot start the workflow now; try again later',
     });
     expect(waited).toBeLessThan(1500);
     expect(await isolated.call(isolated.getExecution, { execution_id: executionId })).toMatchObject({

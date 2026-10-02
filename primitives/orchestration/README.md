@@ -143,7 +143,7 @@ An event waits in the workflow until a `listen` task takes it; an event with an 
 
 ## Execution and settling
 
-`execute_spec` of a workflow spec starts the workflow `runWorkflowSpec` on Temporal and answers the execution `started`. The workflow id is `{org}/{brain}/{spec}/{execution id}`, and a start with an id already running answers that run, so an execution started twice runs one workflow. The execution records `{ workflow_id, run_id }`. When Temporal cannot be reached within 10 seconds, the execution is rejected with `unavailable`.
+`execute_spec` of a workflow spec starts the workflow `runWorkflowSpec` on Temporal and answers the execution `started`. The workflow id is `{org}/{brain}/{spec}/{execution id}`, and a start with an id already running answers that run, so an execution started twice runs one workflow. The execution records `{ workflow_id, run_id }`. When Temporal cannot be reached within 10 seconds, the execution is rejected with `unavailable` and the fixed detail `Temporal cannot start the workflow now; try again later`; an event Temporal cannot take answers `unavailable` with `Temporal cannot deliver the event now; try again later`. Temporal's own error goes only to the server's log, as the warning `Temporal could not start a workflow` (or `deliver an event`) with the error cut at 500 characters, at most once a minute for each client, the next line counting the failures it did not log in `suppressed`.
 
 When the workflow ends, a last activity settles the execution through `executionSettler` of `@beonauto/specs`:
 
