@@ -23,11 +23,18 @@ function recordingDisposal(): { runtimeLayer: () => Layer.Layer<never>; events: 
   return { runtimeLayer: () => recording, events };
 }
 
-function recordingWork(record: () => void): Served {
+function recordingWork(record: (event: string) => void): Served {
   return {
-    routes: [],
+    routes: [
+      (routes) => {
+        routes.onClose(() => {
+          record('routes closed');
+          return Promise.resolve();
+        });
+      },
+    ],
     stopWork: () => {
-      record();
+      record('work stopped');
       return Promise.resolve();
     },
   };
@@ -79,8 +86,8 @@ describe('the runtime of a server that cannot start', () => {
         ...defaultServerOptions,
         runtimeLayer,
         serve: () =>
-          recordingWork(() => {
-            events.push('work stopped');
+          recordingWork((event) => {
+            events.push(event);
           }),
       },
     ).then(
@@ -93,7 +100,7 @@ describe('the runtime of a server that cannot start', () => {
     await first.stop();
 
     expect(failure).toContain('EADDRINUSE');
-    expect(events).toEqual(['work stopped', 'runtime disposed', 'start-up rejected']);
+    expect(events).toEqual(['work stopped', 'runtime disposed', 'routes closed', 'start-up rejected']);
   });
 
   it('is disposed before start-up rejects because its routes cannot be built', async () => {
@@ -221,7 +228,36 @@ describe('stopping a started server', () => {
     expect({ status: response.status, body: await response.json() }).toEqual({ status: 200, body: { slept: 300 } });
     expect(performance.now() - stopping).toBeLessThan(2000);
   });
+});
 
+describe('the work a stopping server does besides answering requests', () => {
+  it('stops while the requests in flight finish, not after them', async () => {
+    const events: string[] = [];
+    const server = await startServer(loopback, {
+      ...defaultServerOptions,
+      serve: () => ({
+        routes: [testRoutes],
+        stopWork: async () => {
+          events.push('work stopping');
+          await setTimeout(50);
+          events.push('work stopped');
+        },
+      }),
+    });
+    const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`).then(() => {
+      events.push('request answered');
+      return events;
+    });
+    await setTimeout(50);
+
+    await server.stop();
+    await inFlight;
+
+    expect(events).toEqual(['work stopping', 'work stopped', 'request answered']);
+  });
+});
+
+describe('stopping a started server with connections still open', () => {
   it('closes a keep-alive connection that is idle, instead of waiting for it until the shutdown timeout', async () => {
     const server = await startServer(loopback, defaultServerOptions);
     await (await fetch(`http://127.0.0.1:${server.port}/health`)).text();

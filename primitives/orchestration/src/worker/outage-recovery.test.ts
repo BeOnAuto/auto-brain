@@ -4,7 +4,7 @@ import { setTimeout } from 'node:timers/promises';
 
 import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Effect, Exit, Scope } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { failureRecorder } from '../testing/failure-recorder.ts';
 import { temporalLogsSoFar } from '../testing/temporal-logs.ts';
@@ -22,10 +22,17 @@ async function freePort(): Promise<number> {
   return typeof address === 'object' && address !== null ? address.port : 0;
 }
 
-function temporalOn(port: number): Promise<TestWorkflowEnvironment> {
-  return TestWorkflowEnvironment.createLocal({
+async function temporalOn(port: number): Promise<() => Promise<void>> {
+  const environment = await TestWorkflowEnvironment.createLocal({
     server: { ip: '127.0.0.1', port, log: { format: 'pretty', level: 'error' } },
   });
+  let stopping: Promise<void> | undefined;
+  const stop = (): Promise<void> => {
+    stopping ??= environment.teardown();
+    return stopping;
+  };
+  onTestFinished(stop);
+  return stop;
 }
 
 async function untilLogged(message: string, attempts: number): Promise<boolean> {
@@ -43,8 +50,9 @@ function messagesLogged(): readonly string[] {
 describe('a worker whose Temporal goes away and comes back', () => {
   it('logs that it lost Temporal once, instead of every retry, and that it reached Temporal again', async () => {
     const port = await freePort();
-    const first = await temporalOn(port);
+    const stopFirst = await temporalOn(port);
     const scope = Effect.runSync(Scope.make());
+    onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
     const recorder = failureRecorder();
     await Effect.runPromise(
       runOrchestrationWorker({
@@ -56,13 +64,11 @@ describe('a worker whose Temporal goes away and comes back', () => {
       }).pipe(Scope.provide(scope)),
     );
 
-    await first.teardown();
+    await stopFirst();
     const lost = await untilLogged('The workflow worker lost Temporal', 120);
     await setTimeout(3000);
-    const second = await temporalOn(port);
+    await temporalOn(port);
     const reached = await untilLogged('The workflow worker reached Temporal again', 120);
-    await Effect.runPromise(Scope.close(scope, Exit.void));
-    await second.teardown();
 
     expect([lost, reached]).toStrictEqual([true, true]);
     expect(messagesLogged().filter((message) => message === 'The workflow worker lost Temporal')).toHaveLength(1);

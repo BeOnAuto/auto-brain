@@ -1,8 +1,10 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { Effect, Fiber, Logger, Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';
 
-import { retryDelayMs, superviseWorker, workerBackoff, type StartWorker } from './worker-supervisor.ts';
+import { retryDelayMs, runSupervised, superviseWorker, workerBackoff, type StartWorker } from './worker-supervisor.ts';
 
 const decodeLine = Schema.decodeUnknownSync(
   Schema.fromJsonString(
@@ -158,6 +160,23 @@ describe('the failures the supervisor counts', () => {
     expect(stopped?.level).toBe('ERROR');
     expect(stopped?.retryMs).toBeLessThanOrEqual(workerBackoff.firstMs);
   });
+});
+
+describe('stopping a supervised worker that does not stop', () => {
+  it('gives up after 11 seconds, a second more than the worker gives activities to finish', async () => {
+    const worker = runSupervised(Effect.never.pipe(Effect.onInterrupt(() => Effect.never)));
+    const stopping = performance.now();
+
+    const outcome = await Promise.race([
+      worker.stop().then(() => 'gave up'),
+      setTimeout(20_000, 'still stopping', { ref: false }),
+    ]);
+    const tookMs = performance.now() - stopping;
+
+    expect(outcome).toBe('gave up');
+    expect(tookMs).toBeGreaterThanOrEqual(10_900);
+    expect(tookMs).toBeLessThan(12_500);
+  }, 30_000);
 });
 
 describe('the delay before the worker is started again', () => {

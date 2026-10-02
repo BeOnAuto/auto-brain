@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { connectOrchestration, installTemporalRuntime, type TemporalLogEntry } from '@beonauto/orchestration';
 import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Effect, Exit, Scope } from 'effect';
-import { afterAll, describe, expect, inject, it } from 'vitest';
+import { afterAll, describe, expect, inject, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from './testing/temporary-ledger.ts';
 import {
@@ -75,6 +75,7 @@ describe('a server whose Temporal starts after it', { timeout: 120_000 }, () => 
     const temporal = await TestWorkflowEnvironment.createLocal({
       server: { ip: '127.0.0.1', port: temporalPort, log: { format: 'pretty', level: 'error' } },
     });
+    onTestFinished(() => temporal.teardown());
     await untilLogged(child, workerStarted);
     const started = await acceptedOnceUp(port, '/beta/specs/orchestration/greeting/execute', {
       input: { name: 'Ada' },
@@ -82,7 +83,6 @@ describe('a server whose Temporal starts after it', { timeout: 120_000 }, () => 
     const settled = await settledOver(port, `/beta/executions/${executionIdIn(started.body)}`);
     child.signal('SIGTERM');
     const exitCode = await child.exited;
-    await temporal.teardown();
 
     expect(created.status).toBe(201);
     expect(whileDown).toMatchObject({ status: 503, body: { reason: 'unavailable' } });
