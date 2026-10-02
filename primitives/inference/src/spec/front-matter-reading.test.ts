@@ -60,6 +60,31 @@ describe('the front matter', () => {
   });
 });
 
+function withListsNested(levels: number): string {
+  const lists = levels - 2;
+  return documentOf(
+    `model: openai/gpt-5\nprovider_options:\n  anthropic: {x: ${'['.repeat(lists)}${']'.repeat(lists)}}`,
+  );
+}
+
+describe('the nesting of the front matter', () => {
+  it('stops at 72 levels', () => {
+    expect(issuesIn(withListsNested(72))).toEqual([]);
+    expect(issuesIn(withListsNested(73))).toEqual([
+      `Line 4, /provider_options/anthropic/x${'/0'.repeat(70)}: The front matter may nest at most 72 levels`,
+    ]);
+  });
+
+  it('stops at 72 levels however deep it goes, past what the YAML reader can follow', () => {
+    const flow = withListsNested(30_000);
+    const block = `---\nmodel: openai/gpt-5\nprovider_options:\n  anthropic:\n    x:\n      ${'- '.repeat(30_000)}1\n---\nHi`;
+
+    expect([flow.length, block.length].every((length) => length <= 65_536)).toBe(true);
+    expect(issuesIn(flow)).toEqual(['Line 4: The front matter may nest at most 72 levels']);
+    expect(issuesIn(block)).toEqual(['Line 6: The front matter may nest at most 72 levels']);
+  });
+});
+
 describe('the values of the front matter', () => {
   it('have no key twice in one mapping', () => {
     expect(issuesIn(documentOf('model: openai/gpt-5\nconfig:\n  seed: 1\n  seed: 2\nmodel: openai/gpt-4'))).toEqual([
@@ -72,16 +97,6 @@ describe('the values of the front matter', () => {
     expect(issuesIn(documentOf('model: openai/gpt-5\nconfig:\n  temperature: .inf\n  top_p: .nan'))).toEqual([
       'Line 4, /config/temperature: Expected text, a finite number, true, false or null',
       'Line 5, /config/top_p: Expected text, a finite number, true, false or null',
-    ]);
-  });
-
-  it('nest at most 72 levels', () => {
-    const deep = `${'['.repeat(80)}${']'.repeat(80)}`;
-
-    expect(issuesIn(documentOf(`model: openai/gpt-5\nprovider_options:\n  anthropic: {x: ${deep}}`))).toEqual([
-      expect.stringContaining(
-        'Line 4, /provider_options/anthropic/x/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0',
-      ),
     ]);
   });
 

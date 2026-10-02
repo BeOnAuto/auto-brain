@@ -16,12 +16,15 @@ const clearerMessages: ReadonlyMap<string, string> = new Map([
   ],
 ]);
 
+const tooDeep = 'The tags or parentheses of the template nest too deeply to be read';
+
 function parsedTemplates(body: string, firstLine: number): Result.Result<Template[], readonly TemplateIssue[]> {
   try {
     return Result.succeed(engine.parse(body));
   } catch (error) {
-    const { line, message } = engineFailureOf(error, firstLine);
-    return Result.fail([{ line, detail: clearerMessages.get(message) ?? message }]);
+    const { line, message, cause } = engineFailureOf(error, firstLine);
+    const detail = cause instanceof RangeError ? tooDeep : (clearerMessages.get(message) ?? message);
+    return Result.fail([{ line, detail }]);
   }
 }
 

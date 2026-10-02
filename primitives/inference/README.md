@@ -243,7 +243,8 @@ Limits on schemas, which the spec author controls:
 
 - at most 65,536 bytes as JSON, at most 64 nested levels of objects and lists, at most 1000 values in one `enum`;
 - no `pattern` or `patternProperties`, because a hostile regular expression can stall validation;
-- no `if`, `then`, `else`, `contains`, `dependentRequired`, `dependentSchemas`, `dependencies`, `unevaluatedItems`, `unevaluatedProperties`, `additionalItems` or dynamic anchors; `$ref` only to `#/$defs/<name>` or `#/definitions/<name>`; `not` only as `{}`; `enum` and `const` only of strings, numbers, booleans and null; a schema for `additionalProperties` not together with `properties`.
+- no `if`, `then`, `else`, `contains`, `dependentRequired`, `dependentSchemas`, `dependencies`, `unevaluatedItems`, `unevaluatedProperties`, `additionalItems` or dynamic anchors; `$ref` only to `#/$defs/<name>` or `#/definitions/<name>`; `not` only as `{}`; `enum` and `const` only of strings, numbers, booleans and null; a schema for `additionalProperties` not together with `properties`;
+- no definition that leads into a loop of `$ref`, `allOf`, `anyOf` or `oneOf` with no property or item in between, such as `"a": {"$ref": "#/$defs/a"}`: validating against it would never end. A definition may refer to itself through `properties` or `items`, as a tree does, and chains of definitions are allowed.
 
 Limits on answers: at most 128 nested levels; at most 100 issues are reported.
 
@@ -356,7 +357,7 @@ Any other key, at any level, is rejected.
 Parsing is validation. Every create, update and execution parses the document, and a document with a problem is rejected with every problem found at once, each with its line in the document, and a JSON pointer into the front matter where there is one, for example `Line 4, /config/temperature: Expected number`. The operations answer them under `/source`. Parsing finds:
 
 - front matter that does not open on the first line or is never closed; a document without it is never read as a template;
-- YAML that cannot be read. The front matter is YAML 1.2 with the core schema, so `yes` and `2026-10-01` stay text. Anchors, aliases and tags are rejected, a key may appear once in a mapping, numbers are finite, and nesting stops at 72 levels;
+- YAML that cannot be read. The front matter is YAML 1.2 with the core schema, so `yes` and `2026-10-01` stay text. Anchors, aliases and tags are rejected, a key may appear once in a mapping, numbers are finite, and nesting stops at 72 levels: deeper front matter, however deep, is rejected with `The front matter may nest at most 72 levels`;
 - unknown keys and values of the wrong type, and a missing `model`;
 - a model not written `provider/model`, and settings out of range;
 - an input schema whose root is not an object, a schema that cannot be validated (see [Answers that are JSON](#answers-that-are-json) for what is rejected), and defaults that do not match it;
@@ -435,7 +436,7 @@ As of October 2026, no published advisory affects liquidjs 10.27.2 or later; ear
 | Memory that filters and ranges may charge   | 5,000,000 characters or items | About nineteen passes of a filter over the largest input an execution takes (256 KiB)                                                                                                  |
 | Rendered instructions, and rendered message | 200,000 characters each       | Checked as the output is written, so a render stops as soon as it grows past it                                                                                                        |
 
-Names are counted in the text inside `{{ }}` and `{% %}`: every variable, property, filter and keyword. A template over the first two limits is rejected when it is parsed. A render that hits one of the last three stops the execution with `invalid_input`, because it is the input that makes the render grow.
+Names are counted in the text inside `{{ }}` and `{% %}`: every variable, property, filter and keyword. A template over the first two limits is rejected when it is parsed. The engine reads tags and parentheses recursively, so a template that nests them more deeply than it can read (about 2000 levels of tags) is rejected with `The tags or parentheses of the template nest too deeply to be read`, never with the engine's own message. A render that hits one of the last three stops the execution with `invalid_input`, because it is the input that makes the render grow.
 
 ## Creating and executing a spec
 

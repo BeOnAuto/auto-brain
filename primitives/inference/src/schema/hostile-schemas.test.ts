@@ -103,6 +103,69 @@ describe('a hostile schema', () => {
   });
 });
 
+const loop =
+  'This definition leads into a loop of $ref, allOf, anyOf or oneOf with no property or item in between, so no value can be checked against it';
+
+function referenceChain(length: number): Schema.JsonObject {
+  const definitions = Array.from({ length }, (_, index): readonly [string, Schema.Json] => [
+    `a${index}`,
+    index === length - 1 ? { type: 'string' } : { $ref: `#/$defs/a${index + 1}` },
+  ]);
+  return { type: 'object', properties: { x: { $ref: '#/$defs/a0' } }, $defs: Object.fromEntries(definitions) };
+}
+
+const loopThroughCombinations = {
+  properties: { x: { $ref: '#/definitions/entry' } },
+  definitions: {
+    entry: { allOf: [{ $ref: '#/definitions/first' }] },
+    first: { anyOf: [{ type: 'string' }, { oneOf: [{ $ref: '#/definitions/second' }] }] },
+    second: { $ref: '#/definitions/first' },
+    'other/name': { $ref: '#/definitions/first' },
+    unrelated: { type: 'string' },
+    anything: true,
+    either: { oneOf: [{ $ref: '#/definitions/unrelated' }, { $ref: '#/definitions/anything' }] },
+  },
+};
+
+describe('a schema whose definitions refer to each other', () => {
+  it('may not loop back to a definition without a property or an item in between', () => {
+    expect(issuesOf({ $ref: '#/$defs/self', $defs: { self: { $ref: '#/$defs/self' } } })).toEqual([
+      { pointer: '/$defs/self', detail: loop },
+    ]);
+    expect(issuesOf(loopThroughCombinations)).toEqual([
+      { pointer: '/definitions/entry', detail: loop },
+      { pointer: '/definitions/first', detail: loop },
+      { pointer: '/definitions/second', detail: loop },
+      { pointer: '/definitions/other~1name', detail: loop },
+    ]);
+  });
+
+  it('may refer to itself through a property or an item, and is validated', () => {
+    const tree = {
+      type: 'object',
+      properties: { root: { $ref: '#/$defs/node' } },
+      $defs: {
+        node: {
+          type: 'object',
+          properties: { children: { type: 'array', items: { $ref: '#/$defs/node' } } },
+        },
+      },
+    };
+    const validate = Result.getOrThrow(compileAnswerSchema(tree)).validate;
+
+    expect(validate({ root: { children: [{ children: [] }] } })).toEqual(
+      Result.succeed({ root: { children: [{ children: [] }] } }),
+    );
+  });
+
+  it('may chain definitions as long as the size limit allows, and is validated', () => {
+    const validate = Result.getOrThrow(compileAnswerSchema(referenceChain(1700))).validate;
+
+    expect(validate({ x: 'text' })).toEqual(Result.succeed({ x: 'text' }));
+    expect(validate({ x: 1 })).toEqual(Result.fail([{ pointer: '/x', detail: 'Expected a0' }]));
+  });
+});
+
 describe('a malformed schema', () => {
   it.each([
     ['a list', ['string']],

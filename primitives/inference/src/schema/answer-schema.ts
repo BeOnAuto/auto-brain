@@ -1,6 +1,7 @@
 import { JsonSchema, Result, Schema, SchemaIssue, SchemaRepresentation, type StandardSchema } from 'effect';
 
 import { nestedDeeperThan, pointerOf, utf8Bytes, type SchemaIssue as Issue } from './json-bounds.ts';
+import { referenceLoopIssues } from './reference-loops.ts';
 import { portabilityOf, type PortabilityIssue } from './schema-portability.ts';
 import { shapeIssues } from './schema-shape.ts';
 
@@ -53,7 +54,7 @@ function boundedDocument(document: unknown): Result.Result<Schema.JsonObject, re
 }
 
 function wellFormedDocument(document: Schema.JsonObject): Result.Result<Schema.JsonObject, readonly Issue[]> {
-  const issues = shapeIssues(document);
+  const issues = [...shapeIssues(document), ...referenceLoopIssues(document)];
   return issues.length > 0 ? Result.fail(issues.slice(0, schemaLimits.issues)) : Result.succeed(document);
 }
 

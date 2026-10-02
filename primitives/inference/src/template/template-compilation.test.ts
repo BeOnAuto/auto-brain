@@ -42,6 +42,16 @@ describe('a template', () => {
       { line: 4, detail: 'A template may take at most 65536 characters' },
     ]);
   });
+
+  it('is rejected when its tags or parentheses nest deeper than the engine reads', () => {
+    const tooDeep = { line: 4, detail: 'The tags or parentheses of the template nest too deeply to be read' };
+    const tags = `${'{%if a%}'.repeat(3600)}x${'{%endif%}'.repeat(3600)}`;
+    const parentheses = `{{ ${'('.repeat(30_000)}1${')'.repeat(30_000)} }}`;
+
+    expect([tags.length, parentheses.length].every((length) => length <= 65_536)).toBe(true);
+    expect(issuesOf(tags, 4)).toEqual([tooDeep]);
+    expect(issuesOf(parentheses, 4)).toEqual([tooDeep]);
+  });
 });
 
 describe('the tags that load other templates', () => {

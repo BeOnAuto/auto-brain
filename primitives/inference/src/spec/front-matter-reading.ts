@@ -21,6 +21,8 @@ export interface FrontMatterReading {
 
 const frontMatterNesting = 72;
 
+const tooDeep = `The front matter may nest at most ${frontMatterNesting} levels`;
+
 interface Place {
   readonly pointer: string;
   readonly depth: number;
@@ -34,6 +36,7 @@ interface Reading {
 }
 
 interface YamlError {
+  readonly code: string;
   readonly pos: readonly [number, number];
   readonly message: string;
 }
@@ -75,7 +78,7 @@ function valueOf(node: unknown, place: Place, reading: Reading): Schema.Json {
     return null;
   }
   if (place.depth > frontMatterNesting) {
-    reading.report(line, place.pointer, `The front matter may nest at most ${frontMatterNesting} levels`);
+    reading.report(line, place.pointer, tooDeep);
     return null;
   }
   if (isMap(node)) {
@@ -118,6 +121,15 @@ function rootIssue(line: number, detail: string): readonly DocumentIssue[] {
   return [{ line, pointer: '', detail }];
 }
 
+function yamlIssues(errors: readonly YamlError[], lineAt: (offset: number) => number): readonly DocumentIssue[] {
+  const issues: readonly DocumentIssue[] = errors.map(({ code, pos, message }: YamlError) => ({
+    line: lineAt(pos[0]),
+    pointer: '',
+    detail: code === 'RESOURCE_EXHAUSTION' ? tooDeep : message,
+  }));
+  return [...new Map(issues.map((issue) => [`${issue.line} ${issue.detail}`, issue])).values()];
+}
+
 export function readFrontMatter(
   text: string,
   firstLine: number,
@@ -126,9 +138,7 @@ export function readFrontMatter(
   const document = parseDocument(text, { ...parseOptions, lineCounter });
   const lineAt = (offset: number): number => firstLine + lineCounter.linePos(offset).line - 1;
   if (document.errors.length > 0) {
-    return Result.fail(
-      document.errors.map(({ pos, message }: YamlError) => ({ line: lineAt(pos[0]), pointer: '', detail: message })),
-    );
+    return Result.fail(yamlIssues(document.errors, lineAt));
   }
   if (document.contents === null) {
     return Result.fail(rootIssue(firstLine, 'The front matter is empty; it names at least the model'));

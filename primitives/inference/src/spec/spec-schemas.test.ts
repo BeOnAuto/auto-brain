@@ -47,6 +47,19 @@ describe('the input schema', () => {
     ]);
   });
 
+  it('is rejected, and never read, when its definitions loop', () => {
+    const looping = '{type: object, properties: {x: {$ref: "#/$defs/a"}}, $defs: {a: {$ref: "#/$defs/a"}}}';
+    const loop =
+      'This definition leads into a loop of $ref, allOf, anyOf or oneOf with no property or item in between, so no value can be checked against it';
+
+    expect(issuesIn(documentOf(`model: openai/gpt-5\ninput:\n  schema: ${looping}`, 'Hi'))).toEqual([
+      `Line 4, /input/schema/$defs/a: ${loop}`,
+    ]);
+    expect(issuesIn(documentOf(`model: openai/gpt-5\noutput:\n  format: json\n  schema: ${looping}`, 'Hi'))).toEqual([
+      `Line 5, /output/schema/$defs/a: ${loop}`,
+    ]);
+  });
+
   it('is kept with the defaults when it is valid', () => {
     const { input } = parsed(withInput('{limit: 10}'));
 
