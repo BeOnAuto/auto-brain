@@ -1,5 +1,5 @@
 import { BrainIdSchema, rejected, type Rejected } from '@beonauto/operations';
-import { Option, Predicate, Result, Schema } from 'effect';
+import { Option, Result, Schema, SchemaIssue } from 'effect';
 
 import { inlinedRootOf, withoutUnreferencedDefinitions, type JsonSchema } from './tool-schema.ts';
 
@@ -27,8 +27,9 @@ const objectFieldsOf = Schema.decodeUnknownSync(ObjectFieldsSchema);
 
 const unionOf = Schema.decodeUnknownOption(UnionSchema);
 
-const invalidBrain = (detail: string): Rejected =>
-  rejected('invalid_input', 'The input does not match the input schema', [{ detail, pointer: '/brain' }]);
+const decodeBrainArgument = Schema.decodeUnknownResult(Schema.Struct({ brain: BrainIdSchema }));
+
+const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 
 function withBrainProperty(object: Readonly<JsonSchema>): JsonSchema {
   const { properties = {}, required = [] } = objectFieldsOf(object);
@@ -53,12 +54,11 @@ function withoutBrain(input: Readonly<Record<string, unknown>>): Readonly<Record
   return Object.fromEntries(Object.entries(input).filter(([key]: readonly [string, unknown]) => key !== 'brain'));
 }
 
-export function brainArgumentOf(input: unknown): Result.Result<BrainArgument, Rejected> {
-  if (!Predicate.hasProperty(input, 'brain')) {
-    return Result.fail(invalidBrain('Missing key'));
+export function brainArgumentOf(input: Readonly<Record<string, unknown>>): Result.Result<BrainArgument, Rejected> {
+  const decoded = decodeBrainArgument(input);
+  if (Result.isSuccess(decoded)) {
+    return Result.succeed({ brain: decoded.success.brain, input: withoutBrain(input) });
   }
-  const { brain } = input;
-  return Predicate.isString(brain)
-    ? Result.succeed({ brain, input: withoutBrain(input) })
-    : Result.fail(invalidBrain('Expected string'));
+  const issues = failureOf(decoded.failure.issue).issues.map(({ message }) => ({ detail: message, pointer: '/brain' }));
+  return Result.fail(rejected('invalid_input', 'The input does not match the input schema', issues));
 }

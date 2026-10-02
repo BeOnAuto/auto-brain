@@ -1,4 +1,4 @@
-import { Result } from 'effect';
+import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { brainArgumentOf, withBrainArgument } from './brain-argument.ts';
@@ -74,10 +74,23 @@ describe('withBrainArgument on a union', () => {
   });
 });
 
-const inputsWithoutBrain: ReadonlyArray<readonly [string, unknown, string]> = [
+const recordOf = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown));
+
+const malformed = 'Expected a string matching the RegExp ^[a-z][a-z0-9-]{2,47}$';
+
+const inputsWithoutBrain: ReadonlyArray<readonly [string, Readonly<Record<string, unknown>>, string]> = [
   ['without a brain', { name: 'greeting' }, 'Missing key'],
-  ['that is not an object', 'alpha', 'Missing key'],
   ['whose brain is not a string', { brain: 7 }, 'Expected string'],
+  ['whose brain is empty', { brain: '' }, malformed],
+  ['whose brain has 2 characters', { brain: 'ab' }, malformed],
+  ['whose brain has 49 characters', { brain: `a${'b'.repeat(48)}` }, malformed],
+  ['whose brain has 100 000 characters', { brain: 'a'.repeat(100_000) }, malformed],
+  ['whose brain ends with a newline', { brain: 'alpha\n' }, malformed],
+  ['whose brain is uppercase', { brain: 'Alpha' }, malformed],
+  ['whose brain has a fullwidth letter', { brain: 'ａlpha' }, malformed],
+  ['whose brain has a Cyrillic lookalike', { brain: 'аlpha' }, malformed],
+  ['whose brain has a NUL', { brain: 'alp\u0000ha' }, malformed],
+  ['whose brain is *', { brain: '*' }, malformed],
 ];
 
 describe('brainArgumentOf', () => {
@@ -85,6 +98,14 @@ describe('brainArgumentOf', () => {
     expect(brainArgumentOf({ brain: 'alpha', name: 'greeting' })).toEqual(
       Result.succeed({ brain: 'alpha', input: { name: 'greeting' } }),
     );
+  });
+
+  it('keeps an own __proto__ field for the operation to judge', () => {
+    const parsed: unknown = JSON.parse('{"brain":"alpha","__proto__":{"admin":true}}');
+
+    const argument = brainArgumentOf(recordOf(parsed));
+
+    expect(Result.map(argument, ({ input: rest }) => Object.hasOwn(rest, '__proto__'))).toEqual(Result.succeed(true));
   });
 
   it.each(inputsWithoutBrain)('rejects an input %s as invalid_input pointing at /brain', (_case, input, detail) => {
