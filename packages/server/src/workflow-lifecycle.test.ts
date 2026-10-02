@@ -102,9 +102,14 @@ describe('an execution a workflow cannot settle', { timeout: workflowTestTimeout
     const executionId = randomUUID();
     const scope = Effect.runSync(Scope.make());
     const client = await Effect.runPromise(
-      connectOrchestration({ address, namespace: 'default', taskQueue, tls: false, mostDuration: 7_200_000 }).pipe(
-        Scope.provide(scope),
-      ),
+      connectOrchestration({
+        address,
+        namespace: 'default',
+        taskQueue,
+        tls: false,
+        mostDuration: 7_200_000,
+        nestedExecutions: 32,
+      }).pipe(Scope.provide(scope)),
     );
     await Effect.runPromise(
       client.start({

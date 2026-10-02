@@ -29,10 +29,13 @@ describe('the Temporal settings', () => {
         taskQueue: 'auto-brain',
         tls: false,
         mostDuration: thirtyDays,
+        nestedExecutions: 32,
       }),
     );
   });
+});
 
+describe('Temporal settings that are all set', () => {
   it('read every setting', () => {
     const settings = settingsFrom({
       TEMPORAL_ADDRESS: ' acme.tmprl.cloud:7233 ',
@@ -41,6 +44,7 @@ describe('the Temporal settings', () => {
       TEMPORAL_API_KEY: 'secret',
       TEMPORAL_TLS: 'Yes',
       ORCHESTRATION_MAX_DURATION: 'P365D',
+      ORCHESTRATION_NESTED_EXECUTIONS: ' 200 ',
       ORCHESTRATION_WORKFLOW_BUNDLE: ' /app/workflow-bundle ',
     });
 
@@ -51,6 +55,7 @@ describe('the Temporal settings', () => {
         taskQueue: 'brains',
         tls: true,
         mostDuration: 31_536_000_000,
+        nestedExecutions: 200,
         workflowBundle: '/app/workflow-bundle',
         apiKey: 'secret',
       }),
@@ -111,6 +116,29 @@ describe('the most a workflow may run', () => {
   });
 });
 
+describe('the nested executions a server runs at once', () => {
+  it.each(['0', '1001', '-3', '2.5', 'many', '99999'])('are checked when the server starts, so %s fails', (count) => {
+    expect(problemOf({ ...reachable, ORCHESTRATION_NESTED_EXECUTIONS: count }).problems).toEqual([
+      {
+        setting: 'ORCHESTRATION_NESTED_EXECUTIONS',
+        detail: 'Expected a whole number from 1 to 1000, such as 32',
+      },
+    ]);
+  });
+
+  it.each([
+    ['1', 1],
+    ['1000', 1000],
+  ])('may be %s', (count, nestedExecutions) => {
+    expect(
+      Option.map(
+        settingsFrom({ ...reachable, ORCHESTRATION_NESTED_EXECUTIONS: count }),
+        (settings) => settings.nestedExecutions,
+      ),
+    ).toEqual(Option.some(nestedExecutions));
+  });
+});
+
 describe('the connection to Temporal', () => {
   it('uses TLS when told to, and always with an API key', () => {
     const plain = {
@@ -119,6 +147,7 @@ describe('the connection to Temporal', () => {
       taskQueue: 'auto-brain',
       tls: false,
       mostDuration: thirtyDays,
+      nestedExecutions: 32,
     };
 
     expect(connectionOptionsOf(plain)).toEqual({ address: 'temporal:7233', tls: false });

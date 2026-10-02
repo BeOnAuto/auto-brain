@@ -1,16 +1,25 @@
 import type { WorkflowHost } from '../interpreter/host.ts';
 import { mostSettleAttempts, type OrchestrationActivities } from './activity-contract.ts';
 
+interface RetrySettings {
+  readonly initialInterval: string;
+  readonly backoffCoefficient: number;
+  readonly maximumInterval: string;
+  readonly maximumAttempts: number;
+}
+
 export interface ActivitySettings {
   readonly activityId: string;
   readonly summary: string;
   readonly startToCloseTimeout: string;
-  readonly retry: {
-    readonly initialInterval: string;
-    readonly backoffCoefficient: number;
-    readonly maximumInterval: string;
-    readonly maximumAttempts: number;
-  };
+  readonly retry: RetrySettings;
+}
+
+export interface LocalActivitySettings {
+  readonly summary: string;
+  readonly startToCloseTimeout: string;
+  readonly localRetryThreshold: string;
+  readonly retry: RetrySettings;
 }
 
 export interface TemporalScope {
@@ -39,6 +48,7 @@ export interface WorkflowApi {
   sleep(milliseconds: number, options: { readonly summary: string }): Promise<void>;
   condition(satisfied: () => boolean): Promise<void>;
   proxyActivities(options: ActivitySettings): OrchestrationActivities;
+  proxyLocalActivities(options: LocalActivitySettings): OrchestrationActivities;
   isCancellation(error: unknown): boolean;
   workflowInfo(): { readonly historySize: number; readonly historyLength: number };
   defineSignal(name: string): EventSignal;
@@ -52,10 +62,10 @@ const retryTransientFailures = {
   maximumAttempts: 5,
 };
 
-export const settleSettings: ActivitySettings = {
-  activityId: 'settle',
+export const settleSettings: LocalActivitySettings = {
   summary: 'settle the execution',
   startToCloseTimeout: '1 minute',
+  localRetryThreshold: '1 second',
   retry: { ...retryTransientFailures, maximumAttempts: mostSettleAttempts },
 };
 
@@ -81,7 +91,7 @@ export function temporalHost(api: WorkflowApi): WorkflowHost {
         })
         .executeSpec(call),
     settle: (request) =>
-      api.CancellationScope.nonCancellable(() => api.proxyActivities(settleSettings).settleExecution(request)),
+      api.CancellationScope.nonCancellable(() => api.proxyLocalActivities(settleSettings).settleExecution(request)),
     cancellable: (work) => {
       const scope = new api.CancellationScope();
       return {

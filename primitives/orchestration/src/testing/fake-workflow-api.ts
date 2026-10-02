@@ -3,6 +3,7 @@ import type { OrchestrationActivities } from '../workflow/activity-contract.ts';
 import type {
   ActivitySettings,
   EventSignal,
+  LocalActivitySettings,
   TemporalScope,
   TemporalScopes,
   WorkflowApi,
@@ -13,6 +14,7 @@ type ApiCall =
   | { readonly name: 'sleep'; readonly milliseconds: number; readonly summary: string }
   | { readonly name: 'condition' }
   | { readonly name: 'proxyActivities'; readonly settings: ActivitySettings }
+  | { readonly name: 'proxyLocalActivities'; readonly settings: LocalActivitySettings }
   | { readonly name: 'executeSpec'; readonly call: SpecCall }
   | { readonly name: 'settleExecution'; readonly request: SettleRequest }
   | { readonly name: 'scope'; readonly event: 'run' | 'cancel' | 'non-cancellable' }
@@ -59,10 +61,7 @@ export function fakeWorkflowApi(options: FakeWorkflowApiOptions = {}): FakeWorkf
       record({ name: 'condition' });
       return Promise.resolve();
     },
-    proxyActivities: (settings) => {
-      record({ name: 'proxyActivities', settings });
-      return recordingActivities(record, options.answer ?? { status: 'succeeded', output: { answered: true } });
-    },
+    ...recordingProxies(record, options.answer ?? { status: 'succeeded', output: { answered: true } }),
     isCancellation: (error) => error instanceof FakeCancellation,
     workflowInfo: () => ({ historySize: 1024, historyLength: 12 }),
     defineSignal: (signal) => {
@@ -81,6 +80,22 @@ export function fakeWorkflowApi(options: FakeWorkflowApiOptions = {}): FakeWorkf
       for (const handler of handlers) {
         handler(event);
       }
+    },
+  };
+}
+
+function recordingProxies(
+  record: RecordCall,
+  answer: SpecCallResult,
+): Pick<WorkflowApi, 'proxyActivities' | 'proxyLocalActivities'> {
+  return {
+    proxyActivities: (settings) => {
+      record({ name: 'proxyActivities', settings });
+      return recordingActivities(record, answer);
+    },
+    proxyLocalActivities: (settings) => {
+      record({ name: 'proxyLocalActivities', settings });
+      return recordingActivities(record, answer);
     },
   };
 }

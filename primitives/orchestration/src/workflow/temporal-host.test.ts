@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { SettleRequest } from '../interpreter/host.ts';
 import { FakeCancellation } from '../testing/fake-cancellation.ts';
 import { fakeWorkflowApi } from '../testing/fake-workflow-api.ts';
 import { acmeCaller } from '../testing/workflows.ts';
@@ -71,21 +72,21 @@ describe('the activities of the Temporal host', () => {
     ]);
   });
 
-  it('settle the execution in an activity no cancellation reaches', async () => {
+  it('settle the execution in a local activity no cancellation reaches, so that it takes no slot of a nested execution', async () => {
     const fake = fakeWorkflowApi();
-    const request = {
+    const request: SettleRequest = {
       org: 'acme',
       brain: 'alpha',
       spec: 'flow',
       executionId: 'e',
       settlement: { status: 'failed' },
-    } as const;
+    };
 
     await temporalHost(fake.api).settle(request);
 
     expect(fake.calls()).toEqual([
       { name: 'scope', event: 'non-cancellable' },
-      { name: 'proxyActivities', settings: settleSettings },
+      { name: 'proxyLocalActivities', settings: settleSettings },
       { name: 'settleExecution', request },
     ]);
   });
@@ -98,9 +99,10 @@ function retryWaits({ backoffCoefficient, maximumAttempts }: typeof settleSettin
 }
 
 describe('the retries of settling', () => {
-  it('make 20 attempts, from a second apart doubling up to a minute, about 14 minutes in all', () => {
+  it('make 20 attempts, from a second apart doubling up to a minute, about 14 minutes in all, waiting on timers of the workflow after the first', () => {
     const waited = retryWaits(settleSettings.retry).reduce((total, wait) => total + wait, 0);
 
+    expect(settleSettings.localRetryThreshold).toBe('1 second');
     expect(settleSettings.retry).toStrictEqual({
       initialInterval: '1 second',
       backoffCoefficient: 2,

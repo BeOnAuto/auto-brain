@@ -17,6 +17,7 @@ describe('the orchestration worker in a process whose Temporal runtime something
       taskQueue: 'foreign',
       tls: false,
       mostDuration: 2_592_000_000,
+      nestedExecutions: 32,
     };
 
     const failure = await Effect.runPromise(

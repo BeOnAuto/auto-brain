@@ -27,6 +27,7 @@ describe('the workflow settings', () => {
       taskQueue: 'brains',
       tls: false,
       mostDuration: 2_592_000_000,
+      nestedExecutions: 32,
     });
   });
 

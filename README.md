@@ -199,15 +199,16 @@ The [inference primitive](primitives/inference) calls language models with these
 
 The [orchestration primitive](primitives/orchestration) runs workflow specs on Temporal with these settings. Without `TEMPORAL_ADDRESS` the server does not offer workflows: the spec operations serve only the other primitives, and no Temporal code is loaded. The server logs at start-up whether it offers workflows, and with which Temporal server, namespace and task queue.
 
-| Variable                        | Default                                   | Purpose                                                                                           |
-| ------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `TEMPORAL_ADDRESS`              | none                                      | `host:port` of the Temporal frontend; set, the server offers workflows                            |
-| `TEMPORAL_NAMESPACE`            | `default`                                 | Temporal namespace                                                                                |
-| `TEMPORAL_TASK_QUEUE`           | `auto-brain`                              | Task queue the server's worker polls and its workflows start on                                   |
-| `TEMPORAL_API_KEY`              | none                                      | API key, for Temporal Cloud; implies TLS                                                          |
-| `TEMPORAL_TLS`                  | `false`                                   | Whether to connect with TLS                                                                       |
-| `ORCHESTRATION_MAX_DURATION`    | `P30D`                                    | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`                          |
-| `ORCHESTRATION_WORKFLOW_BUNDLE` | none; `/app/workflow-bundle` in the image | Directory of the workflow code bundled ahead of time; unset, the worker bundles it when it starts |
+| Variable                          | Default                                   | Purpose                                                                                           |
+| --------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `TEMPORAL_ADDRESS`                | none                                      | `host:port` of the Temporal frontend; set, the server offers workflows                            |
+| `TEMPORAL_NAMESPACE`              | `default`                                 | Temporal namespace                                                                                |
+| `TEMPORAL_TASK_QUEUE`             | `auto-brain`                              | Task queue the server's worker polls and its workflows start on                                   |
+| `TEMPORAL_API_KEY`                | none                                      | API key, for Temporal Cloud; implies TLS                                                          |
+| `TEMPORAL_TLS`                    | `false`                                   | Whether to connect with TLS                                                                       |
+| `ORCHESTRATION_MAX_DURATION`      | `P30D`                                    | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`                          |
+| `ORCHESTRATION_NESTED_EXECUTIONS` | `32`                                      | How many nested executions the server runs at once, from 1 to 1000; shared by every org           |
+| `ORCHESTRATION_WORKFLOW_BUNDLE`   | none; `/app/workflow-bundle` in the image | Directory of the workflow code bundled ahead of time; unset, the worker bundles it when it starts |
 
 The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, the only place that user may write, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built, and its workflow code is bundled while the image is built, checked against the code the image runs. A second `SIGTERM` or `SIGINT` ends the server at once with exit code 1.
 

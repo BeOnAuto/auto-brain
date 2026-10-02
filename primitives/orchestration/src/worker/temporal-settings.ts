@@ -9,6 +9,7 @@ export interface TemporalSettings {
   readonly apiKey?: () => string;
   readonly tls: boolean;
   readonly mostDuration: number;
+  readonly nestedExecutions: number;
   readonly workflowBundle?: string;
 }
 
@@ -36,6 +37,12 @@ const leastMostDuration = 2 * hour;
 
 const greatestMostDuration = 365 * 24 * hour;
 
+export const defaultNestedExecutions = 32;
+
+const mostNestedExecutions = 1000;
+
+const wholeNumber = /^\d{1,4}$/u;
+
 const hostAndPort = /^(?:\[[0-9a-f:.]+\]|[^\s/:[\]]+):\d{1,5}$/iu;
 
 const tlsValues: ReadonlyMap<string, boolean> = new Map<string, boolean>([
@@ -58,6 +65,9 @@ const sources = Config.all({
   apiKey: Config.String('TEMPORAL_API_KEY').pipe(Config.withDefault('')),
   tls: Config.String('TEMPORAL_TLS').pipe(Config.withDefault('false')),
   mostDuration: Config.String('ORCHESTRATION_MAX_DURATION').pipe(Config.withDefault('P30D')),
+  nestedExecutions: Config.String('ORCHESTRATION_NESTED_EXECUTIONS').pipe(
+    Config.withDefault(String(defaultNestedExecutions)),
+  ),
   workflowBundle: Config.String('ORCHESTRATION_WORKFLOW_BUNDLE').pipe(Config.withDefault('')),
 });
 
@@ -67,6 +77,7 @@ interface Sources {
   readonly taskQueue: string;
   readonly tls: string;
   readonly mostDuration: string;
+  readonly nestedExecutions: string;
 }
 
 export const readTemporalSettings = Effect.fnUntraced(function* (environment: Environment) {
@@ -86,6 +97,7 @@ export const readTemporalSettings = Effect.fnUntraced(function* (environment: En
     taskQueue: source.taskQueue.trim(),
     tls: tlsValues.get(source.tls.trim().toLowerCase()) === true,
     mostDuration: millisecondsOf(source.mostDuration),
+    nestedExecutions: Number(source.nestedExecutions.trim()),
     ...(workflowBundle === '' ? {} : { workflowBundle }),
   };
   return Option.some<TemporalSettings>(source.apiKey === '' ? settings : { ...settings, apiKey: () => source.apiKey });
@@ -117,6 +129,14 @@ function problemsOf(source: Sources): readonly SettingProblem[] {
             detail: 'Expected an ISO 8601 duration from PT2H to P365D, such as P30D',
           },
         ],
+    nestedExecutionsFit(source.nestedExecutions.trim())
+      ? []
+      : [
+          {
+            setting: 'ORCHESTRATION_NESTED_EXECUTIONS',
+            detail: `Expected a whole number from 1 to ${mostNestedExecutions}, such as ${defaultNestedExecutions}`,
+          },
+        ],
   ].flat();
 }
 
@@ -128,6 +148,10 @@ function invalid(problems: readonly SettingProblem[]): TemporalSettingsInvalid {
 function mostDurationFits(text: string): boolean {
   const milliseconds = millisecondsOf(text);
   return milliseconds >= leastMostDuration && milliseconds <= greatestMostDuration;
+}
+
+function nestedExecutionsFit(text: string): boolean {
+  return wholeNumber.test(text) && Number(text) >= 1 && Number(text) <= mostNestedExecutions;
 }
 
 function millisecondsOf(text: string): number {

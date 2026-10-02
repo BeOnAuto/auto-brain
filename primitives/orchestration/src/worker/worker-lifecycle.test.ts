@@ -14,6 +14,7 @@ const settings = {
   taskQueue: 'brains',
   tls: false,
   mostDuration: 2_592_000_000,
+  nestedExecutions: 7,
 };
 
 const notCalled = () => Effect.die(new Error('not called'));
@@ -56,7 +57,7 @@ describe('the connection of the orchestration worker', () => {
 });
 
 describe('the worker the orchestration worker makes', () => {
-  it('polls the task queue of the settings, keeps 16 workflows and runs 2 workflow tasks at once, and gives activities 10 seconds to finish when it stops', async () => {
+  it('polls the task queue of the settings, keeps 16 workflows, runs 2 workflow tasks and as many nested executions as the settings allow at once, and gives activities 10 seconds to finish when it stops', async () => {
     const fake = fakeTemporalWorkers();
     const { stop } = await startedWith(fake);
     await stop();
@@ -68,12 +69,15 @@ describe('the worker the orchestration worker makes', () => {
         shutdownGraceTime: '10 seconds',
         maxCachedWorkflows: 16,
         maxConcurrentWorkflowTaskExecutions: 2,
+        maxConcurrentActivityTaskExecutions: 7,
       },
     ]);
     expect(fake.definitions()[0]).toHaveProperty('workflowsPath', workflowsPath);
     expect(fake.definitions()[0]).not.toHaveProperty('workflowBundle');
   });
+});
 
+describe('the workflow code of the worker', () => {
   it('loads a workflow bundle built ahead of time instead of bundling the workflow code, when given one', async () => {
     const fake = fakeTemporalWorkers();
     const { stop } = await startedWith(fake, { workflowBundle: '/app/workflow-bundle/workflow-bundle.js' });

@@ -13,6 +13,7 @@ const settings = {
   taskQueue: process.env['TEMPORAL_TASK_QUEUE'] ?? '',
   tls: false,
   mostDuration: 2_592_000_000,
+  nestedExecutions: 32,
 };
 
 await Effect.runPromise(

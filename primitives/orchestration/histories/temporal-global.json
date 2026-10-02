@@ -2,9 +2,9 @@
   "events": [
     {
       "eventId": "1",
-      "eventTime": "2026-10-02T00:00:21.837824Z",
+      "eventTime": "2026-10-02T04:36:42.352483Z",
       "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
-      "taskId": "1048625",
+      "taskId": "1048587",
       "workflowExecutionStartedEventAttributes": {
         "workflowType": {
           "name": "temporalGlobalProbe"
@@ -15,9 +15,9 @@
         },
         "input": {},
         "workflowTaskTimeout": "10s",
-        "originalExecutionRunId": "01a0f9e9-754d-7c8e-865d-7828651c7e3c",
-        "identity": "56928@recorded-host",
-        "firstExecutionRunId": "01a0f9e9-754d-7c8e-865d-7828651c7e3c",
+        "originalExecutionRunId": "01a0fae6-74f0-775a-9392-594f99f1114d",
+        "identity": "54672@recorded-host",
+        "firstExecutionRunId": "01a0fae6-74f0-775a-9392-594f99f1114d",
         "attempt": 1,
         "firstWorkflowTaskBackoff": "0s",
         "header": {},
@@ -26,9 +26,9 @@
     },
     {
       "eventId": "2",
-      "eventTime": "2026-10-02T00:00:21.837860Z",
+      "eventTime": "2026-10-02T04:36:42.352535Z",
       "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
-      "taskId": "1048626",
+      "taskId": "1048588",
       "workflowTaskScheduledEventAttributes": {
         "taskQueue": {
           "name": "temporal-global",
@@ -40,30 +40,30 @@
     },
     {
       "eventId": "3",
-      "eventTime": "2026-10-02T00:00:21.841502Z",
+      "eventTime": "2026-10-02T04:36:42.354506Z",
       "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
-      "taskId": "1048631",
+      "taskId": "1048593",
       "workflowTaskStartedEventAttributes": {
         "scheduledEventId": "2",
-        "identity": "56928@recorded-host",
-        "requestId": "1a200cd5-0b12-4430-93da-cd723deae474",
+        "identity": "54672@recorded-host",
+        "requestId": "bfd6d07c-24ea-45dc-ae60-498d0f2f6471",
         "historySizeBytes": "262",
         "workerVersion": {
-          "buildId": "@temporalio/worker@1.24.0+827abad33db9faa202cf15fdd850e51471f430f5022b78d998038c5f72283b53"
+          "buildId": "@temporalio/worker@1.24.0+bc9d9d3fa1abe772e21f6df024da30c8e1f44bfcdb0b379eb9c1172ecfd37c20"
         }
       }
     },
     {
       "eventId": "4",
-      "eventTime": "2026-10-02T00:00:21.899008Z",
+      "eventTime": "2026-10-02T04:36:42.383537Z",
       "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
-      "taskId": "1048659",
+      "taskId": "1048609",
       "workflowTaskCompletedEventAttributes": {
         "scheduledEventId": "2",
         "startedEventId": "3",
-        "identity": "56928@recorded-host",
+        "identity": "54672@recorded-host",
         "workerVersion": {
-          "buildId": "@temporalio/worker@1.24.0+827abad33db9faa202cf15fdd850e51471f430f5022b78d998038c5f72283b53"
+          "buildId": "@temporalio/worker@1.24.0+bc9d9d3fa1abe772e21f6df024da30c8e1f44bfcdb0b379eb9c1172ecfd37c20"
         },
         "sdkMetadata": {
           "coreUsedFlags": [1, 2, 3],
@@ -75,9 +75,9 @@
     },
     {
       "eventId": "5",
-      "eventTime": "2026-10-02T00:00:21.899058Z",
+      "eventTime": "2026-10-02T04:36:42.383616Z",
       "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
-      "taskId": "1048660",
+      "taskId": "1048610",
       "workflowExecutionCompletedEventAttributes": {
         "result": {
           "payloads": [

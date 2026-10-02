@@ -26,6 +26,7 @@ export type WorkerDefinition = WorkflowCode & {
   readonly shutdownGraceTime: string;
   readonly maxCachedWorkflows: number;
   readonly maxConcurrentWorkflowTaskExecutions: number;
+  readonly maxConcurrentActivityTaskExecutions: number;
 };
 
 export interface RunnableWorker {
@@ -131,6 +132,7 @@ async function startWorker(
       shutdownGraceTime: '10 seconds',
       maxCachedWorkflows: mostCachedWorkflows,
       maxConcurrentWorkflowTaskExecutions: mostWorkflowTasksAtOnce,
+      maxConcurrentActivityTaskExecutions: settings.nestedExecutions,
     });
     return runningWorker(worker, connection);
   } catch (error) {

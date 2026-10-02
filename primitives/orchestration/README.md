@@ -145,13 +145,13 @@ An event waits in the workflow until a `listen` task takes it; an event with an 
 
 `execute_spec` of a workflow spec starts the workflow `runWorkflowSpec` on Temporal and answers the execution `started`. The workflow id is `{org}/{brain}/{spec}/{execution id}`, and a start with an id already running answers that run, so an execution started twice runs one workflow. The execution records `{ workflow_id, run_id }`. When Temporal cannot be reached within 10 seconds, the execution is rejected with `unavailable` and the fixed detail `Temporal cannot start the workflow now; try again later`; an event Temporal cannot take answers `unavailable` with `Temporal cannot deliver the event now; try again later`. Temporal's own error goes only to the server's log, as the warning `Temporal could not start a workflow` (or `deliver an event`) with the error cut at 500 characters, at most once a minute for each client, the next line counting the failures it did not log in `suppressed`.
 
-When the workflow ends, a last activity settles the execution through `executionSettler` of `@beonauto/specs`:
+When the workflow ends, a last local activity settles the execution through `executionSettler` of `@beonauto/specs`:
 
 - **succeeded** with the output of the workflow, when it completes;
 - **rejected** when an error is not caught: `invalid_input` for an error of a 4xx status other than 408 and 429 (the input led to it, and retrying the execution answers the same), and `unavailable` for every other status (a timeout, a failure to reach a spec, a server error: retrying the execution may succeed). The detail is the title or type, the detail and the instance of the error;
 - **failed** when the workflow is cancelled, when it breaks down, or when its output is larger than an execution records (1048574 bytes as JSON).
 
-Settling is an activity, so it happens once per execution however the worker fails: Temporal retries it, and settling again with the same result records nothing. A conflict, such as a workflow that ends before its execution recorded that it finishes later, is retried for 20 attempts, from 1 second apart doubling up to 1 minute, about 14 minutes in all. A workflow that fails or is cancelled ends failed or cancelled in Temporal too, after settling.
+Settling is a local activity, so it happens once per execution however the worker fails: Temporal retries it, and settling again with the same result records nothing. A local activity runs in the worker that runs the workflow's task, with slots of its own, so settling never waits behind nested executions, which are ordinary activities and may take every activity slot for half an hour; a second task queue for settling would need a second worker in the process for one short ledger write. A conflict, such as a workflow that ends before its execution recorded that it finishes later, is retried for 20 attempts, from 1 second apart doubling up to 1 minute, about 14 minutes in all; every retry after the first waits on a timer of the workflow, so a workflow waiting to settle again holds no workflow task. A workflow that fails or is cancelled ends failed or cancelled in Temporal too, after settling.
 
 When settling fails for good, because the ledger has no such execution, because the run may not settle it, or because its last attempt failed, the workflow fails in Temporal and the execution stays `started` in the ledger. The activity tells the `reportUnsettled` the worker was given, with the org, the brain, the execution id and the reason, never the input or output, so an operator sees an error in the log of the server and a failed workflow in Temporal under the same id. Reconciling such an execution is manual in this version. A last attempt that times out instead of failing is not reported; it shows only in Temporal.
 
@@ -202,7 +202,7 @@ What a server spends on workflows is bounded by limits a tenant cannot raise, so
 - **Replaying a history**, which the worker does when a workflow that is not cached has something to do, grew the process by about 7.5 times the history's bytes (66 MiB for a history of 8.8 MiB, 189 MiB for 26.4 MiB, with the bundle built ahead). The worker runs at most 2 workflow tasks at once. A workflow stops before its history passes 8 MiB, checked before each task that waits or calls a spec; tasks already running when it was checked can add their outputs (each nested output at most 1 MiB) and events can still arrive, up to the limits above, so a history ends a little past 8 MiB, about 60 to 75 MiB to replay. Temporal itself ends a workflow whose history reaches its limit, 50 MiB by default (`limit.historySize.error`): replaying one of those takes up to about 375 MiB.
 - **The server itself**, with workflows offered and the bundle built ahead, takes about 390 MiB idle.
 
-With the defaults, workflows can make the process hold at most about 390 + 290 + 2 x 75 = 830 MiB in the expected worst case, and 390 + 290 + 2 x 375 = 1430 MiB if two workflows near Temporal's own history limit replay at once. Requests to the API add what they carry (each body at most 1 MiB), and nested executions add what their primitives use. An operator who wants the second figure lower sets Temporal's history limit for the namespace lower.
+With the defaults, workflows can make the process hold at most about 390 + 290 + 2 x 75 = 830 MiB in the expected worst case, and 390 + 290 + 2 x 375 = 1430 MiB if two workflows near Temporal's own history limit replay at once. Requests to the API add what they carry (each body at most 1 MiB), and nested executions add what their primitives use, at most `ORCHESTRATION_NESTED_EXECUTIONS` (32) of them at once. An operator who wants the second figure lower sets Temporal's history limit for the namespace lower.
 
 ### The workflow bundle
 
@@ -210,21 +210,23 @@ A worker given only the workflow code bundles it with webpack and swc when it st
 
 ### Settings
 
-| Variable                        | Default      | Purpose                                                                                                                                    |
-| ------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `TEMPORAL_ADDRESS`              |              | Address of the Temporal frontend; when it is not set, orchestration is not available                                                       |
-| `TEMPORAL_NAMESPACE`            | `default`    | Temporal namespace                                                                                                                         |
-| `TEMPORAL_TASK_QUEUE`           | `auto-brain` | Task queue the worker polls and workflows start on                                                                                         |
-| `TEMPORAL_API_KEY`              |              | API key, for Temporal Cloud; implies TLS                                                                                                   |
-| `TEMPORAL_TLS`                  | `false`      | Whether to connect with TLS                                                                                                                |
-| `ORCHESTRATION_MAX_DURATION`    | `P30D`       | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`; checked when the server starts                                   |
-| `ORCHESTRATION_WORKFLOW_BUNDLE` |              | Directory of a workflow bundle built ahead of time; `/app/workflow-bundle` in the image. Unset, the worker bundles the code when it starts |
+| Variable                          | Default      | Purpose                                                                                                                                    |
+| --------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `TEMPORAL_ADDRESS`                |              | Address of the Temporal frontend; when it is not set, orchestration is not available                                                       |
+| `TEMPORAL_NAMESPACE`              | `default`    | Temporal namespace                                                                                                                         |
+| `TEMPORAL_TASK_QUEUE`             | `auto-brain` | Task queue the worker polls and workflows start on                                                                                         |
+| `TEMPORAL_API_KEY`                |              | API key, for Temporal Cloud; implies TLS                                                                                                   |
+| `TEMPORAL_TLS`                    | `false`      | Whether to connect with TLS                                                                                                                |
+| `ORCHESTRATION_MAX_DURATION`      | `P30D`       | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`; checked when the server starts                                   |
+| `ORCHESTRATION_NESTED_EXECUTIONS` | `32`         | How many nested executions the server's worker runs at once, from 1 to 1000; more wait in Temporal's task queue                            |
+| `ORCHESTRATION_WORKFLOW_BUNDLE`   |              | Directory of a workflow bundle built ahead of time; `/app/workflow-bundle` in the image. Unset, the worker bundles the code when it starts |
 
 ### Tenancy
 
 - The workflow id names the org, the brain, the spec and the execution; the workflow carries the org, brain, spec, its version and the execution id in its memo. They are not search attributes, which a server needs set up before it accepts them.
 - The activity that executes a spec rejects a call whose org or brain is not the one of its workflow id, or whose caller belongs to another org; the activity that settles rejects an execution other than the one of its workflow id.
 - A nested execution acts for the caller who started the workflow, with the permissions that caller had then.
+- There is no fairness between orgs and no limit for one: the nested executions of every org share the worker's `ORCHESTRATION_NESTED_EXECUTIONS` slots, so one org's workflows can take them all, and the others' nested executions wait in the task queue in the order Temporal hands them out.
 - Temporal's history of a workflow holds its document, its input, the outputs of the specs it executes and of the workflow, its events, and the identity of the caller who started it, readable by whoever can read the namespace. Access to the namespace is an operator's privilege, and this version does not encrypt payloads.
 
 ## Not in this version

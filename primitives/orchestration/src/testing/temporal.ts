@@ -28,17 +28,24 @@ export interface TemporalHarness {
 
 export interface HarnessOptions {
   readonly respond?: (execution: SpecExecution) => SpecExecutionResult;
+  readonly answerWhen?: () => Promise<void>;
   readonly settle?: SettleExecution;
+  readonly nestedExecutions?: number;
 }
 
-export function settingsFor(taskQueue: string): TemporalSettings {
+export function settingsFor(taskQueue: string, nestedExecutions = 32): TemporalSettings {
   return {
     address: inject('temporalAddress'),
     namespace: 'default',
     taskQueue,
     tls: false,
     mostDuration: 2_592_000_000,
+    nestedExecutions,
   };
+}
+
+function answerAtOnce(): Promise<void> {
+  return Promise.resolve();
 }
 
 export function settledExecution(address: ExecutionAddress, settlement: Settlement): Execution {
@@ -51,13 +58,13 @@ export function settledExecution(address: ExecutionAddress, settlement: Settleme
 export async function temporalHarness(taskQueue: string, options: HarnessOptions = {}): Promise<TemporalHarness> {
   const executions: SpecExecution[] = [];
   const settled: Settled[] = [];
-  const settings = settingsFor(taskQueue);
+  const settings = settingsFor(taskQueue, options.nestedExecutions);
   const respond = options.respond ?? ((): SpecExecutionResult => ({ status: 'succeeded', output: null }));
+  const answerWhen = options.answerWhen ?? answerAtOnce;
   const executeSpec: ExecuteSpec = (execution) =>
     Effect.sync(() => {
       executions.push(execution);
-      return respond(execution);
-    });
+    }).pipe(Effect.andThen(Effect.promise(answerWhen)), Effect.andThen(Effect.sync(() => respond(execution))));
   const settle: SettleExecution =
     options.settle ??
     ((address, settlement) =>
