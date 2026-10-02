@@ -45,29 +45,42 @@ function activitiesAnswering(
   });
 }
 
+function beatsCounted(enough: number) {
+  let beats = 0;
+  const counted = Promise.withResolvers<void>();
+  return {
+    beat: () => {
+      beats += 1;
+      if (beats === enough) {
+        counted.resolve();
+      }
+    },
+    beats: () => beats,
+    counted: counted.promise,
+  };
+}
+
 describe('the activity that executes a spec while the spec runs', () => {
   it('heartbeats every interval, and stops once the spec answered', async () => {
-    let beats = 0;
-    const slow = makeActivities({
-      executeSpec: () => Effect.as(Effect.sleep('120 millis'), { status: 'succeeded', output: 'late' }),
+    const heartbeat = beatsCounted(3);
+    const answeringAfterThreeBeats = makeActivities({
+      executeSpec: () =>
+        Effect.as(
+          Effect.promise(() => heartbeat.counted),
+          { status: 'succeeded', output: 'late' },
+        ),
       settle: () => Effect.die('not settling'),
       reportUnsettled: ignore,
       currentRun: () => run,
-      heartbeat: {
-        beat: () => {
-          beats += 1;
-        },
-        everyMs: 20,
-      },
+      heartbeat: { beat: heartbeat.beat, everyMs: 20 },
     });
 
-    const answer = await slow.executeSpec(call);
-    const beatsWhileRunning = beats;
-    await setTimeout(100);
+    const answer = await answeringAfterThreeBeats.executeSpec(call);
+    const beatsWhileRunning = heartbeat.beats();
+    await setTimeout(300);
 
     expect(answer).toEqual({ status: 'succeeded', output: 'late' });
-    expect(beatsWhileRunning).toBeGreaterThanOrEqual(4);
-    expect(beats).toBe(beatsWhileRunning);
+    expect([beatsWhileRunning, heartbeat.beats()]).toStrictEqual([3, 3]);
   });
 });
 
