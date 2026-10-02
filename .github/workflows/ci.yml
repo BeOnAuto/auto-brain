@@ -180,6 +180,7 @@ jobs:
           docker stop inference
           test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
       - name: Run workflows on a Temporal dev server
+        timeout-minutes: 10
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
@@ -192,13 +193,19 @@ jobs:
             server start-dev --ip 0.0.0.0 --headless
           docker run --detach --name workflows --network workflows --publish 8080:8080 --env API_KEYS \
             --env TEMPORAL_ADDRESS=temporal:7233 auto-brain:ci
-          for attempt in $(seq 1 30); do
-            docker exec temporal temporal operator cluster health > /dev/null 2>&1 \
-              && curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
+          ready=false
+          for attempt in $(seq 1 60); do
+            if timeout 10 docker exec temporal temporal operator cluster health > /dev/null 2>&1 \
+              && curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null \
+              && docker logs workflows 2>&1 | grep --quiet '"message":"The workflow worker started"'; then
+              ready=true
+              break
+            fi
             sleep 1
           done
+          test "$ready" = true
           call() {
-            curl --silent --output "$1" --write-out '%{http_code}' \
+            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
