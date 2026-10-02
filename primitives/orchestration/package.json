@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./settings": "./src/settings.ts"
+    "./settings": "./src/settings.ts",
+    "./temporal-test-server": "./temporal-test-server.ts"
   },
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",
