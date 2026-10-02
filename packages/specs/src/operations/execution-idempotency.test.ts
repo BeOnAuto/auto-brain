@@ -93,12 +93,12 @@ describe('an execution id', () => {
 
 describe('an execution without a final result', () => {
   it('is recorded failed when its call is cancelled while the primitive runs, and runs again for its id', async () => {
-    const { call, callWithin, executeSpec, executing, getExecution, prober } = await withPlain();
+    const { call, callCancelledWhen, executeSpec, executing, getExecution, prober } = await withPlain();
     prober.sufferOnNextRun('stall');
 
     expect(
-      await callWithin(
-        50,
+      await callCancelledWhen(
+        prober.stalled,
         executeSpec,
         toAlpha(acmeAdmin, { primitive: 'probe', name: 'plain', input: {}, execution_id: executionId }),
       ),

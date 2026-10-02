@@ -36,9 +36,9 @@ describe('an execution whose primitive finishes it after the call returns', () =
   });
 
   it('is recorded as waiting when its call is cancelled while the primitive starts it, never left without a result', async () => {
-    const { executingWithin, reading, relayer } = await withHandOn();
+    const { executingCancelledOnceStarted, reading, relayer } = await withHandOn();
 
-    expect(await executingWithin(20, { startingMs: 200 })).toStrictEqual({ status: 'cancelled' });
+    expect(await executingCancelledOnceStarted({ startingMs: 200 })).toStrictEqual({ status: 'cancelled' });
     expect(relayer.runs()).toBe(1);
     expect(await reading()).toStrictEqual({
       status: 'succeeded',

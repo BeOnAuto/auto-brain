@@ -15,6 +15,7 @@ export interface Probe {
   readonly primitive: Primitive;
   readonly runs: () => number;
   readonly sufferOnNextRun: (mishap: Mishap) => void;
+  readonly stalled: Promise<void>;
   readonly rejectEveryDocument: () => void;
 }
 
@@ -64,6 +65,7 @@ export function probe(): Probe {
   let runs = 0;
   let nextMishap: Mishap | undefined;
   let rejecting = false;
+  const stalling = Promise.withResolvers<void>();
   const primitive = definePrimitive({
     name: 'probe',
     title: 'Probe',
@@ -76,6 +78,9 @@ export function probe(): Probe {
         runs += 1;
         const mishap = nextMishap;
         nextMishap = undefined;
+        if (mishap === 'stall') {
+          stalling.resolve();
+        }
         return mishap === undefined ? answerTo(input, execution, runs) : mishaps[mishap];
       }),
   });
@@ -88,5 +93,6 @@ export function probe(): Probe {
     rejectEveryDocument: () => {
       rejecting = true;
     },
+    stalled: stalling.promise,
   };
 }

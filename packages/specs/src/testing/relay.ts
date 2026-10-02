@@ -7,10 +7,12 @@ import { definePrimitive, type FinishesLater, type Primitive } from '../index.ts
 export interface Relay {
   readonly primitive: Primitive;
   readonly runs: () => number;
+  readonly started: Promise<void>;
 }
 
 export function relay(): Relay {
   let runs = 0;
+  const starting = Promise.withResolvers<void>();
   const primitive = definePrimitive({
     name: 'relay',
     title: 'Relay',
@@ -20,7 +22,10 @@ export function relay(): Relay {
     parse: (source: string) => Effect.succeed(source),
     summarize: () => ({}),
     execute: (_document, input, execution) =>
-      Effect.promise(() => setTimeout(startingMs(input))).pipe(
+      Effect.promise(() => {
+        starting.resolve();
+        return setTimeout(startingMs(input));
+      }).pipe(
         Effect.map((): FinishesLater => {
           runs += 1;
           const padding = Predicate.isNumber(input) ? { padding: 'x'.repeat(input) } : {};
@@ -29,7 +34,7 @@ export function relay(): Relay {
       ),
     whenCancelled: 'finish',
   });
-  return { primitive, runs: () => runs };
+  return { primitive, runs: () => runs, started: starting.promise };
 }
 
 function startingMs(input: unknown): number {
