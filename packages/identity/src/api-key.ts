@@ -3,11 +3,17 @@ import { hash, randomBytes } from 'node:crypto';
 import { CallerIdentitySchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
+import { localOrg } from './local-org.ts';
+
 const KeyIdSchema = Schema.String.check(Schema.isPattern(/^[a-z0-9-]{1,32}$/u));
 
 const DigestSchema = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/u));
 
-export const KeyGrantSchema = Schema.Struct({ ...CallerIdentitySchema.fields, id: KeyIdSchema });
+const KeyOrgSchema = CallerIdentitySchema.fields.org.check(
+  Schema.makeFilter((org: string) => org !== localOrg || 'This org id is reserved for local mode'),
+);
+
+export const KeyGrantSchema = Schema.Struct({ ...CallerIdentitySchema.fields, id: KeyIdSchema, org: KeyOrgSchema });
 
 export type KeyGrant = typeof KeyGrantSchema.Type;
 
