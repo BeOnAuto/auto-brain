@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./settings": "./src/settings.ts",
     "./temporal-test-server": "./temporal-test-server.ts",
-    "./testing/activity-caller": "./src/testing/activity-caller.ts"
+    "./testing/activity-caller": "./src/testing/activity-caller.ts",
+    "./testing/without-swc": "./src/testing/without-swc.ts"
   },
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",

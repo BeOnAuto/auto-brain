@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
 import { bundleWorkflowCode, DefaultLogger } from '@temporalio/worker';
@@ -48,6 +49,17 @@ export async function verifiedWorkflowBundle(directory: string): Promise<string>
     });
   }
   return codePath;
+}
+
+export function requireWorkflowBundler(): void {
+  try {
+    createRequire(import.meta.resolve('@temporalio/worker'))('@swc/core');
+  } catch {
+    throw new WorkflowBundleInvalid({
+      message:
+        'ORCHESTRATION_WORKFLOW_BUNDLE is not set, and the workflow code cannot be bundled here because the bundler swc is not installed; set ORCHESTRATION_WORKFLOW_BUNDLE to a bundle built ahead of time, /app/workflow-bundle in the image',
+    });
+  }
 }
 
 async function bundleInputs(): Promise<readonly string[]> {

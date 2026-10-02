@@ -1,6 +1,11 @@
 import type { AppRuntime } from '@beonauto/api';
 import type { Dispatcher, DispatcherServices } from '@beonauto/operations';
-import { installTemporalRuntime, runOrchestrationWorker, verifiedWorkflowBundle } from '@beonauto/orchestration';
+import {
+  installTemporalRuntime,
+  requireWorkflowBundler,
+  runOrchestrationWorker,
+  verifiedWorkflowBundle,
+} from '@beonauto/orchestration';
 import type { TemporalSettings } from '@beonauto/orchestration/settings';
 import type { BrainOperation } from '@beonauto/specs';
 import { Effect } from 'effect';
@@ -19,6 +24,7 @@ export interface WorkflowWorkerParts {
 
 export async function workflowCodeOf({ workflowBundle }: TemporalSettings): Promise<string | undefined> {
   if (workflowBundle === undefined) {
+    requireWorkflowBundler();
     return workflowBundle;
   }
   const codePath = await verifiedWorkflowBundle(workflowBundle);

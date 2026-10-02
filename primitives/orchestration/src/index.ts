@@ -15,7 +15,12 @@ export type {
   UnsettledExecution,
 } from './worker/dependencies.ts';
 export { specExecutionResultOf } from './worker/spec-results.ts';
-export { buildWorkflowBundle, verifiedWorkflowBundle, WorkflowBundleInvalid } from './worker/workflow-bundle.ts';
+export {
+  buildWorkflowBundle,
+  requireWorkflowBundler,
+  verifiedWorkflowBundle,
+  WorkflowBundleInvalid,
+} from './worker/workflow-bundle.ts';
 export {
   installTemporalRuntime,
   type TemporalLog,

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { buildWorkflowBundle, verifiedWorkflowBundle } from './workflow-bundle.ts';
+import { buildWorkflowBundle, requireWorkflowBundler, verifiedWorkflowBundle } from './workflow-bundle.ts';
 
 const decodeManifest = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.Struct({ code: Schema.String, inputs: Schema.Record(Schema.String, Schema.String) })),
@@ -45,6 +45,14 @@ describe('a workflow bundle built ahead of time', () => {
     expect(inputs).toContain('primitives/orchestration/src/workflow/workflows.ts');
     expect(inputs.filter((file) => /\.test\.ts$|\/testing\//u.test(file))).toEqual([]);
     expect(Object.values(manifest.inputs).filter((digest) => !/^[0-9a-f]{64}$/u.test(digest))).toEqual([]);
+  });
+});
+
+describe('a process with the workflow bundler', () => {
+  it('can bundle the workflow code when it starts', () => {
+    expect(() => {
+      requireWorkflowBundler();
+    }).not.toThrow();
   });
 });
 

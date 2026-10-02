@@ -33,7 +33,12 @@ const decodeLine = Schema.decodeUnknownSync(
   ),
 );
 
-export function workflowProcess(ledgerFile: string, address: string, taskQueue: string): SpawnedServer {
+export function workflowProcess(
+  ledgerFile: string,
+  address: string,
+  taskQueue: string,
+  environment: Readonly<Record<string, string>> = {},
+): SpawnedServer {
   return spawnServer(mainModule, {
     HOME: homedir(),
     HOST: '127.0.0.1',
@@ -42,6 +47,7 @@ export function workflowProcess(ledgerFile: string, address: string, taskQueue: 
     LEDGER_FILE: ledgerFile,
     TEMPORAL_ADDRESS: address,
     TEMPORAL_TASK_QUEUE: taskQueue,
+    ...environment,
   });
 }
 
@@ -59,6 +65,19 @@ export async function untilLogged(child: SpawnedServer, wanted: (message: string
   }
   await setTimeout(50);
   await untilLogged(child, wanted);
+}
+
+export async function loggedWithin(
+  child: SpawnedServer,
+  wanted: (message: string) => boolean,
+  attempts: number,
+): Promise<LogLine | undefined> {
+  const line = logLinesOf(child).find(({ message }) => wanted(message));
+  if (line !== undefined || attempts <= 1) {
+    return line;
+  }
+  await setTimeout(250);
+  return loggedWithin(child, wanted, attempts - 1);
 }
 
 export async function freePort(): Promise<number> {
