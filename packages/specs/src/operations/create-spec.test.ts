@@ -177,12 +177,14 @@ describe('create_spec rejecting with conflict', () => {
       status: 'rejected',
       reason: 'conflict',
       detail: 'The brain already has the echo spec greet',
+      conflict: 'taken',
     });
     await call(retireSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'greet' }));
     expect(await creatingGreet()).toEqual({
       status: 'rejected',
       reason: 'conflict',
       detail: 'The echo spec greet was retired, and a spec name is never reused',
+      conflict: 'taken',
     });
     expect(
       await call(createSpec, toAlpha(acmeAdmin, { primitive: 'probe', name: 'greet', source: 'text' })),

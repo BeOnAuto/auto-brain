@@ -53,3 +53,21 @@ describe('executing a workflow spec with an input a workflow may not hold', () =
     expect(await executing({ deep: nested(511) })).toMatchObject({ status: 'failed' });
   });
 });
+
+describe('the words of the orchestration primitive', () => {
+  const orchestration = makeOrchestration({ client: neverStarted });
+
+  it('calls a spec a workflow', () => {
+    expect(orchestration.noun).toEqual({ one: 'workflow', other: 'workflows' });
+  });
+
+  it('renders a small result, and points to the details for a large one', () => {
+    expect([
+      orchestration.describeOutput({ greeting: 'Hello, Ada.', reply: 'Thank you!' }),
+      orchestration.describeOutput({ text: 'a'.repeat(400) }),
+    ]).toEqual([
+      'Its result: greeting: “Hello, Ada.” and reply: “Thank you!”',
+      'Its result is too long to repeat here; the whole of it is in the details below.',
+    ]);
+  });
+});

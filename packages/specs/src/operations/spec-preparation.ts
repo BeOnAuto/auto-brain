@@ -10,7 +10,10 @@ import { loadRegistry } from './registry-access.ts';
 const activeSpec = Effect.fnUntraced(function* (primitive: string, name: string) {
   const spec = yield* findSpec(yield* loadRegistry(primitive), primitive, name);
   if (spec.status === 'retired') {
-    return yield* new Conflict({ detail: `The ${primitive} spec ${name} is retired and can no longer be executed` });
+    return yield* new Conflict({
+      detail: `The ${primitive} spec ${name} is retired and can no longer be executed`,
+      kind: 'retired',
+    });
   }
   return spec;
 });
@@ -19,6 +22,7 @@ function unparseable(primitive: string, { name, version }: StoredSpec): (rejecti
   return ({ detail }) =>
     new Conflict({
       detail: `The ${primitive} spec ${name} at version ${version} no longer parses (${detail}); update it`,
+      kind: 'unworkable',
     });
 }
 

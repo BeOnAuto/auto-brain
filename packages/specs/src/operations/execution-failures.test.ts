@@ -61,6 +61,7 @@ describe('an execution of a spec the primitive cannot run as written', () => {
       status: 'rejected',
       reason: 'conflict',
       detail: 'The probe cannot run this spec as written; update it',
+      conflict: 'unworkable',
     });
     expect(await call(getExecution, readingTheExecution)).toStrictEqual({
       status: 'succeeded',
@@ -126,6 +127,7 @@ describe('execute_spec rejecting', () => {
       reason: 'conflict',
       detail:
         'The probe spec plain at version 1 no longer parses (The probe document has lines it does not accept); update it',
+      conflict: 'unworkable',
     });
     expect(ledger.streamNames()).toEqual(['brain/acme/alpha/specs/probe']);
   });

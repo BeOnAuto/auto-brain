@@ -16,6 +16,22 @@ describe('the inference primitive', () => {
     expect(primitive).toMatchObject({ name: 'inference', title: 'Inference', mediaType: 'text/markdown' });
   });
 
+  it('calls a spec a prompt', () => {
+    expect(primitive.noun).toEqual({ one: 'prompt', other: 'prompts' });
+  });
+
+  it('repeats a short answer, renders a small structured one, and points to the details for a long one', () => {
+    expect([
+      primitive.describeOutput('Profits rose.'),
+      primitive.describeOutput({ approve: true }),
+      primitive.describeOutput('a'.repeat(400)),
+    ]).toEqual([
+      'Its answer: “Profits rose.”',
+      'Its answer: approve: yes.',
+      'Its answer is too long to repeat here; the whole of it is in the details below.',
+    ]);
+  });
+
   it('runs an execution for at most the deadline of a call for the most output tokens: 60 s and 25 ms a token for 64000', () => {
     expect(primitive.longestExecutionMs).toBe(1_660_000);
   });

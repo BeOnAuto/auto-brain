@@ -42,6 +42,8 @@ export const echo = definePrimitive({
     'for example {"greeting": "Hello", "description": "Greets the caller"}.',
     'The input of an execution must be a JSON object.',
   ].join(' '),
+  noun: { one: 'greeting', other: 'greetings' },
+  describeOutput: () => 'It answered with its greeting.',
   mediaType: 'application/json',
   parse: parseDocument,
   summarize: ({ greeting, description, warnings }) => ({

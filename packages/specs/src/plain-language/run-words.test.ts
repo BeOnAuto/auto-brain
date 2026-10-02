@@ -1,0 +1,136 @@
+import type { Registration } from '@beonauto/operations';
+import { describe, expect, it } from 'vitest';
+
+import { makeSpecOperations } from '../index.ts';
+import { echo } from '../testing/echo.ts';
+import { probe } from '../testing/probe.ts';
+import { relay } from '../testing/relay.ts';
+
+const relaying = relay().primitive;
+
+const operations = makeSpecOperations([echo, probe().primitive, relaying]);
+
+function registrationOf(name: string): Registration {
+  const found = operations.find(({ registration }) => registration.name === name);
+  if (found === undefined) {
+    throw new Error(`There is no operation ${name}`);
+  }
+  return found.registration;
+}
+
+const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+const run = {
+  execution_id: executionId,
+  primitive: 'echo',
+  name: 'greet',
+  spec_version: 1,
+  status: 'succeeded',
+  output: { greeting: 'Hello' },
+  started_at: '2026-10-02T09:00:00.000Z',
+  started_by: 'acme-admin',
+  finished_at: '2026-10-02T09:00:01.000Z',
+};
+
+const executing = { primitive: 'echo', name: 'greet' };
+
+function executed(execution: Readonly<Record<string, unknown>>): string | undefined {
+  return registrationOf('execute_spec').plainLanguage?.outcome(execution, executing);
+}
+
+function lookedUp(execution: Readonly<Record<string, unknown>>): string | undefined {
+  return registrationOf('get_execution').plainLanguage?.outcome(execution, { execution_id: executionId });
+}
+
+const withoutOutput = Object.fromEntries(
+  Object.entries(run).filter(([key]: readonly [string, unknown]) => key !== 'output'),
+);
+
+describe('the plain language of execute_spec', () => {
+  it('says the spec ran and what came back, in the words of its primitive', () => {
+    expect(executed(run)).toBe('Ran the greeting “greet”. It answered with its greeting.');
+  });
+
+  it('says a run that goes on after the call has started and carries on', () => {
+    expect(executed({ ...withoutOutput, primitive: 'relay', name: 'pass', status: 'started' })).toBe(
+      'The relay “pass” has started and is still running. It carries on by itself, and how it ends can be looked up later.',
+    );
+  });
+
+  it('names the spec it tried to run, or what it tried', () => {
+    expect([
+      registrationOf('execute_spec').plainLanguage?.attempt(executing),
+      registrationOf('execute_spec').plainLanguage?.attempt({}),
+    ]).toEqual(['run the greeting “greet”', 'run a greeting, probe, or relay']);
+  });
+});
+
+const rejections: ReadonlyArray<readonly [string, Readonly<Record<string, unknown>>, string]> = [
+  [
+    'input it did not accept',
+    { reason: 'invalid_input', detail: 'x', issues: [] },
+    'what was given does not fit what it needs. This can be corrected and tried again; the details below say what to change.',
+  ],
+  [
+    'something it relies on that was not available',
+    { reason: 'unavailable', detail: 'x' },
+    'something the server relies on is not available right now. Only whoever runs the server can put this right, so there is nothing to change on your side; once they have, it can be tried again. Meanwhile, everything that does not need it still works.',
+  ],
+  [
+    'a spec it could not run as written',
+    { reason: 'conflict', detail: 'x' },
+    'it cannot work as it is written. This can be corrected and tried again; the details below say what to change.',
+  ],
+];
+
+describe('the plain language of get_execution', () => {
+  it('says how a run ended and what came back', () => {
+    expect(lookedUp(run)).toBe('The run of the greeting “greet” finished. It answered with its greeting.');
+  });
+
+  it('says a run is still going', () => {
+    expect(lookedUp({ ...withoutOutput, status: 'started' })).toBe(
+      'The greeting “greet” is still running; how it ends can be looked up again later.',
+    );
+  });
+
+  it.each(rejections)('says a run did not go through for %s, and what can be done', (_case, rejection, words) => {
+    expect(lookedUp({ ...withoutOutput, status: 'rejected', rejection })).toBe(
+      `The run of the greeting “greet” did not go through: ${words}`,
+    );
+  });
+
+  it('says a run that broke down was not the person’s doing', () => {
+    expect(lookedUp({ ...withoutOutput, status: 'failed' })).toBe(
+      'The run of the greeting “greet” broke down because of a problem inside the server; it was not caused by anything you did.',
+    );
+  });
+
+  it('points to the details for a result it has no words for', () => {
+    expect([
+      lookedUp({ ...run, primitive: 'gone' }),
+      lookedUp(withoutOutput),
+      lookedUp({ ...withoutOutput, status: 'rejected' }),
+    ]).toEqual([
+      'The run of the item “greet” finished. Its result is in the details below.',
+      'The run of the greeting “greet” finished. Its result is in the details below.',
+      'The run of the greeting “greet” did not go through: it cannot work as it is written. This can be corrected and tried again; the details below say what to change.',
+    ]);
+  });
+
+  it('says what it tried', () => {
+    expect([
+      registrationOf('get_execution').plainLanguage?.attempt({ execution_id: executionId }),
+      registrationOf('get_execution').plainLanguage?.attempt({}),
+    ]).toEqual(['look up the run', 'look up a run']);
+  });
+});
+
+describe('the words of the test primitives for what came back', () => {
+  it('are a sentence each', () => {
+    expect([probe().primitive.describeOutput(null), relaying.describeOutput(null)]).toEqual([
+      'It answered.',
+      'It handed its input on.',
+    ]);
+  });
+});

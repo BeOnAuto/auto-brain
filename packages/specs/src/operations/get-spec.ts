@@ -1,6 +1,7 @@
 import { defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
+import { specStanding, specWordsFor, whatItDoes } from '../plain-language/spec-words.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { findSpec } from '../registry/registry-lookup.ts';
@@ -11,6 +12,7 @@ import { specOf } from './spec-views.ts';
 
 export function defineGetSpec(primitives: readonly Primitive[]) {
   const known = knownPrimitives(primitives);
+  const words = specWordsFor(primitives);
   return known.publish(
     defineQuery('brain', {
       name: 'get_spec',
@@ -29,6 +31,11 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
         const registry = yield* loadRegistry(primitive.name);
         return specOf(primitive, yield* findSpec(registry, primitive.name, name));
       }),
+      plainLanguage: {
+        task: `look up a ${words.kinds}`,
+        attempt: ({ primitive, name }) => `look up ${words.named(primitive, name)}`,
+        outcome: (spec) => `${specStanding(words, spec)}${whatItDoes(spec)}`,
+      },
     }),
   );
 }

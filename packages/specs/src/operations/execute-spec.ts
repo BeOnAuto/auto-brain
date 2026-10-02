@@ -3,6 +3,7 @@ import { Effect, Schema } from 'effect';
 
 import { ExecutionSchema } from '../execution/execution.ts';
 import { mostInputBytes, mostResultBytes } from '../execution/recorded-size.ts';
+import { runPlainLanguage } from '../plain-language/run-words.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { executeRequest } from './execution-running.ts';
@@ -53,6 +54,7 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
         const primitive = yield* known.primitiveNamed(primitiveName);
         return yield* executeRequest(primitive, { primitive: primitive.name, name, input }, suppliedId);
       }),
+      plainLanguage: runPlainLanguage(primitives),
     }),
   );
 }

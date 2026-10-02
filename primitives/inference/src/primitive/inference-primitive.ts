@@ -1,6 +1,6 @@
-import { InvalidInput } from '@beonauto/operations';
-import { definePrimitive, type Primitive, type SpecSummary } from '@beonauto/specs';
-import { Effect, Result } from 'effect';
+import { asSentence, InvalidInput } from '@beonauto/operations';
+import { definePrimitive, inWords, type Primitive, type SpecSummary } from '@beonauto/specs';
+import { Effect, Result, type Schema } from 'effect';
 
 import type { OfferedModels } from '../model/offered-models.ts';
 import { issueText } from '../spec/document-issue.ts';
@@ -36,12 +36,21 @@ function summarize({ description, input, output, warnings }: InferenceSpec): Spe
   };
 }
 
+function describeAnswer(output: Schema.Json): string {
+  const words = inWords(output);
+  return words === undefined
+    ? 'Its answer is too long to repeat here; the whole of it is in the details below.'
+    : asSentence(`Its answer: ${words}`);
+}
+
 export function makeInference(options: InferenceOptions): Primitive {
   const execute = specExecution(options);
   return definePrimitive({
     name: 'inference',
     title: 'Inference',
     description: inferenceDescriptionFor(options.offered),
+    noun: { one: 'prompt', other: 'prompts' },
+    describeOutput: describeAnswer,
     mediaType: 'text/markdown',
     parse,
     summarize,

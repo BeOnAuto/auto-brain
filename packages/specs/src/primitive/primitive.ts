@@ -1,4 +1,4 @@
-import type { CallerIdentity, Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
+import type { CallerIdentity, Conflict, InvalidInput, Noun, Unavailable } from '@beonauto/operations';
 import { Effect, type Schema } from 'effect';
 
 export interface SpecSummary {
@@ -38,6 +38,8 @@ export interface PrimitiveDefinition<Parsed> {
   readonly name: string;
   readonly title: string;
   readonly description: string;
+  readonly noun: Noun;
+  readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
   readonly parse: (source: string) => Effect.Effect<Parsed, InvalidInput>;
   readonly summarize: (parsed: NoInfer<Parsed>) => SpecSummary;
@@ -60,6 +62,8 @@ export interface Primitive {
   readonly name: string;
   readonly title: string;
   readonly description: string;
+  readonly noun: Noun;
+  readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
   readonly longestExecutionMs: number;
   readonly prepare: (source: string) => Effect.Effect<PreparedSpec, InvalidInput>;
@@ -72,7 +76,7 @@ export function isPrimitiveName(name: string): boolean {
 }
 
 export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>): Primitive {
-  const { name, title, description, mediaType, parse, summarize, execute } = definition;
+  const { name, title, description, noun, describeOutput, mediaType, parse, summarize, execute } = definition;
   const { whenCancelled = 'stop', longestExecutionMs = defaultLongestExecutionMs } = definition;
   if (!isPrimitiveName(name)) {
     throw new Error(`The primitive name ${name} is malformed`);
@@ -81,6 +85,8 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
     name,
     title,
     description,
+    noun,
+    describeOutput,
     mediaType,
     longestExecutionMs,
     prepare: (source) =>

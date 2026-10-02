@@ -30,7 +30,7 @@ function replayed(rejection: ExecutionRejection): ReplayedRejection {
   }
   return rejection.reason === 'unavailable'
     ? new Unavailable({ detail: rejection.detail })
-    : new Conflict({ detail: rejection.detail });
+    : new Conflict({ detail: rejection.detail, kind: 'unworkable' });
 }
 
 function answerWith(execution: Execution): Effect.Effect<Execution, ReplayedRejection> {

@@ -1,6 +1,7 @@
 import { defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
+import { specsListed, specWordsFor } from '../plain-language/spec-words.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { ListedSpecSchema } from '../registry/spec.ts';
@@ -10,6 +11,7 @@ import { byName, listedSpecOf } from './spec-views.ts';
 
 export function defineListSpecs(primitives: readonly Primitive[]) {
   const known = knownPrimitives(primitives);
+  const words = specWordsFor(primitives);
   return known.publish(
     defineQuery('brain', {
       name: 'list_specs',
@@ -36,6 +38,11 @@ export function defineListSpecs(primitives: readonly Primitive[]) {
         const specs = [...registry.values()].filter(({ status }) => includeRetired || status === 'active');
         return { specs: specs.toSorted(byName).map((spec) => listedSpecOf(primitive, spec)) };
       }),
+      plainLanguage: {
+        task: `list the ${words.allKinds}`,
+        attempt: ({ primitive }) => `list the ${words.nounOf(primitive).other}`,
+        outcome: ({ specs }, { primitive }) => specsListed(words.nounOf(primitive), specs),
+      },
     }),
   );
 }

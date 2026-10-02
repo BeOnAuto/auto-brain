@@ -70,6 +70,8 @@ export function probe(): Probe {
     name: 'probe',
     title: 'Probe',
     description: 'Answers with its input and the execution it runs in. A spec document of probe is plain text.',
+    noun: { one: 'probe', other: 'probes' },
+    describeOutput: () => 'It answered.',
     mediaType: 'text/plain',
     parse: (source: string) => linesOf(source, rejecting),
     summarize: () => ({}),
