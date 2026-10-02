@@ -112,11 +112,13 @@ export interface TemporalReport {
   readonly context: Readonly<Record<string, string | number | boolean>>;
 }
 
+const temporalLevels: Readonly<Record<string, (message: string) => Effect.Effect<void>>> = {
+  ERROR: Effect.logError,
+  INFO: Effect.logInfo,
+};
+
 export function logTemporal({ level, message, context }: TemporalReport): Effect.Effect<void> {
-  const reported = `Temporal reported: ${message}`;
-  return (level === 'ERROR' ? Effect.logError(reported) : Effect.logWarning(reported)).pipe(
-    Effect.annotateLogs(context),
-  );
+  return (temporalLevels[level] ?? Effect.logWarning)(message).pipe(Effect.annotateLogs(context));
 }
 
 export function logProviderMessage({

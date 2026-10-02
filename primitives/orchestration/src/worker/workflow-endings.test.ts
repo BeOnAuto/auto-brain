@@ -120,8 +120,8 @@ describe('a run that names another brain than its workflow', () => {
         context['errorType'],
       ]),
     ).toStrictEqual([
-      ['Activity failed', 'executeSpec', 'TenancyViolation'],
-      ['Activity failed', 'settleExecution', 'TenancyViolation'],
+      ['Temporal reported: Activity failed', 'executeSpec', 'TenancyViolation'],
+      ['Temporal reported: Activity failed', 'settleExecution', 'TenancyViolation'],
     ]);
     expect(harness.executions().filter(({ executionId: id }) => id === executionId)).toEqual([]);
     expect(settledFor(executionId)).toEqual([]);

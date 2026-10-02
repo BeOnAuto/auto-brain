@@ -1,8 +1,15 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { ApplicationFailure } from '@temporalio/common';
 import { Runtime } from '@temporalio/worker';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { installTemporalRuntime, runtimeShutdownSignals, type TemporalLogEntry } from './temporal-runtime.ts';
+import {
+  installTemporalRuntime,
+  runtimeShutdownSignals,
+  watchTemporal,
+  type TemporalLogEntry,
+} from './temporal-runtime.ts';
 
 const marker = 'MARKER-of-the-tenant';
 
@@ -20,9 +27,20 @@ async function forwardedOf(log: () => void): Promise<readonly TemporalLogEntry[]
   log();
   Runtime.instance().logger.error('end of the case');
   await vi.waitFor(() => {
-    expect(entries.at(-1)?.message).toBe('end of the case');
+    expect(entries.at(-1)?.message).toBe('Temporal reported: end of the case');
   });
   return entries.slice(0, -1);
+}
+
+function answeringAfter(failures: number) {
+  let probes = 0;
+  return {
+    reach: (): Promise<void> => {
+      probes += 1;
+      return probes > failures ? Promise.resolve() : Promise.reject(new Error('Temporal is still down'));
+    },
+    probes: () => probes,
+  };
 }
 
 const ids = { namespace: 'default', taskQueue: 'brains', workflowId: 'acme/alpha/flow/e', runId: 'r1' };
@@ -38,7 +56,7 @@ describe("Temporal's runtime installed for a server", () => {
     });
 
     expect(runtimeShutdownSignals()).toStrictEqual([]);
-    expect(forwarded).toStrictEqual([{ level: 'ERROR', message: 'Worker failed', context: {} }]);
+    expect(forwarded).toStrictEqual([{ level: 'ERROR', message: 'Temporal reported: Worker failed', context: {} }]);
   });
 
   it('forwards nothing below a warning', async () => {
@@ -76,7 +94,7 @@ describe('a workflow failing in Temporal', () => {
     expect(forwarded).toStrictEqual([
       {
         level: 'ERROR',
-        message: 'The workflow failed for a fault of the runtime',
+        message: 'Temporal reported: The workflow failed for a fault of the runtime',
         context: {
           ...ids,
           sdkComponent: 'workflow',
@@ -107,10 +125,14 @@ describe('a workflow task failing', () => {
     expect(forwarded).toStrictEqual([
       {
         level: 'WARN',
-        message: 'Failing workflow task',
+        message: 'Temporal reported: Failing workflow task',
         context: { sdkComponent: 'core', runId: 'r1', failureCode: 'TMPRL1100' },
       },
-      { level: 'WARN', message: 'Failing workflow task', context: { sdkComponent: 'core', runId: 'r2' } },
+      {
+        level: 'WARN',
+        message: 'Temporal reported: Failing workflow task',
+        context: { sdkComponent: 'core', runId: 'r2' },
+      },
     ]);
   });
 });
@@ -136,7 +158,7 @@ describe('an activity failing', () => {
     expect(forwarded).toStrictEqual([
       {
         level: 'WARN',
-        message: 'Activity failed',
+        message: 'Temporal reported: Activity failed',
         context: {
           ...ids,
           workflowRunId: 'r1',
@@ -145,7 +167,7 @@ describe('an activity failing', () => {
           errorType: 'SettlementBroken',
         },
       },
-      { level: 'WARN', message: 'Activity failed', context: { errorType: 'TypeError' } },
+      { level: 'WARN', message: 'Temporal reported: Activity failed', context: { errorType: 'TypeError' } },
     ]);
   });
 });
@@ -153,11 +175,11 @@ describe('an activity failing', () => {
 describe('what Temporal reports with text that is not its own', () => {
   it('is forwarded with the code of the error and the message up to its first colon', async () => {
     const forwarded = await forwardedOf(() => {
-      Runtime.instance().logger.warn('gRPC call poll_workflow_task_queue retried 6 times', {
+      Runtime.instance().logger.warn('Worker heartbeat failed', {
         sdkComponent: 'core',
-        error: 'Status { code: Unavailable, message: "tcp connect error" }',
+        error: `Status { code: DeadlineExceeded, message: "${marker}" }`,
       });
-      Runtime.instance().logger.warn('Network error while sending worker heartbeat', { error: 'refused' });
+      Runtime.instance().logger.warn('Worker heartbeat failed', { error: 'refused' });
       Runtime.instance().logger.error(`Error while processing ActivityTask.start: ${marker}`, { failure: 7 });
     });
 
@@ -165,11 +187,11 @@ describe('what Temporal reports with text that is not its own', () => {
     expect(forwarded).toStrictEqual([
       {
         level: 'WARN',
-        message: 'gRPC call poll_workflow_task_queue retried 6 times',
-        context: { sdkComponent: 'core', errorCode: 'Unavailable' },
+        message: 'Temporal reported: Worker heartbeat failed',
+        context: { sdkComponent: 'core', errorCode: 'DeadlineExceeded' },
       },
-      { level: 'WARN', message: 'Network error while sending worker heartbeat', context: {} },
-      { level: 'ERROR', message: 'Error while processing ActivityTask.start', context: {} },
+      { level: 'WARN', message: 'Temporal reported: Worker heartbeat failed', context: {} },
+      { level: 'ERROR', message: 'Temporal reported: Error while processing ActivityTask.start', context: {} },
     ]);
   });
 
@@ -179,7 +201,52 @@ describe('what Temporal reports with text that is not its own', () => {
     });
 
     expect(forwarded).toStrictEqual([
-      { level: 'WARN', message: 'w'.repeat(500), context: { workflowId: 'i'.repeat(500) } },
+      { level: 'WARN', message: `Temporal reported: ${'w'.repeat(481)}`, context: { workflowId: 'i'.repeat(500) } },
     ]);
+  });
+});
+
+describe('a worker that loses Temporal', () => {
+  it('logs one warning however often Temporal retries, and one line once a probe reaches Temporal again', async () => {
+    const probe = answeringAfter(2);
+    const unwatch = watchTemporal(probe.reach, 20);
+
+    const lost = await forwardedOf(() => {
+      for (const poll of ['poll_workflow_task_queue', 'poll_activity_task_queue', 'poll_workflow_task_queue']) {
+        Runtime.instance().logger.warn(`gRPC call ${poll} retried 6 times`, {
+          sdkComponent: 'core',
+          error: 'Status { code: Unavailable, message: "tcp connect error" }',
+        });
+      }
+      Runtime.instance().logger.warn('Network error while sending worker heartbeat', { sdkComponent: 'core' });
+    });
+    await vi.waitFor(() => {
+      expect(entries.at(-1)?.message).toBe('The workflow worker reached Temporal again');
+    });
+    unwatch();
+    unwatch();
+
+    expect(lost).toStrictEqual([
+      {
+        level: 'WARN',
+        message: 'The workflow worker lost Temporal',
+        context: { sdkComponent: 'core', errorCode: 'Unavailable' },
+      },
+    ]);
+    expect(entries.at(-1)?.level).toBe('INFO');
+    expect(typeof entries.at(-1)?.context['lost_for_ms']).toBe('number');
+    expect(probe.probes()).toBe(3);
+  });
+
+  it('is not probed when no worker watches Temporal', async () => {
+    const lost = await forwardedOf(() => {
+      Runtime.instance().logger.warn('gRPC call poll_workflow_task_queue retried 6 times', { sdkComponent: 'core' });
+    });
+    await setTimeout(100);
+
+    expect(lost).toStrictEqual([
+      { level: 'WARN', message: 'The workflow worker lost Temporal', context: { sdkComponent: 'core' } },
+    ]);
+    expect(entries.at(-1)?.message).toBe('Temporal reported: end of the case');
   });
 });

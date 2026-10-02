@@ -122,13 +122,21 @@ describe('the workflow logs', () => {
 
   it("pass on Temporal's warnings and errors at their level, with the fields Temporal gave", async () => {
     const lines = [
-      ...(await linesLoggedBy(logTemporal({ level: 'WARN', message: 'Activity failed', context: { attempt: 2 } }))),
-      ...(await linesLoggedBy(logTemporal({ level: 'ERROR', message: 'Worker failed', context: {} }))),
+      ...(await linesLoggedBy(
+        logTemporal({ level: 'WARN', message: 'Temporal reported: Activity failed', context: { attempt: 2 } }),
+      )),
+      ...(await linesLoggedBy(
+        logTemporal({ level: 'ERROR', message: 'Temporal reported: Worker failed', context: {} }),
+      )),
+      ...(await linesLoggedBy(
+        logTemporal({ level: 'INFO', message: 'The workflow worker reached Temporal again', context: {} }),
+      )),
     ];
 
     expect(lines).toEqual([
       expect.stringContaining('"message":"Temporal reported: Activity failed","level":"WARN"'),
       expect.stringContaining('"message":"Temporal reported: Worker failed","level":"ERROR"'),
+      expect.stringContaining('"message":"The workflow worker reached Temporal again","level":"INFO"'),
     ]);
     expect(lines[0]).toContain('"annotations":{"attempt":2}');
   });

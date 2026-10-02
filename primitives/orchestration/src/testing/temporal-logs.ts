@@ -18,9 +18,13 @@ async function until(satisfied: () => boolean): Promise<void> {
   }
 }
 
+export function temporalLogsSoFar(): readonly TemporalLogEntry[] {
+  return temporalLogs;
+}
+
 export async function temporalLogsOf(workflowId: string): Promise<readonly TemporalLogEntry[]> {
   const flushed = `flushed ${randomUUID()}`;
   Runtime.instance().logger.error(flushed);
-  await until(() => temporalLogs.some(({ message }) => message === flushed));
+  await until(() => temporalLogs.some(({ message }) => message === `Temporal reported: ${flushed}`));
   return temporalLogs.filter(({ context }) => context['workflowId'] === workflowId);
 }

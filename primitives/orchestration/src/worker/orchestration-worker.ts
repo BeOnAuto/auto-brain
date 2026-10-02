@@ -6,7 +6,7 @@ import { Data, Effect, type Scope } from 'effect';
 import type { OrchestrationActivities } from '../workflow/activity-contract.ts';
 import { makeActivities, workflowRunOf } from './activities.ts';
 import type { ExecuteSpec, ReportUnsettled } from './dependencies.ts';
-import { runtimeShutdownSignals } from './temporal-runtime.ts';
+import { probeEveryMs, runtimeShutdownSignals, watchTemporal } from './temporal-runtime.ts';
 import { connectionOptionsOf, type TemporalSettings } from './temporal-settings.ts';
 import { failureConverterPath, workflowsPath } from './workflow-code.ts';
 
@@ -74,6 +74,9 @@ const temporalWorkers: TemporalWorkers = {
   shutdownSignals: runtimeShutdownSignals,
   connect: async (settings) => {
     const connection = await NativeConnection.connect(connectionOptionsOf(settings));
+    const unwatch = watchTemporal(() =>
+      connection.withDeadline(Date.now() + probeEveryMs, () => connection.workflowService.getSystemInfo({})),
+    );
     return {
       create: async (definition) => {
         const worker = await Worker.create({ ...definition, connection });
@@ -85,7 +88,10 @@ const temporalWorkers: TemporalWorkers = {
           isRunning: () => worker.getState() === 'RUNNING',
         };
       },
-      close: () => connection.close(),
+      close: async () => {
+        unwatch();
+        await connection.close();
+      },
     };
   },
 };
