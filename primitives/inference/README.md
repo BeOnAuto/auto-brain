@@ -247,7 +247,7 @@ Limits on schemas, which the spec author controls:
 - no `if`, `then`, `else`, `contains`, `dependentRequired`, `dependentSchemas`, `dependencies`, `unevaluatedItems`, `unevaluatedProperties`, `additionalItems` or dynamic anchors; `$ref` only to `#/$defs/<name>` or `#/definitions/<name>`; `not` only as `{}`; `enum` and `const` only of strings, numbers, booleans and null; a schema for `additionalProperties` not together with `properties`;
 - no definition that leads into a loop of `$ref`, `allOf`, `anyOf` or `oneOf` with no property or item in between, such as `"a": {"$ref": "#/$defs/a"}`: validating against it would never end. A definition may refer to itself through `properties` or `items`, as a tree does, and chains of definitions are allowed.
 
-Limits on answers: at most 128 nested levels; at most 100 issues are reported.
+Limits on answers: at most 128 nested levels. A schema, an input or an answer that does not match reports each distinct issue once and at most 20 of them, followed by one that says how many more there were, such as `130 more issues are not shown`.
 
 `checkAnswerSchema(document)` is the check a spec author needs when a document is stored. It reports:
 
@@ -355,7 +355,7 @@ Summarize the account {{ input.account }} as of {{ today }}.
 
 Any other key, at any level, is rejected.
 
-Parsing is validation. Every create, update and execution parses the document, and a document with a problem is rejected with every problem found at once, each with its line in the document, and a JSON pointer into the front matter where there is one, for example `Line 4, /config/temperature: Expected number`. The operations answer them under `/source`. Parsing finds:
+Parsing is validation. Every create, update and execution parses the document, and a document with a problem is rejected with every problem found at once, each with its line in the document, and a JSON pointer into the front matter where there is one, for example `Line 4, /config/temperature: Expected number`. The operations answer them under `/source`. An issue found more than once is reported once, and a rejection reports at most 20, in the order of their lines, followed by one that says how many more there were, such as `Line 23: 5881 more issues are not shown`. Parsing finds:
 
 - front matter that does not open on the first line or is never closed; a document without it is never read as a template;
 - YAML that cannot be read. The front matter is YAML 1.2 with the core schema, so `yes` and `2026-10-01` stay text. Anchors, aliases and tags are rejected, a key may appear once in a mapping, numbers are finite, and nesting stops at 72 levels: deeper front matter, however deep, is rejected with `The front matter may nest at most 72 levels`;

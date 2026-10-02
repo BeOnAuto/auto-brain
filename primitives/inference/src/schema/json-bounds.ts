@@ -5,6 +5,11 @@ export interface SchemaIssue {
   readonly detail: string;
 }
 
+export interface IssueBounds<Issue> {
+  readonly keyOf: (issue: Issue) => string;
+  readonly hidden: (count: number, first: Issue) => Issue;
+}
+
 interface Pending {
   readonly children: readonly unknown[];
   readonly level: number;
@@ -44,4 +49,21 @@ export function pointerOf(path: readonly PropertyKey[]): string {
 
 export function utf8Bytes(text: string): number {
   return new TextEncoder().encode(text).byteLength;
+}
+
+export const mostIssues = 20;
+
+export function hiddenIssues(count: number): string {
+  return count === 1 ? '1 more issue is not shown' : `${count} more issues are not shown`;
+}
+
+export function boundedIssues<Issue>(
+  issues: readonly Issue[],
+  { keyOf, hidden }: IssueBounds<Issue>,
+): readonly Issue[] {
+  const distinct = [...new Map(issues.map((issue) => [keyOf(issue), issue])).values()];
+  const [firstHidden] = distinct.slice(mostIssues, mostIssues + 1);
+  return firstHidden === undefined
+    ? distinct
+    : [...distinct.slice(0, mostIssues), hidden(distinct.length - mostIssues, firstHidden)];
 }

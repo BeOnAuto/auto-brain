@@ -2,7 +2,7 @@ import { Result } from 'effect';
 import { Tokenizer, TypeGuards, type StaticAnalysis, type Template } from 'liquidjs';
 
 import type { CompiledTemplate, TemplateIssue, VariableReference, VariableSegment } from './compiled-template.ts';
-import { engineFailureOf } from './engine-failure.ts';
+import { engineFailureOf, linesOf } from './engine-failure.ts';
 import { engine, templateLimits } from './liquid-engine.ts';
 import { markerIssues, outlineOf } from './system-block.ts';
 import { renderTemplate } from './template-rendering.ts';
@@ -68,7 +68,7 @@ export function compileTemplate(
     return Result.fail(parsing.failure);
   }
   const templates = parsing.success;
-  const outline = outlineOf(() => templates, firstLine);
+  const outline = outlineOf(() => templates, linesOf(body, firstLine));
   const issues = [...markerIssues(outline), ...nameIssues(body, firstLine)];
   if (issues.length > 0) {
     return Result.fail(issues);

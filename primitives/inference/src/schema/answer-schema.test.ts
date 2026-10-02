@@ -2,6 +2,7 @@ import { Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { compileAnswerSchema, schemaLimits, type AnswerSchema } from './answer-schema.ts';
+import type { SchemaIssue } from './json-bounds.ts';
 
 const verdict = {
   type: 'object',
@@ -29,7 +30,7 @@ function compiled(document: unknown): AnswerSchema {
   return Result.getOrThrow(compileAnswerSchema(document));
 }
 
-function answerIssues(schema: AnswerSchema, answer: unknown): unknown {
+function answerIssues(schema: AnswerSchema, answer: unknown): readonly SchemaIssue[] {
   return Result.match(schema.validate(answer), { onSuccess: () => [], onFailure: (issues) => issues });
 }
 
@@ -119,12 +120,22 @@ describe('an answer that does not match the schema', () => {
     ]);
   });
 
-  it('is reported with at most the limit of issues', () => {
+  it('is reported with at most 20 issues, and how many more there were', () => {
     const many = Object.fromEntries(Array.from({ length: 150 }, (_, index) => [`p${index}`, { type: 'string' }]));
+    const issues = answerIssues(compiled({ properties: many, required: Object.keys(many) }), {});
 
-    expect(answerIssues(compiled({ properties: many, required: Object.keys(many) }), {})).toHaveLength(
-      schemaLimits.issues,
-    );
+    expect(schemaLimits.issues).toBe(20);
+    expect(issues).toHaveLength(21);
+    expect(issues.at(-1)).toEqual({ pointer: '', detail: '130 more issues are not shown' });
+  });
+
+  it('says so when one more issue was found than it shows', () => {
+    const many = Object.fromEntries(Array.from({ length: 21 }, (_, index) => [`p${index}`, { type: 'string' }]));
+
+    expect(answerIssues(compiled({ properties: many, required: Object.keys(many) }), {}).at(-1)).toEqual({
+      pointer: '',
+      detail: '1 more issue is not shown',
+    });
   });
 });
 

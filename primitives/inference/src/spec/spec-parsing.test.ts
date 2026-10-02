@@ -124,4 +124,30 @@ describe('the issues of a document', () => {
       'Line 4: output "{{ input.a " not closed',
     ]);
   });
+
+  it('are each reported once', () => {
+    const nested = `${'{% system %}'.repeat(2000)}x${'{% endsystem %}'.repeat(2000)}`;
+
+    expect(issuesIn(documentOf('model: openai/gpt-5', nested))).toEqual([
+      'Line 4: A template holds at most one {% system %} block',
+      'Line 4: {% endsystem %} closes no {% system %}',
+      'Line 4: A template may use at most 1000 names in its tags and outputs (variables, properties, filters and keywords); this one uses 4000',
+    ]);
+  });
+
+  it('are at most 20, with how many more there were, however many the document holds', () => {
+    const markers = '{%system%}\n'.repeat(5900);
+    const before = process.cpuUsage();
+    const issues = issuesIn(documentOf('model: openai/gpt-5', markers));
+    const { user, system } = process.cpuUsage(before);
+
+    expect(markers.length).toBeLessThan(65_536);
+    expect(issues).toEqual([
+      'Line 4: {% system %} is never closed by {% endsystem %}',
+      'Line 4: A template may use at most 1000 names in its tags and outputs (variables, properties, filters and keywords); this one uses 5900',
+      ...Array.from({ length: 18 }, (_, index) => `Line ${index + 5}: A template holds at most one {% system %} block`),
+      'Line 23: 5881 more issues are not shown',
+    ]);
+    expect((user + system) / 1000).toBeLessThan(400);
+  });
 });

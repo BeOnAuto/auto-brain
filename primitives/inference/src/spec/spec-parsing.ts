@@ -1,7 +1,7 @@
 import { Option, Result, type Schema } from 'effect';
 
 import type { CompiledTemplate } from '../template/compiled-template.ts';
-import { byLine, type DocumentIssue } from './document-issue.ts';
+import { reportedIssues, type DocumentIssue } from './document-issue.ts';
 import { splitDocument, type DocumentParts } from './document-split.ts';
 import { decodeSection, frontMatterIn, type ReadFrontMatter } from './front-matter-schema.ts';
 import type { InferenceSpec } from './inference-spec.ts';
@@ -92,5 +92,5 @@ function specOf(parts: DocumentParts): Checked<InferenceSpec> {
 }
 
 export function parseSpecDocument(source: string): Checked<InferenceSpec> {
-  return Result.mapError(Result.flatMap(splitDocument(source), specOf), (issues) => issues.toSorted(byLine));
+  return Result.mapError(Result.flatMap(splitDocument(source), specOf), reportedIssues);
 }

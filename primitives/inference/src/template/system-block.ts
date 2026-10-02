@@ -1,7 +1,7 @@
 import { toValueSync, TypeGuards, type Template } from 'liquidjs';
 
 import type { TemplateIssue } from './compiled-template.ts';
-import { lineAt } from './engine-failure.ts';
+import type { LineOfOffset } from './engine-failure.ts';
 
 type MarkerName = 'system' | 'endsystem';
 
@@ -27,26 +27,25 @@ function markerNamed(name: string): MarkerName | undefined {
   return name === 'system' || name === 'endsystem' ? name : undefined;
 }
 
-function nodeOf(template: () => Template, firstLine: number): Node {
+function nodeOf(template: () => Template, lineOf: LineOfOffset): Node {
   const current = template();
   const { token } = current;
   const name = TypeGuards.isTagToken(token) ? markerNamed(token.name) : undefined;
   return {
-    marker:
-      name === undefined ? undefined : { name, line: lineAt(token.getPosition(), firstLine), offset: token.begin },
+    marker: name === undefined ? undefined : { name, line: lineOf(token.begin), offset: token.begin },
     blank: TypeGuards.isHTMLToken(token) && token.getContent().trim() === '',
     children: current.children === undefined ? [] : toValueSync(current.children(false, true)),
   };
 }
 
-export function outlineOf(templates: () => readonly Template[], firstLine: number): Outline {
+export function outlineOf(templates: () => readonly Template[], lineOf: LineOfOffset): Outline {
   const top: Marker[] = [];
   const nested: Marker[] = [];
   const pending: Template[] = [];
   let inside = false;
   let hasMessage = false;
   for (const template of templates()) {
-    const { marker, blank, children } = nodeOf(() => template, firstLine);
+    const { marker, blank, children } = nodeOf(() => template, lineOf);
     top.push(...(marker === undefined ? [] : [marker]));
     inside = marker === undefined ? inside : marker.name === 'system';
     hasMessage ||= !inside && marker === undefined && !blank;
@@ -55,7 +54,7 @@ export function outlineOf(templates: () => readonly Template[], firstLine: numbe
   let template = pending.pop();
   while (template !== undefined) {
     const current = template;
-    const { marker, children } = nodeOf(() => current, firstLine);
+    const { marker, children } = nodeOf(() => current, lineOf);
     nested.push(...(marker === undefined ? [] : [marker]));
     pending.push(...children);
     template = pending.pop();

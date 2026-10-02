@@ -1,6 +1,14 @@
 import { JsonSchema, Result, Schema, SchemaIssue, SchemaRepresentation, type StandardSchema } from 'effect';
 
-import { nestedDeeperThan, pointerOf, utf8Bytes, type SchemaIssue as Issue } from './json-bounds.ts';
+import {
+  boundedIssues,
+  hiddenIssues,
+  mostIssues,
+  nestedDeeperThan,
+  pointerOf,
+  utf8Bytes,
+  type SchemaIssue as Issue,
+} from './json-bounds.ts';
 import { referenceLoopIssues } from './reference-loops.ts';
 import { portabilityOf, type PortabilityIssue } from './schema-portability.ts';
 import { shapeIssues } from './schema-shape.ts';
@@ -9,7 +17,7 @@ export const schemaLimits = {
   bytes: 65_536,
   nesting: 64,
   answerNesting: 128,
-  issues: 100,
+  issues: mostIssues,
 } as const;
 
 export interface AnswerSchema {
@@ -37,6 +45,11 @@ const strictly = { onExcessProperty: 'error', errors: 'all' } as const;
 
 const draft07 = 'http://json-schema.org/draft-07/schema';
 
+const issueBounds = {
+  keyOf: ({ pointer, detail }: Issue) => `${pointer}\u0000${detail}`,
+  hidden: (count: number): Issue => ({ pointer: '', detail: hiddenIssues(count) }),
+};
+
 function rootIssue(detail: string): readonly Issue[] {
   return [{ pointer: '', detail }];
 }
@@ -55,7 +68,7 @@ function boundedDocument(document: unknown): Result.Result<Schema.JsonObject, re
 
 function wellFormedDocument(document: Schema.JsonObject): Result.Result<Schema.JsonObject, readonly Issue[]> {
   const issues = [...shapeIssues(document), ...referenceLoopIssues(document)];
-  return issues.length > 0 ? Result.fail(issues.slice(0, schemaLimits.issues)) : Result.succeed(document);
+  return issues.length > 0 ? Result.fail(boundedIssues(issues, issueBounds)) : Result.succeed(document);
 }
 
 function isDraft07(document: Schema.JsonObject): boolean {
@@ -88,10 +101,11 @@ function isPropertyKey(segment: IssueSegment): segment is PropertyKey {
 }
 
 function answerIssues(issues: readonly StandardSchema.StandardSchemaV1.Issue[]): readonly Issue[] {
-  return issues.slice(0, schemaLimits.issues).map(({ message, path = [] }) => ({
+  const found = issues.map(({ message, path = [] }) => ({
     pointer: pointerOf(path.filter((segment) => isPropertyKey(segment))),
     detail: message,
   }));
+  return boundedIssues(found, issueBounds);
 }
 
 function validatorOf(decode: Decoder): AnswerSchema['validate'] {

@@ -1,3 +1,5 @@
+import { boundedIssues, hiddenIssues } from '../schema/json-bounds.ts';
+
 export interface DocumentIssue {
   readonly line: number;
   readonly pointer: string;
@@ -23,6 +25,19 @@ export function issueText({ line, pointer, detail }: DocumentIssue): string {
   return pointer === '' ? `Line ${line}: ${detail}` : `Line ${line}, ${pointer}: ${detail}`;
 }
 
-export function byLine(first: DocumentIssue, second: DocumentIssue): number {
+function byLine(first: DocumentIssue, second: DocumentIssue): number {
   return first.line - second.line;
+}
+
+const documentIssueBounds = {
+  keyOf: ({ line, pointer, detail }: DocumentIssue) => `${line}\u0000${pointer}\u0000${detail}`,
+  hidden: (count: number, { line }: DocumentIssue): DocumentIssue => ({
+    line,
+    pointer: '',
+    detail: hiddenIssues(count),
+  }),
+};
+
+export function reportedIssues(issues: readonly DocumentIssue[]): readonly DocumentIssue[] {
+  return boundedIssues(issues.toSorted(byLine), documentIssueBounds);
 }

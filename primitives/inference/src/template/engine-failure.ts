@@ -11,8 +11,30 @@ const positionSuffix = /, line:\d+, col:\d+$/u;
 
 const undefinedVariable = /^undefined variable: /u;
 
-export function lineAt(position: readonly number[], firstLine: number): number {
+export type LineOfOffset = (offset: number) => number;
+
+function lineAt(position: readonly number[], firstLine: number): number {
   return firstLine + Number(position[0]) - 1;
+}
+
+export function linesOf(text: string, firstLine: number): LineOfOffset {
+  const breaks: number[] = [];
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) {
+    breaks.push(at);
+  }
+  return (offset) => {
+    let low = 0;
+    let high = breaks.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (Number(breaks[middle]) < offset) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    return firstLine + low;
+  };
 }
 
 export function engineFailureOf(error: unknown, firstLine: number): EngineFailure {
