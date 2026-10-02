@@ -1,6 +1,10 @@
 **/node_modules
 **/coverage
 **/.env
+data
+packages/server/.data
+packages/server/data
+.claude
 **/.turbo
 **/*.test.ts
 packages/*/src/testing
