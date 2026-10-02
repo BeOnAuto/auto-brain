@@ -3,7 +3,7 @@ import { hash, randomBytes } from 'node:crypto';
 import { CallerIdentitySchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-import { localOrg } from './local-org.ts';
+import { localOrg } from '../access/local-org.ts';
 
 const KeyIdSchema = Schema.String.check(Schema.isPattern(/^[a-z0-9-]{1,32}$/u));
 

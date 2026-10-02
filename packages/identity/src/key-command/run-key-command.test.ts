@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { authenticatorFor, readApiKeys } from './index.ts';
+import { authenticatorFor, readApiKeys } from '../index.ts';
 import { runKeyCommand } from './run-key-command.ts';
 
 interface Session {
@@ -33,7 +33,7 @@ function issued({ logged }: Session): { readonly key: string; readonly entry: st
   };
 }
 
-const keyCommand = fileURLToPath(new URL('key-command.ts', import.meta.url));
+const keyCommand = fileURLToPath(new URL('../key-command.ts', import.meta.url));
 
 const keyCommandProcessTestTimeoutMs = 20_000;
 

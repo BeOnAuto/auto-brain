@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { InvalidApiKeysError, createApiKey, readApiKeys, type ApiKey } from './index.ts';
+import { InvalidApiKeysError, createApiKey, readApiKeys, type ApiKey } from '../index.ts';
 
 const { entry } = createApiKey({ id: 'ci-1', org: 'acme_Corp-1', permissions: ['brain:read'], brains: ['alpha'] });
 

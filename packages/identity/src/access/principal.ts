@@ -1,6 +1,6 @@
 import { allPermissions, type CallerIdentity } from '@beonauto/operations';
 
-import type { ApiKey } from './api-key.ts';
+import type { ApiKey } from '../keys/api-key.ts';
 import { localOrg } from './local-org.ts';
 
 export interface Principal {

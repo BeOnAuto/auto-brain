@@ -4,8 +4,8 @@ import { parseArgs } from 'node:util';
 import { allPermissions } from '@beonauto/operations';
 import { Result, Schema } from 'effect';
 
-import { KeyGrantSchema, createApiKey, type KeyGrant } from './api-key.ts';
-import { describeIssues, failureOf } from './issues.ts';
+import { KeyGrantSchema, createApiKey, type KeyGrant } from '../keys/api-key.ts';
+import { describeIssues, failureOf } from '../keys/issues.ts';
 
 export interface Console {
   readonly log: (line: string) => void;

@@ -1,8 +1,8 @@
-import type { ApiKey } from './api-key.ts';
+import type { ApiKey } from '../keys/api-key.ts';
+import { verifyKey } from '../keys/verify-key.ts';
 import { InvalidLocalModeError } from './invalid-local-mode-error.ts';
 import { listensOnlyOnLoopback } from './loopback.ts';
 import { localDeveloper, principalOf, type Principal } from './principal.ts';
-import { verifyKey } from './verify-key.ts';
 
 export type AccessMode = 'local' | 'keys' | 'closed';
 

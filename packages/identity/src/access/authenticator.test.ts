@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { authenticatorFor, createApiKey, type ApiKey } from './index.ts';
+import { authenticatorFor, createApiKey, type ApiKey } from '../index.ts';
 
 const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['brain:read'], brains: ['alpha'] });
 

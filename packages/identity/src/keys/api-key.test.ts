@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { authenticatorFor, createApiKey, type ApiKey, type KeyGrant } from './index.ts';
+import { authenticatorFor, createApiKey, type ApiKey, type KeyGrant } from '../index.ts';
 
 const grant: KeyGrant = { id: 'ci-1', org: 'acme', permissions: ['brain:read'], brains: ['alpha'] };
 
