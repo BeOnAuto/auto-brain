@@ -13,7 +13,7 @@ function withoutReference(schema: Readonly<Record<string, unknown>>): JsonSchema
   );
 }
 
-function rootOf({ schema, definitions }: JsonSchemaDocument): JsonSchema {
+export function inlinedRootOf({ schema, definitions }: JsonSchemaDocument): JsonSchema {
   const reference = schema['$ref'];
   const name = typeof reference === 'string' ? definitionReference.exec(reference)?.[1] : undefined;
   const definition = name === undefined ? undefined : definitions[name];
@@ -21,12 +21,11 @@ function rootOf({ schema, definitions }: JsonSchemaDocument): JsonSchema {
 }
 
 export function selfContainedSchemaOf(document: JsonSchemaDocument): JsonSchema {
-  const root = { $schema: dialect, ...rootOf(document) };
+  const root = { $schema: dialect, ...inlinedRootOf(document) };
   return Object.keys(document.definitions).length === 0 ? root : { ...root, $defs: { ...document.definitions } };
 }
 
-export function advertisedSchemaOf(document: JsonSchemaDocument): StandardSchemaWithJSON {
-  const jsonSchema = selfContainedSchemaOf(document);
+export function advertisedSchema(jsonSchema: Readonly<JsonSchema>): StandardSchemaWithJSON {
   return {
     '~standard': {
       version: 1,
@@ -35,4 +34,8 @@ export function advertisedSchemaOf(document: JsonSchemaDocument): StandardSchema
       jsonSchema: { input: () => jsonSchema, output: () => jsonSchema },
     },
   };
+}
+
+export function advertisedSchemaOf(document: JsonSchemaDocument): StandardSchemaWithJSON {
+  return advertisedSchema(selfContainedSchemaOf(document));
 }

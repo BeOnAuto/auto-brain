@@ -5,7 +5,13 @@ import { requestBodyLimit } from '../operations/request-body.ts';
 import { problemOf, problemResponse, type Problem } from '../problem/problem.ts';
 import type { RegisterRoutes, RouteHandler } from '../routes.ts';
 import { authInfoFor } from './caller-hand-off.ts';
-import { brainServerFactory, orgServerFactory, type McpServerFactory, type McpServing } from './mcp-server-factory.ts';
+import {
+  brainServerFactory,
+  catalogServerFactory,
+  orgServerFactory,
+  type McpServerFactory,
+  type McpServing,
+} from './mcp-server-factory.ts';
 
 export interface McpRoutesOptions extends McpServing {
   readonly reportError: (error: Readonly<Error>) => void;
@@ -41,6 +47,14 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
   };
 }
 
+function ownOrgEndpoint(fetchMcp: FetchMcp): RouteHandler {
+  return (c) => {
+    const { org, callerIn } = c.get('principal');
+    const call = { caller: callerIn(org), org, requestId: c.get('requestId') };
+    return fetchMcp(c.req.raw, { authInfo: authInfoFor(call) });
+  };
+}
+
 function handlerFor(factory: McpServerFactory, { reportError }: McpRoutesOptions): McpHttpHandler {
   return createMcpHandler(factory, { legacy: 'stateless', maxRequestBodySize: requestBodyLimit, onerror: reportError });
 }
@@ -48,12 +62,14 @@ function handlerFor(factory: McpServerFactory, { reportError }: McpRoutesOptions
 export function mcpRoutes(options: McpRoutesOptions): RegisterRoutes {
   return (routes) => {
     const serving = { ...options, reportThrown: routes.reportThrown };
+    const catalog = handlerFor(catalogServerFactory(serving), options);
     const org = handlerFor(orgServerFactory(serving), options);
     const brain = handlerFor(brainServerFactory(serving), options);
+    routes.add('POST', '/mcp', ownOrgEndpoint(catalog.fetch));
     routes.add('POST', '/orgs/:org/mcp', endpoint(org.fetch, 'org'));
     routes.add('POST', '/orgs/:org/brains/:brain/mcp', endpoint(brain.fetch, 'brain'));
     routes.onClose(async () => {
-      await Promise.all([org.close(), brain.close()]);
+      await Promise.all([catalog.close(), org.close(), brain.close()]);
     });
   };
 }

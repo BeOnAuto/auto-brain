@@ -256,28 +256,31 @@ A page may call the API only from an origin listed in `ALLOWED_ORIGINS`; a reque
 
 ### Connecting an agent over MCP
 
-Every org is also an [MCP](https://modelcontextprotocol.io) server, so an agent can call the same operations as tools. Point the agent's MCP client at the org's endpoint, with an [API key](#api-keys) of that org:
+The server is also an [MCP](https://modelcontextprotocol.io) server, so an agent can call the same operations as tools. Connect it to `/mcp`, with an [API key](#api-keys):
 
 ```json
 {
   "mcpServers": {
     "auto-brain": {
       "type": "http",
-      "url": "http://localhost:8080/orgs/acme/mcp",
+      "url": "http://localhost:8080/mcp",
       "headers": { "Authorization": "Bearer <key>" }
     }
   }
 }
 ```
 
-Most MCP clients take an entry of this shape; in [local mode](#local-mode), leave out the headers. The endpoint speaks streamable HTTP without sessions. It serves the current stateless revision (`2026-07-28`) and the earlier ones the SDK supports (`2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`), so agents built on older SDKs connect too.
+Most MCP clients take an entry of this shape. In Claude Code, `claude mcp add --transport http auto-brain http://localhost:8080/mcp --header "Authorization: Bearer <key>"` adds the same. In [local mode](#local-mode), leave out the header.
 
-| Endpoint                              | Tools                                                                                                                                                                                                                                                        |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `POST /orgs/{org}/mcp`                | `create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain`                                                                                                                                                                                |
-| `POST /orgs/{org}/brains/{brain}/mcp` | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec` and `get_execution`, for the inference and, when workflows are offered, orchestration primitives; and, when workflows are offered, `send_execution_event`: eight tools |
+`/mcp` serves every tool on one connection, so an agent can create a brain and work in it at once. The org is the key's own, since a key belongs to one org, and never an argument; in local mode, where no key names one, it is `local`, so the brains an agent creates there are the ones `GET /v1/orgs/local/brains` lists. The brain tools (`create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain`) are as on HTTP. Every tool that works inside a brain (`create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec`, `get_execution` and, when workflows are offered, `send_execution_event`) takes the brain's id as a required `brain` argument: twelve tools, or thirteen with workflows. The server's instructions orient an agent to brains, specs, primitives and executions.
 
-Each tool carries the operation's description and its input and output JSON Schemas, and is marked read-only when it only reads. A tool that cannot do what was asked returns `isError` with the same problem document HTTP would answer with, as text, so the agent can read the `reason` and the `detail`, and correct its arguments when the `reason` is `invalid_input`. The key's permissions and brains hold as they do over HTTP: a read-only key can call `list_brains` but gets `forbidden` from `create_brain`. [`packages/api`](packages/api) describes both mappings in full.
+| Endpoint                              | Tools                                                                         | Use it                                                   |
+| ------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `POST /mcp`                           | every tool, those inside a brain taking a `brain` argument                    | by default                                               |
+| `POST /orgs/{org}/mcp`                | `create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain` | to manage the brains of one org and nothing else         |
+| `POST /orgs/{org}/brains/{brain}/mcp` | the tools inside a brain, acting in that brain, without a `brain` argument    | to lock a connection to one brain, such as for one agent |
+
+Every endpoint speaks streamable HTTP without sessions. It serves the current stateless revision (`2026-07-28`) and the earlier ones the SDK supports (`2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`), so agents built on older SDKs connect too. Each tool carries the operation's description and its input and output JSON Schemas, and is marked read-only when it only reads. A tool that cannot do what was asked returns `isError` with the same problem document HTTP would answer with, as text, so the agent can read the `reason` and the `detail`, and correct its arguments when the `reason` is `invalid_input`. The key's permissions and brains hold as they do over HTTP: a read-only key can call `list_brains` but gets `forbidden` from `create_brain`, a key limited to some brains gets `forbidden` for any other, and a brain the org does not have is `not_found`. [`packages/api`](packages/api) describes the mappings in full.
 
 ### Errors
 
