@@ -1,6 +1,7 @@
-import { defineCommand } from '@beonauto/operations';
+import { defineCommand, quoted } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
+import { brainNamed, purposeOf } from '../plain-language/brain-words.ts';
 import { BrainSchema } from '../registry/brain.ts';
 import { BrainDescriptionField, BrainIdField, BrainNameField } from './brain-fields.ts';
 import { recordInRegistry } from './registry-recording.ts';
@@ -30,4 +31,9 @@ export const createBrain = defineCommand('org', {
   reasons: ['conflict'],
   handle: ({ brain, name, description = '' }) =>
     recordInRegistry({ type: 'create', brain, name, description }).pipe(Effect.catchTag('not_found', Effect.die)),
+  plainLanguage: {
+    task: 'create a brain',
+    attempt: ({ brain }) => `create the brain ${quoted(brain)}`,
+    outcome: (brain) => `Created ${brainNamed(brain)}.${purposeOf(brain)} It has nothing in it yet.`,
+  },
 });

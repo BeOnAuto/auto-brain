@@ -1,6 +1,7 @@
-import { defineCommand } from '@beonauto/operations';
+import { defineCommand, quoted } from '@beonauto/operations';
 import { Schema } from 'effect';
 
+import { brainNamed, purposeOf } from '../plain-language/brain-words.ts';
 import { BrainSchema } from '../registry/brain.ts';
 import { BrainDescriptionField, BrainIdField, BrainNameField } from './brain-fields.ts';
 import { recordInRegistry } from './registry-recording.ts';
@@ -23,4 +24,9 @@ export const updateBrain = defineCommand('org', {
   outputSchema: BrainSchema,
   reasons: ['not_found', 'conflict'],
   handle: ({ brain, name, description }) => recordInRegistry({ type: 'update', brain, name, description }),
+  plainLanguage: {
+    task: 'update a brain',
+    attempt: ({ brain }) => `update the brain ${quoted(brain)}`,
+    outcome: (brain) => `Updated ${brainNamed(brain)}.${purposeOf(brain, ' It has no description now.')}`,
+  },
 });
