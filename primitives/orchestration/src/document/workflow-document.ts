@@ -1,14 +1,21 @@
+import { readYaml, type LocatedProblem, type Position, type YamlKind } from '@beonauto/config';
 import { InvalidInput, type Issue } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { durationLimitRejections } from '../dsl/duration-limits.ts';
-import type { JsonObject } from '../dsl/json.ts';
+import { mostValueDepth, type JsonObject } from '../dsl/json.ts';
 import { nestingRejections } from '../dsl/nesting.ts';
 import type { Rejection } from '../dsl/policy-checks.ts';
 import { rejectionsOf } from '../dsl/policy.ts';
 import { defaultMostDuration } from '../interpreter/workflow-run.ts';
 import { dslProblems, type Problem } from './dsl-validation.ts';
-import { readYaml, type LocatedProblem, type Position } from './yaml-reading.ts';
+
+const workflowYaml: YamlKind = {
+  noun: 'a workflow document',
+  mapping: 'A workflow document is a YAML mapping, with document and do at its top',
+  mostDepth: mostValueDepth,
+  emptyIsMapping: false,
+};
 
 interface LocatedIssue {
   readonly position: Position;
@@ -20,7 +27,7 @@ export function parseWorkflowDocument(
   mostDuration = defaultMostDuration,
 ): Effect.Effect<JsonObject, InvalidInput> {
   return Effect.suspend(() => {
-    const reading = readYaml(source);
+    const reading = readYaml(source, workflowYaml);
     if ('problems' in reading) {
       return Effect.fail(invalidDocument('The workflow document is not YAML this runtime reads', reading.problems));
     }
