@@ -9,7 +9,7 @@ const IssueSchema = Schema.Struct({
 
 export const ExecutionRejectionSchema = Schema.Union([
   Schema.Struct({ reason: Schema.Literal('invalid_input'), detail: Schema.String, issues: Schema.Array(IssueSchema) }),
-  Schema.Struct({ reason: Schema.Literal('unavailable'), detail: Schema.String }),
+  Schema.Struct({ reason: Schema.Literals(['unavailable', 'conflict']), detail: Schema.String }),
 ]).annotate({ description: 'Why the primitive rejected the execution' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;
@@ -39,3 +39,18 @@ export const ExecutionSchema = Schema.Struct({
 export type Execution = typeof ExecutionSchema.Type;
 
 export type ExecutionRecord = Omit<Execution, 'execution_id'>;
+
+export const ExecutionDetailSchema = Schema.Struct({
+  ...ExecutionSchema.fields,
+  record: Schema.optionalKey(
+    Schema.JsonObject.annotate({
+      description:
+        'What the primitive recorded of what it did: of the run that succeeded, or of the work it started that finishes later',
+    }),
+  ),
+}).annotate({
+  identifier: 'ExecutionDetail',
+  description: 'One run of a spec with an input, how it ended, and what the primitive recorded of it',
+});
+
+export type ExecutionDetail = typeof ExecutionDetailSchema.Type;

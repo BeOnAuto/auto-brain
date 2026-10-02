@@ -67,6 +67,8 @@ describe('the tools of each endpoint', () => {
   });
 });
 
+const echoRecord = { record: { greeting: 'Hello' } };
+
 describe('the spec tools on a brain endpoint', () => {
   it('create a spec, execute it and read the execution back', async () => {
     const outcome = await onAlpha(async (session) => {
@@ -91,7 +93,7 @@ describe('the spec tools on a brain endpoint', () => {
       status: 'succeeded',
       output: { greeting: 'Hello', input: { who: 'Ada' } },
     });
-    expect(outcome.execution.structuredContent).toEqual(outcome.executed.structuredContent);
+    expect(outcome.execution.structuredContent).toEqual({ ...outcome.executed.structuredContent, ...echoRecord });
   });
 
   it('list, read, update and retire a spec', async () => {

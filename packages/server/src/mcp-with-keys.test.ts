@@ -18,6 +18,16 @@ const apiKeys = JSON.stringify([acmeAdmin.entry, acmeReader.entry, acmeAlpha.ent
 
 const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
 
+const specTools = [
+  'create_spec',
+  'list_specs',
+  'get_spec',
+  'update_spec',
+  'retire_spec',
+  'execute_spec',
+  'get_execution',
+];
+
 let ledger: TemporaryLedger;
 let server: RunningServer;
 
@@ -158,16 +168,23 @@ describe('the permissions and brains of a key over MCP', () => {
       status: 403,
       body: { detail: 'The caller may not access this brain' },
     });
-    expect(toolNamesIn(own)).toEqual([]);
+    expect(toolNamesIn(own)).toEqual(specTools);
   });
 
-  it('serves the brain endpoint of a brain that does not exist with no tools, as the server offers no primitive', async () => {
-    const tools = await withMcpSession(
+  it('lists the spec tools on the brain endpoint of a brain that does not exist, whose calls find no brain', async () => {
+    const { tools, listed } = await withMcpSession(
       'previous major',
       endpoint('/orgs/acme/brains/nowhere/mcp', acmeAdmin.key),
-      (session) => session.listTools(),
+      async (session) => ({
+        tools: await session.listTools(),
+        listed: await session.callTool('list_specs', { primitive: 'inference' }),
+      }),
     );
 
-    expect(toolNamesIn(tools)).toEqual([]);
+    expect(toolNamesIn(tools)).toEqual(specTools);
+    expect({ isError: listed.isError, problem: problemIn(listed) }).toMatchObject({
+      isError: true,
+      problem: { reason: 'not_found' },
+    });
   });
 });

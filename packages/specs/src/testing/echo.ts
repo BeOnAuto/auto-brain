@@ -4,7 +4,13 @@ import { Effect, Predicate, Result, Schema, SchemaIssue } from 'effect';
 import { definePrimitive } from '../index.ts';
 
 const decodeDocument = Schema.decodeUnknownEffect(
-  Schema.fromJsonString(Schema.Struct({ greeting: Schema.String, description: Schema.optionalKey(Schema.String) })),
+  Schema.fromJsonString(
+    Schema.Struct({
+      greeting: Schema.String,
+      description: Schema.optionalKey(Schema.String),
+      warnings: Schema.optionalKey(Schema.Array(Schema.String)),
+    }),
+  ),
   { onExcessProperty: 'error', errors: 'all' },
 );
 
@@ -31,14 +37,16 @@ export const echo = definePrimitive({
   title: 'Echo',
   description: [
     'Answers every execution with the greeting its spec declares and the input it was given.',
-    'A spec document of echo is a JSON object with a string `greeting` and an optional string `description`,',
+    'A spec document of echo is a JSON object with a string `greeting`, an optional string `description`',
+    'and optional `warnings`, a list of strings the spec is accepted with,',
     'for example {"greeting": "Hello", "description": "Greets the caller"}.',
     'The input of an execution must be a JSON object.',
   ].join(' '),
   mediaType: 'application/json',
   parse: parseDocument,
-  summarize: ({ greeting, description }) => ({
+  summarize: ({ greeting, description, warnings }) => ({
     ...(description === undefined ? {} : { description }),
+    ...(warnings === undefined ? {} : { warnings }),
     inputSchema: { type: 'object' },
     outputSchema: {
       type: 'object',

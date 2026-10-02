@@ -14,11 +14,19 @@ COPY packages/config/package.json packages/config/
 COPY packages/identity/package.json packages/identity/
 COPY packages/ledger/package.json packages/ledger/
 COPY packages/operations/package.json packages/operations/
+COPY packages/specs/package.json packages/specs/
+COPY primitives/inference/package.json primitives/inference/
 RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
 RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/local \
   pnpm rebuild --filter @beonauto/server... sqlite3 \
   && find node_modules/.pnpm -path '*/node_modules/sqlite3/build/Release/*' -prune ! -name node_sqlite3.node \
     -exec rm -rf {} +
+ARG AZURE_IDENTITY=false
+RUN case "$AZURE_IDENTITY" in \
+    true) pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/inference ;; \
+    false) ;; \
+    *) echo "AZURE_IDENTITY is true or false, not $AZURE_IDENTITY" >&2 && exit 1 ;; \
+  esac
 
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
 LABEL org.opencontainers.image.licenses="Elastic-2.0"
@@ -33,6 +41,8 @@ COPY packages/identity/src packages/identity/src
 COPY packages/ledger/src packages/ledger/src
 COPY packages/operations/src packages/operations/src
 COPY packages/server/src packages/server/src
+COPY packages/specs/src packages/specs/src
+COPY primitives/inference/src primitives/inference/src
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends tini \
   && rm -rf /var/lib/apt/lists/* \

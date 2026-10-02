@@ -1,5 +1,6 @@
 import { readServerConfig, type Environment } from '@beonauto/config';
 import { readApiKeys, type ApiKey } from '@beonauto/identity';
+import { readModelSettings, type ModelSettings } from '@beonauto/inference';
 import { Config, ConfigProvider, Effect, Schema } from 'effect';
 
 import { InvalidSettingsError } from './invalid-settings-error.ts';
@@ -11,6 +12,7 @@ export interface Settings {
   readonly apiKeys: readonly ApiKey[] | undefined;
   readonly ledgerFile: string;
   readonly localMode: boolean;
+  readonly models: ModelSettings;
 }
 
 const Origin = Schema.String.check(
@@ -32,5 +34,6 @@ export function readSettings(environment: Environment): Settings {
     .parse(ConfigProvider.fromEnvRecord(environment))
     .pipe(Effect.mapError(({ message }: { readonly message: string }) => new InvalidSettingsError({ message })));
   const { allowedOrigins, ledgerFile, localMode } = Effect.runSync(read);
-  return { host, port, allowedOrigins, apiKeys: readApiKeys(environment), ledgerFile, localMode };
+  const models = Effect.runSync(readModelSettings(environment));
+  return { host, port, allowedOrigins, apiKeys: readApiKeys(environment), ledgerFile, localMode, models };
 }

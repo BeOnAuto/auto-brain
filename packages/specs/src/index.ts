@@ -11,11 +11,12 @@ export {
   type PreparedSpec,
   type Primitive,
   type PrimitiveDefinition,
+  type PrimitiveRejection,
   type SpecSummary,
 } from './primitive/primitive.ts';
 export { defineRetireSpec } from './operations/retire-spec.ts';
 export { defineUpdateSpec } from './operations/update-spec.ts';
-export { ExecutionSchema, type Execution } from './execution/execution.ts';
+export { ExecutionDetailSchema, ExecutionSchema, type Execution, type ExecutionDetail } from './execution/execution.ts';
 export {
   executionSettler,
   type ExecutionAddress,
@@ -23,5 +24,6 @@ export {
   type Settlement,
 } from './execution/execution-settler.ts';
 export { getExecution } from './operations/get-execution.ts';
+export { mostInputBytes, mostResultBytes } from './execution/recorded-size.ts';
 export { ListedSpecSchema, SpecSchema, type ListedSpec, type Spec } from './registry/spec.ts';
 export { makeSpecOperations, type BrainOperation } from './operations/spec-operations.ts';

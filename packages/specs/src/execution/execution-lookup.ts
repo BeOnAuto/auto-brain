@@ -1,28 +1,42 @@
-import { InvalidInput, NotFound, Unavailable } from '@beonauto/operations';
+import { Conflict, InvalidInput, NotFound, Unavailable } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { ExecutionState } from './execution-state.ts';
-import type { Execution, ExecutionRejection } from './execution.ts';
+import type { ExecutionState, RecordedExecution } from './execution-state.ts';
+import type { Execution, ExecutionDetail, ExecutionRejection } from './execution.ts';
 
-export function executionOf(id: string, state: ExecutionState): Effect.Effect<Execution, NotFound> {
+function recorded(id: string, state: ExecutionState): Effect.Effect<RecordedExecution, NotFound> {
   return state === undefined
     ? Effect.fail(new NotFound({ detail: `There is no execution ${id} in this brain` }))
-    : Effect.succeed({ execution_id: id, ...state.execution });
+    : Effect.succeed(state);
 }
 
-function replayed(rejection: ExecutionRejection): InvalidInput | Unavailable {
-  return rejection.reason === 'invalid_input'
-    ? new InvalidInput({ detail: rejection.detail, issues: rejection.issues })
-    : new Unavailable({ detail: rejection.detail });
+export function executionOf(id: string, state: ExecutionState): Effect.Effect<Execution, NotFound> {
+  return recorded(id, state).pipe(Effect.map(({ execution }) => ({ execution_id: id, ...execution })));
 }
 
-function answerWith(execution: Execution): Effect.Effect<Execution, InvalidInput | Unavailable> {
+function detailOf(id: string, { execution, record }: RecordedExecution): ExecutionDetail {
+  return record === undefined ? { execution_id: id, ...execution } : { execution_id: id, ...execution, record };
+}
+
+export function executionDetailOf(id: string, state: ExecutionState): Effect.Effect<ExecutionDetail, NotFound> {
+  return recorded(id, state).pipe(Effect.map((execution) => detailOf(id, execution)));
+}
+
+type ReplayedRejection = InvalidInput | Unavailable | Conflict;
+
+function replayed(rejection: ExecutionRejection): ReplayedRejection {
+  if (rejection.reason === 'invalid_input') {
+    return new InvalidInput({ detail: rejection.detail, issues: rejection.issues });
+  }
+  return rejection.reason === 'unavailable'
+    ? new Unavailable({ detail: rejection.detail })
+    : new Conflict({ detail: rejection.detail });
+}
+
+function answerWith(execution: Execution): Effect.Effect<Execution, ReplayedRejection> {
   return execution.rejection === undefined ? Effect.succeed(execution) : Effect.fail(replayed(execution.rejection));
 }
 
-export function answerOf(
-  id: string,
-  state: ExecutionState,
-): Effect.Effect<Execution, NotFound | InvalidInput | Unavailable> {
+export function answerOf(id: string, state: ExecutionState): Effect.Effect<Execution, NotFound | ReplayedRejection> {
   return executionOf(id, state).pipe(Effect.flatMap(answerWith));
 }

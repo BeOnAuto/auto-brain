@@ -1,8 +1,8 @@
 import { defineQuery } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { executionOf } from '../execution/execution-lookup.ts';
-import { ExecutionSchema } from '../execution/execution.ts';
+import { executionDetailOf } from '../execution/execution-lookup.ts';
+import { ExecutionDetailSchema } from '../execution/execution.ts';
 import { loadExecution } from './execution-access.ts';
 import { ExecutionIdField } from './spec-fields.ts';
 
@@ -16,12 +16,14 @@ export const getExecution = defineQuery('brain', {
     'or when the server stopped before it finished;',
     'then succeeded, with its output; rejected, with the reason, detail and issues of the rejection;',
     'or failed, when the primitive broke down.',
+    'It shows the record of what the primitive did when the primitive gave one: of the run that succeeded,',
+    'or of the work it started that finishes later. execute_spec answers without the record.',
     '`execution_id` is the UUID that execute_spec answered with or was given.',
     'Rejected with not_found when the brain has no execution with that id.',
   ].join(' '),
   route: { method: 'GET', path: '/executions/{execution_id}' },
   inputSchema: Schema.Struct({ execution_id: ExecutionIdField }),
-  outputSchema: ExecutionSchema,
+  outputSchema: ExecutionDetailSchema,
   reasons: ['not_found'],
-  handle: ({ execution_id: id }) => loadExecution(id).pipe(Effect.flatMap((state) => executionOf(id, state))),
+  handle: ({ execution_id: id }) => loadExecution(id).pipe(Effect.flatMap((state) => executionDetailOf(id, state))),
 });

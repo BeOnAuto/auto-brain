@@ -8,6 +8,7 @@ export interface RecordedExecution {
   readonly input: Schema.Json;
   readonly execution: ExecutionRecord;
   readonly finishesLater: boolean;
+  readonly record?: Schema.JsonObject;
   readonly result?: ExecutionResult;
 }
 
@@ -46,9 +47,10 @@ function finishedRecord(
   return { ...attempt, status: 'failed' };
 }
 
-function finishedExecution({ input, execution, finishesLater }: RecordedExecution, event: ExecutionFinished) {
+function finishedExecution(state: RecordedExecution, event: ExecutionFinished): RecordedExecution {
   const result = resultOf(event);
-  return { input, execution: finishedRecord(execution, result, event.at), finishesLater, result };
+  const finished = { ...state, execution: finishedRecord(state.execution, result, event.at), result };
+  return event.type === 'execution_succeeded' ? { ...finished, record: event.record } : finished;
 }
 
 export function evolveExecution(state: ExecutionState, event: ExecutionEvent): ExecutionState {
@@ -58,7 +60,9 @@ export function evolveExecution(state: ExecutionState, event: ExecutionEvent): E
   if (state === undefined) {
     return state;
   }
-  return event.type === 'execution_deferred' ? { ...state, finishesLater: true } : finishedExecution(state, event);
+  return event.type === 'execution_deferred'
+    ? { ...state, finishesLater: true, record: event.record }
+    : finishedExecution(state, event);
 }
 
 export function hasFinalResult({ execution }: RecordedExecution): boolean {

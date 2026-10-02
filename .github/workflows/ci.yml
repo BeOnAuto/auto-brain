@@ -150,6 +150,35 @@ jobs:
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           docker stop mcp
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
+      - name: Execute an inference spec without model settings
+        run: |
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker run --detach --name inference --publish 8080:8080 --env API_KEYS auto-brain:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
+            sleep 1
+          done
+          call() {
+            curl --silent --output "$1" --write-out '%{http_code}' \
+              --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
+          }
+          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
+          spec="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
+          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          test "$(call created.json --data "$spec" "$brain/specs/inference")" = 201
+          test "$(call read.json "$brain/specs/inference/hello")" = 200
+          test "$(jq --raw-output .source read.json)" = "$source"
+          test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/specs/inference/hello/execute")" = 503
+          test "$(jq --raw-output .reason executed.json)" = unavailable
+          test "$(jq --raw-output .detail executed.json)" = \
+            'anthropic is not configured; it needs ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'
+          docker stop inference
+          test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
 
   pull-request-title:
     name: Pull request title

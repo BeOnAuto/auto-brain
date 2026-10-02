@@ -17,6 +17,12 @@ const listedSpecFields = {
   output_schema: Schema.optionalKey(
     Schema.JsonObject.annotate({ description: 'The JSON Schema of the output an execution of the spec gives' }),
   ),
+  warnings: Schema.optionalKey(
+    Schema.Array(Schema.String).annotate({
+      description:
+        'What the primitive found in the document that may not work everywhere, such as a schema some providers reject; the spec was accepted with them',
+    }),
+  ),
   created_at: Schema.String.annotate({ description: 'When the spec was created, in ISO 8601 UTC' }),
   created_by: Schema.String.annotate({ description: 'The id of the caller who created the spec' }),
   updated_at: Schema.String.annotate({ description: 'When the spec last changed, in ISO 8601 UTC' }),

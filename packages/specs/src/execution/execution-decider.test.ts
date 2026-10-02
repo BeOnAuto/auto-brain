@@ -33,6 +33,12 @@ const unavailable: ExecutionEvent = {
   ...finish,
 };
 
+const conflicted: ExecutionEvent = {
+  type: 'execution_rejected',
+  rejection: { reason: 'conflict', detail: 'The model takes no seed; update the spec' },
+  ...finish,
+};
+
 const failed: ExecutionEvent = { type: 'execution_failed', ...finish };
 
 function stateAfter(...events: readonly ExecutionEvent[]) {
@@ -64,8 +70,11 @@ describe('starting an execution', () => {
     expect(decided(starting({}, 2), started)).toStrictEqual(Result.succeed([{ ...started, spec_version: 2 }]));
   });
 
-  it('records it again after unavailable or a failure, which are no final result', () => {
+  it('records it again after unavailable, a conflict or a failure, which are no final result', () => {
     expect(decided(starting(), started, unavailable)).toStrictEqual(Result.succeed([started]));
+    expect(decided(starting({}, 2), started, conflicted)).toStrictEqual(
+      Result.succeed([{ ...started, spec_version: 2 }]),
+    );
     expect(decided(starting(), started, failed)).toStrictEqual(Result.succeed([started]));
   });
 
@@ -152,6 +161,7 @@ describe('an execution', () => {
         finished_at: finish.at,
       },
       finishesLater: false,
+      record: { model: 'x' },
       result: { type: 'execution_succeeded', output: 'Hello Ada', record: { model: 'x' } },
     });
   });

@@ -90,6 +90,15 @@ describe('settling an execution', () => {
     );
   });
 
+  it('keeps the record of what was started until a call with its id starts it again', () => {
+    const unavailable: ExecutionEvent = { ...unavailability, ...start };
+
+    expect(stateAfter(started, deferred)).toMatchObject({ record: { run: 'r-1' } });
+    expect(stateAfter(started, deferred, { ...success, ...start })).toMatchObject({ record: { steps: 3 } });
+    expect(stateAfter(started, deferred, unavailable)).toMatchObject({ record: { run: 'r-1' } });
+    expect(stateAfter(started, deferred, unavailable, started)).not.toHaveProperty('record');
+  });
+
   it('as unavailable lets a call with its id start it again', () => {
     expect(decided(starting, started, deferred, { ...unavailability, ...start })).toStrictEqual(
       Result.succeed([started]),

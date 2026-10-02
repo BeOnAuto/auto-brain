@@ -17,7 +17,10 @@ const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:rea
 
 describe('readSettings', () => {
   it('listens on every interface at port 8080, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
-    expect(readSettings({})).toEqual({
+    const { models, ...server } = readSettings({});
+
+    expect(models.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
+    expect(server).toEqual({
       host: '0.0.0.0',
       port: 8080,
       allowedOrigins: [],
@@ -28,16 +31,18 @@ describe('readSettings', () => {
   });
 
   it('reads every setting from the environment it is given', () => {
-    expect(
-      readSettings({
-        HOST: '127.0.0.1',
-        PORT: '3000',
-        ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
-        API_KEYS: JSON.stringify([entry]),
-        LEDGER_FILE: '/data/ledger.db',
-        LOCAL_MODE: 'true',
-      }),
-    ).toEqual({
+    const { models, ...server } = readSettings({
+      HOST: '127.0.0.1',
+      PORT: '3000',
+      ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
+      API_KEYS: JSON.stringify([entry]),
+      LEDGER_FILE: '/data/ledger.db',
+      LOCAL_MODE: 'true',
+      OPENAI_API_KEY: 'sk-test',
+    });
+
+    expect(models.openai).toMatchObject({ configured: true });
+    expect(server).toEqual({
       host: '127.0.0.1',
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
@@ -92,5 +97,14 @@ describe('readSettings rejects invalid settings', () => {
 
   it('rejects an invalid port with the named error from the server configuration', () => {
     expect(errorFrom({ PORT: 'eighty' })).toEqual(new InvalidPortError('eighty'));
+  });
+
+  it('stops at model settings it cannot read, naming the setting and never its value', () => {
+    const error = String(errorFrom({ MODEL_ALIASES: '{"fast": "sk-not-a-reference"}' }));
+
+    expect(error).toBe(
+      'model_settings_invalid: The model settings are invalid. MODEL_ALIASES: /fast: An alias and its target are each written provider/model',
+    );
+    expect(error).not.toContain('sk-not-a-reference');
   });
 });

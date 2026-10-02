@@ -59,6 +59,23 @@ describe('create_spec', () => {
   });
 });
 
+describe('the warnings of a spec', () => {
+  it('are what its primitive found in the document, shown with the spec', async () => {
+    const source = '{"greeting": "Hello", "warnings": ["Line 2: greeting may be too warm for some readers"]}';
+
+    expect(await creating({ primitive: 'echo', name: 'greet', source })).toMatchObject({
+      output: { warnings: ['Line 2: greeting may be too warm for some readers'] },
+    });
+  });
+
+  it('are left out when the primitive found none', async () => {
+    const created = await creating({ primitive: 'echo', name: 'greet', source: '{"greeting": "Hi", "warnings": []}' });
+
+    expect(created).toMatchObject({ status: 'succeeded' });
+    expect(created).not.toHaveProperty('output.warnings');
+  });
+});
+
 describe('the spec create_spec records', () => {
   it('leaves out what the primitive does not say about a spec', async () => {
     expect(await creating({ primitive: 'probe', name: 'plain', source: 'just text' })).toStrictEqual({

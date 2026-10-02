@@ -16,12 +16,16 @@ export function listedSpecOf(primitive: Primitive, stored: StoredSpec): ListedSp
   return Struct.omit(specOf(primitive, stored), ['source']);
 }
 
-function contentFrom(source: string, { description, inputSchema, outputSchema }: SpecSummary): SpecContent {
+function contentFrom(
+  source: string,
+  { description, inputSchema, outputSchema, warnings = [] }: SpecSummary,
+): SpecContent {
   return {
     source,
     ...(description === undefined ? {} : { description }),
     ...(inputSchema === undefined ? {} : { input_schema: inputSchema }),
     ...(outputSchema === undefined ? {} : { output_schema: outputSchema }),
+    ...(warnings.length === 0 ? {} : { warnings }),
   };
 }
 
