@@ -1,6 +1,7 @@
 import { Config, type Redacted } from 'effect';
 
 import {
+  anySet,
   bothProblems,
   configured,
   labelProblems,
@@ -113,7 +114,7 @@ export function anthropicReading(source: AnthropicSource): Reading<AnthropicSett
     ],
     availability:
       credential === undefined
-        ? unconfigured(['ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'])
+        ? unconfigured(['ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'], anySet(source.base_url))
         : configured({ credential, base_url: source.base_url ?? null }),
   };
 }
@@ -138,7 +139,7 @@ export function openAiReading(source: OpenAiSource): Reading<OpenAiSettings> {
     ],
     availability:
       source.api_key === undefined
-        ? unconfigured(['OPENAI_API_KEY'])
+        ? unconfigured(['OPENAI_API_KEY'], anySet(source.base_url, source.api))
         : configured({ api_key: source.api_key, base_url: source.base_url ?? null, api: known ? api : 'responses' }),
   };
 }
@@ -150,7 +151,8 @@ export const googleSource: Config.Config<GoogleSource> = Config.all({
 export function googleReading({ api_key }: GoogleSource): Reading<GoogleSettings> {
   return {
     problems: [],
-    availability: api_key === undefined ? unconfigured(['GOOGLE_GENERATIVE_AI_API_KEY']) : configured({ api_key }),
+    availability:
+      api_key === undefined ? unconfigured(['GOOGLE_GENERATIVE_AI_API_KEY'], false) : configured({ api_key }),
   };
 }
 
@@ -164,7 +166,7 @@ export const bedrockSource: Config.Config<BedrockSource> = Config.all({
 export function bedrockReading(source: BedrockSource): Reading<BedrockSettings> {
   const availability: Availability<BedrockSettings> =
     source.region === undefined
-      ? unconfigured(['AWS_REGION'])
+      ? unconfigured(['AWS_REGION'], anySet(source.bearer_token, source.runtime_endpoint))
       : configured({
           region: source.region,
           bearer_token: source.bearer_token ?? null,
@@ -205,7 +207,7 @@ export function azureReading(source: AzureSource): Reading<AzureSettings> {
     ],
     availability:
       endpoint === undefined
-        ? unconfigured(['AZURE_RESOURCE_NAME or AZURE_BASE_URL'])
+        ? unconfigured(['AZURE_RESOURCE_NAME or AZURE_BASE_URL'], anySet(source.api_key, source.api_version))
         : configured({ endpoint, api_version: source.api_version ?? null, api_key: source.api_key ?? null }),
   };
 }
@@ -223,6 +225,8 @@ export function vertexReading({ project, location }: VertexSource): Reading<Vert
   return {
     problems: labelProblems('GOOGLE_VERTEX_LOCATION', location),
     availability:
-      project === undefined || location === undefined ? unconfigured(missing) : configured({ project, location }),
+      project === undefined || location === undefined
+        ? unconfigured(missing, anySet(project, location))
+        : configured({ project, location }),
   };
 }

@@ -5,6 +5,7 @@ import { unconfigured, type Availability } from './setting-values.ts';
 export interface UnconfiguredProvider {
   readonly provider: string;
   readonly missing: readonly string[];
+  readonly partial?: true;
 }
 
 export interface ProviderStatus {
@@ -29,7 +30,7 @@ function azureAvailability(
 ): Availability<AzureSettings> {
   const credentialMissing = azure.configured && azure.settings.api_key === null && !packages.entraId;
   return credentialMissing
-    ? unconfigured([`AZURE_API_KEY, or the optional package ${entraIdPackage} for Microsoft Entra ID`])
+    ? unconfigured([`AZURE_API_KEY, or the optional package ${entraIdPackage} for Microsoft Entra ID`], true)
     : azure;
 }
 
@@ -46,6 +47,13 @@ function availabilities(settings: ModelSettings, packages: OptionalPackages): re
   ];
 }
 
+function unconfiguredProvider(
+  provider: string,
+  { missing, partial }: Omit<UnconfiguredProvider, 'provider'>,
+): UnconfiguredProvider {
+  return partial === true ? { provider, missing, partial } : { provider, missing };
+}
+
 export function providerStatus(settings: ModelSettings, packages: OptionalPackages): ProviderStatus {
   const all = availabilities(settings, packages);
   return {
@@ -54,7 +62,7 @@ export function providerStatus(settings: ModelSettings, packages: OptionalPackag
       ...settings.gateways.map(({ name }) => name),
     ],
     unconfigured: all.flatMap(({ provider, availability }) =>
-      availability.configured ? [] : [{ provider, missing: availability.missing }],
+      availability.configured ? [] : [unconfiguredProvider(provider, availability)],
     ),
   };
 }

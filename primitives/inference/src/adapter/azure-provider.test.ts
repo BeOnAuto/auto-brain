@@ -113,7 +113,7 @@ describe('the azure provider without the identity library', () => {
 
     const missing = ['AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID'];
     expect(failure).toMatchObject({ _tag: 'provider_not_configured', provider: 'azure', missing });
-    expect(access.status.unconfigured).toContainEqual({ provider: 'azure', missing });
+    expect(access.status.unconfigured).toContainEqual({ provider: 'azure', missing, partial: true });
     expect(recording.requests()).toEqual([]);
   });
 });

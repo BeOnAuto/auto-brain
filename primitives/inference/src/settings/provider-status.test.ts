@@ -54,8 +54,8 @@ describe('providerStatus of unconfigured providers', () => {
       { provider: 'bedrock', missing: ['AWS_REGION'] },
       { provider: 'bedrock-anthropic', missing: ['AWS_REGION'] },
       { provider: 'azure', missing: ['AZURE_RESOURCE_NAME or AZURE_BASE_URL'] },
-      { provider: 'vertex', missing: ['GOOGLE_VERTEX_LOCATION'] },
-      { provider: 'vertex-anthropic', missing: ['GOOGLE_VERTEX_LOCATION'] },
+      { provider: 'vertex', missing: ['GOOGLE_VERTEX_LOCATION'], partial: true },
+      { provider: 'vertex-anthropic', missing: ['GOOGLE_VERTEX_LOCATION'], partial: true },
     ]);
   });
 
@@ -67,6 +67,29 @@ describe('providerStatus of unconfigured providers', () => {
     expect(withoutEntra.unconfigured).toContainEqual({
       provider: 'azure',
       missing: ['AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID'],
+      partial: true,
     });
+  });
+});
+
+describe('providerStatus of partly configured providers', () => {
+  it.each<readonly [string, Environment, readonly string[]]>([
+    ['anthropic', { ANTHROPIC_BASE_URL: 'https://anthropic.proxy.example' }, ['anthropic']],
+    ['openai', { OPENAI_API: 'chat_completions' }, ['openai']],
+    ['bedrock', { AWS_BEARER_TOKEN_BEDROCK: 'token' }, ['bedrock', 'bedrock-anthropic']],
+    ['azure', { AZURE_API_KEY: 'key' }, ['azure']],
+    ['vertex', { GOOGLE_VERTEX_LOCATION: 'us-central1' }, ['vertex', 'vertex-anthropic']],
+  ])('marks %s as partly configured when some of its settings are set', async (_name, environment, partial) => {
+    const status = await statusOf(environment, false);
+
+    expect(status.unconfigured.filter((provider) => provider.partial === true).map(({ provider }) => provider)).toEqual(
+      partial,
+    );
+  });
+
+  it('marks no provider as partly configured when none of their settings are set', async () => {
+    const status = await statusOf({}, false);
+
+    expect(status.unconfigured.filter((provider) => provider.partial === true)).toEqual([]);
   });
 });

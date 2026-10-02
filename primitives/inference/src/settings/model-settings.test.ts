@@ -36,7 +36,7 @@ describe('readModelSettings with nothing set', () => {
     const settings = await settingsOf({ OPENAI_API_KEY: '', GOOGLE_VERTEX_PROJECT: 'p', GOOGLE_VERTEX_LOCATION: '' });
 
     expect(settings.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
-    expect(settings.vertex).toEqual({ configured: false, missing: ['GOOGLE_VERTEX_LOCATION'] });
+    expect(settings.vertex).toEqual({ configured: false, missing: ['GOOGLE_VERTEX_LOCATION'], partial: true });
   });
 });
 
