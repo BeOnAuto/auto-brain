@@ -1,4 +1,4 @@
-import { BrainContext } from '@beonauto/operations';
+import { BrainContext, Caller } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { ExecutionRequest } from '../execution/execution-commands.ts';
@@ -13,7 +13,8 @@ const runExecution = Effect.fnUntraced(function* (primitive: Primitive, id: stri
   const { spec, prepared } = yield* preparedSpec(primitive, request.name);
   yield* recordExecution(id, { type: 'start', ...request, spec_version: spec.version });
   const { org, brain } = yield* BrainContext;
-  const execution = { id, org, brain, spec: { name: spec.name, version: spec.version } };
+  const caller = yield* Caller;
+  const execution = { id, org, brain, caller, spec: { name: spec.name, version: spec.version } };
   const result = yield* attempt(prepared, request.input, execution).pipe(
     Effect.tapDefect(() => Effect.ignore(recordExecution(id, { type: 'finish', result: failedAttempt }))),
   );

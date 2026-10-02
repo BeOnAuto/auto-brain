@@ -32,6 +32,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Cache the Temporal dev server the orchestration tests download
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/temporal-sdk-typescript-*
+          key: temporal-dev-server-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('primitives/orchestration/package.json') }}
       - name: Format, lint, type-check, test with 100% coverage, knip, sherif
         run: pnpm check
         env:

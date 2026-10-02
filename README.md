@@ -11,6 +11,8 @@ A business brain carries out the way your team works. It gathers context, calls 
 auto-brain is the server a brain runs on. Auto can host it for you, or you can run it yourself from one container image.
 
 > **Status: early development.** The server, its container image and the release pipeline are in place, and the server can create, list, read, update and retire an org's brains on the ledger. The primitives below are being designed and built, so auto-brain isn't ready for production use yet.
+>
+> **Workflows are not served yet.** The [orchestration primitive](primitives/orchestration) runs workflow specs on Temporal, but the server does not wire it in: no request starts a workflow, and the server reads none of the `TEMPORAL_*` settings.
 
 ## How a brain works
 
@@ -173,14 +175,15 @@ pnpm check        # everything CI checks
 
 ## Repository layout
 
-| Path                  | What's there                                                                                                                                    |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/server`     | The HTTP server (`@beonauto/server`), which serves the brain operations on the ledger over HTTP and MCP, and its container build (`Dockerfile`) |
-| `packages/api`        | The API (`@beonauto/api`) the server answers every request with: each operation as an HTTP route and as an MCP tool                             |
-| `packages/config`     | Reads the server's configuration from the environment                                                                                           |
-| `packages/identity`   | API keys, local mode and the key command                                                                                                        |
-| `packages/operations` | The application layer: where operations are defined and run                                                                                     |
-| `packages/brains`     | The brain operations: create, list, read, update and retire an org's brains                                                                     |
-| `packages/specs`      | The spec operations: define, version, retire and execute the specs of a brain's primitives                                                      |
-| `packages/ledger`     | The ledger every primitive records to: event streams on Emmett and SQLite                                                                       |
-| `primitives/*`        | One package per primitive                                                                                                                       |
+| Path                       | What's there                                                                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/server`          | The HTTP server (`@beonauto/server`), which serves the brain operations on the ledger over HTTP and MCP, and its container build (`Dockerfile`) |
+| `packages/api`             | The API (`@beonauto/api`) the server answers every request with: each operation as an HTTP route and as an MCP tool                             |
+| `packages/config`          | Reads the server's configuration from the environment                                                                                           |
+| `packages/identity`        | API keys, local mode and the key command                                                                                                        |
+| `packages/operations`      | The application layer: where operations are defined and run                                                                                     |
+| `packages/brains`          | The brain operations: create, list, read, update and retire an org's brains                                                                     |
+| `packages/specs`           | The spec operations: define, version, retire and execute the specs of a brain's primitives                                                      |
+| `packages/ledger`          | The ledger every primitive records to: event streams on Emmett and SQLite                                                                       |
+| `primitives/orchestration` | Workflow specs in the Open Workflow DSL, run on Temporal by one interpreter workflow; the server does not serve them yet                        |
+| `primitives/*`             | One package per primitive                                                                                                                       |
