@@ -77,6 +77,7 @@ describe('readSettings', () => {
       ledgerFile: '/data/ledger.db',
       localMode: true,
       logFormat: 'pretty',
+      configFile: undefined,
     });
   });
 });

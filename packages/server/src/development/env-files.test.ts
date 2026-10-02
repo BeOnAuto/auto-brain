@@ -1,10 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
-import { providerStatus, readModelSettings } from '@beonauto/inference';
-import { Effect } from 'effect';
+import { providerStatus } from '@beonauto/inference';
 import { describe, expect, it } from 'vitest';
 
+import { readSettings } from '../settings/settings.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,
@@ -16,6 +17,8 @@ import {
 import { stoppedWith } from '../testing/development-workflows.ts';
 
 const example = new URL('../../../../.env.example', import.meta.url);
+
+const exampleConfigFile = fileURLToPath(new URL('../../../../auto-brain.example.yaml', import.meta.url));
 
 const localMode = '"message":"Local mode is on:';
 
@@ -43,15 +46,15 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
     await expect(accessNoticeWith('LOCAL_MODE=true\n', { environment: { LOCAL_MODE: 'false' } })).resolves.toBe(closed);
   });
 
-  it('documents every model setting in .env.example in a form that reads as written', async () => {
-    const settings = parseEnv(uncommented(readFileSync(example, 'utf8')));
+  it('documents the model settings in .env.example and auto-brain.example.yaml in a form that reads as written', () => {
+    const environment = parseEnv(uncommented(readFileSync(example, 'utf8')));
 
-    const models = await Effect.runPromise(readModelSettings(settings));
+    const { models, allowedOrigins, configFile } = readSettings({ ...environment, CONFIG_FILE: exampleConfigFile });
 
     expect(providerStatus(models, { entraId: false }).configured).toEqual(['anthropic', 'openai', 'google', 'gateway']);
-    expect(Object.fromEntries(models.aliases)).toEqual({
-      'anthropic/*': 'gateway/anthropic/*',
-    });
+    expect(Object.fromEntries(models.aliases)).toEqual({ 'anthropic/*': 'gateway/anthropic/*' });
+    expect(allowedOrigins).toEqual(['http://localhost:5173']);
+    expect(configFile?.fromFile).toEqual(['MODEL_GATEWAYS', 'MODEL_ALIASES', 'ALLOWED_ORIGINS']);
   });
 });
 

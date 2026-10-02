@@ -63,6 +63,39 @@ export function logAccessMode(mode: AccessMode, localModeRequested: boolean): Ef
     : accessNotices[mode];
 }
 
+export interface ConfigFileReport {
+  readonly path: string;
+  readonly fromFile: readonly string[];
+  readonly overridden: readonly string[];
+}
+
+function overriddenNotice(path: string, overridden: readonly string[]): readonly Effect.Effect<void>[] {
+  return overridden.length === 0
+    ? []
+    : [
+        Effect.logInfo(
+          `Set both in the environment and in the configuration file, so the environment's value is used: ${overridden.join(', ')}`,
+        ).pipe(Effect.annotateLogs({ config_file: path, settings: overridden })),
+      ];
+}
+
+export function logConfigFile(report?: ConfigFileReport): Effect.Effect<void> {
+  if (report === undefined) {
+    return Effect.void;
+  }
+  const { path, fromFile, overridden } = report;
+  const read = fromFile.length === 0 ? 'none' : fromFile.join(', ');
+  return Effect.all(
+    [
+      Effect.logInfo(`Settings read from the configuration file ${path}: ${read}`).pipe(
+        Effect.annotateLogs({ config_file: path, settings: fromFile }),
+      ),
+      ...overriddenNotice(path, overridden),
+    ],
+    { discard: true },
+  );
+}
+
 const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');
 
 function withoutRequestContent(error: Readonly<Error>): string {

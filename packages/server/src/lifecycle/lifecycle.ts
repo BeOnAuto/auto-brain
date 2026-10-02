@@ -5,7 +5,7 @@ import type { Environment } from '@beonauto/config';
 import { authenticatorFor } from '@beonauto/identity';
 import { Effect, Layer } from 'effect';
 
-import { logAccessMode, logIncident, logsToStderr, type LogFormat } from '../logging/logging.ts';
+import { logAccessMode, logConfigFile, logIncident, logsToStderr, type LogFormat } from '../logging/logging.ts';
 import { readSettings, type Settings } from '../settings/settings.ts';
 import { createHttpServer, listen } from './http-server.ts';
 import { shutDown } from './shutdown.ts';
@@ -61,6 +61,7 @@ export async function startServer<R>(environment: Environment, options: ServerOp
   const authenticator = authenticatorFor(settings);
   const runtime = await startRuntime(options.runtimeLayer(settings), settings.logFormat);
   await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
+  await runtime.run(logConfigFile(settings.configFile));
   const served = await servedOf(options, runtime, settings);
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,

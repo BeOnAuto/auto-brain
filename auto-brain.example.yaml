@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=./auto-brain.schema.json
+#
+# The settings of auto-brain that are lists or maps. Copy this file to
+# auto-brain.yaml at the root of the repository, which git ignores, and pnpm dev
+# passes it to the server. In a container, mount it and set CONFIG_FILE to its
+# path inside the container.
+#
+# Each key stands for the environment variable of the same name in upper case,
+# which wins over the key when both are set. Secrets never go in this file:
+# write ${NAME} where one belongs and set NAME in .env or in the container.
+
+# OpenAI-compatible gateways; a spec then names gateway/<model id>.
+model_gateways:
+  - name: gateway
+    base_url: https://gateway.example.com/v1
+    api_key: ${GATEWAY_API_KEY}
+
+# Send every anthropic/<model id> a spec names through the gateway.
+model_aliases:
+  anthropic/*: gateway/anthropic/*
+
+# The origins a page in a browser may call the API from.
+allowed_origins:
+  - http://localhost:5173
+
+# The API keys the server accepts, each as pnpm key prints it. With any key
+# set, local mode is off and every request needs a key.
+# api_keys:
+#   - id: ci
+#     org: acme
+#     permissions: [org:read, org:write, brain:read, brain:write]
+#     brains: '*'
+#     sha256: <the digest pnpm key prints>

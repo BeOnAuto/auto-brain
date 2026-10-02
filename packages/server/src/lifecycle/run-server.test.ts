@@ -156,7 +156,7 @@ const startUpFailures: ReadonlyArray<readonly [Readonly<Record<string, string>>,
   [{ API_KEYS: 'abk_ci-1_not-a-list-of-keys' }, 'InvalidApiKeysError: API_KEYS: Expected a valid JSON string'],
   [
     { ALLOWED_ORIGINS: 'app.example.com' },
-    'InvalidSettingsError: SchemaError(Expected an origin such as https://app.example.com, received "app.example.com" at ["ALLOWED_ORIGINS"][0] Expected array at ["ALLOWED_ORIGINS"])',
+    'InvalidSettingsError: SchemaError(Expected an origin such as https://app.example.com at ["ALLOWED_ORIGINS"][0] Expected array at ["ALLOWED_ORIGINS"])',
   ],
   [
     { HOST: '0.0.0.0', LOCAL_MODE: 'true' },
