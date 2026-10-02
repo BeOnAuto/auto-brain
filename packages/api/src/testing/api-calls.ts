@@ -25,7 +25,10 @@ export interface ReportedIncident {
 
 const admitEveryone: Authenticator = {
   mode: 'keys',
-  authenticate: () => ({ callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, brains: '*' }) }),
+  authenticate: () => ({
+    org: 'acme',
+    callerIn: (org) => ({ id: 'anyone', org, permissions: allPermissions, brains: '*' }),
+  }),
 };
 
 export function createTestHandler(options: Partial<ApiOptions> = {}): {

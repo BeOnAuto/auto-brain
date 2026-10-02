@@ -123,7 +123,7 @@ jobs:
           read_brain > after-restart.json
           cmp before-restart.json after-restart.json
           stop_server second
-      - name: Serve the brain tools over MCP
+      - name: Serve the tools over MCP
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
@@ -138,16 +138,20 @@ jobs:
           call_mcp() {
             curl --silent --fail --header "authorization: Bearer $key" \
               --header 'content-type: application/json' --header 'accept: application/json, text/event-stream' \
-              --header 'mcp-protocol-version: 2025-11-25' --data "$1" http://127.0.0.1:8080/orgs/demo/mcp
+              --header 'mcp-protocol-version: 2025-11-25' --data "$2" "http://127.0.0.1:8080$1"
           }
-          call_mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' > tools.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' > tools.txt
           for tool in create_brain list_brains get_brain update_brain retire_brain; do
             grep --quiet "\"name\":\"$tool\"" tools.txt
           done
-          call_mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_brain","arguments":{"brain":"smoke","name":"Smoke test"}}}' > created.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_brain","arguments":{"brain":"smoke","name":"Smoke test"}}}' > created.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' created.txt
-          call_mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
+          call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
+          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 12
+          call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_specs","arguments":{"brain":"smoke","primitive":"inference"}}}' > specs.txt
+          grep --quiet '"structuredContent":{"specs":\[\]}' specs.txt
           docker stop mcp
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
       - name: Execute an inference spec without model settings

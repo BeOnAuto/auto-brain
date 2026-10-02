@@ -7,13 +7,14 @@ import {
   type Registration,
 } from '@beonauto/operations';
 import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
-import { Effect } from 'effect';
+import { Effect, Result } from 'effect';
 
 import type { RunCall } from '../operations/operation-routes.ts';
 import type { ReportThrown } from '../problem/error-boundary.ts';
-import { brainCallOf, orgCallOf, type HandedOff } from './caller-hand-off.ts';
-import { brainEndpointInstructions, orgEndpointInstructions } from './instructions.ts';
-import { toolDefinitionOf } from './tool-definition.ts';
+import { brainArgumentOf } from './brain-argument.ts';
+import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from './caller-hand-off.ts';
+import { brainEndpointInstructions, catalogInstructionsFor, orgEndpointInstructions } from './instructions.ts';
+import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from './tool-definition.ts';
 import { problemResultOf, toolResultOf } from './tool-result.ts';
 
 export interface ServerInfo {
@@ -40,8 +41,14 @@ interface ToolContext {
 
 type Dispatch = (input: unknown) => Effect.Effect<Outcome, never, DispatcherServices>;
 
+interface Offered<R extends Registration> {
+  readonly registration: R;
+  readonly definition: ToolDefinition;
+}
+
 interface Tool {
-  readonly registration: Registration;
+  readonly name: string;
+  readonly definition: ToolDefinition;
   readonly dispatch: Dispatch;
 }
 
@@ -70,34 +77,88 @@ function serverWithTools(
     { ...serving.serverInfo },
     { capabilities: { tools: { listChanged: false } }, instructions },
   );
-  for (const { registration, dispatch } of tools) {
-    server.registerTool(registration.name, toolDefinitionOf(registration), callbackFor(serving, requestId, dispatch));
+  for (const { name, definition, dispatch } of tools) {
+    server.registerTool(name, definition, callbackFor(serving, requestId, dispatch));
   }
   return server;
 }
 
+function offered<R extends Registration>(
+  registrations: readonly R[],
+  definitionOf: (registration: R) => ToolDefinition,
+): readonly Offered<R>[] {
+  return registrations.map((registration) => ({ registration, definition: definitionOf(registration) }));
+}
+
+function toolsOf<R extends Registration>(
+  offers: readonly Offered<R>[],
+  dispatchOf: (registration: R) => Dispatch,
+): readonly Tool[] {
+  return offers.map(({ registration, definition }) => ({
+    name: registration.name,
+    definition,
+    dispatch: dispatchOf(registration),
+  }));
+}
+
+function orgDispatchOf(
+  dispatcher: Dispatcher,
+  { caller, org }: OrgCall,
+): (registration: Registration<'org'>) => Dispatch {
+  return (registration) => (input) => dispatcher.dispatchToOrg(registration, { caller, org, input, encoding: 'json' });
+}
+
+function brainDispatchOf(
+  dispatcher: Dispatcher,
+  { caller, org, brain }: BrainCall,
+): (registration: Registration<'brain'>) => Dispatch {
+  return (registration) => (input) =>
+    dispatcher.dispatchToBrain(registration, { caller, org, brain, input, encoding: 'json' });
+}
+
+function brainArgumentDispatchOf(
+  dispatcher: Dispatcher,
+  { caller, org }: OrgCall,
+): (registration: Registration<'brain'>) => Dispatch {
+  return (registration) => (input) => {
+    const argument = brainArgumentOf(input);
+    return Result.isFailure(argument)
+      ? Effect.succeed(argument.failure)
+      : dispatcher.dispatchToBrain(registration, { caller, org, ...argument.success, encoding: 'json' });
+  };
+}
+
 export function orgServerFactory(serving: ToolServing): McpServerFactory {
-  const operations = serving.catalog.operationsIn('org');
+  const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
   return (context) => {
-    const { caller, org, requestId } = orgCallOf(context);
-    const tools = operations.map((registration) => ({
-      registration,
-      dispatch: (input: unknown) =>
-        serving.dispatcher.dispatchToOrg(registration, { caller, org, input, encoding: 'json' }),
-    }));
-    return serverWithTools(serving, orgEndpointInstructions, requestId, tools);
+    const call = orgCallOf(context);
+    const tools = toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call));
+    return serverWithTools(serving, orgEndpointInstructions, call.requestId, tools);
   };
 }
 
 export function brainServerFactory(serving: ToolServing): McpServerFactory {
-  const operations = serving.catalog.operationsIn('brain');
+  const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionOf);
   return (context) => {
-    const { caller, org, brain, requestId } = brainCallOf(context);
-    const tools = operations.map((registration) => ({
-      registration,
-      dispatch: (input: unknown) =>
-        serving.dispatcher.dispatchToBrain(registration, { caller, org, brain, input, encoding: 'json' }),
-    }));
-    return serverWithTools(serving, brainEndpointInstructions, requestId, tools);
+    const call = brainCallOf(context);
+    const tools = toolsOf(brainOffers, brainDispatchOf(serving.dispatcher, call));
+    return serverWithTools(serving, brainEndpointInstructions, call.requestId, tools);
+  };
+}
+
+export function catalogServerFactory(serving: ToolServing): McpServerFactory {
+  const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
+  const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionTakingBrainOf);
+  const instructions = catalogInstructionsFor({
+    orgTools: orgOffers.map(({ registration }) => registration.name),
+    brainTools: brainOffers.map(({ registration }) => registration.name),
+  });
+  return (context) => {
+    const call = orgCallOf(context);
+    const tools = [
+      ...toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call)),
+      ...toolsOf(brainOffers, brainArgumentDispatchOf(serving.dispatcher, call)),
+    ];
+    return serverWithTools(serving, instructions, call.requestId, tools);
   };
 }
