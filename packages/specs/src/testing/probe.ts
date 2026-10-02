@@ -55,7 +55,7 @@ function answerTo(
     return Effect.succeed({ output: 'x'.repeat(input.bulk), record: {} });
   }
   return Effect.succeed({
-    output: { input, execution: { ...execution, spec: { ...execution.spec } } },
+    output: { input, execution: { ...execution, caller: { ...execution.caller }, spec: { ...execution.spec } } },
     record: { runs },
   });
 }

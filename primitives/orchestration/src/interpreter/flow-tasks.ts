@@ -1,0 +1,146 @@
+import type { Variables } from '../dsl/expressions.ts';
+import {
+  entriesOf,
+  field,
+  isList,
+  isObject,
+  listField,
+  objectField,
+  textField,
+  type Json,
+  type JsonArray,
+  type JsonObject,
+} from '../dsl/json.ts';
+import { taskEntries } from '../dsl/tasks.ts';
+import { evaluateExpression, holds, placeOf } from './evaluation.ts';
+import { bodyOf, type Body, type Invocation, type TaskOutcome } from './invocation.ts';
+import { raised } from './raised-error.ts';
+
+type Settlement =
+  | { readonly index: number; readonly outcome: TaskOutcome }
+  | { readonly index: number; readonly failure: unknown };
+
+interface Contender {
+  readonly index: number;
+  readonly settled: Promise<Settlement>;
+}
+
+interface Iteration {
+  readonly invocation: Invocation;
+  readonly loop: JsonObject;
+  readonly items: JsonArray;
+  readonly index: number;
+  readonly data: Json;
+}
+
+export async function doTask(invocation: Invocation): Promise<Body> {
+  const { entry, input, scope, runner } = invocation;
+  return bodyOf(await runner.runList(field(entry.task, 'do'), `${entry.reference}/do`, input, scope));
+}
+
+export function switchTask(invocation: Invocation): Body {
+  const { entry, input, variables } = invocation;
+  const cases = (listField(entry.task, 'switch') ?? []).flatMap((item) =>
+    isObject(item) ? entriesOf(item).flatMap(([, switchCase]) => (isObject(switchCase) ? [switchCase] : [])) : [],
+  );
+  const place = placeOf(invocation);
+  const matched = cases.find((switchCase) => {
+    const when = field(switchCase, 'when');
+    return when !== undefined && holds(when, input, variables, place);
+  });
+  const chosen = matched ?? cases.find((switchCase) => field(switchCase, 'when') === undefined);
+  const then = chosen === undefined ? undefined : textField(chosen, 'then');
+  return then === undefined ? { output: input } : { output: input, flow: then };
+}
+
+export function forTask(invocation: Invocation): Promise<Body> {
+  const { entry, input, variables } = invocation;
+  const loop = objectField(entry.task, 'for') ?? {};
+  const items = evaluateExpression(textField(loop, 'in') ?? 'null', input, variables, placeOf(invocation));
+  if (!isList(items)) {
+    throw raised('validation', 400, 'for.in must give an array to iterate over', entry.reference);
+  }
+  return iterate({ invocation, loop, items, index: 0, data: input });
+}
+
+export async function forkTask(invocation: Invocation): Promise<Body> {
+  const { entry, input, scope, runner } = invocation;
+  const fork = objectField(entry.task, 'fork') ?? {};
+  const branches = taskEntries(field(fork, 'branches'), `${entry.reference}/fork/branches`);
+  const running = branches.map((branch) => scope.state.host.cancellable(() => runner.runTask(branch, input, scope)));
+  const cancelAll = (): void => {
+    for (const branch of running) {
+      branch.cancel();
+    }
+  };
+  const results = running.map(({ result }) => result);
+  try {
+    if (field(fork, 'compete') === true) {
+      const winner = await firstToSucceed(results);
+      return withFlowOf([winner], winner.output);
+    }
+    const outcomes = await Promise.all(results);
+    return withFlowOf(
+      outcomes,
+      outcomes.map(({ output }) => output),
+    );
+  } finally {
+    cancelAll();
+  }
+}
+
+async function iterate(iteration: Iteration): Promise<Body> {
+  const { invocation, loop, items, index, data } = iteration;
+  if (index >= items.length) {
+    return { output: data };
+  }
+  const { entry, variables, scope, runner } = invocation;
+  const loopVariables: Variables = {
+    ...scope.variables,
+    [textField(loop, 'each') ?? 'item']: items[index] ?? null,
+    [textField(loop, 'at') ?? 'index']: index,
+  };
+  const conditionVariables = { ...variables, ...loopVariables, context: scope.state.context() };
+  if (!holds(field(entry.task, 'while'), data, conditionVariables, placeOf(invocation))) {
+    return { output: data };
+  }
+  const result = await runner.runList(field(entry.task, 'do'), `${entry.reference}/do`, data, {
+    state: scope.state,
+    variables: loopVariables,
+  });
+  return result.ending === 'completed'
+    ? iterate({ ...iteration, index: index + 1, data: result.output })
+    : bodyOf(result);
+}
+
+function firstToSucceed(results: readonly Promise<TaskOutcome>[]): Promise<TaskOutcome> {
+  if (results.length === 0) {
+    return Promise.resolve({ output: null, flow: 'continue' });
+  }
+  const contenders = results.map((result, index): Contender => ({
+    index,
+    settled: result.then(
+      (outcome): Settlement => ({ index, outcome }),
+      (failure: unknown): Settlement => ({ index, failure }),
+    ),
+  }));
+  return raceForSuccess(contenders, []);
+}
+
+async function raceForSuccess(contenders: readonly Contender[], failures: readonly unknown[]): Promise<TaskOutcome> {
+  if (contenders.length === 0) {
+    throw failures[0];
+  }
+  const first = await Promise.race(contenders.map(({ settled }) => settled));
+  if ('outcome' in first) {
+    return first.outcome;
+  }
+  return raceForSuccess(
+    contenders.filter(({ index }) => index !== first.index),
+    [...failures, first.failure],
+  );
+}
+
+function withFlowOf(outcomes: readonly TaskOutcome[], output: Json): Body {
+  return outcomes.some(({ flow }) => flow === 'end') ? { output, flow: 'end' } : { output };
+}

@@ -103,14 +103,20 @@ describe('the execution that execute_spec runs', () => {
     });
   });
 
-  it('tells the primitive the execution id, the org, the brain and the spec it runs', async () => {
+  it('tells the primitive the execution id, the org, the brain, the caller and the spec it runs', async () => {
     const { call } = await withGreetAndPlain();
 
     expect(await call(executeSpec, executing('plain', { input: 7, execution_id: executionId }))).toMatchObject({
       output: {
         output: {
           input: 7,
-          execution: { id: executionId, org: 'acme', brain: 'alpha', spec: { name: 'plain', version: 1 } },
+          execution: {
+            id: executionId,
+            org: 'acme',
+            brain: 'alpha',
+            caller: acmeAdmin,
+            spec: { name: 'plain', version: 1 },
+          },
         },
       },
     });
