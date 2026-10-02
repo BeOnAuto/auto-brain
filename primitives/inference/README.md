@@ -169,11 +169,11 @@ Nothing fails at start. A spec that names the provider fails with `provider_not_
 }
 ```
 
-A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and lists the configured ones. `makeModelAccess` also returns a `status`, the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks; the server logs one line for each prefix when it starts:
+A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and lists the configured ones. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
 
 ```json
-{"message":"Model provider anthropic is configured","level":"INFO","annotations":{"provider":"anthropic","configured":true}}
-{"message":"Model provider azure is not configured; it needs AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID","level":"INFO","annotations":{"provider":"azure","configured":false,"missing":["AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID"]}}
+{"message":"Model providers configured: anthropic","level":"INFO","annotations":{"providers":[{"provider":"anthropic","configured":true},{"provider":"openai","configured":false,"missing":["OPENAI_API_KEY"]},…]}}
+{"message":"Model provider azure is not configured; it needs AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID","level":"WARN","annotations":{"provider":"azure","configured":false,"missing":["AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID"]}}
 ```
 
 ## Failures

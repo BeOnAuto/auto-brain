@@ -52,25 +52,37 @@ function logLines(stderr: string): readonly { readonly message: string; readonly
     });
 }
 
-const unconfiguredProviders = [
-  'Model provider anthropic is not configured; it needs ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN',
-  'Model provider openai is not configured; it needs OPENAI_API_KEY',
-  'Model provider google is not configured; it needs GOOGLE_GENERATIVE_AI_API_KEY',
-  'Model provider bedrock is not configured; it needs AWS_REGION',
-  'Model provider bedrock-anthropic is not configured; it needs AWS_REGION',
-  'Model provider azure is not configured; it needs AZURE_RESOURCE_NAME or AZURE_BASE_URL',
-  'Model provider vertex is not configured; it needs GOOGLE_VERTEX_PROJECT and GOOGLE_VERTEX_LOCATION',
-  'Model provider vertex-anthropic is not configured; it needs GOOGLE_VERTEX_PROJECT and GOOGLE_VERTEX_LOCATION',
-];
+const noModelProvider =
+  'No model provider is configured, so inference specs cannot run; set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
 
 const workflowsNotOffered = 'Workflows are not offered because TEMPORAL_ADDRESS is unset';
+
+const ModelLineSchema = Schema.Struct({
+  message: Schema.String,
+  level: Schema.String,
+  annotations: Schema.Record(Schema.String, Schema.Unknown),
+});
+
+type ModelLine = typeof ModelLineSchema.Type;
+
+const decodeModelLine = Schema.decodeUnknownSync(Schema.fromJsonString(ModelLineSchema));
+
+function modelLinesOf(stderr: string): readonly ModelLine[] {
+  return stderr
+    .split('\n')
+    .filter((line) => /"message":"(?:Model provider|No model provider)/u.test(line))
+    .map((line) => {
+      const { message, level, annotations } = decodeModelLine(line);
+      return { message, level, annotations };
+    });
+}
 
 function messagesOf(stderr: string): readonly string[] {
   return logLines(stderr).map(({ message }) => message);
 }
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
-  return [expect.stringMatching(/^Local mode is on: /u), ...unconfiguredProviders, workflowsNotOffered, ...after];
+  return [expect.stringMatching(/^Local mode is on: /u), noModelProvider, workflowsNotOffered, ...after];
 }
 
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
@@ -100,17 +112,50 @@ describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
 });
 
 describe('main at start', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('logs one line for each model provider: configured, or the settings it lacks', async () => {
+  it('names the configured model providers in one line, keeping every provider in its annotations', async () => {
     const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true', OPENAI_API_KEY: 'sk-test' });
     await child.port;
     child.signal('SIGTERM');
     await child.exited;
 
-    expect(logLines(child.output().stderr).filter(({ message }) => message.startsWith('Model provider'))).toEqual([
-      { message: 'Model provider openai is configured', level: 'INFO' },
-      ...unconfiguredProviders
-        .filter((message) => !message.includes(' openai '))
-        .map((message) => ({ message, level: 'INFO' })),
+    expect(modelLinesOf(child.output().stderr)).toEqual([
+      {
+        message: 'Model providers configured: openai',
+        level: 'INFO',
+        annotations: {
+          providers: [
+            { provider: 'openai', configured: true },
+            { provider: 'anthropic', configured: false, missing: ['ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'] },
+            { provider: 'google', configured: false, missing: ['GOOGLE_GENERATIVE_AI_API_KEY'] },
+            { provider: 'bedrock', configured: false, missing: ['AWS_REGION'] },
+            { provider: 'bedrock-anthropic', configured: false, missing: ['AWS_REGION'] },
+            { provider: 'azure', configured: false, missing: ['AZURE_RESOURCE_NAME or AZURE_BASE_URL'] },
+            {
+              provider: 'vertex',
+              configured: false,
+              missing: ['GOOGLE_VERTEX_PROJECT', 'GOOGLE_VERTEX_LOCATION'],
+            },
+            {
+              provider: 'vertex-anthropic',
+              configured: false,
+              missing: ['GOOGLE_VERTEX_PROJECT', 'GOOGLE_VERTEX_LOCATION'],
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it('adds a warning of its own for a provider that has some of its settings and lacks others', async () => {
+    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true', GOOGLE_VERTEX_PROJECT: 'acme-ai' });
+    await child.port;
+    child.signal('SIGTERM');
+    await child.exited;
+
+    expect(modelLinesOf(child.output().stderr).map(({ message, level }) => ({ message, level }))).toEqual([
+      { message: noModelProvider, level: 'WARN' },
+      { message: 'Model provider vertex is not configured; it needs GOOGLE_VERTEX_LOCATION', level: 'WARN' },
+      { message: 'Model provider vertex-anthropic is not configured; it needs GOOGLE_VERTEX_LOCATION', level: 'WARN' },
     ]);
   });
 });
@@ -149,7 +194,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
     expect(logLines(child.output().stderr).map(({ message }) => message)).toEqual([
-      ...unconfiguredProviders,
+      noModelProvider,
       workflowsNotOffered,
     ]);
   });

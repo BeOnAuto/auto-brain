@@ -43,16 +43,34 @@ export function logIncident({ id, original, call }: Incident): Effect.Effect<voi
   );
 }
 
-export function logModelProviders({ configured, unconfigured }: ProviderStatus): Effect.Effect<void> {
+const howToConfigureAModel = 'set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
+
+interface ProviderAnnotation {
+  readonly provider: string;
+  readonly configured: boolean;
+  readonly missing?: readonly string[];
+}
+
+function providerAnnotations({ configured, unconfigured }: ProviderStatus): readonly ProviderAnnotation[] {
+  return [
+    ...configured.map((provider) => ({ provider, configured: true })),
+    ...unconfigured.map(({ provider, missing }) => ({ provider, configured: false, missing })),
+  ];
+}
+
+function providersSummary({ configured }: ProviderStatus): Effect.Effect<void> {
+  return configured.length === 0
+    ? Effect.logWarning(`No model provider is configured, so inference specs cannot run; ${howToConfigureAModel}`)
+    : Effect.logInfo(`Model providers configured: ${configured.join(', ')}`);
+}
+
+export function logModelProviders(status: ProviderStatus): Effect.Effect<void> {
+  const partlyConfigured = status.unconfigured.filter(({ partial }) => partial === true);
   return Effect.all(
     [
-      ...configured.map((provider) =>
-        Effect.logInfo(`Model provider ${provider} is configured`).pipe(
-          Effect.annotateLogs({ provider, configured: true }),
-        ),
-      ),
-      ...unconfigured.map(({ provider, missing }) =>
-        Effect.logInfo(`Model provider ${provider} is not configured; it needs ${missing.join(' and ')}`).pipe(
+      providersSummary(status).pipe(Effect.annotateLogs({ providers: providerAnnotations(status) })),
+      ...partlyConfigured.map(({ provider, missing }) =>
+        Effect.logWarning(`Model provider ${provider} is not configured; it needs ${missing.join(' and ')}`).pipe(
           Effect.annotateLogs({ provider, configured: false, missing }),
         ),
       ),
