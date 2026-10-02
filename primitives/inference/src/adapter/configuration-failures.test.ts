@@ -49,7 +49,7 @@ describe('a credential source that fails', () => {
 });
 
 describe('a model reference that does not resolve', () => {
-  it('fails as provider_not_configured naming what the provider needs', async () => {
+  it('fails as provider_not_configured, naming the configured providers and no setting', async () => {
     const recording = recordingFetch(() => jsonResponse(anthropicMessage('unused')));
     const access = await accessFor({ ANTHROPIC_API_KEY: secret }, { fetch: recording.fetch });
 
@@ -60,13 +60,13 @@ describe('a model reference that does not resolve', () => {
       provider: 'openai',
       configured: ['anthropic'],
       missing: ['OPENAI_API_KEY'],
-      detail: 'openai is not configured; it needs OPENAI_API_KEY',
+      detail: 'openai is not configured. Configured providers: anthropic',
     });
     expect(exposedText(failure)).not.toContain(secret);
     expect(recording.requests()).toEqual([]);
   });
 
-  it('fails as provider_not_configured, listing the configured providers, for an unknown prefix', async () => {
+  it('fails as provider_not_configured, saying that none is configured, for an unknown prefix', async () => {
     const access = await accessFor({}, { fetch: recordingFetch(() => jsonResponse({})).fetch });
 
     const failure = await failed(access, textRequest('mistral/large'));
@@ -76,7 +76,7 @@ describe('a model reference that does not resolve', () => {
       provider: 'mistral',
       configured: [],
       missing: [],
-      detail: 'There is no provider named mistral. Configured providers: none',
+      detail: 'There is no provider named mistral. No model provider is configured',
     });
   });
 

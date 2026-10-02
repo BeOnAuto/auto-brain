@@ -37,7 +37,7 @@ function calling(method: string, path: string, body: object): Promise<TestRespon
 }
 
 describe('an execution of a provider the server is not configured for', () => {
-  it('answers 503 naming the provider and the settings it lacks, without a model call', async () => {
+  it('answers 503 naming the provider and the providers that are configured, never a setting, without a model call', async () => {
     await calling('POST', '/v1/orgs/acme/brains', { brain: 'alpha', name: 'Alpha' });
     await calling('POST', `${alpha}/specs/inference`, { name: 'verdict', source: verdict });
 
@@ -45,7 +45,7 @@ describe('an execution of a provider the server is not configured for', () => {
       await calling('POST', `${alpha}/specs/inference/verdict/execute`, { input: { expense: 'a dinner' } }),
     ).toMatchObject({
       status: 503,
-      body: { reason: 'unavailable', detail: 'openai is not configured; it needs OPENAI_API_KEY' },
+      body: { reason: 'unavailable', detail: 'openai is not configured. No model provider is configured' },
     });
   });
 });

@@ -180,7 +180,7 @@ jobs:
           test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/specs/inference/hello/execute")" = 503
           test "$(jq --raw-output .reason executed.json)" = unavailable
           test "$(jq --raw-output .detail executed.json)" = \
-            'anthropic is not configured; it needs ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'
+            'anthropic is not configured. No model provider is configured'
           docker stop inference
           test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
       - name: Run workflows on a Temporal dev server

@@ -25,14 +25,15 @@ function malformedReference(): SpecInvalid {
   });
 }
 
+function configuredOf({ configured }: ProviderStatus): string {
+  return configured.length === 0 ? 'No model provider is configured' : `Configured providers: ${configured.join(', ')}`;
+}
+
 function notConfigured(provider: string, status: ProviderStatus): ProviderNotConfigured {
   const missing = status.unconfigured.find((unconfigured) => unconfigured.provider === provider)?.missing;
-  const configured = status.configured.length === 0 ? 'none' : status.configured.join(', ');
+  const absent = missing === undefined ? `There is no provider named ${provider}` : `${provider} is not configured`;
   return new ProviderNotConfigured({
-    detail:
-      missing === undefined
-        ? `There is no provider named ${provider}. Configured providers: ${configured}`
-        : `${provider} is not configured; it needs ${missing.join(' and ')}`,
+    detail: `${absent}. ${configuredOf(status)}`,
     provider,
     configured: status.configured,
     missing: missing ?? [],
