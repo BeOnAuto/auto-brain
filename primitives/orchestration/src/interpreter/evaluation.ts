@@ -25,7 +25,7 @@ export function evaluate(source: string, data: Json, variables: Variables, place
 }
 
 export function placeIn(state: RunState, reference: string): Place {
-  return { reference, now: state.host.now(), meter: state.meter };
+  return { reference, now: state.host.now(), meter: state.meter, mostDuration: state.run.mostDuration };
 }
 
 function exhaustionOf(problem: string, mostWork: number): string {
@@ -66,6 +66,14 @@ export function millisecondsOf(duration: Json, data: Json, variables: Variables,
   const reading = readDuration(evaluateTemplate(duration, data, variables, place));
   if ('problem' in reading) {
     throw raised('configuration', 400, `A duration of the task is not valid: ${reading.problem}`, place.reference);
+  }
+  if (reading.milliseconds > place.mostDuration) {
+    throw raised(
+      'configuration',
+      400,
+      `A duration of the task, ${reading.milliseconds} ms, is longer than the ${place.mostDuration} ms a workflow may run`,
+      place.reference,
+    );
   }
   return reading.milliseconds;
 }

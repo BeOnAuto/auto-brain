@@ -14,7 +14,12 @@ export interface WorkflowRun {
   readonly input: Json;
   readonly execution: RunExecution;
   readonly caller: CallerIdentity;
+  readonly mostDuration: number;
 }
+
+export type StartingRun = Omit<WorkflowRun, 'mostDuration'>;
+
+export const defaultMostDuration = 30 * 24 * 3_600_000;
 
 const permissions = new Set(['org:read', 'org:write', 'brain:read', 'brain:write']);
 
@@ -22,9 +27,14 @@ export function readWorkflowRun(value: unknown): WorkflowRun | undefined {
   if (!isJson(value) || !isObject(value)) {
     return undefined;
   }
-  const { document, input, execution, caller } = value;
-  return isObject(document) && input !== undefined && isRunExecution(execution) && isCaller(caller)
-    ? { document, input, execution, caller }
+  const { document, input, execution, caller, mostDuration = defaultMostDuration } = value;
+  return isObject(document) &&
+    input !== undefined &&
+    isRunExecution(execution) &&
+    isCaller(caller) &&
+    typeof mostDuration === 'number' &&
+    mostDuration > 0
+    ? { document, input, execution, caller, mostDuration }
     : undefined;
 }
 

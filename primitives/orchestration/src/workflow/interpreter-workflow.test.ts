@@ -5,6 +5,8 @@ import { fakeWorkflowApi } from '../testing/fake-workflow-api.ts';
 import { runOf, workflow } from '../testing/workflows.ts';
 import { defineInterpreterWorkflow } from './interpreter-workflow.ts';
 
+const signalCalls = new Set(['defineSignal', 'setHandler']);
+
 describe('the interpreter workflow', () => {
   it('defines the event signal once, and handles it in each run', async () => {
     const fake = fakeWorkflowApi();
@@ -12,10 +14,11 @@ describe('the interpreter workflow', () => {
 
     await run(runOf(workflow('do: []')));
 
-    expect(fake.calls().slice(0, 2)).toEqual([
+    expect(fake.calls().filter(({ name }) => signalCalls.has(name))).toEqual([
       { name: 'defineSignal', signal: 'event' },
       { name: 'setHandler', signal: 'event' },
     ]);
+    expect(fake.calls()[0]).toStrictEqual({ name: 'defineSignal', signal: 'event' });
   });
 
   it('returns the output of the workflow it ran, after settling the execution', async () => {

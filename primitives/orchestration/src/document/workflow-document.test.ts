@@ -80,6 +80,21 @@ describe('a document the runtime does not run', () => {
   });
 });
 
+describe('a workflow document that waits longer than a workflow may run', () => {
+  it('is rejected at the duration, against 30 days unless told otherwise', async () => {
+    const source = `${header}do:\n  - pause: { wait: P31D }\n`;
+
+    expect(await parsed(source)).toMatchObject(
+      rejected('The workflow document is not a workflow this runtime runs', [
+        'Line 7, column 20: at /do/0/pause/wait: This duration, 2678400000 ms, is longer than the 2592000000 ms a workflow may run',
+      ]),
+    );
+    expect(await Effect.runPromise(Effect.result(parseWorkflowDocument(source, 31 * 86_400_000)))).toMatchObject({
+      _tag: 'Success',
+    });
+  });
+});
+
 function nestedTasks(levels: number): string {
   return `${header}do: ${'[{ inner: { do: '.repeat(levels - 1)}[]${' } }]'.repeat(levels - 1)}\n`;
 }

@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
-import { measureOf, mostValueDepth } from '../dsl/json.ts';
+import { measureOf, mostValueDepth, type JsonObject } from '../dsl/json.ts';
 import type { OrchestrationClient } from './orchestration-client.ts';
 
 export interface OrchestrationDependencies {
@@ -20,9 +20,13 @@ const orchestrationDescription = [
   'an optional output (as, and a schema), an optional timeout, and optional use.errors, use.retries and',
   'use.timeouts to reuse.',
   'Tasks: set; call execute_spec with { primitive, name, input } to execute another spec of the brain and take',
-  'its output (a rejection is an error the workflow can catch); do; switch; for; fork (compete: true races',
-  'the branches); try with catch (errors.with, when, exceptWhen, retry with delay, backoff, jitter and limits,',
-  'and do); wait; raise; and listen for events sent with send_execution_event.',
+  'its output (a rejection is an error the workflow can catch); do; switch; for; fork of at most 32 branches',
+  '(compete: true races the branches); try with catch (errors.with, when, exceptWhen, retry with delay, backoff,',
+  'jitter and limits, and do); wait; raise; and listen for events sent with send_execution_event.',
+  'Task lists nest at most 64 levels deep. A workflow runs for at most the time the runtime is set to allow,',
+  '30 days unless told otherwise; a wait or timeout longer than that is rejected, and one computed longer fails',
+  'the workflow. An expression may do a bounded amount of work, about one pass over a few megabytes of data;',
+  'more fails the workflow with a runtime error.',
   'Flow directives: then continue, exit, end, or the name of a task in the same list.',
   'Expressions are jq, enclosed in ${ }; if, when, for.in and while may also be written bare.',
   'Not allowed: run, emit, call of http, grpc, openapi, asyncapi, a2a or mcp, catalogs, extensions,',
@@ -39,7 +43,8 @@ export function makeOrchestration({ client }: OrchestrationDependencies): Primit
     title: 'Orchestration',
     description: orchestrationDescription,
     mediaType: 'application/yaml',
-    parse: parseWorkflowDocument,
+    parse: (source: string): Effect.Effect<JsonObject, InvalidInput> =>
+      parseWorkflowDocument(source, client.mostDuration),
     summarize: summaryOf,
     execute: (document, input, { id, org, brain, caller, spec }) =>
       admittedInput(input).pipe(

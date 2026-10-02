@@ -1,4 +1,4 @@
-import { entriesOf, field, isList, isObject, type Json, type JsonObject } from './json.ts';
+import { entriesOf, field, isList, isObject, objectField, type Json, type JsonObject } from './json.ts';
 
 export const taskKinds = [
   'for',
@@ -22,6 +22,8 @@ export interface TaskEntry {
   readonly task: JsonObject;
   readonly reference: string;
 }
+
+export type TaskList = readonly [Json | undefined, string];
 
 export interface TaskType {
   readonly kind: TaskKind;
@@ -56,5 +58,21 @@ export function taskEntries(list: Json | undefined, pointer: string): readonly T
           isObject(task) ? [{ name, task, reference: pointerTo(pointerTo(pointer, index), name) }] : [],
         )
       : [],
+  );
+}
+
+export function nestedTaskLists({ task, reference }: TaskEntry): readonly TaskList[] {
+  const kind = kindOf(task);
+  return [
+    [kind === 'do' || kind === 'for' ? field(task, 'do') : undefined, `${reference}/do`],
+    [kind === 'try' ? field(task, 'try') : undefined, `${reference}/try`],
+    [kind === 'try' ? field(objectField(task, 'catch') ?? {}, 'do') : undefined, `${reference}/catch/do`],
+    [kind === 'fork' ? field(objectField(task, 'fork') ?? {}, 'branches') : undefined, `${reference}/fork/branches`],
+  ];
+}
+
+export function allTaskEntries(list: Json | undefined, pointer: string): readonly TaskEntry[] {
+  return taskEntries(list, pointer).flatMap((entry) =>
+    [entry].concat(nestedTaskLists(entry).flatMap(([nested, at]: TaskList) => allTaskEntries(nested, at))),
   );
 }

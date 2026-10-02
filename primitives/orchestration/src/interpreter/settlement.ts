@@ -6,7 +6,8 @@ export type RunOutcome =
   | { readonly kind: 'completed'; readonly output: Json }
   | { readonly kind: 'raised'; readonly error: DslError }
   | { readonly kind: 'cancelled'; readonly cause: unknown }
-  | { readonly kind: 'broken'; readonly reason: string };
+  | { readonly kind: 'broken'; readonly reason: string }
+  | { readonly kind: 'overran'; readonly milliseconds: number };
 
 export type WorkflowEnding =
   | { readonly kind: 'completed'; readonly output: Json }
@@ -31,6 +32,13 @@ export function settlementOf(outcome: RunOutcome): RunSettlement {
 export function endingOf(outcome: RunOutcome): WorkflowEnding {
   if (outcome.kind === 'raised') {
     return { kind: 'failed', type: 'UncaughtError', message: describeError(outcome.error) };
+  }
+  if (outcome.kind === 'overran') {
+    return {
+      kind: 'failed',
+      type: 'WorkflowRanTooLong',
+      message: `The workflow ran for ${outcome.milliseconds} ms, the most it may run before its execution timeout; it was stopped and its execution settled failed`,
+    };
   }
   return outcome.kind === 'broken' ? { kind: 'failed', type: 'WorkflowBrokeDown', message: outcome.reason } : outcome;
 }

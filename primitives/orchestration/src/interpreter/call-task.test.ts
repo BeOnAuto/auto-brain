@@ -26,7 +26,7 @@ describe('a call of execute_spec', () => {
     });
 
     expect(ending).toEqual({ kind: 'completed', output: { summary: 'short' } });
-    expect(commands[0]).toEqual({
+    expect(commands[1]).toEqual({
       kind: 'call',
       call: {
         org: 'acme',
@@ -67,7 +67,7 @@ do:
 
     const { commands } = await interpret(document);
 
-    expect(commands[0]).toMatchObject({ kind: 'call', call: { input: {} } });
+    expect(commands[1]).toMatchObject({ kind: 'call', call: { input: {} } });
   });
 });
 

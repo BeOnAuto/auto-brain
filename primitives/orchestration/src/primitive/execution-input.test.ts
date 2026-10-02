@@ -7,6 +7,7 @@ import type { OrchestrationClient } from './orchestration-client.ts';
 import { makeOrchestration } from './orchestration-primitive.ts';
 
 const neverStarted: OrchestrationClient = {
+  mostDuration: 30 * 24 * 3_600_000,
   start: () => Effect.die('A workflow started'),
   signal: () => Effect.die('An event was sent'),
 };
@@ -30,6 +31,21 @@ describe('executing a workflow spec with an input a workflow may not hold', () =
       reason: 'invalid_input',
       detail: 'The input nests more than 512 levels deep',
       issues: [{ detail: 'The input nests more than 512 levels deep', pointer: '/input' }],
+    });
+  });
+
+  it('checks its document against the most a workflow may run that its client was set with', async () => {
+    const brain = brainWith([makeOrchestration({ client: { ...neverStarted, mostDuration: 10_800_000 } })]);
+    const source = `document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\ndo: [{ pause: { wait: PT4H } }]\n`;
+
+    expect(await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source })).toMatchObject({
+      status: 'rejected',
+      issues: [
+        {
+          detail:
+            'Line 2, column 23: at /do/0/pause/wait: This duration, 14400000 ms, is longer than the 10800000 ms a workflow may run',
+        },
+      ],
     });
   });
 

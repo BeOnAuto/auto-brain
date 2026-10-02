@@ -8,6 +8,7 @@ import { virtualClock, type VirtualClock } from './virtual-clock.ts';
 
 export type Command =
   | { readonly kind: 'timer'; readonly milliseconds: number; readonly summary: string }
+  | { readonly kind: 'deadline'; readonly milliseconds: number }
   | { readonly kind: 'call'; readonly call: SpecCall }
   | { readonly kind: 'condition' }
   | { readonly kind: 'cancelled'; readonly summary: string }
@@ -106,6 +107,10 @@ function operationsOf(parts: Parts): Omit<WorkflowHost, 'random' | 'historySize'
     sleep: (milliseconds, summary) => {
       journal.record({ kind: 'timer', milliseconds, summary });
       return scope().operation<void>((resolve) => cancelling(clock.timer(milliseconds, resolve), journal, summary));
+    },
+    deadline: (milliseconds) => {
+      journal.record({ kind: 'deadline', milliseconds });
+      return scope().operation<void>((resolve) => clock.timer(milliseconds, resolve));
     },
     waitUntil: (satisfied) => {
       journal.record({ kind: 'condition' });

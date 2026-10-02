@@ -11,7 +11,8 @@ describe('the orchestration worker in a process with no Temporal runtime yet', (
   it("installs Temporal's runtime with no shutdown signals, so that the server alone handles them", async () => {
     const recorder = failureRecorder();
     const scope = Effect.runSync(Scope.make());
-    const settings = { address: inject('temporalAddress'), namespace: 'default', taskQueue: 'runtime', tls: false };
+    const address = inject('temporalAddress');
+    const settings = { address, namespace: 'default', taskQueue: 'runtime', tls: false, mostDuration: 2_592_000_000 };
     await Effect.runPromise(
       runOrchestrationWorker({
         settings,

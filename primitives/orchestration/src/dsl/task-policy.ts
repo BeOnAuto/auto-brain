@@ -1,6 +1,7 @@
 import {
   entriesOf,
   field,
+  isList,
   isObject,
   listField,
   objectField,
@@ -28,6 +29,8 @@ type OwnRejections = (task: JsonObject, reference: string, components: Component
 
 export const executeSpecFunction = 'execute_spec';
 
+export const mostForkBranches = 32;
+
 const outboundCalls = new Set(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mcp']);
 
 const executeSpecArguments = new Set(['primitive', 'name', 'input']);
@@ -49,7 +52,7 @@ const rejectionsByKind: Readonly<Record<TaskKind, OwnRejections>> = {
     ),
   try: (task, reference, components) =>
     catchRejections(objectField(task, 'catch') ?? {}, `${reference}/catch`, components),
-  fork: () => [],
+  fork: (task, reference) => forkRejections(task, reference),
   do: () => [],
 };
 
@@ -184,4 +187,16 @@ function retryRejections(retry: Json | undefined, pointer: string, components: C
       : [];
   }
   return isObject(retry) ? retryPolicyRejections(retry, pointer) : [];
+}
+
+function forkRejections(task: JsonObject, reference: string): readonly Rejection[] {
+  const branches = field(objectField(task, 'fork') ?? {}, 'branches');
+  return isList(branches) && branches.length > mostForkBranches
+    ? [
+        forbidden(
+          `${reference}/fork/branches`,
+          `A fork may have at most ${mostForkBranches} branches, not ${branches.length}`,
+        ),
+      ]
+    : [];
 }

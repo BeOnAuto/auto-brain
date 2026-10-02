@@ -1,10 +1,12 @@
 import { InvalidInput, type Issue } from '@beonauto/operations';
 import { Effect } from 'effect';
 
+import { durationLimitRejections } from '../dsl/duration-limits.ts';
 import type { JsonObject } from '../dsl/json.ts';
 import { nestingRejections } from '../dsl/nesting.ts';
 import type { Rejection } from '../dsl/policy-checks.ts';
 import { rejectionsOf } from '../dsl/policy.ts';
+import { defaultMostDuration } from '../interpreter/workflow-run.ts';
 import { dslProblems, type Problem } from './dsl-validation.ts';
 import { readYaml, type LocatedProblem, type Position } from './yaml-reading.ts';
 
@@ -13,7 +15,10 @@ interface LocatedIssue {
   readonly detail: string;
 }
 
-export function parseWorkflowDocument(source: string): Effect.Effect<JsonObject, InvalidInput> {
+export function parseWorkflowDocument(
+  source: string,
+  mostDuration = defaultMostDuration,
+): Effect.Effect<JsonObject, InvalidInput> {
   return Effect.suspend(() => {
     const reading = readYaml(source);
     if ('problems' in reading) {
@@ -30,6 +35,7 @@ export function parseWorkflowDocument(source: string): Effect.Effect<JsonObject,
             (problem) => !isShadowed(problem, rejections),
           )),
       ...rejections,
+      ...(unreadable ? [] : durationLimitRejections(value, mostDuration)),
     ].map(({ pointer, detail }) => ({ position: locate(pointer), detail: `${placeOf(pointer)}${detail}` }));
     return problems.length === 0
       ? Effect.succeed(value)

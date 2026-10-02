@@ -3,7 +3,7 @@ import { Client, Connection, WorkflowNotFoundError } from '@temporalio/client';
 import { Effect, type Scope } from 'effect';
 
 import type { JsonObject } from '../dsl/json.ts';
-import type { WorkflowRun } from '../interpreter/workflow-run.ts';
+import type { StartingRun, WorkflowRun } from '../interpreter/workflow-run.ts';
 import { connectionOptionsOf, type TemporalSettings } from '../worker/temporal-settings.ts';
 import { eventSignalName, workflowIdOf, workflowType } from '../workflow/activity-contract.ts';
 
@@ -20,7 +20,8 @@ export interface ExecutionWorkflow {
 }
 
 export interface OrchestrationClient {
-  readonly start: (run: WorkflowRun) => Effect.Effect<StartedRun, Unavailable>;
+  readonly mostDuration: number;
+  readonly start: (run: StartingRun) => Effect.Effect<StartedRun, Unavailable>;
   readonly signal: (workflow: ExecutionWorkflow, event: JsonObject) => Effect.Effect<void, NotFound | Unavailable>;
 }
 
@@ -43,9 +44,10 @@ export const connectOrchestration = Effect.fnUntraced(function* (
     (opened) => Effect.promise(() => opened.close()),
   );
   return {
+    mostDuration: settings.mostDuration,
     start: (run) =>
       Effect.tryPromise({
-        try: () => temporal.start(run),
+        try: () => temporal.start({ ...run, mostDuration: settings.mostDuration }),
         catch: (error) => new Unavailable({ detail: `Temporal could not start the workflow: ${String(error)}` }),
       }),
     signal: ({ org, brain, spec, executionId }, event) =>
@@ -73,6 +75,7 @@ function openTemporal(settings: TemporalSettings, requestTimeout: number): Tempo
           workflowId: workflowIdOf(org, brain, spec.name, id),
           args: [run],
           workflowIdConflictPolicy: 'USE_EXISTING',
+          workflowExecutionTimeout: run.mostDuration,
           memo: { org, brain, spec: spec.name, spec_version: spec.version, execution_id: id },
           staticSummary: `Execution ${id} of the workflow spec ${spec.name}`,
         }),

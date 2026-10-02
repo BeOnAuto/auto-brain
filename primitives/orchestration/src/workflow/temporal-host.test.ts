@@ -31,10 +31,12 @@ describe('the Temporal host of a workflow', () => {
 
     await host.sleep(1500, '/do/0/pause');
     await host.waitUntil(() => true);
+    void host.deadline(7_200_000);
 
     expect(fake.calls()).toEqual([
       { name: 'sleep', milliseconds: 1500, summary: '/do/0/pause' },
       { name: 'condition' },
+      { name: 'sleep', milliseconds: 7_200_000, summary: 'the most the workflow may run' },
     ]);
   });
 

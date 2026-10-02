@@ -26,11 +26,15 @@ export interface FakeWorkflowApi {
 }
 
 export interface FakeWorkflowApiOptions {
-  readonly sleep?: () => Promise<void>;
+  readonly sleep?: (summary: string) => Promise<void>;
   readonly answer?: SpecCallResult;
 }
 
 type Record = (call: ApiCall) => void;
+
+function sleepUntilDeadline(summary: string): Promise<void> {
+  return summary === 'the most the workflow may run' ? Promise.withResolvers<void>().promise : Promise.resolve();
+}
 
 export function fakeWorkflowApi(options: FakeWorkflowApiOptions = {}): FakeWorkflowApi {
   const calls: ApiCall[] = [];
@@ -43,7 +47,7 @@ export function fakeWorkflowApi(options: FakeWorkflowApiOptions = {}): FakeWorkf
     ApplicationFailure: { create: ({ type, message }) => new Error(`${type}: ${message}`) },
     sleep: (milliseconds, { summary }) => {
       record({ name: 'sleep', milliseconds, summary });
-      return options.sleep === undefined ? Promise.resolve() : options.sleep();
+      return (options.sleep ?? sleepUntilDeadline)(summary);
     },
     condition: () => {
       record({ name: 'condition' });

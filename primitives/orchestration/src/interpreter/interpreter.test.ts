@@ -24,6 +24,7 @@ describe('a workflow run that succeeds', () => {
 
     expect(ending).toEqual({ kind: 'completed', output: { greeting: 'Hello, Ada' } });
     expect(commands).toEqual([
+      { kind: 'deadline', milliseconds: 30 * 24 * 3_600_000 - 3_600_000 },
       {
         kind: 'settle',
         request: {

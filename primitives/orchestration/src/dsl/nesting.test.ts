@@ -56,7 +56,7 @@ describe('a workflow that starts with tasks nested too deeply', () => {
     const { settlement, commands } = await interpret(workflow(`do: ${nestedDo(65)}`));
 
     expect(settlement).toMatchObject({ status: 'rejected', reason: 'invalid_input' });
-    expect(commands).toHaveLength(1);
+    expect(commands.map(({ kind }) => kind)).toStrictEqual(['deadline', 'settle']);
   });
 });
 

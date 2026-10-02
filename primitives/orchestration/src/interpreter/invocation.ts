@@ -34,6 +34,7 @@ export interface Place {
   readonly reference: string;
   readonly now: number;
   readonly meter: Meter;
+  readonly mostDuration: number;
 }
 
 export interface Invocation {

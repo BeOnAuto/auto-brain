@@ -7,7 +7,13 @@ import { failureRecorder } from '../testing/failure-recorder.ts';
 import { fakeTemporalWorkers, type FakeTemporalWorkers } from '../testing/fake-temporal-workers.ts';
 import { runOrchestrationWorker } from './orchestration-worker.ts';
 
-const settings = { address: '127.0.0.1:7233', namespace: 'tenants', taskQueue: 'brains', tls: false };
+const settings = {
+  address: '127.0.0.1:7233',
+  namespace: 'tenants',
+  taskQueue: 'brains',
+  tls: false,
+  mostDuration: 2_592_000_000,
+};
 
 const notCalled = () => Effect.die(new Error('not called'));
 

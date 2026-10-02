@@ -93,6 +93,8 @@ do:
 
 A document may nest task lists (`do`, `for`, `try`, `catch.do`, `fork.branches`) at most 64 levels deep and any value at most 512 levels; a deeper document is rejected at the list or value that is too deep, before anything else is checked, and a workflow refuses to start with one however it was stored.
 
+A fork may have at most 32 branches, checked when the document is stored and again when a workflow starts. A workflow may run for at most `ORCHESTRATION_MAX_DURATION` (30 days unless set otherwise): a `wait` or a `timeout` written as a duration longer than that is rejected when the document is stored, and one an expression computes longer fails the task that computes it with a `configuration` error.
+
 Creating or updating a spec checks its document fully: it reads the YAML without aliases, anchors or tags, validates it against the DSL schema and its rules, builds its graph of tasks, and applies the policy above. Every problem is an issue under `/source` with the line, the column and the JSON Pointer of the place: `Line 8, column 12: at /do/0/loop/for: It needs in`. When a workflow starts, the interpreter applies again only the policy's prohibitions, what this runtime does not allow at all: the tasks, calls, components, `schedule` and `listen` options of the rejected column above, executing another workflow, schemas that are not inline JSON Schema, and a DSL version other than 1.0.x. So a document that never went through the spec operations cannot use what the policy forbids. The other problems the spec operations reject, such as an expression that does not parse or uses `localtime`, a duration in years, or a `then` that names no task, are not checked again: they fail the task that has them when it runs.
 
 ### Expressions
@@ -153,6 +155,8 @@ Settling is an activity, so it happens once per execution however the worker fai
 
 When settling fails for good, because the ledger has no such execution, because the run may not settle it, or because its last attempt failed, the workflow fails in Temporal and the execution stays `started` in the ledger. The activity tells the `reportUnsettled` the worker was given, with the org, the brain, the execution id and the reason, never the input or output, so an operator sees an error in the log of the server and a failed workflow in Temporal under the same id. Reconciling such an execution is manual in this version. A last attempt that times out instead of failing is not reported; it shows only in Temporal.
 
+Each workflow starts with an execution timeout of `ORCHESTRATION_MAX_DURATION`. Temporal ends a workflow that reaches it without running any more of its code, so nothing could settle its execution then. Instead, the workflow sets its own deadline an hour earlier, a durable timer it starts with its first task: when that fires it cancels what is running, settles its execution failed, and fails in Temporal with the type `WorkflowRanTooLong` and a message saying how long it ran, which is the reason an operator reads, since a failed execution carries none in the ledger. Only if no worker runs the workflow at all during that last hour does Temporal's timeout end it unsettled; the execution then stays `started`, nothing is reported, and Temporal shows the workflow timed out.
+
 Limits keep a workflow inside what Temporal holds: a call rejects an input larger than an execution takes, an activity fails an output larger than 1 MiB, and a workflow stops with a `runtime` error before its history passes 40 MiB or 40000 events, or once it has run 10000 tasks without waiting for anything (the timers that let other workflows run do not count as waiting). [The work of expressions](#the-work-of-expressions) has its own limits.
 
 ### Determinism and replay
@@ -207,19 +211,21 @@ A worker that stops on its own, because its run fails (Temporal unreachable for 
 
 ### Settings
 
-| Variable              | Default      | Purpose                                                                              |
-| --------------------- | ------------ | ------------------------------------------------------------------------------------ |
-| `TEMPORAL_ADDRESS`    |              | Address of the Temporal frontend; when it is not set, orchestration is not available |
-| `TEMPORAL_NAMESPACE`  | `default`    | Temporal namespace                                                                   |
-| `TEMPORAL_TASK_QUEUE` | `auto-brain` | Task queue the worker polls and workflows start on                                   |
-| `TEMPORAL_API_KEY`    |              | API key, for Temporal Cloud; implies TLS                                             |
-| `TEMPORAL_TLS`        | `false`      | Whether to connect with TLS                                                          |
+| Variable                     | Default      | Purpose                                                                                                  |
+| ---------------------------- | ------------ | -------------------------------------------------------------------------------------------------------- |
+| `TEMPORAL_ADDRESS`           |              | Address of the Temporal frontend; when it is not set, orchestration is not available                     |
+| `TEMPORAL_NAMESPACE`         | `default`    | Temporal namespace                                                                                       |
+| `TEMPORAL_TASK_QUEUE`        | `auto-brain` | Task queue the worker polls and workflows start on                                                       |
+| `TEMPORAL_API_KEY`           |              | API key, for Temporal Cloud; implies TLS                                                                 |
+| `TEMPORAL_TLS`               | `false`      | Whether to connect with TLS                                                                              |
+| `ORCHESTRATION_MAX_DURATION` | `P30D`       | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`; checked when the server starts |
 
 ### Tenancy
 
 - The workflow id names the org, the brain, the spec and the execution; the workflow carries the org, brain, spec, its version and the execution id in its memo. They are not search attributes, which a server needs set up before it accepts them.
 - The activity that executes a spec rejects a call whose org or brain is not the one of its workflow id, or whose caller belongs to another org; the activity that settles rejects an execution other than the one of its workflow id.
 - A nested execution acts for the caller who started the workflow, with the permissions that caller had then.
+- Temporal's history of a workflow holds its document, its input, the outputs of the specs it executes and of the workflow, its events, and the identity of the caller who started it, readable by whoever can read the namespace. Access to the namespace is an operator's privilege, and this version does not encrypt payloads.
 
 ## Not in this version
 

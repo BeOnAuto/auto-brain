@@ -65,6 +65,7 @@ export function temporalHost(api: WorkflowApi): WorkflowHost {
       return { bytes: historySize, events: historyLength };
     },
     sleep: (milliseconds, summary) => api.sleep(milliseconds, { summary }),
+    deadline: (milliseconds) => api.sleep(milliseconds, { summary: 'the most the workflow may run' }),
     waitUntil: (satisfied) => api.condition(satisfied),
     executeSpec: (call) =>
       api

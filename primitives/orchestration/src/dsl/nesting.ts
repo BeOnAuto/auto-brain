@@ -1,6 +1,6 @@
-import { entriesOf, field, isList, isObject, mostValueDepth, objectField, type Json, type JsonObject } from './json.ts';
+import { entriesOf, field, isList, isObject, mostValueDepth, type Json, type JsonObject } from './json.ts';
 import { forbidden, type Located, type Rejection } from './policy-checks.ts';
-import { kindOf, pointerTo, taskEntries, type TaskEntry } from './tasks.ts';
+import { nestedTaskLists, pointerTo, taskEntries, type TaskEntry } from './tasks.ts';
 
 export const mostTaskNesting = 64;
 
@@ -35,15 +35,8 @@ function deepTaskListIn(list: Json | undefined, pointer: string, room: number): 
   return room === 0 ? pointer : firstFound(taskEntries(list, pointer), (entry) => deepTaskListUnder(entry, room - 1));
 }
 
-function deepTaskListUnder({ task, reference }: TaskEntry, room: number): string | undefined {
-  const kind = kindOf(task);
-  const lists: readonly Located[] = [
-    [kind === 'do' || kind === 'for' ? field(task, 'do') : undefined, `${reference}/do`],
-    [kind === 'try' ? field(task, 'try') : undefined, `${reference}/try`],
-    [kind === 'try' ? field(objectField(task, 'catch') ?? {}, 'do') : undefined, `${reference}/catch/do`],
-    [kind === 'fork' ? field(objectField(task, 'fork') ?? {}, 'branches') : undefined, `${reference}/fork/branches`],
-  ];
-  return firstFound(lists, ([list, at]) => deepTaskListIn(list, at, room));
+function deepTaskListUnder(entry: TaskEntry, room: number): string | undefined {
+  return firstFound(nestedTaskLists(entry), ([list, at]) => deepTaskListIn(list, at, room));
 }
 
 function firstFound<T>(items: readonly T[], find: (item: T) => string | undefined): string | undefined {

@@ -46,6 +46,7 @@ export interface WorkflowHost {
   readonly random: () => number;
   readonly historySize: () => HistorySize;
   readonly sleep: (milliseconds: number, summary: string) => Promise<void>;
+  readonly deadline: (milliseconds: number) => Promise<void>;
   readonly waitUntil: (satisfied: () => boolean) => Promise<void>;
   readonly executeSpec: (call: SpecCall) => Promise<SpecCallResult>;
   readonly settle: (request: SettleRequest) => Promise<void>;

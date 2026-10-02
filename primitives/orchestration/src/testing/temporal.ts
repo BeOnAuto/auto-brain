@@ -33,7 +33,13 @@ export interface HarnessOptions {
 Runtime.install({ logger: new DefaultLogger('WARN'), shutdownSignals: [] });
 
 export function settingsFor(taskQueue: string): TemporalSettings {
-  return { address: inject('temporalAddress'), namespace: 'default', taskQueue, tls: false };
+  return {
+    address: inject('temporalAddress'),
+    namespace: 'default',
+    taskQueue,
+    tls: false,
+    mostDuration: 2_592_000_000,
+  };
 }
 
 export function settledExecution(address: ExecutionAddress, settlement: Settlement): Execution {

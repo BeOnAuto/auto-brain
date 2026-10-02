@@ -16,6 +16,8 @@ export interface WorkflowStart {
 
 const mostOutputBytes = 1_048_574;
 
+const deadlineMargin = 3_600_000;
+
 const root = '/';
 
 export function startWorkflow(input: unknown, host: WorkflowHost): WorkflowStart {
@@ -37,10 +39,32 @@ export function startWorkflow(input: unknown, host: WorkflowHost): WorkflowStart
 function ignoreEvent(): void {}
 
 async function finish(state: RunState): Promise<WorkflowEnding> {
-  const outcome = await outcomeOf(state);
+  const outcome = await outcomeBeforeDeadline(state);
   const { org, brain, id, spec } = state.run.execution;
   await state.host.settle({ org, brain, spec: spec.name, executionId: id, settlement: settlementOf(outcome) });
   return endingOf(outcome);
+}
+
+async function outcomeBeforeDeadline(state: RunState): Promise<RunOutcome> {
+  const { host, run } = state;
+  const milliseconds = run.mostDuration - deadlineMargin;
+  const deadline = host.cancellable(() => host.deadline(milliseconds));
+  const job = host.cancellable(() => outcomeOf(state));
+  let overran = false;
+  void deadline.result.then(
+    () => {
+      overran = true;
+      job.cancel();
+      return overran;
+    },
+    () => overran,
+  );
+  try {
+    const outcome = await job.result;
+    return overran ? { kind: 'overran', milliseconds } : outcome;
+  } finally {
+    deadline.cancel();
+  }
 }
 
 async function outcomeOf(state: RunState): Promise<RunOutcome> {
