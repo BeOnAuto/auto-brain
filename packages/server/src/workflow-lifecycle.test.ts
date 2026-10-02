@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 
 import { connectOrchestration, installTemporalRuntime, type TemporalLogEntry } from '@beonauto/orchestration';
 import { TestWorkflowEnvironment } from '@temporalio/testing';
@@ -24,6 +25,10 @@ afterAll(() => {
 });
 
 const workerStarted = (message: string): boolean => message === 'The workflow worker started';
+
+async function stoppedWithin(milliseconds: number, stop: () => Promise<void>): Promise<void> {
+  await Promise.race([stop(), once(AbortSignal.timeout(milliseconds), 'abort')]);
+}
 
 const unsettled = 'An execution stays started because settling it failed';
 
@@ -75,7 +80,7 @@ describe('a server whose Temporal starts after it', { timeout: 120_000 }, () => 
     const temporal = await TestWorkflowEnvironment.createLocal({
       server: { ip: '127.0.0.1', port: temporalPort, log: { format: 'pretty', level: 'error' } },
     });
-    onTestFinished(() => temporal.teardown());
+    onTestFinished(() => stoppedWithin(10_000, () => temporal.teardown()), 20_000);
     await untilLogged(child, workerStarted);
     const started = await acceptedOnceUp(port, '/beta/specs/orchestration/greeting/execute', {
       input: { name: 'Ada' },

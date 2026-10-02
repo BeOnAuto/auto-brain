@@ -31,8 +31,8 @@ function plainLinesOf(text: string): readonly string[] {
   return text.split('\n').filter((line) => !line.startsWith('{') && line !== '');
 }
 
-function workerStartedOrNot(message: string): boolean {
-  return message === 'The workflow worker started' || message.startsWith('The workflow worker could not start');
+function workerStarted(message: string): boolean {
+  return message === 'The workflow worker started';
 }
 
 describe('a server without the workflow bundler, as in the image', { timeout: workflowTestTimeoutMs }, () => {
@@ -43,7 +43,7 @@ describe('a server without the workflow bundler, as in the image', { timeout: wo
     });
     await child.port;
 
-    const worker = await loggedWithin(child, workerStartedOrNot, 80);
+    const worker = await loggedWithin(child, workerStarted, 160);
     child.signal('SIGTERM');
     const exitCode = await child.exited;
 

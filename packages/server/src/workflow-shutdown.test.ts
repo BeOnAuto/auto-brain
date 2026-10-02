@@ -46,7 +46,7 @@ describe('a server that ran workflows, told to stop', { timeout: workflowTestTim
       () => 'answered',
       () => 'cut off',
     );
-    await setTimeout(500);
+    await setTimeout(2000);
 
     child.signal('SIGTERM');
     await setTimeout(500);

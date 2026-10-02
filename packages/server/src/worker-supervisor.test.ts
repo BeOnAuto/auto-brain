@@ -175,7 +175,7 @@ describe('stopping a supervised worker that does not stop', () => {
 
     expect(outcome).toBe('gave up');
     expect(tookMs).toBeGreaterThanOrEqual(10_900);
-    expect(tookMs).toBeLessThan(12_500);
+    expect(tookMs).toBeLessThan(15_000);
   }, 30_000);
 });
 

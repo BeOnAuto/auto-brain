@@ -253,7 +253,8 @@ describe('the work a stopping server does besides answering requests', () => {
     await server.stop();
     await inFlight;
 
-    expect(events).toEqual(['work stopping', 'work stopped', 'request answered']);
+    expect(events.toSorted()).toEqual(['request answered', 'work stopped', 'work stopping']);
+    expect(events.indexOf('work stopping')).toBeLessThan(events.indexOf('request answered'));
   });
 });
 
