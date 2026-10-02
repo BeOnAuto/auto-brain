@@ -40,6 +40,13 @@ describe('a primitive', () => {
     });
   });
 
+  it('runs an execution for at most the time it states, or 10 minutes when it states none', () => {
+    expect([definePrimitive(words), definePrimitive({ ...words, longestExecutionMs: 1_660_000 })]).toMatchObject([
+      { longestExecutionMs: 600_000 },
+      { longestExecutionMs: 1_660_000 },
+    ]);
+  });
+
   it.each(['ab', 'Words', '1words', 'word_s', `w${'o'.repeat(32)}`])('may not be named %j', (name) => {
     expect(() => definePrimitive({ ...words, name })).toThrow(`The primitive name ${name} is malformed`);
   });

@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { WorkflowFailedError } from '@temporalio/client';
 import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -41,6 +43,7 @@ describe('a workflow that fails', () => {
     await recordHistory('uncaught-error', () => harness.temporal.workflow.getHandle(workflowId).fetchHistory());
 
     expect(failure).toBeInstanceOf(WorkflowFailedError);
+    expect(await harness.temporalLogsOf(workflowId)).toStrictEqual([]);
     expect(settledFor(executionId)).toEqual([
       {
         address: { org: 'acme', brain: 'alpha', id: executionId },
@@ -69,9 +72,28 @@ describe('a workflow that is cancelled', () => {
 
     expect(failure).toBeInstanceOf(WorkflowFailedError);
     expect((await handle.describe()).status.name).toBe('CANCELLED');
+    expect(await harness.temporalLogsOf(workflowId)).toStrictEqual([]);
     expect(settledFor(executionId)).toEqual([
       { address: { org: 'acme', brain: 'alpha', id: executionId }, settlement: { status: 'failed' } },
     ]);
+  }, 60_000);
+});
+
+describe('a workflow that is terminated', () => {
+  it('ends at once without running any more of its code, so its execution is never settled', async () => {
+    const executionId = idOf(5);
+    const { workflowId } = await Effect.runPromise(
+      harness.orchestration.start(runFor(workflow('do:\n  - pause: { wait: PT1H }'), executionId)),
+    );
+    const handle = harness.temporal.workflow.getHandle(workflowId);
+
+    await handle.terminate('an operator ended it');
+    const failure: unknown = await handle.result().catch((error: unknown) => error);
+    await setTimeout(1000);
+
+    expect(failure).toBeInstanceOf(WorkflowFailedError);
+    expect((await handle.describe()).status.name).toBe('TERMINATED');
+    expect(settledFor(executionId)).toStrictEqual([]);
   }, 60_000);
 });
 
@@ -111,6 +133,16 @@ describe('a run that names another brain than its workflow', () => {
     const failure: unknown = await handle.result().catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(WorkflowFailedError);
+    expect(
+      (await harness.temporalLogsOf(workflowId)).map(({ message, context }) => [
+        message,
+        context['activityType'],
+        context['errorType'],
+      ]),
+    ).toStrictEqual([
+      ['Temporal reported: Activity failed', 'executeSpec', 'TenancyViolation'],
+      ['Temporal reported: Activity failed', 'settleExecution', 'TenancyViolation'],
+    ]);
     expect(harness.executions().filter(({ executionId: id }) => id === executionId)).toEqual([]);
     expect(settledFor(executionId)).toEqual([]);
     expect(harness.unsettled()).toStrictEqual([

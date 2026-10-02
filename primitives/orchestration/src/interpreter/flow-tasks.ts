@@ -13,6 +13,7 @@ import {
 } from '../dsl/json.ts';
 import { taskEntries } from '../dsl/tasks.ts';
 import { evaluateExpression, holds, placeOf } from './evaluation.ts';
+import type { Release } from './holding.ts';
 import { bodyOf, type Body, type Invocation, type TaskOutcome } from './invocation.ts';
 import { raised } from './raised-error.ts';
 
@@ -60,17 +61,28 @@ export function forTask(invocation: Invocation): Promise<Body> {
   if (!isList(items)) {
     throw raised('validation', 400, 'for.in must give an array to iterate over', entry.reference);
   }
-  return iterate({ invocation, loop, items, index: 0, data: input });
+  const release = invocation.scope.state.hold([items], entry.reference);
+  return iterate({ invocation, loop, items, index: 0, data: input }).finally(release);
 }
 
 export async function forkTask(invocation: Invocation): Promise<Body> {
   const { entry, input, scope, runner } = invocation;
   const fork = objectField(entry.task, 'fork') ?? {};
   const branches = taskEntries(field(fork, 'branches'), `${entry.reference}/fork/branches`);
-  const running = branches.map((branch) => scope.state.host.cancellable(() => runner.runTask(branch, input, scope)));
+  const releases: Release[] = [];
+  const holdingOutput = (outcome: TaskOutcome): TaskOutcome => {
+    releases.push(scope.state.hold([outcome.output], entry.reference));
+    return outcome;
+  };
+  const running = branches.map((branch) =>
+    scope.state.host.cancellable(() => runner.runTask(branch, input, scope).then(holdingOutput)),
+  );
   const cancelAll = (): void => {
     for (const branch of running) {
       branch.cancel();
+    }
+    for (const release of releases) {
+      release();
     }
   };
   const results = running.map(({ result }) => result);

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { acmeAdmin } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
-import { harness, toBrain } from '../testing/harness.ts';
+import { firstMoment, harness, toBrain } from '../testing/harness.ts';
 import { probe } from '../testing/probe.ts';
 import { specOperationsFor } from '../testing/spec-operations.ts';
 
@@ -92,19 +92,19 @@ describe('an execution id', () => {
 });
 
 describe('an execution without a final result', () => {
-  it('runs again for its id when it started and never finished', async () => {
-    const { call, callWithin, executeSpec, executing, getExecution, prober } = await withPlain();
+  it('is recorded failed when its call is cancelled while the primitive runs, and runs again for its id', async () => {
+    const { call, callCancelledWhen, executeSpec, executing, getExecution, prober } = await withPlain();
     prober.sufferOnNextRun('stall');
 
     expect(
-      await callWithin(
-        50,
+      await callCancelledWhen(
+        prober.stalled,
         executeSpec,
         toAlpha(acmeAdmin, { primitive: 'probe', name: 'plain', input: {}, execution_id: executionId }),
       ),
     ).toEqual({ status: 'cancelled' });
     expect(await call(getExecution, toAlpha(acmeAdmin, { execution_id: executionId }))).toMatchObject({
-      output: { status: 'started' },
+      output: { status: 'failed', finished_at: firstMoment },
     });
     expect(await executing({}, later)).toMatchObject({
       output: { status: 'succeeded', started_at: later, finished_at: later },

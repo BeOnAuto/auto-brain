@@ -20,6 +20,15 @@ describe('the run a workflow is started with', () => {
     expect(readWorkflowRun({ ...run, mostDuration: 7_200_000 })).toMatchObject({ mostDuration: 7_200_000 });
   });
 
+  it('lets a nested execution run for 10 minutes when it names no longest one', () => {
+    const { longestNestedExecutionMs: _set, ...unbounded } = run;
+
+    expect(readWorkflowRun(unbounded)).toMatchObject({ longestNestedExecutionMs: 600_000 });
+    expect(readWorkflowRun({ ...run, longestNestedExecutionMs: 1_660_000 })).toMatchObject({
+      longestNestedExecutionMs: 1_660_000,
+    });
+  });
+
   const malformed: readonly (readonly [string, unknown])[] = [
     ['not an object', 'run'],
     ['no document', { ...run, document: 'none' }],
@@ -36,6 +45,8 @@ describe('the run a workflow is started with', () => {
     ['no caller', { ...run, caller: 'acme-admin' }],
     ['a longest duration that is not a number', { ...run, mostDuration: 'P30D' }],
     ['a longest duration that is not positive', { ...run, mostDuration: 0 }],
+    ['a longest nested execution that is not positive', { ...run, longestNestedExecutionMs: -1 }],
+    ['a longest nested execution that is not a number', { ...run, longestNestedExecutionMs: '28 minutes' }],
   ];
 
   it.each(malformed)('is rejected when it has %s', (_case, value) => {

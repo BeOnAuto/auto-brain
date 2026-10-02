@@ -116,6 +116,7 @@ function operationsOf(parts: Parts): Omit<WorkflowHost, 'random' | 'historySize'
       journal.record({ kind: 'condition' });
       return scope().operation<void>((resolve) => cancelling(clock.waiter(satisfied, resolve), journal, 'condition'));
     },
+    watch: (satisfied) => scope().operation<void>((resolve) => clock.waiter(satisfied, resolve)),
     executeSpec: (call) => {
       journal.record({ kind: 'call', call });
       return scope().operation<SpecCallResult>((resolve, reject) => {

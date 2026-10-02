@@ -16,8 +16,19 @@ export type {
 } from './worker/dependencies.ts';
 export { specExecutionResultOf } from './worker/spec-results.ts';
 export {
+  buildWorkflowBundle,
+  requireWorkflowBundler,
+  verifiedWorkflowBundle,
+  WorkflowBundleInvalid,
+} from './worker/workflow-bundle.ts';
+export {
+  installTemporalRuntime,
+  type TemporalLog,
+  type TemporalLogContext,
+  type TemporalLogEntry,
+} from './worker/temporal-runtime.ts';
+export {
   OrchestrationWorkerError,
   runOrchestrationWorker,
   type OrchestrationWorkerOptions,
 } from './worker/orchestration-worker.ts';
-export { TemporalSettingsConfig, type TemporalSettings } from './worker/temporal-settings.ts';

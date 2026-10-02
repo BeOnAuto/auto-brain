@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { failureRecorder } from '../testing/failure-recorder.ts';
 import { fakeTemporalWorkers, type FakeTemporalWorkers } from '../testing/fake-temporal-workers.ts';
 import { runOrchestrationWorker } from './orchestration-worker.ts';
+import { workflowsPath } from './workflow-code.ts';
 
 const settings = {
   address: '127.0.0.1:7233',
@@ -13,11 +14,12 @@ const settings = {
   taskQueue: 'brains',
   tls: false,
   mostDuration: 2_592_000_000,
+  nestedExecutions: 7,
 };
 
 const notCalled = () => Effect.die(new Error('not called'));
 
-async function startedWith(fake: FakeTemporalWorkers) {
+async function startedWith(fake: FakeTemporalWorkers, workflowCode: { readonly workflowBundle?: string } = {}) {
   const recorder = failureRecorder();
   const scope = Effect.runSync(Scope.make());
   const exit = await Effect.runPromise(
@@ -29,6 +31,7 @@ async function startedWith(fake: FakeTemporalWorkers) {
         onFailure: recorder.onFailure,
         reportUnsettled: recorder.reportUnsettled,
         temporal: fake.temporal,
+        ...workflowCode,
       }).pipe(Scope.provide(scope)),
     ),
   );
@@ -54,14 +57,36 @@ describe('the connection of the orchestration worker', () => {
 });
 
 describe('the worker the orchestration worker makes', () => {
-  it('polls the task queue of the settings, and gives activities 10 seconds to finish when it stops', async () => {
+  it('polls the task queue of the settings, keeps 16 workflows, runs 2 workflow tasks and as many nested executions as the settings allow at once, and gives activities 10 seconds to finish when it stops', async () => {
     const fake = fakeTemporalWorkers();
     const { stop } = await startedWith(fake);
     await stop();
 
     expect(fake.definitions()).toMatchObject([
-      { namespace: 'tenants', taskQueue: 'brains', shutdownGraceTime: '10 seconds' },
+      {
+        namespace: 'tenants',
+        taskQueue: 'brains',
+        shutdownGraceTime: '10 seconds',
+        maxCachedWorkflows: 16,
+        maxConcurrentWorkflowTaskExecutions: 2,
+        maxConcurrentActivityTaskExecutions: 7,
+      },
     ]);
+    expect(fake.definitions()[0]).toHaveProperty('workflowsPath', workflowsPath);
+    expect(fake.definitions()[0]).not.toHaveProperty('workflowBundle');
+  });
+});
+
+describe('the workflow code of the worker', () => {
+  it('loads a workflow bundle built ahead of time instead of bundling the workflow code, when given one', async () => {
+    const fake = fakeTemporalWorkers();
+    const { stop } = await startedWith(fake, { workflowBundle: '/app/workflow-bundle/workflow-bundle.js' });
+    await stop();
+
+    expect(fake.definitions()[0]).toHaveProperty('workflowBundle', {
+      codePath: '/app/workflow-bundle/workflow-bundle.js',
+    });
+    expect(fake.definitions()[0]).not.toHaveProperty('workflowsPath');
   });
 
   it('does not start under a Temporal runtime that shuts workers down on signals the server owns', async () => {

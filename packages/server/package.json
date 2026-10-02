@@ -21,10 +21,12 @@
     "@beonauto/inference": "workspace:*",
     "@beonauto/ledger": "workspace:*",
     "@beonauto/operations": "workspace:*",
+    "@beonauto/orchestration": "workspace:*",
     "@beonauto/specs": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@temporalio/testing": "1.24.0",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"
   }

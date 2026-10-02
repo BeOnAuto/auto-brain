@@ -32,6 +32,8 @@ export async function withHandOn() {
     ...operations,
     relayer,
     executing: (input: unknown = {}) => specs.call(operations.executeSpec, handingOn(input)),
+    executingCancelledOnceStarted: (input: unknown) =>
+      specs.callCancelledWhen(relayer.started, operations.executeSpec, handingOn(input)),
     reading: () => specs.call(operations.getExecution, toAlpha(acmeAdmin, { execution_id: relayedId })),
     settling: (settlement: Settlement, address: ExecutionAddress = relayed) =>
       specs.run(Effect.result(settle(address, settlement)), settledAt),

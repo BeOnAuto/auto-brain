@@ -11,6 +11,7 @@ export interface InferenceServer {
   readonly origin: string;
   readonly call: (method: string, path: string, options?: RequestOptions) => Promise<TestResponse>;
   readonly modelCalls: () => number;
+  readonly modelExecutions: () => readonly (string | undefined)[];
   readonly stop: () => Promise<void>;
 }
 
@@ -34,6 +35,7 @@ export async function servingInference(
     origin: `http://127.0.0.1:${server.port}`,
     call: (method, path, options) => request(server.port, method, path, options),
     modelCalls: () => scripted.requests().length,
+    modelExecutions: () => scripted.requests().map(({ execution_id: executionId }) => executionId),
     stop: async () => {
       await server.stop();
       ledger.remove();

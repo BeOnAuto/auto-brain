@@ -5,7 +5,7 @@ import { isJson, isObject, type Json, type JsonObject } from '../dsl/json.ts';
 import type { RunSettlement, SpecCall, SpecCallResult, WorkflowHost } from '../interpreter/host.ts';
 import { startWorkflow, type WorkflowStart } from '../interpreter/interpreter.ts';
 import type { WorkflowEnding } from '../interpreter/settlement.ts';
-import { defaultMostDuration, type WorkflowRun } from '../interpreter/workflow-run.ts';
+import { defaultLongestNestedExecutionMs, defaultMostDuration, type WorkflowRun } from '../interpreter/workflow-run.ts';
 import { fakeHost, type Command, type FakeHost, type FakeHostOptions } from './fake-host.ts';
 
 type SettleCommand = Extract<Command, { readonly kind: 'settle' }>;
@@ -22,6 +22,7 @@ export interface InterpretOptions extends FakeHostOptions {
   readonly host?: (fake: FakeHost) => WorkflowHost;
   readonly started?: (start: WorkflowStart, fake: FakeHost) => void;
   readonly mostDuration?: number;
+  readonly longestNestedExecutionMs?: number;
 }
 
 export const acmeCaller: CallerIdentity = {
@@ -54,6 +55,7 @@ export function runFor(document: JsonObject, id: string, input: Json = {}): Work
     execution: { id, org: 'acme', brain: 'alpha', spec: { name: 'test-flow', version: 1 } },
     caller: acmeCaller,
     mostDuration: defaultMostDuration,
+    longestNestedExecutionMs: defaultLongestNestedExecutionMs,
   };
 }
 
@@ -74,7 +76,14 @@ export async function interpret(document: JsonObject, options: InterpretOptions 
   const host = options.host === undefined ? fake.host : options.host(fake);
   const ending = await fake.drive(() => {
     const run = runOf(document, options.input ?? {});
-    const start = startWorkflow({ ...run, mostDuration: options.mostDuration ?? run.mostDuration }, host);
+    const start = startWorkflow(
+      {
+        ...run,
+        mostDuration: options.mostDuration ?? run.mostDuration,
+        longestNestedExecutionMs: options.longestNestedExecutionMs ?? run.longestNestedExecutionMs,
+      },
+      host,
+    );
     options.started?.(start, fake);
     return start.ending;
   });

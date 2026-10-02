@@ -15,11 +15,14 @@ export interface WorkflowRun {
   readonly execution: RunExecution;
   readonly caller: CallerIdentity;
   readonly mostDuration: number;
+  readonly longestNestedExecutionMs: number;
 }
 
-export type StartingRun = Omit<WorkflowRun, 'mostDuration'>;
+export type StartingRun = Omit<WorkflowRun, 'mostDuration' | 'longestNestedExecutionMs'>;
 
 export const defaultMostDuration = 30 * 24 * 3_600_000;
+
+export const defaultLongestNestedExecutionMs = 600_000;
 
 const permissions = new Set(['org:read', 'org:write', 'brain:read', 'brain:write']);
 
@@ -27,15 +30,26 @@ export function readWorkflowRun(value: unknown): WorkflowRun | undefined {
   if (!isJson(value) || !isObject(value)) {
     return undefined;
   }
-  const { document, input, execution, caller, mostDuration = defaultMostDuration } = value;
+  const { document, input, execution, caller } = value;
+  const limits = limitsOf(value);
   return isObject(document) &&
     input !== undefined &&
     isRunExecution(execution) &&
     isCaller(caller) &&
-    typeof mostDuration === 'number' &&
-    mostDuration > 0
-    ? { document, input, execution, caller, mostDuration }
+    limits !== undefined
+    ? { document, input, execution, caller, ...limits }
     : undefined;
+}
+
+function limitsOf(value: JsonObject): Pick<WorkflowRun, 'mostDuration' | 'longestNestedExecutionMs'> | undefined {
+  const { mostDuration = defaultMostDuration, longestNestedExecutionMs = defaultLongestNestedExecutionMs } = value;
+  return isPositive(mostDuration) && isPositive(longestNestedExecutionMs)
+    ? { mostDuration, longestNestedExecutionMs }
+    : undefined;
+}
+
+function isPositive(value: Json): value is number {
+  return typeof value === 'number' && value > 0;
 }
 
 function isRunExecution(value: unknown): value is RunExecution {

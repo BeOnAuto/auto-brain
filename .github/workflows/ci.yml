@@ -179,6 +179,65 @@ jobs:
             'anthropic is not configured; it needs ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN'
           docker stop inference
           test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
+      - name: Run workflows on a Temporal dev server
+        timeout-minutes: 10
+        run: |
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker network create workflows
+          docker run --detach --name temporal --network workflows \
+            temporalio/temporal:1.9.1@sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e \
+            server start-dev --ip 0.0.0.0 --headless
+          docker run --detach --name workflows --network workflows --publish 8080:8080 --env API_KEYS \
+            --env TEMPORAL_ADDRESS=temporal:7233 auto-brain:ci
+          ready=false
+          for attempt in $(seq 1 60); do
+            if timeout 10 docker exec temporal temporal operator cluster health > /dev/null 2>&1 \
+              && curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null \
+              && docker logs workflows 2>&1 | grep --quiet '"message":"The workflow worker started"'; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          call() {
+            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+              --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
+          }
+          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          settled() {
+            for attempt in $(seq 1 30); do
+              test "$(call "$1" "$brain/executions/$2")" = 200
+              test "$(jq --raw-output .status "$1")" != started && return 0
+              sleep 1
+            done
+            return 1
+          }
+          greet="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: greet, version: '1.0.0' }" 'do:' \
+            "  - greet: { set: { greeting: '\${ \"Hello, \" + .name }' } }")"
+          approval="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: approval, version: '1.0.0' }" 'do:' \
+            '  - decide: { listen: { to: { one: { with: { type: com.example.approval.decided } } } } }')"
+          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          for name in greet approval; do
+            spec="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
+            test "$(call created.json --data "$spec" "$brain/specs/orchestration")" = 201
+          done
+          test "$(call greeting.json --data '{"input":{"name":"CI"}}' "$brain/specs/orchestration/greet/execute")" = 200
+          settled greeted.json "$(jq --raw-output .execution_id greeting.json)"
+          test "$(jq --compact-output '[.status, .output]' greeted.json)" = '["succeeded",{"greeting":"Hello, CI"}]'
+          test "$(call waiting.json --data '{}' "$brain/specs/orchestration/approval/execute")" = 200
+          waiting="$(jq --raw-output .execution_id waiting.json)"
+          test "$(call sent.json --data '{"event":{"type":"com.example.approval.decided","data":{"approved":true}}}' \
+            "$brain/executions/$waiting/events")" = 200
+          settled approved.json "$waiting"
+          test "$(jq --compact-output '[.status, .output]' approved.json)" = '["succeeded",[{"approved":true}]]'
+          docker stop workflows
+          test "$(docker inspect workflows --format '{{.State.ExitCode}}')" = 0
+          docker stop temporal
 
   pull-request-title:
     name: Pull request title

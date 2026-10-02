@@ -16,30 +16,32 @@ export interface RunningServer {
   stop(): Promise<void>;
 }
 
+export interface Served {
+  readonly routes: readonly RegisterRoutes[];
+  readonly stopWork: () => Promise<void>;
+}
+
 export interface ServerOptions<R> {
   readonly runtimeLayer: (settings: Settings) => Layer.Layer<R>;
-  readonly routes: (
-    runtime: AppRuntime<R>,
-    settings: Settings,
-  ) => readonly RegisterRoutes[] | Promise<readonly RegisterRoutes[]>;
+  readonly serve: (runtime: AppRuntime<R>, settings: Settings) => Served | Promise<Served>;
   readonly shutdownTimeoutMs: number;
   readonly exitDeadlineMs: number;
 }
 
+export function servedBy(routes: readonly RegisterRoutes[]): Served {
+  return { routes, stopWork: () => Promise.resolve() };
+}
+
 export const defaultServerOptions: ServerOptions<never> = {
   runtimeLayer: () => Layer.empty,
-  routes: () => [],
+  serve: () => servedBy([]),
   shutdownTimeoutMs: 8000,
   exitDeadlineMs: 1000,
 };
 
-async function routesOf<R>(
-  options: ServerOptions<R>,
-  runtime: AppRuntime<R>,
-  settings: Settings,
-): Promise<readonly RegisterRoutes[]> {
+async function servedOf<R>(options: ServerOptions<R>, runtime: AppRuntime<R>, settings: Settings): Promise<Served> {
   try {
-    return await options.routes(runtime, settings);
+    return await options.serve(runtime, settings);
   } catch (failure) {
     await runtime.dispose();
     throw failure;
@@ -59,10 +61,11 @@ export async function startServer<R>(environment: Environment, options: ServerOp
   const authenticator = authenticatorFor(settings);
   const runtime = await startRuntime(options.runtimeLayer(settings));
   await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
+  const served = await servedOf(options, runtime, settings);
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,
     authenticator,
-    routes: await routesOf(options, runtime, settings),
+    routes: served.routes,
     reportIncident: (id, error, requestId) => {
       void runtime.run(logIncident({ id, original: error }).pipe(Effect.annotateLogs({ requestId })));
     },
@@ -71,7 +74,9 @@ export async function startServer<R>(environment: Environment, options: ServerOp
   try {
     await listen(server, settings.port, settings.host);
   } catch (error) {
+    await served.stopWork();
     await runtime.dispose();
+    await api.close();
     throw error;
   }
   let stopping: Promise<void> | undefined;
@@ -80,7 +85,7 @@ export async function startServer<R>(environment: Environment, options: ServerOp
     stop: async () => {
       stopping ??= shutDown(
         server,
-        { closeApi: api.close, disposeRuntime: runtime.dispose },
+        { stopWork: served.stopWork, disposeRuntime: runtime.dispose, closeApi: api.close },
         options.shutdownTimeoutMs,
       );
       await stopping;

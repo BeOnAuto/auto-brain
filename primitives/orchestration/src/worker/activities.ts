@@ -1,6 +1,7 @@
 import { Conflict, NotFound } from '@beonauto/operations';
 import type { SettleExecution, Settlement } from '@beonauto/specs';
 import { ApplicationFailure } from '@temporalio/activity';
+import { ApplicationFailureCategory } from '@temporalio/common';
 import { Cause, Effect, Exit } from 'effect';
 
 import { jsonBytesOf } from '../dsl/json.ts';
@@ -22,11 +23,17 @@ export interface ActivityRun {
   readonly attempt: number;
 }
 
+interface Heartbeat {
+  readonly beat: () => void;
+  readonly everyMs: number;
+}
+
 export interface ActivityDependencies {
   readonly executeSpec: ExecuteSpec;
   readonly settle: SettleExecution;
   readonly reportUnsettled: ReportUnsettled;
   readonly currentRun: () => ActivityRun;
+  readonly heartbeat: Heartbeat;
 }
 
 interface ActivityInfo {
@@ -59,10 +66,15 @@ async function executeSpecFor(dependencies: ActivityDependencies, call: SpecCall
     throw rejectedTenancy(workflowId, org, brain);
   }
   const executionId = nestedExecutionId(runId, reference, run);
-  const result = await Effect.runPromise(
-    dependencies.executeSpec({ org, brain, caller, primitive, name, input, executionId }),
-  );
-  return callResultOf(result);
+  const beating = setInterval(dependencies.heartbeat.beat, dependencies.heartbeat.everyMs);
+  try {
+    const result = await Effect.runPromise(
+      dependencies.executeSpec({ org, brain, caller, primitive, name, input, executionId }),
+    );
+    return callResultOf(result);
+  } finally {
+    clearInterval(beating);
+  }
 }
 
 function callResultOf(result: SpecExecutionResult): SpecCallResult {
@@ -115,7 +127,13 @@ async function settleFor(dependencies: ActivityDependencies, request: SettleRequ
   if (attempt >= mostSettleAttempts) {
     unsettled(`Settling failed on all ${mostSettleAttempts} attempts: ${detail}`);
   }
-  throw ApplicationFailure.retryable(detail, failure instanceof Conflict ? executionConflict : settlementBroken);
+  throw failure instanceof Conflict
+    ? ApplicationFailure.create({
+        message: detail,
+        type: executionConflict,
+        category: ApplicationFailureCategory.BENIGN,
+      })
+    : ApplicationFailure.retryable(detail, settlementBroken);
 }
 
 function settlementOf(settlement: RunSettlement): Settlement {

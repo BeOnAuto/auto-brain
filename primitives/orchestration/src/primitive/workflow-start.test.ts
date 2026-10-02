@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { settingsFor, temporalHarness, type TemporalHarness } from '../testing/temporal.ts';
 import { runFor, workflow } from '../testing/workflows.ts';
-import { connectOrchestration } from './orchestration-client.ts';
+import { connectOrchestration, startUnavailable } from './orchestration-client.ts';
 
 let harness: TemporalHarness;
 
@@ -61,8 +61,8 @@ describe('a client whose Temporal never answers', () => {
     await Effect.runPromise(Scope.close(scope, Exit.void));
     silent.close();
 
-    expect(failure.detail).toMatch(/^Temporal could not start the workflow: /u);
+    expect(failure.detail).toBe(startUnavailable);
     expect(waited).toBeGreaterThanOrEqual(9_900);
-    expect(waited).toBeLessThan(20_000);
+    expect(waited).toBeLessThan(11_000);
   }, 60_000);
 });

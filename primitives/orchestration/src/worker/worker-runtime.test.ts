@@ -12,7 +12,14 @@ describe('the orchestration worker in a process with no Temporal runtime yet', (
     const recorder = failureRecorder();
     const scope = Effect.runSync(Scope.make());
     const address = inject('temporalAddress');
-    const settings = { address, namespace: 'default', taskQueue: 'runtime', tls: false, mostDuration: 2_592_000_000 };
+    const settings = {
+      address,
+      namespace: 'default',
+      taskQueue: 'runtime',
+      tls: false,
+      mostDuration: 2_592_000_000,
+      nestedExecutions: 32,
+    };
     await Effect.runPromise(
       runOrchestrationWorker({
         settings,

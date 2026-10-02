@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 
+import { onTestFinished } from 'vitest';
+
 export const spawnedServerTestTimeoutMs = 20_000;
 
 export interface SpawnedServer {
@@ -25,6 +27,9 @@ export function spawnServer(entry: string, env: Readonly<Record<string, string>>
     output.stderr += chunk;
   });
   const exited = once(child, 'exit').then(([code]: readonly unknown[]) => code);
+  onTestFinished(() => {
+    child.kill('SIGKILL');
+  });
   return {
     port,
     exited,

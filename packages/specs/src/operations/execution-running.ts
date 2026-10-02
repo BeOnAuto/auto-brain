@@ -11,14 +11,20 @@ import { preparedSpec } from './spec-preparation.ts';
 
 const runExecution = Effect.fnUntraced(function* (primitive: Primitive, id: string, request: ExecutionRequest) {
   const { spec, prepared } = yield* preparedSpec(primitive, request.name);
-  yield* recordExecution(id, { type: 'start', ...request, spec_version: spec.version });
   const { org, brain } = yield* BrainContext;
   const caller = yield* Caller;
   const execution = { id, org, brain, caller, spec: { name: spec.name, version: spec.version } };
-  const result = yield* attempt(prepared, request.input, execution).pipe(
-    Effect.tapDefect(() => Effect.ignore(recordExecution(id, { type: 'finish', result: failedAttempt }))),
+  const recorded = yield* Effect.uninterruptibleMask((restore) =>
+    Effect.gen(function* () {
+      yield* recordExecution(id, { type: 'start', ...request, spec_version: spec.version });
+      const executing = prepared.execute(request.input, execution);
+      const result = yield* attempt(prepared.whenCancelled === 'finish' ? executing : restore(executing)).pipe(
+        Effect.onError(() => Effect.ignore(recordExecution(id, { type: 'finish', result: failedAttempt }))),
+      );
+      return yield* recordExecution(id, { type: 'finish', result });
+    }),
   );
-  return yield* answerOf(id, yield* recordExecution(id, { type: 'finish', result }));
+  return yield* answerOf(id, recorded);
 });
 
 export const executeRequest = Effect.fnUntraced(function* (

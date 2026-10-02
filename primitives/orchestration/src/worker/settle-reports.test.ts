@@ -4,13 +4,24 @@ import { ApplicationFailure } from '@temporalio/activity';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import type { SettleRequest } from '../interpreter/host.ts';
 import { failureRecorder, type FailureRecorder } from '../testing/failure-recorder.ts';
 import { settledExecution } from '../testing/temporal.ts';
 import { makeActivities } from './activities.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const request = { org: 'acme', brain: 'alpha', spec: 'flow', executionId, settlement: { status: 'failed' } } as const;
+const request: SettleRequest = {
+  org: 'acme',
+  brain: 'alpha',
+  spec: 'flow',
+  executionId,
+  settlement: { status: 'failed' },
+};
+
+function ignore(): void {
+  return undefined;
+}
 
 function settling(settle: SettleExecution, recorder: FailureRecorder, attempt = 1) {
   return makeActivities({
@@ -18,6 +29,7 @@ function settling(settle: SettleExecution, recorder: FailureRecorder, attempt = 
     settle,
     reportUnsettled: recorder.reportUnsettled,
     currentRun: () => ({ workflowId: `acme/alpha/flow/${executionId}`, runId: 'run-1', attempt }),
+    heartbeat: { beat: ignore, everyMs: 10_000 },
   });
 }
 

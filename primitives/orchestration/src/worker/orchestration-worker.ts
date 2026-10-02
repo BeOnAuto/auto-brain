@@ -1,27 +1,33 @@
-import { fileURLToPath } from 'node:url';
-
 import type { SettleExecution } from '@beonauto/specs';
-import { activityInfo } from '@temporalio/activity';
-import { NativeConnection, Runtime, Worker } from '@temporalio/worker';
+import { activityInfo, heartbeat } from '@temporalio/activity';
+import { NativeConnection, Worker } from '@temporalio/worker';
 import { Data, Effect, type Scope } from 'effect';
 
 import type { OrchestrationActivities } from '../workflow/activity-contract.ts';
 import { makeActivities, workflowRunOf } from './activities.ts';
 import type { ExecuteSpec, ReportUnsettled } from './dependencies.ts';
+import { probeEveryMs, runtimeShutdownSignals, watchTemporal } from './temporal-runtime.ts';
 import { connectionOptionsOf, type TemporalSettings } from './temporal-settings.ts';
+import { failureConverterPath, workflowsPath } from './workflow-code.ts';
 
 export class OrchestrationWorkerError extends Data.TaggedError('OrchestrationWorkerError')<{
   readonly detail: string;
 }> {}
 
-export interface WorkerDefinition {
+export type WorkflowCode =
+  | { readonly workflowsPath: string }
+  | { readonly workflowBundle: { readonly codePath: string } };
+
+export type WorkerDefinition = WorkflowCode & {
   readonly namespace: string;
   readonly taskQueue: string;
-  readonly workflowsPath: string;
   readonly activities: OrchestrationActivities;
   readonly dataConverter: { readonly failureConverterPath: string };
   readonly shutdownGraceTime: string;
-}
+  readonly maxCachedWorkflows: number;
+  readonly maxConcurrentWorkflowTaskExecutions: number;
+  readonly maxConcurrentActivityTaskExecutions: number;
+};
 
 export interface RunnableWorker {
   run(): Promise<void>;
@@ -45,6 +51,8 @@ export interface OrchestrationWorkerOptions {
   readonly settle: SettleExecution;
   readonly reportUnsettled: ReportUnsettled;
   readonly onFailure: (detail: string) => void;
+  readonly workflowBundle?: string;
+  readonly heartbeatEveryMs?: number;
   readonly temporal?: TemporalWorkers;
 }
 
@@ -54,9 +62,11 @@ interface RunningWorker {
   readonly stop: () => Promise<void>;
 }
 
-const workflowsPath = fileURLToPath(new URL('../workflow/workflows.ts', import.meta.url));
+const mostCachedWorkflows = 16;
 
-const failureConverterPath = fileURLToPath(new URL('failure-converter.ts', import.meta.url));
+const mostWorkflowTasksAtOnce = 2;
+
+const heartbeatEveryMs = 10_000;
 
 const ranToTheEnd = Symbol('ran to the end');
 
@@ -64,6 +74,9 @@ const temporalWorkers: TemporalWorkers = {
   shutdownSignals: runtimeShutdownSignals,
   connect: async (settings) => {
     const connection = await NativeConnection.connect(connectionOptionsOf(settings));
+    const unwatch = watchTemporal(() =>
+      connection.withDeadline(Date.now() + probeEveryMs, () => connection.workflowService.getSystemInfo({})),
+    );
     return {
       create: async (definition) => {
         const worker = await Worker.create({ ...definition, connection });
@@ -75,7 +88,10 @@ const temporalWorkers: TemporalWorkers = {
           isRunning: () => worker.getState() === 'RUNNING',
         };
       },
-      close: () => connection.close(),
+      close: async () => {
+        unwatch();
+        await connection.close();
+      },
     };
   },
 };
@@ -100,7 +116,7 @@ export const runOrchestrationWorker = Effect.fnUntraced(function* (
 });
 
 async function startWorker(
-  { settings, executeSpec, settle, reportUnsettled }: OrchestrationWorkerOptions,
+  { settings, executeSpec, settle, reportUnsettled, workflowBundle, ...options }: OrchestrationWorkerOptions,
   temporal: TemporalWorkers,
 ): Promise<RunningWorker> {
   const signals = temporal.shutdownSignals();
@@ -114,15 +130,19 @@ async function startWorker(
     const worker = await connection.create({
       namespace: settings.namespace,
       taskQueue: settings.taskQueue,
-      workflowsPath,
+      ...(workflowBundle === undefined ? { workflowsPath } : { workflowBundle: { codePath: workflowBundle } }),
       activities: makeActivities({
         executeSpec,
         settle,
         reportUnsettled,
         currentRun: () => workflowRunOf(activityInfo()),
+        heartbeat: { beat: heartbeatNow, everyMs: options.heartbeatEveryMs ?? heartbeatEveryMs },
       }),
       dataConverter: { failureConverterPath },
       shutdownGraceTime: '10 seconds',
+      maxCachedWorkflows: mostCachedWorkflows,
+      maxConcurrentWorkflowTaskExecutions: mostWorkflowTasksAtOnce,
+      maxConcurrentActivityTaskExecutions: settings.nestedExecutions,
     });
     return runningWorker(worker, connection);
   } catch (error) {
@@ -159,15 +179,12 @@ async function stopWorker(
   await connection.close();
 }
 
+function heartbeatNow(): void {
+  heartbeat();
+}
+
 function failureOf(ending: unknown): string {
   return ending === ranToTheEnd
     ? 'The orchestration worker stopped on its own'
     : `The orchestration worker stopped: ${String(ending)}`;
-}
-
-function runtimeShutdownSignals(): readonly string[] {
-  if (Reflect.get(Runtime, '_instance') === undefined) {
-    Runtime.install({ shutdownSignals: [] });
-  }
-  return Runtime.instance().options.shutdownSignals;
 }

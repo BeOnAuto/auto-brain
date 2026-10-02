@@ -7,6 +7,7 @@ import type { InferenceSpec } from '../spec/inference-spec.ts';
 import { parseSpecDocument } from '../spec/spec-parsing.ts';
 import { inferenceDescription } from './inference-description.ts';
 import { specExecution, type ExecutionServices } from './spec-execution.ts';
+import { longestRequestMs } from './spec-request.ts';
 
 export type InferenceOptions = ExecutionServices;
 
@@ -42,5 +43,6 @@ export function makeInference(options: InferenceOptions): Primitive {
     parse,
     summarize,
     execute: (spec, input, execution) => execute(spec, input, execution),
+    longestExecutionMs: longestRequestMs,
   });
 }

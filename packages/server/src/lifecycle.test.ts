@@ -5,7 +5,7 @@ import { createApiKey } from '@beonauto/identity';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { startServer, tcpPort, defaultServerOptions } from './lifecycle.ts';
+import { startServer, tcpPort, defaultServerOptions, servedBy, type Served } from './lifecycle.ts';
 import { isAcceptingConnections } from './testing/accepting-connections.ts';
 import { testRoutes } from './testing/test-routes.ts';
 
@@ -21,6 +21,23 @@ function recordingDisposal(): { runtimeLayer: () => Layer.Layer<never>; events: 
     ),
   );
   return { runtimeLayer: () => recording, events };
+}
+
+function recordingWork(record: (event: string) => void): Served {
+  return {
+    routes: [
+      (routes) => {
+        routes.onClose(() => {
+          record('routes closed');
+          return Promise.resolve();
+        });
+      },
+    ],
+    stopWork: () => {
+      record('work stopped');
+      return Promise.resolve();
+    },
+  };
 }
 
 function statusOf(port: number, path: string, headers: Readonly<Record<string, string>>): Promise<number | undefined> {
@@ -58,14 +75,21 @@ describe('startServer', () => {
   });
 });
 
-describe('the runtime of a started server', () => {
+describe('the runtime of a server that cannot start', () => {
   it('is disposed before start-up rejects because the port is already taken', async () => {
     const first = await startServer(loopback, defaultServerOptions);
     const { runtimeLayer, events } = recordingDisposal();
 
     const failure = await startServer(
       { ...loopback, PORT: String(first.port) },
-      { ...defaultServerOptions, runtimeLayer },
+      {
+        ...defaultServerOptions,
+        runtimeLayer,
+        serve: () =>
+          recordingWork((event) => {
+            events.push(event);
+          }),
+      },
     ).then(
       () => 'started',
       (error: unknown) => {
@@ -76,7 +100,7 @@ describe('the runtime of a started server', () => {
     await first.stop();
 
     expect(failure).toContain('EADDRINUSE');
-    expect(events).toEqual(['runtime disposed', 'start-up rejected']);
+    expect(events).toEqual(['work stopped', 'runtime disposed', 'routes closed', 'start-up rejected']);
   });
 
   it('is disposed before start-up rejects because its routes cannot be built', async () => {
@@ -85,7 +109,7 @@ describe('the runtime of a started server', () => {
     const failure = await startServer(loopback, {
       ...defaultServerOptions,
       runtimeLayer,
-      routes: () => Promise.reject(new Error('The routes cannot be built')),
+      serve: () => Promise.reject(new Error('The routes cannot be built')),
     }).then(
       () => 'started',
       (error: unknown) => {
@@ -97,7 +121,9 @@ describe('the runtime of a started server', () => {
     expect(failure).toBe('Error: The routes cannot be built');
     expect(events).toEqual(['runtime disposed', 'start-up rejected']);
   });
+});
 
+describe('the runtime of a started server', () => {
   it('is kept until the server stops', async () => {
     const { runtimeLayer, events } = recordingDisposal();
 
@@ -106,6 +132,27 @@ describe('the runtime of a started server', () => {
     await server.stop();
 
     expect({ whileRunning, afterStopping: events }).toEqual({ whileRunning: [], afterStopping: ['runtime disposed'] });
+  });
+});
+
+describe('the work a started server does besides answering requests', () => {
+  it('stops after the server stopped accepting connections, and before the runtime is disposed', async () => {
+    const { runtimeLayer, events } = recordingDisposal();
+    const listening = { port: 0 };
+    const served = {
+      routes: [],
+      stopWork: async () => {
+        const accepting = await isAcceptingConnections(listening.port);
+        await setTimeout(50);
+        events.push(`work stopped, accepting connections: ${String(accepting)}`);
+      },
+    };
+
+    const server = await startServer(loopback, { ...defaultServerOptions, runtimeLayer, serve: () => served });
+    listening.port = server.port;
+    await server.stop();
+
+    expect(events).toEqual(['work stopped, accepting connections: false', 'runtime disposed']);
   });
 });
 
@@ -147,7 +194,7 @@ describe('startServer validates requests from browsers', () => {
 
 describe('startServer with routes', () => {
   it('serves the routes it is given', async () => {
-    const server = await startServer(loopback, { ...defaultServerOptions, routes: () => [testRoutes] });
+    const server = await startServer(loopback, { ...defaultServerOptions, serve: () => servedBy([testRoutes]) });
 
     const response = await fetch(`http://127.0.0.1:${server.port}/slow?ms=1`);
     await server.stop();
@@ -156,7 +203,7 @@ describe('startServer with routes', () => {
   });
 
   it('answers an unexpected error with a 500 problem document', async () => {
-    const server = await startServer(loopback, { ...defaultServerOptions, routes: () => [testRoutes] });
+    const server = await startServer(loopback, { ...defaultServerOptions, serve: () => servedBy([testRoutes]) });
 
     const response = await fetch(`http://127.0.0.1:${server.port}/fail`);
     await server.stop();
@@ -170,7 +217,7 @@ describe('startServer with routes', () => {
 
 describe('stopping a started server', () => {
   it('lets a request in flight finish, then stops without waiting for the shutdown timeout', async () => {
-    const server = await startServer(loopback, { ...defaultServerOptions, routes: () => [testRoutes] });
+    const server = await startServer(loopback, { ...defaultServerOptions, serve: () => servedBy([testRoutes]) });
     const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`);
     await setTimeout(50);
     const stopping = performance.now();
@@ -181,7 +228,37 @@ describe('stopping a started server', () => {
     expect({ status: response.status, body: await response.json() }).toEqual({ status: 200, body: { slept: 300 } });
     expect(performance.now() - stopping).toBeLessThan(2000);
   });
+});
 
+describe('the work a stopping server does besides answering requests', () => {
+  it('stops while the requests in flight finish, not after them', async () => {
+    const events: string[] = [];
+    const server = await startServer(loopback, {
+      ...defaultServerOptions,
+      serve: () => ({
+        routes: [testRoutes],
+        stopWork: async () => {
+          events.push('work stopping');
+          await setTimeout(50);
+          events.push('work stopped');
+        },
+      }),
+    });
+    const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`).then(() => {
+      events.push('request answered');
+      return events;
+    });
+    await setTimeout(50);
+
+    await server.stop();
+    await inFlight;
+
+    expect(events.toSorted()).toEqual(['request answered', 'work stopped', 'work stopping']);
+    expect(events.indexOf('work stopping')).toBeLessThan(events.indexOf('request answered'));
+  });
+});
+
+describe('stopping a started server with connections still open', () => {
   it('closes a keep-alive connection that is idle, instead of waiting for it until the shutdown timeout', async () => {
     const server = await startServer(loopback, defaultServerOptions);
     await (await fetch(`http://127.0.0.1:${server.port}/health`)).text();
@@ -195,7 +272,7 @@ describe('stopping a started server', () => {
   it('cuts off a request still running at the shutdown timeout', async () => {
     const server = await startServer(loopback, {
       ...defaultServerOptions,
-      routes: () => [testRoutes],
+      serve: () => servedBy([testRoutes]),
       shutdownTimeoutMs: 100,
     });
     const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=60000`).then(

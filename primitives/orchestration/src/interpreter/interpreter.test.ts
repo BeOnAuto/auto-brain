@@ -121,7 +121,7 @@ describe('a workflow run that cannot be read', () => {
     start.deliver({ id: 'e1', type: 'ignored' });
 
     expect(await fake.drive(() => start.ending)).toEqual({
-      kind: 'failed',
+      kind: 'faulted',
       type: 'InvalidRun',
       message: 'The workflow was started without a run it can read',
     });
@@ -129,8 +129,8 @@ describe('a workflow run that cannot be read', () => {
   });
 });
 
-describe('a workflow run that breaks down', () => {
-  it('settles as failed when its output is larger than an execution records', async () => {
+describe('a workflow run whose output is too large', () => {
+  it('settles as failed and fails for the tenant, naming the limit', async () => {
     const document = workflow('do:\n  - grow:\n      set: ${ .big }');
 
     const { ending, settlement } = await interpret(document, { input: { big: 'x'.repeat(1_100_000) } });
@@ -138,11 +138,13 @@ describe('a workflow run that breaks down', () => {
     expect(settlement).toEqual({ status: 'failed' });
     expect(ending).toEqual({
       kind: 'failed',
-      type: 'WorkflowBrokeDown',
+      type: 'WorkflowOutputTooLarge',
       message: "The workflow's output takes 1100002 bytes as JSON, more than the 1048574 an execution records",
     });
   });
+});
 
+describe('a workflow run that breaks down', () => {
   it('settles as failed when the runtime beneath it breaks down', async () => {
     const { ending, settlement } = await interpret(pausing, {
       host: (fake) => ({ ...fake.host, sleep: () => Promise.reject(new Error('The timer service is gone')) }),
@@ -150,7 +152,7 @@ describe('a workflow run that breaks down', () => {
 
     expect(settlement).toEqual({ status: 'failed' });
     expect(ending).toEqual({
-      kind: 'failed',
+      kind: 'faulted',
       type: 'WorkflowBrokeDown',
       message: 'The workflow broke down: Error: The timer service is gone',
     });

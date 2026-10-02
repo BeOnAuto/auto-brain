@@ -1,10 +1,10 @@
-import { isJson, isObject, measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '../dsl/json.ts';
+import { measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '../dsl/json.ts';
 import type { Components } from '../dsl/policy-checks.ts';
+import { makeHolding, type Hold } from './holding.ts';
 import type { WorkflowHost } from './host.ts';
+import { makeInbox, type Inbox } from './inbox.ts';
 import { raised } from './raised-error.ts';
 import type { WorkflowRun } from './workflow-run.ts';
-
-export type EventFilter = (event: JsonObject) => boolean;
 
 export interface Meter {
   readonly allowance: () => number;
@@ -13,7 +13,7 @@ export interface Meter {
   readonly countTask: () => void;
 }
 
-export interface RunState {
+export interface RunState extends Inbox {
   readonly run: WorkflowRun;
   readonly host: WorkflowHost;
   readonly meter: Meter;
@@ -25,9 +25,7 @@ export interface RunState {
   readonly step: (reference: string) => void;
   readonly checkHistory: (reference: string) => void;
   readonly beforeWaiting: (reference: string) => void;
-  readonly deliver: (event: unknown) => void;
-  readonly eventsDelivered: () => number;
-  readonly takeEvent: (accepts: EventFilter) => JsonObject | undefined;
+  readonly hold: Hold;
 }
 
 export const runtimeDescriptor: JsonObject = {
@@ -36,7 +34,7 @@ export const runtimeDescriptor: JsonObject = {
   metadata: { primitive: 'orchestration' },
 };
 
-export const mostHistoryBytes = 41_943_040;
+export const mostHistoryBytes = 8_388_608;
 
 export const mostHistoryEvents = 40_000;
 
@@ -60,7 +58,7 @@ export function dateTimeOf(milliseconds: number): JsonObject {
 export function makeRunState(run: WorkflowRun, host: WorkflowHost): RunState {
   const use = objectField(run.document, 'use') ?? {};
   const runs = new Map<string, number>();
-  let context: Json = {};
+  const hold = makeHolding();
   let stepsWithoutWaiting = 0;
   return {
     run,
@@ -72,10 +70,7 @@ export function makeRunState(run: WorkflowRun, host: WorkflowHost): RunState {
       timeouts: objectField(use, 'timeouts') ?? {},
     },
     workflow: { id: run.execution.id, definition: run.document, input: run.input, startedAt: dateTimeOf(host.now()) },
-    context: () => context,
-    replaceContext: (next) => {
-      context = next;
-    },
+    ...contextHeldBy(hold),
     nextRun: (reference) => {
       const next = (runs.get(reference) ?? 0) + 1;
       runs.set(reference, next);
@@ -99,7 +94,22 @@ export function makeRunState(run: WorkflowRun, host: WorkflowHost): RunState {
       requireRoomInHistory(host, reference);
       stepsWithoutWaiting = 0;
     },
+    hold,
     ...makeInbox(),
+  };
+}
+
+function contextHeldBy(hold: Hold): Pick<RunState, 'context' | 'replaceContext'> {
+  let context: Json = {};
+  let releaseContext = hold([context], '/');
+  return {
+    context: () => context,
+    replaceContext: (next) => {
+      const releaseNext = hold([next], '/');
+      releaseContext();
+      context = next;
+      releaseContext = releaseNext;
+    },
   };
 }
 
@@ -151,24 +161,6 @@ function makeMeter(host: WorkflowHost): Meter {
   };
 }
 
-function makeInbox(): Pick<RunState, 'deliver' | 'eventsDelivered' | 'takeEvent'> {
-  const inbox: JsonObject[] = [];
-  const delivered = new Set<string>();
-  return {
-    deliver: (event) => {
-      if (isEvent(event) && !delivered.has(event['id'])) {
-        delivered.add(event['id']);
-        inbox.push(event);
-      }
-    },
-    eventsDelivered: () => delivered.size,
-    takeEvent: (accepts) => {
-      const position = inbox.findIndex((event) => accepts(event));
-      return position === -1 ? undefined : inbox.splice(position, 1)[0];
-    },
-  };
-}
-
 function requireRoomInHistory(host: WorkflowHost, reference: string): void {
   const { bytes, events } = host.historySize();
   if (bytes > mostHistoryBytes || events > mostHistoryEvents) {
@@ -179,8 +171,4 @@ function requireRoomInHistory(host: WorkflowHost, reference: string): void {
       reference,
     );
   }
-}
-
-function isEvent(value: unknown): value is JsonObject & { readonly id: string; readonly type: string } {
-  return isJson(value) && isObject(value) && typeof value['id'] === 'string' && typeof value['type'] === 'string';
 }

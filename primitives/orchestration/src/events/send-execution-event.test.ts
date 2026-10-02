@@ -34,6 +34,13 @@ afterAll(async () => {
   await brain.close();
 }, 60_000);
 
+const tooLong: readonly (readonly [string, Readonly<Record<string, string>>, string])[] = [
+  ['a type', { type: 't'.repeat(257) }, '/event/type'],
+  ['an id', { type: 'x', id: 'i'.repeat(257) }, '/event/id'],
+  ['a source', { type: 'x', source: 's'.repeat(1025) }, '/event/source'],
+  ['a subject', { type: 'x', subject: 's'.repeat(1025) }, '/event/subject'],
+];
+
 function idOf(number: number): string {
   return `0199a3c4-7d2e-7c1a-9b3f-${String(number).padStart(12, '4')}`;
 }
@@ -133,5 +140,33 @@ describe('send_execution_event that cannot be delivered', () => {
     expect(
       await brain.call(sendEvent, { execution_id: idOf(7), event: { type: 'x', data: 'x'.repeat(262_200) } }),
     ).toMatchObject({ status: 'rejected', reason: 'invalid_input' });
+  });
+});
+
+describe('an event that does not fit', () => {
+  it.each(tooLong)(
+    'is rejected as invalid input when %s is longer than an event carries',
+    async (_, event, pointer) => {
+      expect(await brain.call(sendEvent, { execution_id: idOf(8), event })).toMatchObject({
+        status: 'rejected',
+        reason: 'invalid_input',
+        issues: [expect.objectContaining({ pointer })],
+      });
+    },
+  );
+
+  it('is rejected as invalid input when the whole event takes more than 262144 bytes, each field within its bound', async () => {
+    const event = {
+      type: 't'.repeat(256),
+      source: 's'.repeat(1024),
+      subject: 's'.repeat(1024),
+      data: 'd'.repeat(260_000),
+    };
+
+    expect(await brain.call(sendEvent, { execution_id: idOf(9), event })).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+      issues: [expect.objectContaining({ pointer: '/event' })],
+    });
   });
 });

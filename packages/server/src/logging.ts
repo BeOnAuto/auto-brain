@@ -61,6 +61,66 @@ export function logModelProviders({ configured, unconfigured }: ProviderStatus):
   );
 }
 
+export interface WorkflowsAddress {
+  readonly address: string;
+  readonly namespace: string;
+  readonly taskQueue: string;
+}
+
+export interface UnsettledReport {
+  readonly org: string;
+  readonly brain: string;
+  readonly executionId: string;
+  readonly reason: string;
+}
+
+export const logWorkflowsNotOffered = Effect.logInfo('Workflows are not offered because TEMPORAL_ADDRESS is unset');
+
+export function logWorkflowsOffered({ address, namespace, taskQueue }: WorkflowsAddress): Effect.Effect<void> {
+  return Effect.logInfo(
+    `Workflows are offered with Temporal at ${address}, namespace ${namespace}, task queue ${taskQueue}`,
+  ).pipe(Effect.annotateLogs({ temporal_address: address, namespace, task_queue: taskQueue }));
+}
+
+export const logWorkerStarted = Effect.logInfo('The workflow worker started');
+
+function inSeconds(ms: number): string {
+  return `${(ms / 1000).toFixed(1)} s`;
+}
+
+export function logWorkerNotStarted(detail: string, retryMs: number): Effect.Effect<void> {
+  return Effect.logWarning(`The workflow worker could not start; it tries again in ${inSeconds(retryMs)}`).pipe(
+    Effect.annotateLogs({ error: detail, retry_ms: retryMs }),
+  );
+}
+
+export function logWorkerStopped(detail: string, retryMs: number): Effect.Effect<void> {
+  return Effect.logError(`The workflow worker stopped on its own; it starts again in ${inSeconds(retryMs)}`).pipe(
+    Effect.annotateLogs({ error: detail, retry_ms: retryMs }),
+  );
+}
+
+export function logUnsettled({ org, brain, executionId, reason }: UnsettledReport): Effect.Effect<void> {
+  return Effect.logError('An execution stays started because settling it failed').pipe(
+    Effect.annotateLogs({ org, brain, execution_id: executionId, reason }),
+  );
+}
+
+export interface TemporalReport {
+  readonly level: string;
+  readonly message: string;
+  readonly context: Readonly<Record<string, string | number | boolean>>;
+}
+
+const temporalLevels: Readonly<Record<string, (message: string) => Effect.Effect<void>>> = {
+  ERROR: Effect.logError,
+  INFO: Effect.logInfo,
+};
+
+export function logTemporal({ level, message, context }: TemporalReport): Effect.Effect<void> {
+  return (temporalLevels[level] ?? Effect.logWarning)(message).pipe(Effect.annotateLogs(context));
+}
+
 export function logProviderMessage({
   provider,
   model,

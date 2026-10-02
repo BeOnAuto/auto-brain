@@ -3,8 +3,9 @@ import type { Server } from 'node:http';
 import { setTimeout } from 'node:timers/promises';
 
 export interface ShutdownHooks {
-  readonly closeApi: () => Promise<void>;
+  readonly stopWork: () => Promise<void>;
   readonly disposeRuntime: () => Promise<void>;
+  readonly closeApi: () => Promise<void>;
 }
 
 const graceMs = 100;
@@ -12,7 +13,7 @@ const graceMs = 100;
 export async function shutDown(server: Server, hooks: ShutdownHooks, timeoutMs: number): Promise<void> {
   const closed = once(server, 'close');
   server.close();
-  await Promise.race([closed, elapsed(timeoutMs)]);
+  await Promise.all([Promise.race([closed, elapsed(timeoutMs)]), hooks.stopWork()]);
   await hooks.disposeRuntime();
   await hooks.closeApi();
   await Promise.race([closed, elapsed(graceMs)]);

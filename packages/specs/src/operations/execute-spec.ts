@@ -17,7 +17,7 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
       description: known.describe([
         'Runs the active latest version of a spec of the brain with an input, records the execution,',
         'and returns it with its output when it succeeded.',
-        'Some primitives, such as workflows, start work that finishes after the call returns:',
+        'A primitive may start work that finishes after the call returns:',
         'the execution then answers with status started, and get_execution shows it started until that work ends it.',
         '`primitive` names the primitive and `name` the spec.',
         '`input` is the JSON value the spec takes, {} when left out; get_spec shows its input_schema when it has one.',

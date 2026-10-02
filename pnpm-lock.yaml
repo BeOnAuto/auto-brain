@@ -372,6 +372,9 @@ importers:
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../operations
+      '@beonauto/orchestration':
+        specifier: workspace:*
+        version: link:../../primitives/orchestration
       '@beonauto/specs':
         specifier: workspace:*
         version: link:../specs
@@ -379,6 +382,9 @@ importers:
         specifier: 'catalog:'
         version: 4.0.0
     devDependencies:
+      '@temporalio/testing':
+        specifier: 1.24.0
+        version: 1.24.0(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.28)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)

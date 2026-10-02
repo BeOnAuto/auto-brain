@@ -1,9 +1,11 @@
-import { DefaultLogger, Runtime } from '@temporalio/worker';
 import { Effect } from 'effect';
 
 import { runOrchestrationWorker } from './src/worker/orchestration-worker.ts';
+import { installTemporalRuntime } from './src/worker/temporal-runtime.ts';
 
-Runtime.install({ logger: new DefaultLogger('WARN'), shutdownSignals: [] });
+installTemporalRuntime(({ level, message, context }) => {
+  process.stderr.write(`${level} ${message} ${JSON.stringify(context)}\n`);
+});
 
 const settings = {
   address: process.env['TEMPORAL_ADDRESS'] ?? '',
@@ -11,6 +13,7 @@ const settings = {
   taskQueue: process.env['TEMPORAL_TASK_QUEUE'] ?? '',
   tls: false,
   mostDuration: 2_592_000_000,
+  nestedExecutions: 32,
 };
 
 await Effect.runPromise(

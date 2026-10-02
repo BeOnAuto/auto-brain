@@ -76,7 +76,7 @@ describe('a value a workflow holds', () => {
   it('may not double by sharing itself from task to task', async () => {
     const { settlement } = await interpret(workflow(tasks(40, () => `{ set: { a: '\${ . }', b: '\${ . }' } }`)));
 
-    expect(rejectionOf(settlement)).toContain('more than the 8000000 a workflow may hold');
+    expect(rejectionOf(settlement)).toContain('a workflow may hold');
   });
 
   it('may not nest more than 512 levels deep', async () => {

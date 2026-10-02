@@ -42,6 +42,26 @@ describe('a call of execute_spec', () => {
   });
 });
 
+describe('the time a call may take', () => {
+  it('is the longest nested execution the run allows', async () => {
+    const allowed: number[] = [];
+
+    await interpret(summarizing, {
+      input: { text: 'long' },
+      longestNestedExecutionMs: 1_660_000,
+      host: (fake) => ({
+        ...fake.host,
+        executeSpec: (call, longestMs) => {
+          allowed.push(longestMs);
+          return fake.host.executeSpec(call, longestMs);
+        },
+      }),
+    });
+
+    expect(allowed).toStrictEqual([1_660_000]);
+  });
+});
+
 describe('the runs of a call', () => {
   it('are counted per task, so each run is its own execution', async () => {
     const document = workflow(`

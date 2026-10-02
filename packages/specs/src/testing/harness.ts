@@ -30,7 +30,11 @@ export interface Harness {
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
   readonly run: <A>(calls: Effect.Effect<A, never, DispatcherServices>, at?: string) => Promise<A>;
   readonly call: (operation: BrainOperation, request: BrainRequest, at?: string) => Promise<Outcome>;
-  readonly callWithin: (milliseconds: number, operation: BrainOperation, request: BrainRequest) => Promise<Settled>;
+  readonly callCancelledWhen: (
+    cancelled: Promise<unknown>,
+    operation: BrainOperation,
+    request: BrainRequest,
+  ) => Promise<Settled>;
 }
 
 const knownBrains = [
@@ -59,8 +63,14 @@ export function harness(): Harness {
     dispatch,
     run,
     call: (operation, request, at) => run(dispatch(operation, request), at),
-    callWithin: (milliseconds, operation, request) =>
-      run(settle(dispatch(operation, request), AbortSignal.timeout(milliseconds))),
+    callCancelledWhen: (cancelled, operation, request) => {
+      const cancelling = new AbortController();
+      void cancelled.then(() => {
+        cancelling.abort();
+        return cancelling;
+      });
+      return run(settle(dispatch(operation, request), cancelling.signal));
+    },
   };
 }
 

@@ -1,6 +1,5 @@
 import type { Execution, ExecutionAddress, SettleExecution, Settlement } from '@beonauto/specs';
 import { Client, Connection } from '@temporalio/client';
-import { DefaultLogger, Runtime } from '@temporalio/worker';
 import { Effect, Exit, Scope } from 'effect';
 import { inject } from 'vitest';
 
@@ -9,6 +8,7 @@ import type { ExecuteSpec, SpecExecution, SpecExecutionResult, UnsettledExecutio
 import { runOrchestrationWorker } from '../worker/orchestration-worker.ts';
 import type { TemporalSettings } from '../worker/temporal-settings.ts';
 import { failureRecorder } from './failure-recorder.ts';
+import { temporalLogsOf } from './temporal-logs.ts';
 
 interface Settled {
   readonly address: ExecutionAddress;
@@ -22,24 +22,32 @@ export interface TemporalHarness {
   readonly executions: () => readonly SpecExecution[];
   readonly settled: () => readonly Settled[];
   readonly unsettled: () => readonly UnsettledExecution[];
+  readonly temporalLogsOf: typeof temporalLogsOf;
   readonly close: () => Promise<void>;
 }
 
 export interface HarnessOptions {
   readonly respond?: (execution: SpecExecution) => SpecExecutionResult;
+  readonly answerWhen?: () => Promise<void>;
   readonly settle?: SettleExecution;
+  readonly nestedExecutions?: number;
+  readonly heartbeatEveryMs?: number;
+  readonly workflowBundle?: string;
 }
 
-Runtime.install({ logger: new DefaultLogger('WARN'), shutdownSignals: [] });
-
-export function settingsFor(taskQueue: string): TemporalSettings {
+export function settingsFor(taskQueue: string, nestedExecutions = 32): TemporalSettings {
   return {
     address: inject('temporalAddress'),
     namespace: 'default',
     taskQueue,
     tls: false,
     mostDuration: 2_592_000_000,
+    nestedExecutions,
   };
+}
+
+function answerAtOnce(): Promise<void> {
+  return Promise.resolve();
 }
 
 export function settledExecution(address: ExecutionAddress, settlement: Settlement): Execution {
@@ -52,13 +60,13 @@ export function settledExecution(address: ExecutionAddress, settlement: Settleme
 export async function temporalHarness(taskQueue: string, options: HarnessOptions = {}): Promise<TemporalHarness> {
   const executions: SpecExecution[] = [];
   const settled: Settled[] = [];
-  const settings = settingsFor(taskQueue);
+  const settings = settingsFor(taskQueue, options.nestedExecutions);
   const respond = options.respond ?? ((): SpecExecutionResult => ({ status: 'succeeded', output: null }));
+  const answerWhen = options.answerWhen ?? answerAtOnce;
   const executeSpec: ExecuteSpec = (execution) =>
     Effect.sync(() => {
       executions.push(execution);
-      return respond(execution);
-    });
+    }).pipe(Effect.andThen(Effect.promise(answerWhen)), Effect.andThen(Effect.sync(() => respond(execution))));
   const settle: SettleExecution =
     options.settle ??
     ((address, settlement) =>
@@ -76,6 +84,8 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
         settle,
         onFailure: recorder.onFailure,
         reportUnsettled: recorder.reportUnsettled,
+        ...(options.heartbeatEveryMs === undefined ? {} : { heartbeatEveryMs: options.heartbeatEveryMs }),
+        ...(options.workflowBundle === undefined ? {} : { workflowBundle: options.workflowBundle }),
       });
       return yield* connectOrchestration(settings, { requestTimeout: 5000 });
     }).pipe(Scope.provide(scope)),
@@ -88,6 +98,7 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
     executions: () => executions,
     settled: () => settled,
     unsettled: recorder.unsettled,
+    temporalLogsOf,
     close: async () => {
       await connection.close();
       await Effect.runPromise(Scope.close(scope, Exit.void));

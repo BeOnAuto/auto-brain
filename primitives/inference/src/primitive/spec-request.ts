@@ -2,6 +2,7 @@ import type { ExecutionContext } from '@beonauto/specs';
 
 import type { ModelRequest } from '../model/model-request.ts';
 import type { InferenceSpec } from '../spec/inference-spec.ts';
+import { mostOutputTokens } from '../spec/spec-settings.ts';
 import type { RenderedPrompt } from '../template/compiled-template.ts';
 
 const firstAnswerMilliseconds = 60_000;
@@ -11,6 +12,8 @@ const millisecondsPerOutputToken = 25;
 function timeoutFor(maxOutputTokens: number): number {
   return firstAnswerMilliseconds + millisecondsPerOutputToken * maxOutputTokens;
 }
+
+export const longestRequestMs = timeoutFor(mostOutputTokens);
 
 export function requestFor(
   spec: InferenceSpec,
