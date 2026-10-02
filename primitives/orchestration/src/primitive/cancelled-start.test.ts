@@ -11,12 +11,15 @@ const executionId = '0199a3c4-7d2e-7c1a-9b3f-555555555551';
 
 const flow = "document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\ndo: []\n";
 
+const startBegan = Promise.withResolvers<void>();
+
 const slowlyStarting: OrchestrationClient = {
   mostDuration: 2_592_000_000,
   start: () =>
-    Effect.promise(() => setTimeout(300)).pipe(
-      Effect.as({ workflowId: `acme/alpha/flow/${executionId}`, runId: 'run-1' }),
-    ),
+    Effect.promise(() => {
+      startBegan.resolve();
+      return setTimeout(300);
+    }).pipe(Effect.as({ workflowId: `acme/alpha/flow/${executionId}`, runId: 'run-1' })),
   signal: () => Effect.void,
 };
 
@@ -25,7 +28,7 @@ describe('an execution whose call is cancelled while Temporal starts its workflo
     const brain = brainWith([makeOrchestration({ client: slowlyStarting })]);
     await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source: flow });
 
-    const answered = await brain.callCancelledAfter(20, brain.executeSpec, {
+    const answered = await brain.callCancelledWhen(startBegan.promise, brain.executeSpec, {
       primitive: 'orchestration',
       name: 'flow',
       execution_id: executionId,

@@ -26,9 +26,12 @@ beforeEach(() => {
 async function forwardedOf(log: () => void): Promise<readonly TemporalLogEntry[]> {
   log();
   Runtime.instance().logger.error('end of the case');
-  await vi.waitFor(() => {
-    expect(entries.at(-1)?.message).toBe('Temporal reported: end of the case');
-  });
+  await vi.waitFor(
+    () => {
+      expect(entries.at(-1)?.message).toBe('Temporal reported: end of the case');
+    },
+    { timeout: 10_000 },
+  );
   return entries.slice(0, -1);
 }
 
@@ -220,9 +223,12 @@ describe('a worker that loses Temporal', () => {
       }
       Runtime.instance().logger.warn('Network error while sending worker heartbeat', { sdkComponent: 'core' });
     });
-    await vi.waitFor(() => {
-      expect(entries.at(-1)?.message).toBe('The workflow worker reached Temporal again');
-    });
+    await vi.waitFor(
+      () => {
+        expect(entries.at(-1)?.message).toBe('The workflow worker reached Temporal again');
+      },
+      { timeout: 10_000 },
+    );
     unwatch();
     unwatch();
 

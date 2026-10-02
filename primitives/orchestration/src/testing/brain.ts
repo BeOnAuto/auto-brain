@@ -30,7 +30,11 @@ export interface Brain {
   readonly executeSpec: BrainOperation;
   readonly getExecution: BrainOperation;
   readonly call: (operation: BrainOperation, input: object, caller?: CallerIdentity) => Promise<Outcome>;
-  readonly callCancelledAfter: (milliseconds: number, operation: BrainOperation, input: object) => Promise<Settled>;
+  readonly callCancelledWhen: (
+    cancelled: Promise<unknown>,
+    operation: BrainOperation,
+    input: object,
+  ) => Promise<Settled>;
   readonly executeNested: ExecuteSpec;
   readonly settle: SettleExecution;
 }
@@ -56,12 +60,16 @@ export function brainWith(primitives: readonly Primitive[]): Brain {
     executeSpec,
     getExecution,
     call,
-    callCancelledAfter: (milliseconds, operation, input) =>
-      Effect.runPromise(
-        settleCall(dispatch(operation, input, acmeCaller), AbortSignal.timeout(milliseconds)).pipe(
-          Effect.provide(services),
-        ),
-      ),
+    callCancelledWhen: (cancelled, operation, input) => {
+      const cancelling = new AbortController();
+      void cancelled.then(() => {
+        cancelling.abort();
+        return cancelling;
+      });
+      return Effect.runPromise(
+        settleCall(dispatch(operation, input, acmeCaller), cancelling.signal).pipe(Effect.provide(services)),
+      );
+    },
     executeNested: ({ caller, primitive, name, input, executionId }) =>
       dispatch(executeSpec, { primitive, name, input, execution_id: executionId }, caller).pipe(
         Effect.map(specExecutionResultOf),

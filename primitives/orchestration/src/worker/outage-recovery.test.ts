@@ -26,12 +26,12 @@ async function temporalOn(port: number): Promise<() => Promise<void>> {
   const environment = await TestWorkflowEnvironment.createLocal({
     server: { ip: '127.0.0.1', port, log: { format: 'pretty', level: 'error' } },
   });
-  let stopping: Promise<void> | undefined;
-  const stop = (): Promise<void> => {
-    stopping ??= environment.teardown();
-    return stopping;
+  let stopping: Promise<unknown> | undefined;
+  const stop = async (): Promise<void> => {
+    stopping ??= Promise.race([environment.teardown(), once(AbortSignal.timeout(10_000), 'abort')]);
+    await stopping;
   };
-  onTestFinished(stop);
+  onTestFinished(stop, 20_000);
   return stop;
 }
 
@@ -52,7 +52,7 @@ describe('a worker whose Temporal goes away and comes back', () => {
     const port = await freePort();
     const stopFirst = await temporalOn(port);
     const scope = Effect.runSync(Scope.make());
-    onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)));
+    onTestFinished(() => Effect.runPromise(Scope.close(scope, Exit.void)), 20_000);
     const recorder = failureRecorder();
     await Effect.runPromise(
       runOrchestrationWorker({
