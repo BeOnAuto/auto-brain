@@ -1,10 +1,10 @@
-import { verifiedWorkflowBundle } from './src/index.ts';
+import { checkBundleCommand } from './src/worker/bundle-commands.ts';
 
-const [directory] = process.argv.slice(2);
-if (directory === undefined) {
-  process.stderr.write('Name the directory of the workflow bundle: node check-workflow-bundle.ts <directory>\n');
-  process.exitCode = 1;
-} else {
-  const codePath = await verifiedWorkflowBundle(directory);
-  process.stdout.write(`The workflow bundle ${codePath} matches this code, and Temporal's native bridge loads\n`);
-}
+process.exitCode = await checkBundleCommand(process.argv.slice(2), {
+  out: (line) => {
+    process.stdout.write(`${line}\n`);
+  },
+  error: (line) => {
+    process.stderr.write(`${line}\n`);
+  },
+});
