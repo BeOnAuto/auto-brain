@@ -167,58 +167,35 @@ The interpreter runs in Temporal's workflow sandbox and must make the same decis
 
 ## Running it
 
-The server does not wire the primitive in yet, so it serves no workflows. A composition root wires it in like this when the settings name a Temporal server:
+The server serves workflows when `TEMPORAL_ADDRESS` is set (`packages/server/src/workflows.ts`); without it, it loads no Temporal code and offers only the other primitives. The pieces it puts together:
 
-```ts
-import {
-  connectOrchestration,
-  defineSendExecutionEvent,
-  makeOrchestration,
-  runOrchestrationWorker,
-  specExecutionResultOf,
-  TemporalSettingsConfig,
-  type ExecuteSpec,
-  type UnsettledExecution,
-} from '@beonauto/orchestration';
-import { executionSettler } from '@beonauto/specs';
+- `readTemporalSettings(environment)`, from the entry `@beonauto/orchestration/settings`, which imports nothing of Temporal: none when `TEMPORAL_ADDRESS` is unset, the settings below otherwise, and `temporal_settings_invalid` naming every setting that is wrong and what it expects, never its value.
+- `connectOrchestration(settings)` (scoped): the Temporal client that starts workflows and signals events. Each request answers within its deadline, 10 seconds, even while Temporal's client still retries it, and closing the client waits for those retries to end, because a retry that runs after its connection closed throws from a timer and ends the process.
+- `makeOrchestration({ client })`, the primitive for `makeSpecOperations`, and `defineSendExecutionEvent(client)`, the brain operation `send_execution_event`.
+- `installTemporalRuntime(log)`: Temporal's runtime with no shutdown signals and a logger that hands the server Temporal's warnings and errors, the native core's included, with only the fields that describe them.
+- `runOrchestrationWorker({ settings, executeSpec, settle, reportUnsettled, onFailure, workflowBundle })` (scoped): the worker, inside the server process. `executeSpec` runs a nested execution through the server's dispatcher, as the caller captured when the workflow started (`specExecutionResultOf` turns its outcome into a result), and `settle` is `executionSettler` over the server's ledger.
 
-const temporal = yield * TemporalSettingsConfig; // Option.none() when TEMPORAL_ADDRESS is not set
-// with Option.some(settings):
-const client = yield * connectOrchestration(settings); // scoped
-const orchestration = makeOrchestration({ client }); // a Primitive for makeSpecOperations
-const sendExecutionEvent = defineSendExecutionEvent(client); // a brain operation for the catalog
-const executeSpec: ExecuteSpec = ({ org, brain, caller, primitive, name, input, executionId }) =>
-  dispatcher
-    .dispatchToBrain(executeSpecOperation.registration, {
-      caller,
-      org,
-      brain,
-      input: { primitive, name, input, execution_id: executionId },
-      encoding: 'json',
-    })
-    .pipe(Effect.provide(services), Effect.map(specExecutionResultOf));
-const onFailure = (detail: string) => logIncident(detail); // the server decides what follows
-const reportUnsettled = ({ org, brain, executionId, reason }: UnsettledExecution) =>
-  logError('An execution stays started', { org, brain, executionId, reason });
-yield * runOrchestrationWorker({ settings, executeSpec, settle: executionSettler(ledger), reportUnsettled, onFailure }); // scoped
-```
+The worker connects to Temporal, runs, and shuts down when its scope closes: activities in flight get 10 seconds to finish, and are then left to Temporal's retries, and then its connection closes. It fails with `OrchestrationWorkerError` when Temporal cannot be reached or the worker cannot be made, closing the connection it opened. The server starts it again after such a failure, and after a worker that stops on its own, with a delay that doubles from 1 second up to 30 seconds.
 
-`runOrchestrationWorker` connects to Temporal, bundles the workflow code when it starts (there is no build step), runs the worker inside the server process, and shuts it down when its scope closes: activities in flight get 10 seconds to finish, and are then left to Temporal's retries, and then its connection closes. It fails with `OrchestrationWorkerError` when Temporal cannot be reached or the worker cannot be made, closing the connection it opened.
-
-The server owns the process's signals. The worker installs Temporal's runtime with no `shutdownSignals`, so a `SIGTERM` does not stop the worker behind the server's back; it refuses to start under a runtime installed earlier with shutdown signals. Stopping a worker that already stopped is harmless.
+The server owns the process's signals. The worker installs Temporal's runtime with no `shutdownSignals`, so a `SIGTERM` does not stop the worker behind the server's back; it refuses to start under a runtime installed earlier with shutdown signals. When Temporal shuts an idle runtime down, the worker installs it again with the options it had. Stopping a worker that already stopped is harmless.
 
 A worker that stops on its own, because its run fails (Temporal unreachable for good, a fatal worker error) or ends without being asked to, calls `onFailure` once with a detail saying why; stopping it when its scope closes calls nothing. While the worker is down, executing a workflow spec still answers `started` whenever Temporal accepts the start, and `unavailable` only when it does not; the workflow waits on its task queue until a worker polls it again.
 
+### The workflow bundle
+
+A worker given only the workflow code bundles it with webpack and swc when it starts, as in development and the tests; swc's native code comes as an optional dependency. In production, as Temporal recommends, the code is bundled once ahead of time: `node build-workflow-bundle.ts <directory>` (`buildWorkflowBundle`) bundles it with exactly what the worker's own bundler is given, so the sandbox is the same, and writes beside the code a manifest of the SHA-256 of the code and of what it was built from: `pnpm-lock.yaml`, the patches and every source file of this package. The worker loads it when `ORCHESTRATION_WORKFLOW_BUNDLE` names its directory; the server checks it first with `verifiedWorkflowBundle` and does not start when it is missing, incomplete, edited or built from other code, naming what changed. `node check-workflow-bundle.ts <directory>` runs that check and loads Temporal's native bridge, which the image build does after copying the bundle. The replay corpus replays against such a bundle as well.
+
 ### Settings
 
-| Variable                     | Default      | Purpose                                                                                                  |
-| ---------------------------- | ------------ | -------------------------------------------------------------------------------------------------------- |
-| `TEMPORAL_ADDRESS`           |              | Address of the Temporal frontend; when it is not set, orchestration is not available                     |
-| `TEMPORAL_NAMESPACE`         | `default`    | Temporal namespace                                                                                       |
-| `TEMPORAL_TASK_QUEUE`        | `auto-brain` | Task queue the worker polls and workflows start on                                                       |
-| `TEMPORAL_API_KEY`           |              | API key, for Temporal Cloud; implies TLS                                                                 |
-| `TEMPORAL_TLS`               | `false`      | Whether to connect with TLS                                                                              |
-| `ORCHESTRATION_MAX_DURATION` | `P30D`       | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`; checked when the server starts |
+| Variable                        | Default      | Purpose                                                                                                                                    |
+| ------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `TEMPORAL_ADDRESS`              |              | Address of the Temporal frontend; when it is not set, orchestration is not available                                                       |
+| `TEMPORAL_NAMESPACE`            | `default`    | Temporal namespace                                                                                                                         |
+| `TEMPORAL_TASK_QUEUE`           | `auto-brain` | Task queue the worker polls and workflows start on                                                                                         |
+| `TEMPORAL_API_KEY`              |              | API key, for Temporal Cloud; implies TLS                                                                                                   |
+| `TEMPORAL_TLS`                  | `false`      | Whether to connect with TLS                                                                                                                |
+| `ORCHESTRATION_MAX_DURATION`    | `P30D`       | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`; checked when the server starts                                   |
+| `ORCHESTRATION_WORKFLOW_BUNDLE` |              | Directory of a workflow bundle built ahead of time; `/app/workflow-bundle` in the image. Unset, the worker bundles the code when it starts |
 
 ### Tenancy
 
@@ -233,8 +210,8 @@ Starting workflows from schedules or events, `run`, `emit`, outbound calls, cata
 
 ## Testing
 
-The integration tests run against a Temporal dev server that `@temporalio/testing` starts once for the test run (`temporal-test-server.ts`), downloading the Temporal CLI on first use into the temp directory. Stopping it waits at most 10 seconds, so a dev server whose exit is never reported, as under emulation of another architecture, cannot hold the test run open. The unit tests run the interpreter over a fake host with a virtual clock (`src/testing/fake-host.ts`), and the Temporal adapter over a fake of the workflow API.
+The integration tests run against a Temporal dev server that `@temporalio/testing` starts once for the test run (`temporal-test-server.ts`, which the server's tests share as `@beonauto/orchestration/temporal-test-server`), downloading the Temporal CLI on first use into the temp directory. Stopping it waits at most 10 seconds, so a dev server whose exit is never reported, as under emulation of another architecture, cannot hold the test run open. The unit tests run the interpreter over a fake host with a virtual clock (`src/testing/fake-host.ts`), and the Temporal adapter over a fake of the workflow API.
 
 ## Source
 
-`src/index.ts` is the only entry point. `src/dsl` holds what reads a document and is safe in the workflow sandbox: JSON, durations, jq expressions, tasks and the policy. `src/document` parses a spec document: YAML, the DSL schema and graph, the issues and the summary. `src/interpreter` runs a workflow over the `WorkflowHost` interface. `src/workflow` is the Temporal workflow: the entry module that is bundled, and the host built on Temporal's workflow API. `src/worker` holds the worker, its activities, its settings and its failure converter, which removes stack traces from recorded failures. `src/primitive` holds the primitive and its Temporal client, and `src/events` the event operation.
+`src/index.ts` is the entry point, and `src/settings.ts` the entry for reading the settings without loading Temporal. `src/dsl` holds what reads a document and is safe in the workflow sandbox: JSON, durations, jq expressions, tasks and the policy. `src/document` parses a spec document: YAML, the DSL schema and graph, the issues and the summary. `src/interpreter` runs a workflow over the `WorkflowHost` interface. `src/workflow` is the Temporal workflow: the entry module that is bundled, and the host built on Temporal's workflow API. `src/worker` holds the worker, its activities, its settings, Temporal's runtime, the workflow bundle and its failure converter, which removes stack traces from recorded failures. `src/primitive` holds the primitive and its Temporal client, and `src/events` the event operation.
