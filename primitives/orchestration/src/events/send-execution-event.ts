@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BrainContext, defineCommand, NotFound } from '@beonauto/operations';
+import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import { getExecution } from '@beonauto/specs';
 import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
 
@@ -99,5 +99,11 @@ export function defineSendExecutionEvent(client: OrchestrationClient) {
       yield* client.signal({ org, brain, spec: execution.name, executionId }, delivered);
       return { execution_id: executionId, event: delivered };
     }),
+    plainLanguage: {
+      task: 'send an event to a running workflow',
+      attempt: ({ event }) => `send the event ${quoted(event.type)} to a running workflow`,
+      outcome: ({ event }) =>
+        `Delivered the event ${quoted(event.type)} to the running workflow. The workflow uses it as soon as it is waiting for it.`,
+    },
   });
 }
