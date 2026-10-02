@@ -31,6 +31,7 @@ export interface HarnessOptions {
   readonly answerWhen?: () => Promise<void>;
   readonly settle?: SettleExecution;
   readonly nestedExecutions?: number;
+  readonly heartbeatEveryMs?: number;
 }
 
 export function settingsFor(taskQueue: string, nestedExecutions = 32): TemporalSettings {
@@ -82,6 +83,7 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
         settle,
         onFailure: recorder.onFailure,
         reportUnsettled: recorder.reportUnsettled,
+        ...(options.heartbeatEveryMs === undefined ? {} : { heartbeatEveryMs: options.heartbeatEveryMs }),
       });
       return yield* connectOrchestration(settings, { requestTimeout: 5000 });
     }).pipe(Scope.provide(scope)),

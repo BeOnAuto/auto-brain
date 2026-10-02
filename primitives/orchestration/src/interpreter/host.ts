@@ -49,7 +49,7 @@ export interface WorkflowHost {
   readonly deadline: (milliseconds: number) => Promise<void>;
   readonly waitUntil: (satisfied: () => boolean) => Promise<void>;
   readonly watch: (satisfied: () => boolean) => Promise<void>;
-  readonly executeSpec: (call: SpecCall) => Promise<SpecCallResult>;
+  readonly executeSpec: (call: SpecCall, longestMs: number) => Promise<SpecCallResult>;
   readonly settle: (request: SettleRequest) => Promise<void>;
   readonly cancellable: <T>(work: () => Promise<T>) => Cancellable<T>;
   readonly isCancellation: (error: unknown) => boolean;

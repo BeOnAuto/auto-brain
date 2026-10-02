@@ -131,6 +131,8 @@ The `title` names the spec and the reason, and the `detail` carries the detail o
 
 Each run of a call is its own execution, with an id derived from the workflow run, the reference of the task and how many times that task ran: a UUID version 5. When Temporal retries the activity of a call, the call asks for the same execution id, so an execution that already has a final result is answered from the ledger and its model is not called again.
 
+The activity of a call heartbeats every 10 seconds while the nested execution runs, with a heartbeat timeout of 30 seconds, and may run for the longest a nested execution may legitimately take and a minute more: the most `longestExecutionMs` the server's primitives state (see `@beonauto/specs`), which the client puts in the run. For inference that is the deadline of a model call for the most output tokens, 60 seconds and 25 ms a token, 1660 seconds for 64000, so 1720 seconds; a primitive that states none is given 10 minutes. When the server running a nested execution dies, Temporal sees no heartbeat for 30 seconds, fails that attempt and retries it a second later on a worker of the task queue, where the nested execution runs again under the same id, since one that started and never finished runs again for its id: a call recovers about 31 seconds after its server died, once a worker polls the task queue. A nested execution that hangs while it heartbeats is ended by the start-to-close timeout, and retried the same way.
+
 ### Events
 
 A `listen` task waits for events sent to the running execution with `send_execution_event`, an operation of this package:

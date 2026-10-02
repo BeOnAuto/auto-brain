@@ -11,7 +11,7 @@ type ProviderOptions = Readonly<Record<string, Schema.JsonObject>>;
 
 const defaultOutputTokens = 1024;
 
-const mostOutputTokens = 64_000;
+export const mostOutputTokens = 64_000;
 
 const settingsPointer = /^\/settings/u;
 

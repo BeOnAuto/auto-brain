@@ -40,7 +40,7 @@ export async function callTask(invocation: Invocation): Promise<Body> {
 
 async function executed(state: RunState, call: SpecCall): Promise<SpecCallResult> {
   try {
-    return await state.host.executeSpec(call);
+    return await state.host.executeSpec(call, state.run.longestNestedExecutionMs);
   } catch (error) {
     if (state.host.isCancellation(error)) {
       throw error;

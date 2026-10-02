@@ -1,5 +1,5 @@
 import type { SettleExecution } from '@beonauto/specs';
-import { activityInfo } from '@temporalio/activity';
+import { activityInfo, heartbeat } from '@temporalio/activity';
 import { NativeConnection, Worker } from '@temporalio/worker';
 import { Data, Effect, type Scope } from 'effect';
 
@@ -52,6 +52,7 @@ export interface OrchestrationWorkerOptions {
   readonly reportUnsettled: ReportUnsettled;
   readonly onFailure: (detail: string) => void;
   readonly workflowBundle?: string;
+  readonly heartbeatEveryMs?: number;
   readonly temporal?: TemporalWorkers;
 }
 
@@ -64,6 +65,8 @@ interface RunningWorker {
 export const mostCachedWorkflows = 16;
 
 export const mostWorkflowTasksAtOnce = 2;
+
+export const heartbeatEveryMs = 10_000;
 
 const ranToTheEnd = Symbol('ran to the end');
 
@@ -107,7 +110,7 @@ export const runOrchestrationWorker = Effect.fnUntraced(function* (
 });
 
 async function startWorker(
-  { settings, executeSpec, settle, reportUnsettled, workflowBundle }: OrchestrationWorkerOptions,
+  { settings, executeSpec, settle, reportUnsettled, workflowBundle, ...options }: OrchestrationWorkerOptions,
   temporal: TemporalWorkers,
 ): Promise<RunningWorker> {
   const signals = temporal.shutdownSignals();
@@ -127,6 +130,7 @@ async function startWorker(
         settle,
         reportUnsettled,
         currentRun: () => workflowRunOf(activityInfo()),
+        heartbeat: { beat: heartbeatNow, everyMs: options.heartbeatEveryMs ?? heartbeatEveryMs },
       }),
       dataConverter: { failureConverterPath },
       shutdownGraceTime: '10 seconds',
@@ -167,6 +171,10 @@ async function stopWorker(
   }
   await ended;
   await connection.close();
+}
+
+function heartbeatNow(): void {
+  heartbeat();
 }
 
 function failureOf(ending: unknown): string {

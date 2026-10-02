@@ -10,13 +10,19 @@ import { routesFor } from './served-routes.ts';
 import { openWorkflowClient } from './workflow-client.ts';
 import { startWorkflowWorker, workflowCodeOf } from './workflow-worker.ts';
 
+function longestExecutionOf(primitives: readonly Primitive[]): number {
+  return Math.max(1, ...primitives.map(({ longestExecutionMs }) => longestExecutionMs));
+}
+
 export async function serveWorkflows(
   runtime: AppRuntime<DispatcherServices>,
   settings: TemporalSettings,
   primitives: readonly Primitive[],
 ): Promise<Served> {
   const workflowBundle = await workflowCodeOf(settings);
-  const { client, closing } = await openWorkflowClient(runtime, settings);
+  const { client, closing } = await openWorkflowClient(runtime, settings, {
+    longestNestedExecutionMs: longestExecutionOf(primitives),
+  });
   const served = [...primitives, makeOrchestration({ client })];
   const catalog = makeCatalog([...brainOperations, ...makeSpecOperations(served), defineSendExecutionEvent(client)]);
   const dispatcher = makeDispatcher([]);

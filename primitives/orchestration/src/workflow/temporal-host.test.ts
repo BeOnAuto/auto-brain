@@ -49,17 +49,18 @@ describe('the Temporal host of a workflow', () => {
 });
 
 describe('the activities of the Temporal host', () => {
-  it('execute a spec in an activity named by the task reference and its run', async () => {
+  it('execute a spec in an activity named by the task reference and its run, which heartbeats and may run a minute longer than the longest nested execution', async () => {
     const fake = fakeWorkflowApi({ answer: { status: 'succeeded', output: 'short' } });
 
-    expect(await temporalHost(fake.api).executeSpec(call)).toEqual({ status: 'succeeded', output: 'short' });
+    expect(await temporalHost(fake.api).executeSpec(call, 1_660_000)).toEqual({ status: 'succeeded', output: 'short' });
     expect(fake.calls()).toEqual([
       {
         name: 'proxyActivities',
         settings: {
           activityId: '/do/0/summarize#2',
           summary: '/do/0/summarize executes the inference spec summarize',
-          startToCloseTimeout: '10 minutes',
+          startToCloseTimeout: 1_720_000,
+          heartbeatTimeout: '30 seconds',
           retry: {
             initialInterval: '1 second',
             backoffCoefficient: 2,

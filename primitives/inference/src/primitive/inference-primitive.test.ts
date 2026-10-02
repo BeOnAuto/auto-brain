@@ -16,6 +16,10 @@ describe('the inference primitive', () => {
     expect(primitive).toMatchObject({ name: 'inference', title: 'Inference', mediaType: 'text/markdown' });
   });
 
+  it('runs an execution for at most the deadline of a call for the most output tokens: 60 s and 25 ms a token for 64000', () => {
+    expect(primitive.longestExecutionMs).toBe(1_660_000);
+  });
+
   it('describes its document with an example that is a valid spec', () => {
     expect(primitive.description).toContain(inferenceExample);
     expect(prepared(inferenceExample).summary).toMatchObject({ description: 'Summarizes an account' });

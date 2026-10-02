@@ -11,7 +11,8 @@ interface RetrySettings {
 export interface ActivitySettings {
   readonly activityId: string;
   readonly summary: string;
-  readonly startToCloseTimeout: string;
+  readonly startToCloseTimeout: number;
+  readonly heartbeatTimeout: string;
   readonly retry: RetrySettings;
 }
 
@@ -62,6 +63,10 @@ const retryTransientFailures = {
   maximumAttempts: 5,
 };
 
+export const nestedExecutionMarginMs = 60_000;
+
+export const nestedHeartbeatTimeout = '30 seconds';
+
 export const settleSettings: LocalActivitySettings = {
   summary: 'settle the execution',
   startToCloseTimeout: '1 minute',
@@ -81,12 +86,13 @@ export function temporalHost(api: WorkflowApi): WorkflowHost {
     deadline: (milliseconds) => api.sleep(milliseconds, { summary: 'the most the workflow may run' }),
     waitUntil: (satisfied) => api.condition(satisfied),
     watch: (satisfied) => api.condition(satisfied),
-    executeSpec: (call) =>
+    executeSpec: (call, longestMs) =>
       api
         .proxyActivities({
           activityId: `${call.reference}#${call.run}`,
           summary: `${call.reference} executes the ${call.primitive} spec ${call.name}`,
-          startToCloseTimeout: '10 minutes',
+          startToCloseTimeout: longestMs + nestedExecutionMarginMs,
+          heartbeatTimeout: nestedHeartbeatTimeout,
           retry: retryTransientFailures,
         })
         .executeSpec(call),

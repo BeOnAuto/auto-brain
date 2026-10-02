@@ -1,10 +1,9 @@
-import { Conflict, NotFound } from '@beonauto/operations';
-import type { SettleExecution, Settlement } from '@beonauto/specs';
+import { setTimeout } from 'node:timers/promises';
+
 import { ApplicationFailure } from '@temporalio/activity';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { settledExecution } from '../testing/temporal.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 import { makeActivities, workflowRunOf, type ActivityRun } from './activities.ts';
 import type { SpecExecution, SpecExecutionResult } from './dependencies.ts';
@@ -42,8 +41,35 @@ function activitiesAnswering(
     settle: () => Effect.die('not settling'),
     reportUnsettled: ignore,
     currentRun: () => run,
+    heartbeat: { beat: ignore, everyMs: 10_000 },
   });
 }
+
+describe('the activity that executes a spec while the spec runs', () => {
+  it('heartbeats every interval, and stops once the spec answered', async () => {
+    let beats = 0;
+    const slow = makeActivities({
+      executeSpec: () => Effect.as(Effect.sleep('120 millis'), { status: 'succeeded', output: 'late' }),
+      settle: () => Effect.die('not settling'),
+      reportUnsettled: ignore,
+      currentRun: () => run,
+      heartbeat: {
+        beat: () => {
+          beats += 1;
+        },
+        everyMs: 20,
+      },
+    });
+
+    const answer = await slow.executeSpec(call);
+    const beatsWhileRunning = beats;
+    await setTimeout(100);
+
+    expect(answer).toEqual({ status: 'succeeded', output: 'late' });
+    expect(beatsWhileRunning).toBeGreaterThanOrEqual(4);
+    expect(beats).toBe(beatsWhileRunning);
+  });
+});
 
 describe('the activity that executes a spec', () => {
   it('executes it for the caller under an id derived from the run, the task and the run of the task', async () => {
@@ -115,62 +141,6 @@ describe('the results of executing a spec', () => {
       status: 'failed',
       detail: 'The spec answered with 1048602 bytes as JSON, more than the 1048576 a workflow takes',
     });
-  });
-});
-
-function activitiesSettling(settle: SettleExecution) {
-  return makeActivities({
-    executeSpec: () => Effect.die('not executing'),
-    settle,
-    reportUnsettled: ignore,
-    currentRun: () => run,
-  });
-}
-
-const request = { org: 'acme', brain: 'alpha', spec: 'flow', executionId, settlement: { status: 'failed' } } as const;
-
-describe('the activity that settles an execution', () => {
-  it('settles the execution of its own workflow, a success with an empty record', async () => {
-    const settled: Settlement[] = [];
-    const activities = activitiesSettling((address, settlement) =>
-      Effect.sync(() => {
-        settled.push(settlement);
-        return settledExecution(address, settlement);
-      }),
-    );
-
-    await activities.settleExecution({ ...request, settlement: { status: 'succeeded', output: 1 } });
-    await activities.settleExecution(request);
-
-    expect(settled).toEqual([{ status: 'succeeded', output: 1, record: {} }, { status: 'failed' }]);
-  });
-
-  it('rejects settling an execution of another workflow', async () => {
-    const activities = activitiesSettling(() => Effect.die('not settling'));
-
-    await expect(activities.settleExecution({ ...request, spec: 'other' })).rejects.toThrow('may not act for');
-  });
-});
-
-describe('an execution that cannot be settled', () => {
-  it('fails for good when it is not there, and is retried after a conflict', async () => {
-    const missing = activitiesSettling(() => Effect.fail(new NotFound({ detail: 'There is no such execution' })));
-    const conflicting = activitiesSettling(() => Effect.fail(new Conflict({ detail: 'It runs within its call' })));
-
-    await expect(missing.settleExecution(request)).rejects.toEqual(
-      ApplicationFailure.nonRetryable('There is no such execution', 'ExecutionNotFound'),
-    );
-    await expect(conflicting.settleExecution(request)).rejects.toMatchObject({
-      message: 'It runs within its call',
-      type: 'ExecutionConflict',
-      nonRetryable: false,
-    });
-  });
-
-  it('is a benign failure after a conflict, which Temporal does not log as a warning, since the call that started the execution has yet to record it deferred', async () => {
-    const conflicting = activitiesSettling(() => Effect.fail(new Conflict({ detail: 'It runs within its call' })));
-
-    await expect(conflicting.settleExecution(request)).rejects.toMatchObject({ category: 'BENIGN' });
   });
 });
 

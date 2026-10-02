@@ -5,7 +5,7 @@ import { Client, Connection, WorkflowNotFoundError } from '@temporalio/client';
 import { Clock, Effect, type Scope } from 'effect';
 
 import type { JsonObject } from '../dsl/json.ts';
-import type { StartingRun, WorkflowRun } from '../interpreter/workflow-run.ts';
+import { defaultLongestNestedExecutionMs, type StartingRun, type WorkflowRun } from '../interpreter/workflow-run.ts';
 import { makeThrottle } from '../notices/throttle.ts';
 import { connectionOptionsOf, type TemporalSettings } from '../worker/temporal-settings.ts';
 import { eventSignalName, workflowIdOf, workflowType } from '../workflow/activity-contract.ts';
@@ -30,6 +30,7 @@ export interface OrchestrationClient {
 
 export interface ClientOptions {
   readonly requestTimeout?: number;
+  readonly longestNestedExecutionMs?: number;
 }
 
 export const startUnavailable = 'Temporal cannot start the workflow now; try again later';
@@ -57,11 +58,12 @@ export const connectOrchestration = Effect.fnUntraced(function* (
     (opened) => Effect.promise(() => opened.close()),
   );
   const report = failureReports();
+  const { longestNestedExecutionMs = defaultLongestNestedExecutionMs } = options;
   return {
     mostDuration: settings.mostDuration,
     start: (run) =>
       Effect.tryPromise({
-        try: () => temporal.start({ ...run, mostDuration: settings.mostDuration }),
+        try: () => temporal.start({ ...run, mostDuration: settings.mostDuration, longestNestedExecutionMs }),
         catch: (error) => error,
       }).pipe(
         Effect.tapError((error) => report('start a workflow', error)),

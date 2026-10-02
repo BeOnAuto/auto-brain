@@ -23,11 +23,17 @@ export interface ActivityRun {
   readonly attempt: number;
 }
 
+export interface Heartbeat {
+  readonly beat: () => void;
+  readonly everyMs: number;
+}
+
 export interface ActivityDependencies {
   readonly executeSpec: ExecuteSpec;
   readonly settle: SettleExecution;
   readonly reportUnsettled: ReportUnsettled;
   readonly currentRun: () => ActivityRun;
+  readonly heartbeat: Heartbeat;
 }
 
 interface ActivityInfo {
@@ -60,10 +66,15 @@ async function executeSpecFor(dependencies: ActivityDependencies, call: SpecCall
     throw rejectedTenancy(workflowId, org, brain);
   }
   const executionId = nestedExecutionId(runId, reference, run);
-  const result = await Effect.runPromise(
-    dependencies.executeSpec({ org, brain, caller, primitive, name, input, executionId }),
-  );
-  return callResultOf(result);
+  const beating = setInterval(dependencies.heartbeat.beat, dependencies.heartbeat.everyMs);
+  try {
+    const result = await Effect.runPromise(
+      dependencies.executeSpec({ org, brain, caller, primitive, name, input, executionId }),
+    );
+    return callResultOf(result);
+  } finally {
+    clearInterval(beating);
+  }
 }
 
 function callResultOf(result: SpecExecutionResult): SpecCallResult {
