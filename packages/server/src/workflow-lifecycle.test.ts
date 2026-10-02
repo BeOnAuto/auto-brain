@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 
 import { connectOrchestration, installTemporalRuntime, type TemporalLogEntry } from '@beonauto/orchestration';
+import { temporalCli } from '@beonauto/orchestration/testing/temporal-cli';
 import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Effect, Exit, Scope } from 'effect';
 import { afterAll, describe, expect, inject, it, onTestFinished } from 'vitest';
@@ -78,7 +79,12 @@ describe('a server whose Temporal starts after it', { timeout: 120_000 }, () => 
       temporalLogsOfThisProcess.push(entry);
     });
     const temporal = await TestWorkflowEnvironment.createLocal({
-      server: { ip: '127.0.0.1', port: temporalPort, log: { format: 'pretty', level: 'error' } },
+      server: {
+        executable: temporalCli,
+        ip: '127.0.0.1',
+        port: temporalPort,
+        log: { format: 'pretty', level: 'error' },
+      },
     });
     onTestFinished(() => stoppedWithin(10_000, () => temporal.teardown()), 20_000);
     await untilLogged(child, workerStarted);
