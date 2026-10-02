@@ -1,4 +1,6 @@
-import { setTimeout } from 'node:timers/promises';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { fileURLToPath } from 'node:url';
 
 import { Effect, Exit, Scope } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,6 +12,8 @@ import { connectOrchestration } from './orchestration-client.ts';
 import { makeOrchestration } from './orchestration-primitive.ts';
 
 let brain: OrchestratedBrain;
+
+const closeWhileRetrying = fileURLToPath(new URL('../../close-while-retrying.ts', import.meta.url));
 
 const flow = `document:
   dsl: '1.0.3'
@@ -124,19 +128,20 @@ describe('executing a workflow spec when Temporal cannot be reached', () => {
   }, 30_000);
 
   it('closes its connection only once the requests it still retries have ended, so no retry runs on a closed one', async () => {
-    const scope = Effect.runSync(Scope.make());
-    const client = await Effect.runPromise(
-      connectOrchestration({ ...settingsFor('nowhere'), address: '127.0.0.1:1' }, { requestTimeout: 300 }).pipe(
-        Scope.provide(scope),
-      ),
-    );
-    const isolated = brainWith([makeOrchestration({ client })]);
-    await isolated.call(isolated.createSpec, { primitive: 'orchestration', name: 'slow-greeting', source: flow });
+    const child = spawn(process.execPath, [closeWhileRetrying], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const output = { stdout: '', stderr: '' };
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+      output.stdout += chunk;
+    });
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+      output.stderr += chunk;
+    });
+    const code = await once(child, 'exit').then(([exitCode]: readonly unknown[]) => exitCode);
 
-    const outcome = await isolated.call(isolated.executeSpec, { primitive: 'orchestration', name: 'slow-greeting' });
-    await Effect.runPromise(Scope.close(scope, Exit.void));
-    await setTimeout(6000);
-
-    expect(outcome).toMatchObject({ status: 'rejected', reason: 'unavailable' });
+    expect({ code, stderr: output.stderr, last: output.stdout.trim().split('\n').at(-1) }).toStrictEqual({
+      code: 0,
+      stderr: '',
+      last: 'Temporal cannot start the workflow now; try again later',
+    });
   }, 30_000);
 });
