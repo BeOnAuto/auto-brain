@@ -67,7 +67,9 @@ describe('a configuration file', () => {
   it('may be empty, or hold only comments', () => {
     expect(configured('# nothing yet\n').file).toMatchObject({ fromFile: [], overridden: [] });
   });
+});
 
+describe('the place of a setting the file holds', () => {
   it('names where a setting it holds is, by file, line, column and key, or the nearest place it is', () => {
     const path = configFileWith(gateways);
     const { file } = Result.getOrThrow(configurationOf({ CONFIG_FILE: path, GATEWAY_KEY: 'k' }, exampleSettings));
@@ -76,6 +78,13 @@ describe('a configuration file', () => {
       `${path}:4:26 example_gateways[0].headers.x-tenant`,
     );
     expect(file?.place('EXAMPLE_GATEWAYS', '/0/missing')).toBe(`${path}:2:5 example_gateways[0].missing`);
+    expect(file?.placed('EXAMPLE_GATEWAYS', '/0/name: gateway is used twice')).toBe(
+      `${path}:2:11 example_gateways[0].name: gateway is used twice`,
+    );
+    expect(file?.placed('EXAMPLE_GATEWAYS', '/: Expected a list')).toBe(
+      `${path}:2:3 example_gateways: Expected a list`,
+    );
+    expect(file?.placed('EXAMPLE_ORIGINS', 'Expected text')).toBe(`${path}:6:3 example_origins: Expected text`);
     expect(file?.place('EXAMPLE_GATEWAYS', '/0/headers/a~1b')).toBe(`${path}:4:14 example_gateways[0].headers["a/b"]`);
   });
 });

@@ -21,7 +21,7 @@ function partOf(segment: string, position: number): string {
   return `[${JSON.stringify(segment)}]`;
 }
 
-export function keyPathOf(pointer: string): string {
+function keyPathOf(pointer: string): string {
   return segmentsOf(pointer)
     .map((segment, position) => partOf(segment, position))
     .join('');

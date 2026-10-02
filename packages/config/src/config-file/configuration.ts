@@ -9,12 +9,15 @@ export interface FileUse {
   readonly fromFile: readonly string[];
   readonly overridden: readonly string[];
   readonly place: (setting: string, pointer: string) => string;
+  readonly placed: (setting: string, detail: string) => string;
 }
 
 export interface Configuration {
   readonly environment: Environment;
   readonly file: FileUse | undefined;
 }
+
+const leadingPointer = /^(\/\S*?): (.+)$/su;
 
 function isSet(value: string | undefined): value is string {
   return value !== undefined && value !== '';
@@ -26,7 +29,16 @@ function layered(environment: Environment, { path, settings, place }: ConfigFile
   const fromFile = named.filter((setting) => !overridden.includes(setting));
   return {
     environment: { ...environment, ...Object.fromEntries(fromFile.map((setting) => [setting, settings.get(setting)])) },
-    file: { path, fromFile, overridden, place },
+    file: {
+      path,
+      fromFile,
+      overridden,
+      place,
+      placed: (setting, detail) => {
+        const [, pointer = '/', message = detail] = leadingPointer.exec(detail) ?? [];
+        return `${place(setting, pointer === '/' ? '' : pointer)}: ${message}`;
+      },
+    },
   };
 }
 
