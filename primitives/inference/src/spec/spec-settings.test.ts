@@ -41,60 +41,64 @@ describe('the settings of a spec', () => {
   });
 });
 
-const closedOptions = [
+const everyOffered = [
   'provider_options:',
-  '  anthropic:',
-  '    sendReasoning: false',
-  '    anthropicBeta: [interleaved-thinking-2025-05-14]',
-  '    mcpServers: [{type: url, name: crm, url: "https://crm.example/mcp", authorizationToken: token}]',
-  '    fallbacks: [{model: claude-opus-4-1, max_tokens: 64000}]',
-  '  bedrock:',
-  '    additionalModelRequestFields: {top_k: 5}',
-  '    inferenceConfig: {maxTokens: 200000}',
-  '    reasoningConfig: {type: enabled, budgetTokens: 2048}',
-  '  amazonBedrock:',
-  '    anthropicBeta: [context-1m-2025-08-07]',
-  '  googleVertex:',
-  '    mcpServers: []',
-  '    requestType: shared',
-  '  vertex:',
-  '    sharedRequestType: priority',
-  '  google:',
-  '    thinkingConfig: {thinkingBudget: 0}',
-  '    sharedRequestType: flex',
+  '  anthropic: {thinking: {type: enabled, budgetTokens: 2048}}',
+  '  openai: {textVerbosity: low, reasoningMode: pro, logitBias: {"50256": -100}}',
+  '  azure: {textVerbosity: high}',
+  '  google: {thinkingConfig: {thinkingBudget: 0}, safetySettings: [{category: HARM_CATEGORY_HATE_SPEECH, threshold: OFF}]}',
+  '  vertex: {threshold: BLOCK_ONLY_HIGH}',
+  '  googleVertex: {thinkingConfig: {thinkingLevel: low}, thinking: {type: adaptive, display: omitted}}',
+  '  amazonBedrock: {reasoningConfig: {type: enabled, budgetTokens: 1024}}',
+  '  bedrock: {reasoningConfig: {type: adaptive, display: summarized}}',
+  '  internal: {user: tenant-7}',
 ].join('\n');
 
-const betas = 'anthropicBeta is not accepted: it turns on beta features of the provider through a request header';
+const withheldOptions = [
+  'provider_options:',
+  '  anthropic:',
+  '    thinking: {type: adaptive, blockBinding: {prefixMismatchBehavior: error}}',
+  '    metadata: {userId: tenant-7}',
+  '    anthropicBeta: [interleaved-thinking-2025-05-14]',
+  '    mcpServers: [{type: url, name: crm, url: "https://crm.example/mcp"}]',
+  '  openai: {store: true, temperature: 0}',
+  '  bedrock: {thinking: {type: enabled}, inferenceConfig: {maxTokens: 200000}}',
+  '  google: {labels: {team: sales}}',
+  '  Not_A_Gateway: {user: tenant-7}',
+].join('\n');
 
-const passedThrough =
-  'is not accepted: Bedrock adds the keys of this namespace it does not read to the request as they are; it takes reasoningConfig, serviceTier and structuredOutputMode, and the anthropic namespace takes the options of Anthropic models';
-
-const servers =
-  'mcpServers is not accepted: it makes the provider connect to other servers, with credentials of their own';
-
-const capacity =
-  'is not accepted: it sets a request header that chooses the capacity, and the price, the request is served at';
+const namespaces =
+  'provider_options takes anthropic, openai, azure, google, vertex, googleVertex, amazonBedrock, bedrock, or the name of a gateway';
 
 describe('the provider options of a spec', () => {
-  it('are passed on when they only tune the call', () => {
-    expect(
-      parsed(documentOf('model: anthropic/claude-sonnet-4-5\nprovider_options:\n  anthropic: {sendReasoning: false}'))
-        .provider_options,
-    ).toEqual({ anthropic: { sendReasoning: false } });
+  it('take the options that only shape how the model reasons or writes its answer, and a gateway name', () => {
+    const options = parsed(documentOf(`model: anthropic/claude-sonnet-4-5\n${everyOffered}`)).provider_options;
+
+    expect(Object.keys({ ...options })).toEqual([
+      'anthropic',
+      'openai',
+      'azure',
+      'google',
+      'vertex',
+      'googleVertex',
+      'amazonBedrock',
+      'bedrock',
+      'internal',
+    ]);
   });
 
-  it('may not set headers, reach other servers or models, or add fields of their own', () => {
-    expect(issuesIn(documentOf(`model: anthropic/claude-sonnet-4-5\n${closedOptions}`))).toEqual([
-      `Line 6, /provider_options/anthropic/anthropicBeta: ${betas}`,
-      `Line 7, /provider_options/anthropic/mcpServers: ${servers}`,
-      'Line 8, /provider_options/anthropic/fallbacks: fallbacks is not accepted: it sends the request on to other models, with settings of their own',
-      `Line 10, /provider_options/bedrock/additionalModelRequestFields: additionalModelRequestFields ${passedThrough}`,
-      `Line 11, /provider_options/bedrock/inferenceConfig: inferenceConfig ${passedThrough}`,
-      `Line 14, /provider_options/amazonBedrock/anthropicBeta: anthropicBeta ${passedThrough}`,
-      `Line 16, /provider_options/googleVertex/mcpServers: ${servers}`,
-      `Line 17, /provider_options/googleVertex/requestType: requestType ${capacity}`,
-      `Line 19, /provider_options/vertex/sharedRequestType: sharedRequestType ${capacity}`,
-      `Line 22, /provider_options/google/sharedRequestType: sharedRequestType ${capacity}`,
+  it('refuse every other option, naming it and saying it is not offered', () => {
+    expect(issuesIn(documentOf(`model: anthropic/claude-sonnet-4-5\n${withheldOptions}`))).toEqual([
+      'Line 5, /provider_options/anthropic/thinking/blockBinding: thinking.blockBinding is not offered: thinking takes type, budgetTokens, display',
+      'Line 6, /provider_options/anthropic/metadata: metadata is not offered: it attributes the request on the operator account',
+      'Line 7, /provider_options/anthropic/anthropicBeta: anthropicBeta is not offered: it sets request headers or betas',
+      'Line 8, /provider_options/anthropic/mcpServers: mcpServers is not offered: it brings in tools or servers',
+      'Line 9, /provider_options/openai/store: store is not offered: it stores or reuses state on the operator account',
+      'Line 9, /provider_options/openai/temperature: temperature is not offered: openai offers textVerbosity, reasoningMode, logitBias',
+      'Line 10, /provider_options/bedrock/thinking: thinking is not offered: it adds raw fields to the request',
+      'Line 10, /provider_options/bedrock/inferenceConfig: inferenceConfig is not offered: bedrock offers reasoningConfig',
+      'Line 11, /provider_options/google/labels: labels is not offered: it attributes the request on the operator account',
+      `Line 12, /provider_options/Not_A_Gateway: Not_A_Gateway is not a provider namespace: ${namespaces}`,
     ]);
   });
 });

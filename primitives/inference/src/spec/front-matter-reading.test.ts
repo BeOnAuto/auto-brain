@@ -63,7 +63,7 @@ describe('the front matter', () => {
 function withListsNested(levels: number): string {
   const lists = levels - 2;
   return documentOf(
-    `model: openai/gpt-5\nprovider_options:\n  anthropic: {x: ${'['.repeat(lists)}${']'.repeat(lists)}}`,
+    `model: openai/gpt-5\nprovider_options:\n  internal: {x: ${'['.repeat(lists)}${']'.repeat(lists)}}`,
   );
 }
 
@@ -71,7 +71,7 @@ describe('the nesting of the front matter', () => {
   it('stops at 72 levels', () => {
     expect(issuesIn(withListsNested(72))).toEqual([]);
     expect(issuesIn(withListsNested(73))).toEqual([
-      `Line 4, /provider_options/anthropic/x${'/0'.repeat(70)}: The front matter may nest at most 72 levels`,
+      `Line 4, /provider_options/internal/x${'/0'.repeat(70)}: The front matter may nest at most 72 levels`,
     ]);
   });
 
@@ -104,18 +104,18 @@ describe('the values of the front matter', () => {
     expect(
       parsed(
         documentOf(
-          'model: openai/gpt-5\nprovider_options:\n  openai:\n    1: one\n    true: yes\n    empty:\n    ? alone',
+          'model: openai/gpt-5\nprovider_options:\n  internal:\n    1: one\n    true: yes\n    empty:\n    ? alone',
         ),
       ).provider_options,
-    ).toEqual({ openai: { 1: 'one', true: 'yes', empty: null, alone: null } });
+    ).toEqual({ internal: { 1: 'one', true: 'yes', empty: null, alone: null } });
   });
 
   it('keeps keys that name object prototypes as plain keys', () => {
     expect(
-      parsed(documentOf('model: openai/gpt-5\nprovider_options:\n  openai:\n    __proto__: {polluted: true}'))
+      parsed(documentOf('model: openai/gpt-5\nprovider_options:\n  internal:\n    __proto__: {polluted: true}'))
         .provider_options,
     ).toEqual({
-      openai: Object.fromEntries([['__proto__', { polluted: true }]]),
+      internal: Object.fromEntries([['__proto__', { polluted: true }]]),
     });
     expect({}).not.toHaveProperty('polluted');
   });

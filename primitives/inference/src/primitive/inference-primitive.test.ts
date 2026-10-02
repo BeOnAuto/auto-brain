@@ -20,6 +20,15 @@ describe('the inference primitive', () => {
     expect(primitive.description).toContain(inferenceExample);
     expect(prepared(inferenceExample).summary).toMatchObject({ description: 'Summarizes an account' });
   });
+
+  it('says which provider options a spec may set, and that any other is rejected', () => {
+    expect(primitive.description).toContain(
+      'provider_options holds, under a provider namespace, only options that shape how the model reasons or writes its answer (anthropic: thinking; openai: textVerbosity, reasoningMode, logitBias;',
+    );
+    expect(primitive.description).toContain(
+      "bedrock: reasoningConfig), and under a gateway's name only the request body fields its operator allows; any other option is rejected.",
+    );
+  });
 });
 
 describe('preparing an inference spec', () => {

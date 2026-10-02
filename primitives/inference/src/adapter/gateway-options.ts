@@ -2,6 +2,7 @@ import { JsonPointer, Result } from 'effect';
 
 import { SpecInvalid } from '../failure/spec-invalid.ts';
 import type { ProviderOptions } from '../model/model-request.ts';
+import { providerNamespaces } from '../model/offered-provider-options.ts';
 import type { GatewaySettings } from '../settings/gateway-settings.ts';
 
 export type ProviderOptionsCheck = (
@@ -45,11 +46,31 @@ function rejection(gateway: string, first: Disallowed, found: readonly Disallowe
   });
 }
 
+function unreadNamespace(provider: string, namespace: string): SpecInvalid {
+  return new SpecInvalid({
+    detail: `No configured provider reads the provider options under ${namespace}`,
+    provider,
+    status: null,
+    provider_message: null,
+    issues: [
+      {
+        pointer: `/provider_options/${JsonPointer.escapeToken(namespace)}`,
+        detail: 'Expected the namespace of a built-in provider or of a configured gateway',
+      },
+    ],
+  });
+}
+
 export function gatewayOptionsCheck(gateways: readonly GatewaySettings[]): ProviderOptionsCheck {
   const byName = new Map(gateways.map((gateway) => [gateway.name, gateway]));
-  return (provider, options) => {
+  const known = new Set([...providerNamespaces, ...gateways.flatMap((gateway) => namespacesOf(gateway.name))]);
+  return (provider, options = {}) => {
+    const unread = Object.keys(options).find((namespace) => !known.has(namespace));
+    if (unread !== undefined) {
+      return Result.fail(unreadNamespace(provider, unread));
+    }
     const gateway = byName.get(provider);
-    const found = gateway === undefined || options === undefined ? [] : disallowedIn(gateway, options);
+    const found = gateway === undefined ? [] : disallowedIn(gateway, options);
     const [first] = found;
     return first === undefined ? Result.void : Result.fail(rejection(provider, first, found));
   };

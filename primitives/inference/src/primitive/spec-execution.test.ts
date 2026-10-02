@@ -13,7 +13,7 @@ const summarizing = documentOf(
     'input:',
     '  default: {tone: plain}',
     'provider_options:',
-    '  anthropic: {sendReasoning: false}',
+    '  anthropic: {thinking: {type: enabled, budgetTokens: 1024}}',
   ].join('\n'),
   '{% system %}Write in a {{ input.tone }} tone.{% endsystem %}Summarize {{ input.text }} ({{ today }}, {{ now }}).',
 );
@@ -77,7 +77,7 @@ describe('executing an inference spec', () => {
         ],
         output: { type: 'text' },
         settings: { max_output_tokens: 300, temperature: 0.1, stop_sequences: ['END'] },
-        provider_options: { anthropic: { sendReasoning: false } },
+        provider_options: { anthropic: { thinking: { type: 'enabled', budgetTokens: 1024 } } },
         timeout_ms: 67_500,
         execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
       },

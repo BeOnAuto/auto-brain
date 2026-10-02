@@ -65,8 +65,8 @@ describe('the values of the front matter keys', () => {
 
   it('pass provider options through, keyed by the provider namespace', () => {
     expect(
-      parsed(documentOf('model: openai/gpt-5\nprovider_options:\n  openai: {reasoningSummary: auto, store: false}'))
+      parsed(documentOf('model: openai/gpt-5\nprovider_options:\n  openai: {textVerbosity: low, reasoningMode: pro}'))
         .provider_options,
-    ).toEqual({ openai: { reasoningSummary: 'auto', store: false } });
+    ).toEqual({ openai: { textVerbosity: 'low', reasoningMode: 'pro' } });
   });
 });

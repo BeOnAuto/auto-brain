@@ -34,7 +34,7 @@ const complete = documentOf(
     '    additionalProperties: false',
     'provider_options:',
     '  anthropic:',
-    '    cacheControl: { type: ephemeral }',
+    '    thinking: { type: enabled, budgetTokens: 1024 }',
   ].join('\n'),
   '{% system %}You write for {{ input.tone }} readers. Today is {{ today }}.{% endsystem %}\nSummarize {{ input.account }}.',
 );
@@ -56,7 +56,7 @@ describe('a complete inference spec document', () => {
       },
       input: { defaults: { tone: 'neutral' } },
       output: { type: 'json' },
-      provider_options: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+      provider_options: { anthropic: { thinking: { type: 'enabled', budgetTokens: 1024 } } },
       template: { hasInstructions: true, hasMessage: true },
       warnings: [],
     });

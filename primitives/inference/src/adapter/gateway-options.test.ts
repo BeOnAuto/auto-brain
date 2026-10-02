@@ -93,3 +93,27 @@ describe('the provider options of a call to a built-in provider', () => {
     expect(recording.requests()).toHaveLength(1);
   });
 });
+
+describe('provider options under a namespace no configured provider reads', () => {
+  it.each([
+    ['my-gateway/llama-3.3-70b', 'mistral'],
+    ['openai/gpt-4o', 'other-gateway'],
+  ])('refuse a call to %s, without calling the provider', async (model, namespace) => {
+    const recording = recordingFetch(() => jsonResponse(openAiResponse('Hello')));
+    const access = await accessFor({ ...environmentWith(), OPENAI_API_KEY: 'sk-openai' }, { fetch: recording.fetch });
+
+    expect(
+      await failed(access, textRequest(model, { provider_options: { [namespace]: { user: 'x' } } })),
+    ).toMatchObject({
+      _tag: 'spec_invalid',
+      detail: `No configured provider reads the provider options under ${namespace}`,
+      issues: [
+        {
+          pointer: `/provider_options/${namespace}`,
+          detail: 'Expected the namespace of a built-in provider or of a configured gateway',
+        },
+      ],
+    });
+    expect(recording.requests()).toEqual([]);
+  });
+});
