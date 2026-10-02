@@ -14,7 +14,7 @@ const gateway = { name: 'internal', base_url: 'https://llm.internal.example/v1',
 async function executedWith(providerOptions: string) {
   const recording = recordingFetch(() => jsonResponse(chatCompletion('Hello')));
   const access = await accessFor({ MODEL_GATEWAYS: JSON.stringify([gateway]) }, { fetch: recording.fetch });
-  const primitive = makeInference({ languageModel: access.languageModel });
+  const primitive = makeInference({ languageModel: access.languageModel, offered: access.offered });
   const document = documentOf(`model: internal/llama-3.3-70b\nprovider_options:\n  internal: ${providerOptions}`, 'Hi');
   const prepared = Effect.runSync(primitive.prepare(document));
   const exit = await Effect.runPromiseExit(prepared.execute({}, execution));
@@ -36,7 +36,7 @@ describe('an execution with provider options for a gateway', () => {
       Exit.fail(
         new Conflict({
           detail:
-            'The gateway internal does not allow the provider option metadata (/provider_options/internal/metadata: Not in the allowed_provider_options of internal); update the spec',
+            'The gateway internal does not allow the provider option metadata (/provider_options/internal/metadata: The gateway internal does not allow this option); update the spec',
         }),
       ),
     );

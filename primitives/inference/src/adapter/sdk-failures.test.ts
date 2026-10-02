@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import { jsonRequest, promptText, textRequest } from '../testing/adapter-harness.ts';
 import { exposedText } from '../testing/exposure.ts';
 import { mockGeneration } from '../testing/mock-models.ts';
+import { recordingHints } from '../testing/provider-errors.ts';
 
 function throwing(failure: Readonly<Error>): () => MockLanguageModelV4 {
   const doGenerate = (): Promise<never> => Promise.reject(failure);
@@ -49,6 +50,8 @@ const answerWithoutDetails = Object.assign(
 
 const unreadable = 'The response of mock could not be read';
 
+const missingSetting = 'mock is missing a setting on this server; its operator must add it';
+
 const classifications: readonly (readonly [Readonly<Error>, string, string])[] = [
   [
     new InvalidPromptError({ prompt: promptText, message: 'messages must not be empty' }),
@@ -66,8 +69,8 @@ const classifications: readonly (readonly [Readonly<Error>, string, string])[] =
     'spec_invalid',
     'Invalid argument for parameter topK: topK must be an integer',
   ],
-  [new LoadAPIKeyError({ message: 'missing key' }), 'provider_not_configured', 'mock is missing a setting'],
-  [new LoadSettingError({ message: 'missing region' }), 'provider_not_configured', 'mock is missing a setting'],
+  [new LoadAPIKeyError({ message: 'missing key' }), 'provider_not_configured', missingSetting],
+  [new LoadSettingError({ message: 'missing region' }), 'provider_not_configured', missingSetting],
   [new EmptyResponseBodyError(), 'provider_unavailable', unreadable],
   [new InvalidResponseDataError({ data: { prompt: promptText } }), 'provider_unavailable', unreadable],
   [new JSONParseError({ text: promptText, cause: new SyntaxError('bad') }), 'provider_unavailable', unreadable],
@@ -85,6 +88,21 @@ describe('an SDK failure', () => {
 
     expect(failure).toMatchObject({ _tag: tag, detail });
     expect(exposedText(failure)).not.toContain(promptText);
+  });
+
+  it('tells the operator, and only the operator, which setting the SDK found missing', async () => {
+    const recording = recordingHints();
+    const message =
+      "OpenAI API key is missing. Pass it using the 'apiKey' parameter or the OPENAI_API_KEY environment variable.";
+
+    const failure = await mockGeneration(throwing(new LoadAPIKeyError({ message })), recording.report).failed(
+      textRequest('mock/model', { execution_id: 'exec-1' }),
+    );
+
+    expect(exposedText(failure)).not.toContain('OPENAI_API_KEY');
+    expect(recording.hints()).toEqual([
+      { provider: 'mock', model: 'mock/model', hint: `mock is missing a setting: ${message}`, execution_id: 'exec-1' },
+    ]);
   });
 
   it('dies, naming only the kind of error, when it is not one this package knows', async () => {

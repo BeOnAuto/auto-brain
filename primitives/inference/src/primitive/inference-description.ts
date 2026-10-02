@@ -1,14 +1,43 @@
+import { aliasPatternOf, isWildcardAlias } from '../model/model-alias.ts';
+import type { OfferedModels } from '../model/offered-models.ts';
 import { offeredOptions, providerNamespaces } from '../model/offered-provider-options.ts';
 
 const offers = providerNamespaces
   .map((namespace) => `${namespace}: ${offeredOptions(namespace).join(', ')}`)
   .join('; ');
 
-const introduction = [
+const calls = [
   'Calls a language model once per execution, with a prompt rendered from the input,',
   'and answers with the text of the model or with a JSON value that matches a schema.',
-  'A spec document is YAML front matter between --- lines, then a Liquid template, for example:',
 ].join(' ');
+
+const format = 'A spec document is YAML front matter between --- lines, then a Liquid template, for example:';
+
+const noProvider =
+  'No model provider is configured on this server yet, so a spec cannot run until its operator configures one.';
+
+function anyModelUnder(wildcards: readonly string[]): string {
+  const examples = wildcards.map((wildcard) => `${aliasPatternOf(wildcard).prefix}<model id>`).join(' or ');
+  return ` In a name that ends in *, the * stands for any model id, so a spec may give ${examples}.`;
+}
+
+function namedModels(aliases: readonly string[]): string {
+  const wildcards = aliases.filter((alias) => isWildcardAlias(alias));
+  if (aliases.length === 0) {
+    return '';
+  }
+  return wildcards.length === 0
+    ? ` Its operator also named these models, which a spec may give as its model as they are: ${aliases.join(', ')}.`
+    : ` Its operator also named these models, which a spec may give as its model: ${aliases.join(', ')}.${anyModelUnder(wildcards)}`;
+}
+
+function offerOf({ providers, aliases }: OfferedModels): string {
+  if (providers.length === 0) {
+    return noProvider;
+  }
+  const examples = providers.map((provider) => `${provider}/<model id>`).join(' or ');
+  return `This server calls models through ${providers.join(', ')}: write model as <provider>/<model id>, with a model id that provider serves, for example ${examples}.${namedModels(aliases)}`;
+}
 
 export const inferenceExample = [
   '---',
@@ -40,4 +69,6 @@ const rules = [
   'The input of an execution is a JSON object. Problems in a document are reported with their line.',
 ].join(' ');
 
-export const inferenceDescription = `${introduction}\n\n${inferenceExample}\n\n${rules}`;
+export function inferenceDescriptionFor(offered: OfferedModels): string {
+  return `${calls} ${offerOf(offered)} ${format}\n\n${inferenceExample}\n\n${rules}`;
+}

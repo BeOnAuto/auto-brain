@@ -91,7 +91,7 @@ Next, connect your AI assistant to `http://localhost:8080/mcp`. Local mode needs
 - **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-brain": {"type": "http", "url": "http://localhost:8080/mcp"}}}`
 - **Other assistants** take the entry under [Connecting an agent over MCP](#connecting-an-agent-over-mcp), without its header.
 
-Then ask it, in order:
+Then ask it, in order. When you ask for a prompt, name a model your provider serves, such as `anthropic/claude-sonnet-4-5` or `gateway/<a model id your gateway serves>`: the assistant learns which providers the server has, but not which models your account offers.
 
 1. "Create a brain called support for our customer support team."
 2. "In support, write a prompt that classifies a support ticket by category (billing, bug, account or other) and urgency (low, normal or high), answering in JSON, and run it on: I was charged twice for March and nobody has answered for three days."
@@ -116,6 +116,7 @@ Settings come from two places. In development, `pnpm dev` and `pnpm dev:lean` re
 | Azure OpenAI                                         | `AZURE_RESOURCE_NAME` and `AZURE_API_KEY`                                        | [Azure](primitives/inference/README.md#azure-openai-with-an-api-key)                                         |
 | Google Vertex AI                                     | `GOOGLE_VERTEX_PROJECT` and `GOOGLE_VERTEX_LOCATION`                             | [Vertex](primitives/inference/README.md#google-vertex-ai-with-workload-identity)                             |
 | Your own names for models                            | `MODEL_ALIASES`                                                                  | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
+| Another provider's models, through your gateway      | `MODEL_ALIASES='{"anthropic/*":"gateway/anthropic/*"}'`                          | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
 | An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                  | [Proxy and CA](primitives/inference/README.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
 
 ### Developing with pnpm dev
@@ -239,7 +240,7 @@ Without a named volume, Docker gives each container a fresh anonymous volume, so
 | `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)                                              |
 | `LOG_FORMAT`      | `json`                                           | `json`, one JSON object per line on stderr, or `pretty`, lines of text for a person at a terminal                              |
 
-The [inference primitive](primitives/inference) calls language models with these settings, all optional; [Configuring a model](#configuring-a-model) says which to set for what. A provider whose settings are absent is not configured, and a spec that names it is rejected as `unavailable` when it runs. When it starts, the server logs one line naming the providers that are configured, or a warning when none is, and a warning for each provider that has some of its settings but not all it needs. Settings it cannot read stop it at start-up, naming the setting and never its value.
+The [inference primitive](primitives/inference) calls language models with these settings, all optional; [Configuring a model](#configuring-a-model) says which to set for what. A provider whose settings are absent is not configured, and a spec that names it is rejected as `unavailable` when it runs, naming the providers that are configured; the description of inference that the spec tools carry names them too, so an assistant writes the model with one of them. When it starts, the server logs one line naming the providers that are configured, or a warning when none is, and a warning for each provider that has some of its settings but not all it needs. Settings it cannot read stop it at start-up, naming the setting and never its value.
 
 | Variable                                                                                         | Purpose                                                                                                                |
 | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
@@ -250,7 +251,7 @@ The [inference primitive](primitives/inference) calls language models with these
 | `AZURE_RESOURCE_NAME` or `AZURE_BASE_URL`, `AZURE_API_KEY`, `AZURE_API_VERSION`                  | Azure OpenAI (`azure/...`); without a key, Microsoft Entra ID in an image built with `--build-arg AZURE_IDENTITY=true` |
 | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`                                                | Vertex AI (`vertex/...`, `vertex-anthropic/...`), with Google application default credentials                          |
 | `MODEL_GATEWAYS`                                                                                 | JSON list of OpenAI-compatible gateways, each its own provider prefix                                                  |
-| `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another                                                                           |
+| `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another; a trailing `*` on both sides covers every model of a provider            |
 | `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                                          |
 
 The [orchestration primitive](primitives/orchestration) runs workflow specs on Temporal with these settings. Without `TEMPORAL_ADDRESS` the server does not offer workflows: the spec operations serve only the other primitives, and no Temporal code is loaded. The server logs at start-up whether it offers workflows, and with which Temporal server, namespace and task queue.

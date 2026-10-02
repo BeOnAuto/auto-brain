@@ -1,6 +1,6 @@
-import { JsonPointer, Option, Result, Schema } from 'effect';
+import { JsonPointer, Result, Schema } from 'effect';
 
-import { parseModelReference } from '../model/model-reference.ts';
+import { aliasPatternOf, namesModels, targetReachesAlias, wildcardsAreTrailing } from '../model/model-alias.ts';
 import { decodeJsonSetting, strictly } from './json-setting.ts';
 import { problem, type SettingProblem } from './setting-values.ts';
 
@@ -16,14 +16,23 @@ const setting = 'MODEL_ALIASES';
 const decodeAliases = Schema.decodeUnknownResult(Schema.Record(Schema.String, Schema.String), strictly);
 
 function referenceProblems(alias: string, target: string): readonly SettingProblem[] {
-  const malformed = [alias, target].some((reference) => Option.isNone(parseModelReference(reference)));
+  if (!wildcardsAreTrailing(alias, target)) {
+    return problem(
+      setting,
+      `/${JsonPointer.escapeToken(alias)}: A * stands once, at the end of both an alias and its target`,
+    );
+  }
+  const malformed = [alias, target].some((reference) => !namesModels(reference));
   return malformed
     ? problem(setting, `/${JsonPointer.escapeToken(alias)}: An alias and its target are each written provider/model`)
     : [];
 }
 
 function hopProblems(alias: string, target: string, aliases: Aliases): readonly SettingProblem[] {
-  return Object.hasOwn(aliases, target)
+  const resolvedAgain = Object.keys(aliases).some((other) =>
+    targetReachesAlias(aliasPatternOf(target), aliasPatternOf(other)),
+  );
+  return resolvedAgain
     ? problem(
         setting,
         `/${JsonPointer.escapeToken(alias)}: The target is itself an alias; an alias resolves in one hop`,
@@ -31,13 +40,15 @@ function hopProblems(alias: string, target: string, aliases: Aliases): readonly 
     : [];
 }
 
+function entryProblems(alias: string, target: string, aliases: Aliases): readonly SettingProblem[] {
+  const shapeProblems = referenceProblems(alias, target);
+  return shapeProblems.length === 0 ? hopProblems(alias, target, aliases) : shapeProblems;
+}
+
 function readingOf(aliases: Aliases): AliasReading {
   const entries = Object.entries(aliases);
   return {
-    problems: entries.flatMap(([alias, target]: readonly [string, string]) => [
-      ...referenceProblems(alias, target),
-      ...hopProblems(alias, target, aliases),
-    ]),
+    problems: entries.flatMap(([alias, target]: readonly [string, string]) => entryProblems(alias, target, aliases)),
     aliases: new Map(entries),
   };
 }

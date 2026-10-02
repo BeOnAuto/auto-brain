@@ -15,3 +15,4 @@ coverage
 *.log
 /data/
 /packages/server/.data/
+/packages/server/data/

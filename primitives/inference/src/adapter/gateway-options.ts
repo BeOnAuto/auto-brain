@@ -41,7 +41,7 @@ function rejection(gateway: string, first: Disallowed, found: readonly Disallowe
     provider_message: null,
     issues: found.map(({ namespace, field }) => ({
       pointer: `/provider_options/${JsonPointer.escapeToken(namespace)}/${JsonPointer.escapeToken(field)}`,
-      detail: `Not in the allowed_provider_options of ${gateway}`,
+      detail: `The gateway ${gateway} does not allow this option`,
     })),
   });
 }

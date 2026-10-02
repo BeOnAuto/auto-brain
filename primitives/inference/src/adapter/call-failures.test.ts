@@ -51,6 +51,8 @@ describe('a call that cannot reach the provider', () => {
 
     expect(failure).toMatchObject({
       _tag: 'provider_not_configured',
+      detail:
+        'The TLS certificate of openai is not trusted by this server; its operator must add the certificate authority',
       provider: 'openai',
       configured: ['openai'],
       missing: ['NODE_EXTRA_CA_CERTS'],

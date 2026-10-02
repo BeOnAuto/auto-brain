@@ -144,13 +144,18 @@ export function aliveGroups(development: Development): readonly number[] {
   return pidsOf(development).filter((pid) => groupAlive(pid));
 }
 
-export async function untilGone(development: Development): Promise<readonly number[]> {
+const goneWithinMs = 30_000;
+
+export async function untilGone(
+  development: Development,
+  deadline = Date.now() + goneWithinMs,
+): Promise<readonly number[]> {
   const alive = aliveGroups(development);
-  if (alive.length === 0) {
+  if (alive.length === 0 || Date.now() >= deadline) {
     return alive;
   }
   await setTimeout(50);
-  return untilGone(development);
+  return untilGone(development, deadline);
 }
 
 export async function untilWritten(read: () => string, wanted: Readonly<RegExp>): Promise<RegExpExecArray> {

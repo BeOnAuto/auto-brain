@@ -46,9 +46,12 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
   it('documents every model setting in .env.example in a form that reads as written', async () => {
     const settings = parseEnv(uncommented(readFileSync(example, 'utf8')));
 
-    const status = providerStatus(await Effect.runPromise(readModelSettings(settings)), { entraId: false });
+    const models = await Effect.runPromise(readModelSettings(settings));
 
-    expect(status.configured).toEqual(['anthropic', 'openai', 'google', 'gateway']);
+    expect(providerStatus(models, { entraId: false }).configured).toEqual(['anthropic', 'openai', 'google', 'gateway']);
+    expect(Object.fromEntries(models.aliases)).toEqual({
+      'anthropic/*': 'gateway/anthropic/*',
+    });
   });
 });
 

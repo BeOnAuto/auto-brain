@@ -2,7 +2,9 @@ export { languageModelLayer } from './adapter/language-model-layer.ts';
 export { makeModelAccess, type ModelAccess } from './adapter/model-access.ts';
 export type {
   ModelAccessOptions,
+  OperatorHintReport,
   ProviderMessageReport,
+  ReportOperatorHint,
   ReportProviderMessage,
 } from './adapter/model-access-options.ts';
 export type { AccessTokenSource, AwsCredentials, CredentialSources } from './adapter/credential-sources.ts';

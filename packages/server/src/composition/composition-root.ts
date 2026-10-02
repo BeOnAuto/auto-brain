@@ -10,6 +10,7 @@ import { defaultServerOptions, servedBy, type ServerOptions } from '../lifecycle
 import {
   logIncident,
   logModelProviders,
+  logOperatorHint,
   logProviderMessage,
   logsToStderr,
   logWorkflowsNotOffered,
@@ -30,9 +31,9 @@ async function inferenceServedBy(
   models: ModelSettings,
   modelAccessOf: ModelAccessOf,
 ): Promise<Primitive> {
-  const { languageModel, status } = await Effect.runPromise(modelAccessOf(models));
+  const { languageModel, status, offered } = await Effect.runPromise(modelAccessOf(models));
   await runtime.run(logModelProviders(status));
-  return makeInference({ languageModel });
+  return makeInference({ languageModel, offered });
 }
 
 export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions<DispatcherServices> {
@@ -52,5 +53,5 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
 }
 
 export const compositionRoot = compositionRootWith((settings) =>
-  makeModelAccess(settings, { reportProviderMessage: logProviderMessage }),
+  makeModelAccess(settings, { reportProviderMessage: logProviderMessage, reportOperatorHint: logOperatorHint }),
 );
