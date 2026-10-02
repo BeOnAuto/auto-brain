@@ -11,6 +11,10 @@ function settingsFrom(environment: Readonly<Record<string, string>>) {
   return Effect.runSync(readTemporalSettings(environment));
 }
 
+function keyOf(key: string) {
+  return Option.map(settingsFrom({ ...reachable, TEMPORAL_API_KEY: key }), (settings) => connectionOptionsOf(settings));
+}
+
 function problemOf(environment: Readonly<Record<string, string>>): TemporalSettingsInvalid {
   return Effect.runSync(Effect.flip(readTemporalSettings(environment)));
 }
@@ -92,10 +96,19 @@ describe('Temporal settings that cannot be read', () => {
     ]);
   });
 
-  it.each(['temporal', 'temporal:port', ':7233'])('reject the address %s', (address) => {
-    expect(problemOf({ TEMPORAL_ADDRESS: address }).problems).toEqual([
-      { setting: 'TEMPORAL_ADDRESS', detail: 'Expected host:port, such as temporal:7233' },
-    ]);
+  it.each(['temporal', 'temporal:port', ':7233', 'temporal:0', 'temporal:99999', 'admin@temporal:7233'])(
+    'reject the address %s',
+    (address) => {
+      expect(problemOf({ TEMPORAL_ADDRESS: address }).problems).toEqual([
+        { setting: 'TEMPORAL_ADDRESS', detail: 'Expected host:port, such as temporal:7233' },
+      ]);
+    },
+  );
+
+  it.each(['temporal:1', 'temporal:65535'])('accept the address %s', (address) => {
+    expect(Option.map(settingsFrom({ TEMPORAL_ADDRESS: address }), (settings) => settings.address)).toEqual(
+      Option.some(address),
+    );
   });
 });
 
@@ -157,6 +170,13 @@ describe('the connection to Temporal', () => {
       tls: true,
       apiKey: 'secret',
     });
+  });
+
+  it('trims the API key, and counts one of only whitespace as none, connecting without TLS', () => {
+    expect([keyOf(' secret\n'), keyOf('  \t ')]).toStrictEqual([
+      Option.some({ address: 'temporal:7233', tls: true, apiKey: 'secret' }),
+      Option.some({ address: 'temporal:7233', tls: false }),
+    ]);
   });
 
   it('keeps the API key out of what the settings print', () => {

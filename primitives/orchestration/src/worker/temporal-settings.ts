@@ -43,7 +43,9 @@ const mostNestedExecutions = 1000;
 
 const wholeNumber = /^\d{1,4}$/u;
 
-const hostAndPort = /^(?:\[[0-9a-f:.]+\]|[^\s/:[\]]+):\d{1,5}$/iu;
+const hostAndPort = /^(?:\[[0-9a-f:.]+\]|[^\s/:@[\]]+):(\d{1,5})$/iu;
+
+const mostPort = 65_535;
 
 const tlsValues: ReadonlyMap<string, boolean> = new Map<string, boolean>([
   ['true', true],
@@ -100,7 +102,8 @@ export const readTemporalSettings = Effect.fnUntraced(function* (environment: En
     nestedExecutions: Number(source.nestedExecutions.trim()),
     ...(workflowBundle === '' ? {} : { workflowBundle }),
   };
-  return Option.some<TemporalSettings>(source.apiKey === '' ? settings : { ...settings, apiKey: () => source.apiKey });
+  const apiKey = source.apiKey.trim();
+  return Option.some<TemporalSettings>(apiKey === '' ? settings : { ...settings, apiKey: () => apiKey });
 });
 
 export function connectionOptionsOf({ address, apiKey, tls }: TemporalSettings): TemporalConnectionOptions {
@@ -109,7 +112,7 @@ export function connectionOptionsOf({ address, apiKey, tls }: TemporalSettings):
 
 function problemsOf(source: Sources): readonly SettingProblem[] {
   return [
-    hostAndPort.test(source.address)
+    addressFits(source.address)
       ? []
       : [{ setting: 'TEMPORAL_ADDRESS', detail: 'Expected host:port, such as temporal:7233' }],
     source.namespace.trim() === ''
@@ -148,6 +151,11 @@ function invalid(problems: readonly SettingProblem[]): TemporalSettingsInvalid {
 function mostDurationFits(text: string): boolean {
   const milliseconds = millisecondsOf(text);
   return milliseconds >= leastMostDuration && milliseconds <= greatestMostDuration;
+}
+
+function addressFits(address: string): boolean {
+  const port = Number(hostAndPort.exec(address)?.[1]);
+  return port >= 1 && port <= mostPort;
 }
 
 function nestedExecutionsFit(text: string): boolean {
