@@ -41,6 +41,8 @@ const mostReportedCharacters = 500;
 
 const reportWindowMs = 60_000;
 
+const callOutlivesAnswerMs = 1000;
+
 type ReportFailure = (action: string, error: unknown) => Effect.Effect<void>;
 
 interface TemporalCalls {
@@ -112,7 +114,7 @@ function openTemporal(settings: TemporalSettings, requestTimeout: number): Tempo
   const client = new Client({ connection, namespace: settings.namespace });
   const unsettled = new Set<Promise<unknown>>();
   const withinDeadline = <T>(request: () => Promise<T>): Promise<T> => {
-    const answer = connection.withDeadline(Date.now() + requestTimeout, request);
+    const answer = connection.withDeadline(Date.now() + requestTimeout + callOutlivesAnswerMs, request);
     const settled = Promise.allSettled([answer]);
     unsettled.add(settled);
     void settled.then(() => unsettled.delete(settled));
