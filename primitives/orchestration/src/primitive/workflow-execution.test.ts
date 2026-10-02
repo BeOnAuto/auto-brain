@@ -67,6 +67,29 @@ describe('executing a workflow spec', () => {
   }, 60_000);
 });
 
+describe('executing a workflow spec while no worker polls its task queue', () => {
+  it('answers started, and the workflow waits for a worker', async () => {
+    const waitingId = '0199a3c4-7d2e-7c1a-9b3f-3333333333a2';
+    const scope = Effect.runSync(Scope.make());
+    const client = await Effect.runPromise(connectOrchestration(settingsFor('no-worker')).pipe(Scope.provide(scope)));
+    const isolated = brainWith([makeOrchestration({ client })]);
+    await isolated.call(isolated.createSpec, { primitive: 'orchestration', name: 'slow-greeting', source: flow });
+
+    const outcome = await isolated.call(isolated.executeSpec, {
+      primitive: 'orchestration',
+      name: 'slow-greeting',
+      execution_id: waitingId,
+    });
+    const handle = brain.temporal.workflow.getHandle(`acme/alpha/slow-greeting/${waitingId}`);
+    const { status } = await handle.describe();
+    await handle.terminate();
+    await Effect.runPromise(Scope.close(scope, Exit.void));
+
+    expect(outcome).toMatchObject({ status: 'succeeded', output: { status: 'started' } });
+    expect(status.name).toBe('RUNNING');
+  }, 30_000);
+});
+
 describe('executing a workflow spec when Temporal cannot be reached', () => {
   it('is rejected as unavailable, and the rejection is recorded', async () => {
     const scope = Effect.runSync(Scope.make());
