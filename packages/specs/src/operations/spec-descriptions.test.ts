@@ -23,6 +23,15 @@ describe('the description of every operation that takes a primitive', () => {
   });
 });
 
+describe('the description of execute_spec', () => {
+  it('names no primitive the brain does not have', () => {
+    const executeSpec = operations.find(({ name }) => name === 'execute_spec');
+
+    expect(executeSpec?.description).toContain('A primitive may start work that finishes after the call returns');
+    expect(executeSpec?.description).not.toMatch(/workflow/iu);
+  });
+});
+
 describe('the JSON Schema of the input of the operations', () => {
   it('lists the known primitives for the primitive field as a plain enum', () => {
     for (const { input } of takingAPrimitive) {
