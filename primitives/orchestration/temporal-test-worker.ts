@@ -1,9 +1,11 @@
-import { DefaultLogger, Runtime } from '@temporalio/worker';
 import { Effect } from 'effect';
 
 import { runOrchestrationWorker } from './src/worker/orchestration-worker.ts';
+import { installTemporalRuntime } from './src/worker/temporal-runtime.ts';
 
-Runtime.install({ logger: new DefaultLogger('WARN'), shutdownSignals: [] });
+installTemporalRuntime(({ level, message, context }) => {
+  process.stderr.write(`${level} ${message} ${JSON.stringify(context)}\n`);
+});
 
 const settings = {
   address: process.env['TEMPORAL_ADDRESS'] ?? '',

@@ -33,6 +33,9 @@ export interface WorkflowApi {
   readonly ApplicationFailure: {
     create(failure: { readonly type: string; readonly message: string; readonly nonRetryable: boolean }): Error;
   };
+  readonly log: {
+    error(message: string, attributes: Readonly<Record<string, string>>): void;
+  };
   sleep(milliseconds: number, options: { readonly summary: string }): Promise<void>;
   condition(satisfied: () => boolean): Promise<void>;
   proxyActivities(options: ActivitySettings): OrchestrationActivities;

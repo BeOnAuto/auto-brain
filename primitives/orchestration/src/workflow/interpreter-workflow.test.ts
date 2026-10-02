@@ -51,12 +51,31 @@ describe('the interpreter workflow', () => {
 });
 
 describe('the interpreter workflow that does not complete', () => {
-  it('fails with an application failure that is not retried when the workflow fails', async () => {
+  it('fails for a fault of the runtime with an application failure, and logs only the type for the operator', async () => {
     const fake = fakeWorkflowApi();
 
     await expect(defineInterpreterWorkflow(fake.api)({ document: 'none' })).rejects.toThrow(
       'InvalidRun: The workflow was started without a run it can read',
     );
+    expect(fake.calls().filter(({ name }) => name === 'log')).toStrictEqual([
+      {
+        name: 'log',
+        message: 'The workflow failed for a fault of the runtime',
+        attributes: { failureType: 'InvalidRun' },
+      },
+    ]);
+  });
+
+  it('fails for a reason of the tenant with an application failure, and logs nothing', async () => {
+    const fake = fakeWorkflowApi();
+    const document = workflow(
+      'do:\n  - no: { raise: { error: { type: https://example.com/no, status: 422, title: No } } }',
+    );
+
+    await expect(defineInterpreterWorkflow(fake.api)(runOf(document))).rejects.toThrow(
+      'UncaughtError: No (at /do/0/no)',
+    );
+    expect(fake.calls().filter(({ name }) => name === 'log')).toStrictEqual([]);
   });
 
   it('ends cancelled by rethrowing the cancellation', async () => {

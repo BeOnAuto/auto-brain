@@ -1,11 +1,12 @@
 import type { SettleExecution } from '@beonauto/specs';
 import { activityInfo } from '@temporalio/activity';
-import { NativeConnection, Runtime, Worker } from '@temporalio/worker';
+import { NativeConnection, Worker } from '@temporalio/worker';
 import { Data, Effect, type Scope } from 'effect';
 
 import type { OrchestrationActivities } from '../workflow/activity-contract.ts';
 import { makeActivities, workflowRunOf } from './activities.ts';
 import type { ExecuteSpec, ReportUnsettled } from './dependencies.ts';
+import { runtimeShutdownSignals } from './temporal-runtime.ts';
 import { connectionOptionsOf, type TemporalSettings } from './temporal-settings.ts';
 import { failureConverterPath, workflowsPath } from './workflow-code.ts';
 
@@ -170,11 +171,4 @@ function failureOf(ending: unknown): string {
   return ending === ranToTheEnd
     ? 'The orchestration worker stopped on its own'
     : `The orchestration worker stopped: ${String(ending)}`;
-}
-
-function runtimeShutdownSignals(): readonly string[] {
-  if (Reflect.get(Runtime, '_instance') === undefined) {
-    Runtime.install({ ...Runtime.defaultOptions, shutdownSignals: [] });
-  }
-  return Runtime.instance().options.shutdownSignals;
 }

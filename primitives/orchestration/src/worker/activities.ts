@@ -1,6 +1,7 @@
 import { Conflict, NotFound } from '@beonauto/operations';
 import type { SettleExecution, Settlement } from '@beonauto/specs';
 import { ApplicationFailure } from '@temporalio/activity';
+import { ApplicationFailureCategory } from '@temporalio/common';
 import { Cause, Effect, Exit } from 'effect';
 
 import { jsonBytesOf } from '../dsl/json.ts';
@@ -115,7 +116,13 @@ async function settleFor(dependencies: ActivityDependencies, request: SettleRequ
   if (attempt >= mostSettleAttempts) {
     unsettled(`Settling failed on all ${mostSettleAttempts} attempts: ${detail}`);
   }
-  throw ApplicationFailure.retryable(detail, failure instanceof Conflict ? executionConflict : settlementBroken);
+  throw failure instanceof Conflict
+    ? ApplicationFailure.create({
+        message: detail,
+        type: executionConflict,
+        category: ApplicationFailureCategory.BENIGN,
+      })
+    : ApplicationFailure.retryable(detail, settlementBroken);
 }
 
 function settlementOf(settlement: RunSettlement): Settlement {

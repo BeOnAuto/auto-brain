@@ -160,9 +160,17 @@ describe('an execution that cannot be settled', () => {
     await expect(missing.settleExecution(request)).rejects.toEqual(
       ApplicationFailure.nonRetryable('There is no such execution', 'ExecutionNotFound'),
     );
-    await expect(conflicting.settleExecution(request)).rejects.toEqual(
-      ApplicationFailure.retryable('It runs within its call', 'ExecutionConflict'),
-    );
+    await expect(conflicting.settleExecution(request)).rejects.toMatchObject({
+      message: 'It runs within its call',
+      type: 'ExecutionConflict',
+      nonRetryable: false,
+    });
+  });
+
+  it('is a benign failure after a conflict, which Temporal does not log as a warning, since the call that started the execution has yet to record it deferred', async () => {
+    const conflicting = activitiesSettling(() => Effect.fail(new Conflict({ detail: 'It runs within its call' })));
+
+    await expect(conflicting.settleExecution(request)).rejects.toMatchObject({ category: 'BENIGN' });
   });
 });
 

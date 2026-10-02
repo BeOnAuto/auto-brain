@@ -7,11 +7,13 @@ export type RunOutcome =
   | { readonly kind: 'raised'; readonly error: DslError }
   | { readonly kind: 'cancelled'; readonly cause: unknown }
   | { readonly kind: 'broken'; readonly reason: string }
+  | { readonly kind: 'oversized'; readonly bytes: number; readonly most: number }
   | { readonly kind: 'overran'; readonly milliseconds: number };
 
 export type WorkflowEnding =
   | { readonly kind: 'completed'; readonly output: Json }
   | { readonly kind: 'failed'; readonly type: string; readonly message: string }
+  | { readonly kind: 'faulted'; readonly type: string; readonly message: string }
   | { readonly kind: 'cancelled'; readonly cause: unknown };
 
 const retryableStatuses = new Set([408, 429]);
@@ -40,5 +42,12 @@ export function endingOf(outcome: RunOutcome): WorkflowEnding {
       message: `The workflow ran for ${outcome.milliseconds} ms, the most it may run before its execution timeout; it was stopped and its execution settled failed`,
     };
   }
-  return outcome.kind === 'broken' ? { kind: 'failed', type: 'WorkflowBrokeDown', message: outcome.reason } : outcome;
+  if (outcome.kind === 'oversized') {
+    return {
+      kind: 'failed',
+      type: 'WorkflowOutputTooLarge',
+      message: `The workflow's output takes ${outcome.bytes} bytes as JSON, more than the ${outcome.most} an execution records`,
+    };
+  }
+  return outcome.kind === 'broken' ? { kind: 'faulted', type: 'WorkflowBrokeDown', message: outcome.reason } : outcome;
 }

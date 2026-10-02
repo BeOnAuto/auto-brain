@@ -17,6 +17,9 @@ export function defineInterpreterWorkflow(api: WorkflowApi): InterpreterWorkflow
     if (ending.kind === 'cancelled') {
       throw ending.cause;
     }
+    if (ending.kind === 'faulted') {
+      api.log.error('The workflow failed for a fault of the runtime', { failureType: ending.type });
+    }
     throw api.ApplicationFailure.create({ type: ending.type, message: ending.message, nonRetryable: true });
   };
 }

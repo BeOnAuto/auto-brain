@@ -172,12 +172,23 @@ The server serves workflows when `TEMPORAL_ADDRESS` is set (`packages/server/src
 - `readTemporalSettings(environment)`, from the entry `@beonauto/orchestration/settings`, which imports nothing of Temporal: none when `TEMPORAL_ADDRESS` is unset, the settings below otherwise, and `temporal_settings_invalid` naming every setting that is wrong and what it expects, never its value.
 - `connectOrchestration(settings)` (scoped): the Temporal client that starts workflows and signals events. Each request answers within its deadline, 10 seconds, even while Temporal's client still retries it, and closing the client waits for those retries to end, because a retry that runs after its connection closed throws from a timer and ends the process.
 - `makeOrchestration({ client })`, the primitive for `makeSpecOperations`, and `defineSendExecutionEvent(client)`, the brain operation `send_execution_event`.
-- `installTemporalRuntime(log)`: Temporal's runtime with no shutdown signals and a logger that hands the server Temporal's warnings and errors, the native core's included, with only the fields that describe them.
+- `installTemporalRuntime(log)`: Temporal's runtime with no shutdown signals and a logger that hands the server only what an operator acts on, as [the server's log](#what-the-server-logs-from-temporal) describes.
 - `runOrchestrationWorker({ settings, executeSpec, settle, reportUnsettled, onFailure, workflowBundle })` (scoped): the worker, inside the server process. `executeSpec` runs a nested execution through the server's dispatcher, as the caller captured when the workflow started (`specExecutionResultOf` turns its outcome into a result), and `settle` is `executionSettler` over the server's ledger.
 
 The worker connects to Temporal, runs, and shuts down when its scope closes: activities in flight get 10 seconds to finish, and are then left to Temporal's retries, and then its connection closes. It fails with `OrchestrationWorkerError` when Temporal cannot be reached or the worker cannot be made, closing the connection it opened. The server starts it again after such a failure, and after a worker that stops on its own, with a delay that doubles from 1 second up to 30 seconds.
 
-The server owns the process's signals. The worker installs Temporal's runtime with no `shutdownSignals`, so a `SIGTERM` does not stop the worker behind the server's back; it refuses to start under a runtime installed earlier with shutdown signals. When Temporal shuts an idle runtime down, the worker installs it again with the options it had. Stopping a worker that already stopped is harmless.
+The server owns the process's signals. Temporal's runtime is installed once, by `installTemporalRuntime` or else by the worker, with no `shutdownSignals`, so a `SIGTERM` does not stop the worker behind the server's back. A runtime that something else installed or instantiated first makes the worker fail to start with Temporal's `IllegalStateError`. When Temporal shuts an idle runtime down, it creates it again with the options it was installed with. Stopping a worker that already stopped is harmless.
+
+### What the server logs from Temporal
+
+Temporal's warnings and errors, the native core's included, reach the server's log only when an operator has something to do:
+
+- the worker cannot reach Temporal (`gRPC call poll_workflow_task_queue retried 6 times`, with `errorCode` such as `Unavailable`);
+- a workflow task fails, which only a fault of the runtime causes: an error outside the interpreter, or a nondeterminism error, which carries `failureCode: TMPRL1100`;
+- an activity fails: settling or a nested execution broke down, or a run acted for another brain (`errorType: TenancyViolation`);
+- a workflow ends for a fault of the runtime: `The workflow failed for a fault of the runtime`, with `failureType` `WorkflowBrokeDown` or `InvalidRun`.
+
+A workflow that fails for a reason of its tenant, an uncaught error, a rejected nested execution, a cancellation or a limit, is not logged at all; its execution's rejection says why, and Temporal's history keeps the rest. A forwarded line carries Temporal's message up to its first colon and only fixed fields: the namespace, task queue, workflow type, workflow id and run id, the activity type and attempt, the type or code of the error and the code of a failure. It never carries an error's message, a stack trace, a payload, a header, or an activity id, which names a task of the document. Every forwarded text is cut at 500 characters.
 
 A worker that stops on its own, because its run fails (Temporal unreachable for good, a fatal worker error) or ends without being asked to, calls `onFailure` once with a detail saying why; stopping it when its scope closes calls nothing. While the worker is down, executing a workflow spec still answers `started` whenever Temporal accepts the start, and `unavailable` only when it does not; the workflow waits on its task queue until a worker polls it again.
 

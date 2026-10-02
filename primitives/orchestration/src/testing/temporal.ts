@@ -1,6 +1,5 @@
 import type { Execution, ExecutionAddress, SettleExecution, Settlement } from '@beonauto/specs';
 import { Client, Connection } from '@temporalio/client';
-import { DefaultLogger, Runtime } from '@temporalio/worker';
 import { Effect, Exit, Scope } from 'effect';
 import { inject } from 'vitest';
 
@@ -9,6 +8,7 @@ import type { ExecuteSpec, SpecExecution, SpecExecutionResult, UnsettledExecutio
 import { runOrchestrationWorker } from '../worker/orchestration-worker.ts';
 import type { TemporalSettings } from '../worker/temporal-settings.ts';
 import { failureRecorder } from './failure-recorder.ts';
+import { temporalLogsOf } from './temporal-logs.ts';
 
 interface Settled {
   readonly address: ExecutionAddress;
@@ -22,6 +22,7 @@ export interface TemporalHarness {
   readonly executions: () => readonly SpecExecution[];
   readonly settled: () => readonly Settled[];
   readonly unsettled: () => readonly UnsettledExecution[];
+  readonly temporalLogsOf: typeof temporalLogsOf;
   readonly close: () => Promise<void>;
 }
 
@@ -29,8 +30,6 @@ export interface HarnessOptions {
   readonly respond?: (execution: SpecExecution) => SpecExecutionResult;
   readonly settle?: SettleExecution;
 }
-
-Runtime.install({ logger: new DefaultLogger('WARN'), shutdownSignals: [] });
 
 export function settingsFor(taskQueue: string): TemporalSettings {
   return {
@@ -88,6 +87,7 @@ export async function temporalHarness(taskQueue: string, options: HarnessOptions
     executions: () => executions,
     settled: () => settled,
     unsettled: recorder.unsettled,
+    temporalLogsOf,
     close: async () => {
       await connection.close();
       await Effect.runPromise(Scope.close(scope, Exit.void));

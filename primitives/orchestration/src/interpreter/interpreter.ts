@@ -26,7 +26,7 @@ export function startWorkflow(input: unknown, host: WorkflowHost): WorkflowStart
     return {
       deliver: ignoreEvent,
       ending: Promise.resolve({
-        kind: 'failed',
+        kind: 'faulted',
         type: 'InvalidRun',
         message: 'The workflow was started without a run it can read',
       }),
@@ -129,10 +129,5 @@ async function interpret(state: RunState): Promise<Json> {
 
 function withinOutputLimit(output: Json): RunOutcome {
   const bytes = jsonBytesOf(output);
-  return bytes > mostOutputBytes
-    ? {
-        kind: 'broken',
-        reason: `The workflow's output takes ${bytes} bytes as JSON, more than the ${mostOutputBytes} an execution records`,
-      }
-    : { kind: 'completed', output };
+  return bytes > mostOutputBytes ? { kind: 'oversized', bytes, most: mostOutputBytes } : { kind: 'completed', output };
 }

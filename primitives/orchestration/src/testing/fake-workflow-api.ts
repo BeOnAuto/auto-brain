@@ -17,7 +17,8 @@ type ApiCall =
   | { readonly name: 'settleExecution'; readonly request: SettleRequest }
   | { readonly name: 'scope'; readonly event: 'run' | 'cancel' | 'non-cancellable' }
   | { readonly name: 'defineSignal'; readonly signal: string }
-  | { readonly name: 'setHandler'; readonly signal: string };
+  | { readonly name: 'setHandler'; readonly signal: string }
+  | { readonly name: 'log'; readonly message: string; readonly attributes: Readonly<Record<string, string>> };
 
 export interface FakeWorkflowApi {
   readonly api: WorkflowApi;
@@ -30,7 +31,7 @@ export interface FakeWorkflowApiOptions {
   readonly answer?: SpecCallResult;
 }
 
-type Record = (call: ApiCall) => void;
+type RecordCall = (call: ApiCall) => void;
 
 function sleepUntilDeadline(summary: string): Promise<void> {
   return summary === 'the most the workflow may run' ? Promise.withResolvers<void>().promise : Promise.resolve();
@@ -39,12 +40,17 @@ function sleepUntilDeadline(summary: string): Promise<void> {
 export function fakeWorkflowApi(options: FakeWorkflowApiOptions = {}): FakeWorkflowApi {
   const calls: ApiCall[] = [];
   const handlers: ((event: unknown) => void)[] = [];
-  const record: Record = (call) => {
+  const record: RecordCall = (call) => {
     calls.push(call);
   };
   const api: WorkflowApi = {
     CancellationScope: recordingScopes(record),
     ApplicationFailure: { create: ({ type, message }) => new Error(`${type}: ${message}`) },
+    log: {
+      error: (message, attributes) => {
+        record({ name: 'log', message, attributes });
+      },
+    },
     sleep: (milliseconds, { summary }) => {
       record({ name: 'sleep', milliseconds, summary });
       return (options.sleep ?? sleepUntilDeadline)(summary);
@@ -79,7 +85,7 @@ export function fakeWorkflowApi(options: FakeWorkflowApiOptions = {}): FakeWorkf
   };
 }
 
-function recordingActivities(record: Record, answer: SpecCallResult): OrchestrationActivities {
+function recordingActivities(record: RecordCall, answer: SpecCallResult): OrchestrationActivities {
   return {
     executeSpec: (call) => {
       record({ name: 'executeSpec', call });
@@ -92,7 +98,7 @@ function recordingActivities(record: Record, answer: SpecCallResult): Orchestrat
   };
 }
 
-function recordingScopes(record: Record): TemporalScopes {
+function recordingScopes(record: RecordCall): TemporalScopes {
   return class implements TemporalScope {
     static nonCancellable<T>(work: () => Promise<T>): Promise<T> {
       record({ name: 'scope', event: 'non-cancellable' });
