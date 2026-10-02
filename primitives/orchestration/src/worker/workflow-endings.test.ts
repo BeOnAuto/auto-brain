@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { WorkflowFailedError } from '@temporalio/client';
 import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -74,6 +76,24 @@ describe('a workflow that is cancelled', () => {
     expect(settledFor(executionId)).toEqual([
       { address: { org: 'acme', brain: 'alpha', id: executionId }, settlement: { status: 'failed' } },
     ]);
+  }, 60_000);
+});
+
+describe('a workflow that is terminated', () => {
+  it('ends at once without running any more of its code, so its execution is never settled', async () => {
+    const executionId = idOf(5);
+    const { workflowId } = await Effect.runPromise(
+      harness.orchestration.start(runFor(workflow('do:\n  - pause: { wait: PT1H }'), executionId)),
+    );
+    const handle = harness.temporal.workflow.getHandle(workflowId);
+
+    await handle.terminate('an operator ended it');
+    const failure: unknown = await handle.result().catch((error: unknown) => error);
+    await setTimeout(1000);
+
+    expect(failure).toBeInstanceOf(WorkflowFailedError);
+    expect((await handle.describe()).status.name).toBe('TERMINATED');
+    expect(settledFor(executionId)).toStrictEqual([]);
   }, 60_000);
 });
 
