@@ -10,9 +10,7 @@ A business brain carries out the way your team works. It gathers context, calls 
 
 auto-brain is the server a brain runs on. Auto can host it for you, or you can run it yourself from one container image.
 
-> **Status: early development.** The server, its container image and the release pipeline are in place. The server can create, list, read, update and retire an org's brains on the ledger, and run inference specs, which call a language model, in them. The other primitives below are being designed and built, so auto-brain isn't ready for production use yet.
->
-> **Workflows are not served yet.** The [orchestration primitive](primitives/orchestration) runs workflow specs on Temporal, but the server does not wire it in: no request starts a workflow, and the server reads none of the `TEMPORAL_*` settings.
+> **Status: early development.** The server, its container image and the release pipeline are in place. The server can create, list, read, update and retire an org's brains on the ledger, and run specs in them: inference specs, which call a language model, and, when it is given a Temporal server, workflow specs, which execute other specs and wait for events. The other primitives below are being designed and built, so auto-brain isn't ready for production use yet.
 
 ## How a brain works
 
@@ -110,6 +108,58 @@ curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c
 
 A document with a problem is rejected with every problem and its line; an input that does not match the schema is rejected before any model is called; a provider that is not configured answers `503`, naming the settings it lacks. The [inference README](primitives/inference/README.md) describes the document, the template language, every rejection and the record, and the [specs README](packages/specs/README.md) the operations. `scripts/try-inference.sh <base-url> <provider/model>` runs the same steps with a spec of its own against a server that is already running. An agent does the same over [MCP](#connecting-an-agent-over-mcp) on the brain's endpoint, `/orgs/acme/brains/sales/mcp`, where the descriptions of the spec tools explain how an inference spec is written.
 
+A workflow spec runs steps that execute other specs, branch, wait and listen for events, durably, on [Temporal](#workflows-and-temporal). Start a Temporal dev server and give the server its address:
+
+```bash
+temporal server start-dev
+TEMPORAL_ADDRESS=localhost:7233 pnpm dev
+```
+
+Write `welcome.yaml`, a workflow that executes the greeting above, then waits for the customer's reply:
+
+```yaml
+document:
+  dsl: '1.0.3'
+  namespace: acme
+  name: welcome
+  version: '1.0.0'
+  summary: Greets a customer, then waits for their reply.
+do:
+  - greet:
+      call: execute_spec
+      with:
+        primitive: inference
+        name: greeting
+        input:
+          name: ${ .name }
+      output:
+        as: '${ { greeting: . } }'
+  - await:
+      listen:
+        to:
+          one:
+            with: { type: com.acme.customer.replied }
+      output:
+        as: '${ $input + { reply: .[0] } }'
+```
+
+Create it, execute it, and send it the event it waits for:
+
+```bash
+jq --null-input --rawfile source welcome.yaml '{name: "welcome", source: $source}' |
+  curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/orchestration \
+    --header 'content-type: application/json' --data @-
+curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/orchestration/welcome/execute \
+  --header 'content-type: application/json' \
+  --data '{"input":{"name":"Ada"},"execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b"}'
+curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b/events \
+  --header 'content-type: application/json' \
+  --data '{"event":{"type":"com.acme.customer.replied","data":"Thank you!"}}'
+curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b
+```
+
+Executing answers `started` at once; the execution reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting the workflow executed is an execution of its own in the ledger, under an id derived from the workflow's run, made by the caller who started the workflow. The [orchestration README](primitives/orchestration/README.md) describes what a workflow may do, and `scripts/try-workflows.sh <base-url> <provider/model>` runs these steps against a server that is already running.
+
 ### In a container
 
 Every release publishes the image to Docker Hub (`beonauto/auto-brain`) and GitHub Container Registry (`ghcr.io/beonauto/auto-brain`). A container needs two things: an [API key](#api-keys), because it listens on every interface, and a volume on `/data`, where it keeps the ledger.
@@ -147,7 +197,31 @@ The [inference primitive](primitives/inference) calls language models with these
 | `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another                                                                           |
 | `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                                          |
 
-The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, the only place that user may write, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built.
+The [orchestration primitive](primitives/orchestration) runs workflow specs on Temporal with these settings. Without `TEMPORAL_ADDRESS` the server does not offer workflows: the spec operations serve only the other primitives, and no Temporal code is loaded. The server logs at start-up whether it offers workflows, and with which Temporal server, namespace and task queue.
+
+| Variable                        | Default                                   | Purpose                                                                                           |
+| ------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `TEMPORAL_ADDRESS`              | none                                      | `host:port` of the Temporal frontend; set, the server offers workflows                            |
+| `TEMPORAL_NAMESPACE`            | `default`                                 | Temporal namespace                                                                                |
+| `TEMPORAL_TASK_QUEUE`           | `auto-brain`                              | Task queue the server's worker polls and its workflows start on                                   |
+| `TEMPORAL_API_KEY`              | none                                      | API key, for Temporal Cloud; implies TLS                                                          |
+| `TEMPORAL_TLS`                  | `false`                                   | Whether to connect with TLS                                                                       |
+| `ORCHESTRATION_MAX_DURATION`    | `P30D`                                    | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`                          |
+| `ORCHESTRATION_WORKFLOW_BUNDLE` | none; `/app/workflow-bundle` in the image | Directory of the workflow code bundled ahead of time; unset, the worker bundles it when it starts |
+
+The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, the only place that user may write, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built, and its workflow code is bundled while the image is built, checked against the code the image runs. A second `SIGTERM` or `SIGINT` ends the server at once with exit code 1.
+
+### Workflows and Temporal
+
+The server runs the Temporal worker for its workflows in its own process, on the task queue `TEMPORAL_TASK_QUEUE`; give each deployment its own task queue, or its own namespace, so that no other deployment's worker takes its workflows. For local development, the [Temporal CLI](https://docs.temporal.io/cli)'s `temporal server start-dev` runs a dev server on `localhost:7233` that keeps everything in memory, or run it in a container, `docker run --publish 7233:7233 temporalio/temporal server start-dev --ip 0.0.0.0`.
+
+The server starts whether Temporal can be reached or not. Until it can, it logs a warning each time it tries to start the worker, waiting twice as long each time, from 1 second up to 30 seconds, and executing a workflow spec answers `503` `unavailable` within 10 seconds; once Temporal is back, workflows run without a restart. A worker that stops on its own is logged as an error and started again the same way. When the server stops, it stops accepting requests, gives the activities in flight 10 seconds to finish while the requests in flight finish, and then closes the ledger; with Temporal unreachable and requests waiting for it, stopping can take up to about 16 seconds, so allow the container at least 20 (`docker stop --time 20`).
+
+What an operator must know:
+
+- Temporal's history of each workflow holds its document, its input, the outputs of the specs it executes, the events sent to it and the identity of the caller who started it, unencrypted in this version: whoever can read the namespace can read that tenant data. Access to the namespace is an operator's privilege; grant it accordingly.
+- A workflow acts for the caller who started it, with the permissions that caller had then, for as long as it runs, at most `ORCHESTRATION_MAX_DURATION`.
+- An execution whose workflow could not settle it stays `started`; the server logs it as an error with its org, brain, execution id and reason, and reconciling it is manual in this version.
 
 ### API keys
 
@@ -193,10 +267,10 @@ Every org is also an [MCP](https://modelcontextprotocol.io) server, so an agent 
 
 Most MCP clients take an entry of this shape; in [local mode](#local-mode), leave out the headers. The endpoint speaks streamable HTTP without sessions. It serves the current stateless revision (`2026-07-28`) and the earlier ones the SDK supports (`2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`), so agents built on older SDKs connect too.
 
-| Endpoint                              | Tools                                                                                                                                  |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /orgs/{org}/mcp`                | `create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain`                                                          |
-| `POST /orgs/{org}/brains/{brain}/mcp` | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec` and `get_execution`, for the inference primitive |
+| Endpoint                              | Tools                                                                                                                                                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /orgs/{org}/mcp`                | `create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain`                                                                                                                                                                                |
+| `POST /orgs/{org}/brains/{brain}/mcp` | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec` and `get_execution`, for the inference and, when workflows are offered, orchestration primitives; and, when workflows are offered, `send_execution_event`: eight tools |
 
 Each tool carries the operation's description and its input and output JSON Schemas, and is marked read-only when it only reads. A tool that cannot do what was asked returns `isError` with the same problem document HTTP would answer with, as text, so the agent can read the `reason` and the `detail`, and correct its arguments when the `reason` is `invalid_input`. The key's permissions and brains hold as they do over HTTP: a read-only key can call `list_brains` but gets `forbidden` from `create_brain`. [`packages/api`](packages/api) describes both mappings in full.
 
@@ -238,6 +312,6 @@ pnpm check        # everything CI checks
 | `packages/brains`          | The brain operations: create, list, read, update and retire an org's brains                                                                              |
 | `packages/specs`           | The spec operations: define, version, retire and execute the specs of a brain's primitives                                                               |
 | `packages/ledger`          | The ledger every primitive records to: event streams on Emmett and SQLite                                                                                |
-| `primitives/orchestration` | Workflow specs in the Open Workflow DSL, run on Temporal by one interpreter workflow; the server does not serve them yet                                 |
+| `primitives/orchestration` | Workflow specs in the Open Workflow DSL, run on Temporal by one interpreter workflow; the server serves them when `TEMPORAL_ADDRESS` is set              |
 | `primitives/*`             | One package per primitive; `primitives/inference` renders prompts from specs and calls language models                                                   |
-| `scripts`                  | `try-inference.sh`, which creates and executes a small inference spec against a running server                                                           |
+| `scripts`                  | `try-inference.sh` and `try-workflows.sh`, which create and execute a small inference spec, and a workflow that executes it, against a running server    |
