@@ -39,10 +39,7 @@ function serverCommand(run: DevelopmentRun, { temporal: { address }, output }: S
 
 async function stopped(signal: NodeJS.Signals, children: readonly (RunningChild | undefined)[]): Promise<void> {
   const running = children.filter((child): child is RunningChild => child !== undefined);
-  for (const child of running) {
-    child.signal(signal);
-  }
-  await Promise.all(running.map(({ ended }) => ended));
+  await Promise.all(running.map((child) => child.stop(signal)));
 }
 
 interface Serving {
@@ -82,10 +79,11 @@ async function served(run: DevelopmentRun, serving: Serving): Promise<number> {
   }
   if ('server' in event) {
     run.log.warn(`The server stopped (${event.server}); it starts again when a file changes`);
+    await stopped('SIGTERM', [server]);
     return served(run, { ...serving, server: undefined });
   }
   run.log.error(`Temporal's dev server stopped (${event.temporal}), so the server stops too`);
-  await stopped('SIGTERM', [server]);
+  await stopped('SIGTERM', [server, temporal.child]);
   return 1;
 }
 

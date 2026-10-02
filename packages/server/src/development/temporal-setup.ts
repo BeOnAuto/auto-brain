@@ -85,8 +85,7 @@ async function startedTemporal(run: DevelopmentRun, cli: string, local: LocalTem
   const child = run.start(temporalCommand(cli, local, run));
   const readiness = await readinessOf(local, child, run);
   if (readiness === 'stopping') {
-    child.signal('SIGTERM');
-    await child.ended;
+    await child.stop('SIGTERM');
   }
   return readiness === 'ready' ? { running: child } : readiness;
 }
