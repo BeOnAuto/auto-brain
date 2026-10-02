@@ -1,0 +1,60 @@
+import { BrainIdSchema, rejected, type Rejected } from '@beonauto/operations';
+import { Option, Predicate, Result, Schema } from 'effect';
+
+import { inlinedRootOf, type JsonSchema } from './tool-schema.ts';
+
+export interface BrainArgument {
+  readonly brain: string;
+  readonly input: Readonly<Record<string, unknown>>;
+}
+
+const brainProperty: JsonSchema = {
+  ...Schema.toJsonSchemaDocument(BrainIdSchema).schema,
+  description: 'The id of the brain to act in',
+};
+
+const ObjectFieldsSchema = Schema.Struct({
+  properties: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
+  required: Schema.optionalKey(Schema.Array(Schema.String)),
+});
+
+const UnionSchema = Schema.Struct({
+  anyOf: Schema.Array(Schema.Record(Schema.String, Schema.Unknown)),
+  $defs: Schema.optionalKey(Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Unknown))),
+});
+
+const objectFieldsOf = Schema.decodeUnknownSync(ObjectFieldsSchema);
+
+const unionOf = Schema.decodeUnknownOption(UnionSchema);
+
+const invalidBrain = (detail: string): Rejected =>
+  rejected('invalid_input', 'The input does not match the input schema', [{ detail, pointer: '/brain' }]);
+
+function withBrainProperty(object: Readonly<JsonSchema>): JsonSchema {
+  const { properties = {}, required = [] } = objectFieldsOf(object);
+  return { ...object, properties: { brain: brainProperty, ...properties }, required: ['brain', ...required] };
+}
+
+export function withBrainArgument(schema: Readonly<JsonSchema>): JsonSchema {
+  return Option.match(unionOf(schema), {
+    onNone: () => withBrainProperty(schema),
+    onSome: ({ anyOf, $defs = {} }) => ({
+      ...schema,
+      anyOf: anyOf.map((member) => withBrainProperty(inlinedRootOf({ schema: member, definitions: $defs }))),
+    }),
+  });
+}
+
+function withoutBrain(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+  return Object.fromEntries(Object.entries(input).filter(([key]: readonly [string, unknown]) => key !== 'brain'));
+}
+
+export function brainArgumentOf(input: unknown): Result.Result<BrainArgument, Rejected> {
+  if (!Predicate.hasProperty(input, 'brain')) {
+    return Result.fail(invalidBrain('Missing key'));
+  }
+  const { brain } = input;
+  return Predicate.isString(brain)
+    ? Result.succeed({ brain, input: withoutBrain(input) })
+    : Result.fail(invalidBrain('Expected string'));
+}
