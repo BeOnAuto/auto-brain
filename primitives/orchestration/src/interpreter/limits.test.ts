@@ -23,6 +23,18 @@ describe('the history of a workflow', () => {
 
     expect(settlement).toMatchObject({ status: 'rejected', reason: 'unavailable' });
   });
+
+  it('is checked before a listen waits for an event', async () => {
+    const listening = workflow('do:\n  - await: { listen: { to: { one: { with: { type: go } } } } }');
+
+    const { settlement } = await interpret(listening, { history: { bytes: 1, events: mostHistoryEvents + 1 } });
+
+    expect(settlement).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: `The workflow's history holds ${mostHistoryEvents + 1} events in 1 bytes, near the most Temporal keeps; it cannot do more (at /do/0/await)`,
+    });
+  });
 });
 
 describe('a workflow that never waits', () => {

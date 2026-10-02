@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Command } from '../testing/fake-host.ts';
 import { interpret, neverAnswers, workflow } from '../testing/workflows.ts';
+
+function timersAndCalls(commands: readonly Command[]): readonly string[] {
+  return commands.flatMap(({ kind }) => (kind === 'timer' || kind === 'call' ? [kind] : []));
+}
 
 describe('a task timeout', () => {
   it('cancels the task and raises a timeout error when the task runs longer', async () => {
@@ -34,6 +39,22 @@ do:
 
     expect(ending.kind).toBe('completed');
     expect(commands).toContainEqual({ kind: 'cancelled', summary: '/do/0/quick timeout' });
+  });
+});
+
+describe('the timer of a timeout', () => {
+  it('starts before the task it times', async () => {
+    const document = workflow(`
+do:
+  - slow:
+      call: execute_spec
+      with: { primitive: inference, name: lookup }
+      timeout: { after: PT30S }
+`);
+
+    const { commands } = await interpret(document);
+
+    expect(timersAndCalls(commands)).toStrictEqual(['timer', 'call']);
   });
 });
 

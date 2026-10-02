@@ -91,6 +91,26 @@ describe('the activities of the Temporal host', () => {
   });
 });
 
+function retryWaits({ backoffCoefficient, maximumAttempts }: typeof settleSettings.retry): readonly number[] {
+  return Array.from({ length: maximumAttempts - 1 }, (_, retry) =>
+    Math.min(1000 * backoffCoefficient ** retry, 60_000),
+  );
+}
+
+describe('the retries of settling', () => {
+  it('make 20 attempts, from a second apart doubling up to a minute, about 14 minutes in all', () => {
+    const waited = retryWaits(settleSettings.retry).reduce((total, wait) => total + wait, 0);
+
+    expect(settleSettings.retry).toStrictEqual({
+      initialInterval: '1 second',
+      backoffCoefficient: 2,
+      maximumInterval: '1 minute',
+      maximumAttempts: 20,
+    });
+    expect(waited).toBe(843_000);
+  });
+});
+
 describe('the cancellation scopes of the Temporal host', () => {
   it('run work in a scope of its own that can be cancelled', async () => {
     const fake = fakeWorkflowApi();
