@@ -8,7 +8,9 @@ const distinctIds = Schema.makeFilter(
   (keys: readonly ApiKey[]) => new Set(keys.map(({ id }) => id)).size === keys.length || 'Key ids must be unique',
 );
 
-const decodeApiKeys = Schema.decodeUnknownResult(Schema.fromJsonString(Schema.Array(ApiKeySchema).check(distinctIds)), {
+export const ApiKeysSchema = Schema.Array(ApiKeySchema).check(distinctIds);
+
+const decodeApiKeys = Schema.decodeUnknownResult(Schema.fromJsonString(ApiKeysSchema), {
   onExcessProperty: 'error',
   errors: 'all',
 });
