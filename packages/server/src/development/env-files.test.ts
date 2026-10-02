@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
@@ -9,6 +10,7 @@ import { readSettings } from '../settings/settings.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,
+  readyNoticesOf,
   startDevelopment,
   untilListening,
   untilWritten,
@@ -55,6 +57,38 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
     expect(Object.fromEntries(models.aliases)).toEqual({ 'anthropic/*': 'gateway/anthropic/*' });
     expect(allowedOrigins).toEqual(['http://localhost:5173']);
     expect(configFile?.fromFile).toEqual(['MODEL_GATEWAYS', 'MODEL_ALIASES', 'ALLOWED_ORIGINS']);
+  });
+});
+
+describe('the configuration file pnpm dev passes', { timeout: developmentTestTimeoutMs }, () => {
+  it('is auto-brain.yaml at the root of the repository, when it is there', async () => {
+    const files = developmentFiles();
+    writeFileSync(files.configFile, 'model_aliases:\n  house/fast: anthropic/claude-haiku-4-5\n');
+    const development = startDevelopment(files);
+
+    await untilListening(development);
+    await stoppedWith(development, 'SIGTERM');
+
+    expect(development.stderr()).toContain(
+      `"message":"Settings read from the configuration file ${files.configFile}: MODEL_ALIASES"`,
+    );
+  });
+
+  it('is the one CONFIG_FILE names instead, which the ready notice reads too', async () => {
+    const files = developmentFiles();
+    const named = join(files.directory, 'gateways.yaml');
+    writeFileSync(files.configFile, 'model_aliases:\n  house/fast: anthropic/claude-haiku-4-5\n');
+    writeFileSync(named, 'model_gateways:\n  - name: relay\n    base_url: https://relay.example.com/v1\n');
+    writeFileSync(files.localEnvFile, `CONFIG_FILE=${named}\n`);
+    const development = startDevelopment(files);
+
+    await untilWritten(development.stderr, /auto-brain is ready/u);
+    await stoppedWith(development, 'SIGTERM');
+
+    expect(development.stderr()).toContain(
+      `"message":"Settings read from the configuration file ${named}: MODEL_GATEWAYS"`,
+    );
+    expect(readyNoticesOf(development)).toEqual([expect.stringContaining('  models     relay\n')]);
   });
 });
 

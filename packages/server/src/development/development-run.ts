@@ -13,6 +13,7 @@ export interface DevelopmentSetup {
   readonly envFiles: readonly string[];
   readonly sourceDirectories: readonly string[];
   readonly serverEntry: string;
+  readonly configFile: string;
   readonly temporal: LocalTemporal | undefined;
   readonly obtainCli: (announce: (message: string) => void) => Promise<string>;
   readonly startChild: StartChild;

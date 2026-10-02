@@ -9,10 +9,11 @@ import { localDevelopment } from './local-development.ts';
 const repository = fileURLToPath(new URL('../../../../', import.meta.url));
 
 describe('the local development setup', () => {
-  it('runs src/main.ts with dev.env, then the repository .env, and a Temporal dev server on 7233 with its web UI on 8233', () => {
+  it('runs src/main.ts with dev.env, then the repository .env, auto-brain.yaml at the root, and a Temporal dev server on 7233 with its web UI on 8233', () => {
     expect(localDevelopment([])).toMatchObject({
       envFiles: [join(repository, 'packages/server/dev.env'), join(repository, '.env')],
       serverEntry: join(repository, 'packages/server/src/main.ts'),
+      configFile: join(repository, 'auto-brain.yaml'),
       temporal: { port: 7233, uiPort: 8233, stateFile: '.data/temporal.db' },
     });
   });
