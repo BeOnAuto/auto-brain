@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url';
-
 import type { SettleExecution } from '@beonauto/specs';
 import { activityInfo } from '@temporalio/activity';
 import { NativeConnection, Runtime, Worker } from '@temporalio/worker';
@@ -9,19 +7,23 @@ import type { OrchestrationActivities } from '../workflow/activity-contract.ts';
 import { makeActivities, workflowRunOf } from './activities.ts';
 import type { ExecuteSpec, ReportUnsettled } from './dependencies.ts';
 import { connectionOptionsOf, type TemporalSettings } from './temporal-settings.ts';
+import { failureConverterPath, workflowsPath } from './workflow-code.ts';
 
 export class OrchestrationWorkerError extends Data.TaggedError('OrchestrationWorkerError')<{
   readonly detail: string;
 }> {}
 
-export interface WorkerDefinition {
+export type WorkflowCode =
+  | { readonly workflowsPath: string }
+  | { readonly workflowBundle: { readonly codePath: string } };
+
+export type WorkerDefinition = WorkflowCode & {
   readonly namespace: string;
   readonly taskQueue: string;
-  readonly workflowsPath: string;
   readonly activities: OrchestrationActivities;
   readonly dataConverter: { readonly failureConverterPath: string };
   readonly shutdownGraceTime: string;
-}
+};
 
 export interface RunnableWorker {
   run(): Promise<void>;
@@ -45,6 +47,7 @@ export interface OrchestrationWorkerOptions {
   readonly settle: SettleExecution;
   readonly reportUnsettled: ReportUnsettled;
   readonly onFailure: (detail: string) => void;
+  readonly workflowBundle?: string;
   readonly temporal?: TemporalWorkers;
 }
 
@@ -53,10 +56,6 @@ interface RunningWorker {
   readonly stopping: () => boolean;
   readonly stop: () => Promise<void>;
 }
-
-const workflowsPath = fileURLToPath(new URL('../workflow/workflows.ts', import.meta.url));
-
-const failureConverterPath = fileURLToPath(new URL('failure-converter.ts', import.meta.url));
 
 const ranToTheEnd = Symbol('ran to the end');
 
@@ -100,7 +99,7 @@ export const runOrchestrationWorker = Effect.fnUntraced(function* (
 });
 
 async function startWorker(
-  { settings, executeSpec, settle, reportUnsettled }: OrchestrationWorkerOptions,
+  { settings, executeSpec, settle, reportUnsettled, workflowBundle }: OrchestrationWorkerOptions,
   temporal: TemporalWorkers,
 ): Promise<RunningWorker> {
   const signals = temporal.shutdownSignals();
@@ -114,7 +113,7 @@ async function startWorker(
     const worker = await connection.create({
       namespace: settings.namespace,
       taskQueue: settings.taskQueue,
-      workflowsPath,
+      ...(workflowBundle === undefined ? { workflowsPath } : { workflowBundle: { codePath: workflowBundle } }),
       activities: makeActivities({
         executeSpec,
         settle,

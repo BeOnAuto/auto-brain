@@ -9,6 +9,7 @@ export interface TemporalSettings {
   readonly apiKey?: () => string;
   readonly tls: boolean;
   readonly mostDuration: number;
+  readonly workflowBundle?: string;
 }
 
 export interface TemporalConnectionOptions {
@@ -57,6 +58,7 @@ const sources = Config.all({
   apiKey: Config.String('TEMPORAL_API_KEY').pipe(Config.withDefault('')),
   tls: Config.String('TEMPORAL_TLS').pipe(Config.withDefault('false')),
   mostDuration: Config.String('ORCHESTRATION_MAX_DURATION').pipe(Config.withDefault('P30D')),
+  workflowBundle: Config.String('ORCHESTRATION_WORKFLOW_BUNDLE').pipe(Config.withDefault('')),
 });
 
 interface Sources {
@@ -77,12 +79,14 @@ export const readTemporalSettings = Effect.fnUntraced(function* (environment: En
   if (problems.length > 0) {
     return yield* Effect.fail(invalid(problems));
   }
+  const workflowBundle = source.workflowBundle.trim();
   const settings = {
     address,
     namespace: source.namespace.trim(),
     taskQueue: source.taskQueue.trim(),
     tls: tlsValues.get(source.tls.trim().toLowerCase()) === true,
     mostDuration: millisecondsOf(source.mostDuration),
+    ...(workflowBundle === '' ? {} : { workflowBundle }),
   };
   return Option.some<TemporalSettings>(source.apiKey === '' ? settings : { ...settings, apiKey: () => source.apiKey });
 });

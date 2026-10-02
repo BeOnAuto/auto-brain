@@ -41,6 +41,7 @@ describe('the Temporal settings', () => {
       TEMPORAL_API_KEY: 'secret',
       TEMPORAL_TLS: 'Yes',
       ORCHESTRATION_MAX_DURATION: 'P365D',
+      ORCHESTRATION_WORKFLOW_BUNDLE: ' /app/workflow-bundle ',
     });
 
     expect(Option.map(settings, ({ apiKey, ...rest }) => ({ ...rest, apiKey: apiKey?.() }))).toEqual(
@@ -50,6 +51,7 @@ describe('the Temporal settings', () => {
         taskQueue: 'brains',
         tls: true,
         mostDuration: 31_536_000_000,
+        workflowBundle: '/app/workflow-bundle',
         apiKey: 'secret',
       }),
     );
