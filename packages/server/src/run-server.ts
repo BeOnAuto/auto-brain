@@ -27,11 +27,18 @@ async function stopThenExit(
   sayThenExit(serverProcess, `auto-brain was still running ${exitDeadlineMs} ms after it stopped, so it exits now`, 0);
 }
 
+async function exitWhenInsisted(stopInsisted: Promise<void>, serverProcess: ServerProcess): Promise<void> {
+  await stopInsisted;
+  sayThenExit(serverProcess, 'auto-brain was told to stop again, so it exits now without finishing its shutdown', 1);
+}
+
 export async function runServer<R>(
   serverProcess: ServerProcess,
   options: ServerOptions<R>,
   stopRequested: Promise<void>,
+  stopInsisted: Promise<void> = Promise.withResolvers<void>().promise,
 ): Promise<RunningServer> {
+  void exitWhenInsisted(stopInsisted, serverProcess);
   const server = await startServer(serverProcess.env, options);
   void stopRequested.then(() => stopThenExit(server, serverProcess, options));
   serverProcess.stdout.write(`auto-brain listening on port ${server.port}\n`);

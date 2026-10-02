@@ -1,6 +1,6 @@
 import type { RegisterRoutes } from '@beonauto/api';
 
-import { defaultServerOptions } from '../lifecycle.ts';
+import { defaultServerOptions, servedBy } from '../lifecycle.ts';
 import { exitOnStartupFailure, runServer } from '../run-server.ts';
 import { stopRequestedBy } from '../stop-request.ts';
 
@@ -13,6 +13,8 @@ const selfCausedRoute: RegisterRoutes = (routes) => {
   });
 };
 
-await runServer(process, { ...defaultServerOptions, routes: () => [selfCausedRoute] }, stopRequestedBy(process)).catch(
-  exitOnStartupFailure(process),
-);
+await runServer(
+  process,
+  { ...defaultServerOptions, serve: () => servedBy([selfCausedRoute]) },
+  stopRequestedBy(process),
+).catch(exitOnStartupFailure(process));

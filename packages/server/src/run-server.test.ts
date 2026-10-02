@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { defaultServerOptions } from './lifecycle.ts';
 import { exitOnStartupFailure, runServer, type ServerProcess } from './run-server.ts';
-import { stopRequestedBy, type StopSignal } from './stop-request.ts';
+import { stopInsistedBy, stopRequestedBy, type StopSignal } from './stop-request.ts';
 import { isAcceptingConnections } from './testing/accepting-connections.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0' };
@@ -15,6 +15,7 @@ interface FakeProcess {
   readonly errors: readonly string[];
   readonly exited: Promise<number>;
   readonly stopRequested: Promise<void>;
+  readonly stopInsisted: Promise<void>;
   readonly send: (signal: StopSignal) => void;
 }
 
@@ -39,6 +40,11 @@ function fakeProcess(env: Environment = loopback): FakeProcess {
     errors,
     exited,
     stopRequested: stopRequestedBy({
+      on: (signal, listener) => {
+        signals.addEventListener(signal, listener);
+      },
+    }),
+    stopInsisted: stopInsistedBy({
       on: (signal, listener) => {
         signals.addEventListener(signal, listener);
       },
@@ -174,6 +180,25 @@ describe('a server that cannot start', () => {
       expect({ written, errors }).toEqual({ written: [], errors: [`auto-brain could not start: ${error}\n`] });
     },
   );
+});
+
+describe('runServer told to stop twice', () => {
+  it('exits 1 at the second signal, saying so, without waiting for its shutdown to finish', async () => {
+    const { serverProcess, stopRequested, stopInsisted, send, exited, errors } = fakeProcess();
+    const neverStops = Promise.withResolvers<void>().promise;
+    await runServer(
+      serverProcess,
+      { ...defaultServerOptions, serve: () => ({ routes: [], stopWork: () => neverStops }) },
+      stopRequested,
+      stopInsisted,
+    );
+
+    send('SIGTERM');
+    send('SIGINT');
+
+    expect(await exited).toBe(1);
+    expect(errors).toEqual(['auto-brain was told to stop again, so it exits now without finishing its shutdown\n']);
+  });
 });
 
 describe('runServer after it stopped', () => {
