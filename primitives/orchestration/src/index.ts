@@ -16,6 +16,12 @@ export type {
 } from './worker/dependencies.ts';
 export { specExecutionResultOf } from './worker/spec-results.ts';
 export {
+  installTemporalRuntime,
+  type TemporalLog,
+  type TemporalLogContext,
+  type TemporalLogEntry,
+} from './worker/temporal-runtime.ts';
+export {
   OrchestrationWorkerError,
   runOrchestrationWorker,
   type OrchestrationWorkerOptions,

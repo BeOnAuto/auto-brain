@@ -167,7 +167,7 @@ function failureOf(ending: unknown): string {
 
 function runtimeShutdownSignals(): readonly string[] {
   if (Reflect.get(Runtime, '_instance') === undefined) {
-    Runtime.install({ shutdownSignals: [] });
+    Runtime.install({ ...Runtime.defaultOptions, shutdownSignals: [] });
   }
   return Runtime.instance().options.shutdownSignals;
 }
