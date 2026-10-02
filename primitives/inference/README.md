@@ -8,7 +8,7 @@ The first half of this document covers how models are called and configured; the
 
 A spec names its model as `provider/model`, for example `anthropic/claude-sonnet-4-5` or `bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0`.
 
-1. If `MODEL_ALIASES` maps the reference to another one, the other one is used. An alias resolves in one hop.
+1. If `MODEL_ALIASES` maps the reference to another one, the other one is used: an exact alias first, then the wildcard alias with the longest prefix, such as `anthropic/*` (see [Model aliases](#model-aliases)). An alias resolves in one hop.
 2. The reference is split at its first `/`. The part before it is the provider, everything after it is the model id the provider receives, unchanged (Bedrock ARNs keep their own `/`).
 3. The provider must be configured (see the table below). A reference without a `/`, or with nothing on either side of it, is `spec_invalid` and nothing is sent.
 
