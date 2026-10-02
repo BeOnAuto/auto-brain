@@ -20,4 +20,3 @@ export {
   runOrchestrationWorker,
   type OrchestrationWorkerOptions,
 } from './worker/orchestration-worker.ts';
-export { TemporalSettingsConfig, type TemporalSettings } from './worker/temporal-settings.ts';
