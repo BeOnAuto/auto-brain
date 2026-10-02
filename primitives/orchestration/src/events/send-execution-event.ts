@@ -13,7 +13,7 @@ import {
 } from '../interpreter/inbox.ts';
 import type { OrchestrationClient } from '../primitive/orchestration-client.ts';
 
-export const mostEventBytes = 262_144;
+const mostEventBytes = 262_144;
 
 const mostNameLength = 256;
 

@@ -1,4 +1,4 @@
-export type Admission = { readonly admitted: false } | { readonly admitted: true; readonly suppressed: number };
+type Admission = { readonly admitted: false } | { readonly admitted: true; readonly suppressed: number };
 
 export interface Throttle {
   readonly admit: (now: number) => Admission;

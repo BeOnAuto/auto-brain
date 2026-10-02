@@ -23,7 +23,7 @@ export interface ActivityRun {
   readonly attempt: number;
 }
 
-export interface Heartbeat {
+interface Heartbeat {
   readonly beat: () => void;
   readonly everyMs: number;
 }

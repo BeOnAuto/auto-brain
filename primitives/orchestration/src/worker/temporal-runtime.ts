@@ -25,7 +25,7 @@ interface TemporalProbe {
   readonly everyMs: number;
 }
 
-export const mostForwardedCharacters = 500;
+const mostForwardedCharacters = 500;
 
 export const probeEveryMs = 5000;
 

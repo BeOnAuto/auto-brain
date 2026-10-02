@@ -30,9 +30,9 @@ export type Executed = Finished | FinishesLater;
 
 export type PrimitiveRejection = InvalidInput | Unavailable | Conflict;
 
-export type WhenCancelled = 'stop' | 'finish';
+type WhenCancelled = 'stop' | 'finish';
 
-export const defaultLongestExecutionMs = 600_000;
+const defaultLongestExecutionMs = 600_000;
 
 export interface PrimitiveDefinition<Parsed> {
   readonly name: string;

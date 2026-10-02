@@ -37,7 +37,7 @@ const leastMostDuration = 2 * hour;
 
 const greatestMostDuration = 365 * 24 * hour;
 
-export const defaultNestedExecutions = 32;
+const defaultNestedExecutions = 32;
 
 const mostNestedExecutions = 1000;
 

@@ -63,9 +63,9 @@ const retryTransientFailures = {
   maximumAttempts: 5,
 };
 
-export const nestedExecutionMarginMs = 60_000;
+const nestedExecutionMarginMs = 60_000;
 
-export const nestedHeartbeatTimeout = '30 seconds';
+const nestedHeartbeatTimeout = '30 seconds';
 
 export const settleSettings: LocalActivitySettings = {
   summary: 'settle the execution',

@@ -62,11 +62,11 @@ interface RunningWorker {
   readonly stop: () => Promise<void>;
 }
 
-export const mostCachedWorkflows = 16;
+const mostCachedWorkflows = 16;
 
-export const mostWorkflowTasksAtOnce = 2;
+const mostWorkflowTasksAtOnce = 2;
 
-export const heartbeatEveryMs = 10_000;
+const heartbeatEveryMs = 10_000;
 
 const ranToTheEnd = Symbol('ran to the end');
 

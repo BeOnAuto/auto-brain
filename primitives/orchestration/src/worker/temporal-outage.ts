@@ -6,7 +6,7 @@ export interface OutageWatch {
   readonly recovered: (now: number) => TemporalLogEntry | undefined;
 }
 
-export const outageLineEveryMs = 60_000;
+const outageLineEveryMs = 60_000;
 
 const lostTemporal = /^Temporal reported: (?:gRPC call \w+ retried \d+ times|Network error\b)/u;
 
