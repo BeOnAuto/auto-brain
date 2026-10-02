@@ -155,13 +155,15 @@ MODEL_ALIASES='{"anthropic/claude-haiku-4-5":"bedrock/eu.anthropic.claude-haiku-
 
 Both sides are written `provider/model`. A target may not itself be an alias, so cycles and chains are rejected when the server starts. The result of a call records the model as requested, as resolved, and as the provider answered.
 
-An alias also sends a provider's model references through a gateway, one model at a time. With only a gateway configured, specs that name `anthropic/claude-sonnet-4-5` reach it as `gateway/anthropic/claude-sonnet-4-5` with:
+A trailing `*` on both sides makes a wildcard alias, which sends every model of a provider through a gateway. With only a gateway configured, a spec that names `anthropic/claude-sonnet-4-5` reaches it as `gateway/anthropic/claude-sonnet-4-5` with:
 
 ```sh
-MODEL_ALIASES='{"anthropic/claude-sonnet-4-5":"gateway/anthropic/claude-sonnet-4-5"}'
+MODEL_ALIASES='{"anthropic/*":"gateway/anthropic/*"}'
 ```
 
-The description of inference that the spec tools carry lists the alias names, so an agent writing a spec sees them.
+For a gateway that names models without the provider's prefix, the target is `gateway/*`. The `*` stands once, at the end of both sides, for the rest of the reference, which may not be empty. An exact alias wins over a wildcard, and among wildcards the longest prefix wins. A wildcard target may not reach another alias either, so `{"anthropic/*":"gateway/*","gateway/fast":"gateway/llama-3.3-70b"}` is rejected when the server starts. A provider reached only through a wildcard alias is not a configured provider: with the alias above, `anthropic` stays unconfigured in `status` and in the start-up log.
+
+The description of inference that the spec tools carry lists the alias names as they are written, `anthropic/*` included, and says that a spec may give any `anthropic/<model id>`, so an agent writing a spec sees them.
 
 ## When a provider is not configured
 
@@ -177,9 +179,9 @@ Nothing fails at start. A spec that names the provider fails with `provider_not_
 }
 ```
 
-A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and the same; with no provider configured, the detail ends `No model provider is configured`. `missing` stays on the failure for the code that handles it and never reaches the caller.
+A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and the same; with no provider configured, the detail says `No model provider is configured`. When `MODEL_ALIASES` sets any alias, the detail names the aliases after the providers, so the caller sees every reference that works: `openai is not configured. Configured providers: gateway. Aliases: anthropic/*`. `missing` stays on the failure for the code that handles it and never reaches the caller.
 
-An agent learns this before it writes a spec: the description of inference, which every spec tool carries, names the providers this server calls models through and how a model is written with them (`This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>.`), the alias names when `MODEL_ALIASES` sets any, or that no provider is configured. It cannot name the models of a provider: those are whatever the account behind the key serves. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
+An agent learns this before it writes a spec: the description of inference, which every spec tool carries, names the providers this server calls models through and how a model is written with them (`This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>.`), the alias names when `MODEL_ALIASES` sets any, with the references a wildcard alias accepts, or that no provider is configured. It cannot name the models of a provider: those are whatever the account behind the key serves. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
 
 ```json
 {"message":"Model providers configured: anthropic","level":"INFO","annotations":{"providers":[{"provider":"anthropic","configured":true},{"provider":"openai","configured":false,"missing":["OPENAI_API_KEY"]},…]}}

@@ -1,3 +1,4 @@
+import { aliasPatternOf, isWildcardAlias } from '../model/model-alias.ts';
 import type { OfferedModels } from '../model/offered-models.ts';
 import { offeredOptions, providerNamespaces } from '../model/offered-provider-options.ts';
 
@@ -15,10 +16,19 @@ const format = 'A spec document is YAML front matter between --- lines, then a L
 const noProvider =
   'No model provider is configured on this server yet, so a spec cannot run until its operator configures one.';
 
+function anyModelUnder(wildcards: readonly string[]): string {
+  const examples = wildcards.map((wildcard) => `${aliasPatternOf(wildcard).prefix}<model id>`).join(' or ');
+  return ` In a name that ends in *, the * stands for any model id, so a spec may give ${examples}.`;
+}
+
 function namedModels(aliases: readonly string[]): string {
-  return aliases.length === 0
-    ? ''
-    : ` Its operator also named these models, which a spec may give as its model as they are: ${aliases.join(', ')}.`;
+  const wildcards = aliases.filter((alias) => isWildcardAlias(alias));
+  if (aliases.length === 0) {
+    return '';
+  }
+  return wildcards.length === 0
+    ? ` Its operator also named these models, which a spec may give as its model as they are: ${aliases.join(', ')}.`
+    : ` Its operator also named these models, which a spec may give as its model: ${aliases.join(', ')}.${anyModelUnder(wildcards)}`;
 }
 
 function offerOf({ providers, aliases }: OfferedModels): string {

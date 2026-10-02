@@ -24,6 +24,14 @@ describe('the description of inference on a server', () => {
     );
   });
 
+  it('names a wildcard alias as its operator wrote it, and the references it accepts', () => {
+    expect(
+      inferenceDescriptionFor({ providers: ['gateway'], aliases: ['house/fast', 'anthropic/*', 'openai/gpt-*'] }),
+    ).toContain(
+      'for example gateway/<model id>. Its operator also named these models, which a spec may give as its model: house/fast, anthropic/*, openai/gpt-*. In a name that ends in *, the * stands for any model id, so a spec may give anthropic/<model id> or openai/gpt-<model id>. A spec document is',
+    );
+  });
+
   it('says so when no provider is configured', () => {
     expect(inferenceDescriptionFor({ providers: [], aliases: ['house/fast'] })).toContain(
       `${calls} No model provider is configured on this server yet, so a spec cannot run until its operator configures one. A spec document is`,

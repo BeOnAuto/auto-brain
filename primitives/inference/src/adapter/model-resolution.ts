@@ -2,6 +2,7 @@ import { Option, Result } from 'effect';
 
 import { ProviderNotConfigured } from '../failure/provider-not-configured.ts';
 import { SpecInvalid } from '../failure/spec-invalid.ts';
+import { aliasResolution } from '../model/model-alias.ts';
 import { parseModelReference } from '../model/model-reference.ts';
 import type { ProviderStatus } from '../settings/provider-status.ts';
 import type { ModelFactory, SdkModel } from './sdk-model.ts';
@@ -29,11 +30,15 @@ function configuredOf({ configured }: ProviderStatus): string {
   return configured.length === 0 ? 'No model provider is configured' : `Configured providers: ${configured.join(', ')}`;
 }
 
-function notConfigured(provider: string, status: ProviderStatus): ProviderNotConfigured {
+function aliasesOf(aliasNames: readonly string[]): string {
+  return aliasNames.length === 0 ? '' : `. Aliases: ${aliasNames.join(', ')}`;
+}
+
+function notConfigured(provider: string, status: ProviderStatus, aliasNames: readonly string[]): ProviderNotConfigured {
   const missing = status.unconfigured.find((unconfigured) => unconfigured.provider === provider)?.missing;
   const absent = missing === undefined ? `There is no provider named ${provider}` : `${provider} is not configured`;
   return new ProviderNotConfigured({
-    detail: `${absent}. ${configuredOf(status)}`,
+    detail: `${absent}. ${configuredOf(status)}${aliasesOf(aliasNames)}`,
     provider,
     configured: status.configured,
     missing: missing ?? [],
@@ -45,14 +50,16 @@ export function modelResolution(
   aliases: ReadonlyMap<string, string>,
   status: ProviderStatus,
 ): ModelResolution {
+  const resolve = aliasResolution(aliases);
+  const aliasNames = [...aliases.keys()];
   return (requested) => {
-    const resolved = aliases.get(requested) ?? requested;
+    const resolved = resolve(requested);
     return Option.match(parseModelReference(resolved), {
       onNone: () => Result.fail(malformedReference()),
       onSome: ({ provider, model }) => {
         const factory = models.get(provider);
         return factory === undefined
-          ? Result.fail(notConfigured(provider, status))
+          ? Result.fail(notConfigured(provider, status, aliasNames))
           : Result.succeed({ provider, requested, resolved, model: () => factory(model) });
       },
     });

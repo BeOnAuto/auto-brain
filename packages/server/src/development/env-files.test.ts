@@ -50,7 +50,7 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
 
     expect(providerStatus(models, { entraId: false }).configured).toEqual(['anthropic', 'openai', 'google', 'gateway']);
     expect(Object.fromEntries(models.aliases)).toEqual({
-      'anthropic/claude-sonnet-4-5': 'gateway/anthropic/claude-sonnet-4-5',
+      'anthropic/*': 'gateway/anthropic/*',
     });
   });
 });
