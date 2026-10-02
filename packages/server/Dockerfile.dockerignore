@@ -1,6 +1,7 @@
 **/node_modules
 **/coverage
 **/.env
+auto-brain.yaml
 data
 packages/server/.data
 packages/server/data

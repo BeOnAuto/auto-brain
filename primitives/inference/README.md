@@ -8,7 +8,7 @@ The first half of this document covers how models are called and configured; the
 
 A spec names its model as `provider/model`, for example `anthropic/claude-sonnet-4-5` or `bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0`.
 
-1. If `MODEL_ALIASES` maps the reference to another one, the other one is used: an exact alias first, then the wildcard alias with the longest prefix, such as `anthropic/*` (see [Model aliases](#model-aliases)). An alias resolves in one hop.
+1. If the aliases (`model_aliases` in the configuration file, or `MODEL_ALIASES`) map the reference to another one, the other one is used: an exact alias first, then the wildcard alias with the longest prefix, such as `anthropic/*` (see [Model aliases](#model-aliases)). An alias resolves in one hop.
 2. The reference is split at its first `/`. The part before it is the provider, everything after it is the model id the provider receives, unchanged (Bedrock ARNs keep their own `/`).
 3. The provider must be configured (see the table below). A reference without a `/`, or with nothing on either side of it, is `spec_invalid` and nothing is sent.
 
@@ -29,7 +29,7 @@ A provider is configured when its required settings are present. One that is not
 | `azure` with Entra  | as `azure`, with a Microsoft Entra ID token    | `AZURE_RESOURCE_NAME` or `AZURE_BASE_URL`, no `AZURE_API_KEY`          | `AZURE_API_VERSION`                                                                                 | No: needs the optional package `@azure/identity` |
 | `vertex`            | Gemini on Google Vertex AI                     | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`                      |                                                                                                     | Yes                                              |
 | `vertex-anthropic`  | Anthropic models on Google Vertex AI           | as `vertex`                                                            |                                                                                                     | Yes                                              |
-| a gateway's name    | an OpenAI-compatible Chat Completions endpoint | an entry in `MODEL_GATEWAYS`                                           |                                                                                                     | Yes                                              |
+| a gateway's name    | an OpenAI-compatible Chat Completions endpoint | an entry in `model_gateways` or `MODEL_GATEWAYS`                       |                                                                                                     | Yes                                              |
 
 Credentials:
 
@@ -107,19 +107,34 @@ Outside Kubernetes, `GOOGLE_APPLICATION_CREDENTIALS=/var/run/secrets/google/cred
 
 ### An internal OpenAI-compatible gateway with a custom header
 
+In the server's [configuration file](../../README.md#configuring-a-model):
+
+```yaml
+model_gateways:
+  - name: internal
+    base_url: https://llm.internal.example/v1
+    api_key: ${INTERNAL_LLM_KEY}
+    headers:
+      x-tenant: acme
+    structured_outputs: true
+```
+
+with `INTERNAL_LLM_KEY` set in the environment. The same, as an environment variable, which wins over the file's `model_gateways` when both are set:
+
 ```sh
 MODEL_GATEWAYS='[{"name":"internal","base_url":"https://llm.internal.example/v1","api_key_env":"INTERNAL_LLM_KEY","headers":{"x-tenant":"acme"},"structured_outputs":true}]'
 INTERNAL_LLM_KEY=...
 ```
 
-Specs name `internal/llama-3.3-70b`. Each entry of `MODEL_GATEWAYS` has:
+Specs name `internal/llama-3.3-70b`. Each gateway has:
 
 | Field                      | Required | Meaning                                                                                                                                                                                                                                                         |
 | -------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`                     | Yes      | The provider prefix: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, unique, and not one of the built-in prefixes                                                                                                                        |
 | `base_url`                 | Yes      | The http or https URL that `/chat/completions` is appended to                                                                                                                                                                                                   |
-| `api_key_env`              | No       | The name of the variable that holds the key, sent as `Authorization: Bearer <key>`; it must be set                                                                                                                                                              |
-| `headers`                  | No       | Headers sent with every request; their values are treated as secrets                                                                                                                                                                                            |
+| `api_key`                  | No       | The key, sent as `Authorization: Bearer <key>`. In the file, a reference to the variable that holds it, such as `${INTERNAL_LLM_KEY}`                                                                                                                           |
+| `api_key_env`              | No       | In `MODEL_GATEWAYS` only, instead of `api_key`: the name of the variable that holds the key; it must be set                                                                                                                                                     |
+| `headers`                  | No       | Headers sent with every request; their values are treated as secrets. In the file, a header that carries a credential, such as `authorization`, is a reference                                                                                                  |
 | `query_params`             | No       | Query parameters added to every request; their values are treated as secrets                                                                                                                                                                                    |
 | `structured_outputs`       | No       | `true` when the endpoint accepts `response_format: json_schema`; otherwise JSON is asked for as `json_object` and the schema is only checked here. Default `false`                                                                                              |
 | `include_usage`            | No       | Asks for usage in streamed responses. Default `false`                                                                                                                                                                                                           |
@@ -147,7 +162,15 @@ Mutual TLS to the model endpoints is not supported.
 
 ## Model aliases
 
-`MODEL_ALIASES` is a JSON object from one reference to another. It lets specs keep a name while the deployment decides where it runs:
+`model_aliases` in the server's [configuration file](../../README.md#configuring-a-model) maps one reference to another. It lets specs keep a name while the deployment decides where it runs:
+
+```yaml
+model_aliases:
+  anthropic/claude-haiku-4-5: bedrock/eu.anthropic.claude-haiku-4-5-20251001-v1:0
+  fast/default: google/gemini-2.5-flash
+```
+
+The same, as an environment variable, which wins over the file's `model_aliases` when both are set:
 
 ```sh
 MODEL_ALIASES='{"anthropic/claude-haiku-4-5":"bedrock/eu.anthropic.claude-haiku-4-5-20251001-v1:0","fast/default":"google/gemini-2.5-flash"}'
@@ -157,9 +180,12 @@ Both sides are written `provider/model`. A target may not itself be an alias, so
 
 A trailing `*` on both sides makes a wildcard alias, which sends every model of a provider through a gateway. With only a gateway configured, a spec that names `anthropic/claude-sonnet-4-5` reaches it as `gateway/anthropic/claude-sonnet-4-5` with:
 
-```sh
-MODEL_ALIASES='{"anthropic/*":"gateway/anthropic/*"}'
+```yaml
+model_aliases:
+  anthropic/*: gateway/anthropic/*
 ```
+
+or `MODEL_ALIASES='{"anthropic/*":"gateway/anthropic/*"}'`.
 
 For a gateway that names models without the provider's prefix, the target is `gateway/*`. The `*` stands once, at the end of both sides, for the rest of the reference, which may not be empty. An exact alias wins over a wildcard, and among wildcards the longest prefix wins. A wildcard target may not reach another alias either, so `{"anthropic/*":"gateway/*","gateway/fast":"gateway/llama-3.3-70b"}` is rejected when the server starts. A provider reached only through a wildcard alias is not a configured provider: with the alias above, `anthropic` stays unconfigured in `status` and in the start-up log.
 
@@ -179,9 +205,9 @@ Nothing fails at start. A spec that names the provider fails with `provider_not_
 }
 ```
 
-A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and the same; with no provider configured, the detail says `No model provider is configured`. When `MODEL_ALIASES` sets any alias, the detail names the aliases after the providers, so the caller sees every reference that works: `openai is not configured. Configured providers: gateway. Aliases: anthropic/*`. `missing` stays on the failure for the code that handles it and never reaches the caller.
+A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and the same; with no provider configured, the detail says `No model provider is configured`. When any alias is set, the detail names the aliases after the providers, so the caller sees every reference that works: `openai is not configured. Configured providers: gateway. Aliases: anthropic/*`. `missing` stays on the failure for the code that handles it and never reaches the caller.
 
-An agent learns this before it writes a spec: the description of inference, which every spec tool carries, names the providers this server calls models through and how a model is written with them (`This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>.`), the alias names when `MODEL_ALIASES` sets any, with the references a wildcard alias accepts, or that no provider is configured. It cannot name the models of a provider: those are whatever the account behind the key serves. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
+An agent learns this before it writes a spec: the description of inference, which every spec tool carries, names the providers this server calls models through and how a model is written with them (`This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>.`), the alias names when any is set, with the references a wildcard alias accepts, or that no provider is configured. It cannot name the models of a provider: those are whatever the account behind the key serves. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
 
 ```json
 {"message":"Model providers configured: anthropic","level":"INFO","annotations":{"providers":[{"provider":"anthropic","configured":true},{"provider":"openai","configured":false,"missing":["OPENAI_API_KEY"]},…]}}
@@ -226,7 +252,7 @@ The SDK's warnings are not written to the console; they arrive in `warnings`.
 
 A provider's error message is free text, and through a gateway, or through a base URL the operator chose, it is the operator's text: it can name upstream providers, fallback chains or internal hosts. So the message reaches the caller only when the call went to a built-in provider at its default endpoint: `anthropic` without `ANTHROPIC_BASE_URL`, `openai` without `OPENAI_BASE_URL`, `google`, `bedrock` and `bedrock-anthropic` without an endpoint override, `azure` addressed by `AZURE_RESOURCE_NAME`, and `vertex` and `vertex-anthropic`. Even then the caller gets its first line, at most 300 characters, never a document.
 
-For a gateway, and for a built-in provider at an overridden endpoint, the caller gets only what is structured: the provider prefix, the HTTP status, and what the status means. A gateway whose messages are safe to show opts in with `"expose_provider_messages": true` in its `MODEL_GATEWAYS` entry.
+For a gateway, and for a built-in provider at an overridden endpoint, the caller gets only what is structured: the provider prefix, the HTTP status, and what the status means. A gateway whose messages are safe to show opts in with `expose_provider_messages: true` in its entry.
 
 The operator always gets the message: `makeModelAccess` takes an optional `reportProviderMessage`, which receives, for every call the provider answered with an error, the `provider`, the `model` as the spec names it, the HTTP `status` (`null` when there was no response), the `message` (at most 2000 characters, never the request body) and the `execution_id` when the request carries one. The server logs it as a warning:
 
@@ -420,7 +446,7 @@ Some of what is withheld, and why:
 
 Any other option is rejected when the document is parsed, with the option named and the words `is not offered`, so such a spec is never stored. A namespace that is neither a provider's nor shaped like a gateway's name is rejected the same way. The offered and withheld options are one table of data in `src/model/offered-provider-options.ts`, typed against the option types the AI SDK exports, so an upgrade that adds or removes an option fails the type check until the option is decided.
 
-A gateway is a different case: the AI SDK adds every key under the gateway's name, or its camel case (`my-gateway` and `myGateway`), to the request body as it is, and reads `user` from `openaiCompatible`. A gateway gives meaning to body fields its operator may not want a tenant to set: attribution and budgets, routing and fallbacks, mock answers, endpoints and credentials. So a spec sets for a gateway only the top-level fields its `MODEL_GATEWAYS` entry lists in `allowed_provider_options`, under any of those namespaces, and by default none. The list is checked when the server starts: at most 64 distinct names of 1 to 64 characters, none of them a field the runtime sets or that changes what the call is (`model`, `messages`, `stream`, `stream_options`, `n`, `max_tokens`, `max_completion_tokens`, `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `seed`, `stop`, `response_format`, `tools`, `tool_choice`, `functions`, `function_call`, `reasoning_effort`, `verbosity`, and the SDK's `reasoningEffort`, `textVerbosity` and `strictJsonSchema`). A problem names the setting and the field, never a value.
+A gateway is a different case: the AI SDK adds every key under the gateway's name, or its camel case (`my-gateway` and `myGateway`), to the request body as it is, and reads `user` from `openaiCompatible`. A gateway gives meaning to body fields its operator may not want a tenant to set: attribution and budgets, routing and fallbacks, mock answers, endpoints and credentials. So a spec sets for a gateway only the top-level fields its entry lists in `allowed_provider_options`, under any of those namespaces, and by default none. The list is checked when the server starts: at most 64 distinct names of 1 to 64 characters, none of them a field the runtime sets or that changes what the call is (`model`, `messages`, `stream`, `stream_options`, `n`, `max_tokens`, `max_completion_tokens`, `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `seed`, `stop`, `response_format`, `tools`, `tool_choice`, `functions`, `function_call`, `reasoning_effort`, `verbosity`, and the SDK's `reasoningEffort`, `textVerbosity` and `strictJsonSchema`). A problem names the setting and the field, never a value.
 
 The parser does not know the gateways, so this check runs when the spec executes: a field outside the list rejects the execution as `conflict`, naming the field and saying the gateway does not allow it, and the gateway is not called. The same goes for a namespace that is shaped like a gateway's name but is no configured gateway's: the execution is rejected as `conflict` before any provider is called.
 
