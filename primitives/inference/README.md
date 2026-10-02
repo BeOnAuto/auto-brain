@@ -523,7 +523,7 @@ curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/infere
 curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
 ```
 
-An agent calls the same operations as MCP tools on the brain's endpoint, `POST /orgs/acme/brains/sales/mcp`: the tools that name a primitive carry this primitive's description of the document format, and a rejection comes back as `isError` with the same problem document. A retry with the same `execution_id`, the same spec and the same input answers the recorded execution and calls no model. `update_spec` (`PUT …/specs/inference/account-summary` with a new `source`) makes version 2, and `retire_spec` (`POST …/retire`) retires the spec for good. The [specs README](../../packages/specs/README.md) has the rules of each operation.
+An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a brain take its id as `brain`: the tools that name a primitive carry this primitive's description of the document format, and a rejection comes back as `isError` with the same problem document. A retry with the same `execution_id`, the same spec and the same input answers the recorded execution and calls no model. `update_spec` (`PUT …/specs/inference/account-summary` with a new `source`) makes version 2, and `retire_spec` (`POST …/retire`) retires the spec for good. The [specs README](../../packages/specs/README.md) has the rules of each operation.
 
 `scripts/try-inference.sh` at the root of the repository does all of this against a server that is already running, with a small spec of its own, and prints the execution and its record. It starts nothing, and needs `curl` and `jq`:
 
@@ -531,7 +531,7 @@ An agent calls the same operations as MCP tools on the brain's endpoint, `POST /
 scripts/try-inference.sh http://localhost:8080 anthropic/claude-sonnet-4-5
 ```
 
-It works in org `demo`, or `AUTO_BRAIN_ORG`, creates a brain named `try-<seconds>`, and sends `AUTO_BRAIN_KEY` as the API key when it is set. CI never runs it.
+It works in org `local`, or `AUTO_BRAIN_ORG`, creates a brain named `try-<seconds>`, and sends `AUTO_BRAIN_KEY` as the API key when it is set. CI never runs it.
 
 ## An example with a JSON answer
 
