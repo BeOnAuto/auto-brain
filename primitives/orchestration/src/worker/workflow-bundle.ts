@@ -40,11 +40,11 @@ export async function verifiedWorkflowBundle(directory: string): Promise<string>
   if (manifest === undefined || code === '') {
     throw new WorkflowBundleInvalid({ message: `There is no complete workflow bundle in ${directory}` });
   }
-  const changed = await changedInputs(manifest.inputs);
-  if (sha256(code) !== manifest.code || changed.length > 0) {
-    const named = changed.length > 0 ? changed.slice(0, mostChangesNamed).join(', ') : codeFile;
+  const changes = await inputChanges(manifest.inputs);
+  if (sha256(code) !== manifest.code || changes.length > 0) {
+    const named = changes.length > 0 ? changes.slice(0, mostChangesNamed).join(', ') : `${codeFile} changed`;
     throw new WorkflowBundleInvalid({
-      message: `The workflow bundle in ${directory} was built from other code than this server runs: ${named} changed`,
+      message: `The workflow bundle in ${directory} was built from other code than this server runs: ${named}`,
     });
   }
   return codePath;
@@ -64,22 +64,28 @@ function isWorkflowSource(file: string): boolean {
   return file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.startsWith('testing');
 }
 
-async function changedInputs(inputs: Readonly<Record<string, string>>): Promise<readonly string[]> {
-  const checked = await Promise.all(
-    Object.entries(inputs).map(async ([file, digest]: Digest) => ((await digestOf(file)) === digest ? [] : [file])),
-  );
-  return checked.flat();
+async function inputChanges(recorded: Readonly<Record<string, string>>): Promise<readonly string[]> {
+  const current = new Map(await Promise.all((await bundleInputs()).map((file) => digestEntryOf(file))));
+  const files = [...new Set([...Object.keys(recorded), ...current.keys()])].toSorted();
+  return files.flatMap((file) => changeOf(file, recorded[file], current.get(file)));
+}
+
+function changeOf(file: string, built: string | undefined, running: string | undefined): readonly string[] {
+  if (built === undefined) {
+    return [`${file} is new`];
+  }
+  if (running === undefined) {
+    return [`${file} is gone`];
+  }
+  return built === running ? [] : [`${file} changed`];
 }
 
 async function digestEntryOf(file: string): Promise<Digest> {
   return [file, await digestOf(file)];
 }
 
-function digestOf(file: string): Promise<string> {
-  return readFile(join(workspaceRoot, file), 'utf8').then(
-    (content) => sha256(content),
-    () => 'missing',
-  );
+async function digestOf(file: string): Promise<string> {
+  return sha256(await readFile(join(workspaceRoot, file), 'utf8'));
 }
 
 function textOf(path: string): Promise<string> {

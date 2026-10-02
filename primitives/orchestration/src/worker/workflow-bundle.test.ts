@@ -61,7 +61,7 @@ describe('a workflow bundle that does not match the server', () => {
     });
   });
 
-  it('is refused when one of the files it was built from is gone', async () => {
+  it('is refused when a file it was built from is gone, or the server runs a file it was not built from, naming both', async () => {
     const copy = await copiedBundle('gone');
     await changedFile(join(copy, 'workflow-bundle.json'), (text) =>
       text.replace(
@@ -71,10 +71,21 @@ describe('a workflow bundle that does not match the server', () => {
     );
 
     await expect(verifiedWorkflowBundle(copy)).rejects.toMatchObject({
-      message: `The workflow bundle in ${copy} was built from other code than this server runs: primitives/orchestration/src/workflow/gone.ts changed`,
+      message: `The workflow bundle in ${copy} was built from other code than this server runs: primitives/orchestration/src/workflow/gone.ts is gone, primitives/orchestration/src/workflow/workflows.ts is new`,
     });
   });
 
+  it('names at most five of the files that differ', async () => {
+    const copy = await copiedBundle('many');
+    await changedFile(join(copy, 'workflow-bundle.json'), (text) =>
+      text.replaceAll(/("primitives\/orchestration\/src\/dsl\/[^"]+": ")[0-9a-f]{64}/gu, '$1changed'),
+    );
+
+    await expect(verifiedWorkflowBundle(copy)).rejects.toThrow(/this server runs: [^,]+(?:, [^,]+){4}$/u);
+  });
+});
+
+describe('a workflow bundle that is not whole', () => {
   it('is refused when its code is not what was built', async () => {
     const copy = await copiedBundle('edited');
     await changedFile(join(copy, 'workflow-bundle.js'), (text) => `${text}\n`);
