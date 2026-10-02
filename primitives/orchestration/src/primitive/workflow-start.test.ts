@@ -63,6 +63,6 @@ describe('a client whose Temporal never answers', () => {
 
     expect(failure.detail).toMatch(/^Temporal could not start the workflow: /u);
     expect(waited).toBeGreaterThanOrEqual(9_900);
-    expect(waited).toBeLessThan(20_000);
+    expect(waited).toBeLessThan(11_000);
   }, 60_000);
 });

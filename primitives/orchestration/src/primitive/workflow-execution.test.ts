@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { Effect, Exit, Scope } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -91,7 +93,7 @@ describe('executing a workflow spec while no worker polls its task queue', () =>
 });
 
 describe('executing a workflow spec when Temporal cannot be reached', () => {
-  it('is rejected as unavailable, and the rejection is recorded', async () => {
+  it('is rejected as unavailable within the deadline of the client, without waiting for its retries, and the rejection is recorded', async () => {
     const scope = Effect.runSync(Scope.make());
     const client = await Effect.runPromise(
       connectOrchestration({ ...settingsFor('nowhere'), address: '127.0.0.1:1' }, { requestTimeout: 500 }).pipe(
@@ -101,16 +103,40 @@ describe('executing a workflow spec when Temporal cannot be reached', () => {
     const isolated = brainWith([makeOrchestration({ client })]);
     await isolated.call(isolated.createSpec, { primitive: 'orchestration', name: 'slow-greeting', source: flow });
 
+    const before = performance.now();
     const outcome = await isolated.call(isolated.executeSpec, {
       primitive: 'orchestration',
       name: 'slow-greeting',
       execution_id: executionId,
     });
+    const waited = performance.now() - before;
 
-    expect(outcome).toMatchObject({ status: 'rejected', reason: 'unavailable' });
+    expect(outcome).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'Temporal could not start the workflow: Error: Temporal did not answer within 500 ms',
+    });
+    expect(waited).toBeLessThan(1500);
     expect(await isolated.call(isolated.getExecution, { execution_id: executionId })).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'unavailable' } },
     });
     await Effect.runPromise(Scope.close(scope, Exit.void));
+  }, 30_000);
+
+  it('closes its connection only once the requests it still retries have ended, so no retry runs on a closed one', async () => {
+    const scope = Effect.runSync(Scope.make());
+    const client = await Effect.runPromise(
+      connectOrchestration({ ...settingsFor('nowhere'), address: '127.0.0.1:1' }, { requestTimeout: 300 }).pipe(
+        Scope.provide(scope),
+      ),
+    );
+    const isolated = brainWith([makeOrchestration({ client })]);
+    await isolated.call(isolated.createSpec, { primitive: 'orchestration', name: 'slow-greeting', source: flow });
+
+    const outcome = await isolated.call(isolated.executeSpec, { primitive: 'orchestration', name: 'slow-greeting' });
+    await Effect.runPromise(Scope.close(scope, Exit.void));
+    await setTimeout(6000);
+
+    expect(outcome).toMatchObject({ status: 'rejected', reason: 'unavailable' });
   }, 30_000);
 });

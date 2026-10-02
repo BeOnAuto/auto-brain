@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { NotFound, Unavailable } from '@beonauto/operations';
 import { Client, Connection, WorkflowNotFoundError } from '@temporalio/client';
 import { Effect, type Scope } from 'effect';
@@ -61,11 +63,22 @@ export const connectOrchestration = Effect.fnUntraced(function* (
   };
 });
 
+async function unanswered(requestTimeout: number): Promise<never> {
+  await setTimeout(requestTimeout, undefined, { ref: false });
+  throw new Error(`Temporal did not answer within ${requestTimeout} ms`);
+}
+
 function openTemporal(settings: TemporalSettings, requestTimeout: number): TemporalCalls {
   const connection = Connection.lazy(connectionOptionsOf(settings));
   const client = new Client({ connection, namespace: settings.namespace });
-  const withinDeadline = <T>(request: () => Promise<T>): Promise<T> =>
-    connection.withDeadline(Date.now() + requestTimeout, request);
+  const unsettled = new Set<Promise<unknown>>();
+  const withinDeadline = <T>(request: () => Promise<T>): Promise<T> => {
+    const answer = connection.withDeadline(Date.now() + requestTimeout, request);
+    const settled = Promise.allSettled([answer]);
+    unsettled.add(settled);
+    void settled.then(() => unsettled.delete(settled));
+    return Promise.race([answer, unanswered(requestTimeout)]);
+  };
   return {
     start: async (run) => {
       const { id, org, brain, spec } = run.execution;
@@ -84,6 +97,9 @@ function openTemporal(settings: TemporalSettings, requestTimeout: number): Tempo
     },
     signal: (workflowId, event) =>
       withinDeadline(() => client.workflow.getHandle(workflowId).signal(eventSignalName, event)),
-    close: () => connection.close(),
+    close: async () => {
+      await Promise.all(unsettled);
+      await connection.close();
+    },
   };
 }
