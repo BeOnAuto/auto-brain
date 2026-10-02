@@ -39,6 +39,12 @@ describe('authenticatorFor with local mode on and no API keys', () => {
     });
   });
 
+  it('gives the local developer the org local as its own', () => {
+    expect(authenticatorFor({ host: '127.0.0.1', apiKeys: undefined, localMode: true }).authenticate()?.org).toBe(
+      'local',
+    );
+  });
+
   it.each(otherHosts)('stops start-up on %s, which is not loopback, with a named error', (host) => {
     expect(() => authenticatorFor({ host, apiKeys: undefined, localMode: true })).toThrow(
       expect.objectContaining({
@@ -81,6 +87,7 @@ describe('authenticatorFor with API keys', () => {
       permissions: ['brain:read'],
       brains: ['alpha'],
     });
+    expect(holder?.org).toBe('acme');
   });
 
   it.each([
