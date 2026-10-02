@@ -169,7 +169,7 @@ The interpreter runs in Temporal's workflow sandbox and must make the same decis
 
 ## Running it
 
-The server serves workflows when `TEMPORAL_ADDRESS` is set (`packages/server/src/workflows.ts`); without it, it loads no Temporal code and offers only the other primitives. The pieces it puts together:
+The server serves workflows when `TEMPORAL_ADDRESS` is set (`packages/server/src/workflows/workflows.ts`); without it, it loads no Temporal code and offers only the other primitives. The pieces it puts together:
 
 - `readTemporalSettings(environment)`, from the entry `@beonauto/orchestration/settings`, which imports nothing of Temporal: none when `TEMPORAL_ADDRESS` is unset, the settings below otherwise, and `temporal_settings_invalid` naming every setting that is wrong and what it expects, never its value.
 - `connectOrchestration(settings)` (scoped): the Temporal client that starts workflows and signals events. Each request answers within its deadline, 10 seconds, even while Temporal's client still retries it, and closing the client waits for those retries to end, because a retry that runs after its connection closed throws from a timer and ends the process.
