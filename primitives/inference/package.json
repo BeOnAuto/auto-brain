@@ -26,7 +26,7 @@
     "@beonauto/specs": "workspace:*",
     "ai": "7.0.124",
     "effect": "catalog:",
-    "google-auth-library": "10.9.1",
+    "google-auth-library": "11.1.0",
     "liquidjs": "10.29.0",
     "yaml": "2.9.1",
     "zod": "4.6.5"
