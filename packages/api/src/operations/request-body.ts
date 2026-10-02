@@ -42,7 +42,7 @@ function declaresAnotherCharset({ type, charset }: MediaType): boolean {
   return type === 'application/json' && charset !== undefined && charset !== 'utf-8';
 }
 
-async function bodyTextOf(request: Request): Promise<Result.Result<string, Problem>> {
+export async function bodyTextOf(request: Request): Promise<Result.Result<string, Problem>> {
   if (request.body === null) {
     return Result.succeed('');
   }

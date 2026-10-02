@@ -1,13 +1,12 @@
 import { allPermissions, type CallerIdentity } from '@beonauto/operations';
 
 import type { ApiKey } from './api-key.ts';
+import { localOrg } from './local-org.ts';
 
 export interface Principal {
   readonly org: string;
   readonly callerIn: (org: string) => CallerIdentity;
 }
-
-const localOrg = 'local';
 
 export const localDeveloper: Principal = {
   org: localOrg,

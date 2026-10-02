@@ -5,18 +5,19 @@ import { authInfoFor, brainCallOf, orgCallOf } from './caller-hand-off.ts';
 
 const caller: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: ['alpha'] };
 
+const orgCall = { caller, org: 'acme', requestId: 'request-1', dropped: [{ id: 7, value: { admin: true } }] };
+
 describe('the hand-off of a caller to the MCP SDK', () => {
   it('carries the caller id and permissions, and a placeholder instead of any credential', () => {
-    expect(authInfoFor({ caller, org: 'acme', requestId: 'request-1' })).toEqual({
+    expect(authInfoFor(orgCall)).toEqual({
       token: 'verified-by-auto-brain',
       clientId: 'acme-admin',
       scopes: [...allPermissions],
-      extra: { caller, org: 'acme', requestId: 'request-1' },
+      extra: orgCall,
     });
   });
 
-  it('reads back the call of an org endpoint and of a brain endpoint', () => {
-    const orgCall = { caller, org: 'acme', requestId: 'request-1' };
+  it('reads back the call of an org endpoint and of a brain endpoint, with the arguments the SDK drops', () => {
     const brainCall = { ...orgCall, brain: 'alpha' };
 
     expect({
@@ -30,12 +31,12 @@ describe('the hand-off of a caller to the MCP SDK', () => {
   });
 
   it('refuses to serve a request whose authentication information carries no caller', () => {
-    expect(() => orgCallOf({ authInfo: { extra: { org: 'acme', requestId: 'request-1' } } })).toThrow('caller');
+    expect(() => orgCallOf({ authInfo: { extra: { org: 'acme', requestId: 'request-1', dropped: [] } } })).toThrow(
+      'caller',
+    );
   });
 
   it('refuses to serve a brain endpoint without a brain', () => {
-    expect(() => brainCallOf({ authInfo: authInfoFor({ caller, org: 'acme', requestId: 'request-1' }) })).toThrow(
-      'brain',
-    );
+    expect(() => brainCallOf({ authInfo: authInfoFor(orgCall) })).toThrow('brain');
   });
 });

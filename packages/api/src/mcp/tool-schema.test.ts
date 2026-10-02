@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { advertisedSchemaOf, selfContainedSchemaOf } from './tool-schema.ts';
+import { advertisedSchemaOf, selfContainedSchemaOf, withoutUnreferencedDefinitions } from './tool-schema.ts';
 
 const dialect = 'https://json-schema.org/draft/2020-12/schema';
 
@@ -41,6 +41,44 @@ describe('selfContainedSchemaOf', () => {
       $ref: reference,
       $defs: { Brain },
     });
+  });
+});
+
+describe('withoutUnreferencedDefinitions', () => {
+  const Tag = { type: 'string' };
+
+  it('drops every definition when nothing refers to one, and with them $defs', () => {
+    expect(withoutUnreferencedDefinitions({ type: 'object', $defs: { Tag } })).toEqual({ type: 'object' });
+  });
+
+  it('leaves a schema without definitions as it is', () => {
+    expect(withoutUnreferencedDefinitions({ type: 'object' })).toEqual({ type: 'object' });
+  });
+
+  it('keeps the definitions referred to from the schema, from arrays in it and through other definitions', () => {
+    const schema = {
+      type: 'object',
+      properties: { tags: { type: 'array', prefixItems: [{ $ref: '#/$defs/Labelled' }] } },
+      $defs: {
+        Labelled: { type: 'object', properties: { tag: { $ref: '#/$defs/Tag' } } },
+        Tag,
+        Unused: { type: 'number' },
+      },
+    };
+
+    expect(withoutUnreferencedDefinitions(schema)).toEqual({
+      ...schema,
+      $defs: { Labelled: schema.$defs.Labelled, Tag },
+    });
+  });
+
+  it('ignores a reference outside the definitions, and a $ref that is not a string', () => {
+    const schema = {
+      properties: { remote: { $ref: 'https://example.com/tag.json' }, odd: { $ref: { $ref: '#/$defs/Tag' } } },
+      $defs: { Tag, Unused: { type: 'number' } },
+    };
+
+    expect(withoutUnreferencedDefinitions(schema)).toEqual({ ...schema, $defs: { Tag } });
   });
 });
 
