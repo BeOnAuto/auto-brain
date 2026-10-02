@@ -3,7 +3,7 @@ import { connect, createServer, Socket } from 'node:net';
 
 import { Schema } from 'effect';
 
-import { tcpPort } from '../lifecycle.ts';
+import { tcpPort } from '../lifecycle/lifecycle.ts';
 
 export interface TemporalProxy {
   readonly address: string;

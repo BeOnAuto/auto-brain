@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { Schema } from 'effect';
 
-import { tcpPort } from '../lifecycle.ts';
+import { tcpPort } from '../lifecycle/lifecycle.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
 import { isStarted } from './workflow-server.ts';
 

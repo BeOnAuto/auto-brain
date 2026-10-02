@@ -1,7 +1,7 @@
 import type { Environment } from '@beonauto/config';
 import { Effect, Option, Schema, type Layer } from 'effect';
 
-import { logsToStderr } from '../logging.ts';
+import { logsToStderr } from '../logging/logging.ts';
 
 export interface RunnerLog {
   readonly info: (message: string) => void;

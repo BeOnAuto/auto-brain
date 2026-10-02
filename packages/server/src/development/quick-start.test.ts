@@ -6,7 +6,7 @@ import { setTimeout } from 'node:timers/promises';
 import { withMcpSession, type McpSession, type ToolResult } from '@beonauto/api/testing';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { tcpPort } from '../lifecycle.ts';
+import { tcpPort } from '../lifecycle/lifecycle.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,

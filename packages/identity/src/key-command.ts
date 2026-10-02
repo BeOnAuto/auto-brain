@@ -1,4 +1,4 @@
-import { runKeyCommand } from './run-key-command.ts';
+import { runKeyCommand } from './key-command/run-key-command.ts';
 
 process.exitCode = runKeyCommand(process.argv.slice(2), {
   log: (line) => {

@@ -1,6 +1,6 @@
-import { defaultServerOptions, servedBy } from '../lifecycle.ts';
-import { exitOnStartupFailure, runServer } from '../run-server.ts';
-import { stopRequestedBy } from '../stop-request.ts';
+import { defaultServerOptions, servedBy } from '../lifecycle/lifecycle.ts';
+import { exitOnStartupFailure, runServer } from '../lifecycle/run-server.ts';
+import { stopRequestedBy } from '../lifecycle/stop-request.ts';
 import { shortShutdownTimeoutMs } from './short-shutdown-timeout.ts';
 import { testRoutes } from './test-routes.ts';
 

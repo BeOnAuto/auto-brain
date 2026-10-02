@@ -6,7 +6,7 @@ import { createServer } from 'node:net';
 import { Schema } from 'effect';
 import { describe, expect, inject, it, onTestFinished } from 'vitest';
 
-import { tcpPort } from '../lifecycle.ts';
+import { tcpPort } from '../lifecycle/lifecycle.ts';
 import { freePort } from '../testing/workflow-process.ts';
 import { whatAnswersOn } from './temporal-answer.ts';
 
