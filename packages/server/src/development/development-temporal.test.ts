@@ -7,7 +7,9 @@ import {
   developmentFiles,
   developmentTestTimeoutMs,
   localTemporalPorts,
+  readyNoticesOf,
   startDevelopment,
+  temporalLines,
   untilListening,
 } from '../testing/development-process.ts';
 import {
@@ -40,7 +42,8 @@ describe('pnpm dev with a Temporal of its own', { timeout: developmentTestTimeou
     const temporal = await localTemporalPorts();
     const development = startDevelopment(developmentFiles(), { temporal });
 
-    const settled = await greetingSettled(await untilListening(development));
+    const port = await untilListening(development);
+    const settled = await greetingSettled(port);
     const ui = await webUiAnswer(`http://127.0.0.1:${temporal.uiPort}`);
 
     expect({ settled, ui, ...(await stoppedWith(development, 'SIGTERM')) }).toMatchObject({
@@ -51,21 +54,31 @@ describe('pnpm dev with a Temporal of its own', { timeout: developmentTestTimeou
         `Temporal v1.9.1 is running on 127.0.0.1:${temporal.port} with its state in ${development.files.stateFile}; web UI at http://127.0.0.1:${temporal.uiPort}`,
       ],
     });
+    expect(readyNoticesOf(development)).toEqual([
+      [
+        `  server     http://localhost:${port}`,
+        `  workflows  Temporal web UI at http://127.0.0.1:${temporal.uiPort}`,
+        '  models     none configured; copy .env.example to .env and put a key in it',
+        `  MCP        http://localhost:${port}/mcp`,
+      ].join('\n'),
+    ]);
   });
 
   it('starts the server without workflows, saying why, when Temporal cannot start', async () => {
     const temporal = await localTemporalPorts();
     await notTemporalOn(temporal.uiPort);
 
-    const stopped = servedWithoutWorkflows(startDevelopment(developmentFiles(), { temporal }));
+    const development = startDevelopment(developmentFiles(), { temporal });
 
-    await expect(stopped).resolves.toEqual({
+    await expect(servedWithoutWorkflows(development)).resolves.toEqual({
       exitCode: 0,
       said: [
-        `Error: can't set UI port ${temporal.uiPort}: listen tcp 127.0.0.1:${temporal.uiPort}: bind: address already in use`,
         `Temporal's dev server could not start (exit code 1), so the server starts without workflows; ${howToGetWorkflows}`,
       ],
     });
+    expect(temporalLines(development)).toEqual([
+      `ERROR Error: can't set UI port ${temporal.uiPort}: listen tcp 127.0.0.1:${temporal.uiPort}: bind: address already in use`,
+    ]);
   });
 });
 
