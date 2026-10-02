@@ -1,4 +1,4 @@
-import { Cause, Clock, Effect, Exit, Fiber, Random, type Scope } from 'effect';
+import { Cause, Clock, Effect, Exit, Fiber, Random, Ref, type Scope } from 'effect';
 
 import { logWorkerNotStarted, logWorkerStarted, logWorkerStopped } from './logging.ts';
 
@@ -28,16 +28,22 @@ export function retryDelayMs(failures: number, fraction: number, backoff: Backof
 }
 
 export function superviseWorker(start: StartWorker, backoff: Backoff = workerBackoff): Effect.Effect<never> {
-  const supervise = (failures: number): Effect.Effect<never> =>
-    Effect.gen(function* () {
-      const attempt = yield* attemptToRun(start);
-      const counted = attempt.started && attempt.ranForMs >= backoff.steadyAfterMs ? 1 : failures + 1;
-      const delayMs = retryDelayMs(counted, yield* Random.next, backoff);
-      yield* attempt.started ? logWorkerStopped(attempt.detail, delayMs) : logWorkerNotStarted(attempt.detail, delayMs);
-      yield* Effect.sleep(delayMs);
-      return yield* supervise(counted);
-    });
-  return supervise(0);
+  return Effect.gen(function* () {
+    const failures = yield* Ref.make(0);
+    return yield* Effect.forever(
+      Effect.gen(function* () {
+        const attempt = yield* attemptToRun(start);
+        const steady = attempt.started && attempt.ranForMs >= backoff.steadyAfterMs;
+        const counted = steady ? 1 : (yield* Ref.get(failures)) + 1;
+        yield* Ref.set(failures, counted);
+        const delayMs = retryDelayMs(counted, yield* Random.next, backoff);
+        yield* attempt.started
+          ? logWorkerStopped(attempt.detail, delayMs)
+          : logWorkerNotStarted(attempt.detail, delayMs);
+        yield* Effect.sleep(delayMs);
+      }),
+    );
+  });
 }
 
 export function runSupervised(
