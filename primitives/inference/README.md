@@ -16,7 +16,7 @@ There is no default provider. A model id without a provider never reaches a defa
 
 ## Providers
 
-A provider is configured when its required settings are present. One that is not configured is simply absent; a spec that names it fails with `provider_not_configured`, which lists the settings it lacks.
+A provider is configured when its required settings are present. One that is not configured is simply absent; a spec that names it fails with `provider_not_configured`, which names the providers that are configured. The settings a provider lacks are an operator's business: the server's start-up log names them, and the caller of a spec never sees them.
 
 | Prefix              | Calls                                          | Required settings                                                      | Optional settings                                                                                   | In the default image                             |
 | ------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
@@ -155,21 +155,31 @@ MODEL_ALIASES='{"anthropic/claude-haiku-4-5":"bedrock/eu.anthropic.claude-haiku-
 
 Both sides are written `provider/model`. A target may not itself be an alias, so cycles and chains are rejected when the server starts. The result of a call records the model as requested, as resolved, and as the provider answered.
 
+An alias also sends a provider's model references through a gateway, one model at a time. With only a gateway configured, specs that name `anthropic/claude-sonnet-4-5` reach it as `gateway/anthropic/claude-sonnet-4-5` with:
+
+```sh
+MODEL_ALIASES='{"anthropic/claude-sonnet-4-5":"gateway/anthropic/claude-sonnet-4-5"}'
+```
+
+The description of inference that the spec tools carry lists the alias names, so an agent writing a spec sees them.
+
 ## When a provider is not configured
 
-Nothing fails at start. A spec that names the provider fails with `provider_not_configured`:
+Nothing fails at start. A spec that names the provider fails with `provider_not_configured`, whose `detail`, the text its caller sees, names the providers that are configured:
 
 ```json
 {
   "_tag": "provider_not_configured",
-  "detail": "openai is not configured; it needs OPENAI_API_KEY",
+  "detail": "openai is not configured. Configured providers: anthropic, bedrock, bedrock-anthropic",
   "provider": "openai",
   "configured": ["anthropic", "bedrock", "bedrock-anthropic"],
   "missing": ["OPENAI_API_KEY"]
 }
 ```
 
-A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and lists the configured ones. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
+A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and the same; with no provider configured, the detail ends `No model provider is configured`. `missing` stays on the failure for the code that handles it and never reaches the caller.
+
+An agent learns this before it writes a spec: the description of inference, which every spec tool carries, names the providers this server calls models through and how a model is written with them (`This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>.`), the alias names when `MODEL_ALIASES` sets any, or that no provider is configured. It cannot name the models of a provider: those are whatever the account behind the key serves. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
 
 ```json
 {"message":"Model providers configured: anthropic","level":"INFO","annotations":{"providers":[{"provider":"anthropic","configured":true},{"provider":"openai","configured":false,"missing":["OPENAI_API_KEY"]},…]}}
