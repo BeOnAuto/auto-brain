@@ -67,12 +67,20 @@ pnpm dev
 
 Before `pnpm dev`, uncomment one line of `.env` and put your key in it:
 
-| Provider                     | In `.env`                                                                                                                          | A model to name               |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Anthropic                    | `ANTHROPIC_API_KEY=<your key>`                                                                                                     | `anthropic/claude-sonnet-4-5` |
-| OpenAI                       | `OPENAI_API_KEY=<your key>`                                                                                                        | `openai/gpt-5`                |
-| Google                       | `GOOGLE_GENERATIVE_AI_API_KEY=<your key>`                                                                                          | `google/gemini-2.5-flash`     |
-| An OpenAI-compatible gateway | `GATEWAY_API_KEY=<your key>`, and `cp auto-brain.example.yaml auto-brain.yaml` with your gateway's `base_url` in `auto-brain.yaml` | `gateway/<model>`             |
+| Provider                     | In `.env`                                 | A model to name               |
+| ---------------------------- | ----------------------------------------- | ----------------------------- |
+| Anthropic                    | `ANTHROPIC_API_KEY=<your key>`            | `anthropic/claude-sonnet-4-5` |
+| OpenAI                       | `OPENAI_API_KEY=<your key>`               | `openai/gpt-5`                |
+| Google                       | `GOOGLE_GENERATIVE_AI_API_KEY=<your key>` | `google/gemini-2.5-flash`     |
+| An OpenAI-compatible gateway | `GATEWAY_API_KEY=<your key>`              | `gateway/<model>`             |
+
+A gateway also needs its address, which goes in the [configuration file](#configuring-a-model):
+
+```bash
+cp auto-brain.example.yaml auto-brain.yaml
+```
+
+Then put your gateway's `base_url` in `auto-brain.yaml`.
 
 `pnpm dev` starts Temporal's dev server, then the server, in [local mode](#local-mode), on `http://localhost:8080`. Once it is up, it says so:
 
