@@ -64,7 +64,9 @@ async function handle(current: Attempt, error: DslError, policy: JsonObject | un
   const delay =
     policy === undefined ? undefined : retryDelay(policy, current, retryContextOf(invocation, errorVariables));
   if (delay === undefined) {
-    return recover(invocation, handler, { [errorName]: errorAsJson(error) });
+    const caught = errorAsJson(error);
+    const release = scope.state.hold([caught], entry.reference);
+    return recover(invocation, handler, { [errorName]: caught }).finally(release);
   }
   scope.state.beforeWaiting(entry.reference);
   await scope.state.host.sleep(delay, `${entry.reference} retry ${current.attempt + 1}`);

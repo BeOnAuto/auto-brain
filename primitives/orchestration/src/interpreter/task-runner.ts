@@ -101,25 +101,30 @@ async function performTask(start: TaskStart): Promise<TaskOutcome> {
     variables,
     placeIn(state, reference),
   );
-  const inputVariables = { ...variables, input };
   const type = typeOf(task);
   if (type === undefined) {
     throw raised('configuration', 400, 'The task has no type this runtime knows', reference);
   }
-  const body = await bodyFor(type.kind)({
-    entry,
-    configuration: type.configuration,
-    input,
-    variables: inputVariables,
-    scope,
-    run,
-    runner,
-  });
-  const outputVariables = { ...inputVariables, task: { ...descriptor, output: admitted(body.output, reference) } };
-  const place = placeIn(state, reference);
-  const output = transform(field(objectField(task, 'output') ?? {}, 'as'), body.output, outputVariables, place);
-  exportToContext(state, { task, output: admitted(output, reference), variables: outputVariables, place });
-  return { output, flow: body.flow ?? textField(task, 'then') ?? 'continue' };
+  const release = state.hold([rawInput, input], reference);
+  try {
+    const inputVariables = { ...variables, input };
+    const body = await bodyFor(type.kind)({
+      entry,
+      configuration: type.configuration,
+      input,
+      variables: inputVariables,
+      scope,
+      run,
+      runner,
+    });
+    const outputVariables = { ...inputVariables, task: { ...descriptor, output: admitted(body.output, reference) } };
+    const place = placeIn(state, reference);
+    const output = transform(field(objectField(task, 'output') ?? {}, 'as'), body.output, outputVariables, place);
+    exportToContext(state, { task, output: admitted(output, reference), variables: outputVariables, place });
+    return { output, flow: body.flow ?? textField(task, 'then') ?? 'continue' };
+  } finally {
+    release();
+  }
 }
 
 function exportToContext(state: RunState, { task, output, variables, place }: Exported): void {

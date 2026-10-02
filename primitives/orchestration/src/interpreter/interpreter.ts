@@ -49,22 +49,33 @@ async function outcomeBeforeDeadline(state: RunState): Promise<RunOutcome> {
   const { host, run } = state;
   const milliseconds = run.mostDuration - deadlineMargin;
   const deadline = host.cancellable(() => host.deadline(milliseconds));
+  const overflowing = host.cancellable(() => host.watch(() => state.overflow() !== undefined));
   const job = host.cancellable(() => outcomeOf(state));
   let overran = false;
-  void deadline.result.then(
-    () => {
-      overran = true;
-      job.cancel();
-      return overran;
-    },
-    () => overran,
-  );
+  const stopJob = (): boolean => {
+    job.cancel();
+    return true;
+  };
+  void deadline.result.then(() => {
+    overran = true;
+    return stopJob();
+  }, stopped);
+  void overflowing.result.then(stopJob, stopped);
   try {
     const outcome = await job.result;
-    return overran ? { kind: 'overran', milliseconds } : outcome;
+    const overflow = state.overflow();
+    if (overran) {
+      return { kind: 'overran', milliseconds };
+    }
+    return overflow === undefined ? outcome : { kind: 'raised', error: overflow.error };
   } finally {
     deadline.cancel();
+    overflowing.cancel();
   }
+}
+
+function stopped(): boolean {
+  return false;
 }
 
 async function outcomeOf(state: RunState): Promise<RunOutcome> {
@@ -92,14 +103,10 @@ async function interpret(state: RunState): Promise<Json> {
       instance: root,
     });
   }
+  state.hold([document, admitted(input, root)], root);
   const variables = { workflow: state.workflow, runtime: runtimeDescriptor };
   const place = placeIn(state, root);
-  const transformed = transform(
-    field(objectField(document, 'input') ?? {}, 'from'),
-    admitted(input, root),
-    variables,
-    place,
-  );
+  const transformed = transform(field(objectField(document, 'input') ?? {}, 'from'), input, variables, place);
   const timeout = timeoutOf(state, {
     declared: field(document, 'timeout'),
     data: transformed,

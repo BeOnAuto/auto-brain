@@ -13,8 +13,8 @@ import {
 import type { Located } from '../dsl/policy-checks.ts';
 import { eventFiltersOf } from '../dsl/task-policy.ts';
 import { evaluate, placeOf } from './evaluation.ts';
+import type { EventFilter } from './inbox.ts';
 import type { Body, Invocation } from './invocation.ts';
-import type { EventFilter } from './run-state.ts';
 
 export async function listenTask(invocation: Invocation): Promise<Body> {
   const { entry } = invocation;

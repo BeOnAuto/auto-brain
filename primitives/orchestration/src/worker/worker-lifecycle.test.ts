@@ -56,13 +56,19 @@ describe('the connection of the orchestration worker', () => {
 });
 
 describe('the worker the orchestration worker makes', () => {
-  it('polls the task queue of the settings, and gives activities 10 seconds to finish when it stops', async () => {
+  it('polls the task queue of the settings, keeps 16 workflows and runs 2 workflow tasks at once, and gives activities 10 seconds to finish when it stops', async () => {
     const fake = fakeTemporalWorkers();
     const { stop } = await startedWith(fake);
     await stop();
 
     expect(fake.definitions()).toMatchObject([
-      { namespace: 'tenants', taskQueue: 'brains', shutdownGraceTime: '10 seconds' },
+      {
+        namespace: 'tenants',
+        taskQueue: 'brains',
+        shutdownGraceTime: '10 seconds',
+        maxCachedWorkflows: 16,
+        maxConcurrentWorkflowTaskExecutions: 2,
+      },
     ]);
     expect(fake.definitions()[0]).toHaveProperty('workflowsPath', workflowsPath);
     expect(fake.definitions()[0]).not.toHaveProperty('workflowBundle');

@@ -23,6 +23,8 @@ export type WorkerDefinition = WorkflowCode & {
   readonly activities: OrchestrationActivities;
   readonly dataConverter: { readonly failureConverterPath: string };
   readonly shutdownGraceTime: string;
+  readonly maxCachedWorkflows: number;
+  readonly maxConcurrentWorkflowTaskExecutions: number;
 };
 
 export interface RunnableWorker {
@@ -56,6 +58,10 @@ interface RunningWorker {
   readonly stopping: () => boolean;
   readonly stop: () => Promise<void>;
 }
+
+export const mostCachedWorkflows = 16;
+
+export const mostWorkflowTasksAtOnce = 2;
 
 const ranToTheEnd = Symbol('ran to the end');
 
@@ -122,6 +128,8 @@ async function startWorker(
       }),
       dataConverter: { failureConverterPath },
       shutdownGraceTime: '10 seconds',
+      maxCachedWorkflows: mostCachedWorkflows,
+      maxConcurrentWorkflowTaskExecutions: mostWorkflowTasksAtOnce,
     });
     return runningWorker(worker, connection);
   } catch (error) {
