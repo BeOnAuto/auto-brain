@@ -16,6 +16,7 @@ export function generation(
   return Effect.fnUntraced(function* (request: ModelRequest) {
     yield* checkedRequest(request);
     const target = yield* Effect.fromResult(resolve(request.model));
+    yield* Effect.fromResult(policy.admitsOptions(target.provider, request.provider_options));
     const started = yield* Clock.currentTimeMillis;
     const { settled, providerText } = yield* Effect.promise((interruption: Readonly<AbortSignal>) =>
       settledCall(target, request, interruption, policy),

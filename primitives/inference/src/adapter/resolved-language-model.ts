@@ -4,6 +4,7 @@ import { LanguageModel } from '../model/language-model.ts';
 import { providersShowingMessages, secretScrubber } from '../settings/message-exposure.ts';
 import type { ModelSettings } from '../settings/model-settings.ts';
 import type { ProviderStatus } from '../settings/provider-status.ts';
+import { gatewayOptionsCheck } from './gateway-options.ts';
 import { generation } from './generation.ts';
 import type { ReportProviderMessage } from './model-access-options.ts';
 import { modelResolution } from './model-resolution.ts';
@@ -22,6 +23,7 @@ export function resolvedLanguageModel(
       showsProviderMessages: (provider) => showing.has(provider),
       scrub: secretScrubber(settings),
       report: report ?? (() => Effect.void),
+      admitsOptions: gatewayOptionsCheck(settings.gateways),
     }),
   });
 }

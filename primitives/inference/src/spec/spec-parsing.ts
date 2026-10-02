@@ -6,7 +6,7 @@ import { splitDocument, type DocumentParts } from './document-split.ts';
 import { decodeSection, frontMatterIn, type ReadFrontMatter } from './front-matter-schema.ts';
 import type { InferenceSpec } from './inference-spec.ts';
 import { inputContractOf, outputContractOf } from './spec-schemas.ts';
-import { modelOf, settingsOf } from './spec-settings.ts';
+import { modelOf, providerOptionsOf, settingsOf } from './spec-settings.ts';
 import { templateOf } from './spec-template.ts';
 import { variableIssues } from './template-checks.ts';
 
@@ -51,7 +51,7 @@ function specFrom({ root, lines, issues }: ReadFrontMatter, template: () => Chec
   const description = checkedSection(() => decodeSection.description(root['description']), Result.succeed);
   const providerOptions = checkedSection(
     () => decodeSection.provider_options(root['provider_options']),
-    Result.succeed,
+    (options) => providerOptionsOf(options, lines),
   );
   const found = [
     ...issues,
@@ -60,6 +60,7 @@ function specFrom({ root, lines, issues }: ReadFrontMatter, template: () => Chec
       () => settings,
       () => input,
       () => output,
+      () => providerOptions,
       () => template(),
     ),
     ...variablesOf(template, Result.isSuccess(input) ? input.success.schema?.document : undefined),

@@ -26,6 +26,7 @@ const internal = {
   structured_outputs: true,
   include_usage: true,
   expose_provider_messages: true,
+  allowed_provider_options: ['metadata', 'user'],
 };
 
 describe('MODEL_GATEWAYS', () => {
@@ -44,6 +45,7 @@ describe('MODEL_GATEWAYS', () => {
         structured_outputs: true,
         include_usage: true,
         expose_provider_messages: true,
+        allowed_provider_options: new Set(['metadata', 'user']),
       },
       {
         name: 'local',
@@ -54,6 +56,7 @@ describe('MODEL_GATEWAYS', () => {
         structured_outputs: false,
         include_usage: false,
         expose_provider_messages: false,
+        allowed_provider_options: new Set(),
       },
     ]);
     expect(exposedText(settings.gateways)).not.toContain(secret);
@@ -95,6 +98,75 @@ describe('malformed MODEL_GATEWAYS', () => {
       { setting: 'MODEL_GATEWAYS', detail: '/3/name: mine is used twice' },
       { setting: 'MODEL_GATEWAYS', detail: '/3/base_url: Expected an http or https URL' },
       { setting: 'MODEL_GATEWAYS', detail: '/3/api_key_env: The variable it names is not set' },
+    ]);
+  });
+});
+
+const runtimeFields = [
+  'model',
+  'messages',
+  'stream',
+  'stream_options',
+  'n',
+  'max_tokens',
+  'max_completion_tokens',
+  'temperature',
+  'top_p',
+  'frequency_penalty',
+  'presence_penalty',
+  'seed',
+  'stop',
+  'response_format',
+  'tools',
+  'tool_choice',
+  'functions',
+  'function_call',
+  'reasoning_effort',
+  'verbosity',
+  'reasoningEffort',
+  'textVerbosity',
+  'strictJsonSchema',
+];
+
+describe('the allowed_provider_options of a gateway', () => {
+  it('refuses every field the runtime sets or that changes what the call is, naming the field', async () => {
+    const entry = { name: 'internal', base_url: 'https://llm.internal/v1', allowed_provider_options: runtimeFields };
+
+    expect(await problemsOf(gateways([entry]))).toEqual(
+      runtimeFields.map((field, position) => ({
+        setting: 'MODEL_GATEWAYS',
+        detail: `/0/allowed_provider_options/${position}: ${field} is set by the runtime or changes what the call is, so it cannot be allowed`,
+      })),
+    );
+  });
+
+  it('is a list of distinct field names, each of 1 to 64 characters, and at most 64 of them', async () => {
+    const malformed = {
+      name: 'a',
+      base_url: 'https://a.example',
+      allowed_provider_options: ['', 'x'.repeat(65), 'user', 'user'],
+    };
+    const many = {
+      name: 'b',
+      base_url: 'https://b.example',
+      allowed_provider_options: Array.from({ length: 65 }, (_, index) => `f${index}`),
+    };
+    const notText = { name: 'c', base_url: 'https://c.example', allowed_provider_options: ['user', 7] };
+
+    expect(await problemsOf(gateways([malformed, many, notText]))).toEqual([
+      { setting: 'MODEL_GATEWAYS', detail: '/2/allowed_provider_options/1: Expected string' },
+    ]);
+    expect(await problemsOf(gateways([malformed, many]))).toEqual([
+      {
+        setting: 'MODEL_GATEWAYS',
+        detail: '/0/allowed_provider_options/0: Expected a field name of 1 to 64 characters',
+      },
+      {
+        setting: 'MODEL_GATEWAYS',
+        detail: '/0/allowed_provider_options/1: Expected a field name of 1 to 64 characters',
+      },
+      { setting: 'MODEL_GATEWAYS', detail: '/0/allowed_provider_options/3: user is listed twice' },
+      { setting: 'MODEL_GATEWAYS', detail: '/1/allowed_provider_options: Expected at most 64 field names' },
     ]);
   });
 });

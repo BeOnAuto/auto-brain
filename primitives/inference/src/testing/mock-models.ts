@@ -1,5 +1,5 @@
 import type { MockLanguageModelV4 } from 'ai/test';
-import { Effect } from 'effect';
+import { Effect, Result } from 'effect';
 
 import { generation } from '../adapter/generation.ts';
 import { modelResolution } from '../adapter/model-resolution.ts';
@@ -33,6 +33,7 @@ export function mockGeneration(model: () => MockLanguageModelV4) {
     showsProviderMessages: () => true,
     scrub: (text) => text,
     report: () => Effect.void,
+    admitsOptions: () => Result.void,
   });
   return {
     succeeded: (request: ModelRequest): Promise<ModelResult> => Effect.runPromise(generate(request)),

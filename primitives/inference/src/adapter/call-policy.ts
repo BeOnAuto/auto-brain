@@ -1,4 +1,5 @@
 import type { ModelRequest } from '../model/model-request.ts';
+import type { ProviderOptionsCheck } from './gateway-options.ts';
 import type { ReportProviderMessage } from './model-access-options.ts';
 
 export interface CallPolicy {
@@ -6,6 +7,7 @@ export interface CallPolicy {
   readonly showsProviderMessages: (provider: string) => boolean;
   readonly scrub: (text: string) => string;
   readonly report: ReportProviderMessage;
+  readonly admitsOptions: ProviderOptionsCheck;
 }
 
 const leastQuotedCharacters = 8;

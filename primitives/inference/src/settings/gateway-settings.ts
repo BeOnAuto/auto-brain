@@ -1,5 +1,6 @@
 import { Effect, Redacted, Result, Schema } from 'effect';
 
+import { allowedOptionProblems } from './allowed-provider-options.ts';
 import { decodeJsonSetting, strictly } from './json-setting.ts';
 import {
   optionalSecret,
@@ -19,6 +20,7 @@ export interface GatewaySettings {
   readonly structured_outputs: boolean;
   readonly include_usage: boolean;
   readonly expose_provider_messages: boolean;
+  readonly allowed_provider_options: ReadonlySet<string>;
 }
 
 interface GatewayReading {
@@ -35,6 +37,7 @@ interface GatewayEntry {
   readonly structured_outputs?: boolean;
   readonly include_usage?: boolean;
   readonly expose_provider_messages?: boolean;
+  readonly allowed_provider_options?: readonly string[];
 }
 
 interface ReadGateway {
@@ -68,6 +71,7 @@ const decodeGateways = Schema.decodeUnknownResult(
       structured_outputs: Schema.optionalKey(Schema.Boolean),
       include_usage: Schema.optionalKey(Schema.Boolean),
       expose_provider_messages: Schema.optionalKey(Schema.Boolean),
+      allowed_provider_options: Schema.optionalKey(Schema.Array(Schema.String)),
     }),
   ),
   strictly,
@@ -108,6 +112,7 @@ const gatewayFrom = Effect.fnUntraced(function* (environment: Environment, entry
         detail: `/${index}/base_url: ${detail}`,
       })),
       ...(missingKey ? problem(setting, `/${index}/api_key_env: The variable it names is not set`) : []),
+      ...allowedOptionProblems(entry.allowed_provider_options ?? [], index),
     ],
     gateway: {
       name: entry.name,
@@ -118,6 +123,7 @@ const gatewayFrom = Effect.fnUntraced(function* (environment: Environment, entry
       structured_outputs: entry.structured_outputs ?? false,
       include_usage: entry.include_usage ?? false,
       expose_provider_messages: entry.expose_provider_messages ?? false,
+      allowed_provider_options: new Set(entry.allowed_provider_options),
     },
   };
   return read;

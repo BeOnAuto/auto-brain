@@ -40,3 +40,61 @@ describe('the settings of a spec', () => {
     ]);
   });
 });
+
+const closedOptions = [
+  'provider_options:',
+  '  anthropic:',
+  '    sendReasoning: false',
+  '    anthropicBeta: [interleaved-thinking-2025-05-14]',
+  '    mcpServers: [{type: url, name: crm, url: "https://crm.example/mcp", authorizationToken: token}]',
+  '    fallbacks: [{model: claude-opus-4-1, max_tokens: 64000}]',
+  '  bedrock:',
+  '    additionalModelRequestFields: {top_k: 5}',
+  '    inferenceConfig: {maxTokens: 200000}',
+  '    reasoningConfig: {type: enabled, budgetTokens: 2048}',
+  '  amazonBedrock:',
+  '    anthropicBeta: [context-1m-2025-08-07]',
+  '  googleVertex:',
+  '    mcpServers: []',
+  '    requestType: shared',
+  '  vertex:',
+  '    sharedRequestType: priority',
+  '  google:',
+  '    thinkingConfig: {thinkingBudget: 0}',
+  '    sharedRequestType: flex',
+].join('\n');
+
+const betas = 'anthropicBeta is not accepted: it turns on beta features of the provider through a request header';
+
+const passedThrough =
+  'is not accepted: Bedrock adds the keys of this namespace it does not read to the request as they are; it takes reasoningConfig, serviceTier and structuredOutputMode, and the anthropic namespace takes the options of Anthropic models';
+
+const servers =
+  'mcpServers is not accepted: it makes the provider connect to other servers, with credentials of their own';
+
+const capacity =
+  'is not accepted: it sets a request header that chooses the capacity, and the price, the request is served at';
+
+describe('the provider options of a spec', () => {
+  it('are passed on when they only tune the call', () => {
+    expect(
+      parsed(documentOf('model: anthropic/claude-sonnet-4-5\nprovider_options:\n  anthropic: {sendReasoning: false}'))
+        .provider_options,
+    ).toEqual({ anthropic: { sendReasoning: false } });
+  });
+
+  it('may not set headers, reach other servers or models, or add fields of their own', () => {
+    expect(issuesIn(documentOf(`model: anthropic/claude-sonnet-4-5\n${closedOptions}`))).toEqual([
+      `Line 6, /provider_options/anthropic/anthropicBeta: ${betas}`,
+      `Line 7, /provider_options/anthropic/mcpServers: ${servers}`,
+      'Line 8, /provider_options/anthropic/fallbacks: fallbacks is not accepted: it sends the request on to other models, with settings of their own',
+      `Line 10, /provider_options/bedrock/additionalModelRequestFields: additionalModelRequestFields ${passedThrough}`,
+      `Line 11, /provider_options/bedrock/inferenceConfig: inferenceConfig ${passedThrough}`,
+      `Line 14, /provider_options/amazonBedrock/anthropicBeta: anthropicBeta ${passedThrough}`,
+      `Line 16, /provider_options/googleVertex/mcpServers: ${servers}`,
+      `Line 17, /provider_options/googleVertex/requestType: requestType ${capacity}`,
+      `Line 19, /provider_options/vertex/sharedRequestType: sharedRequestType ${capacity}`,
+      `Line 22, /provider_options/google/sharedRequestType: sharedRequestType ${capacity}`,
+    ]);
+  });
+});

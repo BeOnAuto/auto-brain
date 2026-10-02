@@ -1,0 +1,56 @@
+import { JsonPointer, Result } from 'effect';
+
+import { SpecInvalid } from '../failure/spec-invalid.ts';
+import type { ProviderOptions } from '../model/model-request.ts';
+import type { GatewaySettings } from '../settings/gateway-settings.ts';
+
+export type ProviderOptionsCheck = (
+  provider: string,
+  options: ProviderOptions | undefined,
+) => Result.Result<void, SpecInvalid>;
+
+interface Disallowed {
+  readonly namespace: string;
+  readonly field: string;
+}
+
+const compatibleNamespaces = ['openaiCompatible', 'openai-compatible'];
+
+function camelCase(name: string): string {
+  return name.replaceAll(/[_-]([a-z])/gu, (_, letter: string) => letter.toUpperCase());
+}
+
+function namespacesOf(name: string): readonly string[] {
+  return [...new Set([name, camelCase(name), ...compatibleNamespaces])];
+}
+
+function disallowedIn(gateway: GatewaySettings, options: ProviderOptions): readonly Disallowed[] {
+  return namespacesOf(gateway.name).flatMap((namespace) =>
+    Object.keys(options[namespace] ?? {})
+      .filter((field) => !gateway.allowed_provider_options.has(field))
+      .map((field) => ({ namespace, field })),
+  );
+}
+
+function rejection(gateway: string, first: Disallowed, found: readonly Disallowed[]): SpecInvalid {
+  return new SpecInvalid({
+    detail: `The gateway ${gateway} does not allow the provider option ${first.field}`,
+    provider: gateway,
+    status: null,
+    provider_message: null,
+    issues: found.map(({ namespace, field }) => ({
+      pointer: `/provider_options/${JsonPointer.escapeToken(namespace)}/${JsonPointer.escapeToken(field)}`,
+      detail: `Not in the allowed_provider_options of ${gateway}`,
+    })),
+  });
+}
+
+export function gatewayOptionsCheck(gateways: readonly GatewaySettings[]): ProviderOptionsCheck {
+  const byName = new Map(gateways.map((gateway) => [gateway.name, gateway]));
+  return (provider, options) => {
+    const gateway = byName.get(provider);
+    const found = gateway === undefined || options === undefined ? [] : disallowedIn(gateway, options);
+    const [first] = found;
+    return first === undefined ? Result.void : Result.fail(rejection(provider, first, found));
+  };
+}
