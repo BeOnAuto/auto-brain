@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { offsetOf, readYaml, type YamlReading } from './yaml-reading.ts';
+import { offsetOf, readYaml, type YamlKind, type YamlReading } from './yaml-reading.ts';
+
+const notAMapping = '1:1 A workflow document is a YAML mapping, with document and do at its top';
+
+const workflowKind: YamlKind = {
+  noun: 'a workflow document',
+  mapping: 'A workflow document is a YAML mapping, with document and do at its top',
+  mostDepth: 512,
+  emptyIsMapping: false,
+};
+
+function read(source: string, kind = workflowKind): YamlReading {
+  return readYaml(source, kind);
+}
 
 function problemsOf(reading: YamlReading): readonly string[] {
   return 'problems' in reading
@@ -9,7 +22,7 @@ function problemsOf(reading: YamlReading): readonly string[] {
 }
 
 function locatorOf(text: string): (pointer: string) => { readonly line: number; readonly column: number } {
-  const reading = readYaml(text);
+  const reading = read(text);
   return 'document' in reading ? reading.document.locate : () => ({ line: 0, column: 0 });
 }
 
@@ -25,7 +38,7 @@ do:
 
 describe('reading a YAML document', () => {
   it('gives the mapping as JSON', () => {
-    expect(readYaml(source)).toMatchObject({
+    expect(read(source)).toMatchObject({
       document: {
         value: { document: { dsl: '1.0.3' }, do: [{ first: { set: { 'a/b': 1 } } }, { 'second~': { wait: 'PT1S' } }] },
       },
@@ -44,30 +57,41 @@ describe('reading a YAML document', () => {
 
 describe('a document that is not YAML this runtime reads', () => {
   it('is rejected with each parse error at its place', () => {
-    expect(problemsOf(readYaml('a: [1, 2\nb: 3\n'))).toEqual([
+    expect(problemsOf(read('a: [1, 2\nb: 3\n'))).toEqual([
       '2:1 Flow sequence in block collection must be sufficiently indented and end with a ]',
     ]);
-    expect(problemsOf(readYaml('a: 1\na: 2\n'))).toEqual(['2:1 Map keys must be unique']);
+    expect(problemsOf(read('a: 1\na: 2\n'))).toEqual(['2:1 Map keys must be unique']);
   });
 
   it('is rejected when it is not a mapping', () => {
-    const notAMapping = '1:1 A workflow document is a YAML mapping, with document and do at its top';
+    expect(problemsOf(read('- a list'))).toEqual([notAMapping]);
+    expect(problemsOf(read(''))).toEqual([notAMapping]);
+  });
 
-    expect(problemsOf(readYaml('- a list'))).toEqual([notAMapping]);
-    expect(problemsOf(readYaml(''))).toEqual([notAMapping]);
+  it('is an empty mapping when it is empty and its kind allows that', () => {
+    expect(read('# nothing set\n', { ...workflowKind, emptyIsMapping: true })).toMatchObject({
+      document: { value: {} },
+    });
+    expect(problemsOf(read('- a list', { ...workflowKind, emptyIsMapping: true }))).toEqual([notAMapping]);
+  });
+
+  it('is rejected when it nests values deeper than its kind allows', () => {
+    expect(problemsOf(read('a:\n  b:\n    c: 1\n', { ...workflowKind, mostDepth: 2 }))).toEqual([
+      '3:5 The document nests values more than 2 levels deep',
+    ]);
   });
 });
 
 describe('a document that uses YAML this runtime rejects', () => {
   it('is rejected for aliases and anchors', () => {
-    expect(problemsOf(readYaml('a: &shared { b: 1 }\nc: *shared\n'))).toEqual([
+    expect(problemsOf(read('a: &shared { b: 1 }\nc: *shared\n'))).toEqual([
       '1:12 Anchors are not allowed in a workflow document',
       '2:4 Aliases are not allowed in a workflow document',
     ]);
   });
 
   it('is rejected for tags, known or not', () => {
-    expect(problemsOf(readYaml('a: !!str 12\nb: !custom value\n'))).toEqual([
+    expect(problemsOf(read('a: !!str 12\nb: !custom value\n'))).toEqual([
       '2:4 Unresolved tag: !custom',
       '1:10 Tags are not allowed in a workflow document: tag:yaml.org,2002:str',
       '2:12 Tags are not allowed in a workflow document: !custom',
@@ -75,7 +99,7 @@ describe('a document that uses YAML this runtime rejects', () => {
   });
 
   it('is rejected for numbers JSON cannot carry and keys that are not plain', () => {
-    expect(problemsOf(readYaml('a: .inf\n? [x, y]\n: 1\n'))).toEqual([
+    expect(problemsOf(read('a: .inf\n? [x, y]\n: 1\n'))).toEqual([
       '1:4 Numbers in a workflow document are finite',
       '2:3 Keys in a workflow document are plain text',
     ]);

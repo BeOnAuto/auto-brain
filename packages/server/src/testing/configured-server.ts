@@ -1,0 +1,72 @@
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { onTestFinished } from 'vitest';
+
+import { request, type TestResponse } from './http-client.ts';
+import { alpha } from './inference-server.ts';
+import { spawnServer, type SpawnedServer } from './spawned-server.ts';
+import { temporaryLedger } from './temporary-ledger.ts';
+
+const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
+
+const verdict = [
+  '---',
+  'model: openai/gpt-5',
+  'output:',
+  '  format: json',
+  '  schema: {type: object, properties: {approve: {type: boolean}}, required: [approve], additionalProperties: false}',
+  '---',
+  'Should we approve {{ input.expense }}?',
+].join('\n');
+
+export interface ConfiguredServer {
+  readonly child: SpawnedServer;
+  readonly configFile: string;
+}
+
+export function configuredServer(
+  configText: string | undefined,
+  environment: Readonly<Record<string, string>>,
+): ConfiguredServer {
+  const ledger = temporaryLedger();
+  onTestFinished(() => {
+    ledger.remove();
+  });
+  const configFile = join(ledger.directory, 'auto-brain.yaml');
+  if (configText !== undefined) {
+    writeFileSync(configFile, configText);
+  }
+  const child = spawnServer(mainModule, {
+    HOST: '127.0.0.1',
+    PORT: '0',
+    LEDGER_FILE: ledger.fileName,
+    ...(configText === undefined ? {} : { CONFIG_FILE: configFile }),
+    ...environment,
+  });
+  return { child, configFile };
+}
+
+export async function rejectedExecution(port: number, key?: string): Promise<TestResponse> {
+  const caller = key === undefined ? {} : { key };
+  await request(port, 'POST', '/v1/orgs/acme/brains', { ...caller, body: { brain: 'alpha', name: 'Alpha' } });
+  await request(port, 'POST', `${alpha}/specs/inference`, { ...caller, body: { name: 'verdict', source: verdict } });
+  return request(port, 'POST', `${alpha}/specs/inference/verdict/execute`, {
+    ...caller,
+    body: { input: { expense: 'a dinner' } },
+  });
+}
+
+export async function stoppedOutput(child: SpawnedServer): Promise<string> {
+  child.signal('SIGTERM');
+  await child.exited;
+  return child.output().stderr;
+}
+
+export function settingLines(stderr: string): readonly string[] {
+  return stderr
+    .split('\n')
+    .filter((line) => line.includes('"config_file"'))
+    .map((line) => String(/"message":"((?:[^"\\]|\\.)*)"/u.exec(line)?.[1]));
+}

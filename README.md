@@ -67,12 +67,20 @@ pnpm dev
 
 Before `pnpm dev`, uncomment one line of `.env` and put your key in it:
 
-| Provider                     | In `.env`                                                                                                                                            | A model to name               |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| Anthropic                    | `ANTHROPIC_API_KEY=<your key>`                                                                                                                       | `anthropic/claude-sonnet-4-5` |
-| OpenAI                       | `OPENAI_API_KEY=<your key>`                                                                                                                          | `openai/gpt-5`                |
-| Google                       | `GOOGLE_GENERATIVE_AI_API_KEY=<your key>`                                                                                                            | `google/gemini-2.5-flash`     |
-| An OpenAI-compatible gateway | `MODEL_GATEWAYS='[{"name":"gateway","base_url":"https://gateway.example.com/v1","api_key_env":"GATEWAY_API_KEY"}]'` and `GATEWAY_API_KEY=<your key>` | `gateway/<model>`             |
+| Provider                     | In `.env`                                 | A model to name               |
+| ---------------------------- | ----------------------------------------- | ----------------------------- |
+| Anthropic                    | `ANTHROPIC_API_KEY=<your key>`            | `anthropic/claude-sonnet-4-5` |
+| OpenAI                       | `OPENAI_API_KEY=<your key>`               | `openai/gpt-5`                |
+| Google                       | `GOOGLE_GENERATIVE_AI_API_KEY=<your key>` | `google/gemini-2.5-flash`     |
+| An OpenAI-compatible gateway | `GATEWAY_API_KEY=<your key>`              | `gateway/<model>`             |
+
+A gateway also needs its address, which goes in the [configuration file](#configuring-a-model):
+
+```bash
+cp auto-brain.example.yaml auto-brain.yaml
+```
+
+Then put your gateway's `base_url` in `auto-brain.yaml`.
 
 `pnpm dev` starts Temporal's dev server, then the server, in [local mode](#local-mode), on `http://localhost:8080`. Once it is up, it says so:
 
@@ -106,24 +114,41 @@ To try it without an assistant, `scripts/try-inference.sh http://localhost:8080 
 
 ### Configuring a model
 
-Settings come from two places. In development, `pnpm dev` and `pnpm dev:lean` read `.env` at the root of the repository after `packages/server/dev.env`, and a variable set in the shell wins over both; the server itself never reads `.env`. A container takes environment variables, or a file of them with `docker run --env-file`.
+Settings come from environment variables and, for those that are lists or maps, from an optional YAML file:
 
-| To use                                               | Set                                                                              | Example                                                                                                      |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| A provider's own API                                 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`          | [Direct API keys](primitives/inference/README.md#direct-api-keys)                                            |
-| An OpenAI-compatible gateway                         | `MODEL_GATEWAYS`, a JSON list whose `name` becomes the prefix, `gateway/<model>` | [A gateway](primitives/inference/README.md#an-internal-openai-compatible-gateway-with-a-custom-header)       |
-| Amazon Bedrock                                       | `AWS_REGION`, with the AWS default credential chain                              | [Bedrock](primitives/inference/README.md#amazon-bedrock-with-an-iam-role)                                    |
-| Azure OpenAI                                         | `AZURE_RESOURCE_NAME` and `AZURE_API_KEY`                                        | [Azure](primitives/inference/README.md#azure-openai-with-an-api-key)                                         |
-| Google Vertex AI                                     | `GOOGLE_VERTEX_PROJECT` and `GOOGLE_VERTEX_LOCATION`                             | [Vertex](primitives/inference/README.md#google-vertex-ai-with-workload-identity)                             |
-| Your own names for models                            | `MODEL_ALIASES`                                                                  | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
-| Another provider's models, through your gateway      | `MODEL_ALIASES='{"anthropic/*":"gateway/anthropic/*"}'`                          | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
-| An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                  | [Proxy and CA](primitives/inference/README.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
+- **Environment variables** can hold every setting, and are the only place for keys and other secrets. In development, `pnpm dev` and `pnpm dev:lean` read `.env` at the root of the repository after `packages/server/dev.env`, and a variable set in the shell wins over both; the server itself never reads `.env`. A container takes environment variables, or a file of them with `docker run --env-file`.
+- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-brain.yaml` at the root of the repository when it is there; copy [`auto-brain.example.yaml`](auto-brain.example.yaml) to start one. Git ignores it.
+
+Each key of the file stands for the environment variable of the same name in upper case, and a variable that is set wins over the key, whole: `MODEL_GATEWAYS` replaces the file's `model_gateways`, it is not merged with it. The server logs at start which settings it read from the file, and which of them the environment set too. A secret is never written in the file: the file refers to the variable that holds it as `${NAME}`, or `${NAME:-default}`, and `$$` stands for a literal `$`. A value that looks like a credential and is not such a reference stops the server at start.
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/BeOnAuto/auto-brain/main/auto-brain.schema.json
+model_gateways:
+  - name: gateway
+    base_url: https://gateway.example.com/v1
+    api_key: ${GATEWAY_API_KEY}
+model_aliases:
+  anthropic/*: gateway/anthropic/*
+```
+
+[`auto-brain.schema.json`](auto-brain.schema.json) is the file's JSON Schema, so an editor with the YAML language server completes and checks it. A file the server cannot use, a key it does not hold, a value its setting refuses or a reference to a variable that is not set stops it at start with one line that names the file, the line, the column and the key, never a value.
+
+| To use                                               | Set                                                                                     | Example                                                                                                      |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| A provider's own API                                 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`                 | [Direct API keys](primitives/inference/README.md#direct-api-keys)                                            |
+| An OpenAI-compatible gateway                         | `model_gateways` in the file, a list whose `name` becomes the prefix, `gateway/<model>` | [A gateway](primitives/inference/README.md#an-internal-openai-compatible-gateway-with-a-custom-header)       |
+| Amazon Bedrock                                       | `AWS_REGION`, with the AWS default credential chain                                     | [Bedrock](primitives/inference/README.md#amazon-bedrock-with-an-iam-role)                                    |
+| Azure OpenAI                                         | `AZURE_RESOURCE_NAME` and `AZURE_API_KEY`                                               | [Azure](primitives/inference/README.md#azure-openai-with-an-api-key)                                         |
+| Google Vertex AI                                     | `GOOGLE_VERTEX_PROJECT` and `GOOGLE_VERTEX_LOCATION`                                    | [Vertex](primitives/inference/README.md#google-vertex-ai-with-workload-identity)                             |
+| Your own names for models                            | `model_aliases` in the file                                                             | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
+| Another provider's models, through your gateway      | `model_aliases: {anthropic/*: gateway/anthropic/*}` in the file                         | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
+| An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                         | [Proxy and CA](primitives/inference/README.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
 
 ### Developing with pnpm dev
 
 `pnpm dev` starts Temporal's dev server on `127.0.0.1:7233`, with its web UI on `http://127.0.0.1:8233`, and then the server, pointed at it. The first run downloads the Temporal CLI the tests also use, v1.9.1, about 150 MB unpacked, into your temporary directory, and says so; later runs start in about a second. The ledger and Temporal's state live side by side in `packages/server/.data`, so brains, specs and waiting workflows are still there after a restart; delete that directory to start over.
 
-Saving a `.ts` file other than a test under the `src` of any package of the repository, or `packages/server/dev.env` or `.env`, restarts the server through its clean shutdown, while Temporal keeps running. A server that does not start says why and starts again on the next save. Ctrl-C stops both.
+Saving a `.ts` file other than a test under the `src` of any package of the repository, or `packages/server/dev.env`, `.env` or the configuration file, restarts the server through its clean shutdown, while Temporal keeps running. A server that does not start says why and starts again on the next save. Ctrl-C stops both.
 
 When a Temporal already answers on `127.0.0.1:7233`, `pnpm dev` uses it and starts none. `TEMPORAL_ADDRESS`, in the shell or in `.env`, names another Temporal and starts none. When something else holds the port, or the CLI cannot be downloaded or started, the server starts without workflows and one line says why and how to get them. `pnpm dev:lean` runs the server alone, without Temporal and without workflows.
 
@@ -230,29 +255,40 @@ curl --header 'authorization: Bearer <the key it printed>' http://localhost:8080
 
 Without a named volume, Docker gives each container a fresh anonymous volume, so its brains last only as long as that container.
 
-| Variable          | Default                                          | Purpose                                                                                                                        |
-| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| `PORT`            | `8080`                                           | Port the server listens on                                                                                                     |
-| `HOST`            | `0.0.0.0`                                        | Interface the server binds to                                                                                                  |
-| `ALLOWED_ORIGINS` | none                                             | Comma-separated origins a browser page may call the API from, with CORS; see [Calling from a browser](#calling-from-a-browser) |
-| `API_KEYS`        | none                                             | The API keys the server accepts, as a compact JSON array of entries made by the key command                                    |
-| `LEDGER_FILE`     | `data/ledger.db`; `/data/ledger.db` in the image | The SQLite database file of the ledger; its directory is created when missing                                                  |
-| `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)                                              |
-| `LOG_FORMAT`      | `json`                                           | `json`, one JSON object per line on stderr, or `pretty`, lines of text for a person at a terminal                              |
+The image reads a configuration file only when `CONFIG_FILE` names one. Mount the file read-only and name it:
+
+```bash
+docker run --rm --publish 8080:8080 --env-file auto-brain.env --volume auto-brain-data:/data \
+  --volume "$PWD/auto-brain.yaml:/etc/auto-brain/auto-brain.yaml:ro" --env CONFIG_FILE=/etc/auto-brain/auto-brain.yaml \
+  beonauto/auto-brain:latest
+```
+
+The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-brain.env` with the other variables.
+
+| Variable          | Default                                          | Purpose                                                                                                                                                       |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`            | `8080`                                           | Port the server listens on                                                                                                                                    |
+| `HOST`            | `0.0.0.0`                                        | Interface the server binds to                                                                                                                                 |
+| `CONFIG_FILE`     | none                                             | The [configuration file](#configuring-a-model) to read the settings that are lists or maps from, absolute or relative to the working directory                |
+| `ALLOWED_ORIGINS` | none                                             | Comma-separated origins a browser page may call the API from, with CORS; see [Calling from a browser](#calling-from-a-browser); `allowed_origins` in the file |
+| `API_KEYS`        | none                                             | The API keys the server accepts, as a compact JSON array of entries made by the key command; `api_keys` in the file                                           |
+| `LEDGER_FILE`     | `data/ledger.db`; `/data/ledger.db` in the image | The SQLite database file of the ledger; its directory is created when missing                                                                                 |
+| `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)                                                                             |
+| `LOG_FORMAT`      | `json`                                           | `json`, one JSON object per line on stderr, or `pretty`, lines of text for a person at a terminal                                                             |
 
 The [inference primitive](primitives/inference) calls language models with these settings, all optional; [Configuring a model](#configuring-a-model) says which to set for what. A provider whose settings are absent is not configured, and a spec that names it is rejected as `unavailable` when it runs, naming the providers that are configured; the description of inference that the spec tools carry names them too, so an assistant writes the model with one of them. When it starts, the server logs one line naming the providers that are configured, or a warning when none is, and a warning for each provider that has some of its settings but not all it needs. Settings it cannot read stop it at start-up, naming the setting and never its value.
 
-| Variable                                                                                         | Purpose                                                                                                                |
-| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`                              | Anthropic (`anthropic/...`)                                                                                            |
-| `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_API`                                                | OpenAI (`openai/...`); `OPENAI_API=chat_completions` for endpoints without the Responses API                           |
-| `GOOGLE_GENERATIVE_AI_API_KEY`                                                                   | Gemini API (`google/...`)                                                                                              |
-| `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_ENDPOINT_URL_BEDROCK_RUNTIME`, `AWS_ENDPOINT_URL` | Amazon Bedrock (`bedrock/...`, `bedrock-anthropic/...`), with the AWS default credential chain                         |
-| `AZURE_RESOURCE_NAME` or `AZURE_BASE_URL`, `AZURE_API_KEY`, `AZURE_API_VERSION`                  | Azure OpenAI (`azure/...`); without a key, Microsoft Entra ID in an image built with `--build-arg AZURE_IDENTITY=true` |
-| `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`                                                | Vertex AI (`vertex/...`, `vertex-anthropic/...`), with Google application default credentials                          |
-| `MODEL_GATEWAYS`                                                                                 | JSON list of OpenAI-compatible gateways, each its own provider prefix                                                  |
-| `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another; a trailing `*` on both sides covers every model of a provider            |
-| `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                                          |
+| Variable                                                                                         | Purpose                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`                              | Anthropic (`anthropic/...`)                                                                                                              |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_API`                                                | OpenAI (`openai/...`); `OPENAI_API=chat_completions` for endpoints without the Responses API                                             |
+| `GOOGLE_GENERATIVE_AI_API_KEY`                                                                   | Gemini API (`google/...`)                                                                                                                |
+| `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK`, `AWS_ENDPOINT_URL_BEDROCK_RUNTIME`, `AWS_ENDPOINT_URL` | Amazon Bedrock (`bedrock/...`, `bedrock-anthropic/...`), with the AWS default credential chain                                           |
+| `AZURE_RESOURCE_NAME` or `AZURE_BASE_URL`, `AZURE_API_KEY`, `AZURE_API_VERSION`                  | Azure OpenAI (`azure/...`); without a key, Microsoft Entra ID in an image built with `--build-arg AZURE_IDENTITY=true`                   |
+| `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION`                                                | Vertex AI (`vertex/...`, `vertex-anthropic/...`), with Google application default credentials                                            |
+| `MODEL_GATEWAYS`                                                                                 | JSON list of OpenAI-compatible gateways, each its own provider prefix; `model_gateways` in the file                                      |
+| `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another; a trailing `*` on both sides covers every model of a provider; `model_aliases` in the file |
+| `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                                                            |
 
 The [orchestration primitive](primitives/orchestration) runs workflow specs on Temporal with these settings. Without `TEMPORAL_ADDRESS` the server does not offer workflows: the spec operations serve only the other primitives, and no Temporal code is loaded. The server logs at start-up whether it offers workflows, and with which Temporal server, namespace and task queue.
 
@@ -293,7 +329,7 @@ Every path except `/health` needs an API key, sent as `Authorization: Bearer <ke
 docker run --rm --log-driver none beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org <org>
 ```
 
-Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `brain:read`, `brain:write`; all four by default) and `--brains` (comma-separated brain ids, or `*` for every brain, the default). The command prints the key once and the entry to add to `API_KEYS`; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file. `--log-driver none` keeps the key out of Docker's log driver, which could otherwise store or ship it; the command still prints it to your terminal.
+Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:write`, `brain:read`, `brain:write`; all four by default) and `--brains` (comma-separated brain ids, or `*` for every brain, the default). The command prints the key once and the entry to add to `API_KEYS`, or to `api_keys` in the [configuration file](#configuring-a-model), where the entry as printed is one item of the list; only the key's SHA-256 is stored, so keep the key itself somewhere safe. Write the variable unquoted, for example `API_KEYS=[{"id":"…",…}]` in an env file. `--log-driver none` keeps the key out of Docker's log driver, which could otherwise store or ship it; the command still prints it to your terminal.
 
 Following [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), a request without an `Authorization` header gets `401` with `WWW-Authenticate: Bearer`, a key that is not valid gets `401` with `error="invalid_token"`, an `Authorization` header that is not exactly one `Bearer <key>` gets `400` with `error="invalid_request"`, and a key that lacks the permission, brain or org a call needs gets `403` with `error="insufficient_scope"`.
 

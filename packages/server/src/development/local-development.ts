@@ -23,6 +23,7 @@ export function localDevelopment(args: readonly string[]): DevelopmentSetup {
     envFiles: [join(repository, 'packages', 'server', 'dev.env'), join(repository, '.env')],
     sourceDirectories: workspaceSources(repository),
     serverEntry: join(repository, 'packages', 'server', 'src', 'main.ts'),
+    configFile: join(repository, 'auto-brain.yaml'),
     temporal: values.lean ? undefined : localTemporal,
     obtainCli: (announce) => obtainTemporalCli(announce, pinnedTemporalCli),
     startChild,

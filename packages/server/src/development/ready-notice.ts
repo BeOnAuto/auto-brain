@@ -1,11 +1,17 @@
-import type { Environment } from '@beonauto/config';
+import { configurationOf, type Environment } from '@beonauto/config';
 import { providerStatus, readModelSettings } from '@beonauto/inference';
-import { Effect } from 'effect';
+import { Effect, Function, Result } from 'effect';
+
+import { fileSettings } from '../settings/file-settings.ts';
 
 const noModelYet = 'none configured; copy .env.example to .env and put a key in it';
 
 function modelsIn(settings: Environment): string {
-  const { configured } = providerStatus(Effect.runSync(readModelSettings(settings)), { entraId: false });
+  const { environment } = Result.getOrElse(
+    configurationOf(settings, fileSettings),
+    Function.constant({ environment: settings, file: undefined }),
+  );
+  const { configured } = providerStatus(Effect.runSync(readModelSettings(environment)), { entraId: false });
   return configured.length === 0 ? noModelYet : configured.join(', ');
 }
 

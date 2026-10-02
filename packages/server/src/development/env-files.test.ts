@@ -1,13 +1,16 @@
 import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
-import { providerStatus, readModelSettings } from '@beonauto/inference';
-import { Effect } from 'effect';
+import { providerStatus } from '@beonauto/inference';
 import { describe, expect, it } from 'vitest';
 
+import { readSettings } from '../settings/settings.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,
+  readyNoticesOf,
   startDevelopment,
   untilListening,
   untilWritten,
@@ -16,6 +19,8 @@ import {
 import { stoppedWith } from '../testing/development-workflows.ts';
 
 const example = new URL('../../../../.env.example', import.meta.url);
+
+const exampleConfigFile = fileURLToPath(new URL('../../../../auto-brain.example.yaml', import.meta.url));
 
 const localMode = '"message":"Local mode is on:';
 
@@ -43,15 +48,47 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
     await expect(accessNoticeWith('LOCAL_MODE=true\n', { environment: { LOCAL_MODE: 'false' } })).resolves.toBe(closed);
   });
 
-  it('documents every model setting in .env.example in a form that reads as written', async () => {
-    const settings = parseEnv(uncommented(readFileSync(example, 'utf8')));
+  it('documents the model settings in .env.example and auto-brain.example.yaml in a form that reads as written', () => {
+    const environment = parseEnv(uncommented(readFileSync(example, 'utf8')));
 
-    const models = await Effect.runPromise(readModelSettings(settings));
+    const { models, allowedOrigins, configFile } = readSettings({ ...environment, CONFIG_FILE: exampleConfigFile });
 
     expect(providerStatus(models, { entraId: false }).configured).toEqual(['anthropic', 'openai', 'google', 'gateway']);
-    expect(Object.fromEntries(models.aliases)).toEqual({
-      'anthropic/*': 'gateway/anthropic/*',
-    });
+    expect(Object.fromEntries(models.aliases)).toEqual({ 'anthropic/*': 'gateway/anthropic/*' });
+    expect(allowedOrigins).toEqual(['http://localhost:5173']);
+    expect(configFile?.fromFile).toEqual(['MODEL_GATEWAYS', 'MODEL_ALIASES', 'ALLOWED_ORIGINS']);
+  });
+});
+
+describe('the configuration file pnpm dev passes', { timeout: developmentTestTimeoutMs }, () => {
+  it('is auto-brain.yaml at the root of the repository, when it is there', async () => {
+    const files = developmentFiles();
+    writeFileSync(files.configFile, 'model_aliases:\n  house/fast: anthropic/claude-haiku-4-5\n');
+    const development = startDevelopment(files);
+
+    await untilListening(development);
+    await stoppedWith(development, 'SIGTERM');
+
+    expect(development.stderr()).toContain(
+      `"message":"Settings read from the configuration file ${files.configFile}: MODEL_ALIASES"`,
+    );
+  });
+
+  it('is the one CONFIG_FILE names instead, which the ready notice reads too', async () => {
+    const files = developmentFiles();
+    const named = join(files.directory, 'gateways.yaml');
+    writeFileSync(files.configFile, 'model_aliases:\n  house/fast: anthropic/claude-haiku-4-5\n');
+    writeFileSync(named, 'model_gateways:\n  - name: relay\n    base_url: https://relay.example.com/v1\n');
+    writeFileSync(files.localEnvFile, `CONFIG_FILE=${named}\n`);
+    const development = startDevelopment(files);
+
+    await untilWritten(development.stderr, /auto-brain is ready/u);
+    await stoppedWith(development, 'SIGTERM');
+
+    expect(development.stderr()).toContain(
+      `"message":"Settings read from the configuration file ${named}: MODEL_GATEWAYS"`,
+    );
+    expect(readyNoticesOf(development)).toEqual([expect.stringContaining('  models     relay\n')]);
   });
 });
 

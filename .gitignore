@@ -16,3 +16,4 @@ coverage
 /data/
 /packages/server/.data/
 /packages/server/data/
+/auto-brain.yaml

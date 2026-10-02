@@ -17,6 +17,7 @@ export interface DevelopmentFiles {
   readonly directory: string;
   readonly envFile: string;
   readonly localEnvFile: string;
+  readonly configFile: string;
   readonly sourceDirectory: string;
   readonly serverEntry: string;
   readonly pidsFile: string;
@@ -57,6 +58,7 @@ export function developmentFiles(envFileText = 'HOST=127.0.0.1\nLOCAL_MODE=true\
     directory,
     envFile: join(directory, 'dev.env'),
     localEnvFile: join(directory, '.env'),
+    configFile: join(directory, 'auto-brain.yaml'),
     sourceDirectory: join(directory, 'src'),
     serverEntry: join(directory, 'src', 'entry.ts'),
     pidsFile: join(directory, 'pids'),
@@ -86,6 +88,7 @@ export function startDevelopment(files: DevelopmentFiles, options: DevelopmentOp
     envFiles: [files.envFile, files.localEnvFile],
     sourceDirectory: files.sourceDirectory,
     serverEntry: files.serverEntry,
+    configFile: files.configFile,
     pidsFile: files.pidsFile,
     ...(options.temporal === undefined ? {} : { temporal: { ...options.temporal, stateFile: files.stateFile } }),
     obtain: options.obtain ?? 'cached',

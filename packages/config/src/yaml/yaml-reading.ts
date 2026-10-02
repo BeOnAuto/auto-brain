@@ -1,6 +1,5 @@
+import { Schema } from 'effect';
 import { isAlias, isMap, isNode, isPair, isScalar, isSeq, LineCounter, parseDocument, Parser } from 'yaml';
-
-import { isJson, isObject, mostValueDepth, type JsonObject } from '../dsl/json.ts';
 
 export interface Position {
   readonly line: number;
@@ -12,8 +11,15 @@ export interface LocatedProblem {
   readonly detail: string;
 }
 
-interface YamlDocument {
-  readonly value: JsonObject;
+export interface YamlKind {
+  readonly noun: string;
+  readonly mapping: string;
+  readonly mostDepth: number;
+  readonly emptyIsMapping: boolean;
+}
+
+export interface YamlDocument {
+  readonly value: Schema.JsonObject;
   readonly locate: (pointer: string) => Position;
 }
 
@@ -35,16 +41,18 @@ type Lookup = (path: readonly (string | number)[]) => unknown;
 
 const start: Position = { line: 1, column: 1 };
 
-export function readYaml(source: string): YamlReading {
-  const tooDeep = tooDeepIn(source);
+const isJsonObject = Schema.is(Schema.JsonObject);
+
+export function readYaml(source: string, kind: YamlKind): YamlReading {
+  const tooDeep = tooDeepIn(source, kind.mostDepth);
   return tooDeep === undefined
-    ? readDocument(source)
+    ? readDocument(source, kind)
     : {
-        problems: [{ position: tooDeep, detail: `The document nests values more than ${mostValueDepth} levels deep` }],
+        problems: [{ position: tooDeep, detail: `The document nests values more than ${kind.mostDepth} levels deep` }],
       };
 }
 
-function tooDeepIn(source: string): Position | undefined {
+function tooDeepIn(source: string, mostDepth: number): Position | undefined {
   const lines = new LineCounter();
   const parser = new Parser((offset: number) => {
     lines.addNewLine(offset);
@@ -53,7 +61,7 @@ function tooDeepIn(source: string): Position | undefined {
   for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
     const items = tokenField(next.token, 'items');
     const depth = Array.isArray(items) ? next.depth + 1 : next.depth;
-    if (depth > mostValueDepth) {
+    if (depth > mostDepth) {
       const { line, col } = lines.linePos(Number(tokenField(next.token, 'offset')));
       return { line, column: col };
     }
@@ -73,7 +81,7 @@ function isToken(value: unknown): value is object {
   return typeof value === 'object' && value !== null;
 }
 
-function readDocument(source: string): YamlReading {
+function readDocument(source: string, kind: YamlKind): YamlReading {
   const lines = new LineCounter();
   const parsed = parseDocument(source, {
     lineCounter: lines,
@@ -89,16 +97,14 @@ function readDocument(source: string): YamlReading {
   };
   const problems = [
     ...messageProblems([...parsed.errors, ...parsed.warnings], at),
-    ...unsafeNodes(parsed.contents, at),
+    ...unsafeNodes(parsed.contents, at, kind.noun),
   ];
   if (problems.length > 0) {
     return { problems };
   }
-  const value: unknown = parsed.toJS({ maxAliasCount: 0 });
-  if (!isJson(value) || !isObject(value)) {
-    return {
-      problems: [{ position: start, detail: 'A workflow document is a YAML mapping, with document and do at its top' }],
-    };
+  const value: unknown = parsed.contents === null && kind.emptyIsMapping ? {} : parsed.toJS({ maxAliasCount: 0 });
+  if (!isJsonObject(value)) {
+    return { problems: [{ position: start, detail: kind.mapping }] };
   }
   const lookup: Lookup = (path) => parsed.getIn(path, true);
   return { document: { value, locate: (pointer) => locatePath(lookup, pathOf(pointer), at) } };
@@ -114,11 +120,11 @@ function messageProblems(messages: readonly ParserMessage[], at: Locator): reado
   }));
 }
 
-function unsafeNodes(root: unknown, at: Locator): readonly LocatedProblem[] {
+function unsafeNodes(root: unknown, at: Locator, noun: string): readonly LocatedProblem[] {
   const problems: LocatedProblem[] = [];
   const pending: unknown[] = [root];
   for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
-    const detail = isPair(node) ? keyUnsafety(node.key) : nodeUnsafety(node);
+    const detail = isPair(node) ? keyUnsafety(node.key, noun) : nodeUnsafety(node, noun);
     if (detail !== undefined) {
       problems.push({ position: at(offsetOf(isPair(node) ? node.key : node)), detail });
     }
@@ -127,25 +133,25 @@ function unsafeNodes(root: unknown, at: Locator): readonly LocatedProblem[] {
   return problems.toReversed();
 }
 
-function keyUnsafety(key: unknown): string | undefined {
-  return key === null || isScalar(key) ? undefined : 'Keys in a workflow document are plain text';
+function keyUnsafety(key: unknown, noun: string): string | undefined {
+  return key === null || isScalar(key) ? undefined : `Keys in ${noun} are plain text`;
 }
 
-function nodeUnsafety(node: unknown): string | undefined {
+function nodeUnsafety(node: unknown, noun: string): string | undefined {
   if (isAlias(node)) {
-    return 'Aliases are not allowed in a workflow document';
+    return `Aliases are not allowed in ${noun}`;
   }
   if (!isNode(node)) {
     return undefined;
   }
   if (node.anchor !== undefined) {
-    return 'Anchors are not allowed in a workflow document';
+    return `Anchors are not allowed in ${noun}`;
   }
   if (node.tag !== undefined) {
-    return `Tags are not allowed in a workflow document: ${node.tag}`;
+    return `Tags are not allowed in ${noun}: ${node.tag}`;
   }
   return isScalar(node) && typeof node.value === 'number' && !Number.isFinite(node.value)
-    ? 'Numbers in a workflow document are finite'
+    ? `Numbers in ${noun} are finite`
     : undefined;
 }
 
