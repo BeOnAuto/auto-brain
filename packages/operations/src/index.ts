@@ -6,7 +6,7 @@ export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
 export { Caller, CallerIdentitySchema, type CallerIdentity } from './caller/caller.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
-export { Conflict } from './outcome/conflict.ts';
+export { Conflict, type ConflictKind } from './outcome/conflict.ts';
 export type { Decider, StreamState, TypedEvent } from './ledger/decider.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';
@@ -20,6 +20,22 @@ export { Ledger } from './ledger/ledger.ts';
 export { NotFound } from './outcome/not-found.ts';
 export { defineCommand, defineQuery, type Operation } from './definition/operation.ts';
 export { OrgReader } from './ledger/org-reader.ts';
+export {
+  explanationOf,
+  unsuccessfulWords,
+  type Explanation,
+  type ExplainedRejection,
+} from './plain-language/explanation.ts';
+export {
+  alternatives,
+  asSentence,
+  capitalized,
+  counted,
+  listed,
+  quoted,
+  type Noun,
+} from './plain-language/phrasing.ts';
+export type { PlainLanguage, RegisteredPlainLanguage } from './plain-language/plain-language.ts';
 export { OrgContext, type OrgAddress } from './caller/org-context.ts';
 export { OrgWriter } from './ledger/org-writer.ts';
 export {

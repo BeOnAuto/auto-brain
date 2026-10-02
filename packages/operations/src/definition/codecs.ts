@@ -1,7 +1,8 @@
-import { Cause, Effect, Result, Schema, SchemaIssue, type SchemaAST, type StandardSchema } from 'effect';
+import { Cause, Effect, Option, Result, Schema, SchemaIssue, type SchemaAST, type StandardSchema } from 'effect';
 
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { pointerOf } from '../outcome/pointer.ts';
+import type { PlainLanguage, RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
 import type { ObjectSchema } from './definition.ts';
 import type { InputEncoding } from './registration.ts';
 
@@ -61,6 +62,28 @@ export function outputEncoder<Out extends ObjectSchema>(
 ): (output: Out['Type']) => Effect.Effect<Schema.JsonObject> {
   const encode = Schema.encodeUnknownEffect(Schema.toCodecJson(schema), strictly);
   return (output) => encode(output).pipe(Effect.flatMap(asJsonObject), Effect.orDie);
+}
+
+function registeredPlainLanguage<In extends ObjectSchema, Out extends ObjectSchema>(
+  { task, attempt, outcome }: PlainLanguage<In['Type'], Out['Type']>,
+  inputSchema: In,
+  outputSchema: Out,
+): RegisteredPlainLanguage {
+  const decodeOfferedInput = Schema.decodeUnknownOption(Schema.toCodecJson(inputSchema));
+  const decodeAcceptedInput = Schema.decodeUnknownSync(Schema.toCodecJson(inputSchema));
+  const decodeOutput = Schema.decodeUnknownSync(Schema.toCodecJson(outputSchema));
+  return {
+    attempt: (input) => Option.match(decodeOfferedInput(input), { onNone: () => task, onSome: attempt }),
+    outcome: (output, input) => outcome(decodeOutput(output), decodeAcceptedInput(input)),
+  };
+}
+
+export function plainLanguageFields<In extends ObjectSchema, Out extends ObjectSchema>(
+  language: PlainLanguage<In['Type'], Out['Type']> | undefined,
+  inputSchema: In,
+  outputSchema: Out,
+): { readonly plainLanguage?: RegisteredPlainLanguage } {
+  return language === undefined ? {} : { plainLanguage: registeredPlainLanguage(language, inputSchema, outputSchema) };
 }
 
 export function typeValidator<S extends ObjectSchema>(schema: S): (value: S['Type']) => Effect.Effect<S['Type']> {

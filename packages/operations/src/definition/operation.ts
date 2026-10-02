@@ -1,9 +1,9 @@
-import { Effect, Result } from 'effect';
+import { Effect, Result, type Schema } from 'effect';
 
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
-import { succeeded, rejected } from '../outcome/outcome.ts';
+import { rejected, succeeded, type Rejected, type Succeeded } from '../outcome/outcome.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
-import { inputDecoder, outputEncoder, typeValidator } from './codecs.ts';
+import { inputDecoder, outputEncoder, plainLanguageFields, typeValidator } from './codecs.ts';
 import { checkedDefinition } from './definition-checks.ts';
 import type { Definition, InputSchemaFor, ObjectSchema, RelativePath } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
@@ -50,6 +50,27 @@ export function defineCommand<
   return defineOperation(scope, 'command', definition);
 }
 
+function runnerOf<Input, Output, R extends DeclarableReason, Services>(
+  decodeInput: (input: unknown, encoding: InputEncoding) => Effect.Effect<Input, Rejected>,
+  handle: (input: Input) => Effect.Effect<Output, Rejection<R>, Services>,
+  encodeOutput: (output: Output) => Effect.Effect<Schema.JsonObject>,
+  reasons: readonly DeclarableReason[],
+): (input: unknown, encoding: InputEncoding) => Effect.Effect<Succeeded, Rejected, Services> {
+  return Effect.fnUntraced(function* (input: unknown, encoding: InputEncoding) {
+    const handled = yield* Effect.result(handle(yield* decodeInput(input, encoding)));
+    if (Result.isFailure(handled)) {
+      const rejection = handled.failure;
+      const { _tag: reason, detail } = rejection;
+      const issues = 'issues' in rejection ? rejection.issues : undefined;
+      const conflict = 'kind' in rejection ? rejection.kind : undefined;
+      return yield* reasons.includes(reason)
+        ? Effect.fail(rejected(reason, detail, issues, conflict))
+        : Effect.die(rejection);
+    }
+    return succeeded(yield* encodeOutput(handled.success));
+  });
+}
+
 function defineOperation<
   S extends OperationScope,
   K extends OperationKind,
@@ -83,18 +104,8 @@ function defineOperation<
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),
-      run: Effect.fnUntraced(function* (input: unknown, encoding: InputEncoding) {
-        const handled = yield* Effect.result(handle(yield* decodeInput(input, encoding)));
-        if (Result.isFailure(handled)) {
-          const rejection = handled.failure;
-          const { _tag: reason, detail } = rejection;
-          const issues = 'issues' in rejection ? rejection.issues : undefined;
-          return yield* reasons.includes(reason)
-            ? Effect.fail(rejected(reason, detail, issues))
-            : Effect.die(rejection);
-        }
-        return succeeded(yield* encodeOutput(handled.success));
-      }),
+      ...plainLanguageFields(definition.plainLanguage, inputSchema, outputSchema),
+      run: runnerOf(decodeInput, handle, encodeOutput, reasons),
     },
     call: (input) => validateInput(input).pipe(Effect.flatMap(handle), Effect.tap(validateOutput)),
   };
