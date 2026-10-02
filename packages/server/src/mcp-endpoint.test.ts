@@ -8,6 +8,7 @@ import {
   type McpSession,
 } from '@beonauto/api/testing';
 import { answers, textResult } from '@beonauto/inference/testing';
+import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingInference, type InferenceServer } from './testing/inference-server.ts';
@@ -46,6 +47,30 @@ function onMcp<T>(path: string, use: (session: McpSession) => Promise<T>): Promi
 function listingOn(path: string): Promise<readonly ListedTool[]> {
   return onMcp(path, async (session) => listedTools(await session.listTools()));
 }
+
+const brainArgumentIn = Schema.decodeUnknownSync(
+  Schema.Struct({
+    required: Schema.Array(Schema.String),
+    properties: Schema.Struct({ brain: Schema.Struct({ type: Schema.String, pattern: Schema.String }) }),
+  }),
+);
+
+describe('the brain argument of the spec tools on /mcp', () => {
+  it('is required in every one of them, as a string with the brain id pattern', async () => {
+    server = await servingInference([]);
+
+    const spec = (await listingOn('/mcp')).filter(({ name }) => specTools.includes(name));
+    const brainArguments = spec.map(({ inputSchema }) => {
+      const { required, properties } = brainArgumentIn(inputSchema);
+      const { type, pattern } = properties.brain;
+      return { required: required.includes('brain'), type, pattern };
+    });
+
+    expect(brainArguments).toEqual(
+      specTools.map(() => ({ required: true, type: 'string', pattern: '^[a-z][a-z0-9-]{2,47}$' })),
+    );
+  });
+});
 
 describe('the tools of /mcp', () => {
   it('are the twelve brain and spec tools, the spec tools taking a brain, with self-contained schemas', async () => {
