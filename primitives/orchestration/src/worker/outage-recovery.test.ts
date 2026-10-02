@@ -2,11 +2,11 @@ import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { setTimeout } from 'node:timers/promises';
 
-import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Effect, Exit, Scope } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { failureRecorder } from '../testing/failure-recorder.ts';
+import { temporalOn } from '../testing/local-temporal.ts';
 import { temporalLogsSoFar } from '../testing/temporal-logs.ts';
 import { settingsFor } from '../testing/temporal.ts';
 import { runOrchestrationWorker } from './orchestration-worker.ts';
@@ -20,19 +20,6 @@ async function freePort(): Promise<number> {
   probe.close();
   await once(probe, 'close');
   return typeof address === 'object' && address !== null ? address.port : 0;
-}
-
-async function temporalOn(port: number): Promise<() => Promise<void>> {
-  const environment = await TestWorkflowEnvironment.createLocal({
-    server: { ip: '127.0.0.1', port, log: { format: 'pretty', level: 'error' } },
-  });
-  let stopping: Promise<unknown> | undefined;
-  const stop = async (): Promise<void> => {
-    stopping ??= Promise.race([environment.teardown(), once(AbortSignal.timeout(10_000), 'abort')]);
-    await stopping;
-  };
-  onTestFinished(stop, 20_000);
-  return stop;
 }
 
 async function untilLogged(message: string, attempts: number): Promise<boolean> {

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @beonauto/server dev",
+    "dev:lean": "pnpm --filter @beonauto/server dev:lean",
     "key": "pnpm --filter @beonauto/identity key",
     "test:watch": "vitest",
     "typecheck:watch": "tsc --watch",
@@ -36,6 +37,13 @@
     "typescript": "7.0.2",
     "vite": "8.3.1",
     "vitest": "catalog:"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "26.10.0",
+      "onFail": "download"
+    }
   },
   "engines": {
     "node": ">=26.10.0"
