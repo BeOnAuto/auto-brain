@@ -16,7 +16,7 @@ async function executedThroughGateway(gateway: object) {
     { MODEL_GATEWAYS: JSON.stringify([gateway]) },
     { fetch: recordingFetch(() => jsonResponse(gatewayError, 404)).fetch, reportProviderMessage: reporter.report },
   );
-  const primitive = makeInference({ languageModel: access.languageModel });
+  const primitive = makeInference({ languageModel: access.languageModel, offered: access.offered });
   const prepared = Effect.runSync(primitive.prepare(documentOf('model: gateway/no-such-model-xyz', 'Say hello.')));
   const exit = await Effect.runPromiseExit(prepared.execute({}, execution));
   return { exit, reports: reporter.reports() };

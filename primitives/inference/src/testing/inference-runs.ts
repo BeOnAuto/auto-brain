@@ -9,6 +9,8 @@ import { scriptedLanguageModel, type ScriptedReply } from './scripted-language-m
 
 const moment = '2026-10-01T09:30:00.000Z';
 
+const anthropicOnly = { providers: ['anthropic'], aliases: [] };
+
 export const execution: ExecutionContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
@@ -28,7 +30,7 @@ export interface InferenceRun {
 
 export function inferenceWith(...replies: readonly ScriptedReply[]): InferenceRun {
   const scripted = scriptedLanguageModel(...replies);
-  const primitive = makeInference({ languageModel: scripted.languageModel });
+  const primitive = makeInference({ languageModel: scripted.languageModel, offered: anthropicOnly });
   const prepared = (source: string): PreparedSpec => Effect.runSync(primitive.prepare(source));
   return {
     primitive,

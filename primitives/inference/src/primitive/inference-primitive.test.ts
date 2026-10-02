@@ -102,7 +102,11 @@ describe('the moment an execution renders', () => {
       ),
     );
     const scripted = scriptedLanguageModel(answers(textResult('ok')));
-    const timed = makeInference({ languageModel: scripted.languageModel, clock });
+    const timed = makeInference({
+      languageModel: scripted.languageModel,
+      clock,
+      offered: { providers: ['anthropic'], aliases: [] },
+    });
     const spec = Effect.runSync(
       timed.prepare(documentOf('model: openai/gpt-5', 'Today is {{ today }}, now {{ now }}')),
     );

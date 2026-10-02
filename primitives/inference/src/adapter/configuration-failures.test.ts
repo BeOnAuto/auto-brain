@@ -115,5 +115,6 @@ describe('model aliases', () => {
       answered: 'claude-sonnet-4-5-20250929',
     });
     expect(recording.requests()[0]?.body).toMatchObject({ model: 'claude-haiku-4-5' });
+    expect(access.offered).toEqual({ providers: ['anthropic'], aliases: ['fast/default'] });
   });
 });

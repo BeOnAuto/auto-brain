@@ -30,9 +30,9 @@ async function inferenceServedBy(
   models: ModelSettings,
   modelAccessOf: ModelAccessOf,
 ): Promise<Primitive> {
-  const { languageModel, status } = await Effect.runPromise(modelAccessOf(models));
+  const { languageModel, status, offered } = await Effect.runPromise(modelAccessOf(models));
   await runtime.run(logModelProviders(status));
-  return makeInference({ languageModel });
+  return makeInference({ languageModel, offered });
 }
 
 export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions<DispatcherServices> {

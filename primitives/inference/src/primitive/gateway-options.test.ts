@@ -14,7 +14,7 @@ const gateway = { name: 'internal', base_url: 'https://llm.internal.example/v1',
 async function executedWith(providerOptions: string) {
   const recording = recordingFetch(() => jsonResponse(chatCompletion('Hello')));
   const access = await accessFor({ MODEL_GATEWAYS: JSON.stringify([gateway]) }, { fetch: recording.fetch });
-  const primitive = makeInference({ languageModel: access.languageModel });
+  const primitive = makeInference({ languageModel: access.languageModel, offered: access.offered });
   const document = documentOf(`model: internal/llama-3.3-70b\nprovider_options:\n  internal: ${providerOptions}`, 'Hi');
   const prepared = Effect.runSync(primitive.prepare(document));
   const exit = await Effect.runPromiseExit(prepared.execute({}, execution));

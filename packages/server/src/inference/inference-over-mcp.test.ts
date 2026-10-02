@@ -25,7 +25,16 @@ const specTools = [
   'get_execution',
 ];
 
-const inferenceDescription = makeInference({ languageModel: scriptedLanguageModel().languageModel }).description;
+const inferenceDescription = makeInference({
+  languageModel: scriptedLanguageModel().languageModel,
+  offered: { providers: [], aliases: [] },
+}).description;
+
+const withGatewayAndNamedModels = {
+  LOCAL_MODE: 'true',
+  MODEL_GATEWAYS: JSON.stringify([{ name: 'gateway', base_url: 'https://gateway.example.com/v1' }]),
+  MODEL_ALIASES: JSON.stringify({ 'house/fast': 'gateway/llama-3.3-70b' }),
+};
 
 let server: InferenceServer;
 
@@ -95,6 +104,18 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
 
     expect(tools.map(({ name }) => name)).toEqual(specTools);
     expect(describing.map(({ name }) => name)).toEqual(specTools.filter((name) => name !== 'get_execution'));
+  });
+
+  it('tell an agent which providers and named models the server calls, before it writes a spec', async () => {
+    server = await servingInference([], withGatewayAndNamedModels);
+    const tools = await withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, (session) =>
+      session.listTools(),
+    );
+    const createSpec = listedTools(tools).find(({ name }) => name === 'create_spec');
+
+    expect(createSpec?.description).toContain(
+      'This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>. Its operator also named these models, which a spec may give as its model as they are: house/fast.',
+    );
   });
 
   it('have self-contained input and output schemas with an object root', async () => {
