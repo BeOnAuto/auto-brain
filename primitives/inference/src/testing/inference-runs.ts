@@ -1,4 +1,4 @@
-import type { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
+import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import type { Executed, ExecutionContext, PreparedSpec, Primitive } from '@beonauto/specs';
 import { DateTime, Effect, type Exit, type Schema } from 'effect';
 import { TestClock } from 'effect/testing';
@@ -13,6 +13,7 @@ export const execution: ExecutionContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
   brain: 'alpha',
+  caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' },
   spec: { name: 'summary', version: 1 },
 };
 
