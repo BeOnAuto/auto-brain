@@ -35,6 +35,17 @@ describe('an execution whose primitive finishes it after the call returns', () =
     expect(relayer.runs()).toBe(1);
   });
 
+  it('is recorded as waiting when its call is cancelled while the primitive starts it, never left without a result', async () => {
+    const { executingWithin, reading, relayer } = await withHandOn();
+
+    expect(await executingWithin(20, { startingMs: 200 })).toStrictEqual({ status: 'cancelled' });
+    expect(relayer.runs()).toBe(1);
+    expect(await reading()).toStrictEqual({
+      status: 'succeeded',
+      output: { ...waiting.output, record: { handed_on: relayedId } },
+    });
+  });
+
   it('fails when what the primitive started takes more than an execution may record', async () => {
     const { executing, reading, reported } = await withHandOn();
 

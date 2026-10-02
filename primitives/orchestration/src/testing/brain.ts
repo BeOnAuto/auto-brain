@@ -1,4 +1,11 @@
-import { makeDispatcher, type CallerIdentity, type Outcome, type Registration } from '@beonauto/operations';
+import {
+  makeDispatcher,
+  settle as settleCall,
+  type CallerIdentity,
+  type Outcome,
+  type Registration,
+  type Settled,
+} from '@beonauto/operations';
 import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
 import {
   defineCreateSpec,
@@ -23,6 +30,7 @@ export interface Brain {
   readonly executeSpec: BrainOperation;
   readonly getExecution: BrainOperation;
   readonly call: (operation: BrainOperation, input: object, caller?: CallerIdentity) => Promise<Outcome>;
+  readonly callCancelledAfter: (milliseconds: number, operation: BrainOperation, input: object) => Promise<Settled>;
   readonly executeNested: ExecuteSpec;
   readonly settle: SettleExecution;
 }
@@ -48,6 +56,12 @@ export function brainWith(primitives: readonly Primitive[]): Brain {
     executeSpec,
     getExecution,
     call,
+    callCancelledAfter: (milliseconds, operation, input) =>
+      Effect.runPromise(
+        settleCall(dispatch(operation, input, acmeCaller), AbortSignal.timeout(milliseconds)).pipe(
+          Effect.provide(services),
+        ),
+      ),
     executeNested: ({ caller, primitive, name, input, executionId }) =>
       dispatch(executeSpec, { primitive, name, input, execution_id: executionId }, caller).pipe(
         Effect.map(specExecutionResultOf),

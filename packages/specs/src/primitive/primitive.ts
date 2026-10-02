@@ -30,6 +30,8 @@ export type Executed = Finished | FinishesLater;
 
 export type PrimitiveRejection = InvalidInput | Unavailable | Conflict;
 
+export type WhenCancelled = 'stop' | 'finish';
+
 export interface PrimitiveDefinition<Parsed> {
   readonly name: string;
   readonly title: string;
@@ -42,11 +44,13 @@ export interface PrimitiveDefinition<Parsed> {
     input: Schema.Json,
     execution: ExecutionContext,
   ) => Effect.Effect<Executed, PrimitiveRejection>;
+  readonly whenCancelled?: WhenCancelled;
 }
 
 export interface PreparedSpec {
   readonly summary: SpecSummary;
   readonly execute: (input: Schema.Json, execution: ExecutionContext) => Effect.Effect<Executed, PrimitiveRejection>;
+  readonly whenCancelled: WhenCancelled;
 }
 
 export interface Primitive {
@@ -64,7 +68,7 @@ export function isPrimitiveName(name: string): boolean {
 }
 
 export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>): Primitive {
-  const { name, title, description, mediaType, parse, summarize, execute } = definition;
+  const { name, title, description, mediaType, parse, summarize, execute, whenCancelled = 'stop' } = definition;
   if (!isPrimitiveName(name)) {
     throw new Error(`The primitive name ${name} is malformed`);
   }
@@ -78,6 +82,7 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
         Effect.map((parsed) => ({
           summary: summarize(parsed),
           execute: (input, execution) => execute(parsed, input, execution),
+          whenCancelled,
         })),
       ),
   };

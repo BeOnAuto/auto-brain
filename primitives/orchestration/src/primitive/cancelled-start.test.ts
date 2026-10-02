@@ -1,0 +1,42 @@
+import { setTimeout } from 'node:timers/promises';
+
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { brainWith } from '../testing/brain.ts';
+import type { OrchestrationClient } from './orchestration-client.ts';
+import { makeOrchestration } from './orchestration-primitive.ts';
+
+const executionId = '0199a3c4-7d2e-7c1a-9b3f-555555555551';
+
+const flow = "document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\ndo: []\n";
+
+const slowlyStarting: OrchestrationClient = {
+  mostDuration: 2_592_000_000,
+  start: () =>
+    Effect.promise(() => setTimeout(300)).pipe(
+      Effect.as({ workflowId: `acme/alpha/flow/${executionId}`, runId: 'run-1' }),
+    ),
+  signal: () => Effect.void,
+};
+
+describe('an execution whose call is cancelled while Temporal starts its workflow', () => {
+  it('waits for the start and records the execution waiting for the workflow it started', async () => {
+    const brain = brainWith([makeOrchestration({ client: slowlyStarting })]);
+    await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source: flow });
+
+    const answered = await brain.callCancelledAfter(20, brain.executeSpec, {
+      primitive: 'orchestration',
+      name: 'flow',
+      execution_id: executionId,
+    });
+
+    expect(answered).toStrictEqual({ status: 'cancelled' });
+    expect(await brain.call(brain.getExecution, { execution_id: executionId })).toMatchObject({
+      output: {
+        status: 'started',
+        record: { workflow_id: `acme/alpha/flow/${executionId}`, run_id: 'run-1' },
+      },
+    });
+  });
+});

@@ -61,6 +61,7 @@ export function makeOrchestration({ client }: OrchestrationDependencies): Primit
           record: { workflow_id: workflowId, run_id: runId },
         })),
       ),
+    whenCancelled: 'finish',
   });
 }
 

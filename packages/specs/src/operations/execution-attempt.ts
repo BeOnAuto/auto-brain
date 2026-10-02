@@ -2,7 +2,7 @@ import { Effect, Schema } from 'effect';
 
 import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
 import { withinResultLimit } from '../execution/recorded-size.ts';
-import type { ExecutionContext, Executed, PreparedSpec } from '../primitive/primitive.ts';
+import type { Executed, PrimitiveRejection } from '../primitive/primitive.ts';
 import { issuesUnder, type Rejection } from './issue-pointers.ts';
 
 const decodeExecuted = Schema.decodeUnknownEffect(
@@ -45,12 +45,8 @@ function rejectedFor(
   return ({ detail }) => Effect.succeed({ type: 'execution_rejected', rejection: { reason, detail } });
 }
 
-export function attempt(
-  prepared: PreparedSpec,
-  input: Schema.Json,
-  execution: ExecutionContext,
-): Effect.Effect<ExecutionOutcome> {
-  return prepared.execute(input, execution).pipe(
+export function attempt(executing: Effect.Effect<Executed, PrimitiveRejection>): Effect.Effect<ExecutionOutcome> {
+  return executing.pipe(
     Effect.flatMap(outcomeOf),
     Effect.catchTags({
       invalid_input: rejectedForInput,

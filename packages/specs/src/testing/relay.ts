@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { Effect, Predicate } from 'effect';
 
 import { definePrimitive, type FinishesLater, type Primitive } from '../index.ts';
@@ -18,11 +20,18 @@ export function relay(): Relay {
     parse: (source: string) => Effect.succeed(source),
     summarize: () => ({}),
     execute: (_document, input, execution) =>
-      Effect.sync((): FinishesLater => {
-        runs += 1;
-        const padding = Predicate.isNumber(input) ? { padding: 'x'.repeat(input) } : {};
-        return { finishesLater: true, record: { handed_on: execution.id, ...padding } };
-      }),
+      Effect.promise(() => setTimeout(startingMs(input))).pipe(
+        Effect.map((): FinishesLater => {
+          runs += 1;
+          const padding = Predicate.isNumber(input) ? { padding: 'x'.repeat(input) } : {};
+          return { finishesLater: true, record: { handed_on: execution.id, ...padding } };
+        }),
+      ),
+    whenCancelled: 'finish',
   });
   return { primitive, runs: () => runs };
+}
+
+function startingMs(input: unknown): number {
+  return Predicate.hasProperty(input, 'startingMs') && Predicate.isNumber(input.startingMs) ? input.startingMs : 0;
 }
