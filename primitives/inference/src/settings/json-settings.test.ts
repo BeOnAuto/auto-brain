@@ -63,6 +63,32 @@ describe('MODEL_GATEWAYS', () => {
   });
 });
 
+describe('the key of a gateway', () => {
+  it('is read from api_key itself, and kept redacted', async () => {
+    const settings = await Effect.runPromise(
+      readModelSettings({
+        MODEL_GATEWAYS: JSON.stringify([{ name: 'internal', base_url: 'https://llm.internal/v1', api_key: secret }]),
+      }),
+    );
+
+    expect(settings.gateways[0]?.api_key).toEqual(Redacted.make(secret));
+    expect(exposedText(settings.gateways)).not.toContain(secret);
+  });
+
+  it('is refused when both api_key and api_key_env give it', async () => {
+    const entry = {
+      name: 'internal',
+      base_url: 'https://llm.internal/v1',
+      api_key: secret,
+      api_key_env: 'GATEWAY_KEY',
+    };
+
+    expect(await problemsOf(gateways([entry]))).toEqual([
+      { setting: 'MODEL_GATEWAYS', detail: '/0/api_key: Set api_key or api_key_env, not both' },
+    ]);
+  });
+});
+
 describe('malformed MODEL_GATEWAYS', () => {
   it('is rejected without quoting text that is not JSON', async () => {
     expect(await problemsOf({ MODEL_GATEWAYS: `[{"headers": "${secret}"` })).toEqual([
