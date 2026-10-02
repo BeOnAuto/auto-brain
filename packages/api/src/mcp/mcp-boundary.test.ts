@@ -1,10 +1,11 @@
-import { makeCatalog, makeDispatcher } from '@beonauto/operations';
+import { defineQuery, makeCatalog, makeDispatcher } from '@beonauto/operations';
+import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { mcpRoutes } from '../index.ts';
 import { createTestHandler } from '../testing/api-calls.ts';
 import { listenOnLoopback } from '../testing/listening.ts';
-import { problemIn, withMcpSession } from '../testing/mcp-clients.ts';
+import { plainTextIn, problemIn, withMcpSession } from '../testing/mcp-clients.ts';
 import { notebookOperations } from '../testing/notebook.ts';
 import { testServerInfo } from '../testing/operation-server.ts';
 
@@ -47,5 +48,36 @@ describe('a tool call that throws', () => {
     expect(report?.message).toBe('the runtime broke while holding database password hunter2');
     expect(JSON.stringify(result)).not.toContain('hunter2');
     expect(sdkErrors).toEqual([]);
+    expect(plainTextIn(result)).toBe(
+      `Could not list the notes: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: ${String(report?.incident)}.`,
+    );
+  });
+});
+
+describe('an operation without plain language', () => {
+  it('cannot be served as an MCP tool, so no result falls back to bare JSON', () => {
+    const bare = defineQuery('brain', {
+      name: 'bare_query',
+      title: 'Bare query',
+      description: 'Answers without plain language.',
+      route: { method: 'GET', path: '/bare' },
+      inputSchema: Schema.Struct({ size: Schema.Int }),
+      outputSchema: Schema.Struct({ size: Schema.Int }),
+      reasons: [],
+      handle: ({ size }) => Effect.succeed({ size }),
+    });
+    const serving = mcpRoutes({
+      catalog: makeCatalog([bare]),
+      dispatcher: makeDispatcher([]),
+      runCall: () => Promise.reject(new Error('not called')),
+      serverInfo: testServerInfo,
+      reportError: () => {
+        sdkErrors.push('unexpected');
+      },
+    });
+
+    expect(() => createTestHandler({ routes: [serving] })).toThrow(
+      'The operation bare_query has no plain language for the results of its MCP tool',
+    );
   });
 });

@@ -78,7 +78,10 @@ describe.each(mcpClientKinds)('the %s client calling tools that succeed', (kind)
     }));
 
     expect(outcome.added).toEqual({
-      content: [{ type: 'text', text: JSON.stringify({ name, text: 'hello' }) }],
+      content: [
+        { type: 'text', text: `Added the note “${name}”.` },
+        { type: 'text', text: JSON.stringify({ name, text: 'hello' }) },
+      ],
       structuredContent: { name, text: 'hello' },
     });
     expect(outcome.read.structuredContent).toEqual({ name, text: 'hello' });

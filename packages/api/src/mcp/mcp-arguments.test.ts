@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { messagesIn, postMcp, type RawAnswer } from '../testing/mcp-requests.ts';
 import { acmeAdmin, acmeAlphaWriter, operationServer } from '../testing/operation-server.ts';
 
+const TextBlock = Schema.Struct({ type: Schema.Literal('text'), text: Schema.String });
+
 const ToolErrorSchema = Schema.Struct({
   id: Schema.Number,
   result: Schema.Struct({
     isError: Schema.Literal(true),
-    content: Schema.Tuple([Schema.Struct({ type: Schema.Literal('text'), text: Schema.String })]),
+    content: Schema.Tuple([TextBlock, TextBlock]),
   }),
 });
 
@@ -16,7 +18,7 @@ const toolErrorOf = Schema.decodeUnknownSync(ToolErrorSchema);
 
 function problemsIn(answer: RawAnswer): readonly unknown[] {
   return messagesIn(answer).map((message) => {
-    const parsed: unknown = JSON.parse(toolErrorOf(message).result.content[0].text);
+    const parsed: unknown = JSON.parse(toolErrorOf(message).result.content[1].text);
     return parsed;
   });
 }

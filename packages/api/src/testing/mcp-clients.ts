@@ -42,8 +42,22 @@ export function textOf({ content }: ToolResult): string {
   return content.map(({ text }) => text).join('');
 }
 
+export function plainTextIn({ content }: ToolResult): string {
+  return content
+    .slice(0, 1)
+    .map(({ text }) => text)
+    .join('');
+}
+
+export function technicalTextIn({ content }: ToolResult): string {
+  return content
+    .slice(-1)
+    .map(({ text }) => text)
+    .join('');
+}
+
 export function problemIn(result: ToolResult): unknown {
-  const parsed: unknown = JSON.parse(textOf(result));
+  const parsed: unknown = JSON.parse(technicalTextIn(result));
   return parsed;
 }
 

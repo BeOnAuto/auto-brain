@@ -9,8 +9,10 @@ import {
   OrgWriter,
   defineCommand,
   defineQuery,
+  quoted,
   type Decider,
   type Issue,
+  type PlainLanguage,
 } from '@beonauto/operations';
 import { Effect, Result, Schema } from 'effect';
 
@@ -36,6 +38,10 @@ const notebook: Decider<readonly Note[], Note, NoteAdded, 'conflict'> = {
   eventSchema: NoteAddedSchema,
 };
 
+function plainly(task: string): PlainLanguage<unknown, unknown> {
+  return { task, attempt: () => task, outcome: () => `Done: ${task}.` };
+}
+
 export const addNote = defineCommand('brain', {
   name: 'add_note',
   title: 'Add note',
@@ -49,6 +55,11 @@ export const addNote = defineCommand('brain', {
     yield* (yield* BrainWriter).execute('notes', notebook, note);
     return note;
   }),
+  plainLanguage: {
+    task: 'add a note',
+    attempt: ({ name }) => `add the note ${quoted(name)}`,
+    outcome: ({ name }) => `Added the note ${quoted(name)}.`,
+  },
 });
 
 const listNotes = defineQuery('brain', {
@@ -65,6 +76,7 @@ const listNotes = defineQuery('brain', {
     const { state } = yield* (yield* BrainReader).load('notes', notebook);
     return { notes: state.slice(0, limit) };
   }),
+  plainLanguage: plainly('list the notes'),
 });
 
 export const getNote = defineQuery('brain', {
@@ -83,6 +95,11 @@ export const getNote = defineQuery('brain', {
     }
     return found;
   }),
+  plainLanguage: {
+    task: 'read a note',
+    attempt: ({ name }) => `read the note ${quoted(name)}`,
+    outcome: ({ name, text }) => `The note ${quoted(name)} says ${quoted(text)}.`,
+  },
 });
 
 export const latestNote = defineQuery('brain', {
@@ -101,6 +118,7 @@ export const latestNote = defineQuery('brain', {
     }
     return latest;
   }),
+  plainLanguage: plainly('read the latest note'),
 });
 
 const breakDown = defineQuery('brain', {
@@ -112,6 +130,7 @@ const breakDown = defineQuery('brain', {
   outputSchema: Nothing,
   reasons: [],
   handle: () => Effect.die(new Error('database password is hunter2')),
+  plainLanguage: plainly('break down'),
 });
 
 export const waitForever = defineQuery('brain', {
@@ -123,6 +142,7 @@ export const waitForever = defineQuery('brain', {
   outputSchema: Nothing,
   reasons: [],
   handle: () => Effect.never,
+  plainLanguage: plainly('wait forever'),
 });
 
 const BrainLabelSchema = Schema.Struct({ brain: BrainIdSchema, label: Schema.String });
@@ -152,6 +172,7 @@ const labelBrain = defineCommand('org', {
     yield* (yield* OrgWriter).execute('brain-labels', labelBook, labelled);
     return labelled;
   }),
+  plainLanguage: plainly('label a brain'),
 });
 
 const listLabels = defineQuery('org', {
@@ -166,6 +187,7 @@ const listLabels = defineQuery('org', {
     const { state } = yield* (yield* OrgReader).load('brain-labels', labelBook);
     return { labels: state };
   }),
+  plainLanguage: plainly('list the labels'),
 });
 
 const checkLines = defineCommand('brain', {
@@ -186,6 +208,7 @@ const checkLines = defineCommand('brain', {
       ? Effect.succeed({ accepted: lines.length })
       : Effect.fail(new InvalidInput({ detail: 'Some lines need fixing', issues }));
   },
+  plainLanguage: plainly('check the lines'),
 });
 
 export const notebookOperations = [
