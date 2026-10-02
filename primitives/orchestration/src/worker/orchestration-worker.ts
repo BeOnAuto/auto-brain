@@ -29,7 +29,7 @@ export interface RunnableWorker {
   isRunning(): boolean;
 }
 
-export interface WorkerConnection {
+interface WorkerConnection {
   create(definition: WorkerDefinition): Promise<RunnableWorker>;
   close(): Promise<void>;
 }

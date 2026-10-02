@@ -29,7 +29,7 @@ type OwnRejections = (task: JsonObject, reference: string, components: Component
 
 export const executeSpecFunction = 'execute_spec';
 
-export const mostForkBranches = 32;
+const mostForkBranches = 32;
 
 const outboundCalls = new Set(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mcp']);
 

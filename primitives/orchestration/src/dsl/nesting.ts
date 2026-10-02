@@ -2,7 +2,7 @@ import { entriesOf, field, isList, isObject, mostValueDepth, type Json, type Jso
 import { forbidden, type Located, type Rejection } from './policy-checks.ts';
 import { nestedTaskLists, pointerTo, taskEntries, type TaskEntry } from './tasks.ts';
 
-export const mostTaskNesting = 64;
+const mostTaskNesting = 64;
 
 export function nestingRejections(document: JsonObject): readonly Rejection[] {
   const deepValue = deepValueIn(document, '', mostValueDepth);
