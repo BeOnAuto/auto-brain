@@ -7,7 +7,7 @@ import { makeSpecOperations, type Primitive } from '@beonauto/specs';
 import { Effect, Layer } from 'effect';
 
 import { defaultServerOptions, servedBy, type ServerOptions } from './lifecycle.ts';
-import { logIncident, logModelProviders, logProviderMessage, logWorkflowsNotOffered } from './logging.ts';
+import { logIncident, logModelProviders, logProviderMessage, logsToStderr, logWorkflowsNotOffered } from './logging.ts';
 import { routesServing } from './served-routes.ts';
 
 export type ModelAccessOf = (settings: ModelSettings) => Effect.Effect<ModelAccess>;
@@ -33,14 +33,14 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
   return {
     ...defaultServerOptions,
     runtimeLayer: ({ ledgerFile }) => applicationLayer(ledgerFile),
-    serve: async (runtime, { models, workflows }) => {
+    serve: async (runtime, { models, workflows, logFormat }) => {
       const primitives = [await inferenceServedBy(runtime, models, modelAccessOf)];
       if (workflows === undefined) {
         await runtime.run(logWorkflowsNotOffered);
         return servedBy(routesServing([...brainOperations, ...makeSpecOperations(primitives)])(runtime));
       }
       const { serveWorkflows } = await import('./workflows.ts');
-      return serveWorkflows(runtime, workflows, primitives);
+      return serveWorkflows(runtime, { settings: workflows, primitives, logs: logsToStderr(logFormat) });
     },
   };
 }

@@ -4,7 +4,7 @@ import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { applicationLayer } from './composition-root.ts';
-import { jsonLogsToStderr } from './logging.ts';
+import { logsToStderr } from './logging.ts';
 
 const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
@@ -15,7 +15,7 @@ const alphaExists = Effect.gen(function* () {
 
 describe('the services the brain operations run on', () => {
   it('are the only services at the top level of the runtime, beside Effect’s own', async () => {
-    const runtime = ManagedRuntime.make(applicationLayer(':memory:').pipe(Layer.provideMerge(jsonLogsToStderr)));
+    const runtime = ManagedRuntime.make(applicationLayer(':memory:').pipe(Layer.provideMerge(logsToStderr('json'))));
 
     const keys = [...(await runtime.context()).mapUnsafe.keys()];
     await runtime.dispose();

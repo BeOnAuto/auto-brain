@@ -10,23 +10,25 @@ A business brain carries out the way your team works. It gathers context, calls 
 
 auto-brain is the server a brain runs on. Auto can host it for you, or you can run it yourself from one container image.
 
-> **Status: early development.** The server, its container image and the release pipeline are in place. The server can create, list, read, update and retire an org's brains on the ledger, and run specs in them: inference specs, which call a language model, and, when it is given a Temporal server, workflow specs, which execute other specs and wait for events. The other primitives below are being designed and built, so auto-brain isn't ready for production use yet.
+> **Status: early development.** Two primitives are built: inference, which calls a language model, and orchestration, which runs workflows on Temporal. The server keeps an org's brains on the ledger and runs their specs, over HTTP and over MCP. The other primitives below are designed but not built yet, so auto-brain isn't ready for production use.
 
 ## How a brain works
 
 A brain is made of **primitives** that share one **ledger**.
 
-| Primitive                                 | What it does                                                                                                                                                        |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Interaction](primitives/interaction)     | Input and output between the brain and people or machines, in both directions                                                                                       |
-| [Orchestration](primitives/orchestration) | Deterministic steps that run other primitives, triggered by an event, by hand or on a schedule                                                                      |
-| [Inference](primitives/inference)         | An LLM call defined in Markdown: front matter sets the model, skills, tools and input and output schemas; a Liquid body pulls in context from the rest of the brain |
-| [Prediction](primitives/prediction)       | A machine-learning model that makes a prediction, for when an LLM isn't the right tool                                                                              |
-| [Computation](primitives/computation)     | A deterministic function that workflows and agents can call                                                                                                         |
-| [Recollection](primitives/recollection)   | A materialized view of the brain's history, built from the ledger                                                                                                   |
-| [Dream](primitives/dream)                 | Explores the ledger around a subject to suggest new scenarios and better ways of working, and can iterate towards a goal                                            |
+| Primitive                                 | Today   | What it does                                                                                                                                                                                                                                                                |
+| ----------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Interaction](primitives/interaction)     | Planned | Input and output between the brain and people or machines, in both directions                                                                                                                                                                                               |
+| [Orchestration](primitives/orchestration) | Built   | Runs a workflow of deterministic steps that execute other specs, branch, loop, retry, wait and listen for events, durably, on Temporal. A workflow starts when its spec is executed; starting one from an event or on a schedule is planned                                 |
+| [Inference](primitives/inference)         | Built   | Calls a language model with a prompt written in Markdown: front matter sets the model, its settings and the JSON Schemas of the input and output, and a Liquid template renders the prompt from the input. Skills, tools and context from the rest of the brain are planned |
+| [Prediction](primitives/prediction)       | Planned | A machine-learning model that makes a prediction, for when an LLM isn't the right tool                                                                                                                                                                                      |
+| [Computation](primitives/computation)     | Planned | A deterministic function that workflows and agents can call                                                                                                                                                                                                                 |
+| [Recollection](primitives/recollection)   | Planned | A materialized view of the brain's history, built from the ledger                                                                                                                                                                                                           |
+| [Dream](primitives/dream)                 | Planned | Explores the ledger around a subject to suggest new scenarios and better ways of working, and can iterate towards a goal                                                                                                                                                    |
 
 The [ledger](packages/ledger) records every input and output of every primitive. That record lets a brain recall what happened and explain its decisions. It also lets you evaluate and improve the method over time.
+
+The diagram shows the design, not what is built today:
 
 ```mermaid
 flowchart TD
@@ -55,30 +57,92 @@ Three separate things:
 
 ### Quick start
 
-From a checkout, `pnpm dev` runs the server in [local mode](#local-mode), so it needs no key. Create a brain, then read it back:
+You need [pnpm](https://pnpm.io/installation), for example from `curl -fsSL https://get.pnpm.io/install.sh | sh -`. In this repository pnpm switches itself to the version the repository pins, 12.8.1, and runs every script on the Node.js it pins, 26.10.0, which it downloads on the first `pnpm install`; the Node.js on your machine does not matter.
 
 ```bash
 pnpm install
+cp .env.example .env
 pnpm dev
-curl --request POST http://localhost:8080/v1/orgs/acme/brains \
-  --header 'content-type: application/json' \
-  --data '{"brain":"sales","name":"Sales","description":"Answers questions about the pipeline"}'
-curl http://localhost:8080/v1/orgs/acme/brains
-curl http://localhost:8080/v1/orgs/acme/brains/sales
 ```
 
-`PUT /v1/orgs/acme/brains/sales` replaces the name and the description, and `POST /v1/orgs/acme/brains/sales/retire` retires the brain for good. `pnpm dev` keeps the ledger in `packages/server/.data/ledger.db`, so the brains are still there after a restart.
+Before `pnpm dev`, uncomment one line of `.env` and put your key in it:
+
+| Provider                     | In `.env`                                                                                                                                            | A model to name               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Anthropic                    | `ANTHROPIC_API_KEY=<your key>`                                                                                                                       | `anthropic/claude-sonnet-4-5` |
+| OpenAI                       | `OPENAI_API_KEY=<your key>`                                                                                                                          | `openai/gpt-5`                |
+| Google                       | `GOOGLE_GENERATIVE_AI_API_KEY=<your key>`                                                                                                            | `google/gemini-2.5-flash`     |
+| An OpenAI-compatible gateway | `MODEL_GATEWAYS='[{"name":"gateway","base_url":"https://gateway.example.com/v1","api_key_env":"GATEWAY_API_KEY"}]'` and `GATEWAY_API_KEY=<your key>` | `gateway/<model>`             |
+
+`pnpm dev` starts Temporal's dev server, then the server, in [local mode](#local-mode), on `http://localhost:8080`. Once it is up, it says so:
+
+```text
+10:42:44.130 INFO  [dev] auto-brain is ready
+  server     http://localhost:8080
+  workflows  Temporal web UI at http://127.0.0.1:8233
+  models     anthropic
+  MCP        http://localhost:8080/mcp
+```
+
+Next, connect your AI assistant to `http://localhost:8080/mcp`. Local mode needs no key:
+
+- **Claude Code**: `claude mcp add --transport http auto-brain http://localhost:8080/mcp`
+- **Cursor**, in `.cursor/mcp.json` or `~/.cursor/mcp.json`: `{"mcpServers": {"auto-brain": {"url": "http://localhost:8080/mcp"}}}`
+- **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-brain": {"type": "http", "url": "http://localhost:8080/mcp"}}}`
+- **Other assistants** take the entry under [Connecting an agent over MCP](#connecting-an-agent-over-mcp), without its header.
+
+Then ask it, in order:
+
+1. "Create a brain called support for our customer support team."
+2. "In support, write a prompt that classifies a support ticket by category (billing, bug, account or other) and urgency (low, normal or high), answering in JSON, and run it on: I was charged twice for March and nobody has answered for three days."
+3. "How many tokens did that run use, and what exactly was sent to the model?"
+4. "Change the prompt so that anything about money is billing and at least normal urgency, then run it on the same ticket again."
+5. "Build a workflow that classifies a ticket and, only when it is urgent, drafts a two-sentence note for the on-call lead. Run it on that ticket and on: How do I export my invoices as CSV?"
+6. "Start a workflow that waits for a manager to approve a refund, then send it the approval."
+
+You don't need to teach the assistant anything first: each tool's description says how the documents of its primitive are written.
+
+To try it without an assistant, `scripts/try-inference.sh http://localhost:8080 <provider/model>` and `scripts/try-workflows.sh http://localhost:8080 <provider/model>` run a prompt and a workflow over HTTP and print what happened. [How it works](#how-it-works) walks through the same steps.
+
+### Configuring a model
+
+Settings come from two places. In development, `pnpm dev` and `pnpm dev:lean` read `.env` at the root of the repository after `packages/server/dev.env`, and a variable set in the shell wins over both; the server itself never reads `.env`. A container takes environment variables, or a file of them with `docker run --env-file`.
+
+| To use                                               | Set                                                                              | Example                                                                                                      |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| A provider's own API                                 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`          | [Direct API keys](primitives/inference/README.md#direct-api-keys)                                            |
+| An OpenAI-compatible gateway                         | `MODEL_GATEWAYS`, a JSON list whose `name` becomes the prefix, `gateway/<model>` | [A gateway](primitives/inference/README.md#an-internal-openai-compatible-gateway-with-a-custom-header)       |
+| Amazon Bedrock                                       | `AWS_REGION`, with the AWS default credential chain                              | [Bedrock](primitives/inference/README.md#amazon-bedrock-with-an-iam-role)                                    |
+| Azure OpenAI                                         | `AZURE_RESOURCE_NAME` and `AZURE_API_KEY`                                        | [Azure](primitives/inference/README.md#azure-openai-with-an-api-key)                                         |
+| Google Vertex AI                                     | `GOOGLE_VERTEX_PROJECT` and `GOOGLE_VERTEX_LOCATION`                             | [Vertex](primitives/inference/README.md#google-vertex-ai-with-workload-identity)                             |
+| Your own names for models                            | `MODEL_ALIASES`                                                                  | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
+| An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                  | [Proxy and CA](primitives/inference/README.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
+
+### Developing with pnpm dev
+
+`pnpm dev` starts Temporal's dev server on `127.0.0.1:7233`, with its web UI on `http://127.0.0.1:8233`, and then the server, pointed at it. The first run downloads the Temporal CLI the tests also use, v1.9.1, about 150 MB unpacked, into your temporary directory, and says so; later runs start in about a second. The ledger and Temporal's state live side by side in `packages/server/.data`, so brains, specs and waiting workflows are still there after a restart; delete that directory to start over.
+
+Saving a `.ts` file other than a test under the `src` of any package of the repository, or `packages/server/dev.env` or `.env`, restarts the server through its clean shutdown, while Temporal keeps running. A server that does not start says why and starts again on the next save. Ctrl-C stops both.
+
+When a Temporal already answers on `127.0.0.1:7233`, `pnpm dev` uses it and starts none. `TEMPORAL_ADDRESS`, in the shell or in `.env`, names another Temporal and starts none. When something else holds the port, or the CLI cannot be downloaded or started, the server starts without workflows and one line says why and how to get them. `pnpm dev:lean` runs the server alone, without Temporal and without workflows.
+
+`packages/server/dev.env` sets `LOG_FORMAT=pretty`, so the logs read as lines of text; lines from `pnpm dev` itself are marked `[dev]`, and Temporal's `[temporal]`. Don't run the server by hand under `node --watch` with `TEMPORAL_ADDRESS` set: in watch mode Node sends messages from worker threads that `@temporalio/worker` 1.24.0 mistakes for its own, and the server crashes. `pnpm dev` restarts the server itself instead.
 
 ### How it works
 
-A brain does its work through specs: named, versioned documents, each for one primitive. An inference spec calls a language model, so give the server a key for a provider before it starts:
+Everything an assistant does over MCP is also an operation over HTTP. In local mode every org is open; the brains an assistant makes on `/mcp` belong to the org `local`, so these commands use it. Create a brain, list the org's brains, and read one back:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-pnpm dev
+curl --request POST http://localhost:8080/v1/orgs/local/brains \
+  --header 'content-type: application/json' \
+  --data '{"brain":"sales","name":"Sales","description":"Answers questions about the pipeline"}'
+curl http://localhost:8080/v1/orgs/local/brains
+curl http://localhost:8080/v1/orgs/local/brains/sales
 ```
 
-Write a spec, `greeting.md`: YAML front matter that names the model, then a Liquid template that renders the prompt from the input.
+`PUT /v1/orgs/local/brains/sales` replaces the name and the description, and `POST /v1/orgs/local/brains/sales/retire` retires the brain for good.
+
+A brain does its work through specs: named, versioned documents, each for one primitive. An inference spec calls a language model, with the key from your `.env`. Write a spec, `greeting.md`: YAML front matter that names the model, then a Liquid template that renders the prompt from the input.
 
 ```markdown
 ---
@@ -92,30 +156,21 @@ input:
 Greet {{ input.name }}, whose order shipped today, {{ today }}.
 ```
 
-Create a brain, create the spec in it, execute the spec, and read the execution back with the record of the call: the rendered prompt, the model, the tokens it used and how long it took.
+Create the spec in the brain, execute it, and read the execution back with the record of the call: the rendered prompt, the model, the tokens it used and how long it took.
 
 ```bash
-curl --request POST http://localhost:8080/v1/orgs/acme/brains \
-  --header 'content-type: application/json' --data '{"brain":"sales","name":"Sales"}'
 jq --null-input --rawfile source greeting.md '{name: "greeting", source: $source}' |
-  curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference \
+  curl --request POST http://localhost:8080/v1/orgs/local/brains/sales/specs/inference \
     --header 'content-type: application/json' --data @-
-curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference/greeting/execute \
+curl --request POST http://localhost:8080/v1/orgs/local/brains/sales/specs/inference/greeting/execute \
   --header 'content-type: application/json' \
   --data '{"input":{"name":"Ada"},"execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"}'
-curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
+curl http://localhost:8080/v1/orgs/local/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
 ```
 
-A document with a problem is rejected with every problem and its line; an input that does not match the schema is rejected before any model is called; a provider that is not configured answers `503`, naming the settings it lacks. The [inference README](primitives/inference/README.md) describes the document, the template language, every rejection and the record, and the [specs README](packages/specs/README.md) the operations. `scripts/try-inference.sh <base-url> <provider/model>` runs the same steps with a spec of its own against a server that is already running. An agent does the same over [MCP](#connecting-an-agent-over-mcp) on the brain's endpoint, `/orgs/acme/brains/sales/mcp`, where the descriptions of the spec tools explain how an inference spec is written.
+A document with a problem is rejected with every problem and its line; an input that does not match the schema is rejected before any model is called; a provider that is not configured answers `503`, naming the settings it lacks. The [inference README](primitives/inference/README.md) describes the document, the template language, every rejection and the record, and the [specs README](packages/specs/README.md) the operations. An assistant does the same over [MCP](#connecting-an-agent-over-mcp) on `/mcp`, where the descriptions of the spec tools explain how a spec is written.
 
-A workflow spec runs steps that execute other specs, branch, wait and listen for events, durably, on [Temporal](#workflows-and-temporal). Start a Temporal dev server and give the server its address:
-
-```bash
-temporal server start-dev
-TEMPORAL_ADDRESS=localhost:7233 pnpm dev
-```
-
-Write `welcome.yaml`, a workflow that executes the greeting above, then waits for the customer's reply:
+A workflow spec runs steps that execute other specs, branch, wait and listen for events, durably, on the Temporal that `pnpm dev` runs. Write `welcome.yaml`, a workflow that executes the greeting above, then waits for the customer's reply:
 
 ```yaml
 document:
@@ -147,18 +202,18 @@ Create it, execute it, and send it the event it waits for:
 
 ```bash
 jq --null-input --rawfile source welcome.yaml '{name: "welcome", source: $source}' |
-  curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/orchestration \
+  curl --request POST http://localhost:8080/v1/orgs/local/brains/sales/specs/orchestration \
     --header 'content-type: application/json' --data @-
-curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/orchestration/welcome/execute \
+curl --request POST http://localhost:8080/v1/orgs/local/brains/sales/specs/orchestration/welcome/execute \
   --header 'content-type: application/json' \
   --data '{"input":{"name":"Ada"},"execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b"}'
-curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b/events \
+curl --request POST http://localhost:8080/v1/orgs/local/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b/events \
   --header 'content-type: application/json' \
   --data '{"event":{"type":"com.acme.customer.replied","data":"Thank you!"}}'
-curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b
+curl http://localhost:8080/v1/orgs/local/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b
 ```
 
-Executing answers `started` at once; the execution reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting the workflow executed is an execution of its own in the ledger, under an id derived from the workflow's run, made by the caller who started the workflow. The [orchestration README](primitives/orchestration/README.md) describes what a workflow may do, and `scripts/try-workflows.sh <base-url> <provider/model>` runs these steps against a server that is already running.
+Executing answers `started` at once; the execution reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting the workflow executed is an execution of its own in the ledger, under an id derived from the workflow's run, made by the caller who started the workflow. The [orchestration README](primitives/orchestration/README.md) describes what a workflow may do.
 
 ### In a container
 
@@ -182,8 +237,9 @@ Without a named volume, Docker gives each container a fresh anonymous volume, so
 | `API_KEYS`        | none                                             | The API keys the server accepts, as a compact JSON array of entries made by the key command                                    |
 | `LEDGER_FILE`     | `data/ledger.db`; `/data/ledger.db` in the image | The SQLite database file of the ledger; its directory is created when missing                                                  |
 | `LOCAL_MODE`      | `false`                                          | `true` trusts every request as the local developer; see [Local mode](#local-mode)                                              |
+| `LOG_FORMAT`      | `json`                                           | `json`, one JSON object per line on stderr, or `pretty`, lines of text for a person at a terminal                              |
 
-The [inference primitive](primitives/inference) calls language models with these settings, all optional. A provider whose settings are absent is not configured, and a spec that names it is rejected as `unavailable` when it runs; the server logs, when it starts, which providers are configured and what each of the others lacks. Settings it cannot read stop it at start-up, naming the setting and never its value. The primitive's README has an example for each deployment shape.
+The [inference primitive](primitives/inference) calls language models with these settings, all optional; [Configuring a model](#configuring-a-model) says which to set for what. A provider whose settings are absent is not configured, and a spec that names it is rejected as `unavailable` when it runs. When it starts, the server logs one line naming the providers that are configured, or a warning when none is, and a warning for each provider that has some of its settings but not all it needs. Settings it cannot read stop it at start-up, naming the setting and never its value.
 
 | Variable                                                                                         | Purpose                                                                                                                |
 | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
@@ -214,11 +270,11 @@ The image is multi-arch (amd64 and arm64), runs as a non-root user that can read
 
 ### Workflows and Temporal
 
-The server runs the Temporal worker for its workflows in its own process, on the task queue `TEMPORAL_TASK_QUEUE`; give each deployment its own task queue, or its own namespace, so that no other deployment's worker takes its workflows. For local development, the [Temporal CLI](https://docs.temporal.io/cli)'s `temporal server start-dev` runs a dev server on `localhost:7233` that keeps everything in memory, or run it in a container, `docker run --publish 7233:7233 temporalio/temporal server start-dev --ip 0.0.0.0`.
+The server runs the Temporal worker for its workflows in its own process, on the task queue `TEMPORAL_TASK_QUEUE`; give each deployment its own task queue, or its own namespace, so that no other deployment's worker takes its workflows. In development, `pnpm dev` runs Temporal for you.
 
-The server starts whether Temporal can be reached or not. Until it can, it logs a warning each time it tries to start the worker, waiting a random time between half and all of a ceiling that doubles from 1 second up to 30 seconds, so 0.5 to 1 second the first time, and executing a workflow spec answers `503` `unavailable` within 10 seconds; once Temporal is back, workflows run without a restart. A worker that loses Temporal while it runs logs one warning, then at most one a minute while the outage lasts, and one line when it reaches Temporal again. A worker that stops on its own is logged as an error and started again the same way. When the server stops, it stops accepting requests, gives the activities in flight 10 seconds to finish while the requests in flight finish, and then closes the ledger; with Temporal unreachable and requests waiting for it, stopping can take up to about 16 seconds, so allow the container at least 20 (`docker stop --time 20`).
+The server starts whether Temporal can be reached or not. Until it can, it logs a warning each time it tries to start the worker, and executing a workflow spec answers `503` `unavailable`; once Temporal is back, workflows run without a restart. When the server stops, it stops accepting requests, gives the activities in flight 10 seconds to finish while the requests in flight finish, and then closes the ledger. With Temporal unreachable and requests waiting for it, stopping can take up to about 16 seconds, so allow the container at least 20 (`docker stop --time 20`).
 
-The container needs memory for the server, and more once it offers workflows. Give it at least 512 MiB without workflows and 1 GiB with them (`docker run --memory 1g`). Node sizes its heap from the container's limit, to about half of it: 268 MiB at 512 MiB, 408 MiB at 768 MiB, 536 MiB at 1 GiB. Measured with the arm64 image, the container counted about 100 MiB idle without workflows, and at most 150 MiB besides the ledger's cached file pages through floods of 2048 rejected specs of 64 KiB and 2048 executions with inputs of 256 KiB; it survived them at 256 MiB. With workflows it counted 190 to 390 MiB idle, more under a larger limit, since Node collects less often with more room; a key sending 1.1 GiB of events to 16 of its waiting workflows, 2048 events to 8 more, and the two floods above left it answering `/health` within 100 ms and other requests within 200 ms at 384 MiB, 512 MiB, 768 MiB and 1 GiB, and it was killed at 256 MiB. 1 GiB holds what the server needs idle and what workflows can hold at once by the bound the [orchestration README](primitives/orchestration/README.md#memory) derives, which none of these floods reached, because a flooded workflow fails at its limits. At the limit, the kernel first drops the cached pages of the ledger's file, which the execution flood filled to the limit without harm, and then kills the process (exit 137, `OOMKilled`); the container's restart policy starts it again, requests in flight are lost, and workflows go on from Temporal's history.
+Give the container at least 512 MiB of memory without workflows and 1 GiB with them (`docker run --memory 1g`). The [orchestration README](primitives/orchestration/README.md#memory) has the measurements behind these figures and the bound on what workflows can hold.
 
 What an operator must know:
 
@@ -299,11 +355,11 @@ auto-brain is **source-available** under the [Elastic License 2.0](LICENSE), the
 
 Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md). You'll sign the [CLA](CLA.md) on your first pull request, and everyone follows the [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
-Local development needs Node 26 and pnpm 12:
+The [quick start](#quick-start) sets up a checkout. Then:
 
 ```bash
-pnpm install
-pnpm dev          # server on http://localhost:8080, reloading on save
+pnpm dev          # Temporal and the server on http://localhost:8080, restarting the server on save
+pnpm dev:lean     # the server alone, without workflows
 pnpm test:watch   # tests on save
 pnpm check        # everything CI checks
 ```

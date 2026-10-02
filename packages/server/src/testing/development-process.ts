@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { Schema } from 'effect';
+import { Option, Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
 import { freePort } from './workflow-process.ts';
@@ -162,10 +162,40 @@ export async function untilWritten(read: () => string, wanted: Readonly<RegExp>)
   return untilWritten(read, wanted);
 }
 
-export function runnerLines({ stderr }: Development): readonly string[] {
+const logLineOf = Schema.decodeUnknownOption(
+  Schema.fromJsonString(
+    Schema.Struct({
+      message: Schema.String,
+      level: Schema.String,
+      annotations: Schema.Struct({ source: Schema.optional(Schema.String) }),
+    }),
+  ),
+);
+
+function linesFrom({ stderr }: Development, source: string): readonly string[] {
   return stderr()
     .split('\n')
-    .filter((line) => line !== '' && !/^(?:\{|auto-brain |time=)/u.test(line));
+    .flatMap((line) => Option.toArray(logLineOf(line)))
+    .filter((entry) => entry.annotations.source === source)
+    .map(({ level, message }) => `${level} ${message}`);
+}
+
+const readyNotice = /^INFO auto-brain is ready\n/u;
+
+export function runnerLines(development: Development): readonly string[] {
+  return linesFrom(development, 'dev')
+    .filter((line) => !readyNotice.test(line))
+    .map((line) => line.replace(/^\S+ /u, ''));
+}
+
+export function readyNoticesOf(development: Development): readonly string[] {
+  return linesFrom(development, 'dev')
+    .filter((line) => readyNotice.test(line))
+    .map((line) => line.replace(readyNotice, ''));
+}
+
+export function temporalLines(development: Development): readonly string[] {
+  return linesFrom(development, 'temporal');
 }
 
 function listeningPorts({ stdout }: Development): readonly number[] {

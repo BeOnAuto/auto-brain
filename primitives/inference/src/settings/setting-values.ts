@@ -10,6 +10,7 @@ export interface SettingProblem {
 interface Unconfigured {
   readonly configured: false;
   readonly missing: readonly string[];
+  readonly partial?: true;
 }
 
 interface Configured<S> {
@@ -40,8 +41,12 @@ export function configured<S>(settings: S): Availability<S> {
   return { configured: true, settings };
 }
 
-export function unconfigured<S>(missing: readonly string[]): Availability<S> {
-  return { configured: false, missing };
+export function unconfigured<S>(missing: readonly string[], partial: boolean): Availability<S> {
+  return partial ? { configured: false, missing, partial } : { configured: false, missing };
+}
+
+export function anySet(...values: readonly unknown[]): boolean {
+  return values.some((value) => value !== undefined);
 }
 
 export function problem(setting: string, detail: string): readonly SettingProblem[] {

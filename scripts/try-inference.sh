@@ -4,7 +4,7 @@ set -euo pipefail
 usage='Usage: scripts/try-inference.sh <base-url> <provider/model>'
 base_url="${1:?$usage}"
 model="${2:?$usage}"
-org="${AUTO_BRAIN_ORG:-demo}"
+org="${AUTO_BRAIN_ORG:-local}"
 brain="try-$(date +%s)"
 headers=(--header 'content-type: application/json')
 if [ -n "${AUTO_BRAIN_KEY:-}" ]; then

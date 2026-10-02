@@ -169,11 +169,11 @@ Nothing fails at start. A spec that names the provider fails with `provider_not_
 }
 ```
 
-A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and lists the configured ones. `makeModelAccess` also returns a `status`, the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks; the server logs one line for each prefix when it starts:
+A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and lists the configured ones. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
 
 ```json
-{"message":"Model provider anthropic is configured","level":"INFO","annotations":{"provider":"anthropic","configured":true}}
-{"message":"Model provider azure is not configured; it needs AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID","level":"INFO","annotations":{"provider":"azure","configured":false,"missing":["AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID"]}}
+{"message":"Model providers configured: anthropic","level":"INFO","annotations":{"providers":[{"provider":"anthropic","configured":true},{"provider":"openai","configured":false,"missing":["OPENAI_API_KEY"]},…]}}
+{"message":"Model provider azure is not configured; it needs AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID","level":"WARN","annotations":{"provider":"azure","configured":false,"missing":["AZURE_API_KEY, or the optional package @azure/identity for Microsoft Entra ID"]}}
 ```
 
 ## Failures
@@ -523,7 +523,7 @@ curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/infere
 curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
 ```
 
-An agent calls the same operations as MCP tools on the brain's endpoint, `POST /orgs/acme/brains/sales/mcp`: the tools that name a primitive carry this primitive's description of the document format, and a rejection comes back as `isError` with the same problem document. A retry with the same `execution_id`, the same spec and the same input answers the recorded execution and calls no model. `update_spec` (`PUT …/specs/inference/account-summary` with a new `source`) makes version 2, and `retire_spec` (`POST …/retire`) retires the spec for good. The [specs README](../../packages/specs/README.md) has the rules of each operation.
+An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a brain take its id as `brain`: the tools that name a primitive carry this primitive's description of the document format, and a rejection comes back as `isError` with the same problem document. A retry with the same `execution_id`, the same spec and the same input answers the recorded execution and calls no model. `update_spec` (`PUT …/specs/inference/account-summary` with a new `source`) makes version 2, and `retire_spec` (`POST …/retire`) retires the spec for good. The [specs README](../../packages/specs/README.md) has the rules of each operation.
 
 `scripts/try-inference.sh` at the root of the repository does all of this against a server that is already running, with a small spec of its own, and prints the execution and its record. It starts nothing, and needs `curl` and `jq`:
 
@@ -531,7 +531,7 @@ An agent calls the same operations as MCP tools on the brain's endpoint, `POST /
 scripts/try-inference.sh http://localhost:8080 anthropic/claude-sonnet-4-5
 ```
 
-It works in org `demo`, or `AUTO_BRAIN_ORG`, creates a brain named `try-<seconds>`, and sends `AUTO_BRAIN_KEY` as the API key when it is set. CI never runs it.
+It works in org `local`, or `AUTO_BRAIN_ORG`, creates a brain named `try-<seconds>`, and sends `AUTO_BRAIN_KEY` as the API key when it is set. CI never runs it.
 
 ## An example with a JSON answer
 

@@ -1,9 +1,49 @@
 import type { AccessMode } from '@beonauto/identity';
 import type { ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
 import type { Incident } from '@beonauto/operations';
-import { Cause, Effect, Logger } from 'effect';
+import { Cause, Effect, Logger, type Layer } from 'effect';
 
-export const jsonLogsToStderr = Logger.layer([Logger.withConsoleError(Logger.formatJson)]);
+export type LogFormat = 'json' | 'pretty';
+
+interface LogEntry {
+  readonly message: unknown;
+  readonly level: string;
+  readonly timestamp: string;
+  readonly cause: string | undefined;
+  readonly annotations: Readonly<Record<string, unknown>>;
+}
+
+function twoDigits(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function clockOf(timestamp: string): string {
+  const date = new Date(timestamp);
+  const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => twoDigits(part)).join(':');
+  return `${time}.${String(date.getMilliseconds()).padStart(3, '0')}`;
+}
+
+function valueText(value: unknown): string {
+  return typeof value === 'string' && /^\S+$/u.test(value) ? value : JSON.stringify(value);
+}
+
+function prettyLine({ message, level, timestamp, cause, annotations }: LogEntry): string {
+  const { source, ...details } = annotations;
+  const line = [
+    clockOf(timestamp),
+    level.padEnd(5),
+    ...(source === undefined ? [] : [`[${valueText(source)}]`]),
+    typeof message === 'string' ? message : JSON.stringify(message),
+    ...Object.entries(details).map(([name, value]: readonly [string, unknown]) => `${name}=${valueText(value)}`),
+  ].join(' ');
+  return cause === undefined ? line : `${line}\n${cause.replaceAll(/^/gmu, '    ')}`;
+}
+
+export const formatPretty = Logger.map(Logger.formatStructured, prettyLine);
+
+export function logsToStderr(format: LogFormat): Layer.Layer<never> {
+  return Logger.layer([Logger.withConsoleError(format === 'json' ? Logger.formatJson : formatPretty)]);
+}
 
 const accessNotices: Readonly<Record<AccessMode, Effect.Effect<void>>> = {
   local: Effect.logWarning(
@@ -43,16 +83,34 @@ export function logIncident({ id, original, call }: Incident): Effect.Effect<voi
   );
 }
 
-export function logModelProviders({ configured, unconfigured }: ProviderStatus): Effect.Effect<void> {
+const howToConfigureAModel = 'set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
+
+interface ProviderAnnotation {
+  readonly provider: string;
+  readonly configured: boolean;
+  readonly missing?: readonly string[];
+}
+
+function providerAnnotations({ configured, unconfigured }: ProviderStatus): readonly ProviderAnnotation[] {
+  return [
+    ...configured.map((provider) => ({ provider, configured: true })),
+    ...unconfigured.map(({ provider, missing }) => ({ provider, configured: false, missing })),
+  ];
+}
+
+function providersSummary({ configured }: ProviderStatus): Effect.Effect<void> {
+  return configured.length === 0
+    ? Effect.logWarning(`No model provider is configured, so inference specs cannot run; ${howToConfigureAModel}`)
+    : Effect.logInfo(`Model providers configured: ${configured.join(', ')}`);
+}
+
+export function logModelProviders(status: ProviderStatus): Effect.Effect<void> {
+  const partlyConfigured = status.unconfigured.filter(({ partial }) => partial === true);
   return Effect.all(
     [
-      ...configured.map((provider) =>
-        Effect.logInfo(`Model provider ${provider} is configured`).pipe(
-          Effect.annotateLogs({ provider, configured: true }),
-        ),
-      ),
-      ...unconfigured.map(({ provider, missing }) =>
-        Effect.logInfo(`Model provider ${provider} is not configured; it needs ${missing.join(' and ')}`).pipe(
+      providersSummary(status).pipe(Effect.annotateLogs({ providers: providerAnnotations(status) })),
+      ...partlyConfigured.map(({ provider, missing }) =>
+        Effect.logWarning(`Model provider ${provider} is not configured; it needs ${missing.join(' and ')}`).pipe(
           Effect.annotateLogs({ provider, configured: false, missing }),
         ),
       ),

@@ -49,7 +49,7 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
     child.signal('SIGTERM');
     const exitCode = await child.exited;
     const startUpLines = logLinesOf(child)
-      .filter(({ message }) => !message.startsWith('Model provider'))
+      .filter(({ message }) => !/^(?:Model provider|No model provider)/u.test(message))
       .map(({ message, level }) => `${level} ${message}`);
 
     expect(exitCode).toBe(0);

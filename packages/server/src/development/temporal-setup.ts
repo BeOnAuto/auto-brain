@@ -11,13 +11,14 @@ import { answerPatienceMs, whatAnswersOn, type PortAnswer } from './temporal-ans
 export interface DevelopmentTemporal {
   readonly address: string | undefined;
   readonly child: RunningChild | undefined;
+  readonly workflows: string;
 }
 
 type Readiness = 'ready' | 'stopping' | { readonly ended: string };
 
 type Started = { readonly running: RunningChild } | Exclude<Readiness, 'ready'>;
 
-const withoutTemporal: DevelopmentTemporal = { address: undefined, child: undefined };
+const withoutTemporal: DevelopmentTemporal = { address: undefined, child: undefined, workflows: 'off' };
 
 const howToGetWorkflows = 'to get workflows, run `temporal server start-dev` and restart, or set TEMPORAL_ADDRESS';
 
@@ -41,10 +42,13 @@ function temporalCommand(cli: string, { port, uiPort, stateFile }: LocalTemporal
       stateFile,
       '--log-level',
       'error',
+      '--log-format',
+      'json',
     ],
     environment: run.environment,
     stdin: 'ignore',
     stdout: 'ignore',
+    stderr: run.log.temporal,
   };
 }
 
@@ -89,9 +93,9 @@ async function startedTemporal(run: DevelopmentRun, cli: string, local: LocalTem
 
 async function obtainedCli(run: DevelopmentRun): Promise<string | undefined> {
   try {
-    return await run.setup.obtainCli(run.say);
+    return await run.setup.obtainCli(run.log.info);
   } catch (failure) {
-    run.say(
+    run.log.warn(
       `The Temporal CLI could not be obtained (${oneLine(failure)}), so the server starts without workflows; ${howToGetWorkflows}`,
     );
     return undefined;
@@ -108,16 +112,17 @@ async function ownTemporal(run: DevelopmentRun, local: LocalTemporal): Promise<D
     return 'stopped';
   }
   if (!('running' in started)) {
-    run.say(
+    run.log.warn(
       `Temporal's dev server could not start (${started.ended}), so the server starts without workflows; ${howToGetWorkflows}`,
     );
     return withoutTemporal;
   }
   const address = `127.0.0.1:${local.port}`;
-  run.say(
-    `Temporal ${temporalCliVersion} is running on ${address} with its state in ${local.stateFile}; web UI at http://127.0.0.1:${local.uiPort}`,
+  const webUi = `http://127.0.0.1:${local.uiPort}`;
+  run.log.info(
+    `Temporal ${temporalCliVersion} is running on ${address} with its state in ${local.stateFile}; web UI at ${webUi}`,
   );
-  return { address, child: started.running };
+  return { address, child: started.running, workflows: `Temporal web UI at ${webUi}` };
 }
 
 export async function temporalFor(run: DevelopmentRun): Promise<DevelopmentTemporal | 'stopped'> {
@@ -126,17 +131,17 @@ export async function temporalFor(run: DevelopmentRun): Promise<DevelopmentTempo
     return withoutTemporal;
   }
   if (run.settings['TEMPORAL_ADDRESS'] !== undefined) {
-    run.say('TEMPORAL_ADDRESS is set, so no Temporal dev server is started');
-    return withoutTemporal;
+    run.log.info('TEMPORAL_ADDRESS is set, so no Temporal dev server is started');
+    return { ...withoutTemporal, workflows: 'on the Temporal that TEMPORAL_ADDRESS names' };
   }
   const address = `127.0.0.1:${local.port}`;
   const answer = await whatAnswersOn(address);
   if (answer === 'Temporal') {
-    run.say(`Temporal already answers on ${address}, so the server uses it`);
-    return { address, child: undefined };
+    run.log.info(`Temporal already answers on ${address}, so the server uses it`);
+    return { address, child: undefined, workflows: `on the Temporal already at ${address}` };
   }
   if (answer === 'something else') {
-    run.say(
+    run.log.warn(
       `Something that is not Temporal is listening on ${address}, so the server starts without workflows; free the port and restart, or set TEMPORAL_ADDRESS, to get workflows`,
     );
     return withoutTemporal;

@@ -1,13 +1,17 @@
 import { spawn } from 'node:child_process';
+import { createInterface } from 'node:readline';
 
 import type { Environment } from '@beonauto/config';
+
+export type Written = (text: string) => void;
 
 export interface ChildCommand {
   readonly command: string;
   readonly args: readonly string[];
   readonly environment: Environment;
   readonly stdin: 'ignore' | 'pipe';
-  readonly stdout: 'ignore' | 'inherit';
+  readonly stdout: 'ignore' | Written;
+  readonly stderr: 'inherit' | Written;
 }
 
 export interface RunningChild {
@@ -33,8 +37,16 @@ function signalGroupOf(pid: number | undefined): (name: NodeJS.Signals) => boole
   };
 }
 
-export function startChild({ command, args, environment, stdin, stdout }: ChildCommand): RunningChild {
-  const child = spawn(command, args, { detached: true, env: { ...environment }, stdio: [stdin, stdout, 'inherit'] });
+function streamOf(output: 'ignore' | 'inherit' | Written): 'ignore' | 'inherit' | 'pipe' {
+  return typeof output === 'function' ? 'pipe' : output;
+}
+
+export function startChild({ command, args, environment, stdin, stdout, stderr }: ChildCommand): RunningChild {
+  const child = spawn(command, args, {
+    detached: true,
+    env: { ...environment },
+    stdio: [stdin, streamOf(stdout), streamOf(stderr)],
+  });
   const { promise: ended, resolve: end } = Promise.withResolvers<string>();
   child.once('exit', (code, signal) => {
     end(endingOf(code, signal));
@@ -42,6 +54,12 @@ export function startChild({ command, args, environment, stdin, stdout }: ChildC
   child.once('error', (error: unknown) => {
     end(String(error));
   });
+  if (typeof stdout === 'function') {
+    child.stdout?.setEncoding('utf8').on('data', stdout);
+  }
+  if (typeof stderr === 'function' && child.stderr !== null) {
+    createInterface({ input: child.stderr, crlfDelay: Infinity }).on('line', stderr);
+  }
   return {
     pid: child.pid,
     ended,
@@ -59,5 +77,6 @@ export function startReaperOf(child: RunningChild, start: StartChild, environmen
     environment,
     stdin: 'pipe',
     stdout: 'ignore',
+    stderr: 'inherit',
   });
 }

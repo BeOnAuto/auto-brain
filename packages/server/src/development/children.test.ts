@@ -3,7 +3,14 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { startChild, startReaperOf, type ChildCommand, type RunningChild } from './children.ts';
 
 function shell(script: string): ChildCommand {
-  return { command: '/bin/sh', args: ['-c', script], environment: {}, stdin: 'ignore', stdout: 'ignore' };
+  return {
+    command: '/bin/sh',
+    args: ['-c', script],
+    environment: {},
+    stdin: 'ignore',
+    stdout: 'ignore',
+    stderr: 'inherit',
+  };
 }
 
 function started(command: ChildCommand): RunningChild {
