@@ -67,3 +67,12 @@ describe('readApiKeys', () => {
     expect(readApiKeys({ API_KEYS: stdout })).toEqual([entry, everything]);
   });
 });
+
+describe('the org reserved for local mode', () => {
+  it('is refused in API_KEYS, naming the setting and not the value', () => {
+    const error = errorFrom(JSON.stringify([{ ...entry, org: 'local' }]));
+
+    expect(error).toBeInstanceOf(InvalidApiKeysError);
+    expect(String(error)).toBe('InvalidApiKeysError: API_KEYS[0].org: This org id is reserved for local mode');
+  });
+});

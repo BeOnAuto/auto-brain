@@ -23,6 +23,14 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
   [{ ALLOWED_ORIGINS: 'app.example.com' }, 'InvalidSettingsError: SchemaError(Expected an origin'],
   [{ API_KEYS: '[{"id":"ci-1"}]' }, 'InvalidApiKeysError: API_KEYS[0].org: Missing key'],
   [
+    {
+      API_KEYS: JSON.stringify([
+        createApiKey({ id: 'ci-1', org: 'local', permissions: ['org:read'], brains: '*' }).entry,
+      ]),
+    },
+    'InvalidApiKeysError: API_KEYS[0].org: This org id is reserved for local mode',
+  ],
+  [
     { HOST: '0.0.0.0', LOCAL_MODE: 'true' },
     'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',
   ],

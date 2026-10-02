@@ -1,12 +1,5 @@
-import {
-  settle,
-  type Catalog,
-  type Dispatcher,
-  type DispatcherServices,
-  type Outcome,
-  type Registration,
-} from '@beonauto/operations';
-import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
+import type { Catalog, Dispatcher, Registration } from '@beonauto/operations';
+import { McpServer } from '@modelcontextprotocol/server';
 import { Effect, Result } from 'effect';
 
 import type { RunCall } from '../operations/operation-routes.ts';
@@ -14,8 +7,8 @@ import type { ReportThrown } from '../problem/error-boundary.ts';
 import { brainArgumentOf } from './brain-argument.ts';
 import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from './caller-hand-off.ts';
 import { brainEndpointInstructions, catalogInstructionsFor, orgEndpointInstructions } from './instructions.ts';
+import { callbackFor, type Dispatch } from './tool-callback.ts';
 import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from './tool-definition.ts';
-import { problemResultOf, toolResultOf } from './tool-result.ts';
 
 export interface ServerInfo {
   readonly name: string;
@@ -35,12 +28,6 @@ export interface ToolServing extends McpServing {
 
 export type McpServerFactory = (context: HandedOff) => McpServer;
 
-interface ToolContext {
-  readonly mcpReq: { readonly signal: AbortSignal };
-}
-
-type Dispatch = (input: unknown) => Effect.Effect<Outcome, never, DispatcherServices>;
-
 interface Offered<R extends Registration> {
   readonly registration: R;
   readonly definition: ToolDefinition;
@@ -52,33 +39,13 @@ interface Tool {
   readonly dispatch: Dispatch;
 }
 
-function callbackFor(
-  { runCall, reportThrown }: ToolServing,
-  requestId: string,
-  dispatch: Dispatch,
-): (input: unknown, context: ToolContext) => Promise<CallToolResult> {
-  return async (input, { mcpReq: { signal } }) => {
-    const call = settle(dispatch(input), signal).pipe(Effect.annotateLogs({ requestId }));
-    try {
-      return toolResultOf(await runCall(call), signal.aborted);
-    } catch (thrown) {
-      return problemResultOf(reportThrown(thrown, requestId));
-    }
-  };
-}
-
-function serverWithTools(
-  serving: ToolServing,
-  instructions: string,
-  requestId: string,
-  tools: readonly Tool[],
-): McpServer {
+function serverWithTools(serving: ToolServing, instructions: string, call: OrgCall, tools: readonly Tool[]): McpServer {
   const server = new McpServer(
     { ...serving.serverInfo },
     { capabilities: { tools: { listChanged: false } }, instructions },
   );
   for (const { name, definition, dispatch } of tools) {
-    server.registerTool(name, definition, callbackFor(serving, requestId, dispatch));
+    server.registerTool(name, definition, callbackFor(serving, call, dispatch));
   }
   return server;
 }
@@ -133,7 +100,7 @@ export function orgServerFactory(serving: ToolServing): McpServerFactory {
   return (context) => {
     const call = orgCallOf(context);
     const tools = toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call));
-    return serverWithTools(serving, orgEndpointInstructions, call.requestId, tools);
+    return serverWithTools(serving, orgEndpointInstructions, call, tools);
   };
 }
 
@@ -142,7 +109,7 @@ export function brainServerFactory(serving: ToolServing): McpServerFactory {
   return (context) => {
     const call = brainCallOf(context);
     const tools = toolsOf(brainOffers, brainDispatchOf(serving.dispatcher, call));
-    return serverWithTools(serving, brainEndpointInstructions, call.requestId, tools);
+    return serverWithTools(serving, brainEndpointInstructions, call, tools);
   };
 }
 
@@ -159,6 +126,6 @@ export function catalogServerFactory(serving: ToolServing): McpServerFactory {
       ...toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call)),
       ...toolsOf(brainOffers, brainArgumentDispatchOf(serving.dispatcher, call)),
     ];
-    return serverWithTools(serving, instructions, call.requestId, tools);
+    return serverWithTools(serving, instructions, call, tools);
   };
 }

@@ -2,10 +2,13 @@ import { BrainIdSchema, CallerIdentitySchema, type CallerIdentity } from '@beona
 import type { AuthInfo } from '@modelcontextprotocol/server';
 import { Schema } from 'effect';
 
+import { DroppedArgumentSchema, type DroppedArgument } from './dropped-arguments.ts';
+
 export interface OrgCall {
   readonly caller: CallerIdentity;
   readonly org: string;
   readonly requestId: string;
+  readonly dropped: readonly DroppedArgument[];
 }
 
 export interface BrainCall extends OrgCall {
@@ -18,7 +21,12 @@ export interface HandedOff {
 
 const placeholderToken = 'verified-by-auto-brain';
 
-const OrgCallSchema = Schema.Struct({ caller: CallerIdentitySchema, org: Schema.String, requestId: Schema.String });
+const OrgCallSchema = Schema.Struct({
+  caller: CallerIdentitySchema,
+  org: Schema.String,
+  requestId: Schema.String,
+  dropped: Schema.Array(DroppedArgumentSchema),
+});
 
 const BrainCallSchema = Schema.Struct({ ...OrgCallSchema.fields, brain: BrainIdSchema });
 

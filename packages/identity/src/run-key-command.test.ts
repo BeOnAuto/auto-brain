@@ -45,6 +45,7 @@ const asAProcess: SpawnSyncOptionsWithStringEncoding = {
 const badArguments: ReadonlyArray<readonly [readonly string[], string]> = [
   [['--id', 'ci-1'], '--org: Missing key'],
   [['--org', 'a b'], '--org: Expected a string matching'],
+  [['--org', 'local'], '--org: This org id is reserved for local mode'],
   [['--org', 'acme', '--id', 'CI_1'], '--id: Expected a string matching'],
   [['--org', 'acme', '--permissions', 'org:read,admin'], '--permissions: Expected "org:read"'],
   [['--org', 'acme', '--brains', 'Alpha'], '--brains: Expected a string matching'],

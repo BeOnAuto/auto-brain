@@ -4,7 +4,8 @@ import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/ser
 import { requestBodyLimit } from '../operations/request-body.ts';
 import { problemOf, problemResponse, type Problem } from '../problem/problem.ts';
 import type { RegisterRoutes, RouteHandler } from '../routes.ts';
-import { authInfoFor } from './caller-hand-off.ts';
+import { authInfoFor, type BrainCall, type OrgCall } from './caller-hand-off.ts';
+import { droppedArgumentsOf } from './dropped-arguments.ts';
 import {
   brainServerFactory,
   catalogServerFactory,
@@ -32,6 +33,15 @@ function rejectionOf(caller: CallerIdentity, org: string, brain: string | undefi
   return brain === undefined || canAccessBrain(caller.brains, brain) ? undefined : anotherBrain;
 }
 
+async function handedOff(
+  fetchMcp: FetchMcp,
+  request: Request,
+  call: Omit<OrgCall, 'dropped'> | Omit<BrainCall, 'dropped'>,
+): Promise<Response> {
+  const dropped = await droppedArgumentsOf(request);
+  return fetchMcp(request, { authInfo: authInfoFor({ ...call, dropped }) });
+}
+
 function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
   return (c) => {
     const org = String(c.req.param('org'));
@@ -43,15 +53,14 @@ function endpoint(fetchMcp: FetchMcp, scope: OperationScope): RouteHandler {
     }
     const requestId = c.get('requestId');
     const call = brain === undefined ? { caller, org, requestId } : { caller, org, brain, requestId };
-    return fetchMcp(c.req.raw, { authInfo: authInfoFor(call) });
+    return handedOff(fetchMcp, c.req.raw, call);
   };
 }
 
 function ownOrgEndpoint(fetchMcp: FetchMcp): RouteHandler {
   return (c) => {
     const { org, callerIn } = c.get('principal');
-    const call = { caller: callerIn(org), org, requestId: c.get('requestId') };
-    return fetchMcp(c.req.raw, { authInfo: authInfoFor(call) });
+    return handedOff(fetchMcp, c.req.raw, { caller: callerIn(org), org, requestId: c.get('requestId') });
   };
 }
 
