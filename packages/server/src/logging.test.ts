@@ -4,7 +4,16 @@ import { fileURLToPath } from 'node:url';
 import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { logAccessMode, logIncident, logMcpError, logProviderMessage } from './logging.ts';
+import {
+  logAccessMode,
+  logIncident,
+  logMcpError,
+  logProviderMessage,
+  logTemporal,
+  logUnsettled,
+  logWorkflowsNotOffered,
+  logWorkflowsOffered,
+} from './logging.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
 
 async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
@@ -80,6 +89,48 @@ describe('logIncident', () => {
       '"annotations":{"incident":"incident-2","operation":"add_note","org":"acme","brain":"alpha","caller":"acme-admin"}',
     );
     expect(line).toContain('not an error');
+  });
+});
+
+describe('the workflow logs', () => {
+  it('say whether workflows are offered, and with which Temporal server, namespace and task queue', async () => {
+    const offered = await linesLoggedBy(
+      logWorkflowsOffered({ address: 'temporal:7233', namespace: 'acme', taskQueue: 'brains' }),
+    );
+    const notOffered = await linesLoggedBy(logWorkflowsNotOffered);
+
+    expect(offered).toEqual([
+      expect.stringContaining(
+        '"message":"Workflows are offered with Temporal at temporal:7233, namespace acme, task queue brains","level":"INFO"',
+      ),
+    ]);
+    expect(notOffered).toEqual([
+      expect.stringContaining('"message":"Workflows are not offered because TEMPORAL_ADDRESS is unset","level":"INFO"'),
+    ]);
+  });
+
+  it('report an execution settling left started as an error with its org, brain, id and reason only', async () => {
+    const [line] = await linesLoggedBy(
+      logUnsettled({ org: 'acme', brain: 'alpha', executionId: 'e-1', reason: 'The ledger has no such execution' }),
+    );
+
+    expect(line).toContain('"message":"An execution stays started because settling it failed","level":"ERROR"');
+    expect(line).toContain(
+      '"annotations":{"org":"acme","brain":"alpha","execution_id":"e-1","reason":"The ledger has no such execution"}',
+    );
+  });
+
+  it("pass on Temporal's warnings and errors at their level, with the fields Temporal gave", async () => {
+    const lines = [
+      ...(await linesLoggedBy(logTemporal({ level: 'WARN', message: 'Activity failed', context: { attempt: 2 } }))),
+      ...(await linesLoggedBy(logTemporal({ level: 'ERROR', message: 'Worker failed', context: {} }))),
+    ];
+
+    expect(lines).toEqual([
+      expect.stringContaining('"message":"Temporal reported: Activity failed","level":"WARN"'),
+      expect.stringContaining('"message":"Temporal reported: Worker failed","level":"ERROR"'),
+    ]);
+    expect(lines[0]).toContain('"annotations":{"attempt":2}');
   });
 });
 

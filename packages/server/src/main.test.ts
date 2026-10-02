@@ -27,6 +27,10 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
     'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',
   ],
   [
+    { TEMPORAL_ADDRESS: 'temporal:7233', TEMPORAL_TLS: 'sometimes' },
+    'temporal_settings_invalid: The Temporal settings are invalid. TEMPORAL_TLS: Expected true or false',
+  ],
+  [
     { MODEL_ALIASES: '{"fast":"gemini"}' },
     'model_settings_invalid: The model settings are invalid. MODEL_ALIASES: /fast: An alias and its target are each written provider/model',
   ],
@@ -59,12 +63,14 @@ const unconfiguredProviders = [
   'Model provider vertex-anthropic is not configured; it needs GOOGLE_VERTEX_PROJECT and GOOGLE_VERTEX_LOCATION',
 ];
 
+const workflowsNotOffered = 'Workflows are not offered because TEMPORAL_ADDRESS is unset';
+
 function messagesOf(stderr: string): readonly string[] {
   return logLines(stderr).map(({ message }) => message);
 }
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
-  return [expect.stringMatching(/^Local mode is on: /u), ...unconfiguredProviders, ...after];
+  return [expect.stringMatching(/^Local mode is on: /u), ...unconfiguredProviders, workflowsNotOffered, ...after];
 }
 
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
@@ -142,7 +148,10 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
     expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
-    expect(logLines(child.output().stderr).map(({ message }) => message)).toEqual(unconfiguredProviders);
+    expect(logLines(child.output().stderr).map(({ message }) => message)).toEqual([
+      ...unconfiguredProviders,
+      workflowsNotOffered,
+    ]);
   });
 
   it.each(invalidSettings)(
