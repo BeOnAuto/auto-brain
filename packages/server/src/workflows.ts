@@ -26,7 +26,7 @@ export async function serveWorkflows(
   const served = [...primitives, makeOrchestration({ client })];
   const catalog = makeCatalog([...brainOperations, ...makeSpecOperations(served), defineSendExecutionEvent(client)]);
   const dispatcher = makeDispatcher([]);
-  const executeSpec = defineExecuteSpec(served);
+  const executeSpec = defineExecuteSpec(primitives);
   const worker = startWorkflowWorker({ runtime, settings, dispatcher, executeSpec, workflowBundle });
   return { routes: [...routesFor(runtime, catalog, dispatcher), closing], stopWork: worker.stop };
 }
