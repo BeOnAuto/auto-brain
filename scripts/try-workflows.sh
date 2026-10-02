@@ -5,7 +5,7 @@ usage='Usage: scripts/try-workflows.sh <base-url> <provider/model>'
 base_url="${1:?$usage}"
 model="${2:?$usage}"
 org="${AUTO_BRAIN_ORG:-demo}"
-brain="try-$(date +%s)"
+brain="try-$(date +%s)-$RANDOM$RANDOM"
 headers=(--header 'content-type: application/json')
 if [ -n "${AUTO_BRAIN_KEY:-}" ]; then
   headers+=(--header "authorization: Bearer $AUTO_BRAIN_KEY")
@@ -70,6 +70,10 @@ call --data "$(jq --null-input --arg source "$welcome" '{name: "welcome", source
   "$brains/$brain/specs/orchestration" > /dev/null
 started="$(call --data '{"input": {"name": "Ada"}}' "$brains/$brain/specs/orchestration/welcome/execute")"
 execution_id="$(jq --raw-output .execution_id <<< "$started")"
-call --data '{"event": {"type": "com.example.customer.replied", "data": "Thank you!"}}' \
-  "$brains/$brain/executions/$execution_id/events" > /dev/null
+if ! call --data '{"event": {"type": "com.example.customer.replied", "data": "Thank you!"}}' \
+  "$brains/$brain/executions/$execution_id/events" > /dev/null; then
+  printf 'The workflow ended before it could take the reply; it ended so:\n' >&2
+  settled "$execution_id" | jq .
+  exit 1
+fi
 settled "$execution_id" | jq .
