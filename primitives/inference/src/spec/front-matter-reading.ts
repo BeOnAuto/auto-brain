@@ -23,6 +23,8 @@ const frontMatterNesting = 72;
 
 const tooDeep = `The front matter may nest at most ${frontMatterNesting} levels`;
 
+const stackOverflow = 'Maximum call stack size exceeded';
+
 interface Place {
   readonly pointer: string;
   readonly depth: number;
@@ -125,7 +127,7 @@ function yamlIssues(errors: readonly YamlError[], lineAt: (offset: number) => nu
   const issues: readonly DocumentIssue[] = errors.map(({ code, pos, message }: YamlError) => ({
     line: lineAt(pos[0]),
     pointer: '',
-    detail: code === 'RESOURCE_EXHAUSTION' ? tooDeep : message,
+    detail: code === 'RESOURCE_EXHAUSTION' || message === stackOverflow ? tooDeep : message,
   }));
   return [...new Map(issues.map((issue) => [`${issue.line} ${issue.detail}`, issue])).values()];
 }

@@ -8,6 +8,7 @@ coverage
 !.env.example
 .DS_Store
 .idea
+.claude/worktrees/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json

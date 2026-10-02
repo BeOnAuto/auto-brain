@@ -14,7 +14,8 @@
 ## Commands
 
 ```bash
-pnpm dev               # server with node --watch
+pnpm dev               # Temporal's dev server, then the server, restarted on every save
+pnpm dev:lean          # the server alone, restarted on every save, without workflows
 pnpm --filter @beonauto/server container:build   # build the image locally
 pnpm test:watch        # every package's tests in one Vitest watch process
 pnpm typecheck:watch   # TypeScript 7 over the whole repo

@@ -2,6 +2,7 @@
   "$schema": "./node_modules/turbo/schema.json",
   "ui": "stream",
   "agentGuidance": false,
+  "globalPassThroughEnv": ["TMPDIR"],
   "globalDependencies": ["tsconfig.base.json", ".oxlintrc.json", "vitest.shared.ts", ".nvmrc", "pnpm-lock.yaml"],
   "tasks": {
     "transit": {

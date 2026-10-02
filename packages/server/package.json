@@ -5,7 +5,8 @@
   "license": "Elastic-2.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch --env-file=dev.env src/main.ts",
+    "dev": "node dev.ts",
+    "dev:lean": "node dev.ts --lean",
     "start": "node src/main.ts",
     "container:build": "docker build --file Dockerfile --tag beonauto/auto-brain:local ../..",
     "container:run": "docker run --rm --publish 8080:8080 beonauto/auto-brain:local",
