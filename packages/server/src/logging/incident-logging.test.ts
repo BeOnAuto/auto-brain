@@ -1,9 +1,9 @@
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { linesLoggedBy } from '../testing/logged-lines.ts';
 import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from '../testing/spawned-server.ts';
 import { logIncident } from './logging.ts';
 
@@ -11,15 +11,6 @@ const serveWithSelfCausedError = fileURLToPath(new URL('../testing/serve-with-se
 
 const selfCaused = new Error('an error whose cause is itself');
 selfCaused.cause = selfCaused;
-
-async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
-  const lines: string[] = [];
-  const capture = Logger.map(Logger.formatJson, (line: string) => {
-    lines.push(line);
-  });
-  await Effect.runPromise(effect.pipe(Effect.provide(Logger.layer([capture]))));
-  return lines;
-}
 
 async function stderrOnceItContains(child: SpawnedServer, text: string, attemptsLeft = 40): Promise<string> {
   const { stderr } = child.output();

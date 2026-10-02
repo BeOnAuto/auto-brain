@@ -1,5 +1,5 @@
 import type { AccessMode } from '@beonauto/identity';
-import type { ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
+import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
 import type { Incident } from '@beonauto/operations';
 import { Cause, Effect, Logger, type Layer } from 'effect';
 
@@ -188,5 +188,11 @@ export function logProviderMessage({
 }: ProviderMessageReport): Effect.Effect<void> {
   return Effect.logWarning(`Model provider ${provider} answered with an error`).pipe(
     Effect.annotateLogs({ provider, model, status, execution_id, provider_message: message }),
+  );
+}
+
+export function logOperatorHint({ provider, model, hint, execution_id }: OperatorHintReport): Effect.Effect<void> {
+  return Effect.logWarning(`Model provider ${provider} could not be called: ${hint}`).pipe(
+    Effect.annotateLogs({ provider, model, execution_id }),
   );
 }

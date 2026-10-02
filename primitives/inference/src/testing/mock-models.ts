@@ -2,6 +2,7 @@ import type { MockLanguageModelV4 } from 'ai/test';
 import { Effect, Result } from 'effect';
 
 import { generation } from '../adapter/generation.ts';
+import type { ReportOperatorHint } from '../adapter/model-access-options.ts';
 import { modelResolution } from '../adapter/model-resolution.ts';
 import { installSdkGlobals } from '../adapter/sdk-globals.ts';
 import type { ModelFailure } from '../failure/model-failure.ts';
@@ -25,7 +26,7 @@ export function generatedText(text: string): GenerateResult {
   };
 }
 
-export function mockGeneration(model: () => MockLanguageModelV4) {
+export function mockGeneration(model: () => MockLanguageModelV4, reportHint: ReportOperatorHint = () => Effect.void) {
   installSdkGlobals();
   const status = { configured: ['mock'], unconfigured: [] };
   const generate = generation(modelResolution(new Map([['mock', model]]), new Map(), status), {
@@ -33,6 +34,7 @@ export function mockGeneration(model: () => MockLanguageModelV4) {
     showsProviderMessages: () => true,
     scrub: (text) => text,
     report: () => Effect.void,
+    reportHint,
     admitsOptions: () => Result.void,
   });
   return {

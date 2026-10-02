@@ -10,6 +10,7 @@ import { defaultServerOptions, servedBy, type ServerOptions } from '../lifecycle
 import {
   logIncident,
   logModelProviders,
+  logOperatorHint,
   logProviderMessage,
   logsToStderr,
   logWorkflowsNotOffered,
@@ -52,5 +53,5 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
 }
 
 export const compositionRoot = compositionRootWith((settings) =>
-  makeModelAccess(settings, { reportProviderMessage: logProviderMessage }),
+  makeModelAccess(settings, { reportProviderMessage: logProviderMessage, reportOperatorHint: logOperatorHint }),
 );

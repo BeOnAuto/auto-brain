@@ -57,7 +57,7 @@ const outbound: Recognizer = (error, { provider, configured }) => {
   return error.reason === 'credential_lookup_failed'
     ? credentialsUnavailable(provider)
     : new ProviderNotConfigured({
-        detail: `The TLS certificate of ${provider} is not trusted; add its certificate authority with NODE_EXTRA_CA_CERTS`,
+        detail: `The TLS certificate of ${provider} is not trusted by this server; its operator must add the certificate authority`,
         provider,
         configured,
         missing: ['NODE_EXTRA_CA_CERTS'],
@@ -126,9 +126,18 @@ const unreadableResponse: Recognizer = (error, { provider }) =>
     ? new ProviderUnavailable({ detail: `The response of ${provider} could not be read`, provider, status: null })
     : null;
 
+function isMissingSetting(error: unknown): error is LoadAPIKeyError | LoadSettingError {
+  return LoadAPIKeyError.isInstance(error) || LoadSettingError.isInstance(error);
+}
+
 const missingSetting: Recognizer = (error, { provider, configured }) =>
-  LoadAPIKeyError.isInstance(error) || LoadSettingError.isInstance(error)
-    ? new ProviderNotConfigured({ detail: `${provider} is missing a setting`, provider, configured, missing: [] })
+  isMissingSetting(error)
+    ? new ProviderNotConfigured({
+        detail: `${provider} is missing a setting on this server; its operator must add it`,
+        provider,
+        configured,
+        missing: [],
+      })
     : null;
 
 const recognizers: readonly Recognizer[] = [
@@ -162,6 +171,16 @@ export function classified(error: unknown, context: FailureContext): ModelFailur
     }
   }
   return new UnclassifiedModelError(context.provider, kindOf(attempt));
+}
+
+export function operatorHintOf(error: unknown, provider: string, scrub: (text: string) => string): string | null {
+  const attempt = lastAttempt(error);
+  if (attempt instanceof OutboundFailure && attempt.reason === 'untrusted_certificate') {
+    return `The TLS certificate of ${provider} is not trusted; add its certificate authority with NODE_EXTRA_CA_CERTS`;
+  }
+  return isMissingSetting(attempt)
+    ? `${provider} is missing a setting: ${scrub(attempt.message.trim()).slice(0, mostReportedCharacters)}`
+    : null;
 }
 
 export function providerTextOf(error: unknown, scrub: (text: string) => string): ProviderText | null {

@@ -5,9 +5,25 @@ import type { ModelRequest } from '../model/model-request.ts';
 import type { ModelResult } from '../model/model-result.ts';
 import { checkedRequest } from '../model/request-checks.ts';
 import type { CallPolicy } from './call-policy.ts';
-import { settledCall } from './call-settling.ts';
-import type { ModelResolution } from './model-resolution.ts';
+import { settledCall, type CallReports } from './call-settling.ts';
+import type { ModelResolution, ModelTarget } from './model-resolution.ts';
 import { UnclassifiedModelError } from './unclassified-model-error.ts';
+
+function reportsOf(
+  policy: CallPolicy,
+  { provider }: ModelTarget,
+  { model, execution_id }: ModelRequest,
+  { providerText, operatorHint }: CallReports,
+): Effect.Effect<void> {
+  const call = { provider, model, execution_id: execution_id ?? null };
+  return Effect.all(
+    [
+      providerText === null ? Effect.void : policy.report({ ...call, ...providerText }),
+      operatorHint === null ? Effect.void : policy.reportHint({ ...call, hint: operatorHint }),
+    ],
+    { discard: true },
+  );
+}
 
 export function generation(
   resolve: ModelResolution,
@@ -18,19 +34,12 @@ export function generation(
     const target = yield* Effect.fromResult(resolve(request.model));
     yield* Effect.fromResult(policy.admitsOptions(target.provider, request.provider_options));
     const started = yield* Clock.currentTimeMillis;
-    const { settled, providerText } = yield* Effect.promise((interruption: Readonly<AbortSignal>) =>
+    const call = yield* Effect.promise((interruption: Readonly<AbortSignal>) =>
       settledCall(target, request, interruption, policy),
     );
     const finished = yield* Clock.currentTimeMillis;
-    if (providerText !== null) {
-      yield* policy.report({
-        provider: target.provider,
-        model: request.model,
-        status: providerText.status,
-        message: providerText.message,
-        execution_id: request.execution_id ?? null,
-      });
-    }
+    yield* reportsOf(policy, target, request, call);
+    const { settled } = call;
     if (Result.isSuccess(settled)) {
       const result: ModelResult = { ...settled.success, duration_ms: finished - started };
       return result;

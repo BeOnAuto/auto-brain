@@ -36,7 +36,7 @@ describe('an execution with provider options for a gateway', () => {
       Exit.fail(
         new Conflict({
           detail:
-            'The gateway internal does not allow the provider option metadata (/provider_options/internal/metadata: Not in the allowed_provider_options of internal); update the spec',
+            'The gateway internal does not allow the provider option metadata (/provider_options/internal/metadata: The gateway internal does not allow this option); update the spec',
         }),
       ),
     );

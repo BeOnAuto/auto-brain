@@ -141,7 +141,7 @@ NODE_EXTRA_CA_CERTS=/etc/ssl/certs/internal-ca.pem
 - The AWS credential chain makes its STS and SSO calls with agents of its own; when `NODE_USE_ENV_PROXY=1` is set, this package gives them the same proxy settings.
 - Google's token client reads `HTTPS_PROXY` and `NO_PROXY` itself and matches `NO_PROXY` entries only as exact host names or as suffixes that start with `.`; write the entries that way. Azure's identity library reads them itself too.
 - The cloud credential endpoints must not go through the proxy: `169.254.169.254` (EC2, GCE and Azure instance metadata), `169.254.170.2` (ECS task roles), `169.254.170.23` (EKS Pod Identity) and `metadata.google.internal`.
-- `NODE_EXTRA_CA_CERTS` adds the certificate authority to every TLS connection Node makes. A certificate that is still not trusted fails as `provider_not_configured` naming `NODE_EXTRA_CA_CERTS`, and is never retried.
+- `NODE_EXTRA_CA_CERTS` adds the certificate authority to every TLS connection Node makes. A certificate that is still not trusted fails as `provider_not_configured`, and is never retried. The caller is told that the provider's certificate is not trusted by this server and that its operator must add the certificate authority; the operator gets the hint naming `NODE_EXTRA_CA_CERTS` (see [Operator hints](#operator-hints)).
 
 Mutual TLS to the model endpoints is not supported.
 
@@ -248,6 +248,22 @@ In case a provider echoes them, what the caller and the operator get has every s
 
 Only `spec_invalid` can carry provider text. The other failures are built from the provider prefix, the HTTP status, a `retry-after` header and the answer's finish reason and usage.
 
+### Operator hints
+
+A failure that only the operator can fix tells the caller what happened and that the operator must act, and never names a setting. What to set goes to the operator: `makeModelAccess` takes an optional `reportOperatorHint`, which receives the `provider`, the `model` as the spec names it, the `hint` and the `execution_id`, for a provider certificate this server does not trust and for a setting the AI SDK found missing when it called the provider, in the SDK's words. The server logs it as a warning:
+
+```json
+{
+  "message": "Model provider gateway could not be called: The TLS certificate of gateway is not trusted; add its certificate authority with NODE_EXTRA_CA_CERTS",
+  "level": "WARN",
+  "annotations": {
+    "provider": "gateway",
+    "model": "gateway/llama-3.3-70b",
+    "execution_id": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"
+  }
+}
+```
+
 ## Answers that are JSON
 
 An answer schema is a JSON Schema document, draft 2020-12, or draft-07 when `$schema` says so or the document uses `definitions` without `$defs`. `compileAnswerSchema(document)` checks it and gives an `AnswerSchema`, or issues with JSON pointers into the document. The answer is validated here, against the schema as written, whatever the provider enforced. The validator is Effect's JSON Schema importer: it compiles a schema into data, not code, and it rejects regular expressions.
@@ -309,7 +325,7 @@ Effect.runPromise(decide.pipe(Effect.provide(languageModelLayer(process.env))));
 
 A request has `model`, optional `instructions`, `messages` (roles `user` and `assistant`, each with text parts), `output`, `settings` (`max_output_tokens`, and optionally `temperature`, `top_p`, `seed`, `stop_sequences` and `reasoning`), optional `provider_options`, `timeout_ms`, `signal` and `retries`. Some providers drop sampling settings for newer models and say so in `warnings`. `provider_options` passes options to the provider, keyed by the AI SDK's namespace for it: `anthropic`, `openai`, `azure`, `google`, `vertex`, `googleVertex`, `amazonBedrock`, `bedrock`, or the gateway's name. A call fails as `spec_invalid` before any provider is called when it holds a namespace no configured provider reads, or an option for a gateway its `allowed_provider_options` does not list; which options of the built-in providers a spec may set is checked when the spec is parsed (see [Provider options](#provider-options)). `requestIssues(request)` gives the problems of a request before it is sent.
 
-`makeModelAccess(settings, options)` builds the same model and also returns `status`. Its options inject a `fetch` and credential sources (`aws`, `google`, `azure`), which is how tests run without a network and how per-tenant credentials will be added, and `reportProviderMessage`, which receives the [provider messages](#provider-messages) a caller does not see. A request may carry an `execution_id`, which only that report uses; the inference primitive sets it to the execution's id.
+`makeModelAccess(settings, options)` builds the same model and also returns `status`. Its options inject a `fetch` and credential sources (`aws`, `google`, `azure`), which is how tests run without a network and how per-tenant credentials will be added, `reportProviderMessage`, which receives the [provider messages](#provider-messages) a caller does not see, and `reportOperatorHint`, which receives the [operator hints](#operator-hints). A request may carry an `execution_id`, which only those reports use; the inference primitive sets it to the execution's id.
 
 ## Testing
 
@@ -599,7 +615,7 @@ The spec operations answer every rejection as a problem document, and record it 
 | The spec sets a provider option its gateway does not allow                                           | `conflict`, naming the option; the gateway is not called                                                                                                   | 409  |
 | A JSON answer is cut off at `max_output_tokens`                                                      | `conflict`, saying to raise `config.max_output_tokens`                                                                                                     | 409  |
 | The answer leaves no room in the 1 MiB an execution records                                          | `conflict`, saying to lower `config.max_output_tokens`                                                                                                     | 409  |
-| The provider is not configured                                                                       | `unavailable`, naming the provider and the settings it lacks                                                                                               | 503  |
+| The provider is not configured, or its certificate is not trusted                                    | `unavailable`, naming the provider, the configured providers and the aliases, or saying that the operator must act; never a setting                        | 503  |
 | The provider rejects the credentials                                                                 | `unavailable`, with the HTTP status                                                                                                                        | 503  |
 | The provider limits the rate of requests                                                             | `unavailable`, saying how many seconds to wait when it said                                                                                                | 503  |
 | The provider cannot be reached or cannot serve now, or does not answer in time                       | `unavailable`, saying to try again later                                                                                                                   | 503  |

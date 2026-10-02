@@ -1,12 +1,13 @@
 import type { ModelRequest } from '../model/model-request.ts';
 import type { ProviderOptionsCheck } from './gateway-options.ts';
-import type { ReportProviderMessage } from './model-access-options.ts';
+import type { ReportOperatorHint, ReportProviderMessage } from './model-access-options.ts';
 
 export interface CallPolicy {
   readonly configured: readonly string[];
   readonly showsProviderMessages: (provider: string) => boolean;
   readonly scrub: (text: string) => string;
   readonly report: ReportProviderMessage;
+  readonly reportHint: ReportOperatorHint;
   readonly admitsOptions: ProviderOptionsCheck;
 }
 

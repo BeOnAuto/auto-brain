@@ -54,11 +54,11 @@ describe('the provider options of a gateway call', () => {
         issues: [
           {
             pointer: '/provider_options/my-gateway/mock_response',
-            detail: 'Not in the allowed_provider_options of my-gateway',
+            detail: 'The gateway my-gateway does not allow this option',
           },
           {
             pointer: '/provider_options/my-gateway/api_base',
-            detail: 'Not in the allowed_provider_options of my-gateway',
+            detail: 'The gateway my-gateway does not allow this option',
           },
         ],
       }),
