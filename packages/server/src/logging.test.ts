@@ -5,6 +5,7 @@ import { Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatPretty,
   logAccessMode,
   logIncident,
   logMcpError,
@@ -25,6 +26,15 @@ async function linesLoggedBy(effect: Effect.Effect<void>): Promise<readonly stri
   return lines;
 }
 
+async function prettyLinesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
+  const lines: string[] = [];
+  const capture = Logger.map(formatPretty, (line: string) => {
+    lines.push(line.replace(/^\d{2}:\d{2}:\d{2}\.\d{3} /u, '<time> '));
+  });
+  await Effect.runPromise(effect.pipe(Effect.provide(Logger.layer([capture]))));
+  return lines;
+}
+
 function syntaxErrorParsing(text: string): SyntaxError {
   try {
     JSON.parse(text);
@@ -37,6 +47,10 @@ function syntaxErrorParsing(text: string): SyntaxError {
 }
 
 const serveWithTestRoutes = fileURLToPath(new URL('testing/serve-with-test-routes.ts', import.meta.url));
+
+const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
+
+const loopback = { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ':memory:' };
 
 describe('logAccessMode', () => {
   it('warns that local mode trusts every request', async () => {
@@ -218,5 +232,68 @@ describe('logProviderMessage', () => {
     expect(line).toContain(
       '"annotations":{"provider":"gateway","model":"gateway/no-such-model","status":404,"execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","provider_message":"No fallback model group found"}',
     );
+  });
+});
+
+describe('the pretty log format', () => {
+  it('writes the local time, the level, the message and then the annotations on one line', async () => {
+    const lines = await prettyLinesLoggedBy(
+      logWorkflowsOffered({ address: 'temporal:7233', namespace: 'acme', taskQueue: 'brains' }),
+    );
+
+    expect(lines).toEqual([
+      '<time> INFO  Workflows are offered with Temporal at temporal:7233, namespace acme, task queue brains temporal_address=temporal:7233 namespace=acme task_queue=brains',
+    ]);
+  });
+
+  it('writes an annotation that is not one plain word as JSON', async () => {
+    const lines = await prettyLinesLoggedBy(
+      logUnsettled({ org: 'acme', brain: 'alpha', executionId: 'e-1', reason: 'The ledger has no such execution' }),
+    );
+
+    expect(lines).toEqual([
+      '<time> ERROR An execution stays started because settling it failed org=acme brain=alpha execution_id=e-1 reason="The ledger has no such execution"',
+    ]);
+  });
+
+  it('puts the source of a line first, in brackets, and writes a message that is not text as JSON', async () => {
+    const lines = await prettyLinesLoggedBy(
+      Effect.logWarning({ answered: false }).pipe(Effect.annotateLogs({ source: 'temporal', attempt: 2 })),
+    );
+
+    expect(lines).toEqual(['<time> WARN  [temporal] {"answered":false} attempt=2']);
+  });
+
+  it('writes the cause of an incident below its line, indented', async () => {
+    const [line] = await prettyLinesLoggedBy(
+      logIncident({ id: 'incident-1', original: new Error('the ledger is unreachable') }),
+    );
+
+    expect(line?.split('\n').slice(0, 2)).toEqual([
+      '<time> ERROR Unexpected error incident=incident-1',
+      '    Error: the ledger is unreachable',
+    ]);
+  });
+});
+
+describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('writes its logs as readable lines to stderr, and still exactly the listening line to stdout', async () => {
+    const child = spawnServer(mainModule, { ...loopback, LOCAL_MODE: 'true', LOG_FORMAT: 'pretty' });
+    const port = await child.port;
+    child.signal('SIGTERM');
+    await child.exited;
+
+    expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
+    expect(
+      child
+        .output()
+        .stderr.split('\n')
+        .map((line) => line.replace(/^\d{2}:\d{2}:\d{2}\.\d{3} /u, '')),
+    ).toEqual([
+      expect.stringMatching(/^WARN {2}Local mode is on: /u),
+      expect.stringMatching(/^WARN {2}No model provider is configured, .* providers=\[\{"provider":"anthropic",/u),
+      'INFO  Workflows are not offered because TEMPORAL_ADDRESS is unset',
+      '',
+    ]);
   });
 });

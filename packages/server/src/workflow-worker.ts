@@ -8,9 +8,9 @@ import {
 } from '@beonauto/orchestration';
 import type { TemporalSettings } from '@beonauto/orchestration/settings';
 import type { BrainOperation } from '@beonauto/specs';
-import { Effect } from 'effect';
+import { Effect, type Layer } from 'effect';
 
-import { jsonLogsToStderr, logTemporal, logUnsettled } from './logging.ts';
+import { logTemporal, logUnsettled } from './logging.ts';
 import { nestedExecutions, settlements } from './worker-dependencies.ts';
 import { runSupervised, superviseWorker, type StartWorker, type SupervisedWorker } from './worker-supervisor.ts';
 
@@ -20,6 +20,7 @@ export interface WorkflowWorkerParts {
   readonly dispatcher: Dispatcher;
   readonly executeSpec: BrainOperation;
   readonly workflowBundle: string | undefined;
+  readonly logs: Layer.Layer<never>;
 }
 
 export async function workflowCodeOf({ workflowBundle }: TemporalSettings): Promise<string | undefined> {
@@ -37,9 +38,10 @@ export function startWorkflowWorker({
   dispatcher,
   executeSpec,
   workflowBundle,
+  logs,
 }: WorkflowWorkerParts): SupervisedWorker {
   installTemporalRuntime((entry) => {
-    Effect.runFork(logTemporal(entry).pipe(Effect.provide(jsonLogsToStderr)));
+    Effect.runFork(logTemporal(entry).pipe(Effect.provide(logs)));
   });
   const start: StartWorker = (onFailure) =>
     runOrchestrationWorker({
@@ -52,5 +54,5 @@ export function startWorkflowWorker({
       onFailure,
       ...(workflowBundle === undefined ? {} : { workflowBundle }),
     });
-  return runSupervised(superviseWorker(start).pipe(Effect.provide(jsonLogsToStderr)));
+  return runSupervised(superviseWorker(start).pipe(Effect.provide(logs)));
 }

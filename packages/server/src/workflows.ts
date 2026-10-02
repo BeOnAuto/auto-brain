@@ -8,16 +8,21 @@ import { defineExecuteSpec, makeSpecOperations, type Primitive } from '@beonauto
 import type { Served } from './lifecycle.ts';
 import { routesFor } from './served-routes.ts';
 import { openWorkflowClient } from './workflow-client.ts';
-import { startWorkflowWorker, workflowCodeOf } from './workflow-worker.ts';
+import { startWorkflowWorker, workflowCodeOf, type WorkflowWorkerParts } from './workflow-worker.ts';
 
 function longestExecutionOf(primitives: readonly Primitive[]): number {
   return Math.max(1, ...primitives.map(({ longestExecutionMs }) => longestExecutionMs));
 }
 
+export interface WorkflowParts {
+  readonly settings: TemporalSettings;
+  readonly primitives: readonly Primitive[];
+  readonly logs: WorkflowWorkerParts['logs'];
+}
+
 export async function serveWorkflows(
   runtime: AppRuntime<DispatcherServices>,
-  settings: TemporalSettings,
-  primitives: readonly Primitive[],
+  { settings, primitives, logs }: WorkflowParts,
 ): Promise<Served> {
   const workflowBundle = await workflowCodeOf(settings);
   const { client, closing } = await openWorkflowClient(runtime, settings, {
@@ -27,6 +32,6 @@ export async function serveWorkflows(
   const catalog = makeCatalog([...brainOperations, ...makeSpecOperations(served), defineSendExecutionEvent(client)]);
   const dispatcher = makeDispatcher([]);
   const executeSpec = defineExecuteSpec(primitives);
-  const worker = startWorkflowWorker({ runtime, settings, dispatcher, executeSpec, workflowBundle });
+  const worker = startWorkflowWorker({ runtime, settings, dispatcher, executeSpec, workflowBundle, logs });
   return { routes: [...routesFor(runtime, catalog, dispatcher), closing], stopWork: worker.stop };
 }

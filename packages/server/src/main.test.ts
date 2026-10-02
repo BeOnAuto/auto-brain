@@ -22,6 +22,7 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
   [{ PORT: 'eighty' }, 'InvalidPortError: PORT must be an integer from 0 to 65535, received "eighty"'],
   [{ ALLOWED_ORIGINS: 'app.example.com' }, 'InvalidSettingsError: SchemaError(Expected an origin'],
   [{ API_KEYS: '[{"id":"ci-1"}]' }, 'InvalidApiKeysError: API_KEYS[0].org: Missing key'],
+  [{ LOG_FORMAT: 'fancy' }, 'InvalidSettingsError: SchemaError(Expected "json" | "pretty" at ["LOG_FORMAT"])'],
   [
     { HOST: '0.0.0.0', LOCAL_MODE: 'true' },
     'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',

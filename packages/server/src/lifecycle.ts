@@ -6,7 +6,7 @@ import { authenticatorFor } from '@beonauto/identity';
 import { Effect, Layer } from 'effect';
 
 import { createHttpServer, listen } from './http-server.ts';
-import { logAccessMode, jsonLogsToStderr, logIncident } from './logging.ts';
+import { logAccessMode, logIncident, logsToStderr, type LogFormat } from './logging.ts';
 import { readSettings, type Settings } from './settings.ts';
 import { shutDown } from './shutdown.ts';
 import { StartupError } from './startup-error.ts';
@@ -48,9 +48,9 @@ async function servedOf<R>(options: ServerOptions<R>, runtime: AppRuntime<R>, se
   }
 }
 
-async function startRuntime<R>(services: Layer.Layer<R>): Promise<AppRuntime<R>> {
+async function startRuntime<R>(services: Layer.Layer<R>, logFormat: LogFormat): Promise<AppRuntime<R>> {
   try {
-    return await makeAppRuntime(services.pipe(Layer.provideMerge(jsonLogsToStderr)));
+    return await makeAppRuntime(services.pipe(Layer.provideMerge(logsToStderr(logFormat))));
   } catch (failure) {
     throw new StartupError({ message: `The server's services could not start: ${String(failure)}` });
   }
@@ -59,7 +59,7 @@ async function startRuntime<R>(services: Layer.Layer<R>): Promise<AppRuntime<R>>
 export async function startServer<R>(environment: Environment, options: ServerOptions<R>): Promise<RunningServer> {
   const settings = readSettings(environment);
   const authenticator = authenticatorFor(settings);
-  const runtime = await startRuntime(options.runtimeLayer(settings));
+  const runtime = await startRuntime(options.runtimeLayer(settings), settings.logFormat);
   await runtime.run(logAccessMode(authenticator.mode, settings.localMode));
   const served = await servedOf(options, runtime, settings);
   const api = createApiHandler({

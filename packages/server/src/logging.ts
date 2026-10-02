@@ -1,9 +1,49 @@
 import type { AccessMode } from '@beonauto/identity';
 import type { ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
 import type { Incident } from '@beonauto/operations';
-import { Cause, Effect, Logger } from 'effect';
+import { Cause, Effect, Logger, type Layer } from 'effect';
 
-export const jsonLogsToStderr = Logger.layer([Logger.withConsoleError(Logger.formatJson)]);
+export type LogFormat = 'json' | 'pretty';
+
+interface LogEntry {
+  readonly message: unknown;
+  readonly level: string;
+  readonly timestamp: string;
+  readonly cause: string | undefined;
+  readonly annotations: Readonly<Record<string, unknown>>;
+}
+
+function twoDigits(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function clockOf(timestamp: string): string {
+  const date = new Date(timestamp);
+  const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => twoDigits(part)).join(':');
+  return `${time}.${String(date.getMilliseconds()).padStart(3, '0')}`;
+}
+
+function valueText(value: unknown): string {
+  return typeof value === 'string' && /^\S+$/u.test(value) ? value : JSON.stringify(value);
+}
+
+function prettyLine({ message, level, timestamp, cause, annotations }: LogEntry): string {
+  const { source, ...details } = annotations;
+  const line = [
+    clockOf(timestamp),
+    level.padEnd(5),
+    ...(source === undefined ? [] : [`[${valueText(source)}]`]),
+    typeof message === 'string' ? message : JSON.stringify(message),
+    ...Object.entries(details).map(([name, value]: readonly [string, unknown]) => `${name}=${valueText(value)}`),
+  ].join(' ');
+  return cause === undefined ? line : `${line}\n${cause.replaceAll(/^/gmu, '    ')}`;
+}
+
+export const formatPretty = Logger.map(Logger.formatStructured, prettyLine);
+
+export function logsToStderr(format: LogFormat): Layer.Layer<never> {
+  return Logger.layer([Logger.withConsoleError(format === 'json' ? Logger.formatJson : formatPretty)]);
+}
 
 const accessNotices: Readonly<Record<AccessMode, Effect.Effect<void>>> = {
   local: Effect.logWarning(

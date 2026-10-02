@@ -52,6 +52,7 @@ describe('readSettings', () => {
       apiKeys: undefined,
       ledgerFile: 'data/ledger.db',
       localMode: false,
+      logFormat: 'json',
     });
   });
 
@@ -63,6 +64,7 @@ describe('readSettings', () => {
       API_KEYS: JSON.stringify([entry]),
       LEDGER_FILE: '/data/ledger.db',
       LOCAL_MODE: 'true',
+      LOG_FORMAT: 'pretty',
       OPENAI_API_KEY: 'sk-test',
     });
 
@@ -74,15 +76,21 @@ describe('readSettings', () => {
       apiKeys: [entry],
       ledgerFile: '/data/ledger.db',
       localMode: true,
+      logFormat: 'pretty',
     });
   });
+});
 
+describe('readSettings with empty values', () => {
   it('treats empty variables as not set', () => {
-    expect(readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '', LEDGER_FILE: '', LOCAL_MODE: '' })).toMatchObject({
+    expect(
+      readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '', LEDGER_FILE: '', LOCAL_MODE: '', LOG_FORMAT: '' }),
+    ).toMatchObject({
       allowedOrigins: [],
       apiKeys: undefined,
       ledgerFile: 'data/ledger.db',
       localMode: false,
+      logFormat: 'json',
     });
   });
 
@@ -114,6 +122,13 @@ describe('readSettings rejects invalid settings', () => {
 
     expect(error).toMatchObject({ name: 'InvalidSettingsError' });
     expect(String(error)).toContain('LOCAL_MODE');
+  });
+
+  it.each(['text', 'JSON', 'logfmt'])('rejects LOG_FORMAT="%s", naming the formats it accepts', (value) => {
+    const error = errorFrom({ LOG_FORMAT: value });
+
+    expect(error).toMatchObject({ name: 'InvalidSettingsError' });
+    expect(String(error)).toBe('InvalidSettingsError: SchemaError(Expected "json" | "pretty"\n  at ["LOG_FORMAT"])');
   });
 
   it('rejects invalid API keys with the named error from the identity settings', () => {
