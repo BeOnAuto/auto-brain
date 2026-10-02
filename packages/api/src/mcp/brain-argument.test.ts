@@ -16,7 +16,7 @@ const Labelled = {
   additionalProperties: false,
 };
 
-describe('withBrainArgument', () => {
+describe('withBrainArgument on an object', () => {
   it('adds a required brain first to an object schema, keeping its fields', () => {
     expect(withBrainArgument(Labelled)).toEqual({
       type: 'object',
@@ -34,8 +34,10 @@ describe('withBrainArgument', () => {
       additionalProperties: false,
     });
   });
+});
 
-  it('adds a brain to every member of a union, inlining a member that refers to a definition', () => {
+describe('withBrainArgument on a union', () => {
+  it('adds a brain to every member, inlining a member that refers to a definition and dropping it', () => {
     const union = {
       type: 'object',
       anyOf: [{ $ref: '#/$defs/Labelled' }, { type: 'object', properties: { count: { type: 'integer' } } }],
@@ -43,11 +45,23 @@ describe('withBrainArgument', () => {
     };
 
     expect(withBrainArgument(union)).toEqual({
-      ...union,
+      type: 'object',
       anyOf: [
         { ...Labelled, properties: { brain: brainProperty, label: { type: 'string' } }, required: ['brain', 'label'] },
         { type: 'object', properties: { brain: brainProperty, count: { type: 'integer' } }, required: ['brain'] },
       ],
+    });
+  });
+
+  it('keeps the definitions the inlined members still refer to', () => {
+    const Tag = { type: 'string' };
+    const Tagged = { type: 'object', properties: { tag: { $ref: '#/$defs/Tag' } } };
+
+    expect(withBrainArgument({ anyOf: [{ $ref: '#/$defs/Tagged' }], $defs: { Tagged, Tag } })).toEqual({
+      anyOf: [
+        { type: 'object', properties: { brain: brainProperty, tag: { $ref: '#/$defs/Tag' } }, required: ['brain'] },
+      ],
+      $defs: { Tag },
     });
   });
 

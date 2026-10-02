@@ -1,7 +1,7 @@
 import { BrainIdSchema, rejected, type Rejected } from '@beonauto/operations';
 import { Option, Predicate, Result, Schema } from 'effect';
 
-import { inlinedRootOf, type JsonSchema } from './tool-schema.ts';
+import { inlinedRootOf, withoutUnreferencedDefinitions, type JsonSchema } from './tool-schema.ts';
 
 export interface BrainArgument {
   readonly brain: string;
@@ -35,7 +35,7 @@ function withBrainProperty(object: Readonly<JsonSchema>): JsonSchema {
   return { ...object, properties: { brain: brainProperty, ...properties }, required: ['brain', ...required] };
 }
 
-export function withBrainArgument(schema: Readonly<JsonSchema>): JsonSchema {
+function withBrainOnEveryMember(schema: Readonly<JsonSchema>): JsonSchema {
   return Option.match(unionOf(schema), {
     onNone: () => withBrainProperty(schema),
     onSome: ({ anyOf, $defs = {} }) => ({
@@ -43,6 +43,10 @@ export function withBrainArgument(schema: Readonly<JsonSchema>): JsonSchema {
       anyOf: anyOf.map((member) => withBrainProperty(inlinedRootOf({ schema: member, definitions: $defs }))),
     }),
   });
+}
+
+export function withBrainArgument(schema: Readonly<JsonSchema>): JsonSchema {
+  return withoutUnreferencedDefinitions(withBrainOnEveryMember(schema));
 }
 
 function withoutBrain(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
