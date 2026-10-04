@@ -1,4 +1,7 @@
 const introduction = [
+  'A spec of the orchestration primitive is a workflow: steps that run other specs of the brain, wait for events and',
+  'decide what happens next.',
+  "In conversation, call it a workflow; the primitive's name, `orchestration`, is what the tools take.",
   'Runs a workflow: deterministic steps that execute other specs of the brain, branch, loop, run in parallel,',
   'wait, retry and catch errors, durably, until they end.',
   'A spec document of orchestration is a YAML workflow in the Open Workflow Specification DSL 1.0.x (the CNCF',
