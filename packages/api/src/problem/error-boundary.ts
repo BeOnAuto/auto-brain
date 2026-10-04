@@ -1,4 +1,4 @@
-import { randomUUIDv7 } from 'node:crypto';
+import { randomUUIDv7 } from '@beonauto/operations';
 
 import { internalErrorProblem, problemResponse, type Problem } from './problem.ts';
 

@@ -1,6 +1,6 @@
-import { randomUUIDv7 } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import { randomUUIDv7 } from '@beonauto/operations';
 import { getRequestListener } from '@hono/node-server';
 
 import type { ApiOptions } from './api-options.ts';
