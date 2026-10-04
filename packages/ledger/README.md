@@ -28,6 +28,7 @@ Code that keeps its own streams, such as `@beonauto/workflow-engine`, uses the s
 - `EventStore.read(stream, after)` gives the events after version `after` and the version of the whole stream, so a reader that holds a snapshot at version `after` reads only the tail. Emmett answers a read past the end of a stream with version 0; `read` answers with `after` instead.
 - `eventAppenderOf(store)` encodes and appends events with an expected version, at most eight in one append, and fails with `VersionConflict` when another writer appended first.
 - `retriedOnVersionConflict(attempt)` runs a load-decide-append attempt again after a version conflict, up to three more times, and then fails with `Conflict`.
+- `decisionLoop(load, append, decider)` is the load-decide-append loop itself, the one `Ledger.execute` runs: it loads, decides, appends the decided events with the loaded version expected, retries with `retriedOnVersionConflict`, and answers with what the load gave, the events and the folded state. The ledger's load folds the whole stream; a caller with snapshots passes a load that folds a snapshot and its tail.
 
 ## Creating the layer
 
