@@ -6,6 +6,11 @@ const offers = providerNamespaces
   .map((namespace) => `${namespace}: ${offeredOptions(namespace).join(', ')}`)
   .join('; ');
 
+const naming = [
+  'A spec of the inference primitive is a prompt: instructions a language model follows to turn an input into an answer.',
+  "In conversation, call it a prompt; the primitive's name, `inference`, is what the tools take.",
+].join(' ');
+
 const calls = [
   'Calls a language model once per execution, with a prompt rendered from the input,',
   'and answers with the text of the model or with a JSON value that matches a schema.',
@@ -70,5 +75,5 @@ const rules = [
 ].join(' ');
 
 export function inferenceDescriptionFor(offered: OfferedModels): string {
-  return `${calls} ${offerOf(offered)} ${format}\n\n${inferenceExample}\n\n${rules}`;
+  return `${naming} ${calls} ${offerOf(offered)} ${format}\n\n${inferenceExample}\n\n${rules}`;
 }

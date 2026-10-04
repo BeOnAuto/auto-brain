@@ -6,6 +6,12 @@ const calls =
   'Calls a language model once per execution, with a prompt rendered from the input, and answers with the text of the model or with a JSON value that matches a schema.';
 
 describe('the description of inference on a server', () => {
+  it('opens by saying that a spec of inference is a prompt, and which name the tools take', () => {
+    expect(inferenceDescriptionFor({ providers: ['anthropic'], aliases: [] })).toMatch(
+      /^A spec of the inference primitive is a prompt: instructions a language model follows to turn an input into an answer. In conversation, call it a prompt; the primitive's name, `inference`, is what the tools take. Calls a language model/u,
+    );
+  });
+
   it('names the one gateway it calls models through, and how a model is written with it', () => {
     expect(inferenceDescriptionFor({ providers: ['gateway'], aliases: [] })).toContain(
       `${calls} This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>. A spec document is`,
