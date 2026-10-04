@@ -1,7 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
 import { brainOperations, ledgerBrainRegistry } from '@beonauto/brains';
 import { makeInference, makeModelAccess, type ModelAccess, type ModelSettings } from '@beonauto/inference';
-import { ledgerLayer } from '@beonauto/ledger';
+import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { IncidentReporter, type DispatcherServices } from '@beonauto/operations';
 import { makeSpecOperations, type Primitive } from '@beonauto/specs';
 import { Effect, Layer } from 'effect';

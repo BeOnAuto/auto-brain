@@ -1,0 +1,98 @@
+import { createApiKey } from '@beonauto/identity';
+import { describe, expect, it } from 'vitest';
+
+import { configuredServer, rejectedExecution, settingLines, stoppedOutput } from '../testing/configured-server.ts';
+import { spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
+
+const gatewayKey = 'gateway-key-SECRET-7f3a';
+
+const created = createApiKey({
+  id: 'ci-1',
+  org: 'acme',
+  permissions: ['org:read', 'org:write', 'brain:read', 'brain:write'],
+  brains: '*',
+});
+
+const fileText = `model_gateways:
+  - name: gateway
+    base_url: https://gateway.example.com/v1
+    api_key: \${GATEWAY_API_KEY}
+model_aliases:
+  anthropic/*: gateway/anthropic/*
+api_keys:
+  - ${JSON.stringify(created.entry)}
+allowed_origins:
+  - https://app.example.com
+`;
+
+function fromOrigin(port: number, origin: string): Promise<number> {
+  return fetch(`http://127.0.0.1:${port}/v1/orgs/acme/brains`, {
+    headers: { origin, authorization: `Bearer ${created.key}` },
+  }).then(({ status }) => status);
+}
+
+describe(
+  'a server with a configuration file and no variable for its settings',
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('takes its gateways, aliases, API keys and origins from the file, and says so once', async () => {
+      const { child, configFile } = configuredServer(fileText, { GATEWAY_API_KEY: gatewayKey });
+      const port = await child.port;
+
+      const unauthenticated = await rejectedExecution(port);
+      const rejected = await rejectedExecution(port, created.key);
+      const origins = {
+        listed: await fromOrigin(port, 'https://app.example.com'),
+        other: await fromOrigin(port, 'https://other.example'),
+      };
+      const stderr = await stoppedOutput(child);
+
+      expect({ unauthenticated: unauthenticated.status, rejected: rejected.body, origins }).toMatchObject({
+        unauthenticated: 401,
+        rejected: { detail: 'openai is not configured. Configured providers: gateway. Aliases: anthropic/*' },
+        origins: { listed: 200, other: 403 },
+      });
+      expect(settingLines(stderr)).toEqual([
+        `Settings read from the configuration file ${configFile}: MODEL_GATEWAYS, MODEL_ALIASES, API_KEYS, ALLOWED_ORIGINS`,
+      ]);
+      expect(stderr).not.toContain(gatewayKey);
+    });
+  },
+);
+
+describe('a server with settings in the environment', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('reads them as before, and says nothing of a configuration file, when CONFIG_FILE is not set', async () => {
+    const { child } = configuredServer(undefined, {
+      LOCAL_MODE: 'true',
+      MODEL_GATEWAYS: JSON.stringify([{ name: 'relay', base_url: 'https://relay.example.com/v1' }]),
+      MODEL_ALIASES: JSON.stringify({ 'house/fast': 'relay/llama-3.3-70b' }),
+    });
+
+    const rejected = await rejectedExecution(await child.port);
+    const stderr = await stoppedOutput(child);
+
+    expect(rejected.body).toMatchObject({
+      detail: 'openai is not configured. Configured providers: relay. Aliases: house/fast',
+    });
+    expect(settingLines(stderr)).toEqual([]);
+  });
+
+  it('lets a variable win over the file whole, and says once which settings it won', async () => {
+    const { child, configFile } = configuredServer(fileText, {
+      GATEWAY_API_KEY: gatewayKey,
+      API_KEYS: JSON.stringify([created.entry]),
+      MODEL_ALIASES: JSON.stringify({ 'house/fast': 'gateway/llama-3.3-70b' }),
+    });
+
+    const rejected = await rejectedExecution(await child.port, created.key);
+    const stderr = await stoppedOutput(child);
+
+    expect(rejected.body).toMatchObject({
+      detail: 'openai is not configured. Configured providers: gateway. Aliases: house/fast',
+    });
+    expect(settingLines(stderr)).toEqual([
+      `Settings read from the configuration file ${configFile}: MODEL_GATEWAYS, ALLOWED_ORIGINS`,
+      "Set both in the environment and in the configuration file, so the environment's value is used: MODEL_ALIASES, API_KEYS",
+    ]);
+  });
+});

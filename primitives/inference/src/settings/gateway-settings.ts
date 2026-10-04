@@ -31,6 +31,7 @@ interface GatewayReading {
 interface GatewayEntry {
   readonly name: string;
   readonly base_url: string;
+  readonly api_key?: string;
   readonly api_key_env?: string;
   readonly headers?: Readonly<Record<string, string>>;
   readonly query_params?: Readonly<Record<string, string>>;
@@ -60,20 +61,57 @@ const setting = 'MODEL_GATEWAYS';
 
 const gatewayName = /^[a-z][a-z0-9-]{0,31}$/u;
 
-const decodeGateways = Schema.decodeUnknownResult(
-  Schema.Array(
-    Schema.Struct({
-      name: Schema.String,
-      base_url: Schema.String,
-      api_key_env: Schema.optionalKey(Schema.String),
-      headers: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-      query_params: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-      structured_outputs: Schema.optionalKey(Schema.Boolean),
-      include_usage: Schema.optionalKey(Schema.Boolean),
-      expose_provider_messages: Schema.optionalKey(Schema.Boolean),
-      allowed_provider_options: Schema.optionalKey(Schema.Array(Schema.String)),
+const gatewayFields = {
+  name: Schema.String.annotate({
+    description:
+      'The provider prefix, such as gateway in gateway/llama-3.3-70b: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, unique, and not a built-in prefix',
+  }),
+  base_url: Schema.String.annotate({
+    description: 'The http or https URL that /chat/completions is appended to, such as https://gateway.example.com/v1',
+  }),
+  api_key: Schema.optionalKey(
+    Schema.String.annotate({
+      description:
+        'The key, sent as Authorization: Bearer <key>; in the configuration file a reference such as ${GATEWAY_API_KEY}',
     }),
   ),
+  headers: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.String).annotate({
+      description:
+        'Headers sent with every request, their values treated as secrets; in the configuration file a credential is a reference',
+    }),
+  ),
+  query_params: Schema.optionalKey(
+    Schema.Record(Schema.String, Schema.String).annotate({
+      description: 'Query parameters added to every request, their values treated as secrets',
+    }),
+  ),
+  structured_outputs: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description:
+        'true when the endpoint accepts response_format json_schema; otherwise JSON is asked for as json_object and the schema is only checked here. Default false',
+    }),
+  ),
+  include_usage: Schema.optionalKey(
+    Schema.Boolean.annotate({ description: 'Asks for usage in streamed responses. Default false' }),
+  ),
+  expose_provider_messages: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description: "true when the gateway's error messages are safe to show to the callers of a spec. Default false",
+    }),
+  ),
+  allowed_provider_options: Schema.optionalKey(
+    Schema.Array(Schema.String).annotate({
+      description:
+        'The top-level request body fields a spec may set for this gateway through provider_options, such as user and metadata. Default none',
+    }),
+  ),
+};
+
+export const ModelGatewaysSchema = Schema.Array(Schema.Struct(gatewayFields));
+
+const decodeGateways = Schema.decodeUnknownResult(
+  Schema.Array(Schema.Struct({ ...gatewayFields, api_key_env: Schema.optionalKey(Schema.String) })),
   strictly,
 );
 
@@ -102,16 +140,29 @@ const apiKeyOf = Effect.fnUntraced(function* (environment: Environment, name: st
     : yield* optionalSecret(name).parse(settingsFrom(environment)).pipe(Effect.orDie);
 });
 
+function keyProblems(
+  entry: GatewayEntry,
+  index: number,
+  named: Redacted.Redacted | undefined,
+): readonly SettingProblem[] {
+  if (entry.api_key !== undefined && entry.api_key_env !== undefined) {
+    return problem(setting, `/${index}/api_key: Set api_key or api_key_env, not both`);
+  }
+  return entry.api_key_env !== undefined && named === undefined
+    ? problem(setting, `/${index}/api_key_env: The variable it names is not set`)
+    : [];
+}
+
 const gatewayFrom = Effect.fnUntraced(function* (environment: Environment, entry: GatewayEntry, index: number) {
-  const api_key = yield* apiKeyOf(environment, entry.api_key_env);
-  const missingKey = entry.api_key_env !== undefined && api_key === undefined;
+  const named = yield* apiKeyOf(environment, entry.api_key_env);
+  const api_key = entry.api_key === undefined ? named : Redacted.make(entry.api_key);
   const read: ReadGateway = {
     problems: [
       ...urlProblems(setting, entry.base_url).map(({ detail }) => ({
         setting,
         detail: `/${index}/base_url: ${detail}`,
       })),
-      ...(missingKey ? problem(setting, `/${index}/api_key_env: The variable it names is not set`) : []),
+      ...keyProblems(entry, index, named),
       ...allowedOptionProblems(entry.allowed_provider_options ?? [], index),
     ],
     gateway: {

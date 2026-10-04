@@ -1,7 +1,7 @@
 import { Ledger } from '@beonauto/operations';
 import { Effect, ManagedRuntime, type Result } from 'effect';
 
-import { ledgerLayer } from '../index.ts';
+import { ledgerLayer } from '../sqlite3.ts';
 
 export interface OpenLedger {
   readonly ledger: Ledger['Service'];

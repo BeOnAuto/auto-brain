@@ -315,6 +315,13 @@ importers:
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
   packages/config:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -506,6 +513,9 @@ importers:
 
   primitives/orchestration:
     dependencies:
+      '@beonauto/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../../packages/operations

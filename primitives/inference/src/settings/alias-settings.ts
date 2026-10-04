@@ -13,7 +13,9 @@ type Aliases = Readonly<Record<string, string>>;
 
 const setting = 'MODEL_ALIASES';
 
-const decodeAliases = Schema.decodeUnknownResult(Schema.Record(Schema.String, Schema.String), strictly);
+export const ModelAliasesSchema = Schema.Record(Schema.String, Schema.String);
+
+const decodeAliases = Schema.decodeUnknownResult(ModelAliasesSchema, strictly);
 
 function referenceProblems(alias: string, target: string): readonly SettingProblem[] {
   if (!wildcardsAreTrailing(alias, target)) {

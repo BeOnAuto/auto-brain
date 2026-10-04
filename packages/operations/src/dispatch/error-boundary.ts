@@ -1,8 +1,7 @@
-import { randomUUIDv7 } from 'node:crypto';
-
 import { Cause, Effect, Predicate } from 'effect';
 
 import { failed, type Succeeded, type Failed, type Outcome, type Rejected } from '../outcome/outcome.ts';
+import { randomUUIDv7 } from '../uuid/uuid-v7.ts';
 import { IncidentReporter, type CallSummary, type Incident } from './incident-reporter.ts';
 
 const reporterPatience = '2 seconds';

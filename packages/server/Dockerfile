@@ -39,6 +39,7 @@ WORKDIR /app
 RUN npm install --global --no-fund --no-audit pnpm@12.8.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches/
+COPY packages/config/package.json packages/config/
 COPY packages/operations/package.json packages/operations/
 COPY packages/specs/package.json packages/specs/
 COPY primitives/orchestration/package.json primitives/orchestration/

@@ -54,6 +54,8 @@ export {
 } from './schema/answer-schema.ts';
 export type { SchemaIssue } from './schema/json-bounds.ts';
 export type { PortabilityIssue } from './schema/schema-portability.ts';
+export { ModelAliasesSchema } from './settings/alias-settings.ts';
+export { ModelGatewaysSchema } from './settings/gateway-settings.ts';
 export {
   readModelSettings,
   ModelSettingsInvalid,

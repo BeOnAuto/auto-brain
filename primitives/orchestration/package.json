@@ -20,6 +20,7 @@
     "workflow-bundle:check": "node check-workflow-bundle.ts"
   },
   "dependencies": {
+    "@beonauto/config": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/specs": "workspace:*",
     "@gabrielbryk/jq-ts": "1.7.0",

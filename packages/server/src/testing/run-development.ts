@@ -13,6 +13,7 @@ const TestSetupSchema = Schema.Struct({
   envFiles: Schema.Array(Schema.String),
   sourceDirectory: Schema.String,
   serverEntry: Schema.String,
+  configFile: Schema.String,
   pidsFile: Schema.String,
   temporal: Schema.optional(Schema.Struct({ port: Schema.Number, uiPort: Schema.Number, stateFile: Schema.String })),
   obtain: Schema.Union([
@@ -55,6 +56,7 @@ process.exitCode = await runDevelopment(process, {
   envFiles: setup.envFiles,
   sourceDirectories: [setup.sourceDirectory],
   serverEntry: setup.serverEntry,
+  configFile: setup.configFile,
   temporal: setup.temporal,
   obtainCli: obtainBy(setup),
   startChild: recordingPidsIn(setup.pidsFile),

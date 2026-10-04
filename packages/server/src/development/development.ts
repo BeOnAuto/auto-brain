@@ -1,12 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { parseEnv } from 'node:util';
-
 import type { Environment } from '@beonauto/config';
 
 import { startReaperOf, type ChildCommand, type RunningChild, type Written } from './children.ts';
 import type { DevelopmentRun, DevelopmentSetup } from './development-run.ts';
 import { readyNotice } from './ready-notice.ts';
 import { runnerLogFor } from './runner-log.ts';
+import { presentEnvFiles, rootConfigFile, settingsOf, watchedConfigFile } from './settings-files.ts';
 import { sourcesOf, watchSources, type SourceChanges } from './source-changes.ts';
 import { stopRequestedThrough, type DevelopmentStopSignal } from './stop-signals.ts';
 import { temporalFor, type DevelopmentTemporal } from './temporal-setup.ts';
@@ -22,15 +20,15 @@ type Event = 'stop' | { readonly changed: string } | { readonly server: string }
 
 const never = Promise.withResolvers<string>().promise;
 
-function presentEnvFiles({ envFiles }: DevelopmentSetup): readonly string[] {
-  return envFiles.filter((envFile) => existsSync(envFile));
-}
-
 function serverCommand(run: DevelopmentRun, { temporal: { address }, output }: Serving): ChildCommand {
   return {
     command: run.execPath,
     args: [...presentEnvFiles(run.setup).map((envFile) => `--env-file=${envFile}`), run.setup.serverEntry],
-    environment: address === undefined ? run.environment : { ...run.environment, TEMPORAL_ADDRESS: address },
+    environment: {
+      ...run.environment,
+      ...rootConfigFile(run),
+      ...(address === undefined ? {} : { TEMPORAL_ADDRESS: address }),
+    },
     stdin: 'ignore',
     stdout: output,
     stderr: 'inherit',
@@ -91,20 +89,14 @@ function announcingReadiness(host: DevelopmentProcess, run: DevelopmentRun, work
   const { promise: listening, resolve: heard } = Promise.withResolvers<string>();
   void (async () => {
     const line = await listening;
-    run.log.info(readyNotice(Number(/port (\d+)/u.exec(line)?.[1]), workflows, run.settings));
+    run.log.info(
+      readyNotice(Number(/port (\d+)/u.exec(line)?.[1]), workflows, { ...run.settings, ...rootConfigFile(run) }),
+    );
   })();
   return (text) => {
     host.stdout.write(text);
     heard(text);
   };
-}
-
-function settingsOf(environment: Environment, setup: DevelopmentSetup): Environment {
-  const settings: Record<string, string | undefined> = {};
-  for (const envFile of presentEnvFiles(setup)) {
-    Object.assign(settings, parseEnv(readFileSync(envFile, 'utf8')));
-  }
-  return { ...settings, ...environment };
 }
 
 function servedFirst(
@@ -136,7 +128,9 @@ export async function runDevelopment(host: DevelopmentProcess, setup: Developmen
     },
   };
   const temporal = await temporalFor(run);
-  const changes = watchSources(sourcesOf(setup.sourceDirectories, setup.envFiles));
+  const changes = watchSources(
+    sourcesOf(setup.sourceDirectories, [...setup.envFiles, watchedConfigFile(settings, setup)]),
+  );
   const exitCode = temporal === 'stopped' ? 0 : await servedFirst(host, run, { temporal, changes });
   changes.close();
   await stopped('SIGKILL', reapers);

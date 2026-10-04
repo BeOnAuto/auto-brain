@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "auto-brain configuration file",
+  "description": "The settings of an auto-brain server that are lists or maps, read from the file that CONFIG_FILE names. Each key stands for the environment variable of the same name in upper case, which wins over it. Secrets are written as references such as ${GATEWAY_API_KEY}.",
+  "type": "object",
+  "properties": {
+    "allowed_origins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The origins a page in a browser may call the API from, such as https://app.example.com. ALLOWED_ORIGINS wins over it"
+    },
+    "api_keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,32}$"
+          },
+          "org": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["org:read", "org:write", "brain:read", "brain:write"]
+            }
+          },
+          "brains": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["*"]
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{2,47}$"
+                }
+              }
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": ["id", "org", "permissions", "brains", "sha256"],
+        "additionalProperties": false
+      }
+    },
+    "model_gateways": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The provider prefix, such as gateway in gateway/llama-3.3-70b: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, unique, and not a built-in prefix"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "The http or https URL that /chat/completions is appended to, such as https://gateway.example.com/v1"
+          },
+          "api_key": {
+            "type": "string",
+            "description": "The key, sent as Authorization: Bearer <key>; in the configuration file a reference such as ${GATEWAY_API_KEY}"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Headers sent with every request, their values treated as secrets; in the configuration file a credential is a reference"
+          },
+          "query_params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Query parameters added to every request, their values treated as secrets"
+          },
+          "structured_outputs": {
+            "type": "boolean",
+            "description": "true when the endpoint accepts response_format json_schema; otherwise JSON is asked for as json_object and the schema is only checked here. Default false"
+          },
+          "include_usage": {
+            "type": "boolean",
+            "description": "Asks for usage in streamed responses. Default false"
+          },
+          "expose_provider_messages": {
+            "type": "boolean",
+            "description": "true when the gateway's error messages are safe to show to the callers of a spec. Default false"
+          },
+          "allowed_provider_options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The top-level request body fields a spec may set for this gateway through provider_options, such as user and metadata. Default none"
+          }
+        },
+        "required": ["name", "base_url"],
+        "additionalProperties": false
+      },
+      "description": "OpenAI-compatible gateways, each a provider prefix of its own. MODEL_GATEWAYS wins over it"
+    },
+    "model_aliases": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Model references a spec may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {}
+}
