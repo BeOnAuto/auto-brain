@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { checkExpression } from '../dsl/expressions.ts';
+
 interface Forbidden {
   readonly what: string;
   readonly pattern: Readonly<RegExp>;
@@ -25,11 +27,22 @@ const nodeOnly: readonly Forbidden[] = [
   { what: 'the Temporal global', pattern: /\bTemporal\./u },
 ];
 
-const impure: readonly Forbidden[] = [
-  { what: 'the clock', pattern: /\bDate\.now\(|\bnew Date\b|\bperformance\.now\(/u },
+const clockOrRandom: readonly Forbidden[] = [
+  { what: 'the clock', pattern: /\bDate\.now\(|\bperformance\.now\(/u },
   { what: 'a random source', pattern: /\bMath\.random\(|\bcrypto\.getRandomValues\(|\brandomUUID\(/u },
+];
+
+const impure: readonly Forbidden[] = [
+  ...clockOrRandom,
+  { what: 'a date of the host', pattern: /\bnew Date\b/u },
   { what: 'the host locale or time zone', pattern: /\bIntl\./u },
 ];
+
+const blockComments = /\/\*[\s\S]*?\*\//gu;
+
+const localTimeBuiltins = /Builtin\("\w+", false\)/gu;
+
+const jq = readFileSync(fileURLToPath(import.meta.resolve('@gabrielbryk/jq-ts')), 'utf8').replaceAll(blockComments, '');
 
 const growingCache: readonly Forbidden[] = [
   {
@@ -59,13 +72,19 @@ function findingsIn(files: readonly string[], forbidden: readonly Forbidden[]): 
   });
 }
 
+function localTimeBuiltinsIn(text: string): readonly string[] {
+  return (text.match(localTimeBuiltins) ?? []).map((call: string) =>
+    call.slice('Builtin("'.length, call.indexOf('",')),
+  );
+}
+
 function caught(text: string, forbidden: readonly Forbidden[]): readonly string[] {
   return forbidden.filter(({ pattern }: Forbidden) => pattern.test(text)).map(({ what }: Forbidden) => what);
 }
 
 const everySource = sourcesUnder('.');
 
-const machineAndRunLog = [...sourcesUnder('machine'), ...sourcesUnder('run-log')];
+const machineAndRunLog = [...sourcesUnder('machine'), ...sourcesUnder('run-log'), ...sourcesUnder('dsl')];
 
 describe('the engine core', () => {
   it('uses no Node-only API, no dynamic import, no code generation and no Temporal, so it runs in workerd as in Node', () => {
@@ -78,10 +97,25 @@ describe('the engine core', () => {
   });
 });
 
-describe('the machine and the run log', () => {
+describe('the machine, the run log and the DSL', () => {
   it('read no clock, no random source and no locale, so the same state and input decide the same events', () => {
     expect(machineAndRunLog.length).toBeGreaterThan(10);
     expect(findingsIn(machineAndRunLog, impure)).toEqual([]);
+  });
+});
+
+describe('the jq library the machine runs expressions with', () => {
+  it('uses no Node-only API, no code generation and no host timer, and reads no clock or random source', () => {
+    expect(jq.length).toBeGreaterThan(100_000);
+    expect(caught(jq, [...nodeOnly, ...clockOrRandom])).toEqual([]);
+  });
+
+  it('reaches the host time zone only through localtime and strflocaltime, which the DSL refuses', () => {
+    expect(localTimeBuiltinsIn(jq)).toEqual(['localtime', 'strflocaltime']);
+    expect([checkExpression('now | localtime'), checkExpression('now | strflocaltime("%H")')]).toEqual([
+      expect.stringContaining("localtime reads the host's time zone"),
+      expect.stringContaining("strflocaltime reads the host's time zone"),
+    ]);
   });
 });
 
