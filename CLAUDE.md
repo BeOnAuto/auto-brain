@@ -11,6 +11,8 @@
 - `primitives/*`: one package per brain primitive (interaction, orchestration, inference, prediction, computation, recollection, dream)
 - `TODO.md`: setup work that is still outstanding
 
+In text a user reads, a primitive is a brain function and an execution a run: a brain can reason (inference, whose specs are reason functions, each configured by a prompt), interact (interaction), compute (computation), recall (recollection) and predict (prediction), and it coordinates them through workflows (orchestration); code, the API and the architecture keep the primitive names.
+
 ## Commands
 
 ```bash

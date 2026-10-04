@@ -1,6 +1,6 @@
 const introduction = [
-  'A spec of the orchestration primitive is a workflow: steps that run other specs of the brain, wait for events and',
-  'decide what happens next.',
+  "A spec of the orchestration primitive is a workflow: it coordinates the brain's other functions, running them in order,",
+  'deciding what happens next and waiting for input.',
   "In conversation, call it a workflow; the primitive's name, `orchestration`, is what the tools take.",
   'Runs a workflow: deterministic steps that execute other specs of the brain, branch, loop, run in parallel,',
   'wait, retry and catch errors, durably, until they end.',

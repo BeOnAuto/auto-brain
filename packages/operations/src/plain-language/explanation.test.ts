@@ -50,7 +50,7 @@ describe('explanationOf', () => {
     expect(explanationOf({ reason: 'unavailable', kind: 'model_not_offered' })).toEqual({
       why: 'this server is not set up to use the provider of the model named, but it can use others',
       remedy:
-        'This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+        'This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
     });
   });
 
@@ -78,8 +78,10 @@ describe('unsuccessfulWords', () => {
   });
 
   it('gives the reference of an unexpected failure, and says it was not the person’s doing', () => {
-    expect(unsuccessfulWords('run the prompt “summary”', 'command', { status: 'failed', incident: 'abc' })).toBe(
-      'Could not run the prompt “summary”: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: abc.',
+    expect(
+      unsuccessfulWords('run the reason function “summary”', 'command', { status: 'failed', incident: 'abc' }),
+    ).toBe(
+      'Could not run the reason function “summary”: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: abc.',
     );
   });
 

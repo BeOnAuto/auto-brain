@@ -31,7 +31,7 @@ describe('internalTermsIn', () => {
   it('finds none in words for a person', () => {
     expect(
       internalTermsIn(
-        'Created the prompt “summary”. What it does: Summarizes a text. It has been saved but has not been run yet.',
+        'Created the reason function “summary”. What it does: Summarizes a text. It has been saved but has not been run yet.',
       ),
     ).toEqual([]);
   });

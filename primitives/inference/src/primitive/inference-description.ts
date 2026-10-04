@@ -7,8 +7,9 @@ const offers = providerNamespaces
   .join('; ');
 
 const naming = [
-  'A spec of the inference primitive is a prompt: instructions a language model follows to turn an input into an answer.',
-  "In conversation, call it a prompt; the primitive's name, `inference`, is what the tools take.",
+  'A spec of the inference primitive is a reason function: it reasons with a language model, following a prompt, to turn',
+  'an input into an answer.',
+  "In conversation, call it a reason function; the primitive's name, `inference`, is what the tools take.",
 ].join(' ');
 
 const calls = [
