@@ -237,7 +237,7 @@ describe('the plain words for a prompt that names a model of a provider the serv
     });
 
     expect(plainTextIn(unoffered)).toBe(
-      'Could not run the prompt “summary”: this server is not set up to use the provider of the model named, but it can use others. Nothing was changed. This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+      'Could not run the prompt “summary”: this server is not set up to use the provider of the model named, but it can use others. Nothing was changed. This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
     );
     expect(internalTermsIn(plainTextIn(unoffered))).toEqual([]);
     expect(technicalTextIn(unoffered)).toContain('Configured providers: openai, gateway');
