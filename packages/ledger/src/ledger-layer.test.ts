@@ -5,7 +5,7 @@ import { Ledger } from '@beonauto/operations';
 import { Cause, Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { ledgerLayer } from './index.ts';
+import { ledgerLayer } from './sqlite3.ts';
 import { journal } from './testing/journal.ts';
 import { openLedger, outcomeOf } from './testing/open-ledger.ts';
 import { tally, tallyInterruptedBy } from './testing/tally.ts';
