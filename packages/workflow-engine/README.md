@@ -43,7 +43,7 @@ The settlement and call-result vocabulary lives once, in `@beonauto/operations` 
 
 ## The DSL
 
-`policyOf(functions)` gives the policy a document is checked against. The caller gives the functions a workflow may call, each with the checks of its arguments, and the words that explain where a workflow reaches the world and how it starts; the orchestration primitive gives `execute_spec` (`primitives/orchestration/src/document/workflow-functions.ts`). The DSL itself names no function.
+`policyOf(functions)` gives the policy a document is checked against. The caller gives the functions a workflow may call, each with the checks of its arguments, a description of a call for the messages it raises, and the words that explain where a workflow reaches the world and how it starts; the orchestration primitive gives `execute_spec` (`primitives/orchestration/src/document/workflow-functions.ts`). The DSL itself names no function.
 
 Compiled expressions are kept in one cache for the process, of at most 262,144 characters of expression source, letting go of the expression used longest ago: a compiled expression measured 22 to 34 bytes of heap per character of source, so the cache holds at most about 9 MiB, and compiling one again took 10 to 150 µs.
 
@@ -81,11 +81,13 @@ The state counts the bytes of its own history, `historyBytes`: the UTF-8 bytes o
 
 ## State formats
 
-Every event and every snapshot names its state format; `stateFormat` is 1. A change to the state's schema is a new format, and:
+Every event and every snapshot names its state format; `stateFormat` is 2. A change to the state's schema is a new format, and:
 
 - each event is folded under its own format, and a state that crosses to a newer format is read strictly under the old one and upcast by that format's upcaster (`OlderFormat.read`, `OlderFormat.upcast`) before the next event applies;
 - formats never go back within a stream, and a format newer than the code is refused, both when the run loads (`UnreadableRun`);
 - `packages/workflow-engine/corpus/format-<n>.json` holds a committed stream and snapshot of every format, which must load to the state it recorded (`src/run-log/corpus.test.ts`). A new format adds its corpus and keeps every older one loading.
+
+Format 2 came with the machine: a frame records when it started and the context it started with, since a task that waits evaluates its `output.as` and its listen filters later with the variables it started with; an armed timer records when it was armed, since a timeout names the milliseconds it allowed; a fork branch can yield before it starts, as a task in a list can; and a failed branch records the order it failed in, since a competing fork that loses every branch raises the first failure. Format 1 is read strictly with its own frozen schema (`src/run-log/format-one.ts`) and upcast: frames start at the last input with the context then, timers were armed at the last input, and failures are ordered as their branches.
 
 Patches are never rewritten: a patch applies only to the format it was written for. `evolve` applies a patch strictly, `add` to a member that exists or `replace` and `remove` of one that does not die with `PatchFailed`, and the result must decode as the state with no member the format does not describe (`onExcessProperty: 'error'`), so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
 
@@ -103,7 +105,7 @@ Frames never store the document: they name tasks by reference, a JSON Pointer in
 
 | Output         | Carries                                                       | Idempotent by | Port                 | Receipts                                                                        |
 | -------------- | ------------------------------------------------------------- | ------------- | -------------------- | ------------------------------------------------------------------------------- |
-| `arm_timer`    | timer id, due time, purpose                                   | timer id      | `Timers.arm`         | `armed`, `already_armed`, `refused_after_cancel`                                |
+| `arm_timer`    | timer id, due time, purpose, a label                          | timer id      | `Timers.arm`         | `armed`, `already_armed`, `refused_after_cancel`                                |
 | `cancel_timer` | timer id                                                      | timer id      | `Timers.cancel`      | `cancelled`, `already_fired`, `tombstoned`                                      |
 | `start_call`   | call key, the function, its arguments, the longest it may run | call key      | `Executor.start`     | `started`, `started_again`, `running`, `answered_again`, `refused_after_cancel` |
 | `cancel_call`  | call key                                                      | call key      | `Executor.cancel`    | `cancelled`, `already_answered`, `tombstoned`                                   |
@@ -208,10 +210,10 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 28. **[engine]** `settle` appears once in a stream, in its last event.
 29. **[engine]** A run takes at most 100,000 inputs and 512 MiB of history, both checked in `decide` from the state; the input that would go past either ends the run.
 30. **[engine]** Every event and every snapshot names its state format; formats never go back within a stream, a format newer than the code is refused, and a committed corpus of every format loads (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`).
-31. **[engine]** Every `arm_timer` is due at or after the time of the input that armed it.
+31. **[engine]** Every `arm_timer` is due at or after the time of the input that armed it, and the armed timer records that time.
 32. **[engine]** `state.historyBytes` is the bytes of the stream's events as JSON, and a load dies when it is not (`src/run-log/run-event.test.ts`, `src/run-log/run-fold.test.ts`).
 33. **[engine]** Every open call has an armed `call_deadline` timer due no later than its start's time plus `longestCallMs`, so every open call is answered.
-34. **[engine]** After a decision the value table holds exactly the values the frames, the context and the workflow's input reach, and `heldBytes` is their bytes, 4 KiB a frame and the document (`src/machine/held-values.test.ts`).
+34. **[engine]** After a decision the value table holds exactly the values the frames (their contexts included), the context and the workflow's input reach, and `heldBytes` is their bytes, 4 KiB a frame and the document (`src/machine/held-values.test.ts`).
 35. **[engine]** A troubling settle receipt is reported, never dropped.
 
 ## Next: the machine

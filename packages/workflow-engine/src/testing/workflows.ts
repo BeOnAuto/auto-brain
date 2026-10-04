@@ -20,6 +20,7 @@ export const testFunctions: CallFunctions = {
         ? templateRejections(arguments_, pointer)
         : [rejection(pointer, 'notify takes with: { to }')],
   },
+  describe: (name) => `the function ${name}`,
   howAWorkflowReachesTheWorld: 'a workflow reaches the world only through the functions it is given',
   howAWorkflowStarts: 'start it through its runtime',
 };

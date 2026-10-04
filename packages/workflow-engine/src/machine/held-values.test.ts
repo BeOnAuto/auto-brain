@@ -20,7 +20,7 @@ type Choose = (modulus: number) => number;
 
 const valueCount = 16;
 
-const valueKeys = new Set(['rawInput', 'input', 'data', 'items', 'output', 'arguments']);
+const valueKeys = new Set(['context', 'rawInput', 'input', 'data', 'items', 'output', 'arguments']);
 
 const utf8 = new TextEncoder();
 
@@ -45,13 +45,16 @@ function cursorOf(choose: Choose, depth: number): ListCursor {
 }
 
 function branchOf(choose: Choose, depth: number): Branch {
-  const kind = choose(3);
+  const kind = choose(4);
+  if (kind === 3) {
+    return { state: 'yielding', timer: 't' };
+  }
   if (kind === 0) {
     return { state: 'running', task: frameOf(choose, Math.max(depth - 1, 0)) };
   }
   return kind === 1
     ? { state: 'finished', output: choose(valueCount), flow: 'continue' }
-    : { state: 'failed', error: { type: 'runtime', status: 500, instance: '/do/0' } };
+    : { state: 'failed', error: { type: 'runtime', status: 500, instance: '/do/0' }, order: 0 };
 }
 
 function bodyOf(choose: Choose, depth: number): FrameBody {
@@ -95,6 +98,8 @@ function frameOf(choose: Choose, depth: number): TaskFrame {
   return {
     reference: '/do/0',
     run: 1,
+    startedAt: 0,
+    context: choose(valueCount),
     rawInput: choose(valueCount),
     input: choose(valueCount),
     variables: { attempt: choose(valueCount) },

@@ -109,13 +109,8 @@ export {
   type SinceSnapshot,
   type Snapshot,
 } from './run-log/snapshot.ts';
-export {
-  StateFormatSchema,
-  stateFormat,
-  stateFormats,
-  type OlderFormat,
-  type StateFormats,
-} from './run-log/state-format.ts';
+export { stateFormats } from './run-log/known-formats.ts';
+export { StateFormatSchema, stateFormat, type OlderFormat, type StateFormats } from './run-log/state-format.ts';
 export {
   PatchFailed,
   PatchOperationSchema,

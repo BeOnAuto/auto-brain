@@ -42,7 +42,11 @@ export const exampleStream = streamOf([
   {
     receipt: { kind: 'event_received', key: 'event-1', at: at + 10, eventType: 'com.acme.tick' },
     patch: [
-      { op: 'add', path: timerPath, value: { purpose: 'wait', reference: '/do/0', dueAt: at + 1000 } },
+      {
+        op: 'add',
+        path: timerPath,
+        value: { purpose: 'wait', reference: '/do/0', armedAt: at + 10, dueAt: at + 1000 },
+      },
       { op: 'replace', path: '/timers/next', value: 2 },
       { op: 'replace', path: '/inputs', value: 2 },
       { op: 'replace', path: '/lastInputAt', value: at + 10 },

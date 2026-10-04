@@ -53,7 +53,10 @@ function bodyReach(body: FrameBody): Reach {
 }
 
 function frameReach(frame: TaskFrame): Reach {
-  const own: Reach = { values: [frame.rawInput, frame.input, ...Object.values(frame.variables)], frames: 1 };
+  const own: Reach = {
+    values: [frame.context, frame.rawInput, frame.input, ...Object.values(frame.variables)],
+    frames: 1,
+  };
   return together([own, bodyReach(frame.body)]);
 }
 

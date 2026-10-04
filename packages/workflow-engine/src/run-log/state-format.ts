@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-export const stateFormat = 1;
+export const stateFormat = 2;
 
 export const StateFormatSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
 
@@ -15,5 +15,3 @@ export interface StateFormats {
   readonly current: number;
   readonly older: readonly OlderFormat[];
 }
-
-export const stateFormats: StateFormats = { current: stateFormat, older: [] };

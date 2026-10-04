@@ -29,9 +29,10 @@ export interface ListCursor {
 }
 
 export type Branch =
+  | { readonly state: 'yielding'; readonly timer: string }
   | { readonly state: 'running'; readonly task: TaskFrame }
   | { readonly state: 'finished'; readonly output: ValueId; readonly flow: string }
-  | { readonly state: 'failed'; readonly error: DslError };
+  | { readonly state: 'failed'; readonly error: DslError; readonly order: number };
 
 export type TryPhase =
   | { readonly kind: 'trying'; readonly list: ListCursor; readonly attemptLimit: string | null }
@@ -62,6 +63,8 @@ export type FrameBody =
 export interface TaskFrame {
   readonly reference: string;
   readonly run: number;
+  readonly startedAt: number;
+  readonly context: ValueId;
   readonly rawInput: ValueId;
   readonly input: ValueId;
   readonly variables: Variables;
@@ -87,6 +90,7 @@ export type RunOutcome =
 export interface ArmedTimer {
   readonly purpose: TimerPurpose;
   readonly reference: string;
+  readonly armedAt: number;
   readonly dueAt: number;
 }
 
@@ -148,9 +152,10 @@ const ListCursorSchema: Schema.Codec<ListCursor> = Schema.Struct({
 });
 
 const BranchSchema: Schema.Codec<Branch> = Schema.Union([
+  Schema.Struct({ state: Schema.Literal('yielding'), timer: Schema.String }),
   Schema.Struct({ state: Schema.Literal('running'), task: TaskFrameReference }),
   Schema.Struct({ state: Schema.Literal('finished'), output: ValueIdSchema, flow: Schema.String }),
-  Schema.Struct({ state: Schema.Literal('failed'), error: DslErrorSchema }),
+  Schema.Struct({ state: Schema.Literal('failed'), error: DslErrorSchema, order: IntSchema }),
 ]);
 
 const TryPhaseSchema: Schema.Codec<TryPhase> = Schema.Union([
@@ -184,6 +189,8 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
 const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
   reference: Schema.String,
   run: IntSchema,
+  startedAt: InstantSchema,
+  context: ValueIdSchema,
   rawInput: ValueIdSchema,
   input: ValueIdSchema,
   variables: VariablesSchema,
@@ -191,7 +198,7 @@ const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
   body: FrameBodySchema,
 });
 
-const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
+export const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('completed'), output: Schema.Json }),
   Schema.Struct({ kind: Schema.Literal('raised'), error: DslErrorSchema }),
   Schema.Struct({ kind: Schema.Literal('cancelled') }),
@@ -215,7 +222,12 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
     next: IntSchema,
     armed: Schema.Record(
       Schema.String,
-      Schema.Struct({ purpose: TimerPurposeSchema, reference: Schema.String, dueAt: InstantSchema }),
+      Schema.Struct({
+        purpose: TimerPurposeSchema,
+        reference: Schema.String,
+        armedAt: InstantSchema,
+        dueAt: InstantSchema,
+      }),
     ),
   }),
   calls: Schema.Record(Schema.String, CallKeySchema),

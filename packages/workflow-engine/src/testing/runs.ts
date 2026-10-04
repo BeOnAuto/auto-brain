@@ -20,6 +20,8 @@ const approval = 2;
 const waiting: TaskFrame = {
   reference: '/do/1/fork/branches/1/pause',
   run: 1,
+  startedAt: at - 60_000,
+  context: 0,
   rawInput: ticket,
   input: ticket,
   variables: {},
@@ -30,6 +32,8 @@ const waiting: TaskFrame = {
 const asking: TaskFrame = {
   reference: openCall.reference,
   run: 1,
+  startedAt: at - 60_000,
+  context: 0,
   rawInput: ticket,
   input: ticket,
   variables: { attempt: approval },
@@ -40,6 +44,8 @@ const asking: TaskFrame = {
 const forking: TaskFrame = {
   reference: '/do/1',
   run: 1,
+  startedAt: at - 60_000,
+  context: 0,
   rawInput: ticket,
   input: ticket,
   variables: {},
@@ -50,7 +56,7 @@ const forking: TaskFrame = {
     branches: [
       { state: 'running', task: asking },
       { state: 'running', task: waiting },
-      { state: 'failed', error: { type: 'runtime', status: 500, instance: '/do/1/fork/branches/2' } },
+      { state: 'failed', error: { type: 'runtime', status: 500, instance: '/do/1/fork/branches/2' }, order: 0 },
     ],
   },
 };
@@ -70,8 +76,13 @@ const running: RunState = {
   timers: {
     next: 3,
     armed: {
-      [armedTimer]: { purpose: 'wait', reference: waiting.reference, dueAt: at + 60_000 },
-      [`${executionId}/timers/2`]: { purpose: 'timeout', reference: asking.reference, dueAt: at + 600_000 },
+      [armedTimer]: { purpose: 'wait', reference: waiting.reference, armedAt: at - 60_000, dueAt: at + 60_000 },
+      [`${executionId}/timers/2`]: {
+        purpose: 'timeout',
+        reference: asking.reference,
+        armedAt: at - 60_000,
+        dueAt: at + 600_000,
+      },
     },
   },
   calls: { [callKeyText(openCall)]: openCall },
@@ -96,6 +107,8 @@ const running: RunState = {
     root: {
       reference: '/',
       run: 1,
+      startedAt: at - 60_000,
+      context: 0,
       rawInput: ticket,
       input: ticket,
       variables: {},

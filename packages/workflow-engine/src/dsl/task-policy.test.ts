@@ -41,6 +41,10 @@ describe('the policy of the tasks of a document', () => {
     ]);
   });
 
+  it('names a call through the description its caller gives, for the messages a call raises', () => {
+    expect(testFunctions.describe('notify', { to: 'ops' })).toBe('the function notify');
+  });
+
   it('leaves the arguments of a call to the checks of its function', () => {
     expect(
       rejectedIn(`
