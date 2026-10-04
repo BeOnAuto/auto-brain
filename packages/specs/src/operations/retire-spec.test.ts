@@ -73,7 +73,7 @@ describe('retire_spec', () => {
       status: 'rejected',
       reason: 'conflict',
       detail: 'The probe spec plain is retired and can no longer be executed',
-      conflict: 'retired',
+      kind: 'retired',
     });
   });
 });

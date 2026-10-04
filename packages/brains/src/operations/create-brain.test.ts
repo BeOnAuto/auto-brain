@@ -119,14 +119,14 @@ describe('create_brain rejecting with conflict', () => {
       status: 'rejected',
       reason: 'conflict',
       detail: 'There is already a brain alpha in this org',
-      conflict: 'taken',
+      kind: 'taken',
     });
     await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }));
     expect(await creatingAlpha()).toEqual({
       status: 'rejected',
       reason: 'conflict',
       detail: 'The brain alpha was retired, and a brain id is never reused',
-      conflict: 'taken',
+      kind: 'taken',
     });
   });
 

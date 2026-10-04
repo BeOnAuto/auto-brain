@@ -27,7 +27,7 @@ function describedOutput(primitive: Primitive | undefined, { output }: Described
 
 function rejectionWords({ named }: RunContext, { rejection }: DescribedExecution): string {
   const reason = rejection?.reason ?? 'conflict';
-  const { why, remedy } = explanationOf(reason === 'conflict' ? { reason, conflict: 'unworkable' } : { reason });
+  const { why, remedy } = explanationOf(reason === 'conflict' ? { reason, kind: 'unworkable' } : { reason });
   return `The run of ${named} did not go through: ${why}. ${remedy}`;
 }
 

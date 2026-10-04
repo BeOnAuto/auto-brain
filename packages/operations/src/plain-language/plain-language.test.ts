@@ -1,7 +1,7 @@
 import { Effect, Schema, SchemaTransformation } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { Conflict, defineCommand, quoted, type ConflictKind } from '../index.ts';
+import { Conflict, defineCommand, quoted, Unavailable, type ConflictKind } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toOrg } from '../testing/harness.ts';
 
@@ -17,11 +17,15 @@ function shelving(kind?: ConflictKind) {
     route: { method: 'POST', path: '/shelves' },
     inputSchema: Schema.Struct({ title: Title }),
     outputSchema: Shelf,
-    reasons: ['conflict'],
-    handle: ({ title }) =>
-      title === 'taken'
+    reasons: ['conflict', 'unavailable'],
+    handle: ({ title }) => {
+      if (title === 'elsewhere') {
+        return Effect.fail(new Unavailable({ detail: 'Shelves are made elsewhere', kind: 'model_not_offered' }));
+      }
+      return title === 'taken'
         ? Effect.fail(new Conflict({ detail: 'There is a shelf taken', ...(kind === undefined ? {} : { kind }) }))
-        : Effect.succeed({ title, books: 0 }),
+        : Effect.succeed({ title, books: 0 });
+    },
     plainLanguage: {
       task: 'make a shelf',
       attempt: ({ title }) => `make the shelf ${quoted(title)}`,
@@ -88,10 +92,23 @@ describe('the kind of a conflict', () => {
         status: 'rejected',
         reason: 'conflict',
         detail: 'There is a shelf taken',
-        conflict: kind,
+        kind,
       });
     },
   );
+
+  it('reaches the rejected outcome for unavailability too', async () => {
+    const { dispatcher, run } = harness();
+
+    const outcome = await run(dispatcher.dispatchToOrg(registration, toAcme(acmeAdmin, { title: 'elsewhere' })));
+
+    expect(outcome).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'Shelves are made elsewhere',
+      kind: 'model_not_offered',
+    });
+  });
 
   it('is left out when the conflict does not say', async () => {
     const { dispatcher, run } = harness();

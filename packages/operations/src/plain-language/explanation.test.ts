@@ -42,8 +42,16 @@ describe('explanationOf', () => {
     expect(explanationOf({ reason })).toEqual({ why, remedy });
   });
 
-  it.each(byConflict)('explains a conflict of the kind %s', (conflict, why, remedy) => {
-    expect(explanationOf({ reason: 'conflict', conflict })).toEqual({ why, remedy });
+  it.each(byConflict)('explains a conflict of the kind %s', (kind, why, remedy) => {
+    expect(explanationOf({ reason: 'conflict', kind })).toEqual({ why, remedy });
+  });
+
+  it('explains a model the server is not set up for, when it can use others', () => {
+    expect(explanationOf({ reason: 'unavailable', kind: 'model_not_offered' })).toEqual({
+      why: 'this server is not set up to use the provider of the model named, but it can use others',
+      remedy:
+        'This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+    });
   });
 
   it('explains a conflict that does not say its kind', () => {

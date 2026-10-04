@@ -49,11 +49,11 @@ export {
   type Cancelled,
 } from './outcome/outcome.ts';
 export { PermissionSchema, allPermissions, permissionFor, type Permission } from './caller/permission.ts';
-export type { DeclarableReason, Rejection } from './outcome/rejection.ts';
+export type { DeclarableReason, Rejection, RejectionKind } from './outcome/rejection.ts';
 export type { InputEncoding, Registration, RegistrationOf } from './definition/registration.ts';
 export type { BrainRequest, OrgRequest } from './dispatch/request.ts';
 export type { Method, Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';
 export type { StreamReader, StreamWriter } from './ledger/stream-ports.ts';
-export { Unavailable } from './outcome/unavailable.ts';
+export { Unavailable, UnavailableKindSchema, type UnavailableKind } from './outcome/unavailable.ts';

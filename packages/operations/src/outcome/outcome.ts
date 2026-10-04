@@ -1,8 +1,7 @@
 import type { Schema } from 'effect';
 
-import type { ConflictKind } from './conflict.ts';
 import { cappedIssues, type Issue } from './issue.ts';
-import type { DeclarableReason } from './rejection.ts';
+import type { DeclarableReason, RejectionKind } from './rejection.ts';
 
 export type RejectionReason = 'forbidden' | DeclarableReason;
 
@@ -16,7 +15,7 @@ export interface Rejected {
   readonly reason: RejectionReason;
   readonly detail: string;
   readonly issues?: readonly Issue[];
-  readonly conflict?: ConflictKind;
+  readonly kind?: RejectionKind;
 }
 
 export interface Failed {
@@ -40,13 +39,13 @@ export function rejected(
   reason: RejectionReason,
   detail: string,
   issues?: readonly Issue[],
-  conflict?: ConflictKind,
+  kind?: RejectionKind,
 ): Rejected {
   const described: Rejected =
     issues === undefined
       ? { status: 'rejected', reason, detail }
       : { status: 'rejected', reason, detail, issues: cappedIssues(issues) };
-  return conflict === undefined ? described : { ...described, conflict };
+  return kind === undefined ? described : { ...described, kind };
 }
 
 export function failed(incident: string): Failed {

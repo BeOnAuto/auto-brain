@@ -68,7 +68,7 @@ describe('a dispatched handler', () => {
         status: 'rejected',
         reason: 'conflict',
         detail: 'The state changed while the command was decided',
-        conflict: 'concurrent_change',
+        kind: 'concurrent_change',
       },
     ]);
   });

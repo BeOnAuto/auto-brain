@@ -1,17 +1,17 @@
 import type { OperationKind } from '../caller/operation-scope.ts';
-import type { ConflictKind } from '../outcome/conflict.ts';
 import type { Cancelled, Failed, Rejected, RejectionReason } from '../outcome/outcome.ts';
+import type { RejectionKind } from '../outcome/rejection.ts';
 
 export interface Explanation {
   readonly why: string;
   readonly remedy: string;
 }
 
-export type ExplainedRejection = Pick<Rejected, 'reason' | 'conflict'>;
+export type ExplainedRejection = Pick<Rejected, 'reason' | 'kind'>;
 
 const correctable = 'This can be corrected and tried again; the details below say what to change.';
 
-const explanationByReason: Readonly<Record<Exclude<RejectionReason, 'conflict'>, Explanation>> = {
+const explanationByReason: Readonly<Record<RejectionReason, Explanation>> = {
   invalid_input: { why: 'what was given does not fit what it needs', remedy: correctable },
   unavailable: {
     why: 'something the server relies on is not available right now',
@@ -28,9 +28,13 @@ const explanationByReason: Readonly<Record<Exclude<RejectionReason, 'conflict'>,
     why: 'this connection is not allowed to do that',
     remedy: 'Whoever set up this connection can allow it.',
   },
+  conflict: {
+    why: 'it clashes with something already there',
+    remedy: 'The details below say what is in the way.',
+  },
 };
 
-const explanationByConflict: Readonly<Record<ConflictKind, Explanation>> = {
+const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   taken: { why: 'that name is already taken', remedy: 'A different name will work.' },
   retired: {
     why: 'it has been retired',
@@ -38,23 +42,20 @@ const explanationByConflict: Readonly<Record<ConflictKind, Explanation>> = {
   },
   concurrent_change: { why: 'something else changed it at the same moment', remedy: 'Trying again should work.' },
   unworkable: { why: 'it cannot work as it is written', remedy: correctable },
+  model_not_offered: {
+    why: 'this server is not set up to use the provider of the model named, but it can use others',
+    remedy:
+      'This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+  },
 };
 
-const unexplainedConflict: Explanation = {
-  why: 'it clashes with something already there',
-  remedy: 'The details below say what is in the way.',
-};
-
-export function explanationOf({ reason, conflict }: ExplainedRejection): Explanation {
-  if (reason !== 'conflict') {
-    return explanationByReason[reason];
-  }
-  return conflict === undefined ? unexplainedConflict : explanationByConflict[conflict];
+export function explanationOf({ reason, kind }: ExplainedRejection): Explanation {
+  return kind === undefined ? explanationByReason[reason] : explanationByKind[kind];
 }
 
-function rejectionWords(attempt: string, kind: OperationKind, rejection: Rejected): string {
+function rejectionWords(attempt: string, operationKind: OperationKind, rejection: Rejected): string {
   const { why, remedy } = explanationOf(rejection);
-  const unchanged = kind === 'command' ? ' Nothing was changed.' : '';
+  const unchanged = operationKind === 'command' ? ' Nothing was changed.' : '';
   return `Could not ${attempt}: ${why}.${unchanged} ${remedy}`;
 }
 
