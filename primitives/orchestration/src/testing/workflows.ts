@@ -1,7 +1,7 @@
 import type { CallerIdentity } from '@beonauto/operations';
+import { isJson, isObject, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
 import { parse } from 'yaml';
 
-import { isJson, isObject, type Json, type JsonObject } from '../dsl/json.ts';
 import type { RunSettlement, SpecCall, SpecCallResult, WorkflowHost } from '../interpreter/host.ts';
 import { startWorkflow, type WorkflowStart } from '../interpreter/interpreter.ts';
 import type { WorkflowEnding } from '../interpreter/settlement.ts';

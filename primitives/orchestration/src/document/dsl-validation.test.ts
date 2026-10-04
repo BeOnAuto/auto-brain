@@ -1,6 +1,6 @@
+import type { Json, JsonObject } from '@beonauto/workflow-engine/dsl/json';
 import { describe, expect, it } from 'vitest';
 
-import type { Json, JsonObject } from '../dsl/json.ts';
 import { header, workflow } from '../testing/workflows.ts';
 import { dslProblems, schemaProblems, type Problem } from './dsl-validation.ts';
 

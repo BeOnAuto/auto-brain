@@ -1,4 +1,5 @@
-import type { Json } from '../dsl/json.ts';
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
+
 import type { RunSettlement } from './host.ts';
 import { describeError, type DslError } from './raised-error.ts';
 

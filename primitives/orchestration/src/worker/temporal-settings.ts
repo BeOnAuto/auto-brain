@@ -1,6 +1,5 @@
+import { readDuration } from '@beonauto/workflow-engine/dsl/durations';
 import { Config, ConfigProvider, Data, Effect, Option } from 'effect';
-
-import { readDuration } from '../dsl/durations.ts';
 
 export interface TemporalSettings {
   readonly address: string;

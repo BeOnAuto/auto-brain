@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import { getExecution } from '@beonauto/specs';
+import { jsonBytesOf } from '@beonauto/workflow-engine/dsl/json';
 import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
 
-import { jsonBytesOf } from '../dsl/json.ts';
 import {
   mostReceivedEventBytes,
   mostReceivedEvents,

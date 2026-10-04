@@ -1,4 +1,4 @@
-import { field, textField, type JsonObject } from '../dsl/json.ts';
+import { field, textField, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
 
 export type ErrorKind =
   | 'configuration'

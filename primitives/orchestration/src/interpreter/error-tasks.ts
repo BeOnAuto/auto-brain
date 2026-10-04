@@ -1,5 +1,14 @@
-import type { Variables } from '../dsl/expressions.ts';
-import { entriesOf, field, isObject, objectField, textField, type JsonEntry, type JsonObject } from '../dsl/json.ts';
+import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
+import {
+  entriesOf,
+  field,
+  isObject,
+  objectField,
+  textField,
+  type JsonEntry,
+  type JsonObject,
+} from '@beonauto/workflow-engine/dsl/json';
+
 import { evaluateTemplate, holds, placeOf } from './evaluation.ts';
 import { bodyOf, type Body, type Invocation } from './invocation.ts';
 import { RaisedError, errorAsJson, errorFromJson, raised, type DslError } from './raised-error.ts';

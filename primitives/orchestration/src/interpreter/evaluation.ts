@@ -1,6 +1,20 @@
-import { readDuration } from '../dsl/durations.ts';
-import { enclosedBody, expressionSource, runExpression, type Variables } from '../dsl/expressions.ts';
-import { entriesOf, isList, isObject, isTruthy, type Json, type JsonEntry, type JsonObject } from '../dsl/json.ts';
+import { readDuration } from '@beonauto/workflow-engine/dsl/durations';
+import {
+  enclosedBody,
+  expressionSource,
+  runExpression,
+  type Variables,
+} from '@beonauto/workflow-engine/dsl/expressions';
+import {
+  entriesOf,
+  isList,
+  isObject,
+  isTruthy,
+  type Json,
+  type JsonEntry,
+  type JsonObject,
+} from '@beonauto/workflow-engine/dsl/json';
+
 import type { Invocation, Place } from './invocation.ts';
 import { RaisedError, errorType, raised } from './raised-error.ts';
 import { mostActivationWork, mostExpressionWork, type RunState } from './run-state.ts';

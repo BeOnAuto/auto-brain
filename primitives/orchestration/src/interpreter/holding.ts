@@ -1,6 +1,7 @@
-import type { Json } from '../dsl/json.ts';
-import { retainedBytesOf } from '../dsl/retained-size.ts';
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
+
 import { raised } from './raised-error.ts';
+import { retainedBytesOf } from './retained-size.ts';
 
 export type Release = () => void;
 

@@ -1,5 +1,6 @@
-import { measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '../dsl/json.ts';
-import type { Components } from '../dsl/policy-checks.ts';
+import { measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import type { Components } from '@beonauto/workflow-engine/dsl/policy-checks';
+
 import { makeHolding, type Hold } from './holding.ts';
 import type { WorkflowHost } from './host.ts';
 import { makeInbox, type Inbox } from './inbox.ts';

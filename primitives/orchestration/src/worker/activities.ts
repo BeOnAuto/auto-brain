@@ -1,10 +1,10 @@
 import { Conflict, NotFound } from '@beonauto/operations';
 import type { SettleExecution, Settlement } from '@beonauto/specs';
+import { jsonBytesOf } from '@beonauto/workflow-engine/dsl/json';
 import { ApplicationFailure } from '@temporalio/activity';
 import { ApplicationFailureCategory } from '@temporalio/common';
 import { Cause, Effect, Exit } from 'effect';
 
-import { jsonBytesOf } from '../dsl/json.ts';
 import type { RunSettlement, SettleRequest, SpecCall, SpecCallResult } from '../interpreter/host.ts';
 import {
   executionConflict,

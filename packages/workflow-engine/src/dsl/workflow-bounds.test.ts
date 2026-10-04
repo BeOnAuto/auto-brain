@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { workflow } from '../testing/workflows.ts';
 import { durationLimitRejections } from './duration-limits.ts';
 import { rejectionsOf } from './policy.ts';
 
@@ -50,14 +50,11 @@ describe('a fork', () => {
     expect(rejectionsOf(workflow(`do:\n  - wide: { fork: { branches: [${branches(32)}] } }`))).toStrictEqual([]);
   });
 
-  it('is refused with more, when stored and when a workflow starts with it', async () => {
+  it('is refused with more', () => {
     const document = workflow(`do:\n  - wide: { fork: { branches: [${branches(33)}] } }`);
-    const { settlement, commands } = await interpret(document);
 
     expect(rejectionsOf(document)).toStrictEqual([
       { pointer: '/do/0/wide/fork/branches', detail: 'A fork may have at most 32 branches, not 33', forbidden: true },
     ]);
-    expect(settlement).toMatchObject({ status: 'rejected', reason: 'invalid_input' });
-    expect(commands.map(({ kind }) => kind)).toStrictEqual(['deadline', 'settle']);
   });
 });

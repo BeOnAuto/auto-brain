@@ -23,7 +23,7 @@
     "@beonauto/config": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/specs": "workspace:*",
-    "@gabrielbryk/jq-ts": "1.7.0",
+    "@beonauto/workflow-engine": "workspace:*",
     "@openworkflowspec/sdk": "1.0.3-alpha8",
     "@temporalio/activity": "1.24.0",
     "@temporalio/client": "1.24.0",

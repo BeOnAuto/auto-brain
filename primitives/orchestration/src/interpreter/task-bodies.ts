@@ -1,4 +1,5 @@
-import type { TaskKind } from '../dsl/tasks.ts';
+import type { TaskKind } from '@beonauto/workflow-engine/dsl/tasks';
+
 import { callTask } from './call-task.ts';
 import { raiseTask, tryTask } from './error-tasks.ts';
 import { doTask, forkTask, forTask, switchTask } from './flow-tasks.ts';

@@ -1,5 +1,6 @@
-import { field, jsonBytesOf, objectField, type Json } from '../dsl/json.ts';
-import { rejectionsOf } from '../dsl/policy.ts';
+import { field, jsonBytesOf, objectField, type Json } from '@beonauto/workflow-engine/dsl/json';
+import { rejectionsOf } from '@beonauto/workflow-engine/dsl/policy';
+
 import { placeIn, transform } from './evaluation.ts';
 import type { WorkflowHost } from './host.ts';
 import { RaisedError, errorType } from './raised-error.ts';

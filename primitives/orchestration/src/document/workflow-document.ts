@@ -1,12 +1,12 @@
 import { readYaml, type LocatedProblem, type Position, type YamlKind } from '@beonauto/config';
 import { InvalidInput, type Issue } from '@beonauto/operations';
+import { durationLimitRejections } from '@beonauto/workflow-engine/dsl/duration-limits';
+import { mostValueDepth, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import { nestingRejections } from '@beonauto/workflow-engine/dsl/nesting';
+import { rejectionsOf } from '@beonauto/workflow-engine/dsl/policy';
+import type { Rejection } from '@beonauto/workflow-engine/dsl/policy-checks';
 import { Effect } from 'effect';
 
-import { durationLimitRejections } from '../dsl/duration-limits.ts';
-import { mostValueDepth, type JsonObject } from '../dsl/json.ts';
-import { nestingRejections } from '../dsl/nesting.ts';
-import type { Rejection } from '../dsl/policy-checks.ts';
-import { rejectionsOf } from '../dsl/policy.ts';
 import { defaultMostDuration } from '../interpreter/workflow-run.ts';
 import { dslProblems, type Problem } from './dsl-validation.ts';
 

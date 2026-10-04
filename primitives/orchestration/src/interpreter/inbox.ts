@@ -1,6 +1,7 @@
-import { isJson, isObject, jsonBytesOf, type JsonObject } from '../dsl/json.ts';
-import { retainedBytesOf } from '../dsl/retained-size.ts';
+import { isJson, isObject, jsonBytesOf, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+
 import { raised, type RaisedError } from './raised-error.ts';
+import { retainedBytesOf } from './retained-size.ts';
 
 export type EventFilter = (event: JsonObject) => boolean;
 
