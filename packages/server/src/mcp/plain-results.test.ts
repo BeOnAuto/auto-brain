@@ -64,6 +64,13 @@ const replies: readonly ScriptedReply[] = [
     ),
 ];
 
+const unofferedProvider = new ProviderNotConfigured({
+  detail: 'anthropic is not configured. Configured providers: openai, gateway',
+  provider: 'anthropic',
+  configured: ['openai', 'gateway'],
+  missing: ['ANTHROPIC_API_KEY'],
+});
+
 let server: InferenceServer;
 
 afterEach(async () => {
@@ -215,5 +222,24 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
     expect(plainTextIn(refused)).toBe(
       'Could not create the brain “sales”: this connection is not allowed to do that. Nothing was changed. Whoever set up this connection can allow it.',
     );
+  });
+});
+
+describe('the plain words for a prompt that names a model of a provider the server is not set up for', () => {
+  it('say that it can be switched to a provider the server has, when there are others', async () => {
+    server = await servingInference([() => Effect.fail(unofferedProvider)]);
+    const prompt = { primitive: 'inference', name: 'summary' };
+
+    const unoffered = await onMcp(async (session) => {
+      await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
+      await session.callTool('create_spec', inSales({ ...prompt, source: summary }));
+      return session.callTool('execute_spec', inSales({ ...prompt, input: { text: 'the quarter' } }));
+    });
+
+    expect(plainTextIn(unoffered)).toBe(
+      'Could not run the prompt “summary”: this server is not set up to use the provider of the model named, but it can use others. Nothing was changed. This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+    );
+    expect(internalTermsIn(plainTextIn(unoffered))).toEqual([]);
+    expect(technicalTextIn(unoffered)).toContain('Configured providers: openai, gateway');
   });
 });
