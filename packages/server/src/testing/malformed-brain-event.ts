@@ -1,4 +1,4 @@
-import { ledgerLayer } from '@beonauto/ledger';
+import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { Ledger, streamPrefixOfOrg, type Decider } from '@beonauto/operations';
 import { Effect, ManagedRuntime, Result, Schema } from 'effect';
 

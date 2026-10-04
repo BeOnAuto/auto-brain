@@ -1,2 +1,1 @@
-export { ledgerLayer } from './ledger-layer.ts';
-export type { LedgerOptions } from './open-event-store.ts';
+export { sqliteLedgerLayer, type SQLiteStoreOptions } from './sqlite-event-store.ts';
