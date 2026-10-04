@@ -1,0 +1,120 @@
+import { Effect, Schema, SchemaTransformation } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { Conflict, defineCommand, quoted, Unavailable, type ConflictKind } from '../index.ts';
+import { acmeAdmin } from '../testing/callers.ts';
+import { harness, toOrg } from '../testing/harness.ts';
+
+const Title = Schema.String.pipe(Schema.decodeTo(Schema.Trimmed, SchemaTransformation.trim()));
+
+const Shelf = Schema.Struct({ title: Title, books: Schema.Int });
+
+function shelving(kind?: ConflictKind) {
+  return defineCommand('org', {
+    name: 'make_shelf',
+    title: 'Make shelf',
+    description: 'Makes a shelf.',
+    route: { method: 'POST', path: '/shelves' },
+    inputSchema: Schema.Struct({ title: Title }),
+    outputSchema: Shelf,
+    reasons: ['conflict', 'unavailable'],
+    handle: ({ title }) => {
+      if (title === 'elsewhere') {
+        return Effect.fail(new Unavailable({ detail: 'Shelves are made elsewhere', kind: 'model_not_offered' }));
+      }
+      return title === 'taken'
+        ? Effect.fail(new Conflict({ detail: 'There is a shelf taken', ...(kind === undefined ? {} : { kind }) }))
+        : Effect.succeed({ title, books: 0 });
+    },
+    plainLanguage: {
+      task: 'make a shelf',
+      attempt: ({ title }) => `make the shelf ${quoted(title)}`,
+      outcome: ({ title, books }, input) => `Made the shelf ${quoted(title)} for ${input.title}, with ${books} books.`,
+    },
+  });
+}
+
+const { registration } = shelving();
+
+const offeredInputs: ReadonlyArray<readonly [string, unknown]> = [
+  ['input it cannot decode', { title: 7 }],
+  ['no input at all', undefined],
+];
+
+describe('the plain language of a registration', () => {
+  it('names what was attempted from the input as the operation decodes it', () => {
+    expect(registration.plainLanguage?.attempt({ title: '  Poetry  ' })).toBe('make the shelf “Poetry”');
+  });
+
+  it('names what was attempted from input that also has fields the operation does not know', () => {
+    expect(registration.plainLanguage?.attempt({ title: 'Poetry', brain: 'alpha' })).toBe('make the shelf “Poetry”');
+  });
+
+  it.each(offeredInputs)('falls back to the task for %s', (_case, input) => {
+    expect(registration.plainLanguage?.attempt(input)).toBe('make a shelf');
+  });
+
+  it('describes the outcome from the encoded output and the input', () => {
+    expect(registration.plainLanguage?.outcome({ title: 'Poetry', books: 0 }, { title: ' Poetry ' })).toBe(
+      'Made the shelf “Poetry” for Poetry, with 0 books.',
+    );
+  });
+
+  it('is absent from an operation that does not declare it', () => {
+    const bare = defineCommand('org', {
+      name: 'bare_shelf',
+      title: 'Bare shelf',
+      description: 'Makes nothing.',
+      route: { method: 'POST', path: '/bare' },
+      inputSchema: Schema.Struct({ size: Schema.Int }),
+      outputSchema: Schema.Struct({ made: Schema.Boolean }),
+      reasons: [],
+      handle: () => Effect.succeed({ made: false }),
+    });
+
+    expect(bare.registration.plainLanguage).toBeUndefined();
+  });
+});
+
+const toAcme = toOrg('acme');
+
+describe('the kind of a conflict', () => {
+  it.each<ConflictKind>(['taken', 'retired', 'concurrent_change', 'unworkable'])(
+    'reaches the rejected outcome as %s',
+    async (kind) => {
+      const { dispatcher, run } = harness();
+
+      const outcome = await run(
+        dispatcher.dispatchToOrg(shelving(kind).registration, toAcme(acmeAdmin, { title: 'taken' })),
+      );
+
+      expect(outcome).toEqual({
+        status: 'rejected',
+        reason: 'conflict',
+        detail: 'There is a shelf taken',
+        kind,
+      });
+    },
+  );
+
+  it('reaches the rejected outcome for unavailability too', async () => {
+    const { dispatcher, run } = harness();
+
+    const outcome = await run(dispatcher.dispatchToOrg(registration, toAcme(acmeAdmin, { title: 'elsewhere' })));
+
+    expect(outcome).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'Shelves are made elsewhere',
+      kind: 'model_not_offered',
+    });
+  });
+
+  it('is left out when the conflict does not say', async () => {
+    const { dispatcher, run } = harness();
+
+    const outcome = await run(dispatcher.dispatchToOrg(registration, toAcme(acmeAdmin, { title: 'taken' })));
+
+    expect(outcome).toEqual({ status: 'rejected', reason: 'conflict', detail: 'There is a shelf taken' });
+  });
+});

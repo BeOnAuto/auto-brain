@@ -1,6 +1,7 @@
 import { defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
+import { specWordsFor } from '../plain-language/spec-words.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { SpecSchema } from '../registry/spec.ts';
@@ -10,6 +11,7 @@ import { specOf } from './spec-views.ts';
 
 export function defineRetireSpec(primitives: readonly Primitive[]) {
   const known = knownPrimitives(primitives);
+  const words = specWordsFor(primitives);
   return known.publish(
     defineCommand('brain', {
       name: 'retire_spec',
@@ -32,6 +34,12 @@ export function defineRetireSpec(primitives: readonly Primitive[]) {
         const primitive = yield* known.primitiveNamed(primitiveName);
         return specOf(primitive, yield* recordInRegistry(primitive.name, { type: 'retire', name }));
       }),
+      plainLanguage: {
+        task: `retire a ${words.kinds}`,
+        attempt: ({ primitive, name }) => `retire ${words.named(primitive, name)}`,
+        outcome: ({ primitive, name }) =>
+          `Retired ${words.named(primitive, name)}. It can no longer be run or changed, and its name cannot be used again in this brain.`,
+      },
     }),
   );
 }

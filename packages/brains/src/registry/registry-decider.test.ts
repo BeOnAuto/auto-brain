@@ -49,13 +49,15 @@ describe('creating a brain', () => {
 
   it('is rejected while an active brain holds the id', () => {
     expect(decided(creating, alphaCreated)).toEqual(
-      Result.fail(new Conflict({ detail: 'There is already a brain alpha in this org' })),
+      Result.fail(new Conflict({ detail: 'There is already a brain alpha in this org', kind: 'taken' })),
     );
   });
 
   it('is rejected for the id of a retired brain, because an id is never reused', () => {
     expect(decided(creating, alphaCreated, alphaRetired)).toEqual(
-      Result.fail(new Conflict({ detail: 'The brain alpha was retired, and a brain id is never reused' })),
+      Result.fail(
+        new Conflict({ detail: 'The brain alpha was retired, and a brain id is never reused', kind: 'taken' }),
+      ),
     );
   });
 });
@@ -69,7 +71,7 @@ describe('updating a brain', () => {
 
   it('is rejected for a retired brain', () => {
     expect(decided(updating('Alpha Sales', ''), alphaCreated, alphaRetired)).toEqual(
-      Result.fail(new Conflict({ detail: 'The brain alpha is retired and can no longer change' })),
+      Result.fail(new Conflict({ detail: 'The brain alpha is retired and can no longer change', kind: 'retired' })),
     );
   });
 

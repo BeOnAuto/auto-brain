@@ -52,6 +52,30 @@ describe('an execution the primitive cannot serve now', () => {
   });
 });
 
+describe('an execution that names a model the server is not set up for, while it can use others', () => {
+  it('is rejected with unavailable of that kind, and the kind is recorded', async () => {
+    const { call, executing, getExecution, prober } = await withPlain();
+    prober.sufferOnNextRun('unoffered');
+
+    expect(await executing({})).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'The probe cannot reach that model, only others',
+      kind: 'model_not_offered',
+    });
+    expect(await call(getExecution, readingTheExecution)).toMatchObject({
+      output: {
+        status: 'rejected',
+        rejection: {
+          reason: 'unavailable',
+          detail: 'The probe cannot reach that model, only others',
+          kind: 'model_not_offered',
+        },
+      },
+    });
+  });
+});
+
 describe('an execution of a spec the primitive cannot run as written', () => {
   it('is rejected with conflict, and the rejection is recorded', async () => {
     const { call, executing, getExecution, prober } = await withPlain();
@@ -61,6 +85,7 @@ describe('an execution of a spec the primitive cannot run as written', () => {
       status: 'rejected',
       reason: 'conflict',
       detail: 'The probe cannot run this spec as written; update it',
+      kind: 'unworkable',
     });
     expect(await call(getExecution, readingTheExecution)).toStrictEqual({
       status: 'succeeded',
@@ -126,6 +151,7 @@ describe('execute_spec rejecting', () => {
       reason: 'conflict',
       detail:
         'The probe spec plain at version 1 no longer parses (The probe document has lines it does not accept); update it',
+      kind: 'unworkable',
     });
     expect(ledger.streamNames()).toEqual(['brain/acme/alpha/specs/probe']);
   });

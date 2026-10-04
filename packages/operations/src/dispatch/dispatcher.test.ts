@@ -57,14 +57,19 @@ describe('a dispatched handler', () => {
     });
   });
 
-  it('is rejected with conflict when a concurrent write to its stream causes a version conflict', async () => {
+  it('is rejected with a conflict of a concurrent change when a concurrent write to its stream causes a version conflict', async () => {
     const { dispatcher, run } = harness();
     const adding = (name: string) =>
       dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name, text: name }));
 
     expect(await run(Effect.all([adding('anvil'), adding('bolt')], { concurrency: 'unbounded' }))).toEqual([
       { status: 'succeeded', output: { added: { name: 'anvil', text: 'anvil' }, version: 1 } },
-      { status: 'rejected', reason: 'conflict', detail: 'The state changed while the command was decided' },
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        detail: 'The state changed while the command was decided',
+        kind: 'concurrent_change',
+      },
     ]);
   });
 });

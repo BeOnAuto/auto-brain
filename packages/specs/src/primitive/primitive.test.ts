@@ -15,6 +15,8 @@ const words: PrimitiveDefinition<{ readonly words: readonly string[] }> = {
   name: 'words',
   title: 'Words',
   description: 'Counts the words of its document.',
+  noun: { one: 'count', other: 'counts' },
+  describeOutput: () => 'It counted the words.',
   mediaType: 'text/plain',
   parse: parseWords,
   summarize: (parsed) => ({ description: `${parsed.words.length} words` }),
@@ -31,13 +33,17 @@ const execution: ExecutionContext = {
 };
 
 describe('a primitive', () => {
-  it('keeps its name, title, description and media type', () => {
-    expect(definePrimitive(words)).toMatchObject({
+  it('keeps its name, title, description, noun, words for an output and media type', () => {
+    const primitive = definePrimitive(words);
+
+    expect(primitive).toMatchObject({
       name: 'words',
       title: 'Words',
       description: 'Counts the words of its document.',
+      noun: { one: 'count', other: 'counts' },
       mediaType: 'text/plain',
     });
+    expect(primitive.describeOutput({ words: [] })).toBe('It counted the words.');
   });
 
   it('runs an execution for at most the time it states, or 10 minutes when it states none', () => {

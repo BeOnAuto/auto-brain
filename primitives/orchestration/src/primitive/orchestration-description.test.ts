@@ -15,6 +15,14 @@ function triagedAs(urgency: string): (call: SpecCall) => SpecCallResult {
       : { status: 'succeeded', output: 'Refund failed twice; the customer is waiting.' };
 }
 
+describe('the opening of the description of orchestration', () => {
+  it('says that a spec of orchestration is a workflow, and which name the tools take', () => {
+    expect(orchestrationDescription).toMatch(
+      /^A spec of the orchestration primitive is a workflow: steps that run other specs of the brain, wait for events and decide what happens next. In conversation, call it a workflow; the primitive's name, `orchestration`, is what the tools take. Runs a workflow:/u,
+    );
+  });
+});
+
 describe('the example in the description of orchestration', () => {
   it('is in the description, and stores as a valid spec document', async () => {
     expect(orchestrationDescription).toContain(orchestrationExample);

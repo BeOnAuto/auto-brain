@@ -1,3 +1,4 @@
+import { UnavailableKindSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { mostResultBytes } from './recorded-size.ts';
@@ -9,7 +10,17 @@ const IssueSchema = Schema.Struct({
 
 export const ExecutionRejectionSchema = Schema.Union([
   Schema.Struct({ reason: Schema.Literal('invalid_input'), detail: Schema.String, issues: Schema.Array(IssueSchema) }),
-  Schema.Struct({ reason: Schema.Literals(['unavailable', 'conflict']), detail: Schema.String }),
+  Schema.Struct({
+    reason: Schema.Literal('unavailable'),
+    detail: Schema.String,
+    kind: Schema.optionalKey(
+      UnavailableKindSchema.annotate({
+        description:
+          'What the primitive could not use, when it knows: model_not_offered for a model of a provider this server is not set up for, while it can use others',
+      }),
+    ),
+  }),
+  Schema.Struct({ reason: Schema.Literal('conflict'), detail: Schema.String }),
 ]).annotate({ description: 'Why the primitive rejected the execution' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;

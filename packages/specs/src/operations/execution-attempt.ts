@@ -1,3 +1,4 @@
+import type { UnavailableKind } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
@@ -39,10 +40,20 @@ function rejectedForInput({ detail, issues }: Rejection): Effect.Effect<Executio
   });
 }
 
-function rejectedFor(
-  reason: 'unavailable' | 'conflict',
-): (rejection: { readonly detail: string }) => Effect.Effect<ExecutionResult> {
-  return ({ detail }) => Effect.succeed({ type: 'execution_rejected', rejection: { reason, detail } });
+interface Unavailability {
+  readonly detail: string;
+  readonly kind?: UnavailableKind;
+}
+
+function rejectedAsUnavailable({ detail, kind }: Unavailability): Effect.Effect<ExecutionResult> {
+  return Effect.succeed({
+    type: 'execution_rejected',
+    rejection: { reason: 'unavailable', detail, ...(kind === undefined ? {} : { kind }) },
+  });
+}
+
+function rejectedAsConflict({ detail }: { readonly detail: string }): Effect.Effect<ExecutionResult> {
+  return Effect.succeed({ type: 'execution_rejected', rejection: { reason: 'conflict', detail } });
 }
 
 export function attempt(executing: Effect.Effect<Executed, PrimitiveRejection>): Effect.Effect<ExecutionOutcome> {
@@ -50,8 +61,8 @@ export function attempt(executing: Effect.Effect<Executed, PrimitiveRejection>):
     Effect.flatMap(outcomeOf),
     Effect.catchTags({
       invalid_input: rejectedForInput,
-      unavailable: rejectedFor('unavailable'),
-      conflict: rejectedFor('conflict'),
+      unavailable: rejectedAsUnavailable,
+      conflict: rejectedAsConflict,
     }),
   );
 }

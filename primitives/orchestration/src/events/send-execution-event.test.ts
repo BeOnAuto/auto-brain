@@ -170,3 +170,27 @@ describe('an event that does not fit', () => {
     });
   });
 });
+
+describe('the plain language of send_execution_event', () => {
+  const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+  it('says which event reached the running workflow', () => {
+    const delivered = { type: 'com.acme.approval.decided', id: 'e-1', time: '2026-10-02T09:00:00.000Z' };
+
+    expect(
+      sendEvent.registration.plainLanguage?.outcome(
+        { execution_id: executionId, event: delivered },
+        { execution_id: executionId, event: { type: delivered.type } },
+      ),
+    ).toBe(
+      'Delivered the event “com.acme.approval.decided” to the running workflow. The workflow uses it as soon as it is waiting for it.',
+    );
+  });
+
+  it('names the event it tried to send, or what it tried', () => {
+    expect([
+      sendEvent.registration.plainLanguage?.attempt({ execution_id: executionId, event: { type: 'com.acme.ping' } }),
+      sendEvent.registration.plainLanguage?.attempt({}),
+    ]).toEqual(['send the event “com.acme.ping” to a running workflow', 'send an event to a running workflow']);
+  });
+});

@@ -5,7 +5,7 @@ import type { ApiEnv } from './api-env.ts';
 import type { ApiOptions } from './api-options.ts';
 import { middlewareFor } from './middleware/middleware-chain.ts';
 import { requestIdAndSecurityHeaders } from './middleware/response-headers.ts';
-import { errorHandler, problemOfThrown } from './problem/error-boundary.ts';
+import { errorHandler, failureOfThrown } from './problem/error-boundary.ts';
 import { problemOf, problemResponse } from './problem/problem.ts';
 import type { Close } from './routes.ts';
 
@@ -29,7 +29,7 @@ export function createApp(options: ApiOptions): ApiApp {
     }),
   );
   app.get('/health', (c) => c.json({ status: 'ok' }, 200, { 'cache-control': 'no-store' }));
-  const reportThrown = problemOfThrown(options.reportIncident);
+  const reportThrown = failureOfThrown(options.reportIncident);
   for (const register of options.routes) {
     register({
       add: (method, path, handler) => {

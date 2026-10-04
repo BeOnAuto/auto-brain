@@ -118,6 +118,18 @@ const cannotServe: readonly (readonly [string, () => ModelFailure, string])[] = 
     'openai is not configured; it needs OPENAI_API_KEY',
   ],
   [
+    'provider_not_configured, for a provider it has, such as one whose certificate it does not trust',
+    () =>
+      new ProviderNotConfigured({
+        detail:
+          'The TLS certificate of openai is not trusted by this server; its operator must add the certificate authority',
+        provider: 'openai',
+        configured: ['openai', 'anthropic'],
+        missing: ['NODE_EXTRA_CA_CERTS'],
+      }),
+    'The TLS certificate of openai is not trusted by this server; its operator must add the certificate authority',
+  ],
+  [
     'credentials_rejected',
     () =>
       new CredentialsRejected({
@@ -173,6 +185,26 @@ const cannotServe: readonly (readonly [string, () => ModelFailure, string])[] = 
 describe('a provider that cannot serve now', () => {
   it.each(cannotServe)('is unavailable, saying which and when to try again: %s', async (_name, failure, detail) => {
     expect(await failingWith(failure)).toEqual(Exit.fail(new Unavailable({ detail })));
+  });
+});
+
+describe('a model of a provider the server does not have, while it has others', () => {
+  it('is unavailable of the kind model_not_offered, so that the spec can be switched', async () => {
+    const failure = new ProviderNotConfigured({
+      detail: 'openai is not configured. Configured providers: anthropic, gateway',
+      provider: 'openai',
+      configured: ['anthropic', 'gateway'],
+      missing: ['OPENAI_API_KEY'],
+    });
+
+    expect(await failingWith(() => failure)).toEqual(
+      Exit.fail(
+        new Unavailable({
+          detail: 'openai is not configured. Configured providers: anthropic, gateway',
+          kind: 'model_not_offered',
+        }),
+      ),
+    );
   });
 });
 

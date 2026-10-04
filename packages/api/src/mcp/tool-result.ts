@@ -1,19 +1,39 @@
-import type { Settled } from '@beonauto/operations';
+import {
+  unsuccessfulWords,
+  type OperationKind,
+  type RegisteredPlainLanguage,
+  type Settled,
+} from '@beonauto/operations';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 
 import { problemOfOutcome } from '../problem/outcome-problem.ts';
-import type { Problem } from '../problem/problem.ts';
 
-export function problemResultOf(problem: Problem): CallToolResult {
-  return { isError: true, content: [{ type: 'text', text: JSON.stringify(problem) }] };
+export interface ToolWords {
+  readonly kind: OperationKind;
+  readonly plainLanguage: RegisteredPlainLanguage;
 }
 
-export function toolResultOf(settled: Settled, clientClosedRequest: boolean): CallToolResult {
+function textOf(text: string): { readonly type: 'text'; readonly text: string } {
+  return { type: 'text', text };
+}
+
+export function toolResultOf(
+  settled: Settled,
+  clientClosedRequest: boolean,
+  { kind, plainLanguage }: ToolWords,
+  input: unknown,
+): CallToolResult {
   if (settled.status === 'succeeded') {
     return {
-      content: [{ type: 'text', text: JSON.stringify(settled.output) }],
+      content: [textOf(plainLanguage.outcome(settled.output, input)), textOf(JSON.stringify(settled.output))],
       structuredContent: settled.output,
     };
   }
-  return problemResultOf(problemOfOutcome(settled, clientClosedRequest));
+  return {
+    isError: true,
+    content: [
+      textOf(unsuccessfulWords(plainLanguage.attempt(input), kind, settled)),
+      textOf(JSON.stringify(problemOfOutcome(settled, clientClosedRequest))),
+    ],
+  };
 }

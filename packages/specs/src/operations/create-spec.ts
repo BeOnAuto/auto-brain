@@ -1,6 +1,7 @@
 import { defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
+import { specWordsFor, whatItDoes } from '../plain-language/spec-words.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { SpecSchema } from '../registry/spec.ts';
@@ -10,6 +11,7 @@ import { contentOf, specOf } from './spec-views.ts';
 
 export function defineCreateSpec(primitives: readonly Primitive[]) {
   const known = knownPrimitives(primitives);
+  const words = specWordsFor(primitives);
   return known.publish(
     defineCommand('brain', {
       name: 'create_spec',
@@ -37,6 +39,12 @@ export function defineCreateSpec(primitives: readonly Primitive[]) {
         const content = yield* contentOf(primitive, source);
         return specOf(primitive, yield* recordInRegistry(primitive.name, { type: 'create', name, content }));
       }),
+      plainLanguage: {
+        task: `create a new ${words.kinds}`,
+        attempt: ({ primitive, name }) => `create ${words.named(primitive, name)}`,
+        outcome: (spec) =>
+          `Created ${words.named(spec.primitive, spec.name)}.${whatItDoes(spec)} It has been saved but has not been run yet.`,
+      },
     }),
   );
 }

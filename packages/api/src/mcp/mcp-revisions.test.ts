@@ -77,7 +77,10 @@ describe('a tool call under 2024-11-05', () => {
         jsonrpc: '2.0',
         id: 3,
         result: {
-          content: [{ type: 'text', text: '{"name":"old","text":"hi"}' }],
+          content: [
+            { type: 'text', text: 'Added the note “old”.' },
+            { type: 'text', text: '{"name":"old","text":"hi"}' },
+          ],
           structuredContent: { name: 'old', text: 'hi' },
         },
       },
@@ -87,6 +90,10 @@ describe('a tool call under 2024-11-05', () => {
         result: {
           isError: true,
           content: [
+            {
+              type: 'text',
+              text: 'Could not read the note “missing”: it, or something it refers to, could not be found. Check the names used; the details below say what is missing.',
+            },
             {
               type: 'text',
               text: '{"type":"https://on.auto/problems/not_found","title":"Not found","status":404,"detail":"There is no note missing","reason":"not_found"}',

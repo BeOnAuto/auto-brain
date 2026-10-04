@@ -100,6 +100,7 @@ describe('update_brain rejecting', () => {
       status: 'rejected',
       reason: 'conflict',
       detail: 'The brain alpha is retired and can no longer change',
+      kind: 'retired',
     });
   });
 

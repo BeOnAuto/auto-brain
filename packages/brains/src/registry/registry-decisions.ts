@@ -21,6 +21,7 @@ function takenBy({ id, status }: Brain): Conflict {
       status === 'active'
         ? `There is already a brain ${id} in this org`
         : `The brain ${id} was retired, and a brain id is never reused`,
+    kind: 'taken',
   });
 }
 
@@ -43,7 +44,9 @@ function decideUpdate(
     return Result.fail(brainNotFound(brain));
   }
   if (existing.status === 'retired') {
-    return Result.fail(new Conflict({ detail: `The brain ${brain} is retired and can no longer change` }));
+    return Result.fail(
+      new Conflict({ detail: `The brain ${brain} is retired and can no longer change`, kind: 'retired' }),
+    );
   }
   const renamed = name !== existing.name;
   const redescribed = description !== existing.description;

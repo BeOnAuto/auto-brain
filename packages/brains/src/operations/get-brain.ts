@@ -1,6 +1,7 @@
-import { defineQuery } from '@beonauto/operations';
+import { defineQuery, quoted } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
+import { brainStanding, purposeOf } from '../plain-language/brain-words.ts';
 import { BrainSchema } from '../registry/brain.ts';
 import { findBrain } from '../registry/registry-lookup.ts';
 import { BrainIdField } from './brain-fields.ts';
@@ -19,4 +20,9 @@ export const getBrain = defineQuery('org', {
   outputSchema: BrainSchema,
   reasons: ['not_found'],
   handle: ({ brain }) => loadRegistry.pipe(Effect.flatMap((registry) => findBrain(registry, brain))),
+  plainLanguage: {
+    task: 'look up a brain',
+    attempt: ({ brain }) => `look up the brain ${quoted(brain)}`,
+    outcome: (brain) => `${brainStanding(brain)}${purposeOf(brain)}`,
+  },
 });

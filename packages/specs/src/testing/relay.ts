@@ -18,6 +18,8 @@ export function relay(): Relay {
     title: 'Relay',
     description:
       'Hands its input on to work that finishes after the call returns. A spec document of relay is plain text.',
+    noun: { one: 'relay', other: 'relays' },
+    describeOutput: () => 'It handed its input on.',
     mediaType: 'text/plain',
     parse: (source: string) => Effect.succeed(source),
     summarize: () => ({}),

@@ -1,6 +1,7 @@
 import { defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
+import { specWordsFor, whatItDoes } from '../plain-language/spec-words.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { SpecSchema } from '../registry/spec.ts';
@@ -10,6 +11,7 @@ import { contentOf, specOf } from './spec-views.ts';
 
 export function defineUpdateSpec(primitives: readonly Primitive[]) {
   const known = knownPrimitives(primitives);
+  const words = specWordsFor(primitives);
   return known.publish(
     defineCommand('brain', {
       name: 'update_spec',
@@ -35,6 +37,12 @@ export function defineUpdateSpec(primitives: readonly Primitive[]) {
         const content = yield* contentOf(primitive, source);
         return specOf(primitive, yield* recordInRegistry(primitive.name, { type: 'update', name, content }));
       }),
+      plainLanguage: {
+        task: `update a ${words.kinds}`,
+        attempt: ({ primitive, name }) => `update ${words.named(primitive, name)}`,
+        outcome: (spec) =>
+          `Updated ${words.named(spec.primitive, spec.name)}.${whatItDoes(spec)} The change applies from its next run.`,
+      },
     }),
   );
 }

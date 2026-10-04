@@ -45,7 +45,7 @@ export function makeLedger(store: EventStore): Ledger['Service'] {
     execute: (stream, decider, command) =>
       attempt(stream, decider, command).pipe(
         Effect.retry({ times: retriesOnVersionConflict }),
-        Effect.mapError(() => new Conflict({ detail: changedWhileDeciding })),
+        Effect.mapError(() => new Conflict({ detail: changedWhileDeciding, kind: 'concurrent_change' })),
         Effect.flatMap(Effect.fromResult),
       ),
   });

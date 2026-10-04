@@ -1,3 +1,8 @@
 import { Data } from 'effect';
 
-export class Conflict extends Data.TaggedError('conflict')<{ readonly detail: string }> {}
+export type ConflictKind = 'taken' | 'retired' | 'concurrent_change' | 'unworkable';
+
+export class Conflict extends Data.TaggedError('conflict')<{
+  readonly detail: string;
+  readonly kind?: ConflictKind;
+}> {}

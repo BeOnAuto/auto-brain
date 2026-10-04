@@ -1,4 +1,4 @@
-import type { Catalog, Dispatcher, Registration } from '@beonauto/operations';
+import type { Catalog, Dispatcher, RegisteredPlainLanguage, Registration } from '@beonauto/operations';
 import { McpServer } from '@modelcontextprotocol/server';
 import { Effect, Result } from 'effect';
 
@@ -7,7 +7,7 @@ import type { ReportThrown } from '../problem/error-boundary.ts';
 import { brainArgumentOf } from './brain-argument.ts';
 import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from './caller-hand-off.ts';
 import { brainEndpointInstructions, catalogInstructionsFor, orgEndpointInstructions } from './instructions.ts';
-import { callbackFor, type Dispatch } from './tool-callback.ts';
+import { callbackFor, type CalledTool, type Dispatch } from './tool-callback.ts';
 import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from './tool-definition.ts';
 
 export interface ServerInfo {
@@ -31,12 +31,12 @@ export type McpServerFactory = (context: HandedOff) => McpServer;
 interface Offered<R extends Registration> {
   readonly registration: R;
   readonly definition: ToolDefinition;
+  readonly plainLanguage: RegisteredPlainLanguage;
 }
 
-interface Tool {
+interface Tool extends CalledTool {
   readonly name: string;
   readonly definition: ToolDefinition;
-  readonly dispatch: Dispatch;
 }
 
 function serverWithTools(serving: ToolServing, instructions: string, call: OrgCall, tools: readonly Tool[]): McpServer {
@@ -44,26 +44,39 @@ function serverWithTools(serving: ToolServing, instructions: string, call: OrgCa
     { ...serving.serverInfo },
     { capabilities: { tools: { listChanged: false } }, instructions },
   );
-  for (const { name, definition, dispatch } of tools) {
-    server.registerTool(name, definition, callbackFor(serving, call, dispatch));
+  for (const tool of tools) {
+    server.registerTool(tool.name, tool.definition, callbackFor(serving, call, tool));
   }
   return server;
+}
+
+function plainLanguageOf({ name, plainLanguage }: Registration): RegisteredPlainLanguage {
+  if (plainLanguage === undefined) {
+    throw new Error(`The operation ${name} has no plain language for the results of its MCP tool`);
+  }
+  return plainLanguage;
 }
 
 function offered<R extends Registration>(
   registrations: readonly R[],
   definitionOf: (registration: R) => ToolDefinition,
 ): readonly Offered<R>[] {
-  return registrations.map((registration) => ({ registration, definition: definitionOf(registration) }));
+  return registrations.map((registration) => ({
+    registration,
+    definition: definitionOf(registration),
+    plainLanguage: plainLanguageOf(registration),
+  }));
 }
 
 function toolsOf<R extends Registration>(
   offers: readonly Offered<R>[],
   dispatchOf: (registration: R) => Dispatch,
 ): readonly Tool[] {
-  return offers.map(({ registration, definition }) => ({
+  return offers.map(({ registration, definition, plainLanguage }) => ({
     name: registration.name,
     definition,
+    kind: registration.kind,
+    plainLanguage,
     dispatch: dispatchOf(registration),
   }));
 }

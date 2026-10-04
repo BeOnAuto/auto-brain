@@ -25,6 +25,11 @@ interface Limited extends Detailed {
   readonly retry_after_ms: number | null;
 }
 
+interface UnconfiguredProvider extends Detailed {
+  readonly provider: string;
+  readonly configured: readonly string[];
+}
+
 const mostIssues = 5;
 
 function listed(issues: readonly FailureIssue[]): string {
@@ -34,6 +39,10 @@ function listed(issues: readonly FailureIssue[]): string {
 
 function unavailable(detail: string): Effect.Effect<never, Unavailable> {
   return Effect.fail(new Unavailable({ detail }));
+}
+
+function othersAreOffered({ provider, configured }: UnconfiguredProvider): boolean {
+  return configured.length > 0 && !configured.includes(provider);
 }
 
 function waitFor(retryAfterMs: number | null): string {
@@ -70,7 +79,10 @@ export function rejections(maxOutputTokens: number) {
       unavailable(`${detail}; try again ${waitFor(retry_after_ms)}`),
     provider_unavailable: ({ detail }: Detailed) => unavailable(`${detail}; try again later`),
     timed_out: ({ detail }: Detailed) => unavailable(`${detail}; try again later`),
-    provider_not_configured: ({ detail }: Detailed) => unavailable(detail),
+    provider_not_configured: (failure: UnconfiguredProvider) =>
+      othersAreOffered(failure)
+        ? Effect.fail(new Unavailable({ detail: failure.detail, kind: 'model_not_offered' }))
+        : unavailable(failure.detail),
     credentials_rejected: ({ detail }: Detailed) => unavailable(detail),
   };
 }

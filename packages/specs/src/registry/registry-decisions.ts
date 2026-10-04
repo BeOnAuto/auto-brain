@@ -21,6 +21,7 @@ function takenBy(primitive: string, { name, status }: StoredSpec): Conflict {
       status === 'active'
         ? `The brain already has the ${primitive} spec ${name}`
         : `The ${primitive} spec ${name} was retired, and a spec name is never reused`,
+    kind: 'taken',
   });
 }
 
@@ -45,7 +46,9 @@ function decideUpdate(
     return Result.fail(specNotFound(primitive, name));
   }
   if (existing.status === 'retired') {
-    return Result.fail(new Conflict({ detail: `The ${primitive} spec ${name} is retired and can no longer change` }));
+    return Result.fail(
+      new Conflict({ detail: `The ${primitive} spec ${name} is retired and can no longer change`, kind: 'retired' }),
+    );
   }
   return existing.source === content.source
     ? nothingToRecord

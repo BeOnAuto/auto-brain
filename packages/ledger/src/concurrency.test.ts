@@ -84,13 +84,13 @@ describe('a writer that another writer got ahead of', () => {
     expect(await Effect.runPromise(ledger.load(tallies, tally))).toEqual({ state: 0, version: 2 });
   });
 
-  it('gives up with conflict after three retries when every append meets a version conflict', async () => {
+  it('gives up with a conflict of a concurrent change after three retries when every append meets a version conflict', async () => {
     const ledger = await aLedger();
     const addOneFirst = Effect.orDie(ledger.execute(tallies, tally, [1]));
 
     expect(
       await outcomeOf(ledger.execute(tallies, tallyInterruptedBy(addOneFirst, Number.POSITIVE_INFINITY), [10])),
-    ).toEqual(Result.fail(new Conflict({ detail: changedWhileDeciding })));
+    ).toEqual(Result.fail(new Conflict({ detail: changedWhileDeciding, kind: 'concurrent_change' })));
     expect(await Effect.runPromise(ledger.load(tallies, tally))).toEqual({ state: 4, version: 4 });
   });
 });

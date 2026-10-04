@@ -3,7 +3,7 @@ import type { Registration } from '@beonauto/operations';
 import type { Primitive } from '../primitive/primitive.ts';
 import { defineCreateSpec } from './create-spec.ts';
 import { defineExecuteSpec } from './execute-spec.ts';
-import { getExecution } from './get-execution.ts';
+import { defineGetExecution } from './get-execution.ts';
 import { defineGetSpec } from './get-spec.ts';
 import { defineListSpecs } from './list-specs.ts';
 import { defineRetireSpec } from './retire-spec.ts';
@@ -21,6 +21,6 @@ export function makeSpecOperations(primitives: readonly Primitive[]): readonly B
     defineUpdateSpec(primitives),
     defineRetireSpec(primitives),
     defineExecuteSpec(primitives),
-    getExecution,
+    defineGetExecution(primitives),
   ];
 }

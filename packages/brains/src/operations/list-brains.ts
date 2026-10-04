@@ -1,6 +1,7 @@
 import { Caller, defineQuery, canAccessBrain } from '@beonauto/operations';
 import { Effect, Order, Schema } from 'effect';
 
+import { brainsListed } from '../plain-language/brain-words.ts';
 import { BrainSchema, type Brain } from '../registry/brain.ts';
 import { loadRegistry } from './registry-loading.ts';
 
@@ -31,4 +32,9 @@ export const listBrains = defineQuery('org', {
     );
     return { brains: brains.toSorted(byId) };
   }),
+  plainLanguage: {
+    task: 'list the brains',
+    attempt: () => 'list the brains',
+    outcome: ({ brains }) => brainsListed(brains),
+  },
 });

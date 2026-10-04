@@ -3,6 +3,7 @@ import type { Effect } from 'effect';
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { Succeeded, Rejected } from '../outcome/outcome.ts';
 import type { DeclarableReason } from '../outcome/rejection.ts';
+import type { RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
 import type { SuccessStatusByKind } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import type { JsonSchemaDocument } from './json-schema.ts';
@@ -23,6 +24,7 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly output: JsonSchemaDocument;
+  readonly plainLanguage?: RegisteredPlainLanguage;
   readonly run: (input: unknown, encoding: InputEncoding) => Effect.Effect<Succeeded, Rejected, HandlerServices<S, K>>;
 }
 
