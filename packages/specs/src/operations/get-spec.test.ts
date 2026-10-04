@@ -65,10 +65,10 @@ describe('get_spec rejecting', () => {
       reason: 'not_found',
       detail: 'There is no echo spec plain in this brain',
     });
-    expect(await call(getSpec, toAlpha(acmeAdmin, { primitive: 'prompt', name: 'plain' }))).toEqual({
+    expect(await call(getSpec, toAlpha(acmeAdmin, { primitive: 'reason', name: 'plain' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no primitive prompt',
+      detail: 'There is no primitive reason',
     });
   });
 

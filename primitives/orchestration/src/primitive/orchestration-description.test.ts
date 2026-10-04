@@ -18,7 +18,7 @@ function triagedAs(urgency: string): (call: SpecCall) => SpecCallResult {
 describe('the opening of the description of orchestration', () => {
   it('says that a spec of orchestration is a workflow, and which name the tools take', () => {
     expect(orchestrationDescription).toMatch(
-      /^A spec of the orchestration primitive is a workflow: steps that run other specs of the brain, wait for events and decide what happens next. In conversation, call it a workflow; the primitive's name, `orchestration`, is what the tools take. Runs a workflow:/u,
+      /^A spec of the orchestration primitive is a workflow: it coordinates the brain's other functions, running them in order, deciding what happens next and waiting for input. In conversation, call it a workflow; the primitive's name, `orchestration`, is what the tools take. Runs a workflow:/u,
     );
   });
 });

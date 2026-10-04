@@ -101,18 +101,24 @@ async function brainsCalled(session: McpSession): Promise<Called> {
   ];
 }
 
-async function promptsCalled(session: McpSession): Promise<Called> {
-  const prompt = { primitive: 'inference', name: 'summary' };
-  const created = await session.callTool('create_spec', inSales({ ...prompt, source: summary }));
-  const executed = await session.callTool('execute_spec', inSales({ ...prompt, input: { text: 'the quarter' } }));
+async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
+  const reasonFunction = { primitive: 'inference', name: 'summary' };
+  const created = await session.callTool('create_spec', inSales({ ...reasonFunction, source: summary }));
+  const executed = await session.callTool(
+    'execute_spec',
+    inSales({ ...reasonFunction, input: { text: 'the quarter' } }),
+  );
   const executionId = String(executed.structuredContent?.['execution_id']);
   return [
     ['create_spec', created],
     ['list_specs', await session.callTool('list_specs', inSales({ primitive: 'inference' }))],
-    ['get_spec', await session.callTool('get_spec', inSales(prompt))],
+    ['get_spec', await session.callTool('get_spec', inSales(reasonFunction))],
     [
       'update_spec',
-      await session.callTool('update_spec', inSales({ ...prompt, source: summary.replace('Summarize: ', 'Sum up: ') })),
+      await session.callTool(
+        'update_spec',
+        inSales({ ...reasonFunction, source: summary.replace('Summarize: ', 'Sum up: ') }),
+      ),
     ],
     ['execute_spec', executed],
     ['get_execution', await session.callTool('get_execution', inSales({ execution_id: executionId }))],
@@ -196,7 +202,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
       tools: toolNamesIn(await session.listTools()),
       successes: [
         ...(await brainsCalled(session)),
-        ...(await promptsCalled(session)),
+        ...(await reasonFunctionsCalled(session)),
         ...(await workflowsCalled(session)),
       ],
       errors: await errorsCalled(session),
@@ -225,19 +231,19 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
   });
 });
 
-describe('the plain words for a prompt that names a model of a provider the server is not set up for', () => {
+describe('the plain words for a reason function whose prompt names a model of a provider the server is not set up for', () => {
   it('say that it can be switched to a provider the server has, when there are others', async () => {
     server = await servingInference([() => Effect.fail(unofferedProvider)]);
-    const prompt = { primitive: 'inference', name: 'summary' };
+    const reasonFunction = { primitive: 'inference', name: 'summary' };
 
     const unoffered = await onMcp(async (session) => {
       await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
-      await session.callTool('create_spec', inSales({ ...prompt, source: summary }));
-      return session.callTool('execute_spec', inSales({ ...prompt, input: { text: 'the quarter' } }));
+      await session.callTool('create_spec', inSales({ ...reasonFunction, source: summary }));
+      return session.callTool('execute_spec', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
     });
 
     expect(plainTextIn(unoffered)).toBe(
-      'Could not run the prompt “summary”: this server is not set up to use the provider of the model named, but it can use others. Nothing was changed. This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+      'Could not run the reason function “summary”: this server is not set up to use the provider of the model named, but it can use others. Nothing was changed. This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
     );
     expect(internalTermsIn(plainTextIn(unoffered))).toEqual([]);
     expect(technicalTextIn(unoffered)).toContain('Configured providers: openai, gateway');

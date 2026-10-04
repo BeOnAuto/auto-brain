@@ -79,7 +79,7 @@ const rejections: ReadonlyArray<readonly [string, Readonly<Record<string, unknow
   [
     'a model of a provider the server is not set up for, while it can use others',
     { reason: 'unavailable', detail: 'x', kind: 'model_not_offered' },
-    'this server is not set up to use the provider of the model named, but it can use others. This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+    'this server is not set up to use the provider of the model named, but it can use others. This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
   ],
   [
     'a spec it could not run as written',

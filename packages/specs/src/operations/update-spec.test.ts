@@ -106,10 +106,10 @@ describe('update_spec rejecting', () => {
       detail: 'The echo spec greet is retired and can no longer change',
       kind: 'retired',
     });
-    expect(await call(updateSpec, toAlpha(acmeAdmin, { primitive: 'prompt', name: 'greet', source: hello }))).toEqual({
+    expect(await call(updateSpec, toAlpha(acmeAdmin, { primitive: 'reason', name: 'greet', source: hello }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no primitive prompt',
+      detail: 'There is no primitive reason',
     });
   });
 

@@ -1,6 +1,6 @@
 # @beonauto/inference
 
-Inference is the primitive of a brain that calls a language model. A spec of inference names a model, gives it instructions and a prompt built from what the brain knows, and says whether the answer is free text or a JSON value that must match a JSON Schema. Each execution sends one request to the model and records the answer, the tokens it used and how it finished. This package calls the models through the Vercel AI SDK, behind a small interface of its own, so that every provider below works from settings alone, in Auto's cloud hosting and in a self-hosted container. auto-brain is source-available under the Elastic License 2.0.
+Inference is the primitive through which a brain reasons: it calls a language model. A spec of inference, which a person calls a reason function, names a model, gives it instructions and a prompt built from what the brain knows, and says whether the answer is free text or a JSON value that must match a JSON Schema. Each execution sends one request to the model and records the answer, the tokens it used and how it finished. This package calls the models through the Vercel AI SDK, behind a small interface of its own, so that every provider below works from settings alone, in Auto's cloud hosting and in a self-hosted container. auto-brain is source-available under the Elastic License 2.0.
 
 The first half of this document covers how models are called and configured; the second half, from [The spec document format](#the-spec-document-format), how a spec is written, created and executed.
 

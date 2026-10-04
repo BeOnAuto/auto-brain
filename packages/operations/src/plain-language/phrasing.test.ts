@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { alternatives, asSentence, capitalized, counted, listed, quoted } from '../index.ts';
 
-const prompt = { one: 'prompt', other: 'prompts' };
+const reasonFunction = { one: 'reason function', other: 'reason functions' };
 
 const lists: ReadonlyArray<readonly [readonly string[], string]> = [
   [['a'], 'a'],
@@ -20,23 +20,23 @@ describe('phrasing', () => {
   });
 
   it('capitalizes the first letter of a sentence, and leaves one that starts with a quote', () => {
-    expect([capitalized('the prompt'), capitalized('“summary” is'), capitalized('')]).toEqual([
-      'The prompt',
+    expect([capitalized('the reason function'), capitalized('“summary” is'), capitalized('')]).toEqual([
+      'The reason function',
       '“summary” is',
       '',
     ]);
   });
 
   it('lists alternatives with or', () => {
-    expect(alternatives(['prompt', 'workflow'])).toBe('prompt or workflow');
+    expect(alternatives(['reason function', 'workflow'])).toBe('reason function or workflow');
   });
 
   it.each([
-    [0, '0 prompts'],
-    [1, '1 prompt'],
-    [2, '2 prompts'],
+    [0, '0 reason functions'],
+    [1, '1 reason function'],
+    [2, '2 reason functions'],
   ])('counts %i as %s', (count, text) => {
-    expect(counted(count, prompt)).toBe(text);
+    expect(counted(count, reasonFunction)).toBe(text);
   });
 
   it.each([
