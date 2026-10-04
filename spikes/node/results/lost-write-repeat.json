@@ -1,0 +1,8 @@
+{
+  "same": [
+    "cancelled timer fired anyway (committed cancel lost)",
+    "cancelled timer fired anyway (committed cancel lost)",
+    "cancelled timer fired anyway (committed cancel lost)"
+  ],
+  "separate": ["cancel held", "cancel held", "cancel held"]
+}

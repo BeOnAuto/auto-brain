@@ -1,0 +1,32 @@
+{
+  "outcomes": [
+    "first append, message m-1, expected version 0: appended {\"nextExpectedStreamVersion\":\"1\",\"lastEventGlobalPosition\":\"0000000000000000001\",\"createdNewStream\":true}",
+    "same message m-1 again, expected version 1 (a re-read writer): appended {\"nextExpectedStreamVersion\":\"2\",\"lastEventGlobalPosition\":\"0000000000000000002\",\"createdNewStream\":true}",
+    "message m-2 at the stale expected version 1: rejected with Error: Expected version 1 does not match current -1",
+    "same message m-1 with no expected version: appended {\"nextExpectedStreamVersion\":\"3\",\"lastEventGlobalPosition\":\"0000000000000000003\",\"createdNewStream\":true}"
+  ],
+  "rows": [
+    {
+      "stream_position": 1,
+      "message_id": "m-1",
+      "message_data": "{\"note\":\"first\"}"
+    },
+    {
+      "stream_position": 2,
+      "message_id": "m-1",
+      "message_data": "{\"note\":\"duplicate\"}"
+    },
+    {
+      "stream_position": 3,
+      "message_id": "m-1",
+      "message_data": "{\"note\":\"unchecked\"}"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "sqlite_autoindex_emt_messages_1",
+      "sql": null
+    }
+  ],
+  "table": "CREATE TABLE emt_messages(\n      stream_id              TEXT                      NOT NULL,\n      stream_position        BIGINT                    NOT NULL,\n      partition              TEXT                      NOT NULL DEFAULT 'global',\n      message_kind           CHAR(1)                   NOT NULL DEFAULT 'E',\n      message_data           JSONB                     NOT NULL,\n      message_metadata       JSONB                     NOT NULL,\n      message_schema_version TEXT                      NOT NULL,\n      message_type           TEXT                      NOT NULL,\n      message_id             TEXT                      NOT NULL,\n      is_archived            BOOLEAN                   NOT NULL DEFAULT FALSE,\n      global_position        INTEGER                   PRIMARY KEY,\n      created                DATETIME                  DEFAULT CURRENT_TIMESTAMP,\n      UNIQUE (stream_id, stream_position, partition, is_archived)\n  )"
+}

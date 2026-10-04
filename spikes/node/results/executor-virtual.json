@@ -1,0 +1,285 @@
+[
+  {
+    "name": "result delivered four times (twice in a row, then twice at once)",
+    "evidence": {
+      "runVersion": 6,
+      "phase": "succeeded",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:call_answered",
+        "out:cancel_timer",
+        "out:settle=succeeded"
+      ],
+      "outcomes": 1,
+      "consumedIds": ["start:run-duplicate-result", "result:run-duplicate-result/do/0/call#1"],
+      "job": ["job_started#1 by p1#1", "job_finished"],
+      "watermark": 6,
+      "timers": [
+        {
+          "id": "timeout:run-duplicate-result/do/0/call#1",
+          "fire_at": 1791106200000,
+          "cancelled": 1,
+          "fired_at": null,
+          "fired_by": null
+        }
+      ]
+    },
+    "effects": [
+      "p1 runs the step run-duplicate-result/do/0/call#1 for 1200000 ms",
+      "p1 arms timeout:run-duplicate-result/do/0/call#1",
+      "p1 cancels timeout:run-duplicate-result/do/0/call#1: cancelled",
+      "p1 settles run-duplicate-result: succeeded"
+    ],
+    "decisions": 5
+  },
+  {
+    "name": "four first deliveries at once, at the same expected version (each saw version [6,6,6,6] after)",
+    "evidence": {
+      "runVersion": 6,
+      "phase": "succeeded",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:call_answered",
+        "out:cancel_timer",
+        "out:settle=succeeded"
+      ],
+      "outcomes": 1,
+      "consumedIds": ["start:run-racing-deliveries", "result:run-racing-deliveries/do/0/call#1"],
+      "job": ["job_started#1 by p1#1", "job_finished"],
+      "watermark": 6,
+      "timers": [
+        {
+          "id": "timeout:run-racing-deliveries/do/0/call#1",
+          "fire_at": 1791106200000,
+          "cancelled": 1,
+          "fired_at": null,
+          "fired_by": null
+        }
+      ]
+    },
+    "effects": [
+      "p1 runs the step run-racing-deliveries/do/0/call#1 for 1200000 ms",
+      "p1 arms timeout:run-racing-deliveries/do/0/call#1",
+      "p1 cancels timeout:run-racing-deliveries/do/0/call#1: cancelled",
+      "p1 settles run-racing-deliveries: succeeded",
+      "p1 cancels timeout:run-racing-deliveries/do/0/call#1: nothing to cancel",
+      "p1 settles run-racing-deliveries: succeeded",
+      "p1 cancels timeout:run-racing-deliveries/do/0/call#1: nothing to cancel",
+      "p1 settles run-racing-deliveries: succeeded",
+      "p1 cancels timeout:run-racing-deliveries/do/0/call#1: nothing to cancel",
+      "p1 settles run-racing-deliveries: succeeded"
+    ],
+    "decisions": 5
+  },
+  {
+    "name": "result arrives at 20 min, after the 15 min timeout fired (delivered twice)",
+    "evidence": {
+      "runVersion": 7,
+      "phase": "timed_out",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:timer_fired",
+        "out:cancel_call",
+        "out:settle=timed_out",
+        "in:call_answered(ignored)"
+      ],
+      "outcomes": 1,
+      "consumedIds": [
+        "start:run-late-result",
+        "fired:timeout:run-late-result/do/0/call#1",
+        "result:run-late-result/do/0/call#1"
+      ],
+      "job": ["job_started#1 by p1#1", "job_cancelled", "job_finished"],
+      "watermark": 7,
+      "timers": [
+        {
+          "id": "timeout:run-late-result/do/0/call#1",
+          "fire_at": 1791105300000,
+          "cancelled": 0,
+          "fired_at": 1791105300000,
+          "fired_by": "p1"
+        }
+      ]
+    },
+    "effects": [
+      "p1 runs the step run-late-result/do/0/call#1 for 1200000 ms",
+      "p1 arms timeout:run-late-result/do/0/call#1",
+      "p1 cancels the job run-late-result/do/0/call#1; the remote step keeps running",
+      "p1 settles run-late-result: timed_out",
+      "p1 fires timeout:run-late-result/do/0/call#1"
+    ],
+    "decisions": 4
+  },
+  {
+    "name": "crash after the append, before dispatch; recovered by the watermark on wake",
+    "before": {
+      "runVersion": 3,
+      "phase": "calling",
+      "run": ["in:start", "out:start_call", "out:arm_timer"],
+      "outcomes": 0,
+      "consumedIds": ["start:run-crash-after-append"],
+      "job": [],
+      "watermark": 0,
+      "timers": []
+    },
+    "evidence": {
+      "runVersion": 6,
+      "phase": "succeeded",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:call_answered",
+        "out:cancel_timer",
+        "out:settle=succeeded"
+      ],
+      "outcomes": 1,
+      "consumedIds": ["start:run-crash-after-append", "result:run-crash-after-append/do/0/call#1"],
+      "job": ["job_started#1 by p2#1", "job_finished"],
+      "watermark": 6,
+      "timers": [
+        {
+          "id": "timeout:run-crash-after-append/do/0/call#1",
+          "fire_at": 1791106200000,
+          "cancelled": 1,
+          "fired_at": null,
+          "fired_by": null
+        }
+      ]
+    },
+    "crash": "The process crashed after appending, before dispatching its outputs",
+    "effects": [
+      "p2 runs the step run-crash-after-append/do/0/call#1 for 1200000 ms",
+      "p2 arms timeout:run-crash-after-append/do/0/call#1",
+      "p2 leaves run-crash-after-append/do/0/call#1 alone (running here)",
+      "p2 cancels timeout:run-crash-after-append/do/0/call#1: cancelled",
+      "p2 settles run-crash-after-append: succeeded"
+    ],
+    "decisions": 2
+  },
+  {
+    "name": "crash after dispatch, before the watermark advanced; outputs redone on wake",
+    "before": {
+      "runVersion": 3,
+      "phase": "calling",
+      "run": ["in:start", "out:start_call", "out:arm_timer"],
+      "outcomes": 0,
+      "consumedIds": ["start:run-crash-after-dispatch"],
+      "job": ["job_started#1 by p1#1"],
+      "watermark": 0,
+      "timers": [
+        {
+          "id": "timeout:run-crash-after-dispatch/do/0/call#1",
+          "fire_at": 1791106200000,
+          "cancelled": 0,
+          "fired_at": null,
+          "fired_by": null
+        }
+      ]
+    },
+    "evidence": {
+      "runVersion": 6,
+      "phase": "succeeded",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:call_answered",
+        "out:cancel_timer",
+        "out:settle=succeeded"
+      ],
+      "outcomes": 1,
+      "consumedIds": ["start:run-crash-after-dispatch", "result:run-crash-after-dispatch/do/0/call#1"],
+      "job": ["job_started#1 by p1#1", "job_started#2 by p2#1", "job_finished"],
+      "watermark": 6,
+      "timers": [
+        {
+          "id": "timeout:run-crash-after-dispatch/do/0/call#1",
+          "fire_at": 1791106200000,
+          "cancelled": 1,
+          "fired_at": null,
+          "fired_by": null
+        }
+      ]
+    },
+    "crash": "The process crashed after dispatching, before advancing the watermark",
+    "effects": [
+      "p1 runs the step run-crash-after-dispatch/do/0/call#1 for 1200000 ms",
+      "p1 arms timeout:run-crash-after-dispatch/do/0/call#1",
+      "p2 runs the step run-crash-after-dispatch/do/0/call#1 for 1200000 ms",
+      "p2 arms timeout:run-crash-after-dispatch/do/0/call#1 (already armed, ignored)",
+      "p2 leaves run-crash-after-dispatch/do/0/call#1 alone (running here)",
+      "p2 cancels timeout:run-crash-after-dispatch/do/0/call#1: cancelled",
+      "p2 settles run-crash-after-dispatch: succeeded"
+    ],
+    "decisions": 2
+  },
+  {
+    "name": "crash after the timer input was appended, before the timer row was marked fired: it fires again on wake",
+    "before": {
+      "runVersion": 6,
+      "phase": "timed_out",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:timer_fired",
+        "out:cancel_call",
+        "out:settle=timed_out"
+      ],
+      "outcomes": 1,
+      "consumedIds": ["start:run-timer-fired-twice", "fired:timeout:run-timer-fired-twice/do/0/call#1"],
+      "job": ["job_started#1 by p1#1", "job_cancelled"],
+      "watermark": 6,
+      "timers": [
+        {
+          "id": "timeout:run-timer-fired-twice/do/0/call#1",
+          "fire_at": 1791105300000,
+          "cancelled": 0,
+          "fired_at": null,
+          "fired_by": null
+        }
+      ]
+    },
+    "evidence": {
+      "runVersion": 6,
+      "phase": "timed_out",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:timer_fired",
+        "out:cancel_call",
+        "out:settle=timed_out"
+      ],
+      "outcomes": 1,
+      "consumedIds": ["start:run-timer-fired-twice", "fired:timeout:run-timer-fired-twice/do/0/call#1"],
+      "job": ["job_started#1 by p1#1", "job_cancelled"],
+      "watermark": 6,
+      "timers": [
+        {
+          "id": "timeout:run-timer-fired-twice/do/0/call#1",
+          "fire_at": 1791105300000,
+          "cancelled": 0,
+          "fired_at": 1791105360000,
+          "fired_by": "p2"
+        }
+      ]
+    },
+    "crash": "simulated between append and markFired",
+    "effects": [
+      "p1 runs the step run-timer-fired-twice/do/0/call#1 for 2400000 ms",
+      "p1 arms timeout:run-timer-fired-twice/do/0/call#1",
+      "p1 cancels the job run-timer-fired-twice/do/0/call#1; the remote step keeps running",
+      "p1 settles run-timer-fired-twice: timed_out",
+      "p2 fires timeout:run-timer-fired-twice/do/0/call#1"
+    ],
+    "decisions": 3
+  }
+]

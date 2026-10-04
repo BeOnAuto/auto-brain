@@ -1,0 +1,125 @@
+{
+  "stepMs": 150000,
+  "timerLatenessMs": [3.114013671875],
+  "cases": {
+    "real-duplicate-result": {
+      "runVersion": 6,
+      "phase": "succeeded",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:call_answered",
+        "out:cancel_timer",
+        "out:settle=succeeded"
+      ],
+      "outcomes": 1,
+      "consumedIds": ["start:real-duplicate-result", "result:real-duplicate-result/do/0/call#1"],
+      "job": ["job_started#1 by p-main#1", "job_finished"],
+      "watermark": 6,
+      "timers": [
+        {
+          "id": "timeout:real-duplicate-result/do/0/call#1",
+          "fire_at": 1791128714776,
+          "cancelled": 1,
+          "fired_at": null,
+          "fired_by": null
+        }
+      ]
+    },
+    "real-late-result": {
+      "runVersion": 7,
+      "phase": "timed_out",
+      "run": [
+        "in:start",
+        "out:start_call",
+        "out:arm_timer",
+        "in:timer_fired",
+        "out:cancel_call",
+        "out:settle=timed_out",
+        "in:call_answered(ignored)"
+      ],
+      "outcomes": 1,
+      "consumedIds": [
+        "start:real-late-result",
+        "fired:timeout:real-late-result/do/0/call#1",
+        "result:real-late-result/do/0/call#1"
+      ],
+      "job": ["job_started#1 by p-main#2", "job_cancelled", "job_finished"],
+      "watermark": 7,
+      "timers": [
+        {
+          "id": "timeout:real-late-result/do/0/call#1",
+          "fire_at": 1791128564782,
+          "cancelled": 0,
+          "fired_at": 1791128564785.114,
+          "fired_by": "p-main"
+        }
+      ]
+    },
+    "real-crash-after-append": {
+      "beforeWake": {
+        "runVersion": 3,
+        "phase": "calling",
+        "run": ["in:start", "out:start_call", "out:arm_timer"],
+        "outcomes": 0,
+        "consumedIds": ["start:real-crash-after-append"],
+        "job": [],
+        "watermark": 0,
+        "timers": []
+      },
+      "after": {
+        "runVersion": 6,
+        "phase": "succeeded",
+        "run": [
+          "in:start",
+          "out:start_call",
+          "out:arm_timer",
+          "in:call_answered",
+          "out:cancel_timer",
+          "out:settle=succeeded"
+        ],
+        "outcomes": 1,
+        "consumedIds": ["start:real-crash-after-append", "result:real-crash-after-append/do/0/call#1"],
+        "job": ["job_started#1 by p-main#3", "job_finished"],
+        "watermark": 6,
+        "timers": [
+          {
+            "id": "timeout:real-crash-after-append/do/0/call#1",
+            "fire_at": 1791128714939,
+            "cancelled": 1,
+            "fired_at": null,
+            "fired_by": null
+          }
+        ]
+      }
+    }
+  },
+  "effects": [
+    "p-main runs the step real-duplicate-result/do/0/call#1 for 150000 ms",
+    "p-main arms timeout:real-duplicate-result/do/0/call#1",
+    "p-main runs the step real-late-result/do/0/call#1 for 150000 ms",
+    "p-main arms timeout:real-late-result/do/0/call#1",
+    "p-main runs the step real-crash-after-append/do/0/call#1 for 150000 ms",
+    "p-main arms timeout:real-crash-after-append/do/0/call#1",
+    "p-main leaves real-crash-after-append/do/0/call#1 alone (running here)",
+    "p-main cancels the job real-late-result/do/0/call#1; the remote step keeps running",
+    "p-main settles real-late-result: timed_out",
+    "p-main cancels timeout:real-duplicate-result/do/0/call#1: cancelled",
+    "p-main settles real-duplicate-result: succeeded",
+    "p-main cancels timeout:real-crash-after-append/do/0/call#1: cancelled",
+    "p-main settles real-crash-after-append: succeeded"
+  ],
+  "log": [
+    "+0.0s real-duplicate-result started: step 150000 ms, timeout 240000 ms",
+    "+0.0s real-late-result started: step 150000 ms, timeout 90000 ms",
+    "+0.2s child real-crash-after-append: appended 3; killing it with SIGKILL before it dispatches",
+    "+0.2s child exited: code null, signal SIGKILL",
+    "+0.2s before wake: {\"runVersion\":3,\"phase\":\"calling\",\"run\":[\"in:start\",\"out:start_call\",\"out:arm_timer\"],\"outcomes\":0,\"consumedIds\":[\"start:real-crash-after-append\"],\"job\":[],\"watermark\":0,\"timers\":[]}",
+    "+0.2s real-crash-after-append woken by p-main",
+    "+90.0s timer timeout:real-late-result/do/0/call#1 fires 3.1 ms late",
+    "+255.2s real-duplicate-result: {\"runVersion\":6,\"phase\":\"succeeded\",\"run\":[\"in:start\",\"out:start_call\",\"out:arm_timer\",\"in:call_answered\",\"out:cancel_timer\",\"out:settle=succeeded\"],\"outcomes\":1,\"consumedIds\":[\"start:real-duplicate-result\",\"result:real-duplicate-result/do/0/call#1\"],\"job\":[\"job_started#1 by p-main#1\",\"job_finished\"],\"watermark\":6,\"timers\":[{\"id\":\"timeout:real-duplicate-result/do/0/call#1\",\"fire_at\":1791128714776,\"cancelled\":1,\"fired_at\":null,\"fired_by\":null}]}",
+    "+255.2s real-late-result: {\"runVersion\":7,\"phase\":\"timed_out\",\"run\":[\"in:start\",\"out:start_call\",\"out:arm_timer\",\"in:timer_fired\",\"out:cancel_call\",\"out:settle=timed_out\",\"in:call_answered(ignored)\"],\"outcomes\":1,\"consumedIds\":[\"start:real-late-result\",\"fired:timeout:real-late-result/do/0/call#1\",\"result:real-late-result/do/0/call#1\"],\"job\":[\"job_started#1 by p-main#2\",\"job_cancelled\",\"job_finished\"],\"watermark\":7,\"timers\":[{\"id\":\"timeout:real-late-result/do/0/call#1\",\"fire_at\":1791128564782,\"cancelled\":0,\"fired_at\":1791128564785.114,\"fired_by\":\"p-main\"}]}",
+    "+255.2s real-crash-after-append: {\"beforeWake\":{\"runVersion\":3,\"phase\":\"calling\",\"run\":[\"in:start\",\"out:start_call\",\"out:arm_timer\"],\"outcomes\":0,\"consumedIds\":[\"start:real-crash-after-append\"],\"job\":[],\"watermark\":0,\"timers\":[]},\"after\":{\"runVersion\":6,\"phase\":\"succeeded\",\"run\":[\"in:start\",\"out:start_call\",\"out:arm_timer\",\"in:call_answered\",\"out:cancel_timer\",\"out:settle=succeeded\"],\"outcomes\":1,\"consumedIds\":[\"start:real-crash-after-append\",\"result:real-crash-after-append/do/0/call#1\"],\"job\":[\"job_started#1 by p-main#3\",\"job_finished\"],\"watermark\":6,\"timers\":[{\"id\":\"timeout:real-crash-after-append/do/0/call#1\",\"fire_at\":1791128714939,\"cancelled\":1,\"fired_at\":null,\"fired_by\":null}]}}"
+  ]
+}
