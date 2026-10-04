@@ -1,5 +1,5 @@
 import { decisionLoop, type Decided, type DecisionLoop } from '@beonauto/ledger';
-import { Effect } from 'effect';
+import { Data, Effect } from 'effect';
 
 import { outcomeOf, staleReasonOf } from '../machine/admission.ts';
 import type { RunDecider } from '../machine/run-decider.ts';
@@ -12,6 +12,11 @@ import type { Submission } from './workflow-engine.ts';
 
 export type RunDecision = Decided<LoadedRun, RunState, RunEvent>;
 
+export class SplitDecision extends Data.TaggedError('split_decision')<{
+  readonly executionId: string;
+  readonly events: number;
+}> {}
+
 export function runLoopOf(
   runStore: RunStore,
   decider: RunDecider,
@@ -19,9 +24,9 @@ export function runLoopOf(
   return decisionLoop(
     (executionId: string) => Effect.map(runStore.load(executionId), (stored) => loadedRunOf(stored)),
     (executionId, events, expectedVersion) =>
-      Effect.forEach(events, (event, index) => runStore.append(executionId, event, expectedVersion + index), {
-        discard: true,
-      }),
+      events.length > 1
+        ? Effect.die(new SplitDecision({ executionId, events: events.length }))
+        : Effect.forEach(events, (event) => runStore.append(executionId, event, expectedVersion), { discard: true }),
     decider,
   );
 }

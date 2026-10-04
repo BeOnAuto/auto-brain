@@ -16,7 +16,7 @@ export {
   type StartCall,
 } from './dispatch/run-output.ts';
 export { changesTimers, nextDueAtOf, runDueOf } from './dispatch/run-due.ts';
-export { runLoopOf, submissionOf, type RunDecision } from './engine/run-loop.ts';
+export { SplitDecision, runLoopOf, submissionOf, type RunDecision } from './engine/run-loop.ts';
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';

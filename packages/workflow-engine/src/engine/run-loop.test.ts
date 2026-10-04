@@ -1,8 +1,16 @@
 import { Conflict } from '@beonauto/operations';
-import { Effect, Result } from 'effect';
+import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { eventBytesOf, runLoopOf, snapshotOf, submissionOf, type RunInput } from '../index.ts';
+import {
+  eventBytesOf,
+  runLoopOf,
+  snapshotOf,
+  SplitDecision,
+  submissionOf,
+  type RunDecider,
+  type RunInput,
+} from '../index.ts';
 import { countingDecider, memoryRunStore } from '../testing/run-store.ts';
 import { at, executionId, runningState, started } from '../testing/runs.ts';
 
@@ -55,6 +63,21 @@ describe('the engine on the ledger loop', () => {
         new Conflict({ detail: 'The state changed while the command was decided', kind: 'concurrent_change' }),
       ),
     );
+  });
+});
+
+describe('a decision', () => {
+  it('dies on a decision of more than one event and appends nothing, so an input is always one atomic append', async () => {
+    const store = memoryRunStore();
+    const twice: RunDecider = {
+      ...countingDecider,
+      decide: (input, state) => Result.map(countingDecider.decide(input, state), (events) => [...events, ...events]),
+    };
+
+    const exit = await Effect.runPromise(Effect.exit(runLoopOf(store, twice)(executionId, started)));
+
+    expect(exit).toEqual(Exit.die(new SplitDecision({ executionId, events: 2 })));
+    expect(store.events(executionId)).toEqual([]);
   });
 });
 
