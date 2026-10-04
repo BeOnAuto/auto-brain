@@ -1,0 +1,227 @@
+{
+  "node": "v26.10.0",
+  "report": [
+    {
+      "size": 1000,
+      "faithful": true,
+      "wallMsMedian": 137,
+      "wallMsRange": [135, 139],
+      "cpuMsMedian": 235,
+      "microsPerInputMedian": 137,
+      "setImmediateMicrosPerInput": 13.86,
+      "parseMsMedian": 0,
+      "logMiB": 0.23,
+      "peakHeapAboveStartMiBMedian": 12.3,
+      "retainedRunMiBMedian": 3.3,
+      "retainedRunMiBRange": [3.3, 3.8],
+      "maxRssMiBMedian": 146,
+      "smallestHeapLimitHeldLogMiB": 32,
+      "smallestHeapLimitStreamedLogMiB": 32,
+      "heapLimits": [
+        {
+          "limit": 32,
+          "held": {
+            "ok": true,
+            "wallMs": 251
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 258
+          }
+        },
+        {
+          "limit": 48,
+          "held": {
+            "ok": true,
+            "wallMs": 139
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 145
+          }
+        },
+        {
+          "limit": 64,
+          "held": {
+            "ok": true,
+            "wallMs": 136
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 135
+          }
+        },
+        {
+          "limit": 96,
+          "held": {
+            "ok": true,
+            "wallMs": 136
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 135
+          }
+        },
+        {
+          "limit": 128,
+          "held": {
+            "ok": true,
+            "wallMs": 134
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 136
+          }
+        }
+      ]
+    },
+    {
+      "size": 10000,
+      "faithful": true,
+      "wallMsMedian": 1215,
+      "wallMsRange": [1206, 1230],
+      "cpuMsMedian": 1494,
+      "microsPerInputMedian": 122,
+      "setImmediateMicrosPerInput": 14.85,
+      "parseMsMedian": 4,
+      "logMiB": 2.31,
+      "peakHeapAboveStartMiBMedian": 45.1,
+      "retainedRunMiBMedian": 4.5,
+      "retainedRunMiBRange": [4.5, 10.5],
+      "maxRssMiBMedian": 224,
+      "smallestHeapLimitHeldLogMiB": 32,
+      "smallestHeapLimitStreamedLogMiB": 32,
+      "heapLimits": [
+        {
+          "limit": 32,
+          "held": {
+            "ok": true,
+            "wallMs": 6263
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 6393
+          }
+        },
+        {
+          "limit": 48,
+          "held": {
+            "ok": true,
+            "wallMs": 6139
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 5666
+          }
+        },
+        {
+          "limit": 64,
+          "held": {
+            "ok": true,
+            "wallMs": 5086
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 4677
+          }
+        },
+        {
+          "limit": 96,
+          "held": {
+            "ok": true,
+            "wallMs": 1325
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 1197
+          }
+        },
+        {
+          "limit": 128,
+          "held": {
+            "ok": true,
+            "wallMs": 1271
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 1187
+          }
+        }
+      ]
+    },
+    {
+      "size": 40000,
+      "faithful": true,
+      "wallMsMedian": 4639,
+      "wallMsRange": [4621, 5432],
+      "cpuMsMedian": 4893,
+      "microsPerInputMedian": 116,
+      "setImmediateMicrosPerInput": 15.06,
+      "parseMsMedian": 22,
+      "logMiB": 9.26,
+      "peakHeapAboveStartMiBMedian": 272.3,
+      "retainedRunMiBMedian": 87.3,
+      "retainedRunMiBRange": [26.7, 103.3],
+      "maxRssMiBMedian": 604,
+      "smallestHeapLimitHeldLogMiB": 96,
+      "smallestHeapLimitStreamedLogMiB": 32,
+      "heapLimits": [
+        {
+          "limit": 32,
+          "held": {
+            "ok": false,
+            "wallMs": "out of memory"
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 46961
+          }
+        },
+        {
+          "limit": 48,
+          "held": {
+            "ok": false,
+            "wallMs": "out of memory"
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 45684
+          }
+        },
+        {
+          "limit": 64,
+          "held": {
+            "ok": false,
+            "wallMs": "out of memory"
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 45198
+          }
+        },
+        {
+          "limit": 96,
+          "held": {
+            "ok": true,
+            "wallMs": 34476
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 5845
+          }
+        },
+        {
+          "limit": 128,
+          "held": {
+            "ok": true,
+            "wallMs": 10500
+          },
+          "streamed": {
+            "ok": true,
+            "wallMs": 5114
+          }
+        }
+      ]
+    }
+  ]
+}
