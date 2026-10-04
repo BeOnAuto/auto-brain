@@ -1,6 +1,5 @@
-import type { CallerIdentity } from '@beonauto/operations';
-
-import type { Json } from '../dsl/json.ts';
+import type { CallerIdentity, Settlement } from '@beonauto/operations';
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
 
 export interface SpecCall {
   readonly org: string;
@@ -18,10 +17,7 @@ export type SpecCallResult =
   | { readonly status: 'rejected'; readonly reason: string; readonly detail: string }
   | { readonly status: 'failed'; readonly detail: string };
 
-export type RunSettlement =
-  | { readonly status: 'succeeded'; readonly output: Json }
-  | { readonly status: 'rejected'; readonly reason: 'invalid_input' | 'unavailable'; readonly detail: string }
-  | { readonly status: 'failed' };
+export type RunSettlement = Settlement;
 
 export interface SettleRequest {
   readonly org: string;

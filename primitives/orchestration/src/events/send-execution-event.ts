@@ -2,15 +2,15 @@ import { randomUUID } from 'node:crypto';
 
 import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import { getExecution } from '@beonauto/specs';
-import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
-
-import { jsonBytesOf } from '../dsl/json.ts';
+import { jsonBytesOf } from '@beonauto/workflow-engine/dsl/json';
 import {
   mostReceivedEventBytes,
   mostReceivedEvents,
   mostWaitingEventBytes,
   mostWaitingEvents,
-} from '../interpreter/inbox.ts';
+} from '@beonauto/workflow-engine/limits';
+import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
+
 import type { OrchestrationClient } from '../primitive/orchestration-client.ts';
 
 const mostEventBytes = 262_144;

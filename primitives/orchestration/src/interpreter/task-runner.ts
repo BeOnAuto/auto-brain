@@ -1,6 +1,7 @@
-import type { Variables } from '../dsl/expressions.ts';
-import { field, objectField, textField, type Json, type JsonObject } from '../dsl/json.ts';
-import { taskEntries, typeOf, type TaskEntry } from '../dsl/tasks.ts';
+import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
+import { field, objectField, textField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import { taskEntries, typeOf, type TaskEntry } from '@beonauto/workflow-engine/dsl/tasks';
+
 import { holds, placeIn, transform } from './evaluation.ts';
 import type { ListResult, Place, Runner, Scope, TaskOutcome } from './invocation.ts';
 import { raised } from './raised-error.ts';

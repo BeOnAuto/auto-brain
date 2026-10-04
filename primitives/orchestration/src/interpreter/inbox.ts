@@ -1,6 +1,13 @@
-import { isJson, isObject, jsonBytesOf, type JsonObject } from '../dsl/json.ts';
-import { retainedBytesOf } from '../dsl/retained-size.ts';
+import { isJson, isObject, jsonBytesOf, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import {
+  mostReceivedEventBytes,
+  mostReceivedEvents,
+  mostWaitingEventBytes,
+  mostWaitingEvents,
+} from '@beonauto/workflow-engine/limits';
+
 import { raised, type RaisedError } from './raised-error.ts';
+import { retainedBytesOf } from './retained-size.ts';
 
 export type EventFilter = (event: JsonObject) => boolean;
 
@@ -10,14 +17,6 @@ export interface Inbox {
   readonly takeEvent: (accepts: EventFilter) => JsonObject | undefined;
   readonly overflow: () => RaisedError | undefined;
 }
-
-export const mostWaitingEvents = 64;
-
-export const mostWaitingEventBytes = 1_048_576;
-
-export const mostReceivedEvents = 1024;
-
-export const mostReceivedEventBytes = 4_194_304;
 
 interface Waiting {
   readonly event: JsonObject;

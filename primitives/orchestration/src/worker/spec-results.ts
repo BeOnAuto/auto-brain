@@ -1,6 +1,6 @@
 import type { Outcome } from '@beonauto/operations';
+import { field, textField } from '@beonauto/workflow-engine/dsl/json';
 
-import { field, textField } from '../dsl/json.ts';
 import type { SpecExecutionResult } from './dependencies.ts';
 
 export function specExecutionResultOf(outcome: Outcome): SpecExecutionResult {

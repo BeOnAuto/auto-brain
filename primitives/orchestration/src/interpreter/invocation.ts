@@ -1,6 +1,7 @@
-import type { Variables } from '../dsl/expressions.ts';
-import type { Json } from '../dsl/json.ts';
-import type { TaskEntry } from '../dsl/tasks.ts';
+import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
+import type { TaskEntry } from '@beonauto/workflow-engine/dsl/tasks';
+
 import type { Meter, RunState } from './run-state.ts';
 
 export interface Scope {

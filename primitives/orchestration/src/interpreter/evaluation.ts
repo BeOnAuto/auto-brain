@@ -1,9 +1,24 @@
-import { readDuration } from '../dsl/durations.ts';
-import { enclosedBody, expressionSource, runExpression, type Variables } from '../dsl/expressions.ts';
-import { entriesOf, isList, isObject, isTruthy, type Json, type JsonEntry, type JsonObject } from '../dsl/json.ts';
+import { readDuration } from '@beonauto/workflow-engine/dsl/durations';
+import {
+  enclosedBody,
+  expressionSource,
+  runExpression,
+  type Variables,
+} from '@beonauto/workflow-engine/dsl/expressions';
+import {
+  entriesOf,
+  isList,
+  isObject,
+  isTruthy,
+  type Json,
+  type JsonEntry,
+  type JsonObject,
+} from '@beonauto/workflow-engine/dsl/json';
+import { mostExpressionWork, mostWorkPerInput } from '@beonauto/workflow-engine/limits';
+
 import type { Invocation, Place } from './invocation.ts';
 import { RaisedError, errorType, raised } from './raised-error.ts';
-import { mostActivationWork, mostExpressionWork, type RunState } from './run-state.ts';
+import type { RunState } from './run-state.ts';
 
 export function evaluate(source: string, data: Json, variables: Variables, place: Place): Json {
   const mostWork = place.meter.allowance();
@@ -30,7 +45,7 @@ export function placeIn(state: RunState, reference: string): Place {
 
 function exhaustionOf(problem: string, mostWork: number): string {
   return mostWork < mostExpressionWork
-    ? `${problem}: the workflow did ${mostActivationWork} units of expression work in one activation; it lets other workflows run between tasks, not within one`
+    ? `${problem}: the workflow did ${mostWorkPerInput} units of expression work in one activation; it lets other workflows run between tasks, not within one`
     : `${problem}: an expression may do ${mostExpressionWork} units of work`;
 }
 

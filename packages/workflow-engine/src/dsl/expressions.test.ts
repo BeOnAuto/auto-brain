@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { checkExpression, enclosedBody, expressionSource, runExpression } from './expressions.ts';
+import {
+  checkExpression,
+  enclosedBody,
+  expressionSource,
+  mostCompiledCharacters,
+  runExpression,
+} from './expressions.ts';
 
 const now = Date.parse('2026-10-01T09:00:00.000Z');
 
 const budget = { now, mostWork: 8_000_000 };
+
+function padded(index: number): string {
+  return `("${'x'.repeat(1000)}" | length) + .a + ${index}`;
+}
 
 describe('an expression', () => {
   it('is the body of a string enclosed in ${ }', () => {
@@ -20,6 +30,19 @@ describe('an expression', () => {
     expect(runExpression('.a + $b', { a: 1 }, { b: 2 }, budget)).toMatchObject({ value: 3 });
     expect(runExpression('.[]', [4, 5], {}, budget)).toMatchObject({ value: 4 });
     expect(runExpression('empty', null, {}, budget)).toMatchObject({ value: null });
+  });
+
+  it('is compiled once and kept in a cache of bounded size, and compiled again once the cache let it go', () => {
+    const filling = Math.ceil(mostCompiledCharacters / padded(0).length) + 1;
+
+    const first = runExpression(padded(0), { a: 1 }, {}, budget);
+    const others = Array.from({ length: filling }, (_, index) =>
+      runExpression(padded(index + 1), { a: 0 }, {}, budget),
+    );
+
+    expect(first).toMatchObject({ value: 1001 });
+    expect(others.at(-1)).toMatchObject({ value: 1000 + filling });
+    expect(runExpression(padded(0), { a: 1 }, {}, budget)).toEqual(first);
   });
 
   it('runs again on the same variables', () => {

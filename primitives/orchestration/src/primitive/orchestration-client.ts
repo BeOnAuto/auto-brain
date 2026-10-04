@@ -1,10 +1,10 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { NotFound, Unavailable } from '@beonauto/operations';
+import type { JsonObject } from '@beonauto/workflow-engine/dsl/json';
 import { Client, Connection, WorkflowNotFoundError } from '@temporalio/client';
 import { Clock, Effect, type Scope } from 'effect';
 
-import type { JsonObject } from '../dsl/json.ts';
 import { defaultLongestNestedExecutionMs, type StartingRun, type WorkflowRun } from '../interpreter/workflow-run.ts';
 import { makeThrottle } from '../notices/throttle.ts';
 import { connectionOptionsOf, type TemporalSettings } from '../worker/temporal-settings.ts';

@@ -18,7 +18,7 @@ const manifestFile = 'workflow-bundle.json';
 
 const mostChangesNamed = 5;
 
-const sourceDirectory = 'primitives/orchestration/src';
+const sourceDirectories = ['packages/workflow-engine/src', 'primitives/orchestration/src'];
 
 const decodeManifest = Schema.decodeUnknownOption(
   Schema.fromJsonString(Schema.Struct({ code: Schema.String, inputs: Schema.Record(Schema.String, Schema.String) })),
@@ -64,12 +64,13 @@ export function requireWorkflowBundler(): void {
 
 async function bundleInputs(): Promise<readonly string[]> {
   const patches = await readdir(join(workspaceRoot, 'patches'));
-  const sources = await readdir(join(workspaceRoot, sourceDirectory), { recursive: true });
-  return [
-    'pnpm-lock.yaml',
-    ...patches.map((patch) => `patches/${patch}`),
-    ...sources.filter((file) => isWorkflowSource(file)).map((file) => `${sourceDirectory}/${file}`),
-  ].toSorted();
+  const sources = await Promise.all(sourceDirectories.map((directory) => workflowSourcesIn(directory)));
+  return ['pnpm-lock.yaml', ...patches.map((patch) => `patches/${patch}`), ...sources.flat()].toSorted();
+}
+
+async function workflowSourcesIn(directory: string): Promise<readonly string[]> {
+  const files = await readdir(join(workspaceRoot, directory), { recursive: true });
+  return files.filter((file) => isWorkflowSource(file)).map((file) => `${directory}/${file}`);
 }
 
 function isWorkflowSource(file: string): boolean {

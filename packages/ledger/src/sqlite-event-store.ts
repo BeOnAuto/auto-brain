@@ -9,13 +9,13 @@ type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
 
 export type SQLiteStoreOptions<Driver extends AnyDriver> = Parameters<typeof getSQLiteEventStore<Driver>>[0];
 
-function openSQLiteEventStore<Driver extends AnyDriver>(optionsOf: () => SQLiteStoreOptions<Driver>): EventStore {
+export function sqliteEventStore<Driver extends AnyDriver>(optionsOf: () => SQLiteStoreOptions<Driver>): EventStore {
   const store = getSQLiteEventStore({ ...optionsOf(), schema: { autoMigration: 'None' } });
   return {
-    read: async (stream) => {
-      const { currentStreamVersion, events } = await store.readStream(stream);
+    read: async (stream, after = 0) => {
+      const { currentStreamVersion, events } = await store.readStream(stream, { from: BigInt(after + 1) });
       return {
-        version: Number(currentStreamVersion),
+        version: Math.max(after, Number(currentStreamVersion)),
         events: events.map(({ data }: { readonly data: unknown }) => data),
       };
     },
@@ -32,5 +32,5 @@ function openSQLiteEventStore<Driver extends AnyDriver>(optionsOf: () => SQLiteS
 export function sqliteLedgerLayer<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
 ): Layer.Layer<Ledger> {
-  return ledgerLayerOver(() => openSQLiteEventStore(optionsOf));
+  return ledgerLayerOver(() => sqliteEventStore(optionsOf));
 }

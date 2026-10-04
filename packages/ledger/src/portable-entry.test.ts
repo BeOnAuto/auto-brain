@@ -32,7 +32,7 @@ function packagesReachableFrom(entry: string): ReadonlySet<string> {
 }
 
 describe('the ledger entry points', () => {
-  it('keep the main entry free of native and Node-only modules, so it loads on Cloudflare Workers', () => {
+  it('keep the main entry free of native and Node-only modules', () => {
     const packages = [...packagesReachableFrom('index.ts')];
 
     expect(packages.filter((name) => name.startsWith('node:'))).toEqual([]);

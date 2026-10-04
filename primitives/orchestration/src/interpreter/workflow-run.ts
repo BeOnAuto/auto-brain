@@ -1,6 +1,5 @@
 import type { CallerIdentity } from '@beonauto/operations';
-
-import { isJson, isList, isObject, type Json, type JsonObject } from '../dsl/json.ts';
+import { isJson, isList, isObject, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
 
 interface RunExecution {
   readonly id: string;

@@ -1,5 +1,6 @@
-import { field, jsonBytesOf, objectField, type Json } from '../dsl/json.ts';
-import { rejectionsOf } from '../dsl/policy.ts';
+import { field, jsonBytesOf, objectField, type Json } from '@beonauto/workflow-engine/dsl/json';
+
+import { workflowPolicy } from '../document/workflow-functions.ts';
 import { placeIn, transform } from './evaluation.ts';
 import type { WorkflowHost } from './host.ts';
 import { RaisedError, errorType } from './raised-error.ts';
@@ -93,7 +94,7 @@ async function outcomeOf(state: RunState): Promise<RunOutcome> {
 
 async function interpret(state: RunState): Promise<Json> {
   const { document, input } = state.run;
-  const rejections = rejectionsOf(document).filter(({ forbidden }) => forbidden);
+  const rejections = workflowPolicy(document).filter(({ forbidden }) => forbidden);
   if (rejections.length > 0) {
     throw new RaisedError({
       type: errorType('configuration'),

@@ -1,5 +1,6 @@
 import { parse, runAst, validate, type Value } from '@gabrielbryk/jq-ts';
 
+import { boundedCacheOf } from './bounded-cache.ts';
 import { isJson, isList, isObject, measureOf, mostValueDepth, type Json, type JsonEntry } from './json.ts';
 
 export type Variables = Readonly<Record<string, Json>>;
@@ -23,7 +24,9 @@ const limits = { maxSteps: 200_000, maxDepth: 200, maxOutputs: 10_000 };
 
 const longestProblem = 1000;
 
-const compiled = new Map<string, Compiled>();
+export const mostCompiledCharacters = 262_144;
+
+const compiled = boundedCacheOf<Compiled>(mostCompiledCharacters);
 
 const converted = new WeakMap<object, Value>();
 

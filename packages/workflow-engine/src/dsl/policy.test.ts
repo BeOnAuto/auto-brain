@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { header, workflow, yamlObject } from '../testing/workflows.ts';
-import { rejectionsOf } from './policy.ts';
+import { header, testFunctions, workflow, yamlObject } from '../testing/workflows.ts';
+import { policyOf } from './policy.ts';
+
+const rejectionsOf = policyOf(testFunctions);
 
 function pointersRejectedIn(source: string): readonly string[] {
   return rejectionsOf(workflow(source)).map(({ pointer }) => pointer);

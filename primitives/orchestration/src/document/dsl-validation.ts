@@ -1,7 +1,6 @@
+import type { JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import { taskKinds } from '@beonauto/workflow-engine/dsl/tasks';
 import { buildGraph, Classes, SchemaValidationError, WorkflowValidationError } from '@openworkflowspec/sdk';
-
-import type { JsonObject } from '../dsl/json.ts';
-import { taskKinds } from '../dsl/tasks.ts';
 
 export interface Problem {
   readonly pointer: string;

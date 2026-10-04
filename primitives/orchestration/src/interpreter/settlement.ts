@@ -1,6 +1,8 @@
-import type { Json } from '../dsl/json.ts';
+import type { DslError } from '@beonauto/workflow-engine';
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
+
 import type { RunSettlement } from './host.ts';
-import { describeError, type DslError } from './raised-error.ts';
+import { describeError } from './raised-error.ts';
 
 export type RunOutcome =
   | { readonly kind: 'completed'; readonly output: Json }

@@ -15,6 +15,7 @@ COPY packages/identity/package.json packages/identity/
 COPY packages/ledger/package.json packages/ledger/
 COPY packages/operations/package.json packages/operations/
 COPY packages/specs/package.json packages/specs/
+COPY packages/workflow-engine/package.json packages/workflow-engine/
 COPY primitives/inference/package.json primitives/inference/
 COPY primitives/orchestration/package.json primitives/orchestration/
 RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
@@ -40,11 +41,14 @@ RUN npm install --global --no-fund --no-audit pnpm@12.8.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches/
 COPY packages/config/package.json packages/config/
+COPY packages/ledger/package.json packages/ledger/
 COPY packages/operations/package.json packages/operations/
 COPY packages/specs/package.json packages/specs/
+COPY packages/workflow-engine/package.json packages/workflow-engine/
 COPY primitives/orchestration/package.json primitives/orchestration/
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @beonauto/orchestration...
 COPY primitives/orchestration/build-workflow-bundle.ts primitives/orchestration/
+COPY packages/workflow-engine/src packages/workflow-engine/src
 COPY primitives/orchestration/src primitives/orchestration/src
 RUN node primitives/orchestration/build-workflow-bundle.ts /app/workflow-bundle
 
@@ -63,6 +67,7 @@ COPY packages/ledger/src packages/ledger/src
 COPY packages/operations/src packages/operations/src
 COPY packages/server/src packages/server/src
 COPY packages/specs/src packages/specs/src
+COPY packages/workflow-engine/src packages/workflow-engine/src
 COPY primitives/inference/src primitives/inference/src
 COPY primitives/orchestration/src primitives/orchestration/src
 COPY primitives/orchestration/check-workflow-bundle.ts primitives/orchestration/

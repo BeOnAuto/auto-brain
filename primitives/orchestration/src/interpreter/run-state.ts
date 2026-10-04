@@ -1,5 +1,12 @@
-import { measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '../dsl/json.ts';
-import type { Components } from '../dsl/policy-checks.ts';
+import { measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import type { Components } from '@beonauto/workflow-engine/dsl/policy-checks';
+import {
+  mostExpressionWork,
+  mostStepsWithoutWaiting,
+  mostTasksPerInput,
+  mostWorkPerInput,
+} from '@beonauto/workflow-engine/limits';
+
 import { makeHolding, type Hold } from './holding.ts';
 import type { WorkflowHost } from './host.ts';
 import { makeInbox, type Inbox } from './inbox.ts';
@@ -37,14 +44,6 @@ export const runtimeDescriptor: JsonObject = {
 export const mostHistoryBytes = 8_388_608;
 
 export const mostHistoryEvents = 40_000;
-
-export const mostStepsWithoutWaiting = 10_000;
-
-export const mostExpressionWork = 8_000_000;
-
-export const mostActivationWork = 16_000_000;
-
-const mostTasksPerActivation = 100;
 
 const mostValueWork = mostExpressionWork;
 
@@ -144,7 +143,7 @@ function makeMeter(host: WorkflowHost): Meter {
   return {
     allowance: () => {
       current();
-      return Math.min(mostExpressionWork, mostActivationWork - work);
+      return Math.min(mostExpressionWork, mostWorkPerInput - work);
     },
     record: (done) => {
       current();
@@ -152,7 +151,7 @@ function makeMeter(host: WorkflowHost): Meter {
     },
     shouldYield: () => {
       current();
-      return work >= mostExpressionWork || tasks >= mostTasksPerActivation;
+      return work >= mostExpressionWork || tasks >= mostTasksPerInput;
     },
     countTask: () => {
       current();

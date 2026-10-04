@@ -1,5 +1,5 @@
 import { entriesOf, field, isList, isObject, mostValueDepth, type Json, type JsonObject } from './json.ts';
-import { forbidden, type Located, type Rejection } from './policy-checks.ts';
+import { forbidden, type Rejection } from './policy-checks.ts';
 import { nestedTaskLists, pointerTo, taskEntries, type TaskEntry } from './tasks.ts';
 
 const mostTaskNesting = 64;
@@ -22,10 +22,10 @@ function deepValueIn(value: Json, pointer: string, room: number): string | undef
   if (room === 0) {
     return pointer;
   }
-  const children: readonly Located[] = isList(value)
-    ? value.map((item, index): Located => [item, pointerTo(pointer, index)])
-    : entriesOf(value).map(([key, item]): Located => [item, pointerTo(pointer, key)]);
-  return firstFound(children, ([child, at]) => deepValueIn(child ?? null, at, room - 1));
+  const children: readonly (readonly [Json, string])[] = isList(value)
+    ? value.map((item, index): readonly [Json, string] => [item, pointerTo(pointer, index)])
+    : entriesOf(value).map(([key, item]): readonly [Json, string] => [item, pointerTo(pointer, key)]);
+  return firstFound(children, ([child, at]) => deepValueIn(child, at, room - 1));
 }
 
 function deepTaskListIn(list: Json | undefined, pointer: string, room: number): string | undefined {

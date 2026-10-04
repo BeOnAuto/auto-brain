@@ -1,9 +1,14 @@
+import {
+  mostReceivedEventBytes,
+  mostReceivedEvents,
+  mostWaitingEventBytes,
+  mostWaitingEvents,
+} from '@beonauto/workflow-engine/limits';
 import { describe, expect, it } from 'vitest';
 
 import type { FakeHost } from '../testing/fake-host.ts';
 import { interpret, workflow } from '../testing/workflows.ts';
 import type { RunSettlement } from './host.ts';
-import { mostReceivedEventBytes, mostReceivedEvents, mostWaitingEventBytes, mostWaitingEvents } from './inbox.ts';
 import type { WorkflowStart } from './interpreter.ts';
 
 const waitingForever = workflow(`

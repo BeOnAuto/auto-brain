@@ -1,4 +1,5 @@
-import type { Json } from '../dsl/json.ts';
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
+
 import { startWorkflow } from '../interpreter/interpreter.ts';
 import { eventSignalName } from './activity-contract.ts';
 import { temporalHost, type WorkflowApi } from './temporal-host.ts';

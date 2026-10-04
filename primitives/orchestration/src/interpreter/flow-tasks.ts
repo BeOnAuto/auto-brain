@@ -1,4 +1,4 @@
-import type { Variables } from '../dsl/expressions.ts';
+import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
 import {
   entriesOf,
   field,
@@ -10,8 +10,9 @@ import {
   type Json,
   type JsonArray,
   type JsonObject,
-} from '../dsl/json.ts';
-import { taskEntries } from '../dsl/tasks.ts';
+} from '@beonauto/workflow-engine/dsl/json';
+import { taskEntries } from '@beonauto/workflow-engine/dsl/tasks';
+
 import { evaluateExpression, holds, placeOf } from './evaluation.ts';
 import type { Release } from './holding.ts';
 import { bodyOf, type Body, type Invocation, type TaskOutcome } from './invocation.ts';

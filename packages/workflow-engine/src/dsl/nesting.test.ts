@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { testFunctions, workflow } from '../testing/workflows.ts';
 import type { Json } from './json.ts';
-import { rejectionsOf } from './policy.ts';
+import { policyOf } from './policy.ts';
+
+const rejectionsOf = policyOf(testFunctions);
 
 function nestedDo(levels: number): string {
   return levels === 1 ? '[{ leaf: { set: { done: true } } }]' : `[{ inner: { do: ${nestedDo(levels - 1)} } }]`;
@@ -48,15 +50,6 @@ describe('the nesting of task lists', () => {
         forbidden: true,
       },
     ]);
-  });
-});
-
-describe('a workflow that starts with tasks nested too deeply', () => {
-  it('is rejected before it runs any of them, however it was stored', async () => {
-    const { settlement, commands } = await interpret(workflow(`do: ${nestedDo(65)}`));
-
-    expect(settlement).toMatchObject({ status: 'rejected', reason: 'invalid_input' });
-    expect(commands.map(({ kind }) => kind)).toStrictEqual(['deadline', 'settle']);
   });
 });
 

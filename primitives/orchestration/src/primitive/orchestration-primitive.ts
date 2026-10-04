@@ -1,10 +1,10 @@
 import { asSentence, InvalidInput } from '@beonauto/operations';
 import { definePrimitive, inWords, type FinishesLater, type Primitive } from '@beonauto/specs';
+import { measureOf, mostValueDepth, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
 import { Effect, type Schema } from 'effect';
 
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
-import { measureOf, mostValueDepth, type JsonObject } from '../dsl/json.ts';
 import type { OrchestrationClient } from './orchestration-client.ts';
 import { orchestrationDescription } from './orchestration-description.ts';
 

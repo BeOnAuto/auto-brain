@@ -1,4 +1,4 @@
-import { enclosedBody } from '../dsl/expressions.ts';
+import { enclosedBody } from '@beonauto/workflow-engine/dsl/expressions';
 import {
   entriesOf,
   field,
@@ -9,9 +9,10 @@ import {
   type Json,
   type JsonEntry,
   type JsonObject,
-} from '../dsl/json.ts';
-import type { Located } from '../dsl/policy-checks.ts';
-import { eventFiltersOf } from '../dsl/task-policy.ts';
+} from '@beonauto/workflow-engine/dsl/json';
+import type { Located } from '@beonauto/workflow-engine/dsl/policy-checks';
+import { eventFiltersOf } from '@beonauto/workflow-engine/dsl/task-policy';
+
 import { evaluate, placeOf } from './evaluation.ts';
 import type { EventFilter } from './inbox.ts';
 import type { Body, Invocation } from './invocation.ts';

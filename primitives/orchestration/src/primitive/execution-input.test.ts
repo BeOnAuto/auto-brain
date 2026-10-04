@@ -1,7 +1,7 @@
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { Json } from '../dsl/json.ts';
 import { brainWith } from '../testing/brain.ts';
 import type { OrchestrationClient } from './orchestration-client.ts';
 import { makeOrchestration } from './orchestration-primitive.ts';

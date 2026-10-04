@@ -20,6 +20,16 @@ This package is the event store behind the `Ledger` port of `@beonauto/operation
 - A decision of more than eight events is a defect.
 - Any other failure of the database is a defect, never a `Conflict` or a rejection.
 
+## Building on the ledger's loop
+
+Code that keeps its own streams, such as `@beonauto/workflow-engine`, uses the same pieces as the ledger itself rather than a copy of them:
+
+- `sqliteEventStore(optionsOf)` opens the event store on any of Emmett's SQLite drivers, without the layer.
+- `EventStore.read(stream, after)` gives the events after version `after` and the version of the whole stream, so a reader that holds a snapshot at version `after` reads only the tail. Emmett answers a read past the end of a stream with version 0; `read` answers with `after` instead.
+- `eventAppenderOf(store)` encodes and appends events with an expected version, at most eight in one append, and fails with `VersionConflict` when another writer appended first.
+- `retriedOnVersionConflict(attempt)` runs a load-decide-append attempt again after a version conflict, up to three more times, and then fails with `Conflict`.
+- `decisionLoop(load, append, decider)` is the load-decide-append loop itself, the one `Ledger.execute` runs: it loads, decides, appends the decided events with the loaded version expected, retries with `retriedOnVersionConflict`, and answers with what the load gave, the events and the folded state. The ledger's load folds the whole stream; a caller with snapshots passes a load that folds a snapshot and its tail.
+
 ## Creating the layer
 
 ```ts
@@ -34,9 +44,9 @@ Each SQLite connection may cache up to 8 MiB of pages and maps none of the file 
 
 ## Portability
 
-The same ledger will run on Cloudflare D1, so it follows these rules:
+The same ledger must also run on hosted SQLite databases that bind at most 100 parameters in one statement and offer no interactive transactions, so it follows these rules:
 
-- It uses only the event store's own operations: read a stream, append with an expected version, migrate, close. It writes no SQL and registers no projections or consumers.
+- It uses only the event store's own operations: read a stream, or its tail after a version, append with an expected version, migrate, close. It writes no SQL and registers no projections or consumers.
 - It does not rely on transactions or rollback: each command makes at most one append.
-- An append carries at most eight events. Emmett binds ten parameters for each event it inserts, and D1 accepts at most 100 bound parameters in one query.
+- An append carries at most eight events. Emmett binds ten parameters for each event it inserts, and such a database binds at most 100 in one statement.
 - Only `src/open-event-store.ts` knows which SQLite driver is in use and that the database is a file.

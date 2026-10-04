@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { retainedBytesOf } from '../dsl/retained-size.ts';
 import { fakeHost } from '../testing/fake-host.ts';
 import { interpret, runOf, workflow } from '../testing/workflows.ts';
 import { mostHeldBytes, taskFrameBytes } from './holding.ts';
 import type { RunSettlement } from './host.ts';
 import { RaisedError } from './raised-error.ts';
+import { retainedBytesOf } from './retained-size.ts';
 import { makeRunState } from './run-state.ts';
 
 function holderOf() {

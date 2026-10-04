@@ -4,6 +4,7 @@ import {
   OrgIdSchema,
   streamPrefixOfBrain,
   type Conflict,
+  type Settlement as RunSettlement,
   type StreamWriter,
 } from '@beonauto/operations';
 import { DateTime, Effect, Schema } from 'effect';
@@ -22,8 +23,7 @@ export interface ExecutionAddress {
 
 export type Settlement =
   | { readonly status: 'succeeded'; readonly output: Schema.Json; readonly record: Schema.JsonObject }
-  | { readonly status: 'rejected'; readonly reason: 'invalid_input' | 'unavailable'; readonly detail: string }
-  | { readonly status: 'failed' };
+  | Exclude<RunSettlement, { readonly status: 'succeeded' }>;
 
 export type SettleExecution = (
   execution: ExecutionAddress,

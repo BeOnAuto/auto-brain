@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { workflow } from '../testing/workflows.ts';
-import { rejectionsOf } from './policy.ts';
+import { testFunctions, workflow } from '../testing/workflows.ts';
+import { policyOf } from './policy.ts';
+
+const rejectionsOf = policyOf(testFunctions);
 
 function rejectedIn(tasks: string): readonly string[] {
   return rejectionsOf(workflow(`do:\n${tasks}`)).map(({ pointer, detail }) => `${pointer}: ${detail}`);
@@ -24,51 +26,29 @@ describe('the policy of the tasks of a document', () => {
 
   it.each(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mcp'])('rejects call: %s', (name) => {
     expect(rejectedIn(`  - fetch: { call: ${name}, with: {} }`)).toEqual([
-      `/do/0/fetch/call: call: ${name} is not allowed: a workflow reaches the world only through the specs of its brain; call execute_spec`,
+      `/do/0/fetch/call: call: ${name} is not allowed: a workflow reaches the world only through the functions it is given; call notify`,
     ]);
   });
 
-  it('rejects a call of a function other than execute_spec', () => {
+  it('rejects a call of a function other than those its caller gives', () => {
+    const twoFunctions = policyOf({ ...testFunctions, argumentChecks: { notify: () => [], page: () => [] } });
+
     expect(rejectedIn('  - log: { call: log, with: {} }')).toEqual([
-      '/do/0/log/call: call: log names no function; the one function is execute_spec',
+      '/do/0/log/call: call: log names no function; the one function is notify',
     ]);
-  });
-});
-
-describe('the policy of execute_spec', () => {
-  it('takes a primitive, a name and an input, as expressions or literals', () => {
-    expect(
-      rejectedIn(`
-  - summarize:
-      call: execute_spec
-      with: { primitive: inference, name: '\${ .spec }', input: { text: '\${ .text }' } }
-`),
-    ).toEqual([]);
-  });
-
-  it('rejects arguments it does not take and arguments it lacks', () => {
-    expect(
-      rejectedIn(`
-  - nothing: { call: execute_spec }
-  - partial: { call: execute_spec, with: { name: 3, model: big } }
-`),
-    ).toEqual([
-      '/do/0/nothing/with: execute_spec takes with: { primitive, name, input }',
-      '/do/1/partial/with/model: execute_spec takes no argument model',
-      '/do/1/partial/with/primitive: execute_spec needs a string primitive',
-      '/do/1/partial/with/name: execute_spec needs a string name',
+    expect(twoFunctions(workflow('do:\n  - log: { call: log }')).map(({ detail }) => detail)).toEqual([
+      'call: log names no function; the functions are notify, page',
     ]);
   });
 
-  it('rejects executing another workflow, and broken expressions in its arguments', () => {
+  it('leaves the arguments of a call to the checks of its function', () => {
     expect(
       rejectedIn(`
-  - nested: { call: execute_spec, with: { primitive: orchestration, name: other, input: ['\${ .a + }'] } }
+  - fine: { call: notify, with: { to: '\${ .who }' } }
+  - bare: { call: notify }
+  - broken: { call: notify, with: { to: '\${ .a + }' } }
 `),
-    ).toEqual([
-      '/do/0/nested/with/primitive: A workflow cannot execute another workflow in this version',
-      expect.stringMatching(/^\/do\/0\/nested\/with\/input\/0: /u),
-    ]);
+    ).toEqual(['/do/1/bare/with: notify takes with: { to }', expect.stringMatching(/^\/do\/2\/broken\/with\/to: /u)]);
   });
 });
 

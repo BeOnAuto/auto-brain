@@ -1,5 +1,6 @@
-import type { Variables } from '../dsl/expressions.ts';
-import { field, isObject, objectField, type Json, type JsonObject } from '../dsl/json.ts';
+import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
+import { field, isObject, objectField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+
 import { millisecondsOf, placeIn } from './evaluation.ts';
 import { raised } from './raised-error.ts';
 import type { RunState } from './run-state.ts';

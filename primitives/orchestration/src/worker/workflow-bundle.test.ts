@@ -43,6 +43,7 @@ describe('a workflow bundle built ahead of time', () => {
     expect(inputs).toContain('pnpm-lock.yaml');
     expect(inputs).toContain('patches/@gabrielbryk__jq-ts@1.7.0.patch');
     expect(inputs).toContain('primitives/orchestration/src/workflow/workflows.ts');
+    expect(inputs).toContain('packages/workflow-engine/src/dsl/expressions.ts');
     expect(inputs.filter((file) => /\.test\.ts$|\/testing\//u.test(file))).toEqual([]);
     expect(Object.values(manifest.inputs).filter((digest) => !/^[0-9a-f]{64}$/u.test(digest))).toEqual([]);
   });
@@ -86,7 +87,7 @@ describe('a workflow bundle that does not match the server', () => {
   it('names at most five of the files that differ', async () => {
     const copy = await copiedBundle('many');
     await changedFile(join(copy, 'workflow-bundle.json'), (text) =>
-      text.replaceAll(/("primitives\/orchestration\/src\/dsl\/[^"]+": ")[0-9a-f]{64}/gu, '$1changed'),
+      text.replaceAll(/("packages\/workflow-engine\/src\/dsl\/[^"]+": ")[0-9a-f]{64}/gu, '$1changed'),
     );
 
     await expect(verifiedWorkflowBundle(copy)).rejects.toThrow(/this server runs: [^,]+(?:, [^,]+){4}$/u);

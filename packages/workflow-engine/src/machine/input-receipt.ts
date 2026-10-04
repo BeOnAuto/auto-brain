@@ -1,0 +1,47 @@
+import { Schema } from 'effect';
+
+import { callKeyText } from '../executor/call-key.ts';
+import { clampedAt, InstantSchema } from './instant.ts';
+import type { RunInput } from './run-input.ts';
+import type { RunState } from './run-state.ts';
+
+const keyed = {
+  key: Schema.String,
+  at: InstantSchema,
+};
+
+export const InputReceiptSchema = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal('started'), ...keyed }),
+  Schema.Struct({ kind: Schema.Literal('timer_fired'), ...keyed }),
+  Schema.Struct({
+    kind: Schema.Literal('call_answered'),
+    ...keyed,
+    status: Schema.Literals(['succeeded', 'rejected', 'failed', 'unreachable']),
+  }),
+  Schema.Struct({ kind: Schema.Literal('event_received'), ...keyed, eventType: Schema.String }),
+  Schema.Struct({ kind: Schema.Literal('cancel_requested'), ...keyed }),
+]);
+
+export type InputReceipt = typeof InputReceiptSchema.Type;
+
+export function inputTimeOf(state: RunState, input: RunInput): number {
+  const at = clampedAt(state.lastInputAt, input.at);
+  const armed =
+    input.kind === 'timer_fired' && Object.hasOwn(state.timers.armed, input.timerId)
+      ? state.timers.armed[input.timerId]
+      : undefined;
+  return armed === undefined ? at : Math.max(at, armed.dueAt);
+}
+
+export function receiptOf(input: RunInput, at: number): InputReceipt {
+  if (input.kind === 'timer_fired') {
+    return { kind: input.kind, key: input.timerId, at };
+  }
+  if (input.kind === 'call_answered') {
+    return { kind: input.kind, key: callKeyText(input.key), at, status: input.result.status };
+  }
+  if (input.kind === 'event_received') {
+    return { kind: input.kind, key: input.event.id, at, eventType: input.event.type };
+  }
+  return { kind: input.kind, key: input.executionId, at };
+}
