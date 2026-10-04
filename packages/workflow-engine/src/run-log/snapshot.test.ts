@@ -6,10 +6,12 @@ import {
   mostSnapshotChunkBytes,
   snapshotChunks,
   snapshotFromChunks,
+  snapshotOf,
   stateFormat,
+  stateInCurrentFormat,
   type Snapshot,
 } from '../index.ts';
-import { executionId, runningState } from '../testing/runs.ts';
+import { runningState } from '../testing/runs.ts';
 
 const highSurrogate = /[\uD800-\uDBFF]$/u;
 
@@ -18,37 +20,31 @@ const lowSurrogate = /^[\uDC00-\uDFFF]/u;
 const utf8 = new TextEncoder();
 
 function snapshotHolding(text: string): Snapshot {
-  const values = { ...runningState.machine.values, 0: { value: text, bytes: text.length, holders: 1 } };
-  return {
-    format: stateFormat,
-    executionId,
-    version: 4000,
-    historyBytes: 9_000_000,
-    state: { ...runningState, machine: { ...runningState.machine, values } },
-  };
+  const values = { ...runningState.machine.values, 0: { value: text, bytes: text.length } };
+  return snapshotOf({ ...runningState, machine: { ...runningState.machine, values } }, 4000);
 }
 
 describe('a snapshot', () => {
-  it('is due after 1,000 inputs, or after as many bytes of events as the last snapshot took, and at least 1 MiB', () => {
+  it('is due once the events since the last snapshot take as many bytes as it did, and at least 1 MiB', () => {
     expect([
-      isSnapshotDue({ inputs: 999, bytes: 1_048_575, snapshotBytes: 0 }),
-      isSnapshotDue({ inputs: 1000, bytes: 0, snapshotBytes: 0 }),
-      isSnapshotDue({ inputs: 1, bytes: 1_048_576, snapshotBytes: 900_000 }),
-      isSnapshotDue({ inputs: 1, bytes: 2_000_000, snapshotBytes: 3_000_000 }),
-      isSnapshotDue({ inputs: 1, bytes: 3_000_000, snapshotBytes: 3_000_000 }),
-    ]).toEqual([false, true, true, false, true]);
+      isSnapshotDue({ bytes: 1_048_575, snapshotBytes: 0 }),
+      isSnapshotDue({ bytes: 1_048_576, snapshotBytes: 900_000 }),
+      isSnapshotDue({ bytes: 2_000_000, snapshotBytes: 3_000_000 }),
+      isSnapshotDue({ bytes: 3_000_000, snapshotBytes: 3_000_000 }),
+    ]).toEqual([false, true, false, true]);
   });
 
-  it('round-trips a running state through its chunks, with the bytes of history it covers', () => {
-    const snapshot: Snapshot = {
-      format: stateFormat,
-      executionId,
-      version: 1000,
-      historyBytes: 2_100_000,
-      state: runningState,
-    };
+  it('names its state format and the bytes of history it covers, and round-trips through its chunks', () => {
+    const snapshot = snapshotOf(runningState, 1000);
 
+    expect(snapshot).toMatchObject({
+      format: stateFormat,
+      executionId: runningState.executionId,
+      version: 1000,
+      historyBytes: 9000,
+    });
     expect(snapshotFromChunks(snapshotChunks(snapshot))).toEqual(Result.succeed(snapshot));
+    expect(stateInCurrentFormat(snapshot.format, snapshot.state)).toEqual(runningState);
   });
 
   it('is stored in chunks of at most 1 MiB of UTF-8, well under the 2 MB a row takes, that never split a character', () => {
@@ -65,11 +61,8 @@ describe('a snapshot', () => {
     expect(snapshotFromChunks(chunks)).toEqual(Result.succeed(snapshot));
   });
 
-  it('is refused when its chunks do not make a snapshot of this state format', () => {
-    const snapshot: Snapshot = { format: stateFormat, executionId, version: 1, historyBytes: 10, state: runningState };
-    const text = snapshotChunks(snapshot)
-      .join('')
-      .replace(`"format":${stateFormat}`, `"format":${stateFormat + 1}`);
+  it('is refused when its chunks do not make a snapshot', () => {
+    const text = snapshotChunks(snapshotOf(runningState, 1)).join('').replace(`"format":${stateFormat}`, '"format":0');
 
     expect(Result.isFailure(snapshotFromChunks([text]))).toBe(true);
   });

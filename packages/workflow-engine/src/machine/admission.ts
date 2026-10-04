@@ -1,6 +1,7 @@
 import { Data } from 'effect';
 
 import { callKeyText } from '../executor/call-key.ts';
+import { heldValueOf } from './held-values.ts';
 import type { RunInput } from './run-input.ts';
 import type { RunState } from './run-state.ts';
 import { sameJson } from './same-json.ts';
@@ -32,8 +33,11 @@ function startedReason(
     return undefined;
   }
   requireSameRun(state, input);
-  if (!sameJson(state.workflow?.document ?? null, input.document)) {
+  if (state.workflow === null || !sameJson(state.workflow.document, input.document)) {
     throw new RunMismatch({ detail: `The run of ${state.executionId} was started again with another document` });
+  }
+  if (!sameJson(heldValueOf(state, state.workflow.input).value, input.input)) {
+    throw new RunMismatch({ detail: `The run of ${state.executionId} was started again with another input` });
   }
   return 'started_before';
 }

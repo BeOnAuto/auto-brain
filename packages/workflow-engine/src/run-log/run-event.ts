@@ -27,7 +27,6 @@ export type RunEvent = typeof RunEventSchema.Type;
 
 export interface PositionedEvent {
   readonly version: number;
-  readonly bytes: number;
   readonly event: RunEvent;
 }
 
@@ -39,4 +38,17 @@ export function eventBytesOf(event: RunEvent): number {
 
 export function fitsInOneEvent(event: RunEvent): boolean {
   return eventBytesOf(event) <= mostEventBytes;
+}
+
+function withHistoryBytesOf(event: RunEvent, historyBytes: number): RunEvent {
+  return { ...event, patch: [...event.patch, { op: 'replace', path: '/historyBytes', value: historyBytes }] };
+}
+
+export function withHistoryBytes(event: RunEvent, before: number): RunEvent {
+  const settled = (guess: number): RunEvent => {
+    const counted = withHistoryBytesOf(event, before + guess);
+    const bytes = eventBytesOf(counted);
+    return bytes === guess ? counted : settled(bytes);
+  };
+  return settled(0);
 }

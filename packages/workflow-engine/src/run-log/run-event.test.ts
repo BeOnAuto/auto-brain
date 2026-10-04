@@ -10,6 +10,7 @@ import {
   RunInputSchema,
   RunStateSchema,
   stateFormat,
+  withHistoryBytes,
   type RunEvent,
   type RunInput,
 } from '../index.ts';
@@ -47,6 +48,11 @@ const event: RunEvent = {
   ],
 };
 
+function countedAfter(before: number): readonly [unknown, unknown] {
+  const applied = withHistoryBytes(event, before);
+  return [applied.patch.at(-1), { op: 'replace', path: '/historyBytes', value: before + eventBytesOf(applied) }];
+}
+
 function near(text: string): RunEvent {
   return { ...event, patch: [{ op: 'replace', path: '/machine/context', value: text }] };
 }
@@ -70,9 +76,9 @@ describe('a run event', () => {
     expect(readBack(RunEventSchema, asStored(RunEventSchema, event))).toEqual(Result.succeed(event));
   });
 
-  it('is refused when it names another state format, or holds an output the engine does not dispatch', () => {
+  it('is refused when it names no state format, or holds an output the engine does not dispatch', () => {
     expect([
-      Result.isFailure(readBack(RunEventSchema, { ...event, format: stateFormat + 1 })),
+      Result.isFailure(readBack(RunEventSchema, { ...event, format: 0 })),
       Result.isFailure(readBack(RunEventSchema, { ...event, outputs: [{ kind: 'send_email', to: 'someone' }] })),
     ]).toEqual([true, true]);
   });
@@ -83,6 +89,15 @@ describe('a run event', () => {
     expect(eventBytesOf(near('é'))).toBe(overhead + 2);
     expect(fitsInOneEvent(near('x'.repeat(mostEventBytes - overhead)))).toBe(true);
     expect(fitsInOneEvent(near('x'.repeat(mostEventBytes - overhead + 1)))).toBe(false);
+  });
+
+  it('sets the bytes of history to those before it and its own, which it knows before it is appended', () => {
+    const befores = [0, 1, 9_999_000, 99_999_000, 999_999_000, 9_999_999_000, 536_870_000];
+
+    const counted = befores.map((before) => countedAfter(before));
+
+    expect(counted.map(([last]) => last)).toEqual(counted.map(([, expected]) => expected));
+    expect(withHistoryBytes(event, 0).patch.slice(0, -1)).toEqual(event.patch);
   });
 });
 

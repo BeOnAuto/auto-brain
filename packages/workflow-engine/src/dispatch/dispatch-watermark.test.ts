@@ -25,7 +25,6 @@ const settle: RunOutput = { kind: 'settle', executionId, settlement: { status: '
 function applied(version: number, outputs: readonly RunOutput[]): PositionedEvent {
   return {
     version,
-    bytes: 100,
     event: {
       type: 'input_applied',
       format: stateFormat,

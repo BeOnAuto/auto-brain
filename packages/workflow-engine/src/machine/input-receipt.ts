@@ -3,6 +3,7 @@ import { Schema } from 'effect';
 import { callKeyText } from '../executor/call-key.ts';
 import { clampedAt, InstantSchema } from './instant.ts';
 import type { RunInput } from './run-input.ts';
+import type { RunState } from './run-state.ts';
 
 const keyed = {
   key: Schema.String,
@@ -23,8 +24,16 @@ export const InputReceiptSchema = Schema.Union([
 
 export type InputReceipt = typeof InputReceiptSchema.Type;
 
-export function receiptOf(input: RunInput, lastInputAt: number): InputReceipt {
-  const at = clampedAt(lastInputAt, input.at);
+export function inputTimeOf(state: RunState, input: RunInput): number {
+  const at = clampedAt(state.lastInputAt, input.at);
+  const armed =
+    input.kind === 'timer_fired' && Object.hasOwn(state.timers.armed, input.timerId)
+      ? state.timers.armed[input.timerId]
+      : undefined;
+  return armed === undefined ? at : Math.max(at, armed.dueAt);
+}
+
+export function receiptOf(input: RunInput, at: number): InputReceipt {
   if (input.kind === 'timer_fired') {
     return { kind: input.kind, key: input.timerId, at };
   }

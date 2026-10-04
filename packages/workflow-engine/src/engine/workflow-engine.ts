@@ -7,7 +7,7 @@ import type { SubmissionOutcome } from '../machine/admission.ts';
 import type { RunInput } from '../machine/run-input.ts';
 import type { RunStore } from '../run-log/run-store.ts';
 import type { RunSerialiser } from '../serialisation/run-serialiser.ts';
-import type { RecordStore } from '../settlement/record-store.ts';
+import type { RecordStore, RunReporter } from '../settlement/record-store.ts';
 import type { Timers } from '../timers/timers.ts';
 
 export interface EnginePorts {
@@ -16,6 +16,7 @@ export interface EnginePorts {
   readonly timers: Timers;
   readonly executor: Executor;
   readonly recordStore: RecordStore;
+  readonly reporter: RunReporter;
   readonly serialiser: RunSerialiser;
 }
 
@@ -31,12 +32,11 @@ export interface Wake {
 
 export interface SweepReport {
   readonly runs: number;
-  readonly behind: number;
   readonly timersArmedAgain: number;
 }
 
 export interface WorkflowEngine {
   readonly submit: (input: RunInput) => Effect.Effect<Submission, Conflict>;
   readonly wake: (executionId: string) => Effect.Effect<Wake>;
-  readonly sweep: () => Effect.Effect<SweepReport>;
+  readonly sweep: (before: number) => Effect.Effect<SweepReport>;
 }

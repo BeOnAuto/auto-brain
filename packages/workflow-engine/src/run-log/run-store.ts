@@ -14,18 +14,13 @@ export interface StoredRun {
   readonly tail: readonly PositionedEvent[];
 }
 
-export interface AppendedEvent {
-  readonly version: number;
-  readonly bytes: number;
-}
-
 export interface RunStore {
   readonly load: (executionId: string) => Effect.Effect<StoredRun>;
   readonly append: (
     executionId: string,
     event: RunEvent,
     expectedVersion: number,
-  ) => Effect.Effect<AppendedEvent, VersionConflict>;
+  ) => Effect.Effect<void, VersionConflict>;
   readonly eventsAfter: (executionId: string, version: number) => Effect.Effect<readonly PositionedEvent[]>;
   readonly saveSnapshot: (snapshot: Snapshot) => Effect.Effect<void>;
 }

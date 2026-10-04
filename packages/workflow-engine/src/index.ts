@@ -15,6 +15,8 @@ export {
   type Settle,
   type StartCall,
 } from './dispatch/run-output.ts';
+export { changesTimers, nextDueAtOf, runDueOf } from './dispatch/run-due.ts';
+export { runLoopOf, submissionOf, type RunDecision } from './engine/run-loop.ts';
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
@@ -27,7 +29,14 @@ export {
   type SubmissionOutcome,
 } from './machine/admission.ts';
 export { DslErrorSchema, type DslError } from './machine/dsl-error.ts';
-export { InputReceiptSchema, receiptOf, type InputReceipt } from './machine/input-receipt.ts';
+export {
+  MissingValue,
+  heldBytesOf,
+  heldValueOf,
+  reachableValueIds,
+  withReachableValuesOnly,
+} from './machine/held-values.ts';
+export { InputReceiptSchema, inputTimeOf, receiptOf, type InputReceipt } from './machine/input-receipt.ts';
 export { InstantSchema, clampedAt } from './machine/instant.ts';
 export {
   mostCallArgumentsBytes,
@@ -82,24 +91,31 @@ export {
   StepSchema,
   eventBytesOf,
   fitsInOneEvent,
+  withHistoryBytes,
   type PositionedEvent,
   type RunEvent,
   type Step,
 } from './run-log/run-event.ts';
-export { StreamGap, evolveRun, loadedRunOf, type LoadedRun } from './run-log/run-fold.ts';
-export type { AppendedEvent, RunStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
+export { UnreadableRun, evolveRun, loadedRunOf, stateInCurrentFormat, type LoadedRun } from './run-log/run-fold.ts';
+export type { RunStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
 export {
   SnapshotSchema,
   isSnapshotDue,
   mostSnapshotChunkBytes,
   snapshotChunks,
   snapshotEveryBytes,
-  snapshotEveryInputs,
   snapshotFromChunks,
+  snapshotOf,
   type SinceSnapshot,
   type Snapshot,
 } from './run-log/snapshot.ts';
-export { StateFormatSchema, stateFormat } from './run-log/state-format.ts';
+export {
+  StateFormatSchema,
+  stateFormat,
+  stateFormats,
+  type OlderFormat,
+  type StateFormats,
+} from './run-log/state-format.ts';
 export {
   PatchFailed,
   PatchOperationSchema,
@@ -108,6 +124,15 @@ export {
   type StatePatch,
 } from './run-log/state-patch.ts';
 export type { RunSerialiser } from './serialisation/run-serialiser.ts';
-export type { RecordStore, SettleReceipt, SettleRequest } from './settlement/record-store.ts';
+export {
+  isTroubling,
+  type RecordStore,
+  type RunDue,
+  type RunReporter,
+  type SettleReceipt,
+  type SettleRequest,
+  type TroublingReceipt,
+  type UnsettledReport,
+} from './settlement/record-store.ts';
 export { TimerPurposeSchema, timerIdOf, type TimerPurpose } from './timers/timer-id.ts';
 export type { ArmReceipt, TimerCancelReceipt, Timers } from './timers/timers.ts';

@@ -1,4 +1,5 @@
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
+import { heldBytesOf } from '../machine/held-values.ts';
 import type { Started } from '../machine/run-input.ts';
 import { newRun, type RunState, type TaskFrame } from '../machine/run-state.ts';
 
@@ -33,7 +34,7 @@ const asking: TaskFrame = {
   input: ticket,
   variables: { attempt: approval },
   timeout: `${executionId}/timers/2`,
-  body: { kind: 'call', key: openCall, primitive: 'inference', name: 'classify' },
+  body: { kind: 'call', key: openCall, function: 'notify', arguments: ticket, label: 'notify the owner' },
 };
 
 const forking: TaskFrame = {
@@ -54,7 +55,7 @@ const forking: TaskFrame = {
   },
 };
 
-export const runningState: RunState = {
+const running: RunState = {
   ...newRun,
   executionId,
   status: 'running',
@@ -82,12 +83,13 @@ export const runningState: RunState = {
     receivedBytes: 160,
     overflow: null,
   },
-  heldBytes: 16_500,
+  heldBytes: 0,
+  historyBytes: 9000,
   machine: {
     values: {
-      0: { value: { seen: 1 }, bytes: 10, holders: 1 },
-      [ticket]: { value: { ticket: 7 }, bytes: 12, holders: 7 },
-      [approval]: { value: 1, bytes: 1, holders: 1 },
+      0: { value: { seen: 1 }, bytes: 10 },
+      [ticket]: { value: { ticket: 7 }, bytes: 12 },
+      [approval]: { value: 1, bytes: 1 },
     },
     nextValue: 3,
     context: 0,
@@ -111,6 +113,8 @@ export const runningState: RunState = {
     },
   },
 };
+
+export const runningState: RunState = { ...running, heldBytes: heldBytesOf(running) };
 
 export const started: Started = {
   kind: 'started',

@@ -70,11 +70,14 @@ describe('a stale input', () => {
 });
 
 describe('an input that belongs to no run like this one', () => {
-  it('dies instead of being taken as stale: another execution, or a start with another document', () => {
+  it('dies instead of being taken as stale: another execution, or a start with another document or input', () => {
     expect(() => staleReasonOf(runningState, { ...fired(armedTimer), executionId: 'another' })).toThrow(RunMismatch);
     expect(() => staleReasonOf(runningState, { ...started, executionId: 'another' })).toThrow(RunMismatch);
     expect(() => staleReasonOf(runningState, { ...started, document: { do: [{ other: {} }] } })).toThrow(
       new RunMismatch({ detail: `The run of ${executionId} was started again with another document` }),
+    );
+    expect(() => staleReasonOf(runningState, { ...started, input: { ticket: 8 } })).toThrow(
+      new RunMismatch({ detail: `The run of ${executionId} was started again with another input` }),
     );
     expect(() => staleReasonOf({ ...runningState, workflow: null }, started)).toThrow(RunMismatch);
   });

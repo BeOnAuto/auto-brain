@@ -12,7 +12,6 @@ export type ValueId = number;
 export interface HeldValue {
   readonly value: Schema.Json;
   readonly bytes: number;
-  readonly holders: number;
 }
 
 export type Variables = Readonly<Record<string, ValueId>>;
@@ -54,8 +53,9 @@ export type FrameBody =
   | {
       readonly kind: 'call';
       readonly key: CallKey;
-      readonly primitive: string | null;
-      readonly name: string | null;
+      readonly function: string;
+      readonly arguments: ValueId;
+      readonly label: string;
     }
   | { readonly kind: 'listen'; readonly consumed: readonly ValueId[] };
 
@@ -119,6 +119,7 @@ export interface RunState {
   readonly calls: Readonly<Record<string, CallKey>>;
   readonly inbox: InboxState;
   readonly heldBytes: number;
+  readonly historyBytes: number;
   readonly stepsWithoutWaiting: number;
   readonly cancelRequested: boolean;
   readonly machine: MachineState;
@@ -173,8 +174,9 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal('call'),
     key: CallKeySchema,
-    primitive: Schema.NullOr(Schema.String),
-    name: Schema.NullOr(Schema.String),
+    function: Schema.NonEmptyString,
+    arguments: ValueIdSchema,
+    label: Schema.String,
   }),
   Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema) }),
 ]);
@@ -226,10 +228,11 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
     overflow: Schema.NullOr(DslErrorSchema),
   }),
   heldBytes: IntSchema,
+  historyBytes: IntSchema,
   stepsWithoutWaiting: IntSchema,
   cancelRequested: Schema.Boolean,
   machine: Schema.Struct({
-    values: Schema.Record(Schema.String, Schema.Struct({ value: Schema.Json, bytes: IntSchema, holders: IntSchema })),
+    values: Schema.Record(Schema.String, Schema.Struct({ value: Schema.Json, bytes: IntSchema })),
     nextValue: ValueIdSchema,
     context: ValueIdSchema,
     root: Schema.NullOr(TaskFrameSchema),
@@ -252,8 +255,9 @@ export const newRun: RunState = {
   calls: {},
   inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0, overflow: null },
   heldBytes: 0,
+  historyBytes: 0,
   stepsWithoutWaiting: 0,
   cancelRequested: false,
-  machine: { values: { 0: { value: {}, bytes: 2, holders: 1 } }, nextValue: 1, context: 0, root: null },
+  machine: { values: { 0: { value: {}, bytes: 2 } }, nextValue: 1, context: 0, root: null },
   outcome: null,
 };

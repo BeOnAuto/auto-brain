@@ -6,6 +6,7 @@ export const TimerPurposeSchema = Schema.Literals([
   'retry_delay',
   'attempt_limit',
   'deadline',
+  'call_deadline',
   'yield',
 ]);
 
