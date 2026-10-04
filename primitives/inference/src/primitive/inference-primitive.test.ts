@@ -16,8 +16,8 @@ describe('the inference primitive', () => {
     expect(primitive).toMatchObject({ name: 'inference', title: 'Inference', mediaType: 'text/markdown' });
   });
 
-  it('calls a spec a prompt', () => {
-    expect(primitive.noun).toEqual({ one: 'prompt', other: 'prompts' });
+  it('calls a spec a reason function', () => {
+    expect(primitive.noun).toEqual({ one: 'reason function', other: 'reason functions' });
   });
 
   it('repeats a short answer, renders a small structured one, and points to the details for a long one', () => {

@@ -49,7 +49,7 @@ export function makeInference(options: InferenceOptions): Primitive {
     name: 'inference',
     title: 'Inference',
     description: inferenceDescriptionFor(options.offered),
-    noun: { one: 'prompt', other: 'prompts' },
+    noun: { one: 'reason function', other: 'reason functions' },
     describeOutput: describeAnswer,
     mediaType: 'text/markdown',
     parse,
