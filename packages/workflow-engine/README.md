@@ -1,34 +1,49 @@
 # @beonauto/workflow-engine
 
-The core of the workflow engine that runs on the ledger: the contract between the machine that runs a workflow and the adapters that store, time and execute for it. It knows workflows, the inputs a run takes and an executor that performs calls. It does not know brains, prompts, models or specs: whatever an adapter needs to know about a run, such as who started it, it passes as opaque `attributes` and gets back with every output.
+The contract of the workflow machine that runs on the ledger: the DSL it runs, the state it keeps, the inputs it takes and the ports to the adapters that store, time and execute for it. The machine's state is shaped by the workflow DSL, so this package is the workflow machine's contract, not a generic runtime. It knows workflows, their DSL and an executor that performs calls. It does not know brains, prompts, models, specs or primitives: the functions a workflow may call come from the caller, and whatever an adapter needs to know about a run, such as who started it, it passes as opaque `attributes` and gets back with every output.
 
-The same code runs in Node, where one server keeps every run in one SQLite file, and in workerd, where each run is a Durable Object. This package holds the contract: the types, the ports, the idempotency keys, the dispatch watermark, the fold of a run's log and the invariants below. The machine that decides an input is the next step, and the adapters the one after; until then the orchestration primitive runs workflows on Temporal, unchanged. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
+The same code runs in Node, where one server keeps every run in one SQLite file, and in workerd, where each run is a Durable Object. The machine that decides an input is the next step, and the adapters the one after; until then the orchestration primitive runs workflows on Temporal, with the DSL it imports from here. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
+
+## Entries
+
+- `@beonauto/workflow-engine`: the contract, from `src/index.ts`.
+- `@beonauto/workflow-engine/dsl/<module>`: one module of the DSL, such as `dsl/json` or `dsl/policy`. The orchestration primitive imports the DSL this way, so its bundled Temporal workflow code takes neither Effect nor the ledger from the main entry.
+- `@beonauto/workflow-engine/limits`: the limits, plain numbers, for the same reason.
 
 ## How a run moves
 
-1. An adapter submits an input for an execution, with `at`, the time on its own clock. The machine never reads a clock, and it takes `max(at, lastInputAt)` as the time of the input, so time in a run never goes back however the adapters' clocks drift.
-2. Holding the run's serialisation, the engine loads the run: `RunStore.load` gives the latest snapshot and the events after it, and `loadedRunOf` folds them.
-3. `staleReasonOf(state, input)` says whether the input can still change the run. An input to a run whose `started` has not arrived is `not_started`: the engine answers `{ outcome: 'not_started' }`, which an adapter answers as `not_found` so the caller tries again, as the API does today. Any other reason is `stale`. Both append nothing.
-4. Otherwise the machine decides, and the decision is one event, appended with the version the engine read as the expected version: the ledger's load-decide-append loop, which loads and decides again after a version conflict, up to three more times, and then fails with `Conflict`. The engine answers `{ outcome: 'applied' }`.
+1. An adapter submits an input for an execution, with `at`, the time on its own clock. The machine never reads a clock. It takes `max(at, lastInputAt)` as the time of the input, and for a fired timer at least the time it was due, so time in a run never goes back however the adapters' clocks drift (`inputTimeOf`).
+2. Holding the run's serialisation, the engine runs the ledger's own load-decide-append loop, `decisionLoop` from `@beonauto/ledger`, with a load of its own: `RunStore.load` gives the latest snapshot and the events after it, and `loadedRunOf` folds them (`runLoopOf`).
+3. `staleReasonOf(state, input)` says whether the input can still change the run. An input to a run whose `started` has not arrived is `not_started`: the engine answers `{ outcome: 'not_started' }`, which an adapter answers as `not_found` so the caller tries again, as the API does today. Any other reason is `stale`. Neither appends anything (`submissionOf`).
+4. Otherwise the machine decides, and the decision is one event, appended with the version the loop read as the expected version. After a version conflict the loop loads and decides again, up to three more times, and then fails with the ledger's `Conflict`. The engine answers `{ outcome: 'applied' }`.
 5. When a snapshot is due, the engine saves one.
-6. It dispatches the outputs of every event above the run's dispatch watermark, in the order of the stream, and stops at the first output that fails. The watermark moves to the last event whose outputs were all dispatched.
-7. `wake(executionId)` does step 6 again. `sweep()` walks the live runs, wakes each, and has `Timers.sweep` arm again any of the run's armed timers the timer store lost.
+6. It dispatches the outputs of every event above the run's dispatch watermark, in the order of the stream, and stops at the first output that fails. The watermark moves to the last event whose outputs were all dispatched. An event that arms or cancels a timer also notes the run's next due time in the record (`runDueOf`).
+7. `wake(executionId)` does step 6 again. `sweep(before)` wakes the runs that are overdue (below).
 
 ## Layers and ports
 
-| Layer         | Folder              | What it holds                                                  | Port                                    |
-| ------------- | ------------------- | -------------------------------------------------------------- | --------------------------------------- |
-| machine       | `src/machine`       | inputs, state, admission, the clock clamp, limits, the decider | none: pure                              |
-| run log       | `src/run-log`       | events, state patches, state formats, the fold, snapshots      | `RunStore` (one Emmett stream per run)  |
-| timers        | `src/timers`        | timer ids and what each timer is for                           | `Timers`                                |
-| inbox         | `src/inbox`         | the external events a run receives, and their limits           | none: events arrive as `event_received` |
-| executor      | `src/executor`      | call keys and call results                                     | `Executor`                              |
-| dispatch      | `src/dispatch`      | outputs, the watermark, the order of a dispatch                | `DispatchWatermark`                     |
-| serialisation | `src/serialisation` | one input at a time for each run                               | `RunSerialiser`                         |
-| settlement    | `src/settlement`    | the record store's settlements and its live runs               | `RecordStore` (the brain's ledger)      |
-| engine        | `src/engine`        | the ports together and the engine's own interface              | `WorkflowEngine`                        |
+| Layer         | Folder              | What it holds                                                          | Port                                    |
+| ------------- | ------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
+| DSL           | `src/dsl`           | JSON, durations, jq expressions with their work budget, tasks, policy  | none: pure                              |
+| machine       | `src/machine`       | inputs, state, held values, admission, the clock, limits, the decider  | none: pure                              |
+| run log       | `src/run-log`       | events, state patches, state formats, the fold, snapshots              | `RunStore` (one Emmett stream per run)  |
+| timers        | `src/timers`        | timer ids and what each timer is for                                   | `Timers`                                |
+| inbox         | `src/inbox`         | the external events a run receives                                     | none: events arrive as `event_received` |
+| executor      | `src/executor`      | call keys                                                              | `Executor`                              |
+| dispatch      | `src/dispatch`      | outputs, the watermark, the order of a dispatch, a run's next due time | `DispatchWatermark`                     |
+| serialisation | `src/serialisation` | one input at a time for each run                                       | `RunSerialiser`                         |
+| settlement    | `src/settlement`    | settle receipts, due times, troubling receipts                         | `RecordStore`, `RunReporter`            |
+| engine        | `src/engine`        | the loop on the ledger, the ports together, the engine's interface     | `WorkflowEngine`                        |
 
-Every port answers with an Effect. None of them is a clock: time comes in with the inputs.
+Every port answers with an Effect. None of them is a clock: time comes in with the inputs, and the sweep is given the time before which a run is overdue.
+
+The settlement and call-result vocabulary lives once, in `@beonauto/operations` (`SettlementSchema`, `CallResultSchema`, `invalidArguments`), beside its `Outcome`. The limits and `DslError` live once, here; the interpreter imports them.
+
+## The DSL
+
+`policyOf(functions)` gives the policy a document is checked against. The caller gives the functions a workflow may call, each with the checks of its arguments, and the words that explain where a workflow reaches the world and how it starts; the orchestration primitive gives `execute_spec` (`primitives/orchestration/src/document/workflow-functions.ts`). The DSL itself names no function.
+
+Compiled expressions are kept in one cache for the process, of at most 262,144 characters of expression source, letting go of the expression used longest ago: a compiled expression measured 22 to 34 bytes of heap per character of source, so the cache holds at most about 9 MiB, and compiling one again took 10 to 150 µs.
 
 ## Inputs
 
@@ -40,11 +55,13 @@ Every port answers with an Effect. None of them is a clock: time comes in with t
 | `event_received`   | the event, with an `id` of 1 to 256 characters and a `type`                     | the run has received an event with that id               |
 | `cancel_requested` | nothing more                                                                    | a cancel was requested before                            |
 
-Every input carries the execution id and `at`. Any input but `started` is `not_started` for a run that has not started and `run_ended` for one that has ended. Two inputs are never taken as stale, because they mean an adapter routed wrongly: an input for another execution, and a second `started` with another document. `staleReasonOf` dies on them with `RunMismatch`.
+Every input carries the execution id and `at`. Any input but `started` is `not_started` for a run that has not started and `run_ended` for one that has ended. Three inputs are never taken as stale, because they mean an adapter routed wrongly: an input for another execution, and a second `started` with another document or another input. `staleReasonOf` dies on them with `RunMismatch`.
+
+For `send_execution_event`, the API answers an event the run received before (`event_received_before`) with success, since the event is delivered, and an event for a run that has ended (`run_ended`) with `not_found`, as today. A repeated event appends nothing, so it no longer counts toward the 1,024 events and 4 MiB a run takes over its life; under Temporal it did.
 
 ## The run's log
 
-A run's stream is a state-transition log, not classic event sourcing. Each event records the change an input made to the run's state, as a patch, rather than a domain fact for the fold to interpret. Replaying a run therefore applies patches and evaluates nothing: no expression, no retry arithmetic, no version of the machine's code. A run started under one version of the machine loads under the next. What the events give up in meaning they get back in two fields written for people reading the log.
+A run's stream is a state-transition log, not classic event sourcing. Each event records the change an input made to the run's state, as a patch, rather than a domain fact for the fold to interpret. Replaying a run applies patches and evaluates nothing: no expression, no retry arithmetic, no version of the machine's code. What the events give up in meaning they get back in two fields written for people reading the log.
 
 Each event, `input_applied`, holds:
 
@@ -56,33 +73,45 @@ Each event, `input_applied`, holds:
 
 An input that is stale or not started appends nothing; logging it is the adapter's job.
 
-## Held data and the size of a patch
+### History bytes
 
-Values a run holds live once, in the state's value table, `machine.values`: the run's input, the result of a call, the data of an event, the output of an expression. Each value has an id that counts up within the run and is never reused, its size in bytes of UTF-8 JSON, and the number of holders. Frames, list cursors, variables, branches and the context refer to values by id. Passing a value on, as a call's output becomes the cursor's data, the next task's input and the context, adds a holder, not a copy; a value leaves the table when its last holder lets go.
-
-The data a run holds is the sizes of the values in the table, plus 4 KiB for each open frame, plus the document. That bounds the state, and so every snapshot, at 4 MiB of held data. It also bounds a patch: an input adds each value it made once, as `add /machine/values/<id>`, and otherwise moves ids, so a call that answers with 1 MiB gives a patch of about 1 MiB however many places the answer lands.
-
-A transformation can still make more data than it was given. The machine measures each event before the append; one over 1.5 MiB ends the run with a `raised` runtime error, status 500, the ending today's limits give, recorded as a small final event: the outcome, the frames gone, timers and calls cancelled and the execution settled.
-
-Frames never store the document: they name tasks by reference, a JSON Pointer into `workflow.document`.
+The state counts the bytes of its own history, `historyBytes`: the UTF-8 bytes of every event in the stream as JSON (`eventBytesOf`), the event that sets it included. The machine builds an event, measures it, and adds `replace /historyBytes` with the count before it plus the bytes of the event that carries that operation (`withHistoryBytes`, which solves for the few digits the number adds). So `decide` knows the history before it appends, and bounds it as it bounds inputs. A load checks the count: a state whose `historyBytes` is not the snapshot's count plus the bytes of the events after it is `UnreadableRun`.
 
 ## State formats
 
-Every event and every snapshot names its state format, `stateFormat`, today 1. A change to the state's schema is a new format, and a new format ships only with an upcaster for snapshots and one for patches. `evolve` applies a patch strictly: an `add` to a member that exists, or a `replace` or `remove` of one that does not, dies with `PatchFailed`, and the result must decode as the state, so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
+Every event and every snapshot names its state format; `stateFormat` is 1. A change to the state's schema is a new format, and:
+
+- each event is folded under its own format, and a state that crosses to a newer format is read strictly under the old one and upcast by that format's upcaster (`OlderFormat.read`, `OlderFormat.upcast`) before the next event applies;
+- formats never go back within a stream, and a format newer than the code is refused, both when the run loads (`UnreadableRun`);
+- `packages/workflow-engine/corpus/format-<n>.json` holds a committed stream and snapshot of every format, which must load to the state it recorded (`src/run-log/corpus.test.ts`). A new format adds its corpus and keeps every older one loading.
+
+Patches are never rewritten: a patch applies only to the format it was written for. `evolve` applies a patch strictly, `add` to a member that exists or `replace` and `remove` of one that does not die with `PatchFailed`, and the result must decode as the state with no member the format does not describe (`onExcessProperty: 'error'`), so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
+
+## Held data and the size of a patch
+
+Values a run holds live once, in the state's value table, `machine.values`: the run's input, the result of a call, the arguments of a call, the data of an event, the output of an expression. Each value has an id that counts up within the run and is never reused, and its size in bytes of UTF-8 JSON. Frames, list cursors, variables, branches, the context and the workflow's input refer to values by id, so passing a value on moves an id, not a copy.
+
+After each decision the machine sweeps the table: a value stays while the frames, the context or the workflow's input reach it, and the others leave with `remove /machine/values/<id>` (`withReachableValuesOnly`). The data a run holds, `heldBytes`, is the bytes of the values reached, plus 4 KiB for each frame, plus the document (`heldBytesOf`); a property test over 400 generated states checks it against the values an independent walk finds. That bounds the state, and every snapshot, at 4 MiB of held data. It also bounds a patch: an input adds each value it made once and otherwise moves ids, so a call that answers with 1 MiB gives a patch of about 1 MiB however many places the answer lands.
+
+A transformation can still make more data than it was given. The machine measures each event before the append; one over 1.5 MiB ends the run with a `raised` runtime error, status 500, the ending today's limits give, recorded as a small final event.
+
+Frames never store the document: they name tasks by reference, a JSON Pointer into `workflow.document`. A call frame holds the opaque `function` the call names, its `arguments` as a value id, and a `label` for people reading the log; the machine knows nothing of what the arguments mean.
 
 ## Outputs and receipts
 
-| Output         | Carries                                                       | Idempotent by | Port                 | Receipts                                                                 |
-| -------------- | ------------------------------------------------------------- | ------------- | -------------------- | ------------------------------------------------------------------------ |
-| `arm_timer`    | timer id, due time, purpose                                   | timer id      | `Timers.arm`         | `armed`, `already_armed`, `refused_after_cancel`                         |
-| `cancel_timer` | timer id                                                      | timer id      | `Timers.cancel`      | `cancelled`, `already_fired`, `tombstoned`                               |
-| `start_call`   | call key, the function, its arguments, the longest it may run | call key      | `Executor.start`     | `started`, `already_started`, `refused_after_cancel`                     |
-| `cancel_call`  | call key                                                      | call key      | `Executor.cancel`    | `cancelled`, `already_answered`, `tombstoned`                            |
-| `settle`       | execution id and settlement                                   | execution id  | `RecordStore.settle` | `recorded`, `already_recorded`, `settled_otherwise`, `unknown_execution` |
+| Output         | Carries                                                       | Idempotent by | Port                 | Receipts                                                                        |
+| -------------- | ------------------------------------------------------------- | ------------- | -------------------- | ------------------------------------------------------------------------------- |
+| `arm_timer`    | timer id, due time, purpose                                   | timer id      | `Timers.arm`         | `armed`, `already_armed`, `refused_after_cancel`                                |
+| `cancel_timer` | timer id                                                      | timer id      | `Timers.cancel`      | `cancelled`, `already_fired`, `tombstoned`                                      |
+| `start_call`   | call key, the function, its arguments, the longest it may run | call key      | `Executor.start`     | `started`, `started_again`, `running`, `answered_again`, `refused_after_cancel` |
+| `cancel_call`  | call key                                                      | call key      | `Executor.cancel`    | `cancelled`, `already_answered`, `tombstoned`                                   |
+| `settle`       | execution id and settlement                                   | execution id  | `RecordStore.settle` | `recorded`, `already_recorded`, `settled_otherwise`, `unknown_execution`        |
 
-A cancel for a key the timer store or the executor has never seen is recorded as a tombstone, so a start of that key that arrives later is refused. Answers come back as inputs: a fired timer as `timer_fired`, a finished call as `call_answered`. Every receipt is final; only a failure to answer, `DispatchFailed`, leaves an output to be dispatched again.
+Answers come back as inputs: a fired timer as `timer_fired`, a finished call as `call_answered`. Every receipt is final; only a failure to answer, `DispatchFailed`, leaves an output to be dispatched again. A settle receipt of `settled_otherwise` or `unknown_execution` is troubling (`isTroubling`): the engine hands it to `RunReporter.unsettled`, which the adapter logs, as `reportUnsettled` does today.
 
-The settlement vocabulary is the record store's: `succeeded` with an output, `rejected` with `invalid_input` or `unavailable` and a detail, or `failed`.
+A call is idempotent by its key in this sense: it is answered at most once. A start for a key the executor has answered delivers the answer again (`answered_again`); a start for a key it is running leaves it running (`running`); a start for a key that is neither, because the host that ran it died, starts it again (`started_again`), as the Node spike's `ensureJob` restarted a call. And every open call is answered eventually: each `start_call` comes with an `arm_timer` of purpose `call_deadline`, due at the input's time plus `longestCallMs`, and when it fires with the call still open the task fails with a `communication` error, status 503, as a call that cannot be reached does today. A dead executor host therefore holds a run for at most `longestCallMs`, not until its 30-day deadline.
+
+A cancel for a key the timer store or the executor has never seen is recorded as a tombstone, so a start of that key that arrives later is refused. Dispatch takes outputs in the order of the stream, so a start always reaches the port before its cancel; tombstones only matter to an executor that takes work asynchronously, such as from a queue, where a cancel can overtake its start.
 
 The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a primitive, a name and an input, and that a workflow does not call another workflow, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through the table the interpreter uses today (`primitives/orchestration/src/interpreter/call-task.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
 
@@ -110,77 +139,81 @@ One input at a time for each run is the adapter's job. On Cloudflare it is the r
 
 On Node the timers table goes through the ledger's own SQLite driver or lives in a separate file: written through a second SQLite library to the ledger's file, committed cancels were lost (`spikes/node/results/lost-write-repeat.json` on branch `spike/engine-node`).
 
-## Live runs and the sweep
+## Due runs and the sweep
 
-The live runs are the executions the record store has recorded `started` with `finishesLater` and not yet settled, what `awaitsSettlement` in `@beonauto/specs` answers: `RecordStore.liveRuns()`. On Node that is one query over the one file. `sweep()` walks them; for each it calls `wake`, and `Timers.sweep` with the run's armed timers, which arms again any the timer store lost, such as an alarm of an evicted Durable Object that gave up after its retries.
+The record keeps, for each live run, its next due time, the earliest of its armed timers, and whether its dispatch fell behind (`RunDue`). The engine writes it while dispatching an event that arms or cancels a timer, idempotent by the event's version, and when a dispatch stops at a failure. A running run always has a timer armed, its deadline, so it is always due at some time.
+
+`sweep(before)` asks `RecordStore.dueRuns(before)` for the runs due before that time or behind, and only those: for each it calls `wake`, and `Timers.sweep` with the run's armed timers, which arms again any the timer store lost. It folds no other run. The adapter sweeps every minute, the most often a Cloudflare cron trigger runs, and passes a time one minute ago, so a run is swept once its timer is a minute late: alarms fired 5 ms late at p99, and the one alarm due while `wrangler dev` was stopped fired 15.6 s late when it was restarted (`spikes/cloudflare/results/timers.json`); Node's timers fired 3.7 ms late at p99 (`spikes/node/results/timers-precision.json`).
 
 ## State and snapshots
 
 A run's state is plain JSON: no `Map`, `Set`, `Date`, `undefined`, class or function, so `JSON.parse(JSON.stringify(state))` is the state.
 
-A snapshot is `{ format, executionId, version, historyBytes, state }`, the state folded from events 1 to `version`, written only once event `version` is durable; the run store keeps only the latest. A snapshot is due after 1,000 inputs, or once the events since the last snapshot take as many bytes as that snapshot did, and at least 1 MiB, so writing snapshots never costs more bytes than the history it covers.
+A snapshot is `{ format, executionId, version, historyBytes, state }`, the state folded from events 1 to `version`, written only once event `version` is durable; the run store keeps only the latest. A snapshot is due once the events since the last one take as many bytes as that snapshot did, and at least 1 MiB, so writing snapshots never costs more bytes than the history they cover.
 
-A snapshot holds at most about 5.3 MiB: the held data (4 MiB: the values, the document and the frames), the events waiting in the inbox (1 MiB), the ids of the events received (1,024 of at most 256 characters), and the timers, calls and run counters, a few dozen bytes for each frame. It is stored in chunks of at most 1 MiB of UTF-8, cut between characters, never inside one. D1 and Durable Object SQLite both take rows of at most 2 MB; a 1 MiB chunk leaves room for the row's other columns, and an event, at most 1.5 MiB, fits in a row too.
+A snapshot holds at most about 5.3 MiB: the held data (4 MiB: the values, the document and the frames), the events waiting in the inbox (1 MiB), the ids of the events received (1,024 of at most 256 characters), and the timers, calls and run counters, a few dozen bytes for each frame. It is stored in chunks of at most 1 MiB of UTF-8, cut by `TextEncoder.encodeInto` at a code point, never inside one; a 5.2 MB snapshot took 4 ms to encode and chunk. D1 and Durable Object SQLite both take rows of at most 2 MB; a 1 MiB chunk leaves room for the row's other columns, and an event, at most 1.5 MiB, fits in a row too.
 
 ## Limits
 
-| Limit                       | Value        | When it is reached                                                  |
-| --------------------------- | ------------ | ------------------------------------------------------------------- |
-| data a run holds            | 4 MiB        | the run ends, raised, as today                                      |
-| one event                   | 1.5 MiB      | the run ends, raised, in a small final event                        |
-| arguments of a call         | 264 KiB      | the task raises a validation error                                  |
-| tasks in one input          | 100          | the machine arms a timer due at once and goes on when it fires      |
-| expression work             | 8,000,000    | for one expression, as today                                        |
-| work in one input           | 16,000,000   | as above: a timer due at once, then the rest                        |
-| tasks without waiting       | 10,000       | the run ends, raised, as today                                      |
-| events waiting in the inbox | 64, 1 MiB    | the run ends, raised, as today                                      |
-| events a run receives       | 1,024, 4 MiB | the run ends, raised, as today; it also bounds the ids kept         |
-| inputs a run takes          | 100,000      | checked in `decide` from `state.inputs`: the run ends, raised       |
-| history                     | 512 MiB      | checked by the engine from the bytes appended: the run ends, raised |
+| Limit                       | Value           | When it is reached                                                         |
+| --------------------------- | --------------- | -------------------------------------------------------------------------- |
+| data a run holds            | 4 MiB           | the run ends, raised, as today                                             |
+| one event                   | 1.5 MiB         | the run ends, raised, in a small final event                               |
+| arguments of a call         | 264 KiB         | the task raises a validation error                                         |
+| tasks in one input          | 100             | the machine arms a timer due at once and goes on when it fires             |
+| expression work             | 8,000,000       | for one expression, as today                                               |
+| work in one input           | 16,000,000      | as above: a timer due at once, then the rest                               |
+| tasks without waiting       | 10,000          | the run ends, raised, as today                                             |
+| events waiting in the inbox | 64, 1 MiB       | the run ends, raised, as today                                             |
+| events a run receives       | 1,024, 4 MiB    | the run ends, raised, as today; it also bounds the ids kept                |
+| inputs a run takes          | 100,000         | checked in `decide` from `state.inputs`: the run ends, raised              |
+| history                     | 512 MiB         | checked in `decide` from `state.historyBytes`: the run ends, raised        |
+| a call                      | `longestCallMs` | its `call_deadline` timer fires: the task fails with a communication error |
 
-## On the ledger's loop
-
-The engine decides and appends the way the ledger does, with the ledger's own pieces from `@beonauto/ledger`. The run store's append fails with the ledger's `VersionConflict`, and the engine retries it with `retriedOnVersionConflict`, which fails with `Conflict` after three more attempts. The SQLite run store, in the adapters' step, reads a run's tail with `EventStore.read(stream, after)` and appends with `eventAppenderOf`.
+The run that reaches the inputs or history bound ends in one more small event, so a stream holds at most 100,001 events and 512 MiB plus that event.
 
 ## Invariants
 
 Each sentence is something a reviewer can check against the code or a test. **[engine]** marks what this package and the machine guarantee; **[adapter]** marks an obligation of every adapter.
 
 1. **[engine]** A run has exactly one stream, and the stream's version is the number of inputs the run applied.
-2. **[engine]** `decide(input, state)` is a pure function of its arguments: it reads no clock, no random source, no locale and no storage, and the same state and input give the same events (`src/engine/portability.test.ts`).
-3. **[engine]** Time in a run is only ever an input's clamped `at`; random draws come from the seed in `started` and the number of draws in the state.
+2. **[engine]** `decide(input, state)` is a pure function of its arguments: it reads no clock, no random source, no locale and no storage, and the same state and input give the same events (`src/engine/portability.test.ts`, over the machine, the run log, the DSL and jq).
+3. **[engine]** Time in a run is only ever an input's time from `inputTimeOf`; random draws come from the seed in `started` and the number of draws in the state.
 4. **[engine]** `evolve(state, event)` applies the event's patch strictly and does nothing else (`src/run-log/run-fold.test.ts`, `src/run-log/state-patch.test.ts`).
-5. **[engine]** An applied input appends exactly one event, in one append, with the version the decision was made on as the expected version.
-6. **[engine]** A stale input appends nothing, and neither does an input to a run that has not started, nor one that would change nothing.
+5. **[engine]** An applied input appends exactly one event, in one append, with the version the decision was made on as the expected version (`src/engine/run-loop.test.ts`).
+6. **[engine]** A stale input appends nothing, and neither does an input to a run that has not started.
 7. **[engine]** A late answer, a duplicate answer, a second delivery of an event and the fire of a cancelled timer are stale inputs (`src/machine/admission.test.ts`).
 8. **[engine]** The deduplication state is bounded: armed timers and open calls are what is outstanding, and a run keeps at most 1,024 event ids.
 9. **[engine]** Timer ids and value ids are never reused within a run, and the run counter of a task reference only counts up.
 10. **[engine]** The outputs of a run are exactly the `outputs` of its events, and an output is dispatched only after the event that holds it is appended.
-11. **[adapter]** Every output is idempotent by its key, so dispatching it twice has the effect of dispatching it once, and a cancel of a key never seen leaves a tombstone that refuses a later start.
+11. **[adapter]** A timer is armed at most once and fires at least once until cancelled; a call is answered at most once, a start of a call neither answered nor running starts it again, and a cancel of a key never seen leaves a tombstone that refuses a later start.
 12. **[engine]** The watermark never goes down, and every output of every event at or below it has been dispatched at least once (`src/dispatch/dispatch-watermark.test.ts`).
 13. **[engine]** A run's outcome is in its stream before the record store is asked to record it, and the `settle` output is dispatched again until the record store answers.
-14. **[adapter]** The run log and the record store may be different stores: two writes, each idempotent by execution id, the second retried. An adapter whose two stores are one database may make them one transaction.
-15. **[engine]** Loading a run from its latest snapshot and the events after it gives the same state as folding its whole stream (`src/run-log/run-fold.test.ts`).
+14. **[adapter]** The run log and the record store are two writes, each idempotent by execution id, the second retried; `EventStore.append` writes one stream, so neither adapter makes them one transaction.
+15. **[engine]** Loading a run from its latest snapshot and the events after it gives the same state as folding its whole stream (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`).
 16. **[adapter]** Only the latest snapshot of a run is kept, in chunks of at most 1 MiB of UTF-8 (`src/run-log/snapshot.test.ts` for the chunks).
-17. **[engine]** The state of a run is plain JSON, and the data it holds, measured by size, stays at or under 4 MiB.
-18. **[engine]** No event is larger than 1.5 MiB as JSON: the machine measures each event before the append and ends the run instead (`src/run-log/run-event.test.ts`); and no input runs more than 100 tasks.
+17. **[engine]** The state of a run is plain JSON, and the data it holds stays at or under 4 MiB.
+18. **[engine]** No event is larger than 1.5 MiB as JSON: the machine measures each event before the append and ends the run instead (`src/run-log/run-event.test.ts` for the measure); and no input runs more than 100 tasks.
 19. **[adapter]** Inputs of one run are applied one at a time; the machine relies only on the expected version of each append.
-20. **[engine]** Nothing in this package uses a Node-only API, a dynamic import or code generation, or imports Temporal (`src/engine/portability.test.ts`).
-21. **[engine]** No module of the engine keeps a cache that grows with the history of a run: what an input costs in memory is bounded by the input and the state (`src/engine/portability.test.ts`).
+20. **[engine]** Nothing in this package, nor jq, uses a Node-only API, a dynamic import, code generation or a host timer, or imports Temporal (`src/engine/portability.test.ts`).
+21. **[engine]** No module of the engine keeps a cache that grows with the history of a run, and the one cache of the process, compiled expressions, is bounded (`src/engine/portability.test.ts`, `src/dsl/bounded-cache.test.ts`).
 22. **[engine]** No two events of a stream have the same receipt kind and key.
-23. **[engine]** `lastInputAt` never decreases (`src/machine/input-receipt.test.ts`).
+23. **[engine]** `lastInputAt` never decreases, and a fired timer's input is never earlier than the time it was due (`src/machine/input-receipt.test.ts`).
 24. **[engine]** A snapshot at version v is the fold of events 1 to v, and is written only after event v is durable; **[adapter]** the run store writes it only then.
 25. **[engine]** A dispatch takes outputs in the order of the stream and stops at the first that fails (`src/dispatch/dispatch-watermark.test.ts`).
 26. **[engine]** Every armed timer and every open call has exactly one `arm_timer` or `start_call` and at most one cancel in the stream.
 27. **[engine]** An ended run has no armed timers and no open calls.
 28. **[engine]** `settle` appears once in a stream, in its last event.
-29. **[engine]** A run takes at most 100,000 inputs and 512 MiB of history; the input that would go past either ends the run.
-30. **[engine]** Every event and every snapshot names its state format, and one of another format is refused when it is read (`src/run-log/run-event.test.ts`, `src/run-log/snapshot.test.ts`).
+29. **[engine]** A run takes at most 100,000 inputs and 512 MiB of history, both checked in `decide` from the state; the input that would go past either ends the run.
+30. **[engine]** Every event and every snapshot names its state format; formats never go back within a stream, a format newer than the code is refused, and a committed corpus of every format loads (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`).
 31. **[engine]** Every `arm_timer` is due at or after the time of the input that armed it.
+32. **[engine]** `state.historyBytes` is the bytes of the stream's events as JSON, and a load dies when it is not (`src/run-log/run-event.test.ts`, `src/run-log/run-fold.test.ts`).
+33. **[engine]** Every open call has an armed `call_deadline` timer due no later than its start's time plus `longestCallMs`, so every open call is answered.
+34. **[engine]** After a decision the value table holds exactly the values the frames, the context and the workflow's input reach, and `heldBytes` is their bytes, 4 KiB a frame and the document (`src/machine/held-values.test.ts`).
+35. **[engine]** A troubling settle receipt is reported, never dropped.
 
 ## Open design points
 
 - `evolve` decodes the whole state after each patch, so a load costs one decode of the state whatever the tail, and an applied input one more. The machine's step measures that against the 9 ms a fold from a snapshot every 1,000 events took in workerd (`spikes/cloudflare/results/fold.json` on branch `spike/engine-cloudflare`); checking only the patched paths is the fallback.
 - A workflow that calls a workflow raises a `configuration` error today and a `validation` error once the executor rejects it with `invalid_arguments`; keeping `configuration` needs a reason of its own.
-- The machine needs the DSL, expressions and policy that live in the orchestration primitive today; where the machine itself lives, beside them or with this package, is decided when it is written.
 - What replaces Temporal's limits on a run's history is decided here as 100,000 inputs and 512 MiB, both well above what a workflow could reach on Temporal; real use may move them.
