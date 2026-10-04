@@ -43,7 +43,7 @@ Run one package's gate with `pnpm turbo run lint typecheck test --filter @beonau
 - 100% coverage per file is the gate. Never add coverage-ignore comments or coverage excludes; write the test.
 - Do not write comments. Make the code read like English through names and ordering.
 - Tests live next to the code as `*.test.ts`, test behaviour through the public interface, and prefer injected fakes over mocks.
-- A package with more than about 12 source files groups them one level deep, in folders named after concepts that hold fewer than about 15 files each, with tests beside the code they test. Nothing new goes directly under `src`, and there are no barrel files: the entry points are `src/index.ts`, `src/testing/index.ts` and a package's commands (the server's `src/main.ts` and `dev.ts`, the identity package's `src/key-command.ts`).
+- A package with more than about 12 source files groups them one level deep, in folders named after concepts that hold fewer than about 15 files each, with tests beside the code they test. Nothing new goes directly under `src`, and there are no barrel files: a package's entry points are the few paths its `exports` map names (`src/index.ts`, `src/testing/index.ts` and, where its README says why, a subpath) and its commands (the server's `src/main.ts` and `dev.ts`, the identity package's `src/key-command.ts`).
 - Commits are conventional with a scope named after a package or primitive folder (`feat(server): ...`, `docs(inference): ...`); `global`, `deps`, `ci` and `release` are the other scopes.
 - `pnpm check` must pass before you finish. Fixing a problem is a change, so rerun it.
 - When something fails, assume your change broke it. What is on `main` passed the same gate.
