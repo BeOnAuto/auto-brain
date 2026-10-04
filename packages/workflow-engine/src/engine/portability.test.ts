@@ -20,7 +20,9 @@ const nodeOnly: readonly Forbidden[] = [
   { what: 'a dynamic import', pattern: /\bimport\(/u },
   { what: 'a Node global', pattern: /\b(?:process|Buffer|require|setImmediate|__dirname)\b/u },
   { what: 'code generation', pattern: /\beval\(|new Function\(/u },
+  { what: 'a host timer', pattern: /\bset(?:Timeout|Interval)\(/u },
   { what: 'Temporal', pattern: /@temporalio\//u },
+  { what: 'the Temporal global', pattern: /\bTemporal\./u },
 ];
 
 const impure: readonly Forbidden[] = [
@@ -32,7 +34,7 @@ const impure: readonly Forbidden[] = [
 const growingCache: readonly Forbidden[] = [
   {
     what: 'a module-level collection',
-    pattern: /^(?:export )?const \w+(?:: [^=]+)? = new (?:Map|Set|WeakMap|WeakSet)\b/mu,
+    pattern: /^(?:export )?const \w+(?:: [^=]+)? = new (?:Map|Set)(?:<[^>]*>)?\(\);/mu,
   },
   { what: 'a module-level variable', pattern: /^(?:export )?let /mu },
   { what: 'a module-level list', pattern: /^(?:export )?const \w+(?:: [^=]+)? = \[\];/mu },
@@ -71,7 +73,7 @@ describe('the engine core', () => {
     expect(findingsIn(everySource, nodeOnly)).toEqual([]);
   });
 
-  it('keeps no module-level cache that could grow with the history of a run', () => {
+  it('keeps no module-level cache that could grow with the history of a run: a collection built empty at module level is one; a constant collection of literals is not, nor a WeakMap, whose entries go with the values they describe', () => {
     expect(findingsIn(everySource, growingCache)).toEqual([]);
   });
 });
@@ -85,10 +87,12 @@ describe('the machine and the run log', () => {
 
 describe('the checks of purity', () => {
   it('catch what they are there to catch', () => {
-    expect(caught("import { x } from 'fs';\nconst y = await import('./z.ts');", nodeOnly)).toEqual([
-      'a Node module by its bare name',
-      'a dynamic import',
-    ]);
+    expect(
+      caught(
+        "import { x } from 'fs';\nconst y = await import('./z.ts');\nsetTimeout(f, 1);\nTemporal.Now.instant();",
+        nodeOnly,
+      ),
+    ).toEqual(['a Node module by its bare name', 'a dynamic import', 'a host timer', 'the Temporal global']);
     expect(caught('const t = Date.now();\nconst r = Math.random();\nIntl.DateTimeFormat();', impure)).toEqual([
       'the clock',
       'a random source',
@@ -97,5 +101,8 @@ describe('the checks of purity', () => {
     expect(
       caught('const seen = new Map<string, number>();\nlet count = 0;\nconst all: string[] = [];', growingCache),
     ).toEqual(['a module-level collection', 'a module-level variable', 'a module-level list']);
+    expect(
+      caught("const kinds = new Set(['a', 'b']);\nconst sizes = new WeakMap<object, number>();", growingCache),
+    ).toEqual([]);
   });
 });
