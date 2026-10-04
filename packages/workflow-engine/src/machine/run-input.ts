@@ -1,7 +1,7 @@
+import { CallResultSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { CallKeySchema } from '../executor/call-key.ts';
-import { CallResultSchema } from '../executor/call-result.ts';
 import { ReceivedEventSchema } from '../inbox/received-event.ts';
 import { InstantSchema } from './instant.ts';
 

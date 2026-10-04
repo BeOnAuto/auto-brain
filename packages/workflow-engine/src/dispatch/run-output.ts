@@ -1,8 +1,8 @@
+import { SettlementSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { CallKeySchema } from '../executor/call-key.ts';
 import { InstantSchema } from '../machine/instant.ts';
-import { SettlementSchema } from '../settlement/record-store.ts';
 import { TimerPurposeSchema } from '../timers/timer-id.ts';
 
 const ExecutionIdSchema = Schema.NonEmptyString;
