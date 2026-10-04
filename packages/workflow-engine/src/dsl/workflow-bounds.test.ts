@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { workflow } from '../testing/workflows.ts';
+import { testFunctions, workflow } from '../testing/workflows.ts';
 import { durationLimitRejections } from './duration-limits.ts';
-import { rejectionsOf } from './policy.ts';
+import { policyOf } from './policy.ts';
+
+const rejectionsOf = policyOf(testFunctions);
 
 const threeHours = 10_800_000;
 

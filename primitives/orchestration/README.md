@@ -252,7 +252,7 @@ A worker given only the workflow code bundles it with webpack and swc when it st
 
 ## Not in this version
 
-Starting workflows from schedules or events, `run`, `emit`, outbound calls, catalogs and functions beyond `execute_spec`, executing a workflow from a workflow (or any spec that finishes later), checking inputs and outputs against their schemas, listening `until` a condition, correlating events, search attributes, and showing the progress of a run. A function is added by adding an activity to the activity contract (`src/workflow/activity-contract.ts`), a body to the `call` task (`src/interpreter/call-task.ts`), and its name to the policy (`packages/workflow-engine/src/dsl/task-policy.ts`).
+Starting workflows from schedules or events, `run`, `emit`, outbound calls, catalogs and functions beyond `execute_spec`, executing a workflow from a workflow (or any spec that finishes later), checking inputs and outputs against their schemas, listening `until` a condition, correlating events, search attributes, and showing the progress of a run. A function is added by adding an activity to the activity contract (`src/workflow/activity-contract.ts`), a body to the `call` task (`src/interpreter/call-task.ts`), and its name and the checks of its arguments to the functions the policy is given (`src/document/workflow-functions.ts`).
 
 ## Testing
 

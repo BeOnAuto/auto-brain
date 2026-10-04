@@ -1,3 +1,4 @@
+import { namesOf, theFunctions, type CallFunctions } from './call-functions.ts';
 import {
   entriesOf,
   field,
@@ -27,20 +28,15 @@ import { kindOf, pointerTo, type TaskEntry, type TaskKind } from './tasks.ts';
 
 type OwnRejections = (task: JsonObject, reference: string, components: Components) => readonly Rejection[];
 
-export const executeSpecFunction = 'execute_spec';
-
 const mostForkBranches = 32;
 
 const outboundCalls = new Set(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mcp']);
 
-const executeSpecArguments = new Set(['primitive', 'name', 'input']);
-
-const rejectionsByKind: Readonly<Record<TaskKind, OwnRejections>> = {
+const rejectionsByKind: Readonly<Record<Exclude<TaskKind, 'call'>, OwnRejections>> = {
   run: (_task, reference) => [
     forbidden(`${reference}/run`, 'run tasks (shell, script, container, workflow) are not allowed'),
   ],
   emit: (_task, reference) => [forbidden(`${reference}/emit`, 'emit is not supported in this version')],
-  call: (task, reference) => callRejections(task, reference),
   listen: (task, reference) => listenRejections(task, reference),
   raise: (task, reference, components) => raiseRejections(task, reference, components),
   wait: (task, reference) => durationRejections(field(task, 'wait'), `${reference}/wait`),
@@ -56,10 +52,17 @@ const rejectionsByKind: Readonly<Record<TaskKind, OwnRejections>> = {
   do: () => [],
 };
 
-export function ownRejections({ task, reference }: TaskEntry, components: Components): readonly Rejection[] {
+export function ownRejections(
+  { task, reference }: TaskEntry,
+  components: Components,
+  functions: CallFunctions,
+): readonly Rejection[] {
   const kind = kindOf(task);
-  return kind === undefined
-    ? [rejection(reference, 'The task has no type this runtime knows')]
+  if (kind === undefined) {
+    return [rejection(reference, 'The task has no type this runtime knows')];
+  }
+  return kind === 'call'
+    ? callRejections(task, reference, functions)
     : rejectionsByKind[kind](task, reference, components);
 }
 
@@ -90,36 +93,20 @@ function dataRejections(task: JsonObject, reference: string, part: string, trans
   return schema.concat(transformRejections(field(data, transform), `${reference}/${part}/${transform}`));
 }
 
-function callRejections(task: JsonObject, reference: string): readonly Rejection[] {
+function callRejections(task: JsonObject, reference: string, functions: CallFunctions): readonly Rejection[] {
   const name = textField(task, 'call') ?? '';
   if (outboundCalls.has(name)) {
     return [
       forbidden(
         `${reference}/call`,
-        `call: ${name} is not allowed: a workflow reaches the world only through the specs of its brain; call ${executeSpecFunction}`,
+        `call: ${name} is not allowed: ${functions.howAWorkflowReachesTheWorld}; call ${namesOf(functions)}`,
       ),
     ];
   }
-  return name === executeSpecFunction
-    ? executeSpecRejections(field(task, 'with'), `${reference}/with`)
-    : [forbidden(`${reference}/call`, `call: ${name} names no function; the one function is ${executeSpecFunction}`)];
-}
-
-function executeSpecRejections(arguments_: Json | undefined, pointer: string): readonly Rejection[] {
-  if (!isObject(arguments_)) {
-    return [rejection(pointer, `${executeSpecFunction} takes with: { primitive, name, input }`)];
-  }
-  const unknown = Object.keys(arguments_)
-    .filter((key) => !executeSpecArguments.has(key))
-    .map((key) => rejection(pointerTo(pointer, key), `${executeSpecFunction} takes no argument ${key}`));
-  const missing = ['primitive', 'name']
-    .filter((key) => typeof field(arguments_, key) !== 'string')
-    .map((key) => rejection(pointerTo(pointer, key), `${executeSpecFunction} needs a string ${key}`));
-  const workflow =
-    field(arguments_, 'primitive') === 'orchestration'
-      ? [forbidden(`${pointer}/primitive`, 'A workflow cannot execute another workflow in this version')]
-      : [];
-  return unknown.concat(missing, workflow, templateRejections(arguments_, pointer));
+  const argumentChecks = Object.hasOwn(functions.argumentChecks, name) ? functions.argumentChecks[name] : undefined;
+  return argumentChecks === undefined
+    ? [forbidden(`${reference}/call`, `call: ${name} names no function; ${theFunctions(functions)}`)]
+    : argumentChecks(field(task, 'with'), `${reference}/with`);
 }
 
 function listenRejections(task: JsonObject, reference: string): readonly Rejection[] {

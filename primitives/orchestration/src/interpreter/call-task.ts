@@ -1,6 +1,6 @@
 import { field, isObject, jsonBytesOf, textField, type Json } from '@beonauto/workflow-engine/dsl/json';
-import { executeSpecFunction } from '@beonauto/workflow-engine/dsl/task-policy';
 
+import { executeSpecFunction } from '../document/workflow-functions.ts';
 import { evaluateTemplate, placeOf } from './evaluation.ts';
 import type { SpecCall, SpecCallResult } from './host.ts';
 import type { Body, Invocation } from './invocation.ts';

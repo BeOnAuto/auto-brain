@@ -3,12 +3,12 @@ import { InvalidInput, type Issue } from '@beonauto/operations';
 import { durationLimitRejections } from '@beonauto/workflow-engine/dsl/duration-limits';
 import { mostValueDepth, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
 import { nestingRejections } from '@beonauto/workflow-engine/dsl/nesting';
-import { rejectionsOf } from '@beonauto/workflow-engine/dsl/policy';
 import type { Rejection } from '@beonauto/workflow-engine/dsl/policy-checks';
 import { Effect } from 'effect';
 
 import { defaultMostDuration } from '../interpreter/workflow-run.ts';
 import { dslProblems, type Problem } from './dsl-validation.ts';
+import { workflowPolicy } from './workflow-functions.ts';
 
 const workflowYaml: YamlKind = {
   noun: 'a workflow document',
@@ -32,7 +32,7 @@ export function parseWorkflowDocument(
       return Effect.fail(invalidDocument('The workflow document is not YAML this runtime reads', reading.problems));
     }
     const { value, locate } = reading.document;
-    const rejections = rejectionsOf(value);
+    const rejections = workflowPolicy(value);
     const unreadable =
       nestingRejections(value).length > 0 || rejections.some(({ pointer }) => pointer === '/document/dsl');
     const problems = [
