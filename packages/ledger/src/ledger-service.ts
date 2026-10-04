@@ -1,5 +1,4 @@
 import {
-  Conflict,
   Ledger,
   type Decider,
   type DeclarableReason,
@@ -13,11 +12,7 @@ import { eventAppenderOf } from './event-appender.ts';
 import type { EventStore } from './event-store.ts';
 import { foldEvents } from './fold-events.ts';
 import { streamReaderOf } from './stream-reader.ts';
-import type { VersionConflict } from './version-conflict.ts';
-
-const retriesOnVersionConflict = 3;
-
-const changedWhileDeciding = 'The state changed while the command was decided';
+import { retriedOnVersionConflict, type VersionConflict } from './version-conflict.ts';
 
 export function makeLedger(store: EventStore): Ledger['Service'] {
   const load = streamReaderOf(store);
@@ -43,10 +38,6 @@ export function makeLedger(store: EventStore): Ledger['Service'] {
   return Ledger.of({
     load,
     execute: (stream, decider, command) =>
-      attempt(stream, decider, command).pipe(
-        Effect.retry({ times: retriesOnVersionConflict }),
-        Effect.mapError(() => new Conflict({ detail: changedWhileDeciding, kind: 'concurrent_change' })),
-        Effect.flatMap(Effect.fromResult),
-      ),
+      retriedOnVersionConflict(attempt(stream, decider, command)).pipe(Effect.flatMap(Effect.fromResult)),
   });
 }
