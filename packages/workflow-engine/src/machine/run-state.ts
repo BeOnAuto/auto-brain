@@ -3,16 +3,9 @@ import { Schema } from 'effect';
 import { CallKeySchema, type CallKey } from '../executor/call-key.ts';
 import { ReceivedEventSchema, type ReceivedEvent } from '../inbox/received-event.ts';
 import { TimerPurposeSchema, type TimerPurpose } from '../timers/timer-id.ts';
+import { DslErrorSchema, type DslError } from './dsl-error.ts';
 import { InstantSchema } from './instant.ts';
 import { RunLimitsSchema, type RunLimits } from './run-input.ts';
-
-export interface DslError {
-  readonly type: string;
-  readonly status: number;
-  readonly instance: string;
-  readonly title?: string;
-  readonly detail?: string;
-}
 
 export type ValueId = number;
 
@@ -137,14 +130,6 @@ const IntSchema = Schema.Int;
 const ValueIdSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
 const VariablesSchema = Schema.Record(Schema.String, ValueIdSchema);
-
-const DslErrorSchema = Schema.Struct({
-  type: Schema.String,
-  status: IntSchema,
-  instance: Schema.String,
-  title: Schema.optionalKey(Schema.String),
-  detail: Schema.optionalKey(Schema.String),
-});
 
 const TaskFrameReference = Schema.suspend((): Schema.Codec<TaskFrame> => TaskFrameSchema);
 

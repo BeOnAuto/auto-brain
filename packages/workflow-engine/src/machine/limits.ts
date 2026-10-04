@@ -17,3 +17,13 @@ export const mostWorkPerInput = 16_000_000;
 export const mostInputs = 100_000;
 
 export const mostHistoryBytes = 536_870_912;
+
+export const mostEventIdLength = 256;
+
+export const mostWaitingEvents = 64;
+
+export const mostWaitingEventBytes = 1_048_576;
+
+export const mostReceivedEvents = 1024;
+
+export const mostReceivedEventBytes = 4_194_304;

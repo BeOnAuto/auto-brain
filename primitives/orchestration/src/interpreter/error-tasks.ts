@@ -1,3 +1,4 @@
+import type { DslError } from '@beonauto/workflow-engine';
 import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
 import {
   entriesOf,
@@ -11,7 +12,7 @@ import {
 
 import { evaluateTemplate, holds, placeOf } from './evaluation.ts';
 import { bodyOf, type Body, type Invocation } from './invocation.ts';
-import { RaisedError, errorAsJson, errorFromJson, raised, type DslError } from './raised-error.ts';
+import { RaisedError, errorAsJson, errorFromJson, raised } from './raised-error.ts';
 import { attemptDuration, retryDelay, retryPolicyOf, type RetryContext, type RetryState } from './retry-policy.ts';
 import { withTimeout } from './timeouts.ts';
 

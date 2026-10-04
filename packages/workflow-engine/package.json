@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./dsl/*": "./src/dsl/*.ts"
+    "./dsl/*": "./src/dsl/*.ts",
+    "./limits": "./src/machine/limits.ts"
   },
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",

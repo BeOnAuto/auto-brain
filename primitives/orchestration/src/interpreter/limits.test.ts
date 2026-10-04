@@ -1,7 +1,8 @@
+import { mostStepsWithoutWaiting } from '@beonauto/workflow-engine/limits';
 import { describe, expect, it } from 'vitest';
 
 import { interpret, workflow } from '../testing/workflows.ts';
-import { mostHistoryBytes, mostHistoryEvents, mostStepsWithoutWaiting } from './run-state.ts';
+import { mostHistoryBytes, mostHistoryEvents } from './run-state.ts';
 
 const calling = workflow('do:\n  - fetch: { call: execute_spec, with: { primitive: inference, name: lookup } }');
 

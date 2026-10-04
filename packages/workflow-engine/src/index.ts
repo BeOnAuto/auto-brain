@@ -18,15 +18,7 @@ export {
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
-export {
-  ReceivedEventSchema,
-  mostEventIdLength,
-  mostReceivedEventBytes,
-  mostReceivedEvents,
-  mostWaitingEventBytes,
-  mostWaitingEvents,
-  type ReceivedEvent,
-} from './inbox/received-event.ts';
+export { ReceivedEventSchema, type ReceivedEvent } from './inbox/received-event.ts';
 export {
   RunMismatch,
   outcomeOf,
@@ -34,17 +26,23 @@ export {
   type StaleReason,
   type SubmissionOutcome,
 } from './machine/admission.ts';
+export { DslErrorSchema, type DslError } from './machine/dsl-error.ts';
 export { InputReceiptSchema, receiptOf, type InputReceipt } from './machine/input-receipt.ts';
 export { InstantSchema, clampedAt } from './machine/instant.ts';
 export {
   mostCallArgumentsBytes,
   mostEventBytes,
+  mostEventIdLength,
   mostExpressionWork,
   mostHeldBytes,
   mostHistoryBytes,
   mostInputs,
+  mostReceivedEventBytes,
+  mostReceivedEvents,
   mostStepsWithoutWaiting,
   mostTasksPerInput,
+  mostWaitingEventBytes,
+  mostWaitingEvents,
   mostWorkPerInput,
   taskFrameBytes,
 } from './machine/limits.ts';
@@ -66,7 +64,6 @@ export {
   type ArmedTimer,
   type Branch,
   type CursorCurrent,
-  type DslError,
   type FrameBody,
   type HeldValue,
   type InboxState,

@@ -1,3 +1,4 @@
+import type { DslError } from '@beonauto/workflow-engine';
 import { field, textField, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
 
 export type ErrorKind =
@@ -9,14 +10,6 @@ export type ErrorKind =
   | 'timeout'
   | 'communication'
   | 'runtime';
-
-export interface DslError {
-  readonly type: string;
-  readonly status: number;
-  readonly instance: string;
-  readonly title?: string;
-  readonly detail?: string;
-}
 
 export class RaisedError extends Error {
   readonly error: DslError;

@@ -1,14 +1,6 @@
 import { Schema } from 'effect';
 
-export const mostEventIdLength = 256;
-
-export const mostWaitingEvents = 64;
-
-export const mostWaitingEventBytes = 1_048_576;
-
-export const mostReceivedEvents = 1024;
-
-export const mostReceivedEventBytes = 4_194_304;
+import { mostEventIdLength } from '../machine/limits.ts';
 
 const EventIdSchema = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(mostEventIdLength));
 
