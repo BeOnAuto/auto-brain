@@ -41,3 +41,4 @@ export type { OperationKind, OperationScope } from './caller/operation-scope.ts'
 export { settle } from './dispatch/settle.ts';
 export type { StreamReader, StreamWriter } from './ledger/stream-ports.ts';
 export { Unavailable } from './outcome/unavailable.ts';
+export { randomUUIDv7 } from './uuid/uuid-v7.ts';
