@@ -29,7 +29,7 @@ A run is a decider in Emmett's workflow shape, on the ledger's own load-decide-a
 - On Cloudflare, each run is one Durable Object, its stream in the object's SQLite and its timers on the object's alarm; a brain object keeps the record and an org object the registry; a cron sweep wakes the runs the record says are overdue.
 - Self-hosted, one server keeps the ledger and every run in one SQLite file, in one process; a second process on that file is unsupported. Timers go through the ledger's own SQLite driver or a separate file.
 - A PostgreSQL adapter, later, assumes no 2 MB row limit and takes a lease per run for serialisation.
-- The package `@beonauto/workflow-engine` is the workflow machine's contract, since the state is shaped by the workflow DSL, and the DSL lives in it. The orchestration primitive imports the DSL from it and keeps parsing, the primitive, the event and cancel operations and, for now, the Temporal runtime. The engine knows no brains, specs or primitives: the caller names the functions a workflow may call.
+- The package `@beonauto/workflow-engine` is the workflow machine's contract, since the state is shaped by the workflow DSL, and the DSL lives in it. The orchestration primitive imports the DSL from it and keeps parsing, the primitive, the event and cancel operations and, for now, the Temporal runtime. The engine knows no brains, specs or primitives: the caller names the functions a workflow may call. Its `./dsl/*` and `./limits` entries are transitional: they keep Effect and the ledger out of the Temporal workflow bundle and go when Temporal goes.
 
 Still open, due before the Cloudflare adapters: how Cloudflare executes a call that runs longer than an alarm handler, a step of a Cloudflare Workflow or a queue to a container.
 
@@ -37,7 +37,7 @@ Still open, due before the Cloudflare adapters: how Cloudflare executes a call t
 
 The main cost is rewriting the interpreter, 129 tests of it beside the DSL's 79, as a machine that steps from state to state instead of an async function Temporal replays. Its DSL, expressions and policy stay.
 
-Tenants see two changes: a run may hold 4 MiB of data instead of 16, and a repeated event no longer counts toward the events a run takes over its life.
+Tenants see three changes. A run may hold 4 MiB of data instead of 16. A repeated event no longer counts toward the events a run takes over its life. And a workflow that executes a workflow through a primitive name it computes fails with a `validation` error, once the executor rejects the call as `invalid_arguments`, where the interpreter raises a `configuration` error today. The written case, `primitive: orchestration`, is still refused at `create_spec` as forbidden; only a computed name reaches the executor. Both errors have status 400 and settle the execution as `invalid_input`; the visible difference is the error `type`, which a `catch.errors.with` filter matches.
 
 We give up Temporal's durable timers, deduplicated delivery, replay, web UI and operator tools. We must build and keep correct:
 
