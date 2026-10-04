@@ -7,8 +7,10 @@ The same code runs in Node, where one server keeps every run in one SQLite file,
 ## Entries
 
 - `@beonauto/workflow-engine`: the contract, from `src/index.ts`.
-- `@beonauto/workflow-engine/dsl/<module>`: one module of the DSL, such as `dsl/json` or `dsl/policy`. The orchestration primitive imports the DSL this way, so its bundled Temporal workflow code takes neither Effect nor the ledger from the main entry.
-- `@beonauto/workflow-engine/limits`: the limits, plain numbers, for the same reason.
+- `@beonauto/workflow-engine/dsl/<module>`: one module of the DSL, such as `dsl/json` or `dsl/policy`.
+- `@beonauto/workflow-engine/limits`: the limits, plain numbers.
+
+The two subpaths are transitional. They are there only so that the orchestration primitive's bundled Temporal workflow code can import the DSL and the limits without taking Effect and the ledger from the main entry, and they go when Temporal goes.
 
 ## How a run moves
 
@@ -180,7 +182,7 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 2. **[engine]** `decide(input, state)` is a pure function of its arguments: it reads no clock, no random source, no locale and no storage, and the same state and input give the same events (`src/engine/portability.test.ts`, over the machine, the run log, the DSL and jq).
 3. **[engine]** Time in a run is only ever an input's time from `inputTimeOf`; random draws come from the seed in `started` and the number of draws in the state.
 4. **[engine]** `evolve(state, event)` applies the event's patch strictly and does nothing else (`src/run-log/run-fold.test.ts`, `src/run-log/state-patch.test.ts`).
-5. **[engine]** An applied input appends exactly one event, in one append, with the version the decision was made on as the expected version (`src/engine/run-loop.test.ts`).
+5. **[engine]** An applied input appends exactly one event, in one append, with the version the decision was made on as the expected version; the loop dies with `SplitDecision` on a decision of more than one event and appends nothing (`src/engine/run-loop.test.ts`).
 6. **[engine]** A stale input appends nothing, and neither does an input to a run that has not started.
 7. **[engine]** A late answer, a duplicate answer, a second delivery of an event and the fire of a cancelled timer are stale inputs (`src/machine/admission.test.ts`).
 8. **[engine]** The deduplication state is bounded: armed timers and open calls are what is outstanding, and a run keeps at most 1,024 event ids.
@@ -212,8 +214,11 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 34. **[engine]** After a decision the value table holds exactly the values the frames, the context and the workflow's input reach, and `heldBytes` is their bytes, 4 KiB a frame and the document (`src/machine/held-values.test.ts`).
 35. **[engine]** A troubling settle receipt is reported, never dropped.
 
+## Next: the machine
+
+The machine's first test is invariant 33: every open call is answered, by the executor or by its `call_deadline` timer. It is the one guarantee Temporal gave that this contract only promises until the machine keeps it.
+
 ## Open design points
 
 - `evolve` decodes the whole state after each patch, so a load costs one decode of the state whatever the tail, and an applied input one more. The machine's step measures that against the 9 ms a fold from a snapshot every 1,000 events took in workerd (`spikes/cloudflare/results/fold.json` on branch `spike/engine-cloudflare`); checking only the patched paths is the fallback.
-- A workflow that calls a workflow raises a `configuration` error today and a `validation` error once the executor rejects it with `invalid_arguments`; keeping `configuration` needs a reason of its own.
 - What replaces Temporal's limits on a run's history is decided here as 100,000 inputs and 512 MiB, both well above what a workflow could reach on Temporal; real use may move them.
