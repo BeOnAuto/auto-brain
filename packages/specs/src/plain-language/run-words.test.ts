@@ -77,6 +77,11 @@ const rejections: ReadonlyArray<readonly [string, Readonly<Record<string, unknow
     'something the server relies on is not available right now. Only whoever runs the server can put this right, so there is nothing to change on your side; once they have, it can be tried again. Meanwhile, everything that does not need it still works.',
   ],
   [
+    'a model of a provider the server is not set up for, while it can use others',
+    { reason: 'unavailable', detail: 'x', kind: 'model_not_offered' },
+    'this server is not set up to use the provider of the model named, but it can use others. This can be put right on your side: once it names a model from one of those, which the details below list, it can be tried again.',
+  ],
+  [
     'a spec it could not run as written',
     { reason: 'conflict', detail: 'x' },
     'it cannot work as it is written. This can be corrected and tried again; the details below say what to change.',

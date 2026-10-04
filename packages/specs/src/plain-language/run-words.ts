@@ -1,4 +1,4 @@
-import { capitalized, explanationOf, type PlainLanguage } from '@beonauto/operations';
+import { capitalized, explanationOf, type ExplainedRejection, type PlainLanguage } from '@beonauto/operations';
 
 import type { Execution } from '../execution/execution.ts';
 import type { Primitive } from '../primitive/primitive.ts';
@@ -25,9 +25,17 @@ function describedOutput(primitive: Primitive | undefined, { output }: Described
   return primitive === undefined || output === undefined ? outputBeyondWords : primitive.describeOutput(output);
 }
 
+function explainedRejectionOf(rejection: DescribedExecution['rejection']): ExplainedRejection {
+  if (rejection === undefined || rejection.reason === 'conflict') {
+    return { reason: 'conflict', kind: 'unworkable' };
+  }
+  return rejection.reason === 'unavailable' && rejection.kind !== undefined
+    ? { reason: 'unavailable', kind: rejection.kind }
+    : { reason: rejection.reason };
+}
+
 function rejectionWords({ named }: RunContext, { rejection }: DescribedExecution): string {
-  const reason = rejection?.reason ?? 'conflict';
-  const { why, remedy } = explanationOf(reason === 'conflict' ? { reason, kind: 'unworkable' } : { reason });
+  const { why, remedy } = explanationOf(explainedRejectionOf(rejection));
   return `The run of ${named} did not go through: ${why}. ${remedy}`;
 }
 

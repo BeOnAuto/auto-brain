@@ -29,7 +29,7 @@ function replayed(rejection: ExecutionRejection): ReplayedRejection {
     return new InvalidInput({ detail: rejection.detail, issues: rejection.issues });
   }
   return rejection.reason === 'unavailable'
-    ? new Unavailable({ detail: rejection.detail })
+    ? new Unavailable({ detail: rejection.detail, ...(rejection.kind === undefined ? {} : { kind: rejection.kind }) })
     : new Conflict({ detail: rejection.detail, kind: 'unworkable' });
 }
 

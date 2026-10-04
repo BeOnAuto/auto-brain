@@ -9,7 +9,7 @@ import {
   type PrimitiveRejection,
 } from '../index.ts';
 
-type Mishap = 'stall' | 'unavailable' | 'conflict' | 'breakdown';
+type Mishap = 'stall' | 'unavailable' | 'unoffered' | 'conflict' | 'breakdown';
 
 export interface Probe {
   readonly primitive: Primitive;
@@ -32,6 +32,9 @@ function linesOf(source: string, rejecting: boolean): Effect.Effect<readonly str
 const mishaps: Readonly<Record<Mishap, Effect.Effect<never, Unavailable | Conflict>>> = {
   stall: Effect.never,
   unavailable: Effect.fail(new Unavailable({ detail: 'The probe cannot answer now' })),
+  unoffered: Effect.fail(
+    new Unavailable({ detail: 'The probe cannot reach that model, only others', kind: 'model_not_offered' }),
+  ),
   conflict: Effect.fail(new Conflict({ detail: 'The probe cannot run this spec as written; update it' })),
   breakdown: Effect.die(new Error('The probe broke down')),
 };
