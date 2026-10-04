@@ -1,0 +1,59 @@
+{
+  "timers": 200,
+  "killed": "code null, signal SIGKILL at +15008 ms",
+  "downtimeMs": 15008,
+  "dueWhileDown": 71,
+  "all": {
+    "fired": 200,
+    "firedTwiceOrMore": 0,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 2.55,
+      "p95": 13923.34,
+      "p99": 14903.19,
+      "max": 15055.12
+    },
+    "byProcess": {
+      "before-crash": 58,
+      "after-restart": 142
+    }
+  },
+  "dueWhileDownFiredAfterRestart": {
+    "fired": 71,
+    "firedTwiceOrMore": 0,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 7230.7,
+      "p95": 14718.24,
+      "p99": 15055.12,
+      "max": 15055.12
+    },
+    "byProcess": {
+      "after-restart": 71
+    }
+  },
+  "firedOnScheduleBeforeOrAfter": {
+    "fired": 129,
+    "firedTwiceOrMore": 0,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 2.12,
+      "p95": 2.95,
+      "p99": 3.47,
+      "max": 3.98
+    },
+    "byProcess": {
+      "before-crash": 58,
+      "after-restart": 71
+    }
+  },
+  "secondExit": "code 0, signal null",
+  "output": [
+    "{\"by\":\"before-crash\",\"opened\":true}",
+    "{\"by\":\"after-restart\",\"opened\":true}",
+    "{\"by\":\"after-restart\",\"wakes\":70,\"fired\":142,\"lostClaims\":0,\"errors\":0,\"firstError\":\"\"}"
+  ]
+}

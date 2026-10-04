@@ -1,0 +1,26 @@
+[
+  {
+    "layout": "node:sqlite and the ledger (sqlite3 package) on the same file",
+    "rounds": 4000,
+    "lanes": 8,
+    "increments": 4000,
+    "counterSeenByItsConnection": 4000,
+    "counterAfterReopen": 4000,
+    "ledgerEvents": 4000,
+    "errors": 0,
+    "firstError": "",
+    "integrity": "ok"
+  },
+  {
+    "layout": "separate files",
+    "rounds": 4000,
+    "lanes": 8,
+    "increments": 4000,
+    "counterSeenByItsConnection": 4000,
+    "counterAfterReopen": 4000,
+    "ledgerEvents": 4000,
+    "errors": 0,
+    "firstError": "",
+    "integrity": "ok"
+  }
+]

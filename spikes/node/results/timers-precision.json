@@ -1,0 +1,42 @@
+[
+  {
+    "variant": "idle event loop",
+    "timers": 300,
+    "spreadOverMs": 60000,
+    "cancelledWhileArmed": 34,
+    "fired": 266,
+    "firedTwiceOrMore": 0,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 2.33,
+      "p95": 3.28,
+      "p99": 3.7,
+      "max": 5.52
+    },
+    "byProcess": {
+      "p1": 266
+    },
+    "wakes": 265
+  },
+  {
+    "variant": "event loop busy 25 ms in every 100 ms",
+    "timers": 300,
+    "spreadOverMs": 60000,
+    "cancelledWhileArmed": 34,
+    "fired": 266,
+    "firedTwiceOrMore": 0,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 1.9,
+      "p95": 23.59,
+      "p99": 25.26,
+      "max": 26.36
+    },
+    "byProcess": {
+      "p1": 266
+    },
+    "wakes": 263
+  }
+]

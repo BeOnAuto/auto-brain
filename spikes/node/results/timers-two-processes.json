@@ -1,0 +1,136 @@
+[
+  {
+    "variant": {
+      "name": "naive",
+      "mode": "naive",
+      "busyTimeoutMs": 5000,
+      "locking": "NORMAL"
+    },
+    "fired": 300,
+    "firedTwiceOrMore": 227,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 2.01,
+      "p95": 2.96,
+      "p99": 3.55,
+      "max": 10.28
+    },
+    "byProcess": {
+      "process-b": 261,
+      "process-a": 266
+    },
+    "outputs": {
+      "a": [
+        "{\"by\":\"process-a\",\"opened\":true}",
+        "{\"by\":\"process-a\",\"wakes\":298,\"fired\":266,\"lostClaims\":0,\"errors\":0,\"firstError\":\"\"}",
+        "exit code 0, signal null"
+      ],
+      "b": [
+        "{\"by\":\"process-b\",\"opened\":true}",
+        "{\"by\":\"process-b\",\"wakes\":301,\"fired\":261,\"lostClaims\":0,\"errors\":0,\"firstError\":\"\"}",
+        "exit code 0, signal null"
+      ]
+    }
+  },
+  {
+    "variant": {
+      "name": "conditional-claim",
+      "mode": "claim-then-fire",
+      "busyTimeoutMs": 5000,
+      "locking": "NORMAL"
+    },
+    "fired": 300,
+    "firedTwiceOrMore": 0,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 2.03,
+      "p95": 2.88,
+      "p99": 3.17,
+      "max": 4.14
+    },
+    "byProcess": {
+      "process-a": 153,
+      "process-b": 147
+    },
+    "outputs": {
+      "a": [
+        "{\"by\":\"process-a\",\"opened\":true}",
+        "{\"by\":\"process-a\",\"wakes\":294,\"fired\":153,\"lostClaims\":124,\"errors\":0,\"firstError\":\"\"}",
+        "exit code 0, signal null"
+      ],
+      "b": [
+        "{\"by\":\"process-b\",\"opened\":true}",
+        "{\"by\":\"process-b\",\"wakes\":295,\"fired\":147,\"lostClaims\":131,\"errors\":0,\"firstError\":\"\"}",
+        "exit code 0, signal null"
+      ]
+    }
+  },
+  {
+    "variant": {
+      "name": "conditional-claim-no-busy-timeout",
+      "mode": "claim-then-fire",
+      "busyTimeoutMs": 0,
+      "locking": "NORMAL"
+    },
+    "fired": 298,
+    "firedTwiceOrMore": 0,
+    "missing": 2,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 2.05,
+      "p95": 2.93,
+      "p99": 3.34,
+      "max": 3.78
+    },
+    "byProcess": {
+      "process-b": 128,
+      "process-a": 170
+    },
+    "outputs": {
+      "a": [
+        "{\"by\":\"process-a\",\"opened\":true}",
+        "{\"by\":\"process-a\",\"wakes\":312,\"fired\":170,\"lostClaims\":31,\"errors\":72,\"firstError\":\"Error: database is locked\"}",
+        "exit code 0, signal null"
+      ],
+      "b": [
+        "{\"by\":\"process-b\",\"opened\":true}",
+        "{\"by\":\"process-b\",\"wakes\":320,\"fired\":128,\"lostClaims\":40,\"errors\":103,\"firstError\":\"Error: database is locked\"}",
+        "exit code 0, signal null"
+      ]
+    }
+  },
+  {
+    "variant": {
+      "name": "exclusive-locking",
+      "mode": "claim-then-fire",
+      "busyTimeoutMs": 5000,
+      "locking": "EXCLUSIVE"
+    },
+    "fired": 300,
+    "firedTwiceOrMore": 0,
+    "missing": 0,
+    "cancelledButFired": 0,
+    "lateMs": {
+      "p50": 2.18,
+      "p95": 2.94,
+      "p99": 3.74,
+      "max": 3.91
+    },
+    "byProcess": {
+      "process-a": 300
+    },
+    "outputs": {
+      "a": [
+        "{\"by\":\"process-a\",\"opened\":true}",
+        "{\"by\":\"process-a\",\"wakes\":295,\"fired\":300,\"lostClaims\":0,\"errors\":0,\"firstError\":\"\"}",
+        "exit code 0, signal null"
+      ],
+      "b": [
+        "{\"by\":\"process-b\",\"opened\":false,\"error\":\"Error: database is locked\",\"afterMs\":5197}",
+        "exit code 1, signal null"
+      ]
+    }
+  }
+]
