@@ -2,7 +2,7 @@
 
 The contract of the workflow machine that runs on the ledger: the DSL it runs, the state it keeps, the inputs it takes and the ports to the adapters that store, time and execute for it. The machine's state is shaped by the workflow DSL, so this package is the workflow machine's contract, not a generic runtime. It knows workflows, their DSL and an executor that performs calls. It does not know brains, prompts, models, specs or primitives: the functions a workflow may call come from the caller, and whatever an adapter needs to know about a run, such as who started it, it passes as opaque `attributes` and gets back with every output.
 
-The same code runs in Node, where one server keeps every run in one SQLite file, and in workerd, where each run is a Durable Object. The machine that decides an input is the next step, and the adapters the one after; until then the orchestration primitive runs workflows on Temporal, with the DSL it imports from here. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
+The same code runs in Node, where one server keeps every run in one SQLite file, and in Auto's cloud hosting, the hosted runtime, where each run is an isolate of its own. The decision record states what the hosted runtime allows: a single-threaded isolate per run, woken by alarms that fire at least once and are dropped after a bounded number of failed retries, with about 128 MB of memory and bounded CPU per wake-up, no long-lived process and no code generation, and its own SQLite with rows of at most 2 MB; the shared database has no interactive transactions. The machine that decides an input is the next step, and the adapters the one after; until then the orchestration primitive runs workflows on Temporal, with the DSL it imports from here. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
 
 ## Entries
 
@@ -129,7 +129,7 @@ The machine checks only the size of a call's arguments, at most 264 KiB as JSON.
 
 A run keeps one counter of runs for each task reference, `state.runs`, so the third time a task runs its run is 3, and a call it starts has that run in its key. An adapter that gives a call its own execution, as a call to a spec has, derives that execution's id from the call key, so a call dispatched twice is one execution.
 
-The event store deduplicates nothing: Emmett appends a message with an id it has seen before as a new message, on SQLite and on D1. Deduplication lives in the run's state.
+The event store deduplicates nothing: Emmett appends a message with an id it has seen before as a new message, on the self-hosted SQLite and on the hosted runtime's shared database. Deduplication lives in the run's state.
 
 ## The dispatch watermark
 
@@ -137,7 +137,7 @@ The watermark of a run is a stream version. Every output of every event at or be
 
 ## Serialisation
 
-One input at a time for each run is the adapter's job. On Cloudflare it is the run's Durable Object, whose single thread takes one request at a time. On Node it is one process for each SQLite file, holding a lock per run in memory; a second process on the same file is outside the contract, and nothing claims or leases a run. A PostgreSQL adapter, later, will take a lease per run. Whatever slips past, the expected version of the append catches.
+One input at a time for each run is the adapter's job. In the hosted runtime it is the run's isolate, whose single thread takes one request at a time. On Node it is one process for each SQLite file, holding a lock per run in memory; a second process on the same file is outside the contract, and nothing claims or leases a run. A PostgreSQL adapter, later, will take a lease per run. Whatever slips past, the expected version of the append catches.
 
 On Node the timers table goes through the ledger's own SQLite driver or lives in a separate file: written through a second SQLite library to the ledger's file, committed cancels were lost (`spikes/node/results/lost-write-repeat.json` on branch `spike/engine-node`).
 
@@ -145,7 +145,7 @@ On Node the timers table goes through the ledger's own SQLite driver or lives in
 
 The record keeps, for each live run, its next due time, the earliest of its armed timers, and whether its dispatch fell behind (`RunDue`). The engine writes it while dispatching an event that arms or cancels a timer, idempotent by the event's version, and when a dispatch stops at a failure. A running run always has a timer armed, its deadline, so it is always due at some time.
 
-`sweep(before)` asks `RecordStore.dueRuns(before)` for the runs due before that time or behind, and only those: for each it calls `wake`, and `Timers.sweep` with the run's armed timers, which arms again any the timer store lost. It folds no other run. The adapter sweeps every minute, the most often a Cloudflare cron trigger runs, and passes a time one minute ago, so a run is swept once its timer is a minute late: alarms fired 5 ms late at p99, and the one alarm due while `wrangler dev` was stopped fired 15.6 s late when it was restarted (`spikes/cloudflare/results/timers.json`); Node's timers fired 3.7 ms late at p99 (`spikes/node/results/timers-precision.json`).
+`sweep(before)` asks `RecordStore.dueRuns(before)` for the runs due before that time or behind, and only those: for each it calls `wake`, and `Timers.sweep` with the run's armed timers, which arms again any the timer store lost. It folds no other run. The adapter sweeps every minute and passes a time one minute ago, so a run is swept once its timer is a minute late: alarms in the hosted runtime fired 5 ms late at p99, and the one alarm due while its local runtime was stopped fired 15.6 s late when it was restarted (measurements kept in the private repository); Node's timers fired 3.7 ms late at p99 (`spikes/node/results/timers-precision.json` on branch `spike/engine-node`).
 
 ## State and snapshots
 
@@ -153,7 +153,7 @@ A run's state is plain JSON: no `Map`, `Set`, `Date`, `undefined`, class or func
 
 A snapshot is `{ format, executionId, version, historyBytes, state }`, the state folded from events 1 to `version`, written only once event `version` is durable; the run store keeps only the latest. A snapshot is due once the events since the last one take as many bytes as that snapshot did, and at least 1 MiB, so writing snapshots never costs more bytes than the history they cover.
 
-A snapshot holds at most about 5.3 MiB: the held data (4 MiB: the values, the document and the frames), the events waiting in the inbox (1 MiB), the ids of the events received (1,024 of at most 256 characters), and the timers, calls and run counters, a few dozen bytes for each frame. It is stored in chunks of at most 1 MiB of UTF-8, cut by `TextEncoder.encodeInto` at a code point, never inside one; a 5.2 MB snapshot took 4 ms to encode and chunk. D1 and Durable Object SQLite both take rows of at most 2 MB; a 1 MiB chunk leaves room for the row's other columns, and an event, at most 1.5 MiB, fits in a row too.
+A snapshot holds at most about 5.3 MiB: the held data (4 MiB: the values, the document and the frames), the events waiting in the inbox (1 MiB), the ids of the events received (1,024 of at most 256 characters), and the timers, calls and run counters, a few dozen bytes for each frame. It is stored in chunks of at most 1 MiB of UTF-8, cut by `TextEncoder.encodeInto` at a code point, never inside one; a 5.2 MB snapshot took 4 ms to encode and chunk. The hosted runtime's SQLite takes rows of at most 2 MB; a 1 MiB chunk leaves room for the row's other columns, and an event, at most 1.5 MiB, fits in a row too.
 
 ## Limits
 
@@ -220,5 +220,5 @@ The machine's first test is invariant 33: every open call is answered, by the ex
 
 ## Open design points
 
-- `evolve` decodes the whole state after each patch, so a load costs one decode of the state whatever the tail, and an applied input one more. The machine's step measures that against the 9 ms a fold from a snapshot every 1,000 events took in workerd (`spikes/cloudflare/results/fold.json` on branch `spike/engine-cloudflare`); checking only the patched paths is the fallback.
+- `evolve` decodes the whole state after each patch, so a load costs one decode of the state whatever the tail, and an applied input one more. The machine's step measures that against the 9 ms a fold from a snapshot every 1,000 events took in the hosted runtime (measurements kept in the private repository); checking only the patched paths is the fallback.
 - What replaces Temporal's limits on a run's history is decided here as 100,000 inputs and 512 MiB, both well above what a workflow could reach on Temporal; real use may move them.

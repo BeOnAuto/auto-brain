@@ -44,9 +44,9 @@ Each SQLite connection may cache up to 8 MiB of pages and maps none of the file 
 
 ## Portability
 
-The same ledger will run on Cloudflare D1, so it follows these rules:
+The same ledger must also run on hosted SQLite databases that bind at most 100 parameters in one statement and offer no interactive transactions, so it follows these rules:
 
 - It uses only the event store's own operations: read a stream, or its tail after a version, append with an expected version, migrate, close. It writes no SQL and registers no projections or consumers.
 - It does not rely on transactions or rollback: each command makes at most one append.
-- An append carries at most eight events. Emmett binds ten parameters for each event it inserts, and D1 accepts at most 100 bound parameters in one query.
+- An append carries at most eight events. Emmett binds ten parameters for each event it inserts, and such a database binds at most 100 in one statement.
 - Only `src/open-event-store.ts` knows which SQLite driver is in use and that the database is a file.

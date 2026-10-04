@@ -87,7 +87,7 @@ const everySource = sourcesUnder('.');
 const machineAndRunLog = [...sourcesUnder('machine'), ...sourcesUnder('run-log'), ...sourcesUnder('dsl')];
 
 describe('the engine core', () => {
-  it('uses no Node-only API, no dynamic import, no code generation and no Temporal, so it runs in workerd as in Node', () => {
+  it('uses no Node-only API, no dynamic import, no code generation and no Temporal', () => {
     expect(everySource.length).toBeGreaterThan(20);
     expect(findingsIn(everySource, nodeOnly)).toEqual([]);
   });
