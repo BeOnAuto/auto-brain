@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { DispatchFailed, outputsAbove, type PositionedEvent, type RunOutput } from '../index.ts';
+import {
+  DispatchFailed,
+  dispatchedThrough,
+  outputsAbove,
+  stateFormat,
+  type PositionedEvent,
+  type RunOutput,
+} from '../index.ts';
 import { at, executionId, openCall } from '../testing/runs.ts';
 
 const arm: RunOutput = {
@@ -18,20 +25,45 @@ const settle: RunOutput = { kind: 'settle', executionId, settlement: { status: '
 function applied(version: number, outputs: readonly RunOutput[]): PositionedEvent {
   return {
     version,
-    event: { type: 'input_applied', receipt: { kind: 'timer_fired', key: 'k', at }, patch: [], outputs },
+    bytes: 100,
+    event: {
+      type: 'input_applied',
+      format: stateFormat,
+      receipt: { kind: 'timer_fired', key: 'k', at },
+      steps: [],
+      patch: [],
+      outputs,
+    },
   };
 }
 
+const events = [applied(3, [settle]), applied(1, [start]), applied(2, [arm, start]), applied(4, [])];
+
 describe('the outputs above a watermark', () => {
   it('are those of the events after it, in the order of the stream', () => {
-    const events = [applied(3, [settle]), applied(1, [start]), applied(2, [arm, start])];
-
     expect(outputsAbove(1, events)).toEqual([
       { version: 2, output: arm },
       { version: 2, output: start },
       { version: 3, output: settle },
     ]);
-    expect(outputsAbove(3, events)).toEqual([]);
+    expect(outputsAbove(4, events)).toEqual([]);
+  });
+});
+
+describe('the watermark after a dispatch', () => {
+  it('moves to the last event when every output was dispatched, even past events with none', () => {
+    expect(dispatchedThrough(1, events)).toBe(4);
+  });
+
+  it('stops before the event of the first output that failed, so the next wake starts there', () => {
+    expect(dispatchedThrough(1, events, 3)).toBe(2);
+    expect(dispatchedThrough(1, events, 2)).toBe(1);
+  });
+
+  it('never goes down', () => {
+    expect([dispatchedThrough(3, events, 2), dispatchedThrough(5, events), dispatchedThrough(2, [])]).toEqual([
+      3, 5, 2,
+    ]);
   });
 });
 

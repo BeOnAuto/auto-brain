@@ -23,9 +23,17 @@ export class DispatchFailed extends Data.TaggedError('dispatch_failed')<{
   readonly detail: string;
 }> {}
 
+function inStreamOrder(events: readonly PositionedEvent[]): readonly PositionedEvent[] {
+  return events.toSorted((first, second) => first.version - second.version);
+}
+
 export function outputsAbove(watermark: number, events: readonly PositionedEvent[]): readonly PositionedOutput[] {
-  return events
+  return inStreamOrder(events)
     .filter(({ version }) => version > watermark)
-    .toSorted((first, second) => first.version - second.version)
     .flatMap(({ version, event }) => event.outputs.map((output) => ({ version, output })));
+}
+
+export function dispatchedThrough(watermark: number, events: readonly PositionedEvent[], firstFailed?: number): number {
+  const last = Math.max(watermark, ...events.map(({ version }) => version));
+  return firstFailed === undefined ? last : Math.max(watermark, firstFailed - 1);
 }

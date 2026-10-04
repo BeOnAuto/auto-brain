@@ -1,18 +1,26 @@
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
-import type { RunInput } from '../machine/run-input.ts';
+import type { Started } from '../machine/run-input.ts';
 import { newRun, type RunState, type TaskFrame } from '../machine/run-state.ts';
 
 export const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+export const document = { document: { dsl: '1.0.3', namespace: 'acme', name: 'triage', version: '1.0.0' }, do: [] };
 
 export const openCall: CallKey = { executionId, reference: '/do/1/fork/branches/0/ask', run: 1 };
 
 export const armedTimer = `${executionId}/timers/1`;
 
+export const at = 1_791_100_060_000;
+
+const ticket = 1;
+
+const approval = 2;
+
 const waiting: TaskFrame = {
   reference: '/do/1/fork/branches/1/pause',
   run: 1,
-  rawInput: { ticket: 7 },
-  input: { ticket: 7 },
+  rawInput: ticket,
+  input: ticket,
   variables: {},
   timeout: null,
   body: { kind: 'wait', timer: armedTimer },
@@ -21,18 +29,18 @@ const waiting: TaskFrame = {
 const asking: TaskFrame = {
   reference: openCall.reference,
   run: 1,
-  rawInput: { ticket: 7 },
-  input: { ticket: 7 },
-  variables: { attempt: 1 },
+  rawInput: ticket,
+  input: ticket,
+  variables: { attempt: approval },
   timeout: `${executionId}/timers/2`,
-  body: { kind: 'call', key: openCall },
+  body: { kind: 'call', key: openCall, primitive: 'inference', name: 'classify' },
 };
 
 const forking: TaskFrame = {
   reference: '/do/1',
   run: 1,
-  rawInput: { ticket: 7 },
-  input: { ticket: 7 },
+  rawInput: ticket,
+  input: ticket,
   variables: {},
   timeout: null,
   body: {
@@ -50,20 +58,22 @@ export const runningState: RunState = {
   ...newRun,
   executionId,
   status: 'running',
-  workflow: { document: { document: { dsl: '1.0.3' }, do: [] }, input: { ticket: 7 } },
+  workflow: { document, input: ticket },
   attributes: { owner: 'tests' },
   limits: { mostDurationMs: 2_592_000_000, longestCallMs: 600_000 },
-  startedAt: 1_791_100_000_000,
-  lastInputAt: 1_791_100_000_000,
+  startedAt: at - 60_000,
+  lastInputAt: at - 60_000,
+  inputs: 3,
   random: { seed: 42, draws: 1 },
+  runs: { '/do/1': 1, [openCall.reference]: 1, [waiting.reference]: 1 },
   timers: {
     next: 3,
     armed: {
-      [armedTimer]: { purpose: 'wait', reference: waiting.reference },
-      [`${executionId}/timers/2`]: { purpose: 'timeout', reference: asking.reference },
+      [armedTimer]: { purpose: 'wait', reference: waiting.reference, dueAt: at + 60_000 },
+      [`${executionId}/timers/2`]: { purpose: 'timeout', reference: asking.reference, dueAt: at + 600_000 },
     },
   },
-  calls: { runs: { [openCall.reference]: 1 }, open: { [callKeyText(openCall)]: openCall } },
+  calls: { [callKeyText(openCall)]: openCall },
   inbox: {
     waiting: [{ event: { id: 'event-2', type: 'com.acme.approval', data: { approved: true } }, bytes: 80 }],
     waitingBytes: 80,
@@ -72,32 +82,41 @@ export const runningState: RunState = {
     receivedBytes: 160,
     overflow: null,
   },
-  heldBytes: 9000,
-  stepsWithoutWaiting: 0,
+  heldBytes: 16_500,
   machine: {
-    context: { seen: 1 },
+    values: {
+      0: { value: { seen: 1 }, bytes: 10, holders: 1 },
+      [ticket]: { value: { ticket: 7 }, bytes: 12, holders: 7 },
+      [approval]: { value: 1, bytes: 1, holders: 1 },
+    },
+    nextValue: 3,
+    context: 0,
     root: {
       reference: '/',
       run: 1,
-      rawInput: { ticket: 7 },
-      input: { ticket: 7 },
+      rawInput: ticket,
+      input: ticket,
       variables: {},
       timeout: null,
       body: {
         kind: 'list',
-        list: { pointer: '/do', position: 1, data: { ticket: 7 }, variables: {}, current: forking },
+        list: {
+          pointer: '/do',
+          position: 1,
+          data: ticket,
+          variables: {},
+          current: { kind: 'running', task: forking },
+        },
       },
     },
   },
 };
 
-export const at = 1_791_100_060_000;
-
-export const started: RunInput = {
+export const started: Started = {
   kind: 'started',
   executionId,
   at,
-  document: { document: { dsl: '1.0.3' }, do: [] },
+  document,
   input: { ticket: 7 },
   limits: { mostDurationMs: 2_592_000_000, longestCallMs: 600_000 },
   attributes: { owner: 'tests' },

@@ -448,6 +448,9 @@ importers:
 
   packages/workflow-engine:
     dependencies:
+      '@beonauto/ledger':
+        specifier: workspace:*
+        version: link:../ledger
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../operations

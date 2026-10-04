@@ -1,13 +1,17 @@
-import { Data, type Effect } from 'effect';
+import type { VersionConflict } from '@beonauto/ledger';
+import type { Effect } from 'effect';
 
-import type { RunState } from '../machine/run-state.ts';
 import type { PositionedEvent, RunEvent } from './run-event.ts';
-import type { SinceSnapshot, Snapshot } from './snapshot.ts';
+import type { Snapshot } from './snapshot.ts';
 
-export interface LoadedRun {
-  readonly state: RunState;
-  readonly version: number;
-  readonly sinceSnapshot: SinceSnapshot;
+export interface StoredSnapshot {
+  readonly snapshot: Snapshot;
+  readonly bytes: number;
+}
+
+export interface StoredRun {
+  readonly snapshot: StoredSnapshot | null;
+  readonly tail: readonly PositionedEvent[];
 }
 
 export interface AppendedEvent {
@@ -15,13 +19,8 @@ export interface AppendedEvent {
   readonly bytes: number;
 }
 
-export class VersionConflict extends Data.TaggedError('version_conflict')<{
-  readonly executionId: string;
-  readonly expectedVersion: number;
-}> {}
-
 export interface RunStore {
-  readonly load: (executionId: string) => Effect.Effect<LoadedRun>;
+  readonly load: (executionId: string) => Effect.Effect<StoredRun>;
   readonly append: (
     executionId: string,
     event: RunEvent,

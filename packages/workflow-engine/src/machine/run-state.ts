@@ -3,6 +3,7 @@ import { Schema } from 'effect';
 import { CallKeySchema, type CallKey } from '../executor/call-key.ts';
 import { ReceivedEventSchema, type ReceivedEvent } from '../inbox/received-event.ts';
 import { TimerPurposeSchema, type TimerPurpose } from '../timers/timer-id.ts';
+import { InstantSchema } from './instant.ts';
 import { RunLimitsSchema, type RunLimits } from './run-input.ts';
 
 export interface DslError {
@@ -13,19 +14,31 @@ export interface DslError {
   readonly detail?: string;
 }
 
-export type Variables = Readonly<Record<string, Schema.Json>>;
+export type ValueId = number;
+
+export interface HeldValue {
+  readonly value: Schema.Json;
+  readonly bytes: number;
+  readonly holders: number;
+}
+
+export type Variables = Readonly<Record<string, ValueId>>;
+
+export type CursorCurrent =
+  | { readonly kind: 'running'; readonly task: TaskFrame }
+  | { readonly kind: 'yielding'; readonly timer: string };
 
 export interface ListCursor {
   readonly pointer: string;
   readonly position: number;
-  readonly data: Schema.Json;
+  readonly data: ValueId;
   readonly variables: Variables;
-  readonly current: TaskFrame | null;
+  readonly current: CursorCurrent | null;
 }
 
 export type Branch =
   | { readonly state: 'running'; readonly task: TaskFrame }
-  | { readonly state: 'finished'; readonly output: Schema.Json; readonly flow: string }
+  | { readonly state: 'finished'; readonly output: ValueId; readonly flow: string }
   | { readonly state: 'failed'; readonly error: DslError };
 
 export type TryPhase =
@@ -37,30 +50,36 @@ export type FrameBody =
   | { readonly kind: 'list'; readonly list: ListCursor }
   | {
       readonly kind: 'for';
-      readonly items: readonly Schema.Json[];
+      readonly items: ValueId;
       readonly index: number;
-      readonly data: Schema.Json;
+      readonly data: ValueId;
       readonly list: ListCursor | null;
     }
   | { readonly kind: 'fork'; readonly compete: boolean; readonly branches: readonly Branch[] }
   | { readonly kind: 'try'; readonly attempt: number; readonly startedAt: number; readonly phase: TryPhase }
   | { readonly kind: 'wait'; readonly timer: string }
-  | { readonly kind: 'call'; readonly key: CallKey }
-  | { readonly kind: 'listen'; readonly consumed: readonly Schema.JsonObject[] }
-  | { readonly kind: 'yield'; readonly timer: string };
+  | {
+      readonly kind: 'call';
+      readonly key: CallKey;
+      readonly primitive: string | null;
+      readonly name: string | null;
+    }
+  | { readonly kind: 'listen'; readonly consumed: readonly ValueId[] };
 
 export interface TaskFrame {
   readonly reference: string;
   readonly run: number;
-  readonly rawInput: Schema.Json;
-  readonly input: Schema.Json;
+  readonly rawInput: ValueId;
+  readonly input: ValueId;
   readonly variables: Variables;
   readonly timeout: string | null;
   readonly body: FrameBody;
 }
 
 export interface MachineState {
-  readonly context: Schema.Json;
+  readonly values: Readonly<Record<string, HeldValue>>;
+  readonly nextValue: ValueId;
+  readonly context: ValueId;
   readonly root: TaskFrame | null;
 }
 
@@ -75,6 +94,7 @@ export type RunOutcome =
 export interface ArmedTimer {
   readonly purpose: TimerPurpose;
   readonly reference: string;
+  readonly dueAt: number;
 }
 
 export interface WaitingEvent {
@@ -94,17 +114,16 @@ export interface InboxState {
 export interface RunState {
   readonly executionId: string;
   readonly status: 'new' | 'running' | 'ended';
-  readonly workflow: { readonly document: Schema.JsonObject; readonly input: Schema.Json } | null;
+  readonly workflow: { readonly document: Schema.JsonObject; readonly input: ValueId } | null;
   readonly attributes: Schema.JsonObject;
   readonly limits: RunLimits;
   readonly startedAt: number;
   readonly lastInputAt: number;
+  readonly inputs: number;
   readonly random: { readonly seed: number; readonly draws: number };
+  readonly runs: Readonly<Record<string, number>>;
   readonly timers: { readonly next: number; readonly armed: Readonly<Record<string, ArmedTimer>> };
-  readonly calls: {
-    readonly runs: Readonly<Record<string, number>>;
-    readonly open: Readonly<Record<string, CallKey>>;
-  };
+  readonly calls: Readonly<Record<string, CallKey>>;
   readonly inbox: InboxState;
   readonly heldBytes: number;
   readonly stepsWithoutWaiting: number;
@@ -115,7 +134,9 @@ export interface RunState {
 
 const IntSchema = Schema.Int;
 
-const VariablesSchema = Schema.Record(Schema.String, Schema.Json);
+const ValueIdSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
+
+const VariablesSchema = Schema.Record(Schema.String, ValueIdSchema);
 
 const DslErrorSchema = Schema.Struct({
   type: Schema.String,
@@ -125,20 +146,24 @@ const DslErrorSchema = Schema.Struct({
   detail: Schema.optionalKey(Schema.String),
 });
 
+const TaskFrameReference = Schema.suspend((): Schema.Codec<TaskFrame> => TaskFrameSchema);
+
+const CursorCurrentSchema: Schema.Codec<CursorCurrent> = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal('running'), task: TaskFrameReference }),
+  Schema.Struct({ kind: Schema.Literal('yielding'), timer: Schema.String }),
+]);
+
 const ListCursorSchema: Schema.Codec<ListCursor> = Schema.Struct({
   pointer: Schema.String,
   position: IntSchema,
-  data: Schema.Json,
+  data: ValueIdSchema,
   variables: VariablesSchema,
-  current: Schema.NullOr(Schema.suspend((): Schema.Codec<TaskFrame> => TaskFrameSchema)),
+  current: Schema.NullOr(CursorCurrentSchema),
 });
 
 const BranchSchema: Schema.Codec<Branch> = Schema.Union([
-  Schema.Struct({
-    state: Schema.Literal('running'),
-    task: Schema.suspend((): Schema.Codec<TaskFrame> => TaskFrameSchema),
-  }),
-  Schema.Struct({ state: Schema.Literal('finished'), output: Schema.Json, flow: Schema.String }),
+  Schema.Struct({ state: Schema.Literal('running'), task: TaskFrameReference }),
+  Schema.Struct({ state: Schema.Literal('finished'), output: ValueIdSchema, flow: Schema.String }),
   Schema.Struct({ state: Schema.Literal('failed'), error: DslErrorSchema }),
 ]);
 
@@ -152,24 +177,28 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('list'), list: ListCursorSchema }),
   Schema.Struct({
     kind: Schema.Literal('for'),
-    items: Schema.Array(Schema.Json),
+    items: ValueIdSchema,
     index: IntSchema,
-    data: Schema.Json,
+    data: ValueIdSchema,
     list: Schema.NullOr(ListCursorSchema),
   }),
   Schema.Struct({ kind: Schema.Literal('fork'), compete: Schema.Boolean, branches: Schema.Array(BranchSchema) }),
-  Schema.Struct({ kind: Schema.Literal('try'), attempt: IntSchema, startedAt: IntSchema, phase: TryPhaseSchema }),
+  Schema.Struct({ kind: Schema.Literal('try'), attempt: IntSchema, startedAt: InstantSchema, phase: TryPhaseSchema }),
   Schema.Struct({ kind: Schema.Literal('wait'), timer: Schema.String }),
-  Schema.Struct({ kind: Schema.Literal('call'), key: CallKeySchema }),
-  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(Schema.JsonObject) }),
-  Schema.Struct({ kind: Schema.Literal('yield'), timer: Schema.String }),
+  Schema.Struct({
+    kind: Schema.Literal('call'),
+    key: CallKeySchema,
+    primitive: Schema.NullOr(Schema.String),
+    name: Schema.NullOr(Schema.String),
+  }),
+  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema) }),
 ]);
 
 const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
   reference: Schema.String,
   run: IntSchema,
-  rawInput: Schema.Json,
-  input: Schema.Json,
+  rawInput: ValueIdSchema,
+  input: ValueIdSchema,
   variables: VariablesSchema,
   timeout: Schema.NullOr(Schema.String),
   body: FrameBodySchema,
@@ -187,20 +216,22 @@ const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
 export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
   executionId: Schema.String,
   status: Schema.Literals(['new', 'running', 'ended']),
-  workflow: Schema.NullOr(Schema.Struct({ document: Schema.JsonObject, input: Schema.Json })),
+  workflow: Schema.NullOr(Schema.Struct({ document: Schema.JsonObject, input: ValueIdSchema })),
   attributes: Schema.JsonObject,
   limits: RunLimitsSchema,
-  startedAt: IntSchema,
-  lastInputAt: IntSchema,
+  startedAt: InstantSchema,
+  lastInputAt: InstantSchema,
+  inputs: IntSchema,
   random: Schema.Struct({ seed: IntSchema, draws: IntSchema }),
+  runs: Schema.Record(Schema.String, IntSchema),
   timers: Schema.Struct({
     next: IntSchema,
-    armed: Schema.Record(Schema.String, Schema.Struct({ purpose: TimerPurposeSchema, reference: Schema.String })),
+    armed: Schema.Record(
+      Schema.String,
+      Schema.Struct({ purpose: TimerPurposeSchema, reference: Schema.String, dueAt: InstantSchema }),
+    ),
   }),
-  calls: Schema.Struct({
-    runs: Schema.Record(Schema.String, IntSchema),
-    open: Schema.Record(Schema.String, CallKeySchema),
-  }),
+  calls: Schema.Record(Schema.String, CallKeySchema),
   inbox: Schema.Struct({
     waiting: Schema.Array(Schema.Struct({ event: ReceivedEventSchema, bytes: IntSchema })),
     waitingBytes: IntSchema,
@@ -212,7 +243,12 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
   heldBytes: IntSchema,
   stepsWithoutWaiting: IntSchema,
   cancelRequested: Schema.Boolean,
-  machine: Schema.Struct({ context: Schema.Json, root: Schema.NullOr(TaskFrameSchema) }),
+  machine: Schema.Struct({
+    values: Schema.Record(Schema.String, Schema.Struct({ value: Schema.Json, bytes: IntSchema, holders: IntSchema })),
+    nextValue: ValueIdSchema,
+    context: ValueIdSchema,
+    root: Schema.NullOr(TaskFrameSchema),
+  }),
   outcome: Schema.NullOr(RunOutcomeSchema),
 });
 
@@ -224,13 +260,15 @@ export const newRun: RunState = {
   limits: { mostDurationMs: 1, longestCallMs: 1 },
   startedAt: 0,
   lastInputAt: 0,
+  inputs: 0,
   random: { seed: 0, draws: 0 },
+  runs: {},
   timers: { next: 1, armed: {} },
-  calls: { runs: {}, open: {} },
+  calls: {},
   inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0, overflow: null },
   heldBytes: 0,
   stepsWithoutWaiting: 0,
   cancelRequested: false,
-  machine: { context: {}, root: null },
+  machine: { values: { 0: { value: {}, bytes: 2, holders: 1 } }, nextValue: 1, context: 0, root: null },
   outcome: null,
 };

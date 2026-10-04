@@ -1,18 +1,17 @@
 import { Schema } from 'effect';
 
 import { CallKeySchema } from '../executor/call-key.ts';
-import { RunSettlementSchema } from '../settlement/run-settlement.ts';
+import { InstantSchema } from '../machine/instant.ts';
+import { SettlementSchema } from '../settlement/record-store.ts';
 import { TimerPurposeSchema } from '../timers/timer-id.ts';
 
 const ExecutionIdSchema = Schema.NonEmptyString;
-
-const MillisecondsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
 const ArmTimerSchema = Schema.Struct({
   kind: Schema.Literal('arm_timer'),
   executionId: ExecutionIdSchema,
   timerId: Schema.NonEmptyString,
-  dueAt: MillisecondsSchema,
+  dueAt: InstantSchema,
   purpose: TimerPurposeSchema,
 });
 
@@ -27,7 +26,7 @@ const StartCallSchema = Schema.Struct({
   key: CallKeySchema,
   function: Schema.NonEmptyString,
   arguments: Schema.Json,
-  longestMs: MillisecondsSchema,
+  longestMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
 });
 
 const CancelCallSchema = Schema.Struct({
@@ -38,7 +37,7 @@ const CancelCallSchema = Schema.Struct({
 const SettleSchema = Schema.Struct({
   kind: Schema.Literal('settle'),
   executionId: ExecutionIdSchema,
-  settlement: RunSettlementSchema,
+  settlement: SettlementSchema,
 });
 
 export const RunOutputSchema = Schema.Union([

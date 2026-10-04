@@ -3,10 +3,9 @@ import { Schema } from 'effect';
 import { CallKeySchema } from '../executor/call-key.ts';
 import { CallResultSchema } from '../executor/call-result.ts';
 import { ReceivedEventSchema } from '../inbox/received-event.ts';
+import { InstantSchema } from './instant.ts';
 
 const ExecutionIdSchema = Schema.NonEmptyString;
-
-const InstantSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
 const PositiveMillisecondsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
 

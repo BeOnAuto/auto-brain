@@ -1,5 +1,6 @@
 export {
   DispatchFailed,
+  dispatchedThrough,
   outputsAbove,
   type DispatchWatermark,
   type PositionedOutput,
@@ -14,10 +15,10 @@ export {
   type Settle,
   type StartCall,
 } from './dispatch/run-output.ts';
-export type { EnginePorts, Submission, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
+export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
-export { CallResultSchema, type CallResult } from './executor/call-result.ts';
-export type { Executor } from './executor/executor.ts';
+export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './executor/call-result.ts';
+export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
 export {
   ReceivedEventSchema,
   mostEventIdLength,
@@ -27,8 +28,27 @@ export {
   mostWaitingEvents,
   type ReceivedEvent,
 } from './inbox/received-event.ts';
-export { InputReceiptSchema, isStale, receiptOf, type InputReceipt } from './machine/input-receipt.ts';
-export { mostEventBytes, mostHeldBytes, mostStepsWithoutWaiting, mostTasksPerInput } from './machine/limits.ts';
+export {
+  RunMismatch,
+  outcomeOf,
+  staleReasonOf,
+  type StaleReason,
+  type SubmissionOutcome,
+} from './machine/admission.ts';
+export { InputReceiptSchema, receiptOf, type InputReceipt } from './machine/input-receipt.ts';
+export { InstantSchema, clampedAt } from './machine/instant.ts';
+export {
+  mostCallArgumentsBytes,
+  mostEventBytes,
+  mostExpressionWork,
+  mostHeldBytes,
+  mostHistoryBytes,
+  mostInputs,
+  mostStepsWithoutWaiting,
+  mostTasksPerInput,
+  mostWorkPerInput,
+  taskFrameBytes,
+} from './machine/limits.ts';
 export type { RunDecider } from './machine/run-decider.ts';
 export {
   RunInputSchema,
@@ -46,8 +66,10 @@ export {
   newRun,
   type ArmedTimer,
   type Branch,
+  type CursorCurrent,
   type DslError,
   type FrameBody,
+  type HeldValue,
   type InboxState,
   type ListCursor,
   type MachineState,
@@ -55,15 +77,25 @@ export {
   type RunState,
   type TaskFrame,
   type TryPhase,
+  type ValueId,
   type Variables,
   type WaitingEvent,
 } from './machine/run-state.ts';
-export { RunEventSchema, type PositionedEvent, type RunEvent } from './run-log/run-event.ts';
-export { VersionConflict, type AppendedEvent, type LoadedRun, type RunStore } from './run-log/run-store.ts';
+export {
+  RunEventSchema,
+  StepSchema,
+  eventBytesOf,
+  fitsInOneEvent,
+  type PositionedEvent,
+  type RunEvent,
+  type Step,
+} from './run-log/run-event.ts';
+export { StreamGap, evolveRun, loadedRunOf, type LoadedRun } from './run-log/run-fold.ts';
+export type { AppendedEvent, RunStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
 export {
   SnapshotSchema,
   isSnapshotDue,
-  snapshotChunkLength,
+  mostSnapshotChunkBytes,
   snapshotChunks,
   snapshotEveryBytes,
   snapshotEveryInputs,
@@ -71,9 +103,21 @@ export {
   type SinceSnapshot,
   type Snapshot,
 } from './run-log/snapshot.ts';
-export { PatchOperationSchema, type PatchOperation, type StatePatch } from './run-log/state-patch.ts';
+export { StateFormatSchema, stateFormat } from './run-log/state-format.ts';
+export {
+  PatchFailed,
+  PatchOperationSchema,
+  applyStatePatch,
+  type PatchOperation,
+  type StatePatch,
+} from './run-log/state-patch.ts';
 export type { RunSerialiser } from './serialisation/run-serialiser.ts';
-export type { RecordStore, SettleReceipt } from './settlement/record-store.ts';
-export { RunSettlementSchema, type RunSettlement } from './settlement/run-settlement.ts';
+export {
+  SettlementSchema,
+  type RecordStore,
+  type SettleReceipt,
+  type SettleRequest,
+  type Settlement,
+} from './settlement/record-store.ts';
 export { TimerPurposeSchema, timerIdOf, type TimerPurpose } from './timers/timer-id.ts';
-export type { Timers } from './timers/timers.ts';
+export type { ArmReceipt, TimerCancelReceipt, Timers } from './timers/timers.ts';

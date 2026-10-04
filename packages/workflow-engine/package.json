@@ -13,6 +13,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@beonauto/ledger": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "effect": "catalog:"
   },

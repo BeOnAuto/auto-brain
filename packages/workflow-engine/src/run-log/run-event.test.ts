@@ -1,7 +1,18 @@
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { newRun, RunEventSchema, RunInputSchema, RunStateSchema, type RunEvent, type RunInput } from '../index.ts';
+import {
+  eventBytesOf,
+  fitsInOneEvent,
+  mostEventBytes,
+  newRun,
+  RunEventSchema,
+  RunInputSchema,
+  RunStateSchema,
+  stateFormat,
+  type RunEvent,
+  type RunInput,
+} from '../index.ts';
 import { at, executionId, openCall, runningState, started } from '../testing/runs.ts';
 
 function asStored<S extends Schema.Codec<unknown, unknown>>(schema: S, value: S['Type']): unknown {
@@ -17,11 +28,16 @@ function readBack<S extends Schema.Codec<unknown, unknown>>(
 
 const event: RunEvent = {
   type: 'input_applied',
-  receipt: { kind: 'call_answered', key: 'k', at },
+  format: stateFormat,
+  receipt: { kind: 'call_answered', key: 'k', at, status: 'succeeded' },
+  steps: [
+    { reference: openCall.reference, run: 1, outcome: 'completed' },
+    { reference: '/do/2', run: 1, outcome: 'waiting' },
+  ],
   patch: [
-    { op: 'replace', path: '/machine/context', value: { approved: true } },
-    { op: 'add', path: '/timers/armed/e~1timers~13', value: { purpose: 'wait', reference: '/do/2' } },
-    { op: 'remove', path: '/calls/open/k' },
+    { op: 'replace', path: '/machine/context', value: 3 },
+    { op: 'add', path: '/timers/armed/e~1timers~13', value: { purpose: 'wait', reference: '/do/2', dueAt: at + 1 } },
+    { op: 'remove', path: '/calls/k' },
   ],
   outputs: [
     { kind: 'cancel_timer', executionId, timerId: `${executionId}/timers/2` },
@@ -31,6 +47,10 @@ const event: RunEvent = {
   ],
 };
 
+function near(text: string): RunEvent {
+  return { ...event, patch: [{ op: 'replace', path: '/machine/context', value: text }] };
+}
+
 const inputs: readonly RunInput[] = [
   started,
   { kind: 'timer_fired', executionId, at, timerId: `${executionId}/timers/1` },
@@ -39,21 +59,30 @@ const inputs: readonly RunInput[] = [
     executionId,
     at,
     key: openCall,
-    result: { status: 'rejected', reason: 'conflict', detail: 'x' },
+    result: { status: 'rejected', reason: 'invalid_arguments', detail: 'x' },
   },
   { kind: 'event_received', executionId, at, event: { id: 'event-3', type: 'com.acme.approval', data: [1, 2] } },
   { kind: 'cancel_requested', executionId, at },
 ];
 
 describe('a run event', () => {
-  it('is stored as JSON and read back as it was decided', () => {
+  it('is stored as JSON, naming its state format, and read back as it was decided', () => {
     expect(readBack(RunEventSchema, asStored(RunEventSchema, event))).toEqual(Result.succeed(event));
   });
 
-  it('is refused when it holds an output the engine does not dispatch', () => {
-    const stored = { ...event, outputs: [{ kind: 'send_email', to: 'someone' }] };
+  it('is refused when it names another state format, or holds an output the engine does not dispatch', () => {
+    expect([
+      Result.isFailure(readBack(RunEventSchema, { ...event, format: stateFormat + 1 })),
+      Result.isFailure(readBack(RunEventSchema, { ...event, outputs: [{ kind: 'send_email', to: 'someone' }] })),
+    ]).toEqual([true, true]);
+  });
 
-    expect(Result.isFailure(readBack(RunEventSchema, stored))).toBe(true);
+  it('is measured in bytes of UTF-8 JSON, and fits when it takes at most 1.5 MiB', () => {
+    const overhead = eventBytesOf(near(''));
+
+    expect(eventBytesOf(near('é'))).toBe(overhead + 2);
+    expect(fitsInOneEvent(near('x'.repeat(mostEventBytes - overhead)))).toBe(true);
+    expect(fitsInOneEvent(near('x'.repeat(mostEventBytes - overhead + 1)))).toBe(false);
   });
 });
 
