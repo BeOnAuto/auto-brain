@@ -9,7 +9,7 @@ import {
   type StartCall,
   type StartReceipt,
 } from '@beonauto/workflow-engine';
-import { Effect, Semaphore, type Cause } from 'effect';
+import { Effect, Schedule, Semaphore, type Cause } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
 import { background, type Background } from './background.ts';
@@ -52,6 +52,25 @@ interface Calls {
   readonly interrupt: (key: string) => Effect.Effect<void>;
 }
 
+const answerWrittenAgain = Schedule.min([Schedule.exponential('50 millis'), Schedule.spaced('30 seconds')]);
+
+function writtenUntilItIs<A>(
+  written: Effect.Effect<A, DatabaseFailed>,
+  trouble: Trouble,
+): Effect.Effect<A, DatabaseFailed> {
+  const failures = { reported: false };
+  return written.pipe(
+    Effect.tapCause((cause: Cause.Cause<unknown>) => {
+      if (failures.reported) {
+        return Effect.void;
+      }
+      failures.reported = true;
+      return trouble('An answer of a call could not be recorded; it is written again until it is', cause);
+    }),
+    Effect.retry(answerWrittenAgain),
+  );
+}
+
 function failedTo(output: 'start_call' | 'cancel_call') {
   return ({ detail }: { readonly detail: string }) => new DispatchFailed({ output, detail });
 }
@@ -71,7 +90,7 @@ function callsOf({ database, perform, deliver, trouble, mostAtOnce }: ExecutorPa
         key,
         atOnce.withPermit(perform(call, run)).pipe(
           Effect.flatMap((result) =>
-            Effect.flatMap(answeredRow(database, key, result), (answered) =>
+            Effect.flatMap(writtenUntilItIs(answeredRow(database, key, result), trouble), (answered) =>
               answered ? delivered(key, call.key, result) : Effect.void,
             ),
           ),

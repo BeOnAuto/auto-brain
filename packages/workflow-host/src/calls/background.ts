@@ -10,8 +10,12 @@ export interface Background {
 
 export function background(): Background {
   const fibers = new Map<string, Fiber.Fiber<void>>();
+  const lifecycle = { stopped: false };
   return {
     run: (key, work) => {
+      if (lifecycle.stopped || fibers.has(key)) {
+        return;
+      }
       const gate = Deferred.makeUnsafe<void>();
       const fiber = Effect.runFork(
         Deferred.await(gate).pipe(
@@ -32,6 +36,10 @@ export function background(): Background {
       return fiber === undefined ? Effect.void : Fiber.interrupt(fiber);
     },
     idle: () => Effect.asVoid(Fiber.awaitAll([...fibers.values()])),
-    stop: () => Fiber.interruptAll([...fibers.values()]),
+    stop: () =>
+      Effect.suspend(() => {
+        lifecycle.stopped = true;
+        return Fiber.interruptAll([...fibers.values()]);
+      }),
   };
 }

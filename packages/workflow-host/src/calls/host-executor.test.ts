@@ -1,8 +1,11 @@
+import { setTimeout } from 'node:timers/promises';
+
 import type { CallResult } from '@beonauto/operations';
 import { callKeyText, type CallKey, type StartCall } from '@beonauto/workflow-engine';
 import { Deferred, Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase, type FaultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runId } from '../testing/probe-subjects.ts';
@@ -141,22 +144,59 @@ describe('the executor of the host, answering', () => {
   });
 });
 
-describe('the executor of the host, failing', () => {
-  it('reports an answer it could not record, and gives none', async () => {
+describe('the executor of the host, failing to record an answer', () => {
+  it('writes it again until it is written, never performing the call again meanwhile, and then gives it', async () => {
     const calls = await executing((database) =>
       Effect.sync(() => {
-        database.failing(true);
+        database.failingWrites(true);
         return sent;
       }),
     );
     const executor = calls.executorOn();
 
     await Effect.runPromise(executor.executor.start(call, run));
+    await eventually(calls.troubles, (troubles) => troubles.length > 0);
+    await setTimeout(120);
+    const resumedWhileWriting = await Effect.runPromise(executor.resume());
+    calls.database.failingWrites(false);
     await Effect.runPromise(executor.idle());
 
-    expect([calls.answered(), calls.troubles()]).toEqual([[], ['A call could not record its answer']]);
+    expect([resumedWhileWriting, calls.performed(), calls.answered()]).toEqual([0, 1, [callKeyText(call.key)]]);
+    expect(calls.troubles()).toEqual(['An answer of a call could not be recorded; it is written again until it is']);
   });
+});
 
+describe('the executor of the host, asked twice at once', () => {
+  it('never starts a second performance of a call it is already performing', async () => {
+    const calls = await executing(neverAnswered);
+    const died = calls.executorOn();
+    await Effect.runPromise(died.executor.start(call, run));
+    await Effect.runPromise(died.stop());
+
+    const resumed = calls.executorOn();
+    await Effect.runPromise(
+      Effect.all([resumed.resume(), resumed.executor.start(call, run), resumed.resume()], { concurrency: 'unbounded' }),
+    );
+
+    expect(calls.performed()).toBe(2);
+    await Effect.runPromise(resumed.stop());
+  });
+});
+
+describe('the executor of the host, stopped', () => {
+  it('records a call it is asked to start, but begins it only when a host resumes it', async () => {
+    const calls = await executing();
+    const stopped = calls.executorOn();
+    await Effect.runPromise(stopped.stop());
+
+    const started = await Effect.runPromise(stopped.executor.start(call, run));
+    const resumed = await Effect.runPromise(calls.executorOn().resume());
+
+    expect([started, resumed]).toEqual(['started', 1]);
+  });
+});
+
+describe('the executor of the host, failing', () => {
   it('fails a start or a cancel it cannot record, to be dispatched again', async () => {
     const calls = await executing();
     const executor = calls.executorOn();
