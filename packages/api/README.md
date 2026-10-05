@@ -7,7 +7,7 @@ The API of auto-brain: the handler the server answers every request with. It ser
 Each request passes through the same chain before it reaches an operation, in this order:
 
 1. It gets an `x-request-id` and the security headers.
-2. An `Origin` that is neither the console's, `https://console.on.auto`, nor in `ALLOWED_ORIGINS` gets `403` `origin_not_allowed`; in local mode, a `Host` that is not a localhost name gets `403` too.
+2. An `Origin` that is neither the studio's, `https://studio.on.auto`, nor in `ALLOWED_ORIGINS` gets `403` `origin_not_allowed`; in local mode, a `Host` that is not a localhost name gets `403` too.
 3. A CORS preflight from an allowed origin gets `204`.
 4. The caller authenticates with `Authorization: Bearer <key>`, or as the local developer in local mode; a request without a valid key gets `401`.
 

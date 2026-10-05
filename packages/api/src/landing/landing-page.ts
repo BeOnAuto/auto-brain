@@ -7,7 +7,7 @@ import type { ApiEnv } from '../api-env.ts';
 import { iconOnDark, iconOnLight, mark } from './auto-logo.ts';
 import { fontFaces } from './fonts.ts';
 
-export const consoleOrigin = 'https://console.on.auto';
+export const studioOrigin = 'https://studio.on.auto';
 
 const styles = `${fontFaces}
 :root {
