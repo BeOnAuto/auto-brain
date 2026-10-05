@@ -126,10 +126,6 @@ const pageHeaders = {
   'x-frame-options': 'DENY',
 };
 
-function studioOn(server: Readonly<URL>): string {
-  return `${studioOrigin}/?server=${encodeURIComponent(server.origin)}`;
-}
-
 function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
   return html`<!doctype html>
     <html lang="en">
@@ -145,9 +141,9 @@ function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
         <main>
           ${raw(mark)}
           <h1>Auto Brain is running</h1>
-          <p>Create and manage your brains in the studio.</p>
+          <p>Auto Studio is invite-only.</p>
           <span class="address">${server.host}</span>
-          <a class="open" href="${studioOn(server)}">Open studio ${raw(arrow)}</a>
+          <a class="open" href="https://on.auto/request-invite">Request a Studio invite ${raw(arrow)}</a>
         </main>
       </body>
     </html>`;
