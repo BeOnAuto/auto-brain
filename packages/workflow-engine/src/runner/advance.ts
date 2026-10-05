@@ -52,6 +52,7 @@ export interface Runner {
   readonly resumeTask: (machine: Machine, frame: TaskFrame, signal: Signal) => TaskAdvance | undefined;
   readonly cancelTask: (machine: Machine, frame: TaskFrame) => void;
   readonly startList: (machine: Machine, start: ListStart) => ListAdvance;
+  readonly yieldList: (machine: Machine, start: ListStart, reference: string) => ListAdvance;
   readonly resumeList: (machine: Machine, cursor: ListCursor, signal: Signal) => ListAdvance | undefined;
   readonly cancelList: (machine: Machine, cursor: ListCursor) => void;
 }

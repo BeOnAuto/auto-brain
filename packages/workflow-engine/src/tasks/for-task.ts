@@ -8,6 +8,7 @@ import {
   type BodyAdvance,
   type Invocation,
   type ListAdvance,
+  type ListStart,
   type Machine,
   type Signal,
 } from '../runner/advance.ts';
@@ -25,17 +26,33 @@ function loopOf(invocation: Invocation): JsonObject {
   return objectField(invocation.entry.task, 'for') ?? {};
 }
 
-function afterBody(invocation: Invocation, iteration: Iteration, advance: ListAdvance): BodyAdvance {
+interface Next {
+  readonly kind: 'next';
+  readonly iteration: Iteration;
+}
+
+type Turn = Next | BodyAdvance;
+
+function afterBody(iteration: Iteration, advance: ListAdvance): Turn {
   if (advance.kind === 'waiting') {
     return { kind: 'waiting', body: { kind: 'for', ...iteration, list: advance.cursor } };
   }
   if (advance.kind === 'ended' && advance.ending === 'completed') {
-    return iterated(invocation, { ...iteration, index: iteration.index + 1, data: advance.output });
+    return { kind: 'next', iteration: { ...iteration, index: iteration.index + 1, data: advance.output } };
   }
   return listBodyOf(advance);
 }
 
-function iterated(invocation: Invocation, iteration: Iteration): BodyAdvance {
+function bodyStarted(invocation: Invocation, start: ListStart): ListAdvance {
+  const { machine, entry } = invocation;
+  if (machine.session.meter.shouldYield()) {
+    return machine.runner.yieldList(machine, start, entry.reference);
+  }
+  machine.session.meter.countTask();
+  return machine.runner.startList(machine, start);
+}
+
+function turnOf(invocation: Invocation, iteration: Iteration): Turn {
   const { machine, entry, frame, variables } = invocation;
   const { session } = machine;
   const item = itemAt(session.valueOf(iteration.items), iteration.index);
@@ -63,12 +80,16 @@ function iterated(invocation: Invocation, iteration: Iteration): BodyAdvance {
   ) {
     return doneOf(iteration.data);
   }
-  const advance = machine.runner.startList(machine, {
-    pointer: `${entry.reference}/do`,
-    data: iteration.data,
-    variables: scope,
-  });
-  return afterBody(invocation, iteration, advance);
+  const advance = bodyStarted(invocation, { pointer: `${entry.reference}/do`, data: iteration.data, variables: scope });
+  return afterBody(iteration, advance);
+}
+
+function iterated(invocation: Invocation, first: Iteration): BodyAdvance {
+  let turn: Turn = { kind: 'next', iteration: first };
+  while (turn.kind === 'next') {
+    turn = turnOf(invocation, turn.iteration);
+  }
+  return turn;
 }
 
 export function startFor(invocation: Invocation): BodyAdvance {
@@ -88,9 +109,11 @@ export function startFor(invocation: Invocation): BodyAdvance {
 
 export function resumeFor(invocation: Invocation, body: ForBody, signal: Signal): BodyAdvance | undefined {
   const advance = invocation.machine.runner.resumeList(invocation.machine, body.list, signal);
-  return advance === undefined
-    ? undefined
-    : afterBody(invocation, { items: body.items, index: body.index, data: body.data }, advance);
+  if (advance === undefined) {
+    return undefined;
+  }
+  const turn = afterBody({ items: body.items, index: body.index, data: body.data }, advance);
+  return turn.kind === 'next' ? iterated(invocation, turn.iteration) : turn;
 }
 
 export function cancelFor(machine: Machine, body: ForBody): void {

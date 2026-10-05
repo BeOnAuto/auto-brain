@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { drivenRun, stepsIn, stepsWith } from '../testing/run-history.ts';
+import { drivenRun, stepsIn, stepsWith, timersArmedIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 describe('a for task', () => {
@@ -42,6 +42,16 @@ do:
 `);
 
     expect(drivenRun(document).outcome).toEqual({ kind: 'completed', output: { total: 3 } });
+  });
+});
+
+describe('a for task over many items', () => {
+  it('runs its iterations in turn, not one inside the other, and lets other runs in every 100 of them', () => {
+    const items = Array.from({ length: 3000 }, (_item, index) => index);
+    const run = drivenRun(workflow("do:\n  - each: { for: { in: '${ .items }' }, do: [] }"), { input: { items } });
+
+    expect(run.outcome).toEqual({ kind: 'completed', output: { items } });
+    expect(timersArmedIn(run.events, 'yield')).toHaveLength(29);
   });
 });
 

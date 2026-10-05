@@ -63,6 +63,12 @@ function afterTask(machine: Machine, place: Place, advance: TaskAdvance): ListAd
   return runFrom(machine, { ...position, position: next, data: output }, true);
 }
 
+function yielded(machine: Machine, position: Position, reference: string): ListAdvance {
+  const label = `${reference} lets other workflows run`;
+  const timer = machine.session.timers.arm({ purpose: 'yield', reference, milliseconds: 0, label });
+  return { kind: 'waiting', cursor: { ...position, current: { kind: 'yielding', timer } } };
+}
+
 function runFrom(machine: Machine, position: Position, mayYield: boolean): ListAdvance {
   const { session, runner } = machine;
   const entries = entriesOf(machine, position);
@@ -71,9 +77,7 @@ function runFrom(machine: Machine, position: Position, mayYield: boolean): ListA
     return { kind: 'ended', output: position.data, ending: 'completed' };
   }
   if (mayYield && session.meter.shouldYield()) {
-    const label = `${entry.reference} lets other workflows run`;
-    const timer = session.timers.arm({ purpose: 'yield', reference: entry.reference, milliseconds: 0, label });
-    return { kind: 'waiting', cursor: { ...position, current: { kind: 'yielding', timer } } };
+    return yielded(machine, position, entry.reference);
   }
   const advance = runner.startTask(machine, entry, position.data, position.variables);
   return afterTask(machine, { position, entries, reference: entry.reference }, advance);
@@ -81,6 +85,10 @@ function runFrom(machine: Machine, position: Position, mayYield: boolean): ListA
 
 export function startList(machine: Machine, { pointer, data, variables }: ListStart): ListAdvance {
   return caught(() => runFrom(machine, { pointer, position: 0, data, variables }, true));
+}
+
+export function yieldList(machine: Machine, { pointer, data, variables }: ListStart, reference: string): ListAdvance {
+  return yielded(machine, { pointer, position: 0, data, variables }, reference);
 }
 
 function resumeRunning(machine: Machine, cursor: ListCursor, task: TaskFrame, signal: Signal): ListAdvance | undefined {

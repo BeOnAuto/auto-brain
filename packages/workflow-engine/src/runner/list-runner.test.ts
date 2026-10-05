@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { mostTasksPerInput } from '../machine/limits.ts';
-import { drivenRun, stepsIn, stepsWith, timersArmedIn, timersCancelledIn } from '../testing/run-history.ts';
+import { drivenRun, stepsIn, timersArmedIn, timersCancelledIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
+
+function tasksCounting(count: number): string {
+  return Array.from(
+    { length: count },
+    (_task, index) => `  - add${index}: { set: '\${ { count: ((.count // 0) + 1) } }' }`,
+  ).join('\n');
+}
 
 const counting = `
           - counting:
@@ -12,18 +19,12 @@ const counting = `
 
 describe('a list that would run more tasks than one input takes', () => {
   it(`runs ${mostTasksPerInput} tasks, then waits for a timer due at once before it goes on`, () => {
-    const run = drivenRun(
-      workflow(`
-do:
-  - each:
-      for: { in: '\${ [range(0; 150)] }' }
-      do:
-        - add: { set: '\${ { count: ((.count // 0) + 1) } }' }
-`),
-    );
+    const run = drivenRun(workflow(`do:\n${tasksCounting(150)}`));
+    const firstTasks = new Set(stepsIn(run.events.slice(0, 1)).map(({ reference }) => reference));
 
     expect(run.outcome).toEqual({ kind: 'completed', output: { count: 150 } });
-    expect(stepsWith(run.events.slice(0, 1), 'started')).toHaveLength(mostTasksPerInput);
+    expect(firstTasks.size).toBe(mostTasksPerInput);
+    expect(timersArmedIn(run.events, 'yield')).toHaveLength(1);
   });
 
   it('is not woken by what is not its timer, and is cancelled while it waits for it', () => {
@@ -61,10 +62,13 @@ do:
           - later: { set: { later: true } }
 `);
     const run = drivenRun(document);
-    const yields = new Set(timersArmedIn(run.events, 'yield').map(({ timerId }) => timerId));
+    const laterStarts = timersArmedIn(run.events, 'yield')
+      .filter(({ label }) => label === '/do/0/all/fork/branches/2/later lets other workflows run')
+      .map(({ timerId }) => timerId);
 
     expect(run.outcome).toMatchObject({ kind: 'raised', error: { type: 'https://example.com/refused' } });
-    expect(timersCancelledIn(run.events).filter((timerId) => yields.has(timerId))).toHaveLength(1);
+    expect(laterStarts).toHaveLength(1);
+    expect(timersCancelledIn(run.events).filter((timerId) => laterStarts.includes(timerId))).toEqual(laterStarts);
   });
 });
 
