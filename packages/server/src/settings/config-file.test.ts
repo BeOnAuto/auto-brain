@@ -2,6 +2,7 @@ import { createApiKey } from '@beonauto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { configuredServer, rejectedExecution, settingLines, stoppedOutput } from '../testing/configured-server.ts';
+import { request } from '../testing/http-client.ts';
 import { spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
 
 const gatewayKey = 'gateway-key-SECRET-7f3a';
@@ -56,6 +57,51 @@ describe(
         `Settings read from the configuration file ${configFile}: MODEL_GATEWAYS, MODEL_ALIASES, API_KEYS, ALLOWED_ORIGINS`,
       ]);
       expect(stderr).not.toContain(gatewayKey);
+    });
+  },
+);
+
+const modelsText = `declared_models:
+  bedrock:
+    - eu.anthropic.claude-sonnet-4-5-20250929-v1:0
+allowed_models:
+  - bedrock/*
+`;
+
+describe(
+  'a server whose configuration file declares and allows models',
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('lists the declared models, and refuses a spec that names a model it does not allow', async () => {
+      const { child, configFile } = configuredServer(modelsText, { LOCAL_MODE: 'true', AWS_REGION: 'eu-central-1' });
+      const port = await child.port;
+
+      const listed = await request(port, 'GET', '/v1/orgs/acme/models?provider=bedrock');
+      const rejected = await rejectedExecution(port);
+      const stderr = await stoppedOutput(child);
+
+      expect(listed.body).toMatchObject({
+        object: 'list',
+        data: [
+          {
+            id: 'bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0',
+            object: 'model',
+            created: 0,
+            owned_by: 'bedrock',
+          },
+        ],
+        catalog_status: 'complete',
+      });
+      expect(rejected).toMatchObject({
+        status: 503,
+        body: {
+          reason: 'unavailable',
+          detail: 'openai/gpt-5 is not one of the models this server offers. Offered models: bedrock/*',
+        },
+      });
+      expect(settingLines(stderr)).toEqual([
+        `Settings read from the configuration file ${configFile}: DECLARED_MODELS, ALLOWED_MODELS`,
+      ]);
     });
   },
 );

@@ -19,16 +19,24 @@ export const alpha = '/v1/orgs/acme/brains/alpha';
 
 const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
 
+type Fetch = typeof globalThis.fetch;
+
+const noNetwork: Fetch = () => Promise.reject(new TypeError('fetch failed: the tests reach no network'));
+
 export async function servingInference(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
+  fetch: Fetch = noNetwork,
 ): Promise<InferenceServer> {
   const ledger = temporaryLedger();
   const scripted = scriptedLanguageModel(...replies);
   const server = await startServer(
     { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, ...environment },
     compositionRootWith((settings) =>
-      Effect.map(makeModelAccess(settings), (access) => ({ ...access, languageModel: scripted.languageModel })),
+      Effect.map(makeModelAccess(settings, { fetch }), (access) => ({
+        ...access,
+        languageModel: scripted.languageModel,
+      })),
     ),
   );
   return {

@@ -117,6 +117,25 @@
         "type": "string"
       },
       "description": "Model references a spec may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it"
+    },
+    "declared_models": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "description": "A model id as the provider receives it, such as eu.anthropic.claude-sonnet-4-5-20250929-v1:0"
+        }
+      },
+      "description": "The models list_models shows for bedrock, bedrock-anthropic, azure, vertex and vertex-anthropic, which do not list their own, and for a gateway whose list cannot be read, keyed by the provider prefix. DECLARED_MODELS wins over it"
+    },
+    "allowed_models": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "A model reference a spec may give, written provider/model, or provider/* for every model of a provider"
+      },
+      "description": "The only model references a spec may give and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it"
     }
   },
   "additionalProperties": false,

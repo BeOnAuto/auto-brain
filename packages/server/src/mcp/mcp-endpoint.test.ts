@@ -73,7 +73,7 @@ describe('the brain argument of the spec tools on /mcp', () => {
 });
 
 describe('the tools of /mcp', () => {
-  it('are the twelve brain and spec tools, the spec tools taking a brain, with self-contained schemas', async () => {
+  it('are the brain tools, list_models and the spec tools, the spec tools taking a brain, with self-contained schemas', async () => {
     server = await servingInference([]);
     await server.call('POST', '/v1/orgs/local/brains', { body: { brain: 'alpha', name: 'Alpha' } });
 
@@ -84,7 +84,7 @@ describe('the tools of /mcp', () => {
     ];
     const schemas = own.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
 
-    expect(own.map(({ name }) => name)).toEqual([...brainTools, ...specTools]);
+    expect(own.map(({ name }) => name)).toEqual([...brainTools, 'list_models', ...specTools]);
     expect(own).toEqual([...org, ...brain.map((tool) => takingBrain(tool))]);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
@@ -101,6 +101,7 @@ describe('the tools of /mcp', () => {
         'Start with list_brains to see them, or create_brain to make one.',
         'A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do.',
         "The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written.",
+        'list_models lists the models this server can call.',
         'execute_spec runs a spec and records the run as an execution.',
         'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
         "Every tool that works inside a brain takes the brain's id as brain.",

@@ -98,6 +98,7 @@ async function brainsCalled(session: McpSession): Promise<Called> {
     ['list_brains', await session.callTool('list_brains', { include_retired: true })],
     ['get_brain', await session.callTool('get_brain', { brain: 'sales' })],
     ['update_brain', await session.callTool('update_brain', { ...describing, description: 'Answers questions' })],
+    ['list_models', await session.callTool('list_models', {})],
   ];
 }
 

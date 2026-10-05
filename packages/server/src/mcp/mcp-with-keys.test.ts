@@ -62,7 +62,7 @@ function postInitialize(path: string, headers: Readonly<Record<string, string>>)
 }
 
 describe('the org endpoint of the server', () => {
-  it('names the release and lists the five brain tools', async () => {
+  it('names the release and lists the five brain tools and list_models', async () => {
     const connected = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
@@ -72,7 +72,7 @@ describe('the org endpoint of the server', () => {
       }),
     );
 
-    expect(connected).toEqual({ serverVersion: release, tools: brainTools });
+    expect(connected).toEqual({ serverVersion: release, tools: [...brainTools, 'list_models'] });
   });
 
   it('answers a brain the org lacks as isError with a not_found problem', async () => {
