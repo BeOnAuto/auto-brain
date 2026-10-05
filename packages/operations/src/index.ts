@@ -49,6 +49,7 @@ export {
   capitalized,
   counted,
   listed,
+  plainNumber,
   quoted,
   type Noun,
 } from './plain-language/phrasing.ts';
@@ -68,6 +69,7 @@ export {
 export { PagingInputFields, PagingOutputFields, defaultPageLimit } from './reading/paging-fields.ts';
 export { PermissionSchema, allPermissions, permissionFor, type Permission } from './caller/permission.ts';
 export type { Presenter } from './reading/presenter.ts';
+export { presentationOf, streamKindOf, type Presentation } from './reading/presentation.ts';
 export { PublicEventSchema, mostPublicEventDataBytes, type PublicEvent } from './reading/public-event.ts';
 export type { DeclarableReason, Rejection, RejectionKind } from './outcome/rejection.ts';
 export type { InputEncoding, Registration, RegistrationOf } from './definition/registration.ts';
