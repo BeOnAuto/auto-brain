@@ -8,6 +8,8 @@ import { errorType } from './raised-error.ts';
 
 const text = 'x'.repeat(1000);
 
+const justOverTheBudget = 'x'.repeat(mostExpressionWork - 15);
+
 function titleOf(outcome: RunOutcome | null): string {
   return outcome?.kind === 'raised' ? (outcome.error.title ?? '') : JSON.stringify(outcome);
 }
@@ -52,16 +54,12 @@ describe('an expression of a task', () => {
 
 describe('a value a task gives', () => {
   it('that takes more work to visit than a workflow may hold raises a runtime error', () => {
-    const nulls = Array.from({ length: 600_000 }, () => null);
     const run = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: ada } }'), {
-      respond: () => ({ result: { status: 'succeeded', output: nulls } }),
+      respond: () => ({ result: { status: 'succeeded', output: justOverTheBudget } }),
     });
 
-    expect(titleOf(run.outcome)).toMatch(
-      new RegExp(
-        `^A value takes \\d+ units of work to visit, more than the ${mostExpressionWork} a workflow may hold$`,
-        'u',
-      ),
+    expect(titleOf(run.outcome)).toBe(
+      `A value takes ${mostExpressionWork + 1} units of work to visit, more than the ${mostExpressionWork} a workflow may hold`,
     );
   });
 });
