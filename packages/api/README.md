@@ -7,9 +7,11 @@ The API of auto-brain: the handler the server answers every request with. It ser
 Each request passes through the same chain before it reaches an operation, in this order:
 
 1. It gets an `x-request-id` and the security headers.
-2. An `Origin` that is not in `ALLOWED_ORIGINS` gets `403` `origin_not_allowed`; in local mode, a `Host` that is not a localhost name gets `403` too.
+2. An `Origin` that is neither the console's, `https://console.on.auto`, nor in `ALLOWED_ORIGINS` gets `403` `origin_not_allowed`; in local mode, a `Host` that is not a localhost name gets `403` too.
 3. A CORS preflight from an allowed origin gets `204`.
 4. The caller authenticates with `Authorization: Bearer <key>`, or as the local developer in local mode; a request without a valid key gets `401`.
+
+Before that chain, a browser opening `/` (a `GET` that accepts `text/html`) gets a page saying the server is running, with a button that opens the console on this server: `https://console.on.auto/?server=<this server's origin>`. The page needs no key and loads nothing from any server: its styles, its icon and its typefaces, DM Mono and DM Sans, are inside it. The two font files and their SIL Open Font Licenses are in `src/landing/fonts`. Any other request to `/` has no route.
 
 A path with no route gets `404` `not_found`, and a method the path does not serve gets `405` `method_not_allowed` with an `Allow` header. Every one of these errors is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document.
 
