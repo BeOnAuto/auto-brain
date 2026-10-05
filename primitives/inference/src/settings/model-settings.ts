@@ -28,6 +28,7 @@ import {
   settingsFrom,
   type Availability,
   type Environment,
+  type Reading,
   type SettingProblem,
 } from './setting-values.ts';
 
@@ -81,6 +82,12 @@ function invalid(problems: readonly SettingProblem[]): ModelSettingsInvalid {
   return new ModelSettingsInvalid({ message: `The model settings are invalid. ${listed}`, problems });
 }
 
+function configuredOf(readings: Readonly<Record<string, Reading<unknown>>>): readonly string[] {
+  return Object.entries(readings)
+    .filter(([, { availability }]: readonly [string, Reading<unknown>]) => availability.configured)
+    .map(([provider]: readonly [string, Reading<unknown>]) => provider);
+}
+
 export const readModelSettings = Effect.fnUntraced(function* (environment: Environment) {
   const source = yield* sources.parse(settingsFrom(environment)).pipe(Effect.orDie);
   const anthropic = anthropicReading(source.anthropic);
@@ -91,11 +98,22 @@ export const readModelSettings = Effect.fnUntraced(function* (environment: Envir
   const vertex = vertexReading(source.vertex);
   const gateways = yield* gatewayReading(environment, source.gateways);
   const aliases = aliasReading(source.aliases);
-  const catalog = catalogReading(
-    source.declared,
-    source.allowed,
-    gateways.gateways.map(({ name }) => name),
-  );
+  const gatewayNames = gateways.gateways.map(({ name }) => name);
+  const builtIns = {
+    anthropic,
+    openai,
+    google,
+    bedrock,
+    'bedrock-anthropic': bedrock,
+    azure,
+    vertex,
+    'vertex-anthropic': vertex,
+  };
+  const catalog = catalogReading(source.declared, source.allowed, {
+    gateways: gatewayNames,
+    providers: [...configuredOf(builtIns), ...gatewayNames],
+    aliases: aliases.aliases,
+  });
   const problems = [anthropic, openai, google, bedrock, azure, vertex, gateways, aliases, catalog].flatMap(
     (reading) => reading.problems,
   );

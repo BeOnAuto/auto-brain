@@ -1,4 +1,4 @@
-import { Effect, Predicate, Result, Schema } from 'effect';
+import { Effect, Option, Predicate, Result, Schema } from 'effect';
 
 import { OutboundFailure } from '../adapter/outbound-failure.ts';
 import type { Fetch } from '../adapter/sdk-model.ts';
@@ -45,8 +45,12 @@ interface Answer {
 
 const trailingSlashes = /\/+$/u;
 
+export function withoutTrailingSlashes(text: string): string {
+  return text.replace(trailingSlashes, '');
+}
+
 export function endpointUrl(baseUrl: string, path: string): URL {
-  return new URL(`${baseUrl.replace(trailingSlashes, '')}${path}`);
+  return new URL(`${withoutTrailingSlashes(baseUrl)}${path}`);
 }
 
 function unread(reason: string): ListingProblem {
@@ -62,21 +66,17 @@ function sendingFailure(error: unknown): ListingProblem {
     : unread('it could not be reached');
 }
 
-async function chunksUpTo(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  mostBytes: number,
-  read: readonly Readonly<Uint8Array>[],
-  bytes: number,
-): Promise<readonly Readonly<Uint8Array>[] | undefined> {
-  const { done, value } = await reader.read();
-  if (done) {
-    return read;
+async function textUpTo(body: ReadableStream<Uint8Array>, mostBytes: number): Promise<string | undefined> {
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  for await (const chunk of body) {
+    bytes += chunk.byteLength;
+    if (bytes > mostBytes) {
+      return undefined;
+    }
+    chunks.push(chunk);
   }
-  if (bytes + value.byteLength > mostBytes) {
-    await reader.cancel();
-    return undefined;
-  }
-  return chunksUpTo(reader, mostBytes, [...read, value], bytes + value.byteLength);
+  return Buffer.concat(chunks).toString('utf8');
 }
 
 async function answerOf(request: ListingRequest, signal: Readonly<AbortSignal>): Promise<Answer> {
@@ -86,8 +86,7 @@ async function answerOf(request: ListingRequest, signal: Readonly<AbortSignal>):
     signal: AbortSignal.any([signal, AbortSignal.timeout(listingTimeoutMs)]),
   });
   const body = response.body ?? new Blob().stream();
-  const chunks = await chunksUpTo(body.getReader(), response.ok ? mostListingBytes : mostErrorBytes, [], 0);
-  const text = chunks === undefined ? undefined : Buffer.concat(chunks).toString('utf8');
+  const text = await textUpTo(body, response.ok ? mostListingBytes : mostErrorBytes);
   return { status: response.status, ok: response.ok, text };
 }
 
@@ -128,6 +127,13 @@ export function decodedAs<S extends Schema.Decoder<unknown>>(
 ): (json: unknown) => Effect.Effect<S['Type'], ListingProblem> {
   const decode = Schema.decodeUnknownResult(schema);
   return (json) => Effect.fromResult(Result.mapError(decode(json), () => unread('its answer is not a list of models')));
+}
+
+export function wellFormedEntries<S extends Schema.Decoder<unknown>>(
+  schema: S,
+): (entries: readonly unknown[]) => readonly S['Type'][] {
+  const decode = Schema.decodeUnknownOption(schema);
+  return (entries) => entries.flatMap((entry) => Option.toArray(decode(entry)));
 }
 
 function pagesFrom(

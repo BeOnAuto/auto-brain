@@ -1,5 +1,7 @@
 import { Predicate } from 'effect';
 
+import { isModelId, namesAnArn } from '../model/model-reference.ts';
+
 export interface ListedModel {
   readonly id: string;
   readonly created: number;
@@ -14,6 +16,14 @@ export interface ReportedDetails {
   readonly context_window?: unknown;
   readonly max_tokens?: unknown;
 }
+
+export interface ReportedModel extends ReportedDetails {
+  readonly id: string;
+}
+
+const mostNameCharacters = 100;
+
+const oneLine = /^[^\p{Cc}\p{Zl}\p{Zp}]+$/u;
 
 function secondsOf(created: unknown): number {
   return Predicate.isNumber(created) && Number.isFinite(created) && created > 0 ? Math.floor(created) : 0;
@@ -33,8 +43,16 @@ function maxTokensOf(value: unknown): { readonly max_tokens?: number } {
   return count === undefined ? {} : { max_tokens: count };
 }
 
+function isShownName(name: string): boolean {
+  return name.length <= mostNameCharacters && oneLine.test(name);
+}
+
 function nameOf(name: unknown): { readonly name?: string } {
-  return Predicate.isString(name) && name.trim() !== '' ? { name: name.trim() } : {};
+  return Predicate.isString(name) && isShownName(name.trim()) ? { name: name.trim() } : {};
+}
+
+function isListable(id: string): boolean {
+  return isModelId(id) && !id.includes('*') && !namesAnArn(id);
 }
 
 export function listedModel(id: string, { created, name, context_window, max_tokens }: ReportedDetails): ListedModel {
@@ -45,4 +63,10 @@ export function listedModel(id: string, { created, name, context_window, max_tok
     ...contextWindowOf(context_window),
     ...maxTokensOf(max_tokens),
   };
+}
+
+export function listedModels(provider: string, reported: readonly ReportedModel[]): readonly ListedModel[] {
+  return reported
+    .filter(({ id }) => isListable(id))
+    .map(({ id, ...details }) => listedModel(`${provider}/${id}`, details));
 }

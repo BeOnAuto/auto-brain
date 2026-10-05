@@ -76,3 +76,37 @@ describe('the list of models of anthropic over several pages', () => {
     ]);
   });
 });
+
+describe('a list of anthropic with an entry it does not expect', () => {
+  it('keeps the entries it can read, and reads null or odd details as not reported', async () => {
+    const page = {
+      data: [
+        { id: null, display_name: 'Nobody' },
+        {
+          id: 'claude-odd',
+          display_name: null,
+          created_at: 1_759_276_800,
+          max_input_tokens: '200000',
+          max_tokens: null,
+        },
+        ...anthropicModels.data.slice(0, 1),
+      ],
+      has_more: 'no',
+      last_id: 7,
+    };
+    const catalog = await catalogFor({ ANTHROPIC_API_KEY: 'sk-ant-key' }, () => jsonResponse(page));
+
+    expect((await catalog.list()).data).toEqual([
+      { id: 'anthropic/claude-odd', object: 'model', created: 0, owned_by: 'anthropic' },
+      {
+        id: 'anthropic/claude-sonnet-4-5-20250929',
+        object: 'model',
+        created: 1_759_104_000,
+        owned_by: 'anthropic',
+        name: 'Claude Sonnet 4.5',
+        context_window: 200_000,
+        max_tokens: 64_000,
+      },
+    ]);
+  });
+});

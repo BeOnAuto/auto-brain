@@ -49,12 +49,8 @@ function notConfigured(provider: string, status: ProviderStatus, aliasNames: rea
   });
 }
 
-function notAllowed(requested: string, provider: string, offered: readonly string[]): ModelNotAllowed {
-  return new ModelNotAllowed({
-    detail: `${requested} is not one of the models this server offers. Offered models: ${offered.join(', ')}`,
-    provider,
-    offered,
-  });
+function notAllowed(requested: string, provider: string): ModelNotAllowed {
+  return new ModelNotAllowed({ detail: `${requested} is not one of the models this server offers`, provider });
 }
 
 export function modelResolution(
@@ -71,8 +67,8 @@ export function modelResolution(
     return Option.match(parseModelReference(resolved), {
       onNone: () => Result.fail(malformedReference()),
       onSome: ({ provider, model }) => {
-        if (offer.restricted !== null && !offer.offers(requested)) {
-          return Result.fail(notAllowed(requested, provider, offer.restricted));
+        if (!offer.offersCall(requested, resolved)) {
+          return Result.fail(notAllowed(requested, provider));
         }
         const factory = models.get(provider);
         return factory === undefined

@@ -96,7 +96,7 @@ describe(
         status: 503,
         body: {
           reason: 'unavailable',
-          detail: 'openai/gpt-5 is not one of the models this server offers. Offered models: bedrock/*',
+          detail: 'openai/gpt-5 is not one of the models this server offers',
         },
       });
       expect(settingLines(stderr)).toEqual([

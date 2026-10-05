@@ -1,6 +1,6 @@
 import { JsonPointer, Result, Schema } from 'effect';
 
-import { aliasPatternOf, namesModels, targetReachesAlias, wildcardsAreTrailing } from '../model/model-alias.ts';
+import { aliasPatternOf, namesModels, patternsOverlap, wildcardsAreTrailing } from '../model/model-alias.ts';
 import { decodeJsonSetting, strictly } from './json-setting.ts';
 import { problem, type SettingProblem } from './setting-values.ts';
 
@@ -32,7 +32,7 @@ function referenceProblems(alias: string, target: string): readonly SettingProbl
 
 function hopProblems(alias: string, target: string, aliases: Aliases): readonly SettingProblem[] {
   const resolvedAgain = Object.keys(aliases).some((other) =>
-    targetReachesAlias(aliasPatternOf(target), aliasPatternOf(other)),
+    patternsOverlap(aliasPatternOf(target), aliasPatternOf(other)),
   );
   return resolvedAgain
     ? problem(

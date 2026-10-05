@@ -65,9 +65,8 @@ const replies: readonly ScriptedReply[] = [
 ];
 
 const disallowedModel = new ModelNotAllowed({
-  detail: 'anthropic/claude-sonnet-4-5 is not one of the models this server offers. Offered models: gateway/*',
+  detail: 'anthropic/claude-sonnet-4-5 is not one of the models this server offers',
   provider: 'anthropic',
-  offered: ['gateway/*'],
 });
 
 const switchable =
@@ -272,6 +271,7 @@ describe('the plain words for a reason function whose prompt names a model the s
       `Could not run the reason function “summary”: this server does not offer the model named, because it is not among the models whoever runs the server allows. ${switchable}`,
     );
     expect(internalTermsIn(plainTextIn(disallowed))).toEqual([]);
-    expect(technicalTextIn(disallowed)).toContain('Offered models: gateway/*');
+    expect(technicalTextIn(disallowed)).toContain('is not one of the models this server offers');
+    expect(technicalTextIn(disallowed)).not.toContain('gateway/*');
   });
 });

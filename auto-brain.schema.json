@@ -135,7 +135,7 @@
         "type": "string",
         "description": "A model reference a spec may give, written provider/model, or provider/* for every model of a provider"
       },
-      "description": "The only model references a spec may give and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it"
+      "description": "The only model references a spec may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it"
     }
   },
   "additionalProperties": false,

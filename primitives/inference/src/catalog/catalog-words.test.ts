@@ -24,6 +24,19 @@ describe('the plain words for the models a server can call', () => {
     );
   });
 
+  it('say the provider of a name two providers share, and the id of a name one provider repeats', () => {
+    const list = listOf([
+      model('anthropic/claude-haiku-4-5', 'anthropic', { name: 'Claude Haiku 4.5' }),
+      model('anthropic/claude-3-5-sonnet-20240620', 'anthropic', { name: 'Claude Sonnet 3.5' }),
+      model('anthropic/claude-3-5-sonnet-20241022', 'anthropic', { name: 'Claude Sonnet 3.5' }),
+      model('gateway/anthropic/claude-haiku-4-5', 'gateway', { name: 'Claude Haiku 4.5' }),
+    ]);
+
+    expect(modelsListed(list)).toBe(
+      'This server can call 4 models through anthropic and gateway: Claude Haiku 4.5 (anthropic), claude-3-5-sonnet-20240620, claude-3-5-sonnet-20241022, and Claude Haiku 4.5 (gateway).',
+    );
+  });
+
   it('name twenty and count the rest', () => {
     const many = Array.from({ length: 23 }, (_, index) =>
       model(`gateway/model-${String(index).padStart(2, '0')}`, 'gateway'),

@@ -83,7 +83,7 @@ allowed_models: []
     await expect(startupLine(text)).resolves.toBe(
       'auto-brain could not start: model_settings_invalid: The model settings are invalid. ' +
         'auto-brain.yaml:3:5 declared_models.anthropic: anthropic lists its own models; models are declared for bedrock, bedrock-anthropic, azure, vertex, vertex-anthropic or a gateway of MODEL_GATEWAYS; ' +
-        'auto-brain.yaml:5:7 declared_models.azure[0]: Expected a model id of 1 to 256 characters without spaces; ' +
+        'auto-brain.yaml:5:7 declared_models.azure[0]: Expected a model id of 1 to 256 characters, without spaces or control characters; ' +
         'auto-brain.yaml:6:17 allowed_models: Expected at least one model; leave ALLOWED_MODELS out to offer every model\n',
     );
   });

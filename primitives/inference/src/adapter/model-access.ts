@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 
 import { modelCatalogOf } from '../catalog/model-catalog.ts';
 import type { LanguageModel } from '../model/language-model.ts';
-import type { OfferedModels } from '../model/offered-models.ts';
+import { offeredModels, type OfferedModels } from '../model/offered-models.ts';
 import type { ModelSettings } from '../settings/model-settings.ts';
 import { providerStatus, type ProviderStatus } from '../settings/provider-status.ts';
 import { azureTokensFor, loadEntraIdentity } from './entra-id.ts';
@@ -30,7 +30,7 @@ export const makeModelAccess = Effect.fnUntraced(function* (settings: ModelSetti
   const access: ModelAccess = {
     languageModel: resolvedLanguageModel(models, settings, status, options),
     status,
-    offered: { providers: status.configured, aliases: [...settings.aliases.keys()] },
+    offered: offeredModels(status.configured, settings.aliases, settings.allowed),
     catalog: modelCatalogOf(settings, status, { ...options, fetch }),
   };
   return access;

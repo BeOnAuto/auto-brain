@@ -102,7 +102,7 @@ describe('the plain words of list_models', () => {
     const words = registration.plainLanguage;
 
     expect(words?.outcome(outputOf(outcome), {})).toBe(
-      'This server can call 6 models through anthropic and gateway: Claude Haiku 4.5, Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5, and fast.',
+      'This server can call 6 models through anthropic and gateway: Claude Haiku 4.5 (anthropic), Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5 (gateway), and fast.',
     );
     expect(words?.attempt({})).toBe('list the models this server can call');
     expect(words?.attempt({ provider: 'gateway' })).toBe('list the models this server can call through gateway');

@@ -3,13 +3,13 @@ import { Effect, Redacted, Schema } from 'effect';
 import { defaultBaseUrls } from '../adapter/direct-providers.ts';
 import type { Fetch } from '../adapter/sdk-model.ts';
 import type { OpenAiSettings } from '../settings/provider-settings.ts';
-import { listedModel } from './listed-model.ts';
-import { decodedAs, endpointUrl, listingJson, type ProviderListing } from './listing-request.ts';
+import { listedModels } from './listed-model.ts';
+import { decodedAs, endpointUrl, listingJson, wellFormedEntries, type ProviderListing } from './listing-request.ts';
 
-const openAiList = decodedAs(
-  Schema.Struct({
-    data: Schema.Array(Schema.Struct({ id: Schema.String, created: Schema.optionalKey(Schema.Number) })),
-  }),
+const openAiList = decodedAs(Schema.Struct({ data: Schema.Array(Schema.Unknown) }));
+
+const openAiModels = wellFormedEntries(
+  Schema.Struct({ id: Schema.String, created: Schema.optionalKey(Schema.Unknown) }),
 );
 
 const notForConversation: readonly RegExp[] = [
@@ -35,9 +35,10 @@ export function openAiListing(settings: OpenAiSettings, fetch: Fetch): ProviderL
     read: listingJson({ fetch, url, headers: { authorization: `Bearer ${apiKey}` } }).pipe(
       Effect.flatMap(openAiList),
       Effect.map(({ data }) =>
-        data
-          .filter(({ id }) => isForConversation(id))
-          .map(({ id, created }) => listedModel(`openai/${id}`, { created })),
+        listedModels(
+          'openai',
+          openAiModels(data).filter(({ id }) => isForConversation(id)),
+        ),
       ),
     ),
   };

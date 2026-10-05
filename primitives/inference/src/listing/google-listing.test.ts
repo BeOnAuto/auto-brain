@@ -66,3 +66,45 @@ describe('a list of models of google with unusual entries', () => {
     expect(await catalog.list()).toMatchObject({ data: [], catalog_status: 'complete' });
   });
 });
+
+describe('a list of google with an entry it does not expect', () => {
+  it('keeps the entries it can read, and reads a limit that is not a number as not reported', async () => {
+    const page = {
+      models: [
+        { name: null, supportedGenerationMethods: ['generateContent'] },
+        {
+          name: 'models/gemini-odd',
+          inputTokenLimit: '1048576',
+          displayName: null,
+          supportedGenerationMethods: ['generateContent'],
+        },
+        { name: 'models/gemini-methodless', supportedGenerationMethods: 'generateContent' },
+        geminiModels.models[0],
+      ],
+      nextPageToken: 42,
+    };
+    const catalog = await catalogFor({ GOOGLE_GENERATIVE_AI_API_KEY: 'AIza-google-key' }, () => jsonResponse(page));
+
+    expect((await catalog.list()).data).toEqual([
+      {
+        id: 'google/gemini-2.5-flash',
+        object: 'model',
+        created: 0,
+        owned_by: 'google',
+        name: 'Gemini 2.5 Flash',
+        context_window: 1_048_576,
+        max_tokens: 65_536,
+      },
+      { id: 'google/gemini-odd', object: 'model', created: 0, owned_by: 'google' },
+    ]);
+    expect(catalog.requests()).toHaveLength(1);
+  });
+
+  it('reads a page whose models are null as a page without models', async () => {
+    const catalog = await catalogFor({ GOOGLE_GENERATIVE_AI_API_KEY: 'AIza-google-key' }, () =>
+      jsonResponse({ models: null }),
+    );
+
+    expect(await catalog.list()).toMatchObject({ data: [], catalog_status: 'complete' });
+  });
+});

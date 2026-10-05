@@ -211,17 +211,16 @@ describe('a model of a provider the server does not have, while it has others', 
 });
 
 describe('a model outside those its operator allows', () => {
-  it('is unavailable of the kind model_not_offered, because it is not allowed, naming the models that are offered', async () => {
+  it('is unavailable of the kind model_not_offered, because it is not allowed', async () => {
     const failure = new ModelNotAllowed({
-      detail: 'openai/gpt-5 is not one of the models this server offers. Offered models: anthropic/*',
+      detail: 'openai/gpt-5 is not one of the models this server offers',
       provider: 'openai',
-      offered: ['anthropic/*'],
     });
 
     expect(await failingWith(() => failure)).toEqual(
       Exit.fail(
         new Unavailable({
-          detail: 'openai/gpt-5 is not one of the models this server offers. Offered models: anthropic/*',
+          detail: 'openai/gpt-5 is not one of the models this server offers',
           kind: 'model_not_offered',
           because: 'model_not_allowed',
         }),

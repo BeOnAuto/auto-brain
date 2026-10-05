@@ -29,3 +29,23 @@ describe('the models of openai', () => {
     expect(list.data).toEqual([{ id: 'openai/gpt-5', object: 'model', created: 0, owned_by: 'openai' }]);
   });
 });
+
+describe('a list of openai with an entry it does not expect', () => {
+  it('keeps the entries it can read, and reads a created time that is not a number as 0', async () => {
+    const answer = {
+      object: 'list',
+      data: [
+        { id: null, object: 'model' },
+        { id: 'gpt-5', created: '2025-08-07' },
+        'gpt-4.1',
+        { id: 'o3', created: 1_744_225_308 },
+      ],
+    };
+    const catalog = await catalogFor({ OPENAI_API_KEY: 'sk-openai-key' }, () => jsonResponse(answer));
+
+    expect((await catalog.list()).data).toEqual([
+      { id: 'openai/gpt-5', object: 'model', created: 0, owned_by: 'openai' },
+      { id: 'openai/o3', object: 'model', created: 1_744_225_308, owned_by: 'openai' },
+    ]);
+  });
+});

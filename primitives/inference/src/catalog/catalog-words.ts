@@ -1,5 +1,6 @@
 import { counted, listed, type Noun } from '@beonauto/operations';
 
+import { withoutTrailingSlashes } from '../listing/listing-request.ts';
 import { aliasPatternOf } from '../model/model-alias.ts';
 import type { ModelEntry, ModelList } from './model-list.ts';
 
@@ -7,16 +8,34 @@ const modelNoun: Noun = { one: 'model', other: 'models' };
 
 const mostNamed = 20;
 
-const trailingSlashes = /\/+$/u;
-
 const everythingToTheLastSlash = /^.*\//u;
 
 function lastPartOf(text: string): string {
-  return text.replace(trailingSlashes, '').replace(everythingToTheLastSlash, '');
+  return withoutTrailingSlashes(text).replace(everythingToTheLastSlash, '');
 }
 
 function nameOf({ id, name }: ModelEntry): string {
   return name ?? lastPartOf(id);
+}
+
+function isRepeated(labels: readonly string[], label: string): boolean {
+  return labels.indexOf(label) !== labels.lastIndexOf(label);
+}
+
+interface Labelled {
+  readonly entry: ModelEntry;
+  readonly label: string;
+}
+
+function namedApart(entries: readonly ModelEntry[]): readonly string[] {
+  const named = entries.map((entry): Labelled => ({ entry, label: nameOf(entry) }));
+  const names = named.map(({ label }: Labelled) => label);
+  const labelled = named.map(({ entry, label }: Labelled): Labelled => ({
+    entry,
+    label: isRepeated(names, label) ? `${label} (${entry.owned_by})` : label,
+  }));
+  const labels = labelled.map(({ label }: Labelled) => label);
+  return labelled.map(({ entry, label }: Labelled) => (isRepeated(labels, label) ? lastPartOf(entry.id) : label));
 }
 
 function anyModelOf({ id }: ModelEntry): string {
@@ -28,7 +47,7 @@ function anyModelOf({ id }: ModelEntry): string {
 }
 
 function namesOf(entries: readonly ModelEntry[]): string {
-  const named = entries.slice(0, mostNamed).map((entry) => nameOf(entry));
+  const named = namedApart(entries.slice(0, mostNamed));
   const others = entries.length - named.length;
   return listed(others === 0 ? named : [...named, `${others} more`]);
 }

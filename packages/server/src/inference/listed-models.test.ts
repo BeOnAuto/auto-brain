@@ -87,7 +87,7 @@ const listedModels = {
 };
 
 const plainWords =
-  'This server can call 6 models through anthropic and gateway: Claude Haiku 4.5, Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5, and fast.';
+  'This server can call 6 models through anthropic and gateway: Claude Haiku 4.5 (anthropic), Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5 (gateway), and fast.';
 
 let server: InferenceServer;
 

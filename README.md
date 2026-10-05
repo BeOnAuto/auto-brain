@@ -150,7 +150,7 @@ model_aliases:
 | Only some models                                     | `allowed_models` in the file, such as `[anthropic/*, gateway/llama-3.3-70b]`            | [Listing the models](primitives/inference/README.md#listing-the-models)                                      |
 | An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                         | [Proxy and CA](primitives/inference/README.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
 
-`list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases, and leaves out what `allowed_models` does not allow. A spec that names a model outside `allowed_models` cannot run, and its run says which models are offered.
+`list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases, and leaves out what `allowed_models` does not allow. A spec that names a model outside `allowed_models`, by its own name or the alias it is sent through, cannot run, and its run says the model is not offered and that `list_models` shows those that are.
 
 ```yaml
 declared_models:

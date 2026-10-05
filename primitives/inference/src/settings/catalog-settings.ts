@@ -1,6 +1,13 @@
-import { JsonPointer, Result, Schema } from 'effect';
+import { JsonPointer, Option, Result, Schema } from 'effect';
 
-import { namesModels, wildcardsAreTrailing } from '../model/model-alias.ts';
+import { aliasPatternOf, namesModels, patternsOverlap, wildcardsAreTrailing } from '../model/model-alias.ts';
+import {
+  hasOnlyVisibleCharacters,
+  isModelId,
+  mostModelIdCharacters,
+  namesAnArn,
+  parseModelReference,
+} from '../model/model-reference.ts';
 import { decodeJsonSetting, strictly, type SettingDecoder } from './json-setting.ts';
 import { problem, type SettingProblem } from './setting-values.ts';
 
@@ -10,13 +17,17 @@ export interface CatalogReading {
   readonly allowed: readonly string[] | null;
 }
 
+export interface CatalogContext {
+  readonly gateways: readonly string[];
+  readonly providers: readonly string[];
+  readonly aliases: ReadonlyMap<string, string>;
+}
+
 type Declarations = Readonly<Record<string, readonly string[]>>;
 
 const declaredSetting = 'DECLARED_MODELS';
 
 const allowedSetting = 'ALLOWED_MODELS';
-
-const mostModelIdCharacters = 256;
 
 export const providersDeclaringModels: readonly string[] = [
   'bedrock',
@@ -30,9 +41,7 @@ const providersListingModels: ReadonlySet<string> = new Set(['anthropic', 'opena
 
 const declaringProviders = `models are declared for ${providersDeclaringModels.join(', ')} or a gateway of MODEL_GATEWAYS`;
 
-const modelId = /^\S+$/u;
-
-const arn = /(?:^|\/)arn:/u;
+const providerPrefix = /^[a-z][a-z0-9-]{0,31}$/u;
 
 export const DeclaredModelsSchema = Schema.Record(
   Schema.String,
@@ -69,13 +78,13 @@ function providerProblems(provider: string, gateways: readonly string[]): readon
 }
 
 function modelIdProblem(id: string, position: number, ids: readonly string[]): string | undefined {
-  if (id.length > mostModelIdCharacters || !modelId.test(id)) {
-    return `Expected a model id of 1 to ${mostModelIdCharacters} characters without spaces`;
+  if (!isModelId(id)) {
+    return `Expected a model id of 1 to ${mostModelIdCharacters} characters, without spaces or control characters`;
   }
   if (id.includes('*')) {
     return 'A declared model is one model id, without a *';
   }
-  if (arn.test(id)) {
+  if (namesAnArn(id)) {
     return 'An ARN names an account and a region, which the list of models never shows; give it an alias in MODEL_ALIASES, which is listed by its own name';
   }
   return ids.indexOf(id) < position ? `${id} is declared twice` : undefined;
@@ -95,21 +104,53 @@ function declarationProblems(
   ];
 }
 
-function allowedProblem(reference: string): string | undefined {
+function shapeProblem(reference: string): string | undefined {
   if (!wildcardsAreTrailing(reference, reference) || !namesModels(reference)) {
     return 'Expected provider/model, or provider/ followed by a * that stands for any model id';
   }
-  return arn.test(reference)
-    ? 'An ARN names an account and a region; allow the name of an alias in MODEL_ALIASES that is sent to it instead'
-    : undefined;
+  if (!hasOnlyVisibleCharacters(reference)) {
+    return 'Expected a reference without spaces or control characters';
+  }
+  return providerPrefix.test(Option.getOrThrow(parseModelReference(reference)).provider)
+    ? undefined
+    : 'Expected a provider prefix of lowercase letters, digits and hyphens, starting with a letter';
 }
 
-function allowedProblems(allowed: readonly string[]): readonly SettingProblem[] {
+function matchesSomething(reference: string, { providers, aliases }: CatalogContext): boolean {
+  const pattern = aliasPatternOf(reference);
+  return (
+    providers.includes(Option.getOrThrow(parseModelReference(reference)).provider) ||
+    [...aliases.keys()].some((alias) => patternsOverlap(aliasPatternOf(alias), pattern))
+  );
+}
+
+function reachProblem(reference: string, context: CatalogContext): string | undefined {
+  if (namesAnArn(reference)) {
+    return 'An ARN names an account and a region; allow the name of an alias in MODEL_ALIASES that is sent to it instead';
+  }
+  return matchesSomething(reference, context)
+    ? undefined
+    : `There is no provider named ${Option.getOrThrow(parseModelReference(reference)).provider}, nor an alias that ${reference} matches`;
+}
+
+function allowedProblem(
+  reference: string,
+  position: number,
+  allowed: readonly string[],
+  context: CatalogContext,
+): string | undefined {
+  if (allowed.indexOf(reference) < position) {
+    return `${reference} is listed twice`;
+  }
+  return shapeProblem(reference) ?? reachProblem(reference, context);
+}
+
+function allowedProblems(allowed: readonly string[], context: CatalogContext): readonly SettingProblem[] {
   if (allowed.length === 0) {
     return problem(allowedSetting, `/: Expected at least one model; leave ${allowedSetting} out to offer every model`);
   }
   return allowed.flatMap((reference, position) => {
-    const detail = allowedProblem(reference);
+    const detail = allowedProblem(reference, position, allowed, context);
     return detail === undefined ? [] : problem(allowedSetting, `/${position}: ${detail}`);
   });
 }
@@ -135,12 +176,15 @@ function declaredReading(
   });
 }
 
-function allowedReading(text: string | undefined): Pick<CatalogReading, 'problems' | 'allowed'> {
+function allowedReading(
+  text: string | undefined,
+  context: CatalogContext,
+): Pick<CatalogReading, 'problems' | 'allowed'> {
   if (text === undefined) {
     return { problems: [], allowed: null };
   }
   return Result.match(decodeJsonSetting(allowedSetting, text, decodeAllowed), {
-    onSuccess: (allowed) => ({ problems: allowedProblems(allowed), allowed }),
+    onSuccess: (allowed) => ({ problems: allowedProblems(allowed, context), allowed }),
     onFailure: (problems) => ({ problems, allowed: null }),
   });
 }
@@ -148,10 +192,10 @@ function allowedReading(text: string | undefined): Pick<CatalogReading, 'problem
 export function catalogReading(
   declaredText: string | undefined,
   allowedText: string | undefined,
-  gateways: readonly string[],
+  context: CatalogContext,
 ): CatalogReading {
-  const declared = declaredReading(declaredText, gateways);
-  const allowed = allowedReading(allowedText);
+  const declared = declaredReading(declaredText, context.gateways);
+  const allowed = allowedReading(allowedText, context);
   return {
     problems: [...declared.problems, ...allowed.problems],
     declared: declared.declared,

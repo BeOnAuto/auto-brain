@@ -6,7 +6,7 @@ import { aliasResolution } from '../model/model-alias.ts';
 import { modelOffer } from '../model/model-offer.ts';
 import type { CachedListing, ListingCache } from './listing-cache.ts';
 import { refreshOf, type ListingReports } from './listing-refresh.ts';
-import { aliasEntryOf, anyModelOf, byId, entryOf, isOffered, uniqueById } from './model-entries.ts';
+import { aliasEntryOf, anyModelOf, byId, entryOf, uniqueById } from './model-entries.ts';
 import type { ModelEntry, ModelList } from './model-list.ts';
 
 export interface ModelCatalog {
@@ -56,20 +56,22 @@ function servedBy(provider: string | undefined): (served: string) => boolean {
 export function catalogListing(parts: CatalogParts): ModelCatalog {
   const resolve = aliasResolution(parts.aliases);
   const offer = modelOffer(parts.allowed);
-  const aliasEntries = [...parts.aliases].map((alias: readonly [string, string]) => aliasEntryOf(alias));
+  const aliasEntries = [...parts.aliases]
+    .filter(([alias, target]: readonly [string, string]) => offer.offers(alias) || offer.offers(target))
+    .map((alias: readonly [string, string]) => aliasEntryOf(alias));
   return {
     list: (provider) =>
       Effect.gen(function* () {
         const chosen = parts.sources.filter((source) => servedBy(provider)(source.provider));
         const all = yield* Effect.forEach(chosen, (source) => gathered(parts, source), { concurrency: 'unbounded' });
         const now = yield* Clock.currentTimeMillis;
-        const reachable = all.flatMap(({ entries }) => entries).filter(({ id }) => resolve(id) === id);
+        const reachable = all
+          .flatMap(({ entries }) => entries)
+          .filter(({ id }) => resolve(id) === id && offer.offers(id));
         const aliases = aliasEntries.filter(({ owned_by: ownedBy }) => servedBy(provider)(ownedBy));
         const list: ModelList = {
           object: 'list',
-          data: uniqueById([...aliases, ...reachable])
-            .filter((entry) => isOffered(offer, entry))
-            .toSorted(byId),
+          data: uniqueById([...aliases, ...reachable]).toSorted(byId),
           catalog_status: all.every(({ complete }) => complete) ? 'complete' : 'partial',
           listed_at: listedAtOf(all, now),
         };

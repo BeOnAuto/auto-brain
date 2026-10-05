@@ -1,14 +1,14 @@
-import { Effect, Option, Redacted, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 
 import { revealed } from '../adapter/direct-providers.ts';
 import type { Fetch } from '../adapter/sdk-model.ts';
 import type { GatewaySettings } from '../settings/gateway-settings.ts';
-import { listedModel, type ListedModel } from './listed-model.ts';
-import { decodedAs, endpointUrl, listingJson, type ProviderListing } from './listing-request.ts';
+import { listedModels, type ListedModel } from './listed-model.ts';
+import { decodedAs, endpointUrl, listingJson, wellFormedEntries, type ProviderListing } from './listing-request.ts';
 
 const gatewayList = decodedAs(Schema.Struct({ data: Schema.Array(Schema.Unknown) }));
 
-const entryOf = Schema.decodeUnknownOption(
+const gatewayEntries = wellFormedEntries(
   Schema.Struct({
     id: Schema.String,
     created: Schema.optionalKey(Schema.Unknown),
@@ -19,7 +19,7 @@ const entryOf = Schema.decodeUnknownOption(
   }),
 );
 
-type GatewayEntry = Option.Option.Value<ReturnType<typeof entryOf>>;
+type GatewayEntry = ReturnType<typeof gatewayEntries>[number];
 
 function listUrl({ base_url: baseUrl, query_params: queryParams }: GatewaySettings): string {
   const url = endpointUrl(baseUrl, '/models');
@@ -36,15 +36,15 @@ function headersOf({ api_key: apiKey, headers }: GatewaySettings): Readonly<Reco
   };
 }
 
-function isLanguageModel({ id, type }: GatewayEntry): boolean {
-  return id.trim() !== '' && (typeof type !== 'string' || type === 'language');
+function isLanguageModel({ type }: GatewayEntry): boolean {
+  return typeof type !== 'string' || type === 'language';
 }
 
 function modelsOf(gateway: string, entries: readonly unknown[]): readonly ListedModel[] {
-  return entries
-    .flatMap((entry) => Option.toArray(entryOf(entry)))
-    .filter((entry) => isLanguageModel(entry))
-    .map(({ id, ...details }) => listedModel(`${gateway}/${id}`, details));
+  return listedModels(
+    gateway,
+    gatewayEntries(entries).filter((entry) => isLanguageModel(entry)),
+  );
 }
 
 export function gatewayListing(settings: GatewaySettings, fetch: Fetch): ProviderListing {

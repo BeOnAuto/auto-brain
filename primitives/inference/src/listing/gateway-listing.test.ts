@@ -102,3 +102,66 @@ describe('a gateway without a list of models', () => {
     });
   });
 });
+
+const hostileIds = [
+  '',
+  '   ',
+  'fast\nsmart',
+  'fast\u0000smart',
+  'x'.repeat(3000),
+  'gpt-*',
+  'arn:aws:bedrock:eu-central-1:123456789012:x',
+];
+
+const hostileNames = ['Line one\nLine two', 'Nul\u0000name', 'x'.repeat(3000), 'Paragraph\u2029apart'];
+
+function trickling(text: string): Response {
+  const bytes = new TextEncoder().encode(text);
+  const body = new ReadableStream<Uint8Array>({
+    start: (controller) => {
+      for (const [index] of bytes.entries()) {
+        controller.enqueue(bytes.subarray(index, index + 1));
+      }
+      controller.close();
+    },
+  });
+  return new Response(body, { headers: { 'content-type': 'application/json' } });
+}
+
+describe('the entries of a gateway that cannot be shown', () => {
+  it('are left out when their id is empty, has a space or a control character, is too long, has a * or is an ARN', async () => {
+    const entries = [...hostileIds.map((id) => ({ id })), { id: 'gpt-4\u043E' }, { id: 'llama-3.3-70b' }];
+    const catalog = await catalogFor(withGateway(gateway), () => jsonResponse({ data: entries }));
+
+    expect((await catalog.list()).data.map(({ id }) => id)).toEqual(['gateway/gpt-4\u043E', 'gateway/llama-3.3-70b']);
+  });
+
+  it('keep their id but not a name that spans lines, holds a control character or is longer than 100 characters', async () => {
+    const entries = [
+      ...hostileNames.map((name, index) => ({ id: `model-${index}`, name })),
+      { id: 'fast', name: 'Fast' },
+    ];
+    const catalog = await catalogFor(withGateway(gateway), () => jsonResponse({ data: entries }));
+
+    expect((await catalog.list()).data.map(({ id, name }) => [id, name])).toEqual([
+      ['gateway/fast', 'Fast'],
+      ['gateway/model-0', undefined],
+      ['gateway/model-1', undefined],
+      ['gateway/model-2', undefined],
+      ['gateway/model-3', undefined],
+    ]);
+  });
+});
+
+describe('an answer that arrives in many small pieces', () => {
+  it('is read in one pass, so 80,000 pieces of one byte take well under a second', async () => {
+    const text = JSON.stringify({ data: [{ id: 'llama-3.3-70b' }] }).padEnd(80_000, ' ');
+    const catalog = await catalogFor(withGateway(gateway), () => trickling(text));
+
+    const started = performance.now();
+    const list = await catalog.list();
+
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(list.data.map(({ id }) => id)).toEqual(['gateway/llama-3.3-70b']);
+  });
+});

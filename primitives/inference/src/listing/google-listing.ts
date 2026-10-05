@@ -1,35 +1,38 @@
-import { Effect, Redacted, Schema } from 'effect';
+import { Effect, Predicate, Redacted, Schema } from 'effect';
 
 import type { Fetch } from '../adapter/sdk-model.ts';
 import type { GoogleSettings } from '../settings/provider-settings.ts';
-import { listedModel } from './listed-model.ts';
+import { listedModels } from './listed-model.ts';
 import {
   decodedAs,
   endpointUrl,
   everyPage,
   listingJson,
+  wellFormedEntries,
   type ListingPage,
   type ProviderListing,
 } from './listing-request.ts';
 
 const GooglePageSchema = Schema.Struct({
-  models: Schema.optionalKey(
-    Schema.Array(
-      Schema.Struct({
-        name: Schema.String,
-        displayName: Schema.optionalKey(Schema.String),
-        inputTokenLimit: Schema.optionalKey(Schema.Number),
-        outputTokenLimit: Schema.optionalKey(Schema.Number),
-        supportedGenerationMethods: Schema.optionalKey(Schema.Array(Schema.String)),
-      }),
-    ),
-  ),
-  nextPageToken: Schema.optionalKey(Schema.String),
+  models: Schema.optionalKey(Schema.NullOr(Schema.Array(Schema.Unknown))),
+  nextPageToken: Schema.optionalKey(Schema.Unknown),
 });
 
 type GooglePage = typeof GooglePageSchema.Type;
 
 const googlePage = decodedAs(GooglePageSchema);
+
+const googleModels = wellFormedEntries(
+  Schema.Struct({
+    name: Schema.String,
+    displayName: Schema.optionalKey(Schema.Unknown),
+    inputTokenLimit: Schema.optionalKey(Schema.Unknown),
+    outputTokenLimit: Schema.optionalKey(Schema.Unknown),
+    supportedGenerationMethods: Schema.optionalKey(Schema.Unknown),
+  }),
+);
+
+const isMethodList = Schema.is(Schema.Array(Schema.String));
 
 const geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -50,18 +53,28 @@ function modelIdOf(name: string): string {
   return name.startsWith(resourcePrefix) ? name.slice(resourcePrefix.length) : name;
 }
 
-function pageOf({ models = [], nextPageToken }: GooglePage): ListingPage {
+function generatesContent(methods: unknown): boolean {
+  return isMethodList(methods) && methods.includes('generateContent');
+}
+
+function nextOf(nextPageToken: unknown): string | undefined {
+  return Predicate.isString(nextPageToken) && nextPageToken !== '' ? nextPageToken : undefined;
+}
+
+function pageOf({ models, nextPageToken }: GooglePage): ListingPage {
   return {
-    models: models
-      .filter(({ supportedGenerationMethods = [] }) => supportedGenerationMethods.includes('generateContent'))
-      .map(({ name, displayName, inputTokenLimit, outputTokenLimit }) =>
-        listedModel(`google/${modelIdOf(name)}`, {
+    models: listedModels(
+      'google',
+      googleModels(models ?? [])
+        .filter(({ supportedGenerationMethods }) => generatesContent(supportedGenerationMethods))
+        .map(({ name, displayName, inputTokenLimit, outputTokenLimit }) => ({
+          id: modelIdOf(name),
           name: displayName,
           context_window: inputTokenLimit,
           max_tokens: outputTokenLimit,
-        }),
-      ),
-    next: nextPageToken === '' ? undefined : nextPageToken,
+        })),
+    ),
+    next: nextOf(nextPageToken),
   };
 }
 
