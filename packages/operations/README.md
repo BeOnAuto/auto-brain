@@ -69,7 +69,7 @@ At run time, when a handler fails with a reason it did not declare, the call fai
 
 A definition sets `reachesOutside: true` when its handler calls a system outside the server, such as a model provider, and `mayChangeOutside: true` when that call may change something there, such as a tool that writes; the registration carries both, `false` when left out, and a transport can tell its callers, as the MCP tools do with `openWorldHint` and `destructiveHint`.
 
-`Unavailable` may carry a `kind` and with it a `because`. Both reach the rejected outcome, where `explanationOf` and `unsuccessfulWords` turn them into plain words; neither is part of the problem document.
+`Unavailable` may carry a `kind` and with it a `because`. Both reach the rejected outcome, where `explanationOf` and `unsuccessfulWords` turn them into plain words, and the problem document, as its extension members `kind` and `because`.
 
 | `kind`              | What could not be used                                                              | `because`                                                                                                                                                                                              |
 | ------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

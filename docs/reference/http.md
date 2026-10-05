@@ -98,7 +98,7 @@ The brain's own creation, changes and retirement are not brain events; `get_brai
 
 Successful responses contain JSON with `Cache-Control: no-store`. Create operations return 201; other successful operations generally return 200.
 
-API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`. Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers.
+API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`. Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers. A rejection that has a `kind` carries it, and an `unavailable` one its `because`: `tools_unfinished` means a run called tools and could not finish, so its tools may have changed something, and a request with the same execution id answers `conflict` with the kind `tools_called`. `Retry-After` comes only with an `unavailable` answer that a retry of the same request may resolve, never with `tools_unfinished` or `tool_not_offered`.
 
 | Status | Common reason                              |
 | ------ | ------------------------------------------ |
