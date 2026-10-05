@@ -7,7 +7,7 @@ interface PublishedOperation {
   readonly registration: Registration<'brain'>;
 }
 
-const PrimitiveField = Schema.String.check(
+export const PrimitiveField = Schema.String.check(
   Schema.makeFilter(isPrimitiveName, {
     expected: 'a primitive name: 3 to 32 lowercase letters, digits and hyphens, starting with a letter',
   }),
@@ -16,7 +16,7 @@ const PrimitiveField = Schema.String.check(
 export interface KnownPrimitives {
   readonly field: typeof PrimitiveField;
   readonly describe: (sentences: readonly string[]) => string;
-  readonly publish: <Operation extends PublishedOperation>(operation: Operation) => Operation;
+  readonly publish: <Operation extends PublishedOperation>(operation: Operation, meaning?: string) => Operation;
   readonly primitiveNamed: (name: string) => Effect.Effect<Primitive, NotFound>;
 }
 
@@ -43,12 +43,14 @@ function guideTo(primitives: readonly Primitive[]): string {
   ].join('\n');
 }
 
-function withPrimitiveField({ schema, definitions }: JsonSchemaDocument, names: readonly string[]): JsonSchemaDocument {
-  const primitive = {
-    type: 'string',
-    enum: [...names],
-    description: `The name of the primitive the spec belongs to: ${names.join(', ')}`,
-  };
+const primitiveMeaning = 'The name of the primitive the spec belongs to';
+
+function withPrimitiveField(
+  { schema, definitions }: JsonSchemaDocument,
+  names: readonly string[],
+  meaning: string,
+): JsonSchemaDocument {
+  const primitive = { type: 'string', enum: [...names], description: `${meaning}: ${names.join(', ')}` };
   return { schema: { ...schema, properties: Object.assign({}, schema['properties'], { primitive }) }, definitions };
 }
 
@@ -61,9 +63,12 @@ export function knownPrimitives(primitives: readonly Primitive[]): KnownPrimitiv
   return {
     field: PrimitiveField,
     describe: (sentences) => `${sentences.join(' ')}\n\n${guide}`,
-    publish: (operation) => ({
+    publish: (operation, meaning = primitiveMeaning) => ({
       ...operation,
-      registration: { ...operation.registration, input: withPrimitiveField(operation.registration.input, names) },
+      registration: {
+        ...operation.registration,
+        input: withPrimitiveField(operation.registration.input, names, meaning),
+      },
     }),
     primitiveNamed: (name) => {
       const primitive = byName.get(name);

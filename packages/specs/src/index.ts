@@ -24,6 +24,10 @@ export {
   type Settlement,
 } from './execution/execution-settler.ts';
 export { defineGetExecution, getExecution } from './operations/get-execution.ts';
+export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
+export { defineListExecutions } from './reading/list-executions.ts';
+export { ListedExecutionSchema, type ListedExecution } from './reading/listed-execution.ts';
+export { makeSpecPresenters } from './presenting/spec-presenters.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
 export { mostInputBytes, mostResultBytes } from './execution/recorded-size.ts';
 export { ListedSpecSchema, SpecSchema, type ListedSpec, type Spec } from './registry/spec.ts';
