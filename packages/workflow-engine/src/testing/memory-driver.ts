@@ -25,6 +25,7 @@ export interface MemoryDriver extends RunWatch {
   readonly deliver: (executionId: string, event: EventReceived['event']) => Submission;
   readonly cancel: (executionId: string) => Submission;
   readonly at: (milliseconds: number, action: () => void) => void;
+  readonly inputsOf: (executionId: string) => readonly RunInput[];
 }
 
 const succeedWithNull: Responder = () => ({ result: { status: 'succeeded', output: null } });
@@ -39,7 +40,9 @@ export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
     options.respond ?? succeedWithNull,
   );
   const engine = workflowEngineOf(ports, options.machine ?? testMachine);
+  const given: RunInput[] = [];
   function submit(input: RunInput): Submission {
+    given.push(input);
     return Effect.runSync(engine.submit(input));
   }
   return {
@@ -58,5 +61,6 @@ export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
       const due = clock.now() + milliseconds;
       clock.schedule(due, `scheduled ${due} ${clock.pending()}`, action);
     },
+    inputsOf: (executionId) => given.filter((input) => input.executionId === executionId),
   };
 }

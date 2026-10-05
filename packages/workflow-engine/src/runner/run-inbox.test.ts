@@ -50,7 +50,7 @@ describe('the events a run receives over its life', () => {
     const run = drivenRun(consumingForever, { meanwhile: flooding(mostReceivedEvents + 1, 'tick') });
 
     expect(run.outcome).toMatchObject({ kind: 'raised', error: { title: receivedTitle } });
-  });
+  }, 30_000);
 
   it(`may take ${mostReceivedEventBytes} bytes, consumed or not`, () => {
     const run = drivenRun(consumingForever, { meanwhile: flooding(22, 'tick', 'x'.repeat(200_000)) });

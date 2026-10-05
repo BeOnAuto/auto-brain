@@ -33,6 +33,22 @@ describe('the memory driver', () => {
       `The run ${executionId} waits for something that never comes`,
     );
   });
+});
+
+describe('the memory driver as a clock and a log', () => {
+  it('keeps every input it was given, applied or not, as the input log of each run', () => {
+    const driver = memoryDriver();
+    driver.start({ executionId, document: workflow('do:\n  - pause: { wait: PT1M }') });
+    driver.cancel(executionId);
+    driver.cancel(executionId);
+
+    expect(driver.inputsOf(executionId).map(({ kind }) => kind)).toEqual([
+      'started',
+      'cancel_requested',
+      'cancel_requested',
+    ]);
+    expect(driver.inputsOf('another')).toEqual([]);
+  });
 
   it('runs what it was asked to do at a time on its clock', () => {
     const driver = memoryDriver();
