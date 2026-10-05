@@ -7,6 +7,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { servingInference } from '../testing/inference-server.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
+import { executionIdIn, settledExecution, workflowSource } from '../testing/workflow-server.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
@@ -50,6 +51,11 @@ const summary = [
   'Summarize: {{ input.text }}',
 ].join('\n');
 
+const approval = workflowSource(
+  'approval',
+  "do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.approved } } } }, output: { as: '${ .[0] }' } }\n",
+);
+
 describe.skipIf(skipped)(
   `A server that keeps its ledger in PostgreSQL${notice}`,
   { timeout: spawnedServerTestTimeoutMs },
@@ -90,6 +96,35 @@ describe.skipIf(skipped)(
       );
       expect(child.output().stderr).not.toContain(String(environment['DATABASE_URL']));
       expect(child.output().stderr).not.toContain(`:${password}@`);
+    });
+  },
+);
+
+describe.skipIf(skipped)(
+  `Workflows of a server that keeps its ledger in PostgreSQL${notice}`,
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('runs a workflow in the same database, and goes on with it after a restart', async () => {
+      const environment = await onADatabaseOfItsOwn();
+      const first = await servingInference([], environment);
+      await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+      await first.call('POST', `${brain}/specs/orchestration`, { body: { name: 'approval', source: approval } });
+      const started = await first.call('POST', `${brain}/specs/orchestration/approval/execute`, {
+        body: { input: {} },
+      });
+      await first.stop();
+
+      const second = await servingInference([], environment);
+      const execution = `${brain}/executions/${executionIdIn(started.body)}`;
+      const sent = await second.call('POST', `${execution}/events`, {
+        body: { event: { type: 'com.acme.approved', data: { by: 'Ada' } } },
+      });
+      const settled = await settledExecution(second, execution);
+      await second.stop();
+
+      expect(started).toMatchObject({ status: 200, body: { status: 'started' } });
+      expect(sent.status).toBe(200);
+      expect(settled).toMatchObject({ body: { status: 'succeeded', output: { by: 'Ada' } } });
     });
   },
 );

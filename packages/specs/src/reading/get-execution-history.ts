@@ -28,6 +28,8 @@ const description = [
   'execution_started with the primitive, the spec name and version and who started it;',
   'execution_deferred when the work goes on after the call that started it;',
   'execution_succeeded; execution_rejected with the reason, the detail and the first five issues; and execution_failed.',
+  'A workflow also shows workflow_input_applied for each input its run took: the kind and key of the input,',
+  'how many steps moved, the first five with their outcomes, and the kinds of what the run did next.',
   'Inputs, outputs and records appear as their sizes in bytes; get_execution reads the output and the record.',
   'An execution started again with the same id shows each start.',
   'Within a page, events are ordered by when each happened.',

@@ -8,7 +8,10 @@ export function nextDueAtOf(state: RunState): number | null {
 }
 
 export function changesTimers({ event }: PositionedEvent): boolean {
-  return event.outputs.some(({ kind }) => kind === 'arm_timer' || kind === 'cancel_timer');
+  return (
+    event.receipt.kind === 'timer_fired' ||
+    event.outputs.some(({ kind }) => kind === 'arm_timer' || kind === 'cancel_timer')
+  );
 }
 
 export function runDueOf(state: RunState, version: number): RunDue {

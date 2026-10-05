@@ -15,11 +15,10 @@ function modelsIn(settings: Environment): string {
   return configured.length === 0 ? noModelYet : configured.join(', ');
 }
 
-export function readyNotice(port: number, workflows: string, settings: Environment): string {
+export function readyNotice(port: number, settings: Environment): string {
   return [
     'auto-brain is ready',
     `  server     http://localhost:${port}`,
-    `  workflows  ${workflows}`,
     `  models     ${modelsIn(settings)}`,
     `  MCP        http://localhost:${port}/mcp`,
   ].join('\n');

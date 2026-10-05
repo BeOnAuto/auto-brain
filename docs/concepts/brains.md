@@ -22,7 +22,7 @@ For a campaign review, the method might require a specific audience, a clear off
 | Run      | One execution against particular inputs                        | Review of the autumn campaign brief          |
 | Result   | The output produced by that run                                | A recommendation and missing information     |
 
-The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md), which are coming soon, coordinate those functions.
+The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md) coordinate those functions.
 
 ## The agent and the brain
 

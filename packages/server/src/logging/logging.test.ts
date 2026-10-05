@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { Effect, Logger } from 'effect';
+import { Cause, Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { linesLoggedBy } from '../testing/logged-lines.ts';
@@ -10,11 +10,11 @@ import {
   formatPretty,
   logAccessMode,
   logIncident,
+  logLostWorkflowConnection,
   logMcpError,
-  logTemporal,
   logUnsettled,
-  logWorkflowsNotOffered,
-  logWorkflowsOffered,
+  logWorkflows,
+  logWorkflowTrouble,
 } from './logging.ts';
 
 async function prettyLinesLoggedBy(effect: Effect.Effect<void>): Promise<readonly string[]> {
@@ -98,20 +98,27 @@ describe('logIncident', () => {
 });
 
 describe('the workflow logs', () => {
-  it('say whether workflows are offered, and with which Temporal server, namespace and task queue', async () => {
-    const offered = await linesLoggedBy(
-      logWorkflowsOffered({ address: 'temporal:7233', namespace: 'acme', taskQueue: 'brains' }),
+  it('say how long a run lasts at most, how many calls run at once and how often the runs are swept', async () => {
+    const [line] = await linesLoggedBy(
+      logWorkflows({ mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 }),
     );
-    const notOffered = await linesLoggedBy(logWorkflowsNotOffered);
 
-    expect(offered).toEqual([
-      expect.stringContaining(
-        '"message":"Workflows are offered with Temporal at temporal:7233, namespace acme, task queue brains","level":"INFO"',
-      ),
-    ]);
-    expect(notOffered).toEqual([
-      expect.stringContaining('"message":"Workflows are not offered because TEMPORAL_ADDRESS is unset","level":"INFO"'),
-    ]);
+    expect(line).toContain(
+      '"message":"Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms","level":"INFO"',
+    );
+    expect(line).toContain(
+      '"annotations":{"most_duration_ms":2592000000,"most_calls_at_once":32,"sweep_every_ms":1000}',
+    );
+  });
+
+  it.each([
+    [86_400_000, 'a run lasts at most 1 day,'],
+    [7_200_000, 'a run lasts at most 2 hours,'],
+    [5_400_000, 'a run lasts at most 1.5 hours,'],
+  ])('say a longest run of %i ms in days or hours', async (mostDurationMs, words) => {
+    const [line] = await linesLoggedBy(logWorkflows({ mostDurationMs, mostCallsAtOnce: 1, sweepEveryMs: 10 }));
+
+    expect(line).toContain(words);
   });
 
   it('report an execution settling left started as an error with its org, brain, id and reason only', async () => {
@@ -124,26 +131,29 @@ describe('the workflow logs', () => {
       '"annotations":{"org":"acme","brain":"alpha","execution_id":"e-1","reason":"The ledger has no such execution"}',
     );
   });
+});
 
-  it("pass on Temporal's warnings and errors at their level, with the fields Temporal gave", async () => {
-    const lines = [
-      ...(await linesLoggedBy(
-        logTemporal({ level: 'WARN', message: 'Temporal reported: Activity failed', context: { attempt: 2 } }),
-      )),
-      ...(await linesLoggedBy(
-        logTemporal({ level: 'ERROR', message: 'Temporal reported: Worker failed', context: {} }),
-      )),
-      ...(await linesLoggedBy(
-        logTemporal({ level: 'INFO', message: 'The workflow worker reached Temporal again', context: {} }),
-      )),
-    ];
+describe('the workflow warnings', () => {
+  it('warn of trouble in the workflows with what failed and its cause, cut to 2,000 characters', async () => {
+    const [line] = await linesLoggedBy(
+      logWorkflowTrouble(
+        'A sweep of the runs failed; the next sweep tries again',
+        Cause.fail(new Error(`the database is gone ${'x'.repeat(3000)}`)),
+      ),
+    );
 
-    expect(lines).toEqual([
-      expect.stringContaining('"message":"Temporal reported: Activity failed","level":"WARN"'),
-      expect.stringContaining('"message":"Temporal reported: Worker failed","level":"ERROR"'),
-      expect.stringContaining('"message":"The workflow worker reached Temporal again","level":"INFO"'),
-    ]);
-    expect(lines[0]).toContain('"annotations":{"attempt":2}');
+    expect(line).toContain('"message":"A sweep of the runs failed; the next sweep tries again","level":"WARN"');
+    expect(line).toContain('"error":"Error: the database is gone xxx');
+    expect(line).not.toContain('x'.repeat(2000));
+  });
+
+  it('warn that a connection of the workflows to PostgreSQL was lost, with the message of its error', async () => {
+    const [line] = await linesLoggedBy(logLostWorkflowConnection(new Error('Connection terminated unexpectedly')));
+
+    expect(line).toContain(
+      '"message":"A connection of the workflows to their PostgreSQL database was lost; they open another when they need one","level":"WARN"',
+    );
+    expect(line).toContain('"annotations":{"error":"Connection terminated unexpectedly"}');
   });
 });
 
@@ -210,11 +220,11 @@ describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
 describe('the pretty log format', () => {
   it('writes the local time, the level, the message and then the annotations on one line', async () => {
     const lines = await prettyLinesLoggedBy(
-      logWorkflowsOffered({ address: 'temporal:7233', namespace: 'acme', taskQueue: 'brains' }),
+      logWorkflows({ mostDurationMs: 604_800_000, mostCallsAtOnce: 8, sweepEveryMs: 250 }),
     );
 
     expect(lines).toEqual([
-      '<time> INFO  Workflows are offered with Temporal at temporal:7233, namespace acme, task queue brains temporal_address=temporal:7233 namespace=acme task_queue=brains',
+      '<time> INFO  Workflows run in this server: a run lasts at most 7 days, at most 8 of their calls run at once, and the runs are swept every 250 ms most_duration_ms=604800000 most_calls_at_once=8 sweep_every_ms=250',
     ]);
   });
 
@@ -230,10 +240,10 @@ describe('the pretty log format', () => {
 
   it('puts the source of a line first, in brackets, and writes a message that is not text as JSON', async () => {
     const lines = await prettyLinesLoggedBy(
-      Effect.logWarning({ answered: false }).pipe(Effect.annotateLogs({ source: 'temporal', attempt: 2 })),
+      Effect.logWarning({ answered: false }).pipe(Effect.annotateLogs({ source: 'dev', attempt: 2 })),
     );
 
-    expect(lines).toEqual(['<time> WARN  [temporal] {"answered":false} attempt=2']);
+    expect(lines).toEqual(['<time> WARN  [dev] {"answered":false} attempt=2']);
   });
 
   it('writes the cause of an incident below its line, indented', async () => {
@@ -265,7 +275,7 @@ describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeou
       expect.stringMatching(/^WARN {2}Local mode is on: /u),
       'INFO  The ledger is kept in the file :memory: ledger_file=:memory:',
       expect.stringMatching(/^WARN {2}No model provider is configured, .* providers=\[\{"provider":"anthropic",/u),
-      'INFO  Workflows are not offered because TEMPORAL_ADDRESS is unset',
+      'INFO  Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms most_duration_ms=2592000000 most_calls_at_once=32 sweep_every_ms=1000',
       '',
     ]);
   });

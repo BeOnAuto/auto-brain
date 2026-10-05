@@ -22,7 +22,7 @@ cp .env.example .env
 In `.env`, set a model provider key such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`. This is separate from your agent's subscription. Keep the key out of your agent conversation. pnpm uses the Node and pnpm versions pinned by this repository.
 
 ```bash
-pnpm dev:lean
+pnpm dev
 ```
 
 Keep that terminal open. In another terminal, `curl http://localhost:8080/health` should return `{"status":"ok"}`.

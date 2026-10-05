@@ -1,5 +1,4 @@
-import { field, isObject, jsonBytesOf, textField, type Json } from '@beonauto/workflow-engine/dsl/json';
-import type { ErrorKind } from '@beonauto/workflow-engine/dsl/raised-error';
+import { type ErrorKind, field, isObject, type Json, jsonBytesOf, textField } from '@beonauto/workflow-engine';
 
 import { executeSpecFunction } from './workflow-functions.ts';
 

@@ -16,7 +16,7 @@ Standalone recall definitions are planned. Today you can read a brain's recorded
 - `get_execution_history` reads the history of one run: the facts recorded about it, from each start to how it ended, each with when it happened and a plain-language summary.
 - `list_brain_events` follows everything recorded in a brain, such as definitions created, updated and retired and runs started and ended, and can keep one type of event or what was recorded since a time.
 
-These reads page through long histories and keep working after a brain is retired. Events show the sizes of inputs and outputs rather than the values; `get_execution` returns a run's result in full. A brain's own creation and retirement belong to its organization and are not among its events. The individual steps of a workflow are not part of a run's history yet; they come with the updated workflow engine. See [Run history and brain events](../reference/http.md#run-history-and-brain-events).
+These reads page through long histories and keep working after a brain is retired. Events show the sizes of inputs and outputs rather than the values; `get_execution` returns a run's result in full. A brain's own creation and retirement belong to its organization and are not among its events. A workflow run's history also shows, for each input the run took, the steps that moved and how they ended. See [Run history and brain events](../reference/http.md#run-history-and-brain-events).
 
 ## Dream
 

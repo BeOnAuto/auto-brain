@@ -1,5 +1,4 @@
-import type { JsonObject } from '@beonauto/workflow-engine/dsl/json';
-import { taskKinds } from '@beonauto/workflow-engine/dsl/tasks';
+import { type JsonObject, taskKinds } from '@beonauto/workflow-engine';
 import { buildGraph, Classes, SchemaValidationError, WorkflowValidationError } from '@openworkflowspec/sdk';
 
 export interface Problem {

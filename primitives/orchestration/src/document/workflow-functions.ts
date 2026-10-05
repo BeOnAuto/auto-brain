@@ -1,8 +1,16 @@
-import type { CallFunctions } from '@beonauto/workflow-engine/dsl/call-functions';
-import { field, isObject, textField, type Json } from '@beonauto/workflow-engine/dsl/json';
-import { policyOf } from '@beonauto/workflow-engine/dsl/policy';
-import { forbidden, rejection, templateRejections, type Rejection } from '@beonauto/workflow-engine/dsl/policy-checks';
-import { pointerTo } from '@beonauto/workflow-engine/dsl/tasks';
+import {
+  type CallFunctions,
+  field,
+  forbidden,
+  isObject,
+  type Json,
+  pointerTo,
+  policyOf,
+  type Rejection,
+  rejection,
+  templateRejections,
+  textField,
+} from '@beonauto/workflow-engine';
 
 export const executeSpecFunction = 'execute_spec';
 

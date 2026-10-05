@@ -1,0 +1,70 @@
+import { Conflict, type Settlement } from '@beonauto/operations';
+import type { SettleExecution } from '@beonauto/specs';
+import { Effect } from 'effect';
+
+import type { HostNote, HostReports } from '../host/host-reports.ts';
+import { knownExecutions } from './known-executions.ts';
+
+export interface RecordingReports {
+  readonly reports: HostReports;
+  readonly troubles: () => readonly string[];
+  readonly notes: () => readonly HostNote[];
+}
+
+export interface RecordingSettlements {
+  readonly settle: SettleExecution;
+  readonly settlements: () => ReadonlyMap<string, Settlement>;
+  readonly attempts: () => number;
+  readonly know: (executionId: string) => void;
+}
+
+const ledgerUnreachable = new Conflict({ detail: 'The ledger cannot be reached' });
+
+export function recordingReports(): RecordingReports {
+  const troubles: string[] = [];
+  const notes: HostNote[] = [];
+  const noted = (line: unknown): void => {
+    troubles.push(String(line));
+  };
+  return {
+    reports: {
+      unsettled: ({ executionId, receipt }) =>
+        Effect.sync(() => {
+          noted(`${executionId} ${receipt}`);
+        }),
+      trouble: (what) =>
+        Effect.sync(() => {
+          noted(what);
+        }),
+      lostConnection: noted,
+      note: (note) =>
+        Effect.sync(() => {
+          notes.push(note);
+        }),
+    },
+    troubles: () => troubles,
+    notes: () => notes,
+  };
+}
+
+export function recordingSettlements(ledgerDown: () => boolean): RecordingSettlements {
+  const settled = new Map<string, Settlement>();
+  const counts = { attempts: 0 };
+  const { settle, know } = knownExecutions();
+  return {
+    settle: (address, settlement) =>
+      Effect.suspend(() => {
+        counts.attempts += 1;
+        return ledgerDown() ? Effect.fail(ledgerUnreachable) : settle(address, settlement);
+      }).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            settled.set(address.id, settlement);
+          }),
+        ),
+      ),
+    settlements: () => settled,
+    attempts: () => counts.attempts,
+    know,
+  };
+}

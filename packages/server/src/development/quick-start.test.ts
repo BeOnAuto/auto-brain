@@ -10,7 +10,6 @@ import { tcpPort } from '../lifecycle/lifecycle.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,
-  localTemporalPorts,
   startDevelopment,
   untilListening,
 } from '../testing/development-process.ts';
@@ -114,10 +113,7 @@ async function stubGateway(): Promise<string> {
 }
 
 async function onPnpmDev<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
-  const development = startDevelopment(developmentFiles(), {
-    temporal: await localTemporalPorts(),
-    environment: { MODEL_GATEWAYS: await stubGateway() },
-  });
+  const development = startDevelopment(developmentFiles(), { environment: { MODEL_GATEWAYS: await stubGateway() } });
   const port = await untilListening(development);
   return withMcpSession('current revision', { url: `http://localhost:${port}/mcp`, headers: {} }, use);
 }

@@ -38,7 +38,7 @@ For another provider or an OpenAI-compatible model gateway, see the repository's
 ## 3. Start the server
 
 ```bash
-pnpm dev:lean
+pnpm dev
 ```
 
 Keep this terminal open. In a second terminal, check that the server is ready:
@@ -127,7 +127,7 @@ If the health check fails, check the server terminal for startup errors and conf
 
 If a reason function reports `provider_not_configured`, check the uncommented setting in `.env` and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
 
-Definitions and run history are saved in the local ledger at `packages/server/.data/ledger.db`. Stop the server with Ctrl+C and restart it with `pnpm dev:lean` when you return. Keep the ledger file if you want to retain your work.
+Definitions and run history are saved in the local ledger at `packages/server/.data/ledger.db`. Stop the server with Ctrl+C and restart it with `pnpm dev` when you return. Keep the ledger file if you want to retain your work.
 
 The runtime is in early development and is not ready for production use.
 

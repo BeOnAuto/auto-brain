@@ -17,7 +17,27 @@ export {
 } from './dispatch/run-output.ts';
 export { changesTimers, nextDueAtOf, runDueOf } from './dispatch/run-due.ts';
 export { workflowMachine } from './decider/workflow-machine.ts';
+export type { CallFunctions } from './dsl/call-functions.ts';
+export { durationLimitRejections } from './dsl/duration-limits.ts';
+export { readDuration } from './dsl/durations.ts';
+export {
+  field,
+  isObject,
+  jsonBytesOf,
+  measureOf,
+  mostValueDepth,
+  objectField,
+  textField,
+  type Json,
+  type JsonObject,
+} from './dsl/json.ts';
+export { nestingRejections } from './dsl/nesting.ts';
+export { policyOf } from './dsl/policy.ts';
+export { forbidden, rejection, templateRejections, type Rejection } from './dsl/policy-checks.ts';
+export { describeError, type ErrorKind } from './dsl/raised-error.ts';
+export { pointerTo, taskKinds } from './dsl/tasks.ts';
 export { runCacheBounds, runCacheOf, type RunCache, type RunCacheBounds } from './cache/run-cache.ts';
+export { workflowEngineOf } from './engine/engine.ts';
 export { SplitDecision, runLoopOf, type RunDecision } from './engine/run-loop.ts';
 export { submissionOf } from './engine/submission.ts';
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';

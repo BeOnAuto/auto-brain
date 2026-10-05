@@ -1,9 +1,7 @@
-import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
 import type { ScriptedReply } from '@beonauto/inference/testing';
 import { Option, Schema } from 'effect';
-import { inject } from 'vitest';
 
 import type { RequestOptions, TestResponse } from './http-client.ts';
 import { servingInference, type InferenceServer } from './inference-server.ts';
@@ -16,15 +14,11 @@ const statusOf = Schema.decodeUnknownOption(Schema.Struct({ status: Schema.Strin
 
 const executionOf = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
 
-function workflowSettings(): Readonly<Record<string, string>> {
-  return { TEMPORAL_ADDRESS: inject('temporalAddress'), TEMPORAL_TASK_QUEUE: `server-${randomUUID()}` };
-}
-
 export function servingWorkflows(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
 ): Promise<InferenceServer> {
-  return servingInference(replies, { ...environment, ...workflowSettings() });
+  return servingInference(replies, environment);
 }
 
 export function workflowSource(name: string, steps: string): string {

@@ -14,7 +14,7 @@ import {
 } from './json.ts';
 import { RaisedError, errorType, raised } from './raised-error.ts';
 
-export interface ExpressionMeter {
+interface ExpressionMeter {
   readonly allowance: () => number;
   readonly record: (work: number) => void;
 }

@@ -26,6 +26,7 @@ const specTools = [
   'list_executions',
   'get_execution_history',
   'list_brain_events',
+  'send_execution_event',
 ];
 
 const summary = [
@@ -93,7 +94,7 @@ describe('the tools of /mcp', () => {
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });
 
-  it('carry instructions about brains, specs and executions, and nothing about workflows', async () => {
+  it('carry instructions about brains, specs, executions and the events a workflow waits for', async () => {
     server = await servingInference([]);
 
     const instructions = await onMcp('/mcp', (session) => Promise.resolve(session.instructions));
@@ -107,6 +108,7 @@ describe('the tools of /mcp', () => {
         'list_models lists the models this server can call.',
         'execute_spec runs a spec and records the run as an execution.',
         'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
+        'A workflow waiting for an event receives it through send_execution_event.',
         "Every tool that works inside a brain takes the brain's id as brain.",
         'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
       ].join(' '),

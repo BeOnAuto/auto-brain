@@ -1,9 +1,8 @@
-import { Effect, Exit, Scope } from 'effect';
+import { HostElsewhere, HostStopped } from '@beonauto/workflow-host';
+import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { connectOrchestration } from '../primitive/orchestration-client.ts';
 import { orchestratedBrain, type OrchestratedBrain } from '../testing/orchestrated-brain.ts';
-import { settingsFor } from '../testing/temporal.ts';
 import { defineSendExecutionEvent } from './send-execution-event.ts';
 
 let brain: OrchestratedBrain;
@@ -24,15 +23,15 @@ do:
 `;
 
 beforeAll(async () => {
-  brain = await orchestratedBrain('execution-events');
-  sendEvent = defineSendExecutionEvent(brain.client);
+  brain = await orchestratedBrain();
+  sendEvent = defineSendExecutionEvent(brain.host);
   await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'approval', source: approval });
   await brain.call(brain.createSpec, { primitive: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
-}, 60_000);
+});
 
 afterAll(async () => {
   await brain.close();
-}, 60_000);
+});
 
 const tooLong: readonly (readonly [string, Readonly<Record<string, string>>, string])[] = [
   ['a type', { type: 't'.repeat(257) }, '/event/type'],
@@ -67,16 +66,15 @@ describe('send_execution_event', () => {
       execution_id: executionId.toUpperCase(),
       event: { id: 'decision-1', type: 'com.acme.approval.decided', data: { approved: true } },
     });
-    await brain.temporal.workflow.getHandle(`acme/alpha/approval/${executionId}`).result();
 
     expect(sent).toMatchObject({
       status: 'succeeded',
       output: { execution_id: executionId, event: { id: 'decision-1', type: 'com.acme.approval.decided' } },
     });
-    expect(await brain.call(brain.getExecution, { execution_id: executionId })).toMatchObject({
+    expect(await brain.settled(executionId)).toMatchObject({
       output: { status: 'succeeded', output: [{ approved: true }] },
     });
-  }, 60_000);
+  });
 
   it('gives an event an id and the time it was sent', async () => {
     const executionId = idOf(2);
@@ -86,7 +84,7 @@ describe('send_execution_event', () => {
 
     expect(sent).toMatchObject({ status: 'succeeded', output: { event: { type: 'com.acme.other' } } });
     expect(JSON.stringify(sent)).toMatch(/"id":"[0-9a-f-]{36}","time":"\d{4}-\d{2}-\d{2}T/u);
-  }, 60_000);
+  });
 });
 
 describe('send_execution_event to no running workflow', () => {
@@ -102,39 +100,49 @@ describe('send_execution_event to no running workflow', () => {
     });
   });
 
-  it('is rejected as not found when the workflow of the execution is gone', async () => {
-    const executionId = idOf(5);
-    await startedApproval(executionId);
-    await brain.temporal.workflow.getHandle(`acme/alpha/approval/${executionId}`).terminate('gone');
+  it.each(['not_started', 'ended'] as const)(
+    'is rejected as not found when the run of the execution answers %s',
+    async (answer) => {
+      const executionId = idOf(5);
+      const answering = defineSendExecutionEvent({ deliver: () => Effect.succeed(answer) });
+      await startedApproval(executionId);
 
-    expect(await brain.call(sendEvent, { execution_id: executionId, event: { type: 'x' } })).toEqual({
-      status: 'rejected',
-      reason: 'not_found',
-      detail: 'The execution has no workflow running',
-    });
-  }, 60_000);
+      expect(await brain.call(answering, { execution_id: executionId, event: { type: 'x' } })).toEqual({
+        status: 'rejected',
+        reason: 'not_found',
+        detail: 'The brain has no running workflow execution with that id',
+      });
+    },
+  );
 });
 
 describe('send_execution_event that cannot be delivered', () => {
-  it('is rejected as unavailable when Temporal cannot be reached', async () => {
+  it('is rejected as unavailable when the workflow cannot take it at that moment', async () => {
     const executionId = idOf(6);
     await startedApproval(executionId);
-    const scope = Effect.runSync(Scope.make());
-    const unreachable = await Effect.runPromise(
-      connectOrchestration({ ...settingsFor('nowhere'), address: '127.0.0.1:1' }, { requestTimeout: 500 }).pipe(
-        Scope.provide(scope),
-      ),
-    );
-
-    const sent = await brain.call(defineSendExecutionEvent(unreachable), {
-      execution_id: executionId,
-      event: { type: 'x' },
+    const stopping = defineSendExecutionEvent({
+      deliver: () => Effect.fail(new HostStopped({ detail: 'The server is stopping' })),
     });
-    await Effect.runPromise(Scope.close(scope, Exit.void));
-    await brain.temporal.workflow.getHandle(`acme/alpha/approval/${executionId}`).terminate('done');
 
-    expect(sent).toMatchObject({ status: 'rejected', reason: 'unavailable' });
-  }, 30_000);
+    expect(await brain.call(stopping, { execution_id: executionId, event: { type: 'x' } })).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'The workflow cannot take the event now; try again shortly',
+    });
+  });
+
+  it('is rejected as unavailable, saying so, when another server runs the workflows of the database', async () => {
+    const executionId = idOf(19);
+    await startedApproval(executionId);
+    const detail = 'The workflows of this database run in another server';
+    const elsewhere = defineSendExecutionEvent({ deliver: () => Effect.fail(new HostElsewhere({ detail })) });
+
+    expect(await brain.call(elsewhere, { execution_id: executionId, event: { type: 'x' } })).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail,
+    });
+  });
 
   it('is rejected as invalid input when its data is larger than an event carries', async () => {
     expect(
