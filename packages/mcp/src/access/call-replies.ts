@@ -1,6 +1,6 @@
 import { failedOnce, failuresEnded, shownResult, type CallTally } from '../bounds/call-bounds.ts';
 import { errorTextForModel, errorTextForOperator, resultText } from '../bounds/result-text.ts';
-import type { ServerFailedBecause } from './mcp-server-failed.ts';
+import type { CallsEndedBecause } from './mcp-server-failed.ts';
 import type { ServerMessage } from './run-context.ts';
 import type { Forwarded } from './tool-calls.ts';
 
@@ -27,7 +27,7 @@ export function failureCounted(
   tally: CallTally,
   done: Forwarded,
   replying: Replying,
-): Tallied<ServerFailedBecause | undefined> {
+): Tallied<CallsEndedBecause | undefined> {
   if (!failures.has(done.outcome)) {
     return { tally, value: undefined };
   }

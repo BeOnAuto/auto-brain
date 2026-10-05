@@ -6,7 +6,7 @@ import { modelFacingNames } from '../names/model-facing-names.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { toolsInWords } from '../names/tool-words.ts';
 import type { ToolReply } from './call-replies.ts';
-import type { ServerFailedBecause } from './mcp-server-failed.ts';
+import type { CallsEndedBecause } from './mcp-server-failed.ts';
 import type { CallSignals, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
 import { caller } from './tool-caller.ts';
 
@@ -18,13 +18,13 @@ export interface OfferedTool {
 }
 
 export interface ToolsEnding {
-  readonly because: ServerFailedBecause;
+  readonly because: CallsEndedBecause;
 }
 
 export interface RunTools {
   readonly offered: readonly OfferedTool[];
   readonly callsEnded: () => boolean;
-  readonly ended: AbortSignal;
+  readonly ended: Readonly<AbortSignal>;
   readonly ending: () => ToolsEnding | undefined;
   readonly calledAny: () => boolean;
   readonly usedInWords: () => string;

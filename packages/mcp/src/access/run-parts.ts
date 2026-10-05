@@ -4,7 +4,7 @@ import type { CallTally, Timing } from '../bounds/call-bounds.ts';
 import type { ListedTool } from '../bounds/result-text.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
-import type { ServerFailedBecause } from './mcp-server-failed.ts';
+import type { CallsEndedBecause } from './mcp-server-failed.ts';
 import type { RunContext, ServerMessage } from './run-context.ts';
 import type { ServerSlot } from './server-slot.ts';
 
@@ -43,5 +43,5 @@ export interface RunState {
   readonly tallied: (tally: CallTally) => void;
   readonly numbered: () => number;
   readonly used: (reference: ToolReference) => void;
-  readonly ended: (because: ServerFailedBecause) => void;
+  readonly ended: (because: CallsEndedBecause) => void;
 }

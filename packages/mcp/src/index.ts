@@ -1,5 +1,5 @@
 export { makeToolAccess, type ToolAccess, type ToolAccessOptions } from './access/tool-access.ts';
-export { McpServerFailed, type ServerFailedBecause } from './access/mcp-server-failed.ts';
+export { McpServerFailed, type CallsEndedBecause, type ServerFailedBecause } from './access/mcp-server-failed.ts';
 export { ToolNotOffered, type NotOfferedBecause } from './access/tool-not-offered.ts';
 export type { RunContext, ServerMessage, ToolsNotOpened } from './access/run-context.ts';
 export type { ToolReply } from './access/call-replies.ts';
