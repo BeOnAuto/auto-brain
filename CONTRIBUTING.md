@@ -23,6 +23,17 @@ pnpm check            # everything CI checks; run it before you push
 
 Node runs the TypeScript sources directly, so there's no build step.
 
+## Documentation
+
+Runtime guides live in `docs/` and are published as part of [on.auto/docs](https://on.auto/docs/). Change the docs in the same pull request as behavior changes. The public preview needs no private repository or service credentials:
+
+```sh
+pnpm docs:dev
+pnpm docs:check
+```
+
+The preview opens under `/docs/`. Read [Documentation contributions](docs/contributing/documentation.md) for navigation, links, status labels and the publication contract. Package READMEs keep code entry points and test instructions. Detailed setup and implementation guides live in [docs/engineering/](docs/engineering/index.md), and architecture decisions in `docs/decisions/`; both are excluded from the public build and website import.
+
 ## How the code is written
 
 [CLAUDE.md](CLAUDE.md) holds the full rules. The ones that matter most for a first pull request:

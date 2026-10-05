@@ -1,0 +1,309 @@
+<div v-pre>
+
+# Reason function format
+
+The current runtime stores reason functions as `inference` specs. Keep that identifier in API calls, MCP arguments and workflow definitions. Each current run performs one model invocation; tool use, skill references and additional context from other functions are planned.
+
+## The spec document format
+
+An inference spec is one Markdown document (`text/markdown`): YAML front matter between two lines of three dashes, then a Liquid template. The front matter uses Dotprompt's key names; the format is this package's own, and this package parses it.
+
+```markdown
+---
+description: Summarizes an account for the sales team
+model: anthropic/claude-sonnet-4-5
+config:
+  max_output_tokens: 800
+  temperature: 0.2
+input:
+  schema:
+    type: object
+    properties:
+      account: { type: string }
+      tone: { type: string }
+    required: [account]
+  default:
+    tone: plain
+---
+
+{% system %}You write for a sales team, in a {{ input.tone }} tone.{% endsystem %}
+Summarize the account {{ input.account }} as of {{ today }}.
+```
+
+| Key                        | Required    | Value                                                 | Meaning                                                                                                                                                                                  |
+| -------------------------- | ----------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`              | No          | Text of 1 to 1000 characters                          | What the spec does. `list_specs` and `get_spec` show it                                                                                                                                  |
+| `model`                    | Yes         | `provider/model`                                      | The model to call; see [How a model reference is resolved](../self-host/models.md#how-a-model-reference-is-resolved)                                                                     |
+| `config.max_output_tokens` | No          | A whole number from 1 to 64000; 1024 when left out    | The most tokens the answer may take. The time the call may take grows with it                                                                                                            |
+| `config.temperature`       | No          | A number                                              | Sampling temperature. Providers accept different ranges and reject a value outside theirs                                                                                                |
+| `config.top_p`             | No          | A number                                              | Nucleus sampling                                                                                                                                                                         |
+| `config.seed`              | No          | A whole number of 0 or more                           | A seed, for providers that take one                                                                                                                                                      |
+| `config.stop_sequences`    | No          | A list of texts                                       | Texts that end the answer                                                                                                                                                                |
+| `config.reasoning`         | No          | `none`, `minimal`, `low`, `medium`, `high` or `xhigh` | Reasoning effort, for models that reason                                                                                                                                                 |
+| `input.schema`             | No          | A JSON Schema whose root is `"type": "object"`        | The input of an execution must match it. Without it, any JSON object is accepted                                                                                                         |
+| `input.default`            | No          | A JSON object                                         | Values merged under the input before it is validated. They must match the schema for the fields they name; required fields may be left to the input                                      |
+| `output.format`            | No          | `text`, the default, or `json`                        | Whether the answer is the model's text or a JSON value                                                                                                                                   |
+| `output.schema`            | With `json` | A JSON Schema                                         | The answer must match it; see [Answers that are JSON](../self-host/models.md#answers-that-are-json). Not allowed with `text`                                                             |
+| `provider_options`         | No          | An object of objects, keyed by the provider namespace | Options for `anthropic`, `openai`, `azure`, `google`, `vertex`, `googleVertex`, `amazonBedrock`, `bedrock`, or a gateway's name: only those [Provider options](#provider-options) offers |
+
+Any other key, at any level, is rejected.
+
+Parsing is validation. Every create, update and execution parses the document, and a document with a problem is rejected with every problem found at once, each with its line in the document, and a JSON pointer into the front matter where there is one, for example `Line 4, /config/temperature: Expected number`. The operations answer them under `/source`. An issue found more than once is reported once, and a rejection reports at most 20, in the order of their lines, followed by one that says how many more there were, such as `Line 23: 5881 more issues are not shown`. Parsing finds:
+
+- front matter that does not open on the first line or is never closed; a document without it is never read as a template;
+- YAML that cannot be read. The front matter is YAML 1.2 with the core schema, so `yes` and `2026-10-01` stay text. Anchors, aliases and tags are rejected, a key may appear once in a mapping, numbers are finite, and nesting stops at 72 levels: deeper front matter, however deep, is rejected with `The front matter may nest at most 72 levels`;
+- unknown keys and values of the wrong type, and a missing `model`;
+- a model not written `provider/model`, and settings out of range;
+- an input schema whose root is not an object, a schema that cannot be validated (see [Answers that are JSON](../self-host/models.md#answers-that-are-json) for what is rejected), and defaults that do not match it;
+- a `json` output without a schema, and a `text` output with one;
+- a provider option that is not offered, and a namespace that is no provider's (see [Provider options](#provider-options));
+- Liquid that does not parse, a tag or filter that is not available, the rules of the system block, a template that writes no message outside it, and every variable it reads (see below).
+
+A JSON output schema that some providers reject or do not enforce is accepted. The spec then carries `warnings`, which `create_spec`, `get_spec`, `list_specs` and `update_spec` show, each with its line and the providers concerned, for example `Line 8, /output/schema/properties/total/minimum: minimum is not enforced while Anthropic models write the answer; an answer outside it fails as output_invalid (anthropic, bedrock, bedrock-anthropic, vertex-anthropic)`. At most 100 are shown.
+
+### Provider options
+
+`provider_options` passes options to the AI SDK for a provider, keyed by the namespace the SDK reads for it. A spec may set only the options that shape how the model reasons or writes its answer. None of these is offered, whatever the provider: attribution (`user`, `metadata`, `labels`, request metadata), anything stored or reused on the operator's account (`store`, `previousResponseId`, `conversation`, `container`, `cachedContent`, prompt cache keys and retention), routing, fallbacks, capacity and service tiers, request headers and betas, tools and servers, guardrails, raw request fields, options for the state of a conversation (a spec makes one call), output the runtime does not read, and anything the front matter already sets (`config` and `output`, such as an effort level or the strictness of a JSON schema). An option is offered only when it is listed here; an option a provider adds is not offered until it is reviewed and listed.
+
+| Namespace       | Read by                                                                      | Offered                                                                        |
+| --------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `anthropic`     | `anthropic`, `bedrock-anthropic`, `vertex-anthropic`                         | `thinking`, with only `type`, `budgetTokens` and `display`                     |
+| `openai`        | `openai`, and `azure` when there are no `azure` options                      | `textVerbosity`, `reasoningMode`, `logitBias`                                  |
+| `azure`         | `azure`                                                                      | `textVerbosity`, `reasoningMode`, `logitBias`                                  |
+| `google`        | `google`, and `vertex` when there are no `googleVertex` or `vertex` options  | `thinkingConfig`, `safetySettings`, `threshold`                                |
+| `vertex`        | `vertex`                                                                     | `thinkingConfig`, `safetySettings`, `threshold`                                |
+| `googleVertex`  | `vertex`, `vertex-anthropic`                                                 | `thinkingConfig`, `safetySettings`, `threshold`, `thinking` as for `anthropic` |
+| `amazonBedrock` | `bedrock`                                                                    | `reasoningConfig`                                                              |
+| `bedrock`       | `bedrock` when there are no `amazonBedrock` options, and `bedrock-anthropic` | `reasoningConfig`                                                              |
+
+Some of what is withheld, and why:
+
+- `anthropic`: `effort`, which `config.reasoning` sets; `cacheControl` and `container` (stored on the account); `metadata` (attribution); `mcpServers`, `disableParallelToolUse`, `toolStreaming` and `safeguards` (tools and servers); `anthropicBeta` (a request header); `fallbacks`, `speed`, `serviceTier` and `inferenceGeo` (routing and capacity); `sendReasoning`, `taskBudget`, `compaction` and `contextManagement` (conversation state); `structuredOutputMode` (the front matter's `output` decides how JSON is asked for); `thinking.blockBinding`, which turns on a beta.
+- `openai`, `azure`: `reasoningEffort`, `reasoningEffortUpdate` and `maxCompletionTokens` (`config` sets them); `store`, `previousResponseId`, `conversation` and the prompt cache options; `user`, `safetyIdentifier` and `metadata`; `serviceTier`; `prediction` (raw request content); `instructions`, `systemMessageMode`, `forceReasoning` and `strictJsonSchema`, which change how the runtime sends the prompt or the schema; `logprobs`, `include` and `reasoningSummary` (output the runtime does not read); the tool options.
+- `google`, `vertex`, `googleVertex`: `labels`; `cachedContent`; `serviceTier`, `sharedRequestType` and `requestType` (Vertex AI capacity headers); `retrievalConfig` and `streamFunctionCallArguments`; `responseModalities`, `imageConfig`, `audioTimestamp` and `mediaResolution`; `structuredOutputs`.
+- `amazonBedrock`, `bedrock`: `additionalModelRequestFields`, and every key Bedrock does not read, because Bedrock adds those to the Converse request as they are (`inferenceConfig`, `guardrailConfig`, `requestMetadata` and the like); `anthropicBeta`; `serviceTier`; `structuredOutputMode`. The options of Anthropic models on Bedrock go under `anthropic`, since Bedrock would send them as they are under `bedrock`.
+
+Any other option is rejected when the document is parsed, with the option named and the words `is not offered`, so such a spec is never stored. A namespace that is neither a provider's nor shaped like a gateway's name is rejected the same way. The offered and withheld options are one table of data in `src/model/offered-provider-options.ts`, typed against the option types the AI SDK exports, so an upgrade that adds or removes an option fails the type check until the option is decided.
+
+A gateway is a different case: the AI SDK adds every key under the gateway's name, or its camel case (`my-gateway` and `myGateway`), to the request body as it is, and reads `user` from `openaiCompatible`. A gateway gives meaning to body fields its operator may not want a tenant to set: attribution and budgets, routing and fallbacks, mock answers, endpoints and credentials. So a spec sets for a gateway only the top-level fields its entry lists in `allowed_provider_options`, under any of those namespaces, and by default none. The list is checked when the server starts: at most 64 distinct names of 1 to 64 characters, none of them a field the runtime sets or that changes what the call is (`model`, `messages`, `stream`, `stream_options`, `n`, `max_tokens`, `max_completion_tokens`, `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `seed`, `stop`, `response_format`, `tools`, `tool_choice`, `functions`, `function_call`, `reasoning_effort`, `verbosity`, and the SDK's `reasoningEffort`, `textVerbosity` and `strictJsonSchema`). A problem names the setting and the field, never a value.
+
+The parser does not know the gateways, so this check runs when the spec executes: a field outside the list rejects the execution as `conflict`, naming the field and saying the gateway does not allow it, and the gateway is not called. The same goes for a namespace that is shaped like a gateway's name but is no configured gateway's: the execution is rejected as `conflict` before any provider is called.
+
+A document is checked without calling a model, and the same document always gives the same answer. Whether its provider is configured, and whether the provider accepts the model and the settings, shows only when it runs; see [When an execution is rejected](#when-an-execution-is-rejected).
+
+## The template language
+
+The template is [Liquid](https://shopify.github.io/liquid/), rendered by liquidjs 10.29.0, configured for templates written by tenants: templates live in memory and the engine has no file system.
+
+### Variables
+
+A template reads three variables and nothing else:
+
+- `input`: the input of the execution, with the defaults merged under it and validated;
+- `today`: the date, `YYYY-MM-DD`, in UTC;
+- `now`: the time, in ISO 8601, in UTC.
+
+`today` and `now` come from the server's clock when the execution starts, and have no properties. Names a template makes itself, with `assign`, `for`, `increment` or `cycle`, are fine. Any other name is rejected when the document is parsed, by the engine's static analysis of the template. When the input schema declares `properties` and sets `"additionalProperties": false`, `input.<field>` must be one of them.
+
+Reading is strict. A field the input does not have stops the execution with `invalid_input`, naming the field, except in a condition of `if`, `elsif` or `unless` and in the `default` filter, so a template can test a field that may be absent: `{% if input.vip %}…{% endif %}`, `{{ input.nickname | default: "friend" }}`. Only the input's own fields can be read: `input.constructor` is a missing field. Values are written as Liquid writes them: a list as its items without separators, an object as `[object Object]`; write `{{ input.account | json }}` for JSON.
+
+### The system block
+
+```liquid
+{% system %}You review expenses against the policy of {{ input.company }}.{% endsystem %}
+Review this expense: {{ input.expense | json }}
+```
+
+- What is between `{% system %}` and `{% endsystem %}` is sent as the system instructions; everything outside it is the message, sent as one user message.
+- A template has at most one system block, at its top level, outside every other tag, and the tags take no arguments. The template must write something outside it.
+- The block is found in the template's own syntax tree, never in the rendered text. An input that holds `{% system %}` or `{% endsystem %}` is written as those characters, in the part where the template writes it, and can never open or close the instructions.
+- The template renders in document order, so a value assigned in the block is known after it.
+
+### Tags
+
+Available: `assign`, `if` with `elsif` and `else`, `unless`, `case` with `when`, `for` with `break` and `continue`, `cycle`, `increment`, `decrement`, `echo`, `liquid`, `raw`, `comment`, `#` and `tablerow`.
+
+Not available: `include`, `render`, `layout` and `block` load other templates, and a spec is one document; `capture` renders into a buffer of its own, outside the limit on the rendered size, so use `assign` with `append` instead.
+
+### Filters
+
+The plain data and string filters of Liquid: `abs`, `append`, `array_to_sentence_string`, `at_least`, `at_most`, `base64_decode`, `base64_encode`, `capitalize`, `ceil`, `compact`, `concat`, `default`, `divided_by`, `downcase`, `escape`, `escape_once`, `find`, `find_index`, `first`, `floor`, `group_by`, `has`, `join`, `json`, `last`, `lstrip`, `map`, `minus`, `modulo`, `newline_to_br`, `normalize_whitespace`, `number_of_words`, `plus`, `pop`, `prepend`, `push`, `raw`, `reject`, `remove`, `remove_first`, `remove_last`, `replace`, `replace_first`, `replace_last`, `reverse`, `round`, `rstrip`, `shift`, `size`, `slice`, `slugify`, `sort`, `sort_natural`, `split`, `squish`, `strip`, `strip_newlines`, `sum`, `times`, `to_integer`, `truncate`, `truncatewords`, `uniq`, `unshift`, `upcase`, `where` and `xml_escape`.
+
+Three more:
+
+| Filter  | What it does                                                                                                                                                           | Example                                                        |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `money` | A number, or text that is a decimal number, as US dollars with thousands separators: no cents when it is whole, two decimals otherwise. Anything else stops the render | `{{ 364028 \| money }}` is `$364,028`; `1234.5` is `$1,234.50` |
+| `clip`  | Text cut to a number of characters, 400 by default, with an ellipsis (`…`) appended when it is cut. Characters are counted as Unicode code points                      | `{{ input.notes \| clip: 200 }}`                               |
+| `words` | The number of words in a text: runs of characters between whitespace                                                                                                   | `{% assign n = input.notes \| words %}`                        |
+
+Left out, and why:
+
+- `where_exp`, `reject_exp`, `group_by_exp`, `has_exp`, `find_exp` and `find_index_exp` evaluate an expression given as text, which the check of the variables a template reads cannot see;
+- `date`, `date_to_xmlschema`, `date_to_rfc822`, `date_to_string` and `date_to_long_string` read the server's clock, time zone and locale, so the same spec would render differently from one server to the next; `today` and `now` give the date and the time;
+- `sample` is random;
+- `sha256` and `hmac_sha256` compute digests, which a prompt has no use for, and `hmac_sha256` would put a key in a spec;
+- `strip_html` is a hand-written HTML parser that had three advisories in 2026 (a regular expression that backtracks, an infinite loop, and a bypass); they are fixed in this version, and a prompt has no HTML to strip;
+- `url_encode`, `cgi_escape`, `uri_escape` and `url_decode`: the encoders grow their output without charging the memory limit (nine `url_encode` in a row turn 65,536 characters into 1,245,184 without charging anything), and a prompt has no URL to encode;
+- `inspect` and `jsonify` do what `json` does.
+
+As of October 2026, no published advisory affects liquidjs 10.27.2 or later; earlier versions have several, including code execution from a crafted template. 10.29.0 is the newest release the workspace's minimum release age allows.
+
+### Limits
+
+| Limit                                       | Value                         | Why                                                                                                                                                                                    |
+| ------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Length of the template                      | 65,536 characters             | The document itself takes at most 65,536 bytes                                                                                                                                         |
+| Names in tags and outputs                   | 1000                          | The engine's static analysis finds the position of every variable from the start of the text: 1000 variables at the end of a 64 KiB template take 90 ms to analyse, 13,107 take 574 ms |
+| Time to render                              | 200 ms                        | Rendering is synchronous. The heaviest renders measured take 3 to 10 ms: a loop over 2000 items writing 114,000 characters takes 9 ms                                                  |
+| Memory that filters and ranges may charge   | 5,000,000 characters or items | About nineteen passes of a filter over the largest input an execution takes (256 KiB)                                                                                                  |
+| Rendered instructions, and rendered message | 200,000 characters each       | Checked as the output is written, so a render stops as soon as it grows past it                                                                                                        |
+
+Names are counted in the text inside `{{ }}` and `{% %}`: every variable, property, filter and keyword. A template over the first two limits is rejected when it is parsed. The engine reads tags and parentheses recursively, so a template that nests them more deeply than it can read (about 2000 levels of tags) is rejected with `The tags or parentheses of the template nest too deeply to be read`, never with the engine's own message. A render that hits one of the last three stops the execution with `invalid_input`, because it is the input that makes the render grow.
+
+## Creating and executing a spec
+
+The spec operations of [`@beonauto/specs`](../../../packages/specs) store and run inference specs: `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec` and `get_execution`, under `/v1/orgs/{org}/brains/{brain}`, with `inference` as the primitive. Give the server a key for the provider first; it reads the model settings when it starts:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+pnpm dev
+```
+
+With the document of [The spec document format](#the-spec-document-format) saved as `account-summary.md`, create a brain and the spec. `jq` turns the document into a JSON string:
+
+```bash
+curl --request POST http://localhost:8080/v1/orgs/acme/brains \
+  --header 'content-type: application/json' \
+  --data '{"brain":"sales","name":"Sales"}'
+jq --null-input --rawfile source account-summary.md '{name: "account-summary", source: $source}' |
+  curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference \
+    --header 'content-type: application/json' --data @-
+```
+
+`create_spec` answers `201` with the spec: its `version` 1, the `description`, the `input_schema`, any `warnings`, and the document as `source`. A document with problems gets `422` with every problem under `/source`. Read it back, and list the specs of the brain:
+
+```bash
+curl http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference/account-summary
+curl http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference
+```
+
+Execute it. The optional `execution_id` names the execution, so a call can be retried safely:
+
+```bash
+curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference/account-summary/execute \
+  --header 'content-type: application/json' \
+  --data '{"input":{"account":"Globex"},"execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"}'
+```
+
+```json
+{
+  "execution_id": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+  "primitive": "inference",
+  "name": "account-summary",
+  "spec_version": 1,
+  "status": "succeeded",
+  "output": "Globex renewed for two years and expanded to three regions this quarter.",
+  "started_at": "2026-10-01T09:30:00.000Z",
+  "started_by": "local",
+  "finished_at": "2026-10-01T09:30:02.412Z"
+}
+```
+
+`get_execution` reads it back with the [record](#what-an-execution-records):
+
+```bash
+curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
+```
+
+An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a brain take its id as `brain`: the tools that name a primitive carry this primitive's description of the document format, and a rejection comes back as `isError` with the same problem document. A retry with the same `execution_id`, the same spec and the same input answers the recorded execution and calls no model. `update_spec` (`PUT …/specs/inference/account-summary` with a new `source`) makes version 2, and `retire_spec` (`POST …/retire`) retires the spec for good. The [specs README](../../../packages/specs/README.md) has the rules of each operation.
+
+`scripts/try-inference.sh` at the root of the repository does all of this against a server that is already running, with a small spec of its own, and prints the execution and its record. It starts nothing, and needs `curl` and `jq`:
+
+```bash
+scripts/try-inference.sh http://localhost:8080 anthropic/claude-sonnet-4-5
+```
+
+It works in org `local`, or `AUTO_BRAIN_ORG`, creates a brain named `try-<seconds>`, and sends `AUTO_BRAIN_KEY` as the API key when it is set. CI never runs it.
+
+## An example with a JSON answer
+
+```markdown
+---
+description: Checks an expense against the travel policy
+model: openai/gpt-5
+config:
+  max_output_tokens: 300
+input:
+  schema:
+    type: object
+    properties:
+      expense: { type: string }
+      amount: { type: number }
+    required: [expense, amount]
+    additionalProperties: false
+output:
+  format: json
+  schema:
+    type: object
+    properties:
+      approve: { type: boolean }
+      reason: { type: string }
+    required: [approve, reason]
+    additionalProperties: false
+---
+
+{% system %}You check expenses against the travel policy: meals up to $80 a person, no alcohol.{% endsystem %}
+Expense: {{ input.expense }}, {{ input.amount | money }}.
+```
+
+Executed with `{"input":{"expense":"Dinner for two with a client","amount":142.5}}`, it answers with the JSON value, validated against the schema:
+
+```json
+{
+  "status": "succeeded",
+  "output": { "approve": true, "reason": "Two meals at $71.25 each are within the $80 limit." }
+}
+```
+
+## When an execution is rejected
+
+The spec operations answer every rejection as a problem document, and record it on the execution. A call with the same `execution_id` runs the spec again after `unavailable` or `conflict`, and answers the same `invalid_input` again.
+
+| What happened                                                                                        | Rejection                                                                                                                                                                        | HTTP |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| The input is not a JSON object, or does not match the input schema                                   | `invalid_input`, with the issues under `/input`                                                                                                                                  | 422  |
+| The template reads a field the input does not have, outside a condition                              | `invalid_input` at `/input/<field>`, naming the field and the line                                                                                                               | 422  |
+| A filter rejects a value of the input, a render limit stops the render, or the message renders empty | `invalid_input`, with the line                                                                                                                                                   | 422  |
+| The model refuses the content under its policy                                                       | `invalid_input` at `/input`                                                                                                                                                      | 422  |
+| The provider rejects the spec: a model it does not have, a schema or a setting it cannot accept      | `conflict`, naming the provider, the HTTP status and what it means; the provider's own words only where [Provider messages](../self-host/models.md#provider-messages) allow them | 409  |
+| The spec sets a provider option its gateway does not allow                                           | `conflict`, naming the option; the gateway is not called                                                                                                                         | 409  |
+| A JSON answer is cut off at `max_output_tokens`                                                      | `conflict`, saying to raise `config.max_output_tokens`                                                                                                                           | 409  |
+| The answer leaves no room in the 1 MiB an execution records                                          | `conflict`, saying to lower `config.max_output_tokens`                                                                                                                           | 409  |
+| The spec names a model outside `allowed_models`                                                      | `unavailable` of the kind `model_not_offered` because `model_not_allowed`; nothing is sent                                                                                       | 503  |
+| The provider is not configured, or its certificate is not trusted                                    | `unavailable`, naming the provider, the configured providers and the aliases, or saying that the operator must act; never a setting                                              | 503  |
+| The provider rejects the credentials                                                                 | `unavailable`, with the HTTP status                                                                                                                                              | 503  |
+| The provider limits the rate of requests                                                             | `unavailable`, saying how many seconds to wait when it said                                                                                                                      | 503  |
+| The provider cannot be reached or cannot serve now, or does not answer in time                       | `unavailable`, saying to try again later                                                                                                                                         | 503  |
+| A JSON answer does not match the schema                                                              | `unavailable`, with the first issues, saying to try again                                                                                                                        | 503  |
+| The caller goes away before the answer                                                               | the execution is interrupted and stays `started`                                                                                                                                 | 499  |
+
+A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "length"` in the record. A call may take 60 seconds plus 25 ms for every token of `max_output_tokens`: 85.6 seconds for the default 1024, and that covers the up to two retries of a failure that may pass (see [Retries](../self-host/models.md#retries)). The spec operations add their own rejections: `not_found` for a spec the brain does not have, and `conflict` for a retired spec or one whose document no longer parses.
+
+## What an execution records
+
+`get_execution` shows the record of a succeeded execution:
+
+| Field                                | What it holds                                                                                                         |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `model`                              | The model as `requested`, as `resolved` through the aliases, and as the provider `answered`                           |
+| `settings`                           | The settings sent, with the default `max_output_tokens` filled in                                                     |
+| `output_format`                      | `text` or `json`                                                                                                      |
+| `finish_reason`, `raw_finish_reason` | Why the answer ended, and the provider's own word for it                                                              |
+| `usage`                              | Input tokens (uncached, cache read, cache write), output tokens (text, reasoning) and the total; `null` where unknown |
+| `response_id`                        | The provider's id of the response                                                                                     |
+| `warnings`                           | What the provider said it ignored or changed, at most 20                                                              |
+| `duration_ms`                        | How long the call took                                                                                                |
+| `prompt`                             | The rendered `instructions` and `message`, and `truncated`                                                            |
+
+The output and the record take at most 1 MiB together, the limit of the spec operations. When the prompt does not fit beside the answer, the record keeps the start of the instructions and of the message and sets `truncated: true`. The record holds no credential, and not the provider options, which the spec already holds.
