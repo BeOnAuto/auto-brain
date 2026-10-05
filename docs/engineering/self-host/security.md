@@ -2,7 +2,7 @@
 
 ## API keys
 
-Every path except `/health` needs an API key, sent as `Authorization: Bearer <key>`. Each key belongs to one org and carries its permissions and the brains it may access. The key command creates one:
+Every path needs an API key, sent as `Authorization: Bearer <key>`, except `/health` and [the page the server shows a browser at `/`](#the-page-at-the-root). Each key belongs to one org and carries its permissions and the brains it may access. The key command creates one:
 
 ```bash
 docker run --rm --log-driver none beonauto/auto-brain:latest node packages/identity/src/key-command.ts --org <org>
@@ -12,7 +12,7 @@ Options are `--id`, `--permissions` (comma-separated, from `org:read`, `org:writ
 
 Following [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750), a request without an `Authorization` header gets `401` with `WWW-Authenticate: Bearer`, a key that is not valid gets `401` with `error="invalid_token"`, an `Authorization` header that is not exactly one `Bearer <key>` gets `400` with `error="invalid_request"`, and a key that lacks the permission, brain or org a call needs gets `403` with `error="insufficient_scope"`.
 
-Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path except `/health` with `401`, on any address, and warns at start-up that no request can authenticate.
+Without `API_KEYS`, or with `API_KEYS=[]`, and without local mode, the server rejects every path except those two with `401`, on any address, and warns at start-up that no request can authenticate.
 
 ## Local mode
 
@@ -24,4 +24,12 @@ Local mode is for development on your own machine. It is on only when `LOCAL_MOD
 
 ## Calling from a browser
 
-A page may call the API only from the console, `https://console.on.auto`, or from an origin listed in `ALLOWED_ORIGINS`; a request with any other `Origin` header gets `403`. The console is always allowed, so the page a server shows at `/` can open the console on that server; in local mode this means a script served from `https://console.on.auto` can act as the local developer. For an allowed origin the server answers CORS: a preflight (`OPTIONS` with `Access-Control-Request-Method`) gets `204` before any key is checked, allowing `GET`, `HEAD`, `POST` and `PUT` with the `authorization` and `content-type` headers, and every response carries `Access-Control-Allow-Origin` with that origin, `Vary: Origin`, and `x-request-id` among the headers the page may read. There is no wildcard and no credentials mode: the page sends its API key in the `Authorization` header.
+A page may call the API only from the console, `https://console.on.auto`, or from an origin listed in `ALLOWED_ORIGINS`; a request with any other `Origin` header gets `403`. The console is always allowed, so [the page a server shows at `/`](#the-page-at-the-root) can open the console on that server. Being allowed lets a page reach the API, not act on it: where keys are enforced, the console still has to send one. In local mode no key is needed, so a script served from `https://console.on.auto` can act as the local developer. For an allowed origin the server answers CORS: a preflight (`OPTIONS` with `Access-Control-Request-Method`) gets `204` before any key is checked, allowing `GET`, `HEAD`, `POST` and `PUT` with the `authorization` and `content-type` headers, and every response carries `Access-Control-Allow-Origin` with that origin, `Vary: Origin`, and `x-request-id` among the headers the page may read. There is no wildcard and no credentials mode: the page sends its API key in the `Authorization` header.
+
+## The page at the root
+
+A browser that opens the server's address gets a page saying the server is running, with a button that opens the console on it. The server answers with the page only to a `GET /` that accepts `text/html`, and it needs no key, in local mode or not. Any other request to `/` is treated like a request to any other path.
+
+The page tells a visitor only that an auto-brain server answers at that address; it shows nothing the server holds. It runs no script and asks no other server for anything: its styles, its icon and its typefaces are inside it, and its `Content-Security-Policy` allows nothing else. It may not be shown in a frame, and it is never cached.
+
+The button goes to `https://console.on.auto/?server=<this server's origin>`, and the console then calls this server from the browser, which is why its origin is always allowed. The console takes a server from such a link only when the address is on the visitor's own machine: `localhost`, `127.0.0.1` or `::1`.
