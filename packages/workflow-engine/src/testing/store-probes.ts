@@ -2,7 +2,7 @@ import type { Settlement } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { DispatchWatermark, RunContext } from '../dispatch/dispatch-watermark.ts';
-import { newRun } from '../machine/run-state.ts';
+import { newRun, type RunState } from '../machine/run-state.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
 import type { RunStore, StoredRun } from '../run-log/run-store.ts';
 import { snapshotOf } from '../run-log/snapshot.ts';
@@ -23,6 +23,7 @@ export interface RunStoreSubject {
 
 export interface WatermarkSubject {
   readonly watermark: DispatchWatermark;
+  readonly runStore: RunStore;
   readonly executionId: string;
 }
 
@@ -53,31 +54,50 @@ export const recordStoreProbes: readonly Probe<RecordStoreSubject>[] = [
       Effect.map(settled(subject, `${subject.run.executionId}-unknown`, succeeded), (receipt) => [receipt]),
   },
   {
-    title: 'gives the runs due before a time or behind, by the latest note of each, and no run that settled',
-    expected: ['due at 2000: 1', 'due at 500: 0', 'after an older note: 1', 'behind: 1', 'settled: 0'],
+    title: 'gives the runs due before a time, by the latest note of each, and no run that settled',
+    expected: ['due at 2000: 1', 'due at 500: 0', 'after an older note: 1', 'settled: 0'],
     run: (subject) =>
       Effect.gen(function* () {
         const { executionId } = subject.run;
         yield* subject.know(executionId);
-        yield* subject.recordStore.noteDue({ executionId, version: 2, nextDueAt: 1000, behind: false }, subject.run);
+        yield* subject.recordStore.noteDue({ executionId, version: 2, nextDueAt: 1000 }, subject.run);
         const dueLater = yield* subject.recordStore.dueRuns(2000);
         const dueEarlier = yield* subject.recordStore.dueRuns(500);
-        yield* subject.recordStore.noteDue({ executionId, version: 1, nextDueAt: null, behind: false }, subject.run);
+        yield* subject.recordStore.noteDue({ executionId, version: 1, nextDueAt: null }, subject.run);
         const afterOlder = yield* subject.recordStore.dueRuns(2000);
-        yield* subject.recordStore.noteDue({ executionId, version: 3, nextDueAt: null, behind: true }, subject.run);
-        const behind = yield* subject.recordStore.dueRuns(0);
         yield* settled(subject, executionId, succeeded);
         const afterSettling = yield* subject.recordStore.dueRuns(2000);
         return [
           `due at 2000: ${dueLater.length}`,
           `due at 500: ${dueEarlier.length}`,
           `after an older note: ${afterOlder.length}`,
-          `behind: ${behind.length}`,
           `settled: ${afterSettling.length}`,
         ];
       }),
   },
 ];
+
+function loadedOf({ snapshot, tail }: StoredRun): string {
+  return `loaded ${snapshot?.snapshot.version ?? 0} + ${tail.length}`;
+}
+
+const firstTwo = exampleStream.slice(0, 2);
+
+const first = exampleStream.slice(0, 1);
+
+function appendedTo(
+  runStore: RunStore,
+  executionId: string,
+  events: typeof exampleStream,
+): Effect.Effect<void, unknown> {
+  return Effect.forEach(events, ({ version, event }) => runStore.append(executionId, event, version - 1), {
+    discard: true,
+  });
+}
+
+function stateAt(version: number): RunState {
+  return exampleStream.slice(0, version).reduce((state, { event }) => evolveRun(state, event), newRun);
+}
 
 export const watermarkProbes: readonly Probe<WatermarkSubject>[] = [
   {
@@ -93,15 +113,48 @@ export const watermarkProbes: readonly Probe<WatermarkSubject>[] = [
         return [`${start}`, `${advanced}`, `${kept}`];
       }),
   },
+  {
+    title: 'gives the runs whose watermark is below the version of their stream, no more than it is asked for',
+    expected: [
+      'at 0 of 2: run',
+      'at 1 of 2: run',
+      'at 2 of 2: none',
+      'another run: other',
+      'at 2 of 3: other run',
+      'at most 1: 1',
+    ],
+    run: ({ watermark, runStore, executionId }) =>
+      Effect.gen(function* () {
+        const other = `${executionId}-other`;
+        const named = (behind: readonly string[]): string =>
+          behind.length === 0
+            ? 'none'
+            : behind
+                .map((id) => (id === executionId ? 'run' : 'other'))
+                .toSorted()
+                .join(' ');
+        yield* appendedTo(runStore, executionId, firstTwo);
+        const atStart = yield* watermark.behindRuns(10);
+        yield* watermark.advance(executionId, 1);
+        const atOne = yield* watermark.behindRuns(10);
+        yield* watermark.advance(executionId, 2);
+        const atTwo = yield* watermark.behindRuns(10);
+        yield* appendedTo(runStore, other, first);
+        const withOther = yield* watermark.behindRuns(10);
+        yield* appendedTo(runStore, executionId, exampleStream.slice(2));
+        const bothBehind = yield* watermark.behindRuns(10);
+        const limited = yield* watermark.behindRuns(1);
+        return [
+          `at 0 of 2: ${named(atStart)}`,
+          `at 1 of 2: ${named(atOne)}`,
+          `at 2 of 2: ${named(atTwo)}`,
+          `another run: ${named(withOther)}`,
+          `at 2 of 3: ${named(bothBehind)}`,
+          `at most 1: ${limited.length}`,
+        ];
+      }),
+  },
 ];
-
-function loadedOf({ snapshot, tail }: StoredRun): string {
-  return `loaded ${snapshot?.snapshot.version ?? 0} + ${tail.length}`;
-}
-
-const firstTwo = exampleStream.slice(0, 2);
-
-const first = exampleStream.slice(0, 1);
 
 export const runStoreProbes: readonly Probe<RunStoreSubject>[] = [
   {
@@ -117,8 +170,7 @@ export const runStoreProbes: readonly Probe<RunStoreSubject>[] = [
         );
         const loaded = yield* runStore.load(executionId);
         const after = yield* runStore.eventsAfter(executionId, 1);
-        const atFirst = first.reduce((state, { event }) => evolveRun(state, event), newRun);
-        yield* runStore.saveSnapshot({ ...snapshotOf(atFirst, 1), executionId });
+        yield* runStore.saveSnapshot({ ...snapshotOf(stateAt(1), 1), executionId });
         const fromSnapshot = yield* runStore.load(executionId);
         return [
           ...appended,
@@ -127,6 +179,19 @@ export const runStoreProbes: readonly Probe<RunStoreSubject>[] = [
           `after 1: ${after.map(({ version }) => version).join(' ')}`,
           loadedOf(fromSnapshot),
         ];
+      }),
+  },
+  {
+    title: 'keeps the newest snapshot it was given, so an older one saved after it is not kept',
+    expected: ['loaded 2 + 0', 'loaded 2 + 0'],
+    run: ({ runStore, executionId }) =>
+      Effect.gen(function* () {
+        yield* appendedTo(runStore, executionId, firstTwo);
+        yield* runStore.saveSnapshot({ ...snapshotOf(stateAt(2), 2), executionId });
+        const fromNewer = yield* runStore.load(executionId);
+        yield* runStore.saveSnapshot({ ...snapshotOf(stateAt(1), 1), executionId });
+        const afterOlder = yield* runStore.load(executionId);
+        return [loadedOf(fromNewer), loadedOf(afterOlder)];
       }),
   },
 ];

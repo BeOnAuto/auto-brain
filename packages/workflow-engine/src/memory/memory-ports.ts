@@ -22,9 +22,10 @@ export interface MemoryPorts extends EnginePorts {
 
 export function memoryPorts(clock: VirtualClock, submit: Submit, responder: Responder): MemoryPorts {
   const faults = faultsOf(clock);
+  const runStore = memoryRunStore();
   return {
-    runStore: memoryRunStore(),
-    watermark: memoryWatermark(),
+    runStore,
+    watermark: memoryWatermark(runStore),
     timers: memoryTimers(clock, submit, faults),
     executor: memoryExecutor(clock, submit, responder, faults),
     recordStore: memoryRecordStore(faults),

@@ -5,6 +5,7 @@ import { executionId } from '../testing/runs.ts';
 import { recordStoreProbes, watermarkProbes, type RecordStoreSubject } from '../testing/store-probes.ts';
 import { memoryRecordStore, memoryWatermark } from './memory-records.ts';
 import { faultsOf } from './memory-timers.ts';
+import { memoryRunStore } from './run-store.ts';
 import { virtualClock } from './virtual-clock.ts';
 
 function recordStoreSubject(): RecordStoreSubject {
@@ -27,6 +28,9 @@ describe('the memory record store meets the contract every record store meets', 
 
 describe('the memory watermark meets the contract every watermark meets', () => {
   it.each(watermarkProbes)('$title', async (probe) => {
-    expect(await Effect.runPromise(probe.run({ watermark: memoryWatermark(), executionId }))).toEqual(probe.expected);
+    const runStore = memoryRunStore();
+    const subject = { watermark: memoryWatermark(runStore), runStore, executionId };
+
+    expect(await Effect.runPromise(probe.run(subject))).toEqual(probe.expected);
   });
 });

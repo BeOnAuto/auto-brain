@@ -13,7 +13,7 @@ const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 const pausing = workflow('do:\n  - pause: { wait: PT1M }');
 
 describe('a run whose note of its due time failed', () => {
-  it('is found by a sweep an hour later, though its alarm was lost, and runs to its end', () => {
+  it('is found by a sweep an hour later, though nothing woke it and its alarm was lost, and runs to its end', () => {
     const driver = memoryDriver();
     driver.ports.faults.failNext('note_due');
     const started = driver.start({ executionId, document: pausing });
@@ -42,17 +42,17 @@ describe('a run whose note of its due time failed', () => {
     expect(swept).toEqual({ runs: 1, timersArmedAgain: 0 });
   });
 
-  it('after a port failed too, stays behind until a wake dispatches it again', () => {
+  it('is found by a sweep after a port failed too, though nothing woke it, and runs to its end', () => {
     const driver = memoryDriver();
     driver.ports.faults.failNext('arm_timer');
     driver.ports.faults.failNext('note_due');
     driver.start({ executionId, document: pausing });
+    const stuck = driver.runUntilEnded(executionId);
 
-    const swept = Effect.runSync(driver.engine.sweep(driver.clock.now() + 3_600_000));
-    const woken = Effect.runSync(driver.engine.wake(executionId));
+    const swept = Effect.runSync(driver.engine.sweep(driver.clock.now()));
 
-    expect(swept).toEqual({ runs: 0, timersArmedAgain: 0 });
-    expect(woken).toEqual({ version: 1, dispatchedThrough: 1 });
+    expect(stuck.status).toBe('running');
+    expect(swept).toEqual({ runs: 1, timersArmedAgain: 0 });
     expect(driver.runUntilEnded(executionId).outcome).toEqual({ kind: 'completed', output: {} });
   });
 });
@@ -69,6 +69,7 @@ describe('a wake', () => {
       () => 'never',
     );
     const watermark = {
+      ...ports.watermark,
       read: (id: string) => Effect.sync(() => asked.push(`read ${id}`)).pipe(Effect.as(0)),
       advance: (id: string, through: number) =>
         Effect.sync(() => {

@@ -8,6 +8,7 @@ import { snapshotChunks, snapshotFromChunks } from '../run-log/snapshot.ts';
 export interface MemoryRunStore extends RunStore {
   readonly events: (executionId: string) => readonly PositionedEvent[];
   readonly snapshotOf: (executionId: string) => StoredSnapshot | null;
+  readonly versions: () => ReadonlyMap<string, number>;
 }
 
 const EventTextSchema = Schema.fromJsonString(Schema.toCodecJson(RunEventSchema));
@@ -50,9 +51,19 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
       Effect.sync(() => {
         const chunks = snapshotChunks(snapshot);
         const bytes = chunks.reduce((sum, chunk) => sum + utf8.encode(chunk).byteLength, 0);
-        snapshots.set(snapshot.executionId, { snapshot: Result.getOrThrow(snapshotFromChunks(chunks)), bytes });
+        const kept = snapshotOf(snapshot.executionId);
+        if (kept === null || kept.snapshot.version < snapshot.version) {
+          snapshots.set(snapshot.executionId, { snapshot: Result.getOrThrow(snapshotFromChunks(chunks)), bytes });
+        }
       }),
     events: (executionId) => eventsOf(executionId).slice(),
     snapshotOf,
+    versions: () =>
+      new Map(
+        [...streams].map(([executionId, stream]: readonly [string, readonly PositionedEvent[]]) => [
+          executionId,
+          stream.length,
+        ]),
+      ),
   };
 }

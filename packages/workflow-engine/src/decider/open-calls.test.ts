@@ -51,6 +51,24 @@ do:
           - slow: { call: notify, with: { to: ada } }
           - quick: { wait: PT5S }
 `),
+  'a call its timeout cancels, before a wait': workflow(`
+do:
+  - guarded:
+      try:
+        - ask: { call: notify, with: { to: ada }, timeout: { after: PT10S } }
+      catch: {}
+  - rest: { wait: PT1H }
+`),
+  'a call that loses a race, before a wait': workflow(`
+do:
+  - race:
+      fork:
+        compete: true
+        branches:
+          - slow: { call: notify, with: { to: ada } }
+          - quick: { wait: PT5S }
+  - rest: { wait: PT1H }
+`),
 };
 
 const answers: Readonly<Record<string, () => CallAnswer>> = {

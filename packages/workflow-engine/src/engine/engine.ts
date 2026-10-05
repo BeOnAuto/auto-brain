@@ -8,6 +8,16 @@ import { runLoopOf, submissionOf } from './run-loop.ts';
 import { armedTimersOf, snapshotIfDue } from './run-upkeep.ts';
 import type { EnginePorts, Wake, WorkflowEngine } from './workflow-engine.ts';
 
+const mostBehindRunsInOneSweep = 1024;
+
+function dueRunsOf(ports: EnginePorts, before: number): Effect.Effect<readonly string[]> {
+  return Effect.zipWith(
+    ports.recordStore.dueRuns(before),
+    ports.watermark.behindRuns(mostBehindRunsInOneSweep),
+    (dueByTime, behind) => [...new Set([...dueByTime, ...behind])],
+  );
+}
+
 export function workflowEngineOf(ports: EnginePorts, options: MachineOptions): WorkflowEngine {
   const loop = runLoopOf(ports.runStore, workflowMachine(options));
   const loaded = (executionId: string): Effect.Effect<ReturnType<typeof loadedRunOf>> =>
@@ -47,7 +57,7 @@ export function workflowEngineOf(ports: EnginePorts, options: MachineOptions): W
     wake,
     sweep: (before) =>
       Effect.gen(function* () {
-        const due = yield* ports.recordStore.dueRuns(before);
+        const due = yield* dueRunsOf(ports, before);
         const armedAgain = yield* Effect.forEach(due, (executionId) => swept(executionId));
         return { runs: due.length, timersArmedAgain: armedAgain.reduce((sum, count) => sum + count, 0) };
       }),

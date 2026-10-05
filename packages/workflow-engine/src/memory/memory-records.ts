@@ -5,6 +5,7 @@ import { DispatchFailed, type DispatchWatermark } from '../dispatch/dispatch-wat
 import { sameJson } from '../machine/same-json.ts';
 import type { RecordStore, RunDue, RunReporter, SettleReceipt, UnsettledReport } from '../settlement/record-store.ts';
 import type { Faults } from './memory-timers.ts';
+import type { MemoryRunStore } from './run-store.ts';
 
 export interface MemoryRecordStore extends RecordStore {
   readonly known: (executionId: string) => void;
@@ -50,7 +51,7 @@ export function memoryRecordStore(faults: Faults): MemoryRecordStore {
       Effect.sync(() =>
         [...dues.values()]
           .filter((due) => !settled.has(due.executionId))
-          .filter(({ nextDueAt, behind }) => behind || (nextDueAt !== null && nextDueAt < before))
+          .filter(({ nextDueAt }) => nextDueAt !== null && nextDueAt < before)
           .map(({ executionId }) => executionId),
       ),
     known: (executionId) => {
@@ -71,13 +72,21 @@ export function memoryReporter(): MemoryReporter {
   };
 }
 
-export function memoryWatermark(): DispatchWatermark {
+export function memoryWatermark(runStore: Pick<MemoryRunStore, 'versions'>): DispatchWatermark {
   const marks = new Map<string, number>();
+  const markOf = (executionId: string): number => marks.get(executionId) ?? 0;
   return {
-    read: (executionId) => Effect.sync(() => marks.get(executionId) ?? 0),
+    read: (executionId) => Effect.sync(() => markOf(executionId)),
     advance: (executionId, through) =>
       Effect.sync(() => {
-        marks.set(executionId, Math.max(marks.get(executionId) ?? 0, through));
+        marks.set(executionId, Math.max(markOf(executionId), through));
       }),
+    behindRuns: (limit) =>
+      Effect.sync(() =>
+        [...runStore.versions()]
+          .filter(([executionId, version]: readonly [string, number]) => markOf(executionId) < version)
+          .slice(0, limit)
+          .map(([executionId]: readonly [string, number]) => executionId),
+      ),
   };
 }
