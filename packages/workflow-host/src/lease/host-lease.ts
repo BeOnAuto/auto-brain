@@ -6,7 +6,7 @@ import type { HostClock } from '../loop/host-clock.ts';
 
 const sweepsBeforeALeaseLapses = 3;
 
-export const shortestLeaseMs = 10_000;
+export const shortestLeaseMs = 3000;
 
 const hostLeaseName = 'host';
 

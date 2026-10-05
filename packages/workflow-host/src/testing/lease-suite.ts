@@ -40,7 +40,7 @@ export function leaseSuite(settings: SettingsOf): void {
     await setTimeout(3 * sweepEveryMs);
     const performedWhileBothRan = second.calls().length;
     await first.killed();
-    const settled = await eventually(second.settlements, (settlements) => settlements.size > 0, 4000);
+    const settled = await eventually(second.settlements, (settlements) => settlements.size > 0, 2000);
 
     expect(refused).toBeInstanceOf(HostElsewhere);
     expect(performedWhileBothRan).toBe(0);

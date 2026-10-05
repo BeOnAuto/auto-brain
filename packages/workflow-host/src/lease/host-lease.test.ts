@@ -28,7 +28,7 @@ function withSharedClock(database: HostDatabase): SharedClock {
 }
 
 describe('the claim of a host on the workflows of its database', () => {
-  it('lasts three sweeps, and never less than ten seconds', () => {
+  it('lasts three sweeps, and never less than three seconds', () => {
     expect([leaseMsFor(10), leaseMsFor(1000), leaseMsFor(5000)]).toEqual([shortestLeaseMs, shortestLeaseMs, 15_000]);
   });
 
