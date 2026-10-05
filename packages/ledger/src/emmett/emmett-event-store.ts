@@ -1,7 +1,7 @@
 import type { Event, EventStore as EmmettEventStore } from '@event-driven-io/emmett';
 import type { Schema } from 'effect';
 
-import type { EventStore } from '../event-store.ts';
+import type { StreamStore } from '../event-store.ts';
 
 export interface EmmettStore extends Pick<EmmettEventStore, 'readStream' | 'appendToStream'> {
   readonly schema: { readonly migrate: () => Promise<unknown> };
@@ -26,7 +26,7 @@ export const dataAsWritten: StoredData<Schema.JsonObject> = {
 export function emmettEventStore<Stored extends Record<string, unknown>>(
   store: EmmettStore,
   { data, mostEventsInOneAppend }: EmmettEventStoreOptions<Stored>,
-): EventStore {
+): StreamStore {
   return {
     mostEventsInOneAppend,
     read: async (stream, after = 0) => {

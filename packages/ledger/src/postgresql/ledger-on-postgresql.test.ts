@@ -4,9 +4,10 @@ import { Effect, Layer, Logger } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
+import { happenings } from '../testing/happenings.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
-import { openLedgerWith } from '../testing/open-ledger.ts';
+import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
@@ -34,6 +35,23 @@ async function aDatabase(): Promise<string> {
   return database.href;
 }
 
+function pause(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+async function untilReadable(database: string): Promise<void> {
+  const hidden = await queried(
+    database,
+    'SELECT 1 FROM emt_messages WHERE transaction_id >= pg_snapshot_xmin(pg_current_snapshot()) LIMIT 1',
+  );
+  if (hidden.length > 0) {
+    await pause(20);
+    await untilReadable(database);
+  }
+}
+
 const lostConnections: Readonly<Error>[] = [];
 
 const onPostgreSQL: LedgerEntry = {
@@ -41,6 +59,7 @@ const onPostgreSQL: LedgerEntry = {
   afterClosing: 'Cannot use a pool after calling end on the pool',
   closedWhileWriting: 'Cannot use a pool after calling end on the pool',
   aDatabase,
+  untilReadable,
   ledgerOn: (connectionString) => postgresqlLedgerLayer({ connectionString }),
   storeOn: (connectionString) =>
     postgresqlEventStore({
@@ -142,6 +161,135 @@ describe.skipIf(skipped)(`A ledger whose PostgreSQL database ends its connection
         stream_position: 1,
         message_type: 'counted',
         message_data: { json: '{"type":"counted","by":2}' },
+      },
+    ]);
+  });
+});
+
+const alpha = { org: 'acme', brain: 'alpha' };
+
+async function anAppendLeftOpen(database: string): Promise<Client> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  onTestFinished(() => client.end());
+  await client.query('BEGIN');
+  await client.query(
+    `SELECT success FROM emt_append_to_stream(
+      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY['{}'::jsonb], ARRAY['1'], ARRAY['noted'], ARRAY['E'],
+      'brain/acme/alpha/late', 'brain', 0, 'emt:default')`,
+    [{ json: JSON.stringify({ type: 'noted', detail: 'late' }) }],
+  );
+  return client;
+}
+
+function readingAlpha(ledger: OpenLedger['ledger'], order: 'asc' | 'desc', cursor?: string) {
+  return Effect.runPromise(
+    ledger.readRecorded(
+      alpha,
+      { kind: 'everything' },
+      { order, limit: 10, ...(cursor === undefined ? {} : { cursor }) },
+    ),
+  );
+}
+
+function detailsOf({ records }: { readonly records: readonly { readonly data: unknown }[] }): readonly unknown[] {
+  return records.map(({ data }) =>
+    typeof data === 'object' && data !== null && 'detail' in data ? data.detail : null,
+  );
+}
+
+describe.skipIf(skipped)(`A read on PostgreSQL while an earlier append is still open${notice}`, () => {
+  it('stays behind it, and delivers its messages once it commits, oldest or newest first', async () => {
+    const database = await aDatabase();
+    const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    onTestFinished(dispose);
+    const note = (detail: string) =>
+      Effect.runPromise(ledger.execute('brain/acme/alpha/notes', happenings, [{ type: 'noted', detail }]));
+    await note('before');
+    await untilReadable(database);
+    const open = await anAppendLeftOpen(database);
+    await note('after');
+
+    const [oldestWhileOpen, newestWhileOpen] = await Promise.all([
+      readingAlpha(ledger, 'asc'),
+      readingAlpha(ledger, 'desc'),
+    ]);
+    await open.query('COMMIT');
+    await untilReadable(database);
+    const [rest, newestAfterCommit] = await Promise.all([
+      readingAlpha(ledger, 'asc', String(oldestWhileOpen.records.at(-1)?.id)),
+      readingAlpha(ledger, 'desc'),
+    ]);
+
+    expect([oldestWhileOpen, newestWhileOpen, rest, newestAfterCommit].map((page) => detailsOf(page))).toEqual([
+      ['before'],
+      ['before'],
+      ['late', 'after'],
+      ['after', 'late', 'before'],
+    ]);
+  });
+});
+
+async function aWriteLeftOpenElsewhere(): Promise<Client> {
+  const client = new Client({ connectionString: server });
+  await client.connect();
+  onTestFinished(() => client.end());
+  await client.query('BEGIN');
+  await client.query('SELECT pg_current_xact_id()');
+  return client;
+}
+
+describe.skipIf(skipped)(
+  `A read on PostgreSQL while a write is open in another database of the server${notice}`,
+  () => {
+    it('stays behind it too, since a transaction id belongs to the whole server', async () => {
+      const database = await aDatabase();
+      const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+      onTestFinished(dispose);
+      await Effect.runPromise(
+        ledger.execute('brain/acme/alpha/notes', happenings, [{ type: 'noted', detail: 'before' }]),
+      );
+      await untilReadable(database);
+      const elsewhere = await aWriteLeftOpenElsewhere();
+      await Effect.runPromise(
+        ledger.execute('brain/acme/alpha/notes', happenings, [{ type: 'noted', detail: 'after' }]),
+      );
+
+      const whileOpen = await readingAlpha(ledger, 'asc');
+      await elsewhere.query('COMMIT');
+      await untilReadable(database);
+      const afterCommit = await readingAlpha(ledger, 'asc');
+
+      expect([detailsOf(whileOpen), detailsOf(afterCommit)]).toEqual([['before'], ['before', 'after']]);
+    });
+  },
+);
+
+describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, () => {
+  it('are created when the ledger opens, once however often it opens', async () => {
+    const database = await aDatabase();
+    const first = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    await first.dispose();
+    const second = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    await second.dispose();
+
+    expect(
+      await queried(
+        database,
+        "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'emt_messages' AND indexname LIKE 'ledger%' ORDER BY indexname",
+      ),
+    ).toEqual([
+      {
+        indexname: 'ledger_first_messages_by_kind',
+        indexdef: `CREATE INDEX ledger_first_messages_by_kind ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){4}'::text), transaction_id, global_position) WHERE (stream_position = 1)`,
+      },
+      {
+        indexname: 'ledger_messages_by_brain',
+        indexdef: `CREATE INDEX ledger_messages_by_brain ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), transaction_id, global_position)`,
+      },
+      {
+        indexname: 'ledger_messages_by_brain_and_time',
+        indexdef: `CREATE INDEX ledger_messages_by_brain_and_time ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), created, transaction_id, global_position)`,
       },
     ]);
   });

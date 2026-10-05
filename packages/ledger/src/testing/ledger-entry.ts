@@ -12,6 +12,7 @@ export interface LedgerEntry {
   readonly aDatabase: () => Promise<string>;
   readonly ledgerOn: (database: string) => Layer.Layer<Ledger>;
   readonly storeOn: (database: string) => EventStore;
+  readonly untilReadable: (database: string) => Promise<void>;
 }
 
 export async function aLedger(entry: LedgerEntry, database?: string): Promise<Ledger['Service']> {
