@@ -1,0 +1,76 @@
+[
+  {
+    "text": "Concepts",
+    "items": [
+      {
+        "text": "Brains and methods",
+        "link": "/concepts/brains"
+      },
+      {
+        "text": "Functions",
+        "link": "/concepts/functions"
+      },
+      {
+        "text": "Workflows and runs",
+        "link": "/concepts/workflows"
+      },
+      {
+        "text": "History and Dream",
+        "link": "/concepts/history-and-dream"
+      }
+    ]
+  },
+  {
+    "text": "Get started",
+    "items": [
+      {
+        "text": "Build your first brain",
+        "link": "/tutorials/first-brain"
+      }
+    ]
+  },
+  {
+    "text": "Guides",
+    "items": [
+      {
+        "text": "Use Auto with Apollo",
+        "link": "/integrations/apollo"
+      }
+    ]
+  },
+  {
+    "text": "Contributing",
+    "items": [
+      {
+        "text": "Documentation contributions",
+        "link": "/contributing/documentation"
+      }
+    ]
+  },
+  {
+    "text": "Self-hosting",
+    "items": [
+      {
+        "text": "Deployment and support",
+        "link": "/self-host"
+      }
+    ]
+  },
+  {
+    "text": "Reference",
+    "items": [
+      {
+        "text": "MCP reference",
+        "link": "/reference/mcp"
+      },
+      {
+        "text": "Reason function format",
+        "link": "/reference/reasoning-format"
+      },
+      {
+        "text": "HTTP API",
+        "link": "/reference/http"
+      }
+    ]
+  }
+]

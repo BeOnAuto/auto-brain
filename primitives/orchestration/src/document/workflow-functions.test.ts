@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { workflow } from '../testing/workflows.ts';
-import { workflowPolicy } from './workflow-functions.ts';
+import { workflowFunctions, workflowPolicy } from './workflow-functions.ts';
 
 function rejectedIn(tasks: string): readonly string[] {
   return workflowPolicy(workflow(`do:\n${tasks}`)).map(({ pointer, detail }) => `${pointer}: ${detail}`);
@@ -30,6 +30,16 @@ describe('the functions a workflow calls', () => {
       'reusable functions are not supported in this version: call execute_spec directly',
       'schedules are not supported in this version: execute the spec to run it',
     ]);
+  });
+});
+
+describe('a call of execute_spec', () => {
+  it('is described by the primitive and the spec it executes, or by its name when they cannot be read', () => {
+    expect([
+      workflowFunctions.describe('execute_spec', { primitive: 'inference', name: 'summarize' }),
+      workflowFunctions.describe('execute_spec', { name: 'summarize' }),
+      workflowFunctions.describe('execute_spec', 'summarize'),
+    ]).toEqual(['the inference spec summarize', 'execute_spec', 'execute_spec']);
   });
 });
 

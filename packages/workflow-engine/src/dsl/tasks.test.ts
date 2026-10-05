@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { kindOf, pointerTo, taskEntries } from './tasks.ts';
+import { entryAt, kindOf, pointerTo, taskEntries } from './tasks.ts';
 
 describe('the tasks of a list', () => {
   it('are named entries with a JSON pointer reference into the document', () => {
@@ -28,5 +28,14 @@ describe('the kind of a task', () => {
   it('extends a JSON pointer with escaped segments', () => {
     expect(pointerTo('/do', 0)).toBe('/do/0');
     expect(pointerTo('', 'a/b~c')).toBe('/a~1b~0c');
+  });
+});
+
+describe('the task at a reference', () => {
+  it('is named by the last segment of its reference, unescaped, and is an empty task where none is', () => {
+    const document = { do: [{ 'a/b': { set: {} } }] };
+
+    expect(entryAt(document, '/do/0/a~1b')).toEqual({ name: 'a/b', task: { set: {} }, reference: '/do/0/a~1b' });
+    expect(entryAt(document, '/do/1/missing')).toEqual({ name: 'missing', task: {}, reference: '/do/1/missing' });
   });
 });

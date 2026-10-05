@@ -1,5 +1,7 @@
-import { millisecondsOf, placeOf, transform } from './evaluation.ts';
+import { millisecondsOf, transform } from '@beonauto/workflow-engine/dsl/evaluation';
+
 import type { Body, Invocation } from './invocation.ts';
+import { placeOf } from './place.ts';
 
 export function setTask(invocation: Invocation): Body {
   const { configuration, input, variables } = invocation;

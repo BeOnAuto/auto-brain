@@ -7,6 +7,7 @@ import { startWorkflow, type WorkflowStart } from '../interpreter/interpreter.ts
 import type { WorkflowEnding } from '../interpreter/settlement.ts';
 import { defaultLongestNestedExecutionMs, defaultMostDuration, type WorkflowRun } from '../interpreter/workflow-run.ts';
 import { fakeHost, type Command, type FakeHost, type FakeHostOptions } from './fake-host.ts';
+import { interpretOnMachine } from './machine-workflows.ts';
 
 type SettleCommand = Extract<Command, { readonly kind: 'settle' }>;
 
@@ -71,7 +72,24 @@ export function callsIn(commands: readonly Command[]): readonly SpecCall[] {
   return commands.flatMap((command) => (command.kind === 'call' ? [command.call] : []));
 }
 
+export const onMachine = process.env['ORCHESTRATION_RUNTIME'] === 'machine';
+
+function speaksTheHost(options: InterpretOptions): boolean {
+  return options.host !== undefined || options.history !== undefined || options.random !== undefined;
+}
+
 export async function interpret(document: JsonObject, options: InterpretOptions = {}): Promise<Interpretation> {
+  if (onMachine && !speaksTheHost(options)) {
+    const run = runOf(document, options.input ?? {});
+    return interpretOnMachine(
+      {
+        ...run,
+        mostDuration: options.mostDuration ?? run.mostDuration,
+        longestNestedExecutionMs: options.longestNestedExecutionMs ?? run.longestNestedExecutionMs,
+      },
+      options,
+    );
+  }
   const fake = fakeHost(options);
   const host = options.host === undefined ? fake.host : options.host(fake);
   const ending = await fake.drive(() => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { interpret, workflow, onMachine } from '../testing/workflows.ts';
 
 describe('tasks a document reached the interpreter with, malformed', () => {
   it('raise a configuration error for a raise of no definition', async () => {
@@ -85,7 +85,7 @@ do:
     expect((await interpret(document)).settlement).toMatchObject({ detail: 'x (at /do/0/reject)' });
   });
 
-  it('draw a jitter from zero, or up to zero, when a bound is left out', async () => {
+  it.skipIf(onMachine)('draw a jitter from zero, or up to zero, when a bound is left out', async () => {
     const document = workflow(`
 do:
   - guarded:

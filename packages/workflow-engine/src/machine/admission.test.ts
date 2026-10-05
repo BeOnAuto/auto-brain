@@ -53,7 +53,7 @@ describe('a stale input', () => {
     expect([
       staleReasonOf(runningState, { ...started, document: reordered }),
       staleReasonOf({ ...runningState, status: 'ended' }, answered(1)),
-      staleReasonOf(runningState, fired(`${executionId}/timers/9`)),
+      staleReasonOf(runningState, fired('9')),
       staleReasonOf(runningState, answered(2)),
       staleReasonOf(runningState, received('event-1')),
       staleReasonOf({ ...runningState, cancelRequested: true }, cancelled),

@@ -11,9 +11,9 @@ export interface Change {
   readonly outputs?: readonly RunOutput[];
 }
 
-const timer = `${executionId}/timers/1`;
+const timer = '1';
 
-const timerPath = `/timers/armed/${timer.replaceAll('/', '~1')}`;
+const timerPath = `/timers/armed/${timer}`;
 
 export function streamOf(changes: readonly Change[]): readonly PositionedEvent[] {
   return changes.reduce((events: readonly PositionedEvent[], { receipt, patch, outputs = [] }: Change, index) => {
@@ -42,7 +42,11 @@ export const exampleStream = streamOf([
   {
     receipt: { kind: 'event_received', key: 'event-1', at: at + 10, eventType: 'com.acme.tick' },
     patch: [
-      { op: 'add', path: timerPath, value: { purpose: 'wait', reference: '/do/0', dueAt: at + 1000 } },
+      {
+        op: 'add',
+        path: timerPath,
+        value: { purpose: 'wait', reference: '/do/0', armedAt: at + 10, dueAt: at + 1000 },
+      },
       { op: 'replace', path: '/timers/next', value: 2 },
       { op: 'replace', path: '/inputs', value: 2 },
       { op: 'replace', path: '/lastInputAt', value: at + 10 },

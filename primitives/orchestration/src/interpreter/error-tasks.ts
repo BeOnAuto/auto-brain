@@ -1,19 +1,18 @@
 import type { DslError } from '@beonauto/workflow-engine';
 import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
+import { field, objectField, textField, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import { RaisedError, errorAsJson } from '@beonauto/workflow-engine/dsl/raised-error';
 import {
-  entriesOf,
-  field,
-  isObject,
-  objectField,
-  textField,
-  type JsonEntry,
-  type JsonObject,
-} from '@beonauto/workflow-engine/dsl/json';
+  attemptDuration,
+  retryDelay,
+  retryPolicyOf,
+  type RetryContext,
+  type RetryState,
+} from '@beonauto/workflow-engine/dsl/retry-policy';
+import { catches, raisedBy } from '@beonauto/workflow-engine/dsl/task-outcomes';
 
-import { evaluateTemplate, holds, placeOf } from './evaluation.ts';
 import { bodyOf, type Body, type Invocation } from './invocation.ts';
-import { RaisedError, errorAsJson, errorFromJson, raised } from './raised-error.ts';
-import { attemptDuration, retryDelay, retryPolicyOf, type RetryContext, type RetryState } from './retry-policy.ts';
+import { placeOf } from './place.ts';
 import { withTimeout } from './timeouts.ts';
 
 interface Attempt extends RetryState {
@@ -21,19 +20,9 @@ interface Attempt extends RetryState {
   readonly handler: JsonObject;
 }
 
-const filterFields: Readonly<Record<string, string>> = { details: 'detail' };
-
 export function raiseTask(invocation: Invocation): never {
   const { entry, input, variables, scope } = invocation;
-  const declared = field(objectField(entry.task, 'raise') ?? {}, 'error');
-  const definition = typeof declared === 'string' ? field(scope.state.components.errors, declared) : declared;
-  const evaluated =
-    definition === undefined ? null : evaluateTemplate(definition, input, variables, placeOf(invocation));
-  const error = isObject(evaluated) ? errorFromJson(evaluated, entry.reference) : undefined;
-  if (error === undefined) {
-    throw raised('configuration', 400, 'raise names no error with a type and a status', entry.reference);
-  }
-  throw new RaisedError(error);
+  throw raisedBy(entry.task, scope.state.components.errors, { data: input, variables, place: placeOf(invocation) });
 }
 
 export function tryTask(invocation: Invocation): Promise<Body> {
@@ -44,7 +33,7 @@ export function tryTask(invocation: Invocation): Promise<Body> {
 async function attempt(current: Attempt): Promise<Body> {
   const { invocation, handler } = current;
   const { entry, input, scope, runner } = invocation;
-  const policy = retryPolicyOf(field(handler, 'retry'), scope.state, entry.reference);
+  const policy = retryPolicyOf(field(handler, 'retry'), scope.state.components.retries, entry.reference);
   const deadline = {
     milliseconds: attemptDuration(policy, retryContextOf(invocation, invocation.variables)),
     reference: entry.reference,
@@ -68,7 +57,7 @@ async function handle(current: Attempt, error: DslError, policy: JsonObject | un
   const { entry, scope } = invocation;
   const errorName = textField(handler, 'as') ?? 'error';
   const errorVariables = { ...invocation.variables, [errorName]: errorAsJson(error) };
-  if (!catches(invocation, handler, error, errorVariables)) {
+  if (!catches(handler, error, { data: invocation.input, variables: errorVariables, place: placeOf(invocation) })) {
     throw new RaisedError(error);
   }
   const delay =
@@ -81,18 +70,6 @@ async function handle(current: Attempt, error: DslError, policy: JsonObject | un
   scope.state.beforeWaiting(entry.reference);
   await scope.state.host.sleep(delay, `${entry.reference} retry ${current.attempt + 1}`);
   return attempt({ ...current, attempt: current.attempt + 1 });
-}
-
-function catches(invocation: Invocation, handler: JsonObject, error: DslError, variables: Variables): boolean {
-  const filter = objectField(objectField(handler, 'errors') ?? {}, 'with') ?? {};
-  const raisedJson = errorAsJson(error);
-  const place = placeOf(invocation);
-  const exceptWhen = field(handler, 'exceptWhen');
-  return (
-    entriesOf(filter).every(([key, expected]: JsonEntry) => field(raisedJson, filterFields[key] ?? key) === expected) &&
-    holds(field(handler, 'when'), invocation.input, variables, place) &&
-    (exceptWhen === undefined || !holds(exceptWhen, invocation.input, variables, place))
-  );
 }
 
 async function recover(invocation: Invocation, handler: JsonObject, errorVariables: Variables): Promise<Body> {
@@ -109,5 +86,5 @@ async function recover(invocation: Invocation, handler: JsonObject, errorVariabl
 }
 
 function retryContextOf(invocation: Invocation, variables: Variables): RetryContext {
-  return { state: invocation.scope.state, data: invocation.input, variables, place: placeOf(invocation) };
+  return { draw: invocation.scope.state.host.random, data: invocation.input, variables, place: placeOf(invocation) };
 }

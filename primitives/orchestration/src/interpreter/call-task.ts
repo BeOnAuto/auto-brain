@@ -1,29 +1,13 @@
-import { field, isObject, jsonBytesOf, textField, type Json } from '@beonauto/workflow-engine/dsl/json';
+import { evaluateTemplate } from '@beonauto/workflow-engine/dsl/evaluation';
+import { field, type Json } from '@beonauto/workflow-engine/dsl/json';
+import { RaisedError, callErrorOf, raised, type CallSite } from '@beonauto/workflow-engine/dsl/raised-error';
 
+import { failureChain, isArgumentsProblem, specArgumentsOf, type SpecArguments } from '../document/spec-arguments.ts';
 import { executeSpecFunction } from '../document/workflow-functions.ts';
-import { evaluateTemplate, placeOf } from './evaluation.ts';
 import type { SpecCall, SpecCallResult } from './host.ts';
 import type { Body, Invocation } from './invocation.ts';
-import { RaisedError, errorType, raised, type ErrorKind } from './raised-error.ts';
+import { placeOf } from './place.ts';
 import type { RunState } from './run-state.ts';
-
-interface SpecArguments {
-  readonly primitive: string;
-  readonly name: string;
-  readonly input: Json;
-}
-
-type Classification = readonly [ErrorKind, number];
-
-const mostSpecInputBytes = 262_144;
-
-const rejections: Readonly<Record<string, Classification>> = {
-  invalid_input: ['validation', 400],
-  forbidden: ['authorization', 403],
-  not_found: ['configuration', 404],
-  conflict: ['runtime', 409],
-  unavailable: ['communication', 503],
-};
 
 export async function callTask(invocation: Invocation): Promise<Body> {
   const { entry, input, variables, scope, run } = invocation;
@@ -46,61 +30,27 @@ async function executed(state: RunState, call: SpecCall): Promise<SpecCallResult
     if (state.host.isCancellation(error)) {
       throw error;
     }
-    throw new RaisedError({
-      type: errorType('communication'),
-      status: 503,
-      title: `${executeSpecFunction} could not reach the ${call.primitive} spec ${call.name}`,
-      detail: failureChain(error),
-      instance: call.reference,
-    });
+    throw new RaisedError(
+      callErrorOf({ status: 'unreachable', detail: failureChain(error) }, siteOf(call, call.reference)),
+    );
   }
-}
-
-function failureChain(error: unknown): string {
-  return error instanceof Error && error.cause !== undefined
-    ? `${String(error)}: ${failureChain(error.cause)}`
-    : String(error);
 }
 
 function specArguments(arguments_: Json, reference: string): SpecArguments {
-  if (!isObject(arguments_)) {
-    throw raised('validation', 400, `${executeSpecFunction} takes with: { primitive, name, input }`, reference);
+  const spec = specArgumentsOf(arguments_);
+  if (isArgumentsProblem(spec)) {
+    throw raised(spec.kind, 400, spec.title, reference);
   }
-  const primitive = textField(arguments_, 'primitive');
-  const name = textField(arguments_, 'name');
-  if (primitive === undefined || name === undefined) {
-    throw raised('validation', 400, `${executeSpecFunction} needs a string primitive and a string name`, reference);
-  }
-  if (primitive === 'orchestration') {
-    throw raised('configuration', 400, 'A workflow cannot execute another workflow in this version', reference);
-  }
-  const input = field(arguments_, 'input') ?? {};
-  const bytes = jsonBytesOf(input);
-  if (bytes > mostSpecInputBytes) {
-    throw raised(
-      'validation',
-      400,
-      `The input of ${executeSpecFunction} takes ${bytes} bytes as JSON, more than the ${mostSpecInputBytes} an execution takes`,
-      reference,
-    );
-  }
-  return { primitive, name, input };
+  return spec;
+}
+
+function siteOf(spec: SpecArguments, reference: string): CallSite {
+  return { function: executeSpecFunction, label: `the ${spec.primitive} spec ${spec.name}`, reference };
 }
 
 function bodyOf(result: SpecCallResult, spec: SpecArguments, reference: string): Body {
   if (result.status === 'succeeded') {
     return { output: result.output };
   }
-  const [kind, status]: Classification =
-    result.status === 'rejected' ? (rejections[result.reason] ?? ['runtime', 500]) : ['runtime', 500];
-  throw new RaisedError({
-    type: errorType(kind),
-    status,
-    title:
-      result.status === 'rejected'
-        ? `The ${spec.primitive} spec ${spec.name} rejected the execution with ${result.reason}`
-        : `The ${spec.primitive} spec ${spec.name} failed`,
-    detail: result.detail,
-    instance: reference,
-  });
+  throw new RaisedError(callErrorOf(result, siteOf(spec, reference)));
 }

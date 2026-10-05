@@ -33,7 +33,7 @@ Code that keeps its own streams, such as `@beonauto/workflow-engine`, uses the s
 
 ## Reading what a brain recorded
 
-`Ledger.readRecorded(brain, selection, page)`, the read the `Ledger` port of `@beonauto/operations` describes, is answered by the store: one SQL read of its own on each store, over Emmett's messages table, with four indexes the ledger adds to it. The selections, the page and its bounds are the port's; this section says how each store answers them.
+`Ledger.readRecorded(brain, selection, page)`, the read the `Ledger` port of `@beonauto/operations` describes, is answered by the store: one SQL read of its own on each store, over Emmett's messages table, with four indexes the ledger adds to it. The selections, the page and its bounds are the port's; this section says how each store answers them. [Decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) records why the read is a read of the ledger and how it was measured.
 
 ### The brain key
 
@@ -147,7 +147,7 @@ Each page was read through `Ledger.readRecorded`, 20 records or runs to a page u
 | Runs, newest first, behind a million newer messages of other brains                      | 0.37 (2.44)              | 2.19 (2.76)                  | 38      | 28 KiB   |
 | A run of 100,001 messages, newest first, behind a million newer messages of other brains | 0.25 (0.30)              | 1.25 (2.59)                  | 20      | 4 KiB    |
 
-Every page, unfiltered or filtered by status, answered within 12 ms at the median and 13 ms at the slowest, under the bar of 50 ms this ledger set itself for staying without a read model (decision 0002). The slowest pages are those that load a run of 1.25 MiB; a page of runs filtered by status examines up to 1,000 runs, which SQLite does all at once and PostgreSQL only until the page is full.
+Every page, unfiltered or filtered by status, answered within 12 ms at the median and 13 ms at the slowest, under the bar of 50 ms this ledger set itself for staying without a read model ([decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md)). The slowest pages are those that load a run of 1.25 MiB; a page of runs filtered by status examines up to 1,000 runs, which SQLite does all at once and PostgreSQL only until the page is full.
 
 ## Creating the layer
 

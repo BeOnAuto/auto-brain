@@ -58,6 +58,23 @@ export function jsonBytesOf(value: Json): number {
   return new TextEncoder().encode(JSON.stringify(value)).length;
 }
 
+export function itemAt(value: Json, index: number): Json | undefined {
+  return isList(value) ? value[index] : undefined;
+}
+
+export function valueAtPointer(value: Json, pointer: string): Json | undefined {
+  const tokens = pointer
+    .split('/')
+    .slice(1)
+    .map((token) => token.replaceAll('~1', '/').replaceAll('~0', '~'));
+  return tokens.reduce<Json | undefined>((current, token) => {
+    if (isList(current)) {
+      return current[Number(token)];
+    }
+    return isObject(current) ? field(current, token) : undefined;
+  }, value);
+}
+
 export const mostValueDepth = 512;
 
 export interface Measure {

@@ -25,13 +25,14 @@ export interface ListCursor {
   readonly position: number;
   readonly data: ValueId;
   readonly variables: Variables;
-  readonly current: CursorCurrent | null;
+  readonly current: CursorCurrent;
 }
 
 export type Branch =
+  | { readonly state: 'yielding'; readonly timer: string }
   | { readonly state: 'running'; readonly task: TaskFrame }
   | { readonly state: 'finished'; readonly output: ValueId; readonly flow: string }
-  | { readonly state: 'failed'; readonly error: DslError };
+  | { readonly state: 'failed'; readonly error: DslError; readonly order: number };
 
 export type TryPhase =
   | { readonly kind: 'trying'; readonly list: ListCursor; readonly attemptLimit: string | null }
@@ -45,7 +46,7 @@ export type FrameBody =
       readonly items: ValueId;
       readonly index: number;
       readonly data: ValueId;
-      readonly list: ListCursor | null;
+      readonly list: ListCursor;
     }
   | { readonly kind: 'fork'; readonly compete: boolean; readonly branches: readonly Branch[] }
   | { readonly kind: 'try'; readonly attempt: number; readonly startedAt: number; readonly phase: TryPhase }
@@ -56,12 +57,15 @@ export type FrameBody =
       readonly function: string;
       readonly arguments: ValueId;
       readonly label: string;
+      readonly deadline: string;
     }
   | { readonly kind: 'listen'; readonly consumed: readonly ValueId[] };
 
 export interface TaskFrame {
   readonly reference: string;
   readonly run: number;
+  readonly startedAt: number;
+  readonly context: ValueId;
   readonly rawInput: ValueId;
   readonly input: ValueId;
   readonly variables: Variables;
@@ -87,6 +91,7 @@ export type RunOutcome =
 export interface ArmedTimer {
   readonly purpose: TimerPurpose;
   readonly reference: string;
+  readonly armedAt: number;
   readonly dueAt: number;
 }
 
@@ -101,7 +106,6 @@ export interface InboxState {
   readonly receivedIds: readonly string[];
   readonly received: number;
   readonly receivedBytes: number;
-  readonly overflow: DslError | null;
 }
 
 export interface RunState {
@@ -144,13 +148,14 @@ const ListCursorSchema: Schema.Codec<ListCursor> = Schema.Struct({
   position: IntSchema,
   data: ValueIdSchema,
   variables: VariablesSchema,
-  current: Schema.NullOr(CursorCurrentSchema),
+  current: CursorCurrentSchema,
 });
 
 const BranchSchema: Schema.Codec<Branch> = Schema.Union([
+  Schema.Struct({ state: Schema.Literal('yielding'), timer: Schema.String }),
   Schema.Struct({ state: Schema.Literal('running'), task: TaskFrameReference }),
   Schema.Struct({ state: Schema.Literal('finished'), output: ValueIdSchema, flow: Schema.String }),
-  Schema.Struct({ state: Schema.Literal('failed'), error: DslErrorSchema }),
+  Schema.Struct({ state: Schema.Literal('failed'), error: DslErrorSchema, order: IntSchema }),
 ]);
 
 const TryPhaseSchema: Schema.Codec<TryPhase> = Schema.Union([
@@ -166,7 +171,7 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
     items: ValueIdSchema,
     index: IntSchema,
     data: ValueIdSchema,
-    list: Schema.NullOr(ListCursorSchema),
+    list: ListCursorSchema,
   }),
   Schema.Struct({ kind: Schema.Literal('fork'), compete: Schema.Boolean, branches: Schema.Array(BranchSchema) }),
   Schema.Struct({ kind: Schema.Literal('try'), attempt: IntSchema, startedAt: InstantSchema, phase: TryPhaseSchema }),
@@ -177,6 +182,7 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
     function: Schema.NonEmptyString,
     arguments: ValueIdSchema,
     label: Schema.String,
+    deadline: Schema.String,
   }),
   Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema) }),
 ]);
@@ -184,6 +190,8 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
 const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
   reference: Schema.String,
   run: IntSchema,
+  startedAt: InstantSchema,
+  context: ValueIdSchema,
   rawInput: ValueIdSchema,
   input: ValueIdSchema,
   variables: VariablesSchema,
@@ -191,7 +199,7 @@ const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
   body: FrameBodySchema,
 });
 
-const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
+export const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('completed'), output: Schema.Json }),
   Schema.Struct({ kind: Schema.Literal('raised'), error: DslErrorSchema }),
   Schema.Struct({ kind: Schema.Literal('cancelled') }),
@@ -215,7 +223,12 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
     next: IntSchema,
     armed: Schema.Record(
       Schema.String,
-      Schema.Struct({ purpose: TimerPurposeSchema, reference: Schema.String, dueAt: InstantSchema }),
+      Schema.Struct({
+        purpose: TimerPurposeSchema,
+        reference: Schema.String,
+        armedAt: InstantSchema,
+        dueAt: InstantSchema,
+      }),
     ),
   }),
   calls: Schema.Record(Schema.String, CallKeySchema),
@@ -225,7 +238,6 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
     receivedIds: Schema.Array(Schema.String),
     received: IntSchema,
     receivedBytes: IntSchema,
-    overflow: Schema.NullOr(DslErrorSchema),
   }),
   heldBytes: IntSchema,
   historyBytes: IntSchema,
@@ -253,7 +265,7 @@ export const newRun: RunState = {
   runs: {},
   timers: { next: 1, armed: {} },
   calls: {},
-  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0, overflow: null },
+  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0 },
   heldBytes: 0,
   historyBytes: 0,
   stepsWithoutWaiting: 0,

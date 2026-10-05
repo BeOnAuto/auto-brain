@@ -3,8 +3,11 @@ import type { Rejection } from './policy-checks.ts';
 
 export type ArgumentRejections = (arguments_: Json | undefined, pointer: string) => readonly Rejection[];
 
+export type CallDescription = (name: string, arguments_: Json) => string;
+
 export interface CallFunctions {
   readonly argumentChecks: Readonly<Record<string, ArgumentRejections>>;
+  readonly describe: CallDescription;
   readonly howAWorkflowReachesTheWorld: string;
   readonly howAWorkflowStarts: string;
 }
