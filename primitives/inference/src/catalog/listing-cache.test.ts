@@ -71,7 +71,7 @@ describe('the list of a provider', () => {
 });
 
 describe('a list of a provider that cannot be read again', () => {
-  it('is served as it was last read, marked partial, while it cannot be read again, and is asked for every time', async () => {
+  it('is served as it was last read, marked partial, and is not asked for again until a minute has passed', async () => {
     const catalog = await catalogFor(anthropic, failingFrom(2));
 
     const lists = await onTestClock(
@@ -79,28 +79,43 @@ describe('a list of a provider that cannot be read again', () => {
         yield* listOf(catalog);
         yield* TestClock.adjust('6 minutes');
         const stale = yield* listOf(catalog);
+        yield* TestClock.adjust('59 seconds');
+        const remembered = yield* listOf(catalog);
+        const asked = catalog.requests().length;
+        yield* TestClock.adjust('1 second');
         const again = yield* listOf(catalog);
-        return [stale, again];
+        return { lists: [stale, remembered, again], asked };
       }),
     );
 
     expect(
-      lists.map(({ catalog_status: status, listed_at: listedAt, data }) => [status, listedAt, data.length]),
+      lists.lists.map(({ catalog_status: status, listed_at: listedAt, data }) => [status, listedAt, data.length]),
     ).toEqual([
       ['partial', '2026-10-01T09:00:00.000Z', 3],
       ['partial', '2026-10-01T09:00:00.000Z', 3],
+      ['partial', '2026-10-01T09:00:00.000Z', 3],
     ]);
-    expect(catalog.requests()).toHaveLength(3);
+    expect([lists.asked, catalog.requests().length]).toEqual([2, 3]);
     expect(catalog.reports().map(({ status }) => status)).toEqual([529, 529]);
   });
 
-  it('is complete again once it can be read', async () => {
+  it('is complete again once it can be read, a minute after it could not', async () => {
     const catalog = await catalogFor(anthropic, failingFirst);
 
-    const failed = await Effect.runPromise(listOf(catalog));
-    const recovered = await Effect.runPromise(listOf(catalog));
+    const { failed, remembered, recovered } = await onTestClock(
+      Effect.gen(function* () {
+        const first = yield* listOf(catalog);
+        const second = yield* listOf(catalog);
+        yield* TestClock.adjust('1 minute');
+        return { failed: first, remembered: second, recovered: yield* listOf(catalog) };
+      }),
+    );
 
-    expect([failed.catalog_status, failed.data.length]).toEqual(['partial', 0]);
-    expect([recovered.catalog_status, recovered.data.length]).toEqual(['complete', 3]);
+    expect([failed, remembered, recovered].map(({ catalog_status: status, data }) => [status, data.length])).toEqual([
+      ['partial', 0],
+      ['partial', 0],
+      ['complete', 3],
+    ]);
+    expect(catalog.requests()).toHaveLength(2);
   });
 });
