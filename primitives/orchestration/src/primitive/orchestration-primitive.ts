@@ -1,4 +1,4 @@
-import { asSentence, Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
+import { asSentence, Conflict, InvalidInput, type Unavailable } from '@beonauto/operations';
 import { definePrimitive, inWords, type ExecutionContext, type FinishesLater, type Primitive } from '@beonauto/specs';
 import { measureOf, mostValueDepth, type JsonObject } from '@beonauto/workflow-engine';
 import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
@@ -6,6 +6,7 @@ import { Effect, Random, type Schema } from 'effect';
 
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
+import { unavailableUnless } from '../runs/host-refusals.ts';
 import type { RunAttributes } from '../runs/run-attributes.ts';
 import { orchestrationDescription } from './orchestration-description.ts';
 
@@ -56,7 +57,7 @@ function started(
         { org, brain, executionId: id },
         { document, input, limits: { mostDurationMs, longestCallMs }, attributes, seed },
       )
-      .pipe(Effect.mapError(() => new Unavailable({ detail: notNow })));
+      .pipe(Effect.mapError(unavailableUnless(notNow)));
     return yield* finishedLaterOr(answer);
   });
 }

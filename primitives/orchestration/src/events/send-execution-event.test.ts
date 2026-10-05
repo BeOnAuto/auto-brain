@@ -1,4 +1,4 @@
-import { HostStopped } from '@beonauto/workflow-host';
+import { HostElsewhere, HostStopped } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -128,6 +128,19 @@ describe('send_execution_event that cannot be delivered', () => {
       status: 'rejected',
       reason: 'unavailable',
       detail: 'The workflow cannot take the event now; try again shortly',
+    });
+  });
+
+  it('is rejected as unavailable, saying so, when another server runs the workflows of the database', async () => {
+    const executionId = idOf(19);
+    await startedApproval(executionId);
+    const detail = 'The workflows of this database run in another server';
+    const elsewhere = defineSendExecutionEvent({ deliver: () => Effect.fail(new HostElsewhere({ detail })) });
+
+    expect(await brain.call(elsewhere, { execution_id: executionId, event: { type: 'x' } })).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail,
     });
   });
 

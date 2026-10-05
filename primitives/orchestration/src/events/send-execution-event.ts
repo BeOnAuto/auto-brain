@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BrainContext, defineCommand, NotFound, quoted, Unavailable } from '@beonauto/operations';
+import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import { getExecution } from '@beonauto/specs';
 import {
   jsonBytesOf,
@@ -11,6 +11,8 @@ import {
 } from '@beonauto/workflow-engine';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
+
+import { unavailableUnless } from '../runs/host-refusals.ts';
 
 const mostEventBytes = 262_144;
 
@@ -101,7 +103,7 @@ export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {
       const delivered = { ...event, id: event.id ?? randomUUID(), time: DateTime.formatIso(yield* DateTime.now) };
       const answer = yield* runs
         .deliver({ org, brain, executionId }, delivered)
-        .pipe(Effect.mapError(() => new Unavailable({ detail: notNow })));
+        .pipe(Effect.mapError(unavailableUnless(notNow)));
       if (answer !== 'delivered') {
         return yield* new NotFound({ detail: noRunningWorkflow });
       }

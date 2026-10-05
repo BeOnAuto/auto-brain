@@ -1,5 +1,6 @@
 import { memoryLedger } from '@beonauto/operations/testing';
 import type { Json } from '@beonauto/workflow-engine';
+import { HostElsewhere } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -51,6 +52,24 @@ describe('executing a workflow spec with an input a workflow may not hold', () =
 
   it('starts a workflow for an input that nests 512 levels deep', async () => {
     expect(await executing({ deep: nested(511) })).toMatchObject({ status: 'failed' });
+  });
+});
+
+describe('executing a workflow spec while another server runs the workflows of the database', () => {
+  it('is rejected as unavailable with the words of the host', async () => {
+    const detail = 'The workflows of this database run in another server';
+    const elsewhere = makeOrchestration({
+      ...neverStarted,
+      runs: { start: () => Effect.fail(new HostElsewhere({ detail })) },
+    });
+    const brain = brainOn(memoryLedger(), [elsewhere]);
+    await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source: flow });
+
+    expect(await brain.call(brain.executeSpec, { primitive: 'orchestration', name: 'flow' })).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail,
+    });
   });
 });
 
