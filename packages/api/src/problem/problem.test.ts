@@ -36,6 +36,10 @@ describe('problemOf', () => {
   });
 });
 
+function retryAfterOf(members: Parameters<typeof problemOf>[2]): string | null {
+  return problemResponse(problemOf('unavailable', 'It cannot run', members)).headers.get('retry-after');
+}
+
 describe('problemResponse', () => {
   it('answers with the problem status, the problem media type and the document as JSON', async () => {
     const problem = problemOf('conflict', 'The name is taken');
@@ -52,6 +56,15 @@ describe('problemResponse', () => {
     const conflict = problemResponse(problemOf('conflict', 'The name is taken'));
 
     expect([unavailable.headers.get('retry-after'), conflict.headers.get('retry-after')]).toEqual(['5', null]);
+  });
+
+  it('asks for no retry of an unavailable ending that only a change of the request or the configuration resolves', () => {
+    expect([
+      retryAfterOf({ kind: 'tools_unfinished', because: 'model_unavailable' }),
+      retryAfterOf({ kind: 'tool_not_offered', because: 'tool_not_allowed' }),
+      retryAfterOf({ kind: 'mcp_server_failed', because: 'unreachable' }),
+      retryAfterOf({ kind: 'model_not_offered', because: 'model_not_allowed' }),
+    ]).toEqual([null, null, '5', '5']);
   });
 
   it('adds the headers it is given', () => {

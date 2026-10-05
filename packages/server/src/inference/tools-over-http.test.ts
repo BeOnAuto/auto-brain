@@ -140,9 +140,15 @@ describe('running again a run that called tools, over HTTP', () => {
       body: {
         reason: 'unavailable',
         detail: 'anthropic did not answer within 60000 ms, after the run called the search tool of graph',
+        kind: 'tools_unfinished',
+        because: 'model_unavailable',
       },
     });
-    expect(again).toMatchObject({ status: 409, body: { reason: 'conflict', detail: calledTools } });
+    expect(first.headers.get('retry-after')).toBeNull();
+    expect(again).toMatchObject({
+      status: 409,
+      body: { reason: 'conflict', detail: calledTools, kind: 'tools_called' },
+    });
     expect(fake.received()).toHaveLength(1);
     expect(server.modelCalls()).toBe(1);
   });
