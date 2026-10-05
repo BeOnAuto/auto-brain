@@ -126,9 +126,9 @@ do:
       catch: { retry: { delay: PT1S } }
 `);
 
-    expect(drivenRun(document, { limits: { mostDurationMs: 3_605_000 } }).outcome).toEqual({
+    expect(drivenRun(document, { limits: { mostDurationMs: 4500 } }).outcome).toEqual({
       kind: 'overran',
-      milliseconds: 5000,
+      milliseconds: 4500,
     });
   });
 });

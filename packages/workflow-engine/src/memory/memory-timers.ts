@@ -46,11 +46,18 @@ export function faultsOf(clock: VirtualClock): Faults {
   };
 }
 
+type TimerOfRun = Pick<ArmTimer, 'executionId' | 'timerId'>;
+
 interface Firing {
   readonly fire: (timer: ArmTimer) => void;
-  readonly hasFired: (timerId: string) => boolean;
-  readonly disarm: (timerId: string) => boolean;
+  readonly hasFired: (timer: TimerOfRun) => boolean;
+  readonly isArmed: (timer: TimerOfRun) => boolean;
+  readonly disarm: (timer: TimerOfRun) => boolean;
   readonly forget: () => void;
+}
+
+function timerKeyOf({ executionId, timerId }: TimerOfRun): string {
+  return JSON.stringify([executionId, timerId]);
 }
 
 function firingOf(clock: VirtualClock, submit: Submit): Firing {
@@ -58,18 +65,20 @@ function firingOf(clock: VirtualClock, submit: Submit): Firing {
   const armed = new Set<string>();
   return {
     fire: ({ executionId, timerId, dueAt }) => {
-      armed.add(timerId);
-      clock.schedule(dueAt, timerId, () => {
-        armed.delete(timerId);
-        fired.add(timerId);
+      const key = timerKeyOf({ executionId, timerId });
+      armed.add(key);
+      clock.schedule(dueAt, key, () => {
+        armed.delete(key);
+        fired.add(key);
         submit({ kind: 'timer_fired', executionId, at: clock.now(), timerId });
       });
     },
-    hasFired: (timerId) => fired.has(timerId),
-    disarm: (timerId) => armed.delete(timerId) && clock.unschedule(timerId),
+    hasFired: (timer) => fired.has(timerKeyOf(timer)),
+    isArmed: (timer) => armed.has(timerKeyOf(timer)),
+    disarm: (timer) => armed.delete(timerKeyOf(timer)) && clock.unschedule(timerKeyOf(timer)),
     forget: () => {
-      for (const timerId of armed) {
-        clock.unschedule(timerId);
+      for (const key of armed) {
+        clock.unschedule(key);
       }
       armed.clear();
     },
@@ -80,31 +89,28 @@ export function memoryTimers(clock: VirtualClock, submit: Submit, faults: Faults
   const firing = firingOf(clock, submit);
   const tombstones = new Set<string>();
   const arm = (timer: ArmTimer): ArmReceipt => {
-    if (tombstones.has(timer.timerId)) {
+    if (tombstones.has(timerKeyOf(timer))) {
       return 'refused_after_cancel';
     }
-    if (clock.has(timer.timerId) || firing.hasFired(timer.timerId)) {
+    if (firing.isArmed(timer) || firing.hasFired(timer)) {
       return 'already_armed';
     }
     firing.fire(timer);
     return 'armed';
   };
-  const cancel = (timerId: string): TimerCancelReceipt => {
-    if (firing.disarm(timerId)) {
-      return 'cancelled';
-    }
-    if (firing.hasFired(timerId)) {
+  const cancel = (timer: TimerOfRun): TimerCancelReceipt => {
+    if (firing.hasFired(timer)) {
       return 'already_fired';
     }
-    tombstones.add(timerId);
-    return 'tombstoned';
+    tombstones.add(timerKeyOf(timer));
+    return firing.disarm(timer) ? 'cancelled' : 'tombstoned';
   };
   return {
     arm: (timer) => faults.attempt(timer, () => arm(timer)),
-    cancel: (timer) => faults.attempt(timer, () => cancel(timer.timerId)),
+    cancel: (timer) => faults.attempt(timer, () => cancel(timer)),
     sweep: (_run, timers) =>
       Effect.sync(() => {
-        const lost = timers.filter(({ timerId }) => !clock.has(timerId) && !firing.hasFired(timerId));
+        const lost = timers.filter((timer) => !firing.isArmed(timer) && !firing.hasFired(timer));
         for (const timer of lost) {
           firing.fire(timer);
         }

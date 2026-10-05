@@ -24,7 +24,7 @@ function caught(machine: Machine, frame: FramePrefix, attempt: () => TaskAdvance
     if (!(error instanceof RaisedError)) {
       throw error;
     }
-    machine.session.timers.disarm(frame.timeout ?? machine.session.timers.timerOf('timeout', frame.reference));
+    machine.session.timers.disarm(frame.timeout);
     machine.session.record(frame.reference, frame.run, 'raised');
     return raisedOf(error.error);
   }
@@ -118,10 +118,13 @@ function performed(machine: Machine, entry: TaskEntry, frame: FramePrefix): Task
           milliseconds,
           label: `${entry.reference} timeout`,
         });
-  const inputValue = transform(field(objectField(entry.task, 'input') ?? {}, 'from'), rawValue, variables, place);
-  const input = inputValue === rawValue ? frame.rawInput : session.hold(inputValue);
-  const invocation = invocationOf(machine, { ...frame, timeout, input }, entry);
-  return settled(invocation, startBody(invocation.kind, invocation));
+  const timed = { ...frame, timeout };
+  return caught(machine, timed, () => {
+    const inputValue = transform(field(objectField(entry.task, 'input') ?? {}, 'from'), rawValue, variables, place);
+    const input = inputValue === rawValue ? frame.rawInput : session.hold(inputValue);
+    const invocation = invocationOf(machine, { ...timed, input }, entry);
+    return settled(invocation, startBody(invocation.kind, invocation));
+  });
 }
 
 export function startTask(machine: Machine, entry: TaskEntry, rawInput: ValueId, scope: Scope): TaskAdvance {

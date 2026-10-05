@@ -1,23 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { interpret, onMachine, workflow } from '../testing/workflows.ts';
 
 const threeHours = 10_800_000;
 
+const stoppedAfter = onMachine ? threeHours : threeHours - 3_600_000;
+
 describe('a workflow that runs up to the most it may run', () => {
-  it('is stopped an hour before its execution timeout, and settles its execution failed', async () => {
+  it('is stopped once it has run the most it may, on Temporal an hour before its execution timeout, and settles its execution failed', async () => {
     const waiting = workflow('do:\n  - await: { listen: { to: { one: { with: { type: never } } } } }');
     const { ending, settlement, commands, fake } = await interpret(waiting, { mostDuration: threeHours });
 
-    expect(commands[0]).toStrictEqual({ kind: 'deadline', milliseconds: 7_200_000 });
+    expect(commands[0]).toStrictEqual({ kind: 'deadline', milliseconds: stoppedAfter });
     expect(settlement).toStrictEqual({ status: 'failed' });
     expect(ending).toStrictEqual({
       kind: 'failed',
       type: 'WorkflowRanTooLong',
-      message:
-        'The workflow ran for 7200000 ms, the most it may run before its execution timeout; it was stopped and its execution settled failed',
+      message: `The workflow ran for ${stoppedAfter} ms, the most it may run before its execution timeout; it was stopped and its execution settled failed`,
     });
-    expect(fake.now() - Date.parse('2026-10-01T09:00:00.000Z')).toBe(7_200_000);
+    expect(fake.now() - Date.parse('2026-10-01T09:00:00.000Z')).toBe(stoppedAfter);
   });
 
   it('ends as it would when it finishes first', async () => {

@@ -88,6 +88,7 @@ function bodyOf(choose: Choose, depth: number): FrameBody {
       function: 'notify',
       arguments: choose(valueCount),
       label: 'notify',
+      deadline: 't',
     }),
     () => ({ kind: 'listen', consumed: [choose(valueCount), choose(valueCount)] }),
   ];

@@ -98,11 +98,8 @@ export function memoryExecutor(
     if (book.answered.has(key)) {
       return 'already_answered';
     }
-    if (book.forget(key)) {
-      return 'cancelled';
-    }
     tombstones.add(key);
-    return 'tombstoned';
+    return book.forget(key) ? 'cancelled' : 'tombstoned';
   };
   return {
     start: (call) => faults.attempt(call, () => start(call)),

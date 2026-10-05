@@ -37,12 +37,12 @@ const event: RunEvent = {
   ],
   patch: [
     { op: 'replace', path: '/machine/context', value: 3 },
-    { op: 'add', path: '/timers/armed/e~1timers~13', value: { purpose: 'wait', reference: '/do/2', dueAt: at + 1 } },
+    { op: 'add', path: '/timers/armed/3', value: { purpose: 'wait', reference: '/do/2', dueAt: at + 1 } },
     { op: 'remove', path: '/calls/k' },
   ],
   outputs: [
-    { kind: 'cancel_timer', executionId, timerId: `${executionId}/timers/2` },
-    { kind: 'arm_timer', executionId, timerId: `${executionId}/timers/3`, dueAt: at + 1000, purpose: 'wait' },
+    { kind: 'cancel_timer', executionId, timerId: '2' },
+    { kind: 'arm_timer', executionId, timerId: '3', dueAt: at + 1000, purpose: 'wait' },
     { kind: 'cancel_call', key: openCall },
     { kind: 'settle', executionId, settlement: { status: 'succeeded', output: { approved: true } } },
   ],
@@ -59,7 +59,7 @@ function near(text: string): RunEvent {
 
 const inputs: readonly RunInput[] = [
   started,
-  { kind: 'timer_fired', executionId, at, timerId: `${executionId}/timers/1` },
+  { kind: 'timer_fired', executionId, at, timerId: '1' },
   {
     kind: 'call_answered',
     executionId,

@@ -5,7 +5,7 @@ import { ReceivedEventSchema } from '../inbox/received-event.ts';
 import { DslErrorSchema } from '../machine/dsl-error.ts';
 import { InstantSchema } from '../machine/instant.ts';
 import { RunLimitsSchema } from '../machine/run-input.ts';
-import { newRun, RunOutcomeSchema } from '../machine/run-state.ts';
+import { RunOutcomeSchema } from '../machine/run-state.ts';
 import { TimerPurposeSchema } from '../timers/timer-id.ts';
 import type { OlderFormat } from './state-format.ts';
 
@@ -137,43 +137,85 @@ function withFailuresOrdered(branches: readonly unknown[]): readonly unknown[] {
   );
 }
 
-function withFrameFields(node: unknown, startedAt: number, context: number): unknown {
+interface FrameFields {
+  readonly startedAt: number;
+  readonly context: number;
+  readonly deadlines: Readonly<Record<string, string>>;
+}
+
+function deadlinesOf(armed: FormatOne['timers']['armed']): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    Object.entries(armed)
+      .filter(([, { purpose }]: readonly [string, ArmedTimerOfFormatOne]) => purpose === 'call_deadline')
+      .map(([id, { reference }]: readonly [string, ArmedTimerOfFormatOne]) => [reference, id]),
+  );
+}
+
+function deadlineOf(node: Fields, deadlines: FrameFields['deadlines']): Fields {
+  const key = node['kind'] === 'call' && isFields(node['key']) ? node['key'] : {};
+  const reference = key['reference'];
+  return typeof reference === 'string' && Object.hasOwn(deadlines, reference) ? { deadline: deadlines[reference] } : {};
+}
+
+function withFrameFields(node: unknown, fields: FrameFields): unknown {
   if (Array.isArray(node)) {
-    return node.map((item: unknown) => withFrameFields(item, startedAt, context));
+    return node.map((item: unknown) => withFrameFields(item, fields));
   }
   if (!isFields(node)) {
     return node;
   }
   const walked = Object.fromEntries(
-    Object.entries(node).map(([key, item]: readonly [string, unknown]) => [
-      key,
-      withFrameFields(item, startedAt, context),
-    ]),
+    Object.entries(node).map(([key, item]: readonly [string, unknown]) => [key, withFrameFields(item, fields)]),
   );
   const branches = walked['branches'];
   const ordered = node['kind'] === 'fork' && Array.isArray(branches) ? { branches: withFailuresOrdered(branches) } : {};
-  const frame = Object.hasOwn(node, 'rawInput') ? { startedAt, context } : {};
-  return { ...walked, ...ordered, ...frame };
+  const frame = Object.hasOwn(node, 'rawInput') ? { startedAt: fields.startedAt, context: fields.context } : {};
+  return { ...walked, ...ordered, ...frame, ...deadlineOf(node, fields.deadlines) };
 }
 
 function upcastFormatOne(state: FormatOne): unknown {
-  const { lastInputAt, machine, timers } = state;
+  const { lastInputAt, machine, timers, inbox } = state;
   const armed = Object.fromEntries(
     Object.entries(timers.armed).map(([id, timer]: readonly [string, ArmedTimerOfFormatOne]) => [
       id,
       { ...timer, armedAt: Math.min(lastInputAt, timer.dueAt) },
     ]),
   );
+  const { overflow: _overflow, ...kept } = inbox;
+  const fields = { startedAt: lastInputAt, context: machine.context, deadlines: deadlinesOf(timers.armed) };
   return {
     ...state,
     timers: { ...timers, armed },
-    machine: { ...machine, root: withFrameFields(machine.root, lastInputAt, machine.context) },
+    inbox: kept,
+    machine: { ...machine, root: withFrameFields(machine.root, fields) },
   };
 }
 
+const initialOfFormatOne = {
+  executionId: '',
+  status: 'new',
+  workflow: null,
+  attributes: {},
+  limits: { mostDurationMs: 1, longestCallMs: 1 },
+  startedAt: 0,
+  lastInputAt: 0,
+  inputs: 0,
+  random: { seed: 0, draws: 0 },
+  runs: {},
+  timers: { next: 1, armed: {} },
+  calls: {},
+  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0, overflow: null },
+  heldBytes: 0,
+  historyBytes: 0,
+  stepsWithoutWaiting: 0,
+  cancelRequested: false,
+  machine: { values: { 0: { value: {}, bytes: 2 } }, nextValue: 1, context: 0, root: null },
+  outcome: null,
+};
+
 export const formatOne: OlderFormat = {
   format: 1,
-  initial: newRun,
+  initial: initialOfFormatOne,
   read: (state) => readFormatOne(state),
   upcast: (state) => upcastFormatOne(readFormatOne(state)),
 };

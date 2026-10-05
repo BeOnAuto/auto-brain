@@ -571,406 +571,6 @@
             "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
             "run": 39,
             "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 40,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 40,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 41,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 41,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 42,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 42,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 43,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 43,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 44,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 44,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 45,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 45,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 46,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 46,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 47,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 47,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 48,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 48,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 49,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 49,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 50,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 50,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 51,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 51,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 52,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 52,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 53,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 53,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 54,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 54,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 55,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 55,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 56,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 56,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 57,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 57,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 58,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 58,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 59,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 59,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 60,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 60,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 61,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 61,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 62,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 62,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 63,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 63,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 64,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 64,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 65,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 65,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 66,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 66,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 67,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 67,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 68,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 68,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 69,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 69,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 70,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 70,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 71,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 71,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 72,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 72,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 73,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 73,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 74,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 74,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 75,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 75,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 76,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 76,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 77,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 77,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 78,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 78,
-            "outcome": "completed"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 79,
-            "outcome": "started"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
-            "run": 79,
-            "outcome": "completed"
           }
         ],
         "patch": [
@@ -1325,7 +925,7 @@
           {
             "op": "add",
             "path": "/runs/~1do~10~1all~1fork~1branches~110~1counting~1do~10~1add",
-            "value": 79
+            "value": 39
           },
           {
             "op": "replace",
@@ -1334,17 +934,17 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~11",
+            "path": "/timers/armed/1",
             "value": {
               "purpose": "deadline",
               "reference": "/",
               "armedAt": 1790845200000,
-              "dueAt": 1793433600000
+              "dueAt": 1793437200000
             }
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~12",
+            "path": "/timers/armed/2",
             "value": {
               "purpose": "wait",
               "reference": "/do/0/all/fork/branches/0/race/fork/branches/1/waits",
@@ -1354,7 +954,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~13",
+            "path": "/timers/armed/3",
             "value": {
               "purpose": "wait",
               "reference": "/do/0/all/fork/branches/2/pause",
@@ -1364,7 +964,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~14",
+            "path": "/timers/armed/4",
             "value": {
               "purpose": "call_deadline",
               "reference": "/do/0/all/fork/branches/3/ask",
@@ -1374,7 +974,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~15",
+            "path": "/timers/armed/5",
             "value": {
               "purpose": "retry_delay",
               "reference": "/do/0/all/fork/branches/5/backing",
@@ -1384,7 +984,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~16",
+            "path": "/timers/armed/6",
             "value": {
               "purpose": "wait",
               "reference": "/do/0/all/fork/branches/6/recovering/catch/do/0/rest",
@@ -1394,7 +994,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~17",
+            "path": "/timers/armed/7",
             "value": {
               "purpose": "timeout",
               "reference": "/do/0/all/fork/branches/7/trying",
@@ -1404,7 +1004,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~18",
+            "path": "/timers/armed/8",
             "value": {
               "purpose": "wait",
               "reference": "/do/0/all/fork/branches/7/trying/try/0/slow",
@@ -1414,7 +1014,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~19",
+            "path": "/timers/armed/9",
             "value": {
               "purpose": "wait",
               "reference": "/do/0/all/fork/branches/8/each/do/0/step",
@@ -1424,7 +1024,7 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~110",
+            "path": "/timers/armed/10",
             "value": {
               "purpose": "wait",
               "reference": "/do/0/all/fork/branches/9/steps/do/1/second",
@@ -1434,17 +1034,17 @@
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~111",
+            "path": "/timers/armed/11",
             "value": {
               "purpose": "yield",
-              "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
+              "reference": "/do/0/all/fork/branches/10/counting",
               "armedAt": 1790845200000,
               "dueAt": 1790845200000
             }
           },
           {
             "op": "add",
-            "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a~1timers~112",
+            "path": "/timers/armed/12",
             "value": {
               "purpose": "yield",
               "reference": "/do/0/all/fork/branches/11/later",
@@ -1469,7 +1069,7 @@
           {
             "op": "replace",
             "path": "/stepsWithoutWaiting",
-            "value": 80
+            "value": 40
           },
           {
             "op": "add",
@@ -1563,34 +1163,34 @@
           },
           {
             "op": "add",
-            "path": "/machine/values/246",
+            "path": "/machine/values/126",
             "value": {
               "value": {
-                "count": 79
+                "count": 39
               },
               "bytes": 12
             }
           },
           {
             "op": "add",
-            "path": "/machine/values/247",
+            "path": "/machine/values/127",
             "value": {
-              "value": 79,
+              "value": 39,
               "bytes": 2
             }
           },
           {
             "op": "add",
-            "path": "/machine/values/248",
+            "path": "/machine/values/128",
             "value": {
-              "value": 79,
+              "value": 39,
               "bytes": 2
             }
           },
           {
             "op": "replace",
             "path": "/machine/nextValue",
-            "value": 249
+            "value": 129
           },
           {
             "op": "replace",
@@ -1663,7 +1263,7 @@
                                       "timeout": null,
                                       "body": {
                                         "kind": "wait",
-                                        "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/2"
+                                        "timer": "2"
                                       }
                                     }
                                   }
@@ -1689,7 +1289,7 @@
                               "timeout": null,
                               "body": {
                                 "kind": "wait",
-                                "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/3"
+                                "timer": "3"
                               }
                             }
                           },
@@ -1713,7 +1313,8 @@
                                 },
                                 "function": "notify",
                                 "arguments": 3,
-                                "label": "the function notify"
+                                "label": "the function notify",
+                                "deadline": "4"
                               }
                             }
                           },
@@ -1751,7 +1352,7 @@
                                 "startedAt": 1790845200000,
                                 "phase": {
                                   "kind": "backing_off",
-                                  "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/5",
+                                  "timer": "5",
                                   "error": {
                                     "type": "https://example.com/busy",
                                     "status": 503,
@@ -1800,7 +1401,7 @@
                                         "timeout": null,
                                         "body": {
                                           "kind": "wait",
-                                          "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/6"
+                                          "timer": "6"
                                         }
                                       }
                                     }
@@ -1819,7 +1420,7 @@
                               "rawInput": 1,
                               "input": 1,
                               "variables": {},
-                              "timeout": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/7",
+                              "timeout": "7",
                               "body": {
                                 "kind": "try",
                                 "attempt": 0,
@@ -1844,7 +1445,7 @@
                                         "timeout": null,
                                         "body": {
                                           "kind": "wait",
-                                          "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/8"
+                                          "timer": "8"
                                         }
                                       }
                                     }
@@ -1894,7 +1495,7 @@
                                       "timeout": null,
                                       "body": {
                                         "kind": "wait",
-                                        "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/9"
+                                        "timer": "9"
                                       }
                                     }
                                   }
@@ -1933,7 +1534,7 @@
                                       "timeout": null,
                                       "body": {
                                         "kind": "wait",
-                                        "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/10"
+                                        "timer": "10"
                                       }
                                     }
                                   }
@@ -1955,19 +1556,19 @@
                               "body": {
                                 "kind": "for",
                                 "items": 9,
-                                "index": 79,
-                                "data": 246,
+                                "index": 39,
+                                "data": 126,
                                 "list": {
                                   "pointer": "/do/0/all/fork/branches/10/counting/do",
                                   "position": 0,
-                                  "data": 246,
+                                  "data": 126,
                                   "variables": {
-                                    "item": 247,
-                                    "index": 248
+                                    "item": 127,
+                                    "index": 128
                                   },
                                   "current": {
                                     "kind": "yielding",
-                                    "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/11"
+                                    "timer": "11"
                                   }
                                 }
                               }
@@ -1975,7 +1576,7 @@
                           },
                           {
                             "state": "yielding",
-                            "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/12"
+                            "timer": "12"
                           }
                         ]
                       }
@@ -1988,22 +1589,22 @@
           {
             "op": "replace",
             "path": "/historyBytes",
-            "value": 33820
+            "value": 25017
           }
         ],
         "outputs": [
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/1",
-            "dueAt": 1793433600000,
+            "timerId": "1",
+            "dueAt": 1793437200000,
             "purpose": "deadline",
             "label": "the most the workflow may run"
           },
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/2",
+            "timerId": "2",
             "dueAt": 1790848800000,
             "purpose": "wait",
             "label": "/do/0/all/fork/branches/0/race/fork/branches/1/waits"
@@ -2011,7 +1612,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/3",
+            "timerId": "3",
             "dueAt": 1790848800000,
             "purpose": "wait",
             "label": "/do/0/all/fork/branches/2/pause"
@@ -2032,7 +1633,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/4",
+            "timerId": "4",
             "dueAt": 1790845800000,
             "purpose": "call_deadline",
             "label": "/do/0/all/fork/branches/3/ask deadline"
@@ -2040,7 +1641,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/5",
+            "timerId": "5",
             "dueAt": 1790848800000,
             "purpose": "retry_delay",
             "label": "/do/0/all/fork/branches/5/backing retry 1"
@@ -2048,7 +1649,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/6",
+            "timerId": "6",
             "dueAt": 1790848800000,
             "purpose": "wait",
             "label": "/do/0/all/fork/branches/6/recovering/catch/do/0/rest"
@@ -2056,7 +1657,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/7",
+            "timerId": "7",
             "dueAt": 1790852400000,
             "purpose": "timeout",
             "label": "/do/0/all/fork/branches/7/trying timeout"
@@ -2064,7 +1665,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/8",
+            "timerId": "8",
             "dueAt": 1790848800000,
             "purpose": "wait",
             "label": "/do/0/all/fork/branches/7/trying/try/0/slow"
@@ -2072,7 +1673,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/9",
+            "timerId": "9",
             "dueAt": 1790848800000,
             "purpose": "wait",
             "label": "/do/0/all/fork/branches/8/each/do/0/step"
@@ -2080,7 +1681,7 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/10",
+            "timerId": "10",
             "dueAt": 1790848800000,
             "purpose": "wait",
             "label": "/do/0/all/fork/branches/9/steps/do/1/second"
@@ -2088,15 +1689,15 @@
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/11",
+            "timerId": "11",
             "dueAt": 1790845200000,
             "purpose": "yield",
-            "label": "/do/0/all/fork/branches/10/counting/do/0/add lets other workflows run"
+            "label": "/do/0/all/fork/branches/10/counting lets other workflows run"
           },
           {
             "kind": "arm_timer",
             "executionId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/12",
+            "timerId": "12",
             "dueAt": 1790845200000,
             "purpose": "yield",
             "label": "/do/0/all/fork/branches/11/later lets other workflows run"
@@ -2159,7 +1760,7 @@
           {
             "op": "replace",
             "path": "/historyBytes",
-            "value": 34432
+            "value": 25629
           }
         ],
         "outputs": []
@@ -2168,9 +1769,9 @@
   ],
   "snapshot": {
     "chunks": [
-      "{\"format\":2,\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"version\":1,\"historyBytes\":33820,\"state\":{\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"status\":\"running\",\"workflow\":{\"document\":{\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"acme\",\"name\":\"test\",\"version\":\"1.0.0\"},\"do\":[{\"all\":{\"fork\":{\"branches\":[{\"race\":{\"fork\":{\"compete\":true,\"branches\":[{\"fails\":{\"raise\":{\"error\":{\"type\":\"https://example.com/lost\",\"status\":409}}}},{\"waits\":{\"wait\":\"PT1H\"}}]}}},{\"quick\":{\"set\":{\"quick\":true}}},{\"pause\":{\"wait\":\"PT1H\"}},{\"ask\":{\"call\":\"notify\",\"with\":{\"to\":\"ada\"}}},{\"await\":{\"listen\":{\"to\":{\"one\":{\"with\":{\"type\":\"approved\"}}}}}},{\"backing\":{\"try\":[{\"fail\":{\"raise\":{\"error\":{\"type\":\"https://example.com/busy\",\"status\":503}}}}],\"catch\":{\"retry\":{\"delay\":\"PT1H\",\"limit\":{\"attempt\":{\"count\":2}}}}}},{\"recovering\":{\"try\":[{\"fail\":{\"raise\":{\"error\":{\"type\":\"https://example.com/busy\",\"status\":503}}}}],\"catch\":{\"as\":\"problem\",\"do\":[{\"rest\":{\"wait\":\"PT1H\"}}]}}},{\"trying\":{\"try\":[{\"slow\":{\"wait\":\"PT1H\"}}],\"catch\":{},\"timeout\":{\"after\":\"PT2H\"}}},{\"each\":{\"for\":{\"in\":\"${ [1, 2] }\",\"each\":\"number\"},\"do\":[{\"step\":{\"wait\":\"PT1H\"}}]}},{\"steps\":{\"do\":[{\"first\":{\"set\":{\"first\":true}}},{\"second\":{\"wait\":\"PT1H\"}}]}},{\"counting\":{\"for\":{\"in\":\"${ [range(0; 120)] }\"},\"do\":[{\"add\":{\"set\":\"${ { count: ((.count // 0) + 1) } }\"}}]}},{\"later\":{\"set\":{\"later\":true}}}]}}}]},\"input\":1},\"attributes\":{},\"limits\":{\"mostDurationMs\":2592000000,\"longestCallMs\":600000},\"startedAt\":1790845200000,\"lastInputAt\":1790845200000,\"inputs\":1,\"random\":{\"seed\":7,\"draws\":0},\"runs\":{\"/do/0/all\":1,\"/do/0/all/fork/branches/0/race\":1,\"/do/0/all/fork/branches/0/race/fork/branches/0/fails\":1,\"/do/0/all/fork/branches/0/race/fork/branches/1/waits\":1,\"/do/0/all/fork/branches/1/quick\":1,\"/do/0/all/fork/branches/2/pause\":1,\"/do/0/all/fork/branches/3/ask\":1,\"/do/0/all/fork/branches/4/await\":1,\"/do/0/all/fork/branches/5/backing\":1,\"/do/0/all/fork/branches/5/backing/try/0/fail\":1,\"/do/0/all/fork/branches/6/recovering\":1,\"/do/0/all/fork/branches/6/recovering/try/0/fail\":1,\"/do/0/all/fork/branches/6/recovering/catch/do/0/rest\":1,\"/do/0/all/fork/branches/7/trying\":1,\"/do/0/all/fork/branches/7/trying/try/0/slow\":1,\"/do/0/all/fork/branches/8/each\":1,\"/do/0/all/fork/branches/8/each/do/0/step\":1,\"/do/0/all/fork/branches/9/steps\":1,\"/do/0/all/fork/branches/9/steps/do/0/first\":1,\"/do/0/all/fork/branches/9/steps/do/1/second\":1,\"/do/0/all/fork/branches/10/counting\":1,\"/do/0/all/fork/branches/10/counting/do/0/add\":79},\"timers\":{\"next\":13,\"armed\":{\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/1\":{\"purpose\":\"deadline\",\"reference\":\"/\",\"armedAt\":1790845200000,\"dueAt\":1793433600000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/2\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/0/race/fork/branches/1/waits\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/3\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/2/pause\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/4\":{\"purpose\":\"call_deadline\",\"reference\":\"/do/0/all/fork/branches/3/ask\",\"armedAt\":1790845200000,\"dueAt\":1790845800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/5\":{\"purpose\":\"retry_delay\",\"reference\":\"/do/0/all/fork/branches/5/backing\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/6\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/6/recovering/catch/do/0/rest\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/7\":{\"purpose\":\"timeout\",\"reference\":\"/do/0/all/fork/branches/7/trying\",\"armedAt\":1790845200000,\"dueAt\":1790852400000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/8\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/7/trying/try/0/slow\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/9\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/8/each/do/0/step\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/10\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/9/steps/do/1/second\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/11\":{\"purpose\":\"yield\",\"reference\":\"/do/0/all/fork/branches/10/counting/do/0/add\",\"armedAt\":1790845200000,\"dueAt\":1790845200000},\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/12\":{\"purpose\":\"yield\",\"reference\":\"/do/0/all/fork/branches/11/later\",\"armedAt\":1790845200000,\"dueAt\":1790845200000}}},\"calls\":{\"[\\\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\\\",\\\"/do/0/all/fork/branches/3/ask\\\",1]\":{\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"reference\":\"/do/0/all/fork/branches/3/ask\",\"run\":1}},\"inbox\":{\"waiting\":[],\"waitingBytes\":0,\"receivedIds\":[],\"received\":0,\"receivedBytes\":0,\"overflow\":null},\"heldBytes\":71351,\"historyBytes\":33820,\"stepsWithoutWaiting\":80,\"cancelRequested\":false,\"machine\":{\"values\":{\"0\":{\"value\":{},\"bytes\":2},\"1\":{\"value\":{\"ticket\":7},\"bytes\":12},\"2\":{\"value\":{\"quick\":true},\"bytes\":14},\"3\":{\"value\":{\"to\":\"ada\"},\"bytes\":12},\"4\":{\"value\":{\"type\":\"https://example.com/busy\",\"status\":503,\"instance\":\"/do/0/all/fork/branches/6/recovering/try/0/fail\"},\"bytes\":109},\"5\":{\"value\":[1,2],\"bytes\":5},\"6\":{\"value\":1,\"bytes\":1},\"7\":{\"value\":0,\"bytes\":1},\"8\":{\"value\":{\"first\":true},\"bytes\":14},\"9\":{\"value\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119],\"bytes\":371},\"246\":{\"value\":{\"count\":79},\"bytes\":12},\"247\":{\"value\":79,\"bytes\":2},\"248\":{\"value\":79,\"bytes\":2}},\"nextValue\":249,\"context\":0,\"root\":{\"reference\":\"/\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"list\",\"list\":{\"pointer\":\"/do\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"fork\",\"compete\":false,\"branches\":[{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/0/race\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"fork\",\"compete\":true,\"branches\":[{\"state\":\"failed\",\"error\":{\"type\":\"https://example.com/lost\",\"status\":409,\"instance\":\"/do/0/all/fork/branches/0/race/fork/branches/0/fails\"},\"order\":0},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/0/race/fork/branches/1/waits\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/2\"}}}]}}},{\"state\":\"finished\",\"output\":2,\"flow\":\"continue\"},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/2/pause\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/3\"}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/3/ask\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"call\",\"key\":{\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"reference\":\"/do/0/all/fork/branches/3/ask\",\"run\":1},\"function\":\"notify\",\"arguments\":3,\"label\":\"the function notify\"}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/4/await\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"listen\",\"consumed\":[]}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/5/backing\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"backing_off\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/5\",\"error\":{\"type\":\"https://example.com/busy\",\"status\":503,\"instance\":\"/do/0/all/fork/branches/5/backing/try/0/fail\"}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/6/recovering\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"recovering\",\"list\":{\"pointer\":\"/do/0/all/fork/branches/6/recovering/catch/do\",\"position\":0,\"data\":1,\"variables\":{\"problem\":4},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/6/recovering/catch/do/0/rest\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{\"problem\":4},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/6\"}}}}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/7/trying\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/7\",\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"trying\",\"list\":{\"pointer\":\"/do/0/all/fork/branches/7/trying/try\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/7/trying/try/0/slow\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/8\"}}}},\"attemptLimit\":null}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/8/each\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"for\",\"items\":5,\"index\":0,\"data\":1,\"list\":{\"pointer\":\"/do/0/all/fork/branches/8/each/do\",\"position\":0,\"data\":1,\"variables\":{\"number\":6,\"index\":7},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/8/each/do/0/step\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{\"number\":6,\"index\":7},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/9\"}}}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/9/steps\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"list\",\"list\":{\"pointer\":\"/do/0/all/fork/branches/9/steps/do\",\"position\":1,\"data\":8,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/9/steps/do/1/second\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":8,\"input\":8,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/10\"}}}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/10/counting\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"for\",\"items\":9,\"index\":79,\"data\":246,\"list\":{\"pointer\":\"/do/0/all/fork/branches/10/counting/do\",\"position\":0,\"data\":246,\"variables\":{\"item\":247,\"index\":248},\"current\":{\"kind\":\"yielding\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/11\"}}}}},{\"state\":\"yielding\",\"timer\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/12\"}]}}}}}}},\"outcome\":null}}"
+      "{\"format\":2,\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"version\":1,\"historyBytes\":25017,\"state\":{\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"status\":\"running\",\"workflow\":{\"document\":{\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"acme\",\"name\":\"test\",\"version\":\"1.0.0\"},\"do\":[{\"all\":{\"fork\":{\"branches\":[{\"race\":{\"fork\":{\"compete\":true,\"branches\":[{\"fails\":{\"raise\":{\"error\":{\"type\":\"https://example.com/lost\",\"status\":409}}}},{\"waits\":{\"wait\":\"PT1H\"}}]}}},{\"quick\":{\"set\":{\"quick\":true}}},{\"pause\":{\"wait\":\"PT1H\"}},{\"ask\":{\"call\":\"notify\",\"with\":{\"to\":\"ada\"}}},{\"await\":{\"listen\":{\"to\":{\"one\":{\"with\":{\"type\":\"approved\"}}}}}},{\"backing\":{\"try\":[{\"fail\":{\"raise\":{\"error\":{\"type\":\"https://example.com/busy\",\"status\":503}}}}],\"catch\":{\"retry\":{\"delay\":\"PT1H\",\"limit\":{\"attempt\":{\"count\":2}}}}}},{\"recovering\":{\"try\":[{\"fail\":{\"raise\":{\"error\":{\"type\":\"https://example.com/busy\",\"status\":503}}}}],\"catch\":{\"as\":\"problem\",\"do\":[{\"rest\":{\"wait\":\"PT1H\"}}]}}},{\"trying\":{\"try\":[{\"slow\":{\"wait\":\"PT1H\"}}],\"catch\":{},\"timeout\":{\"after\":\"PT2H\"}}},{\"each\":{\"for\":{\"in\":\"${ [1, 2] }\",\"each\":\"number\"},\"do\":[{\"step\":{\"wait\":\"PT1H\"}}]}},{\"steps\":{\"do\":[{\"first\":{\"set\":{\"first\":true}}},{\"second\":{\"wait\":\"PT1H\"}}]}},{\"counting\":{\"for\":{\"in\":\"${ [range(0; 120)] }\"},\"do\":[{\"add\":{\"set\":\"${ { count: ((.count // 0) + 1) } }\"}}]}},{\"later\":{\"set\":{\"later\":true}}}]}}}]},\"input\":1},\"attributes\":{},\"limits\":{\"mostDurationMs\":2592000000,\"longestCallMs\":600000},\"startedAt\":1790845200000,\"lastInputAt\":1790845200000,\"inputs\":1,\"random\":{\"seed\":7,\"draws\":0},\"runs\":{\"/do/0/all\":1,\"/do/0/all/fork/branches/0/race\":1,\"/do/0/all/fork/branches/0/race/fork/branches/0/fails\":1,\"/do/0/all/fork/branches/0/race/fork/branches/1/waits\":1,\"/do/0/all/fork/branches/1/quick\":1,\"/do/0/all/fork/branches/2/pause\":1,\"/do/0/all/fork/branches/3/ask\":1,\"/do/0/all/fork/branches/4/await\":1,\"/do/0/all/fork/branches/5/backing\":1,\"/do/0/all/fork/branches/5/backing/try/0/fail\":1,\"/do/0/all/fork/branches/6/recovering\":1,\"/do/0/all/fork/branches/6/recovering/try/0/fail\":1,\"/do/0/all/fork/branches/6/recovering/catch/do/0/rest\":1,\"/do/0/all/fork/branches/7/trying\":1,\"/do/0/all/fork/branches/7/trying/try/0/slow\":1,\"/do/0/all/fork/branches/8/each\":1,\"/do/0/all/fork/branches/8/each/do/0/step\":1,\"/do/0/all/fork/branches/9/steps\":1,\"/do/0/all/fork/branches/9/steps/do/0/first\":1,\"/do/0/all/fork/branches/9/steps/do/1/second\":1,\"/do/0/all/fork/branches/10/counting\":1,\"/do/0/all/fork/branches/10/counting/do/0/add\":39},\"timers\":{\"next\":13,\"armed\":{\"1\":{\"purpose\":\"deadline\",\"reference\":\"/\",\"armedAt\":1790845200000,\"dueAt\":1793437200000},\"2\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/0/race/fork/branches/1/waits\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"3\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/2/pause\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"4\":{\"purpose\":\"call_deadline\",\"reference\":\"/do/0/all/fork/branches/3/ask\",\"armedAt\":1790845200000,\"dueAt\":1790845800000},\"5\":{\"purpose\":\"retry_delay\",\"reference\":\"/do/0/all/fork/branches/5/backing\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"6\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/6/recovering/catch/do/0/rest\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"7\":{\"purpose\":\"timeout\",\"reference\":\"/do/0/all/fork/branches/7/trying\",\"armedAt\":1790845200000,\"dueAt\":1790852400000},\"8\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/7/trying/try/0/slow\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"9\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/8/each/do/0/step\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"10\":{\"purpose\":\"wait\",\"reference\":\"/do/0/all/fork/branches/9/steps/do/1/second\",\"armedAt\":1790845200000,\"dueAt\":1790848800000},\"11\":{\"purpose\":\"yield\",\"reference\":\"/do/0/all/fork/branches/10/counting\",\"armedAt\":1790845200000,\"dueAt\":1790845200000},\"12\":{\"purpose\":\"yield\",\"reference\":\"/do/0/all/fork/branches/11/later\",\"armedAt\":1790845200000,\"dueAt\":1790845200000}}},\"calls\":{\"[\\\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\\\",\\\"/do/0/all/fork/branches/3/ask\\\",1]\":{\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"reference\":\"/do/0/all/fork/branches/3/ask\",\"run\":1}},\"inbox\":{\"waiting\":[],\"waitingBytes\":0,\"receivedIds\":[],\"received\":0,\"receivedBytes\":0},\"heldBytes\":71351,\"historyBytes\":25017,\"stepsWithoutWaiting\":40,\"cancelRequested\":false,\"machine\":{\"values\":{\"0\":{\"value\":{},\"bytes\":2},\"1\":{\"value\":{\"ticket\":7},\"bytes\":12},\"2\":{\"value\":{\"quick\":true},\"bytes\":14},\"3\":{\"value\":{\"to\":\"ada\"},\"bytes\":12},\"4\":{\"value\":{\"type\":\"https://example.com/busy\",\"status\":503,\"instance\":\"/do/0/all/fork/branches/6/recovering/try/0/fail\"},\"bytes\":109},\"5\":{\"value\":[1,2],\"bytes\":5},\"6\":{\"value\":1,\"bytes\":1},\"7\":{\"value\":0,\"bytes\":1},\"8\":{\"value\":{\"first\":true},\"bytes\":14},\"9\":{\"value\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119],\"bytes\":371},\"126\":{\"value\":{\"count\":39},\"bytes\":12},\"127\":{\"value\":39,\"bytes\":2},\"128\":{\"value\":39,\"bytes\":2}},\"nextValue\":129,\"context\":0,\"root\":{\"reference\":\"/\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"list\",\"list\":{\"pointer\":\"/do\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"fork\",\"compete\":false,\"branches\":[{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/0/race\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"fork\",\"compete\":true,\"branches\":[{\"state\":\"failed\",\"error\":{\"type\":\"https://example.com/lost\",\"status\":409,\"instance\":\"/do/0/all/fork/branches/0/race/fork/branches/0/fails\"},\"order\":0},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/0/race/fork/branches/1/waits\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"2\"}}}]}}},{\"state\":\"finished\",\"output\":2,\"flow\":\"continue\"},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/2/pause\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"3\"}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/3/ask\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"call\",\"key\":{\"executionId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"reference\":\"/do/0/all/fork/branches/3/ask\",\"run\":1},\"function\":\"notify\",\"arguments\":3,\"label\":\"the function notify\",\"deadline\":\"4\"}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/4/await\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"listen\",\"consumed\":[]}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/5/backing\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"backing_off\",\"timer\":\"5\",\"error\":{\"type\":\"https://example.com/busy\",\"status\":503,\"instance\":\"/do/0/all/fork/branches/5/backing/try/0/fail\"}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/6/recovering\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"recovering\",\"list\":{\"pointer\":\"/do/0/all/fork/branches/6/recovering/catch/do\",\"position\":0,\"data\":1,\"variables\":{\"problem\":4},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/6/recovering/catch/do/0/rest\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{\"problem\":4},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"6\"}}}}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/7/trying\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":\"7\",\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"trying\",\"list\":{\"pointer\":\"/do/0/all/fork/branches/7/trying/try\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/7/trying/try/0/slow\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"8\"}}}},\"attemptLimit\":null}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/8/each\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"for\",\"items\":5,\"index\":0,\"data\":1,\"list\":{\"pointer\":\"/do/0/all/fork/branches/8/each/do\",\"position\":0,\"data\":1,\"variables\":{\"number\":6,\"index\":7},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/8/each/do/0/step\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{\"number\":6,\"index\":7},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"9\"}}}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/9/steps\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"list\",\"list\":{\"pointer\":\"/do/0/all/fork/branches/9/steps/do\",\"position\":1,\"data\":8,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/9/steps/do/1/second\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":8,\"input\":8,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"10\"}}}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/10/counting\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"for\",\"items\":9,\"index\":39,\"data\":126,\"list\":{\"pointer\":\"/do/0/all/fork/branches/10/counting/do\",\"position\":0,\"data\":126,\"variables\":{\"item\":127,\"index\":128},\"current\":{\"kind\":\"yielding\",\"timer\":\"11\"}}}}},{\"state\":\"yielding\",\"timer\":\"12\"}]}}}}}}},\"outcome\":null}}"
     ],
-    "bytes": 11346,
+    "bytes": 10368,
     "tail": [
       {
         "version": 2,
@@ -2227,7 +1828,7 @@
             {
               "op": "replace",
               "path": "/historyBytes",
-              "value": 34432
+              "value": 25629
             }
           ],
           "outputs": []
@@ -2471,78 +2072,78 @@
       "/do/0/all/fork/branches/9/steps/do/0/first": 1,
       "/do/0/all/fork/branches/9/steps/do/1/second": 1,
       "/do/0/all/fork/branches/10/counting": 1,
-      "/do/0/all/fork/branches/10/counting/do/0/add": 79
+      "/do/0/all/fork/branches/10/counting/do/0/add": 39
     },
     "timers": {
       "next": 13,
       "armed": {
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/1": {
+        "1": {
           "purpose": "deadline",
           "reference": "/",
           "armedAt": 1790845200000,
-          "dueAt": 1793433600000
+          "dueAt": 1793437200000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/2": {
+        "2": {
           "purpose": "wait",
           "reference": "/do/0/all/fork/branches/0/race/fork/branches/1/waits",
           "armedAt": 1790845200000,
           "dueAt": 1790848800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/3": {
+        "3": {
           "purpose": "wait",
           "reference": "/do/0/all/fork/branches/2/pause",
           "armedAt": 1790845200000,
           "dueAt": 1790848800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/4": {
+        "4": {
           "purpose": "call_deadline",
           "reference": "/do/0/all/fork/branches/3/ask",
           "armedAt": 1790845200000,
           "dueAt": 1790845800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/5": {
+        "5": {
           "purpose": "retry_delay",
           "reference": "/do/0/all/fork/branches/5/backing",
           "armedAt": 1790845200000,
           "dueAt": 1790848800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/6": {
+        "6": {
           "purpose": "wait",
           "reference": "/do/0/all/fork/branches/6/recovering/catch/do/0/rest",
           "armedAt": 1790845200000,
           "dueAt": 1790848800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/7": {
+        "7": {
           "purpose": "timeout",
           "reference": "/do/0/all/fork/branches/7/trying",
           "armedAt": 1790845200000,
           "dueAt": 1790852400000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/8": {
+        "8": {
           "purpose": "wait",
           "reference": "/do/0/all/fork/branches/7/trying/try/0/slow",
           "armedAt": 1790845200000,
           "dueAt": 1790848800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/9": {
+        "9": {
           "purpose": "wait",
           "reference": "/do/0/all/fork/branches/8/each/do/0/step",
           "armedAt": 1790845200000,
           "dueAt": 1790848800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/10": {
+        "10": {
           "purpose": "wait",
           "reference": "/do/0/all/fork/branches/9/steps/do/1/second",
           "armedAt": 1790845200000,
           "dueAt": 1790848800000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/11": {
+        "11": {
           "purpose": "yield",
-          "reference": "/do/0/all/fork/branches/10/counting/do/0/add",
+          "reference": "/do/0/all/fork/branches/10/counting",
           "armedAt": 1790845200000,
           "dueAt": 1790845200000
         },
-        "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/12": {
+        "12": {
           "purpose": "yield",
           "reference": "/do/0/all/fork/branches/11/later",
           "armedAt": 1790845200000,
@@ -2571,12 +2172,11 @@
       "waitingBytes": 46,
       "receivedIds": ["event-1"],
       "received": 1,
-      "receivedBytes": 46,
-      "overflow": null
+      "receivedBytes": 46
     },
     "heldBytes": 71351,
-    "historyBytes": 34432,
-    "stepsWithoutWaiting": 80,
+    "historyBytes": 25629,
+    "stepsWithoutWaiting": 40,
     "cancelRequested": false,
     "machine": {
       "values": {
@@ -2638,22 +2238,22 @@
           ],
           "bytes": 371
         },
-        "246": {
+        "126": {
           "value": {
-            "count": 79
+            "count": 39
           },
           "bytes": 12
         },
-        "247": {
-          "value": 79,
+        "127": {
+          "value": 39,
           "bytes": 2
         },
-        "248": {
-          "value": 79,
+        "128": {
+          "value": 39,
           "bytes": 2
         }
       },
-      "nextValue": 249,
+      "nextValue": 129,
       "context": 0,
       "root": {
         "reference": "/",
@@ -2723,7 +2323,7 @@
                                 "timeout": null,
                                 "body": {
                                   "kind": "wait",
-                                  "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/2"
+                                  "timer": "2"
                                 }
                               }
                             }
@@ -2749,7 +2349,7 @@
                         "timeout": null,
                         "body": {
                           "kind": "wait",
-                          "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/3"
+                          "timer": "3"
                         }
                       }
                     },
@@ -2773,7 +2373,8 @@
                           },
                           "function": "notify",
                           "arguments": 3,
-                          "label": "the function notify"
+                          "label": "the function notify",
+                          "deadline": "4"
                         }
                       }
                     },
@@ -2811,7 +2412,7 @@
                           "startedAt": 1790845200000,
                           "phase": {
                             "kind": "backing_off",
-                            "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/5",
+                            "timer": "5",
                             "error": {
                               "type": "https://example.com/busy",
                               "status": 503,
@@ -2860,7 +2461,7 @@
                                   "timeout": null,
                                   "body": {
                                     "kind": "wait",
-                                    "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/6"
+                                    "timer": "6"
                                   }
                                 }
                               }
@@ -2879,7 +2480,7 @@
                         "rawInput": 1,
                         "input": 1,
                         "variables": {},
-                        "timeout": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/7",
+                        "timeout": "7",
                         "body": {
                           "kind": "try",
                           "attempt": 0,
@@ -2904,7 +2505,7 @@
                                   "timeout": null,
                                   "body": {
                                     "kind": "wait",
-                                    "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/8"
+                                    "timer": "8"
                                   }
                                 }
                               }
@@ -2954,7 +2555,7 @@
                                 "timeout": null,
                                 "body": {
                                   "kind": "wait",
-                                  "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/9"
+                                  "timer": "9"
                                 }
                               }
                             }
@@ -2993,7 +2594,7 @@
                                 "timeout": null,
                                 "body": {
                                   "kind": "wait",
-                                  "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/10"
+                                  "timer": "10"
                                 }
                               }
                             }
@@ -3015,19 +2616,19 @@
                         "body": {
                           "kind": "for",
                           "items": 9,
-                          "index": 79,
-                          "data": 246,
+                          "index": 39,
+                          "data": 126,
                           "list": {
                             "pointer": "/do/0/all/fork/branches/10/counting/do",
                             "position": 0,
-                            "data": 246,
+                            "data": 126,
                             "variables": {
-                              "item": 247,
-                              "index": 248
+                              "item": 127,
+                              "index": 128
                             },
                             "current": {
                               "kind": "yielding",
-                              "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/11"
+                              "timer": "11"
                             }
                           }
                         }
@@ -3035,7 +2636,7 @@
                     },
                     {
                       "state": "yielding",
-                      "timer": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/timers/12"
+                      "timer": "12"
                     }
                   ]
                 }

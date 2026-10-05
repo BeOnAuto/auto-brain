@@ -29,9 +29,9 @@ do:
   it('keep a cancel of what an earlier input armed or started', () => {
     const key = { executionId, reference: '/do/0/ask', run: 1 };
     const outputs = [
-      { kind: 'cancel_timer', executionId, timerId: `${executionId}/timers/1` },
+      { kind: 'cancel_timer', executionId, timerId: '1' },
       { kind: 'cancel_call', key },
-      { kind: 'arm_timer', executionId, timerId: `${executionId}/timers/2`, dueAt: 1, purpose: 'wait' },
+      { kind: 'arm_timer', executionId, timerId: '2', dueAt: 1, purpose: 'wait' },
     ] as const;
 
     expect(withoutUndone(outputs)).toEqual(outputs);

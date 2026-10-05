@@ -18,8 +18,6 @@ import { cancelBody, resumeBody } from '../tasks/task-bodies.ts';
 
 const root = '/';
 
-const deadlineMargin = 3_600_000;
-
 export const mostOutputBytes = 1_048_574;
 
 function endingOnRaise(machine: Machine, attempt: () => void): void {
@@ -134,7 +132,7 @@ function startRun(machine: Machine, started: Started): void {
   session.timers.arm({
     purpose: 'deadline',
     reference: root,
-    milliseconds: started.limits.mostDurationMs - deadlineMargin,
+    milliseconds: started.limits.mostDurationMs,
     label: 'the most the workflow may run',
   });
   endingOnRaise(machine, () => {

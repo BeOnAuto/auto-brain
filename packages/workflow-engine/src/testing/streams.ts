@@ -11,9 +11,9 @@ export interface Change {
   readonly outputs?: readonly RunOutput[];
 }
 
-const timer = `${executionId}/timers/1`;
+const timer = '1';
 
-const timerPath = `/timers/armed/${timer.replaceAll('/', '~1')}`;
+const timerPath = `/timers/armed/${timer}`;
 
 export function streamOf(changes: readonly Change[]): readonly PositionedEvent[] {
   return changes.reduce((events: readonly PositionedEvent[], { receipt, patch, outputs = [] }: Change, index) => {

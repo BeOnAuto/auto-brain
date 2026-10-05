@@ -57,6 +57,7 @@ export type FrameBody =
       readonly function: string;
       readonly arguments: ValueId;
       readonly label: string;
+      readonly deadline: string;
     }
   | { readonly kind: 'listen'; readonly consumed: readonly ValueId[] };
 
@@ -105,7 +106,6 @@ export interface InboxState {
   readonly receivedIds: readonly string[];
   readonly received: number;
   readonly receivedBytes: number;
-  readonly overflow: DslError | null;
 }
 
 export interface RunState {
@@ -182,6 +182,7 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
     function: Schema.NonEmptyString,
     arguments: ValueIdSchema,
     label: Schema.String,
+    deadline: Schema.String,
   }),
   Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema) }),
 ]);
@@ -237,7 +238,6 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
     receivedIds: Schema.Array(Schema.String),
     received: IntSchema,
     receivedBytes: IntSchema,
-    overflow: Schema.NullOr(DslErrorSchema),
   }),
   heldBytes: IntSchema,
   historyBytes: IntSchema,
@@ -265,7 +265,7 @@ export const newRun: RunState = {
   runs: {},
   timers: { next: 1, armed: {} },
   calls: {},
-  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0, overflow: null },
+  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0 },
   heldBytes: 0,
   historyBytes: 0,
   stepsWithoutWaiting: 0,

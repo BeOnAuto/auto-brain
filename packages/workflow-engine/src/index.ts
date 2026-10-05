@@ -131,5 +131,5 @@ export {
   type TroublingReceipt,
   type UnsettledReport,
 } from './settlement/record-store.ts';
-export { TimerPurposeSchema, timerIdOf, type TimerPurpose } from './timers/timer-id.ts';
+export { TimerPurposeSchema, type TimerPurpose } from './timers/timer-id.ts';
 export type { ArmReceipt, TimerCancelReceipt, Timers } from './timers/timers.ts';

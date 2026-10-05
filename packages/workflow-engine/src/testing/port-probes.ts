@@ -16,6 +16,7 @@ export interface Probe<Subject> {
 export interface TimerSubject {
   readonly timers: Timers;
   readonly run: RunContext;
+  readonly otherRun: RunContext;
   readonly now: () => number;
   readonly settle: () => Effect.Effect<readonly string[], unknown>;
 }
@@ -28,11 +29,11 @@ export interface ExecutorSubject {
   readonly settle: () => Effect.Effect<readonly string[], unknown>;
 }
 
-function timerOf({ run, now }: TimerSubject, sequence: number): ArmTimer {
+function timerOf({ run, now }: Pick<TimerSubject, 'run' | 'now'>, sequence: number): ArmTimer {
   return {
     kind: 'arm_timer',
     executionId: run.executionId,
-    timerId: `${run.executionId}/timers/${sequence}`,
+    timerId: String(sequence),
     dueAt: now() + 1000,
     purpose: 'wait',
   };
@@ -68,14 +69,15 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
       }),
   },
   {
-    title: 'never fires a timer it cancelled',
-    expected: ['armed', 'cancelled', 'fired nothing'],
+    title: 'never fires a timer it cancelled, and refuses to arm it again',
+    expected: ['armed', 'cancelled', 'refused_after_cancel', 'fired nothing'],
     run: (subject) =>
       Effect.gen(function* () {
         const timer = timerOf(subject, 2);
         const armed = yield* subject.timers.arm(timer, subject.run);
         const cancelled = yield* subject.timers.cancel(cancelOf(timer), subject.run);
-        return [armed, cancelled, firedOf(yield* subject.settle())];
+        const refused = yield* subject.timers.arm(timer, subject.run);
+        return [armed, cancelled, refused, firedOf(yield* subject.settle())];
       }),
   },
   {
@@ -101,6 +103,19 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
         const fired = yield* subject.settle();
         const sweptAgain = yield* subject.timers.sweep(subject.run, [kept, lost]);
         return [armed, `swept ${swept}`, firedOf(fired), `swept ${sweptAgain}`];
+      }),
+  },
+  {
+    title: 'keeps apart the timers of two runs that have the same id, since a timer id is unique only in its run',
+    expected: ['armed', 'armed', 'cancelled', 'fired 6'],
+    run: (subject) =>
+      Effect.gen(function* () {
+        const ours = timerOf(subject, 6);
+        const theirs = timerOf({ run: subject.otherRun, now: subject.now }, 6);
+        const armed = yield* subject.timers.arm(ours, subject.run);
+        const armedToo = yield* subject.timers.arm(theirs, subject.otherRun);
+        const cancelled = yield* subject.timers.cancel(cancelOf(ours), subject.run);
+        return [armed, armedToo, cancelled, firedOf(yield* subject.settle())];
       }),
   },
 ];
@@ -171,14 +186,15 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
       }),
   },
   {
-    title: 'cancels a call it is running',
-    expected: ['started', 'cancelled', 'answered 0 of 0'],
+    title: 'cancels a call it is running, and refuses to start it again',
+    expected: ['started', 'cancelled', 'refused_after_cancel', 'answered 0 of 0'],
     run: (subject) =>
       Effect.gen(function* () {
         const call = callOf(subject, '/do/0/fourth');
         const started = yield* subject.executor.start(call, subject.run);
         const cancelled = yield* subject.executor.cancel(cancelCallOf(call), subject.run);
-        return [started, cancelled, yield* answeredOf(subject, call)];
+        const refused = yield* subject.executor.start(call, subject.run);
+        return [started, cancelled, refused, yield* answeredOf(subject, call)];
       }),
   },
 ];

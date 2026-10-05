@@ -46,11 +46,16 @@ describe('the events a run has not consumed', () => {
 });
 
 describe('the events a run receives over its life', () => {
-  it(`may number ${mostReceivedEvents}, consumed or not`, () => {
-    const run = drivenRun(consumingForever, { meanwhile: flooding(mostReceivedEvents + 1, 'tick') });
+  it(`may number ${mostReceivedEvents}, consumed or not; one more ends the run, which keeps the ids of the ${mostReceivedEvents} it took`, () => {
+    const atTheLimit = drivenRun(consumingForever, { meanwhile: flooding(mostReceivedEvents, 'tick') });
+    const pastIt = drivenRun(consumingForever, { meanwhile: flooding(mostReceivedEvents + 1, 'tick') });
 
-    expect(run.outcome).toMatchObject({ kind: 'raised', error: { title: receivedTitle } });
-  }, 30_000);
+    expect(atTheLimit.outcome).toMatchObject({ kind: 'overran' });
+    expect(atTheLimit.ended.inbox.receivedIds).toHaveLength(mostReceivedEvents);
+    expect(pastIt.outcome).toMatchObject({ kind: 'raised', error: { title: receivedTitle } });
+    expect(pastIt.ended.inbox).toMatchObject({ received: mostReceivedEvents, waiting: [] });
+    expect(pastIt.ended.inbox.receivedIds).toHaveLength(mostReceivedEvents);
+  }, 60_000);
 
   it(`may take ${mostReceivedEventBytes} bytes, consumed or not`, () => {
     const run = drivenRun(consumingForever, { meanwhile: flooding(22, 'tick', 'x'.repeat(200_000)) });

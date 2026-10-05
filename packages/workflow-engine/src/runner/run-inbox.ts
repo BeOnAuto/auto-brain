@@ -52,16 +52,16 @@ export function inboxOf(start: InboxState): Inbox {
     },
     receiveEvent: (event) => {
       const bytes = jsonBytesOf(event);
-      current.received += 1;
-      current.receivedBytes += bytes;
-      current.receivedIds.push(event.id);
       const overflow = overflowError(
-        current.received,
-        current.receivedBytes,
+        current.received + 1,
+        current.receivedBytes + bytes,
         current.waiting.length + 1,
         current.waitingBytes + bytes,
       );
       if (overflow === undefined) {
+        current.received += 1;
+        current.receivedBytes += bytes;
+        current.receivedIds.push(event.id);
         current.waiting.push({ event, bytes });
         current.waitingBytes += bytes;
       }

@@ -38,10 +38,10 @@ export function startCall(invocation: Invocation): BodyAdvance {
   }
   session.beforeWaiting();
   const key = { executionId: session.executionId(), reference: entry.reference, run: frame.run };
-  session.calls.startCall({ key, function: name, arguments: given });
+  const deadline = session.calls.startCall({ key, function: name, arguments: given });
   session.record(entry.reference, frame.run, 'waiting');
   const label = session.options.functions.describe(name, given);
-  return waitingOn({ kind: 'call', key, function: name, arguments: session.hold(given), label });
+  return waitingOn({ kind: 'call', key, function: name, arguments: session.hold(given), label, deadline });
 }
 
 function errorOf(result: Exclude<CallResult, { readonly status: 'succeeded' }>, body: CallBody): DslError {
@@ -52,12 +52,12 @@ function errorOf(result: Exclude<CallResult, { readonly status: 'succeeded' }>, 
 }
 
 function answered({ machine }: Invocation, body: CallBody, result: CallResult): BodyAdvance {
-  machine.session.calls.answerCall(body.key);
+  machine.session.calls.answerCall(body);
   return result.status === 'succeeded' ? doneOf(machine.session.hold(result.output)) : raisedOf(errorOf(result, body));
 }
 
 function unreachable({ machine }: Invocation, body: CallBody, milliseconds: number): BodyAdvance {
-  machine.session.calls.cancelCall(body.key);
+  machine.session.calls.cancelCall(body);
   return raisedOf(errorOf({ status: 'unreachable', detail: `No answer came within ${milliseconds} ms` }, body));
 }
 
@@ -65,13 +65,11 @@ export function resumeCall(invocation: Invocation, body: CallBody, signal: Signa
   if (signal.kind === 'answer') {
     return signal.key === callKeyText(body.key) ? answered(invocation, body, signal.result) : undefined;
   }
-  const isDeadline =
-    signal.kind === 'timer' &&
-    signal.timer.purpose === 'call_deadline' &&
-    signal.timer.reference === body.key.reference;
-  return isDeadline ? unreachable(invocation, body, signal.timer.dueAt - signal.timer.armedAt) : undefined;
+  return signal.kind === 'timer' && signal.timerId === body.deadline
+    ? unreachable(invocation, body, signal.timer.dueAt - signal.timer.armedAt)
+    : undefined;
 }
 
 export function cancelCall(machine: Machine, body: CallBody): void {
-  machine.session.calls.cancelCall(body.key);
+  machine.session.calls.cancelCall(body);
 }

@@ -34,7 +34,7 @@ describe('the time of an input', () => {
 
   it('is never before the time a fired timer was due, so a timer that fires early still fires at its time', () => {
     const early: RunInput = { kind: 'timer_fired', executionId, at, timerId: armedTimer };
-    const unknown: RunInput = { kind: 'timer_fired', executionId, at, timerId: `${executionId}/timers/9` };
+    const unknown: RunInput = { kind: 'timer_fired', executionId, at, timerId: '9' };
 
     expect([inputTimeOf(runningState, early), inputTimeOf(runningState, unknown)]).toEqual([at + 60_000, at]);
   });

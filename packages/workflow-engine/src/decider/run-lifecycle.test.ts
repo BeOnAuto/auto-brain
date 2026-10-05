@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { mostValueDepth, type Json } from '../dsl/json.ts';
 import { errorType } from '../dsl/raised-error.ts';
 import { mostStepsWithoutWaiting } from '../machine/limits.ts';
-import { drivenExecutionId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
+import { armedTimersAlong, drivenExecutionId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { mostOutputBytes } from './run-lifecycle.ts';
 
@@ -45,8 +45,9 @@ do:
     });
   });
 
-  it('is stopped an hour before the most it may run, and settles failed', () => {
-    const run = drivenRun(workflow('do:\n  - pause: { wait: PT1H }'), { limits: { mostDurationMs: 7_200_000 } });
+  it('is stopped when it has run the most it may, and settles failed', () => {
+    const document = workflow('do:\n  - first: { wait: PT40M }\n  - second: { wait: PT40M }');
+    const run = drivenRun(document, { limits: { mostDurationMs: 3_600_000 } });
 
     expect(run.outcome).toEqual({ kind: 'overran', milliseconds: 3_600_000 });
     expect(run.driver.ports.recordStore.settlementOf(drivenExecutionId)).toEqual({ status: 'failed' });
@@ -154,5 +155,26 @@ do:
       kind: 'raised',
       error: { title: 'use.timeouts has no timeout missing' },
     });
+  });
+});
+
+describe('a task that raises before it waits', () => {
+  it('leaves no timeout armed, whether its body or the reading of its input raised', () => {
+    const document = workflow(`
+do:
+  - first:
+      try:
+        - reject: { raise: { error: { type: x, status: 400 } }, timeout: { after: PT1M } }
+      catch: {}
+  - second:
+      try:
+        - misread: { set: { a: 1 }, input: { from: '\${ error("unreadable") }' }, timeout: { after: PT1M } }
+      catch: {}
+  - rest: { wait: PT1S }
+`);
+    const run = drivenRun(document);
+
+    expect(run.outcome).toMatchObject({ kind: 'completed' });
+    expect(armedTimersAlong(run.events)).toEqual([['deadline /', 'wait /do/2/rest'], []]);
   });
 });

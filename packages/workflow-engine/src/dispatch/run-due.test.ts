@@ -19,7 +19,7 @@ describe('the next time a run is due', () => {
       {
         receipt: { kind: 'cancel_requested', key: executionId, at },
         patch: [],
-        outputs: [{ kind: 'cancel_timer', executionId, timerId: `${executionId}/timers/1` }],
+        outputs: [{ kind: 'cancel_timer', executionId, timerId: '1' }],
       },
     ]);
 

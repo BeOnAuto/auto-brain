@@ -9,7 +9,11 @@ export const document = { document: { dsl: '1.0.3', namespace: 'acme', name: 'tr
 
 export const openCall: CallKey = { executionId, reference: '/do/1/fork/branches/0/ask', run: 1 };
 
-export const armedTimer = `${executionId}/timers/1`;
+export const armedTimer = '1';
+
+const askTimeout = '2';
+
+const askDeadline = '3';
 
 export const at = 1_791_100_060_000;
 
@@ -37,8 +41,15 @@ const asking: TaskFrame = {
   rawInput: ticket,
   input: ticket,
   variables: { attempt: approval },
-  timeout: `${executionId}/timers/2`,
-  body: { kind: 'call', key: openCall, function: 'notify', arguments: ticket, label: 'notify the owner' },
+  timeout: askTimeout,
+  body: {
+    kind: 'call',
+    key: openCall,
+    function: 'notify',
+    arguments: ticket,
+    label: 'notify the owner',
+    deadline: askDeadline,
+  },
 };
 
 const forking: TaskFrame = {
@@ -74,14 +85,15 @@ const running: RunState = {
   random: { seed: 42, draws: 1 },
   runs: { '/do/1': 1, [openCall.reference]: 1, [waiting.reference]: 1 },
   timers: {
-    next: 3,
+    next: 4,
     armed: {
       [armedTimer]: { purpose: 'wait', reference: waiting.reference, armedAt: at - 60_000, dueAt: at + 60_000 },
-      [`${executionId}/timers/2`]: {
-        purpose: 'timeout',
+      [askTimeout]: { purpose: 'timeout', reference: asking.reference, armedAt: at - 60_000, dueAt: at + 600_000 },
+      [askDeadline]: {
+        purpose: 'call_deadline',
         reference: asking.reference,
         armedAt: at - 60_000,
-        dueAt: at + 600_000,
+        dueAt: at + 540_000,
       },
     },
   },
@@ -92,7 +104,6 @@ const running: RunState = {
     receivedIds: ['event-1', 'event-2'],
     received: 2,
     receivedBytes: 160,
-    overflow: null,
   },
   heldBytes: 0,
   historyBytes: 9000,

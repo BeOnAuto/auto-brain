@@ -11,7 +11,3 @@ export const TimerPurposeSchema = Schema.Literals([
 ]);
 
 export type TimerPurpose = typeof TimerPurposeSchema.Type;
-
-export function timerIdOf(executionId: string, sequence: number): string {
-  return `${executionId}/timers/${sequence}`;
-}

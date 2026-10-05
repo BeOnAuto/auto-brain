@@ -98,6 +98,13 @@ function isUnguarded({ at, state, key }: Opened): boolean {
   return !Object.values(state.timers.armed).some((timer) => guards(timer, reference, at));
 }
 
+function deadlinesLeftOver(state: RunState): readonly string[] {
+  const open = new Set(Object.values(state.calls).map(({ reference }) => reference));
+  return Object.values(state.timers.armed)
+    .filter(({ purpose, reference }: ArmedTimer) => purpose === 'call_deadline' && !open.has(reference))
+    .map(({ reference }: ArmedTimer) => reference);
+}
+
 function openCallsAlong(states: readonly RunState[]): readonly Opened[] {
   const openedAt = new Map<string, number>();
   return states.flatMap((state) =>
@@ -135,15 +142,16 @@ function hostThatDiesOnce(): DyingHost {
 
 describe('every open call', () => {
   it.each(cases)(
-    'has an armed call deadline no later than its start and the longest a call runs: $shape, $answer',
+    'has an armed call deadline no later than its start and the longest a call runs, and leaves none once it closes: $shape, $answer',
     ({ document, respond }) => {
       const driver = memoryDriver({ respond });
       const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000000033';
       const ended = endedRun(driver, executionId, document);
-      const opened = openCallsAlong(statesAlong(driver.ports.runStore.events(executionId)));
+      const states = statesAlong(driver.ports.runStore.events(executionId));
 
       expect(ended.status).toBe('ended');
-      expect(opened.filter((open) => isUnguarded(open))).toEqual([]);
+      expect(openCallsAlong(states).filter((open) => isUnguarded(open))).toEqual([]);
+      expect(states.flatMap((state) => deadlinesLeftOver(state))).toEqual([]);
       expect(ended.calls).toEqual({});
       expect(ended.timers.armed).toEqual({});
     },

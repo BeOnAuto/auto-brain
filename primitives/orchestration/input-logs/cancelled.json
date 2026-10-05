@@ -130,17 +130,17 @@
         },
         {
           "op": "add",
-          "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-000000000300~1timers~11",
+          "path": "/timers/armed/1",
           "value": {
             "purpose": "deadline",
             "reference": "/",
             "armedAt": 1790845200000,
-            "dueAt": 1793433600000
+            "dueAt": 1793437200000
           }
         },
         {
           "op": "add",
-          "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-000000000300~1timers~12",
+          "path": "/timers/armed/2",
           "value": {
             "purpose": "wait",
             "reference": "/do/0/pause",
@@ -198,7 +198,7 @@
                     "timeout": null,
                     "body": {
                       "kind": "wait",
-                      "timer": "0199a3c4-7d2e-7c1a-9b3f-000000000300/timers/2"
+                      "timer": "2"
                     }
                   }
                 }
@@ -209,22 +209,22 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2525
+          "value": 2301
         }
       ],
       "outputs": [
         {
           "kind": "arm_timer",
           "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
-          "timerId": "0199a3c4-7d2e-7c1a-9b3f-000000000300/timers/1",
-          "dueAt": 1793433600000,
+          "timerId": "1",
+          "dueAt": 1793437200000,
           "purpose": "deadline",
           "label": "the most the workflow may run"
         },
         {
           "kind": "arm_timer",
           "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
-          "timerId": "0199a3c4-7d2e-7c1a-9b3f-000000000300/timers/2",
+          "timerId": "2",
           "dueAt": 1790848800000,
           "purpose": "wait",
           "label": "/do/0/pause"
@@ -258,11 +258,11 @@
         },
         {
           "op": "remove",
-          "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-000000000300~1timers~11"
+          "path": "/timers/armed/1"
         },
         {
           "op": "remove",
-          "path": "/timers/armed/0199a3c4-7d2e-7c1a-9b3f-000000000300~1timers~12"
+          "path": "/timers/armed/2"
         },
         {
           "op": "replace",
@@ -289,19 +289,19 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3673
+          "value": 3269
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
           "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
-          "timerId": "0199a3c4-7d2e-7c1a-9b3f-000000000300/timers/1"
+          "timerId": "1"
         },
         {
           "kind": "cancel_timer",
           "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
-          "timerId": "0199a3c4-7d2e-7c1a-9b3f-000000000300/timers/2"
+          "timerId": "2"
         },
         {
           "kind": "settle",

@@ -105,7 +105,7 @@ After each decision the machine sweeps the table: a value stays while the frames
 
 A transformation can still make more data than it was given. The machine measures each event before the append; one over 1.5 MiB ends the run with a `raised` runtime error, status 500, the ending today's limits give, recorded as a small final event.
 
-Frames never store the document: they name tasks by reference, a JSON Pointer into `workflow.document`. A call frame holds the opaque `function` the call names, its `arguments` as a value id, and a `label` for people reading the log; the machine knows nothing of what the arguments mean.
+Frames never store the document: they name tasks by reference, a JSON Pointer into `workflow.document`. A call frame holds the opaque `function` the call names, its `arguments` as a value id, a `label` for people reading the log, and the id of its `call_deadline` timer, which it disarms when it is answered or cancelled; the machine knows nothing of what the arguments mean.
 
 ## Outputs and receipts
 
@@ -121,19 +121,19 @@ Answers come back as inputs: a fired timer as `timer_fired`, a finished call as 
 
 A call is idempotent by its key in this sense: it is answered at most once. A start for a key the executor has answered delivers the answer again (`answered_again`); a start for a key it is running leaves it running (`running`); a start for a key that is neither, because the host that ran it died, starts it again (`started_again`), as the Node spike's `ensureJob` restarted a call. And every open call is answered eventually: each `start_call` comes with an `arm_timer` of purpose `call_deadline`, due at the input's time plus `longestCallMs`, and when it fires with the call still open the task fails with a `communication` error, status 503, as a call that cannot be reached does today. A dead executor host therefore holds a run for at most `longestCallMs`, not until its 30-day deadline.
 
-A cancel for a key the timer store or the executor has never seen is recorded as a tombstone, so a start of that key that arrives later is refused. Dispatch takes outputs in the order of the stream, so a start always reaches the port before its cancel; tombstones only matter to an executor that takes work asynchronously, such as from a queue, where a cancel can overtake its start.
+Every cancel the timer store or the executor takes for a key that has not fired or been answered is recorded as a tombstone, whether the key was armed, running or never seen, so an arm or a start of that key that arrives later is refused (`refused_after_cancel`). Dispatch takes outputs in the order of the stream, so a start always reaches the port before its cancel; tombstones matter when a dispatch is repeated from a watermark left behind, as a due note that fails leaves it, which sends an arm or a start again after the cancel that followed it, and to an executor that takes work asynchronously, such as from a queue, where a cancel can overtake its start.
 
 The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a primitive, a name and an input, and that a workflow does not call another workflow, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through the table the interpreter uses (`callErrorOf` in `src/dsl/raised-error.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
 
 ## Idempotency keys
 
-| Key          | Made of                                                   | Deduplicated in                                 |
-| ------------ | --------------------------------------------------------- | ----------------------------------------------- |
-| execution id | given by the adapter that starts the run                  | the run's status; `RecordStore` by execution id |
-| timer id     | `<execution id>/timers/<n>`, n counting up within the run | `state.timers.armed`; `Timers` by id            |
-| call key     | execution id, the task's reference, the run of that task  | `state.calls`; `Executor` by `callKeyText(key)` |
-| event id     | the external event's own `id`                             | `state.inbox.receivedIds`                       |
-| value id     | n counting up within the run                              | `state.machine.values`                          |
+| Key          | Made of                                                  | Deduplicated in                                 |
+| ------------ | -------------------------------------------------------- | ----------------------------------------------- |
+| execution id | given by the adapter that starts the run                 | the run's status; `RecordStore` by execution id |
+| timer id     | `<n>`, counting up within the run                        | `state.timers.armed`; `Timers` by run and id    |
+| call key     | execution id, the task's reference, the run of that task | `state.calls`; `Executor` by `callKeyText(key)` |
+| event id     | the external event's own `id`                            | `state.inbox.receivedIds`                       |
+| value id     | n counting up within the run                             | `state.machine.values`                          |
 
 A run keeps one counter of runs for each task reference, `state.runs`, so the third time a task runs its run is 3, and a call it starts has that run in its key. An adapter that gives a call its own execution, as a call to a spec has, derives that execution's id from the call key, so a call dispatched twice is one execution.
 
@@ -193,10 +193,10 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 5. **[engine]** An applied input appends exactly one event, in one append, with the version the decision was made on as the expected version; the loop dies with `SplitDecision` on a decision of more than one event and appends nothing (`src/engine/run-loop.test.ts`).
 6. **[engine]** A stale input appends nothing, and neither does an input to a run that has not started (`src/decider/deduplication.test.ts`).
 7. **[engine]** A late answer, a duplicate answer, a second delivery of an event and the fire of a cancelled timer are stale inputs (`src/machine/admission.test.ts`, `src/decider/deduplication.test.ts`, `src/tasks/call-task.test.ts`).
-8. **[engine]** The deduplication state is bounded: armed timers and open calls are what is outstanding, and a run keeps at most 1,024 event ids.
+8. **[engine]** The deduplication state is bounded: armed timers and open calls are what is outstanding, and a run keeps at most 1,024 event ids, the ids of the events it took; the event past the bound ends the run and is not kept (`src/runner/run-inbox.test.ts`).
 9. **[engine]** Timer ids and value ids are never reused within a run, and the run counter of a task reference only counts up.
 10. **[engine]** The outputs of a run are exactly the `outputs` of its events, and an output is dispatched only after the event that holds it is appended.
-11. **[adapter]** A timer is armed at most once and fires at least once until cancelled; a call is answered at most once, a start of a call neither answered nor running starts it again, and a cancel of a key never seen leaves a tombstone that refuses a later start (the probes of `src/testing/port-probes.ts`).
+11. **[adapter]** A timer is armed at most once and fires at least once until cancelled; a call is answered at most once, a start of a call neither answered nor running starts it again, and every cancel of a key that has not fired or been answered, seen or not, leaves a tombstone that refuses a later arm or start. A timer id is unique only within its run, so the timer store keys a timer by its run and its id (the probes of `src/testing/port-probes.ts`).
 12. **[engine]** The watermark never goes down, and every output of every event at or below it has been dispatched at least once (`src/dispatch/dispatch-watermark.test.ts`).
 13. **[engine]** A run's outcome is in its stream before the record store is asked to record it, and the `settle` output is dispatched again until the record store answers (`src/engine/engine.test.ts`).
 14. **[adapter]** The run log and the record store are two writes, each idempotent by execution id, the second retried; `EventStore.append` writes one stream, so neither adapter makes them one transaction.
@@ -218,7 +218,7 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 30. **[engine]** Every event and every snapshot names its state format; formats never go back within a stream, a format newer than the code is refused, and a committed corpus of every format loads (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`).
 31. **[engine]** Every `arm_timer` is due at or after the time of the input that armed it, and the armed timer records that time.
 32. **[engine]** `state.historyBytes` is the bytes of the stream's events as JSON, and a load dies when it is not (`src/run-log/run-event.test.ts`, `src/run-log/run-fold.test.ts`).
-33. **[engine]** Every open call has an armed `call_deadline` timer due no later than its start's time plus `longestCallMs`, so every open call is answered (`src/decider/open-calls.test.ts`).
+33. **[engine]** Every open call has an armed `call_deadline` timer due no later than its start's time plus `longestCallMs`, so every open call is answered, and no `call_deadline` timer stays armed once its call is closed (`src/decider/open-calls.test.ts`).
 34. **[engine]** After a decision the value table holds exactly the values the frames (their contexts included), the context and the workflow's input reach, and `heldBytes` is their bytes, 4 KiB a frame and the document (`src/machine/held-values.test.ts`).
 35. **[engine]** A troubling settle receipt is reported, never dropped (`src/engine/engine.test.ts`).
 
@@ -229,7 +229,7 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 - A decision opens a session over the state (`src/runner/session.ts`): the value table, the armed timers, the open calls, the inbox, the run counters, a meter of the input's work and a journal of its steps and outputs. The event's patch is the difference between the state before and the state the session ends with (`src/decider/state-diff.ts`), so nothing writes the patch by hand.
 - A run is a tree of frames, one for each task that waits, under the root list. An input becomes a signal, a timer fired, a call answered or events arrived, passed down the tree; the frame whose timer, call or listen it is resumes, and the others stay as they are.
 - A task starts as soon as its list reaches it, and finishes in the same input unless it waits: on a timer (a wait, a retry's delay, an attempt's limit, a timeout), on a call or on events. A list that ran 100 tasks, or 8,000,000 units of expression work, in one input arms a timer due at once and goes on when it fires (`src/runner/list-runner.ts`).
-- `started` arms the run's deadline, an hour before the most it may run; its fire ends the run `overran`. A call arms its `call_deadline`. A cancel, an end or a timeout cancels what the frames under it wait for.
+- `started` arms the run's deadline, due when the run has run the most it may, `mostDurationMs`; its fire ends the run `overran`. A call arms its `call_deadline` and keeps its id. A cancel, an end or a timeout cancels what the frames under it wait for, and a task that raises before it waits disarms its own timeout.
 - An event leaves out a timer or a call that the same input opened and closed (invariant 26), and its other outputs keep the order the session emitted them in.
 - A run ends with its outcome, settled once in its last event. An input that would pass a bound (inputs, history, held data, the size of one event) ends the run, raised, in a small event of its own.
 - The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The orchestration primitive runs its interpreter's tests on the machine too, and replays 15 recorded input logs through it (`primitives/orchestration/input-logs/`).

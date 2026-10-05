@@ -51,6 +51,14 @@ export function statesAlong(events: readonly PositionedEvent[]): readonly RunSta
   return states;
 }
 
+export function armedTimersAlong(events: readonly PositionedEvent[]): readonly (readonly string[])[] {
+  return statesAlong(events).map((state) =>
+    Object.values(state.timers.armed)
+      .map(({ purpose, reference }: ArmedTimer) => `${purpose} ${reference}`)
+      .toSorted(),
+  );
+}
+
 export function outputsIn(events: readonly PositionedEvent[]): readonly RunOutput[] {
   return events.flatMap(({ event }) => event.outputs);
 }

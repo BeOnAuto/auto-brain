@@ -1,7 +1,7 @@
 import type { Json } from '../dsl/json.ts';
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
 import type { ArmedTimer, RunState } from '../machine/run-state.ts';
-import { timerIdOf, type TimerPurpose } from '../timers/timer-id.ts';
+import type { TimerPurpose } from '../timers/timer-id.ts';
 import type { Descriptors } from './run-descriptors.ts';
 import type { Journal } from './run-tables.ts';
 
@@ -16,7 +16,6 @@ export interface TimerTable {
   readonly arm: (request: TimerRequest) => string;
   readonly disarm: (timerId: string | null) => void;
   readonly fire: (timerId: string) => readonly ArmedTimer[];
-  readonly timerOf: (purpose: TimerPurpose, reference: string) => string | null;
   readonly disarmAll: () => void;
   readonly timers: () => RunState['timers'];
 }
@@ -27,10 +26,15 @@ interface CallRequest {
   readonly arguments: Json;
 }
 
+export interface OpenCall {
+  readonly key: CallKey;
+  readonly deadline: string;
+}
+
 export interface CallTable {
-  readonly startCall: (request: CallRequest) => void;
-  readonly answerCall: (key: CallKey) => void;
-  readonly cancelCall: (key: CallKey) => void;
+  readonly startCall: (request: CallRequest) => string;
+  readonly answerCall: (call: OpenCall) => void;
+  readonly cancelCall: (call: OpenCall) => void;
   readonly cancelAll: () => void;
   readonly calls: () => RunState['calls'];
 }
@@ -51,9 +55,9 @@ export function timerTableOf(
   };
   return {
     arm: ({ purpose, reference, milliseconds, label }) => {
-      const timerId = timerIdOf(run.executionId(), counter.next);
+      const timerId = String(counter.next);
       counter.next += 1;
-      const dueAt = now + Math.max(milliseconds, 0);
+      const dueAt = now + milliseconds;
       armed[timerId] = { purpose, reference, armedAt: now, dueAt };
       journal.emit({ kind: 'arm_timer', executionId: run.executionId(), timerId, dueAt, purpose, label });
       return timerId;
@@ -64,10 +68,6 @@ export function timerTableOf(
       delete armed[timerId];
       return fired.map(([, timer]: readonly [string, ArmedTimer]) => timer);
     },
-    timerOf: (purpose, reference) =>
-      Object.entries(armed).find(
-        ([, timer]: readonly [string, ArmedTimer]) => timer.purpose === purpose && timer.reference === reference,
-      )?.[0] ?? null,
     disarmAll: () => {
       for (const timerId of Object.keys(armed)) {
         disarm(timerId);
@@ -90,14 +90,10 @@ export function callTableOf(
     delete calls[text];
     return open;
   };
-  const disarmDeadline = (key: CallKey): void => {
-    timers.disarm(timers.timerOf('call_deadline', key.reference));
-  };
-  const cancelCall = (key: CallKey): void => {
+  const cancel = (key: CallKey): void => {
     if (close(key)) {
       journal.emit({ kind: 'cancel_call', key });
     }
-    disarmDeadline(key);
   };
   return {
     startCall: ({ key, function: name, arguments: given }) => {
@@ -105,16 +101,19 @@ export function callTableOf(
       const longestMs = run.limits().longestCallMs;
       journal.emit({ kind: 'start_call', key, function: name, arguments: given, longestMs });
       const label = `${key.reference} deadline`;
-      timers.arm({ purpose: 'call_deadline', reference: key.reference, milliseconds: longestMs, label });
+      return timers.arm({ purpose: 'call_deadline', reference: key.reference, milliseconds: longestMs, label });
     },
-    answerCall: (key) => {
+    answerCall: ({ key, deadline }) => {
       close(key);
-      disarmDeadline(key);
+      timers.disarm(deadline);
     },
-    cancelCall,
+    cancelCall: ({ key, deadline }) => {
+      cancel(key);
+      timers.disarm(deadline);
+    },
     cancelAll: () => {
       for (const key of Object.values(calls)) {
-        cancelCall(key);
+        cancel(key);
       }
     },
     calls: () => calls,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { drivenRun, timersArmedIn } from '../testing/run-history.ts';
+import { armedTimersAlong, drivenRun, timersArmedIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 const busy = "{ raise: { error: { type: https://example.com/busy, status: 503, detail: '${ .why }' } } }";
@@ -262,5 +262,30 @@ do:
 `);
 
     expect(drivenRun(document, { input: { why: 'x' } }).outcome).toMatchObject({ kind: 'completed' });
+  });
+});
+
+describe('the attempt limit of a try task', () => {
+  it('is disarmed once the attempt ends, whether it finished at once, after a wait, or raised', () => {
+    const limit = '{ retry: { delay: PT1S, limit: { attempt: { count: 0, duration: PT10S } } } }';
+    const document = workflow(`
+do:
+  - quick:
+      try: [{ done: { set: { quick: true } } }]
+      catch: ${limit}
+  - slow:
+      try: [{ pause: { wait: PT1S } }]
+      catch: ${limit}
+  - failing:
+      try: [{ fail: { raise: { error: { type: x, status: 400 } } } }]
+      catch: ${limit}
+  - rest: { wait: PT1M }
+`);
+
+    expect(armedTimersAlong(drivenRun(document).events)).toEqual([
+      ['attempt_limit /do/1/slow', 'deadline /', 'wait /do/1/slow/try/0/pause'],
+      ['deadline /', 'wait /do/3/rest'],
+      [],
+    ]);
   });
 });

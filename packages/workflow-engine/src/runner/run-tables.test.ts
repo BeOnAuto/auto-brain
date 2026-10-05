@@ -49,7 +49,7 @@ describe('the call table of an input', () => {
     const timers = timerTableOf(newRun, descriptors, 0, journal);
     const calls = callTableOf(newRun, descriptors, timers, journal);
 
-    calls.cancelCall({ executionId: 'run', reference: '/do/0/ask', run: 1 });
+    calls.cancelCall({ key: { executionId: 'run', reference: '/do/0/ask', run: 1 }, deadline: '1' });
 
     expect(journal.outputs()).toEqual([]);
   });
