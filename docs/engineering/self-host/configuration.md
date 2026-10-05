@@ -3,7 +3,7 @@
 Settings come from environment variables and, for those that are lists or maps, from an optional YAML file:
 
 - **Environment variables** can hold every setting, and are the only place for keys and other secrets. In development, `pnpm dev` and `pnpm dev:lean` read `.env` at the root of the repository after `packages/server/dev.env`, and a variable set in the shell wins over both; the server itself never reads `.env`. A container takes environment variables, or a file of them with `docker run --env-file`.
-- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-brain.yaml` at the root of the repository when it is there; copy [`auto-brain.example.yaml`](https://github.com/BeOnAuto/auto-brain/blob/main/auto-brain.example.yaml) to start one. Git ignores it.
+- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `mcp_servers`, `allowed_tools`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-brain.yaml` at the root of the repository when it is there; copy [`auto-brain.example.yaml`](https://github.com/BeOnAuto/auto-brain/blob/main/auto-brain.example.yaml) to start one. Git ignores it.
 
 Each key of the file stands for the environment variable of the same name in upper case, and a variable that is set wins over the key, whole: `MODEL_GATEWAYS` replaces the file's `model_gateways`, it is not merged with it. The server logs at start which settings it read from the file, and which of them the environment set too. A secret is never written in the file: the file refers to the variable that holds it as `${NAME}`, or `${NAME:-default}`, and `$$` stands for a literal `$`. A value that looks like a credential and is not such a reference stops the server at start.
 
@@ -31,6 +31,7 @@ model_aliases:
 | The models listed for Bedrock, Azure or Vertex       | `declared_models` in the file, a list of model ids for each provider prefix             | [Listing the models](models.md#listing-the-models)                                      |
 | Only some models                                     | `allowed_models` in the file, such as `[anthropic/*, gateway/llama-3.3-70b]`            | [Listing the models](models.md#listing-the-models)                                      |
 | An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                         | [Proxy and CA](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
+| Tools that reason functions may call                 | `mcp_servers` in the file, and `allowed_tools` to allow only some                       | [MCP servers](#mcp-servers)                                                             |
 
 `list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases whose target's provider is configured, and leaves out what `allowed_models` does not allow. A spec that names a model outside `allowed_models`, by its own name or the alias it is sent through, cannot run, and its run says the model is not offered and that `list_models` shows those that are.
 
@@ -42,3 +43,45 @@ allowed_models:
   - anthropic/*
   - bedrock/*
 ```
+
+## MCP servers
+
+A reason function that lists `tools` calls the tools of the MCP servers in `mcp_servers` ([decision 0003](../../decisions/0003-mcp-servers.md)). The key is the name a function writes in `server/tool`, and each entry is a remote server or a process, in the shape assistants read:
+
+```yaml
+mcp_servers:
+  graph:
+    url: https://gateway.example.com/mcp
+    headers:
+      Authorization: Bearer ${GRAPH_API_KEY}
+    org: acme
+    brains: [sales, support]
+  notes:
+    command: /usr/local/bin/notes-mcp-server
+    args: [--read-only]
+    env:
+      PATH: /usr/local/bin:/usr/bin
+      NOTES_API_KEY: ${NOTES_API_KEY}
+    org: acme
+allowed_tools: [graph/search, graph/execute, notes/*]
+```
+
+| Field            | For     | What it holds                                                                                                                                |
+| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`           | both    | `http` or `stdio`; taken from `url` or `command` when left out                                                                               |
+| `url`            | `http`  | The server, spoken to over Streamable HTTP                                                                                                   |
+| `headers`        | `http`  | Headers sent with every request, each a secret                                                                                               |
+| `auth`           | `http`  | OAuth client credentials instead of a header: `issuer`, `client_id`, `client_secret` or `private_key` with `algorithm`, and `scope`          |
+| `command`        | `stdio` | An installed, pinned command, started when a run first needs it and stopped with the server                                                  |
+| `args`           | `stdio` | Its arguments                                                                                                                                |
+| `env`            | `stdio` | Its whole environment, each value a secret. It inherits nothing else from the server, so give `PATH` or an absolute command                  |
+| `org`            | both    | The org whose functions may use the server; required                                                                                         |
+| `brains`         | both    | The brains of that org that may use it; every brain of the org when left out                                                                 |
+| `record_content` | both    | `true` to record the arguments and results of calls, cut to 4 KiB, in the history of the run, where anyone who may read the brain reads them |
+| `request_id`     | both    | The response header, or the key of a result's metadata, in which the server returns its own id of a request, recorded with each call         |
+
+Write a `command` as an installed program, never as a package downloaded at start such as `npx -y`, which would run whatever that package is the day the process starts. A process runs under the server's user. With an `auth` block, the server mints tokens from the client credentials, once for every run that needs one, and renews them before they expire; it sends the credentials only to an authorization server whose metadata names the `issuer`.
+
+`allowed_tools` narrows what a function may name, as `allowed_models` narrows the models: each entry is `server/tool`, or `server/*` for every tool of a server, and a server's own policy remains the hard boundary. Every tool is allowed when it is left out.
+
+The server checks both at start and stops, naming the setting and the place but never a value, at an entry with neither `url` nor `command` or with both, a name that is not 1 to 32 lowercase letters, digits and hyphens starting with a letter, the name of a model provider or gateway, a missing `org`, a credential written out instead of referenced, an `Authorization` header beside an `auth` block, an `issuer` that is neither https nor on a loopback address, and an `allowed_tools` entry that names no configured server. It does not connect to a server or start a process until a run needs one. The servers' messages, a process's output on stderr and every failed call go to the server's log, scrubbed of the entry's secrets.

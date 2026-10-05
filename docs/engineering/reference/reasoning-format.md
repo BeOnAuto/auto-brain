@@ -45,6 +45,7 @@ Summarize the account {{ input.account }} as of {{ today }}.
 | `output.format`            | No          | `text`, the default, or `json`                        | Whether the answer is the model's text or a JSON value                                                                                                                                   |
 | `output.schema`            | With `json` | A JSON Schema                                         | The answer must match it; see [Answers that are JSON](../self-host/models.md#answers-that-are-json). Not allowed with `text`                                                             |
 | `provider_options`         | No          | An object of objects, keyed by the provider namespace | Options for `anthropic`, `openai`, `azure`, `google`, `vertex`, `googleVertex`, `amazonBedrock`, `bedrock`, or a gateway's name: only those [Provider options](#provider-options) offers |
+| `tools`                    | No          | A list of `server/tool` or `server/*`                 | The tools of the MCP servers configured for the brain that an execution may call; see [Tools](#tools)                                                                                    |
 
 Any other key, at any level, is rejected.
 
@@ -57,6 +58,7 @@ Parsing is validation. Every create, update and execution parses the document, a
 - an input schema whose root is not an object, a schema that cannot be validated (see [Answers that are JSON](../self-host/models.md#answers-that-are-json) for what is rejected), and defaults that do not match it;
 - a `json` output without a schema, and a `text` output with one;
 - a provider option that is not offered, and a namespace that is no provider's (see [Provider options](#provider-options));
+- a tool not written `server/tool` or `server/*`, and a tool listed twice;
 - Liquid that does not parse, a tag or filter that is not available, the rules of the system block, a template that writes no message outside it, and every variable it reads (see below).
 
 A JSON output schema that some providers reject or do not enforce is accepted. The spec then carries `warnings`, which `create_spec`, `get_spec`, `list_specs` and `update_spec` show, each with its line and the providers concerned, for example `Line 8, /output/schema/properties/total/minimum: minimum is not enforced while Anthropic models write the answer; an answer outside it fails as output_invalid (anthropic, bedrock, bedrock-anthropic, vertex-anthropic)`. At most 100 are shown.
@@ -90,6 +92,32 @@ A gateway is a different case: the AI SDK adds every key under the gateway's nam
 The parser does not know the gateways, so this check runs when the spec executes: a field outside the list rejects the execution as `conflict`, naming the field and saying the gateway does not allow it, and the gateway is not called. The same goes for a namespace that is shaped like a gateway's name but is no configured gateway's: the execution is rejected as `conflict` before any provider is called.
 
 A document is checked without calling a model, and the same document always gives the same answer. Whether its provider is configured, and whether the provider accepts the model and the settings, shows only when it runs; see [When an execution is rejected](#when-an-execution-is-rejected).
+
+### Tools
+
+`tools` names the tools an execution may call, each `server/tool` or `server/*`, from the servers in [`mcp_servers`](../self-host/configuration.md#mcp-servers) that serve the brain's org and brain. An execution checks them before the model is called: a server that is not configured for the brain is `unavailable` of the kind `tool_not_offered` because `mcp_server_not_configured`, a tool outside `allowed_tools` because `tool_not_allowed`, and a tool the server does not list because `tool_not_listed`; a server that cannot be used is `unavailable` of the kind `mcp_server_failed`, because `unreachable`, `failing` or `rate_limited`. `server/*` gives every tool the server lists that the operator allows.
+
+The model receives each tool under the name `mcp__server__tool`, with characters other than letters, digits and underscores written as underscores, cut to 64 characters with a short hash when longer, its description cut to 4 KiB and the server's input schema unchanged, and keeps the function's output format. It may call tools, several in one step, before it answers, each call forwarded with the execution id in the request's metadata under `com.beonauto/execution_id`:
+
+| Bound                                           | Value                                                  | When it is reached                                                        |
+| ----------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------- |
+| Calls in one execution                          | 25                                                     | further calls are refused, then one more step without tools               |
+| Results sent to the model in one execution      | 256 KiB                                                | further calls are refused, then one more step without tools               |
+| One result                                      | 64 KiB                                                 | cut at a character, with a note asking for fewer rows, fields or depth    |
+| One call's arguments                            | 16 KiB                                                 | the call is refused                                                       |
+| The same tool with the same arguments           | twice                                                  | the third call is refused, naming the earlier answer                      |
+| One call                                        | 30 s                                                   | a tool error that counts as a server failure                              |
+| A 429                                           | waited out when `Retry-After` asks for at most 10 s    | otherwise a server failure                                                |
+| Server failures in one execution                | 5                                                      | `unavailable` of the kind `tools_unfinished`, because `server_failed`     |
+| One model call                                  | 60 s plus 25 ms for every token of `max_output_tokens` | `unavailable` of the kind `tools_unfinished`, because `model_unavailable` |
+| The whole execution                             | 10 minutes, or one model call's limit when longer      | `unavailable` of the kind `tools_unfinished`, because `run_bound`         |
+| The last step, without tools, still calls tools |                                                        | `unavailable` of the kind `tools_unfinished`, because `no_answer`         |
+
+A refused call is not sent and not recorded. The step that follows the end of the calls withholds the tools and tells the model the calls so far and their answers as text, so every provider takes it. A result's text content reaches the model as text, structured content only when there is no text, other content as a one-line placeholder, and a result the server marks `isError`, such as a policy's denial, as a tool error the model may recover from; a server's own instructions never reach it. Error text is scrubbed of the entry's secrets and minted tokens.
+
+Each call is two events on the execution's stream, appended as it happens: `tool_call_started`, recorded before the call is sent, with its number, the id the model gave it, the server, the tool, and the size and SHA-256 digest of its arguments; and `tool_call_answered`, with the outcome (`result`, `tool_error`, `server_failure`, `timed_out` or `cancelled`), the size and digest of the result, the duration, the JSON-RPC id, and the server's own request id where the entry's `request_id` names it. The arguments and the result, cut to 4 KiB, are added only for an entry with `record_content: true`. `get_execution_history` shows them. Once an execution has recorded a call, every `unavailable` ending names the tools it called in words and has the kind `tools_unfinished`, and `execute_spec` answers the same `execution_id` with `conflict` of the kind `tools_called` unless the execution succeeded: a tool may have changed something, so start a new execution instead.
+
+A run that calls tools costs more: every step resends the conversation so far, so an execution that uses its whole budget of results sends on the order of a million tokens.
 
 ## The template language
 
@@ -268,7 +296,7 @@ Executed with `{"input":{"expense":"Dinner for two with a client","amount":142.5
 
 ## When an execution is rejected
 
-The spec operations answer every rejection as a problem document, and record it on the execution. A call with the same `execution_id` runs the spec again after `unavailable` or `conflict`, and answers the same `invalid_input` again.
+The spec operations answer every rejection as a problem document, and record it on the execution. A call with the same `execution_id` runs the spec again after `unavailable` or `conflict`, unless the execution called tools, and answers the same `invalid_input` again.
 
 | What happened                                                                                        | Rejection                                                                                                                                                                        | HTTP |
 | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
@@ -286,6 +314,9 @@ The spec operations answer every rejection as a problem document, and record it 
 | The provider limits the rate of requests                                                             | `unavailable`, saying how many seconds to wait when it said                                                                                                                      | 503  |
 | The provider cannot be reached or cannot serve now, or does not answer in time                       | `unavailable`, saying to try again later                                                                                                                                         | 503  |
 | A JSON answer does not match the schema                                                              | `unavailable`, with the first issues, saying to try again                                                                                                                        | 503  |
+| The spec names a tool the brain's MCP servers do not offer, or a server cannot be used               | `unavailable` of the kind `tool_not_offered` or `mcp_server_failed`; the model is not called                                                                                     | 503  |
+| The execution called tools and then could not finish                                                 | `unavailable` of the kind `tools_unfinished`, naming the tools it called in words                                                                                                | 503  |
+| The same `execution_id` again, after an execution that called tools and did not succeed              | `conflict` of the kind `tools_called`, saying to start a new execution                                                                                                           | 409  |
 | The caller goes away before the answer                                                               | the execution is interrupted and stays `started`                                                                                                                                 | 499  |
 
 A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "length"` in the record. A call may take 60 seconds plus 25 ms for every token of `max_output_tokens`: 85.6 seconds for the default 1024, and that covers the up to two retries of a failure that may pass (see [Retries](../self-host/models.md#retries)). The spec operations add their own rejections: `not_found` for a spec the brain does not have, and `conflict` for a retired spec or one whose document no longer parses.
