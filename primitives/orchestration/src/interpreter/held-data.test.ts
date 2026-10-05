@@ -1,10 +1,10 @@
+import { RaisedError } from '@beonauto/workflow-engine/dsl/raised-error';
 import { describe, expect, it } from 'vitest';
 
 import { fakeHost } from '../testing/fake-host.ts';
 import { interpret, runOf, workflow } from '../testing/workflows.ts';
 import { mostHeldBytes, taskFrameBytes } from './holding.ts';
 import type { RunSettlement } from './host.ts';
-import { RaisedError } from './raised-error.ts';
 import { retainedBytesOf } from './retained-size.ts';
 import { makeRunState } from './run-state.ts';
 

@@ -1,8 +1,8 @@
 import type { DslError } from '@beonauto/workflow-engine';
 import type { Json } from '@beonauto/workflow-engine/dsl/json';
+import { describeError, rejectionReasonOf } from '@beonauto/workflow-engine/dsl/raised-error';
 
 import type { RunSettlement } from './host.ts';
-import { describeError } from './raised-error.ts';
 
 export type RunOutcome =
   | { readonly kind: 'completed'; readonly output: Json }
@@ -17,12 +17,6 @@ export type WorkflowEnding =
   | { readonly kind: 'failed'; readonly type: string; readonly message: string }
   | { readonly kind: 'faulted'; readonly type: string; readonly message: string }
   | { readonly kind: 'cancelled'; readonly cause: unknown };
-
-const retryableStatuses = new Set([408, 429]);
-
-export function rejectionReasonOf({ status }: DslError): 'invalid_input' | 'unavailable' {
-  return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
-}
 
 export function settlementOf(outcome: RunOutcome): RunSettlement {
   if (outcome.kind === 'completed') {

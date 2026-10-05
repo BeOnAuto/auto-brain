@@ -1,10 +1,7 @@
-import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
-import { field, isObject, objectField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
-
-import { holds, millisecondsOf } from './evaluation.ts';
-import type { Place } from './invocation.ts';
+import { holds, millisecondsOf, type Place } from './evaluation.ts';
+import type { Variables } from './expressions.ts';
+import { field, isObject, objectField, type Json, type JsonObject } from './json.ts';
 import { raised } from './raised-error.ts';
-import type { RunState } from './run-state.ts';
 
 export interface RetryState {
   readonly attempt: number;
@@ -12,17 +9,21 @@ export interface RetryState {
 }
 
 export interface RetryContext {
-  readonly state: RunState;
+  readonly draw: () => number;
   readonly data: Json;
   readonly variables: Variables;
   readonly place: Place;
 }
 
-export function retryPolicyOf(declared: Json | undefined, state: RunState, reference: string): JsonObject | undefined {
+export function retryPolicyOf(
+  declared: Json | undefined,
+  retries: JsonObject,
+  reference: string,
+): JsonObject | undefined {
   if (typeof declared !== 'string') {
     return isObject(declared) ? declared : undefined;
   }
-  const reused = objectField(state.components.retries, declared);
+  const reused = objectField(retries, declared);
   if (reused === undefined) {
     throw raised('configuration', 400, `use.retries has no retry policy ${declared}`, reference);
   }
@@ -35,7 +36,7 @@ export function attemptDuration(policy: JsonObject | undefined, context: RetryCo
 }
 
 export function retryDelay(policy: JsonObject, retry: RetryState, context: RetryContext): number | undefined {
-  const { data, variables, place, state } = context;
+  const { data, variables, place } = context;
   if (!holds(field(policy, 'when'), data, variables, place) || !holdsNot(field(policy, 'exceptWhen'), context)) {
     return undefined;
   }
@@ -45,7 +46,7 @@ export function retryDelay(policy: JsonObject, retry: RetryState, context: Retry
     return undefined;
   }
   const total = field(limit, 'duration');
-  if (total !== undefined && state.host.now() - retry.startedAt >= durationOf(total, context)) {
+  if (total !== undefined && place.now - retry.startedAt >= durationOf(total, context)) {
     return undefined;
   }
   return backoff(policy, retry.attempt, context) + jitter(objectField(policy, 'jitter'), context);
@@ -70,7 +71,7 @@ function jitter(range: JsonObject | undefined, context: RetryContext): number {
   }
   const from = durationOf(field(range, 'from') ?? { seconds: 0 }, context);
   const to = durationOf(field(range, 'to') ?? { seconds: 0 }, context);
-  return Math.round(from + context.state.host.random() * Math.max(to - from, 0));
+  return Math.round(from + context.draw() * Math.max(to - from, 0));
 }
 
 function durationOf(duration: Json, { data, variables, place }: RetryContext): number {

@@ -1,3 +1,4 @@
+import { evaluate } from '@beonauto/workflow-engine/dsl/evaluation';
 import { enclosedBody } from '@beonauto/workflow-engine/dsl/expressions';
 import {
   entriesOf,
@@ -13,9 +14,9 @@ import {
 import type { Located } from '@beonauto/workflow-engine/dsl/policy-checks';
 import { eventFiltersOf } from '@beonauto/workflow-engine/dsl/task-policy';
 
-import { evaluate, placeOf } from './evaluation.ts';
 import type { EventFilter } from './inbox.ts';
 import type { Body, Invocation } from './invocation.ts';
+import { placeOf } from './place.ts';
 
 export async function listenTask(invocation: Invocation): Promise<Body> {
   const { entry } = invocation;

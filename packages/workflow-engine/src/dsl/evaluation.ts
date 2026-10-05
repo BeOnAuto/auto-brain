@@ -1,24 +1,32 @@
-import { readDuration } from '@beonauto/workflow-engine/dsl/durations';
-import {
-  enclosedBody,
-  expressionSource,
-  runExpression,
-  type Variables,
-} from '@beonauto/workflow-engine/dsl/expressions';
+import { mostExpressionWork, mostWorkPerInput } from '../machine/limits.ts';
+import { readDuration } from './durations.ts';
+import { enclosedBody, expressionSource, runExpression, type Variables } from './expressions.ts';
 import {
   entriesOf,
   isList,
   isObject,
   isTruthy,
+  measureOf,
+  mostValueDepth,
   type Json,
   type JsonEntry,
   type JsonObject,
-} from '@beonauto/workflow-engine/dsl/json';
-import { mostExpressionWork, mostWorkPerInput } from '@beonauto/workflow-engine/limits';
-
-import type { Invocation, Place } from './invocation.ts';
+} from './json.ts';
 import { RaisedError, errorType, raised } from './raised-error.ts';
-import type { RunState } from './run-state.ts';
+
+export interface ExpressionMeter {
+  readonly allowance: () => number;
+  readonly record: (work: number) => void;
+}
+
+export interface Place {
+  readonly reference: string;
+  readonly now: number;
+  readonly meter: ExpressionMeter;
+  readonly mostDuration: number;
+}
+
+const mostValueWork = mostExpressionWork;
 
 export function evaluate(source: string, data: Json, variables: Variables, place: Place): Json {
   const mostWork = place.meter.allowance();
@@ -37,10 +45,6 @@ export function evaluate(source: string, data: Json, variables: Variables, place
     detail: evaluation.problem,
     instance: place.reference,
   });
-}
-
-export function placeIn(state: RunState, reference: string): Place {
-  return { reference, now: state.host.now(), meter: state.meter, mostDuration: state.run.mostDuration };
 }
 
 function exhaustionOf(problem: string, mostWork: number): string {
@@ -93,12 +97,24 @@ export function millisecondsOf(duration: Json, data: Json, variables: Variables,
   return reading.milliseconds;
 }
 
-export function placeOf({ entry, scope }: Invocation): Place {
-  return placeIn(scope.state, entry.reference);
-}
-
 function evaluateObject(template: JsonObject, data: Json, variables: Variables, place: Place): JsonObject {
   return Object.fromEntries(
     entriesOf(template).map(([key, value]: JsonEntry) => [key, evaluateTemplate(value, data, variables, place)]),
   );
+}
+
+export function admitted(value: Json, reference: string): Json {
+  const measure = measureOf(value);
+  if (measure === undefined) {
+    throw raised('runtime', 500, `A value nests more than ${mostValueDepth} levels deep`, reference);
+  }
+  if (measure.work > mostValueWork) {
+    throw raised(
+      'runtime',
+      500,
+      `A value takes ${measure.work} units of work to visit, more than the ${mostValueWork} a workflow may hold`,
+      reference,
+    );
+  }
+  return value;
 }
