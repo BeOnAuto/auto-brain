@@ -58,13 +58,13 @@ The ledger creates three indexes when it opens, with `CREATE INDEX IF NOT EXISTS
 
 The third index holds the first message of every stream, and only those. The list of runs walks it, so a page of runs costs the same however many messages the run logs of a brain hold between two runs, and PostgreSQL's planner, which keeps statistics on the kind key, knows how many runs a brain has. Without it, on a ledger of 598,362 messages, PostgreSQL estimated 845 first messages of runs where there were 60,000, and answered a page of runs filtered by status with a sequential scan of the whole table, in 122 to 126 ms; with it, the same pages took 1.4 to 3.5 ms.
 
-Building the three indexes once on an existing ledger of 1,097,286 messages took 2.5 s on PostgreSQL 18.6 and 2.5 s on SQLite, measured as the time the ledger took to open (see [Measurement](#measurement)). On PostgreSQL `CREATE INDEX` takes a lock on the messages table that blocks appends until the build ends, so the first start after an upgrade holds appends that long. Every later start finds the indexes and takes that lock only for an instant, after the appends in flight. The database's user must own the messages table to create them, as the user that created it does.
+Building the three indexes once on an existing ledger of 1,097,286 messages took 2.6 s on PostgreSQL 18.6 and 2.5 s on SQLite, about 2.3 s per million messages at that size, measured as the time the ledger took to open (see [Measurement](#measurement)). On PostgreSQL `CREATE INDEX` takes a lock on the messages table that blocks appends until the build ends, so the first start after an upgrade holds appends that long. Every later start runs the statements again, and PostgreSQL takes the same lock before it finds that an index exists: the statement waits for the appends in flight, appends that arrive meanwhile wait behind it, and once the appends in flight end it returns at once. A probe with an append left open saw the statement wait until a lock timeout of 1 s, and return in 7 ms once the append ended. The database's user must own the messages table to create them, as the user that created it does.
 
 ### Order, and the horizon on PostgreSQL
 
 On SQLite appends are serialised, so global positions follow commits, and the read orders by position.
 
-On PostgreSQL a message takes its global position when it is inserted and becomes visible when its transaction commits, so a later position can be visible before an earlier one. The read therefore orders by transaction id, then global position, and reads only messages whose transaction id is below the oldest transaction still open, exactly as Emmett's own batch read does: `readMessagesBatchSQL` in `@event-driven-io/emmett-postgresql` 0.43.0-beta.50, `dist/index.js` lines 1274 to 1289, reads `AND transaction_id < pg_snapshot_xmin(pg_current_snapshot())` at line 1285 and `ORDER BY transaction_id, global_position` at line 1287. Oldest first, a reader that goes on from its last record gets a message whose transaction was still open during an earlier page once that transaction commits, and never skips it. Newest first, a pass delivers what lay behind the horizon when it began. Either way the most recent end of a read waits for the oldest transaction still open that holds a transaction id, anywhere on the PostgreSQL server: transaction ids belong to the whole server, not to one database, and PostgreSQL gives a transaction its id when it first writes. So an append in flight, a ledger migrating as a server starts, a `CREATE DATABASE`, or a long write of another application that shares the server holds back the newest messages of every ledger on it until it ends; the tests show it with a write left open in another database.
+On PostgreSQL a message takes its global position when it is inserted and becomes visible when its transaction commits, so a later position can be visible before an earlier one. The read therefore orders by transaction id, then global position, and reads only messages whose transaction id is below the oldest transaction still open, exactly as Emmett's own batch read does: `readMessagesBatchSQL` in `@event-driven-io/emmett-postgresql` 0.43.0-beta.50, `dist/index.js` lines 1274 to 1289, reads `AND transaction_id < pg_snapshot_xmin(pg_current_snapshot())` at line 1285 and `ORDER BY transaction_id, global_position` at line 1287. Oldest first, a reader that goes on from its last record gets a message whose transaction was still open during an earlier page once that transaction commits, and never skips it. Newest first, a pass delivers what lay behind the horizon when it began. Either way the most recent end of a read waits for the oldest transaction still open that holds a transaction id, anywhere on the PostgreSQL server: transaction ids belong to the whole server, not to one database, and PostgreSQL gives a transaction its id when it first writes. So an append in flight, a ledger migrating as a server starts, a `CREATE DATABASE`, or a long write of another application that shares the server holds back the newest messages of every ledger on it until it ends; the tests show it with a write left open in another database. A transaction that has only read holds no id and holds nothing back, which a probe confirmed. The read never waits for the horizon: it answers at once with what lies below it, and the newest messages appear in a later read. Only the tests wait, in the PostgreSQL entry of the suite, as [Testing](#testing) says.
 
 ### The cursor
 
@@ -88,37 +88,45 @@ The data of a record is decoded as the store's `read` decodes it: on SQLite the 
 
 ### Measurement
 
+`measure.ts` at the root of this package records these numbers again:
+
+```bash
+LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/ledger measure
+```
+
+It fills a temporary SQLite file and, when `LEDGER_MEASURE_POSTGRESQL_URL` names a server, a database of its own there, which it drops afterwards; without it, it measures SQLite alone. `LEDGER_MEASURE_RUNS` sets the runs, 100,000 when left out and at least 50,016, since the deep pages start from run 50,000. It prints the time the ledger took to open and build its indexes, and a table of pages.
+
 Measured on 2026-10-05 on an Apple M4 Max, with Node 26.10, SQLite 3.52.0 through `sqlite3` 6.0.1 on a file, and PostgreSQL 18.6, the image CI uses, in a local container with its default settings (128 MB of shared buffers).
 
-The ledger held 1,097,286 messages. One brain held 397,286 of them: 100,000 runs, each its start and, but for the 2,714 still running, its finish (87,287 succeeded, 5,000 rejected, 4,000 deferred, 1,000 failed), and for every tenth run a run log of 20 inputs of 2 KiB. 99 other brains held the other 700,000. Every 200th run, 500 in all, took an input of 256 KiB and an output of 1 MiB of text that does not compress; the others an input of 320 bytes and an output of 640. The messages were inserted with SQL, one run at a time and on PostgreSQL in a transaction each; then the ledger opened and built its indexes, in 2.5 s on SQLite and 2.5 s on PostgreSQL. A deep page starts from the first message of run 50,000, a time from the moment that run started.
+The ledger held 1,097,286 messages. One brain held 397,286 of them: 100,000 runs, each its start and, but for the 2,714 still running, its finish (87,287 succeeded, 5,000 rejected, 4,000 deferred, 1,000 failed), and for every tenth run a run log of 20 inputs of 2 KiB. 99 other brains held the other 700,000. Every 200th run, 500 in all, took an input of 256 KiB and an output of 1 MiB of text that does not compress; the others an input of 320 bytes and an output of 640. The command opened the ledger on an empty database, dropped its three indexes, and inserted the messages with SQL, one run at a time and on PostgreSQL in a transaction each, followed by `VACUUM ANALYZE`; then it opened the ledger again, which built the indexes, in 2.5 s on SQLite and 2.6 s on PostgreSQL, and read. Nothing analysed the table after the build, so PostgreSQL planned without statistics on the new index expressions, as it does right after an upgrade. A deep page starts from the first message of run 50,000, a time from the moment that run started.
 
 Each page was read through `Ledger.readRecorded`, 20 records or runs to a page unless the table says 100, three times to warm and then 20 times. The table gives the median and the slowest of the 20 in milliseconds, the records the page answered, a run answering its first and its latest message, and the data they held.
 
 | Page                                         | SQLite, median (slowest) | PostgreSQL, median (slowest) | Records | Data     |
 | -------------------------------------------- | ------------------------ | ---------------------------- | ------- | -------- |
-| The brain, first page, newest first          | 0.26 (0.42)              | 1.57 (3.92)                  | 20      | 20 KiB   |
-| The brain, first page, oldest first          | 0.23 (0.28)              | 1.73 (4.06)                  | 20      | 42 KiB   |
-| The brain, deep page, newest first           | 0.24 (0.83)              | 6.58 (10.42)                 | 20      | 20 KiB   |
-| The brain, deep page, oldest first           | 0.25 (0.39)              | 1.60 (2.08)                  | 20      | 43 KiB   |
-| The brain, deep page of 100, newest first    | 0.66 (1.09)              | 8.20 (8.98)                  | 100     | 137 KiB  |
-| The brain, a page holding a run of 1.25 MiB  | 1.05 (2.37)              | 13.21 (17.40)                | 20      | 1312 KiB |
-| The brain, of one rare type, newest first    | 0.10 (0.13)              | 0.53 (0.61)                  | 0       | 0 KiB    |
-| The brain since a time, oldest first         | 0.24 (0.31)              | 1.98 (2.28)                  | 20      | 41 KiB   |
-| The brain since a time, newest first         | 0.26 (0.33)              | 1.49 (2.65)                  | 20      | 20 KiB   |
-| One run of 21 messages, oldest first         | 0.22 (0.26)              | 1.46 (1.92)                  | 20      | 42 KiB   |
-| One run of 21 messages, newest first         | 0.23 (0.68)              | 1.40 (1.87)                  | 20      | 43 KiB   |
-| Runs, first page, newest first               | 0.37 (0.42)              | 1.86 (3.79)                  | 38      | 28 KiB   |
-| Runs, first page, oldest first               | 1.13 (2.24)              | 8.45 (10.44)                 | 39      | 1307 KiB |
-| Runs, deep page, newest first                | 0.39 (0.44)              | 2.05 (2.21)                  | 39      | 29 KiB   |
-| Runs, deep page, oldest first                | 1.16 (1.68)              | 8.45 (10.80)                 | 40      | 1308 KiB |
-| Runs, deep page of 100, newest first         | 1.19 (1.78)              | 3.42 (3.61)                  | 197     | 145 KiB  |
-| Runs that succeeded (87 %), newest first     | 2.81 (3.56)              | 1.39 (1.56)                  | 40      | 31 KiB   |
-| Runs that succeeded, deep page, oldest first | 3.78 (4.09)              | 8.51 (10.04)                 | 40      | 1310 KiB |
-| Runs that failed (1 %), newest first         | 2.71 (2.87)              | 3.67 (4.26)                  | 20      | 9 KiB    |
-| Runs that failed, deep page, oldest first    | 2.65 (2.76)              | 4.41 (5.25)                  | 20      | 9 KiB    |
-| Runs of a status none has, 1,000 examined    | 2.59 (2.68)              | 3.37 (3.88)                  | 0       | 0 KiB    |
+| The brain, first page, newest first          | 0.30 (0.47)              | 1.14 (6.80)                  | 20      | 20 KiB   |
+| The brain, first page, oldest first          | 0.23 (0.30)              | 1.34 (1.62)                  | 20      | 42 KiB   |
+| The brain, deep page, newest first           | 0.24 (0.32)              | 3.98 (5.84)                  | 20      | 20 KiB   |
+| The brain, deep page, oldest first           | 0.24 (0.76)              | 1.84 (2.40)                  | 20      | 43 KiB   |
+| The brain, deep page of 100, newest first    | 0.68 (1.36)              | 5.44 (7.01)                  | 100     | 137 KiB  |
+| The brain, a page holding a run of 1.25 MiB  | 1.08 (1.80)              | 11.10 (13.96)                | 20      | 1312 KiB |
+| The brain, of one rare type, newest first    | 0.11 (0.13)              | 0.48 (0.53)                  | 0       | 0 KiB    |
+| The brain since a time, oldest first         | 0.25 (0.31)              | 1.73 (4.65)                  | 20      | 41 KiB   |
+| The brain since a time, newest first         | 0.25 (0.32)              | 1.68 (2.28)                  | 20      | 20 KiB   |
+| One run of 21 messages, oldest first         | 0.20 (0.25)              | 1.70 (2.18)                  | 20      | 42 KiB   |
+| One run of 21 messages, newest first         | 0.23 (0.74)              | 1.40 (3.27)                  | 20      | 43 KiB   |
+| Runs, first page, newest first               | 0.37 (0.44)              | 1.43 (1.62)                  | 38      | 28 KiB   |
+| Runs, first page, oldest first               | 1.16 (1.62)              | 8.82 (10.85)                 | 39      | 1307 KiB |
+| Runs, deep page, newest first                | 0.40 (0.55)              | 2.12 (2.49)                  | 39      | 29 KiB   |
+| Runs, deep page, oldest first                | 1.16 (2.90)              | 8.92 (11.11)                 | 40      | 1308 KiB |
+| Runs, deep page of 100, newest first         | 1.21 (1.87)              | 3.48 (4.10)                  | 197     | 145 KiB  |
+| Runs that succeeded, newest first            | 2.91 (4.10)              | 1.38 (1.58)                  | 40      | 31 KiB   |
+| Runs that succeeded, deep page, oldest first | 3.73 (4.03)              | 8.99 (11.26)                 | 40      | 1310 KiB |
+| Runs that failed, newest first               | 2.75 (2.90)              | 3.73 (6.39)                  | 20      | 9 KiB    |
+| Runs that failed, deep page, oldest first    | 2.75 (3.08)              | 4.61 (5.77)                  | 20      | 9 KiB    |
+| Runs of a status none has, 1,000 examined    | 2.60 (2.70)              | 3.33 (13.03)                 | 0       | 0 KiB    |
 
-Every page, unfiltered or filtered by status, answered within 14 ms at the median and 18 ms at the slowest, under the bar of 50 ms this ledger set itself for staying without a read model (decision 0002). The slowest pages are those that load a run of 1.25 MiB; a page of runs filtered by status examines up to 1,000 runs, which SQLite does all at once and PostgreSQL only until the page is full.
+Every page, unfiltered or filtered by status, answered within 12 ms at the median and 14 ms at the slowest, under the bar of 50 ms this ledger set itself for staying without a read model (decision 0002). The slowest pages are those that load a run of 1.25 MiB; a page of runs filtered by status examines up to 1,000 runs, which SQLite does all at once and PostgreSQL only until the page is full.
 
 ## Creating the layer
 
@@ -170,7 +178,7 @@ The same ledger must also run on hosted SQLite databases that bind at most 100 p
 
 ## Testing
 
-The ledger's behaviour is one suite, in `src/testing/ledger-behaviour.ts`, that `src/ledger.test.ts` runs on SQLite and `src/postgresql/ledger-on-postgresql.test.ts` runs on PostgreSQL. Its part on reading what a brain recorded, `src/testing/recorded-behaviour.ts` and `src/testing/runs-behaviour.ts`, also runs on the in-memory ledger of `@beonauto/operations`, in `src/recorded/recorded-in-memory.test.ts`, so the three agree. A read behind an append whose transaction is still open is tested on PostgreSQL alone, since SQLite serialises appends. The PostgreSQL leg runs when `LEDGER_TEST_POSTGRESQL_URL` names a server, creating a database of its own for each test and dropping it afterwards, and is skipped otherwise, saying so in its title:
+The ledger's behaviour is one suite, in `src/testing/ledger-behaviour.ts`, that `src/ledger.test.ts` runs on SQLite and `src/postgresql/ledger-on-postgresql.test.ts` runs on PostgreSQL. Its part on reading what a brain recorded, `src/testing/recorded-behaviour.ts` and `src/testing/runs-behaviour.ts`, also runs on the in-memory ledger of `@beonauto/operations`, in `src/recorded/recorded-in-memory.test.ts`, so the three agree. A read behind an append whose transaction is still open, and behind a write open in another database of the server, is tested on PostgreSQL alone, since SQLite serialises appends. Because the horizon belongs to the whole PostgreSQL server, and other packages' tests create databases and migrate ledgers on the same server at the same time, the PostgreSQL entry of the suite waits before each read of what a brain recorded: it polls every 20 ms until no committed message of its own database lies at or behind the horizon, for at most 10 s, and fails the test past that. The SQLite entry and the in-memory ledger do not wait. The PostgreSQL leg runs when `LEDGER_TEST_POSTGRESQL_URL` names a server, creating a database of its own for each test and dropping it afterwards, and is skipped otherwise, saying so in its title:
 
 ```bash
 docker run --detach --name ledger-pg-test --publish 127.0.0.1:19632:5432 --env POSTGRES_PASSWORD=ledger-test postgres:18.6-alpine

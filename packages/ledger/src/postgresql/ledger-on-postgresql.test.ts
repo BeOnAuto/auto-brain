@@ -4,7 +4,7 @@ import { Effect, Layer, Logger } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
-import { happenings } from '../testing/happenings.ts';
+import { details, happenings } from '../testing/happenings.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
 import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
@@ -41,15 +41,23 @@ function pause(milliseconds: number): Promise<void> {
   });
 }
 
-async function untilReadable(database: string): Promise<void> {
+const longestWaitBehindTheHorizon = 10_000;
+
+async function untilReadable(database: string, deadline = Date.now() + longestWaitBehindTheHorizon): Promise<void> {
   const hidden = await queried(
     database,
     'SELECT 1 FROM emt_messages WHERE transaction_id >= pg_snapshot_xmin(pg_current_snapshot()) LIMIT 1',
   );
-  if (hidden.length > 0) {
-    await pause(20);
-    await untilReadable(database);
+  if (hidden.length === 0) {
+    return;
   }
+  if (Date.now() > deadline) {
+    throw new Error(
+      `A committed message stayed behind the oldest open transaction of the server for ${longestWaitBehindTheHorizon} ms`,
+    );
+  }
+  await pause(20);
+  await untilReadable(database, deadline);
 }
 
 const lostConnections: Readonly<Error>[] = [];
@@ -192,12 +200,6 @@ function readingAlpha(ledger: OpenLedger['ledger'], order: 'asc' | 'desc', curso
   );
 }
 
-function detailsOf({ records }: { readonly records: readonly { readonly data: unknown }[] }): readonly unknown[] {
-  return records.map(({ data }) =>
-    typeof data === 'object' && data !== null && 'detail' in data ? data.detail : null,
-  );
-}
-
 describe.skipIf(skipped)(`A read on PostgreSQL while an earlier append is still open${notice}`, () => {
   it('stays behind it, and delivers its messages once it commits, oldest or newest first', async () => {
     const database = await aDatabase();
@@ -221,7 +223,7 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an earlier append is still 
       readingAlpha(ledger, 'desc'),
     ]);
 
-    expect([oldestWhileOpen, newestWhileOpen, rest, newestAfterCommit].map((page) => detailsOf(page))).toEqual([
+    expect([oldestWhileOpen, newestWhileOpen, rest, newestAfterCommit].map((page) => details(page))).toEqual([
       ['before'],
       ['before'],
       ['late', 'after'],
@@ -260,7 +262,7 @@ describe.skipIf(skipped)(
       await untilReadable(database);
       const afterCommit = await readingAlpha(ledger, 'asc');
 
-      expect([detailsOf(whileOpen), detailsOf(afterCommit)]).toEqual([['before'], ['before', 'after']]);
+      expect([details(whileOpen), details(afterCommit)]).toEqual([['before'], ['before', 'after']]);
     });
   },
 );
