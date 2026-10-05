@@ -11,7 +11,7 @@ import { hostedOn } from './host-runs.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000003000';
 
-const longRunInputs = 3000;
+const longRunInputs = 1000;
 
 const ticking = workflow(`
 do:
@@ -27,7 +27,7 @@ export function longRunSuite(settings: SettingsOf): void {
     hosted.know(executionId);
 
     await Effect.runPromise(hosted.host.start(runAt(executionId), startOf(ticking)));
-    await eventually(hosted.settlements, (settled) => settled.size > 0, 12_000);
+    await eventually(hosted.settlements, (settled) => settled.size > 0, 5000);
     await hosted.host.stop();
     const runStore = ledgerRunStore(await openedOn(database));
     const stored = await Effect.runPromise(runStore.load(`acme/alpha/${executionId}`));
@@ -39,5 +39,5 @@ export function longRunSuite(settings: SettingsOf): void {
     expect(resumed.sinceSnapshot.bytes).toBeLessThan(snapshotEveryBytes);
     expect(resumed.state).toEqual(events.reduce((state, { event }) => evolveRun(state, event), newRun));
     expect(resumed.state.outcome).toEqual({ kind: 'completed', output: { n: longRunInputs - 1 } });
-  }, 120_000);
+  }, 60_000);
 }

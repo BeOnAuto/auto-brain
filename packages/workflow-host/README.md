@@ -92,7 +92,7 @@ The suites of `src/testing` run on SQLite in `src/host/host-on-sqlite.test.ts` a
 
 - the probes of every port;
 - a run that waits, calls a function, takes an event and ends, settling its execution once;
-- the long-run loop of 3,000 inputs, loaded again from its last snapshot and the events after it to the state its whole log folds to: 2.7 s on SQLite and 14 to 17 s on PostgreSQL, on the machine above;
+- the long-run loop of 1,000 inputs, enough for one snapshot past half the run, once its events reach 1 MiB, and a tail of events after it, loaded again from that snapshot and the events after it to the state its whole log folds to: 1.4 s on SQLite and 5.4 s on PostgreSQL under coverage, on the machine above; the measurements above run the 3,000 of the engine's loop;
 - a host killed through its process handle while it dispatches, once while a call runs and once while it records the run's settlement, then started again on the same database: the call starts again, and the run settles once (`host-process.ts` at the root of the package is the host the test starts).
 
 The other tests run on SQLite alone, as the ledger's do for what is the same on both stores.
