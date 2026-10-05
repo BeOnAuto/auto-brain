@@ -1,7 +1,7 @@
 import { admitted, holds, transform } from '../dsl/evaluation.ts';
 import type { Variables } from '../dsl/expressions.ts';
 import { field, objectField, textField, type Json } from '../dsl/json.ts';
-import { RaisedError, raised } from '../dsl/raised-error.ts';
+import { caughtRaise, raised } from '../dsl/raised-error.ts';
 import { timedOut, timeoutMilliseconds } from '../dsl/task-outcomes.ts';
 import { entryAt, typeOf, type TaskEntry } from '../dsl/tasks.ts';
 import type { TaskFrame, ValueId, Variables as Scope } from '../machine/run-state.ts';
@@ -18,16 +18,11 @@ import {
 import { descriptorOf, taskVariablesOf, withInput } from './task-variables.ts';
 
 function caught(machine: Machine, frame: FramePrefix, attempt: () => TaskAdvance): TaskAdvance {
-  try {
-    return attempt();
-  } catch (error) {
-    if (!(error instanceof RaisedError)) {
-      throw error;
-    }
+  return caughtRaise(attempt, (error) => {
     machine.session.timers.disarm(frame.timeout);
     machine.session.record(frame.reference, frame.run, 'raised');
-    return raisedOf(error.error);
-  }
+    return raisedOf(error);
+  });
 }
 
 function invocationOf(machine: Machine, frame: FramePrefix, entry: TaskEntry): Invocation {

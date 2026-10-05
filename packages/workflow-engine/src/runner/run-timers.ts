@@ -26,7 +26,7 @@ interface CallRequest {
   readonly arguments: Json;
 }
 
-export interface OpenCall {
+interface OpenCall {
   readonly key: CallKey;
   readonly deadline: string;
 }

@@ -8,6 +8,7 @@ import { RunLimitsSchema } from '../machine/run-input.ts';
 import { RunOutcomeSchema } from '../machine/run-state.ts';
 import { TimerPurposeSchema } from '../timers/timer-id.ts';
 import type { OlderFormat } from './state-format.ts';
+import { isRecord } from './state-patch.ts';
 
 type Fields = Readonly<Record<string, unknown>>;
 
@@ -127,13 +128,9 @@ type ArmedTimerOfFormatOne = FormatOne['timers']['armed'][string];
 
 const readFormatOne = Schema.decodeUnknownSync(FormatOneSchema, { onExcessProperty: 'error' });
 
-function isFields(value: unknown): value is Fields {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function withFailuresOrdered(branches: readonly unknown[]): readonly unknown[] {
   return branches.map((branch, order) =>
-    isFields(branch) && branch['state'] === 'failed' ? { ...branch, order } : branch,
+    isRecord(branch) && branch['state'] === 'failed' ? { ...branch, order } : branch,
   );
 }
 
@@ -152,7 +149,7 @@ function deadlinesOf(armed: FormatOne['timers']['armed']): Readonly<Record<strin
 }
 
 function deadlineOf(node: Fields, deadlines: FrameFields['deadlines']): Fields {
-  const key = node['kind'] === 'call' && isFields(node['key']) ? node['key'] : {};
+  const key = node['kind'] === 'call' && isRecord(node['key']) ? node['key'] : {};
   const reference = key['reference'];
   return typeof reference === 'string' && Object.hasOwn(deadlines, reference) ? { deadline: deadlines[reference] } : {};
 }
@@ -161,7 +158,7 @@ function withFrameFields(node: unknown, fields: FrameFields): unknown {
   if (Array.isArray(node)) {
     return node.map((item: unknown) => withFrameFields(item, fields));
   }
-  if (!isFields(node)) {
+  if (!isRecord(node)) {
     return node;
   }
   const walked = Object.fromEntries(

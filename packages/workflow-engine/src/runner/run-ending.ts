@@ -1,11 +1,11 @@
 import type { JsonObject } from '../dsl/json.ts';
+import { settlementOf } from '../dsl/raised-error.ts';
 import type { RunLimits } from '../machine/run-input.ts';
 import type { RunOutcome, ValueId } from '../machine/run-state.ts';
 import type { RunCell } from './run-cell.ts';
 import type { Inbox } from './run-inbox.ts';
 import type { Journal } from './run-tables.ts';
 import type { CallTable, TimerTable } from './run-timers.ts';
-import { settlementOf } from './settlement.ts';
 
 interface RunStart {
   readonly executionId: string;

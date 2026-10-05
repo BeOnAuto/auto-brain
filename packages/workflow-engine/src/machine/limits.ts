@@ -4,6 +4,8 @@ export const taskFrameBytes = 4096;
 
 export const mostEventBytes = 1_572_864;
 
+export const mostOutputBytes = 1_048_574;
+
 export const mostCallArgumentsBytes = 270_336;
 
 export const mostTasksPerInput = 100;

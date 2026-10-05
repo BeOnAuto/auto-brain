@@ -1,7 +1,7 @@
 import { admitted, transform } from '../dsl/evaluation.ts';
-import { field, jsonBytesOf, objectField } from '../dsl/json.ts';
+import { field, objectField } from '../dsl/json.ts';
 import { policyOf } from '../dsl/policy.ts';
-import { RaisedError, errorType } from '../dsl/raised-error.ts';
+import { RaisedError, caughtRaise, errorType, outcomeOfOutput } from '../dsl/raised-error.ts';
 import { timedOut, timeoutMilliseconds } from '../dsl/task-outcomes.ts';
 import { callKeyText } from '../executor/call-key.ts';
 import type { RunInput, Started } from '../machine/run-input.ts';
@@ -18,17 +18,10 @@ import { cancelBody, resumeBody } from '../tasks/task-bodies.ts';
 
 const root = '/';
 
-export const mostOutputBytes = 1_048_574;
-
 function endingOnRaise(machine: Machine, attempt: () => void): void {
-  try {
-    attempt();
-  } catch (error) {
-    if (!(error instanceof RaisedError)) {
-      throw error;
-    }
-    machine.session.end({ kind: 'raised', error: error.error });
-  }
+  caughtRaise(attempt, (error) => {
+    machine.session.end({ kind: 'raised', error });
+  });
 }
 
 function rootVariables(machine: Machine): Readonly<Record<string, ReturnType<Machine['session']['workflow']>>> {
@@ -47,12 +40,7 @@ function completed(machine: Machine, output: number): void {
     ),
     root,
   );
-  const bytes = jsonBytesOf(shaped);
-  session.end(
-    bytes > mostOutputBytes
-      ? { kind: 'oversized', bytes, most: mostOutputBytes }
-      : { kind: 'completed', output: shaped },
-  );
+  session.end(outcomeOfOutput(shaped));
 }
 
 function settledRoot(machine: Machine, frame: FramePrefix, advance: BodyAdvance): void {

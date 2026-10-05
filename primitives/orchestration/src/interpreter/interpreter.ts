@@ -1,11 +1,11 @@
 import { admitted, transform } from '@beonauto/workflow-engine/dsl/evaluation';
-import { field, jsonBytesOf, objectField, type Json } from '@beonauto/workflow-engine/dsl/json';
-import { RaisedError, errorType } from '@beonauto/workflow-engine/dsl/raised-error';
+import { field, objectField, type Json } from '@beonauto/workflow-engine/dsl/json';
+import { RaisedError, errorType, outcomeOfOutput, settlementOf } from '@beonauto/workflow-engine/dsl/raised-error';
 
 import { workflowPolicy } from '../document/workflow-functions.ts';
 import type { WorkflowHost } from './host.ts';
 import { placeIn, runtimeDescriptor, makeRunState, type RunState } from './run-state.ts';
-import { endingOf, settlementOf, type RunOutcome, type WorkflowEnding } from './settlement.ts';
+import { endingOf, type RunOutcome, type WorkflowEnding } from './settlement.ts';
 import { runList } from './task-runner.ts';
 import { timeoutOf, withTimeout } from './timeouts.ts';
 import { readWorkflowRun } from './workflow-run.ts';
@@ -14,8 +14,6 @@ export interface WorkflowStart {
   readonly deliver: (event: unknown) => void;
   readonly ending: Promise<WorkflowEnding>;
 }
-
-const mostOutputBytes = 1_048_574;
 
 const deadlineMargin = 3_600_000;
 
@@ -81,7 +79,7 @@ function stopped(): boolean {
 
 async function outcomeOf(state: RunState): Promise<RunOutcome> {
   try {
-    return withinOutputLimit(await interpret(state));
+    return outcomeOfOutput(await interpret(state));
   } catch (error) {
     if (error instanceof RaisedError) {
       return { kind: 'raised', error: error.error };
@@ -126,9 +124,4 @@ async function interpret(state: RunState): Promise<Json> {
     ),
     root,
   );
-}
-
-function withinOutputLimit(output: Json): RunOutcome {
-  const bytes = jsonBytesOf(output);
-  return bytes > mostOutputBytes ? { kind: 'oversized', bytes, most: mostOutputBytes } : { kind: 'completed', output };
 }

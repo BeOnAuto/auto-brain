@@ -1,5 +1,8 @@
+import type { Settlement } from '@beonauto/operations';
+
 import type { DslError } from '../machine/dsl-error.ts';
-import { field, textField, type JsonObject } from './json.ts';
+import { mostOutputBytes } from '../machine/limits.ts';
+import { field, jsonBytesOf, textField, type Json, type JsonObject } from './json.ts';
 
 export type ErrorKind =
   | 'configuration'
@@ -18,6 +21,22 @@ export class RaisedError extends Error {
     super(error.title ?? error.type);
     this.name = 'RaisedError';
     this.error = error;
+  }
+}
+
+export type SettledOutcome =
+  | { readonly kind: 'completed'; readonly output: Json }
+  | { readonly kind: 'raised'; readonly error: DslError }
+  | { readonly kind: 'cancelled' | 'broken' | 'oversized' | 'overran' };
+
+export function caughtRaise<A>(attempt: () => A, onRaise: (error: DslError) => A): A {
+  try {
+    return attempt();
+  } catch (error) {
+    if (!(error instanceof RaisedError)) {
+      throw error;
+    }
+    return onRaise(error.error);
   }
 }
 
@@ -66,6 +85,24 @@ const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
 
 export function rejectionReasonOf({ status }: DslError): 'invalid_input' | 'unavailable' {
   return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
+}
+
+export type OutputOutcome =
+  | { readonly kind: 'completed'; readonly output: Json }
+  | { readonly kind: 'oversized'; readonly bytes: number; readonly most: number };
+
+export function outcomeOfOutput(output: Json): OutputOutcome {
+  const bytes = jsonBytesOf(output);
+  return bytes > mostOutputBytes ? { kind: 'oversized', bytes, most: mostOutputBytes } : { kind: 'completed', output };
+}
+
+export function settlementOf(outcome: SettledOutcome): Settlement {
+  if (outcome.kind === 'completed') {
+    return { status: 'succeeded', output: outcome.output };
+  }
+  return outcome.kind === 'raised'
+    ? { status: 'rejected', reason: rejectionReasonOf(outcome.error), detail: describeError(outcome.error) }
+    : { status: 'failed' };
 }
 
 export type FailedCall =

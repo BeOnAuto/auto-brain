@@ -1,5 +1,5 @@
 import { valueAtPointer } from '../dsl/json.ts';
-import { RaisedError, raised } from '../dsl/raised-error.ts';
+import { caughtRaise, raised } from '../dsl/raised-error.ts';
 import { taskEntries, type TaskEntry } from '../dsl/tasks.ts';
 import type { ListCursor, TaskFrame } from '../machine/run-state.ts';
 import {
@@ -21,14 +21,7 @@ interface Place {
 }
 
 function caught<T>(attempt: () => T): T | Raised {
-  try {
-    return attempt();
-  } catch (error) {
-    if (error instanceof RaisedError) {
-      return raisedOf(error.error);
-    }
-    throw error;
-  }
+  return caughtRaise<T | Raised>(attempt, raisedOf);
 }
 
 function entriesOf(machine: Machine, { pointer }: Position): readonly TaskEntry[] {

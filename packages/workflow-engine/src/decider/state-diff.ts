@@ -1,17 +1,8 @@
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { pointerTo } from '../dsl/tasks.ts';
-import type { PatchOperation } from '../run-log/state-patch.ts';
+import { isRecord, type PatchOperation } from '../run-log/state-patch.ts';
 
-type Fields = object;
-
-function fieldOf(fields: Fields, key: string): unknown {
-  const item: unknown = Reflect.get(fields, key);
-  return item;
-}
-
-function isFields(value: unknown): value is Fields {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+type Fields = Readonly<Record<string, unknown>>;
 
 function objectOf(fields: Fields): JsonObject {
   return Object.fromEntries(
@@ -28,7 +19,7 @@ function jsonOf(value: unknown): Json {
   if (Array.isArray(value)) {
     return value.map((item: unknown) => jsonOf(item));
   }
-  return isFields(value) ? objectOf(value) : null;
+  return isRecord(value) ? objectOf(value) : null;
 }
 
 function diffFields(before: Fields, after: Fields, path: string): readonly PatchOperation[] {
@@ -37,7 +28,7 @@ function diffFields(before: Fields, after: Fields, path: string): readonly Patch
     .map((key): PatchOperation => ({ op: 'remove', path: pointerTo(path, key) }));
   const changed = Object.entries(after).flatMap(([key, item]: readonly [string, unknown]): readonly PatchOperation[] =>
     Object.hasOwn(before, key)
-      ? diffInto(fieldOf(before, key), item, pointerTo(path, key))
+      ? diffInto(before[key], item, pointerTo(path, key))
       : [{ op: 'add', path: pointerTo(path, key), value: jsonOf(item) }],
   );
   return [...removed, ...changed];
@@ -47,7 +38,7 @@ function diffInto(before: unknown, after: unknown, path: string): readonly Patch
   if (before === after) {
     return [];
   }
-  if (isFields(before) && isFields(after)) {
+  if (isRecord(before) && isRecord(after)) {
     return diffFields(before, after, path);
   }
   if (Array.isArray(before) && Array.isArray(after)) {
@@ -67,6 +58,6 @@ function diffLists(before: readonly unknown[], after: readonly unknown[], path: 
   return [...changed, ...appended];
 }
 
-export function patchBetween(before: Fields, after: Fields): readonly PatchOperation[] {
-  return diffFields(before, after, '');
+export function patchBetween(before: object, after: object): readonly PatchOperation[] {
+  return diffInto(before, after, '');
 }

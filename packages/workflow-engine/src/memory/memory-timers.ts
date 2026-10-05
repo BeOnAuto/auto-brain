@@ -13,7 +13,7 @@ export interface Dispatched {
   readonly output: RunOutput;
 }
 
-export type FaultKind = RunOutput['kind'] | 'note_due';
+type FaultKind = RunOutput['kind'] | 'note_due';
 
 export interface Faults {
   readonly failNext: (kind: FaultKind) => void;

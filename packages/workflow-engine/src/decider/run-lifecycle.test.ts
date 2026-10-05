@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { mostValueDepth, type Json } from '../dsl/json.ts';
 import { errorType } from '../dsl/raised-error.ts';
-import { mostStepsWithoutWaiting } from '../machine/limits.ts';
+import { mostOutputBytes, mostStepsWithoutWaiting } from '../machine/limits.ts';
 import { armedTimersAlong, drivenExecutionId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
-import { mostOutputBytes } from './run-lifecycle.ts';
 
 function nested(depth: number): Json {
   return depth === 0 ? 1 : [nested(depth - 1)];
