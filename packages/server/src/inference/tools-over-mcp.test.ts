@@ -1,7 +1,7 @@
 import { listedTools, plainTextIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
 import { TimedOut } from '@beonauto/inference';
 import { answers, callingTools, textResult, type ScriptedReply } from '@beonauto/inference/testing';
-import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { fakeStdioServerPath, serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -33,9 +33,20 @@ async function serving(fake: FakeMcpServer | undefined, replies: readonly Script
       : {
           MCP_SERVERS: JSON.stringify({
             graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
+            limitless: {
+              command: process.execPath,
+              args: [fakeStdioServerPath],
+              env: { NODE_V8_COVERAGE: '${NODE_V8_COVERAGE:-}' },
+              org: 'acme',
+            },
           }),
         };
-  const server = await servingInference(replies, { LOCAL_MODE: 'true', GRAPH_API_KEY: apiKey, ...servers });
+  const server = await servingInference(replies, {
+    LOCAL_MODE: 'true',
+    GRAPH_API_KEY: apiKey,
+    NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',
+    ...servers,
+  });
   closing.push(server.stop);
   return server;
 }
@@ -56,10 +67,10 @@ async function withBrain(server: InferenceServer): Promise<void> {
   );
 }
 
-async function executedTwice(server: InferenceServer) {
+async function executedTwice(server: InferenceServer, document = source) {
   await withBrain(server);
   return onAlpha(server, async (session) => {
-    await session.callTool('create_spec', { primitive: 'inference', name: 'summary', source });
+    await session.callTool('create_spec', { primitive: 'inference', name: 'summary', source: document });
     const running = { primitive: 'inference', name: 'summary', input: {}, execution_id: executionId };
     const first = await session.callTool('execute_spec', running);
     const again = await session.callTool('execute_spec', running);
@@ -93,6 +104,28 @@ describe('execute_spec over MCP on a server with MCP servers', () => {
       events: [
         { type: 'execution_started' },
         { type: 'tool_call_started', data: { server: 'graph', tool: 'search' } },
+        { type: 'tool_call_answered', data: { outcome: 'result' } },
+        { type: 'execution_succeeded' },
+      ],
+    });
+  });
+});
+
+describe('a reason function with tools over MCP', () => {
+  it('runs a reason function with the tools of a process the server starts', async () => {
+    const reply = callingTools(
+      [['mcp__limitless__search', { query: 'acme' }]],
+      answers(textResult('Acme has 2 rows.')),
+    );
+    const processSource = source.replace('graph/search', 'limitless/search');
+
+    const { first, history } = await executedTwice(await serving(await fakeGraph(), [reply]), processSource);
+
+    expect(first.structuredContent).toMatchObject({ status: 'succeeded', output: 'Acme has 2 rows.' });
+    expect(history.structuredContent).toMatchObject({
+      events: [
+        { type: 'execution_started' },
+        { type: 'tool_call_started', data: { server: 'limitless', tool: 'search' } },
         { type: 'tool_call_answered', data: { outcome: 'result' } },
         { type: 'execution_succeeded' },
       ],
