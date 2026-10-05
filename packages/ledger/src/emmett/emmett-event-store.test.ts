@@ -1,0 +1,86 @@
+import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
+import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
+import { Result } from 'effect';
+import { describe, expect, it, onTestFinished } from 'vitest';
+
+import { eventAppenderOf, VersionConflict } from '../index.ts';
+import { outcomeOf } from '../testing/open-ledger.ts';
+import { tally } from '../testing/tally.ts';
+import { dataAsWritten, emmettEventStore, type EmmettStore } from './emmett-event-store.ts';
+
+function anEmmettStore(): EmmettStore {
+  const store = getSQLiteEventStore({
+    driver: sqlite3EventStoreDriver,
+    fileName: ':memory:',
+    schema: { autoMigration: 'None' },
+  });
+  onTestFinished(() => store.close());
+  return store;
+}
+
+const run = 'run/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+const firstThree = [1, 2, 3].map((n) => ({ type: 'counted', data: { n } }));
+
+function counted(count: number): readonly { readonly type: 'counted'; readonly by: number }[] {
+  return Array.from({ length: count }, () => ({ type: 'counted', by: 1 }));
+}
+
+describe('an event store over an Emmett event store', () => {
+  it('keeps the data of each event as the store it is given makes it', async () => {
+    const emmett = anEmmettStore();
+    const store = emmettEventStore(emmett, { data: dataAsWritten, mostEventsInOneAppend: 8 });
+    await store.migrate();
+
+    await store.append(run, firstThree, 0);
+    const stored = await emmett.readStream(run);
+
+    expect(stored.events.map(({ data }: { readonly data: unknown }) => data)).toEqual([{ n: 1 }, { n: 2 }, { n: 3 }]);
+  });
+
+  it('gives the events after a version, and that version when nothing follows it', async () => {
+    const store = emmettEventStore(anEmmettStore(), { data: dataAsWritten, mostEventsInOneAppend: 8 });
+    await store.migrate();
+    await store.append(run, firstThree, 0);
+
+    expect(await store.read(run, 1)).toEqual({ version: 3, events: [{ n: 2 }, { n: 3 }] });
+    expect(await store.read(run, 3)).toEqual({ version: 3, events: [] });
+  });
+});
+
+describe('an append to an event store over an Emmett event store', () => {
+  it.each([0, 2, 4])(
+    'meets a version conflict and appends nothing when it expects %i of a stream at version 3',
+    async (expected) => {
+      const store = emmettEventStore(anEmmettStore(), { data: dataAsWritten, mostEventsInOneAppend: 8 });
+      await store.migrate();
+      await store.append(run, firstThree, 0);
+
+      expect(await outcomeOf(eventAppenderOf(store)(run, tally.eventSchema, counted(1), expected))).toEqual(
+        Result.fail(new VersionConflict()),
+      );
+      expect((await store.read(run)).version).toBe(3);
+    },
+  );
+
+  it('takes in one append as many events as it is told, and a decision of more is a defect', async () => {
+    const store = emmettEventStore(anEmmettStore(), { data: dataAsWritten, mostEventsInOneAppend: 3 });
+    await store.migrate();
+    const append = eventAppenderOf(store);
+
+    await expect(outcomeOf(append(run, tally.eventSchema, counted(4), 0))).rejects.toThrow(
+      `A decision on ${run} gave 4 events, more than 3`,
+    );
+    expect(await outcomeOf(append(run, tally.eventSchema, counted(3), 0))).toMatchObject({ _tag: 'Success' });
+  });
+
+  it('closes the store under it', async () => {
+    const emmett = anEmmettStore();
+    const store = emmettEventStore(emmett, { data: dataAsWritten, mostEventsInOneAppend: 8 });
+    await store.migrate();
+
+    await store.close();
+
+    await expect(emmett.readStream(run)).rejects.toThrow('Singleton connection pool has been closed');
+  });
+});

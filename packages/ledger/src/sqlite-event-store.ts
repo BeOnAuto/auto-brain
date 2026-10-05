@@ -2,6 +2,7 @@ import type { Ledger } from '@beonauto/operations';
 import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
 import type { Layer } from 'effect';
 
+import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
 import type { EventStore } from './event-store.ts';
 import { ledgerLayerOver } from './ledger-layer.ts';
 
@@ -12,24 +13,10 @@ const eventsWithinAHundredParameters = 8;
 export type SQLiteStoreOptions<Driver extends AnyDriver> = Parameters<typeof getSQLiteEventStore<Driver>>[0];
 
 export function sqliteEventStore<Driver extends AnyDriver>(optionsOf: () => SQLiteStoreOptions<Driver>): EventStore {
-  const store = getSQLiteEventStore({ ...optionsOf(), schema: { autoMigration: 'None' } });
-  return {
+  return emmettEventStore(getSQLiteEventStore({ ...optionsOf(), schema: { autoMigration: 'None' } }), {
+    data: dataAsWritten,
     mostEventsInOneAppend: eventsWithinAHundredParameters,
-    read: async (stream, after = 0) => {
-      const { currentStreamVersion, events } = await store.readStream(stream, { from: BigInt(after + 1) });
-      return {
-        version: Math.max(after, Number(currentStreamVersion)),
-        events: events.map(({ data }: { readonly data: unknown }) => data),
-      };
-    },
-    append: async (stream, events, expectedVersion) => {
-      await store.appendToStream(stream, [...events], { expectedStreamVersion: BigInt(expectedVersion) });
-    },
-    migrate: async () => {
-      await store.schema.migrate();
-    },
-    close: () => store.close(),
-  };
+  });
 }
 
 export function sqliteLedgerLayer<Driver extends AnyDriver>(
