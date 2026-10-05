@@ -1,13 +1,19 @@
-import { parse, runAst, validate, type Value } from '@gabrielbryk/jq-ts';
+import { parse, runAst, validate, type EvalOptions, type Value } from '@gabrielbryk/jq-ts';
 
 import { boundedCacheOf } from './bounded-cache.ts';
 import { isJson, isList, isObject, measureOf, mostValueDepth, type Json, type JsonEntry } from './json.ts';
 
 export type Variables = Readonly<Record<string, Json>>;
 
+export interface Deadline {
+  readonly milliseconds: number;
+  readonly clock: () => number;
+}
+
 export interface Budget {
   readonly now: number;
   readonly mostWork: number;
+  readonly deadline?: Deadline;
 }
 
 export type Evaluation =
@@ -55,15 +61,26 @@ export function runExpression(source: string, data: Json, variables: Variables, 
       now: budget.now / 1000,
       limits: { ...limits, maxWork: budget.mostWork },
       usage,
+      ...deadlineOf(budget.deadline),
     });
     return resultOf(source, first, usage.work, budget.mostWork);
   } catch (error) {
     return {
       problem: shortened(`${source}: ${String(error)}`),
       work: usage.work,
-      exhausted: usage.work > budget.mostWork,
+      exhausted: isExhaustion(error),
     };
   }
+}
+
+function deadlineOf(deadline: Deadline | undefined): Pick<EvalOptions, 'deadline'> {
+  return deadline === undefined
+    ? {}
+    : { deadline: { at: deadline.clock() + deadline.milliseconds, clock: deadline.clock } };
+}
+
+function isExhaustion(error: unknown): boolean {
+  return error instanceof Error && error.name === 'LimitError';
 }
 
 function resultOf(source: string, value: unknown, work: number, mostWork: number): Evaluation {
