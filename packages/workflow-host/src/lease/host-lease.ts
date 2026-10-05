@@ -3,7 +3,9 @@ import { Effect, Schema } from 'effect';
 import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 
-export const sweepsBeforeALeaseLapses = 3;
+const sweepsBeforeALeaseLapses = 3;
+
+export const shortestLeaseMs = 10_000;
 
 const hostLeaseName = 'host';
 
@@ -20,6 +22,10 @@ export interface HostLease {
 const HolderRow = Schema.Struct({ holder: Schema.String });
 
 const LeaseRow = Schema.Struct({ holder: Schema.String, expires_at: WholeNumber });
+
+export function leaseMsFor(sweepEveryMs: number): number {
+  return Math.max(sweepsBeforeALeaseLapses * sweepEveryMs, shortestLeaseMs);
+}
 
 function currentHolderOf(database: HostDatabase): Effect.Effect<LeaseClaim, DatabaseFailed> {
   return oneRowOf(

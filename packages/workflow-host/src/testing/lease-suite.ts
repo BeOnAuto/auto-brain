@@ -15,6 +15,8 @@ const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const sweepEveryMs = 400;
 
+const shortestSweepMs = 10;
+
 const listening = workflow('do:\n  - approval: { listen: { to: { one: { with: { type: com.acme.approved } } } } }');
 
 export function leaseSuite(settings: SettingsOf): void {
@@ -29,7 +31,7 @@ export function leaseSuite(settings: SettingsOf): void {
     await setTimeout(3 * sweepEveryMs);
     const performedWhileBothRan = second.calls().length;
     await first.killed();
-    const settled = await eventually(second.settlements, (settlements) => settlements.size > 0, 2000);
+    const settled = await eventually(second.settlements, (settlements) => settlements.size > 0, 4000);
 
     expect(refused).toBeInstanceOf(HostElsewhere);
     expect(performedWhileBothRan).toBe(0);
@@ -50,5 +52,22 @@ export function leaseSuite(settings: SettingsOf): void {
       { kind: 'standing_by', holder: 'first' },
       { kind: 'took_over', holder: 'second' },
     ]);
+  }, 60_000);
+}
+
+export function claimSuite(settings: SettingsOf): void {
+  it('keeps the claim of a host paused for a second at the shortest sweep, so no other host takes over', async () => {
+    const database = await settings();
+    const first = hostIn(database, 'hang-on-call', join(aSQLiteFile(), '..', 'settlements.jsonl'), shortestSweepMs);
+    await first.said('calling');
+    const second = await hostedOn(database, { sweepEveryMs: shortestSweepMs });
+
+    await first.paused(1000);
+    await setTimeout(10 * shortestSweepMs);
+    const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(executionId), startOf(listening))));
+
+    expect(refused).toBeInstanceOf(HostElsewhere);
+    expect(second.notes().map(({ kind }) => kind)).toEqual(['standing_by']);
+    expect(second.calls()).toEqual([]);
   }, 60_000);
 }

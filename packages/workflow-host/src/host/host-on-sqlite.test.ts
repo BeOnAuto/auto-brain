@@ -2,7 +2,7 @@ import { describe } from 'vitest';
 
 import { failureSuite } from '../testing/failure-suite.ts';
 import { onSQLite } from '../testing/host-files.ts';
-import { leaseSuite } from '../testing/lease-suite.ts';
+import { claimSuite, leaseSuite } from '../testing/lease-suite.ts';
 import { longRunSuite } from '../testing/long-run-suite.ts';
 import { portSuite } from '../testing/port-suite.ts';
 import { runSuite } from '../testing/run-suite.ts';
@@ -26,5 +26,6 @@ describe('the host on SQLite', () => {
 
   describe('one of two hosts on one database', () => {
     leaseSuite(onSQLite);
+    claimSuite(onSQLite);
   });
 });

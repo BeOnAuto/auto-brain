@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { hostLease, sweepsBeforeALeaseLapses } from '../lease/host-lease.ts';
+import { hostLease, leaseMsFor } from '../lease/host-lease.ts';
 import { keptLease } from '../lease/lease-keeper.ts';
 import type { HostEngine } from './host-engine.ts';
 import { startServing, type Serving, type ServingOptions } from './host-serving.ts';
@@ -19,7 +19,7 @@ export async function standingOn(
   holder: string = randomUUID(),
 ): Promise<Standing> {
   const { reports, sweepEveryMs, clock } = options;
-  const lastsMs = sweepsBeforeALeaseLapses * sweepEveryMs;
+  const lastsMs = leaseMsFor(sweepEveryMs);
   const lease = hostLease(database, holder, lastsMs);
   const current: { serving: Serving | null } = { serving: null };
   const servedNoMore = Effect.promise(async () => {
