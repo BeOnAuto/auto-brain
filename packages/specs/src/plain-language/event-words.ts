@@ -1,6 +1,8 @@
 import { capitalized, explanationOf, plainNumber } from '@beonauto/operations';
 
+import type { ToolCallAnswered } from '../execution/execution-events.ts';
 import type { ExecutionRejection } from '../execution/execution.ts';
+import { wordsOf } from './in-words.ts';
 import { explainedRejectionOf } from './run-words.ts';
 import type { SpecWords } from './spec-words.ts';
 
@@ -28,4 +30,20 @@ export function specUpdated(words: SpecWords, primitive: string, name: string, v
 
 export function specRetired(words: SpecWords, primitive: string, name: string): string {
   return `${capitalized(words.named(primitive, name))} was retired.`;
+}
+
+const answers: Readonly<Record<ToolCallAnswered['outcome'], string>> = {
+  result: 'answered',
+  tool_error: 'answered with an error',
+  server_failure: 'failed at its server',
+  timed_out: 'took too long, so it was given up',
+  cancelled: 'was cancelled when the run ended',
+};
+
+export function toolCalled(number: number, server: string, tool: string): string {
+  return `A run made tool call ${plainNumber(number)}, to the ${wordsOf(tool)} tool of ${wordsOf(server)}.`;
+}
+
+export function toolAnswered(number: number, outcome: ToolCallAnswered['outcome']): string {
+  return `Tool call ${plainNumber(number)} ${answers[outcome]}.`;
 }

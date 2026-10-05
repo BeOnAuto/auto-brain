@@ -1,6 +1,6 @@
 import type { Schema } from 'effect';
 
-import type { ExecutionDeferred, ExecutionFinished } from './execution-events.ts';
+import type { ExecutionDeferred, ExecutionFinished, ToolCallEvent } from './execution-events.ts';
 
 export interface ExecutionRequest {
   readonly primitive: string;
@@ -13,15 +13,24 @@ export interface ExecutionStart extends ExecutionRequest {
   readonly spec_version: number;
 }
 
-type WithoutFact<Event> = Event extends ExecutionFinished | ExecutionDeferred ? Omit<Event, 'by' | 'at'> : never;
+type WithoutFact<Event> = Event extends ExecutionFinished | ExecutionDeferred | ToolCallEvent
+  ? Omit<Event, 'by' | 'at'>
+  : never;
 
 export type ExecutionResult = WithoutFact<ExecutionFinished>;
 
 export type ExecutionOutcome = WithoutFact<ExecutionFinished | ExecutionDeferred>;
 
+export type ToolCallFact = WithoutFact<ToolCallEvent>;
+
 export interface ExecutionFinish {
   readonly type: 'finish';
   readonly result: ExecutionOutcome;
+}
+
+export interface ExecutionToolCall {
+  readonly type: 'tool_call';
+  readonly fact: ToolCallFact;
 }
 
 export interface CommandMetadata {
@@ -35,4 +44,6 @@ export interface ExecutionSettlement {
   readonly at: string;
 }
 
-export type ExecutionCommand = ((ExecutionStart | ExecutionFinish) & CommandMetadata) | ExecutionSettlement;
+export type ExecutionCommand =
+  | ((ExecutionStart | ExecutionFinish | ExecutionToolCall) & CommandMetadata)
+  | ExecutionSettlement;

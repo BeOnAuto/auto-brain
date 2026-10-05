@@ -5,6 +5,7 @@ import type { ExecutionRequest } from '../execution/execution-commands.ts';
 import { claimOf } from '../execution/execution-decisions.ts';
 import { answerOf } from '../execution/execution-lookup.ts';
 import type { Primitive } from '../primitive/primitive.ts';
+import { toolCallJournal } from '../tool-calls/tool-call-journal.ts';
 import { loadExecution, newExecutionId, recordExecution } from './execution-access.ts';
 import { attempt, failedAttempt } from './execution-attempt.ts';
 import { preparedSpec } from './spec-preparation.ts';
@@ -13,7 +14,8 @@ const runExecution = Effect.fnUntraced(function* (primitive: Primitive, id: stri
   const { spec, prepared } = yield* preparedSpec(primitive, request.name);
   const { org, brain } = yield* BrainContext;
   const caller = yield* Caller;
-  const execution = { id, org, brain, caller, spec: { name: spec.name, version: spec.version } };
+  const journal = yield* toolCallJournal(id);
+  const execution = { id, org, brain, caller, spec: { name: spec.name, version: spec.version }, journal };
   const recorded = yield* Effect.uninterruptibleMask((restore) =>
     Effect.gen(function* () {
       yield* recordExecution(id, { type: 'start', ...request, spec_version: spec.version });

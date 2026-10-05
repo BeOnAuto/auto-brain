@@ -8,17 +8,22 @@ export interface RecordedExecution {
   readonly input: Schema.Json;
   readonly execution: ExecutionRecord;
   readonly finishesLater: boolean;
+  readonly toolCalls: number;
   readonly record?: Schema.JsonObject;
   readonly result?: ExecutionResult;
 }
 
 export type ExecutionState = RecordedExecution | undefined;
 
-function startedExecution({ primitive, name, spec_version, input, by, at }: ExecutionStarted): RecordedExecution {
+function startedExecution(
+  { primitive, name, spec_version, input, by, at }: ExecutionStarted,
+  earlier: ExecutionState,
+): RecordedExecution {
   return {
     input,
     execution: { primitive, name, spec_version, status: 'started', started_at: at, started_by: by },
     finishesLater: false,
+    toolCalls: earlier?.toolCalls ?? 0,
   };
 }
 
@@ -53,16 +58,23 @@ function finishedExecution(state: RecordedExecution, event: ExecutionFinished): 
   return event.type === 'execution_succeeded' ? { ...finished, record: event.record } : finished;
 }
 
-export function evolveExecution(state: ExecutionState, event: ExecutionEvent): ExecutionState {
-  if (event.type === 'execution_started') {
-    return startedExecution(event);
+function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, ExecutionStarted>): RecordedExecution {
+  if (event.type === 'tool_call_started') {
+    return { ...state, toolCalls: state.toolCalls + 1 };
   }
-  if (state === undefined) {
+  if (event.type === 'tool_call_answered') {
     return state;
   }
   return event.type === 'execution_deferred'
     ? { ...state, finishesLater: true, record: event.record }
     : finishedExecution(state, event);
+}
+
+export function evolveExecution(state: ExecutionState, event: ExecutionEvent): ExecutionState {
+  if (event.type === 'execution_started') {
+    return startedExecution(event, state);
+  }
+  return state === undefined ? state : evolveStarted(state, event);
 }
 
 export function hasFinalResult({ execution }: RecordedExecution): boolean {
@@ -71,4 +83,12 @@ export function hasFinalResult({ execution }: RecordedExecution): boolean {
 
 export function awaitsSettlement({ execution, finishesLater }: RecordedExecution): boolean {
   return execution.status === 'started' && finishesLater;
+}
+
+export function isRunning({ execution }: RecordedExecution): boolean {
+  return execution.status === 'started';
+}
+
+export function calledTools({ toolCalls }: RecordedExecution): boolean {
+  return toolCalls > 0;
 }
