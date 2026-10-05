@@ -33,10 +33,10 @@ describe('the root of the server, opened in a browser', () => {
     expect(page).toContain('<span class="address">127.0.0.1:9090</span>');
   });
 
-  it('opens the console on this server', async () => {
+  it('opens the studio on this server', async () => {
     const page = await (await open(createTestHandler().handler)).text();
 
-    expect(page).toContain('href="https://console.on.auto/?server=http%3A%2F%2Flocalhost%3A8080"');
+    expect(page).toContain('href="https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A8080"');
   });
 
   it('is served without a key', async () => {
@@ -97,11 +97,11 @@ describe('what the page at the root of the server loads', () => {
     expect(page).toContain("font-family: 'DM Sans';");
   });
 
-  it('names no other server than the console it opens', async () => {
+  it('names no other server than the studio it opens', async () => {
     const page = await (await open(createTestHandler().handler)).text();
 
     expect(page.match(/https?:\/\/[^"')\s]+/gu)).toEqual([
-      'https://console.on.auto/?server=http%3A%2F%2Flocalhost%3A8080',
+      'https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A8080',
     ]);
   });
 });

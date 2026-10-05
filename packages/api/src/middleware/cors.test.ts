@@ -109,20 +109,20 @@ describe('a request without an Origin header', () => {
   });
 });
 
-describe('the console', () => {
-  const console = 'https://console.on.auto';
+describe('the studio', () => {
+  const studio = 'https://studio.on.auto';
 
   it('may call a server that lists no origins', async () => {
     const { handler } = await operationServer();
 
-    const preflight = await call(handler, notes, { method: 'OPTIONS', headers: preflightFrom(console) });
-    const answer = await call(handler, notes, { headers: { origin: console, ...asAdmin } });
+    const preflight = await call(handler, notes, { method: 'OPTIONS', headers: preflightFrom(studio) });
+    const answer = await call(handler, notes, { headers: { origin: studio, ...asAdmin } });
 
     expect({
       preflight: preflight.status,
       preflightAllows: preflight.headers.get('access-control-allow-origin'),
       answer: answer.status,
       answerAllows: answer.headers.get('access-control-allow-origin'),
-    }).toEqual({ preflight: 204, preflightAllows: console, answer: 200, answerAllows: console });
+    }).toEqual({ preflight: 204, preflightAllows: studio, answer: 200, answerAllows: studio });
   });
 });
