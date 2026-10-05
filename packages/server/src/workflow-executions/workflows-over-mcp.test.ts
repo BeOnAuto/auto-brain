@@ -44,6 +44,9 @@ const brainTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'list_executions',
+  'get_execution_history',
+  'list_brain_events',
   'send_execution_event',
 ];
 
