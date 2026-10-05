@@ -13,4 +13,4 @@ export { configurationOf, type Configuration, type FileUse } from './config-file
 export { fileSetting, type FileSetting, type FileSettingOptions, type References } from './config-file/file-setting.ts';
 export { credentialProblems } from './config-file/credentials.ts';
 export type { FileProblem } from './config-file/file-problem.ts';
-export { substituted, type Substituted } from './config-file/references.ts';
+export { substituted, type Reference, type Substituted } from './config-file/references.ts';
