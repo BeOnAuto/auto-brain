@@ -3,18 +3,20 @@ import type { MachineOptions, RunOutcome } from '@beonauto/workflow-engine';
 import type { JsonObject } from '@beonauto/workflow-engine/dsl/json';
 import { memoryDriver, type MemoryDriver, type Responder } from '@beonauto/workflow-engine/testing';
 
+import { isArgumentsProblem, specArgumentsOf, type SpecArguments } from '../document/spec-arguments.ts';
+import { workflowFunctions } from '../document/workflow-functions.ts';
+import { runtimeDescriptor } from '../interpreter/run-state.ts';
+import { workflow } from '../testing/workflows.ts';
 import type { InputLog } from './input-log-corpus.ts';
-import { isArgumentsProblem, specArgumentsOf, type SpecArguments } from './src/document/spec-arguments.ts';
-import { workflowFunctions } from './src/document/workflow-functions.ts';
-import { runtimeDescriptor } from './src/interpreter/run-state.ts';
-import { workflow } from './src/testing/workflows.ts';
+
+type Answer = (spec: SpecArguments, run: number) => CallResult;
 
 export interface InputLogPath {
   readonly name: string;
   readonly source: string;
   readonly ends: RunOutcome;
   readonly input?: JsonObject;
-  readonly answer?: (spec: SpecArguments, run: number) => CallResult;
+  readonly answer?: Answer;
   readonly meanwhile?: (driver: MemoryDriver, executionId: string) => void;
 }
 
@@ -216,13 +218,13 @@ do:
   },
 ];
 
-function responderOf(answer: InputLogPath['answer']): Responder {
+export function responderOf(answer: Answer): Responder {
   return (call) => {
     const spec = specArgumentsOf(call.arguments);
     if (isArgumentsProblem(spec)) {
       return { result: { status: 'rejected', reason: 'invalid_arguments', detail: spec.title } };
     }
-    return { after: 50, result: answer?.(spec, call.key.run) ?? { status: 'succeeded', output: null } };
+    return { after: 50, result: answer(spec, call.key.run) };
   };
 }
 
@@ -233,7 +235,7 @@ export function inputLogOf(name: string): InputLog {
     throw new Error(`No input log path is named ${name}`);
   }
   const executionId = `0199a3c4-7d2e-7c1a-9b3f-${String(300 + number).padStart(12, '0')}`;
-  const driver = memoryDriver({ machine: orchestrationMachine, respond: responderOf(path.answer) });
+  const driver = memoryDriver({ machine: orchestrationMachine, respond: responderOf(path.answer ?? summarizing) });
   driver.start({ executionId, document: workflow(path.source), input: path.input ?? {} });
   path.meanwhile?.(driver, executionId);
   driver.runUntilEnded(executionId);

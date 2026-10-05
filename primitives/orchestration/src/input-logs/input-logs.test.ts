@@ -2,9 +2,9 @@ import { evolveRun, newRun, workflowMachine, type RunEvent, type RunState } from
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { recordedInputLogs, recordInputLog, type InputLog } from '../../input-log-corpus.ts';
-import { inputLogOf, inputLogPaths, orchestrationMachine } from '../../input-log-paths.ts';
 import { recordedHistories } from '../../replay-corpus.ts';
+import { recordedInputLogs, recordInputLog, type InputLog } from './input-log-corpus.ts';
+import { inputLogOf, inputLogPaths, orchestrationMachine } from './input-log-paths.ts';
 
 const machine = workflowMachine(orchestrationMachine);
 
@@ -35,7 +35,7 @@ describe('the recorded input logs of workflows', () => {
 
   it.each(inputLogPaths.map(({ name }) => name))('%s runs today as it was recorded', (name) => {
     const log = inputLogOf(name);
-    recordInputLog(log);
+    recordInputLog(log, process.env);
 
     expect(log).toEqual(committed.get(name));
   });

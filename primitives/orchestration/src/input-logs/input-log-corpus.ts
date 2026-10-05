@@ -10,6 +10,8 @@ export interface InputLog {
   readonly events: readonly RunEvent[];
 }
 
+export type Environment = Readonly<Record<string, string | undefined>>;
+
 const InputLogSchema = Schema.Struct({
   name: Schema.String,
   inputs: Schema.Array(RunInputSchema),
@@ -22,17 +24,17 @@ const decodeInputLog = Schema.decodeUnknownSync(InputLogTextSchema);
 
 const encodeInputLog = Schema.encodeSync(Schema.toCodecJson(InputLogSchema));
 
-const corpus = fileURLToPath(new URL('input-logs/', import.meta.url));
+const committedCorpus = fileURLToPath(new URL('../../input-logs/', import.meta.url));
 
-export function recordInputLog(log: InputLog): void {
-  if (process.env['RECORD_INPUT_LOGS'] !== '1') {
+export function recordInputLog(log: InputLog, environment: Environment, corpus = committedCorpus): void {
+  if (environment['RECORD_INPUT_LOGS'] !== '1') {
     return;
   }
   mkdirSync(corpus, { recursive: true });
   writeFileSync(`${corpus}${log.name}.json`, `${JSON.stringify(encodeInputLog(log), null, 1)}\n`);
 }
 
-export function recordedInputLogs(): readonly InputLog[] {
+export function recordedInputLogs(corpus = committedCorpus): readonly InputLog[] {
   return readdirSync(corpus)
     .filter((file) => file.endsWith('.json'))
     .toSorted()
