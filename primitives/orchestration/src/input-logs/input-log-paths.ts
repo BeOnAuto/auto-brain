@@ -1,11 +1,9 @@
 import type { CallResult } from '@beonauto/operations';
-import type { MachineOptions, RunOutcome } from '@beonauto/workflow-engine';
-import type { JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import type { JsonObject, RunOutcome } from '@beonauto/workflow-engine';
 import { memoryDriver, type MemoryDriver, type Responder } from '@beonauto/workflow-engine/testing';
 
 import { isArgumentsProblem, specArgumentsOf, type SpecArguments } from '../document/spec-arguments.ts';
-import { workflowFunctions } from '../document/workflow-functions.ts';
-import { runtimeDescriptor } from '../interpreter/run-state.ts';
+import { orchestrationMachine } from '../runs/orchestration-machine.ts';
 import { workflow } from '../testing/workflows.ts';
 import type { InputLog } from './input-log-corpus.ts';
 
@@ -19,8 +17,6 @@ export interface InputLogPath {
   readonly answer?: Answer;
   readonly meanwhile?: (driver: MemoryDriver, executionId: string) => void;
 }
-
-export const orchestrationMachine: MachineOptions = { functions: workflowFunctions, runtime: runtimeDescriptor };
 
 function summarizing({ name, input }: SpecArguments): CallResult {
   return { status: 'succeeded', output: { summary: `${name} of ${JSON.stringify(input)}` } };

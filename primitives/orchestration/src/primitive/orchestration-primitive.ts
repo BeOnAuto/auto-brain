@@ -1,16 +1,26 @@
-import { asSentence, InvalidInput } from '@beonauto/operations';
-import { definePrimitive, inWords, type FinishesLater, type Primitive } from '@beonauto/specs';
-import { measureOf, mostValueDepth, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
-import { Effect, type Schema } from 'effect';
+import { asSentence, Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
+import { definePrimitive, inWords, type ExecutionContext, type FinishesLater, type Primitive } from '@beonauto/specs';
+import { measureOf, mostValueDepth, type JsonObject } from '@beonauto/workflow-engine';
+import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
+import { Effect, Random, type Schema } from 'effect';
 
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
-import type { OrchestrationClient } from './orchestration-client.ts';
+import type { RunAttributes } from '../runs/run-attributes.ts';
 import { orchestrationDescription } from './orchestration-description.ts';
 
 export interface OrchestrationDependencies {
-  readonly client: OrchestrationClient;
+  readonly runs: Pick<WorkflowHost, 'start'>;
+  readonly mostDurationMs: number;
+  readonly longestCallMs: number;
 }
+
+const ranBefore =
+  'This execution id already ran its workflow, which ended; a workflow runs once for an execution id, so execute it with a new execution id to run it again';
+
+const notNow = 'The workflow cannot start now; try again shortly';
+
+const mostSeed = 2_147_483_647;
 
 function describeResult(output: Schema.Json): string {
   const words = inWords(output);
@@ -19,7 +29,39 @@ function describeResult(output: Schema.Json): string {
     : asSentence(`Its result: ${words}`);
 }
 
-export function makeOrchestration({ client }: OrchestrationDependencies): Primitive {
+function admittedInput(input: unknown): Effect.Effect<void, InvalidInput> {
+  const problem = `The input nests more than ${mostValueDepth} levels deep`;
+  return measureOf(input) === undefined
+    ? Effect.fail(new InvalidInput({ detail: problem, issues: [{ detail: problem, pointer: '' }] }))
+    : Effect.void;
+}
+
+function finishedLaterOr(answer: StartAnswer): Effect.Effect<FinishesLater, Conflict> {
+  return answer === 'settled'
+    ? Effect.fail(new Conflict({ detail: ranBefore, kind: 'unworkable' }))
+    : Effect.succeed({ finishesLater: true, record: {} });
+}
+
+function started(
+  { runs, mostDurationMs, longestCallMs }: OrchestrationDependencies,
+  document: JsonObject,
+  input: Schema.Json,
+  { id, org, brain, caller, spec }: ExecutionContext,
+): Effect.Effect<FinishesLater, Conflict | Unavailable> {
+  return Effect.gen(function* () {
+    const seed = yield* Random.nextIntBetween(0, mostSeed);
+    const attributes: RunAttributes = { org, brain, execution_id: id, spec, caller };
+    const answer = yield* runs
+      .start(
+        { org, brain, executionId: id },
+        { document, input, limits: { mostDurationMs, longestCallMs }, attributes, seed },
+      )
+      .pipe(Effect.mapError(() => new Unavailable({ detail: notNow })));
+    return yield* finishedLaterOr(answer);
+  });
+}
+
+export function makeOrchestration(dependencies: OrchestrationDependencies): Primitive {
   return definePrimitive({
     name: 'orchestration',
     title: 'Orchestration',
@@ -28,30 +70,10 @@ export function makeOrchestration({ client }: OrchestrationDependencies): Primit
     describeOutput: describeResult,
     mediaType: 'application/yaml',
     parse: (source: string): Effect.Effect<JsonObject, InvalidInput> =>
-      parseWorkflowDocument(source, client.mostDuration),
+      parseWorkflowDocument(source, dependencies.mostDurationMs),
     summarize: summaryOf,
-    execute: (document, input, { id, org, brain, caller, spec }) =>
-      admittedInput(input).pipe(
-        Effect.andThen(
-          client.start({
-            document,
-            input,
-            execution: { id, org, brain, spec: { name: spec.name, version: spec.version } },
-            caller,
-          }),
-        ),
-        Effect.map(({ workflowId, runId }): FinishesLater => ({
-          finishesLater: true,
-          record: { workflow_id: workflowId, run_id: runId },
-        })),
-      ),
+    execute: (document, input, execution) =>
+      admittedInput(input).pipe(Effect.andThen(started(dependencies, document, input, execution))),
     whenCancelled: 'finish',
   });
-}
-
-function admittedInput(input: unknown): Effect.Effect<void, InvalidInput> {
-  const problem = `The input nests more than ${mostValueDepth} levels deep`;
-  return measureOf(input) === undefined
-    ? Effect.fail(new InvalidInput({ detail: problem, issues: [{ detail: problem, pointer: '' }] }))
-    : Effect.void;
 }

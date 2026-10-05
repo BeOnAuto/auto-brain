@@ -6,7 +6,7 @@ import {
   type Registration,
   type Settled,
 } from '@beonauto/operations';
-import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
+import { memoryBrainRegistry, recordingReporter, type MemoryLedger } from '@beonauto/operations/testing';
 import {
   defineCreateSpec,
   defineExecuteSpec,
@@ -17,8 +17,8 @@ import {
 } from '@beonauto/specs';
 import { Effect, Layer } from 'effect';
 
-import type { ExecuteSpec } from '../worker/dependencies.ts';
-import { specExecutionResultOf } from '../worker/spec-results.ts';
+import type { ExecuteSpec } from '../calls/spec-execution.ts';
+import { specExecutionResultOf } from '../calls/spec-results.ts';
 import { acmeCaller } from './workflows.ts';
 
 interface BrainOperation {
@@ -39,8 +39,7 @@ export interface Brain {
   readonly settle: SettleExecution;
 }
 
-export function brainWith(primitives: readonly Primitive[]): Brain {
-  const ledger = memoryLedger();
+export function brainOn(ledger: MemoryLedger, primitives: readonly Primitive[]): Brain {
   const services = Layer.mergeAll(
     ledger.layer,
     memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }]),

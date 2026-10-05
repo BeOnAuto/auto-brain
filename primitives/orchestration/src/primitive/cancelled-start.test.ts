@@ -1,10 +1,11 @@
 import { setTimeout } from 'node:timers/promises';
 
+import { memoryLedger } from '@beonauto/operations/testing';
+import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainWith } from '../testing/brain.ts';
-import type { OrchestrationClient } from './orchestration-client.ts';
+import { brainOn } from '../testing/brain.ts';
 import { makeOrchestration } from './orchestration-primitive.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-555555555551';
@@ -13,19 +14,22 @@ const flow = "document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1
 
 const startBegan = Promise.withResolvers<void>();
 
-const slowlyStarting: OrchestrationClient = {
-  mostDuration: 2_592_000_000,
+const slowlyStarting: Pick<WorkflowHost, 'start'> = {
   start: () =>
     Effect.promise(() => {
       startBegan.resolve();
       return setTimeout(300);
-    }).pipe(Effect.as({ workflowId: `acme/alpha/flow/${executionId}`, runId: 'run-1' })),
-  signal: () => Effect.void,
+    }).pipe(Effect.as('started' as const)),
 };
 
-describe('an execution whose call is cancelled while Temporal starts its workflow', () => {
+describe('an execution whose call is cancelled while its workflow starts', () => {
   it('waits for the start and records the execution waiting for the workflow it started', async () => {
-    const brain = brainWith([makeOrchestration({ client: slowlyStarting })]);
+    const orchestration = makeOrchestration({
+      runs: slowlyStarting,
+      mostDurationMs: 2_592_000_000,
+      longestCallMs: 1000,
+    });
+    const brain = brainOn(memoryLedger(), [orchestration]);
     await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source: flow });
 
     const answered = await brain.callCancelledWhen(startBegan.promise, brain.executeSpec, {
@@ -36,10 +40,7 @@ describe('an execution whose call is cancelled while Temporal starts its workflo
 
     expect(answered).toStrictEqual({ status: 'cancelled' });
     expect(await brain.call(brain.getExecution, { execution_id: executionId })).toMatchObject({
-      output: {
-        status: 'started',
-        record: { workflow_id: `acme/alpha/flow/${executionId}`, run_id: 'run-1' },
-      },
+      output: { status: 'started', record: {} },
     });
   });
 });

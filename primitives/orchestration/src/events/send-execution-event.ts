@@ -1,23 +1,26 @@
 import { randomUUID } from 'node:crypto';
 
-import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
+import { BrainContext, defineCommand, NotFound, quoted, Unavailable } from '@beonauto/operations';
 import { getExecution } from '@beonauto/specs';
-import { jsonBytesOf } from '@beonauto/workflow-engine/dsl/json';
 import {
+  jsonBytesOf,
   mostReceivedEventBytes,
   mostReceivedEvents,
   mostWaitingEventBytes,
   mostWaitingEvents,
-} from '@beonauto/workflow-engine/limits';
+} from '@beonauto/workflow-engine';
+import type { WorkflowHost } from '@beonauto/workflow-host';
 import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
-
-import type { OrchestrationClient } from '../primitive/orchestration-client.ts';
 
 const mostEventBytes = 262_144;
 
 const mostNameLength = 256;
 
 const mostTextLength = 1024;
+
+const noRunningWorkflow = 'The brain has no running workflow execution with that id';
+
+const notNow = 'The workflow cannot take the event now; try again shortly';
 
 const ExecutionIdField = Schema.String.annotate({
   description: 'The id of the execution of a workflow spec, a UUID in any case, kept in lowercase',
@@ -62,7 +65,7 @@ const DeliveredEventSchema = Schema.Struct({
   time: Schema.String.annotate({ description: 'When the event was sent, in ISO 8601 UTC' }),
 }).annotate({ identifier: 'DeliveredEvent', description: 'The event as the workflow received it' });
 
-export function defineSendExecutionEvent(client: OrchestrationClient) {
+export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {
   return defineCommand('brain', {
     name: 'send_execution_event',
     title: 'Send execution event',
@@ -80,7 +83,7 @@ export function defineSendExecutionEvent(client: OrchestrationClient) {
       `at most ${mostReceivedEvents} events (${mostReceivedEventBytes} bytes as JSON) over its life; one more fails it, and`,
       'its execution settles rejected.',
       'Rejected with not_found when the brain has no running workflow execution with that id,',
-      'and with unavailable when the workflow engine cannot be reached, in which case try again.',
+      'and with unavailable when the workflow cannot take the event at that moment, in which case try again.',
     ].join(' '),
     route: { method: 'POST', path: '/executions/{execution_id}/events' },
     inputSchema: Schema.Struct({ execution_id: ExecutionIdField, event: EventSchema }),
@@ -92,11 +95,16 @@ export function defineSendExecutionEvent(client: OrchestrationClient) {
     handle: Effect.fnUntraced(function* ({ execution_id: executionId, event }) {
       const execution = yield* getExecution.call({ execution_id: executionId });
       if (execution.primitive !== 'orchestration' || execution.status !== 'started') {
-        return yield* new NotFound({ detail: 'The brain has no running workflow execution with that id' });
+        return yield* new NotFound({ detail: noRunningWorkflow });
       }
       const { org, brain } = yield* BrainContext;
       const delivered = { ...event, id: event.id ?? randomUUID(), time: DateTime.formatIso(yield* DateTime.now) };
-      yield* client.signal({ org, brain, spec: execution.name, executionId }, delivered);
+      const answer = yield* runs
+        .deliver({ org, brain, executionId }, delivered)
+        .pipe(Effect.mapError(() => new Unavailable({ detail: notNow })));
+      if (answer !== 'delivered') {
+        return yield* new NotFound({ detail: noRunningWorkflow });
+      }
       return { execution_id: executionId, event: delivered };
     }),
     plainLanguage: {
