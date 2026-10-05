@@ -85,4 +85,4 @@ curl --request POST http://localhost:8080/v1/orgs/local/brains/sales/executions/
 curl http://localhost:8080/v1/orgs/local/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b
 ```
 
-Executing answers `started` at once; the execution reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting has its own recorded run under an id derived from the workflow's run, made by the caller who started the workflow. [Workflow format](workflow-format.md) describes the supported steps.
+Executing answers `started` at once; the execution reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting has its own recorded run under an id derived from the workflow's run, made by the caller who started the workflow. The public [workflow format](../../reference/workflow-format.md) describes the supported steps, and the repository-only [workflow execution notes](workflow-format.md) how they run.

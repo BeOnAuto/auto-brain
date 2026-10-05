@@ -2,7 +2,7 @@
 
 The current Temporal-backed workflow implementation. The runtime identifier remains `orchestration`.
 
-Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md), published at [on.auto/docs](https://on.auto/docs/). Contributor setup and the current implementation details remain in the repository-only [workflow reference](../../docs/engineering/reference/workflow-format.md) and [workflow operations guide](../../docs/engineering/self-host/temporal.md). Update those notes alongside behavior changes while the engine transition is in progress.
+Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md) and [the workflow format](../../docs/reference/workflow-format.md), published at [on.auto/docs](https://on.auto/docs/). Contributor setup and the current implementation details remain in the repository-only [workflow reference](../../docs/engineering/reference/workflow-format.md) and [workflow operations guide](../../docs/engineering/self-host/temporal.md). Update those notes alongside behavior changes while the engine transition is in progress.
 
 ## Testing
 
