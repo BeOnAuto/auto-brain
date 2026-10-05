@@ -283,7 +283,7 @@ describe('the compiler', () => {
 
   beforeAll(() => {
     errors = compiledErrors();
-  }, 120_000);
+  }, 60_000);
 
   it('accepts every definition that keeps the rules and rejects every one that breaks them', () => {
     expect(new Set(errors.map((error) => error.slice(0, error.indexOf('('))))).toEqual(new Set(Object.keys(rejected)));
