@@ -56,7 +56,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   tool_not_offered: {
     why: 'this server does not offer a tool it names',
     remedy:
-      'This can be put right on your side: once it names only tools this server offers, which list_tools shows, it can be tried again.',
+      'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, so once it names only those, it can be tried again.',
   },
   mcp_server_failed: {
     why: 'a tool server it needs could not be used',
@@ -74,7 +74,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
 const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
   provider_not_configured: 'because its provider is not set up on this server, though others are',
   model_not_allowed: 'because it is not among the models whoever runs the server allows',
-  mcp_server_not_configured: 'because a tool server it names is not set up for this brain',
+  mcp_server_not_configured: 'because whoever runs the server has not set up a tool server of that name for this brain',
   tool_not_allowed: 'because it is not among the tools whoever runs the server allows',
   tool_not_listed: 'because the tool server it names does not have that tool',
   failing: 'because the tool server kept failing',

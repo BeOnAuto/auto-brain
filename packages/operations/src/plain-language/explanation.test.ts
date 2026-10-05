@@ -39,7 +39,7 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
 ];
 
 const toolsNamed =
-  'This can be put right on your side: once it names only tools this server offers, which list_tools shows, it can be tried again.';
+  'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, so once it names only those, it can be tried again.';
 
 const serverFailed =
   'Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.';
@@ -51,7 +51,7 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
   [
     'a tool server not set up for the brain',
     { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
-    'this server does not offer a tool it names, because a tool server it names is not set up for this brain',
+    'this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain',
     toolsNamed,
   ],
   [
