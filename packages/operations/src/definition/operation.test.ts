@@ -1,7 +1,7 @@
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { BrainReader, BrainWriter, InvalidInput, NotFound, defineQuery } from '../index.ts';
+import { BrainReader, BrainWriter, InvalidInput, NotFound, defineCommand, defineQuery } from '../index.ts';
 import { brainBoundRecordedReader } from '../ledger/bound-ports.ts';
 import { labelBrain } from '../testing/brain-labels.ts';
 import { publishDraft } from '../testing/drafts.ts';
@@ -108,6 +108,18 @@ describe('the reach of a registration', () => {
     });
 
     expect([addNote.registration.reachesOutside, asking.registration.reachesOutside]).toEqual([false, true]);
+  });
+
+  it('says it may change something outside the server only when its definition says so', () => {
+    const acting = defineCommand('org', {
+      ...about,
+      name: 'act',
+      route: { method: 'POST', path: '/act' },
+      reachesOutside: true,
+      mayChangeOutside: true,
+    });
+
+    expect([addNote.registration.mayChangeOutside, acting.registration.mayChangeOutside]).toEqual([false, true]);
   });
 });
 

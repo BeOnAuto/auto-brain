@@ -67,9 +67,18 @@ When an operation is defined, it checks again what the compiler cannot see, on t
 
 At run time, when a handler fails with a reason it did not declare, the call fails; it is not rejected.
 
-A definition sets `reachesOutside: true` when its handler calls a system outside the server, such as a model provider; the registration carries it, `false` when left out, and a transport can tell its callers, as the MCP tools do with `openWorldHint`.
+A definition sets `reachesOutside: true` when its handler calls a system outside the server, such as a model provider, and `mayChangeOutside: true` when that call may change something there, such as a tool that writes; the registration carries both, `false` when left out, and a transport can tell its callers, as the MCP tools do with `openWorldHint` and `destructiveHint`.
 
-`Unavailable` may carry a `kind`, `model_not_offered` for a model the server does not offer, and with it a `because`: `provider_not_configured` when the model's provider is not set up while others are, or `model_not_allowed` when the model is outside what the operator allows. Both reach the rejected outcome, where `explanationOf` and `unsuccessfulWords` turn them into plain words; neither is part of the problem document.
+`Unavailable` may carry a `kind` and with it a `because`. Both reach the rejected outcome, where `explanationOf` and `unsuccessfulWords` turn them into plain words; neither is part of the problem document.
+
+| `kind`              | What could not be used                                                              | `because`                                                                                                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `model_not_offered` | a model the server does not offer                                                   | `provider_not_configured`, its provider is not set up while others are; `model_not_allowed`, it is outside what the operator allows                                                                    |
+| `tool_not_offered`  | a tool the server does not offer                                                    | `mcp_server_not_configured`, its server is not configured for the org and brain; `tool_not_allowed`, it is outside what the operator allows; `tool_not_listed`, its server does not list it            |
+| `mcp_server_failed` | a tool server, before any call was recorded                                         | `failing`, it kept failing; `rate_limited`, it asked to wait longer than a run waits; `unreachable`, it could not be reached in time                                                                   |
+| `tools_unfinished`  | anything, after a tool call was recorded, so that a tool may have changed something | `server_failed`, a tool server kept failing; `model_unavailable`, the model could not be called; `run_bound`, the run ran out of time; `no_answer`, the model still called tools when it had to answer |
+
+`Conflict` may carry a `kind`: `taken`, `retired`, `concurrent_change`, `unworkable`, or `tools_called`, a run that called tools and did not succeed and so is not run again under its id. The words of `tools_unfinished` never say that nothing was changed: `Explanation` carries `mayHaveChanged` for it.
 
 `InvalidInput` is for input that matches the input schema but that the handler finds wrong, such as a document it parses. It carries a detail and its issues, each a `detail` and a JSON Pointer `pointer` into the input. A handler that declares `invalid_input` and fails with it is rejected with reason `invalid_input` and those issues, the same rejection the dispatcher gives input that breaks the schema. Every rejection carries at most 100 issues, and each issue only its `detail` and `pointer`.
 
