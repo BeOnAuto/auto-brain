@@ -1,0 +1,178 @@
+import { Redacted, Schema } from 'effect';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { secretsOf } from '../bounds/secrets.ts';
+import type { StdioServerSettings } from '../settings/mcp-settings.ts';
+import { fakeStdioServerPath } from '../testing/index.ts';
+import type { CallSettled, McpConnection } from './mcp-connection.ts';
+import { failureOf } from './server-failures.ts';
+import { serverLink } from './server-links.ts';
+import { outputNoLongerReported } from './stdio-transport.ts';
+
+const coverage = process.env['NODE_V8_COVERAGE'];
+
+const environment = new Map([
+  ['LIMITLESS_API_KEY', Redacted.make('limitless-key-3e9d')],
+  ...(coverage === undefined ? [] : [['NODE_V8_COVERAGE', Redacted.make(coverage)] as const]),
+]);
+
+const closing: (() => Promise<void>)[] = [];
+
+afterEach(async () => {
+  await Promise.all(closing.splice(0).map((close) => close()));
+});
+
+function stdioSettings(args: readonly string[], changes: Partial<StdioServerSettings> = {}): StdioServerSettings {
+  return {
+    type: 'stdio',
+    name: 'limitless',
+    command: process.execPath,
+    args: [fakeStdioServerPath, ...args],
+    env: environment,
+    org: 'acme',
+    brains: null,
+    record_content: false,
+    request_id: null,
+    ...changes,
+  };
+}
+
+function linked(settings: StdioServerSettings, openMs = 5000) {
+  const lines: string[] = [];
+  const link = serverLink(settings, {
+    fetch: globalThis.fetch,
+    secrets: secretsOf([Redacted.make('fake MCP server')]),
+    now: Date.now,
+    timing: { callMs: 5000, openMs, longestRetryWaitMs: 1000 },
+    reportOutput: (server, line) => {
+      lines.push(`${server}: ${line}`);
+    },
+  });
+  closing.push(link.stop);
+  return { link, lines };
+}
+
+const decodeNames = Schema.decodeUnknownSync(
+  Schema.Struct({
+    result: Schema.Struct({
+      content: Schema.Tuple([Schema.Struct({ text: Schema.fromJsonString(Schema.Array(Schema.String)) })]),
+    }),
+  }),
+);
+
+function namesIn(settled: unknown): readonly string[] {
+  const [{ text }] = decodeNames(settled).result.content;
+  return text.filter((name) => !name.startsWith(operatingSystemPrefix));
+}
+
+const operatingSystemPrefix = '__CF_';
+
+const called = (connection: McpConnection, tool: string, input: Readonly<Record<string, unknown>> = {}) =>
+  connection.call({ tool, input, meta: {}, signal: new AbortController().signal, timeoutMs: 5000 });
+
+function failureOfCall(settled: CallSettled) {
+  return 'error' in settled ? failureOf(settled.error) : undefined;
+}
+
+async function failureOfTaking(link: ReturnType<typeof linked>['link']) {
+  return failureOf(
+    await link.take().then(
+      () => null,
+      (error: unknown) => error,
+    ),
+  );
+}
+
+describe('a link to a stdio server', () => {
+  it('starts the process on first use with the environment of its entry alone, and keeps it until stopped', async () => {
+    const { link } = linked(stdioSettings([]));
+
+    const first = await link.take();
+    await link.release();
+    const second = await link.take();
+    const variables = await called(second, 'environment');
+    await link.stop();
+    await first.closed;
+
+    expect(second).toBe(first);
+    expect(namesIn(variables)).toEqual([...environment.keys()]);
+  });
+
+  it('reports what the process writes to stderr, line by line, scrubbed, cut and bounded', async () => {
+    const { link, lines } = linked(stdioSettings(['--chatter', '102', '--pad', '2100']));
+
+    await link.take();
+    await link.stop();
+
+    expect(lines).toHaveLength(101);
+    expect(lines[0]).toMatch(/^limitless: The \[redacted\] says line 1 on stderr\.+$/u);
+    expect(lines[0]).toHaveLength('limitless: '.length + 2000);
+    expect(lines.slice(1, 100).every((line) => line.length === lines[0]?.length)).toBe(true);
+    expect(lines.at(-1)).toBe(`limitless: ${outputNoLongerReported}`);
+  });
+});
+
+describe('what a stdio server writes', () => {
+  it('passes over lines on stdout that are not JSON, or not JSON-RPC', async () => {
+    const { link } = linked(stdioSettings(['--stdout', 'not json\n{"not":"rpc"}\n']));
+
+    expect(await called(await link.take(), 'search', { query: 'acme' })).toMatchObject({
+      result: { content: [{ text: 'Found 2 rows for acme.' }] },
+    });
+  });
+
+  it('closes a process that writes more than its output may take at once', async () => {
+    const { link } = linked(stdioSettings([]));
+    const connection = await link.take();
+
+    const settled = await called(connection, 'large', { kib: 4200 });
+    await connection.closed;
+
+    expect(failureOfCall(settled)).toEqual({
+      kind: 'closed',
+      message: 'The connection to the MCP server closed',
+    });
+  });
+
+  it('sees a process exit while it is called', async () => {
+    const { link } = linked(stdioSettings([]));
+    const connection = await link.take();
+
+    const settled = await called(connection, 'exit');
+    await connection.closed;
+    await link.stop();
+
+    expect(failureOfCall(settled)).toMatchObject({ kind: 'closed' });
+  });
+});
+
+describe('a stdio server that does not start or stop', () => {
+  it('cannot start a command that is not there', async () => {
+    const { link } = linked(stdioSettings([], { command: '/nonexistent/limitless-mcp-server', args: [] }));
+
+    expect(await failureOfTaking(link)).toEqual({
+      kind: 'unreachable',
+      message: 'The MCP server could not be reached',
+    });
+  });
+
+  it('kills a process that does not answer in time, nor end when its input does', async () => {
+    const { link } = linked(stdioSettings([], { args: ['--eval', 'setInterval(() => {}, 1000)'] }), 200);
+
+    expect(await failureOfTaking(link)).toEqual({
+      kind: 'timed_out',
+      message: 'The MCP server did not answer in time',
+    });
+  });
+
+  it('kills a process that does not end when its input does, once it has been patient', async () => {
+    const { link } = linked(stdioSettings(['--linger-ms', '60000']));
+    const connection = await link.take();
+
+    const began = performance.now();
+    await link.stop();
+    await connection.closed;
+
+    expect(performance.now() - began).toBeGreaterThanOrEqual(1900);
+  });
+});

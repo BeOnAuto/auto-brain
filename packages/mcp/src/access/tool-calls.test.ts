@@ -1,0 +1,185 @@
+import { afterEach, describe, expect, it } from 'vitest';
+
+import type { Timing } from '../bounds/call-bounds.ts';
+import { deniedText, fakeApiKey, inTurn, openFakeToolRun, toolRunId } from '../testing/index.ts';
+
+const quick: Timing = { callMs: 2000, openMs: 2000, longestRetryWaitMs: 1000 };
+
+const closing: (() => Promise<void>)[] = [];
+
+afterEach(async () => {
+  await Promise.all(closing.splice(0).map((close) => close()));
+});
+
+async function runWith(tools: readonly string[], timing?: Timing) {
+  const run = await openFakeToolRun(tools, timing);
+  closing.push(run.close);
+  return run;
+}
+
+const cutLarge: unknown = expect.stringMatching(
+  /^(?:😀)+\n\[The answer was cut to 65536 of its 81920 bytes; ask for fewer rows, fields or depth to see the rest\.\]$/u,
+);
+
+const brokenWithKey: unknown = expect.stringMatching(
+  /^The MCP server graph failed: .*The broken tool broke on \{"key":"\[redacted\]","attempt":1\}$/u,
+);
+
+const reportedWithKey: unknown = expect.stringMatching(
+  /The broken tool broke on \{"key":"\[redacted\]","attempt":1\}$/u,
+);
+
+describe('the result of a call', () => {
+  it('gives the model text as text, structured content without text as JSON, and other content as placeholders', async () => {
+    const { call, tools } = await runWith(['search', 'profile', 'photo']);
+
+    expect(await call('search', { query: 'acme' })).toEqual({ text: 'Found 2 rows for acme.', isError: false });
+    expect(await call('profile', {})).toEqual({ text: '{"name":"Ada","rows":2}', isError: false });
+    expect(await call('photo', {})).toEqual({
+      text: '[image content (image/png), not shown]\n[audio content (audio/wav), not shown]',
+      isError: false,
+    });
+    expect(tools.calledAny()).toBe(true);
+    expect(tools.usedInWords()).toBe('the search, profile, and photo tools of graph');
+  });
+
+  it('gives the model a denial as a tool error it may recover from, never counted as a failure', async () => {
+    const { call, tools } = await runWith(['denied']);
+
+    const replies = await inTurn([1, 2, 3, 4, 5, 6], (attempt) => call('denied', { attempt }));
+
+    expect(replies).toEqual(Array.from({ length: 6 }, () => ({ text: deniedText, isError: true })));
+    expect(tools.ending()).toBeUndefined();
+    expect(tools.ended.aborted).toBe(false);
+  });
+
+  it('cuts a result over 64 KiB at a code point, with the note', async () => {
+    const { call } = await runWith(['large']);
+
+    expect(await call('large', { kib: 80 })).toEqual({ text: cutLarge, isError: false });
+  });
+});
+
+describe('the calls a run may make', () => {
+  it('makes the calls of one step at once, recording each', async () => {
+    const { call, journal } = await runWith(['sleep']);
+
+    const replies = await Promise.all(Array.from({ length: 10 }, (_, index) => call('sleep', { ms: 50, index })));
+
+    expect(replies).toEqual(Array.from({ length: 10 }, () => ({ text: 'Slept.', isError: false })));
+    expect(journal.facts()).toHaveLength(20);
+    expect(new Set(journal.facts().map(({ number }) => number))).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+  });
+
+  it('refuses the call after the twenty-fifth without sending or recording it', async () => {
+    const { call, fake, journal, tools } = await runWith(['echo']);
+
+    await inTurn(
+      Array.from({ length: 25 }, (_, index) => index),
+      (number) => call('echo', { number }),
+    );
+    const refused = await call('echo', { number: 26 });
+
+    expect(tools.callsEnded()).toBe(true);
+    expect(refused).toEqual({
+      text: 'This run has made all the 25 tool calls it may; answer from what you have.',
+      isError: true,
+    });
+    expect(fake.received()).toHaveLength(25);
+    expect(journal.facts()).toHaveLength(50);
+  });
+
+  it('refuses calls once the results of the run fill 256 KiB', async () => {
+    const { call, tools } = await runWith(['large']);
+
+    await inTurn([1, 2, 3, 4], (page) => call('large', { kib: 64, page }));
+
+    expect(tools.callsEnded()).toBe(true);
+    expect(await call('large', { kib: 1, page: 5 })).toEqual({
+      text: 'This run has received all the 262144 bytes of tool results it may; answer from what you have.',
+      isError: true,
+    });
+  });
+});
+
+describe('the arguments of a call', () => {
+  it('refuses arguments over 16 KiB, and the third call with the same arguments', async () => {
+    const { call, fake } = await runWith(['echo']);
+    const inputs: readonly Readonly<Record<string, string>>[] = [
+      { text: 'x'.repeat(16_384) },
+      { text: 'once' },
+      { text: 'once' },
+      { text: 'once' },
+    ];
+
+    const replies = await inTurn(inputs, (input) => call('echo', input));
+
+    expect(replies[0]).toEqual({
+      text: 'The arguments of this call take 16395 bytes, more than the 16384 a call may send; send less.',
+      isError: true,
+    });
+    expect(replies[3]).toEqual({
+      text: 'This call repeats, with the same arguments, a call this run already made 2 times; use the answer to the call call-3 instead.',
+      isError: true,
+    });
+    expect(fake.received()).toHaveLength(2);
+  });
+});
+
+describe('a server that fails a call', () => {
+  it('fails a call it cannot answer, scrubbed of secrets, and reports it to the operator', async () => {
+    const { call, messages } = await runWith(['broken']);
+
+    expect(await call('broken', { key: fakeApiKey, attempt: 1 })).toEqual({ text: brokenWithKey, isError: true });
+    expect(messages()).toEqual([{ server: 'graph', message: reportedWithKey, execution_id: toolRunId }]);
+  });
+
+  it('ends the calls after five failures', async () => {
+    const { call, tools } = await runWith(['broken']);
+
+    await inTurn([1, 2, 3, 4], (attempt) => call('broken', { attempt }));
+    const endingBefore = tools.ending();
+    await call('broken', { attempt: 5 });
+
+    expect(endingBefore).toBeUndefined();
+    expect(tools.ending()).toEqual({ because: 'failing' });
+    expect(tools.ended.aborted).toBe(true);
+  });
+
+  it('fails a call that takes longer than a call may', async () => {
+    const { call, journal } = await runWith(['sleep'], { ...quick, callMs: 200 });
+
+    expect(await call('sleep', { ms: 5000 })).toEqual({
+      text: 'The MCP server graph failed: The MCP server did not answer within 200 ms',
+      isError: true,
+    });
+    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_answered', outcome: 'timed_out' });
+  });
+});
+
+describe('a server that asks to slow down or forgets a session', () => {
+  it('waits out a 429 within the longest wait, and fails one asking longer, ending the calls as rate limited after five', async () => {
+    const { call, fake, tools } = await runWith(['search'], quick);
+
+    fake.answerNextWith(429, 1, { 'retry-after': '0' });
+    const waited = await call('search', { query: 'waited' });
+    fake.answerNextWith(429, 5, { 'retry-after': '5' });
+    const [limited] = await inTurn(['limited', 'b', 'c', 'd', 'e'], (query) => call('search', { query }));
+
+    expect(waited).toEqual({ text: 'Found 2 rows for waited.', isError: false });
+    expect(limited).toEqual({ text: 'The MCP server graph failed: The MCP server answered HTTP 429', isError: true });
+    expect(tools.ending()).toEqual({ because: 'rate_limited' });
+  });
+
+  it('opens a forgotten session again once, and then fails', async () => {
+    const { call, fake } = await runWith(['search']);
+
+    fake.forgetSessions();
+    const reopened = await call('search', { query: 'reopened' });
+    fake.forgetSessions();
+    const forgotten = await call('search', { query: 'forgotten' });
+
+    expect(reopened).toEqual({ text: 'Found 2 rows for reopened.', isError: false });
+    expect(forgotten).toEqual({ text: 'The MCP server graph failed: The MCP server answered HTTP 404', isError: true });
+  });
+});

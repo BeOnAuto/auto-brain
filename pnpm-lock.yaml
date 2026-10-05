@@ -386,6 +386,31 @@ importers:
         specifier: 'catalog:'
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
+  packages/mcp:
+    dependencies:
+      '@beonauto/config':
+        specifier: workspace:*
+        version: link:../config
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../operations
+      '@modelcontextprotocol/client':
+        specifier: 2.2.0
+        version: 2.2.0
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+    devDependencies:
+      '@modelcontextprotocol/server':
+        specifier: 2.2.0
+        version: 2.2.0
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+
   packages/operations:
     dependencies:
       effect:
@@ -4513,6 +4538,9 @@ packages:
   path-to-regexp@8.4.2:
     resolution: {integrity: sha512-qRcuIdP69NPm4qbACK+aDogI5CBDMi1jKe0ry5rSQJz8JVLsC7jV8XpiJjGRLLol3N+R5ihGYcrPLTno6pAdBA==}
 
+  perfect-debounce@1.0.0:
+    resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
+
   pg-cloudflare@1.4.1:
     resolution: {integrity: sha512-6PQbsFWZcp9EmJEwy5cGQ2La+AMWpP46lgbb8X+U/XsHIUweYDNCpeuKck5RxL2MdVFi7krbbEi5nX4Zh7JhrQ==}
 
@@ -4546,8 +4574,6 @@ packages:
 
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
-  perfect-debounce@1.0.0:
-    resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -4589,6 +4615,7 @@ packages:
   postgres-interval@1.2.0:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
+
   preact@10.29.8:
     resolution: {integrity: sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q==}
     peerDependencies:
@@ -9045,6 +9072,8 @@ snapshots:
 
   path-to-regexp@8.4.2: {}
 
+  perfect-debounce@1.0.0: {}
+
   pg-cloudflare@1.4.1:
     optional: true
 
@@ -9079,7 +9108,6 @@ snapshots:
   pgpass@1.0.5:
     dependencies:
       split2: 4.2.0
-  perfect-debounce@1.0.0: {}
 
   picocolors@1.1.1: {}
 
@@ -9125,6 +9153,7 @@ snapshots:
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
+
   preact@10.29.8: {}
 
   prebuild-install@7.1.3:

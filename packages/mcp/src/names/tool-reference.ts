@@ -1,0 +1,36 @@
+export interface ToolReference {
+  readonly server: string;
+  readonly tool: string;
+}
+
+const everyTool = '*';
+
+const serverName = /^[a-z][a-z0-9-]{0,31}$/u;
+
+const toolName = /^[A-Za-z0-9_.-]{1,128}$/u;
+
+export function isServerName(name: string): boolean {
+  return serverName.test(name);
+}
+
+export function isToolName(name: string): boolean {
+  return toolName.test(name);
+}
+
+export function namesEveryTool({ tool }: ToolReference): boolean {
+  return tool === everyTool;
+}
+
+export function toolReferenceOf(written: string): ToolReference | undefined {
+  const slash = written.indexOf('/');
+  const server = written.slice(0, slash);
+  const tool = written.slice(slash + 1);
+  return slash > 0 && isServerName(server) && (tool === everyTool || isToolName(tool)) ? { server, tool } : undefined;
+}
+
+export function writtenOf({ server, tool }: ToolReference): string {
+  return `${server}/${tool}`;
+}
+
+export const toolReferenceShape =
+  'server/tool, or server/* for every tool of a server: a server name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter, and a tool name of 1 to 128 letters, digits, underscores, hyphens and dots';
