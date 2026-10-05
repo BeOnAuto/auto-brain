@@ -1,34 +1,7 @@
+export { specCalls } from './calls/spec-calls.ts';
+export type { ExecuteSpec, SpecExecution, SpecExecutionResult } from './calls/spec-execution.ts';
+export { specExecutionResultOf } from './calls/spec-results.ts';
 export { defineSendExecutionEvent } from './events/send-execution-event.ts';
-export {
-  connectOrchestration,
-  type ClientOptions,
-  type ExecutionWorkflow,
-  type OrchestrationClient,
-  type StartedRun,
-} from './primitive/orchestration-client.ts';
+export { runPresenter } from './presenting/run-presenter.ts';
 export { makeOrchestration, type OrchestrationDependencies } from './primitive/orchestration-primitive.ts';
-export type {
-  ExecuteSpec,
-  ReportUnsettled,
-  SpecExecution,
-  SpecExecutionResult,
-  UnsettledExecution,
-} from './worker/dependencies.ts';
-export { specExecutionResultOf } from './worker/spec-results.ts';
-export {
-  buildWorkflowBundle,
-  requireWorkflowBundler,
-  verifiedWorkflowBundle,
-  WorkflowBundleInvalid,
-} from './worker/workflow-bundle.ts';
-export {
-  installTemporalRuntime,
-  type TemporalLog,
-  type TemporalLogContext,
-  type TemporalLogEntry,
-} from './worker/temporal-runtime.ts';
-export {
-  OrchestrationWorkerError,
-  runOrchestrationWorker,
-  type OrchestrationWorkerOptions,
-} from './worker/orchestration-worker.ts';
+export { orchestrationMachine } from './runs/orchestration-machine.ts';

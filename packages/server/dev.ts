@@ -1,4 +1,4 @@
 import { runDevelopment } from './src/development/development.ts';
 import { localDevelopment } from './src/development/local-development.ts';
 
-process.exitCode = await runDevelopment(process, localDevelopment(process.argv.slice(2)));
+process.exitCode = await runDevelopment(process, localDevelopment());

@@ -15,31 +15,6 @@ function errorFrom(environment: Environment): unknown {
 
 const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:read'], brains: '*' });
 
-describe('the workflow settings', () => {
-  it('are none when TEMPORAL_ADDRESS is unset, so workflows are not offered', () => {
-    expect(readSettings({}).workflows).toBeUndefined();
-  });
-
-  it('name the Temporal server, namespace and task queue when TEMPORAL_ADDRESS is set', () => {
-    expect(readSettings({ TEMPORAL_ADDRESS: 'temporal:7233', TEMPORAL_TASK_QUEUE: 'brains' }).workflows).toEqual({
-      address: 'temporal:7233',
-      namespace: 'default',
-      taskQueue: 'brains',
-      tls: false,
-      mostDuration: 2_592_000_000,
-      nestedExecutions: 32,
-    });
-  });
-
-  it('stop the server from starting when one is malformed, naming the setting and never its value', () => {
-    const error = errorFrom({ TEMPORAL_ADDRESS: 'temporal:7233', ORCHESTRATION_MAX_DURATION: 'secret-forever' });
-
-    expect(String(error)).toBe(
-      'temporal_settings_invalid: The Temporal settings are invalid. ORCHESTRATION_MAX_DURATION: Expected an ISO 8601 duration from PT2H to P365D, such as P30D',
-    );
-  });
-});
-
 describe('readSettings', () => {
   it('listens on every interface at port 8080, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
     const { models, ...server } = readSettings({});
@@ -53,6 +28,7 @@ describe('readSettings', () => {
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       localMode: false,
       logFormat: 'json',
+      workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
     });
   });
 
@@ -77,6 +53,7 @@ describe('readSettings', () => {
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       localMode: true,
       logFormat: 'pretty',
+      workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
       configFile: undefined,
     });
   });

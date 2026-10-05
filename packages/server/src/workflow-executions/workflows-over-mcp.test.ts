@@ -5,7 +5,7 @@ import { answers, jsonResult, type ScriptedReply } from '@beonauto/inference/tes
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import type { InferenceServer } from '../testing/inference-server.ts';
 import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
 
 const verdict = [
@@ -86,7 +86,7 @@ function primitivesOfCreateSpec(listing: unknown): readonly string[] {
   return createSpec.flatMap(({ inputSchema }) => primitiveField(inputSchema).properties.primitive.enum);
 }
 
-describe('a server that offers workflows, over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
   it('lists eight tools on the endpoint of a brain, and both primitives in the spec tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
@@ -114,21 +114,5 @@ describe('a server that offers workflows, over MCP', { timeout: workflowTestTime
     expect(started.structuredContent).toMatchObject({ primitive: 'orchestration', status: 'started' });
     expect(sent.structuredContent).toMatchObject({ event: { type: 'com.acme.approval.decided', data: 'yes' } });
     expect(execution.structuredContent).toMatchObject({ status: 'succeeded', output: { decided: 'yes' } });
-  });
-});
-
-describe('a server that does not offer workflows, over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists seven tools on the endpoint of a brain, and only inference in the spec tools', async () => {
-    server = await servingInference([]);
-    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-
-    const listing = await onAlphaOf(server, (session) => session.listTools());
-    const creating = await server.call('POST', '/v1/orgs/acme/brains/alpha/specs/orchestration', {
-      body: { name: 'approval', source: approval },
-    });
-
-    expect(toolNamesIn(listing)).toEqual(brainTools.filter((name) => name !== 'send_execution_event'));
-    expect(primitivesOfCreateSpec(listing)).toEqual(['inference']);
-    expect(creating).toMatchObject({ status: 404, body: { reason: 'not_found' } });
   });
 });

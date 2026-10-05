@@ -1,5 +1,5 @@
 import type { SpecSummary } from '@beonauto/specs';
-import { objectField, textField, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import { type JsonObject, objectField, textField } from '@beonauto/workflow-engine';
 
 export function summaryOf(document: JsonObject): SpecSummary {
   const header = objectField(document, 'document') ?? {};

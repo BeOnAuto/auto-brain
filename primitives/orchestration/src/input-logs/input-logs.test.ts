@@ -2,9 +2,9 @@ import { evolveRun, newRun, workflowMachine, type RunEvent, type RunState } from
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { recordedHistories } from '../../replay-corpus.ts';
+import { orchestrationMachine } from '../runs/orchestration-machine.ts';
 import { recordedInputLogs, recordInputLog, type InputLog } from './input-log-corpus.ts';
-import { inputLogOf, inputLogPaths, orchestrationMachine } from './input-log-paths.ts';
+import { inputLogOf, inputLogPaths } from './input-log-paths.ts';
 
 const machine = workflowMachine(orchestrationMachine);
 
@@ -40,11 +40,11 @@ describe('the recorded input logs of workflows', () => {
     expect(log).toEqual(committed.get(name));
   });
 
-  it.each(recordedInputLogs())('$name ends as it ended on Temporal', ({ name, events }) => {
+  it.each(recordedInputLogs())('$name ends as its path was recorded to end', ({ name, events }) => {
     expect(endedFrom(events).outcome).toEqual(endings.get(name));
   });
 
-  it('cover every path of the replay corpus of the Temporal runtime', () => {
-    expect([...committed.keys()]).toEqual(recordedHistories().map(({ workflowId }) => workflowId));
+  it('are the fifteen paths of the corpus', () => {
+    expect([...committed.keys()]).toEqual(inputLogPaths.map(({ name }) => name).toSorted());
   });
 });

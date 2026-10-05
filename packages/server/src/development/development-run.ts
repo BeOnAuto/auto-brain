@@ -3,19 +3,11 @@ import type { Environment } from '@beonauto/config';
 import type { ChildCommand, RunningChild, StartChild } from './children.ts';
 import type { RunnerLog } from './runner-log.ts';
 
-export interface LocalTemporal {
-  readonly port: number;
-  readonly uiPort: number;
-  readonly stateFile: string;
-}
-
 export interface DevelopmentSetup {
   readonly envFiles: readonly string[];
   readonly sourceDirectories: readonly string[];
   readonly serverEntry: string;
   readonly configFile: string;
-  readonly temporal: LocalTemporal | undefined;
-  readonly obtainCli: (announce: (message: string) => void) => Promise<string>;
   readonly startChild: StartChild;
 }
 

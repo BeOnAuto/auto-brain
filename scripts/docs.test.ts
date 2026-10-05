@@ -103,7 +103,7 @@ await test('guide Markdown does not depend on private source files', () => {
 await test('engineering guides and decisions remain in the repository without entering the public preview', () => {
   assert.ok(pages.includes(join(docs, 'decisions/README.md')));
   assert.ok(pages.includes(join(docs, 'engineering/index.md')));
-  assert.ok(pages.includes(join(docs, 'engineering/self-host/temporal.md')));
+  assert.ok(pages.includes(join(docs, 'engineering/self-host/workflows.md')));
   assert.ok(pages.includes(join(docs, 'engineering/reference/workflow-format.md')));
   for (const directory of repositoryOnlyDirectories) {
     assert.equal(existsSync(join(output, directory)), false);
@@ -204,14 +204,15 @@ await test('the README starts with an actionable local quick start and keeps Clo
   assert.ok(readme.includes('recorded run, including its execution id'));
   assert.ok(readme.includes('missing measurable goal'));
   assert.doesNotMatch(readme, /<details>|workspace's MCP URL/u);
-  assert.ok(readme.includes('pnpm dev:lean'));
+  assert.ok(readme.includes('pnpm dev\n'));
+  assert.equal(readme.includes('pnpm dev:lean'), false);
   assert.ok(readme.includes('http://localhost:8080/mcp'));
   assert.ok(readme.includes('curl http://localhost:8080/health'));
   assert.ok(readme.includes('do not expose it through a tunnel or public proxy'));
   assert.ok(readme.includes('Claude Code, Claude Desktop or Codex'));
   assert.ok(readme.includes('claude mcp add --transport http auto-brain http://localhost:8080/mcp'));
   assert.ok(readme.includes('codex mcp add auto-brain --url http://localhost:8080/mcp'));
-  assert.ok(readme.indexOf('pnpm dev:lean') < readme.indexOf('## Hosted brains'));
+  assert.ok(readme.indexOf('pnpm dev') < readme.indexOf('## Hosted brains'));
   assert.ok(readme.includes('Auto Cloud is coming soon'));
   assert.ok(readme.includes('You can also host your own brain'));
   assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/docs/self-host'));
@@ -224,7 +225,7 @@ await test('the local quick start gives runnable setup and distinguishes local c
     'git clone https://github.com/BeOnAuto/auto-brain.git',
     'pnpm install',
     'cp .env.example .env',
-    'pnpm dev:lean',
+    'pnpm dev',
     'curl http://localhost:8080/health',
     'claude mcp add --transport http auto-brain http://localhost:8080/mcp',
     'codex mcp add auto-brain --url http://localhost:8080/mcp',
@@ -275,11 +276,22 @@ await test('model discovery is documented without treating wildcard entries as r
   assert.ok(tutorial.includes('Do not use a wildcard'));
 });
 
-await test('public workflows stay marked coming soon without legacy runnable routes', () => {
+await test('public workflows are available, and link their format and tutorial without legacy runnable routes', () => {
   const workflows = readFileSync(join(docs, 'concepts/workflows.md'), 'utf8');
-  assert.match(workflows, /coming soon/iu);
+  const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
+  const tutorial = readFileSync(join(docs, 'tutorials/first-workflow.md'), 'utf8');
+  assert.doesNotMatch(workflows, /coming soon/iu);
+  assert.match(functions, /^\| Workflows +\| A workflow +\| Available +\|$/mu);
+  for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /workflow service/iu);
   assert.doesNotMatch(workflows, /```(?:yaml|sh|bash|json)/u);
-  const removedPages = ['get-started/self-hosted', 'reference/http-tutorial', 'reference/workflow-format'];
+  assert.ok(markdownDestinations(workflows).includes('../reference/workflow-format.md'));
+  assert.ok(markdownDestinations(workflows).includes('../tutorials/first-workflow.md'));
+  assert.ok(routes.includes('/reference/workflow-format'));
+  assert.ok(routes.includes('/tutorials/first-workflow'));
+  assert.ok(tutorial.includes('send_execution_event'));
+  assert.ok(tutorial.includes('status: succeeded'));
+  assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
+  const removedPages = ['get-started/self-hosted', 'reference/http-tutorial'];
   for (const page of removedPages) {
     assert.equal(routes.includes(`/${page}`), false);
     assert.equal(existsSync(join(output, `${page}.html`)), false);

@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "dev": "node dev.ts",
-    "dev:lean": "node dev.ts --lean",
     "start": "node src/main.ts",
     "config-schema": "node config-schema.ts",
     "container:build": "docker build --file Dockerfile --tag beonauto/auto-brain:local ../..",
@@ -25,10 +24,11 @@
     "@beonauto/operations": "workspace:*",
     "@beonauto/orchestration": "workspace:*",
     "@beonauto/specs": "workspace:*",
+    "@beonauto/workflow-engine": "workspace:*",
+    "@beonauto/workflow-host": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {
-    "@temporalio/testing": "1.24.0",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @beonauto/server dev",
-    "dev:lean": "pnpm --filter @beonauto/server dev:lean",
     "key": "pnpm --filter @beonauto/identity key",
     "docs:dev": "cd docs && vitepress dev",
     "docs:build": "cd docs && vitepress build",

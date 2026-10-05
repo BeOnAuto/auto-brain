@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
-import type { SpecCall, SpecCallResult } from '../interpreter/host.ts';
+import type { SpecCall, SpecCallResult } from '../testing/run-terms.ts';
 import { interpret, yamlObject } from '../testing/workflows.ts';
 import { orchestrationDescription, orchestrationExample } from './orchestration-description.ts';
 

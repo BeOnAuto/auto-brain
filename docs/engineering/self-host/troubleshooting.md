@@ -10,7 +10,7 @@ Check which providers the startup log names. Confirm the provider prefix in the 
 
 ## Workflows are missing or unavailable
 
-Workflow tools appear only when `TEMPORAL_ADDRESS` is configured. `pnpm dev` normally starts Temporal; `pnpm dev:lean` does not. A healthy HTTP endpoint does not prove the workflow worker is ready. Check for `The workflow worker started` and review [Temporal operations](temporal.md).
+Every server offers workflows and `send_execution_event`, with nothing to configure. A workflow that does not go on is usually waiting: for an event, a timer or a function it called. When the server cannot do the work of its runs, it logs a warning saying what failed, such as `A sweep of the runs failed; the next sweep tries again`; [Workflow operations](workflows.md) lists them. When several servers share a database, one of them runs the workflows and the others answer workflow operations `unavailable`, saying another server runs them; the log of each server says which it is.
 
 ## The browser receives 403
 
@@ -22,4 +22,4 @@ The ledger lives on `/data`. Reuse the named persistent volume across container 
 
 ## A run stays started
 
-A waiting workflow can legitimately remain `started`. Check its Temporal execution before retrying or cancelling. Interrupted executions and failures to settle can also leave this status; reconciliation is manual in this version. [Temporal operations](temporal.md) explains cancellation and termination.
+A waiting workflow can legitimately remain `started`. Its history, `get_execution_history`, shows the steps each input moved, and the last one shows what the run waits for. A run whose execution the ledger would not settle yet also leaves it `started` until a later attempt settles it; the server warns once when such a run backs off to an attempt a minute, and once when it is settled. [Workflow operations](workflows.md) explains how a run ends.

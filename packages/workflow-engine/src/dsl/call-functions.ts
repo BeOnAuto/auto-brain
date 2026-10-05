@@ -1,9 +1,9 @@
 import type { Json } from './json.ts';
 import type { Rejection } from './policy-checks.ts';
 
-export type ArgumentRejections = (arguments_: Json | undefined, pointer: string) => readonly Rejection[];
+type ArgumentRejections = (arguments_: Json | undefined, pointer: string) => readonly Rejection[];
 
-export type CallDescription = (name: string, arguments_: Json) => string;
+type CallDescription = (name: string, arguments_: Json) => string;
 
 export interface CallFunctions {
   readonly argumentChecks: Readonly<Record<string, ArgumentRejections>>;

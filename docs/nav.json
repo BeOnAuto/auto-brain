@@ -30,6 +30,10 @@
       {
         "text": "Build your first brain",
         "link": "/tutorials/first-brain"
+      },
+      {
+        "text": "Build your first workflow",
+        "link": "/tutorials/first-workflow"
       }
     ]
   },
@@ -61,6 +65,10 @@
       {
         "text": "Reason function format",
         "link": "/reference/reasoning-format"
+      },
+      {
+        "text": "Workflow format",
+        "link": "/reference/workflow-format"
       },
       {
         "text": "HTTP API",
