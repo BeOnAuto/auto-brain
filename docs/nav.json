@@ -24,6 +24,10 @@
     "text": "Get started",
     "items": [
       {
+        "text": "Connect your agent",
+        "link": "/get-started/local"
+      },
+      {
         "text": "Build your first brain",
         "link": "/tutorials/first-brain"
       },
@@ -39,15 +43,6 @@
       {
         "text": "Use Auto with Apollo",
         "link": "/integrations/apollo"
-      }
-    ]
-  },
-  {
-    "text": "Contributing",
-    "items": [
-      {
-        "text": "Documentation contributions",
-        "link": "/contributing/documentation"
       }
     ]
   },
@@ -78,6 +73,15 @@
       {
         "text": "HTTP API",
         "link": "/reference/http"
+      }
+    ]
+  },
+  {
+    "text": "Contributing",
+    "items": [
+      {
+        "text": "Documentation contributions",
+        "link": "/contributing/documentation"
       }
     ]
   }

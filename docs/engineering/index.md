@@ -1,6 +1,6 @@
 # Runtime engineering guides
 
-These repository-only guides describe the development checkout for contributors and operators. They are excluded from the public documentation build and search. The public path starts with [Auto Cloud](https://on.auto/docs/get-started/cloud); [self-hosting enquiries](../self-host.md) go through Xolvio Professional Services.
+These repository-only guides describe the development checkout for contributors and operators. They are excluded from the public documentation build and search. Start with the [local quick start](../get-started/local.md) to try Auto. For production deployment support, see [Self-hosting](../self-host.md).
 
 Workflows run in the server itself, on the workflow engine of `@beonauto/workflow-engine` hosted in Node by `@beonauto/workflow-host`, and are kept in the ledger's database. The adapters for Auto's cloud hosting are not built yet. These guides describe the setup and the limitations of the current code.
 

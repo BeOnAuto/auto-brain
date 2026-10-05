@@ -8,8 +8,40 @@ Save the way your team reviews a campaign brief as a reason function. An agent s
 
 ## Quick start
 
-1. Add your Auto Cloud workspace's MCP URL and authentication details to your agent. Need access? [Contact Auto](https://on.auto/contact-us). See [connection instructions](https://on.auto/docs/get-started/cloud) or [request a Studio invite](https://on.auto/request-invite).
-2. Paste this into your connected agent:
+Start Auto Brain on your computer, then connect Claude Code, Claude Desktop or Codex. You do not need an Auto Cloud account.
+
+On macOS or Linux, install [Git](https://git-scm.com/downloads) and [pnpm](https://pnpm.io/installation), then:
+
+```bash
+git clone https://github.com/BeOnAuto/auto-brain.git
+cd auto-brain
+pnpm install
+cp .env.example .env
+```
+
+In `.env`, set a model provider key such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`. This is separate from your agent's subscription. Keep the key out of your agent conversation. pnpm uses the Node and pnpm versions pinned by this repository.
+
+```bash
+pnpm dev
+```
+
+Keep that terminal open. In another terminal, `curl http://localhost:8080/health` should return `{"status":"ok"}`.
+
+Connect an agent running on the same computer. For Claude Code:
+
+```bash
+claude mcp add --transport http auto-brain http://localhost:8080/mcp
+```
+
+Or for Codex:
+
+```bash
+codex mcp add auto-brain --url http://localhost:8080/mcp
+```
+
+Start a new agent session after adding the connection. [Quick start: connect your agent](https://on.auto/docs/get-started/local) includes Claude Desktop setup and troubleshooting. Local mode needs no authentication header; do not expose it through a tunnel or public proxy. The lean server supports reason functions. Workflows are coming soon.
+
+Paste this into your connected agent:
 
 ```text
 Create a brain named Quickstart with id quickstart, or reuse it if it exists.
@@ -22,39 +54,19 @@ with a USD 5,000 budget."
 Show the result and read back the recorded run, including its execution id.
 ```
 
-The review should flag the missing measurable goal. You now have a saved function you can reuse and a recorded run to inspect. Your connection needs permission to create brains, create and run functions, and use a model. If model discovery is unavailable, ask your workspace administrator for a concrete model reference.
+The review should flag the missing measurable goal. You now have a saved function you can reuse and a recorded run to inspect. Choose a concrete model or alias from `list_models`; if the list is incomplete, use a model reference your configured provider supports.
 
 For a second run and a comparison of the results, continue with [Build your first brain](https://on.auto/docs/tutorials/first-brain).
 
-<details>
-<summary>Run locally instead</summary>
+## Hosted brains
 
-Install [pnpm](https://pnpm.io/installation), then:
+Auto Cloud is coming soon. [Request an invite](https://on.auto/request-invite).
 
-```bash
-git clone https://github.com/BeOnAuto/auto-brain.git
-cd auto-brain
-pnpm install
-cp .env.example .env
-```
-
-In `.env`, set a model provider key such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`. Keep it out of your agent conversation. pnpm uses the Node and pnpm versions pinned by this repository.
-
-```bash
-pnpm dev
-```
-
-Keep that terminal open. The runtime listens at `http://localhost:8080`; in another terminal, `curl http://localhost:8080/health` should return `{"status":"ok"}`.
-
-Add `http://localhost:8080/mcp` as a streamable HTTP connection in an agent running on your computer, without an authentication header, then use the prompt above. A hosted agent cannot reach your laptop's localhost. This local mode has no authentication: do not expose it through a tunnel or public proxy. The same server runs workflows, with nothing else to start.
-
-See [local setup and client configurations](docs/engineering/get-started/self-hosted.md) for details. For a deployment your team operates, see [Self-hosting](https://on.auto/docs/self-host).
-
-</details>
+You can also host your own brain. See the [self-hosting guide](https://on.auto/docs/self-host) for deployment options and support.
 
 ## Documentation and help
 
-[Auto documentation](https://on.auto/docs/) covers the platform and this runtime together. Start with [Brains and methods](https://on.auto/docs/concepts/brains) and [Workflows and runs](https://on.auto/docs/concepts/workflows); consult [Functions and availability](https://on.auto/docs/concepts/functions) for current capabilities, or the [MCP reference](https://on.auto/docs/reference/mcp) when integrating an agent.
+[Auto documentation](https://on.auto/docs/) covers the platform and this runtime together. Start with [Brains and methods](https://on.auto/docs/concepts/brains); consult [Functions and availability](https://on.auto/docs/concepts/functions) for current capabilities, or the [MCP reference](https://on.auto/docs/reference/mcp) when integrating an agent.
 
 The source-available runtime is in early development and is not ready for production use; [availability](https://on.auto/docs/concepts/functions#availability) describes the current scope.
 

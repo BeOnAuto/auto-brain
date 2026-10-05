@@ -12,13 +12,15 @@ Start with [Brains and methods](concepts/brains.md) to see how a business respon
 
 ## Build something
 
-[Connect your agent to Auto Cloud](https://on.auto/docs/get-started/cloud), then follow [Build your first brain](tutorials/first-brain.md). The tutorial creates a campaign-brief review function and compares two recorded runs. [Build your first workflow](tutorials/first-workflow.md) then runs that review twice around a revision the workflow waits for.
+[Start Auto locally and connect your agent](get-started/local.md), then follow [Build your first brain](tutorials/first-brain.md). You do not need an Auto Cloud account. The tutorial creates a campaign-brief review function and compares two recorded runs.
+
+Auto Cloud is coming soon. [Request an invite](https://on.auto/request-invite) if you would prefer a hosted brain.
 
 To bring graph data into an existing function, follow [Use Auto with Apollo](integrations/apollo.md).
 
 ## Look up a detail
 
-The references cover [MCP tools and results](reference/mcp.md), the [reason function document format](reference/reasoning-format.md), the [workflow document format](reference/workflow-format.md), and [HTTP operations](reference/http.md).
+The references cover [MCP tools and results](reference/mcp.md), the [reason function document format](reference/reasoning-format.md), and [HTTP operations](reference/http.md).
 
 [Self-hosting](self-host.md) explains deployment responsibilities and support for teams operating their own runtime.
 
