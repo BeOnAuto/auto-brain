@@ -13,7 +13,7 @@ export interface Stopped {
 }
 
 export interface Ending extends Stopped {
-  readonly alive: readonly number[];
+  readonly allStopped: boolean;
 }
 
 export async function runningDevelopment(): Promise<Development> {
@@ -29,5 +29,5 @@ export async function stoppedWith(development: Development, signal: NodeJS.Signa
 
 export async function endingOf(development: Development): Promise<Ending> {
   const exitCode = await development.exited;
-  return { exitCode, alive: await untilGone(development), said: runnerLines(development) };
+  return { exitCode, allStopped: await untilGone(development), said: runnerLines(development) };
 }

@@ -29,6 +29,7 @@ export interface DevelopmentOptions {
 export interface Development {
   readonly files: DevelopmentFiles;
   readonly exited: Promise<unknown>;
+  readonly outputClosed: Promise<unknown>;
   readonly stdout: () => string;
   readonly stderr: () => string;
   readonly signal: (name: NodeJS.Signals) => void;
@@ -93,6 +94,7 @@ export function startDevelopment(files: DevelopmentFiles, options: DevelopmentOp
     output.stderr += chunk;
   });
   const exited = once(child, 'exit').then(([code]: readonly unknown[]) => code);
+  const outputClosed = once(child.stderr, 'close');
   onTestFinished(async () => {
     child.kill('SIGTERM');
     await exited;
@@ -100,6 +102,7 @@ export function startDevelopment(files: DevelopmentFiles, options: DevelopmentOp
   return {
     files,
     exited,
+    outputClosed,
     stdout: () => output.stdout,
     stderr: () => output.stderr,
     signal: (name) => {
@@ -115,31 +118,16 @@ export function pidsOf({ files }: Development): readonly number[] {
     .map((line) => Number(pidLine(line).pid));
 }
 
-function groupAlive(pid: number): boolean {
-  try {
-    process.kill(-pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function aliveGroups(development: Development): readonly number[] {
-  return pidsOf(development).filter((pid) => groupAlive(pid));
-}
-
 const goneWithinMs = 30_000;
 
-export async function untilGone(
-  development: Development,
-  deadline = Date.now() + goneWithinMs,
-): Promise<readonly number[]> {
-  const alive = aliveGroups(development);
-  if (alive.length === 0 || Date.now() >= deadline) {
-    return alive;
-  }
-  await setTimeout(50);
-  return untilGone(development, deadline);
+export async function untilGone({ outputClosed }: Development): Promise<boolean> {
+  const givingUp = new AbortController();
+  const gone = await Promise.race([
+    outputClosed.then(() => true),
+    setTimeout(goneWithinMs, false, { signal: givingUp.signal }).catch(() => false),
+  ]);
+  givingUp.abort();
+  return gone;
 }
 
 export async function untilWritten(read: () => string, wanted: Readonly<RegExp>): Promise<RegExpExecArray> {

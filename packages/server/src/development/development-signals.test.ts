@@ -13,7 +13,7 @@ describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
 
       development.signal(signal);
 
-      await expect(endingOf(development)).resolves.toEqual({ exitCode: 0, alive: [], said: [] });
+      await expect(endingOf(development)).resolves.toEqual({ exitCode: 0, allStopped: true, said: [] });
     },
   );
 
@@ -26,7 +26,7 @@ describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
 
     await expect(endingOf(development)).resolves.toEqual({
       exitCode: 0,
-      alive: [],
+      allStopped: true,
       said: [`${development.files.envFile} changed, so the server restarts`],
     });
   });
@@ -38,6 +38,6 @@ describe('killing pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
 
     development.signal('SIGKILL');
 
-    await expect(endingOf(development)).resolves.toEqual({ exitCode: null, alive: [], said: [] });
+    await expect(endingOf(development)).resolves.toEqual({ exitCode: null, allStopped: true, said: [] });
   });
 });
