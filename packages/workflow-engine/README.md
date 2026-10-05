@@ -2,15 +2,16 @@
 
 The contract of the workflow machine that runs on the ledger: the DSL it runs, the state it keeps, the inputs it takes and the ports to the adapters that store, time and execute for it. The machine's state is shaped by the workflow DSL, so this package is the workflow machine's contract, not a generic runtime. It knows workflows, their DSL and an executor that performs calls. It does not know brains, prompts, models, specs or primitives: the functions a workflow may call come from the caller, and whatever an adapter needs to know about a run, such as who started it, it passes as opaque `attributes` and gets back with every output.
 
-The same code runs in Node, where one server keeps every run in one SQLite file, and in Auto's cloud hosting, the hosted runtime, where each run is an isolate of its own. The decision record states what the hosted runtime allows: a single-threaded isolate per run, woken by alarms that fire at least once and are dropped after a bounded number of failed retries, with about 128 MB of memory and bounded CPU per wake-up, no long-lived process and no code generation, and its own SQLite with rows of at most 2 MB; the shared database has no interactive transactions. The machine that decides an input is the next step, and the adapters the one after; until then the orchestration primitive runs workflows on Temporal, with the DSL it imports from here. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
+The same code runs in Node, where one server keeps every run in one SQLite file, and in Auto's cloud hosting, the hosted runtime, where each run is an isolate of its own. The decision record states what the hosted runtime allows: a single-threaded isolate per run, woken by alarms that fire at least once and are dropped after a bounded number of failed retries, with about 128 MB of memory and bounded CPU per wake-up, no long-lived process and no code generation, and its own SQLite with rows of at most 2 MB; the shared database has no interactive transactions. The machine decides each input (below); the adapters are the next step, and until then the orchestration primitive runs workflows on Temporal, with the DSL code it shares with the machine from here. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
 
 ## Entries
 
-- `@beonauto/workflow-engine`: the contract, from `src/index.ts`.
+- `@beonauto/workflow-engine`: the contract and the machine, `workflowMachine(options)`, from `src/index.ts`.
+- `@beonauto/workflow-engine/testing`: an engine on memory ports and a virtual clock, a driver over it, and the probes of the ports' contract that every adapter runs (`src/testing/index.ts`).
 - `@beonauto/workflow-engine/dsl/<module>`: one module of the DSL, such as `dsl/json` or `dsl/policy`.
 - `@beonauto/workflow-engine/limits`: the limits, plain numbers.
 
-The two subpaths are transitional. They are there only so that the orchestration primitive's bundled Temporal workflow code can import the DSL and the limits without taking Effect and the ledger from the main entry, and they go when Temporal goes.
+The `dsl` and `limits` subpaths are transitional. They are there only so that the orchestration primitive's bundled Temporal workflow code can import the DSL and the limits without taking Effect and the ledger from the main entry, and they go when Temporal goes.
 
 ## How a run moves
 
@@ -28,6 +29,9 @@ The two subpaths are transitional. They are there only so that the orchestration
 | ------------- | ------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
 | DSL           | `src/dsl`           | JSON, durations, jq expressions with their work budget, tasks, policy  | none: pure                              |
 | machine       | `src/machine`       | inputs, state, held values, admission, the clock, limits, the decider  | none: pure                              |
+| runner        | `src/runner`        | the session of one input, the list and task runners, time, draws       | none: pure                              |
+| tasks         | `src/tasks`         | each task body: start, resume and cancel over its frame                | none: pure                              |
+| decider       | `src/decider`       | the run's lifecycle, its bounds, the patch and outputs of an event     | none: pure                              |
 | run log       | `src/run-log`       | events, state patches, state formats, the fold, snapshots              | `RunStore` (one Emmett stream per run)  |
 | timers        | `src/timers`        | timer ids and what each timer is for                                   | `Timers`                                |
 | inbox         | `src/inbox`         | the external events a run receives                                     | none: events arrive as `event_received` |
@@ -36,10 +40,11 @@ The two subpaths are transitional. They are there only so that the orchestration
 | serialisation | `src/serialisation` | one input at a time for each run                                       | `RunSerialiser`                         |
 | settlement    | `src/settlement`    | settle receipts, due times, troubling receipts                         | `RecordStore`, `RunReporter`            |
 | engine        | `src/engine`        | the loop on the ledger, the ports together, the engine's interface     | `WorkflowEngine`                        |
+| testing       | `src/testing`       | memory ports, a virtual clock, a driver, the ports' conformance probes | every port, in memory                   |
 
 Every port answers with an Effect. None of them is a clock: time comes in with the inputs, and the sweep is given the time before which a run is overdue.
 
-The settlement and call-result vocabulary lives once, in `@beonauto/operations` (`SettlementSchema`, `CallResultSchema`, `invalidArguments`), beside its `Outcome`. The limits and `DslError` live once, here; the interpreter imports them.
+The settlement and call-result vocabulary lives once, in `@beonauto/operations` (`SettlementSchema`, `CallResultSchema`, `invalidArguments`), beside its `Outcome`. The limits and `DslError` live once, here, and so does the DSL code the interpreter and the machine both run: expressions and templates with their work budget (`dsl/evaluation.ts`), the retry arithmetic (`dsl/retry-policy.ts`), what a switch, a raise, a catch and a timeout decide (`dsl/task-outcomes.ts`), and the errors a call's result and an uncaught error map to (`dsl/raised-error.ts`). The interpreter imports them.
 
 ## The DSL
 
@@ -117,7 +122,7 @@ A call is idempotent by its key in this sense: it is answered at most once. A st
 
 A cancel for a key the timer store or the executor has never seen is recorded as a tombstone, so a start of that key that arrives later is refused. Dispatch takes outputs in the order of the stream, so a start always reaches the port before its cancel; tombstones only matter to an executor that takes work asynchronously, such as from a queue, where a cancel can overtake its start.
 
-The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a primitive, a name and an input, and that a workflow does not call another workflow, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through the table the interpreter uses today (`primitives/orchestration/src/interpreter/call-task.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
+The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a primitive, a name and an input, and that a workflow does not call another workflow, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through the table the interpreter uses (`callErrorOf` in `src/dsl/raised-error.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
 
 ## Idempotency keys
 
@@ -181,46 +186,70 @@ The run that reaches the inputs or history bound ends in one more small event, s
 Each sentence is something a reviewer can check against the code or a test. **[engine]** marks what this package and the machine guarantee; **[adapter]** marks an obligation of every adapter.
 
 1. **[engine]** A run has exactly one stream, and the stream's version is the number of inputs the run applied.
-2. **[engine]** `decide(input, state)` is a pure function of its arguments: it reads no clock, no random source, no locale and no storage, and the same state and input give the same events (`src/engine/portability.test.ts`, over the machine, the run log, the DSL and jq).
+2. **[engine]** `decide(input, state)` is a pure function of its arguments: it reads no clock, no random source, no locale and no storage, and the same state and input give the same events (`src/engine/portability.test.ts`, over the machine, its runner, tasks and decider, the run log, the DSL and jq; `src/decider/workflow-machine.test.ts`).
 3. **[engine]** Time in a run is only ever an input's time from `inputTimeOf`; random draws come from the seed in `started` and the number of draws in the state.
 4. **[engine]** `evolve(state, event)` applies the event's patch strictly and does nothing else (`src/run-log/run-fold.test.ts`, `src/run-log/state-patch.test.ts`).
 5. **[engine]** An applied input appends exactly one event, in one append, with the version the decision was made on as the expected version; the loop dies with `SplitDecision` on a decision of more than one event and appends nothing (`src/engine/run-loop.test.ts`).
-6. **[engine]** A stale input appends nothing, and neither does an input to a run that has not started.
-7. **[engine]** A late answer, a duplicate answer, a second delivery of an event and the fire of a cancelled timer are stale inputs (`src/machine/admission.test.ts`).
+6. **[engine]** A stale input appends nothing, and neither does an input to a run that has not started (`src/decider/deduplication.test.ts`).
+7. **[engine]** A late answer, a duplicate answer, a second delivery of an event and the fire of a cancelled timer are stale inputs (`src/machine/admission.test.ts`, `src/decider/deduplication.test.ts`, `src/tasks/call-task.test.ts`).
 8. **[engine]** The deduplication state is bounded: armed timers and open calls are what is outstanding, and a run keeps at most 1,024 event ids.
 9. **[engine]** Timer ids and value ids are never reused within a run, and the run counter of a task reference only counts up.
 10. **[engine]** The outputs of a run are exactly the `outputs` of its events, and an output is dispatched only after the event that holds it is appended.
-11. **[adapter]** A timer is armed at most once and fires at least once until cancelled; a call is answered at most once, a start of a call neither answered nor running starts it again, and a cancel of a key never seen leaves a tombstone that refuses a later start.
+11. **[adapter]** A timer is armed at most once and fires at least once until cancelled; a call is answered at most once, a start of a call neither answered nor running starts it again, and a cancel of a key never seen leaves a tombstone that refuses a later start (the probes of `src/testing/port-probes.ts`).
 12. **[engine]** The watermark never goes down, and every output of every event at or below it has been dispatched at least once (`src/dispatch/dispatch-watermark.test.ts`).
-13. **[engine]** A run's outcome is in its stream before the record store is asked to record it, and the `settle` output is dispatched again until the record store answers.
+13. **[engine]** A run's outcome is in its stream before the record store is asked to record it, and the `settle` output is dispatched again until the record store answers (`src/engine/engine.test.ts`).
 14. **[adapter]** The run log and the record store are two writes, each idempotent by execution id, the second retried; `EventStore.append` writes one stream, so neither adapter makes them one transaction.
-15. **[engine]** Loading a run from its latest snapshot and the events after it gives the same state as folding its whole stream (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`).
-16. **[adapter]** Only the latest snapshot of a run is kept, in chunks of at most 1 MiB of UTF-8 (`src/run-log/snapshot.test.ts` for the chunks).
-17. **[engine]** The state of a run is plain JSON, and the data it holds stays at or under 4 MiB.
-18. **[engine]** No event is larger than 1.5 MiB as JSON: the machine measures each event before the append and ends the run instead (`src/run-log/run-event.test.ts` for the measure); and no input runs more than 100 tasks.
+15. **[engine]** Loading a run from its latest snapshot and the events after it gives the same state as folding its whole stream (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`, `src/engine/engine.test.ts`, `src/engine/long-run.test.ts`).
+16. **[adapter]** Only the latest snapshot of a run is kept, in chunks of at most 1 MiB of UTF-8 (`src/run-log/snapshot.test.ts` for the chunks; the probes of `src/testing/store-probes.ts`).
+17. **[engine]** The state of a run is plain JSON, and the data it holds stays at or under 4 MiB (`src/decider/run-bounds.test.ts`).
+18. **[engine]** No event is larger than 1.5 MiB as JSON: the machine measures each event before the append and ends the run instead (`src/run-log/run-event.test.ts` for the measure, `src/decider/run-bounds.test.ts`); and no input runs more than 100 tasks (`src/runner/list-runner.test.ts`).
 19. **[adapter]** Inputs of one run are applied one at a time; the machine relies only on the expected version of each append.
 20. **[engine]** Nothing in this package, nor jq, uses a Node-only API, a dynamic import, code generation or a host timer, or imports Temporal (`src/engine/portability.test.ts`).
 21. **[engine]** No module of the engine keeps a cache that grows with the history of a run, and the one cache of the process, compiled expressions, is bounded (`src/engine/portability.test.ts`, `src/dsl/bounded-cache.test.ts`).
-22. **[engine]** No two events of a stream have the same receipt kind and key.
+22. **[engine]** No two events of a stream have the same receipt kind and key (`src/decider/deduplication.test.ts`).
 23. **[engine]** `lastInputAt` never decreases, and a fired timer's input is never earlier than the time it was due (`src/machine/input-receipt.test.ts`).
 24. **[engine]** A snapshot at version v is the fold of events 1 to v, and is written only after event v is durable; **[adapter]** the run store writes it only then.
 25. **[engine]** A dispatch takes outputs in the order of the stream and stops at the first that fails (`src/dispatch/dispatch-watermark.test.ts`).
 26. **[engine]** Every armed timer and every open call has exactly one `arm_timer` or `start_call` and at most one cancel in the stream; a timer an input arms and cancels, or a call it starts and cancels, appears in none of its outputs, so the ports never see it (`src/decider/run-events.test.ts`).
-27. **[engine]** An ended run has no armed timers and no open calls.
-28. **[engine]** `settle` appears once in a stream, in its last event.
-29. **[engine]** A run takes at most 100,000 inputs and 512 MiB of history, both checked in `decide` from the state; the input that would go past either ends the run.
+27. **[engine]** An ended run has no armed timers and no open calls (`src/decider/open-calls.test.ts`).
+28. **[engine]** `settle` appears once in a stream, in its last event (`src/decider/run-lifecycle.test.ts`).
+29. **[engine]** A run takes at most 100,000 inputs and 512 MiB of history, both checked in `decide` from the state; the input that would go past either ends the run (`src/decider/run-bounds.test.ts`).
 30. **[engine]** Every event and every snapshot names its state format; formats never go back within a stream, a format newer than the code is refused, and a committed corpus of every format loads (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`).
 31. **[engine]** Every `arm_timer` is due at or after the time of the input that armed it, and the armed timer records that time.
 32. **[engine]** `state.historyBytes` is the bytes of the stream's events as JSON, and a load dies when it is not (`src/run-log/run-event.test.ts`, `src/run-log/run-fold.test.ts`).
-33. **[engine]** Every open call has an armed `call_deadline` timer due no later than its start's time plus `longestCallMs`, so every open call is answered.
+33. **[engine]** Every open call has an armed `call_deadline` timer due no later than its start's time plus `longestCallMs`, so every open call is answered (`src/decider/open-calls.test.ts`).
 34. **[engine]** After a decision the value table holds exactly the values the frames (their contexts included), the context and the workflow's input reach, and `heldBytes` is their bytes, 4 KiB a frame and the document (`src/machine/held-values.test.ts`).
-35. **[engine]** A troubling settle receipt is reported, never dropped.
+35. **[engine]** A troubling settle receipt is reported, never dropped (`src/engine/engine.test.ts`).
 
-## Next: the machine
+## The machine
 
-The machine's first test is invariant 33: every open call is answered, by the executor or by its `call_deadline` timer. It is the one guarantee Temporal gave that this contract only promises until the machine keeps it.
+`workflowMachine(options)` is the run's decider. It is given the functions a workflow may call and the runtime its expressions see as `$runtime`, and `decide(input, state)` gives the one event an input makes.
+
+- A decision opens a session over the state (`src/runner/session.ts`): the value table, the armed timers, the open calls, the inbox, the run counters, a meter of the input's work and a journal of its steps and outputs. The event's patch is the difference between the state before and the state the session ends with (`src/decider/state-diff.ts`), so nothing writes the patch by hand.
+- A run is a tree of frames, one for each task that waits, under the root list. An input becomes a signal, a timer fired, a call answered or events arrived, passed down the tree; the frame whose timer, call or listen it is resumes, and the others stay as they are.
+- A task starts as soon as its list reaches it, and finishes in the same input unless it waits: on a timer (a wait, a retry's delay, an attempt's limit, a timeout), on a call or on events. A list that ran 100 tasks, or 8,000,000 units of expression work, in one input arms a timer due at once and goes on when it fires (`src/runner/list-runner.ts`).
+- `started` arms the run's deadline, an hour before the most it may run; its fire ends the run `overran`. A call arms its `call_deadline`. A cancel, an end or a timeout cancels what the frames under it wait for.
+- An event leaves out a timer or a call that the same input opened and closed (invariant 26), and its other outputs keep the order the session emitted them in.
+- A run ends with its outcome, settled once in its last event. An input that would pass a bound (inputs, history, held data, the size of one event) ends the run, raised, in a small event of its own.
+- The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The orchestration primitive runs its interpreter's tests on the machine too, and replays 15 recorded input logs through it (`primitives/orchestration/input-logs/`).
+
+## Measurements
+
+Measured on Node 26.10.0 through the memory driver and the decider, outside the tests; Temporal's figures are the spike's (`spikes/node/results/replay.json` on branch `spike/engine-node`) and the orchestration's replay test.
+
+| What                                    | The machine                                                         | Temporal                                                       |
+| --------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 40,000 inputs of a loop that waits      | decided and folded in 3.45 s, 11,600 a second                       | replayed in 4.6 s                                              |
+| the 40,000 events folded cold           | 0.72 s                                                              |                                                                |
+| that run resumed from its last snapshot | 0.84 ms at the median: a 1,845-byte snapshot and 46 events          |                                                                |
+| the history of those 40,000 inputs      | 84.15 MiB, 2,206 bytes an input                                     | 9.26 MiB                                                       |
+| memory                                  | 3.7 KB of heap for each live run between inputs                     | up to 103 MiB retained replaying the 40,000                    |
+| a snapshot of a run holding 1 MB        | 1.0 MB                                                              |                                                                |
+| `decide`, at the median                 | started 78 µs, timer 25 µs, answer 28 µs, event 27 µs, cancel 16 µs |                                                                |
+| the 15 recorded paths                   | replayed in 2.3 ms in all, run through the driver in 7.4 ms         | replayed in 556 ms, the workflow bundle built in the same test |
 
 ## Open design points
 
-- `evolve` decodes the whole state after each patch, so a load costs one decode of the state whatever the tail, and an applied input one more. The machine's step measures that against the 9 ms a fold from a snapshot every 1,000 events took in the hosted runtime (measurements kept in the private repository); checking only the patched paths is the fallback.
+- A history takes about nine times the bytes Temporal's did: 2,206 bytes an input for the loop above, against 243. An event of it holds 18 patch operations (about 1.2 KB: the list's data and the frame's run, start, inputs and timer, three run counters, a value in and a value out, a timer in and a timer out, and the counters of the state), seven steps (about 0.4 KB, since a task that finishes in the input records `started` and `completed`) and an `arm_timer`. Within 512 MiB a run of 100,000 such inputs takes 210 MiB, so no bound moves; what would shrink it, for a later format: a task that finishes in its input recording one step, a shorter patch encoding than RFC 6902's objects, timer ids without the execution id, and compressing events in the run store.
+- `evolve` decodes the whole state after each patch. Over the 40,000 inputs above it took 32 µs an event, a cold fold of all of them 0.72 s, and resuming from the last snapshot 0.84 ms, against the 9 ms a fold from a snapshot every 1,000 events took in the hosted runtime (measurements kept in the private repository), so checking only the patched paths is not needed yet.
 - What replaces Temporal's limits on a run's history is decided here as 100,000 inputs and 512 MiB, both well above what a workflow could reach on Temporal; real use may move them.

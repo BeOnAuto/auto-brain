@@ -37,9 +37,11 @@ Still open, due before the hosted adapters: how the hosted runtime executes a ca
 
 ## Consequences
 
-The main cost is rewriting the interpreter, 129 tests of it beside the DSL's 79, as a machine that steps from state to state instead of an async function Temporal replays. Its DSL, expressions and policy stay.
+The main cost is rewriting the interpreter, 129 tests of it beside the DSL's 79, as a machine that steps from state to state instead of an async function Temporal replays. Its DSL, expressions and policy stay, and so do its retry arithmetic and what a switch, a raise, a catch and a call's result decide, which both runtimes now share from the engine's DSL.
 
 Tenants see three changes. A run may hold 4 MiB of data instead of 16. A repeated event no longer counts toward the events a run takes over its life. And a workflow that executes a workflow through a primitive name it computes fails with a `validation` error, once the executor rejects the call as `invalid_arguments`, where the interpreter raises a `configuration` error today. The written case, `primitive: orchestration`, is still refused at `create_spec` as forbidden; only a computed name reaches the executor. Both errors have status 400 and settle the execution as `invalid_input`; the visible difference is the error `type`, which a `catch.errors.with` filter matches.
+
+A run's history takes about nine times the bytes Temporal's did, 2,206 bytes an input against 243 for a loop that waits, since each event holds its patch, its steps and its outputs as JSON; a run of 100,000 such inputs stays within its 512 MiB. The engine's README measures it and names what a later format could shrink.
 
 We give up Temporal's durable timers, deduplicated delivery, replay, web UI and operator tools. We must build and keep correct:
 
@@ -60,11 +62,11 @@ Tenant data is stored once, and a workflow needs no service beyond the server.
 
 ## Plan
 
-- The machine, on the contract and the DSL in `@beonauto/workflow-engine`.
-- A conformance suite: the same workflow probes through a fake driver, the Node adapter and the hosted adapter, seeded from the server's `src/workflow-executions` tests.
+- The machine, on the contract and the DSL in `@beonauto/workflow-engine`: built, with an engine on memory ports and a driver over it in the package's `testing` entry.
+- A conformance suite: the same workflow probes through a fake driver, the Node adapter and the hosted adapter, seeded from the server's `src/workflow-executions` tests. The probes of the ports' contract, which the memory ports pass, are in the `testing` entry for the adapters to run.
 - The adapters, a `cancel_execution` operation, and the workflow SDK's validators precompiled, since the hosted runtime allows no code generation.
 - The cutover: `pnpm dev` without Temporal's dev server, and the README.
-- Measurements before and after: the 15 recorded histories through the driver; inputs per second, and bytes per input against Temporal's 9.26 MiB for 40,000 inputs; timer lateness at p99; heap per live run; snapshot bytes per run.
+- Measurements before and after: the 15 recorded histories through the driver; inputs per second, and bytes per input against Temporal's 9.26 MiB for 40,000 inputs; timer lateness at p99; heap per live run; snapshot bytes per run. The machine's, through the memory driver, are in the engine's README; timer lateness waits for the adapters.
 
 ## Evidence
 
