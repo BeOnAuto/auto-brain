@@ -16,6 +16,7 @@ export function modelCatalogOf(
 ): ModelCatalog {
   return catalogListing({
     sources: modelSources(settings, status, withCertificateFailures(options.fetch)),
+    providers: status.configured,
     aliases: settings.aliases,
     allowed: settings.allowed,
     cache: listingCache(),

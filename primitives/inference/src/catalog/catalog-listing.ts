@@ -15,6 +15,7 @@ export interface ModelCatalog {
 
 export interface CatalogParts {
   readonly sources: readonly ModelSource[];
+  readonly providers: readonly string[];
   readonly aliases: ReadonlyMap<string, string>;
   readonly allowed: readonly string[] | null;
   readonly cache: ListingCache;
@@ -58,7 +59,8 @@ export function catalogListing(parts: CatalogParts): ModelCatalog {
   const offer = modelOffer(parts.allowed);
   const aliasEntries = [...parts.aliases]
     .filter(([alias, target]: readonly [string, string]) => offer.offers(alias) || offer.offers(target))
-    .map((alias: readonly [string, string]) => aliasEntryOf(alias));
+    .map((alias: readonly [string, string]) => aliasEntryOf(alias))
+    .filter(({ owned_by: ownedBy }) => parts.providers.includes(ownedBy));
   return {
     list: (provider) =>
       Effect.gen(function* () {

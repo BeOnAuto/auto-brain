@@ -149,10 +149,28 @@ describe('the models of providers that do not list their own', () => {
   });
 });
 
+describe('an alias whose target a spec cannot call', () => {
+  it('is left out when the provider of its target is not configured, as the description of inference leaves it out', async () => {
+    const aliases = {
+      'house/fast': 'gateway/llama-3.3-70b',
+      'team/large': 'mistral/large',
+      'meta/*': 'together/meta/*',
+    };
+    const catalog = await catalogFor({ MODEL_GATEWAYS: gateways, MODEL_ALIASES: JSON.stringify(aliases) }, () =>
+      jsonResponse({ data: [] }),
+    );
+
+    expect(idsIn(await catalog.list())).toEqual(['house/fast']);
+    expect(catalog.access.offered.aliases).toEqual(['house/fast']);
+  });
+});
+
 describe('a server with no provider', () => {
-  it('are none, and as of now, on a server with no provider', async () => {
+  it('are none, and as of now, on a server with no provider, even with aliases', async () => {
     const before = Date.now();
-    const catalog = await catalogFor({}, () => jsonResponse({}));
+    const catalog = await catalogFor({ MODEL_ALIASES: '{"house/fast":"gateway/llama-3.3-70b"}' }, () =>
+      jsonResponse({}),
+    );
 
     const list = await catalog.list();
 
