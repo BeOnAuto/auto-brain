@@ -120,12 +120,15 @@ await test('public docs offer a Cloud learning path and one self-hosting service
   assert.deepEqual(selfHostPages, [join(docs, 'self-host.md')]);
   const selfHost = readFileSync(join(docs, 'self-host.md'), 'utf8');
   assert.ok(selfHost.includes('[Xolvio Professional Services](https://www.xolv.io/contact-us)'));
-  assert.ok(markdownDestinations(selfHost).includes('https://on.auto/docs/get-started/cloud'));
+  assert.ok(markdownDestinations(selfHost).some((href) => href === 'https://on.auto/docs/get-started/cloud'));
   const index = readFileSync(join(docs, 'index.md'), 'utf8');
   const destinations = markdownDestinations(index);
-  assert.ok(destinations.includes('https://on.auto/docs/get-started/cloud'));
+  assert.ok(destinations.some((href) => href === 'https://on.auto/docs/get-started/cloud'));
   assert.ok(destinations.includes('self-host.md'));
-  assert.ok(destinations.indexOf('https://on.auto/docs/get-started/cloud') < destinations.indexOf('self-host.md'));
+  assert.ok(
+    destinations.findIndex((href) => href === 'https://on.auto/docs/get-started/cloud') <
+      destinations.indexOf('self-host.md'),
+  );
   for (const { html } of renderedPages) assert.doesNotMatch(html, /temporal/iu);
   for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /temporal/iu);
 });
@@ -138,7 +141,12 @@ await test('documentation link checks compare the complete Markdown destination'
     `[Wrong path](https://example.test/${expected})`,
     `[Unrelated text](https://example.test/) ${expected}`,
   ];
-  for (const source of misleading) assert.equal(markdownDestinations(source).includes(expected), false);
+  for (const source of misleading) {
+    assert.equal(
+      markdownDestinations(source).some((href) => href === expected),
+      false,
+    );
+  }
 });
 
 await test('navigation separates concepts, learning, guides and reference', () => {
@@ -166,7 +174,7 @@ await test('the first-brain tutorial supplies inputs and observable checks for t
   assert.equal(inputs[0]?.includes('Success measure: Generate interest in the product'), true);
   assert.equal(inputs[1]?.includes('Finance directors at UK manufacturing companies'), true);
   assert.equal(inputs[1]?.includes('Success measure: 100 trial registrations'), true);
-  assert.ok(markdownDestinations(tutorial).includes('https://on.auto/docs/get-started/cloud'));
+  assert.ok(markdownDestinations(tutorial).some((href) => href === 'https://on.auto/docs/get-started/cloud'));
   assert.ok(tutorial.includes('review-campaign-brief'));
   assert.ok(tutorial.includes('USD 10,000'));
   assert.ok(tutorial.includes('status: succeeded'));
