@@ -1,3 +1,4 @@
+export { callingTools, type ScriptedCall } from './calling-tools.ts';
 export { anthropicModels, vercelGatewayModels } from './model-lists.ts';
 export { jsonResult, textResult, unknownUsage } from './model-results.ts';
 export {

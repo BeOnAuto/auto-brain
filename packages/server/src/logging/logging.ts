@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 
 import type { AccessMode } from '@beonauto/identity';
 import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
+import type { ServerMessage } from '@beonauto/mcp';
 import type { Incident } from '@beonauto/operations';
 import { Cause, Effect, Logger, type Layer } from 'effect';
 
@@ -246,4 +247,12 @@ export function logOperatorHint({ provider, model, hint, execution_id }: Operato
   return Effect.logWarning(`Model provider ${provider} could not be called: ${hint}`).pipe(
     Effect.annotateLogs({ provider, model, execution_id }),
   );
+}
+
+export function logServerMessage({ server, message, execution_id }: ServerMessage): Effect.Effect<void> {
+  return execution_id === null
+    ? Effect.logInfo(`MCP server ${server} wrote: ${message}`).pipe(Effect.annotateLogs({ mcp_server: server }))
+    : Effect.logWarning(`MCP server ${server} failed a call`).pipe(
+        Effect.annotateLogs({ mcp_server: server, execution_id, server_message: message }),
+      );
 }

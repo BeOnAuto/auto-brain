@@ -22,6 +22,7 @@
     "@beonauto/identity": "workspace:*",
     "@beonauto/inference": "workspace:*",
     "@beonauto/ledger": "workspace:*",
+    "@beonauto/mcp": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/orchestration": "workspace:*",
     "@beonauto/specs": "workspace:*",

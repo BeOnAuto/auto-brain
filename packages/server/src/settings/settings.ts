@@ -1,6 +1,5 @@
 import { configurationOf, readServerConfig, type Environment, type FileUse } from '@beonauto/config';
 import { readApiKeys, type ApiKey } from '@beonauto/identity';
-import { ModelSettingsInvalid, readModelSettings, type ModelSettings, type SettingProblem } from '@beonauto/inference';
 import { readTemporalSettings, type TemporalSettings } from '@beonauto/orchestration/settings';
 import { Config, ConfigProvider, Effect, Option, Result } from 'effect';
 
@@ -9,6 +8,7 @@ import { fileSettings } from './file-settings.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
 import { Origin } from './origin.ts';
+import { readReasoningSettings, type ReasoningSettings } from './reasoning-settings.ts';
 
 interface ConfigFileSources {
   readonly path: string;
@@ -16,7 +16,7 @@ interface ConfigFileSources {
   readonly overridden: readonly string[];
 }
 
-export interface Settings {
+export interface Settings extends ReasoningSettings {
   readonly host: string;
   readonly port: number;
   readonly allowedOrigins: readonly string[];
@@ -24,7 +24,6 @@ export interface Settings {
   readonly ledger: LedgerSettings;
   readonly localMode: boolean;
   readonly logFormat: LogFormat;
-  readonly models: ModelSettings;
   readonly workflows: TemporalSettings | undefined;
   readonly configFile: ConfigFileSources | undefined;
 }
@@ -34,16 +33,6 @@ const serverSettings = Config.all({
   localMode: Config.Boolean('LOCAL_MODE').pipe(Config.withDefault(false)),
   logFormat: Config.Literals(['json', 'pretty'], 'LOG_FORMAT').pipe(Config.withDefault('json')),
 });
-
-function placedInFile(
-  { problems }: { readonly problems: readonly SettingProblem[] },
-  file: FileUse | undefined,
-): ModelSettingsInvalid {
-  const listed = problems.map(({ setting, detail }) =>
-    file !== undefined && file.fromFile.includes(setting) ? file.placed(setting, detail) : `${setting}: ${detail}`,
-  );
-  return new ModelSettingsInvalid({ message: `The model settings are invalid. ${listed.join('; ')}`, problems });
-}
 
 function sourcesOf(file: FileUse | undefined): ConfigFileSources | undefined {
   return file === undefined ? undefined : { path: file.path, fromFile: file.fromFile, overridden: file.overridden };
@@ -57,11 +46,7 @@ export function readSettings(given: Environment): Settings {
     .pipe(Effect.mapError(({ message }: { readonly message: string }) => new InvalidSettingsError({ message })));
   const { allowedOrigins, localMode, logFormat } = Effect.runSync(read);
   const ledger = Effect.runSync(readLedgerSettings(environment));
-  const models = Effect.runSync(
-    readModelSettings(environment).pipe(
-      Effect.mapError((invalid: { readonly problems: readonly SettingProblem[] }) => placedInFile(invalid, file)),
-    ),
-  );
+  const { models, mcp } = readReasoningSettings(environment, file);
   const workflows = Option.getOrUndefined(Effect.runSync(readTemporalSettings(environment)));
   return {
     host,
@@ -72,6 +57,7 @@ export function readSettings(given: Environment): Settings {
     localMode,
     logFormat,
     models,
+    mcp,
     workflows,
     configFile: sourcesOf(file),
   };
