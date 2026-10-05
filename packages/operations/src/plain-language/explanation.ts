@@ -1,13 +1,14 @@
 import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Cancelled, Failed, Rejected, RejectionReason } from '../outcome/outcome.ts';
 import type { RejectionKind } from '../outcome/rejection.ts';
+import type { UnavailableBecause } from '../outcome/unavailable.ts';
 
 export interface Explanation {
   readonly why: string;
   readonly remedy: string;
 }
 
-export type ExplainedRejection = Pick<Rejected, 'reason' | 'kind'>;
+export type ExplainedRejection = Pick<Rejected, 'reason' | 'kind' | 'because'>;
 
 const correctable = 'This can be corrected and tried again; the details below say what to change.';
 
@@ -43,14 +44,23 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   concurrent_change: { why: 'something else changed it at the same moment', remedy: 'Trying again should work.' },
   unworkable: { why: 'it cannot work as it is written', remedy: correctable },
   model_not_offered: {
-    why: 'this server is not set up to use the provider of the model named, but it can use others',
+    why: 'this server does not offer the model named',
     remedy:
-      'This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
+      'This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.',
   },
 };
 
-export function explanationOf({ reason, kind }: ExplainedRejection): Explanation {
-  return kind === undefined ? explanationByReason[reason] : explanationByKind[kind];
+const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
+  provider_not_configured: 'because its provider is not set up on this server, though others are',
+  model_not_allowed: 'because it is not among the models whoever runs the server allows',
+};
+
+export function explanationOf({ reason, kind, because }: ExplainedRejection): Explanation {
+  if (kind === undefined) {
+    return explanationByReason[reason];
+  }
+  const { why, remedy } = explanationByKind[kind];
+  return because === undefined ? { why, remedy } : { why: `${why}, ${explanationByBecause[because]}`, remedy };
 }
 
 function rejectionWords(attempt: string, operationKind: OperationKind, rejection: Rejected): string {

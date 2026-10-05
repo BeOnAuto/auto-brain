@@ -63,8 +63,10 @@ function runnerOf<Input, Output, R extends DeclarableReason, Services>(
       const { _tag: reason, detail } = rejection;
       const issues = 'issues' in rejection ? rejection.issues : undefined;
       const kind = 'kind' in rejection ? rejection.kind : undefined;
+      const because = 'because' in rejection ? rejection.because : undefined;
+      const described = rejected(reason, detail, issues, kind);
       return yield* reasons.includes(reason)
-        ? Effect.fail(rejected(reason, detail, issues, kind))
+        ? Effect.fail(because === undefined ? described : { ...described, because })
         : Effect.die(rejection);
     }
     return succeeded(yield* encodeOutput(handled.success));

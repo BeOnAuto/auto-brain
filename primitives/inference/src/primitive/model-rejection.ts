@@ -81,9 +81,12 @@ export function rejections(maxOutputTokens: number) {
     timed_out: ({ detail }: Detailed) => unavailable(`${detail}; try again later`),
     provider_not_configured: (failure: UnconfiguredProvider) =>
       othersAreOffered(failure)
-        ? Effect.fail(new Unavailable({ detail: failure.detail, kind: 'model_not_offered' }))
+        ? Effect.fail(
+            new Unavailable({ detail: failure.detail, kind: 'model_not_offered', because: 'provider_not_configured' }),
+          )
         : unavailable(failure.detail),
-    model_not_offered: ({ detail }: Detailed) => Effect.fail(new Unavailable({ detail, kind: 'model_not_offered' })),
+    model_not_allowed: ({ detail }: Detailed) =>
+      Effect.fail(new Unavailable({ detail, kind: 'model_not_offered', because: 'model_not_allowed' })),
     credentials_rejected: ({ detail }: Detailed) => unavailable(detail),
   };
 }

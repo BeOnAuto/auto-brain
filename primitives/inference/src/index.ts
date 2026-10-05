@@ -16,7 +16,7 @@ export { ContentRefused } from './failure/content-refused.ts';
 export { CredentialsRejected } from './failure/credentials-rejected.ts';
 export type { FailureIssue } from './failure/failure-issue.ts';
 export type { ModelFailure } from './failure/model-failure.ts';
-export { ModelNotOffered } from './failure/model-not-offered.ts';
+export { ModelNotAllowed } from './failure/model-not-allowed.ts';
 export { OutputInvalid } from './failure/output-invalid.ts';
 export { ProviderNotConfigured } from './failure/provider-not-configured.ts';
 export { ProviderUnavailable } from './failure/provider-unavailable.ts';

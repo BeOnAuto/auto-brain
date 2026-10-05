@@ -28,9 +28,15 @@ function replayed(rejection: ExecutionRejection): ReplayedRejection {
   if (rejection.reason === 'invalid_input') {
     return new InvalidInput({ detail: rejection.detail, issues: rejection.issues });
   }
-  return rejection.reason === 'unavailable'
-    ? new Unavailable({ detail: rejection.detail, ...(rejection.kind === undefined ? {} : { kind: rejection.kind }) })
-    : new Conflict({ detail: rejection.detail, kind: 'unworkable' });
+  if (rejection.reason === 'unavailable') {
+    const { detail, kind, because } = rejection;
+    return new Unavailable({
+      detail,
+      ...(kind === undefined ? {} : { kind }),
+      ...(because === undefined ? {} : { because }),
+    });
+  }
+  return new Conflict({ detail: rejection.detail, kind: 'unworkable' });
 }
 
 function answerWith(execution: Execution): Effect.Effect<Execution, ReplayedRejection> {

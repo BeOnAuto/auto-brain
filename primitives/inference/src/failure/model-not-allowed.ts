@@ -1,6 +1,6 @@
 import { Data } from 'effect';
 
-export class ModelNotOffered extends Data.TaggedError('model_not_offered')<{
+export class ModelNotAllowed extends Data.TaggedError('model_not_allowed')<{
   readonly detail: string;
   readonly provider: string;
   readonly offered: readonly string[];

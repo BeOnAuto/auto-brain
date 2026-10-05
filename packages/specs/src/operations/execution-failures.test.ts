@@ -53,7 +53,7 @@ describe('an execution the primitive cannot serve now', () => {
 });
 
 describe('an execution that names a model the server is not set up for, while it can use others', () => {
-  it('is rejected with unavailable of that kind, and the kind is recorded', async () => {
+  it('is rejected with unavailable of that kind and why, both recorded and answered again', async () => {
     const { call, executing, getExecution, prober } = await withPlain();
     prober.sufferOnNextRun('unoffered');
 
@@ -62,6 +62,7 @@ describe('an execution that names a model the server is not set up for, while it
       reason: 'unavailable',
       detail: 'The probe cannot reach that model, only others',
       kind: 'model_not_offered',
+      because: 'provider_not_configured',
     });
     expect(await call(getExecution, readingTheExecution)).toMatchObject({
       output: {
@@ -70,6 +71,7 @@ describe('an execution that names a model the server is not set up for, while it
           reason: 'unavailable',
           detail: 'The probe cannot reach that model, only others',
           kind: 'model_not_offered',
+          because: 'provider_not_configured',
         },
       },
     });

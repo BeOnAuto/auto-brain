@@ -5,6 +5,7 @@ import {
   rejected,
   unsuccessfulWords,
   type ConflictKind,
+  type ExplainedRejection,
   type OperationKind,
   type RejectionReason,
 } from '../index.ts';
@@ -32,6 +33,27 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
   ['unworkable', 'it cannot work as it is written', correctable],
 ];
 
+const switchable =
+  'This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.';
+
+const notOffered: ReadonlyArray<readonly [string, ExplainedRejection, string]> = [
+  [
+    'without saying why',
+    { reason: 'unavailable', kind: 'model_not_offered' },
+    'this server does not offer the model named',
+  ],
+  [
+    'because its provider is not set up',
+    { reason: 'unavailable', kind: 'model_not_offered', because: 'provider_not_configured' },
+    'this server does not offer the model named, because its provider is not set up on this server, though others are',
+  ],
+  [
+    'because it is not allowed',
+    { reason: 'unavailable', kind: 'model_not_offered', because: 'model_not_allowed' },
+    'this server does not offer the model named, because it is not among the models whoever runs the server allows',
+  ],
+];
+
 const afterStopping: ReadonlyArray<readonly [OperationKind, string]> = [
   ['command', 'It may or may not have taken effect, so check before trying again.'],
   ['query', 'It can be tried again once the server is back.'],
@@ -46,12 +68,8 @@ describe('explanationOf', () => {
     expect(explanationOf({ reason: 'conflict', kind })).toEqual({ why, remedy });
   });
 
-  it('explains a model the server is not set up for, when it can use others', () => {
-    expect(explanationOf({ reason: 'unavailable', kind: 'model_not_offered' })).toEqual({
-      why: 'this server is not set up to use the provider of the model named, but it can use others',
-      remedy:
-        'This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
-    });
+  it.each(notOffered)('explains a model the server does not offer, %s', (_case, rejection, why) => {
+    expect(explanationOf(rejection)).toEqual({ why, remedy: switchable });
   });
 
   it('explains a conflict that does not say its kind', () => {

@@ -8,7 +8,7 @@ import {
   type ToolResult,
 } from '@beonauto/api/testing';
 import { createApiKey } from '@beonauto/identity';
-import { ProviderNotConfigured, SpecInvalid } from '@beonauto/inference';
+import { ModelNotAllowed, ProviderNotConfigured, SpecInvalid } from '@beonauto/inference';
 import { answers, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -63,6 +63,24 @@ const replies: readonly ScriptedReply[] = [
       }),
     ),
 ];
+
+const disallowedModel = new ModelNotAllowed({
+  detail: 'anthropic/claude-sonnet-4-5 is not one of the models this server offers. Offered models: gateway/*',
+  provider: 'anthropic',
+  offered: ['gateway/*'],
+});
+
+const switchable =
+  'Nothing was changed. This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.';
+
+function executedOnce(): Promise<ToolResult> {
+  const reasonFunction = { primitive: 'inference', name: 'summary' };
+  return onMcp(async (session) => {
+    await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
+    await session.callTool('create_spec', inSales({ ...reasonFunction, source: summary }));
+    return session.callTool('execute_spec', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
+  });
+}
 
 const unofferedProvider = new ProviderNotConfigured({
   detail: 'anthropic is not configured. Configured providers: openai, gateway',
@@ -232,21 +250,28 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
   });
 });
 
-describe('the plain words for a reason function whose prompt names a model of a provider the server is not set up for', () => {
-  it('say that it can be switched to a provider the server has, when there are others', async () => {
+describe('the plain words for a reason function whose prompt names a model the server does not offer', () => {
+  it('say that its provider is not set up while others are, and that it can be switched to a model the server lists', async () => {
     server = await servingInference([() => Effect.fail(unofferedProvider)]);
-    const reasonFunction = { primitive: 'inference', name: 'summary' };
 
-    const unoffered = await onMcp(async (session) => {
-      await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
-      await session.callTool('create_spec', inSales({ ...reasonFunction, source: summary }));
-      return session.callTool('execute_spec', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
-    });
+    const unoffered = await executedOnce();
 
     expect(plainTextIn(unoffered)).toBe(
-      'Could not run the reason function “summary”: this server is not set up to use the provider of the model named, but it can use others. Nothing was changed. This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
+      `Could not run the reason function “summary”: this server does not offer the model named, because its provider is not set up on this server, though others are. ${switchable}`,
     );
     expect(internalTermsIn(plainTextIn(unoffered))).toEqual([]);
     expect(technicalTextIn(unoffered)).toContain('Configured providers: openai, gateway');
+  });
+
+  it('say that it is outside the models whoever runs the server allows, and that it can be switched', async () => {
+    server = await servingInference([() => Effect.fail(disallowedModel)]);
+
+    const disallowed = await executedOnce();
+
+    expect(plainTextIn(disallowed)).toBe(
+      `Could not run the reason function “summary”: this server does not offer the model named, because it is not among the models whoever runs the server allows. ${switchable}`,
+    );
+    expect(internalTermsIn(plainTextIn(disallowed))).toEqual([]);
+    expect(technicalTextIn(disallowed)).toContain('Offered models: gateway/*');
   });
 });

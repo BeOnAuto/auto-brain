@@ -22,6 +22,15 @@ function shelving(kind?: ConflictKind) {
       if (title === 'elsewhere') {
         return Effect.fail(new Unavailable({ detail: 'Shelves are made elsewhere', kind: 'model_not_offered' }));
       }
+      if (title === 'forbidden') {
+        return Effect.fail(
+          new Unavailable({
+            detail: 'That shelf is not allowed',
+            kind: 'model_not_offered',
+            because: 'model_not_allowed',
+          }),
+        );
+      }
       return title === 'taken'
         ? Effect.fail(new Conflict({ detail: 'There is a shelf taken', ...(kind === undefined ? {} : { kind }) }))
         : Effect.succeed({ title, books: 0 });
@@ -116,5 +125,21 @@ describe('the kind of a conflict', () => {
     const outcome = await run(dispatcher.dispatchToOrg(registration, toAcme(acmeAdmin, { title: 'taken' })));
 
     expect(outcome).toEqual({ status: 'rejected', reason: 'conflict', detail: 'There is a shelf taken' });
+  });
+});
+
+describe('the rejection of something not offered', () => {
+  it('carries why something is not offered, when the rejection says', async () => {
+    const { dispatcher, run } = harness();
+
+    const outcome = await run(dispatcher.dispatchToOrg(registration, toAcme(acmeAdmin, { title: 'forbidden' })));
+
+    expect(outcome).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'That shelf is not allowed',
+      kind: 'model_not_offered',
+      because: 'model_not_allowed',
+    });
   });
 });

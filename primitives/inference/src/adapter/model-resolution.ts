@@ -1,6 +1,6 @@
 import { Option, Result } from 'effect';
 
-import { ModelNotOffered } from '../failure/model-not-offered.ts';
+import { ModelNotAllowed } from '../failure/model-not-allowed.ts';
 import { ProviderNotConfigured } from '../failure/provider-not-configured.ts';
 import { SpecInvalid } from '../failure/spec-invalid.ts';
 import { aliasResolution } from '../model/model-alias.ts';
@@ -18,7 +18,7 @@ export interface ModelTarget {
 
 export type ModelResolution = (
   reference: string,
-) => Result.Result<ModelTarget, SpecInvalid | ProviderNotConfigured | ModelNotOffered>;
+) => Result.Result<ModelTarget, SpecInvalid | ProviderNotConfigured | ModelNotAllowed>;
 
 function malformedReference(): SpecInvalid {
   return new SpecInvalid({
@@ -49,8 +49,8 @@ function notConfigured(provider: string, status: ProviderStatus, aliasNames: rea
   });
 }
 
-function notOffered(requested: string, provider: string, offered: readonly string[]): ModelNotOffered {
-  return new ModelNotOffered({
+function notAllowed(requested: string, provider: string, offered: readonly string[]): ModelNotAllowed {
+  return new ModelNotAllowed({
     detail: `${requested} is not one of the models this server offers. Offered models: ${offered.join(', ')}`,
     provider,
     offered,
@@ -72,7 +72,7 @@ export function modelResolution(
       onNone: () => Result.fail(malformedReference()),
       onSome: ({ provider, model }) => {
         if (offer.restricted !== null && !offer.offers(requested)) {
-          return Result.fail(notOffered(requested, provider, offer.restricted));
+          return Result.fail(notAllowed(requested, provider, offer.restricted));
         }
         const factory = models.get(provider);
         return factory === undefined

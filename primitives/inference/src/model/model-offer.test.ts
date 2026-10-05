@@ -61,7 +61,7 @@ describe('the models a spec may name when an operator allows some', () => {
     const named = await succeeded(catalog.access, textRequest('anthropic/claude-sonnet-4-5'));
 
     expect(refused).toMatchObject({
-      _tag: 'model_not_offered',
+      _tag: 'model_not_allowed',
       detail:
         'anthropic/claude-opus-4-1 is not one of the models this server offers. Offered models: anthropic/claude-sonnet-4-5, house/*',
       provider: 'anthropic',
