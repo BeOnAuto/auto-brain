@@ -43,7 +43,7 @@ export function workflow(source: string): JsonObject {
   return { document: header, ...yamlObject(source) };
 }
 
-export function runOf(document: JsonObject, input: Json = {}): WorkflowRun {
+function runOf(document: JsonObject, input: Json = {}): WorkflowRun {
   return {
     document,
     input,

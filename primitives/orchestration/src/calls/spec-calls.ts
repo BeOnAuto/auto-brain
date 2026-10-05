@@ -24,7 +24,7 @@ function rejectionDetail(
     : `${detail} (${issues.map((issue) => `${issue.pointer}: ${issue.detail}`).join('; ')})`;
 }
 
-export function callResultOf(result: SpecExecutionResult): CallResult {
+function callResultOf(result: SpecExecutionResult): CallResult {
   if (result.status === 'rejected') {
     return { status: 'rejected', reason: result.reason, detail: rejectionDetail(result.detail, result.issues ?? []) };
   }

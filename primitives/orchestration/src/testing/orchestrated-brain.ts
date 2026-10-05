@@ -17,7 +17,7 @@ export interface OrchestratedBrain extends Brain {
   readonly close: () => Promise<void>;
 }
 
-export const mostDurationMs = 2_592_000_000;
+const mostDurationMs = 2_592_000_000;
 
 const StartedSchema = Schema.Struct({ output: Schema.Struct({ status: Schema.Literal('started') }) });
 
