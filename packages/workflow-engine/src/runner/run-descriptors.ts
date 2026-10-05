@@ -2,9 +2,9 @@ import type { CallFunctions } from '../dsl/call-functions.ts';
 import { objectField, type Json, type JsonObject } from '../dsl/json.ts';
 import type { Components } from '../dsl/policy-checks.ts';
 import type { RunLimits } from '../machine/run-input.ts';
+import { dateTimeOf } from '../machine/utc-time.ts';
 import type { RunCell } from './run-cell.ts';
 import type { ValueTable } from './run-tables.ts';
-import { dateTimeOf } from './utc-time.ts';
 
 export interface MachineOptions {
   readonly functions: CallFunctions;

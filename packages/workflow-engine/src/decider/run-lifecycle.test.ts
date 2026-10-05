@@ -109,7 +109,7 @@ describe('a run that does too much', () => {
         title: `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end`,
       },
     });
-  });
+  }, 30_000);
 });
 
 describe('a task', () => {

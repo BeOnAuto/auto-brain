@@ -1,11 +1,10 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { executionId } from '../testing/runs.ts';
+import { recordStoreProbes, watermarkProbes, type RecordStoreSubject } from '../testing/store-probes.ts';
 import { memoryRecordStore, memoryWatermark } from './memory-records.ts';
 import { faultsOf } from './memory-timers.ts';
-import { memoryRunStore } from './run-store.ts';
-import { executionId } from './runs.ts';
-import { recordStoreProbes, runStoreProbes, watermarkProbes, type RecordStoreSubject } from './store-probes.ts';
 import { virtualClock } from './virtual-clock.ts';
 
 function recordStoreSubject(): RecordStoreSubject {
@@ -26,11 +25,7 @@ describe('the memory record store meets the contract every record store meets', 
   });
 });
 
-describe('the memory run store and watermark meet the contract every one meets', () => {
-  it.each(runStoreProbes)('$title', async (probe) => {
-    expect(await Effect.runPromise(probe.run({ runStore: memoryRunStore(), executionId }))).toEqual(probe.expected);
-  });
-
+describe('the memory watermark meets the contract every watermark meets', () => {
   it.each(watermarkProbes)('$title', async (probe) => {
     expect(await Effect.runPromise(probe.run({ watermark: memoryWatermark(), executionId }))).toEqual(probe.expected);
   });

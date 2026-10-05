@@ -1,7 +1,7 @@
 import { raised } from '../dsl/raised-error.ts';
 import { mostStepsWithoutWaiting } from '../machine/limits.ts';
 import type { RunState, TaskFrame, ValueId } from '../machine/run-state.ts';
-import { drawOf } from './seeded-random.ts';
+import { drawOf } from '../machine/seeded-random.ts';
 
 interface Run {
   readonly state: RunState;

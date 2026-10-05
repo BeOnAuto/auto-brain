@@ -1,11 +1,9 @@
-import { setImmediate } from 'node:timers/promises';
-
 import { Effect } from 'effect';
 
 import type { RunOutcome, RunState } from '../machine/run-state.ts';
+import type { VirtualClock } from '../memory/virtual-clock.ts';
 import { loadedRunOf } from '../run-log/run-fold.ts';
 import type { RunStore } from '../run-log/run-store.ts';
-import type { VirtualClock } from './virtual-clock.ts';
 
 export interface RunWatch {
   readonly state: (executionId: string) => RunState;
@@ -13,10 +11,22 @@ export interface RunWatch {
   readonly outcomeOf: (executionId: string) => Promise<RunOutcome>;
 }
 
-export function runWatchOf(runStore: RunStore, clock: VirtualClock): RunWatch {
+const mostClockSteps = 10_000;
+
+function nextTurn(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
+
+function endless(executionId: string, steps: number): Error {
+  return new Error(`The run ${executionId} did not end within ${steps} steps of its clock`);
+}
+
+export function runWatchOf(runStore: RunStore, clock: VirtualClock, mostSteps = mostClockSteps): RunWatch {
   const state = (executionId: string): RunState => loadedRunOf(Effect.runSync(runStore.load(executionId))).state;
   const outcomeOf = async (executionId: string): Promise<RunOutcome> => {
-    await setImmediate();
+    await nextTurn();
     const { outcome } = state(executionId);
     if (outcome !== null) {
       return outcome;
@@ -30,7 +40,10 @@ export function runWatchOf(runStore: RunStore, clock: VirtualClock): RunWatch {
     state,
     runUntilEnded: (executionId) => {
       let current = state(executionId);
-      while (current.status !== 'ended' && clock.advance()) {
+      for (let steps = 0; current.status !== 'ended' && clock.advance(); steps += 1) {
+        if (steps === mostSteps) {
+          throw endless(executionId, mostSteps);
+        }
         current = state(executionId);
       }
       return current;

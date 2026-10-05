@@ -24,6 +24,21 @@ describe('the memory driver', () => {
     expect(await driver.outcomeOf(executionId)).toEqual({ kind: 'completed', output: 'later' });
   });
 
+  it('says so when a run does not end within the steps of its clock it is given', () => {
+    const driver = memoryDriver({ mostSteps: 5 });
+    const retryingForever = workflow(`
+do:
+  - guarded:
+      try: [{ fail: { raise: { error: { type: x, status: 503 } } } }]
+      catch: { retry: { delay: PT1S } }
+`);
+    driver.start({ executionId, document: retryingForever });
+
+    expect(() => driver.runUntilEnded(executionId)).toThrow(
+      `The run ${executionId} did not end within 5 steps of its clock`,
+    );
+  });
+
   it('says so when a run waits for something that never comes', async () => {
     const driver = memoryDriver();
     driver.start({ executionId, document: workflow('do:\n  - pause: { wait: PT1M }') });

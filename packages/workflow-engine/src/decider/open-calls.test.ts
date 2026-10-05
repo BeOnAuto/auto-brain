@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { callKeyText } from '../executor/call-key.ts';
 import type { ArmedTimer, RunState } from '../machine/run-state.ts';
+import type { CallAnswer, Responder } from '../memory/memory-executor.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
-import type { CallAnswer, Responder } from '../testing/memory-executor.ts';
 import { statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 

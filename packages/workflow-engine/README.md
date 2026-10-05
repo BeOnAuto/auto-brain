@@ -7,7 +7,7 @@ The same code runs in Node, where one server keeps every run in one SQLite file,
 ## Entries
 
 - `@beonauto/workflow-engine`: the contract and the machine, `workflowMachine(options)`, from `src/index.ts`.
-- `@beonauto/workflow-engine/testing`: an engine on memory ports and a virtual clock, a driver over it, and the probes of the ports' contract that every adapter runs (`src/testing/index.ts`).
+- `@beonauto/workflow-engine/testing`: the memory adapter of `src/memory` and its virtual clock, a driver over it, and the probes of the ports' contract that every adapter runs (`src/testing/index.ts`). Neither the entry nor anything it imports takes a Node module or the YAML parser, so a hosted adapter can run the probes (`src/engine/portability.test.ts`).
 - `@beonauto/workflow-engine/dsl/<module>`: one module of the DSL, such as `dsl/json` or `dsl/policy`.
 - `@beonauto/workflow-engine/limits`: the limits, plain numbers.
 
@@ -28,8 +28,8 @@ The `dsl` and `limits` subpaths are transitional. They are there only so that th
 | Layer         | Folder              | What it holds                                                          | Port                                    |
 | ------------- | ------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
 | DSL           | `src/dsl`           | JSON, durations, jq expressions with their work budget, tasks, policy  | none: pure                              |
-| machine       | `src/machine`       | inputs, state, held values, admission, the clock, limits, the decider  | none: pure                              |
-| runner        | `src/runner`        | the session of one input, the list and task runners, time, draws       | none: pure                              |
+| machine       | `src/machine`       | inputs, state, held values, admission, the clock, UTC time, draws      | none: pure                              |
+| runner        | `src/runner`        | the session of one input, the list and task runners                    | none: pure                              |
 | tasks         | `src/tasks`         | each task body: start, resume and cancel over its frame                | none: pure                              |
 | decider       | `src/decider`       | the run's lifecycle, its bounds, the patch and outputs of an event     | none: pure                              |
 | run log       | `src/run-log`       | events, state patches, state formats, the fold, snapshots              | `RunStore` (one Emmett stream per run)  |
@@ -40,7 +40,8 @@ The `dsl` and `limits` subpaths are transitional. They are there only so that th
 | serialisation | `src/serialisation` | one input at a time for each run                                       | `RunSerialiser`                         |
 | settlement    | `src/settlement`    | settle receipts, due times, troubling receipts                         | `RecordStore`, `RunReporter`            |
 | engine        | `src/engine`        | the loop on the ledger, the ports together, the engine's interface     | `WorkflowEngine`                        |
-| testing       | `src/testing`       | memory ports, a virtual clock, a driver, the ports' conformance probes | every port, in memory                   |
+| memory        | `src/memory`        | a run store, timers, executor, record store and watermark in memory    | every port, in memory                   |
+| testing       | `src/testing`       | a driver over the memory adapter, the ports' probes, run readers       | none                                    |
 
 Every port answers with an Effect. None of them is a clock: time comes in with the inputs, and the sweep is given the time before which a run is overdue.
 

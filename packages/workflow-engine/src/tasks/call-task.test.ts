@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { StartCall } from '../dispatch/run-output.ts';
 import { errorType } from '../dsl/raised-error.ts';
 import { mostCallArgumentsBytes } from '../machine/limits.ts';
+import type { Responder } from '../memory/memory-executor.ts';
 import type { MemoryDriver } from '../testing/memory-driver.ts';
-import type { Responder } from '../testing/memory-executor.ts';
 import { drivenExecutionId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 

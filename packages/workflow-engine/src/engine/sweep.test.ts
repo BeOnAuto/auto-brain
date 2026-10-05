@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { DispatchFailed } from '../dispatch/dispatch-watermark.ts';
 import type { RunInput } from '../machine/run-input.ts';
+import { memoryPorts } from '../memory/memory-ports.ts';
+import { virtualClock } from '../memory/virtual-clock.ts';
 import { startedOf, testMachine } from '../testing/driver-inputs.ts';
 import { memoryDriver } from '../testing/memory-driver.ts';
-import { memoryPorts } from '../testing/memory-ports.ts';
-import { virtualClock } from '../testing/virtual-clock.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowEngineOf } from './engine.ts';
 

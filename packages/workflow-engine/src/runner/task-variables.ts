@@ -2,9 +2,9 @@ import type { Variables } from '../dsl/expressions.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import type { TaskEntry } from '../dsl/tasks.ts';
 import type { ValueId, Variables as Scope } from '../machine/run-state.ts';
+import { dateTimeOf } from '../machine/utc-time.ts';
 import type { FramePrefix } from './advance.ts';
 import type { Session } from './session.ts';
-import { dateTimeOf } from './utc-time.ts';
 
 export function scopeValuesOf(session: Session, scope: Scope): Variables {
   return Object.fromEntries(

@@ -3,17 +3,18 @@ import { Effect } from 'effect';
 import { workflowEngineOf } from '../engine/engine.ts';
 import type { Submission, WorkflowEngine } from '../engine/workflow-engine.ts';
 import type { EventReceived, RunInput } from '../machine/run-input.ts';
+import type { Responder } from '../memory/memory-executor.ts';
+import { memoryPorts, type MemoryPorts } from '../memory/memory-ports.ts';
+import { virtualClock, type VirtualClock } from '../memory/virtual-clock.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
 import { startedOf, testMachine, type StartRequest } from './driver-inputs.ts';
-import type { Responder } from './memory-executor.ts';
-import { memoryPorts, type MemoryPorts } from './memory-ports.ts';
 import { runWatchOf, type RunWatch } from './run-watch.ts';
-import { virtualClock, type VirtualClock } from './virtual-clock.ts';
 
 export interface DriverOptions {
   readonly machine?: MachineOptions;
   readonly respond?: Responder;
   readonly startedAt?: number;
+  readonly mostSteps?: number;
 }
 
 export interface MemoryDriver extends RunWatch {
@@ -46,7 +47,7 @@ export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
     return Effect.runSync(engine.submit(input));
   }
   return {
-    ...runWatchOf(ports.runStore, clock),
+    ...runWatchOf(ports.runStore, clock, options.mostSteps),
     ports,
     engine,
     clock,

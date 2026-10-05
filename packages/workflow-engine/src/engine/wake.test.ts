@@ -1,10 +1,10 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { memoryPorts } from '../memory/memory-ports.ts';
+import { virtualClock } from '../memory/virtual-clock.ts';
 import { testMachine } from '../testing/driver-inputs.ts';
 import { memoryDriver } from '../testing/memory-driver.ts';
-import { memoryPorts } from '../testing/memory-ports.ts';
-import { virtualClock } from '../testing/virtual-clock.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowEngineOf } from './engine.ts';
 

@@ -1,7 +1,8 @@
-import type { Json, JsonObject } from '../dsl/json.ts';
+import type { CallFunctions } from '../dsl/call-functions.ts';
+import { isObject, type Json, type JsonObject } from '../dsl/json.ts';
+import { rejection, templateRejections } from '../dsl/policy-checks.ts';
 import type { RunLimits, Started } from '../machine/run-input.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
-import { testFunctions } from './workflows.ts';
 
 export interface StartRequest {
   readonly executionId: string;
@@ -11,6 +12,18 @@ export interface StartRequest {
   readonly attributes?: JsonObject;
   readonly seed?: number;
 }
+
+export const testFunctions: CallFunctions = {
+  argumentChecks: {
+    notify: (arguments_, pointer) =>
+      isObject(arguments_)
+        ? templateRejections(arguments_, pointer)
+        : [rejection(pointer, 'notify takes with: { to }')],
+  },
+  describe: (name) => `the function ${name}`,
+  howAWorkflowReachesTheWorld: 'a workflow reaches the world only through the functions it is given',
+  howAWorkflowStarts: 'start it through its runtime',
+};
 
 export const testRuntime: JsonObject = { name: 'workflow-engine', version: '1', metadata: {} };
 

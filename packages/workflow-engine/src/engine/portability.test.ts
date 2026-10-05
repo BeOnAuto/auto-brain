@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
-import { join } from 'node:path';
+import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
@@ -87,6 +87,42 @@ const everySource = sourcesUnder('.');
 const machineAndRunLog = ['machine', 'runner', 'tasks', 'decider', 'run-log', 'dsl'].flatMap((folder) =>
   sourcesUnder(folder),
 );
+
+const relativeImport = /from '(\.{1,2}\/[^']+)'/gu;
+
+function importedBy(file: string): readonly string[] {
+  const text = readFileSync(join(source, file), 'utf8');
+  return [...text.matchAll(relativeImport)].map(([, path = '']: readonly string[]) =>
+    normalize(join(dirname(file), path)),
+  );
+}
+
+function reachableFrom(entry: string): readonly string[] {
+  const reached = new Set([entry]);
+  const pending = [entry];
+  for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
+    const unseen = importedBy(file).filter((imported) => !reached.has(imported));
+    for (const imported of unseen) {
+      reached.add(imported);
+      pending.push(imported);
+    }
+  }
+  return [...reached].toSorted();
+}
+
+const nodeOrYaml: readonly Forbidden[] = [
+  { what: 'a node: module', pattern: /from ['"]node:/u },
+  { what: 'the YAML parser', pattern: /from ['"]yaml['"]/u },
+];
+
+describe('the testing entry', () => {
+  it('takes no Node module and no YAML parser, so a hosted adapter can run its probes and its driver', () => {
+    const testingEntry = reachableFrom('testing/index.ts');
+
+    expect(testingEntry).toContain('memory/memory-ports.ts');
+    expect(findingsIn(testingEntry, nodeOrYaml)).toEqual([]);
+  });
+});
 
 describe('the engine core', () => {
   it('uses no Node-only API, no dynamic import, no code generation and no Temporal', () => {
