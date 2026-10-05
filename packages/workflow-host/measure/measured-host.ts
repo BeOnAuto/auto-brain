@@ -5,7 +5,8 @@ import { defaultLimits, defaultSeed, testMachine } from '@beonauto/workflow-engi
 import { Effect, Function, type Schema } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
-import { openWorkflowHost, type RunStart, type WorkflowHost } from '../src/host/workflow-host.ts';
+import type { RunStart } from '../src/host/run-requests.ts';
+import { openWorkflowHost, type WorkflowHost } from '../src/host/workflow-host.ts';
 import type { HostClock } from '../src/loop/host-clock.ts';
 
 export interface MeasuredHost {
@@ -46,7 +47,12 @@ export async function measuredHost(database: DatabaseSettings, clock?: HostClock
     machine: testMachine,
     perform: () => Effect.succeed({ status: 'succeeded', output: null }),
     settle,
-    reports: { unsettled: () => Effect.void, trouble: Effect.logWarning, lostConnection: Function.constVoid },
+    reports: {
+      unsettled: () => Effect.void,
+      trouble: Effect.logWarning,
+      lostConnection: Function.constVoid,
+      note: () => Effect.void,
+    },
     sweepEveryMs: 1000,
     mostCallsAtOnce: 32,
     ...(clock === undefined ? {} : { clock }),

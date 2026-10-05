@@ -31,7 +31,12 @@ export async function orchestratedBrain(): Promise<OrchestratedBrain> {
     machine: orchestrationMachine,
     perform: specCalls(nested.executeNested),
     settle: nested.settle,
-    reports: { unsettled: Effect.logWarning, trouble: Effect.logWarning, lostConnection: Function.constVoid },
+    reports: {
+      unsettled: Effect.logWarning,
+      trouble: Effect.logWarning,
+      lostConnection: Function.constVoid,
+      note: Effect.logWarning,
+    },
     sweepEveryMs: 20,
     mostCallsAtOnce: 4,
   });

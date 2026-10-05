@@ -5,7 +5,7 @@ import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
-import { HostStopped } from './workflow-host.ts';
+import { HostStopped } from './host-gate.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 

@@ -11,6 +11,7 @@ import {
 import { openWorkflowHost, type DatabaseSettings, type HostReports, type WorkflowHost } from '@beonauto/workflow-host';
 import { Effect, Exit, Redacted } from 'effect';
 
+import { logHostNote } from '../logging/host-notes.ts';
 import { logLostWorkflowConnection, logUnsettled, logWorkflows, logWorkflowTrouble } from '../logging/logging.ts';
 import type { LedgerSettings } from '../settings/ledger-settings.ts';
 import type { WorkflowSettings } from '../settings/workflow-settings.ts';
@@ -23,7 +24,7 @@ export interface HostParts {
 
 const unsettledBecause = {
   unknown_execution: 'The ledger has no such execution',
-  settled_otherwise: 'The execution ended otherwise, or settling it failed on every attempt',
+  settled_otherwise: 'The execution was settled otherwise before',
 } as const;
 
 export function inRuntime<A, E>(
@@ -73,6 +74,7 @@ export function hostReports(runtime: AppRuntime<DispatcherServices>): HostReport
     lostConnection: (error) => {
       void runtime.run(logLostWorkflowConnection(error));
     },
+    note: (note) => inRuntime(runtime, logHostNote(note)),
   };
 }
 

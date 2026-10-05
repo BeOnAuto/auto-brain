@@ -3,11 +3,17 @@ import type { SettleExecution, Settlement as RecordedSettlement } from '@beonaut
 import { DispatchFailed, type RecordStore, type SettleReceipt } from '@beonauto/workflow-engine';
 import { Cause, Effect, Equal, Option, Predicate, Schema } from 'effect';
 
-import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
+import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
+import type { HostNote } from '../host/host-reports.ts';
 import { addressOfRun } from '../runs/run-address.ts';
+import { attempted, isBackingOff, settleAttemptsBeforeBackingOff, settleBackOffMs } from './settle-attempts.ts';
 
-export const mostSettleAttempts = 20;
+export interface RecordStoreParts {
+  readonly settle: SettleExecution;
+  readonly note: (note: HostNote) => Effect.Effect<void>;
+  readonly now: () => number;
+}
 
 const mostDueRunsInOneSweep = 1024;
 
@@ -17,21 +23,25 @@ const SettlementText = Schema.fromJsonString(Schema.toCodecJson(SettlementSchema
 
 const encodeSettlement = Schema.encodeSync(SettlementText);
 
-const SettlementRow = Schema.Struct({ settlement: Schema.NullOr(SettlementText) });
-
-const AttemptsRow = Schema.Struct({ attempts: WholeNumber });
+const SettlementRow = Schema.Struct({
+  settlement: Schema.NullOr(SettlementText),
+  attempts: WholeNumber,
+  last_attempt_at: Schema.NullOr(WholeNumber),
+});
 
 const RunRow = Schema.Struct({ run_id: Schema.String });
 
-function recordedSettlementOf(settlement: Settlement): RecordedSettlement {
-  return settlement.status === 'succeeded' ? { ...settlement, record: {} } : settlement;
+type Receipt = Effect.Effect<SettleReceipt, DatabaseFailed | DispatchFailed>;
+
+interface Settling {
+  readonly database: HostDatabase;
+  readonly parts: RecordStoreParts;
+  readonly runId: string;
+  readonly settlement: Settlement;
 }
 
-function earlierSettlementOf(database: HostDatabase, runId: string): Effect.Effect<Settlement | null, DatabaseFailed> {
-  return rowsOf(
-    SettlementRow,
-    database.read(statement`SELECT settlement FROM workflow_settlements WHERE run_id = ${runId}`),
-  ).pipe(Effect.map(([row]) => row?.settlement ?? null));
+function recordedSettlementOf(settlement: Settlement): RecordedSettlement {
+  return settlement.status === 'succeeded' ? { ...settlement, record: {} } : settlement;
 }
 
 function recorded(database: HostDatabase, runId: string, settlement: Settlement): Effect.Effect<void, DatabaseFailed> {
@@ -49,48 +59,41 @@ function recorded(database: HostDatabase, runId: string, settlement: Settlement)
   );
 }
 
-function attempted(database: HostDatabase, runId: string): Effect.Effect<number, DatabaseFailed> {
-  return oneRowOf(
-    AttemptsRow,
-    database.write(
-      statement`INSERT INTO workflow_settlements (run_id, attempts) VALUES (${runId}, 1)
-        ON CONFLICT (run_id) DO UPDATE SET attempts = workflow_settlements.attempts + 1 RETURNING attempts`,
-    ),
-  ).pipe(Effect.map(({ attempts }) => attempts));
-}
-
 function detailOf(failure: unknown): string {
   return Predicate.hasProperty(failure, 'detail') && Predicate.isString(failure.detail)
     ? failure.detail
     : String(failure);
 }
 
-function failedAttempt(
-  database: HostDatabase,
-  runId: string,
-  cause: Cause.Cause<unknown>,
-): Effect.Effect<SettleReceipt, DatabaseFailed | DispatchFailed> {
-  return Effect.flatMap(attempted(database, runId), (attempts) =>
-    attempts >= mostSettleAttempts
-      ? Effect.succeed('settled_otherwise')
-      : Effect.fail(new DispatchFailed({ output: 'settle', detail: detailOf(Cause.squash(cause)) })),
-  );
+function failedAttempt({ database, parts, runId }: Settling, detail: string): Receipt {
+  return Effect.gen(function* () {
+    const attempts = yield* attempted(database, runId, parts.now());
+    if (attempts === settleAttemptsBeforeBackingOff) {
+      yield* parts.note({ kind: 'settle_backing_off', run: addressOfRun(runId), attempts, detail });
+    }
+    return yield* new DispatchFailed({ output: 'settle', detail });
+  });
 }
 
-function settledFor(
-  database: HostDatabase,
-  settle: SettleExecution,
-  runId: string,
-  settlement: Settlement,
-): Effect.Effect<SettleReceipt, DatabaseFailed | DispatchFailed> {
-  const { org, brain, executionId } = addressOfRun(runId);
-  return settle({ org, brain, id: executionId }, recordedSettlementOf(settlement)).pipe(
+function succeeded({ database, parts, runId, settlement }: Settling, attemptsBefore: number): Receipt {
+  return Effect.gen(function* () {
+    yield* recorded(database, runId, settlement);
+    if (attemptsBefore >= settleAttemptsBeforeBackingOff) {
+      yield* parts.note({ kind: 'settled_after_back_off', run: addressOfRun(runId), attempts: attemptsBefore + 1 });
+    }
+    return 'recorded' as const;
+  });
+}
+
+function settledFor(settling: Settling, attemptsBefore: number): Receipt {
+  const { org, brain, executionId } = addressOfRun(settling.runId);
+  return settling.parts.settle({ org, brain, id: executionId }, recordedSettlementOf(settling.settlement)).pipe(
     Effect.matchCauseEffect({
-      onSuccess: () => Effect.as(recorded(database, runId, settlement), 'recorded' as const),
+      onSuccess: () => succeeded(settling, attemptsBefore),
       onFailure: (cause: Cause.Cause<unknown>) =>
         Option.exists(Cause.findErrorOption(cause), (error) => error instanceof NotFound)
           ? Effect.succeed('unknown_execution' as const)
-          : failedAttempt(database, runId, cause),
+          : failedAttempt(settling, detailOf(Cause.squash(cause))),
     }),
   );
 }
@@ -101,16 +104,33 @@ function asDispatchFailure(failure: unknown): DispatchFailed {
     : new DispatchFailed({ output: 'settle', detail: detailOf(failure) });
 }
 
-export function ledgerRecordStore(database: HostDatabase, settle: SettleExecution): RecordStore {
+function settledOnce(settling: Settling): Receipt {
+  const { database, parts, runId, settlement } = settling;
+  return Effect.gen(function* () {
+    const [earlier] = yield* rowsOf(
+      SettlementRow,
+      database.read(
+        statement`SELECT settlement, attempts, last_attempt_at FROM workflow_settlements WHERE run_id = ${runId}`,
+      ),
+    );
+    if (earlier !== undefined && earlier.settlement !== null) {
+      return Equal.equals(earlier.settlement, settlement) ? 'already_recorded' : 'settled_otherwise';
+    }
+    const attemptsBefore = earlier?.attempts ?? 0;
+    if (isBackingOff(attemptsBefore, earlier?.last_attempt_at ?? null, parts.now())) {
+      return yield* new DispatchFailed({
+        output: 'settle',
+        detail: `The settlement failed ${attemptsBefore} times, so it is tried again once every ${settleBackOffMs} ms`,
+      });
+    }
+    return yield* settledFor(settling, attemptsBefore);
+  });
+}
+
+export function ledgerRecordStore(database: HostDatabase, parts: RecordStoreParts): RecordStore {
   return {
     settle: ({ executionId: runId, settlement }) =>
-      Effect.gen(function* () {
-        const earlier = yield* earlierSettlementOf(database, runId);
-        if (earlier !== null) {
-          return Equal.equals(earlier, settlement) ? 'already_recorded' : 'settled_otherwise';
-        }
-        return yield* settledFor(database, settle, runId, settlement);
-      }).pipe(Effect.mapError(asDispatchFailure)),
+      settledOnce({ database, parts, runId, settlement }).pipe(Effect.mapError(asDispatchFailure)),
     noteDue: ({ executionId: runId, version, nextDueAt }) =>
       Effect.asVoid(
         database.write(

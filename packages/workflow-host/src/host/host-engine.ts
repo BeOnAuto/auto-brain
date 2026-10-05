@@ -56,6 +56,7 @@ export function hostEngineOn(
     reports,
     timers: timers.timers,
     executor: executor.executor,
+    now: clock.now,
   });
   const engine = workflowEngineOf(ports, options.machine, runCacheOf(options.cacheBounds ?? runCacheBounds));
   return { engine, runStore: ports.runStore, timers, executor, submitted };

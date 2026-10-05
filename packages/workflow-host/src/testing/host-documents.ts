@@ -2,7 +2,7 @@ import { defaultLimits, defaultSeed } from '@beonauto/workflow-engine/testing';
 import { Schema } from 'effect';
 import { parse } from 'yaml';
 
-import type { RunStart } from '../host/workflow-host.ts';
+import type { RunStart } from '../host/run-requests.ts';
 import type { RunAddress } from '../runs/run-address.ts';
 
 type JsonObject = typeof Schema.JsonObject.Type;

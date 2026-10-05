@@ -57,20 +57,28 @@ describe('the reports of the workflow host', () => {
       expect.stringContaining(
         '"annotations":{"org":"acme","brain":"alpha","execution_id":"e-1","reason":"The ledger has no such execution"}',
       ),
-      expect.stringContaining('"reason":"The execution ended otherwise, or settling it failed on every attempt"'),
+      expect.stringContaining('"reason":"The execution was settled otherwise before"'),
     ]);
   });
 
-  it('log trouble and a lost connection as warnings', async () => {
+  it('log trouble, a lost connection and a note of the host as warnings', async () => {
     const lines = await reportedLines(async (reports) => {
       await Effect.runPromise(reports.trouble('A sweep of the runs failed; the next sweep tries again', Cause.empty));
       reports.lostConnection(new Error('Connection terminated unexpectedly'));
       await Effect.runPromise(Effect.yieldNow);
+      await Effect.runPromise(
+        reports.note({
+          kind: 'settled_after_back_off',
+          run: { org: 'acme', brain: 'alpha', executionId: 'e-1' },
+          attempts: 21,
+        }),
+      );
     });
 
     expect(lines).toEqual([
       expect.stringContaining('"message":"A sweep of the runs failed; the next sweep tries again","level":"WARN"'),
       expect.stringContaining('"annotations":{"error":"Connection terminated unexpectedly"}'),
+      expect.stringContaining('"message":"An execution that could not be settled was settled at attempt 21"'),
     ]);
   });
 });

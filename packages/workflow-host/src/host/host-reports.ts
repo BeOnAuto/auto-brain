@@ -1,0 +1,25 @@
+import type { TroublingReceipt } from '@beonauto/workflow-engine';
+import type { Effect } from 'effect';
+
+import type { Trouble } from '../calls/host-executor.ts';
+import type { RunAddress } from '../runs/run-address.ts';
+
+export type HostNote =
+  | {
+      readonly kind: 'settle_backing_off';
+      readonly run: RunAddress;
+      readonly attempts: number;
+      readonly detail: string;
+    }
+  | { readonly kind: 'settled_after_back_off'; readonly run: RunAddress; readonly attempts: number };
+
+export interface UnsettledRun extends RunAddress {
+  readonly receipt: TroublingReceipt;
+}
+
+export interface HostReports {
+  readonly unsettled: (run: UnsettledRun) => Effect.Effect<void>;
+  readonly trouble: Trouble;
+  readonly lostConnection: (error: Readonly<Error>) => void;
+  readonly note: (note: HostNote) => Effect.Effect<void>;
+}

@@ -48,6 +48,7 @@ export const hostTables: readonly Statement[] = [
   statement`CREATE TABLE IF NOT EXISTS workflow_settlements (
     run_id TEXT NOT NULL PRIMARY KEY,
     settlement TEXT,
-    attempts INTEGER NOT NULL DEFAULT 0
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_attempt_at BIGINT
   )`,
 ];

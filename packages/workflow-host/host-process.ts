@@ -67,7 +67,12 @@ const host = await openWorkflowHost({
   machine: testMachine,
   perform: () => (mode === 'hang-on-call' ? Effect.andThen(said('calling'), hangs) : answered),
   settle,
-  reports: { unsettled: () => Effect.void, trouble: () => Effect.void, lostConnection: Function.constVoid },
+  reports: {
+    unsettled: () => Effect.void,
+    trouble: () => Effect.void,
+    lostConnection: Function.constVoid,
+    note: () => Effect.void,
+  },
   sweepEveryMs: 20,
   mostCallsAtOnce: 1,
 });

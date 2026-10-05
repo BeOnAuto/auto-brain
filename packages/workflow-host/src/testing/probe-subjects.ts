@@ -40,7 +40,7 @@ export function timerSubjectOn(database: HostDatabase): TimerSubject {
 export function recordStoreSubjectOn(database: HostDatabase): RecordStoreSubject {
   const { settle, know } = knownExecutions();
   return {
-    recordStore: ledgerRecordStore(database, settle),
+    recordStore: ledgerRecordStore(database, { settle, note: Effect.logWarning, now: Date.now }),
     run: { executionId: runId, attributes: {} },
     know: (executionId) =>
       Effect.sync(() => {
