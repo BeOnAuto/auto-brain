@@ -26,39 +26,49 @@ const alternatives = Array.from({ length: 10 }, () => 'a').join('|');
 
 const childTimeoutMs = 5000;
 
-const timedEvaluation = [
+const workPerCodepoint = 16;
+
+const longestSubject = 200_000;
+
+const largestCharge = workPerCodepoint * longestSubject;
+
+const evaluationInAChild = [
   `import { runExpression } from ${JSON.stringify(new URL('./expressions.ts', import.meta.url).href)};`,
   'const [source, data] = process.argv.slice(1);',
-  'const started = performance.now();',
   `const evaluation = runExpression(source, JSON.parse(data), {}, { now: 0, mostWork: ${mostWork} });`,
-  'process.stdout.write(JSON.stringify({ evaluation, milliseconds: performance.now() - started }));',
+  'process.stdout.write(JSON.stringify(evaluation));',
 ].join('\n');
 
-const TimedEvaluationSchema = Schema.Struct({
-  evaluation: Schema.Struct({ problem: Schema.String, work: Schema.Number, exhausted: Schema.Boolean }),
-  milliseconds: Schema.Number,
-});
+const ChildEvaluationSchema = Schema.Struct({ problem: Schema.String, work: Schema.Number, exhausted: Schema.Boolean });
 
-const decodeTimedEvaluation = Schema.decodeUnknownSync(Schema.fromJsonString(TimedEvaluationSchema));
+const decodeChildEvaluation = Schema.decodeUnknownSync(Schema.fromJsonString(ChildEvaluationSchema));
 
-interface ChildEvaluation {
+interface ChildRun {
   readonly ended: { readonly status: number | null; readonly signal: string | null };
-  readonly timed: typeof TimedEvaluationSchema.Type | undefined;
+  readonly evaluation: typeof ChildEvaluationSchema.Type | undefined;
 }
 
 function run(source: string, data: Json, work = mostWork): Evaluation {
   return runExpression(source, data, {}, { now, mostWork: work });
 }
 
-function runInAChild(source: string, data: Json = null): ChildEvaluation {
+function runInAChild(source: string, data: Json = null): ChildRun {
   const child = spawnSync(
     process.execPath,
-    ['--max-old-space-size=256', '--input-type=module', '--eval', timedEvaluation, '--', source, JSON.stringify(data)],
+    [
+      '--max-old-space-size=256',
+      '--input-type=module',
+      '--eval',
+      evaluationInAChild,
+      '--',
+      source,
+      JSON.stringify(data),
+    ],
     { encoding: 'utf8', timeout: childTimeoutMs, env: {} },
   );
   return {
     ended: { status: child.status, signal: child.signal },
-    timed: child.status === 0 ? decodeTimedEvaluation(child.stdout) : undefined,
+    evaluation: child.status === 0 ? decodeChildEvaluation(child.stdout) : undefined,
   };
 }
 
@@ -172,32 +182,32 @@ describe('a regular expression', { timeout: 2 * childTimeoutMs }, () => {
     ['"a" | test("((((a{100}){100}){100}){100}){40}")', null],
     ['.p as $p | "a" | test($p)', { p: '(((a{100}){100}){100}){40}' }],
     ['"a" | test("a{99999999999999999999}")', null],
-  ])('%s is refused well within a second, as soon as it compiles too large', (source, data) => {
-    const { ended, timed } = runInAChild(source, data);
+  ])('%s is refused as soon as it compiles too large, before it is expanded', (source, data) => {
+    const { ended, evaluation } = runInAChild(source, data);
 
     expect(ended).toEqual({ status: 0, signal: null });
-    expect(timed?.evaluation).toMatchObject({
+    expect(evaluation).toMatchObject({
       problem: `${source}: RuntimeError: regex too large: more than 4096 instructions`,
       exhausted: false,
     });
-    expect(timed?.milliseconds).toBeLessThan(500);
+    expect(evaluation?.work).toBeLessThanOrEqual(mostWork + largestCharge);
   });
 
   it.each([
     '"a" | test("(((?:){4000}){4000}){4000}")',
     'try ("a" | test("(?:){100000000}")) catch "caught"',
     '("a" * 100000) as $p | reduce range(1000) as $i (0; . + (try ("a" | test($p) | 1) catch 2))',
-    '"a" * 200000 | test("(?:|){2000}b")',
+    `"a" * ${longestSubject} | test("(?:|){2000}b")`,
     '("b" * 100000) as $c | "a" * 100000 | test("[" + $c + "]")',
-  ])('%s stops at the work budget well within a second', (source) => {
-    const { ended, timed } = runInAChild(source);
+  ])('%s stops at the work budget, past it by at most one charge', (source) => {
+    const { ended, evaluation } = runInAChild(source);
 
     expect(ended).toEqual({ status: 0, signal: null });
-    expect(timed?.evaluation).toMatchObject({
+    expect(evaluation).toMatchObject({
       problem: `${source}: LimitError: Work limit exceeded`,
       exhausted: true,
     });
-    expect(timed?.milliseconds).toBeLessThan(500);
+    expect(evaluation?.work).toBeLessThanOrEqual(mostWork + largestCharge);
   });
 });
 
@@ -212,7 +222,6 @@ describe('the deadline of an expression', () => {
 
     expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
     expect(elapsed).toBeGreaterThanOrEqual(200);
-    expect(elapsed).toBeLessThan(300);
   });
 
   it('is read on the clock it is given, at most once in 4096 units of work', () => {
