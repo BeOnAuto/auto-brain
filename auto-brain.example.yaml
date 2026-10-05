@@ -8,6 +8,8 @@
 # Each key stands for the environment variable of the same name in upper case,
 # which wins over the key when both are set. Secrets never go in this file:
 # write ${NAME} where one belongs and set NAME in .env or in the container.
+# DATABASE_URL, the PostgreSQL database of the ledger, holds a password, so it
+# is read from the environment only and has no key here.
 
 # OpenAI-compatible gateways; a spec then names gateway/<model id>.
 model_gateways:

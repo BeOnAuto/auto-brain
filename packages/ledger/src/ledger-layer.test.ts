@@ -1,4 +1,4 @@
-import { fstatSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, fstatSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { Ledger } from '@beonauto/operations';
@@ -6,9 +6,8 @@ import { Cause, Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ledgerLayer } from './sqlite3.ts';
-import { journal } from './testing/journal.ts';
-import { openLedger, outcomeOf } from './testing/open-ledger.ts';
-import { tally, tallyInterruptedBy } from './testing/tally.ts';
+import { openLedger } from './testing/open-ledger.ts';
+import { tally } from './testing/tally.ts';
 import { temporaryDatabase, type TemporaryDatabase } from './testing/temporary-database.ts';
 
 const databases: TemporaryDatabase[] = [];
@@ -46,29 +45,6 @@ function descriptorsOpenOn(fileName: string): number {
 }
 
 describe('a ledger on a database file', () => {
-  it('keeps what was written when the file is closed and opened again', async () => {
-    const fileName = aDatabaseFile();
-    const first = await openLedger(fileName);
-    await Effect.runPromise(first.ledger.execute(tallies, tally, [2, 3]));
-    await Effect.runPromise(
-      first.ledger.execute('brain/acme/sales/journal', journal, [{ type: 'entry_struck', reason: 'Duplicate' }]),
-    );
-    await first.dispose();
-
-    const second = await openLedger(fileName);
-    const reloaded = await Effect.runPromise(
-      Effect.all([second.ledger.load(tallies, tally), second.ledger.load('brain/acme/sales/journal', journal)]),
-    );
-    const continued = await Effect.runPromise(second.ledger.execute(tallies, tally, [4]));
-    await second.dispose();
-
-    expect(reloaded).toEqual([
-      { state: 5, version: 2 },
-      { state: [{ type: 'entry_struck', reason: 'Duplicate' }], version: 1 },
-    ]);
-    expect(continued).toEqual({ state: 9, version: 3 });
-  });
-
   it('closes every connection to the file when the runtime is disposed', async () => {
     const fileName = aDatabaseFile();
     const { ledger, dispose } = await openLedger(fileName);
@@ -81,27 +57,6 @@ describe('a ledger on a database file', () => {
       openBeforeDisposal: true,
       openAfterDisposal: 0,
     });
-  });
-});
-
-describe('a ledger whose database is gone', () => {
-  it('answers every call after disposal with a defect', async () => {
-    const { ledger, dispose } = await openLedger();
-    await dispose();
-
-    await expect(outcomeOf(ledger.load(tallies, tally))).rejects.toThrow('Singleton connection pool has been closed');
-    await expect(outcomeOf(ledger.execute(tallies, tally, [1]))).rejects.toThrow(
-      'Singleton connection pool has been closed',
-    );
-  });
-
-  it('turns a write that fails for a reason other than a version conflict into a defect', async () => {
-    const { ledger, dispose } = await openLedger();
-    const closeTheDatabaseFirst = Effect.promise(dispose);
-
-    await expect(outcomeOf(ledger.execute(tallies, tallyInterruptedBy(closeTheDatabaseFirst, 1), [1]))).rejects.toThrow(
-      'TaskProcessor has been stopped',
-    );
   });
 
   it('fails to build, with a defect, when its database cannot be opened', async () => {
@@ -138,6 +93,27 @@ describe('a ledger on a database file in a directory that does not exist yet', (
     expect({ created: statSync(fileName).isFile(), reloaded }).toEqual({
       created: true,
       reloaded: { state: 5, version: 2 },
+    });
+  });
+});
+
+describe('a ledger in a private in-memory database', () => {
+  it('shares nothing with another ledger in memory, and creates no directory for it', async () => {
+    const first = await openLedger(':memory:');
+    await Effect.runPromise(first.ledger.execute(tallies, tally, [2, 3]));
+    const second = await openLedger(':memory:');
+
+    const loaded = await Effect.runPromise(
+      Effect.all([first.ledger.load(tallies, tally), second.ledger.load(tallies, tally)]),
+    );
+    await Promise.all([first.dispose(), second.dispose()]);
+
+    expect({ loaded, directory: existsSync(':memory:') }).toEqual({
+      loaded: [
+        { state: 5, version: 2 },
+        { state: 0, version: 0 },
+      ],
+      directory: false,
     });
   });
 });

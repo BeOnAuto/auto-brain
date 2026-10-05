@@ -50,7 +50,7 @@ describe('readSettings', () => {
       port: 8080,
       allowedOrigins: [],
       apiKeys: undefined,
-      ledgerFile: 'data/ledger.db',
+      ledger: { store: 'sqlite', file: 'data/ledger.db' },
       localMode: false,
       logFormat: 'json',
     });
@@ -74,7 +74,7 @@ describe('readSettings', () => {
       port: 3000,
       allowedOrigins: ['https://app.example.com', 'http://localhost:5173', 'http://[::1]:3000'],
       apiKeys: [entry],
-      ledgerFile: '/data/ledger.db',
+      ledger: { store: 'sqlite', file: '/data/ledger.db' },
       localMode: true,
       logFormat: 'pretty',
       configFile: undefined,
@@ -89,7 +89,7 @@ describe('readSettings with empty values', () => {
     ).toMatchObject({
       allowedOrigins: [],
       apiKeys: undefined,
-      ledgerFile: 'data/ledger.db',
+      ledger: { store: 'sqlite', file: 'data/ledger.db' },
       localMode: false,
       logFormat: 'json',
     });
