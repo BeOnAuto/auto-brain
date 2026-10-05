@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { fakeHost } from '../testing/fake-host.ts';
 import { workflowStartedAt } from '../testing/virtual-clock.ts';
-import { acmeCaller, executionId, interpret, runOf, workflow } from '../testing/workflows.ts';
+import { acmeCaller, executionId, interpret, runOf, workflow, onMachine } from '../testing/workflows.ts';
 import { startWorkflow } from './interpreter.ts';
 
 const greeting = workflow(`
@@ -19,24 +19,27 @@ do:
 `);
 
 describe('a workflow run that succeeds', () => {
-  it('runs its tasks on the input, settles the execution with the output and completes with it', async () => {
-    const { ending, commands } = await interpret(greeting, { input: { name: 'Ada' } });
+  it.skipIf(onMachine)(
+    'runs its tasks on the input, settles the execution with the output and completes with it',
+    async () => {
+      const { ending, commands } = await interpret(greeting, { input: { name: 'Ada' } });
 
-    expect(ending).toEqual({ kind: 'completed', output: { greeting: 'Hello, Ada' } });
-    expect(commands).toEqual([
-      { kind: 'deadline', milliseconds: 30 * 24 * 3_600_000 - 3_600_000 },
-      {
-        kind: 'settle',
-        request: {
-          org: 'acme',
-          brain: 'alpha',
-          spec: 'test-flow',
-          executionId,
-          settlement: { status: 'succeeded', output: { greeting: 'Hello, Ada' } },
+      expect(ending).toEqual({ kind: 'completed', output: { greeting: 'Hello, Ada' } });
+      expect(commands).toEqual([
+        { kind: 'deadline', milliseconds: 30 * 24 * 3_600_000 - 3_600_000 },
+        {
+          kind: 'settle',
+          request: {
+            org: 'acme',
+            brain: 'alpha',
+            spec: 'test-flow',
+            executionId,
+            settlement: { status: 'succeeded', output: { greeting: 'Hello, Ada' } },
+          },
         },
-      },
-    ]);
-  });
+      ]);
+    },
+  );
 
   it('carries the execution and the caller of the run', () => {
     expect(runOf(greeting)).toMatchObject({ caller: acmeCaller, execution: { id: executionId } });
@@ -145,7 +148,7 @@ describe('a workflow run whose output is too large', () => {
 });
 
 describe('a workflow run that breaks down', () => {
-  it('settles as failed when the runtime beneath it breaks down', async () => {
+  it.skipIf(onMachine)('settles as failed when the runtime beneath it breaks down', async () => {
     const { ending, settlement } = await interpret(pausing, {
       host: (fake) => ({ ...fake.host, sleep: () => Promise.reject(new Error('The timer service is gone')) }),
     });

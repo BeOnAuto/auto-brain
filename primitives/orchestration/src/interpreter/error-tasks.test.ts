@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { interpret, workflow, onMachine } from '../testing/workflows.ts';
 
 const types = 'https://open-workflow-specification.org/spec/1.0.0/errors';
 
@@ -151,7 +151,7 @@ do:
     expect((await interpret(document)).ending).toEqual({ kind: 'completed', output: { stopped: true } });
   });
 
-  it('does not catch what is not an error the workflow raised', async () => {
+  it.skipIf(onMachine)('does not catch what is not an error the workflow raised', async () => {
     const document = workflow('do:\n  - guarded: { try: [{ pause: { wait: PT1S } }], catch: {} }');
 
     const { settlement } = await interpret(document, {

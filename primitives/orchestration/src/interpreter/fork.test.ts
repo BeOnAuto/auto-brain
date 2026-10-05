@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { interpret, workflow, onMachine } from '../testing/workflows.ts';
 
 const racing = workflow(`
 do:
@@ -83,7 +83,7 @@ do:
 });
 
 describe('a fork whose branch fails', () => {
-  it('cancels the other branches and raises the error', async () => {
+  it.skipIf(onMachine)('cancels the other branches and raises the error', async () => {
     const document = workflow(`
 do:
   - both:

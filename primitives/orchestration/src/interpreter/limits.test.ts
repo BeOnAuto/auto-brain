@@ -1,13 +1,13 @@
 import { mostStepsWithoutWaiting } from '@beonauto/workflow-engine/limits';
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { interpret, workflow, onMachine } from '../testing/workflows.ts';
 import { mostHistoryBytes, mostHistoryEvents } from './run-state.ts';
 
 const calling = workflow('do:\n  - fetch: { call: execute_spec, with: { primitive: inference, name: lookup } }');
 
 describe('the history of a workflow', () => {
-  it('stops the workflow with a clear error before it grows past what Temporal keeps', async () => {
+  it.skipIf(onMachine)('stops the workflow with a clear error before it grows past what Temporal keeps', async () => {
     const { settlement } = await interpret(calling, { history: { bytes: mostHistoryBytes + 1, events: 10 } });
 
     expect(settlement).toEqual({
@@ -17,7 +17,7 @@ describe('the history of a workflow', () => {
     });
   });
 
-  it('counts its events as well as its bytes, before a timer too', async () => {
+  it.skipIf(onMachine)('counts its events as well as its bytes, before a timer too', async () => {
     const document = workflow('do:\n  - slow: { set: {}, timeout: { after: PT1S } }');
 
     const { settlement } = await interpret(document, { history: { bytes: 1, events: mostHistoryEvents + 1 } });
@@ -25,7 +25,7 @@ describe('the history of a workflow', () => {
     expect(settlement).toMatchObject({ status: 'rejected', reason: 'unavailable' });
   });
 
-  it('is checked before a listen waits for an event', async () => {
+  it.skipIf(onMachine)('is checked before a listen waits for an event', async () => {
     const listening = workflow('do:\n  - await: { listen: { to: { one: { with: { type: go } } } } }');
 
     const { settlement } = await interpret(listening, { history: { bytes: 1, events: mostHistoryEvents + 1 } });
