@@ -1,0 +1,53 @@
+import { Effect, Schema } from 'effect';
+
+import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
+import { statement } from '../database/statement.ts';
+
+export const sweepsBeforeALeaseLapses = 3;
+
+const hostLeaseName = 'host';
+
+export type LeaseClaim =
+  | { readonly held: true }
+  | { readonly held: false; readonly holder: string; readonly until: number };
+
+export interface HostLease {
+  readonly holder: string;
+  readonly claimed: (now: number) => Effect.Effect<LeaseClaim, DatabaseFailed>;
+  readonly released: () => Effect.Effect<void, DatabaseFailed>;
+}
+
+const HolderRow = Schema.Struct({ holder: Schema.String });
+
+const LeaseRow = Schema.Struct({ holder: Schema.String, expires_at: WholeNumber });
+
+function currentHolderOf(database: HostDatabase): Effect.Effect<LeaseClaim, DatabaseFailed> {
+  return oneRowOf(
+    LeaseRow,
+    database.read(statement`SELECT holder, expires_at FROM workflow_leases WHERE name = ${hostLeaseName}`),
+  ).pipe(Effect.map(({ holder, expires_at: until }): LeaseClaim => ({ held: false, holder, until })));
+}
+
+export function hostLease(database: HostDatabase, holder: string, lastsMs: number): HostLease {
+  return {
+    holder,
+    claimed: (now) =>
+      rowsOf(
+        HolderRow,
+        database.write(
+          statement`INSERT INTO workflow_leases (name, holder, expires_at) VALUES (${hostLeaseName}, ${holder}, ${now + lastsMs})
+            ON CONFLICT (name) DO UPDATE SET holder = excluded.holder, expires_at = excluded.expires_at
+            WHERE workflow_leases.holder = excluded.holder OR workflow_leases.expires_at < ${now}
+            RETURNING holder`,
+        ),
+      ).pipe(
+        Effect.flatMap((rows) =>
+          rows.length > 0 ? Effect.succeed<LeaseClaim>({ held: true }) : currentHolderOf(database),
+        ),
+      ),
+    released: () =>
+      Effect.asVoid(
+        database.write(statement`DELETE FROM workflow_leases WHERE name = ${hostLeaseName} AND holder = ${holder}`),
+      ),
+  };
+}

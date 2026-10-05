@@ -9,7 +9,7 @@ import { Effect, Function, Schema } from 'effect';
 import type { DatabaseSettings } from './src/database/host-databases.ts';
 import { openWorkflowHost, type WorkflowHost } from './src/host/workflow-host.ts';
 
-const [settingsText = '', mode = '', settlementsFile = ''] = process.argv.slice(2);
+const [settingsText = '', mode = '', settlementsFile = '', sweepEveryMs = '20'] = process.argv.slice(2);
 
 const settings: DatabaseSettings = Schema.decodeUnknownSync(
   Schema.fromJsonString(
@@ -73,7 +73,7 @@ const host = await openWorkflowHost({
     lostConnection: Function.constVoid,
     note: () => Effect.void,
   },
-  sweepEveryMs: 20,
+  sweepEveryMs: Number(sweepEveryMs),
   mostCallsAtOnce: 1,
 });
 

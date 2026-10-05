@@ -25,6 +25,7 @@ export interface HostedOptions {
   readonly clock?: HostClock;
   readonly sweepEveryMs?: number;
   readonly ledgerDown?: () => boolean;
+  readonly holder?: string;
 }
 
 const answeredWithNull = (): Effect.Effect<CallResult> => Effect.succeed({ status: 'succeeded', output: null });
@@ -48,6 +49,7 @@ export async function hostedOn(settings: DatabaseSettings, options: HostedOption
     sweepEveryMs: options.sweepEveryMs ?? 50,
     mostCallsAtOnce: 4,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
+    ...(options.holder === undefined ? {} : { holder: options.holder }),
   });
   onTestFinished(() => host.stop());
   return {

@@ -5,6 +5,7 @@ import { describe, onTestFinished } from 'vitest';
 
 import { failureSuite } from '../testing/failure-suite.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
+import { leaseSuite } from '../testing/lease-suite.ts';
 import { longRunSuite } from '../testing/long-run-suite.ts';
 import { portSuite } from '../testing/port-suite.ts';
 import { runSuite } from '../testing/run-suite.ts';
@@ -51,5 +52,9 @@ describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
 
   describe('killed while it dispatches, then started again', () => {
     failureSuite(onPostgreSQL);
+  });
+
+  describe('one of two hosts on one database', () => {
+    leaseSuite(onPostgreSQL);
   });
 });

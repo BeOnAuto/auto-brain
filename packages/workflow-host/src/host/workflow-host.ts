@@ -1,22 +1,28 @@
 import type { Conflict } from '@beonauto/operations';
 import type { ReceivedEvent, RunState } from '@beonauto/workflow-engine';
-import { Effect, Function } from 'effect';
+import type { Effect } from 'effect';
 
 import { openHostDatabase, type DatabaseSettings } from '../database/host-databases.ts';
 import { systemClock, type HostClock } from '../loop/host-clock.ts';
-import { startLoop } from '../loop/host-loop.ts';
 import { runIdOf, type RunAddress } from '../runs/run-address.ts';
-import { hostEngineOn, type EngineOptions } from './host-engine.ts';
 import { gate, type HostStopped } from './host-gate.ts';
-import { runRequests, type DeliveryAnswer, type RunStart, type StartAnswer } from './run-requests.ts';
+import type { ServingOptions } from './host-serving.ts';
+import { standingOn } from './host-standing.ts';
+import {
+  runRequests,
+  type DeliveryAnswer,
+  type HostElsewhere,
+  type RunStart,
+  type StartAnswer,
+} from './run-requests.ts';
 
-export interface HostOptions extends Omit<EngineOptions, 'clock'> {
+export interface HostOptions extends Omit<ServingOptions, 'clock'> {
   readonly database: DatabaseSettings;
-  readonly sweepEveryMs: number;
   readonly clock?: HostClock;
+  readonly holder?: string;
 }
 
-type Refusal = Conflict | HostStopped;
+type Refusal = Conflict | HostElsewhere | HostStopped;
 
 export interface WorkflowHost {
   readonly start: (run: RunAddress, start: RunStart) => Effect.Effect<StartAnswer, Refusal>;
@@ -28,26 +34,12 @@ export interface WorkflowHost {
 export async function openWorkflowHost(options: HostOptions): Promise<WorkflowHost> {
   const clock = options.clock ?? systemClock;
   const database = await openHostDatabase(options.database, options.reports.lostConnection);
-  const alarm: { armed: (dueAt: number) => void } = { armed: Function.constVoid };
-  const host = hostEngineOn(database, { ...options, clock }, (dueAt) => {
-    alarm.armed(dueAt);
-  });
-  const loop = startLoop({
-    clock,
-    timers: host.timers,
-    engine: host.engine,
-    fire: ({ runId, timerId }, at) => host.submitted({ kind: 'timer_fired', executionId: runId, at, timerId }),
-    resume: host.executor.resume,
-    trouble: options.reports.trouble,
-    sweepEveryMs: options.sweepEveryMs,
-  });
-  alarm.armed = loop.armed;
+  const standing = await standingOn(database, { ...options, clock }, options.holder);
   const { guarded, closed } = gate();
-  const runs = runRequests({ database, clock, engine: host });
+  const runs = runRequests({ database, clock, serving: standing.serving });
   const stopped = async (): Promise<void> => {
     await closed();
-    await loop.stop();
-    await Effect.runPromise(host.executor.stop());
+    await standing.stop();
     await database.close();
   };
   const stopping: { done?: Promise<void> } = {};

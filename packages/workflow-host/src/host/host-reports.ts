@@ -5,6 +5,8 @@ import type { Trouble } from '../calls/host-executor.ts';
 import type { RunAddress } from '../runs/run-address.ts';
 
 export type HostNote =
+  | { readonly kind: 'standing_by'; readonly holder: string; readonly until: number }
+  | { readonly kind: 'took_over'; readonly holder: string }
   | {
       readonly kind: 'settle_backing_off';
       readonly run: RunAddress;

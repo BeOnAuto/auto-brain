@@ -51,4 +51,9 @@ export const hostTables: readonly Statement[] = [
     attempts INTEGER NOT NULL DEFAULT 0,
     last_attempt_at BIGINT
   )`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_leases (
+    name TEXT NOT NULL PRIMARY KEY,
+    holder TEXT NOT NULL,
+    expires_at BIGINT NOT NULL
+  )`,
 ];
