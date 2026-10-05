@@ -50,6 +50,7 @@ export interface PrimitiveDefinition<Parsed> {
   ) => Effect.Effect<Executed, PrimitiveRejection>;
   readonly whenCancelled?: WhenCancelled;
   readonly longestExecutionMs?: number;
+  readonly reachesOutside?: boolean;
 }
 
 export interface PreparedSpec {
@@ -66,6 +67,7 @@ export interface Primitive {
   readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
   readonly longestExecutionMs: number;
+  readonly reachesOutside: boolean;
   readonly prepare: (source: string) => Effect.Effect<PreparedSpec, InvalidInput>;
 }
 
@@ -77,7 +79,7 @@ export function isPrimitiveName(name: string): boolean {
 
 export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>): Primitive {
   const { name, title, description, noun, describeOutput, mediaType, parse, summarize, execute } = definition;
-  const { whenCancelled = 'stop', longestExecutionMs = defaultLongestExecutionMs } = definition;
+  const { whenCancelled = 'stop', longestExecutionMs = defaultLongestExecutionMs, reachesOutside = false } = definition;
   if (!isPrimitiveName(name)) {
     throw new Error(`The primitive name ${name} is malformed`);
   }
@@ -89,6 +91,7 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
     describeOutput,
     mediaType,
     longestExecutionMs,
+    reachesOutside,
     prepare: (source) =>
       parse(source).pipe(
         Effect.map((parsed) => ({

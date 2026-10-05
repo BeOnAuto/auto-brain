@@ -2,7 +2,7 @@ import { InvalidInput } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { definePrimitive, type ExecutionContext, type PrimitiveDefinition } from '../index.ts';
+import { defineExecuteSpec, definePrimitive, type ExecutionContext, type PrimitiveDefinition } from '../index.ts';
 
 const parseWords = (source: string) =>
   source.trim() === ''
@@ -71,5 +71,18 @@ describe('a primitive', () => {
     expect(await Effect.runPromise(Effect.flip(definePrimitive(words).prepare('  ')))).toEqual(
       new InvalidInput({ detail: 'The document is empty', issues: [{ detail: 'Line 1 is empty', pointer: '' }] }),
     );
+  });
+});
+
+describe('the reach of a primitive', () => {
+  it('reaches systems outside the server only when it says so, and so does execute_spec when one of its primitives does', () => {
+    const local = definePrimitive(words);
+    const outside = definePrimitive({ ...words, name: 'lookup', reachesOutside: true });
+
+    expect([local.reachesOutside, outside.reachesOutside]).toEqual([false, true]);
+    expect([
+      defineExecuteSpec([local]).registration.reachesOutside,
+      defineExecuteSpec([local, outside]).registration.reachesOutside,
+    ]).toEqual([false, true]);
   });
 });

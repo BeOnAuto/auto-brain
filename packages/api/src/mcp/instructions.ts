@@ -33,6 +33,10 @@ const orientation: readonly Orientation[] = [
     ].join(' '),
   },
   {
+    when: serves('list_models'),
+    text: 'list_models lists the models this server can call.',
+  },
+  {
     when: serves('execute_spec', 'get_execution'),
     text: [
       'execute_spec runs a spec and records the run as an execution.',

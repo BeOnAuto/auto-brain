@@ -6,7 +6,7 @@ import type { Fetch } from './sdk-model.ts';
 
 export interface ProviderMessageReport {
   readonly provider: string;
-  readonly model: string;
+  readonly model: string | null;
   readonly status: number | null;
   readonly message: string;
   readonly execution_id: string | null;
@@ -16,7 +16,7 @@ export type ReportProviderMessage = (report: ProviderMessageReport) => Effect.Ef
 
 export interface OperatorHintReport {
   readonly provider: string;
-  readonly model: string;
+  readonly model: string | null;
   readonly hint: string;
   readonly execution_id: string | null;
 }

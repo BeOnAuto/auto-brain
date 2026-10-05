@@ -49,12 +49,12 @@ All three sit behind the same chain as every other path. Before the SDK runs, a 
 
 **Tools.** Each operation is one tool: its `name`, `title` and `description` are the operation's, and its `inputSchema` and `outputSchema` are the operation's JSON Schemas (draft 2020-12), each self-contained with an object at the root and its definitions under `$defs`. The annotations derive from the operation:
 
-| Annotation        | Value                                                     |
-| ----------------- | --------------------------------------------------------- |
-| `readOnlyHint`    | `true` for a query, `false` for a command                 |
-| `destructiveHint` | `false`                                                   |
-| `idempotentHint`  | `true` when the operation's HTTP method is `GET` or `PUT` |
-| `openWorldHint`   | `false`                                                   |
+| Annotation        | Value                                                                                                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readOnlyHint`    | `true` for a query, `false` for a command                                                                                                                                                                                 |
+| `destructiveHint` | `false`                                                                                                                                                                                                                   |
+| `idempotentHint`  | `true` when the operation's HTTP method is `GET` or `PUT`                                                                                                                                                                 |
+| `openWorldHint`   | `true` when the operation's definition says it reaches systems outside the server (`reachesOutside`), as `list_models` and an `execute_spec` that serves inference do, since they call model providers; `false` otherwise |
 
 **Calls.** On a scoped endpoint the org, and the brain of a brain endpoint, come from the URL, and the arguments are the whole input; on `/mcp` the org is the caller's own and the brain an argument. The input is decoded with the `json` encoding. A call goes through the same dispatcher and the same `settle` as an HTTP request, with the caller in the URL's org.
 
@@ -63,7 +63,7 @@ All three sit behind the same chain as every other path. Before the SDK runs, a 
 | succeeded                   | `structuredContent` is the output; the first text content says in plain words what happened, and the second is the same output as JSON                                             |
 | rejected, failed, cancelled | `isError: true`; the first text content says in plain words what could not be done, and the second is the problem document HTTP would answer with, as JSON; no `structuredContent` |
 
-The plain words are for the person an agent works for, so they name things as that person knows them, and carry no ids, versions, formats or status codes: a spec of the inference primitive is a reason function, one of the orchestration primitive a workflow, and an execution a run. The tools still take the primitive's name, `inference` or `orchestration`, and each primitive's description opens by saying which word goes with it, so an agent knows that a person's reason function is a spec of `inference`, and that its prompt is the spec's document. Each operation says them itself, through the `plainLanguage` of its definition: a `task` and an `attempt` that name what it does, and an `outcome` from its output; each primitive gives the noun for its specs and a sentence for what one of its runs gave back. An endpoint refuses, when it is mounted, to serve an operation without them. The words for what could not be done come from one place, `unsuccessfulWords` in `@beonauto/operations`, by the reason of the rejection and its `kind`, when it has one (`taken`, `retired`, `concurrent_change` or `unworkable` for a conflict, `model_not_offered` for `unavailable`): a rejection the agent can correct says so; one only whoever runs the server can resolve says that, and that nothing on the person's side needs to change; a reason function whose prompt names a model of a provider the server is not set up for, while it can use others, is `model_not_offered`, and its words say that the prompt can name a model from one of those instead, which the details list; one about the request names what is missing, not allowed, taken or retired; and an unexpected failure gives the reference to quote. HTTP answers are unchanged.
+The plain words are for the person an agent works for, so they name things as that person knows them, and carry no ids, versions, formats or status codes: a spec of the inference primitive is a reason function, one of the orchestration primitive a workflow, and an execution a run. The tools still take the primitive's name, `inference` or `orchestration`, and each primitive's description opens by saying which word goes with it, so an agent knows that a person's reason function is a spec of `inference`, and that its prompt is the spec's document. Each operation says them itself, through the `plainLanguage` of its definition: a `task` and an `attempt` that name what it does, and an `outcome` from its output; each primitive gives the noun for its specs and a sentence for what one of its runs gave back. An endpoint refuses, when it is mounted, to serve an operation without them. The words for what could not be done come from one place, `unsuccessfulWords` in `@beonauto/operations`, by the reason of the rejection and its `kind`, when it has one (`taken`, `retired`, `concurrent_change` or `unworkable` for a conflict, `model_not_offered` for `unavailable`): a rejection the agent can correct says so; one only whoever runs the server can resolve says that, and that nothing on the person's side needs to change; a reason function whose prompt names a model the server does not offer is `model_not_offered`, and its words say so and, from the rejection's `because`, why: its provider is not set up on this server while others are (`provider_not_configured`), or it is outside the models whoever runs the server allows (`model_not_allowed`); either way the prompt can name one of the models `list_models` shows instead; one about the request names what is missing, not allowed, taken or retired; and an unexpected failure gives the reference to quote. HTTP answers are unchanged.
 
 So invalid arguments are a tool result with `isError` and an `invalid_input` problem pointing at each field, as the protocol asks, and an agent can correct them. The SDK's parsing of the arguments drops one named `__proto__`; each endpoint reads the request body before the SDK, within the same 1 MiB, and puts such an argument back before the call is dispatched, so it is rejected as an excess field, `invalid_input` at `/__proto__`, as over HTTP. A tool the endpoint does not list is a JSON-RPC error, `-32602`, from the SDK. A call still running when the server stops gets a `503` `unavailable` problem. A tool that throws instead of settling is reported as an incident, as an HTTP request would be, and answered with the `500` `internal` problem, so the SDK never puts an error message of its own in the result.
 
@@ -71,9 +71,9 @@ So invalid arguments are a tool result with `isError` and an `invalid_input` pro
 
 The instructions of `/mcp` are generated from the tools it serves, so they say nothing of a tool that is not there. For the server with inference and workflows they read:
 
-> This server runs the business brains of your org. Start with list_brains to see them, or create_brain to make one. A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do. The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written. execute_spec runs a spec and records the run as an execution. It may answer with status started while the work goes on; then poll get_execution until the status changes. A workflow waiting for an event receives it through send_execution_event. Every tool that works inside a brain takes the brain's id as brain. A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.
+> This server runs the business brains of your org. Start with list_brains to see them, or create_brain to make one. A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do. The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written. list_models lists the models this server can call. execute_spec runs a spec and records the run as an execution. It may answer with status started while the work goes on; then poll get_execution until the status changes. A workflow waiting for an event receives it through send_execution_event. Every tool that works inside a brain takes the brain's id as brain. A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.
 
-Without workflows, the sentence on `send_execution_event` is left out. The scoped endpoints keep their own instructions, `orgEndpointInstructions` and `brainEndpointInstructions`:
+Without workflows, the sentence on `send_execution_event` is left out, and without `list_models` the sentence on it. The scoped endpoints keep their own instructions, `orgEndpointInstructions` and `brainEndpointInstructions`:
 
 > This MCP endpoint serves one org of auto-brain, the runtime for business brains. Its tools are the operations on the org as a whole, such as creating, listing, reading, updating and retiring its brains. Each tool is one operation: its description says what it does, its input schema what it takes and its output schema what it returns. A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.
 
@@ -88,6 +88,46 @@ Without workflows, the sentence on `send_execution_event` is left out. The scope
 | tool result with `isError`         | the operation did not succeed: a rejection, a failure or a cancellation, with plain words first and the problem document as text                                                                                                                                                                                                                                                                                         |
 
 The SDK reports the errors it answers with JSON-RPC to `reportError`, which the server logs as a warning on stderr. Nothing the SDK does writes to stdout.
+
+## The list of models
+
+The server serves `list_models`, an org query of [`@beonauto/inference`](../../primitives/inference/README.md#listing-the-models), like any other operation: `GET /v1/orgs/{org}/models`, with an optional `provider` in the query string, and the read-only tool `list_models` on `/mcp` and `/orgs/{org}/mcp`, whose output schema is self-contained. It answers in the shape of the OpenAI API's list of models, which gateways such as LiteLLM, Portkey and Vercel's serve too:
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "anthropic/claude-sonnet-4-5-20250929",
+      "object": "model",
+      "created": 1759104000,
+      "owned_by": "anthropic",
+      "name": "Claude Sonnet 4.5",
+      "context_window": 200000,
+      "max_tokens": 64000
+    },
+    {
+      "id": "house/fast",
+      "object": "model",
+      "created": 0,
+      "owned_by": "gateway",
+      "resolved_to": "gateway/llama-3.3-70b"
+    },
+    {
+      "id": "openai/*",
+      "object": "model",
+      "created": 0,
+      "owned_by": "gateway",
+      "resolved_to": "gateway/openai/*",
+      "pattern": true
+    }
+  ],
+  "catalog_status": "complete",
+  "listed_at": "2026-10-01T09:30:00.000Z"
+}
+```
+
+`id` is the model as a spec names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `resolved_to` only for an alias, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
 
 ## Lifecycle
 

@@ -210,7 +210,8 @@ jobs:
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
-          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 12
+          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 13
+          grep --quiet '"name":"list_models"' all-tools.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_specs","arguments":{"brain":"smoke","primitive":"inference"}}}' > specs.txt
           grep --quiet '"structuredContent":{"specs":\[\]}' specs.txt
           docker stop mcp

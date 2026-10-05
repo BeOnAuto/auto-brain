@@ -14,19 +14,19 @@ describe('the description of inference on a server', () => {
 
   it('names the one gateway it calls models through, and how a model is written with it', () => {
     expect(inferenceDescriptionFor({ providers: ['gateway'], aliases: [] })).toContain(
-      `${calls} This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>. A spec document is`,
+      `${calls} This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>. list_models lists the models this server can call. A spec document is`,
     );
   });
 
   it('names every provider it calls models through', () => {
     expect(inferenceDescriptionFor({ providers: ['anthropic', 'gateway'], aliases: [] })).toContain(
-      'This server calls models through anthropic, gateway: write model as <provider>/<model id>, with a model id that provider serves, for example anthropic/<model id> or gateway/<model id>. A spec document is',
+      'This server calls models through anthropic, gateway: write model as <provider>/<model id>, with a model id that provider serves, for example anthropic/<model id> or gateway/<model id>. list_models lists the models this server can call. A spec document is',
     );
   });
 
   it('names the models its operator named, as a spec may give them', () => {
     expect(inferenceDescriptionFor({ providers: ['gateway'], aliases: ['house/fast', 'house/smart'] })).toContain(
-      'for example gateway/<model id>. Its operator also named these models, which a spec may give as its model as they are: house/fast, house/smart. A spec document is',
+      'for example gateway/<model id>. Its operator also named these models, which a spec may give as its model as they are: house/fast, house/smart. list_models lists the models this server can call. A spec document is',
     );
   });
 
@@ -34,12 +34,12 @@ describe('the description of inference on a server', () => {
     expect(
       inferenceDescriptionFor({ providers: ['gateway'], aliases: ['house/fast', 'anthropic/*', 'openai/gpt-*'] }),
     ).toContain(
-      'for example gateway/<model id>. Its operator also named these models, which a spec may give as its model: house/fast, anthropic/*, openai/gpt-*. In a name that ends in *, the * stands for any model id, so a spec may give anthropic/<model id> or openai/gpt-<model id>. A spec document is',
+      'for example gateway/<model id>. Its operator also named these models, which a spec may give as its model: house/fast, anthropic/*, openai/gpt-*. In a name that ends in *, the * stands for any model id, so a spec may give anthropic/<model id> or openai/gpt-<model id>. list_models lists the models this server can call. A spec document is',
     );
   });
 
   it('says so when no provider is configured', () => {
-    expect(inferenceDescriptionFor({ providers: [], aliases: ['house/fast'] })).toContain(
+    expect(inferenceDescriptionFor({ providers: [], aliases: [] })).toContain(
       `${calls} No model provider is configured on this server yet, so a spec cannot run until its operator configures one. A spec document is`,
     );
   });
@@ -47,6 +47,17 @@ describe('the description of inference on a server', () => {
   it('keeps the example and the rules of the document whatever the server offers', () => {
     expect(inferenceDescriptionFor({ providers: [], aliases: [] })).toContain(
       `\n\n${inferenceExample}\n\nFront matter:`,
+    );
+  });
+});
+
+describe('the description of inference on a server where specs may name only aliases', () => {
+  it('names only the models its operator named when no provider may be named directly', () => {
+    expect(inferenceDescriptionFor({ providers: [], aliases: ['house/fast', 'anthropic/*'] })).toContain(
+      `${calls} This server calls models only by the names its operator gave them, which a spec may give as its model: house/fast, anthropic/*. In a name that ends in *, the * stands for any model id, so a spec may give anthropic/<model id>. list_models lists the models this server can call. A spec document is`,
+    );
+    expect(inferenceDescriptionFor({ providers: [], aliases: ['house/fast'] })).toContain(
+      'This server calls models only by the names its operator gave them, which a spec may give as its model as they are: house/fast. list_models',
     );
   });
 });

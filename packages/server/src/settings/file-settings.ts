@@ -1,6 +1,11 @@
 import { fileSetting, type FileSetting } from '@beonauto/config';
 import { ApiKeysSchema } from '@beonauto/identity';
-import { ModelAliasesSchema, ModelGatewaysSchema } from '@beonauto/inference';
+import {
+  AllowedModelsSchema,
+  DeclaredModelsSchema,
+  ModelAliasesSchema,
+  ModelGatewaysSchema,
+} from '@beonauto/inference';
 import { Schema } from 'effect';
 
 import { Origin } from './origin.ts';
@@ -37,6 +42,22 @@ export const fileSettings: readonly FileSetting[] = [
     ModelAliasesSchema.annotate({
       description:
         'Model references a spec may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it',
+    }),
+    asJson,
+  ),
+  fileSetting(
+    'DECLARED_MODELS',
+    DeclaredModelsSchema.annotate({
+      description:
+        'The models list_models shows for bedrock, bedrock-anthropic, azure, vertex and vertex-anthropic, which do not list their own, and for a gateway whose list cannot be read, keyed by the provider prefix. DECLARED_MODELS wins over it',
+    }),
+    asJson,
+  ),
+  fileSetting(
+    'ALLOWED_MODELS',
+    AllowedModelsSchema.annotate({
+      description:
+        'The only model references a spec may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it',
     }),
     asJson,
   ),

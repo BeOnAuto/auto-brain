@@ -8,11 +8,15 @@ export type {
   ReportProviderMessage,
 } from './adapter/model-access-options.ts';
 export type { AccessTokenSource, AwsCredentials, CredentialSources } from './adapter/credential-sources.ts';
+export { defineListModels } from './catalog/list-models.ts';
+export type { ModelCatalog } from './catalog/catalog-listing.ts';
+export { ModelListSchema, type ModelEntry, type ModelList } from './catalog/model-list.ts';
 export { Cancelled } from './failure/cancelled.ts';
 export { ContentRefused } from './failure/content-refused.ts';
 export { CredentialsRejected } from './failure/credentials-rejected.ts';
 export type { FailureIssue } from './failure/failure-issue.ts';
 export type { ModelFailure } from './failure/model-failure.ts';
+export { ModelNotAllowed } from './failure/model-not-allowed.ts';
 export { OutputInvalid } from './failure/output-invalid.ts';
 export { ProviderNotConfigured } from './failure/provider-not-configured.ts';
 export { ProviderUnavailable } from './failure/provider-unavailable.ts';
@@ -55,6 +59,7 @@ export {
 export type { SchemaIssue } from './schema/json-bounds.ts';
 export type { PortabilityIssue } from './schema/schema-portability.ts';
 export { ModelAliasesSchema } from './settings/alias-settings.ts';
+export { AllowedModelsSchema, DeclaredModelsSchema } from './settings/catalog-settings.ts';
 export { ModelGatewaysSchema } from './settings/gateway-settings.ts';
 export {
   readModelSettings,

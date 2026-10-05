@@ -1,3 +1,4 @@
+export { anthropicModels, vercelGatewayModels } from './model-lists.ts';
 export { jsonResult, textResult, unknownUsage } from './model-results.ts';
 export {
   gatewayError,
@@ -6,6 +7,7 @@ export {
   recordingReporter,
   type RecordingReporter,
 } from './provider-errors.ts';
+export { jsonResponse, recordingFetch, type RecordingFetch } from './recording-fetch.ts';
 export {
   answers,
   scriptedLanguageModel,

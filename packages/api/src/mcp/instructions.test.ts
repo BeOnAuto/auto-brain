@@ -22,7 +22,7 @@ const closing =
 describe('catalogInstructionsFor', () => {
   it('orients an assistant to brains, specs, executions and workflows when all are served', () => {
     const instructions = catalogInstructionsFor({
-      orgTools: brainTools,
+      orgTools: [...brainTools, 'list_models'],
       brainTools: [...specTools, 'send_execution_event'],
     });
 
@@ -32,6 +32,7 @@ describe('catalogInstructionsFor', () => {
         'Start with list_brains to see them, or create_brain to make one.',
         'A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do.',
         "The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written.",
+        'list_models lists the models this server can call.',
         'execute_spec runs a spec and records the run as an execution.',
         'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
         'A workflow waiting for an event receives it through send_execution_event.',
@@ -44,6 +45,10 @@ describe('catalogInstructionsFor', () => {
 
   it('says nothing of workflows when they are not offered', () => {
     expect(catalogInstructionsFor({ orgTools: brainTools, brainTools: specTools })).not.toContain('workflow');
+  });
+
+  it('says nothing of the models when list_models is not offered', () => {
+    expect(catalogInstructionsFor({ orgTools: brainTools, brainTools: specTools })).not.toContain('list_models');
   });
 
   it('says only what holds for every server when it serves nothing', () => {

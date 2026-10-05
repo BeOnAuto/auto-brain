@@ -9,8 +9,9 @@ The first half of this document covers how models are called and configured; the
 A spec names its model as `provider/model`, for example `anthropic/claude-sonnet-4-5` or `bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0`.
 
 1. If the aliases (`model_aliases` in the configuration file, or `MODEL_ALIASES`) map the reference to another one, the other one is used: an exact alias first, then the wildcard alias with the longest prefix, such as `anthropic/*` (see [Model aliases](#model-aliases)). An alias resolves in one hop.
-2. The reference is split at its first `/`. The part before it is the provider, everything after it is the model id the provider receives, unchanged (Bedrock ARNs keep their own `/`).
-3. The provider must be configured (see the table below). A reference without a `/`, or with nothing on either side of it, is `spec_invalid` and nothing is sent.
+2. The reference is split at its first `/`. The part before it is the provider, everything after it is the model id the provider receives, unchanged (Bedrock ARNs keep their own `/`). A reference without a `/`, or with nothing on either side of it, is `spec_invalid` and nothing is sent.
+3. When `allowed_models` is set, the reference as the spec writes it, or the reference an alias sends it to, must be one of its entries, or start with the part before the `*` of one of them; otherwise it fails as `model_not_allowed` and nothing is sent (see [Listing the models](#listing-the-models)).
+4. The provider must be configured (see the table below).
 
 There is no default provider. A model id without a provider never reaches a default gateway: the package replaces the AI SDK's global default provider with one that has no models.
 
@@ -191,6 +192,124 @@ For a gateway that names models without the provider's prefix, the target is `ga
 
 The description of inference that the spec tools carry lists the alias names as they are written, `anthropic/*` included, and says that a spec may give any `anthropic/<model id>`, so an agent writing a spec sees them.
 
+## Listing the models
+
+`list_models` lists the models this server can call, so an agent can name one that works instead of guessing. It is an org query: `GET /v1/orgs/{org}/models` over HTTP, and the read-only tool `list_models` on `/mcp` and `/orgs/{org}/mcp`, for any caller with `org:read`. `defineListModels(catalog)` defines it from the `catalog` that `makeModelAccess` returns. Its optional input `provider`, a provider prefix such as `anthropic` or a gateway's name, lists only what that provider serves and asks no other provider.
+
+It answers in the shape of the OpenAI API's list of models, the shape OpenAI, Azure, LiteLLM, Portkey and Vercel's gateway answer in, with two fields of its own at the top:
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "anthropic/claude-sonnet-4-5-20250929",
+      "object": "model",
+      "created": 1759104000,
+      "owned_by": "anthropic",
+      "name": "Claude Sonnet 4.5",
+      "context_window": 200000,
+      "max_tokens": 64000
+    },
+    {
+      "id": "gateway/anthropic/claude-haiku-4-5",
+      "object": "model",
+      "created": 1760486400,
+      "owned_by": "gateway",
+      "name": "Claude Haiku 4.5",
+      "context_window": 200000,
+      "max_tokens": 64000
+    },
+    {
+      "id": "house/fast",
+      "object": "model",
+      "created": 0,
+      "owned_by": "gateway",
+      "resolved_to": "gateway/anthropic/claude-haiku-4-5"
+    },
+    {
+      "id": "openai/*",
+      "object": "model",
+      "created": 0,
+      "owned_by": "gateway",
+      "resolved_to": "gateway/openai/*",
+      "pattern": true
+    },
+    { "id": "bedrock/*", "object": "model", "created": 0, "owned_by": "bedrock", "pattern": true }
+  ],
+  "catalog_status": "complete",
+  "listed_at": "2026-10-01T09:30:00.000Z"
+}
+```
+
+| Field            | Meaning                                                                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`             | The model as a spec names it: `<provider>/<model id>`, or an alias as its operator wrote it                                                           |
+| `created`        | When the provider released or added the model, in seconds since 1970, as the provider says; 0 when it does not                                        |
+| `owned_by`       | The provider prefix that serves the model; for an alias, the prefix of its target. Never the owner a provider reports, which can name an organisation |
+| `name`           | The provider's name for the model, only when it reports one                                                                                           |
+| `context_window` | The most input tokens, only when the provider reports it                                                                                              |
+| `max_tokens`     | The most output tokens, only when the provider reports it                                                                                             |
+| `resolved_to`    | For an alias, the reference it is sent to; left out when that is a Bedrock ARN, which names an account and a region                                   |
+| `pattern`        | `true` for an id that ends in `*`, which stands for any model id: a wildcard alias, or a provider that lists nothing and has no declared models       |
+| `catalog_status` | `partial` when a provider could not be asked, so its models are missing or are its last list; `complete` otherwise                                    |
+| `listed_at`      | When the oldest list in the answer was read from its provider; the time of the answer when none was read                                              |
+
+The entries are sorted by `id`, each `id` once. A model an alias sends elsewhere is left out, since a spec that names it reaches the alias: with `anthropic/*` sent to a gateway, the models Anthropic lists are not listed, and `anthropic/*` is.
+
+Its plain words name the models by the name their provider gives, or by the last part of the id, twenty at most, adding the provider to a name two providers share and naming by the id a name one provider repeats, and say which providers take any model id and when the list may be incomplete: `This server can call 6 models through anthropic and gateway: Claude Haiku 4.5 (anthropic), Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5 (gateway), and fast.`
+
+### Where each list comes from
+
+Each list is read with the credentials and endpoint the server calls the provider with, through the same `fetch`, so `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS` apply. A page is read within 10 seconds and 8 MiB, in one pass however small the pieces it arrives in, and a list of more than 10 pages is not read.
+
+| Provider                                                              | List                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `anthropic`                                                           | `GET <base URL>/models?limit=1000` and its next pages, with the key or token and `anthropic-version: 2023-06-01`; `display_name`, `created_at`, `max_input_tokens` and `max_tokens` give the details                                                                                                   |
+| `openai`                                                              | `GET <base URL>/models` with the key, without the ids that by OpenAI's naming are not for a conversation: fine-tunes (`ft:`), embeddings, audio, speech and transcription, images, video, moderation, realtime, and the legacy completion models `babbage-002` and `davinci-002`                       |
+| `google`                                                              | `GET https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000` and its next pages, with the key in `x-goog-api-key`, keeping the models whose `supportedGenerationMethods` include `generateContent`; `displayName`, `inputTokenLimit` and `outputTokenLimit` give the details            |
+| a gateway                                                             | `GET <base_url>/models` with its key, headers and query parameters; an entry with a `type` other than `language`, as Vercel's gateway marks embedding and image models, is left out. When the list cannot be read, the models declared for the gateway are listed instead, and the answer is `partial` |
+| `bedrock`, `bedrock-anthropic`, `azure`, `vertex`, `vertex-anthropic` | The models declared for it, or `<provider>/*` when none is. Their own list APIs show a catalogue rather than what the credential may call, and need permissions of their own                                                                                                                           |
+
+Every alias is listed by its own name, unless the provider of its target is not configured: a spec cannot call it then, and the description of inference and the instructions of `/mcp` leave it out too. Each entry of a list is read on its own, so an entry with a field of an unexpected type, or null, does not cost the others: an entry without a text id is left out, and a detail that is not of its type is taken as not reported. An entry whose id is empty, longer than 256 characters, holds a space, a control character or a `*`, or is a Bedrock ARN is left out, the same rule declared models meet; a lookalike of another id, such as one with a Cyrillic letter, is kept, since it is what a spec would have to write. A name longer than 100 characters or on more than one line is left out, and the entry kept.
+
+### Declared models
+
+`declared_models` in the [configuration file](../../README.md#configuring-a-model), or `DECLARED_MODELS`, which wins over it, names the models of a provider that does not list its own, and of a gateway whose list cannot be read, by provider prefix:
+
+```yaml
+declared_models:
+  bedrock:
+    - eu.anthropic.claude-sonnet-4-5-20250929-v1:0
+  azure:
+    - gpt-5-production
+  gateway:
+    - llama-3.3-70b
+```
+
+`DECLARED_MODELS='{"bedrock":["eu.anthropic.claude-sonnet-4-5-20250929-v1:0"],"azure":["gpt-5-production"]}'` says the same. Each model id is written as the provider receives it, 1 to 256 characters without spaces, control characters or a `*`, once per provider. The keys are `bedrock`, `bedrock-anthropic`, `azure`, `vertex`, `vertex-anthropic` and the names of the gateways; `anthropic`, `openai` and `google` list their own. A Bedrock ARN is refused, because it names an account and a region: give it an alias, which is listed by its own name. Any of these stops the start with `model_settings_invalid`.
+
+### Allowed models
+
+`allowed_models` in the configuration file, or `ALLOWED_MODELS` as a JSON list, which wins over it, names the only model references a spec may give. It is applied in one place for both of its uses: `list_models` shows only what it allows, and a spec that names anything else fails as `model_not_allowed` before any provider is called, which the spec operations answer as `unavailable` of the kind `model_not_offered` with `because: "model_not_allowed"`; its detail names the model, never the allow list, and its plain words point to `list_models`. A provider that is not configured, while others are, is answered with the same kind and `because: "provider_not_configured"`; the plain words say which.
+
+```yaml
+allowed_models:
+  - anthropic/*
+  - gateway/llama-3.3-70b
+  - house/fast
+```
+
+An entry is `provider/model`, or ends in a `*` that stands for any model id, as in an alias. It applies to the reference a spec names and to the reference that reference resolves to: an alias is allowed when its own name or its target is, and a target named directly only when it is allowed itself. A wildcard alias, or `<provider>/*`, is listed only when a wildcard allows every model it stands for. The description of inference and the instructions of `/mcp` name only the providers and aliases a spec may use under it. Without the setting every model is allowed. An empty list stops the start, and so does an entry that is not a reference, has an uppercase provider, a space or a control character, is a Bedrock ARN, is listed twice, or can match no configured provider and no alias, such as `There is no provider named mistral, nor an alias that mistral/large matches`.
+
+### How long a list is kept
+
+Each list is read when `list_models` first needs it and kept in memory for five minutes, the interval the AI SDK's gateway provider keeps its own for. Calls that arrive while it is read wait for the same read. When a list cannot be read again, its last list is served and the answer is `partial`, and the provider is not asked again for a minute, so that callers cannot make the server press a provider that is failing or limiting its rate; the first call after that minute asks again. Lists are kept per provider, and a catalog belongs to one model access whose settings never change, so a list read with one credential is never served for another. Nothing is read when a spec runs, and the settings are read when the server starts, so a changed setting takes effect at the next start.
+
+### What is never shown
+
+The answer and its plain words carry no key, token, base URL, header, query parameter, account, project, region or Bedrock ARN, no price, description or other field a provider adds, and no owner a provider reports. When a list cannot be read, the caller sees only `partial`. The operator gets why: an answer with an error status goes to `reportProviderMessage`, with `model: null` and the message bounded and with the secrets of the settings redacted, as for a call; a provider that cannot be reached, does not answer within 10 seconds, has a certificate this server does not trust, or answers with something that is not a list of models goes to `reportOperatorHint`, such as `The list of models of gateway could not be read: it could not be reached`.
+
 ## When a provider is not configured
 
 Nothing fails at start. A spec that names the provider fails with `provider_not_configured`, whose `detail`, the text its caller sees, names the providers that are configured:
@@ -207,7 +326,7 @@ Nothing fails at start. A spec that names the provider fails with `provider_not_
 
 A prefix nobody configures, such as `mistral`, says `There is no provider named mistral` and the same; with no provider configured, the detail says `No model provider is configured`. When any alias is set, the detail names the aliases after the providers, so the caller sees every reference that works: `openai is not configured. Configured providers: gateway. Aliases: anthropic/*`. `missing` stays on the failure for the code that handles it and never reaches the caller.
 
-An agent learns this before it writes a spec: the description of inference, which every spec tool carries, names the providers this server calls models through and how a model is written with them (`This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>.`), the alias names when any is set, with the references a wildcard alias accepts, or that no provider is configured. It cannot name the models of a provider: those are whatever the account behind the key serves. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
+An agent learns this before it writes a spec: the description of inference, which every spec tool carries, names the providers this server calls models through and how a model is written with them (`This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>.`), the alias names when any is set, with the references a wildcard alias accepts, or that no provider is configured. It does not name the models of a provider; it says that `list_models` lists the models this server can call. `makeModelAccess` also returns a `status`: the configured prefixes and, for each unconfigured built-in provider, the names of the settings it lacks, marked `partial` when some of its settings are present. When it starts, the server logs one line naming the configured providers, with every provider in its annotations, or a warning when none is configured. It adds a warning of its own only for a provider that is partly configured, the case that is usually a mistake:
 
 ```json
 {"message":"Model providers configured: anthropic","level":"INFO","annotations":{"providers":[{"provider":"anthropic","configured":true},{"provider":"openai","configured":false,"missing":["OPENAI_API_KEY"]},…]}}
@@ -221,6 +340,7 @@ Every failure has a `_tag`, a `detail` safe to show the caller, and the `provide
 | Failure                   | When                                                                                                                                                                                                                                                                                                                                                                                                                                | Also carries                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | What the caller can do                            |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `spec_invalid`            | The model is not written `provider/model`; the request is invalid (no messages, `max_output_tokens` not an integer of 1 or more, `temperature` or `top_p` not finite, `seed` not an integer of 0 or more, `timeout_ms` not an integer of 1 or more); the output schema cannot be read; the provider answered HTTP 400, 404, 413, 422 or another 4xx not listed below; the SDK refused a setting, the prompt, a feature or the model | `status`, `issues` with JSON pointers into the request, and `provider_message`: the first line of the provider's own error message, at most 300 characters, only for a built-in provider at its default endpoint or a gateway with `expose_provider_messages`, and left out when it is empty, holds the raw response body, or is itself a JSON, HTML or XML document; see [Provider messages](#provider-messages). The `detail` names the provider, the HTTP status and what it means: the model was not found (404), the request was rejected as invalid (400 and 422), the request was too large (413), or the request was not accepted | Fix the spec                                      |
+| `model_not_allowed`       | `allowed_models` is set and neither the model as the spec names it nor the model an alias sends it to is among them                                                                                                                                                                                                                                                                                                                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Name an offered model                             |
 | `provider_not_configured` | The prefix is unknown; the provider's settings are missing (including Azure without a key and without `@azure/identity`); the provider's TLS certificate is not trusted                                                                                                                                                                                                                                                             | `configured` prefixes, `missing` setting names                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Fix the settings                                  |
 | `credentials_rejected`    | HTTP 401 or 403; no credential could be obtained from the AWS chain, Google application default credentials or Microsoft Entra ID                                                                                                                                                                                                                                                                                                   | `status` (`null` when the credential source failed)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Fix the credentials or the role                   |
 | `rate_limited`            | HTTP 429                                                                                                                                                                                                                                                                                                                                                                                                                            | `retry_after_ms` from `retry-after-ms`, or `retry-after` in seconds or as a date; `null` without a hint                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Retry after the delay                             |
@@ -254,7 +374,7 @@ A provider's error message is free text, and through a gateway, or through a bas
 
 For a gateway, and for a built-in provider at an overridden endpoint, the caller gets only what is structured: the provider prefix, the HTTP status, and what the status means. A gateway whose messages are safe to show opts in with `expose_provider_messages: true` in its entry.
 
-The operator always gets the message: `makeModelAccess` takes an optional `reportProviderMessage`, which receives, for every call the provider answered with an error, the `provider`, the `model` as the spec names it, the HTTP `status` (`null` when there was no response), the `message` (at most 2000 characters, never the request body) and the `execution_id` when the request carries one. The server logs it as a warning:
+The operator always gets the message: `makeModelAccess` takes an optional `reportProviderMessage`, which receives, for every call the provider answered with an error, the `provider`, the `model` as the spec names it (`null` for a list of models), the HTTP `status` (`null` when there was no response), the `message` (at most 2000 characters, never the request body) and the `execution_id` when the request carries one. The server logs it as a warning:
 
 ```json
 {
@@ -351,7 +471,7 @@ Effect.runPromise(decide.pipe(Effect.provide(languageModelLayer(process.env))));
 
 A request has `model`, optional `instructions`, `messages` (roles `user` and `assistant`, each with text parts), `output`, `settings` (`max_output_tokens`, and optionally `temperature`, `top_p`, `seed`, `stop_sequences` and `reasoning`), optional `provider_options`, `timeout_ms`, `signal` and `retries`. Some providers drop sampling settings for newer models and say so in `warnings`. `provider_options` passes options to the provider, keyed by the AI SDK's namespace for it: `anthropic`, `openai`, `azure`, `google`, `vertex`, `googleVertex`, `amazonBedrock`, `bedrock`, or the gateway's name. A call fails as `spec_invalid` before any provider is called when it holds a namespace no configured provider reads, or an option for a gateway its `allowed_provider_options` does not list; which options of the built-in providers a spec may set is checked when the spec is parsed (see [Provider options](#provider-options)). `requestIssues(request)` gives the problems of a request before it is sent.
 
-`makeModelAccess(settings, options)` builds the same model and also returns `status`. Its options inject a `fetch` and credential sources (`aws`, `google`, `azure`), which is how tests run without a network and how per-tenant credentials will be added, `reportProviderMessage`, which receives the [provider messages](#provider-messages) a caller does not see, and `reportOperatorHint`, which receives the [operator hints](#operator-hints). A request may carry an `execution_id`, which only those reports use; the inference primitive sets it to the execution's id.
+`makeModelAccess(settings, options)` builds the same model and also returns `status`, and the `catalog` that [`list_models`](#listing-the-models) reads, whose `list(provider?)` gives the list. Its options inject a `fetch` and credential sources (`aws`, `google`, `azure`), which is how tests run without a network and how per-tenant credentials will be added, `reportProviderMessage`, which receives the [provider messages](#provider-messages) a caller does not see, and `reportOperatorHint`, which receives the [operator hints](#operator-hints). A request may carry an `execution_id`, which only those reports use; the inference primitive sets it to the execution's id.
 
 ## Testing
 
@@ -363,7 +483,7 @@ No test in this package calls a model: the adapter is tested with the AI SDK's m
 
 ## Source
 
-`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/model` holds the interface: the request, the result, the `LanguageModel` service and the request checks. `src/failure` holds one class per failure. `src/schema` holds answer schemas: limits, the shape check, compilation, validation and portability. `src/settings` reads the settings from the environment with Effect `Config`. `src/adapter` is the only production code that imports the AI SDK and the cloud credential libraries. `src/template` is the only code that imports liquidjs: the configured engine, the filters, the system block, compiling and rendering, behind readonly types of its own. `src/spec` parses and validates a spec document: the split, the YAML, the front matter, the settings, the schemas and the variables a template reads. `src/primitive` is the primitive: its description, preparing the input, rendering the prompt, the request, the rejections and the record. `src/testing` holds the fake and what the tests share, including the SDK's mock model.
+`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/model` holds the interface: the request, the result, the `LanguageModel` service and the request checks. `src/failure` holds one class per failure. `src/schema` holds answer schemas: limits, the shape check, compilation, validation and portability. `src/settings` reads the settings from the environment with Effect `Config`. `src/adapter` is the only production code that imports the AI SDK and the cloud credential libraries. `src/listing` reads the list of models of each provider, and `src/catalog` keeps the lists, combines them with the declared models and the aliases, applies the allow list, and defines `list_models`. `src/template` is the only code that imports liquidjs: the configured engine, the filters, the system block, compiling and rendering, behind readonly types of its own. `src/spec` parses and validates a spec document: the split, the YAML, the front matter, the settings, the schemas and the variables a template reads. `src/primitive` is the primitive: its description, preparing the input, rendering the prompt, the request, the rejections and the record. `src/testing` holds the fake and what the tests share, including the SDK's mock model.
 
 ## The spec document format
 
@@ -641,6 +761,7 @@ The spec operations answer every rejection as a problem document, and record it 
 | The spec sets a provider option its gateway does not allow                                           | `conflict`, naming the option; the gateway is not called                                                                                                   | 409  |
 | A JSON answer is cut off at `max_output_tokens`                                                      | `conflict`, saying to raise `config.max_output_tokens`                                                                                                     | 409  |
 | The answer leaves no room in the 1 MiB an execution records                                          | `conflict`, saying to lower `config.max_output_tokens`                                                                                                     | 409  |
+| The spec names a model outside `allowed_models`                                                      | `unavailable` of the kind `model_not_offered` because `model_not_allowed`; nothing is sent                                                                 | 503  |
 | The provider is not configured, or its certificate is not trusted                                    | `unavailable`, naming the provider, the configured providers and the aliases, or saying that the operator must act; never a setting                        | 503  |
 | The provider rejects the credentials                                                                 | `unavailable`, with the HTTP status                                                                                                                        | 503  |
 | The provider limits the rate of requests                                                             | `unavailable`, saying how many seconds to wait when it said                                                                                                | 503  |

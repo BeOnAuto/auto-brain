@@ -52,7 +52,7 @@ describe('a configuration file the server cannot read as settings', { timeout: s
     [
       'holds the URL of the ledger database, which only the environment holds',
       `database_url: postgresql://brains:${secret}@db.example.com/brains\n`,
-      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases\n`,
+      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases, declared_models, allowed_models\n`,
     ],
   ])('stops the start when it %s, naming the line and the key and never a value', async (_, text, line) => {
     await expect(startupLine(text)).resolves.toBe(line);
@@ -71,6 +71,25 @@ describe('a configuration file the server cannot read as settings', { timeout: s
         'auto-brain.yaml:4:11 model_gateways[1].name: gateway is used twice; ' +
         'auto-brain.yaml:5:15 model_gateways[1].base_url: Expected an http or https URL; ' +
         'MODEL_ALIASES: /fast: An alias and its target are each written provider/model\n',
+    );
+  });
+});
+
+describe('declared and allowed models the server refuses', { timeout: spawnedServerTestTimeoutMs }, () => {
+  it('stops the start at the line of a declared or allowed model the model settings refuse', async () => {
+    const text = `declared_models:
+  anthropic:
+    - claude-sonnet-4-5
+  azure:
+    - gpt 5
+allowed_models: []
+`;
+
+    await expect(startupLine(text)).resolves.toBe(
+      'auto-brain could not start: model_settings_invalid: The model settings are invalid. ' +
+        'auto-brain.yaml:3:5 declared_models.anthropic: anthropic lists its own models; models are declared for bedrock, bedrock-anthropic, azure, vertex, vertex-anthropic or a gateway of MODEL_GATEWAYS; ' +
+        'auto-brain.yaml:5:7 declared_models.azure[0]: Expected a model id of 1 to 256 characters, without spaces or control characters; ' +
+        'auto-brain.yaml:6:17 allowed_models: Expected at least one model; leave ALLOWED_MODELS out to offer every model\n',
     );
   });
 });

@@ -1,4 +1,4 @@
-import { UnavailableKindSchema } from '@beonauto/operations';
+import { UnavailableBecauseSchema, UnavailableKindSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { mostResultBytes } from './recorded-size.ts';
@@ -16,7 +16,13 @@ export const ExecutionRejectionSchema = Schema.Union([
     kind: Schema.optionalKey(
       UnavailableKindSchema.annotate({
         description:
-          'What the primitive could not use, when it knows: model_not_offered for a model of a provider this server is not set up for, while it can use others',
+          'What the primitive could not use, when it knows: model_not_offered for a model this server does not offer',
+      }),
+    ),
+    because: Schema.optionalKey(
+      UnavailableBecauseSchema.annotate({
+        description:
+          'Why, with model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows',
       }),
     ),
   }),

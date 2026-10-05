@@ -42,6 +42,7 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
         'The rejections by the primitive (invalid_input, unavailable, and the conflict it finds) are recorded on the execution.',
       ]),
       route: { method: 'POST', path: '/specs/{primitive}/{name}/execute' },
+      reachesOutside: primitives.some(({ reachesOutside }) => reachesOutside),
       inputSchema: Schema.Struct({
         primitive: known.field,
         name: SpecNameField,

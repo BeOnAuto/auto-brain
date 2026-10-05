@@ -56,5 +56,6 @@ export function makeInference(options: InferenceOptions): Primitive {
     summarize,
     execute: (spec, input, execution) => execute(spec, input, execution),
     longestExecutionMs: longestRequestMs,
+    reachesOutside: true,
   });
 }

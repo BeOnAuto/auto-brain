@@ -29,9 +29,11 @@ function explainedRejectionOf(rejection: DescribedExecution['rejection']): Expla
   if (rejection === undefined || rejection.reason === 'conflict') {
     return { reason: 'conflict', kind: 'unworkable' };
   }
-  return rejection.reason === 'unavailable' && rejection.kind !== undefined
-    ? { reason: 'unavailable', kind: rejection.kind }
-    : { reason: rejection.reason };
+  if (rejection.reason !== 'unavailable' || rejection.kind === undefined) {
+    return { reason: rejection.reason };
+  }
+  const { kind, because } = rejection;
+  return because === undefined ? { reason: 'unavailable', kind } : { reason: 'unavailable', kind, because };
 }
 
 function rejectionWords({ named }: RunContext, { rejection }: DescribedExecution): string {

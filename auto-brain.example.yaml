@@ -21,6 +21,21 @@ model_gateways:
 model_aliases:
   anthropic/*: gateway/anthropic/*
 
+# The models list_models shows for a provider that does not list its own
+# (bedrock, bedrock-anthropic, azure, vertex, vertex-anthropic), and for a
+# gateway whose list of models cannot be read.
+# declared_models:
+#   bedrock:
+#     - eu.anthropic.claude-sonnet-4-5-20250929-v1:0
+#   gateway:
+#     - anthropic/claude-haiku-4-5
+
+# The only models a spec may name and list_models shows; every model when
+# left out. A trailing * stands for any model id.
+# allowed_models:
+#   - anthropic/*
+#   - gateway/anthropic/claude-haiku-4-5
+
 # The origins a page in a browser may call the API from.
 allowed_origins:
   - http://localhost:5173

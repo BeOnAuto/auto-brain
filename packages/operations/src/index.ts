@@ -58,5 +58,11 @@ export type { OperationKind, OperationScope } from './caller/operation-scope.ts'
 export { settle } from './dispatch/settle.ts';
 export { SettlementSchema, type Settlement } from './outcome/settlement.ts';
 export type { StreamReader, StreamWriter } from './ledger/stream-ports.ts';
-export { Unavailable, UnavailableKindSchema, type UnavailableKind } from './outcome/unavailable.ts';
+export {
+  Unavailable,
+  UnavailableBecauseSchema,
+  UnavailableKindSchema,
+  type UnavailableBecause,
+  type UnavailableKind,
+} from './outcome/unavailable.ts';
 export { randomUUIDv7 } from './uuid/uuid-v7.ts';

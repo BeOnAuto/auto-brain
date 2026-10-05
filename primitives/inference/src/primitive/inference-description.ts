@@ -27,22 +27,27 @@ function anyModelUnder(wildcards: readonly string[]): string {
   return ` In a name that ends in *, the * stands for any model id, so a spec may give ${examples}.`;
 }
 
-function namedModels(aliases: readonly string[]): string {
+const listedByListModels = 'list_models lists the models this server can call.';
+
+function aliasesNamed(lead: string, aliases: readonly string[]): string {
   const wildcards = aliases.filter((alias) => isWildcardAlias(alias));
-  if (aliases.length === 0) {
-    return '';
-  }
   return wildcards.length === 0
-    ? ` Its operator also named these models, which a spec may give as its model as they are: ${aliases.join(', ')}.`
-    : ` Its operator also named these models, which a spec may give as its model: ${aliases.join(', ')}.${anyModelUnder(wildcards)}`;
+    ? `${lead}, which a spec may give as its model as they are: ${aliases.join(', ')}.`
+    : `${lead}, which a spec may give as its model: ${aliases.join(', ')}.${anyModelUnder(wildcards)}`;
+}
+
+function namedModels(aliases: readonly string[]): string {
+  return aliases.length === 0 ? '' : ` ${aliasesNamed('Its operator also named these models', aliases)}`;
 }
 
 function offerOf({ providers, aliases }: OfferedModels): string {
   if (providers.length === 0) {
-    return noProvider;
+    return aliases.length === 0
+      ? noProvider
+      : `${aliasesNamed('This server calls models only by the names its operator gave them', aliases)} ${listedByListModels}`;
   }
   const examples = providers.map((provider) => `${provider}/<model id>`).join(' or ');
-  return `This server calls models through ${providers.join(', ')}: write model as <provider>/<model id>, with a model id that provider serves, for example ${examples}.${namedModels(aliases)}`;
+  return `This server calls models through ${providers.join(', ')}: write model as <provider>/<model id>, with a model id that provider serves, for example ${examples}.${namedModels(aliases)} ${listedByListModels}`;
 }
 
 export const inferenceExample = [

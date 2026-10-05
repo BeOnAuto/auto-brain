@@ -32,19 +32,19 @@ export function wildcardsAreTrailing(alias: string, target: string): boolean {
   return wildcardIsTrailing(alias) && wildcardIsTrailing(target) && isWildcardAlias(alias) === isWildcardAlias(target);
 }
 
-function matches(pattern: AliasPattern, reference: string): boolean {
+export function matchesPattern(pattern: AliasPattern, reference: string): boolean {
   return pattern.wildcard
     ? reference.length > pattern.prefix.length && reference.startsWith(pattern.prefix)
     : reference === pattern.prefix;
 }
 
-export function targetReachesAlias(target: AliasPattern, alias: AliasPattern): boolean {
+export function patternsOverlap(target: AliasPattern, alias: AliasPattern): boolean {
   if (!target.wildcard) {
-    return matches(alias, target.prefix);
+    return matchesPattern(alias, target.prefix);
   }
   return alias.wildcard
     ? alias.prefix.startsWith(target.prefix) || target.prefix.startsWith(alias.prefix)
-    : matches(target, alias.prefix);
+    : matchesPattern(target, alias.prefix);
 }
 
 interface WildcardAlias {
@@ -66,7 +66,7 @@ export function aliasResolution(aliases: ReadonlyMap<string, string>): (requeste
   const wildcardAliases = wildcardAliasesOf(aliases);
   return (requested) => {
     const exact = aliases.get(requested);
-    const wildcardMatch = wildcardAliases.find(({ alias }) => matches(alias, requested));
+    const wildcardMatch = wildcardAliases.find(({ alias }) => matchesPattern(alias, requested));
     if (exact !== undefined || wildcardMatch === undefined) {
       return exact ?? requested;
     }

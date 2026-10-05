@@ -1,6 +1,7 @@
 import type { Cancelled } from './cancelled.ts';
 import type { ContentRefused } from './content-refused.ts';
 import type { CredentialsRejected } from './credentials-rejected.ts';
+import type { ModelNotAllowed } from './model-not-allowed.ts';
 import type { OutputInvalid } from './output-invalid.ts';
 import type { ProviderNotConfigured } from './provider-not-configured.ts';
 import type { ProviderUnavailable } from './provider-unavailable.ts';
@@ -11,6 +12,7 @@ import type { TimedOut } from './timed-out.ts';
 export type ModelFailure =
   | SpecInvalid
   | ProviderNotConfigured
+  | ModelNotAllowed
   | CredentialsRejected
   | RateLimited
   | ProviderUnavailable

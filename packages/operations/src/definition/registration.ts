@@ -21,6 +21,7 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly pathParameters: readonly string[];
   readonly targetsBrain: boolean;
   readonly successStatus: SuccessStatusByKind[K];
+  readonly reachesOutside: boolean;
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly output: JsonSchemaDocument;

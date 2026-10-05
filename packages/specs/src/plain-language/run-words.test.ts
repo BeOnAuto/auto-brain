@@ -77,9 +77,19 @@ const rejections: ReadonlyArray<readonly [string, Readonly<Record<string, unknow
     'something the server relies on is not available right now. Only whoever runs the server can put this right, so there is nothing to change on your side; once they have, it can be tried again. Meanwhile, everything that does not need it still works.',
   ],
   [
-    'a model of a provider the server is not set up for, while it can use others',
+    'a model the server does not offer, without saying why',
     { reason: 'unavailable', detail: 'x', kind: 'model_not_offered' },
-    'this server is not set up to use the provider of the model named, but it can use others. This can be put right on your side: once its prompt names a model from one of those, which the details below list, it can be tried again.',
+    'this server does not offer the model named. This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.',
+  ],
+  [
+    'a model of a provider the server is not set up for, while it can use others',
+    { reason: 'unavailable', detail: 'x', kind: 'model_not_offered', because: 'provider_not_configured' },
+    'this server does not offer the model named, because its provider is not set up on this server, though others are. This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.',
+  ],
+  [
+    'a model outside those whoever runs the server allows',
+    { reason: 'unavailable', detail: 'x', kind: 'model_not_offered', because: 'model_not_allowed' },
+    'this server does not offer the model named, because it is not among the models whoever runs the server allows. This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.',
   ],
   [
     'a spec it could not run as written',

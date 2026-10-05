@@ -1,8 +1,10 @@
 import { Option, Result } from 'effect';
 
+import { ModelNotAllowed } from '../failure/model-not-allowed.ts';
 import { ProviderNotConfigured } from '../failure/provider-not-configured.ts';
 import { SpecInvalid } from '../failure/spec-invalid.ts';
 import { aliasResolution } from '../model/model-alias.ts';
+import { modelOffer } from '../model/model-offer.ts';
 import { parseModelReference } from '../model/model-reference.ts';
 import type { ProviderStatus } from '../settings/provider-status.ts';
 import type { ModelFactory, SdkModel } from './sdk-model.ts';
@@ -14,7 +16,9 @@ export interface ModelTarget {
   readonly model: () => SdkModel;
 }
 
-export type ModelResolution = (reference: string) => Result.Result<ModelTarget, SpecInvalid | ProviderNotConfigured>;
+export type ModelResolution = (
+  reference: string,
+) => Result.Result<ModelTarget, SpecInvalid | ProviderNotConfigured | ModelNotAllowed>;
 
 function malformedReference(): SpecInvalid {
   return new SpecInvalid({
@@ -45,18 +49,27 @@ function notConfigured(provider: string, status: ProviderStatus, aliasNames: rea
   });
 }
 
+function notAllowed(requested: string, provider: string): ModelNotAllowed {
+  return new ModelNotAllowed({ detail: `${requested} is not one of the models this server offers`, provider });
+}
+
 export function modelResolution(
   models: ReadonlyMap<string, ModelFactory>,
   aliases: ReadonlyMap<string, string>,
   status: ProviderStatus,
+  allowed: readonly string[] | null,
 ): ModelResolution {
   const resolve = aliasResolution(aliases);
+  const offer = modelOffer(allowed);
   const aliasNames = [...aliases.keys()];
   return (requested) => {
     const resolved = resolve(requested);
     return Option.match(parseModelReference(resolved), {
       onNone: () => Result.fail(malformedReference()),
       onSome: ({ provider, model }) => {
+        if (!offer.offersCall(requested, resolved)) {
+          return Result.fail(notAllowed(requested, provider));
+        }
         const factory = models.get(provider);
         return factory === undefined
           ? Result.fail(notConfigured(provider, status, aliasNames))

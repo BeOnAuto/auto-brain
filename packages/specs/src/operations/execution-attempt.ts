@@ -1,4 +1,4 @@
-import type { UnavailableKind } from '@beonauto/operations';
+import type { UnavailableBecause, UnavailableKind } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
@@ -43,12 +43,18 @@ function rejectedForInput({ detail, issues }: Rejection): Effect.Effect<Executio
 interface Unavailability {
   readonly detail: string;
   readonly kind?: UnavailableKind;
+  readonly because?: UnavailableBecause;
 }
 
-function rejectedAsUnavailable({ detail, kind }: Unavailability): Effect.Effect<ExecutionResult> {
+function rejectedAsUnavailable({ detail, kind, because }: Unavailability): Effect.Effect<ExecutionResult> {
   return Effect.succeed({
     type: 'execution_rejected',
-    rejection: { reason: 'unavailable', detail, ...(kind === undefined ? {} : { kind }) },
+    rejection: {
+      reason: 'unavailable',
+      detail,
+      ...(kind === undefined ? {} : { kind }),
+      ...(because === undefined ? {} : { because }),
+    },
   });
 }
 

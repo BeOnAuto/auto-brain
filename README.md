@@ -103,7 +103,7 @@ Next, connect your AI assistant to `http://localhost:8080/mcp`. Local mode needs
 - **VS Code**, in `.vscode/mcp.json`: `{"servers": {"auto-brain": {"type": "http", "url": "http://localhost:8080/mcp"}}}`
 - **Other assistants** take the entry under [Connecting an agent over MCP](#connecting-an-agent-over-mcp), without its header.
 
-Then ask it, in order. When you ask for a reason function, name a model your provider serves, such as `anthropic/claude-sonnet-4-5` or `gateway/<a model id your gateway serves>`: the assistant learns which providers the server has, but not which models your account offers.
+Then ask it, in order. When you ask for a reason function, name a model your provider serves, such as `anthropic/claude-sonnet-4-5` or `gateway/<a model id your gateway serves>`: the assistant learns which providers the server has, and `list_models` shows it the models it can call.
 
 1. "Create a brain called support for our customer support team."
 2. "In support, create a reason function that classifies a support ticket by category (billing, bug, account or other) and urgency (low, normal or high), answering in JSON, and run it on: I was charged twice for March and nobody has answered for three days."
@@ -121,7 +121,7 @@ To try it without an assistant, `scripts/try-inference.sh http://localhost:8080 
 Settings come from environment variables and, for those that are lists or maps, from an optional YAML file:
 
 - **Environment variables** can hold every setting, and are the only place for keys and other secrets. In development, `pnpm dev` and `pnpm dev:lean` read `.env` at the root of the repository after `packages/server/dev.env`, and a variable set in the shell wins over both; the server itself never reads `.env`. A container takes environment variables, or a file of them with `docker run --env-file`.
-- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-brain.yaml` at the root of the repository when it is there; copy [`auto-brain.example.yaml`](auto-brain.example.yaml) to start one. Git ignores it.
+- **The configuration file**, named by `CONFIG_FILE`, holds `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `api_keys` and `allowed_origins`. `pnpm dev` passes `auto-brain.yaml` at the root of the repository when it is there; copy [`auto-brain.example.yaml`](auto-brain.example.yaml) to start one. Git ignores it.
 
 Each key of the file stands for the environment variable of the same name in upper case, and a variable that is set wins over the key, whole: `MODEL_GATEWAYS` replaces the file's `model_gateways`, it is not merged with it. The server logs at start which settings it read from the file, and which of them the environment set too. A secret is never written in the file: the file refers to the variable that holds it as `${NAME}`, or `${NAME:-default}`, and `$$` stands for a literal `$`. A value that looks like a credential and is not such a reference stops the server at start.
 
@@ -146,7 +146,20 @@ model_aliases:
 | Google Vertex AI                                     | `GOOGLE_VERTEX_PROJECT` and `GOOGLE_VERTEX_LOCATION`                                    | [Vertex](primitives/inference/README.md#google-vertex-ai-with-workload-identity)                             |
 | Your own names for models                            | `model_aliases` in the file                                                             | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
 | Another provider's models, through your gateway      | `model_aliases: {anthropic/*: gateway/anthropic/*}` in the file                         | [Model aliases](primitives/inference/README.md#model-aliases)                                                |
+| The models listed for Bedrock, Azure or Vertex       | `declared_models` in the file, a list of model ids for each provider prefix             | [Listing the models](primitives/inference/README.md#listing-the-models)                                      |
+| Only some models                                     | `allowed_models` in the file, such as `[anthropic/*, gateway/llama-3.3-70b]`            | [Listing the models](primitives/inference/README.md#listing-the-models)                                      |
 | An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                         | [Proxy and CA](primitives/inference/README.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
+
+`list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases whose target's provider is configured, and leaves out what `allowed_models` does not allow. A spec that names a model outside `allowed_models`, by its own name or the alias it is sent through, cannot run, and its run says the model is not offered and that `list_models` shows those that are.
+
+```yaml
+declared_models:
+  bedrock:
+    - eu.anthropic.claude-sonnet-4-5-20250929-v1:0
+allowed_models:
+  - anthropic/*
+  - bedrock/*
+```
 
 ### Developing with pnpm dev
 
@@ -383,13 +396,13 @@ The server is also an [MCP](https://modelcontextprotocol.io) server, so an agent
 
 Most MCP clients take an entry of this shape. In Claude Code, `claude mcp add --transport http auto-brain http://localhost:8080/mcp --header "Authorization: Bearer <key>"` adds the same. In [local mode](#local-mode), leave out the header.
 
-`/mcp` serves every tool on one connection, so an agent can create a brain and work in it at once. The org is the key's own, since a key belongs to one org, and never an argument; in local mode, where no key names one, it is `local`, so the brains an agent creates there are the ones `GET /v1/orgs/local/brains` lists. The org id `local` is reserved for local mode: the key command refuses it, and an `API_KEYS` entry with it stops the server at start-up, so no key can reach the brains made in local mode. The brain tools (`create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain`) are as on HTTP. Every tool that works inside a brain (`create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec`, `get_execution` and, when workflows are offered, `send_execution_event`) takes the brain's id as a required `brain` argument: twelve tools, or thirteen with workflows. The server's instructions orient an agent to brains, specs, primitives and executions.
+`/mcp` serves every tool on one connection, so an agent can create a brain and work in it at once. The org is the key's own, since a key belongs to one org, and never an argument; in local mode, where no key names one, it is `local`, so the brains an agent creates there are the ones `GET /v1/orgs/local/brains` lists. The org id `local` is reserved for local mode: the key command refuses it, and an `API_KEYS` entry with it stops the server at start-up, so no key can reach the brains made in local mode. The brain tools (`create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain`) and `list_models` are as on HTTP. Every tool that works inside a brain (`create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec`, `get_execution` and, when workflows are offered, `send_execution_event`) takes the brain's id as a required `brain` argument: thirteen tools, or fourteen with workflows. The server's instructions orient an agent to brains, specs, primitives and executions.
 
-| Endpoint                              | Tools                                                                         | Use it                                                   |
-| ------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `POST /mcp`                           | every tool, those inside a brain taking a `brain` argument                    | by default                                               |
-| `POST /orgs/{org}/mcp`                | `create_brain`, `list_brains`, `get_brain`, `update_brain` and `retire_brain` | to manage the brains of one org and nothing else         |
-| `POST /orgs/{org}/brains/{brain}/mcp` | the tools inside a brain, acting in that brain, without a `brain` argument    | to lock a connection to one brain, such as for one agent |
+| Endpoint                              | Tools                                                                                        | Use it                                                   |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `POST /mcp`                           | every tool, those inside a brain taking a `brain` argument                                   | by default                                               |
+| `POST /orgs/{org}/mcp`                | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain` and `list_models` | to manage the brains of one org and nothing else         |
+| `POST /orgs/{org}/brains/{brain}/mcp` | the tools inside a brain, acting in that brain, without a `brain` argument                   | to lock a connection to one brain, such as for one agent |
 
 Every endpoint speaks streamable HTTP without sessions. It serves the current stateless revision (`2026-07-28`) and the earlier ones the SDK supports (`2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`), so agents built on older SDKs connect too. Each tool carries the operation's description and its input and output JSON Schemas, and is marked read-only when it only reads. Each result leads with a sentence or two in plain words for the person the agent works for, then gives the details for follow-up calls. Those words call a spec of the inference primitive a reason function, one of the orchestration primitive a workflow, and an execution a run, while the tools take the primitive's name, `inference` or `orchestration`; each primitive's description, which the spec tools carry, says so. A tool that cannot do what was asked returns `isError`, its plain words saying what could not be done and who can fix it, and then the same problem document HTTP would answer with, as text, so the agent can read the `reason` and the `detail`, and correct its arguments when the `reason` is `invalid_input`. The key's permissions and brains hold as they do over HTTP: a read-only key can call `list_brains` but gets `forbidden` from `create_brain`, a key limited to some brains gets `forbidden` for any other, and a brain the org does not have is `not_found`. [`packages/api`](packages/api) describes the mappings in full.
 
