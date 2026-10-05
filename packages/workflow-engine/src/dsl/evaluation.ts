@@ -49,7 +49,7 @@ export function evaluate(source: string, data: Json, variables: Variables, place
 
 function exhaustionOf(problem: string, mostWork: number): string {
   return mostWork < mostExpressionWork
-    ? `${problem}: the workflow did ${mostWorkPerInput} units of expression work in one activation; it lets other workflows run between tasks, not within one`
+    ? `${problem}: the workflow did ${mostWorkPerInput} units of expression work in one input; it lets other workflows run between tasks, not within one`
     : `${problem}: an expression may do ${mostExpressionWork} units of work`;
 }
 

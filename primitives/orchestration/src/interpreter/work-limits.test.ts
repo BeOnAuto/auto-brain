@@ -31,7 +31,7 @@ describe('a workflow whose expressions do too much work', () => {
     const big = `'\${ "x" * 3000000 | length }'`;
     const { settlement } = await interpret(workflow(`do:\n  - heavy: { set: { a: ${big}, b: ${big}, c: ${big} } }`));
 
-    expect(rejectionOf(settlement)).toContain('the workflow did 16000000 units of expression work in one activation');
+    expect(rejectionOf(settlement)).toContain('the workflow did 16000000 units of expression work in one input');
   });
 });
 

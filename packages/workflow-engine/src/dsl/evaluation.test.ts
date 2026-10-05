@@ -45,7 +45,7 @@ describe('an expression of a task', () => {
     });
 
     expect(titleOf(run.outcome)).toMatch(
-      new RegExp(`: the workflow did ${mostWorkPerInput} units of expression work in one activation; `, 'u'),
+      new RegExp(`: the workflow did ${mostWorkPerInput} units of expression work in one input; `, 'u'),
     );
   });
 });
