@@ -1,7 +1,7 @@
 import { listedTools, plainTextIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
 import { TimedOut } from '@beonauto/inference';
 import { answers, callingTools, textResult, type ScriptedReply } from '@beonauto/inference/testing';
-import { fakeStdioServerPath, serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -19,7 +19,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-});
+}, stdioTestTimeoutMs);
 
 const timedOut: ScriptedReply = () =>
   Effect.fail(
@@ -112,25 +112,29 @@ describe('execute_spec over MCP on a server with MCP servers', () => {
 });
 
 describe('a reason function with tools over MCP', () => {
-  it('runs a reason function with the tools of a process the server starts', async () => {
-    const reply = callingTools(
-      [['mcp__limitless__search', { query: 'acme' }]],
-      answers(textResult('Acme has 2 rows.')),
-    );
-    const processSource = source.replace('graph/search', 'limitless/search');
+  it(
+    'runs a reason function with the tools of a process the server starts',
+    { timeout: stdioTestTimeoutMs },
+    async () => {
+      const reply = callingTools(
+        [['mcp__limitless__search', { query: 'acme' }]],
+        answers(textResult('Acme has 2 rows.')),
+      );
+      const processSource = source.replace('graph/search', 'limitless/search');
 
-    const { first, history } = await executedTwice(await serving(await fakeGraph(), [reply]), processSource);
+      const { first, history } = await executedTwice(await serving(await fakeGraph(), [reply]), processSource);
 
-    expect(first.structuredContent).toMatchObject({ status: 'succeeded', output: 'Acme has 2 rows.' });
-    expect(history.structuredContent).toMatchObject({
-      events: [
-        { type: 'execution_started' },
-        { type: 'tool_call_started', data: { server: 'limitless', tool: 'search' } },
-        { type: 'tool_call_answered', data: { outcome: 'result' } },
-        { type: 'execution_succeeded' },
-      ],
-    });
-  });
+      expect(first.structuredContent).toMatchObject({ status: 'succeeded', output: 'Acme has 2 rows.' });
+      expect(history.structuredContent).toMatchObject({
+        events: [
+          { type: 'execution_started' },
+          { type: 'tool_call_started', data: { server: 'limitless', tool: 'search' } },
+          { type: 'tool_call_answered', data: { outcome: 'result' } },
+          { type: 'execution_succeeded' },
+        ],
+      });
+    },
+  );
 
   it('says in plain words that a run that called tools may have changed something, and is not run again', async () => {
     const fake = await fakeGraph();

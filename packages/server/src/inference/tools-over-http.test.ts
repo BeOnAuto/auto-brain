@@ -1,6 +1,6 @@
 import { TimedOut } from '@beonauto/inference';
 import { answers, callingTools, textResult, type ScriptedReply } from '@beonauto/inference/testing';
-import { fakeStdioServerPath, serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -18,7 +18,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-});
+}, stdioTestTimeoutMs);
 
 const timedOut: ScriptedReply = () =>
   Effect.fail(
@@ -107,7 +107,7 @@ describe('a reason function that calls tools, over HTTP', () => {
     expect(fake.endedSessions()).toBe(1);
   });
 
-  it('runs with a tool of a process the server starts', async () => {
+  it('runs with a tool of a process the server starts', { timeout: stdioTestTimeoutMs }, async () => {
     const server = await serving(await fakeGraph(), searched('limitless'));
 
     expect(await executing(server, 'limitless')).toMatchObject({ status: 200, body: { output: 'Acme has 2 rows.' } });
