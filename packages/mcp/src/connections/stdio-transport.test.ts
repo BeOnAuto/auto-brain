@@ -1,9 +1,9 @@
 import { Redacted, Schema } from 'effect';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
 import { secretsOf } from '../bounds/secrets.ts';
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
-import { fakeStdioServerPath } from '../testing/index.ts';
+import { fakeStdioServerPath, stdioTestTimeoutMs } from '../testing/index.ts';
 import type { CallSettled, McpConnection } from './mcp-connection.ts';
 import { failureOf } from './server-failures.ts';
 import { serverLink } from './server-links.ts';
@@ -18,9 +18,11 @@ const environment = new Map([
 
 const closing: (() => Promise<void>)[] = [];
 
+const patientMs = 20_000;
+
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-});
+}, stdioTestTimeoutMs);
 
 function stdioSettings(args: readonly string[], changes: Partial<StdioServerSettings> = {}): StdioServerSettings {
   return {
@@ -37,19 +39,24 @@ function stdioSettings(args: readonly string[], changes: Partial<StdioServerSett
   };
 }
 
-function linked(settings: StdioServerSettings, openMs = 5000) {
+function linkTo(settings: StdioServerSettings, openMs = patientMs) {
   const lines: string[] = [];
   const link = serverLink(settings, {
     fetch: globalThis.fetch,
     secrets: secretsOf([Redacted.make('fake MCP server')]),
     now: Date.now,
-    timing: { callMs: 5000, openMs, longestRetryWaitMs: 1000 },
+    timing: { callMs: patientMs, openMs, longestRetryWaitMs: 1000 },
     reportOutput: (server, line) => {
       lines.push(`${server}: ${line}`);
     },
   });
-  closing.push(link.stop);
   return { link, lines };
+}
+
+function linked(settings: StdioServerSettings, openMs = patientMs) {
+  const made = linkTo(settings, openMs);
+  closing.push(made.link.stop);
+  return made;
 }
 
 const decodeNames = Schema.decodeUnknownSync(
@@ -68,7 +75,7 @@ function namesIn(settled: unknown): readonly string[] {
 const operatingSystemPrefix = '__CF_';
 
 const called = (connection: McpConnection, tool: string, input: Readonly<Record<string, unknown>> = {}) =>
-  connection.call({ tool, input, meta: {}, signal: new AbortController().signal, timeoutMs: 5000 });
+  connection.call({ tool, input, meta: {}, signal: new AbortController().signal, timeoutMs: patientMs });
 
 function failureOfCall(settled: CallSettled) {
   return 'error' in settled ? failureOf(settled.error) : undefined;
@@ -83,26 +90,35 @@ async function failureOfTaking(link: ReturnType<typeof linked>['link']) {
   );
 }
 
-describe('a link to a stdio server', () => {
-  it('starts the process on first use with the environment of its entry alone, and keeps it until stopped', async () => {
-    const { link } = linked(stdioSettings([]));
+describe('one stdio server that the tests of a link share', { timeout: stdioTestTimeoutMs }, () => {
+  const shared = linkTo(stdioSettings(['--chatter', '102', '--pad', '2100', '--stdout', 'not json\n{"not":"rpc"}\n']));
+
+  afterAll(shared.link.stop, stdioTestTimeoutMs);
+
+  it('starts the process on first use with the environment of its entry alone, and keeps it while it is let go', async () => {
+    const { link } = shared;
 
     const first = await link.take();
     await link.release();
     const second = await link.take();
     const variables = await called(second, 'environment');
-    await link.stop();
-    await first.closed;
 
     expect(second).toBe(first);
     expect(namesIn(variables)).toEqual([...environment.keys()]);
   });
 
-  it('reports what the process writes to stderr, line by line, scrubbed, cut and bounded', async () => {
-    const { link, lines } = linked(stdioSettings(['--chatter', '102', '--pad', '2100']));
+  it('passes over lines on stdout that are not JSON, or not JSON-RPC', async () => {
+    expect(await called(await shared.link.take(), 'search', { query: 'acme' })).toMatchObject({
+      result: { content: [{ text: 'Found 2 rows for acme.' }] },
+    });
+  });
 
-    await link.take();
+  it('reports what the process writes to stderr, line by line, scrubbed, cut and bounded, until it is stopped', async () => {
+    const { link, lines } = shared;
+    const connection = await link.take();
+
     await link.stop();
+    await connection.closed;
 
     expect(lines).toHaveLength(101);
     expect(lines[0]).toMatch(/^limitless: The \[redacted\] says line 1 on stderr\.+$/u);
@@ -112,15 +128,7 @@ describe('a link to a stdio server', () => {
   });
 });
 
-describe('what a stdio server writes', () => {
-  it('passes over lines on stdout that are not JSON, or not JSON-RPC', async () => {
-    const { link } = linked(stdioSettings(['--stdout', 'not json\n{"not":"rpc"}\n']));
-
-    expect(await called(await link.take(), 'search', { query: 'acme' })).toMatchObject({
-      result: { content: [{ text: 'Found 2 rows for acme.' }] },
-    });
-  });
-
+describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
   it('closes a process that writes more than its output may take at once', async () => {
     const { link } = linked(stdioSettings([]));
     const connection = await link.take();
@@ -146,7 +154,7 @@ describe('what a stdio server writes', () => {
   });
 });
 
-describe('a stdio server that does not start or stop', () => {
+describe('a stdio server that does not start or stop', { timeout: stdioTestTimeoutMs }, () => {
   it('cannot start a command that is not there', async () => {
     const { link } = linked(stdioSettings([], { command: '/nonexistent/limitless-mcp-server', args: [] }));
 

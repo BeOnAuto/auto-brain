@@ -6,9 +6,11 @@ import {
   fakeStdioServerPath,
   fakeToolNames,
   longToolName,
+  patientTiming,
   recordingCallJournal,
   reportingAccess,
   serveFakeMcp,
+  stdioTestTimeoutMs,
   toolRun,
   toolRunId,
   type FakeMcpOptions,
@@ -21,7 +23,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-});
+}, stdioTestTimeoutMs);
 
 async function fakeServer(options?: FakeMcpOptions): Promise<FakeMcpServer> {
   const fake = await serveFakeMcp(options);
@@ -32,6 +34,7 @@ async function fakeServer(options?: FakeMcpOptions): Promise<FakeMcpServer> {
 function accessTo(servers: Readonly<Record<string, unknown>>, allowed?: readonly string[]) {
   const reporting = reportingAccess(servers, {
     environment: { GRAPH_API_KEY: apiKey, NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] },
+    timing: patientTiming,
     ...(allowed === undefined ? {} : { allowed }),
   });
   closing.push(reporting.access.close);
@@ -259,7 +262,7 @@ describe('the sessions of runs', () => {
   });
 });
 
-describe('a stdio server and the MCP client', () => {
+describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, () => {
   it('starts a stdio server once for every run, and stops it when the access closes', async () => {
     const { access, messages } = accessTo({ limitless });
 

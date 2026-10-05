@@ -84,7 +84,7 @@ The lines the MCP client writes to the console go to `reportServerMessage` as th
 `@beonauto/mcp/testing` holds a fake MCP server built with the MCP server package:
 
 - `serveFakeMcp({ bearer?, client?, requestIdHeader? })` serves it over Streamable HTTP on a loopback port the system picks, with a bearer check or a fake authorization server, sessions, and ways to answer the next requests with a status (`answerNextWith`, for a 429 with `Retry-After`), forget every session (a 404), revoke tokens (a 401), remove a tool and send `list_changed`.
-- `fakeStdioServerPath` runs the same tools over stdio under `node`, with `--chatter`, `--pad`, `--stdout`, `--linger-ms` and `--start-once` to make it talk, misbehave or fail to start again.
+- `fakeStdioServerPath` runs the same tools over stdio under `node`, with `--chatter`, `--pad`, `--stdout`, `--linger-ms` and `--start-once` to make it talk, misbehave or fail to start again. Start it with `process.execPath` directly, never through a package manager: it imports only the MCP server package and the fake's tools, not `effect`, and answers its first message in about 90 ms on a laptop. A spawn is real time, so a test that starts it takes `stdioTestTimeoutMs`, 30 s, and its connection `patientTiming`, and a file shares one process across the tests that only need it running.
 - Its tools answer text (`search`, `echo`, `graph.query.v2`), structured content (`profile`), non-text content (`photo`), a denial marked `isError` (`denied`), an error (`broken`), slowly (`sleep`), at length (`large`), with its environment (`environment`), or by exiting (`exit`).
 - `openFakeToolRun`, `reportingAccess`, `recordingCallJournal`, `toolRun`, `controlledSignals` and `inTurn` open a run's tools against it.
 

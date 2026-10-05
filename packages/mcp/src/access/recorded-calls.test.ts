@@ -9,9 +9,11 @@ import {
   fakeRequestIdKey,
   fakeStdioServerPath,
   inTurn,
+  patientTiming,
   recordingCallJournal,
   reportingAccess,
   serveFakeMcp,
+  stdioTestTimeoutMs,
   toolRun,
   type FakeMcpOptions,
 } from '../testing/index.ts';
@@ -23,7 +25,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-});
+}, stdioTestTimeoutMs);
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
 
@@ -66,7 +68,10 @@ async function recordedCalls(
         ...entry,
       },
     },
-    { environment: { GRAPH_API_KEY: fakeApiKey, NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] } },
+    {
+      environment: { GRAPH_API_KEY: fakeApiKey, NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] },
+      timing: patientTiming,
+    },
   );
   closing.push(access.close);
   const journal = recordingCallJournal();
@@ -163,7 +168,7 @@ describe('the id a server gives a request', () => {
     expect(failed[1]).toMatchObject({ outcome: 'server_failure', server_request_id: null });
   });
 
-  it('records the JSON-RPC id of a call over stdio', async () => {
+  it('records the JSON-RPC id of a call over stdio', { timeout: stdioTestTimeoutMs }, async () => {
     const facts = await recordedCalls({ request_id: fakeRequestIdKey }, [['limitless/search', { query: 'acme' }]]);
 
     expect(facts[1]).toMatchObject({ outcome: 'result', jsonrpc_id: aNumber, server_request_id: 'call-1' });

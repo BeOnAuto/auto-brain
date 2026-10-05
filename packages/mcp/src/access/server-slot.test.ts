@@ -8,8 +8,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   controlledSignals,
   fakeStdioServerPath,
+  patientTiming,
   recordingCallJournal,
   reportingAccess,
+  stdioTestTimeoutMs,
   toolRun,
 } from '../testing/index.ts';
 
@@ -17,7 +19,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-});
+}, stdioTestTimeoutMs);
 
 async function stdioRun(args: readonly string[] = []) {
   const { access } = reportingAccess(
@@ -29,7 +31,7 @@ async function stdioRun(args: readonly string[] = []) {
         org: 'acme',
       },
     },
-    { environment: { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] } },
+    { environment: { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] }, timing: patientTiming },
   );
   closing.push(access.close);
   const tools = await Effect.runPromise(
@@ -53,7 +55,7 @@ async function stdioRun(args: readonly string[] = []) {
 
 const closed = { text: 'The MCP server limitless failed: The connection to the MCP server closed', isError: true };
 
-describe('a stdio server that exits during a run', () => {
+describe('a stdio server that exits during a run', { timeout: stdioTestTimeoutMs }, () => {
   it('is restarted once, and fails the run’s calls when it exits again', async () => {
     const run = await stdioRun();
 

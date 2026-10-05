@@ -1,7 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { McpServer, ProtocolError, ProtocolErrorCode, type CallToolResult } from '@modelcontextprotocol/server';
-import { Schema } from 'effect';
 
 export interface ReceivedCall {
   readonly tool: string;
@@ -63,11 +62,9 @@ const queried: InputSchema = {
   required: ['query'],
 };
 
-const readQuery = Schema.decodeUnknownSync(Schema.Struct({ query: Schema.String }));
-
-const readMilliseconds = Schema.decodeUnknownSync(Schema.Struct({ ms: Schema.Number }));
-
-const readKibibytes = Schema.decodeUnknownSync(Schema.Struct({ kib: Schema.Number }));
+function argument(input: unknown, name: string): unknown {
+  return Reflect.get(new Object(input), name);
+}
 
 const pixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
@@ -80,7 +77,7 @@ const answeringTools: readonly FakeTool[] = [
     name: 'search',
     description: 'Finds the rows of the graph that match a query.',
     inputSchema: queried,
-    answer: (input) => text(`Found 2 rows for ${readQuery(input).query}.`),
+    answer: (input) => text(`Found 2 rows for ${String(argument(input, 'query'))}.`),
   },
   {
     name: 'profile',
@@ -124,7 +121,7 @@ const troubleTools: readonly FakeTool[] = [
     description: 'Answers after the milliseconds it is given, unless it is cancelled first.',
     inputSchema: { type: 'object', properties: { ms: { type: 'number' } }, required: ['ms'] },
     answer: async (input, { signal }) => {
-      await setTimeout(readMilliseconds(input).ms, undefined, { signal });
+      await setTimeout(Number(argument(input, 'ms')), undefined, { signal });
       return text('Slept.');
     },
   },
@@ -132,7 +129,7 @@ const troubleTools: readonly FakeTool[] = [
     name: 'large',
     description: 'Answers with as many kibibytes of text as it is given.',
     inputSchema: { type: 'object', properties: { kib: { type: 'number' } }, required: ['kib'] },
-    answer: (input) => text('😀'.repeat(readKibibytes(input).kib * 256)),
+    answer: (input) => text('😀'.repeat(Number(argument(input, 'kib')) * 256)),
   },
   {
     name: 'broken',
@@ -158,7 +155,7 @@ const namedTools: readonly FakeTool[] = [
     name: 'graph.query.v2',
     description: 'A tool whose name holds dots.',
     inputSchema: queried,
-    answer: (input) => text(`Queried ${readQuery(input).query}.`),
+    answer: (input) => text(`Queried ${String(argument(input, 'query'))}.`),
   },
   {
     name: longToolName,
