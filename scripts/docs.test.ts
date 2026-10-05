@@ -214,7 +214,7 @@ await test('the README starts with an actionable local quick start and keeps Clo
   assert.ok(readme.indexOf('pnpm dev:lean') < readme.indexOf('## Hosted brains'));
   assert.ok(readme.includes('Auto Cloud is coming soon'));
   assert.ok(readme.includes('You can also host your own brain'));
-  assert.ok(markdownDestinations(readme).includes('https://on.auto/docs/self-host'));
+  assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/docs/self-host'));
   assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/request-invite'));
 });
 
@@ -245,7 +245,7 @@ await test('the local quick start gives runnable setup and distinguishes local c
   assert.doesNotMatch(guide, /Prefer a hosted brain/u);
   assert.ok(guide.includes('You can also host your own brain'));
   assert.ok(markdownDestinations(guide).includes('../self-host.md'));
-  assert.ok(markdownDestinations(guide).includes('https://on.auto/request-invite'));
+  assert.ok(markdownDestinations(guide).some((href) => href === 'https://on.auto/request-invite'));
   assert.ok(markdownDestinations(guide).includes('../tutorials/first-brain.md'));
   const configBlock = [...guide.matchAll(/```json\n([\s\S]*?)```/gu)].at(0)?.[1];
   assert.notEqual(configBlock, '');
