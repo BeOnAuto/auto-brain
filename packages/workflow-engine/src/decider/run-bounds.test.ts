@@ -6,7 +6,7 @@ import { newRun, type RunOutcome, type RunState } from '../machine/run-state.ts'
 import { eventBytesOf } from '../run-log/run-event.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
 import { testMachine } from '../testing/driver-inputs.ts';
-import { armedTimerIds, drivenExecutionId, drivenRun } from '../testing/run-history.ts';
+import { armedTimerIds, drivenExecutionId, drivenRun, type DrivenRun } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowMachine } from './workflow-machine.ts';
 
@@ -58,6 +58,47 @@ describe('a run ends, raised, in one small event, when an input would make an ev
 
     expect(titleOf(run.outcome)).toContain('one event holds');
     expect(run.events.every(({ event }) => eventBytesOf(event) <= mostEventBytes)).toBe(true);
+  });
+});
+
+function holdingAcross(pause: string, length: number): DrivenRun {
+  return drivenRun(
+    workflow(`
+do:
+  - make: { set: { s: '\${ "x" * ${length} }' } }
+  - pause: ${pause}
+  - measure: { set: '\${ { length: (.s | length) } }' }
+`),
+  );
+}
+
+function longestHeldAcross(pause: string): number {
+  const near = mostEventBytes - 4096;
+  const [first = 0] = holdingAcross(pause, near).events.map(({ event }) => eventBytesOf(event));
+  return near + mostEventBytes - first;
+}
+
+describe('a value a run holds across a wait or a yield', () => {
+  it.each([
+    ['a wait', '{ wait: PT1S }'],
+    ['a yield', "{ for: { in: '${ [range(0; 120)] }' }, do: [] }"],
+  ])(
+    'is kept when the event of the input that made it holds it, and ends the run when it is one byte larger: across %s',
+    (_across, pause) => {
+      const longest = longestHeldAcross(pause);
+
+      expect(longest).toBeGreaterThan(mostEventBytes - 4096);
+      expect(holdingAcross(pause, longest).outcome).toEqual({ kind: 'completed', output: { length: longest } });
+      expect(titleOf(holdingAcross(pause, longest + 1).outcome)).toBe(
+        `An input changed the run by ${mostEventBytes + 1} bytes, more than the ${mostEventBytes} one event holds`,
+      );
+    },
+  );
+
+  it('is not bounded by one event when the input that made it lets go of it', () => {
+    const run = holdingAcross('{ set: { s: done } }', 2 * mostEventBytes);
+
+    expect(run.outcome).toEqual({ kind: 'completed', output: { length: 4 } });
   });
 });
 

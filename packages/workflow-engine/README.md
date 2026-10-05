@@ -107,6 +107,8 @@ After each decision the machine sweeps the table: a value stays while the frames
 
 A transformation can still make more data than it was given. The machine measures each event before the append; one over 1.5 MiB ends the run with a `raised` runtime error, status 500, the ending today's limits give, recorded as a small final event.
 
+So a value a run holds across a wait or a yield is bounded by one event, not by the 4 MiB a run holds: the event of the input that made the value carries it whole, with the rest of that input's change, and that event holds at most 1,572,864 bytes of JSON. A value larger than that, less the rest of its event, ends the run raised, `An input changed the run by N bytes, more than the 1572864 one event holds`; in the three tasks of `src/decider/run-bounds.test.ts`, a string of 1,570,322 characters is kept across a wait and one character more is not, the rest of the event taking the other 2,542 bytes. A value made and let go of within one input never reaches an event and is not bounded by one. Under Temporal a single value could take the whole of the data a run holds; this is the fourth change tenants see (`docs/decisions/0001-workflow-engine-on-the-ledger.md`).
+
 Frames never store the document: they name tasks by reference, a JSON Pointer into `workflow.document`. A call frame holds the opaque `function` the call names, its `arguments` as a value id, a `label` for people reading the log, and the id of its `call_deadline` timer, which it disarms when it is answered or cancelled; the machine knows nothing of what the arguments mean.
 
 ## Outputs and receipts
@@ -167,20 +169,21 @@ A snapshot holds at most about 5.3 MiB: the held data (4 MiB: the values, the do
 
 ## Limits
 
-| Limit                       | Value           | When it is reached                                                         |
-| --------------------------- | --------------- | -------------------------------------------------------------------------- |
-| data a run holds            | 4 MiB           | the run ends, raised, as today                                             |
-| one event                   | 1.5 MiB         | the run ends, raised, in a small final event                               |
-| arguments of a call         | 264 KiB         | the task raises a validation error                                         |
-| tasks in one input          | 100             | the machine arms a timer due at once and goes on when it fires             |
-| expression work             | 8,000,000       | for one expression, as today                                               |
-| work in one input           | 16,000,000      | as above: a timer due at once, then the rest                               |
-| tasks without waiting       | 10,000          | the run ends, raised, as today                                             |
-| events waiting in the inbox | 64, 1 MiB       | the run ends, raised, as today                                             |
-| events a run receives       | 1,024, 4 MiB    | the run ends, raised, as today; it also bounds the ids kept                |
-| inputs a run takes          | 100,000         | checked in `decide` from `state.inputs`: the run ends, raised              |
-| history                     | 512 MiB         | checked in `decide` from `state.historyBytes`: the run ends, raised        |
-| a call                      | `longestCallMs` | its `call_deadline` timer fires: the task fails with a communication error |
+| Limit                                 | Value                                       | When it is reached                                                                   |
+| ------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------ |
+| data a run holds                      | 4 MiB                                       | the run ends, raised, as today                                                       |
+| one event                             | 1,572,864 bytes                             | the run ends, raised, in a small final event                                         |
+| a value held across a wait or a yield | 1,572,864 bytes, less the rest of its event | the run ends, raised, as above: the event of the input that made it carries it whole |
+| arguments of a call                   | 264 KiB                                     | the task raises a validation error                                                   |
+| tasks in one input                    | 100                                         | the machine arms a timer due at once and goes on when it fires                       |
+| expression work                       | 8,000,000                                   | for one expression, as today                                                         |
+| work in one input                     | 16,000,000                                  | as above: a timer due at once, then the rest                                         |
+| tasks without waiting                 | 10,000                                      | the run ends, raised, as today                                                       |
+| events waiting in the inbox           | 64, 1 MiB                                   | the run ends, raised, as today                                                       |
+| events a run receives                 | 1,024, 4 MiB                                | the run ends, raised, as today; it also bounds the ids kept                          |
+| inputs a run takes                    | 100,000                                     | checked in `decide` from `state.inputs`: the run ends, raised                        |
+| history                               | 512 MiB                                     | checked in `decide` from `state.historyBytes`: the run ends, raised                  |
+| a call                                | `longestCallMs`                             | its `call_deadline` timer fires: the task fails with a communication error           |
 
 The run that reaches the inputs or history bound ends in one more small event, so a stream holds at most 100,001 events and 512 MiB plus that event.
 
