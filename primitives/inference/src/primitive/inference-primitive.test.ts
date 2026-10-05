@@ -104,7 +104,7 @@ describe('preparing an inference document that is not valid', () => {
             {
               pointer: '',
               detail:
-                'Line 3, /seed: seed is not a key of the front matter; it takes description, model, config, input, output, provider_options',
+                'Line 3, /seed: seed is not a key of the front matter; it takes description, model, config, input, output, provider_options, tools',
             },
           ],
         }),

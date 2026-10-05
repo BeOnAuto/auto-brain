@@ -7,7 +7,7 @@ import { scrubberFor, type CallPolicy } from './call-policy.ts';
 import { classified, operatorHintOf, providerTextOf, type ProviderText } from './failure-classification.ts';
 import { callModel } from './model-call.ts';
 import type { ModelTarget } from './model-resolution.ts';
-import { deadlineOf, stoppedFailure } from './stopped-call.ts';
+import { deadlinesOf, stoppedFailure } from './stopped-call.ts';
 import type { UnclassifiedModelError } from './unclassified-model-error.ts';
 
 type Settled = Result.Result<Answered, ModelFailure | UnclassifiedModelError>;
@@ -27,11 +27,13 @@ export async function settledCall(
   interruption: Readonly<AbortSignal>,
   policy: CallPolicy,
 ): Promise<SettledCall> {
-  const deadline = deadlineOf(request);
-  const signals = [interruption, deadline?.signal, request.signal].filter((signal) => signal !== undefined);
+  const deadlines = deadlinesOf(request);
+  const cancelled = AbortSignal.any([interruption, request.signal].filter((signal) => signal !== undefined));
+  const { whole, step } = deadlines;
+  const stops = [cancelled, whole?.signal, step.signal, request.tools?.ended].filter((signal) => signal !== undefined);
   try {
     return {
-      settled: await callModel(target, request, AbortSignal.any(signals)),
+      settled: await callModel(target, request, { signal: AbortSignal.any(stops), cancelled }, step),
       providerText: null,
       operatorHint: null,
     };
@@ -46,7 +48,7 @@ export async function settledCall(
       scrub,
     };
     return {
-      settled: Result.fail(stoppedFailure(provider, request, deadline) ?? classified(error, context)),
+      settled: Result.fail(stoppedFailure(provider, request, deadlines) ?? classified(error, context)),
       providerText: providerTextOf(error, scrub),
       operatorHint: operatorHintOf(error, provider, scrub),
     };

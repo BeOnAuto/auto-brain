@@ -1,3 +1,4 @@
+import { toolReferenceOf, toolReferenceShape, type ToolReference } from '@beonauto/mcp';
 import { JsonPointer, Option, Result, type Schema } from 'effect';
 
 import { parseModelReference } from '../model/model-reference.ts';
@@ -69,4 +70,25 @@ export function providerOptionsOf(
     namespaceIssues(namespace, values, lines),
   );
   return issues.length > 0 ? Result.fail(issues) : Result.succeed(options);
+}
+
+function toolIssue(written: string, index: number, all: readonly string[]): string | undefined {
+  if (toolReferenceOf(written) === undefined) {
+    return `Expected ${toolReferenceShape}`;
+  }
+  return all.indexOf(written) < index ? `${written} is listed twice` : undefined;
+}
+
+export function toolsOf(
+  written: readonly string[] | undefined,
+  lines: SourceLines,
+): Result.Result<readonly ToolReference[], readonly DocumentIssue[]> {
+  const listed = written ?? [];
+  const issues = listed.flatMap((each, index) => {
+    const detail = toolIssue(each, index, listed);
+    return detail === undefined ? [] : [issueAt(lines, `/tools/${index}`, detail)];
+  });
+  return issues.length > 0
+    ? Result.fail(issues)
+    : Result.succeed(listed.flatMap((each) => [toolReferenceOf(each)].filter((reference) => reference !== undefined)));
 }

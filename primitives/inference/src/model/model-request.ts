@@ -44,6 +44,35 @@ export interface ProviderOptions {
 
 export type RetryOwner = 'adapter' | 'caller';
 
+export interface ToolReply {
+  readonly text: string;
+  readonly isError: boolean;
+}
+
+export interface ToolCallRequest {
+  readonly callId: string;
+  readonly input: Readonly<Record<string, unknown>>;
+}
+
+export interface ToolCallSignals {
+  readonly signal: Readonly<AbortSignal>;
+  readonly cancelled: Readonly<AbortSignal>;
+}
+
+export interface ModelTool {
+  readonly name: string;
+  readonly description: string;
+  readonly inputSchema: Schema.JsonObject;
+  readonly call: (request: ToolCallRequest, signals: ToolCallSignals) => Promise<ToolReply>;
+}
+
+export interface ModelTools {
+  readonly offered: readonly ModelTool[];
+  readonly callsEnded: () => boolean;
+  readonly ended: Readonly<AbortSignal>;
+  readonly runBoundMs: number;
+}
+
 export interface ModelRequest {
   readonly model: string;
   readonly instructions?: string;
@@ -55,4 +84,5 @@ export interface ModelRequest {
   readonly signal?: Readonly<AbortSignal>;
   readonly retries?: RetryOwner;
   readonly execution_id?: string;
+  readonly tools?: ModelTools;
 }

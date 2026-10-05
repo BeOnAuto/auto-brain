@@ -48,7 +48,7 @@ export function makeInference(options: InferenceOptions): Primitive {
   return definePrimitive({
     name: 'inference',
     title: 'Inference',
-    description: inferenceDescriptionFor(options.offered),
+    description: inferenceDescriptionFor(options.offered, options.tools?.configured === true),
     noun: { one: 'reason function', other: 'reason functions' },
     describeOutput: describeAnswer,
     mediaType: 'text/markdown',
@@ -57,5 +57,6 @@ export function makeInference(options: InferenceOptions): Primitive {
     execute: (spec, input, execution) => execute(spec, input, execution),
     longestExecutionMs: longestRequestMs,
     reachesOutside: true,
+    mayChangeOutside: options.tools?.configured === true,
   });
 }

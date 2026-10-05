@@ -80,6 +80,16 @@ const rules = [
   'The input of an execution is a JSON object. Problems in a document are reported with their line.',
 ].join(' ');
 
-export function inferenceDescriptionFor(offered: OfferedModels): string {
-  return `${naming} ${calls} ${offerOf(offered)} ${format}\n\n${inferenceExample}\n\n${rules}`;
+const toolRules = [
+  'tools: the tools of the MCP servers configured for its brain that it may call, each written server/tool,',
+  'or server/* for every tool of a server that its operator allows.',
+  'A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers;',
+  'each call is recorded on the run as it happens, and a run that called tools and did not succeed is not run again under its id.',
+].join(' ');
+
+const noTools = 'No MCP server is configured on this server, so a spec may not name tools yet.';
+
+export function inferenceDescriptionFor(offered: OfferedModels, toolsConfigured: boolean): string {
+  const tools = toolsConfigured ? toolRules : noTools;
+  return `${naming} ${calls} ${offerOf(offered)} ${format}\n\n${inferenceExample}\n\n${rules} ${tools}`;
 }

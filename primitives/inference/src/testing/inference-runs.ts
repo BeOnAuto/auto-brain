@@ -1,6 +1,7 @@
+import type { ToolAccess } from '@beonauto/mcp';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import type { Executed, ExecutionContext, PreparedSpec, Primitive } from '@beonauto/specs';
-import { recordingJournal } from '@beonauto/specs/testing';
+import { recordingJournal, type RecordingJournal } from '@beonauto/specs/testing';
 import { DateTime, Effect, type Exit, type Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 
@@ -30,9 +31,21 @@ export interface InferenceRun {
   readonly executing: (source: string, input?: Schema.Json) => Promise<Execution>;
 }
 
-export function inferenceWith(...replies: readonly ScriptedReply[]): InferenceRun {
+export interface ToolRun extends InferenceRun {
+  readonly journal: RecordingJournal;
+}
+
+function inferenceOf(
+  tools: ToolAccess | undefined,
+  replies: readonly ScriptedReply[],
+  context: ExecutionContext,
+): InferenceRun {
   const scripted = scriptedLanguageModel(...replies);
-  const primitive = makeInference({ languageModel: scripted.languageModel, offered: anthropicOnly });
+  const primitive = makeInference({
+    languageModel: scripted.languageModel,
+    offered: anthropicOnly,
+    ...(tools === undefined ? {} : { tools }),
+  });
   const prepared = (source: string): PreparedSpec => Effect.runSync(primitive.prepare(source));
   return {
     primitive,
@@ -41,9 +54,18 @@ export function inferenceWith(...replies: readonly ScriptedReply[]): InferenceRu
     executing: (source, input = {}) =>
       Effect.runPromiseExit(
         TestClock.setTime(DateTime.toEpochMillis(DateTime.makeUnsafe(moment))).pipe(
-          Effect.andThen(prepared(source).execute(input, execution)),
+          Effect.andThen(prepared(source).execute(input, context)),
           Effect.provide(TestClock.layer()),
         ),
       ),
   };
+}
+
+export function inferenceWith(...replies: readonly ScriptedReply[]): InferenceRun {
+  return inferenceOf(undefined, replies, execution);
+}
+
+export function inferenceWithTools(tools: ToolAccess, ...replies: readonly ScriptedReply[]): ToolRun {
+  const journal = recordingJournal();
+  return { ...inferenceOf(tools, replies, { ...execution, journal }), journal };
 }

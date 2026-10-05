@@ -1,8 +1,10 @@
+import type { RunTools } from '@beonauto/mcp';
 import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { FailureIssue } from '../failure/failure-issue.ts';
 import type { FinishReason } from '../model/model-result.ts';
+import { stoppedEnding, unavailableAfter, type Stopped } from '../tools/tool-endings.ts';
 
 export type SpecRejection = InvalidInput | Unavailable | Conflict;
 
@@ -37,10 +39,6 @@ function listed(issues: readonly FailureIssue[]): string {
   return shown.length === 0 ? '' : ` (${shown.join('; ')})`;
 }
 
-function unavailable(detail: string): Effect.Effect<never, Unavailable> {
-  return Effect.fail(new Unavailable({ detail }));
-}
-
 function othersAreOffered({ provider, configured }: UnconfiguredProvider): boolean {
   return configured.length > 0 && !configured.includes(provider);
 }
@@ -53,7 +51,8 @@ function waitFor(retryAfterMs: number | null): string {
   return seconds === 1 ? 'in 1 second' : `in ${seconds} seconds`;
 }
 
-export function rejections(maxOutputTokens: number) {
+export function rejections(maxOutputTokens: number, tools: RunTools | undefined) {
+  const unavailable = (detail: string, advice = '') => unavailableAfter(tools, detail, advice);
   return {
     cancelled: () => Effect.interrupt,
     spec_invalid: ({ detail, provider_message, issues }: RejectedSpec) => {
@@ -67,7 +66,7 @@ export function rejections(maxOutputTokens: number) {
               detail: `${provider} stopped the answer at max_output_tokens (${maxOutputTokens}) before the JSON was complete; raise config.max_output_tokens in the spec`,
             }),
           )
-        : unavailable(`${detail}${listed(issues)}; try again`),
+        : unavailable(`${detail}${listed(issues)}`, '; try again'),
     content_refused: ({ detail }: Detailed) =>
       Effect.fail(
         new InvalidInput({
@@ -76,9 +75,10 @@ export function rejections(maxOutputTokens: number) {
         }),
       ),
     rate_limited: ({ detail, retry_after_ms }: Limited) =>
-      unavailable(`${detail}; try again ${waitFor(retry_after_ms)}`),
-    provider_unavailable: ({ detail }: Detailed) => unavailable(`${detail}; try again later`),
-    timed_out: ({ detail }: Detailed) => unavailable(`${detail}; try again later`),
+      unavailable(detail, `; try again ${waitFor(retry_after_ms)}`),
+    provider_unavailable: ({ detail }: Detailed) => unavailable(detail, '; try again later'),
+    timed_out: ({ detail }: Detailed) => unavailable(detail, '; try again later'),
+    tools_stopped: (stopped: Stopped) => stoppedEnding(tools, stopped),
     provider_not_configured: (failure: UnconfiguredProvider) =>
       othersAreOffered(failure)
         ? Effect.fail(
