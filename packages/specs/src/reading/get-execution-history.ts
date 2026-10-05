@@ -1,6 +1,5 @@
 import {
   BrainReader,
-  NotFound,
   PagingInputFields,
   PagingOutputFields,
   PublicEventSchema,
@@ -8,16 +7,16 @@ import {
   defineQuery,
   mostRecordsInAPage,
   presentationOf,
-  type BrainRecordedReader,
   type Presentation,
   type Presenter,
   type PublicEvent,
   type RecordedEvent,
   type RecordedOrder,
-  type RecordedPage,
 } from '@beonauto/operations';
 import { Effect, Order, Schema } from 'effect';
 
+import { executionOf } from '../execution/execution-lookup.ts';
+import { loadExecution } from '../operations/execution-access.ts';
 import { ExecutionIdField } from '../operations/spec-fields.ts';
 import { historyFound } from '../plain-language/reading-words.ts';
 
@@ -36,7 +35,9 @@ const description = [
   'and a page also stops after loading 4 MiB of stored data, so it may hold fewer events than `limit`.',
   'Read on with `cursor` set to the `next_cursor` of the page before; `next_cursor` is null when nothing remains.',
   '`execution_id` is the UUID that execute_spec answered with or was given.',
-  'Rejected with not_found when the brain has no execution with that id,',
+  'Oldest first, the newest events of an execution may take a moment to appear, while the ledger still writes:',
+  'a page of an execution that exists may then be empty with next_cursor null, and a later read shows them.',
+  'Rejected with not_found when the brain has no execution with that id, as get_execution is,',
   'and with invalid_input at /cursor for a cursor that a read of this brain did not give.',
 ].join(' ');
 
@@ -64,8 +65,6 @@ const inOrder: Readonly<Record<RecordedOrder, Order.Order<Presented>>> = {
   desc: Order.flip(byOwnTimeThenStream),
 };
 
-const firstRecord = { order: 'asc', limit: 1 } as const;
-
 function presentedBy({ present }: Presentation): (recorded: RecordedEvent) => readonly Presented[] {
   return (recorded) => {
     const event = present(recorded);
@@ -73,20 +72,9 @@ function presentedBy({ present }: Presentation): (recorded: RecordedEvent) => re
   };
 }
 
-const requireExecution = Effect.fnUntraced(function* (
-  reader: BrainRecordedReader,
-  id: string,
-  { records }: RecordedPage,
-  cursor: string | undefined,
-) {
-  const known =
-    records.length > 0 ||
-    (cursor !== undefined &&
-      (yield* reader.readRecorded({ kind: 'run', execution: id }, firstRecord)).records.length > 0);
-  if (!known) {
-    yield* new NotFound({ detail: `There is no execution ${id} in this brain` });
-  }
-});
+function requireExecution(id: string, records: readonly RecordedEvent[]) {
+  return records.length > 0 ? Effect.void : loadExecution(id).pipe(Effect.flatMap((state) => executionOf(id, state)));
+}
 
 function historyReader(presentation: Presentation) {
   const presented = presentedBy(presentation);
@@ -96,12 +84,11 @@ function historyReader(presentation: Presentation) {
     limit = defaultPageLimit,
     cursor,
   }: typeof ExecutionHistoryInput.Type) {
-    const reader = yield* BrainReader;
-    const page = yield* reader.readRecorded(
+    const page = yield* (yield* BrainReader).readRecorded(
       { kind: 'run', execution: id },
       { order, limit, ...(cursor === undefined ? {} : { cursor }) },
     );
-    yield* requireExecution(reader, id, page, cursor);
+    yield* requireExecution(id, page.records);
     const events = page.records.flatMap((recorded) => presented(recorded)).toSorted(inOrder[order]);
     return { events: events.map(({ event }) => event), has_more: page.hasMore, next_cursor: page.nextCursor };
   });

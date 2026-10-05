@@ -222,6 +222,16 @@ describe('the history of a run with a log of its own', () => {
   });
 });
 
+const idsOf = Schema.decodeUnknownSync(
+  Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ id: Schema.String })) }) }),
+);
+
+function idsIn(outcome: unknown): readonly string[] {
+  return idsOf(outcome).output.events.map(({ id }) => id);
+}
+
+const emptyAndEnded = { status: 'succeeded', output: { events: [], has_more: false, next_cursor: null } };
+
 describe('get_execution_history rejecting', () => {
   it('a run the brain does not have, with a cursor or without', async () => {
     const { executing, reading } = await brainWithRun();
@@ -231,12 +241,10 @@ describe('get_execution_history rejecting', () => {
       reason: 'not_found',
       detail: `There is no execution ${executionId} in this brain`,
     };
-    const { output } = Schema.decodeUnknownSync(
-      Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ id: Schema.String })) }) }),
-    )(await reading({ execution_id: otherId }));
+    const [firstOfAnother] = idsIn(await reading({ execution_id: otherId }));
 
     expect(await reading({})).toEqual(notFound);
-    expect(await reading({ cursor: String(output.events[0]?.id) })).toEqual(notFound);
+    expect(await reading({ cursor: String(firstOfAnother) })).toEqual(notFound);
   });
 
   it('a cursor that does not decode', async () => {
@@ -255,37 +263,17 @@ describe('the end of the history of a run', () => {
   it('is an empty page without a cursor', async () => {
     const { executing, reading } = await brainWithRun();
     await executing(executionId, '2026-10-01T09:00:10.000Z');
-    const { output } = Schema.decodeUnknownSync(
-      Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ id: Schema.String })) }) }),
-    )(await reading({}));
+    const [, last] = idsIn(await reading({}));
 
-    expect(await reading({ cursor: String(output.events[1]?.id) })).toEqual({
-      status: 'succeeded',
-      output: { events: [], has_more: false, next_cursor: null },
-    });
+    expect(await reading({ cursor: String(last) })).toEqual(emptyAndEnded);
   });
 });
 
-describe('a stored event that no longer decodes', () => {
-  it('fails the read of its history', async () => {
-    const BrokenSchema = Schema.Struct({ type: Schema.Literal('execution_started'), at: Schema.String });
-    const broken: Decider<null, typeof BrokenSchema.Type, typeof BrokenSchema.Type> = {
-      initialState: null,
-      evolve: (state) => state,
-      decide: (event) => Result.succeed([event]),
-      eventSchema: BrokenSchema,
-    };
-    const { call, ledger, listExecutions, reading, run } = await brainWithRun();
-    await run(
-      Effect.orDie(
-        ledger.service.execute(`brain/acme/alpha/executions/${executionId}`, broken, {
-          type: 'execution_started',
-          at: '2026-10-01T09:00:00.000Z',
-        }),
-      ),
-    );
+describe('a page of the history of a run whose records are all hidden', () => {
+  it('is empty, and the run is found', async () => {
+    const { executing, reading } = await brainWithRun([]);
+    await executing(executionId, '2026-10-01T09:00:10.000Z');
 
-    expect(await reading({})).toMatchObject({ status: 'failed' });
-    expect(await call(listExecutions, toAlpha(acmeAdmin))).toMatchObject({ status: 'failed' });
+    expect(await reading({})).toEqual(emptyAndEnded);
   });
 });

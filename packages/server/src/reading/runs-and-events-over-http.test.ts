@@ -211,3 +211,47 @@ describe.each(stores)('a retired brain over HTTP, on $store', ({ skipped, enviro
     });
   });
 });
+
+async function anAppendLeftOpen(database: string): Promise<Client> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  onTestFinished(() => client.end());
+  await client.query('BEGIN');
+  await client.query(
+    `SELECT success FROM emt_append_to_stream(
+      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY['{}'::jsonb], ARRAY['1'], ARRAY['note_added'], ARRAY['E'],
+      'brain/acme/alpha/notes', 'brain', 0, 'emt:default')`,
+    [{ json: JSON.stringify({ type: 'note_added', text: 'late' }) }],
+  );
+  return client;
+}
+
+describe.skipIf(postgresql === '')(
+  `the history of a run behind an append left open, on PostgreSQL${postgresqlNotice}`,
+  () => {
+    it('is an empty page oldest first, not not_found, and the events once the append commits', async () => {
+      const environment = await onADatabaseOfItsOwn();
+      server = await servingInference([answers(textResult('Profits rose.'))], environment);
+      await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+      await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
+      const open = await anAppendLeftOpen(String(environment['DATABASE_URL']));
+      await server.call('POST', `${alpha}/specs/inference/summary/execute`, {
+        body: { input: { text: 'the quarter' }, execution_id: succeeded },
+      });
+
+      const execution = await server.call('GET', `${alpha}/executions/${succeeded}`);
+      const behind = await server.call('GET', `${alpha}/executions/${succeeded}/history`);
+      const newestFirst = await server.call('GET', `${alpha}/executions/${succeeded}/history?order=desc`);
+      await open.query('COMMIT');
+      const after = await eventually(`${alpha}/executions/${succeeded}/history`, holding(2));
+
+      expect(execution).toMatchObject({ status: 200, body: { status: 'succeeded' } });
+      expect(behind).toMatchObject({ status: 200, body: { events: [], has_more: false, next_cursor: null } });
+      expect(eventsOf(newestFirst.body).events.map(({ type }) => type)).toEqual([
+        'execution_succeeded',
+        'execution_started',
+      ]);
+      expect(eventsOf(after.body).events.map(({ type }) => type)).toEqual(['execution_started', 'execution_succeeded']);
+    });
+  },
+);
