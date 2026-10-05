@@ -89,3 +89,29 @@ export const copyNote = defineCommand('brain', {
     return yield* addNote.call({ name: copy, text });
   }),
 });
+
+export const readNoteHistory = defineQuery('brain', {
+  name: 'read_note_history',
+  title: 'Read note history',
+  description: 'Reads one page of what the brain recorded, oldest first, taking any limit and time it is given.',
+  route: { method: 'GET', path: '/note-history' },
+  inputSchema: Schema.Struct({
+    limit: Schema.Int,
+    cursor: Schema.optionalKey(Schema.String),
+    since: Schema.optionalKey(Schema.String),
+    execution: Schema.optionalKey(Schema.String),
+  }),
+  outputSchema: Schema.Struct({
+    streams: Schema.Array(Schema.String),
+    ids: Schema.Array(Schema.String),
+    next_cursor: Schema.NullOr(Schema.String),
+  }),
+  reasons: ['invalid_input'],
+  handle: Effect.fnUntraced(function* ({ limit, cursor, since, execution }) {
+    const { records, nextCursor } = yield* (yield* BrainReader).readRecorded(
+      execution === undefined ? { kind: 'everything' } : { kind: 'run', execution },
+      { order: 'asc', limit, ...(cursor === undefined ? {} : { cursor }), ...(since === undefined ? {} : { since }) },
+    );
+    return { streams: records.map(({ stream }) => stream), ids: records.map(({ id }) => id), next_cursor: nextCursor };
+  }),
+});

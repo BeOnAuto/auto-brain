@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import type { Registration } from '../definition/registration.ts';
 import { Ledger } from '../ledger/ledger.ts';
 import type { Outcome, Rejected } from '../outcome/outcome.ts';
-import { authorizeBrainCall, authorizeOrgCall, confirmBrainExists, confirmOrgExists } from './authorization.ts';
+import { authorizeBrainCall, authorizeOrgCall, confirmBrainTakesCall, confirmOrgExists } from './authorization.ts';
 import { runInBrain } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
 import { withErrorBoundary } from './error-boundary.ts';
@@ -45,7 +45,7 @@ export function makeDispatcher(steps: readonly PipelineStep[]): Dispatcher {
       withErrorBoundary(
         Effect.gen(function* () {
           yield* authorizeBrainCall(registration, request);
-          yield* confirmBrainExists(request);
+          yield* confirmBrainTakesCall(registration, request);
           yield* passSteps(registration, request);
           const ledger = yield* Ledger;
           return yield* runInBrain(registration, request, ledger).pipe(withoutDispatcherServices);

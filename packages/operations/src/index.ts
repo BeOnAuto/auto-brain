@@ -1,6 +1,14 @@
 export { streamPrefixOfBrain, streamPrefixOfOrg } from './ledger/bound-ports.ts';
 export { BrainAccessSchema, canAccessBrain, type BrainAccess } from './caller/brain-access.ts';
-export { BrainRegistry } from './ledger/brain-registry.ts';
+export { BrainRegistry, type BrainStatus } from './ledger/brain-registry.ts';
+export {
+  boundedPage,
+  mostBytesLoadedInAPage,
+  mostRecordsInAPage,
+  mostRunsExaminedInAPage,
+  type BoundedPage,
+  type Examined,
+} from './reading/page-bounds.ts';
 export { BrainReader } from './ledger/brain-reader.ts';
 export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
@@ -15,6 +23,14 @@ export type { HandlerServices } from './definition/handler-services.ts';
 export { BrainIdSchema, OrgIdSchema } from './caller/identifiers.ts';
 export { IncidentReporter, type CallSummary, type Incident } from './dispatch/incident-reporter.ts';
 export { InvalidInput } from './outcome/invalid-input.ts';
+export {
+  InvalidCursor,
+  type RecordedEvent,
+  type RecordedOrder,
+  type RecordedPage,
+  type RecordedPageRequest,
+  type RecordedSelection,
+} from './reading/recorded-read.ts';
 export type { Issue } from './outcome/issue.ts';
 export type { JsonSchemaDocument } from './definition/json-schema.ts';
 export { Ledger } from './ledger/ledger.ts';
@@ -49,7 +65,10 @@ export {
   type Settled,
   type Cancelled,
 } from './outcome/outcome.ts';
+export { PagingInputFields, PagingOutputFields, defaultPageLimit } from './reading/paging-fields.ts';
 export { PermissionSchema, allPermissions, permissionFor, type Permission } from './caller/permission.ts';
+export type { Presenter } from './reading/presenter.ts';
+export { PublicEventSchema, mostPublicEventDataBytes, type PublicEvent } from './reading/public-event.ts';
 export type { DeclarableReason, Rejection, RejectionKind } from './outcome/rejection.ts';
 export type { InputEncoding, Registration, RegistrationOf } from './definition/registration.ts';
 export type { BrainRequest, OrgRequest } from './dispatch/request.ts';
@@ -57,7 +76,7 @@ export type { Method, Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';
 export { SettlementSchema, type Settlement } from './outcome/settlement.ts';
-export type { StreamReader, StreamWriter } from './ledger/stream-ports.ts';
+export type { BrainRecordedReader, RecordedReader, StreamReader, StreamWriter } from './ledger/stream-ports.ts';
 export {
   Unavailable,
   UnavailableBecauseSchema,

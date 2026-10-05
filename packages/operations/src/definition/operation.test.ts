@@ -2,9 +2,10 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { BrainReader, BrainWriter, InvalidInput, NotFound, defineQuery } from '../index.ts';
+import { brainBoundRecordedReader } from '../ledger/bound-ports.ts';
 import { labelBrain } from '../testing/brain-labels.ts';
 import { publishDraft } from '../testing/drafts.ts';
-import { memoryLedger } from '../testing/memory-ledger.ts';
+import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
 import { misreport, overshare } from '../testing/misbehaving.ts';
 import { addNote, getNote } from '../testing/notes.ts';
 
@@ -135,10 +136,14 @@ describe('a definition', () => {
   });
 });
 
+function readerOf({ service }: MemoryLedger): BrainReader['Service'] {
+  return { ...service, ...brainBoundRecordedReader(service, { org: 'acme', brain: 'alpha' }) };
+}
+
 describe('the typed call', () => {
   const ledger = memoryLedger();
   const withNotes = <A, E>(call: Effect.Effect<A, E, BrainReader | BrainWriter>) =>
-    call.pipe(Effect.provideService(BrainReader, ledger.service), Effect.provideService(BrainWriter, ledger.service));
+    call.pipe(Effect.provideService(BrainReader, readerOf(ledger)), Effect.provideService(BrainWriter, ledger.service));
 
   it('runs the handler with typed input and output in the services it is given', async () => {
     const read = await Effect.runPromise(

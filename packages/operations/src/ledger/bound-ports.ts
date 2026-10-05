@@ -2,7 +2,10 @@ import { Effect } from 'effect';
 
 import type { BrainAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
-import type { StreamReader, StreamWriter } from './stream-ports.ts';
+import { InvalidInput } from '../outcome/invalid-input.ts';
+import { mostRecordsInAPage } from '../reading/page-bounds.ts';
+import type { RecordedPage, RecordedPageRequest, RecordedSelection } from '../reading/recorded-read.ts';
+import type { BrainRecordedReader, RecordedReader, StreamReader, StreamWriter } from './stream-ports.ts';
 
 const streamNameGrammar = /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})*$/u;
 
@@ -33,5 +36,46 @@ export function prefixedWriter(ledger: StreamWriter, prefix: string): StreamWrit
   return {
     execute: (stream, decider, command) =>
       wellFormed(stream).pipe(Effect.flatMap((relative) => ledger.execute(`${prefix}${relative}`, decider, command))),
+  };
+}
+
+function wellFormedSelection(selection: RecordedSelection): Effect.Effect<RecordedSelection> {
+  return selection.kind === 'run'
+    ? wellFormed(`executions/${selection.execution}`).pipe(Effect.as(selection))
+    : Effect.succeed(selection);
+}
+
+function wellFormedPage(page: RecordedPageRequest): Effect.Effect<RecordedPageRequest> {
+  if (!Number.isInteger(page.limit) || page.limit < 1 || page.limit > mostRecordsInAPage) {
+    return Effect.die(new RangeError(`A page holds 1 to ${mostRecordsInAPage} records, not ${page.limit}`));
+  }
+  return page.since === undefined || Number.isFinite(Date.parse(page.since))
+    ? Effect.succeed(page)
+    : Effect.die(new RangeError(`The time ${JSON.stringify(page.since)} a page starts from is not a time`));
+}
+
+const cursorOfAnotherRead = new InvalidInput({
+  detail: 'The cursor was not given by a read of this brain',
+  issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+});
+
+function relativeTo(prefix: string): (page: RecordedPage) => RecordedPage {
+  return ({ records, ...paging }) => ({
+    records: records.map((record) => ({ ...record, stream: record.stream.slice(prefix.length) })),
+    ...paging,
+  });
+}
+
+export function brainBoundRecordedReader(ledger: RecordedReader, brain: BrainAddress): BrainRecordedReader {
+  return {
+    readRecorded: (selection, page) =>
+      Effect.gen(function* () {
+        const checkedSelection = yield* wellFormedSelection(selection);
+        const checkedPage = yield* wellFormedPage(page);
+        return yield* ledger.readRecorded(brain, checkedSelection, checkedPage);
+      }).pipe(
+        Effect.map(relativeTo(streamPrefixOfBrain(brain))),
+        Effect.mapError(() => cursorOfAnotherRead),
+      ),
   };
 }
