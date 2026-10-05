@@ -59,6 +59,18 @@ describe('the ledger settings', () => {
   });
 });
 
+describe('DATABASE_URL as it is written', () => {
+  it('is read without the spaces and line breaks around it, which the driver would take as part of it', () => {
+    expect(revealed(readSettings({ DATABASE_URL: ` ${databaseUrl}\n` }).ledger)).toMatchObject({ url: databaseUrl });
+  });
+
+  it('names its database decoded, as the driver reads it', () => {
+    expect(readSettings({ DATABASE_URL: 'postgresql://brains@db.example.com/post%67res' }).ledger).toMatchObject({
+      database: 'postgres',
+    });
+  });
+});
+
 describe('ledger settings the server cannot use', () => {
   it('stop the server from starting when both DATABASE_URL and LEDGER_FILE are set, naming both and neither value', () => {
     const error = String(errorFrom({ DATABASE_URL: databaseUrl, LEDGER_FILE: '/data/ledger.db' }));
@@ -75,6 +87,7 @@ describe('ledger settings the server cannot use', () => {
     'postgresql:///brains',
     `postgresql://brains:${password}@db.example.com`,
     `postgresql://brains:${password}@db.example.com/`,
+    `postgresql://brains:${password}@db.example.com/%E0%A4%A`,
   ])('stop the server from starting when DATABASE_URL is %s, which names no PostgreSQL database', (url) => {
     const error = String(errorFrom({ DATABASE_URL: url }));
 

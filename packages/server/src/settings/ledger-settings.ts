@@ -25,11 +25,20 @@ function invalid(detail: string): InvalidSettingsError {
   return new InvalidSettingsError({ message: `The ledger settings are invalid. ${detail}` });
 }
 
-function onPostgreSQL(url: Redacted.Redacted): Effect.Effect<LedgerSettings, InvalidSettingsError> {
-  const parsed = URL.parse(Redacted.value(url));
-  const database = parsed?.pathname.slice(1) ?? '';
+function databaseNameIn(pathname: string): string {
+  try {
+    return decodeURI(pathname.slice(1));
+  } catch {
+    return '';
+  }
+}
+
+function onPostgreSQL(given: Redacted.Redacted): Effect.Effect<LedgerSettings, InvalidSettingsError> {
+  const url = Redacted.value(given).trim();
+  const parsed = URL.parse(url);
+  const database = parsed === null ? '' : databaseNameIn(parsed.pathname);
   return parsed !== null && postgresqlSchemes.has(parsed.protocol) && parsed.host !== '' && database !== ''
-    ? Effect.succeed({ store: 'postgresql', url, host: parsed.host, database })
+    ? Effect.succeed({ store: 'postgresql', url: Redacted.make(url), host: parsed.host, database })
     : Effect.fail(
         invalid('DATABASE_URL: Expected a PostgreSQL URL such as postgresql://user:password@host:5432/database'),
       );

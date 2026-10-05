@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 import type { AccessMode } from '@beonauto/identity';
 import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '@beonauto/inference';
 import type { Incident } from '@beonauto/operations';
@@ -98,14 +100,18 @@ export function logConfigFile(report?: ConfigFileReport): Effect.Effect<void> {
   );
 }
 
+const privateMemory = ':memory:';
+
+function ledgerFileLine(file: string): Effect.Effect<void> {
+  return Effect.logInfo(`The ledger is kept in the file ${file}`).pipe(Effect.annotateLogs({ ledger_file: file }));
+}
+
 export function logLedger(ledger: LedgerSettings): Effect.Effect<void> {
   return ledger.store === 'postgresql'
     ? Effect.logInfo(`The ledger is kept in PostgreSQL, in the database ${ledger.database} on ${ledger.host}`).pipe(
         Effect.annotateLogs({ database: ledger.database, database_host: ledger.host }),
       )
-    : Effect.logInfo(`The ledger is kept in the file ${ledger.file}`).pipe(
-        Effect.annotateLogs({ ledger_file: ledger.file }),
-      );
+    : ledgerFileLine(ledger.file === privateMemory ? ledger.file : resolve(ledger.file));
 }
 
 const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');

@@ -429,9 +429,15 @@ importers:
       '@temporalio/testing':
         specifier: 1.24.0
         version: 1.24.0(esbuild@0.28.1)(lightningcss@1.33.0)(postcss@8.5.28)
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
       vitest:
         specifier: 'catalog:'
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))

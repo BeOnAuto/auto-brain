@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { answers, textResult } from '@beonauto/inference/testing';
-import { describe, expect, it } from 'vitest';
+import { Client } from 'pg';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { servingInference } from '../testing/inference-server.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
@@ -15,7 +16,28 @@ const skipped = server === '';
 
 const notice = skipped ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL of a PostgreSQL server to run it' : '';
 
-const onPostgreSQL = { LOCAL_MODE: 'true', LEDGER_FILE: '', DATABASE_URL: server };
+async function administer(statement: string): Promise<void> {
+  const client = new Client({ connectionString: server });
+  await client.connect();
+  try {
+    await client.query(statement);
+  } finally {
+    await client.end();
+  }
+}
+
+async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> {
+  const name = `server_${randomUUID().replaceAll('-', '')}`;
+  await administer(`CREATE DATABASE ${name}`);
+  onTestFinished(async () => {
+    await administer(`DROP DATABASE ${name} WITH (FORCE)`);
+  });
+  const database = new URL(server);
+  database.pathname = `/${name}`;
+  return { LOCAL_MODE: 'true', LEDGER_FILE: '', DATABASE_URL: database.href };
+}
+
+const brain = '/v1/orgs/acme/brains/alpha';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -33,11 +55,9 @@ describe.skipIf(skipped)(
   { timeout: spawnedServerTestTimeoutMs },
   () => {
     it('executes an inference spec of a brain it created, and reads the execution again after a restart', async () => {
-      const brain = `/v1/orgs/run-${randomUUID()}/brains/alpha`;
-      const first = await servingInference([answers(textResult('Profits rose.'))], onPostgreSQL);
-      const created = await first.call('POST', brain.replace(/\/alpha$/u, ''), {
-        body: { brain: 'alpha', name: 'Alpha' },
-      });
+      const environment = await onADatabaseOfItsOwn();
+      const first = await servingInference([answers(textResult('Profits rose.'))], environment);
+      const created = await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
       const spec = await first.call('POST', `${brain}/specs/inference`, { body: { name: 'summary', source: summary } });
       const executed = await first.call('POST', `${brain}/specs/inference/summary/execute`, {
         body: { input: { text: 'the quarter' }, execution_id: executionId },
@@ -46,7 +66,7 @@ describe.skipIf(skipped)(
       const before = await first.call('GET', execution);
       await first.stop();
 
-      const second = await servingInference([], onPostgreSQL);
+      const second = await servingInference([], environment);
       const after = await second.call('GET', execution);
       const brainAfter = await second.call('GET', brain);
       await second.stop();
@@ -58,8 +78,9 @@ describe.skipIf(skipped)(
     });
 
     it('says at start-up that the ledger is in PostgreSQL, with its database and host and never its URL', async () => {
-      const { host, pathname, password } = new URL(server);
-      const child = spawnServer(mainModule, { HOST: '127.0.0.1', PORT: '0', ...onPostgreSQL });
+      const environment = await onADatabaseOfItsOwn();
+      const { host, pathname, password } = new URL(String(environment['DATABASE_URL']));
+      const child = spawnServer(mainModule, { HOST: '127.0.0.1', PORT: '0', ...environment });
       await child.port;
       child.signal('SIGTERM');
 
@@ -67,7 +88,7 @@ describe.skipIf(skipped)(
       expect(child.output().stderr).toContain(
         `"message":"The ledger is kept in PostgreSQL, in the database ${pathname.slice(1)} on ${host}"`,
       );
-      expect(child.output().stderr).not.toContain(server);
+      expect(child.output().stderr).not.toContain(String(environment['DATABASE_URL']));
       expect(child.output().stderr).not.toContain(`:${password}@`);
     });
   },
