@@ -10,19 +10,10 @@ import {
 import { IncidentReporter, type DispatcherServices, type Ledger } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
-import { defaultServerOptions, servedBy, type ServerOptions } from '../lifecycle/lifecycle.ts';
-import {
-  logIncident,
-  logLedger,
-  logModelProviders,
-  logOperatorHint,
-  logProviderMessage,
-  logsToStderr,
-  logWorkflowsNotOffered,
-} from '../logging/logging.ts';
-import { brainOperationsServing } from './brain-operations.ts';
+import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';
+import { logIncident, logLedger, logModelProviders, logOperatorHint, logProviderMessage } from '../logging/logging.ts';
+import { serveWorkflows } from '../workflows/workflows.ts';
 import { ledgerLayerOf } from './ledger-store.ts';
-import { routesServing } from './served-routes.ts';
 
 export type ModelAccessOf = (settings: ModelSettings) => Effect.Effect<ModelAccess>;
 
@@ -51,17 +42,15 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
   return {
     ...defaultServerOptions,
     runtimeLayer: ({ ledger }) => applicationLayer(ledgerLayerOf(ledger)),
-    serve: async (runtime, { ledger, models, workflows, logFormat }) => {
+    serve: async (runtime, { ledger, models, workflows }) => {
       await runtime.run(logLedger(ledger));
       const { primitive, listModels } = await inferenceServedBy(runtime, models, modelAccessOf);
-      const primitives = [primitive];
-      const orgOperations = [...brainOperations, listModels];
-      if (workflows === undefined) {
-        await runtime.run(logWorkflowsNotOffered);
-        return servedBy(routesServing([...orgOperations, ...brainOperationsServing(primitives)])(runtime));
-      }
-      const { serveWorkflows } = await import('../workflows/workflows.ts');
-      return serveWorkflows(runtime, { settings: workflows, primitives, orgOperations, logs: logsToStderr(logFormat) });
+      return serveWorkflows(runtime, {
+        ledger,
+        workflows,
+        primitives: [primitive],
+        orgOperations: [...brainOperations, listModels],
+      });
     },
   };
 }

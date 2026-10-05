@@ -1,12 +1,9 @@
-import { once } from 'node:events';
-import { createServer } from 'node:net';
 import { homedir } from 'node:os';
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import { Schema } from 'effect';
 
-import { tcpPort } from '../lifecycle/lifecycle.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
 import { isStarted } from './workflow-server.ts';
 
@@ -33,20 +30,13 @@ const decodeLine = Schema.decodeUnknownSync(
   ),
 );
 
-export function workflowProcess(
-  ledgerFile: string,
-  address: string,
-  taskQueue: string,
-  environment: Readonly<Record<string, string>> = {},
-): SpawnedServer {
+export function workflowProcess(ledgerFile: string, environment: Readonly<Record<string, string>> = {}): SpawnedServer {
   return spawnServer(mainModule, {
     HOME: homedir(),
     HOST: '127.0.0.1',
     PORT: '0',
     LOCAL_MODE: 'true',
     LEDGER_FILE: ledgerFile,
-    TEMPORAL_ADDRESS: address,
-    TEMPORAL_TASK_QUEUE: taskQueue,
     ...environment,
   });
 }
@@ -57,35 +47,6 @@ export function logLinesOf(child: SpawnedServer): readonly LogLine[] {
     .stderr.split('\n')
     .filter((line) => line !== '')
     .map((line) => decodeLine(line));
-}
-
-export async function untilLogged(child: SpawnedServer, wanted: (message: string) => boolean): Promise<void> {
-  if (logLinesOf(child).some(({ message }) => wanted(message))) {
-    return;
-  }
-  await setTimeout(50);
-  await untilLogged(child, wanted);
-}
-
-export async function loggedWithin(
-  child: SpawnedServer,
-  wanted: (message: string) => boolean,
-  attempts: number,
-): Promise<LogLine | undefined> {
-  const line = logLinesOf(child).find(({ message }) => wanted(message));
-  if (line !== undefined || attempts <= 1) {
-    return line;
-  }
-  await setTimeout(250);
-  return loggedWithin(child, wanted, attempts - 1);
-}
-
-export async function freePort(): Promise<number> {
-  const probe = createServer().listen(0, '127.0.0.1');
-  await once(probe, 'listening');
-  const port = tcpPort(probe.address());
-  probe.close();
-  return port;
 }
 
 export async function requestTo(port: number, method: string, path: string, body?: unknown): Promise<Answer> {
@@ -112,11 +73,4 @@ export async function settledOver(port: number, path: string): Promise<unknown> 
     (answer) => !isStarted(answer.body),
   );
   return body;
-}
-
-export function acceptedOnceUp(port: number, path: string, body: unknown): Promise<Answer> {
-  return eventually(
-    () => requestTo(port, 'POST', path, body),
-    ({ status }) => status === 200,
-  );
 }

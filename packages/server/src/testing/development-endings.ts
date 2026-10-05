@@ -1,8 +1,5 @@
-import { whatAnswersOn } from '../development/temporal-answer.ts';
 import {
   developmentFiles,
-  localTemporalPorts,
-  pidsOf,
   runnerLines,
   startDevelopment,
   untilGone,
@@ -10,35 +7,27 @@ import {
   type Development,
 } from './development-process.ts';
 
-export interface Ending {
+export interface Stopped {
   readonly exitCode: unknown;
-  readonly alive: readonly number[];
-  readonly temporal: string;
   readonly said: readonly string[];
 }
 
-const startedFirst = { temporal: 0, server: 2 };
+export interface Ending extends Stopped {
+  readonly alive: readonly number[];
+}
 
-export async function runningWithTemporal(): Promise<Development> {
-  const development = startDevelopment(developmentFiles(), { temporal: await localTemporalPorts() });
+export async function runningDevelopment(): Promise<Development> {
+  const development = startDevelopment(developmentFiles());
   await untilListening(development);
   return development;
 }
 
-export function temporalAddressOf(development: Development): string {
-  return String(/running on (127\.0\.0\.1:\d+)/u.exec(runnerLines(development).join('\n'))?.[1]);
-}
-
-export function pidOf(development: Development, child: keyof typeof startedFirst): number {
-  return Number(pidsOf(development).at(startedFirst[child]));
+export async function stoppedWith(development: Development, signal: NodeJS.Signals): Promise<Stopped> {
+  development.signal(signal);
+  return { exitCode: await development.exited, said: runnerLines(development) };
 }
 
 export async function endingOf(development: Development): Promise<Ending> {
   const exitCode = await development.exited;
-  return {
-    exitCode,
-    alive: await untilGone(development),
-    temporal: await whatAnswersOn(temporalAddressOf(development)),
-    said: runnerLines(development).slice(1),
-  };
+  return { exitCode, alive: await untilGone(development), said: runnerLines(development) };
 }

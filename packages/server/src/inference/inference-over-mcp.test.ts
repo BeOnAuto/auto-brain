@@ -26,6 +26,7 @@ const specTools = [
   'list_executions',
   'get_execution_history',
   'list_brain_events',
+  'send_execution_event',
 ];
 
 const inferenceDescription = makeInference({
@@ -101,7 +102,7 @@ describe('an inference spec over MCP, on the endpoint of its brain', () => {
 });
 
 describe('the spec tools an agent sees on the endpoint of a brain', () => {
-  it('are the ten operations inside a brain, and those that name a primitive describe the document format of inference', async () => {
+  it('are the eleven operations inside a brain, and those that name a primitive describe the document format of inference', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const describing = tools.filter(({ description }) => description?.includes(inferenceDescription) === true);
 
@@ -125,7 +126,7 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const schemas = tools.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
 
-    expect(schemas).toHaveLength(20);
+    expect(schemas).toHaveLength(22);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

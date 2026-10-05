@@ -59,9 +59,9 @@ describe('a child of the dev runner', () => {
   });
 
   it('says why it could not start', async () => {
-    const child = started({ ...shell(''), command: '/nonexistent/temporal' });
+    const child = started({ ...shell(''), command: '/nonexistent/program' });
 
-    await expect(child.ended).resolves.toBe('Error: spawn /nonexistent/temporal ENOENT');
+    await expect(child.ended).resolves.toBe('Error: spawn /nonexistent/program ENOENT');
   });
 
   it('gets a reaper that waits on the runner and leaves the child alone when dismissed', async () => {
@@ -95,8 +95,8 @@ describe('stopping a child of the dev runner', () => {
   });
 
   it('ends at once when the child could not start', async () => {
-    const child = started({ ...shell(''), command: '/nonexistent/temporal' });
+    const child = started({ ...shell(''), command: '/nonexistent/program' });
 
-    await expect(child.stop('SIGTERM')).resolves.toBe('Error: spawn /nonexistent/temporal ENOENT');
+    await expect(child.stop('SIGTERM')).resolves.toBe('Error: spawn /nonexistent/program ENOENT');
   });
 });

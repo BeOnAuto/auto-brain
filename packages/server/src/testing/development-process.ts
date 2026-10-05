@@ -9,8 +9,6 @@ import { fileURLToPath } from 'node:url';
 import { Option, Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import { freePort } from './workflow-process.ts';
-
 export const developmentTestTimeoutMs = 60_000;
 
 export interface DevelopmentFiles {
@@ -21,20 +19,10 @@ export interface DevelopmentFiles {
   readonly sourceDirectory: string;
   readonly serverEntry: string;
   readonly pidsFile: string;
-  readonly stateFile: string;
   readonly ledgerFile: string;
 }
 
-export interface LocalTemporalPorts {
-  readonly port: number;
-  readonly uiPort: number;
-}
-
-type Obtain = 'cached' | 'held until stopped' | { readonly unobtainable: string };
-
 export interface DevelopmentOptions {
-  readonly temporal?: LocalTemporalPorts;
-  readonly obtain?: Obtain;
   readonly environment?: Readonly<Record<string, string>>;
 }
 
@@ -62,7 +50,6 @@ export function developmentFiles(envFileText = 'HOST=127.0.0.1\nLOCAL_MODE=true\
     sourceDirectory: join(directory, 'src'),
     serverEntry: join(directory, 'src', 'entry.ts'),
     pidsFile: join(directory, 'pids'),
-    stateFile: join(directory, '.data', 'temporal.db'),
     ledgerFile: join(directory, 'ledger.db'),
   };
   writeFileSync(files.envFile, envFileText);
@@ -79,10 +66,6 @@ export function writeServerEntry({ serverEntry }: DevelopmentFiles, source = `im
   writeFileSync(serverEntry, source);
 }
 
-export async function localTemporalPorts(): Promise<LocalTemporalPorts> {
-  return { port: await freePort(), uiPort: await freePort() };
-}
-
 export function startDevelopment(files: DevelopmentFiles, options: DevelopmentOptions = {}): Development {
   const setup = {
     envFiles: [files.envFile, files.localEnvFile],
@@ -90,8 +73,6 @@ export function startDevelopment(files: DevelopmentFiles, options: DevelopmentOp
     serverEntry: files.serverEntry,
     configFile: files.configFile,
     pidsFile: files.pidsFile,
-    ...(options.temporal === undefined ? {} : { temporal: { ...options.temporal, stateFile: files.stateFile } }),
-    obtain: options.obtain ?? 'cached',
   };
   const child = spawn(process.execPath, [runner, JSON.stringify(setup)], {
     env: {
@@ -143,7 +124,7 @@ function groupAlive(pid: number): boolean {
   }
 }
 
-export function aliveGroups(development: Development): readonly number[] {
+function aliveGroups(development: Development): readonly number[] {
   return pidsOf(development).filter((pid) => groupAlive(pid));
 }
 
@@ -200,10 +181,6 @@ export function readyNoticesOf(development: Development): readonly string[] {
   return linesFrom(development, 'dev')
     .filter((line) => readyNotice.test(line))
     .map((line) => line.replace(readyNotice, ''));
-}
-
-export function temporalLines(development: Development): readonly string[] {
-  return linesFrom(development, 'temporal');
 }
 
 function listeningPorts({ stdout }: Development): readonly number[] {

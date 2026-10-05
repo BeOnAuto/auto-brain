@@ -1,14 +1,14 @@
 import { configurationOf, readServerConfig, type Environment, type FileUse } from '@beonauto/config';
 import { readApiKeys, type ApiKey } from '@beonauto/identity';
 import { ModelSettingsInvalid, readModelSettings, type ModelSettings, type SettingProblem } from '@beonauto/inference';
-import { readTemporalSettings, type TemporalSettings } from '@beonauto/orchestration/settings';
-import { Config, ConfigProvider, Effect, Option, Result } from 'effect';
+import { Config, ConfigProvider, Effect, Result } from 'effect';
 
 import type { LogFormat } from '../logging/logging.ts';
 import { fileSettings } from './file-settings.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
 import { Origin } from './origin.ts';
+import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
 
 interface ConfigFileSources {
   readonly path: string;
@@ -25,7 +25,7 @@ export interface Settings {
   readonly localMode: boolean;
   readonly logFormat: LogFormat;
   readonly models: ModelSettings;
-  readonly workflows: TemporalSettings | undefined;
+  readonly workflows: WorkflowSettings;
   readonly configFile: ConfigFileSources | undefined;
 }
 
@@ -62,7 +62,7 @@ export function readSettings(given: Environment): Settings {
       Effect.mapError((invalid: { readonly problems: readonly SettingProblem[] }) => placedInFile(invalid, file)),
     ),
   );
-  const workflows = Option.getOrUndefined(Effect.runSync(readTemporalSettings(environment)));
+  const workflows = Effect.runSync(readWorkflowSettings(environment));
   return {
     host,
     port,

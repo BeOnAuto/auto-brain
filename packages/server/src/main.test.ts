@@ -36,8 +36,8 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
     'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',
   ],
   [
-    { TEMPORAL_ADDRESS: 'temporal:7233', TEMPORAL_TLS: 'sometimes' },
-    'temporal_settings_invalid: The Temporal settings are invalid. TEMPORAL_TLS: Expected true or false',
+    { ORCHESTRATION_SWEEP_INTERVAL: 'PT2M' },
+    'InvalidSettingsError: The workflow settings are invalid. ORCHESTRATION_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
   ],
   [
     { MODEL_ALIASES: '{"fast":"gemini"}' },
@@ -64,7 +64,8 @@ function logLines(stderr: string): readonly { readonly message: string; readonly
 const noModelProvider =
   'No model provider is configured, so inference specs cannot run; set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
 
-const workflowsNotOffered = 'Workflows are not offered because TEMPORAL_ADDRESS is unset';
+const workflowsRun =
+  'Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms';
 
 const ledgerKept = `The ledger is kept in the file ${ledger.fileName}`;
 
@@ -93,7 +94,7 @@ function messagesOf(stderr: string): readonly string[] {
 }
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
-  return [expect.stringMatching(/^Local mode is on: /u), ledgerKept, noModelProvider, workflowsNotOffered, ...after];
+  return [expect.stringMatching(/^Local mode is on: /u), ledgerKept, noModelProvider, workflowsRun, ...after];
 }
 
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
@@ -204,7 +205,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
     expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
-    expect(messagesOf(child.output().stderr)).toEqual([ledgerKept, noModelProvider, workflowsNotOffered]);
+    expect(messagesOf(child.output().stderr)).toEqual([ledgerKept, noModelProvider, workflowsRun]);
   });
 
   it.each(invalidSettings)(

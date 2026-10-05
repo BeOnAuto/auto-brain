@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { createInterface } from 'node:readline';
 import { setTimeout } from 'node:timers/promises';
 
 import type { Environment } from '@beonauto/config';
@@ -12,7 +11,7 @@ export interface ChildCommand {
   readonly environment: Environment;
   readonly stdin: 'ignore' | 'pipe';
   readonly stdout: 'ignore' | Written;
-  readonly stderr: 'inherit' | Written;
+  readonly stderr: 'inherit';
 }
 
 export interface RunningChild {
@@ -73,7 +72,7 @@ function stopOf(pid: number | undefined, ended: Promise<string>, patienceMs: num
   };
 }
 
-function streamOf(output: 'ignore' | 'inherit' | Written): 'ignore' | 'inherit' | 'pipe' {
+function streamOf(output: 'ignore' | Written): 'ignore' | 'pipe' {
   return typeof output === 'function' ? 'pipe' : output;
 }
 
@@ -84,7 +83,7 @@ export function startChild(
   const child = spawn(command, args, {
     detached: true,
     env: { ...environment },
-    stdio: [stdin, streamOf(stdout), streamOf(stderr)],
+    stdio: [stdin, streamOf(stdout), stderr],
   });
   const { promise: ended, resolve: end } = Promise.withResolvers<string>();
   child.once('exit', (code, signal) => {
@@ -95,9 +94,6 @@ export function startChild(
   });
   if (typeof stdout === 'function') {
     child.stdout?.setEncoding('utf8').on('data', stdout);
-  }
-  if (typeof stderr === 'function' && child.stderr !== null) {
-    createInterface({ input: child.stderr, crlfDelay: Infinity }).on('line', stderr);
   }
   return {
     pid: child.pid,

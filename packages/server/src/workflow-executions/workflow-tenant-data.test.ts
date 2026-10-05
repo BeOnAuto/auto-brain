@@ -1,21 +1,16 @@
-import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
-import { installTemporalRuntime, type TemporalLogEntry } from '@beonauto/orchestration';
-import { TestWorkflowEnvironment } from '@temporalio/testing';
 import { Schema } from 'effect';
-import { afterAll, describe, expect, inject, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import type { SpawnedServer } from '../testing/spawned-server.ts';
 import { temporaryLedger } from '../testing/temporary-ledger.ts';
-import { requestTo, settledOver, untilLogged, workflowProcess } from '../testing/workflow-process.ts';
+import { requestTo, settledOver, workflowProcess } from '../testing/workflow-process.ts';
 import { executionIdIn, workflowSource } from '../testing/workflow-server.ts';
 
 const marker = 'marker-7d1c9e';
 
 const ledger = temporaryLedger();
-
-const temporalLogsOfThisProcess: TemporalLogEntry[] = [];
 
 afterAll(() => {
   ledger.remove();
@@ -46,7 +41,6 @@ const specs: readonly Spec[] = [
   },
   { name: 'limit', steps: `timeout: { after: { milliseconds: 300 } }\ndo:\n  - ${marker}: { wait: PT1H }\n` },
   { name: 'flood', steps: 'do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.never } } } } }\n' },
-  { name: 'pausing', steps: 'do:\n  - pause: { wait: PT1H }\n' },
 ];
 
 async function started(port: number, name: string): Promise<readonly [string, string]> {
@@ -96,8 +90,7 @@ async function createdInTurn(port: number, remaining: readonly Spec[]): Promise<
   }
 }
 
-async function startedEach(child: SpawnedServer, port: number): Promise<ReadonlyMap<string, string>> {
-  await untilLogged(child, (message) => message === 'The workflow worker started');
+async function startedEach(port: number): Promise<ReadonlyMap<string, string>> {
   await requestTo(port, 'POST', '', { brain: 'alpha', name: 'Alpha' });
   await createdInTurn(port, specs);
   return new Map(await Promise.all(specs.map(({ name }) => started(port, name))));
@@ -111,14 +104,9 @@ async function stopped(child: SpawnedServer): Promise<unknown> {
 
 describe('a workflow that ends for a reason of its tenant', { timeout: 120_000 }, () => {
   it('leaves no trace of its input, document, events or nested rejections in any line the server writes', async () => {
-    const address = inject('temporalAddress');
-    const child = workflowProcess(ledger.fileName, address, `server-${randomUUID()}`);
+    const child = workflowProcess(ledger.fileName);
     const port = await child.port;
-    const ids = await startedEach(child, port);
-    installTemporalRuntime((entry) => {
-      temporalLogsOfThisProcess.push(entry);
-    });
-    const temporal = await TestWorkflowEnvironment.createFromExistingServer({ address });
+    const ids = await startedEach(port);
 
     await sent(port, idOf(ids, 'event'), { type: 'com.acme.go', data: { secret: marker } });
     const flood = await Promise.all(
@@ -126,10 +114,8 @@ describe('a workflow that ends for a reason of its tenant', { timeout: 120_000 }
         sent(port, idOf(ids, 'flood'), { id: `${marker}-${index}`, type: marker, data: marker }),
       ),
     );
-    await temporal.client.workflow.getHandle(`acme/alpha/pausing/${idOf(ids, 'pausing')}`).cancel();
     const settled = await settledEach(port, ids);
     const exitCode = await stopped(child);
-    await temporal.teardown();
     const { stdout, stderr } = child.output();
 
     expect(exitCode).toBe(0);
@@ -141,10 +127,8 @@ describe('a workflow that ends for a reason of its tenant', { timeout: 120_000 }
       nested: 'rejected',
       limit: 'rejected',
       flood: 'rejected',
-      pausing: 'failed',
     });
     expect(JSON.stringify([...settled.values()])).toContain(marker);
     expect(`${stdout}${stderr}`).not.toContain(marker);
-    expect(stderr).not.toContain('Temporal reported');
   });
 });
