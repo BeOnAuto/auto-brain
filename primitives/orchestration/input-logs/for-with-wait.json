@@ -77,11 +77,6 @@
         {
           "reference": "/do/0/each/do/0/pause",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/each/do/0/pause",
-          "run": 1,
           "outcome": "waiting"
         }
       ],
@@ -317,7 +312,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3121
+          "value": 3055
         }
       ],
       "outputs": [
@@ -356,17 +351,7 @@
         {
           "reference": "/do/0/each/do/1/add",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/each/do/1/add",
-          "run": 1,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/0/each/do/0/pause",
-          "run": 2,
-          "outcome": "started"
         },
         {
           "reference": "/do/0/each/do/0/pause",
@@ -521,7 +506,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5890
+          "value": 5694
         }
       ],
       "outputs": [
@@ -548,11 +533,6 @@
           "reference": "/do/0/each/do/0/pause",
           "run": 2,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/0/each/do/1/add",
-          "run": 2,
-          "outcome": "started"
         },
         {
           "reference": "/do/0/each/do/1/add",
@@ -643,7 +623,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 7322
+          "value": 7062
         }
       ],
       "outputs": [

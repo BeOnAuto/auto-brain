@@ -138,11 +138,6 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/guarded/try/0/fetch",
-          "run": 1,
           "outcome": "waiting"
         }
       ],
@@ -397,7 +392,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3922
+          "value": 3852
         }
       ],
       "outputs": [
@@ -527,7 +522,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5745
+          "value": 5675
         }
       ],
       "outputs": [
@@ -555,11 +550,6 @@
         "at": 1790845200550
       },
       "steps": [
-        {
-          "reference": "/do/0/guarded/try/0/fetch",
-          "run": 2,
-          "outcome": "started"
-        },
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 2,
@@ -695,7 +685,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8382
+          "value": 8242
         }
       ],
       "outputs": [
@@ -817,7 +807,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 10206
+          "value": 10066
         }
       ],
       "outputs": [
@@ -845,11 +835,6 @@
         "at": 1790845201600
       },
       "steps": [
-        {
-          "reference": "/do/0/guarded/try/0/fetch",
-          "run": 3,
-          "outcome": "started"
-        },
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 3,
@@ -985,7 +970,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 12844
+          "value": 12634
         }
       ],
       "outputs": [
@@ -1097,7 +1082,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 14200
+          "value": 13990
         }
       ],
       "outputs": [

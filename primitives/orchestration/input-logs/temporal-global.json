@@ -46,11 +46,6 @@
         {
           "reference": "/do/0/clock",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/clock",
-          "run": 1,
           "outcome": "completed"
         }
       ],
@@ -169,7 +164,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1802
+          "value": 1746
         }
       ],
       "outputs": [

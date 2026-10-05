@@ -75,8 +75,8 @@ Each event, `input_applied`, holds:
 
 - `format`: the state format its patch applies to.
 - `receipt`: the kind of the input, the key it is deduplicated by and its time; for an answer, the result's status, and for an external event, its type. The input's payload is not stored again: what it changed is in the patch.
-- `steps`: each task the input stepped, as `{ reference, run, outcome }`, with outcome `started`, `skipped`, `waiting`, `completed`, `raised`, `timed_out` or `cancelled`.
-- `patch`: the change to the state, as JSON Patch operations (RFC 6902 `add`, `replace` and `remove`) addressed by JSON Pointer.
+- `steps`: each run of a task the input stepped, once, as `{ reference, run, outcome }`, with the outcome it had when the input ended: `started`, `skipped`, `waiting`, `completed`, `raised`, `timed_out` or `cancelled`. A task that starts and finishes in one input records only how it finished, and the steps keep the order the tasks started in.
+- `patch`: the change to the state, as JSON Patch operations (RFC 6902 `add`, `replace` and `remove`) addressed by JSON Pointer. A list that grew is patched at the positions it had and appended to, with an `add` at `<list>/-` for each new item, so the ids a run received cost one operation each, not the whole list again; a list that lost items is replaced whole.
 - `outputs`: what the engine must do because of this input.
 
 An input that is stale or not started appends nothing; logging it is the adapter's job.
@@ -84,6 +84,8 @@ An input that is stale or not started appends nothing; logging it is the adapter
 ### History bytes
 
 The state counts the bytes of its own history, `historyBytes`: the UTF-8 bytes of every event in the stream as JSON (`eventBytesOf`), the event that sets it included. The machine builds an event, measures it, and adds `replace /historyBytes` with the count before it plus the bytes of the event that carries that operation (`withHistoryBytes`, which solves for the few digits the number adds). So `decide` knows the history before it appends, and bounds it as it bounds inputs. A load checks the count: a state whose `historyBytes` is not the snapshot's count plus the bytes of the events after it is `UnreadableRun`.
+
+Compression is not part of the format. A run store may compress the events and snapshots it keeps; `historyBytes`, and every bound on a history, counts their JSON uncompressed, so the bounds of a run are the same in every store.
 
 ## State formats
 
@@ -243,7 +245,7 @@ Measured on Node 26.10.0 through the memory driver and the decider, outside the 
 | 40,000 inputs of a loop that waits      | decided and folded in 3.45 s, 11,600 a second                       | replayed in 4.6 s                                              |
 | the 40,000 events folded cold           | 0.72 s                                                              |                                                                |
 | that run resumed from its last snapshot | 0.84 ms at the median: a 1,845-byte snapshot and 46 events          |                                                                |
-| the history of those 40,000 inputs      | 84.15 MiB, 2,206 bytes an input                                     | 9.26 MiB                                                       |
+| the history of those 40,000 inputs      | 68.81 MiB, 1,804 bytes an input                                     | 9.26 MiB                                                       |
 | memory                                  | 3.7 KB of heap for each live run between inputs                     | up to 103 MiB retained replaying the 40,000                    |
 | a snapshot of a run holding 1 MB        | 1.0 MB                                                              |                                                                |
 | `decide`, at the median                 | started 78 µs, timer 25 µs, answer 28 µs, event 27 µs, cancel 16 µs |                                                                |
@@ -251,6 +253,6 @@ Measured on Node 26.10.0 through the memory driver and the decider, outside the 
 
 ## Open design points
 
-- A history takes about nine times the bytes Temporal's did: 2,206 bytes an input for the loop above, against 243. An event of it holds 18 patch operations (about 1.2 KB: the list's data and the frame's run, start, inputs and timer, three run counters, a value in and a value out, a timer in and a timer out, and the counters of the state), seven steps (about 0.4 KB, since a task that finishes in the input records `started` and `completed`) and an `arm_timer`. Within 512 MiB a run of 100,000 such inputs takes 210 MiB, so no bound moves; what would shrink it, for a later format: a task that finishes in its input recording one step, a shorter patch encoding than RFC 6902's objects, timer ids without the execution id, and compressing events in the run store.
+- A history takes about seven times the bytes Temporal's did: 1,804 bytes an input for the loop above, against 243, down from 2,206 before a step was recorded once for each run of a task, a grown list was appended to and a timer id lost its execution id. An event of it is 1,779 bytes: 18 patch operations (1,260 bytes: the list's data and the frame's run, start, inputs and timer, three run counters, a value in and a value out, a timer in and a timer out, and the counters of the state), four steps (238 bytes) and an `arm_timer` (152 bytes). Within 512 MiB a run of 100,000 such inputs takes 172 MiB, so no bound moves. The patch stays RFC 6902, so what remains to shrink it is a store that compresses what it keeps (see History bytes).
 - `evolve` decodes the whole state after each patch. Over the 40,000 inputs above it took 32 µs an event, a cold fold of all of them 0.72 s, and resuming from the last snapshot 0.84 ms, against the 9 ms a fold from a snapshot every 1,000 events took in the hosted runtime (measurements kept in the private repository), so checking only the patched paths is not needed yet.
 - What replaces Temporal's limits on a run's history is decided here as 100,000 inputs and 512 MiB, both well above what a workflow could reach on Temporal; real use may move them.

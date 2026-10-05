@@ -75,11 +75,6 @@
         {
           "reference": "/do/0/summarize",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/summarize",
-          "run": 1,
           "outcome": "waiting"
         }
       ],
@@ -285,7 +280,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3305
+          "value": 3245
         }
       ],
       "outputs": [
@@ -338,11 +333,6 @@
           "reference": "/do/0/summarize",
           "run": 1,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/1/answer",
-          "run": 1,
-          "outcome": "started"
         },
         {
           "reference": "/do/1/answer",
@@ -421,7 +411,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4912
+          "value": 4795
         }
       ],
       "outputs": [

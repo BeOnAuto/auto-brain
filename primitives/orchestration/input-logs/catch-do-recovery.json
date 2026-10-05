@@ -69,12 +69,7 @@
         {
           "reference": "/do/0/guarded",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/guarded/try/0/fail",
-          "run": 1,
-          "outcome": "started"
+          "outcome": "completed"
         },
         {
           "reference": "/do/0/guarded/try/0/fail",
@@ -83,16 +78,6 @@
         },
         {
           "reference": "/do/0/guarded/catch/do/0/recover",
-          "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/guarded/catch/do/0/recover",
-          "run": 1,
-          "outcome": "completed"
-        },
-        {
-          "reference": "/do/0/guarded",
           "run": 1,
           "outcome": "completed"
         }
@@ -243,7 +228,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2164
+          "value": 1960
         }
       ],
       "outputs": [

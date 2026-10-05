@@ -100,17 +100,7 @@
         {
           "reference": "/do/0/both/fork/branches/0/left",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/both/fork/branches/0/left",
-          "run": 1,
           "outcome": "waiting"
-        },
-        {
-          "reference": "/do/0/both/fork/branches/1/right",
-          "run": 1,
-          "outcome": "started"
         },
         {
           "reference": "/do/0/both/fork/branches/1/right",
@@ -405,7 +395,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5276
+          "value": 5123
         }
       ],
       "outputs": [
@@ -544,7 +534,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6616
+          "value": 6463
         }
       ],
       "outputs": [
@@ -640,7 +630,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8054
+          "value": 7901
         }
       ],
       "outputs": [

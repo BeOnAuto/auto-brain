@@ -69,17 +69,7 @@
         {
           "reference": "/do/0/decide",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/decide",
-          "run": 1,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/2/small",
-          "run": 1,
-          "outcome": "started"
         },
         {
           "reference": "/do/2/small",
@@ -228,7 +218,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1871
+          "value": 1758
         }
       ],
       "outputs": [

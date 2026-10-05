@@ -47,11 +47,6 @@
         {
           "reference": "/do/0/pause",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/pause",
-          "run": 1,
           "outcome": "waiting"
         }
       ],
@@ -209,7 +204,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2301
+          "value": 2245
         }
       ],
       "outputs": [
@@ -289,7 +284,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3269
+          "value": 3213
         }
       ],
       "outputs": [

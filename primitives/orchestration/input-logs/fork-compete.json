@@ -71,45 +71,20 @@
         {
           "reference": "/do/0/race",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/race/fork/branches/0/slow",
-          "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
-          "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
-          "run": 1,
-          "outcome": "waiting"
-        },
-        {
-          "reference": "/do/0/race/fork/branches/1/quick",
-          "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/race/fork/branches/1/quick",
-          "run": 1,
           "outcome": "completed"
         },
         {
-          "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
-          "run": 1,
-          "outcome": "cancelled"
-        },
-        {
           "reference": "/do/0/race/fork/branches/0/slow",
           "run": 1,
           "outcome": "cancelled"
         },
         {
-          "reference": "/do/0/race",
+          "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
+          "run": 1,
+          "outcome": "cancelled"
+        },
+        {
+          "reference": "/do/0/race/fork/branches/1/quick",
           "run": 1,
           "outcome": "completed"
         }
@@ -267,7 +242,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2490
+          "value": 2108
         }
       ],
       "outputs": [

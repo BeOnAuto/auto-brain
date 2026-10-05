@@ -70,11 +70,6 @@
         {
           "reference": "/do/0/await",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/await",
-          "run": 1,
           "outcome": "waiting"
         }
       ],
@@ -230,7 +225,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2058
+          "value": 2002
         }
       ],
       "outputs": [
@@ -261,18 +256,16 @@
           "value": 2
         },
         {
-          "op": "replace",
-          "path": "/inbox/waiting",
-          "value": [
-            {
-              "event": {
-                "id": "e1",
-                "type": "declined",
-                "data": "no"
-              },
-              "bytes": 41
-            }
-          ]
+          "op": "add",
+          "path": "/inbox/waiting/-",
+          "value": {
+            "event": {
+              "id": "e1",
+              "type": "declined",
+              "data": "no"
+            },
+            "bytes": 41
+          }
         },
         {
           "op": "replace",
@@ -280,9 +273,9 @@
           "value": 41
         },
         {
-          "op": "replace",
-          "path": "/inbox/receivedIds",
-          "value": ["e1"]
+          "op": "add",
+          "path": "/inbox/receivedIds/-",
+          "value": "e1"
         },
         {
           "op": "replace",
@@ -297,7 +290,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2654
+          "value": 2590
         }
       ],
       "outputs": []
@@ -344,9 +337,9 @@
           "value": 0
         },
         {
-          "op": "replace",
-          "path": "/inbox/receivedIds",
-          "value": ["e1", "e2"]
+          "op": "add",
+          "path": "/inbox/receivedIds/-",
+          "value": "e2"
         },
         {
           "op": "replace",
@@ -384,7 +377,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3792
+          "value": 3719
         }
       ],
       "outputs": [

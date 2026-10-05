@@ -50,10 +50,21 @@ function diffInto(before: unknown, after: unknown, path: string): readonly Patch
   if (isFields(before) && isFields(after)) {
     return diffFields(before, after, path);
   }
-  if (Array.isArray(before) && Array.isArray(after) && before.length === after.length) {
-    return after.flatMap((item: unknown, index) => diffInto(before[index], item, pointerTo(path, index)));
+  if (Array.isArray(before) && Array.isArray(after)) {
+    return diffLists(before, after, path);
   }
   return [{ op: 'replace', path, value: jsonOf(after) }];
+}
+
+function diffLists(before: readonly unknown[], after: readonly unknown[], path: string): readonly PatchOperation[] {
+  if (before.length > after.length) {
+    return [{ op: 'replace', path, value: jsonOf(after) }];
+  }
+  const changed = before.flatMap((item: unknown, index) => diffInto(item, after[index], pointerTo(path, index)));
+  const appended = after
+    .slice(before.length)
+    .map((item: unknown): PatchOperation => ({ op: 'add', path: pointerTo(path, '-'), value: jsonOf(item) }));
+  return [...changed, ...appended];
 }
 
 export function patchBetween(before: Fields, after: Fields): readonly PatchOperation[] {

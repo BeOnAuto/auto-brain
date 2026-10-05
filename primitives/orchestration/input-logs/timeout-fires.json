@@ -80,11 +80,6 @@
         {
           "reference": "/do/0/guarded/try/0/slow",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/guarded/try/0/slow",
-          "run": 1,
           "outcome": "waiting"
         }
       ],
@@ -312,7 +307,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3315
+          "value": 3246
         }
       ],
       "outputs": [
@@ -355,11 +350,6 @@
           "reference": "/do/0/guarded/try/0/slow",
           "run": 1,
           "outcome": "timed_out"
-        },
-        {
-          "reference": "/do/0/guarded/catch/do/0/late",
-          "run": 1,
-          "outcome": "started"
         },
         {
           "reference": "/do/0/guarded/catch/do/0/late",
@@ -438,7 +428,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4752
+          "value": 4609
         }
       ],
       "outputs": [

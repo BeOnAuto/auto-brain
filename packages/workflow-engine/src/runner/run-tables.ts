@@ -45,12 +45,16 @@ export function meterOf(): Meter {
 export function journalOf(): Journal {
   const outputs: RunOutput[] = [];
   const steps: Step[] = [];
+  const positions = new Map<string, number>();
   return {
     emit: (output) => {
       outputs.push(output);
     },
     record: (step) => {
-      steps.push(step);
+      const key = JSON.stringify([step.reference, step.run]);
+      const position = positions.get(key) ?? steps.length;
+      positions.set(key, position);
+      steps[position] = step;
     },
     outputs: () => outputs,
     steps: () => steps,

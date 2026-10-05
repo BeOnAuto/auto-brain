@@ -62,17 +62,7 @@
         {
           "reference": "/do/0/first",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/first",
-          "run": 1,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/1/pause",
-          "run": 1,
-          "outcome": "started"
         },
         {
           "reference": "/do/1/pause",
@@ -263,7 +253,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2646
+          "value": 2534
         }
       ],
       "outputs": [
@@ -298,11 +288,6 @@
           "reference": "/do/1/pause",
           "run": 1,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/2/last",
-          "run": 1,
-          "outcome": "started"
         },
         {
           "reference": "/do/2/last",
@@ -376,7 +361,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3880
+          "value": 3713
         }
       ],
       "outputs": [

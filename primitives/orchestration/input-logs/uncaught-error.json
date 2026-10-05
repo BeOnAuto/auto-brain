@@ -48,11 +48,6 @@
         {
           "reference": "/do/0/reject",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/reject",
-          "run": 1,
           "outcome": "raised"
         }
       ],
@@ -174,7 +169,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1704
+          "value": 1647
         }
       ],
       "outputs": [

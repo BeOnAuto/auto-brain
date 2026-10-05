@@ -65,17 +65,7 @@
         {
           "reference": "/do/0/count",
           "run": 1,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/count",
-          "run": 1,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/1/again",
-          "run": 1,
-          "outcome": "started"
         },
         {
           "reference": "/do/1/again",
@@ -263,7 +253,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2637
+          "value": 2525
         }
       ],
       "outputs": [
@@ -302,17 +292,7 @@
         {
           "reference": "/do/0/count",
           "run": 2,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/count",
-          "run": 2,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/1/again",
-          "run": 2,
-          "outcome": "started"
         },
         {
           "reference": "/do/1/again",
@@ -412,7 +392,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4356
+          "value": 4132
         }
       ],
       "outputs": [
@@ -443,17 +423,7 @@
         {
           "reference": "/do/0/count",
           "run": 3,
-          "outcome": "started"
-        },
-        {
-          "reference": "/do/0/count",
-          "run": 3,
           "outcome": "completed"
-        },
-        {
-          "reference": "/do/1/again",
-          "run": 3,
-          "outcome": "started"
         },
         {
           "reference": "/do/1/again",
@@ -532,7 +502,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5726
+          "value": 5390
         }
       ],
       "outputs": [
