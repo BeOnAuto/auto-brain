@@ -196,6 +196,21 @@ await test('docs distinguish available inbound MCP from upcoming internal tools'
   assert.ok(readme.includes('bounded tool-call loops'));
 });
 
+await test('the README starts with an actionable Cloud quick start and an optional local recipe', () => {
+  const readme = readFileSync(join(docs, '../README.md'), 'utf8');
+  assert.ok(readme.indexOf('## Quick start') < readme.indexOf('## Documentation and help'));
+  assert.ok(readme.includes("workspace's MCP URL and authentication details"));
+  assert.ok(readme.includes('Run the saved function on:'));
+  assert.ok(readme.includes('recorded run, including its execution id'));
+  assert.ok(readme.includes('missing measurable goal'));
+  assert.ok(readme.includes('<summary>Run locally instead</summary>'));
+  assert.ok(readme.includes('pnpm dev:lean'));
+  assert.ok(readme.includes('http://localhost:8080/mcp'));
+  assert.ok(readme.includes('curl http://localhost:8080/health'));
+  assert.ok(readme.includes('do not expose it through a tunnel or public proxy'));
+  assert.ok(markdownDestinations(readme).some((href) => href === 'https://studio.on.auto/'));
+});
+
 await test('model discovery is documented without treating wildcard entries as runnable models', () => {
   const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
   const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
