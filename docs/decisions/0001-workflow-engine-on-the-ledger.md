@@ -77,6 +77,17 @@ Tenant data is stored once, and a workflow needs no service beyond the server.
 - The engine keeps the runs it loaded between their inputs, in a cache bounded by runs and by bytes, so an input does not load again the snapshot and the events the input before it left; a failed append or a saved snapshot lets go of the run.
 - A run whose dispatch fell behind is found by its watermark, below the version of its stream, rather than by a note in the record, so a failed note of its due time cannot hide it from the sweep.
 
+2026-10-05, with the Node host, `@beonauto/workflow-host` (its README has the detail, the tests and the measurements):
+
+- Every server runs its workflows on the host, in its own process, and Temporal is gone from the code, the image, CI and `pnpm dev`, which starts the server alone. The orchestration primitive keeps parsing, the primitive, the event operation and a presenter of the run log; the interpreter, its histories and the engine's `./dsl/*` and `./limits` entries went with Temporal. The 15 recorded input logs stay as the replay corpus.
+- Self-hosted on SQLite, the host keeps its timers, calls, watermarks, due times and settlements in tables of its own in the ledger's file, through the ledger's `sqlite3` library, not in a separate file: finding the runs whose dispatch fell behind joins the watermarks to the ledger's streams, which needs one database, and a second SQLite library lost committed writes to that file (Evidence).
+- A snapshot is kept in the host's table `workflow_snapshot_chunks`, not on the ledger: a snapshot is a cache of the fold, the ledger only appends, so a stream could not keep only the latest, and under the brain the history of a run and the events of the brain would read it.
+- The host runs on PostgreSQL too, in the ledger's database, without the lease per run this record planned: workflows need one server for a database, on SQLite as on PostgreSQL, and since every server runs workflows, several servers no longer share a PostgreSQL database. The lease is a later step.
+- A run never starts twice in one log, so executing a workflow again with the execution id of a run that ended and settled its execution without a final result, `unavailable` or `failed`, is rejected with `conflict`, where a retry with that id ran the workflow again on Temporal; the workflow runs again under a new execution id. This is the fifth change tenants see.
+- A settlement the record refuses, as when a run ends before its start recorded that the execution finishes later, is dispatched again by each sweep and given up after 20 failed attempts as `settled_otherwise`, which the server logs as an error; Temporal retried it for about 14 minutes.
+- The host sweeps every `ORCHESTRATION_SWEEP_INTERVAL`, one second by default: the runs due for more than a minute, up to 1,024 runs whose dispatch fell behind, and the calls recorded as running that no fiber runs. A timer fires when it is due, without waiting for a sweep. Stopping the server cuts off the calls in flight, which start again, under the same execution id, at the next start.
+- Timer lateness, measured over 1,000 timers: 4 ms at p99 on SQLite and 6 ms on PostgreSQL. A run of 3,000 inputs takes 1,038 inputs a second on SQLite and 181 on PostgreSQL, a round trip to the database bounding one run's inputs there; a run whose snapshot holds 1.05 MiB takes its first input after a restart in 2.5 ms on SQLite and 22.6 ms on PostgreSQL.
+
 ## Evidence
 
 Branch `spike/engine-node`:

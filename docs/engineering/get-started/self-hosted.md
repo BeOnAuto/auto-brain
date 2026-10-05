@@ -32,12 +32,11 @@ Then put your gateway's `base_url` in `auto-brain.yaml`. Start the configured ru
 pnpm dev
 ```
 
-`pnpm dev` starts Temporal's dev server, then the server, in [local mode](../self-host/security.md#local-mode), on `http://localhost:8080`. Once it is up, it says so:
+`pnpm dev` starts the server, which runs workflows itself, in [local mode](../self-host/security.md#local-mode), on `http://localhost:8080`. Once it is up, it says so:
 
 ```text
 10:42:44.130 INFO  [dev] auto-brain is ready
   server     http://localhost:8080
-  workflows  Temporal web UI at http://127.0.0.1:8233
   models     anthropic
   MCP        http://localhost:8080/mcp
 ```

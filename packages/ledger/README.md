@@ -186,7 +186,7 @@ The ledger on PostgreSQL behaves as it does on SQLite; one suite of tests runs a
 
 An append on PostgreSQL binds ten parameters whatever the number of events, one array per column, so PostgreSQL's own limit of 65,535 parameters in one statement never binds. The ledger still bounds a decision, at 64 events, eight times SQLite's eight, so that a decider that runs away is a defect rather than one long transaction. Code that must run on both stores keeps its decisions to eight events.
 
-Several servers may share one PostgreSQL database for brains and spec operations: every command is a decision appended under an expected version, so concurrent writers never lose an update. Workflows still need one server, as the Temporal design assumes: the workflow engine's serialisation of a run on PostgreSQL, a lease per run, is a later step.
+Every command is a decision appended under an expected version, so concurrent writers never lose an update to brains and specs. Every server runs workflows, though, and workflows need one server for a database: the workflow host claims no run for one server, so two servers on one database could fire a timer twice or perform a call twice. A lease per run, for several servers on one PostgreSQL database, is a later step; until then, run one server for a database.
 
 ## Portability
 

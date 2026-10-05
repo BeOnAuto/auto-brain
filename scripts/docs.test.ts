@@ -103,7 +103,7 @@ await test('guide Markdown does not depend on private source files', () => {
 await test('engineering guides and decisions remain in the repository without entering the public preview', () => {
   assert.ok(pages.includes(join(docs, 'decisions/README.md')));
   assert.ok(pages.includes(join(docs, 'engineering/index.md')));
-  assert.ok(pages.includes(join(docs, 'engineering/self-host/temporal.md')));
+  assert.ok(pages.includes(join(docs, 'engineering/self-host/workflows.md')));
   assert.ok(pages.includes(join(docs, 'engineering/reference/workflow-format.md')));
   for (const directory of repositoryOnlyDirectories) {
     assert.equal(existsSync(join(output, directory)), false);
@@ -204,7 +204,8 @@ await test('the README starts with an actionable Cloud quick start and an option
   assert.ok(readme.includes('recorded run, including its execution id'));
   assert.ok(readme.includes('missing measurable goal'));
   assert.ok(readme.includes('<summary>Run locally instead</summary>'));
-  assert.ok(readme.includes('pnpm dev:lean'));
+  assert.ok(readme.includes('pnpm dev\n'));
+  assert.equal(readme.includes('pnpm dev:lean'), false);
   assert.ok(readme.includes('http://localhost:8080/mcp'));
   assert.ok(readme.includes('curl http://localhost:8080/health'));
   assert.ok(readme.includes('do not expose it through a tunnel or public proxy'));
@@ -225,9 +226,11 @@ await test('model discovery is documented without treating wildcard entries as r
   assert.ok(tutorial.includes('Do not use a wildcard'));
 });
 
-await test('public workflows stay marked coming soon without legacy runnable routes', () => {
+await test('public workflows are available, without legacy runnable routes', () => {
   const workflows = readFileSync(join(docs, 'concepts/workflows.md'), 'utf8');
-  assert.match(workflows, /coming soon/iu);
+  const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
+  assert.doesNotMatch(workflows, /coming soon/iu);
+  assert.match(functions, /^\| Workflows +\| A workflow +\| Available +\|$/mu);
   assert.doesNotMatch(workflows, /```(?:yaml|sh|bash|json)/u);
   const removedPages = ['get-started/self-hosted', 'reference/http-tutorial', 'reference/workflow-format'];
   for (const page of removedPages) {

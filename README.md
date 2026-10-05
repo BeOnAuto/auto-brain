@@ -41,12 +41,12 @@ cp .env.example .env
 In `.env`, set a model provider key such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`. Keep it out of your agent conversation. pnpm uses the Node and pnpm versions pinned by this repository.
 
 ```bash
-pnpm dev:lean
+pnpm dev
 ```
 
 Keep that terminal open. The runtime listens at `http://localhost:8080`; in another terminal, `curl http://localhost:8080/health` should return `{"status":"ok"}`.
 
-Add `http://localhost:8080/mcp` as a streamable HTTP connection in an agent running on your computer, without an authentication header, then use the prompt above. A hosted agent cannot reach your laptop's localhost. This local mode has no authentication: do not expose it through a tunnel or public proxy. The lean server supports this reason-function example without starting workflows.
+Add `http://localhost:8080/mcp` as a streamable HTTP connection in an agent running on your computer, without an authentication header, then use the prompt above. A hosted agent cannot reach your laptop's localhost. This local mode has no authentication: do not expose it through a tunnel or public proxy. The same server runs workflows, with nothing else to start.
 
 See [local setup and client configurations](docs/engineering/get-started/self-hosted.md) for details. For a deployment your team operates, see [Self-hosting](https://on.auto/docs/self-host).
 

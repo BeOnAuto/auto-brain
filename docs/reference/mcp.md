@@ -1,6 +1,6 @@
 # MCP reference
 
-The Auto runtime exposes brain and reason-function operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For connection setup, see [Connect your agent](https://on.auto/docs/get-started/cloud); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
+The Auto runtime exposes brain, reason-function and workflow operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For connection setup, see [Connect your agent](https://on.auto/docs/get-started/cloud); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
 
 ## Connection direction
 
@@ -28,14 +28,16 @@ On `/mcp`, the API key determines the org; tools do not take a separate org argu
 
 ## Tools
 
-Product terminology uses reason functions and runs. Tool names retain the API's `spec` and `execution` identifiers.
+Product terminology uses reason functions, workflows and runs. Tool names retain the API's `spec` and `execution` identifiers.
 
 | Work                    | Tools                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------- |
 | Manage brains           | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                           |
 | List available models   | `list_models`, with an optional `provider` filter                                                    |
 | Manage reason functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"` |
+| Manage workflows        | The same tools, with `primitive: "orchestration"`                                                    |
 | Run and inspect         | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                          |
+| Send a run an event     | `send_execution_event`, to a workflow run waiting for one                                            |
 | Follow a brain          | `list_brain_events`                                                                                  |
 
 Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function tools are available at `/mcp` and the brain endpoint.
