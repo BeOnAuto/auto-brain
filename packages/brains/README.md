@@ -1,6 +1,6 @@
 # @beonauto/brains
 
-The brain operations of auto-brain: create, list, read, update and retire the brains of an org. They are defined on the application layer, [`@beonauto/operations`](../operations).
+The brain operations of auto-brain: create, list, read, update and retire the brains of an org, and follow what happened in one brain. They are defined on the application layer, [`@beonauto/operations`](../operations).
 
 ## A brain
 
@@ -41,6 +41,22 @@ All five are org operations, so their routes are relative to the org. `brainOper
 
 Before a handler runs, the dispatcher rejects with `forbidden` a caller of another org, a caller without `org:read` for the queries or `org:write` for the commands, and a caller that may not access the brain named by the `brain` field of `create_brain`, `get_brain`, `update_brain` or `retire_brain`. So a caller limited to a list of brains creates, reads, updates and retires only those. The dispatcher rejects with `invalid_input` input that breaks the schema, including fields the operation does not know.
 
+## What happened in a brain
+
+`defineListBrainEvents(presenters)` makes `list_brain_events`, a brain query at `GET /events` relative to the brain, under `brain:read`. It takes the presenters as a parameter, the way `makeSpecOperations` takes primitives, so this package depends on `@beonauto/operations` alone; the server passes the presenters of every package that owns a stream kind, today `makeSpecPresenters` of `@beonauto/specs`. At least one presenter must show at least one type of event.
+
+| Input    | What it does                                                                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `order`  | `desc`, newest first, when left out; `asc`, oldest first                                                                              |
+| `limit`  | 1 to 100, 20 when left out: the most records a page looks at                                                                          |
+| `cursor` | The `next_cursor` of the page before, or the `id` of an event, to read on after it                                                    |
+| `since`  | A time in ISO 8601: what the brain recorded from then on, by the time it was recorded, in either order                                |
+| `type`   | One public type of event, which the published JSON Schema lists; it is translated to the stored types its presenters present under it |
+
+It reads the brain's whole partition of the ledger (`BrainReader.readRecorded({ kind: 'everything' }, page)`) and answers `{ events, has_more, next_cursor }`, each event a `PublicEvent`, `{ id, at, type, summary, data }`. A record of a stream kind no presenter presents, or of a type its presenter hides, is left out, and with `type` only the events presented under that name are kept, though another kind stores a type of the same name. So a page may hold fewer events than `limit`, or none, while `has_more` is true; `next_cursor` is null only when nothing remains. A page also ends at 4 MiB of stored data. A cursor that does not decode, or that another brain gave, is `invalid_input` at `/cursor`, and a `type` no presenter shows `invalid_input` at `/type`.
+
+The feed cannot show the brain's own creation, update and retirement: they are recorded in the org's `brains` stream, outside the brain's partition, and `get_brain` reads them. A retired brain stays readable, since the dispatcher runs every query on it.
+
 ## Storage
 
 The full set of an org's brains is the org's brain registry. It lives in one stream, named `brains` relative to the org. Its facts carry a `type`, the brain id, who recorded it (`by`) and when (`at`):
@@ -59,4 +75,4 @@ The dispatcher applies the status to every brain-scoped operation. A retired bra
 
 ## Source
 
-`src/index.ts` is the only entry point. `src/registry` holds the org's brain registry: a brain, the facts and commands of the `brains` stream, the registry's decider and its rules, the stream's name, and `ledgerBrainRegistry`. `src/operations` holds the five operations and how they load the registry and record in it. `src/testing` holds what the tests share. `operations` depends on `registry`, never the other way round.
+`src/index.ts` is the only entry point. `src/registry` holds the org's brain registry: a brain, the facts and commands of the `brains` stream, the registry's decider and its rules, the stream's name, and `ledgerBrainRegistry`. `src/operations` holds the five operations and how they load the registry and record in it. `src/feed` holds `list_brain_events`. `src/testing` holds what the tests share. `operations` depends on `registry`, never the other way round.
