@@ -1,10 +1,10 @@
 import { mostStepsWithoutWaiting } from '@beonauto/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
-import { interpret, workflow } from '../testing/workflows.ts';
+import { executionId, interpret, outputsAtTimeZero, workflow } from '../testing/workflows.ts';
 
 describe('a workflow that never waits', () => {
-  it('is stopped once it has run too many tasks without waiting', async () => {
+  it('is stopped once it has run too many tasks without waiting', () => {
     const document = workflow(`
 do:
   - spin:
@@ -12,10 +12,14 @@ do:
       then: spin
 `);
 
-    expect((await interpret(document)).settlement).toEqual({
-      status: 'rejected',
-      reason: 'unavailable',
-      detail: `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end (at /do/0/spin)`,
+    expect(outputsAtTimeZero(document).at(-1)).toEqual({
+      kind: 'settle',
+      executionId,
+      settlement: {
+        status: 'rejected',
+        reason: 'unavailable',
+        detail: `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end (at /do/0/spin)`,
+      },
     });
   });
 

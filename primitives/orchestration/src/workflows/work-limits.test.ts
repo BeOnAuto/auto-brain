@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RunSettlement } from '../testing/run-terms.ts';
-import { executionId, interpret, outputsOnStarting, workflow } from '../testing/workflows.ts';
+import { executionId, interpret, outputsAtTimeZero, workflow } from '../testing/workflows.ts';
 
 function tasks(count: number, body: (index: number) => string): string {
   return `do:\n${Array.from({ length: count }, (_, index) => `  - t${index}: ${body(index)}`).join('\n')}`;
@@ -68,7 +68,7 @@ describe('a value a workflow holds', () => {
   });
 
   it('is admitted as the input of a workflow only if it takes no more work than that', () => {
-    expect(outputsOnStarting(workflow('do: []'), zerosJustOverTheBudget)).toEqual([
+    expect(outputsAtTimeZero(workflow('do: []'), zerosJustOverTheBudget)).toEqual([
       {
         kind: 'settle',
         executionId,

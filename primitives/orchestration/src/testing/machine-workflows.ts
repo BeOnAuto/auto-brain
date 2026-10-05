@@ -1,4 +1,12 @@
-import { ReceivedEventSchema, newRun, workflowMachine, type RunOutput } from '@beonauto/workflow-engine';
+import {
+  ReceivedEventSchema,
+  newRun,
+  workflowMachine,
+  type ArmedTimer,
+  type RunInput,
+  type RunOutput,
+  type RunState,
+} from '@beonauto/workflow-engine';
 import { memoryDriver, type MemoryDriver } from '@beonauto/workflow-engine/testing';
 import { Option, Result, Schema } from 'effect';
 
@@ -77,21 +85,42 @@ export async function interpretOnMachine(run: WorkflowRun, options: MachineOptio
 
 const machine = workflowMachine(orchestrationMachine);
 
-export function outputsAtStart(run: WorkflowRun): readonly RunOutput[] {
-  const events = Result.getOrThrow(
-    machine.decide(
-      {
-        kind: 'started',
-        executionId: run.execution.id,
-        at: 0,
-        document: run.document,
-        input: run.input,
-        limits: { mostDurationMs: run.mostDuration, longestCallMs: run.longestNestedExecutionMs },
-        attributes: { org: run.execution.org, brain: run.execution.brain },
-        seed: 1,
-      },
-      newRun,
-    ),
+interface Decided {
+  readonly state: RunState;
+  readonly outputs: readonly RunOutput[];
+}
+
+function decidedOn({ state, outputs }: Decided, input: RunInput): Decided {
+  const events = Result.getOrThrow(machine.decide(input, state));
+  return {
+    state: events.reduce((folded, event) => machine.evolve(folded, event), state),
+    outputs: [...outputs, ...events.flatMap((event) => event.outputs)],
+  };
+}
+
+function firedWhileDue(decided: Decided, executionId: string): Decided {
+  const due = Object.entries(decided.state.timers.armed).find(
+    ([, timer]: readonly [string, ArmedTimer]) => timer.dueAt <= 0,
   );
-  return events.flatMap(({ outputs }) => outputs);
+  return due === undefined
+    ? decided
+    : firedWhileDue(decidedOn(decided, { kind: 'timer_fired', executionId, at: 0, timerId: due[0] }), executionId);
+}
+
+export function outputsAtOnce(run: WorkflowRun): readonly RunOutput[] {
+  const executionId = run.execution.id;
+  const started = decidedOn(
+    { state: newRun, outputs: [] },
+    {
+      kind: 'started',
+      executionId,
+      at: 0,
+      document: run.document,
+      input: run.input,
+      limits: { mostDurationMs: run.mostDuration, longestCallMs: run.longestNestedExecutionMs },
+      attributes: { org: run.execution.org, brain: run.execution.brain },
+      seed: 1,
+    },
+  );
+  return firedWhileDue(started, executionId).outputs;
 }
