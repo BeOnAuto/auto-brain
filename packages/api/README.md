@@ -71,9 +71,9 @@ So invalid arguments are a tool result with `isError` and an `invalid_input` pro
 
 The instructions of `/mcp` are generated from the tools it serves, so they say nothing of a tool that is not there. For the server with inference and workflows they read:
 
-> This server runs the business brains of your org. Start with list_brains to see them, or create_brain to make one. A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do. The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written. execute_spec runs a spec and records the run as an execution. It may answer with status started while the work goes on; then poll get_execution until the status changes. A workflow waiting for an event receives it through send_execution_event. Every tool that works inside a brain takes the brain's id as brain. A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.
+> This server runs the business brains of your org. Start with list_brains to see them, or create_brain to make one. A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do. The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written. list_models lists the models this server can call. execute_spec runs a spec and records the run as an execution. It may answer with status started while the work goes on; then poll get_execution until the status changes. A workflow waiting for an event receives it through send_execution_event. Every tool that works inside a brain takes the brain's id as brain. A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.
 
-Without workflows, the sentence on `send_execution_event` is left out. The scoped endpoints keep their own instructions, `orgEndpointInstructions` and `brainEndpointInstructions`:
+Without workflows, the sentence on `send_execution_event` is left out, and without `list_models` the sentence on it. The scoped endpoints keep their own instructions, `orgEndpointInstructions` and `brainEndpointInstructions`:
 
 > This MCP endpoint serves one org of auto-brain, the runtime for business brains. Its tools are the operations on the org as a whole, such as creating, listing, reading, updating and retiring its brains. Each tool is one operation: its description says what it does, its input schema what it takes and its output schema what it returns. A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.
 
@@ -88,6 +88,46 @@ Without workflows, the sentence on `send_execution_event` is left out. The scope
 | tool result with `isError`         | the operation did not succeed: a rejection, a failure or a cancellation, with plain words first and the problem document as text                                                                                                                                                                                                                                                                                         |
 
 The SDK reports the errors it answers with JSON-RPC to `reportError`, which the server logs as a warning on stderr. Nothing the SDK does writes to stdout.
+
+## The list of models
+
+The server serves `list_models`, an org query of [`@beonauto/inference`](../../primitives/inference/README.md#listing-the-models), like any other operation: `GET /v1/orgs/{org}/models`, with an optional `provider` in the query string, and the read-only tool `list_models` on `/mcp` and `/orgs/{org}/mcp`, whose output schema is self-contained. It answers in the shape of the OpenAI API's list of models, which gateways such as LiteLLM, Portkey and Vercel's serve too:
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "anthropic/claude-sonnet-4-5-20250929",
+      "object": "model",
+      "created": 1759104000,
+      "owned_by": "anthropic",
+      "name": "Claude Sonnet 4.5",
+      "context_window": 200000,
+      "max_tokens": 64000
+    },
+    {
+      "id": "house/fast",
+      "object": "model",
+      "created": 0,
+      "owned_by": "gateway",
+      "resolved_to": "gateway/llama-3.3-70b"
+    },
+    {
+      "id": "openai/*",
+      "object": "model",
+      "created": 0,
+      "owned_by": "gateway",
+      "resolved_to": "gateway/openai/*",
+      "pattern": true
+    }
+  ],
+  "catalog_status": "complete",
+  "listed_at": "2026-10-01T09:30:00.000Z"
+}
+```
+
+`id` is the model as a spec names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `resolved_to` only for an alias, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
 
 ## Lifecycle
 
