@@ -15,10 +15,10 @@ export function snapshotIfDue(ports: EnginePorts, decision: RunDecision): Effect
     : Effect.void;
 }
 
-export function armedTimersOf(state: RunState): readonly ArmTimer[] {
+export function armedTimersOf(executionId: string, state: RunState): readonly ArmTimer[] {
   return Object.entries(state.timers.armed).map(([timerId, { dueAt, purpose }]: readonly [string, ArmedTimer]) => ({
     kind: 'arm_timer',
-    executionId: state.executionId,
+    executionId,
     timerId,
     dueAt,
     purpose,

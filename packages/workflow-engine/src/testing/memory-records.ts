@@ -1,7 +1,7 @@
 import type { Settlement } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { DispatchWatermark } from '../dispatch/dispatch-watermark.ts';
+import { DispatchFailed, type DispatchWatermark } from '../dispatch/dispatch-watermark.ts';
 import { sameJson } from '../machine/same-json.ts';
 import type { RecordStore, RunDue, RunReporter, SettleReceipt, UnsettledReport } from '../settlement/record-store.ts';
 import type { Faults } from './memory-timers.ts';
@@ -34,11 +34,17 @@ export function memoryRecordStore(faults: Faults): MemoryRecordStore {
     settle: (request) =>
       faults.attempt({ kind: 'settle', ...request }, () => recorded(request.executionId, request.settlement)),
     noteDue: (due) =>
-      Effect.sync(() => {
+      Effect.suspend(() => {
+        if (faults.fails('note_due')) {
+          return Effect.fail(
+            new DispatchFailed({ output: 'note_due', detail: 'The record store was told to fail once' }),
+          );
+        }
         const noted = dues.get(due.executionId);
         if (noted === undefined || noted.version <= due.version) {
           dues.set(due.executionId, due);
         }
+        return Effect.void;
       }),
     dueRuns: (before) =>
       Effect.sync(() =>

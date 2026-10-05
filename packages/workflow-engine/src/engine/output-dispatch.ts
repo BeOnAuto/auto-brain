@@ -44,17 +44,33 @@ function firstFailureIn(
   });
 }
 
-export function dispatchRun(ports: EnginePorts, state: RunState, version: number): Effect.Effect<Wake> {
-  const run: RunContext = { executionId: state.executionId, attributes: state.attributes };
+export interface LoadedForDispatch {
+  readonly executionId: string;
+  readonly state: RunState;
+  readonly version: number;
+}
+
+function notedDue(
+  ports: EnginePorts,
+  run: RunContext,
+  loaded: LoadedForDispatch,
+  behind: boolean,
+): Effect.Effect<boolean> {
+  const due = { ...runDueOf(loaded.state, loaded.version, behind), executionId: loaded.executionId };
+  return Effect.match(ports.recordStore.noteDue(due, run), { onFailure: () => false, onSuccess: () => true });
+}
+
+export function dispatchRun(ports: EnginePorts, loaded: LoadedForDispatch): Effect.Effect<Wake> {
+  const { executionId, state, version } = loaded;
+  const run: RunContext = { executionId, attributes: state.attributes };
   return Effect.gen(function* () {
-    const watermark = yield* ports.watermark.read(run.executionId);
-    const events = yield* ports.runStore.eventsAfter(run.executionId, watermark);
+    const watermark = yield* ports.watermark.read(executionId);
+    const events = yield* ports.runStore.eventsAfter(executionId, watermark);
     const failed = yield* firstFailureIn(ports, run, events);
-    const through = dispatchedThrough(watermark, events, failed ?? undefined);
-    if (failed !== null || events.some((event) => changesTimers(event))) {
-      yield* Effect.ignore(ports.recordStore.noteDue(runDueOf(state, version, failed !== null), run));
-    }
-    yield* ports.watermark.advance(run.executionId, through);
+    const changed = failed !== null || events.some((event) => changesTimers(event));
+    const noted = changed ? yield* notedDue(ports, run, loaded, failed !== null) : true;
+    const through = noted ? dispatchedThrough(watermark, events, failed ?? undefined) : watermark;
+    yield* ports.watermark.advance(executionId, through);
     return { version, dispatchedThrough: through };
   });
 }

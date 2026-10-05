@@ -13,8 +13,11 @@ export interface Dispatched {
   readonly output: RunOutput;
 }
 
+export type FaultKind = RunOutput['kind'] | 'note_due';
+
 export interface Faults {
-  readonly failNext: (kind: RunOutput['kind']) => void;
+  readonly failNext: (kind: FaultKind) => void;
+  readonly fails: (kind: FaultKind) => boolean;
   readonly attempt: <A>(output: RunOutput, work: () => A) => Effect.Effect<A, DispatchFailed>;
   readonly dispatched: () => readonly Dispatched[];
 }
@@ -24,12 +27,13 @@ export interface MemoryTimers extends Timers {
 }
 
 export function faultsOf(clock: VirtualClock): Faults {
-  const failing = new Set<RunOutput['kind']>();
+  const failing = new Set<FaultKind>();
   const dispatched: Dispatched[] = [];
   return {
     failNext: (kind) => {
       failing.add(kind);
     },
+    fails: (kind) => failing.delete(kind),
     attempt: (output, work) =>
       Effect.suspend(() => {
         if (failing.delete(output.kind)) {

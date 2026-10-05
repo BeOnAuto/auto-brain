@@ -15,7 +15,17 @@ export function workflowEngineOf(ports: EnginePorts, options: MachineOptions): W
   const wake = (executionId: string): Effect.Effect<Wake> =>
     ports.serialiser.serialise(
       executionId,
-      Effect.flatMap(loaded(executionId), ({ state, version }) => dispatchRun(ports, state, version)),
+      Effect.flatMap(loaded(executionId), ({ state, version }) => dispatchRun(ports, { executionId, state, version })),
+    );
+  const swept = (executionId: string): Effect.Effect<number> =>
+    ports.serialiser.serialise(
+      executionId,
+      Effect.gen(function* () {
+        const { state, version } = yield* loaded(executionId);
+        yield* dispatchRun(ports, { executionId, state, version });
+        const run = { executionId, attributes: state.attributes };
+        return yield* Effect.orElseSucceed(ports.timers.sweep(run, armedTimersOf(executionId, state)), () => 0);
+      }),
     );
   return {
     submit: (input) =>
@@ -25,7 +35,11 @@ export function workflowEngineOf(ports: EnginePorts, options: MachineOptions): W
           const decision = yield* loop(input.executionId, input);
           if (decision.events.length > 0) {
             yield* snapshotIfDue(ports, decision);
-            yield* dispatchRun(ports, decision.state, decision.version);
+            yield* dispatchRun(ports, {
+              executionId: input.executionId,
+              state: decision.state,
+              version: decision.version,
+            });
           }
           return submissionOf(decision, input);
         }),
@@ -34,14 +48,7 @@ export function workflowEngineOf(ports: EnginePorts, options: MachineOptions): W
     sweep: (before) =>
       Effect.gen(function* () {
         const due = yield* ports.recordStore.dueRuns(before);
-        const armedAgain = yield* Effect.forEach(due, (executionId) =>
-          Effect.gen(function* () {
-            yield* wake(executionId);
-            const { state } = yield* loaded(executionId);
-            const run = { executionId, attributes: state.attributes };
-            return yield* Effect.orElseSucceed(ports.timers.sweep(run, armedTimersOf(state)), () => 0);
-          }),
-        );
+        const armedAgain = yield* Effect.forEach(due, (executionId) => swept(executionId));
         return { runs: due.length, timersArmedAgain: armedAgain.reduce((sum, count) => sum + count, 0) };
       }),
   };

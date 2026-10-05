@@ -19,7 +19,7 @@ export interface PositionedOutput {
 }
 
 export class DispatchFailed extends Data.TaggedError('dispatch_failed')<{
-  readonly output: RunOutput['kind'];
+  readonly output: RunOutput['kind'] | 'note_due';
   readonly detail: string;
 }> {}
 
