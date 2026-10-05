@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { runOf, workflow } from '../testing/workflows.ts';
+import { fakeHost } from '../testing/fake-host.ts';
+import { acmeCaller, executionId, runOf, workflow } from '../testing/workflows.ts';
+import { startWorkflow } from './interpreter.ts';
 import { readWorkflowRun } from './workflow-run.ts';
 
 const run = runOf(workflow('do: []'), { name: 'Ada' });
+
+describe('the run the tests start a workflow with', () => {
+  it('carries the execution and the caller of the run', () => {
+    expect(run).toMatchObject({ caller: acmeCaller, execution: { id: executionId } });
+  });
+});
 
 describe('the run a workflow is started with', () => {
   it('is read when it names a document, an input, an execution and a caller', () => {
@@ -51,5 +59,20 @@ describe('the run a workflow is started with', () => {
 
   it.each(malformed)('is rejected when it has %s', (_case, value) => {
     expect(readWorkflowRun(value)).toBeUndefined();
+  });
+});
+
+describe('a workflow run that cannot be read', () => {
+  it('fails without settling', async () => {
+    const fake = fakeHost();
+    const start = startWorkflow({ document: 'nothing' }, fake.host);
+    start.deliver({ id: 'e1', type: 'ignored' });
+
+    expect(await fake.drive(() => start.ending)).toEqual({
+      kind: 'faulted',
+      type: 'InvalidRun',
+      message: 'The workflow was started without a run it can read',
+    });
+    expect(fake.commands()).toEqual([]);
   });
 });

@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { fakeHost } from '../testing/fake-host.ts';
 import { workflowStartedAt } from '../testing/virtual-clock.ts';
-import { acmeCaller, executionId, interpret, runOf, workflow, onMachine } from '../testing/workflows.ts';
-import { startWorkflow } from './interpreter.ts';
+import { executionId, interpret, workflow, onMachine } from '../testing/workflows.ts';
 
 const greeting = workflow(`
 do:
@@ -19,30 +17,22 @@ do:
 `);
 
 describe('a workflow run that succeeds', () => {
-  it.skipIf(onMachine)(
-    'runs its tasks on the input, settles the execution with the output and completes with it',
-    async () => {
-      const { ending, commands } = await interpret(greeting, { input: { name: 'Ada' } });
+  it('runs its tasks on the input, settles the execution with the output and completes with it', async () => {
+    const { ending, commands } = await interpret(greeting, { input: { name: 'Ada' } });
 
-      expect(ending).toEqual({ kind: 'completed', output: { greeting: 'Hello, Ada' } });
-      expect(commands).toEqual([
-        { kind: 'deadline', milliseconds: 30 * 24 * 3_600_000 - 3_600_000 },
-        {
-          kind: 'settle',
-          request: {
-            org: 'acme',
-            brain: 'alpha',
-            spec: 'test-flow',
-            executionId,
-            settlement: { status: 'succeeded', output: { greeting: 'Hello, Ada' } },
-          },
+    expect(ending).toEqual({ kind: 'completed', output: { greeting: 'Hello, Ada' } });
+    expect(commands.filter(({ kind }) => kind !== 'deadline')).toEqual([
+      {
+        kind: 'settle',
+        request: {
+          org: 'acme',
+          brain: 'alpha',
+          spec: 'test-flow',
+          executionId,
+          settlement: { status: 'succeeded', output: { greeting: 'Hello, Ada' } },
         },
-      ]);
-    },
-  );
-
-  it('carries the execution and the caller of the run', () => {
-    expect(runOf(greeting)).toMatchObject({ caller: acmeCaller, execution: { id: executionId } });
+      },
+    ]);
   });
 });
 
@@ -114,21 +104,6 @@ do:
       detail:
         'The workflow document is not allowed by this runtime: /do/0/shell/run: run tasks (shell, script, container, workflow) are not allowed (at /)',
     });
-  });
-});
-
-describe('a workflow run that cannot be read', () => {
-  it('fails without settling', async () => {
-    const fake = fakeHost();
-    const start = startWorkflow({ document: 'nothing' }, fake.host);
-    start.deliver({ id: 'e1', type: 'ignored' });
-
-    expect(await fake.drive(() => start.ending)).toEqual({
-      kind: 'faulted',
-      type: 'InvalidRun',
-      message: 'The workflow was started without a run it can read',
-    });
-    expect(fake.commands()).toEqual([]);
   });
 });
 

@@ -237,7 +237,7 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 - `started` arms the run's deadline, due when the run has run the most it may, `mostDurationMs`; its fire ends the run `overran`. A call arms its `call_deadline` and keeps its id. A cancel, an end or a timeout cancels what the frames under it wait for, and a task that raises before it waits disarms its own timeout.
 - An event leaves out a timer or a call that the same input opened and closed (invariant 26), and its other outputs keep the order the session emitted them in.
 - A run ends with its outcome, settled once in its last event. An input that would pass a bound (inputs, history, held data, the size of one event) ends the run, raised, in a small event of its own.
-- The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The orchestration primitive runs its interpreter's tests on the machine too, and replays 15 recorded input logs through it (`primitives/orchestration/input-logs/`).
+- The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The orchestration primitive runs on the machine too the 122 of its interpreter's tests that run a workflow and pass there, skipping 13 whose reasons its README gives, and replays 15 recorded input logs through it (`primitives/orchestration/input-logs/`).
 
 ## Measurements
 

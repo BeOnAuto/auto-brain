@@ -82,9 +82,7 @@ do:
   });
 });
 
-describe('a fork whose branch fails', () => {
-  it.skipIf(onMachine)('cancels the other branches and raises the error', async () => {
-    const document = workflow(`
+const failingAtOnce = workflow(`
 do:
   - both:
       fork:
@@ -93,13 +91,18 @@ do:
           - failing: { raise: { error: { type: https://example.com/broken, status: 400 } } }
 `);
 
-    const { settlement, commands } = await interpret(document);
-
-    expect(settlement).toEqual({
+describe('a fork whose branch fails', () => {
+  it('raises the error', async () => {
+    expect((await interpret(failingAtOnce)).settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
       detail: 'https://example.com/broken (at /do/0/both/fork/branches/1/failing)',
     });
+  });
+
+  it.skipIf(onMachine)('cancels the other branches', async () => {
+    const { commands } = await interpret(failingAtOnce);
+
     expect(commands).toContainEqual({ kind: 'cancelled', summary: '/do/0/both/fork/branches/0/waiting' });
   });
 
