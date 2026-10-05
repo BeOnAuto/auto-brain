@@ -48,7 +48,7 @@ When the run ends, its last event settles the execution through `executionSettle
 - **rejected** when an error is not caught: `invalid_input` for an error of a 4xx status other than 408 and 429 (the input led to it, and retrying the execution answers the same), and `unavailable` for every other status (a timeout, a failure to reach a spec, a server error: retrying the execution may succeed). The detail is the title or type, the detail and the instance of the error;
 - **failed** when the run breaks down, when it has run `ORCHESTRATION_MAX_DURATION`, or when its output is larger than an execution records (1048574 bytes as JSON).
 
-The settlement is handed out after the event that holds it is appended, and settling again with the same settlement records nothing, so a server that stops in between settles it when it starts again. A settlement the ledger refuses, such as one for a run that ended before its start recorded that the execution finishes later, is handed out again at every sweep, and after 20 failed attempts given up. An execution that cannot be settled, because the ledger has no such execution, it ended otherwise, or every attempt failed, stays `started` in the ledger: the server logs `An execution stays started because settling it failed` as an error with the org, the brain, the execution id and the reason, never the input or output. Reconciling such an execution is manual in this version.
+The settlement is handed out after the event that holds it is appended, and settling again with the same settlement records nothing, so a server that stops in between settles it when it starts again. A settlement the ledger refuses, such as one for a run that ended before its start recorded that the execution finishes later, or one the ledger cannot take while it cannot be reached, is handed out again at every sweep, and after 20 failed attempts once a minute, for ever, so a run is never left unsettled for want of a retry: the server warns once when the back-off begins, `An execution could not be settled in 20 attempts; it is tried again once a minute until it is`, and once when the execution is settled at last. Starting the execution again tries its settlement at once. An execution the ledger does not have, or one already settled otherwise, stays as it is: the server logs `An execution stays started because settling it failed` as an error with the org, the brain, the execution id and the reason, never the input or output.
 
 Each run arms its deadline when it starts, at `ORCHESTRATION_MAX_DURATION` exactly: when it fires, the run cancels what is running and ends, and its execution settles `failed`. The machine's limits keep a run within what one event and one snapshot hold; the [engine's README](../../../packages/workflow-engine/README.md#limits) lists them, and [The work of expressions](#the-work-of-expressions) has its own.
 
@@ -66,14 +66,16 @@ Every server runs workflows (`packages/server/src/workflows/workflows.ts`). The 
 - `makeOrchestration({ runs, mostDurationMs, longestCallMs })`, the primitive for `makeSpecOperations`, and `defineSendExecutionEvent(runs)`, the brain operation `send_execution_event`.
 - `runPresenter`, given with the presenters of the primitives, so a workflow's history and the brain's events show each input its run took.
 
-The host runs in the server's process: it fires timers when they are due, sweeps every `ORCHESTRATION_SWEEP_INTERVAL`, and runs at most `ORCHESTRATION_NESTED_EXECUTIONS` calls at once. When the server stops, the host lets the decision in progress finish, cuts off the calls in flight, which start again when the server next starts, and closes its database. [Workflow operations](../self-host/workflows.md) describes it for an operator.
+The host runs in the server's process: it fires timers when they are due, sweeps every `ORCHESTRATION_SWEEP_INTERVAL`, and runs at most `ORCHESTRATION_NESTED_EXECUTIONS` calls at once. When the server stops, the host lets the starts and events it took and the decision in progress finish, then cuts off the calls in flight, which start again when the server next starts, lets go of its claim on the workflows, and closes its database. [Workflow operations](../self-host/workflows.md) describes it for an operator.
 
 ### What the server logs of its workflows
 
 - at start-up, one line saying how long a run lasts at most, how many calls run at once and how often the runs are swept;
-- a warning for each failure the host retries: a sweep that failed, a timer that could not fire, a call that could not record its answer or give it to its run, each with its cause cut at 2,000 characters;
+- a warning for each failure the host retries: a sweep that failed, a timer that could not fire, an answer of a call that could not be recorded or given to its run, and a claim on the workflows that could not be renewed, each with its cause cut at 2,000 characters;
+- a warning when the server stands by because another server holds the claim on the workflows of its database, naming that server, and one when it takes the workflows over;
+- a warning when the settlement of a run backs off to one attempt a minute, and one when that execution is settled at last;
 - on PostgreSQL, a warning for a lost connection of the host's;
-- an error for an execution a run could not settle, with its org, brain, execution id and reason.
+- an error for an execution a run could not settle because the ledger has no such execution or settled it otherwise before, with its org, brain, execution id and reason.
 
 A workflow that fails for a reason of its tenant, an uncaught error, a rejected nested execution or a limit, is not logged at all; its execution's rejection says why, and its history shows its steps.
 
@@ -105,4 +107,4 @@ Measured once with the arm64 image and no memory limit, the server took about 18
 
 ## Not in this version
 
-The public reference lists what a document may not use. The implementation also has no operation that cancels a run, and runs workflows in one server for a database. A function is added by adding its name and the checks of its arguments to the functions the machine is given (`src/document/workflow-functions.ts`), and what a call of it does to the calls the host performs (`src/calls/spec-calls.ts`).
+The public reference lists what a document may not use. The implementation also has no operation that cancels a run, and runs the workflows of a database in one server at a time. A function is added by adding its name and the checks of its arguments to the functions the machine is given (`src/document/workflow-functions.ts`), and what a call of it does to the calls the host performs (`src/calls/spec-calls.ts`).

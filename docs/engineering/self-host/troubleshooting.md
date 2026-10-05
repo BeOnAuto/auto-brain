@@ -10,7 +10,7 @@ Check which providers the startup log names. Confirm the provider prefix in the 
 
 ## Workflows are missing or unavailable
 
-Every server offers workflows and `send_execution_event`, with nothing to configure. A workflow that does not go on is usually waiting: for an event, a timer or a function it called. When the server cannot do the work of its runs, it logs a warning saying what failed, such as `A sweep of the runs failed; the next sweep tries again`; [Workflow operations](workflows.md) lists them. Run one server for a database: two servers on one database could call a function twice.
+Every server offers workflows and `send_execution_event`, with nothing to configure. A workflow that does not go on is usually waiting: for an event, a timer or a function it called. When the server cannot do the work of its runs, it logs a warning saying what failed, such as `A sweep of the runs failed; the next sweep tries again`; [Workflow operations](workflows.md) lists them. When several servers share a database, one of them runs the workflows and the others answer workflow operations `unavailable`, saying another server runs them; the log of each server says which it is.
 
 ## The browser receives 403
 
@@ -22,4 +22,4 @@ The ledger lives on `/data`. Reuse the named persistent volume across container 
 
 ## A run stays started
 
-A waiting workflow can legitimately remain `started`. Its history, `get_execution_history`, shows the steps each input moved, and the last one shows what the run waits for. A run whose execution could not be settled also leaves it `started`; the server logs it as an error with its org, brain, execution id and reason, and reconciliation is manual in this version. [Workflow operations](workflows.md) explains how a run ends.
+A waiting workflow can legitimately remain `started`. Its history, `get_execution_history`, shows the steps each input moved, and the last one shows what the run waits for. A run whose execution the ledger would not settle yet also leaves it `started` until a later attempt settles it; the server warns once when such a run backs off to an attempt a minute, and once when it is settled. [Workflow operations](workflows.md) explains how a run ends.

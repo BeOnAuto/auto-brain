@@ -146,7 +146,7 @@ The watermark of a run is a stream version. Every output of every event at or be
 
 ## Serialisation
 
-One input at a time for each run is the adapter's job. In the hosted runtime it is the run's isolate, whose single thread takes one request at a time. On Node it is one process for each SQLite file, holding a lock per run in memory; a second process on the same file is outside the contract, and nothing claims or leases a run. A PostgreSQL adapter, later, will take a lease per run. Whatever slips past, the expected version of the append catches.
+One input at a time for each run is the adapter's job. In the hosted runtime it is the run's isolate, whose single thread takes one request at a time. On Node it is the one host that holds the claim on the database's workflows, with a lock per run in memory; a second host on the same database stands by, and a claim of each run is a later step (`@beonauto/workflow-host`). Whatever slips past, the expected version of the append catches.
 
 On Node the timers table goes through the ledger's own SQLite driver or lives in a separate file: written through a second SQLite library to the ledger's file, committed cancels were lost (`spikes/node/results/lost-write-repeat.json` on branch `spike/engine-node`).
 

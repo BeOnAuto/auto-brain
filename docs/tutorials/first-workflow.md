@@ -98,13 +98,15 @@ Success measure: Generate interest in the product
 
 > Run the workflow `review-brief-revision` in `campaign-review-tutorial` with the brief above as its `brief` input. Show me the run's execution id and status, and keep the execution id for the next steps.
 
-The run should answer with an `execution_id` and `status: started`. The tool's summary reads: The workflow “review-brief-revision” has started and is still running. It carries on by itself, and how it ends can be looked up later. Its first step reviews the brief; then it waits for the revision.
+The run should answer with an `execution_id` and `status: started`. The tool's summary reads: The workflow “review-brief-revision” has started and is still running. It carries on by itself, and how it ends can be looked up later.
+
+The run's first step reviews the brief; then the run waits for the revision.
 
 Check it:
 
 > Read the Auto run with that execution id and show its status.
 
-It should still show `status: started`. A run that waits for an event stays started until the event arrives. The first review appears in the run's output when it ends.
+It should still show `status: started`, and the tool's summary reads: The workflow “review-brief-revision” is still running; how it ends can be looked up again later. A run that waits for an event stays started until the event arrives. The first review appears in the run's output when it ends.
 
 ## 5. Send the revised brief
 
@@ -119,7 +121,9 @@ Total budget: USD 8,000
 Success measure: 100 trial registrations
 ```
 
-The agent should report the event delivered, with its `type`, its `data`, an `id` the runtime assigned and the `time` it was sent. The tool's summary reads: Delivered the event “com.example.brief.revised” to the running workflow. The workflow uses it as soon as it is waiting for it. The event goes to the waiting run; it does not start another one.
+The agent should report the event delivered, with its `type`, its `data`, an `id` the runtime assigned and the `time` it was sent. The tool's summary reads: Delivered the event “com.example.brief.revised” to the running workflow. The workflow uses it as soon as it is waiting for it.
+
+The event goes to the waiting run; it does not start another one.
 
 ## 6. Read the finished run
 
@@ -138,18 +142,23 @@ A succeeded run means every step completed; it can still contain a Revise review
 
 Then read how the run got there:
 
-> Read the history of that run. For each `workflow_input_applied` event, show what the run received and the steps that moved, with how each ended.
+> Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the steps that moved and how each ended.
 
-The history lists, oldest first, the run's start, one `workflow_input_applied` event for each input the run took, and the run's end:
+The tool's summary reads: Found 7 events in the history of the run, oldest first.
 
-| What the run received                 | Steps that moved                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------- |
-| Its start                             | `/do/0/review-first-brief`, waiting for the function's answer             |
-| The function's answer, `succeeded`    | `/do/0/review-first-brief` completed; `/do/1/wait-for-revision` waiting   |
-| The event `com.example.brief.revised` | `/do/1/wait-for-revision` completed; `/do/2/review-revised-brief` waiting |
-| The function's answer, `succeeded`    | `/do/2/review-revised-brief` completed, and the workflow ended            |
+The seven events, with the steps each input moved:
 
-Each event's summary says the same in plain words, such as: The workflow received an event, and 2 steps moved. The history shows the steps, never the briefs or the reviews; those are in the run's output.
+| Type                     | Summary                                                                        | Steps that moved                                                          |
+| ------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `execution_started`      | A run of the workflow “review-brief-revision” started.                         |                                                                           |
+| `workflow_input_applied` | The workflow started, and 1 step moved.                                        | `/do/0/review-first-brief` waiting                                        |
+| `execution_deferred`     | A run carries on by itself, and finishes later.                                |                                                                           |
+| `workflow_input_applied` | A function the workflow called answered, and 2 steps moved.                    | `/do/0/review-first-brief` completed; `/do/1/wait-for-revision` waiting   |
+| `workflow_input_applied` | The workflow received an event, and 2 steps moved.                             | `/do/1/wait-for-revision` completed; `/do/2/review-revised-brief` waiting |
+| `workflow_input_applied` | A function the workflow called answered, and 1 step moved; the workflow ended. | `/do/2/review-revised-brief` completed                                    |
+| `execution_succeeded`    | A run finished.                                                                |                                                                           |
+
+The history shows the steps, never the briefs or the reviews; those are in the run's output.
 
 ## 7. Check that the run has ended
 
