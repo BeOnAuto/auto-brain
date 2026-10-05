@@ -73,4 +73,12 @@ describe('a state of format 1', () => {
     expect(formatOne?.format).toBe(1);
     expect(() => stateInCurrentFormat(1, toJson({ ...newRun, executionId, extra: true }))).toThrow(/extra/u);
   });
+
+  it('does not load when a list in it stands between its tasks, which format 2 has no way to hold and no runtime wrote', () => {
+    const between = { pointer: '/do', position: 1, data: 0, variables: {}, current: null };
+    const root = { ...frameOfFormatOne, body: { kind: 'list', list: between } };
+    const state = toJson({ ...newRun, executionId, status: 'running', machine: { ...newRun.machine, root } });
+
+    expect(() => stateInCurrentFormat(1, state)).toThrow(/current/u);
+  });
 });

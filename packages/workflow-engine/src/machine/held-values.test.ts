@@ -34,7 +34,7 @@ function chooserOf(seed: number): Choose {
 
 function cursorOf(choose: Choose, depth: number): ListCursor {
   const running = depth > 0 && choose(3) > 0;
-  const idle = choose(2) === 0 ? null : { kind: 'yielding' as const, timer: 't' };
+  const idle = { kind: 'yielding' as const, timer: 't' };
   return {
     pointer: '/do',
     position: choose(4),
@@ -65,7 +65,7 @@ function bodyOf(choose: Choose, depth: number): FrameBody {
       items: choose(valueCount),
       index: 0,
       data: choose(valueCount),
-      list: choose(2) === 0 ? null : cursorOf(choose, depth),
+      list: cursorOf(choose, depth),
     }),
     () => ({ kind: 'fork', compete: false, branches: [branchOf(choose, depth), branchOf(choose, depth)] }),
     () => ({

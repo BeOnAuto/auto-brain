@@ -22,7 +22,7 @@ function together(reaches: readonly Reach[]): Reach {
 
 function cursorReach(cursor: ListCursor): Reach {
   const own: Reach = { values: [cursor.data, ...Object.values(cursor.variables)], frames: 0 };
-  return cursor.current?.kind === 'running' ? together([own, frameReach(cursor.current.task)]) : own;
+  return cursor.current.kind === 'running' ? together([own, frameReach(cursor.current.task)]) : own;
 }
 
 function branchReach(branch: Branch): Reach {
@@ -37,8 +37,7 @@ function bodyReach(body: FrameBody): Reach {
     return cursorReach(body.list);
   }
   if (body.kind === 'for') {
-    const own: Reach = { values: [body.items, body.data], frames: 0 };
-    return body.list === null ? own : together([own, cursorReach(body.list)]);
+    return together([{ values: [body.items, body.data], frames: 0 }, cursorReach(body.list)]);
   }
   if (body.kind === 'fork') {
     return together(body.branches.map((branch: Branch) => branchReach(branch)));
@@ -65,12 +64,16 @@ function runReach({ machine, workflow }: RunState): Reach {
   return machine.root === null ? roots : together([roots, frameReach(machine.root)]);
 }
 
-export function heldValueOf(state: RunState, id: ValueId): HeldValue {
-  const held = Object.hasOwn(state.machine.values, id) ? state.machine.values[id] : undefined;
+export function heldIn(values: Readonly<Record<string, HeldValue>>, id: ValueId): HeldValue {
+  const held = Object.hasOwn(values, id) ? values[id] : undefined;
   if (held === undefined) {
     throw new MissingValue({ value: id });
   }
   return held;
+}
+
+export function heldValueOf(state: RunState, id: ValueId): HeldValue {
+  return heldIn(state.machine.values, id);
 }
 
 export function reachableValueIds(state: RunState): readonly ValueId[] {

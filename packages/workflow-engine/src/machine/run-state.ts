@@ -25,7 +25,7 @@ export interface ListCursor {
   readonly position: number;
   readonly data: ValueId;
   readonly variables: Variables;
-  readonly current: CursorCurrent | null;
+  readonly current: CursorCurrent;
 }
 
 export type Branch =
@@ -46,7 +46,7 @@ export type FrameBody =
       readonly items: ValueId;
       readonly index: number;
       readonly data: ValueId;
-      readonly list: ListCursor | null;
+      readonly list: ListCursor;
     }
   | { readonly kind: 'fork'; readonly compete: boolean; readonly branches: readonly Branch[] }
   | { readonly kind: 'try'; readonly attempt: number; readonly startedAt: number; readonly phase: TryPhase }
@@ -148,7 +148,7 @@ const ListCursorSchema: Schema.Codec<ListCursor> = Schema.Struct({
   position: IntSchema,
   data: ValueIdSchema,
   variables: VariablesSchema,
-  current: Schema.NullOr(CursorCurrentSchema),
+  current: CursorCurrentSchema,
 });
 
 const BranchSchema: Schema.Codec<Branch> = Schema.Union([
@@ -171,7 +171,7 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
     items: ValueIdSchema,
     index: IntSchema,
     data: ValueIdSchema,
-    list: Schema.NullOr(ListCursorSchema),
+    list: ListCursorSchema,
   }),
   Schema.Struct({ kind: Schema.Literal('fork'), compete: Schema.Boolean, branches: Schema.Array(BranchSchema) }),
   Schema.Struct({ kind: Schema.Literal('try'), attempt: IntSchema, startedAt: InstantSchema, phase: TryPhaseSchema }),
