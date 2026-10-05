@@ -1,41 +1,18 @@
-import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { mostEventBytes, mostHeldBytes, mostHistoryBytes, mostInputs } from '../machine/limits.ts';
-import { newRun, type RunOutcome, type RunState } from '../machine/run-state.ts';
+import type { RunOutcome } from '../machine/run-state.ts';
 import { eventBytesOf } from '../run-log/run-event.ts';
-import { evolveRun } from '../run-log/run-fold.ts';
-import { testMachine } from '../testing/driver-inputs.ts';
-import { armedTimerIds, drivenExecutionId, drivenRun, type DrivenRun } from '../testing/run-history.ts';
+import { drivenRun, type DrivenRun } from '../testing/run-history.ts';
+import { afterTheWaits, startedStateOf } from '../testing/stored-runs.ts';
 import { workflow } from '../testing/workflows.ts';
-import { workflowMachine } from './workflow-machine.ts';
 
 const megabyte = 1_048_576;
 
+const pausing = workflow('do:\n  - pause: { wait: PT1H }');
+
 function titleOf(outcome: RunOutcome | null): string {
   return outcome?.kind === 'raised' ? (outcome.error.title ?? '') : JSON.stringify(outcome);
-}
-
-function waitingState(): RunState {
-  const waiting: { state?: RunState } = {};
-  drivenRun(workflow('do:\n  - pause: { wait: PT1H }'), {
-    meanwhile: (driver, executionId) => {
-      waiting.state = driver.state(executionId);
-    },
-  });
-  return waiting.state ?? newRun;
-}
-
-function afterTheWait(state: RunState): RunState {
-  const [timerId = ''] = armedTimerIds(state, 'wait');
-  const input = {
-    kind: 'timer_fired',
-    executionId: drivenExecutionId,
-    at: state.lastInputAt + 3_600_000,
-    timerId,
-  } as const;
-  const events = Result.getOrThrow(workflowMachine(testMachine).decide(input, state));
-  return events.reduce((folded, event) => evolveRun(folded, event), state);
 }
 
 describe('a run ends, raised, in one small event, when an input would make an event larger than one event holds', () => {
@@ -129,7 +106,7 @@ do:
   });
 
   it('when the input would take its history past the most a run keeps', () => {
-    const ended = afterTheWait({ ...waitingState(), historyBytes: mostHistoryBytes - 100 });
+    const ended = afterTheWaits({ ...startedStateOf(pausing), historyBytes: mostHistoryBytes - 100 }, 3_600_000);
 
     expect(titleOf(ended.outcome)).toMatch(
       /^The run's history would take \d+ bytes, more than the 536870912 a run keeps$/u,
@@ -138,7 +115,7 @@ do:
   });
 
   it(`when it has taken ${mostInputs} inputs`, () => {
-    const ended = afterTheWait({ ...waitingState(), inputs: mostInputs });
+    const ended = afterTheWaits({ ...startedStateOf(pausing), inputs: mostInputs }, 3_600_000);
 
     expect(titleOf(ended.outcome)).toBe(`The run took ${mostInputs} inputs, the most a run takes`);
     expect(ended.inputs).toBe(mostInputs + 1);
