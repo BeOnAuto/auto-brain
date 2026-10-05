@@ -80,11 +80,11 @@ describe('the host whose ledger cannot be reached for two minutes', () => {
     outage.endsAt = clock.now() + outageMs;
 
     await Effect.runPromise(hosted.host.start(run, startOf(ending)));
-    const settled = await eventually(hosted.settlements, (settlements) => settlements.size > 0, 1500);
+    const notes = await eventually(hosted.notes, (noted) => noted.length > 1, 1500);
 
-    expect([...settled.keys()]).toEqual([executionId]);
+    expect(notes.map(({ kind }) => kind)).toEqual(['settle_backing_off', 'settled_after_back_off']);
+    expect([...hosted.settlements().keys()]).toEqual([executionId]);
     expect(hosted.settleAttempts()).toBe(settleAttemptsBeforeBackingOff + Math.ceil(outageMs / settleBackOffMs));
-    expect(hosted.notes().map(({ kind }) => kind)).toEqual(['settle_backing_off', 'settled_after_back_off']);
     expect(hosted.troubles()).toEqual([]);
   }, 30_000);
 });
