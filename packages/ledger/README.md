@@ -161,7 +161,7 @@ const layer = ledgerLayer({ fileName: '/data/ledger.db' });
 
 Building the layer creates the directory of the database file if it is missing, then opens the database and migrates its tables before the ledger is ready; a directory that cannot be created or a database that cannot be opened is a defect at that point. Disposing the runtime closes every connection. `fileName: ':memory:'` gives a private in-memory database.
 
-Each SQLite connection may cache up to 8 MiB of pages and maps none of the file into memory, where the driver's defaults allow about 1 GB of cache and 256 MiB of mapped file per connection.
+Each SQLite connection may cache up to 8 MiB of pages and maps none of the file into memory, where the driver's defaults allow about 1 GB of cache and 256 MiB of mapped file per connection. Every connection, the tests' temporary files included, runs in WAL mode with `synchronous=NORMAL`, the defaults of Emmett's connection layer, dumbo: a committed append survives a crash of the process, and only the latest commits can be lost if the machine loses power, since in that mode SQLite syncs the file at each checkpoint rather than at each commit. Measured on 2026-10-05 on an Apple M4 Max through `sqlite3` 6.0.1, an append of one event of 1.8 KB to a temporary file took 0.20 to 0.23 ms at the median with either setting, since macOS syncs only to the drive's cache; with `fullfsync` on, so that each sync reaches the drive as on a disk that honours syncs, it took 5.9 ms with `FULL` and 0.20 to 0.24 ms with `NORMAL`, whose syncs at checkpoints showed as 5.2 ms at p99.
 
 ```ts
 import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
@@ -186,7 +186,7 @@ The ledger on PostgreSQL behaves as it does on SQLite; one suite of tests runs a
 
 An append on PostgreSQL binds ten parameters whatever the number of events, one array per column, so PostgreSQL's own limit of 65,535 parameters in one statement never binds. The ledger still bounds a decision, at 64 events, eight times SQLite's eight, so that a decider that runs away is a defect rather than one long transaction. Code that must run on both stores keeps its decisions to eight events.
 
-Every command is a decision appended under an expected version, so concurrent writers never lose an update to brains and specs. Every server runs workflows, though, and workflows need one server for a database: the workflow host claims no run for one server, so two servers on one database could fire a timer twice or perform a call twice. A lease per run, for several servers on one PostgreSQL database, is a later step; until then, run one server for a database.
+Every command is a decision appended under an expected version, so concurrent writers never lose an update to brains and specs. Every server runs a workflow host, and one of them runs the database's workflows at a time, under a claim the workflow host keeps in its own table, so several servers may share the database.
 
 ## Portability
 
