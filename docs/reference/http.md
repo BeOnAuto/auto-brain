@@ -1,6 +1,6 @@
 # HTTP API
 
-The HTTP API provides brain management, reason-function definitions and recorded runs. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reason-function definitions, recorded runs and the history of a brain. Requests use the API base URL and credentials supplied for the workspace.
 
 The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. A reason function uses the primitive identifier `inference`; keep these names in requests.
 
@@ -63,6 +63,36 @@ Reason functions normally complete within the execute request. Inputs may be at 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result.
 
 A run without a final result may be attempted again after an interruption or recoverable failure. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
+
+## Run history and brain events
+
+These routes are relative to `/v1/orgs/{org}/brains/{brain}` and need `brain:read`:
+
+| Operation               | Method and route                         | Input                                                        |
+| ----------------------- | ---------------------------------------- | ------------------------------------------------------------ |
+| `list_executions`       | `GET /executions`                        | Optional `primitive`, `name`, `status`, `limit` and `cursor` |
+| `get_execution_history` | `GET /executions/{execution_id}/history` | Execution id in path; optional `order`, `limit` and `cursor` |
+| `list_brain_events`     | `GET /events`                            | Optional `type`, `since`, `order`, `limit` and `cursor`      |
+
+`list_executions` returns `executions`, newest first by when each run first started. A listed run has the fields `get_execution` returns, without `output`, `record` and the detail and issues of a rejection; a rejection shows its `reason`, with `kind` and `because` when the function gave them. `status` keeps the runs whose status is `started`, `succeeded`, `rejected` or `failed`, and `primitive` and `name` keep the runs of one definition.
+
+`get_execution_history` returns the `events` of one run, oldest first unless `order` is `desc`: the facts the runtime recorded about the run, each start and how it ended. A run that does not exist in the brain returns `not_found`. `list_brain_events` returns the `events` of the whole brain, newest first unless `order` is `asc`: definitions created, updated and retired, and runs started and ended. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the brain recorded from that time on, in either order.
+
+Each event has these fields:
+
+| Field     | Contents                                                                                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`      | The event's id, which also works as a `cursor` to read on after it                                                                                           |
+| `at`      | When it happened, by its own clock, in ISO 8601 UTC                                                                                                          |
+| `type`    | `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `spec_created`, `spec_updated` or `spec_retired` |
+| `summary` | A sentence in plain language                                                                                                                                 |
+| `data`    | The facts of the event, at most 4 KiB as JSON                                                                                                                |
+
+In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count.
+
+Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: filters apply to the records a page looked at, a page stops after loading 4 MiB of stored data, and with `status` after looking at 1,000 runs. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
+
+The brain's own creation, changes and retirement are not brain events; `get_brain` shows them. A retired brain stays readable: these reads work on it, while every change to it is refused with `conflict`.
 
 ## Responses and errors
 
