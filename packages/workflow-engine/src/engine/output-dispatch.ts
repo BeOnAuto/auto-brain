@@ -60,6 +60,17 @@ function notedDue(
   return Effect.match(ports.recordStore.noteDue(due, run), { onFailure: () => false, onSuccess: () => true });
 }
 
+function notedOrBehind(
+  ports: EnginePorts,
+  run: RunContext,
+  loaded: LoadedForDispatch,
+  behind: boolean,
+): Effect.Effect<boolean> {
+  return Effect.flatMap(notedDue(ports, run, loaded, behind), (noted) =>
+    noted || behind ? Effect.succeed(noted) : Effect.as(notedDue(ports, run, loaded, true), false),
+  );
+}
+
 export function dispatchRun(ports: EnginePorts, loaded: LoadedForDispatch): Effect.Effect<Wake> {
   const { executionId, state, version } = loaded;
   const run: RunContext = { executionId, attributes: state.attributes };
@@ -68,7 +79,7 @@ export function dispatchRun(ports: EnginePorts, loaded: LoadedForDispatch): Effe
     const events = yield* ports.runStore.eventsAfter(executionId, watermark);
     const failed = yield* firstFailureIn(ports, run, events);
     const changed = failed !== null || events.some((event) => changesTimers(event));
-    const noted = changed ? yield* notedDue(ports, run, loaded, failed !== null) : true;
+    const noted = changed ? yield* notedOrBehind(ports, run, loaded, failed !== null) : true;
     const through = noted ? dispatchedThrough(watermark, events, failed ?? undefined) : watermark;
     yield* ports.watermark.advance(executionId, through);
     return { version, dispatchedThrough: through };

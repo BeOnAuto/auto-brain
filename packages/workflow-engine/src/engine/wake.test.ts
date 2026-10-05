@@ -12,23 +12,52 @@ const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const pausing = workflow('do:\n  - pause: { wait: PT1M }');
 
-describe('a wake', () => {
-  it('dispatches again, and notes the run due, a dispatch whose note of the due time failed', () => {
+describe('a run whose note of its due time failed', () => {
+  it('is found by a sweep an hour later, though its alarm was lost, and runs to its end', () => {
     const driver = memoryDriver();
     driver.ports.faults.failNext('note_due');
-    driver.start({ executionId, document: pausing });
+    const started = driver.start({ executionId, document: pausing });
     driver.ports.timers.forget();
+    const stuck = driver.runUntilEnded(executionId);
 
-    const sweptBefore = Effect.runSync(driver.engine.sweep(driver.clock.now() + 3_600_000));
-    const woken = Effect.runSync(driver.engine.wake(executionId));
-    const sweptAfter = Effect.runSync(driver.engine.sweep(driver.clock.now() + 3_600_000));
+    const swept = Effect.runSync(driver.engine.sweep(driver.clock.now() + 3_600_000));
 
-    expect(sweptBefore).toEqual({ runs: 0, timersArmedAgain: 0 });
-    expect(woken).toEqual({ version: 1, dispatchedThrough: 1 });
-    expect(sweptAfter).toEqual({ runs: 1, timersArmedAgain: 0 });
+    expect(started).toEqual({ outcome: 'applied', version: 1 });
+    expect(stuck.status).toBe('running');
+    expect(swept).toEqual({ runs: 1, timersArmedAgain: 0 });
     expect(driver.runUntilEnded(executionId).outcome).toEqual({ kind: 'completed', output: {} });
   });
 
+  it('leaves its dispatch behind until a wake dispatches it again and notes its due time', () => {
+    const driver = memoryDriver();
+    driver.ports.faults.failNext('note_due');
+    driver.start({ executionId, document: pausing });
+
+    const watermark = Effect.runSync(driver.ports.watermark.read(executionId));
+    const woken = Effect.runSync(driver.engine.wake(executionId));
+    const swept = Effect.runSync(driver.engine.sweep(driver.clock.now() + 3_600_000));
+
+    expect(watermark).toBe(0);
+    expect(woken).toEqual({ version: 1, dispatchedThrough: 1 });
+    expect(swept).toEqual({ runs: 1, timersArmedAgain: 0 });
+  });
+
+  it('after a port failed too, stays behind until a wake dispatches it again', () => {
+    const driver = memoryDriver();
+    driver.ports.faults.failNext('arm_timer');
+    driver.ports.faults.failNext('note_due');
+    driver.start({ executionId, document: pausing });
+
+    const swept = Effect.runSync(driver.engine.sweep(driver.clock.now() + 3_600_000));
+    const woken = Effect.runSync(driver.engine.wake(executionId));
+
+    expect(swept).toEqual({ runs: 0, timersArmedAgain: 0 });
+    expect(woken).toEqual({ version: 1, dispatchedThrough: 1 });
+    expect(driver.runUntilEnded(executionId).outcome).toEqual({ kind: 'completed', output: {} });
+  });
+});
+
+describe('a wake', () => {
   it('reads and moves the watermark of the run it was asked to wake, even one that has no event', () => {
     const asked: string[] = [];
     const clock = virtualClock();
