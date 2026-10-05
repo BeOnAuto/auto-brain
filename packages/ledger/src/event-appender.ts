@@ -6,8 +6,6 @@ import { eventCodecOf } from './event-codec.ts';
 import type { EventStore, EncodedEvent } from './event-store.ts';
 import { VersionConflict } from './version-conflict.ts';
 
-const mostEventsInOneAppend = 8;
-
 export type EventAppender = <Event extends TypedEvent>(
   stream: string,
   eventSchema: Schema.ConstraintCodec<Event, unknown>,
@@ -17,9 +15,11 @@ export type EventAppender = <Event extends TypedEvent>(
 
 export function eventAppenderOf(store: EventStore): EventAppender {
   return (stream, eventSchema, events, expectedVersion) => {
-    if (events.length > mostEventsInOneAppend) {
+    if (events.length > store.mostEventsInOneAppend) {
       return Effect.die(
-        new RangeError(`A decision on ${stream} gave ${events.length} events, more than ${mostEventsInOneAppend}`),
+        new RangeError(
+          `A decision on ${stream} gave ${events.length} events, more than ${store.mostEventsInOneAppend}`,
+        ),
       );
     }
     return Effect.forEach(events, eventCodecOf(eventSchema).encode).pipe(

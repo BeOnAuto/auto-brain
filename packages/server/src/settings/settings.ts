@@ -7,6 +7,7 @@ import { Config, ConfigProvider, Effect, Option, Result } from 'effect';
 import type { LogFormat } from '../logging/logging.ts';
 import { fileSettings } from './file-settings.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
+import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
 import { Origin } from './origin.ts';
 
 interface ConfigFileSources {
@@ -20,7 +21,7 @@ export interface Settings {
   readonly port: number;
   readonly allowedOrigins: readonly string[];
   readonly apiKeys: readonly ApiKey[] | undefined;
-  readonly ledgerFile: string;
+  readonly ledger: LedgerSettings;
   readonly localMode: boolean;
   readonly logFormat: LogFormat;
   readonly models: ModelSettings;
@@ -30,7 +31,6 @@ export interface Settings {
 
 const serverSettings = Config.all({
   allowedOrigins: Config.Array(Origin, 'ALLOWED_ORIGINS').pipe(Config.withDefault([])),
-  ledgerFile: Config.String('LEDGER_FILE').pipe(Config.withDefault('data/ledger.db')),
   localMode: Config.Boolean('LOCAL_MODE').pipe(Config.withDefault(false)),
   logFormat: Config.Literals(['json', 'pretty'], 'LOG_FORMAT').pipe(Config.withDefault('json')),
 });
@@ -55,7 +55,8 @@ export function readSettings(given: Environment): Settings {
   const read = serverSettings
     .parse(ConfigProvider.fromEnvRecord(environment))
     .pipe(Effect.mapError(({ message }: { readonly message: string }) => new InvalidSettingsError({ message })));
-  const { allowedOrigins, ledgerFile, localMode, logFormat } = Effect.runSync(read);
+  const { allowedOrigins, localMode, logFormat } = Effect.runSync(read);
+  const ledger = Effect.runSync(readLedgerSettings(environment));
   const models = Effect.runSync(
     readModelSettings(environment).pipe(
       Effect.mapError((invalid: { readonly problems: readonly SettingProblem[] }) => placedInFile(invalid, file)),
@@ -67,7 +68,7 @@ export function readSettings(given: Environment): Settings {
     port,
     allowedOrigins,
     apiKeys: readApiKeys(environment),
-    ledgerFile,
+    ledger,
     localMode,
     logFormat,
     models,

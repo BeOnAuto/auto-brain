@@ -58,6 +58,14 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
     expect(allowedOrigins).toEqual(['http://localhost:5173']);
     expect(configFile?.fromFile).toEqual(['MODEL_GATEWAYS', 'MODEL_ALIASES', 'ALLOWED_ORIGINS']);
   });
+
+  it('documents the ledger in PostgreSQL in .env.example in a form that reads as written over dev.env', () => {
+    const environment = parseEnv(uncommented(readFileSync(example, 'utf8')));
+
+    const { ledger } = readSettings({ LEDGER_FILE: '.data/ledger.db', ...environment });
+
+    expect(ledger).toMatchObject({ store: 'postgresql', host: '127.0.0.1:5432', database: 'postgres' });
+  });
 });
 
 describe('the configuration file pnpm dev passes', { timeout: developmentTestTimeoutMs }, () => {
@@ -107,6 +115,7 @@ describe('pnpm dev with LOG_FORMAT=pretty in dev.env', { timeout: developmentTes
         .split('\n'),
     ).toEqual([
       expect.stringMatching(/^WARN {2}Local mode is on: /u),
+      expect.stringMatching(/^INFO {2}The ledger is kept in the file \S+\/ledger\.db ledger_file=\S+\/ledger\.db$/u),
       expect.stringMatching(/^WARN {2}No model provider is configured, /u),
       'INFO  Workflows are not offered because TEMPORAL_ADDRESS is unset',
       'INFO  [dev] auto-brain is ready',

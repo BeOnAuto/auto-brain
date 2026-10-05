@@ -263,6 +263,7 @@ describe('the server with LOG_FORMAT=pretty', { timeout: spawnedServerTestTimeou
         .map((line) => line.replace(/^\d{2}:\d{2}:\d{2}\.\d{3} /u, '')),
     ).toEqual([
       expect.stringMatching(/^WARN {2}Local mode is on: /u),
+      'INFO  The ledger is kept in the file :memory: ledger_file=:memory:',
       expect.stringMatching(/^WARN {2}No model provider is configured, .* providers=\[\{"provider":"anthropic",/u),
       'INFO  Workflows are not offered because TEMPORAL_ADDRESS is unset',
       '',

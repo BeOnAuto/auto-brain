@@ -1,4 +1,5 @@
 import { makeAppRuntime } from '@beonauto/api';
+import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { Effect, Exit, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -7,7 +8,7 @@ import { inRuntime } from './worker-dependencies.ts';
 
 describe('work the worker hands to the runtime of the server', () => {
   it('runs on the services of the runtime, and fails as it fails there', async () => {
-    const runtime = await makeAppRuntime(applicationLayer(':memory:'));
+    const runtime = await makeAppRuntime(applicationLayer(ledgerLayer({ fileName: ':memory:' })));
 
     const done = await Effect.runPromise(inRuntime(runtime, Effect.succeed('done')));
     const refused = await Effect.runPromise(Effect.exit(inRuntime(runtime, Effect.fail('refused'))));
@@ -18,7 +19,9 @@ describe('work the worker hands to the runtime of the server', () => {
   });
 
   it('dies once the runtime is disposed, so Temporal retries the activity elsewhere', async () => {
-    const runtime = await makeAppRuntime(Layer.empty.pipe(Layer.provideMerge(applicationLayer(':memory:'))));
+    const runtime = await makeAppRuntime(
+      Layer.empty.pipe(Layer.provideMerge(applicationLayer(ledgerLayer({ fileName: ':memory:' })))),
+    );
     await runtime.dispose();
 
     const exit = await Effect.runPromise(Effect.exit(inRuntime(runtime, Effect.succeed('too late'))));

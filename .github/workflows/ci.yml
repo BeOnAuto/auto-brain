@@ -19,6 +19,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgresql:
+        image: postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_PASSWORD: ledger-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready --username postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
@@ -42,6 +54,7 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+          LEDGER_TEST_POSTGRESQL_URL: postgresql://postgres:ledger-ci@127.0.0.1:5432/postgres
 
   container:
     name: Container (linux/${{ matrix.architecture }})
@@ -123,6 +136,54 @@ jobs:
           read_brain > after-restart.json
           cmp before-restart.json after-restart.json
           stop_server second
+      - name: Keep a brain in PostgreSQL across a restart
+        timeout-minutes: 2
+        run: |
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          password=ledger-smoke
+          DATABASE_URL="postgresql://postgres:$password@postgresql:5432/postgres"
+          export API_KEYS DATABASE_URL
+          ledger_line='"message":"The ledger is kept in PostgreSQL, in the database postgres on postgresql:5432"'
+          docker network create ledger
+          docker run --detach --name postgresql --network ledger --env POSTGRES_PASSWORD="$password" \
+            postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+          for attempt in $(seq 1 30); do
+            docker exec postgresql pg_isready --host 127.0.0.1 --username postgres --quiet && break
+            sleep 1
+          done
+          wait_for_health() {
+            for attempt in $(seq 1 30); do
+              curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && return 0
+              sleep 1
+            done
+            return 1
+          }
+          read_brain() {
+            curl --silent --fail --max-time 10 --header "authorization: Bearer $key" \
+              http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          }
+          docker run --detach --name ledger --network ledger --publish 8080:8080 --env API_KEYS --env DATABASE_URL \
+            auto-brain:ci
+          wait_for_health
+          test "$(curl --silent --max-time 10 --output created.json --write-out '%{http_code}' \
+            --header "authorization: Bearer $key" --header 'content-type: application/json' \
+            --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          read_brain > before-restart.json
+          cmp created.json before-restart.json
+          docker stop ledger
+          test "$(docker inspect ledger --format '{{.State.ExitCode}}')" = 0
+          docker start ledger
+          wait_for_health
+          read_brain > after-restart.json
+          cmp before-restart.json after-restart.json
+          docker stop ledger
+          test "$(docker inspect ledger --format '{{.State.ExitCode}}')" = 0
+          test "$(docker logs ledger 2>&1 | grep --count --fixed-strings "$ledger_line")" = 2
+          test "$(docker logs ledger 2>&1 | grep --count --fixed-strings "$password")" = 0
+          docker stop postgresql
       - name: Serve the tools over MCP
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"

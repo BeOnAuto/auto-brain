@@ -56,6 +56,7 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
     expect(performance.now() - stopping).toBeLessThan(3000);
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
     expect(startUpLines.slice(1)).toEqual([
+      `INFO The ledger is kept in the file ${ledger.fileName}`,
       `INFO Workflows are offered with Temporal at ${address}, namespace default, task queue ${taskQueue}`,
       'INFO The workflow worker started',
     ]);

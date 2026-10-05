@@ -54,8 +54,7 @@ RUN node primitives/orchestration/build-workflow-bundle.ts /app/workflow-bundle
 
 FROM node:26.10.0-slim@sha256:ec7758ee051e457b468b32bde57b0879010b325bb9862718e9615225ce4aaae1
 LABEL org.opencontainers.image.licenses="Elastic-2.0"
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 LEDGER_FILE=/data/ledger.db \
-  ORCHESTRATION_WORKFLOW_BUNDLE=/app/workflow-bundle
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 ORCHESTRATION_WORKFLOW_BUNDLE=/app/workflow-bundle
 WORKDIR /app
 COPY --from=dependencies /app ./
 COPY LICENSE ./
@@ -76,7 +75,8 @@ RUN node primitives/orchestration/check-workflow-bundle.ts /app/workflow-bundle
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends tini \
   && rm -rf /var/lib/apt/lists/* \
-  && install --directory --owner=node --group=node /data
+  && install --directory --owner=node --group=node /data \
+  && ln --symbolic /data /app/data
 USER node
 VOLUME /data
 EXPOSE 8080

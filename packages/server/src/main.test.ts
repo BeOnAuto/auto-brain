@@ -66,6 +66,8 @@ const noModelProvider =
 
 const workflowsNotOffered = 'Workflows are not offered because TEMPORAL_ADDRESS is unset';
 
+const ledgerKept = `The ledger is kept in the file ${ledger.fileName}`;
+
 const ModelLineSchema = Schema.Struct({
   message: Schema.String,
   level: Schema.String,
@@ -91,7 +93,7 @@ function messagesOf(stderr: string): readonly string[] {
 }
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
-  return [expect.stringMatching(/^Local mode is on: /u), noModelProvider, workflowsNotOffered, ...after];
+  return [expect.stringMatching(/^Local mode is on: /u), ledgerKept, noModelProvider, workflowsNotOffered, ...after];
 }
 
 describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
@@ -202,10 +204,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
     expect({ withoutKey: withoutKey.status, withKey: withKey.status }).toEqual({ withoutKey: 401, withKey: 200 });
     expect(withoutKey.headers.get('www-authenticate')).toBe('Bearer');
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
-    expect(logLines(child.output().stderr).map(({ message }) => message)).toEqual([
-      noModelProvider,
-      workflowsNotOffered,
-    ]);
+    expect(messagesOf(child.output().stderr)).toEqual([ledgerKept, noModelProvider, workflowsNotOffered]);
   });
 
   it.each(invalidSettings)(
