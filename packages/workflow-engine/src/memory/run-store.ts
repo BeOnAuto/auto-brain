@@ -19,10 +19,15 @@ const decodeEvent = Schema.decodeUnknownSync(EventTextSchema);
 const utf8 = new TextEncoder();
 
 export function memoryRunStore(conflicts = 0): MemoryRunStore {
-  const streams = new Map<string, readonly PositionedEvent[]>();
+  const streams = new Map<string, PositionedEvent[]>();
   const snapshots = new Map<string, StoredSnapshot>();
   const remaining = { conflicts };
   const eventsOf = (executionId: string): readonly PositionedEvent[] => streams.get(executionId) ?? [];
+  const streamOf = (executionId: string): PositionedEvent[] => {
+    const stream = streams.get(executionId) ?? [];
+    streams.set(executionId, stream);
+    return stream;
+  };
   const snapshotOf = (executionId: string): StoredSnapshot | null => snapshots.get(executionId) ?? null;
   return {
     load: (executionId) =>
@@ -37,7 +42,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
           return Effect.fail(new VersionConflict());
         }
         const stored = { version: expectedVersion + 1, event: decodeEvent(encodeEvent(event)) };
-        streams.set(executionId, [...eventsOf(executionId), stored]);
+        streamOf(executionId).push(stored);
         return Effect.void;
       }),
     eventsAfter: (executionId, version) => Effect.sync(() => eventsOf(executionId).slice(version)),
@@ -47,7 +52,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
         const bytes = chunks.reduce((sum, chunk) => sum + utf8.encode(chunk).byteLength, 0);
         snapshots.set(snapshot.executionId, { snapshot: Result.getOrThrow(snapshotFromChunks(chunks)), bytes });
       }),
-    events: eventsOf,
+    events: (executionId) => eventsOf(executionId).slice(),
     snapshotOf,
   };
 }
