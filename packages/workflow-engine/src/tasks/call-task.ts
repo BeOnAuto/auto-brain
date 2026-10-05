@@ -1,0 +1,77 @@
+import { invalidArguments, type CallResult } from '@beonauto/operations';
+
+import { evaluateTemplate } from '../dsl/evaluation.ts';
+import { field, jsonBytesOf } from '../dsl/json.ts';
+import { callErrorOf, errorType, raised } from '../dsl/raised-error.ts';
+import { callKeyText } from '../executor/call-key.ts';
+import type { DslError } from '../machine/dsl-error.ts';
+import { mostCallArgumentsBytes } from '../machine/limits.ts';
+import type { FrameBody } from '../machine/run-state.ts';
+import {
+  doneOf,
+  raisedOf,
+  waitingOn,
+  type BodyAdvance,
+  type Invocation,
+  type Machine,
+  type Signal,
+} from '../runner/advance.ts';
+
+type CallBody = Extract<FrameBody, { readonly kind: 'call' }>;
+
+export function startCall(invocation: Invocation): BodyAdvance {
+  const { machine, entry, frame, configuration, input, variables } = invocation;
+  const { session } = machine;
+  if (typeof configuration !== 'string' || configuration === '') {
+    throw raised('configuration', 400, 'call names no function', entry.reference);
+  }
+  const name = configuration;
+  const given = evaluateTemplate(field(entry.task, 'with') ?? null, input, variables, session.placeAt(entry.reference));
+  const bytes = jsonBytesOf(given);
+  if (bytes > mostCallArgumentsBytes) {
+    throw raised(
+      'validation',
+      400,
+      `The arguments of ${name} take ${bytes} bytes as JSON, more than the ${mostCallArgumentsBytes} a call takes`,
+      entry.reference,
+    );
+  }
+  session.beforeWaiting();
+  const key = { executionId: session.executionId(), reference: entry.reference, run: frame.run };
+  session.calls.startCall({ key, function: name, arguments: given });
+  session.record(entry.reference, frame.run, 'waiting');
+  const label = session.options.functions.describe(name, given);
+  return waitingOn({ kind: 'call', key, function: name, arguments: session.hold(given), label });
+}
+
+function errorOf(result: Exclude<CallResult, { readonly status: 'succeeded' }>, body: CallBody): DslError {
+  if (result.status === 'rejected' && result.reason === invalidArguments) {
+    return { type: errorType('validation'), status: 400, title: result.detail, instance: body.key.reference };
+  }
+  return callErrorOf(result, { function: body.function, label: body.label, reference: body.key.reference });
+}
+
+function answered({ machine }: Invocation, body: CallBody, result: CallResult): BodyAdvance {
+  machine.session.calls.answerCall(body.key);
+  return result.status === 'succeeded' ? doneOf(machine.session.hold(result.output)) : raisedOf(errorOf(result, body));
+}
+
+function unreachable({ machine }: Invocation, body: CallBody, milliseconds: number): BodyAdvance {
+  machine.session.calls.cancelCall(body.key);
+  return raisedOf(errorOf({ status: 'unreachable', detail: `No answer came within ${milliseconds} ms` }, body));
+}
+
+export function resumeCall(invocation: Invocation, body: CallBody, signal: Signal): BodyAdvance | undefined {
+  if (signal.kind === 'answer') {
+    return signal.key === callKeyText(body.key) ? answered(invocation, body, signal.result) : undefined;
+  }
+  const isDeadline =
+    signal.kind === 'timer' &&
+    signal.timer.purpose === 'call_deadline' &&
+    signal.timer.reference === body.key.reference;
+  return isDeadline ? unreachable(invocation, body, signal.timer.dueAt - signal.timer.armedAt) : undefined;
+}
+
+export function cancelCall(machine: Machine, body: CallBody): void {
+  machine.session.calls.cancelCall(body.key);
+}

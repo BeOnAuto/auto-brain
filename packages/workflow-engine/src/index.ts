@@ -16,6 +16,7 @@ export {
   type StartCall,
 } from './dispatch/run-output.ts';
 export { changesTimers, nextDueAtOf, runDueOf } from './dispatch/run-due.ts';
+export { workflowMachine } from './decider/workflow-machine.ts';
 export { SplitDecision, runLoopOf, submissionOf, type RunDecision } from './engine/run-loop.ts';
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
@@ -118,6 +119,7 @@ export {
   type PatchOperation,
   type StatePatch,
 } from './run-log/state-patch.ts';
+export type { MachineOptions } from './runner/run-descriptors.ts';
 export type { RunSerialiser } from './serialisation/run-serialiser.ts';
 export {
   isTroubling,

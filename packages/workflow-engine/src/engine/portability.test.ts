@@ -84,7 +84,9 @@ function caught(text: string, forbidden: readonly Forbidden[]): readonly string[
 
 const everySource = sourcesUnder('.');
 
-const machineAndRunLog = [...sourcesUnder('machine'), ...sourcesUnder('run-log'), ...sourcesUnder('dsl')];
+const machineAndRunLog = ['machine', 'runner', 'tasks', 'decider', 'run-log', 'dsl'].flatMap((folder) =>
+  sourcesUnder(folder),
+);
 
 describe('the engine core', () => {
   it('uses no Node-only API, no dynamic import, no code generation and no Temporal', () => {
@@ -97,9 +99,9 @@ describe('the engine core', () => {
   });
 });
 
-describe('the machine, the run log and the DSL', () => {
+describe('the machine, its runner, its tasks and its decider, the run log and the DSL', () => {
   it('read no clock, no random source and no locale, so the same state and input decide the same events', () => {
-    expect(machineAndRunLog.length).toBeGreaterThan(10);
+    expect(machineAndRunLog.length).toBeGreaterThan(50);
     expect(findingsIn(machineAndRunLog, impure)).toEqual([]);
   });
 });

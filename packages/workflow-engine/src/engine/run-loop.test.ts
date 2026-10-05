@@ -11,7 +11,8 @@ import {
   type RunDecider,
   type RunInput,
 } from '../index.ts';
-import { countingDecider, memoryRunStore } from '../testing/run-store.ts';
+import { countingDecider } from '../testing/counting-decider.ts';
+import { memoryRunStore } from '../testing/run-store.ts';
 import { at, executionId, runningState, started } from '../testing/runs.ts';
 
 const cancelled: RunInput = { kind: 'cancel_requested', executionId, at: at + 1 };

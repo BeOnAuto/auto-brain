@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'vitest';
+
+import { mostTasksPerInput } from '../machine/limits.ts';
+import { drivenRun, stepsIn, stepsWith, timersArmedIn, timersCancelledIn } from '../testing/run-history.ts';
+import { workflow } from '../testing/workflows.ts';
+
+const counting = `
+          - counting:
+              for: { in: '\${ [range(0; 150)] }' }
+              do:
+                - add: { set: '\${ { count: ((.count // 0) + 1) } }' }`;
+
+describe('a list that would run more tasks than one input takes', () => {
+  it(`runs ${mostTasksPerInput} tasks, then waits for a timer due at once before it goes on`, () => {
+    const run = drivenRun(
+      workflow(`
+do:
+  - each:
+      for: { in: '\${ [range(0; 150)] }' }
+      do:
+        - add: { set: '\${ { count: ((.count // 0) + 1) } }' }
+`),
+    );
+
+    expect(run.outcome).toEqual({ kind: 'completed', output: { count: 150 } });
+    expect(stepsWith(run.events.slice(0, 1), 'started')).toHaveLength(mostTasksPerInput);
+  });
+
+  it('is not woken by what is not its timer, and is cancelled while it waits for it', () => {
+    const document = workflow(`
+do:
+  - race:
+      fork:
+        compete: true
+        branches:
+          - await: { listen: { to: { one: { with: { type: go } } } } }${counting}
+`);
+    const run = drivenRun(document, {
+      meanwhile: (driver, executionId) => {
+        driver.deliver(executionId, { id: 'e1', type: 'go', data: 'won' });
+      },
+    });
+
+    expect(run.outcome).toEqual({ kind: 'completed', output: ['won'] });
+    expect(stepsIn(run.events)).toContainEqual({
+      reference: '/do/0/race/fork/branches/1/counting',
+      run: 1,
+      outcome: 'cancelled',
+    });
+  });
+});
+
+describe('a branch of a fork that waits to start', () => {
+  it('is cancelled when another branch fails before it starts', () => {
+    const document = workflow(`
+do:
+  - all:
+      fork:
+        branches:${counting}
+          - refusing: { raise: { error: { type: https://example.com/refused, status: 409 } } }
+          - later: { set: { later: true } }
+`);
+    const run = drivenRun(document);
+    const yields = new Set(timersArmedIn(run.events, 'yield').map(({ timerId }) => timerId));
+
+    expect(run.outcome).toMatchObject({ kind: 'raised', error: { type: 'https://example.com/refused' } });
+    expect(timersCancelledIn(run.events).filter((timerId) => yields.has(timerId))).toHaveLength(1);
+  });
+});
+
+describe('a do task', () => {
+  it('runs its tasks in turn on its input', () => {
+    const document = workflow(`
+do:
+  - steps:
+      do:
+        - first: { set: '\${ { count: (.count + 1) } }' }
+        - second: { set: '\${ { count: (.count + 1) } }' }
+`);
+
+    expect(drivenRun(document, { input: { count: 0 } }).outcome).toEqual({ kind: 'completed', output: { count: 2 } });
+  });
+
+  it('ends its own list and goes on with the next task when a task exits', () => {
+    const document = workflow(`
+do:
+  - steps:
+      do:
+        - leave: { set: { left: true }, then: exit }
+        - skipped: { set: { skipped: true } }
+  - after: { set: '\${ { after: .left } }' }
+`);
+
+    expect(drivenRun(document).outcome).toEqual({ kind: 'completed', output: { after: true } });
+  });
+});
