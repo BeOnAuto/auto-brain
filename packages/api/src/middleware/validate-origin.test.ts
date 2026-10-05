@@ -17,8 +17,8 @@ describe('the Origin check', () => {
 
   it.each([
     'https://evil.example',
-    'http://console.on.auto',
-    'https://console.on.auto.evil.example',
+    'http://studio.on.auto',
+    'https://studio.on.auto.evil.example',
     'http://app.example',
     'https://app.example:8443',
     'https://app.example.evil',
@@ -50,10 +50,10 @@ describe('the Origin check', () => {
   });
 });
 
-describe('the Origin check, for the console', () => {
-  it('lets the console through without being listed', async () => {
+describe('the Origin check, for the studio', () => {
+  it('lets the studio through without being listed', async () => {
     expect(
-      await call(createTestHandler().handler, '/nowhere', { headers: { origin: 'https://console.on.auto' } }),
+      await call(createTestHandler().handler, '/nowhere', { headers: { origin: 'https://studio.on.auto' } }),
     ).toMatchObject({ status: 404 });
   });
 });

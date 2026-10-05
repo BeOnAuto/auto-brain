@@ -7,7 +7,7 @@ import type { ApiEnv } from '../api-env.ts';
 import { iconOnDark, iconOnLight, mark } from './auto-logo.ts';
 import { fontFaces } from './fonts.ts';
 
-export const consoleOrigin = 'https://console.on.auto';
+export const studioOrigin = 'https://studio.on.auto';
 
 const styles = `${fontFaces}
 :root {
@@ -126,8 +126,8 @@ const pageHeaders = {
   'x-frame-options': 'DENY',
 };
 
-function consoleOn(server: Readonly<URL>): string {
-  return `${consoleOrigin}/?server=${encodeURIComponent(server.origin)}`;
+function studioOn(server: Readonly<URL>): string {
+  return `${studioOrigin}/?server=${encodeURIComponent(server.origin)}`;
 }
 
 function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
@@ -145,9 +145,9 @@ function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
         <main>
           ${raw(mark)}
           <h1>Auto Brain is running</h1>
-          <p>Create and manage your brains in the console.</p>
+          <p>Create and manage your brains in the studio.</p>
           <span class="address">${server.host}</span>
-          <a class="open" href="${consoleOn(server)}">Open console ${raw(arrow)}</a>
+          <a class="open" href="${studioOn(server)}">Open studio ${raw(arrow)}</a>
         </main>
       </body>
     </html>`;
