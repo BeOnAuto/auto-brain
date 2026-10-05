@@ -27,7 +27,7 @@ describe('a workflow whose expressions do too much work', () => {
     expect(rejectionOf(settlement)).toContain('an expression may do 8000000 units of work (at /do/0/t0)');
   });
 
-  it('fails once one task does more than an activation may, since it can yield only between tasks', async () => {
+  it('fails once one task does more than one input may, since it can yield only between tasks', async () => {
     const big = `'\${ "x" * 3000000 | length }'`;
     const { settlement } = await interpret(workflow(`do:\n  - heavy: { set: { a: ${big}, b: ${big}, c: ${big} } }`));
 
