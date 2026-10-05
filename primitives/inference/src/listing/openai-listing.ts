@@ -3,7 +3,6 @@ import { Effect, Redacted, Schema } from 'effect';
 import { defaultBaseUrls } from '../adapter/direct-providers.ts';
 import type { Fetch } from '../adapter/sdk-model.ts';
 import type { OpenAiSettings } from '../settings/provider-settings.ts';
-import { credentialKey } from './credential-key.ts';
 import { listedModel } from './listed-model.ts';
 import { decodedAs, endpointUrl, listingJson, type ProviderListing } from './listing-request.ts';
 
@@ -33,7 +32,6 @@ export function openAiListing(settings: OpenAiSettings, fetch: Fetch): ProviderL
   const apiKey = Redacted.value(settings.api_key);
   const url = endpointUrl(settings.base_url ?? defaultBaseUrls.openai, '/models').toString();
   return {
-    key: credentialKey('openai', [apiKey, settings.base_url]),
     read: listingJson({ fetch, url, headers: { authorization: `Bearer ${apiKey}` } }).pipe(
       Effect.flatMap(openAiList),
       Effect.map(({ data }) =>

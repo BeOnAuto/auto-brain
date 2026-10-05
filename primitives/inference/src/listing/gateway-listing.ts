@@ -3,7 +3,6 @@ import { Effect, Option, Redacted, Schema } from 'effect';
 import { revealed } from '../adapter/direct-providers.ts';
 import type { Fetch } from '../adapter/sdk-model.ts';
 import type { GatewaySettings } from '../settings/gateway-settings.ts';
-import { credentialKey, secretPairsOf } from './credential-key.ts';
 import { listedModel, type ListedModel } from './listed-model.ts';
 import { decodedAs, endpointUrl, listingJson, type ProviderListing } from './listing-request.ts';
 
@@ -49,14 +48,8 @@ function modelsOf(gateway: string, entries: readonly unknown[]): readonly Listed
 }
 
 export function gatewayListing(settings: GatewaySettings, fetch: Fetch): ProviderListing {
-  const { name, base_url: baseUrl, api_key: apiKey, headers, query_params: queryParams } = settings;
+  const { name } = settings;
   return {
-    key: credentialKey(name, [
-      baseUrl,
-      apiKey === null ? null : Redacted.value(apiKey),
-      secretPairsOf(headers),
-      secretPairsOf(queryParams),
-    ]),
     read: listingJson({ fetch, url: listUrl(settings), headers: headersOf(settings) }).pipe(
       Effect.flatMap(gatewayList),
       Effect.map(({ data }) => modelsOf(name, data)),

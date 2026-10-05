@@ -18,7 +18,7 @@ export function modelCatalogOf(
     sources: modelSources(settings, status, withCertificateFailures(options.fetch)),
     aliases: settings.aliases,
     allowed: settings.allowed,
-    cache: options.listingCache ?? listingCache(),
+    cache: listingCache(),
     reports: {
       scrub: secretScrubber(settings),
       report: options.reportProviderMessage ?? (() => Effect.void),

@@ -2,7 +2,6 @@ import { Effect, Redacted, Schema } from 'effect';
 
 import type { Fetch } from '../adapter/sdk-model.ts';
 import type { GoogleSettings } from '../settings/provider-settings.ts';
-import { credentialKey } from './credential-key.ts';
 import { listedModel } from './listed-model.ts';
 import {
   decodedAs,
@@ -70,7 +69,6 @@ export function googleListing(settings: GoogleSettings, fetch: Fetch): ProviderL
   const apiKey = Redacted.value(settings.api_key);
   const headers = { 'x-goog-api-key': apiKey };
   return {
-    key: credentialKey('google', [apiKey]),
     read: everyPage((cursor) =>
       listingJson({ fetch, url: pageUrl(cursor), headers }).pipe(Effect.flatMap(googlePage), Effect.map(pageOf)),
     ),

@@ -3,7 +3,6 @@ import { Effect, Redacted, Schema } from 'effect';
 import { defaultBaseUrls } from '../adapter/direct-providers.ts';
 import type { Fetch } from '../adapter/sdk-model.ts';
 import type { AnthropicSettings } from '../settings/provider-settings.ts';
-import { credentialKey, type CredentialIdentity } from './credential-key.ts';
 import { listedModel } from './listed-model.ts';
 import {
   decodedAs,
@@ -70,17 +69,10 @@ function pageOf(page: AnthropicPage): ListingPage {
   };
 }
 
-function identityOf({ credential, base_url: baseUrl }: AnthropicSettings): CredentialIdentity {
-  return credential.type === 'api_key'
-    ? ['api_key', Redacted.value(credential.key), baseUrl]
-    : ['auth_token', Redacted.value(credential.token), baseUrl];
-}
-
 export function anthropicListing(settings: AnthropicSettings, fetch: Fetch): ProviderListing {
   const baseUrl = settings.base_url ?? defaultBaseUrls.anthropic;
   const headers = headersOf(settings);
   return {
-    key: credentialKey('anthropic', identityOf(settings)),
     read: everyPage((cursor) =>
       listingJson({ fetch, url: pageUrl(baseUrl, cursor), headers }).pipe(
         Effect.flatMap(anthropicPage),

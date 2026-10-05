@@ -41,7 +41,7 @@ function gathered({ cache, reports }: CatalogParts, source: ModelSource): Effect
     const entries = models.length === 0 ? [anyModelOf(provider)] : models.map((model) => entryOf(provider, model));
     return Effect.succeed({ entries, listedAt: null, complete: true });
   }
-  return Effect.map(cache.read(source.key, refreshOf(reports, source)), (cached) => gatheredFrom(source, cached));
+  return Effect.map(cache.read(source.provider, refreshOf(reports, source)), (cached) => gatheredFrom(source, cached));
 }
 
 function listedAtOf(all: readonly Gathered[], now: number): string {

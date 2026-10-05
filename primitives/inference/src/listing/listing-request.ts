@@ -23,7 +23,6 @@ export interface ListingRequest {
 }
 
 export interface ProviderListing {
-  readonly key: string;
   readonly read: Effect.Effect<readonly ListedModel[], ListingProblem>;
 }
 

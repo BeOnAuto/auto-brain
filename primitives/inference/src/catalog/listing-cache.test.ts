@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 import { catalogFor, idsIn, type CatalogHarness } from '../testing/catalog-harness.ts';
 import { anthropicModels } from '../testing/model-lists.ts';
 import { jsonResponse, type Responder } from '../testing/recording-fetch.ts';
-import { listingCache } from './listing-cache.ts';
 import type { ModelList } from './model-list.ts';
 
 const startedAt = Date.parse('2026-10-01T09:00:00.000Z');
@@ -103,27 +102,5 @@ describe('a list of a provider that cannot be read again', () => {
 
     expect([failed.catalog_status, failed.data.length]).toEqual(['partial', 0]);
     expect([recovered.catalog_status, recovered.data.length]).toEqual(['complete', 3]);
-  });
-});
-
-describe('the lists of providers kept together', () => {
-  it('are kept apart by credential, so one credential never sees the list read with another', async () => {
-    const cache = listingCache();
-    const acme = await catalogFor({ ANTHROPIC_API_KEY: 'sk-ant-acme' }, () => jsonResponse(anthropicModels), {
-      listingCache: cache,
-    });
-    const globex = await catalogFor(
-      { ANTHROPIC_API_KEY: 'sk-ant-globex' },
-      () => jsonResponse({ data: [{ id: 'claude-globex-tuned' }] }),
-      { listingCache: cache },
-    );
-    const acmeAgain = await catalogFor({ ANTHROPIC_API_KEY: 'sk-ant-acme' }, () => jsonResponse({ data: [] }), {
-      listingCache: cache,
-    });
-
-    expect(idsIn(await acme.list())).toHaveLength(3);
-    expect(idsIn(await globex.list())).toEqual(['anthropic/claude-globex-tuned']);
-    expect(idsIn(await acmeAgain.list())).toHaveLength(3);
-    expect([acme, globex, acmeAgain].map((catalog) => catalog.requests().length)).toEqual([1, 1, 0]);
   });
 });

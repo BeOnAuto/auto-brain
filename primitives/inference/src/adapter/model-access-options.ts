@@ -1,6 +1,5 @@
 import type { Effect } from 'effect';
 
-import type { ListingCache } from '../catalog/listing-cache.ts';
 import type { CredentialSources } from './credential-sources.ts';
 import type { EntraIdentityLoader } from './entra-id.ts';
 import type { Fetch } from './sdk-model.ts';
@@ -30,5 +29,4 @@ export interface ModelAccessOptions {
   readonly loadEntraIdentity?: EntraIdentityLoader;
   readonly reportProviderMessage?: ReportProviderMessage;
   readonly reportOperatorHint?: ReportOperatorHint;
-  readonly listingCache?: ListingCache;
 }
