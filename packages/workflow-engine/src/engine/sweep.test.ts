@@ -65,3 +65,20 @@ describe('a sweep', () => {
     expect(Effect.runSync(engine.sweep(clock.now() + 120_000))).toEqual({ runs: 1, timersArmedAgain: 0 });
   });
 });
+
+describe('a sweep after a timer fired', () => {
+  it('wakes no run whose last timer fired while it went on to wait for an event', () => {
+    const driver = memoryDriver();
+    const listening = workflow(
+      'do:\n  - pause: { wait: PT1M }\n  - approval: { listen: { to: { one: { with: { type: com.acme.approved } } } } }',
+    );
+    driver.start({ executionId, document: listening });
+    driver.clock.advance();
+
+    expect(Object.values(driver.state(executionId).timers.armed).map(({ purpose }) => purpose)).toEqual(['deadline']);
+    expect(Effect.runSync(driver.engine.sweep(driver.clock.now() + 3_600_000))).toEqual({
+      runs: 0,
+      timersArmedAgain: 0,
+    });
+  });
+});

@@ -18,6 +18,7 @@ export {
 export { changesTimers, nextDueAtOf, runDueOf } from './dispatch/run-due.ts';
 export { workflowMachine } from './decider/workflow-machine.ts';
 export { runCacheBounds, runCacheOf, type RunCache, type RunCacheBounds } from './cache/run-cache.ts';
+export { workflowEngineOf } from './engine/engine.ts';
 export { SplitDecision, runLoopOf, type RunDecision } from './engine/run-loop.ts';
 export { submissionOf } from './engine/submission.ts';
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
