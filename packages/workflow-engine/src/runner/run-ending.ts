@@ -7,7 +7,7 @@ import type { Journal } from './run-tables.ts';
 import type { CallTable, TimerTable } from './run-timers.ts';
 import { settlementOf } from './settlement.ts';
 
-export interface RunStart {
+interface RunStart {
   readonly executionId: string;
   readonly document: JsonObject;
   readonly input: ValueId;

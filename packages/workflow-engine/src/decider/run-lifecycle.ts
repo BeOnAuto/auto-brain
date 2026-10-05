@@ -120,7 +120,7 @@ function startRoot(machine: Machine, inputId: number): void {
   settledRoot(machine, frame, listBodyOf(machine.runner.startList(machine, { pointer: '/do', data, variables: {} })));
 }
 
-export function startRun(machine: Machine, started: Started): void {
+function startRun(machine: Machine, started: Started): void {
   const { session } = machine;
   const input = session.hold(started.input);
   session.begin({

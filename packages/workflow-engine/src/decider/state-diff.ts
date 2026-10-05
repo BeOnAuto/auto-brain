@@ -21,7 +21,7 @@ function objectOf(fields: Fields): JsonObject {
   );
 }
 
-export function jsonOf(value: unknown): Json {
+function jsonOf(value: unknown): Json {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return value;
   }

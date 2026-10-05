@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Result, Schema } from 'effect';
+import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { newRun, RunStateSchema } from '../machine/run-state.ts';
-import { evolveRun } from '../run-log/run-fold.ts';
+import { newRun } from '../machine/run-state.ts';
+import { evolveRun, stateInCurrentFormat } from '../run-log/run-fold.ts';
 import { startedOf, testMachine } from '../testing/driver-inputs.ts';
 import { drivenExecutionId as executionId } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
@@ -13,11 +13,10 @@ import { workflowMachine } from './workflow-machine.ts';
 
 const calling = workflow('do:\n  - ask: { call: notify, with: { to: ada } }');
 
-const decodeState = Schema.decodeUnknownSync(RunStateSchema);
-
-const corpusState = decodeState(
+const corpusState = stateInCurrentFormat(
+  1,
   Reflect.get(
-    JSON.parse(readFileSync(fileURLToPath(new URL('../../corpus/format-2.json', import.meta.url)), 'utf8')),
+    JSON.parse(readFileSync(fileURLToPath(new URL('../../corpus/format-1.json', import.meta.url)), 'utf8')),
     'state',
   ),
 );
@@ -46,7 +45,7 @@ describe('the workflow machine', () => {
     );
   });
 
-  it('applies an input to a run of the format corpus, which has no frame, without stepping a task', () => {
+  it('applies an input to a run upcast from the format-1 corpus, which has no frame, without stepping a task', () => {
     const machine = workflowMachine(testMachine);
     const input = {
       kind: 'event_received',

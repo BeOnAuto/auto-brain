@@ -5,7 +5,7 @@ import { timerIdOf, type TimerPurpose } from '../timers/timer-id.ts';
 import type { Descriptors } from './run-descriptors.ts';
 import type { Journal } from './run-tables.ts';
 
-export interface TimerRequest {
+interface TimerRequest {
   readonly purpose: TimerPurpose;
   readonly reference: string;
   readonly milliseconds: number;
@@ -21,7 +21,7 @@ export interface TimerTable {
   readonly timers: () => RunState['timers'];
 }
 
-export interface CallRequest {
+interface CallRequest {
   readonly key: CallKey;
   readonly function: string;
   readonly arguments: Json;

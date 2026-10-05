@@ -5,7 +5,7 @@ import type { RunState } from '../machine/run-state.ts';
 import { eventBytesOf, type RunEvent } from '../run-log/run-event.ts';
 import type { SessionResult } from '../runner/session.ts';
 
-export function boundError(title: string): DslError {
+function boundError(title: string): DslError {
   return raised('runtime', 500, title, '/').error;
 }
 

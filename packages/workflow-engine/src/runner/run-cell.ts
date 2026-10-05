@@ -3,7 +3,7 @@ import { mostStepsWithoutWaiting } from '../machine/limits.ts';
 import type { RunState, TaskFrame, ValueId } from '../machine/run-state.ts';
 import { drawOf } from './seeded-random.ts';
 
-export interface Run {
+interface Run {
   readonly state: RunState;
   readonly context: ValueId;
   readonly root: TaskFrame | null;

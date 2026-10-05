@@ -34,7 +34,7 @@ export type BodyAdvance =
   | { readonly kind: 'done'; readonly output: ValueId; readonly flow: string | null }
   | Raised;
 
-export type ListEnding = 'completed' | 'exited' | 'ended';
+type ListEnding = 'completed' | 'exited' | 'ended';
 
 export type ListAdvance =
   | { readonly kind: 'waiting'; readonly cursor: ListCursor }

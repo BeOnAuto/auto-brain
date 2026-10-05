@@ -14,7 +14,7 @@ import type { WorkflowHost } from './host.ts';
 import { makeInbox, type Inbox } from './inbox.ts';
 import type { WorkflowRun } from './workflow-run.ts';
 
-export interface Meter {
+interface Meter {
   readonly allowance: () => number;
   readonly record: (work: number) => void;
   readonly shouldYield: () => boolean;
