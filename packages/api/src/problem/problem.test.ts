@@ -58,13 +58,20 @@ describe('problemResponse', () => {
     expect([unavailable.headers.get('retry-after'), conflict.headers.get('retry-after')]).toEqual(['5', null]);
   });
 
-  it('asks for no retry of an unavailable ending that only a change of the request or the configuration resolves', () => {
+  it('asks for no retry of a run that called tools, which the same request answers with tools_called', () => {
+    expect(retryAfterOf({ kind: 'tools_unfinished', because: 'model_unavailable' })).toBeNull();
+  });
+
+  it('asks for no retry of a tool or a model not offered, which only a change of the function or the configuration resolves', () => {
     expect([
-      retryAfterOf({ kind: 'tools_unfinished', because: 'model_unavailable' }),
       retryAfterOf({ kind: 'tool_not_offered', because: 'tool_not_allowed' }),
-      retryAfterOf({ kind: 'mcp_server_failed', because: 'unreachable' }),
       retryAfterOf({ kind: 'model_not_offered', because: 'model_not_allowed' }),
-    ]).toEqual([null, null, '5', '5']);
+      retryAfterOf({ kind: 'model_not_offered', because: 'provider_not_configured' }),
+    ]).toEqual([null, null, null]);
+  });
+
+  it('asks for a retry of a tool server that could not be used, which a retry may find working', () => {
+    expect(retryAfterOf({ kind: 'mcp_server_failed', because: 'unreachable' })).toBe('5');
   });
 
   it('adds the headers it is given', () => {

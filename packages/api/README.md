@@ -31,7 +31,7 @@ An outcome that is not a success becomes a problem document:
 | failed    | `500` `internal`, saying nothing about the cause; its `instance` is `urn:uuid:<id>`, the incident id under which the server logs the error                                                                                             |
 | cancelled | `499` `client_closed_request` when the client went away, `503` `unavailable` when the server is stopping                                                                                                                               |
 
-A `403` `forbidden` also carries `WWW-Authenticate: Bearer error="insufficient_scope"`. A `503` `unavailable` carries `Retry-After: 5` when a retry of the same request may resolve it, so not for the kinds `tools_unfinished`, a run that called tools and could not finish, and `tool_not_offered`, which only a change of the function or the configuration resolves.
+A `403` `forbidden` also carries `WWW-Authenticate: Bearer error="insufficient_scope"`. A `503` `unavailable` carries `Retry-After: 5` when a retry of the same request may resolve it, so not for the kind `tools_unfinished`, a run that called tools and could not finish, which the same request answers with `tools_called`, nor for the kinds `tool_not_offered` and `model_not_offered`, which only a change of the function or the configuration resolves.
 
 ## Over MCP
 
