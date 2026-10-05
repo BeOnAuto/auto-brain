@@ -1,8 +1,8 @@
-import { fstatSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, fstatSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { Ledger } from '@beonauto/operations';
-import { Cause, Effect, Struct } from 'effect';
+import { Cause, Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ledgerLayer } from './sqlite3.ts';
@@ -98,24 +98,22 @@ describe('a ledger on a database file in a directory that does not exist yet', (
 });
 
 describe('a ledger in a private in-memory database', () => {
-  it('lets writers racing on one stream neither lose an update nor share a version', async () => {
-    const { ledger, dispose } = await openLedger();
-    const writer = Effect.match(ledger.execute(tallies, tally, [1]), {
-      onSuccess: Struct.get('version'),
-      onFailure: Struct.get('detail'),
-    });
+  it('shares nothing with another ledger in memory, and creates no directory for it', async () => {
+    const first = await openLedger(':memory:');
+    await Effect.runPromise(first.ledger.execute(tallies, tally, [2, 3]));
+    const second = await openLedger(':memory:');
 
-    const outcomes = await Effect.runPromise(
-      Effect.all(
-        Array.from({ length: 6 }, () => writer),
-        { concurrency: 6 },
-      ),
+    const loaded = await Effect.runPromise(
+      Effect.all([first.ledger.load(tallies, tally), second.ledger.load(tallies, tally)]),
     );
-    const loaded = await Effect.runPromise(ledger.load(tallies, tally));
-    await dispose();
+    await Promise.all([first.dispose(), second.dispose()]);
 
-    const versions = outcomes.filter((outcome) => typeof outcome === 'number');
-    expect(versions.toSorted((left, right) => left - right)).toEqual(Array.from(versions.keys(), (index) => index + 1));
-    expect(loaded).toEqual({ state: versions.length, version: versions.length });
+    expect({ loaded, directory: existsSync(':memory:') }).toEqual({
+      loaded: [
+        { state: 5, version: 2 },
+        { state: 0, version: 0 },
+      ],
+      directory: false,
+    });
   });
 });
