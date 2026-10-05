@@ -1,105 +1,18 @@
-# Workflow format
+# Workflow format and execution
 
-The runtime stores workflows as `orchestration` specs and runs them on the workflow machine of `@beonauto/workflow-engine`, in the server, through `@beonauto/workflow-host`. Keep `orchestration` in API calls and MCP arguments. Starting workflows from schedules or event triggers, calling subworkflows, and direct external tool calls are not implemented in this version.
+The runtime stores workflows as `orchestration` specs and runs them on the workflow machine of `@beonauto/workflow-engine`, in the server, through `@beonauto/workflow-host`. Keep `orchestration` in API calls and MCP arguments.
 
-## A workflow spec
+The public [workflow format reference](../../reference/workflow-format.md) owns the document: its fields, tasks, flow, expressions and their variables, errors, retries, timeouts, events, limits and how a run ends, with examples recorded against this runtime. This page covers what the implementation adds: where each check runs, how expressions are metered, how calls, events and settling work on the host, and how the server runs and bounds its workflows.
 
-A spec document of orchestration is a YAML workflow in the [Open Workflow Specification](https://github.com/open-workflow-specification/specification) DSL 1.0.x (the CNCF Serverless Workflow DSL), media type `application/yaml`. It has:
+## Checking a document
 
-- `document`: `dsl` (`1.0.0` to `1.0.3`), `namespace`, `name`, `version`, and an optional `title` and `summary`. The `summary`, or else the `title`, is the description of the spec.
-- `input`: an optional `from` that shapes the input, and an optional inline JSON Schema `document`, published as the `input_schema` of the spec.
-- `do`: the named tasks, run in order.
-- `output`: an optional `as` that shapes the output, and an optional inline JSON Schema, published as the `output_schema`.
-- an optional `timeout`, and optional `use.errors`, `use.retries` and `use.timeouts` that tasks reuse by name.
+The spec operations read the YAML with `readYaml` of `@beonauto/config`, validate it against the DSL schema and its rules with `@openworkflowspec/sdk`, build its graph of tasks, and apply the policy of `@beonauto/workflow-engine` (`src/dsl/policy.ts`), given the functions of `src/document/workflow-functions.ts`. A document that nests task lists more than 64 levels deep, or any value more than 512, is rejected at the list or value that is too deep, before anything else is checked, and a workflow refuses to start with one however it was stored. A fork's 32 branches are checked when the document is stored and again when a workflow starts. A `wait` or a `timeout` written as a duration longer than `ORCHESTRATION_MAX_DURATION` is rejected when the document is stored, and one an expression computes longer fails the task that computes it with a `configuration` error.
 
-This workflow classifies a support ticket with an inference spec, branches on the answer, and retries paging someone until it gives up:
-
-```yaml
-document:
-  dsl: '1.0.3'
-  namespace: acme
-  name: triage-ticket
-  version: '1.0.0'
-  title: Triage a support ticket
-  summary: Classifies a ticket with an inference spec, then escalates urgent ones and files the rest.
-input:
-  schema:
-    document:
-      type: object
-      properties:
-        ticket: { type: string }
-      required: [ticket]
-use:
-  retries:
-    patient:
-      delay: { seconds: 2 }
-      backoff: { exponential: {} }
-      limit:
-        attempt: { count: 3 }
-do:
-  - classify:
-      call: execute_spec
-      with:
-        primitive: inference
-        name: classify-ticket
-        input:
-          ticket: ${ .ticket }
-      output:
-        as: '${ $input + { category: .category, urgent: .urgent } }'
-  - route:
-      switch:
-        - urgent:
-            when: .urgent == true
-            then: escalate
-        - routine:
-            then: file
-  - escalate:
-      try:
-        - page:
-            call: execute_spec
-            with:
-              primitive: interaction
-              name: page-on-call
-              input:
-                summary: '${ "Urgent " + .category + " ticket: " + .ticket }'
-      catch:
-        errors:
-          with: { status: 503 }
-        retry: patient
-        do:
-          - giveUp:
-              raise:
-                error:
-                  type: https://example.com/errors/on-call-unreachable
-                  status: 503
-                  title: Nobody on call could be paged
-      then: end
-  - file:
-      set:
-        filed: true
-        category: ${ .category }
-```
-
-## What a workflow may do
-
-| Allowed                                                                       | Rejected in this version                                                                                 |
-| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `set`, `do`, `switch`, `for` (with `while`), `fork` (with `compete`)          | `run` (shell, script, container, workflow) and `emit`                                                    |
-| `call: execute_spec`                                                          | `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a`, `mcp`, or of any other function                  |
-| `try` with `catch` (`errors.with`, `as`, `when`, `exceptWhen`, `retry`, `do`) | `use.catalogs`, `use.extensions`, `use.functions`, `use.secrets`, `use.authentications`, and `schedule`  |
-| `raise`, `wait`, `listen` (`one`, `all`, `any`; `read`)                       | `listen` with `until`, `foreach` or `correlate`; schemas on tasks; schemas not inline or not JSON Schema |
-| `then: continue`, `exit`, `end`, or the name of a task in the same list       | executing an orchestration spec from a workflow                                                          |
-| `if`, `input.from`, `output.as`, `export.as`, `timeout`                       | the jq builtins `localtime` and `strflocaltime`; durations in years or months                            |
-
-A document may nest task lists (`do`, `for`, `try`, `catch.do`, `fork.branches`) at most 64 levels deep and any value at most 512 levels; a deeper document is rejected at the list or value that is too deep, before anything else is checked, and a workflow refuses to start with one however it was stored.
-
-A fork may have at most 32 branches, checked when the document is stored and again when a workflow starts. A workflow may run for at most `ORCHESTRATION_MAX_DURATION` (30 days unless set otherwise): a `wait` or a `timeout` written as a duration longer than that is rejected when the document is stored, and one an expression computes longer fails the task that computes it with a `configuration` error.
-
-Creating or updating a spec checks its document fully: it reads the YAML without aliases, anchors or tags, validates it against the DSL schema and its rules, builds its graph of tasks, and applies the policy above. Every problem is an issue under `/source` with the line, the column and the JSON Pointer of the place: `Line 8, column 12: at /do/0/loop/for: It needs in`. When a workflow starts, the machine applies again only the policy's prohibitions, what this runtime does not allow at all: the tasks, calls, components, `schedule` and `listen` options of the rejected column above, executing another workflow, schemas that are not inline JSON Schema, and a DSL version other than 1.0.x. So a document that never went through the spec operations cannot use what the policy forbids. The other problems the spec operations reject, such as an expression that does not parse or uses `localtime`, a duration in years, or a `then` that names no task, are not checked again: they fail the task that has them when it runs.
+When a workflow starts, the machine applies again only the policy's prohibitions, what this runtime does not allow at all: the tasks, calls, components, `schedule` and `listen` options the public reference lists as refused, executing another workflow, schemas that are not inline JSON Schema, and a DSL version other than 1.0.x. So a document that never went through the spec operations cannot use what the policy forbids. The other problems the spec operations reject, such as an expression that does not parse or uses `localtime`, a duration in years, or a `then` that names no task, are not checked again: they fail the task that has them when it runs.
 
 ### Expressions
 
-Expressions are [jq](https://jqlang.org), evaluated by `@gabrielbryk/jq-ts` inside the workflow. A string enclosed in `${ }` is an expression wherever the DSL takes a value; `if`, `when`, `exceptWhen`, `for.in`, `while`, and the strings of `input.from`, `output.as` and `export.as` are expressions even without `${ }`. They see `.` (the data of the step), `$context` (what tasks exported), `$input`, `$output` (in `export.as`), `$task` (`name`, `reference`, `definition`, `input`, `startedAt`, and `output` after the task ran), `$workflow` (`id`, the execution id; `definition`; `input`; `startedAt`), `$runtime` (`name: auto-brain`), and the variables of loops (`$item` and `$index` unless named with `each` and `at`) and catches (`$error` unless named with `as`). `now` is the time of the input the run is deciding, recorded in its log, never the clock of the host.
+Expressions are evaluated by `@gabrielbryk/jq-ts` inside the machine. `now` is the time of the input the run is deciding, recorded in its log, never the clock of the host.
 
 ### The work of expressions
 
@@ -115,19 +28,7 @@ The count comes from a patch of `@gabrielbryk/jq-ts` 1.7.0 (`patches/@gabrielbry
 
 ### Executing a spec
 
-`call: execute_spec` with `with: { primitive, name, input }` executes the active spec of that primitive and name in the same brain, for the caller who started the workflow, and outputs its output. The input is `{}` when left out and may take at most 262144 bytes as JSON. A rejection or a failure is an error the workflow can catch:
-
-| The execution            | Error type (under `https://open-workflow-specification.org/spec/1.0.0/errors/`) | Status |
-| ------------------------ | ------------------------------------------------------------------------------- | ------ |
-| rejected `invalid_input` | `validation`                                                                    | 400    |
-| rejected `forbidden`     | `authorization`                                                                 | 403    |
-| rejected `not_found`     | `configuration`                                                                 | 404    |
-| rejected `conflict`      | `runtime`                                                                       | 409    |
-| rejected `unavailable`   | `communication`                                                                 | 503    |
-| failed                   | `runtime`                                                                       | 500    |
-| could not be reached     | `communication`                                                                 | 503    |
-
-The `title` names the spec and the reason, and the `detail` carries the detail of the rejection with its issues. Retrying is the document's choice, with `try` and `catch.retry`: the run waits on durable timers between attempts. The server does not retry a call on its own; a call cut off when the server stopped is performed again when it starts.
+`call: execute_spec` executes the active spec of that primitive and name in the same brain through the server's dispatcher, for the caller who started the run, and outputs its output; the public reference lists the errors a call raises. Retrying is the document's choice, with `try` and `catch.retry`: the run waits on durable timers between attempts. The server does not retry a call on its own; a call cut off when the server stopped is performed again when it starts.
 
 Each run of a call is its own execution, with an id derived from the workflow's execution id, the reference of the task and how many times that task ran: a UUID version 5. A call performed again asks for the same execution id, so an execution that already has a final result is answered from the ledger and its model is not called again.
 
@@ -135,13 +36,7 @@ A call may run for the longest a nested execution may legitimately take and a mi
 
 ### Events
 
-A `listen` task waits for events sent to the running execution with `send_execution_event`, an operation of this package:
-
-| Operation              | Kind    | Route                                    | Input                                                                                               | Answer                                              | Rejections                 |
-| ---------------------- | ------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------- |
-| `send_execution_event` | command | `POST /executions/{execution_id}/events` | `execution_id`, `event` (`type`, and optional `source`, `subject`, `data` of at most 256 KiB, `id`) | `{ execution_id, event }`, with its `id` and `time` | `not_found`, `unavailable` |
-
-An event waits in the workflow until a `listen` task takes it; an event with an id the workflow already received is ignored, so a call can be retried with the same id. A filter matches an event when every attribute it names equals the attribute of the event, or, for an attribute written as an expression, when the expression holds on it. `read: data` (the default) outputs the `data` of the events, `envelope` and `raw` the whole events.
+`send_execution_event` (`src/events/send-execution-event.ts`) gives the run of that execution an `event_received` input, with the event's `id`, made when left out, and its `time`. It answers `not_found` when the brain has no run of that execution that is going, including one that ended, and `unavailable` when the run cannot take the event at that moment, because its log kept changing or the server is stopping. The public HTTP and format references describe the operation, its limits and how `listen` takes events.
 
 ## Execution and settling
 
@@ -210,4 +105,4 @@ Measured once with the arm64 image and no memory limit, the server took about 18
 
 ## Not in this version
 
-Starting workflows from schedules or events, cancelling a run, `run`, `emit`, outbound calls, catalogs and functions beyond `execute_spec`, executing a workflow from a workflow (or any spec that finishes later), checking inputs and outputs against their schemas, listening `until` a condition, correlating events, and several servers on one database. A function is added by adding its name and the checks of its arguments to the functions the machine is given (`src/document/workflow-functions.ts`), and what a call of it does to the calls the host performs (`src/calls/spec-calls.ts`).
+The public reference lists what a document may not use. The implementation also has no operation that cancels a run, and runs workflows in one server for a database. A function is added by adding its name and the checks of its arguments to the functions the machine is given (`src/document/workflow-functions.ts`), and what a call of it does to the calls the host performs (`src/calls/spec-calls.ts`).

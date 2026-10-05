@@ -27,7 +27,7 @@ Implementation notes and contributor APIs remain in package READMEs and root con
 
 Detailed development setup, deployment configuration and transitional implementation guides belong in `docs/engineering/`. Architecture decision records belong in `docs/decisions/`. Both directories stay beside the code and are excluded from the public preview, search, navigation and website import. Do not add them to `nav.json` or link to them through a public documentation route. GitHub links can direct contributors to these repository-only notes.
 
-Keep repository-only guides accurate for the checkout. Update the relevant public guide when a change becomes available to users.
+Keep repository-only guides accurate for the checkout. Public workflow pages describe the behavior the runtime offers today. Update the relevant public guide when a change becomes available to users.
 
 ## Preview and check
 

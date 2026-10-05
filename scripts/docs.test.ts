@@ -226,13 +226,22 @@ await test('model discovery is documented without treating wildcard entries as r
   assert.ok(tutorial.includes('Do not use a wildcard'));
 });
 
-await test('public workflows are available, without legacy runnable routes', () => {
+await test('public workflows are available, and link their format and tutorial without legacy runnable routes', () => {
   const workflows = readFileSync(join(docs, 'concepts/workflows.md'), 'utf8');
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
+  const tutorial = readFileSync(join(docs, 'tutorials/first-workflow.md'), 'utf8');
   assert.doesNotMatch(workflows, /coming soon/iu);
   assert.match(functions, /^\| Workflows +\| A workflow +\| Available +\|$/mu);
+  for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /workflow service/iu);
   assert.doesNotMatch(workflows, /```(?:yaml|sh|bash|json)/u);
-  const removedPages = ['get-started/self-hosted', 'reference/http-tutorial', 'reference/workflow-format'];
+  assert.ok(markdownDestinations(workflows).includes('../reference/workflow-format.md'));
+  assert.ok(markdownDestinations(workflows).includes('../tutorials/first-workflow.md'));
+  assert.ok(routes.includes('/reference/workflow-format'));
+  assert.ok(routes.includes('/tutorials/first-workflow'));
+  assert.ok(tutorial.includes('send_execution_event'));
+  assert.ok(tutorial.includes('status: succeeded'));
+  assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
+  const removedPages = ['get-started/self-hosted', 'reference/http-tutorial'];
   for (const page of removedPages) {
     assert.equal(routes.includes(`/${page}`), false);
     assert.equal(existsSync(join(output, `${page}.html`)), false);

@@ -43,7 +43,7 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 | `get_execution`        | `GET /executions/{execution_id}`         | Execution id in path                           |
 | `send_execution_event` | `POST /executions/{execution_id}/events` | `event`, for a workflow's run                  |
 
-Supported primitive identifiers are `inference` and `orchestration`. A reason function uses the [Markdown prompt format](reasoning-format.md). A workflow uses the [YAML workflow format](workflow-format.md).
+Supported primitive identifiers are `inference` and `orchestration`. A reason function uses the [Markdown prompt format](reasoning-format.md). A workflow uses the [YAML workflow format](../../reference/workflow-format.md), which [workflow execution](workflow-format.md) runs.
 
 Names contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Source documents may be at most 65,536 UTF-8 bytes. A name is unique within its primitive and brain and cannot be reused after retirement.
 

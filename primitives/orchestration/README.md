@@ -2,7 +2,7 @@
 
 The orchestration primitive: a spec of it is a workflow, a YAML document in the Open Workflow Specification DSL, and an execution of it is a run of the workflow machine of [`@beonauto/workflow-engine`](../../packages/workflow-engine), hosted in Node by [`@beonauto/workflow-host`](../../packages/workflow-host). The runtime identifier remains `orchestration`; in words a user reads, a spec is a workflow and an execution a run.
 
-Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md), published at [on.auto/docs](https://on.auto/docs/). The repository-only [workflow reference](../../docs/engineering/reference/workflow-format.md) holds the details of the document, and [decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) why workflows run on an engine on the ledger.
+Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md) and [the workflow format](../../docs/reference/workflow-format.md), published at [on.auto/docs](https://on.auto/docs/). The repository-only [workflow execution reference](../../docs/engineering/reference/workflow-format.md) and [workflow operations guide](../../docs/engineering/self-host/workflows.md) hold the implementation details, and [decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) why workflows run on an engine on the ledger.
 
 ## Entry
 

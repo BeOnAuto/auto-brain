@@ -1,14 +1,14 @@
 # HTTP API
 
-The HTTP API provides brain management, reason functions, workflows, recorded runs and the history of a brain. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reason-function and workflow definitions, recorded runs, events for waiting workflows, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. A reason function uses the primitive identifier `inference` and a workflow `orchestration`; keep these names in requests.
+The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. A reason function uses the primitive identifier `inference` and a workflow uses `orchestration`; keep these names in requests.
 
 ## Requests and access
 
 Send credentials as `Authorization: Bearer <key>` and command bodies as UTF-8 JSON with `Content-Type: application/json`. Keep credentials out of prompts and source documents.
 
-Org routes begin at `/v1/orgs/{org}`. Brain routes begin at `/v1/orgs/{org}/brains/{brain}`. Each API key belongs to one org and has permissions for a set of brains. Reading definitions and runs requires `brain:read`; creating, changing or running a function requires `brain:write`.
+Org routes begin at `/v1/orgs/{org}`. Brain routes begin at `/v1/orgs/{org}/brains/{brain}`. Each API key belongs to one org and has permissions for a set of brains. Reading definitions and runs requires `brain:read`; creating, changing or running a function or workflow, and sending an event, require `brain:write`.
 
 Request bodies may be at most 1 MiB; compressed bodies are not accepted. Query parameters belong to GET requests. A field cannot be supplied in more than one location.
 
@@ -54,26 +54,36 @@ Changing a document creates a version. Updating it with identical source records
 
 ## Workflows
 
-A workflow uses the primitive identifier `orchestration` with the same definition and run routes, and one more, relative to `/v1/orgs/{org}/brains/{brain}`:
+These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 
-| Operation              | Method and route                           | Input                                                                                 |
-| ---------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `execute_spec`         | `POST /specs/orchestration/{name}/execute` | Optional `input`, optional UUID `execution_id`                                        |
-| `send_execution_event` | `POST /executions/{execution_id}/events`   | `event`: `type`, and optional `source`, `subject`, `data` of at most 256 KiB and `id` |
+| Operation              | Method and route                           | Input                                                                  |
+| ---------------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
+| `create_spec`          | `POST /specs/orchestration`                | `name`, `source`                                                       |
+| `list_specs`           | `GET /specs/orchestration`                 | Optional `include_retired`                                             |
+| `get_spec`             | `GET /specs/orchestration/{name}`          | Name in path                                                           |
+| `update_spec`          | `PUT /specs/orchestration/{name}`          | `source`                                                               |
+| `retire_spec`          | `POST /specs/orchestration/{name}/retire`  | Name in path                                                           |
+| `execute_spec`         | `POST /specs/orchestration/{name}/execute` | Optional `input`, optional UUID `execution_id`                         |
+| `get_execution`        | `GET /executions/{execution_id}`           | Execution id in path                                                   |
+| `send_execution_event` | `POST /executions/{execution_id}/events`   | `event` with `type`, and optional `id`, `source`, `subject` and `data` |
 
-The `source` of a workflow is a YAML document in the [Open Workflow Specification](https://github.com/open-workflow-specification/specification) DSL 1.0. Running a workflow with `execute_spec` returns its run with `status: "started"` at once; read it with `get_execution` until the status becomes `succeeded`, `rejected` or `failed`. A run waiting for an event takes the one sent to it. A run takes an event once by its `id`, so sending it again succeeds without changing the run; an event for a run that has ended, or does not exist, returns `not_found`. See [Workflows](../concepts/workflows.md).
+The `source` is a [workflow document](workflow-format.md). Names, document size, versions and retirement follow the rules for reason functions above. A saved workflow has the `media_type` `application/yaml`, and its `description`, `input_schema` and `output_schema` come from the document.
 
-A workflow runs once for each `execution_id`. Running it again with the `execution_id` of a run that is going returns the run as it stands; with the `execution_id` of a run that ended without a final result, it returns `conflict`, so run the workflow again under a new `execution_id`.
+`execute_spec` returns 200 as soon as the run begins, with its `execution_id` and `status: started`. Read the run with `get_execution` until its status is `succeeded`, `rejected` or `failed`, and its steps with `get_execution_history`, which holds one `workflow_input_applied` event for each input the run took (see [Run history and brain events](#run-history-and-brain-events)). While the runtime is stopping, `execute_spec` returns `unavailable`; try again shortly.
+
+A workflow runs once for each `execution_id`. Executing it again with the `execution_id` of a run that is going returns the run as it stands; with the `execution_id` of a run that ended without a final result, it returns `conflict`, so run the workflow again under a new `execution_id`.
+
+`send_execution_event` delivers an event to a run that is still `started`. It returns the `execution_id` and the delivered `event`, with an `id`, made by the runtime when you leave it out, and the `time` it was sent. An event may take at most 256 KiB as JSON; its `type` and `id` at most 256 characters, and its `source` and `subject` at most 1,024. A run takes an event with a given `id` once, so a request can be retried with the same id. The operation returns `not_found` when the brain has no running workflow with that execution id, including one that has ended, and `unavailable` when the run cannot take the event at that moment, as while the runtime is stopping; try again shortly.
 
 ## Runs and results
 
 A run records its `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. Successful runs include `output`; rejected runs include a rejection. `get_execution` also returns the detailed `record`.
 
-Reason functions normally complete within the execute request. Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
+Reason functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
 
-Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result.
+Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 
-A run without a final result may be attempted again after an interruption or recoverable failure. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
+A run without a final result may be attempted again after an interruption or recoverable failure, except a workflow run, which runs once for its execution id. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
 
 ## Run history and brain events
 

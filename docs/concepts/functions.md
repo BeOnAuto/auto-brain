@@ -17,7 +17,9 @@ The source-available runtime is in early development and is not ready for produc
 | Computation | A computation function  | Planned         |
 | Workflows   | A workflow              | Available       |
 
-Dream is also coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
+Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`.
+
+Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
 
 ## Reasoning
 
@@ -72,7 +74,8 @@ Use product terminology when explaining the work, while keeping current wire ide
 | Product term    | Current API and implementation term |
 | --------------- | ----------------------------------- |
 | Reason function | `inference` spec                    |
+| Workflow        | `orchestration` spec                |
 | Definition      | `spec`                              |
 | Run             | `execution`                         |
 
-For example, creating a reason function uses `create_spec` with `primitive: "inference"`. Renaming product categories does not rewrite event history or introduce new routes. Planned function types are not accepted API identifiers yet. A workflow uses `primitive: "orchestration"`; see [Workflows and runs](workflows.md).
+For example, creating a reason function uses `create_spec` with `primitive: "inference"`, and creating a workflow uses `primitive: "orchestration"`. Renaming product categories does not rewrite event history or introduce new routes. Planned function types are not accepted API identifiers yet. [Workflow format](../reference/workflow-format.md) describes the workflow document.
