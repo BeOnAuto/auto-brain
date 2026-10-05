@@ -1,6 +1,6 @@
 # Runtime engineering guides
 
-These repository-only guides describe the development checkout for contributors and operators. They are excluded from the public documentation build and search. The public path starts with [Auto Cloud](https://on.auto/docs/get-started/cloud); [self-hosting enquiries](../self-host.md) go through Xolvio Professional Services.
+These repository-only guides describe the development checkout for contributors and operators. They are excluded from the public documentation build and search. Start with the [local quick start](../get-started/local.md) to try Auto. For production deployment support, see [Self-hosting](../self-host.md).
 
 The current checkout still contains the Temporal-backed orchestration implementation. The replacement workflow engine is under development. The extracted DSL and engine contracts do not mean that the replacement execution engine is ready. These guides preserve the setup and limitations of the current code while the transition proceeds.
 

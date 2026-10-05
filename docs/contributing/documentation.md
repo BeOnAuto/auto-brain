@@ -21,7 +21,7 @@ Use ordinary language and examples grounded in the product. Keep API names exact
 
 ## What belongs here
 
-Keep shared concepts, available function behavior, the self-hosting overview and HTTP/MCP reference in the public pages under `docs/`. Keep Cloud account management, hosted OAuth setup, pricing and marketing pages in the website repository.
+Keep local setup and agent connection instructions, shared concepts, available function behavior, the self-hosting overview and HTTP/MCP reference in the public pages under `docs/`. Keep Cloud availability, account management, hosted OAuth setup, pricing and marketing pages in the website repository.
 
 Implementation notes and contributor APIs remain in package READMEs and root contributor files. Link to the user guide instead of maintaining a second copy of it.
 

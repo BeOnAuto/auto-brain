@@ -115,20 +115,18 @@ await test('engineering guides and decisions remain in the repository without en
   }
 });
 
-await test('public docs offer a Cloud learning path and one self-hosting services overview', () => {
+await test('public docs offer a local learning path and one self-hosting services overview', () => {
   const selfHostPages = publicPages.filter((page) => relative(docs, page).startsWith('self-host'));
   assert.deepEqual(selfHostPages, [join(docs, 'self-host.md')]);
   const selfHost = readFileSync(join(docs, 'self-host.md'), 'utf8');
   assert.ok(selfHost.includes('[Xolvio Professional Services](https://www.xolv.io/contact-us)'));
-  assert.ok(markdownDestinations(selfHost).some((href) => href === 'https://on.auto/docs/get-started/cloud'));
+  assert.ok(markdownDestinations(selfHost).includes('get-started/local.md'));
+  assert.ok(selfHost.includes('Auto Cloud is coming soon'));
   const index = readFileSync(join(docs, 'index.md'), 'utf8');
   const destinations = markdownDestinations(index);
-  assert.ok(destinations.some((href) => href === 'https://on.auto/docs/get-started/cloud'));
+  assert.ok(destinations.includes('get-started/local.md'));
   assert.ok(destinations.includes('self-host.md'));
-  assert.ok(
-    destinations.findIndex((href) => href === 'https://on.auto/docs/get-started/cloud') <
-      destinations.indexOf('self-host.md'),
-  );
+  assert.ok(destinations.indexOf('get-started/local.md') < destinations.indexOf('self-host.md'));
   for (const { html } of renderedPages) assert.doesNotMatch(html, /temporal/iu);
   for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /temporal/iu);
 });
@@ -154,11 +152,12 @@ await test('navigation separates concepts, learning, guides and reference', () =
     'Concepts',
     'Get started',
     'Guides',
-    'Contributing',
     'Self-hosting',
     'Reference',
+    'Contributing',
   ]);
   assert.ok(routes.includes('/tutorials/first-brain'));
+  assert.ok(routes.indexOf('/get-started/local') < routes.indexOf('/tutorials/first-brain'));
   assert.ok(navigation.includes('Deployment and support'));
   const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
   assert.match(mcp, /^# MCP reference/mu);
@@ -174,7 +173,8 @@ await test('the first-brain tutorial supplies inputs and observable checks for t
   assert.equal(inputs[0]?.includes('Success measure: Generate interest in the product'), true);
   assert.equal(inputs[1]?.includes('Finance directors at UK manufacturing companies'), true);
   assert.equal(inputs[1]?.includes('Success measure: 100 trial registrations'), true);
-  assert.ok(markdownDestinations(tutorial).some((href) => href === 'https://on.auto/docs/get-started/cloud'));
+  assert.ok(markdownDestinations(tutorial).includes('../get-started/local.md'));
+  assert.ok(tutorial.includes('You do not need an Auto Cloud account'));
   assert.ok(tutorial.includes('review-campaign-brief'));
   assert.ok(tutorial.includes('USD 10,000'));
   assert.ok(tutorial.includes('status: succeeded'));
@@ -196,19 +196,69 @@ await test('docs distinguish available inbound MCP from upcoming internal tools'
   assert.ok(readme.includes('bounded tool-call loops'));
 });
 
-await test('the README starts with an actionable Cloud quick start and an optional local recipe', () => {
+await test('the README starts with an actionable local quick start and keeps Cloud optional', () => {
   const readme = readFileSync(join(docs, '../README.md'), 'utf8');
   assert.ok(readme.indexOf('## Quick start') < readme.indexOf('## Documentation and help'));
-  assert.ok(readme.includes("workspace's MCP URL and authentication details"));
+  assert.ok(readme.includes('You do not need an Auto Cloud account'));
   assert.ok(readme.includes('Run the saved function on:'));
   assert.ok(readme.includes('recorded run, including its execution id'));
   assert.ok(readme.includes('missing measurable goal'));
-  assert.ok(readme.includes('<summary>Run locally instead</summary>'));
+  assert.doesNotMatch(readme, /<details>|workspace's MCP URL/u);
   assert.ok(readme.includes('pnpm dev:lean'));
   assert.ok(readme.includes('http://localhost:8080/mcp'));
   assert.ok(readme.includes('curl http://localhost:8080/health'));
   assert.ok(readme.includes('do not expose it through a tunnel or public proxy'));
+  assert.ok(readme.includes('Claude Code, Claude Desktop or Codex'));
+  assert.ok(readme.includes('claude mcp add --transport http auto-brain http://localhost:8080/mcp'));
+  assert.ok(readme.includes('codex mcp add auto-brain --url http://localhost:8080/mcp'));
+  assert.ok(readme.indexOf('pnpm dev:lean') < readme.indexOf('## Hosted brains'));
+  assert.ok(readme.includes('Auto Cloud is coming soon'));
+  assert.ok(readme.includes('You can also host your own brain'));
+  assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/docs/self-host'));
   assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/request-invite'));
+});
+
+await test('the local quick start gives runnable setup and distinguishes local clients from Cloud', () => {
+  const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
+  for (const command of [
+    'git clone https://github.com/BeOnAuto/auto-brain.git',
+    'pnpm install',
+    'cp .env.example .env',
+    'pnpm dev:lean',
+    'curl http://localhost:8080/health',
+    'claude mcp add --transport http auto-brain http://localhost:8080/mcp',
+    'codex mcp add auto-brain --url http://localhost:8080/mcp',
+  ])
+    assert.ok(guide.includes(command), `Missing quick-start command: ${command}`);
+  assert.ok(guide.includes('ANTHROPIC_API_KEY'));
+  assert.ok(guide.includes('OPENAI_API_KEY'));
+  assert.ok(guide.includes('GOOGLE_GENERATIVE_AI_API_KEY'));
+  assert.ok(guide.includes("Your agent's subscription does not supply the server's model credentials"));
+  assert.ok(guide.includes('Claude Desktop'));
+  assert.ok(guide.includes('This setup is for macOS or Linux'));
+  assert.ok(guide.includes('## 4. Connect your agent {#connect-your-agent}'));
+  assert.ok(guide.includes('third-party'));
+  assert.ok(guide.includes("remote connector runs from Anthropic's servers"));
+  assert.ok(guide.includes('Do not expose it through a tunnel or public proxy'));
+  assert.ok(guide.includes('Auto Cloud is coming soon'));
+  assert.ok(guide.includes('## Hosted brains'));
+  assert.doesNotMatch(guide, /Prefer a hosted brain/u);
+  assert.ok(guide.includes('You can also host your own brain'));
+  assert.ok(markdownDestinations(guide).includes('../self-host.md'));
+  assert.ok(markdownDestinations(guide).some((href) => href === 'https://on.auto/request-invite'));
+  assert.ok(markdownDestinations(guide).includes('../tutorials/first-brain.md'));
+  const configBlock = [...guide.matchAll(/```json\n([\s\S]*?)```/gu)].at(0)?.[1];
+  assert.notEqual(configBlock, '');
+  assert.ok(configBlock !== undefined);
+  const config: unknown = JSON.parse(configBlock);
+  assert.deepEqual(config, {
+    mcpServers: {
+      'auto-brain': {
+        command: 'npx',
+        args: ['-y', 'mcp-remote@0.14.3', 'http://localhost:8080/mcp', '--allow-http', '--transport', 'http-only'],
+      },
+    },
+  });
 });
 
 await test('model discovery is documented without treating wildcard entries as runnable models', () => {
@@ -221,7 +271,7 @@ await test('model discovery is documented without treating wildcard entries as r
   assert.ok(mcp.includes('`catalog_status: "partial"`'));
   assert.ok(mcp.includes('not a model to run'));
   assert.ok(http.includes('GET /v1/orgs/{org}/models'));
-  assert.ok(tutorial.includes('model reference that your workspace can use'));
+  assert.ok(tutorial.includes('model reference that your configured provider can use'));
   assert.ok(tutorial.includes('Do not use a wildcard'));
 });
 
