@@ -147,6 +147,33 @@ describe('each operation that builds or visits values', () => {
   });
 });
 
+describe('searching a string for another', () => {
+  it('finds what the engine finds, overlapping occurrences included', () => {
+    expect(
+      run('[split(","), index("cd"), rindex(","), indices(","), contains("cd"), (. / ","), contains("")]', 'ab,cd,ef'),
+    ).toMatchObject({ value: [['ab', 'cd', 'ef'], 3, 5, [2, 5], true, ['ab', 'cd', 'ef'], true] });
+    expect(
+      run('[indices("aa"), split("aa"), rindex("aa"), index("aa"), index(""), rindex(""), indices("")]', 'aaaa'),
+    ).toMatchObject({
+      value: [[0, 1, 2], ['', '', ''], 2, 0, 0, 4, []],
+    });
+  });
+
+  it('takes time linear in the lengths, where the engine takes their product', () => {
+    expect(run('"a" * 400000 | rindex("a" * 100000 + "b")', null)).toMatchObject({ value: null });
+  });
+});
+
+describe('an operation that allocates in proportion to its output', () => {
+  it.each<readonly [string, string, number]>([
+    ['explodes', '.s | explode', 3_400_528],
+    ['splits', '.s | split("x")', 3_400_672],
+    ['divides', '.s / "x"', 3_400_561],
+  ])('charges what it %s before it allocates it', (_operation, source, work) => {
+    expect(run(source, { s: text }, 1_000_000)).toMatchObject({ exhausted: true, work });
+  });
+});
+
 describe('a string used as an object key', () => {
   it.each<readonly [string, string]>([
     ['indexes an object', '{} | .[$s + "x"]'],
