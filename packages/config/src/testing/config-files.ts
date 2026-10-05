@@ -25,6 +25,12 @@ export const exampleSettings = [
   fileSetting('EXAMPLE_ORIGINS', Schema.Array(Schema.String.check(Schema.isPattern(/^https:\/\//u))), (origins) =>
     origins.join(','),
   ),
+  fileSetting(
+    'EXAMPLE_SERVERS',
+    Schema.Record(Schema.String, Schema.Struct({ headers: Schema.Record(Schema.String, Schema.String) })),
+    (servers) => JSON.stringify(servers),
+    { references: 'kept' },
+  ),
 ];
 
 export function temporaryDirectory(): string {

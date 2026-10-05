@@ -114,6 +114,24 @@ describe('a reference to an environment variable', () => {
   });
 });
 
+describe('a setting that keeps its references', () => {
+  const servers = 'example_servers:\n  graph:\n    headers: { authorization: "Bearer ${GRAPH_KEY}", x-price: "$$5" }\n';
+
+  it('is given as written, for its own reader to resolve, once every variable it names is set', () => {
+    const { environment } = configured(servers, { GRAPH_KEY: 'key-from-the-environment' });
+
+    expect(environment['EXAMPLE_SERVERS']).toBe(
+      JSON.stringify({ graph: { headers: { authorization: 'Bearer ${GRAPH_KEY}', 'x-price': '$$5' } } }),
+    );
+  });
+
+  it('stops the reading when a variable it names is not set, as any setting does', () => {
+    expect(problemsIn(servers)).toBe(
+      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:3:31 example_servers.graph.headers.authorization: Refers to the environment variable GRAPH_KEY, which is not set',
+    );
+  });
+});
+
 describe('a credential written in the file', () => {
   const secret = 'sk-proj-0123456789abcdefghijklmnop';
 
@@ -200,7 +218,7 @@ describe('a configuration file that is not one the server reads', () => {
         'auto-brain.yaml:1:19 example_origins[0]: Expected a string matching the RegExp ^https:\\/\\/; ' +
         'auto-brain.yaml:2:28 example_gateways[0].name: Expected string; ' +
         'auto-brain.yaml:2:39 example_gateways[0].colour: Expected no excess property; ' +
-        'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins',
+        'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
     );
   });
 });

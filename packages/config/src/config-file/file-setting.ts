@@ -4,11 +4,18 @@ import type { FileProblem } from './file-problem.ts';
 
 type PathSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
 
+export type References = 'resolved' | 'kept';
+
 export interface FileSetting {
   readonly setting: string;
   readonly key: string;
   readonly schema: Schema.Top;
+  readonly references: References;
   readonly written: (value: unknown) => Result.Result<string, readonly FileProblem[]>;
+}
+
+export interface FileSettingOptions {
+  readonly references?: References;
 }
 
 const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
@@ -35,12 +42,14 @@ export function fileSetting<S extends Schema.Codec<unknown, unknown>>(
   setting: string,
   schema: S,
   written: (value: S['Type']) => string,
+  { references = 'resolved' }: FileSettingOptions = {},
 ): FileSetting {
   const decode = Schema.decodeUnknownResult(schema, { errors: 'all', onExcessProperty: 'error' });
   return {
     setting,
     key: setting.toLowerCase(),
     schema,
+    references,
     written: (value) => Result.mapBoth(decode(value), { onSuccess: written, onFailure: problemsOf }),
   };
 }
