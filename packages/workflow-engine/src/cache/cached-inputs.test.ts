@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import { workflowMachine } from '../decider/workflow-machine.ts';
 import type { RunInput } from '../machine/run-input.ts';
-import { newRun } from '../machine/run-state.ts';
+import { newRun, type RunState } from '../machine/run-state.ts';
 import type { RunEvent } from '../run-log/run-event.ts';
 import { testMachine } from '../testing/driver-inputs.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
-import { drivenExecutionId, statesAlong } from '../testing/run-history.ts';
+import { armedTimerIds, drivenExecutionId, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 function ticking(times: number): ReturnType<typeof workflow> {
@@ -32,9 +32,21 @@ function advancedToTheEnd(driver: MemoryDriver): void {
   }
 }
 
+function storedState(driver: MemoryDriver): RunState {
+  return statesAlong(driver.ports.runStore.events(drivenExecutionId)).at(-1) ?? newRun;
+}
+
 function decidedElsewhere(driver: MemoryDriver, input: RunInput): readonly RunEvent[] {
-  const state = statesAlong(driver.ports.runStore.events(drivenExecutionId)).at(-1) ?? newRun;
-  return Result.getOrThrow(workflowMachine(testMachine).decide(input, state));
+  return Result.getOrThrow(workflowMachine(testMachine).decide(input, storedState(driver)));
+}
+
+function armedTick(driver: MemoryDriver): string {
+  const [timerId = ''] = armedTimerIds(storedState(driver), 'wait');
+  return timerId;
+}
+
+function fired(timerId: string, at: number): RunInput {
+  return { kind: 'timer_fired', executionId: drivenExecutionId, at, timerId };
 }
 
 describe('an input to a run the engine keeps', () => {
@@ -58,6 +70,20 @@ describe('an input to a run the engine keeps', () => {
 
     expect(answer).toEqual({ outcome: 'stale', version: 2 });
     expect(driver.ports.runStore.loads(drivenExecutionId)).toBe(2);
+  });
+
+  it('takes an input another host made possible, since its stream moved past the version the engine keeps', () => {
+    const driver = startedTicking(3);
+    const firstTick = armedTick(driver);
+    const written = decidedElsewhere(driver, fired(firstTick, driver.clock.now() + 1000));
+    Effect.runSync(Effect.forEach(written, (event) => driver.ports.runStore.append(drivenExecutionId, event, 1)));
+    const secondTick = armedTick(driver);
+
+    const answer = driver.submit(fired(secondTick, driver.clock.now() + 2000));
+
+    expect(secondTick).not.toBe(firstTick);
+    expect(answer).toEqual({ outcome: 'applied', version: 3 });
+    expect(driver.ports.runStore.events(drivenExecutionId)).toHaveLength(3);
   });
 
   it('loads the run from the store when its append meets a conflict, rather than decide again on what it kept', () => {

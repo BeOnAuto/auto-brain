@@ -72,8 +72,29 @@ export function memoryReporter(): MemoryReporter {
   };
 }
 
+interface Handouts {
+  readonly takenAt: (executionId: string) => number;
+  readonly handOut: (executionIds: readonly string[]) => readonly string[];
+}
+
+function handoutsOf(): Handouts {
+  const taken = new Map<string, number>();
+  const clock = { now: 0 };
+  return {
+    takenAt: (executionId) => taken.get(executionId) ?? 0,
+    handOut: (executionIds) => {
+      clock.now += 1;
+      for (const executionId of executionIds) {
+        taken.set(executionId, clock.now);
+      }
+      return executionIds;
+    },
+  };
+}
+
 export function memoryWatermark(runStore: Pick<MemoryRunStore, 'versions'>): DispatchWatermark {
   const marks = new Map<string, number>();
+  const handouts = handoutsOf();
   const markOf = (executionId: string): number => marks.get(executionId) ?? 0;
   return {
     read: (executionId) => Effect.sync(() => markOf(executionId)),
@@ -83,10 +104,13 @@ export function memoryWatermark(runStore: Pick<MemoryRunStore, 'versions'>): Dis
       }),
     behindRuns: (limit) =>
       Effect.sync(() =>
-        [...runStore.versions()]
-          .filter(([executionId, version]: readonly [string, number]) => markOf(executionId) < version)
-          .slice(0, limit)
-          .map(([executionId]: readonly [string, number]) => executionId),
+        handouts.handOut(
+          [...runStore.versions()]
+            .filter(([executionId, version]: readonly [string, number]) => markOf(executionId) < version)
+            .map(([executionId]: readonly [string, number]) => executionId)
+            .toSorted((first, second) => handouts.takenAt(first) - handouts.takenAt(second))
+            .slice(0, limit),
+        ),
       ),
   };
 }

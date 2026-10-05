@@ -1,11 +1,11 @@
-import { executionId, looping, medianMillisecondsOf, nextTick, startedAt, textBytesOf } from './measure-common.ts';
-import { workflowMachine } from './src/decider/workflow-machine.ts';
-import type { RunInput } from './src/machine/run-input.ts';
-import { newRun, type RunState } from './src/machine/run-state.ts';
-import { snapshotChunks, snapshotOf } from './src/run-log/snapshot.ts';
-import { startedOf, testMachine } from './src/testing/driver-inputs.ts';
-import { memoryDriver } from './src/testing/memory-driver.ts';
-import { workflow } from './src/testing/workflows.ts';
+import { workflowMachine } from '../src/decider/workflow-machine.ts';
+import type { RunInput } from '../src/machine/run-input.ts';
+import { newRun, type RunState } from '../src/machine/run-state.ts';
+import { snapshotChunks, snapshotOf } from '../src/run-log/snapshot.ts';
+import { startedOf, testMachine } from '../src/testing/driver-inputs.ts';
+import { memoryDriver } from '../src/testing/memory-driver.ts';
+import { workflow } from '../src/testing/workflows.ts';
+import { executionId, looping, medianMillisecondsOf, nextTick, startedAt, textBytesOf } from './common.ts';
 
 const calling = workflow('do:\n  - ask: { call: notify, with: { to: ada } }');
 

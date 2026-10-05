@@ -1,5 +1,13 @@
 import { Result } from 'effect';
 
+import { workflowMachine } from '../src/decider/workflow-machine.ts';
+import type { RunInput } from '../src/machine/run-input.ts';
+import { newRun, type RunState } from '../src/machine/run-state.ts';
+import { eventBytesOf, type PositionedEvent } from '../src/run-log/run-event.ts';
+import { evolveRun, loadedRunOf } from '../src/run-log/run-fold.ts';
+import type { StoredRun } from '../src/run-log/run-store.ts';
+import { isSnapshotDue, snapshotChunks, snapshotOf } from '../src/run-log/snapshot.ts';
+import { startedOf, testMachine } from '../src/testing/driver-inputs.ts';
 import {
   executionId,
   jsonBytesOf,
@@ -9,15 +17,7 @@ import {
   nextTick,
   startedAt,
   textBytesOf,
-} from './measure-common.ts';
-import { workflowMachine } from './src/decider/workflow-machine.ts';
-import type { RunInput } from './src/machine/run-input.ts';
-import { newRun, type RunState } from './src/machine/run-state.ts';
-import { eventBytesOf, type PositionedEvent } from './src/run-log/run-event.ts';
-import { evolveRun, loadedRunOf } from './src/run-log/run-fold.ts';
-import type { StoredRun } from './src/run-log/run-store.ts';
-import { isSnapshotDue, snapshotChunks, snapshotOf } from './src/run-log/snapshot.ts';
-import { startedOf, testMachine } from './src/testing/driver-inputs.ts';
+} from './common.ts';
 
 interface Loop {
   readonly events: readonly PositionedEvent[];

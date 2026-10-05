@@ -154,6 +154,26 @@ export const watermarkProbes: readonly Probe<WatermarkSubject>[] = [
         ];
       }),
   },
+  {
+    title: 'gives the runs behind taken longest ago first, so the runs past its limit are taken next',
+    expected: ['first: 2 runs', 'second: 2 runs', 'each of the 4 taken once', 'third: 2 of the first'],
+    run: ({ watermark, runStore, executionId }) =>
+      Effect.gen(function* () {
+        const runs = ['a', 'b', 'c', 'd'].map((name) => `${executionId}-${name}`);
+        yield* Effect.forEach(runs, (run) => appendedTo(runStore, run, first), { discard: true });
+        const firstTaken = yield* watermark.behindRuns(2);
+        const secondTaken = yield* watermark.behindRuns(2);
+        const thirdTaken = yield* watermark.behindRuns(2);
+        const taken = [...firstTaken, ...secondTaken];
+        const takenOnce = runs.filter((run) => taken.filter((id) => id === run).length === 1);
+        return [
+          `first: ${firstTaken.length} runs`,
+          `second: ${secondTaken.length} runs`,
+          `each of the ${takenOnce.length} taken once`,
+          `third: ${thirdTaken.filter((run) => firstTaken.includes(run)).length} of the first`,
+        ];
+      }),
+  },
 ];
 
 export const runStoreProbes: readonly Probe<RunStoreSubject>[] = [

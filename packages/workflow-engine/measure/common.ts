@@ -1,7 +1,7 @@
-import type { RunInput } from './src/machine/run-input.ts';
-import type { RunState } from './src/machine/run-state.ts';
-import { armedTimerIds } from './src/testing/run-history.ts';
-import { workflow } from './src/testing/workflows.ts';
+import type { RunInput } from '../src/machine/run-input.ts';
+import type { RunState } from '../src/machine/run-state.ts';
+import { armedTimerIds } from '../src/testing/run-history.ts';
+import { workflow } from '../src/testing/workflows.ts';
 
 export const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000040000';
 

@@ -1,6 +1,6 @@
-import { decideMeasured, snapshotMeasured } from './measure-decide.ts';
-import { engineMeasured } from './measure-engine.ts';
-import { loopMeasured } from './measure-loop.ts';
+import { decideMeasured, snapshotMeasured } from './measure/decide.ts';
+import { engineMeasured } from './measure/engine.ts';
+import { loopMeasured } from './measure/loop.ts';
 
 const measured = [
   `Node ${process.version}`,

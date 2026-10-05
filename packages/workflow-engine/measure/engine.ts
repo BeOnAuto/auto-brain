@@ -1,12 +1,12 @@
 import { Effect } from 'effect';
 
-import { executionId, looping, millisecondsOf } from './measure-common.ts';
-import { runCacheOf, type RunCache } from './src/cache/run-cache.ts';
-import { workflowEngineOf } from './src/engine/engine.ts';
-import type { RunInput } from './src/machine/run-input.ts';
-import { memoryPorts } from './src/memory/memory-ports.ts';
-import { virtualClock } from './src/memory/virtual-clock.ts';
-import { startedOf, testMachine } from './src/testing/driver-inputs.ts';
+import { runCacheOf, type RunCache } from '../src/cache/run-cache.ts';
+import { workflowEngineOf } from '../src/engine/engine.ts';
+import type { RunInput } from '../src/machine/run-input.ts';
+import { memoryPorts } from '../src/memory/memory-ports.ts';
+import { virtualClock } from '../src/memory/virtual-clock.ts';
+import { startedOf, testMachine } from '../src/testing/driver-inputs.ts';
+import { executionId, looping, millisecondsOf } from './common.ts';
 
 function throughTheEngine(inputs: number, cache: RunCache): number {
   const clock = virtualClock();
