@@ -2,16 +2,12 @@
 
 The contract of the workflow machine that runs on the ledger: the DSL it runs, the state it keeps, the inputs it takes and the ports to the adapters that store, time and execute for it. The machine's state is shaped by the workflow DSL, so this package is the workflow machine's contract, not a generic runtime. It knows workflows, their DSL and an executor that performs calls. It does not know brains, prompts, models, specs or primitives: the functions a workflow may call come from the caller, and whatever an adapter needs to know about a run, such as who started it, it passes as opaque `attributes` and gets back with every output.
 
-The same code runs in Node, where one server keeps every run in one SQLite file, and in Auto's cloud hosting, the hosted runtime, where each run is an isolate of its own. The decision record states what the hosted runtime allows: a single-threaded isolate per run, woken by alarms that fire at least once and are dropped after a bounded number of failed retries, with about 128 MB of memory and bounded CPU per wake-up, no long-lived process and no code generation, and its own SQLite with rows of at most 2 MB; the shared database has no interactive transactions. The machine decides each input (below); the adapters are the next step, and until then the orchestration primitive runs workflows on Temporal, with the DSL code it shares with the machine from here. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
+The same code runs in Node, where one server keeps every run in one SQLite file, and in Auto's cloud hosting, the hosted runtime, where each run is an isolate of its own. The decision record states what the hosted runtime allows: a single-threaded isolate per run, woken by alarms that fire at least once and are dropped after a bounded number of failed retries, with about 128 MB of memory and bounded CPU per wake-up, no long-lived process and no code generation, and its own SQLite with rows of at most 2 MB; the shared database has no interactive transactions. The machine decides each input (below). In Node, [`@beonauto/workflow-host`](../workflow-host) hosts it over the ledger, and the orchestration primitive runs every workflow on it; the hosted runtime's adapters are the next step. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
 
 ## Entries
 
-- `@beonauto/workflow-engine`: the contract and the machine, `workflowMachine(options)`, from `src/index.ts`.
+- `@beonauto/workflow-engine`: the contract, the machine, `workflowMachine(options)`, the engine an adapter builds over its ports, `workflowEngineOf(ports, options, cache)`, and what the orchestration primitive reads a document with: JSON helpers, the policy, its checks and the limits of a document, from `src/index.ts`.
 - `@beonauto/workflow-engine/testing`: the memory adapter of `src/memory` and its virtual clock, a driver over it, and the probes of the ports' contract that every adapter runs (`src/testing/index.ts`). Neither the entry nor anything it imports takes a Node module or the YAML parser, so a hosted adapter can run the probes (`src/engine/portability.test.ts`).
-- `@beonauto/workflow-engine/dsl/<module>`: one module of the DSL, such as `dsl/json` or `dsl/policy`.
-- `@beonauto/workflow-engine/limits`: the limits, plain numbers.
-
-The `dsl` and `limits` subpaths are transitional. They are there only so that the orchestration primitive's bundled Temporal workflow code can import the DSL and the limits without taking Effect and the ledger from the main entry, and they go when Temporal goes.
 
 ## How a run moves
 
@@ -46,7 +42,7 @@ The `dsl` and `limits` subpaths are transitional. They are there only so that th
 
 Every port answers with an Effect. None of them is a clock: time comes in with the inputs, and the sweep is given the time before which a run is overdue.
 
-The settlement and call-result vocabulary lives once, in `@beonauto/operations` (`SettlementSchema`, `CallResultSchema`, `invalidArguments`), beside its `Outcome`. The limits and `DslError` live once, here, and so does the DSL code the interpreter and the machine both run: expressions and templates with their work budget (`dsl/evaluation.ts`), the retry arithmetic (`dsl/retry-policy.ts`), what a switch, a raise, a catch and a timeout decide (`dsl/task-outcomes.ts`), and the errors a call's result and an uncaught error map to (`dsl/raised-error.ts`). The interpreter imports them.
+The settlement and call-result vocabulary lives once, in `@beonauto/operations` (`SettlementSchema`, `CallResultSchema`, `invalidArguments`), beside its `Outcome`. The limits and `DslError` live once, here, and so does the DSL code the machine runs: expressions and templates with their work budget (`dsl/evaluation.ts`), the retry arithmetic (`dsl/retry-policy.ts`), what a switch, a raise, a catch and a timeout decide (`dsl/task-outcomes.ts`), and the errors a call's result and an uncaught error map to (`dsl/raised-error.ts`).
 
 ## The DSL
 
@@ -128,7 +124,7 @@ A call is idempotent by its key in this sense: it is answered at most once. A st
 
 Every cancel the timer store or the executor takes for a key that has not fired or been answered is recorded as a tombstone, whether the key was armed, running or never seen, so an arm or a start of that key that arrives later is refused (`refused_after_cancel`). Dispatch takes outputs in the order of the stream, so a start always reaches the port before its cancel; tombstones matter when a dispatch is repeated from a watermark left behind, as a due note that fails leaves it, which sends an arm or a start again after the cancel that followed it, and to an executor that takes work asynchronously, such as from a queue, where a cancel can overtake its start.
 
-The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a primitive, a name and an input, and that a workflow does not call another workflow, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through the table the interpreter uses (`callErrorOf` in `src/dsl/raised-error.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
+The machine checks only the size of a call's arguments, at most 264 KiB as JSON. The executor checks what they mean, such as a primitive, a name and an input, and that a workflow does not call another workflow, and answers `rejected` with reason `invalid_arguments` and a detail when they are wrong. The machine maps a rejection's reason to the task's error through one table (`callErrorOf` in `src/dsl/raised-error.ts`), with `invalid_arguments` as a `validation` error, status 400, carrying the executor's detail.
 
 ## Idempotency keys
 
@@ -238,7 +234,7 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 - `started` arms the run's deadline, due when the run has run the most it may, `mostDurationMs`; its fire ends the run `overran`. A call arms its `call_deadline` and keeps its id. A cancel, an end or a timeout cancels what the frames under it wait for, and a task that raises before it waits disarms its own timeout.
 - An event leaves out a timer or a call that the same input opened and closed (invariant 26), and its other outputs keep the order the session emitted them in.
 - A run ends with its outcome, settled once in its last event. An input that would pass a bound (inputs, history, held data, the size of one event) ends the run, raised, in a small event of its own.
-- The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The orchestration primitive runs through this driver the 122 of its interpreter's tests that run a workflow and pass on the machine, skipping 13 whose reasons its README gives, and replays its 15 recorded input logs through the machine (`primitives/orchestration/input-logs/`).
+- The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The orchestration primitive runs its tests of how a workflow runs through this driver (`primitives/orchestration/src/workflows`), and replays its 15 recorded input logs through the machine (`primitives/orchestration/input-logs/`).
 
 ## The cache of loaded runs
 
