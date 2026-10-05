@@ -17,7 +17,16 @@ const sweepEveryMs = 400;
 
 const shortestSweepMs = 10;
 
+const anHourMs = 3_600_000;
+
 const listening = workflow('do:\n  - approval: { listen: { to: { one: { with: { type: com.acme.approved } } } } }');
+
+export type ClaimClock = 'database' | 'host';
+
+const notesOfAHostAnHourAhead: Readonly<Record<ClaimClock, readonly Readonly<Record<string, string>>[]>> = {
+  database: [{ kind: 'standing_by', holder: 'first' }],
+  host: [],
+};
 
 export function leaseSuite(settings: SettingsOf): void {
   it('lets one host serve the workflows of a database, and a second take them over only once the first is gone', async () => {
@@ -55,7 +64,7 @@ export function leaseSuite(settings: SettingsOf): void {
   }, 60_000);
 }
 
-export function claimSuite(settings: SettingsOf): void {
+export function claimSuite(settings: SettingsOf, claimClock: ClaimClock): void {
   it('keeps the claim of a host paused for a second at the shortest sweep, so no other host takes over', async () => {
     const database = await settings();
     const first = hostIn(database, 'hang-on-call', join(aSQLiteFile(), '..', 'settlements.jsonl'), shortestSweepMs);
@@ -70,4 +79,15 @@ export function claimSuite(settings: SettingsOf): void {
     expect(second.notes().map(({ kind }) => kind)).toEqual(['standing_by']);
     expect(second.calls()).toEqual([]);
   }, 60_000);
+
+  it(`judges the claim by the clock of the ${claimClock}, as a host whose clock runs an hour ahead finds`, async () => {
+    const database = await settings();
+    await hostedOn(database, { holder: 'first' });
+    const ahead = await hostedOn(database, {
+      holder: 'ahead',
+      clock: { now: () => Date.now() + anHourMs, sleep: Effect.sleep },
+    });
+
+    expect(ahead.notes()).toMatchObject(notesOfAHostAnHourAhead[claimClock]);
+  });
 }

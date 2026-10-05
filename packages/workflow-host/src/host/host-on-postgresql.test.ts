@@ -57,6 +57,6 @@ describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
 
   describe('one of two hosts on one database', () => {
     leaseSuite(onPostgreSQL);
-    claimSuite(onPostgreSQL);
+    claimSuite(onPostgreSQL, 'database');
   });
 });

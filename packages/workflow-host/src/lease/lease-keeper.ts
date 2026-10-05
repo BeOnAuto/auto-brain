@@ -47,10 +47,7 @@ export async function keptLease(parts: KeeperParts): Promise<LeaseKeeper> {
       lapsed ? claimed({ held: false, holder: unknownHolder, until: state.renewedAt + lastsMs }) : Effect.void,
     );
   };
-  const kept = Effect.suspend(() => lease.claimed(clock.now())).pipe(
-    Effect.flatMap(claimed),
-    Effect.catchCause(unrenewed),
-  );
+  const kept = lease.claimed().pipe(Effect.flatMap(claimed), Effect.catchCause(unrenewed));
   await Effect.runPromise(kept);
   const fiber = Effect.runFork(
     Effect.forever(Effect.andThen(Effect.sleep(sweepEveryMs), Effect.uninterruptible(kept))),

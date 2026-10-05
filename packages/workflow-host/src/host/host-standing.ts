@@ -20,7 +20,7 @@ export async function standingOn(
 ): Promise<Standing> {
   const { reports, sweepEveryMs, clock } = options;
   const lastsMs = leaseMsFor(sweepEveryMs);
-  const lease = hostLease(database, holder, lastsMs);
+  const lease = hostLease(database, holder, lastsMs, clock);
   const current: { serving: Serving | null } = { serving: null };
   const servedNoMore = Effect.promise(async () => {
     const { serving } = current;

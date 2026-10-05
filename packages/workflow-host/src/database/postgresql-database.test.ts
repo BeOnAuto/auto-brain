@@ -5,6 +5,7 @@ import type { EventStore } from '@beonauto/ledger';
 import { Effect, Function, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import type { DatabaseFailed, HostDatabase } from './host-database.ts';
 import { openHostDatabase } from './host-databases.ts';
 import { hostTables } from './host-tables.ts';
 import { postgresqlDatabaseOn, type Connection, type Connections } from './postgresql-database.ts';
@@ -22,7 +23,7 @@ interface Telling {
   readonly said: () => readonly string[];
 }
 
-function telling(failingOn = ''): Telling {
+function telling(failingOn = '', rowsOf = (text: string): readonly unknown[] => [{ answered: text }]): Telling {
   const asked: Asked[] = [];
   const said: string[] = [];
   const saying = (line: string): Promise<void> => {
@@ -51,7 +52,7 @@ function telling(failingOn = ''): Telling {
     connections: {
       query: (text, values) => {
         asked.push({ text, values });
-        return Promise.resolve({ rows: [{ answered: text }] });
+        return Promise.resolve({ rows: rowsOf(text) });
       },
       connect: () => Promise.resolve(connection),
       end: () => saying('connections ended'),
@@ -59,6 +60,10 @@ function telling(failingOn = ''): Telling {
     asked: () => asked,
     said: () => said,
   };
+}
+
+function clockOf(database: HostDatabase): Effect.Effect<number, DatabaseFailed> {
+  return database.sharedClock ?? Effect.die(new Error('The database has no clock of its own'));
 }
 
 const decodePort = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
@@ -131,5 +136,20 @@ describe('the host database on PostgreSQL, open', () => {
       [{ answered: 'DELETE FROM workflow_due WHERE run_id = $1' }],
     ]);
     expect(said().slice(-2)).toEqual(['store closed', 'connections ended']);
+  });
+});
+
+describe('the host database on PostgreSQL, telling the time', () => {
+  it('reads the clock of the database, which every server on it shares, in milliseconds', async () => {
+    const { store, connections, asked } = telling('', () => [{ now: '1790845200000' }]);
+    const database = await postgresqlDatabaseOn(store, connections);
+    const migration = asked().length;
+
+    const now = await Effect.runPromise(clockOf(database));
+
+    expect(now).toBe(1_790_845_200_000);
+    expect(asked().slice(migration)).toEqual([
+      { text: 'SELECT (EXTRACT(EPOCH FROM now()) * 1000)::bigint AS now', values: [] },
+    ]);
   });
 });

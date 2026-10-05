@@ -9,6 +9,7 @@ export interface HostDatabase {
   readonly store: EventStore;
   readonly read: (statement: Statement) => Effect.Effect<readonly unknown[], DatabaseFailed>;
   readonly write: (statement: Statement) => Effect.Effect<readonly unknown[], DatabaseFailed>;
+  readonly sharedClock: Effect.Effect<number, DatabaseFailed> | null;
   readonly close: () => Promise<void>;
 }
 

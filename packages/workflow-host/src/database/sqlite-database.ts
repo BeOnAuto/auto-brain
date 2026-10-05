@@ -39,6 +39,7 @@ export async function openSQLiteDatabase(fileName: string): Promise<HostDatabase
         try: async (): Promise<readonly unknown[]> => (await pool.execute.command(onSQLite(statement))).rows,
         catch: failedWith,
       }),
+    sharedClock: null,
     close: () => store.close(),
   };
   try {

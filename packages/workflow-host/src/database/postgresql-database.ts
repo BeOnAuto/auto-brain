@@ -1,11 +1,11 @@
 import type { EventStore } from '@beonauto/ledger';
 import { postgresqlEventStore } from '@beonauto/ledger/postgresql';
-import { Effect, Function } from 'effect';
+import { Effect, Function, Schema } from 'effect';
 import { Pool } from 'pg';
 
-import { failedWith, type HostDatabase } from './host-database.ts';
+import { failedWith, oneRowOf, WholeNumber, type HostDatabase } from './host-database.ts';
 import { hostTables } from './host-tables.ts';
-import { textOnPostgreSQL, type Statement, type StatementValue } from './statement.ts';
+import { statement, textOnPostgreSQL, type Statement, type StatementValue } from './statement.ts';
 
 export interface PostgreSQLDatabaseOptions {
   readonly connectionString: string;
@@ -31,6 +31,8 @@ const connectionsForTheHostTables = 4;
 
 const migrationLock = 7_461_239_041;
 
+const NowRow = Schema.Struct({ now: WholeNumber });
+
 async function createdEach(connection: Connection, tables: readonly Statement[]): Promise<void> {
   const [first, ...rest] = tables;
   if (first !== undefined) {
@@ -55,11 +57,14 @@ async function migratedOn(connections: Connections): Promise<void> {
 }
 
 export async function postgresqlDatabaseOn(store: EventStore, connections: Connections): Promise<HostDatabase> {
-  const query = (statement: Statement) =>
+  const query = (asked: Statement) =>
     Effect.tryPromise({
-      try: () => connections.query(textOnPostgreSQL(statement), statement.values),
+      try: () => connections.query(textOnPostgreSQL(asked), asked.values),
       catch: failedWith,
     }).pipe(Effect.map(({ rows }) => rows));
+  const sharedClock = oneRowOf(NowRow, query(statement`SELECT (EXTRACT(EPOCH FROM now()) * 1000)::bigint AS now`)).pipe(
+    Effect.map(({ now }) => now),
+  );
   const close = async (): Promise<void> => {
     await store.close();
     await connections.end();
@@ -67,7 +72,7 @@ export async function postgresqlDatabaseOn(store: EventStore, connections: Conne
   try {
     await store.migrate();
     await migratedOn(connections);
-    return { store, read: query, write: query, close };
+    return { store, read: query, write: query, sharedClock, close };
   } catch (failure) {
     await close().catch(Function.constVoid);
     throw failure;

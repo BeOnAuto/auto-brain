@@ -26,6 +26,6 @@ describe('the host on SQLite', () => {
 
   describe('one of two hosts on one database', () => {
     leaseSuite(onSQLite);
-    claimSuite(onSQLite);
+    claimSuite(onSQLite, 'host');
   });
 });
