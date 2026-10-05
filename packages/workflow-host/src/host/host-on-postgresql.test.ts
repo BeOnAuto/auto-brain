@@ -29,6 +29,7 @@ async function administered(statement: string): Promise<void> {
 const onPostgreSQL: SettingsOf = async () => {
   const name = `workflow_host_${randomUUID().replaceAll('-', '')}`;
   await administered(`CREATE DATABASE ${name}`);
+  await administered(`ALTER DATABASE ${name} SET synchronous_commit = off`);
   onTestFinished(async () => {
     await administered(`DROP DATABASE ${name} WITH (FORCE)`);
   });
