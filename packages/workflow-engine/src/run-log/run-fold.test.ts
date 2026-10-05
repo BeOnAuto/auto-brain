@@ -7,6 +7,7 @@ import {
   loadedRunOf,
   newRun,
   snapshotOf,
+  stateFormat,
   stateInCurrentFormat,
   UnreadableRun,
   withHistoryBytes,
@@ -76,7 +77,7 @@ const started: StatePatch = [
 ];
 
 function patched(patch: StatePatch): RunEvent {
-  return eventIn(1, patch, 0);
+  return eventIn(stateFormat, patch, 0);
 }
 
 describe('a run loaded from its stream', () => {
@@ -183,7 +184,7 @@ describe('a state format this code does not read', () => {
     expect(() => loadedRunOf({ snapshot: null, tail: unknown }, { current: 2, older: [] })).toThrow(
       new UnreadableRun({ detail: 'This code reads no state of format 1' }),
     );
-    expect(() => evolveRun(newRun, eventIn(2, [], 0))).toThrow(UnreadableRun);
+    expect(() => evolveRun(newRun, eventIn(stateFormat + 1, [], 0))).toThrow(UnreadableRun);
   });
 
   it('read a state of an older format strictly before upcasting it', () => {

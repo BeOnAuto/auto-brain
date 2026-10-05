@@ -2,7 +2,7 @@ import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
 import type { Json } from '@beonauto/workflow-engine/dsl/json';
 import type { TaskEntry } from '@beonauto/workflow-engine/dsl/tasks';
 
-import type { Meter, RunState } from './run-state.ts';
+import type { RunState } from './run-state.ts';
 
 export interface Scope {
   readonly state: RunState;
@@ -29,13 +29,6 @@ export interface Body {
 export interface Runner {
   readonly runList: (list: Json | undefined, pointer: string, input: Json, scope: Scope) => Promise<ListResult>;
   readonly runTask: (entry: TaskEntry, input: Json, scope: Scope) => Promise<TaskOutcome>;
-}
-
-export interface Place {
-  readonly reference: string;
-  readonly now: number;
-  readonly meter: Meter;
-  readonly mostDuration: number;
 }
 
 export interface Invocation {

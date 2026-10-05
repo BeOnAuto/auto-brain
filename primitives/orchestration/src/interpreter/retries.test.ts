@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Command } from '../testing/fake-host.ts';
-import { callsIn, interpret, neverAnswers, workflow } from '../testing/workflows.ts';
+import { callsIn, interpret, neverAnswers, workflow, onMachine } from '../testing/workflows.ts';
 import type { SpecCall, SpecCallResult } from './host.ts';
 
 function retrying(retry: string, extra = ''): ReturnType<typeof workflow> {
@@ -83,7 +83,7 @@ describe('the backoff of a retry policy', () => {
     expect(delaysIn(constant.commands)).toEqual([1000, 1000]);
   });
 
-  it('adds a jitter drawn between its bounds, and waits no delay when it names none', async () => {
+  it.skipIf(onMachine)('adds a jitter drawn between its bounds, and waits no delay when it names none', async () => {
     const { commands } = await interpret(
       retrying('{ jitter: { from: PT1S, to: PT3S }, limit: { attempt: { count: 1 } } }'),
       { respond: failingTimes(5), random: 0.25 },

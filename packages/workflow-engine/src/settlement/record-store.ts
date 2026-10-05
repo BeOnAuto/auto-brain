@@ -16,7 +16,6 @@ export interface RunDue {
   readonly executionId: string;
   readonly version: number;
   readonly nextDueAt: number | null;
-  readonly behind: boolean;
 }
 
 export interface RecordStore {

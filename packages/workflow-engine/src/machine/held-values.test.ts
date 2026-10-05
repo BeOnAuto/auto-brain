@@ -20,7 +20,7 @@ type Choose = (modulus: number) => number;
 
 const valueCount = 16;
 
-const valueKeys = new Set(['rawInput', 'input', 'data', 'items', 'output', 'arguments']);
+const valueKeys = new Set(['context', 'rawInput', 'input', 'data', 'items', 'output', 'arguments']);
 
 const utf8 = new TextEncoder();
 
@@ -34,7 +34,7 @@ function chooserOf(seed: number): Choose {
 
 function cursorOf(choose: Choose, depth: number): ListCursor {
   const running = depth > 0 && choose(3) > 0;
-  const idle = choose(2) === 0 ? null : { kind: 'yielding' as const, timer: 't' };
+  const idle = { kind: 'yielding' as const, timer: 't' };
   return {
     pointer: '/do',
     position: choose(4),
@@ -45,13 +45,16 @@ function cursorOf(choose: Choose, depth: number): ListCursor {
 }
 
 function branchOf(choose: Choose, depth: number): Branch {
-  const kind = choose(3);
+  const kind = choose(4);
+  if (kind === 3) {
+    return { state: 'yielding', timer: 't' };
+  }
   if (kind === 0) {
     return { state: 'running', task: frameOf(choose, Math.max(depth - 1, 0)) };
   }
   return kind === 1
     ? { state: 'finished', output: choose(valueCount), flow: 'continue' }
-    : { state: 'failed', error: { type: 'runtime', status: 500, instance: '/do/0' } };
+    : { state: 'failed', error: { type: 'runtime', status: 500, instance: '/do/0' }, order: 0 };
 }
 
 function bodyOf(choose: Choose, depth: number): FrameBody {
@@ -62,7 +65,7 @@ function bodyOf(choose: Choose, depth: number): FrameBody {
       items: choose(valueCount),
       index: 0,
       data: choose(valueCount),
-      list: choose(2) === 0 ? null : cursorOf(choose, depth),
+      list: cursorOf(choose, depth),
     }),
     () => ({ kind: 'fork', compete: false, branches: [branchOf(choose, depth), branchOf(choose, depth)] }),
     () => ({
@@ -85,6 +88,7 @@ function bodyOf(choose: Choose, depth: number): FrameBody {
       function: 'notify',
       arguments: choose(valueCount),
       label: 'notify',
+      deadline: 't',
     }),
     () => ({ kind: 'listen', consumed: [choose(valueCount), choose(valueCount)] }),
   ];
@@ -95,6 +99,8 @@ function frameOf(choose: Choose, depth: number): TaskFrame {
   return {
     reference: '/do/0',
     run: 1,
+    startedAt: 0,
+    context: choose(valueCount),
     rawInput: choose(valueCount),
     input: choose(valueCount),
     variables: { attempt: choose(valueCount) },

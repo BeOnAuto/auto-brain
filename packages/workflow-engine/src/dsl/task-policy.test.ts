@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { testFunctions, workflow } from '../testing/workflows.ts';
+import { testFunctions } from '../testing/driver-inputs.ts';
+import { workflow } from '../testing/workflows.ts';
 import { policyOf } from './policy.ts';
 
 const rejectionsOf = policyOf(testFunctions);
@@ -39,6 +40,10 @@ describe('the policy of the tasks of a document', () => {
     expect(twoFunctions(workflow('do:\n  - log: { call: log }')).map(({ detail }) => detail)).toEqual([
       'call: log names no function; the functions are notify, page',
     ]);
+  });
+
+  it('names a call through the description its caller gives, for the messages a call raises', () => {
+    expect(testFunctions.describe('notify', { to: 'ops' })).toBe('the function notify');
   });
 
   it('leaves the arguments of a call to the checks of its function', () => {

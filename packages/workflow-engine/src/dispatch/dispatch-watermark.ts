@@ -6,6 +6,7 @@ import type { RunOutput } from './run-output.ts';
 export interface DispatchWatermark {
   readonly read: (executionId: string) => Effect.Effect<number>;
   readonly advance: (executionId: string, through: number) => Effect.Effect<void>;
+  readonly behindRuns: (limit: number) => Effect.Effect<readonly string[]>;
 }
 
 export interface RunContext {
@@ -19,7 +20,7 @@ export interface PositionedOutput {
 }
 
 export class DispatchFailed extends Data.TaggedError('dispatch_failed')<{
-  readonly output: RunOutput['kind'];
+  readonly output: RunOutput['kind'] | 'note_due';
   readonly detail: string;
 }> {}
 

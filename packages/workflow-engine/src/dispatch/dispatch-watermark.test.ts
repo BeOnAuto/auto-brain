@@ -13,7 +13,7 @@ import { at, executionId, openCall } from '../testing/runs.ts';
 const arm: RunOutput = {
   kind: 'arm_timer',
   executionId,
-  timerId: `${executionId}/timers/1`,
+  timerId: '1',
   dueAt: at + 60_000,
   purpose: 'timeout',
 };

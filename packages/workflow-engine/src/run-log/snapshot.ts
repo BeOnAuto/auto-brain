@@ -1,6 +1,7 @@
 import { Schema } from 'effect';
 
 import { RunStateSchema, type RunState } from '../machine/run-state.ts';
+import { eventBytesOf, type RunEvent } from './run-event.ts';
 import { stateFormat, StateFormatSchema } from './state-format.ts';
 
 export const snapshotEveryBytes = 1_048_576;
@@ -40,6 +41,10 @@ export function snapshotOf(state: RunState, version: number): Snapshot {
     historyBytes: state.historyBytes,
     state: encodeState(state),
   };
+}
+
+export function sinceSnapshotAfter(since: SinceSnapshot, events: readonly RunEvent[]): SinceSnapshot {
+  return { ...since, bytes: events.reduce((sum, event) => sum + eventBytesOf(event), since.bytes) };
 }
 
 export function isSnapshotDue({ bytes, snapshotBytes }: SinceSnapshot): boolean {

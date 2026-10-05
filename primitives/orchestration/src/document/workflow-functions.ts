@@ -1,5 +1,5 @@
 import type { CallFunctions } from '@beonauto/workflow-engine/dsl/call-functions';
-import { field, isObject, type Json } from '@beonauto/workflow-engine/dsl/json';
+import { field, isObject, textField, type Json } from '@beonauto/workflow-engine/dsl/json';
 import { policyOf } from '@beonauto/workflow-engine/dsl/policy';
 import { forbidden, rejection, templateRejections, type Rejection } from '@beonauto/workflow-engine/dsl/policy-checks';
 import { pointerTo } from '@beonauto/workflow-engine/dsl/tasks';
@@ -25,8 +25,15 @@ function executeSpecRejections(arguments_: Json | undefined, pointer: string): r
   return unknown.concat(missing, workflow, templateRejections(arguments_, pointer));
 }
 
-const workflowFunctions: CallFunctions = {
+function specDescribed(name: string, arguments_: Json): string {
+  const primitive = isObject(arguments_) ? textField(arguments_, 'primitive') : undefined;
+  const spec = isObject(arguments_) ? textField(arguments_, 'name') : undefined;
+  return primitive === undefined || spec === undefined ? name : `the ${primitive} spec ${spec}`;
+}
+
+export const workflowFunctions: CallFunctions = {
   argumentChecks: { [executeSpecFunction]: executeSpecRejections },
+  describe: specDescribed,
   howAWorkflowReachesTheWorld: 'a workflow reaches the world only through the specs of its brain',
   howAWorkflowStarts: 'execute the spec to run it',
 };

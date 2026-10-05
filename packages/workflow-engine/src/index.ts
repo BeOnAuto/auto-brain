@@ -16,7 +16,10 @@ export {
   type StartCall,
 } from './dispatch/run-output.ts';
 export { changesTimers, nextDueAtOf, runDueOf } from './dispatch/run-due.ts';
-export { SplitDecision, runLoopOf, submissionOf, type RunDecision } from './engine/run-loop.ts';
+export { workflowMachine } from './decider/workflow-machine.ts';
+export { runCacheBounds, runCacheOf, type RunCache, type RunCacheBounds } from './cache/run-cache.ts';
+export { SplitDecision, runLoopOf, type RunDecision } from './engine/run-loop.ts';
+export { submissionOf } from './engine/submission.ts';
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
@@ -109,13 +112,8 @@ export {
   type SinceSnapshot,
   type Snapshot,
 } from './run-log/snapshot.ts';
-export {
-  StateFormatSchema,
-  stateFormat,
-  stateFormats,
-  type OlderFormat,
-  type StateFormats,
-} from './run-log/state-format.ts';
+export { stateFormats } from './run-log/known-formats.ts';
+export { StateFormatSchema, stateFormat, type OlderFormat, type StateFormats } from './run-log/state-format.ts';
 export {
   PatchFailed,
   PatchOperationSchema,
@@ -123,6 +121,7 @@ export {
   type PatchOperation,
   type StatePatch,
 } from './run-log/state-patch.ts';
+export type { MachineOptions } from './runner/run-descriptors.ts';
 export type { RunSerialiser } from './serialisation/run-serialiser.ts';
 export {
   isTroubling,
@@ -134,5 +133,5 @@ export {
   type TroublingReceipt,
   type UnsettledReport,
 } from './settlement/record-store.ts';
-export { TimerPurposeSchema, timerIdOf, type TimerPurpose } from './timers/timer-id.ts';
+export { TimerPurposeSchema, type TimerPurpose } from './timers/timer-id.ts';
 export type { ArmReceipt, TimerCancelReceipt, Timers } from './timers/timers.ts';

@@ -1,5 +1,7 @@
-import { measureOf, mostValueDepth, objectField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import type { Place } from '@beonauto/workflow-engine/dsl/evaluation';
+import { objectField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
 import type { Components } from '@beonauto/workflow-engine/dsl/policy-checks';
+import { raised } from '@beonauto/workflow-engine/dsl/raised-error';
 import {
   mostExpressionWork,
   mostStepsWithoutWaiting,
@@ -10,10 +12,9 @@ import {
 import { makeHolding, type Hold } from './holding.ts';
 import type { WorkflowHost } from './host.ts';
 import { makeInbox, type Inbox } from './inbox.ts';
-import { raised } from './raised-error.ts';
 import type { WorkflowRun } from './workflow-run.ts';
 
-export interface Meter {
+interface Meter {
   readonly allowance: () => number;
   readonly record: (work: number) => void;
   readonly shouldYield: () => boolean;
@@ -45,13 +46,15 @@ export const mostHistoryBytes = 8_388_608;
 
 export const mostHistoryEvents = 40_000;
 
-const mostValueWork = mostExpressionWork;
-
 export function dateTimeOf(milliseconds: number): JsonObject {
   return {
     iso8601: new Date(milliseconds).toISOString(),
     epoch: { seconds: Math.floor(milliseconds / 1000), milliseconds },
   };
+}
+
+export function placeIn(state: RunState, reference: string): Place {
+  return { reference, now: state.host.now(), meter: state.meter, mostDuration: state.run.mostDuration };
 }
 
 export function makeRunState(run: WorkflowRun, host: WorkflowHost): RunState {
@@ -110,22 +113,6 @@ function contextHeldBy(hold: Hold): Pick<RunState, 'context' | 'replaceContext'>
       releaseContext = releaseNext;
     },
   };
-}
-
-export function admitted(value: Json, reference: string): Json {
-  const measure = measureOf(value);
-  if (measure === undefined) {
-    throw raised('runtime', 500, `A value nests more than ${mostValueDepth} levels deep`, reference);
-  }
-  if (measure.work > mostValueWork) {
-    throw raised(
-      'runtime',
-      500,
-      `A value takes ${measure.work} units of work to visit, more than the ${mostValueWork} a workflow may hold`,
-      reference,
-    );
-  }
-  return value;
 }
 
 function makeMeter(host: WorkflowHost): Meter {

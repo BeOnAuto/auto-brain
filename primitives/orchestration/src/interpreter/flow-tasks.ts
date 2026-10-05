@@ -1,22 +1,21 @@
+import { evaluateExpression, holds } from '@beonauto/workflow-engine/dsl/evaluation';
 import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
 import {
-  entriesOf,
   field,
   isList,
-  isObject,
-  listField,
   objectField,
   textField,
   type Json,
   type JsonArray,
   type JsonObject,
 } from '@beonauto/workflow-engine/dsl/json';
+import { raised } from '@beonauto/workflow-engine/dsl/raised-error';
+import { chosenFlow } from '@beonauto/workflow-engine/dsl/task-outcomes';
 import { taskEntries } from '@beonauto/workflow-engine/dsl/tasks';
 
-import { evaluateExpression, holds, placeOf } from './evaluation.ts';
 import type { Release } from './holding.ts';
 import { bodyOf, type Body, type Invocation, type TaskOutcome } from './invocation.ts';
-import { raised } from './raised-error.ts';
+import { placeOf } from './place.ts';
 
 type Settlement =
   | { readonly index: number; readonly outcome: TaskOutcome }
@@ -42,16 +41,7 @@ export async function doTask(invocation: Invocation): Promise<Body> {
 
 export function switchTask(invocation: Invocation): Body {
   const { entry, input, variables } = invocation;
-  const cases = (listField(entry.task, 'switch') ?? []).flatMap((item) =>
-    isObject(item) ? entriesOf(item).flatMap(([, switchCase]) => (isObject(switchCase) ? [switchCase] : [])) : [],
-  );
-  const place = placeOf(invocation);
-  const matched = cases.find((switchCase) => {
-    const when = field(switchCase, 'when');
-    return when !== undefined && holds(when, input, variables, place);
-  });
-  const chosen = matched ?? cases.find((switchCase) => field(switchCase, 'when') === undefined);
-  const then = chosen === undefined ? undefined : textField(chosen, 'then');
+  const then = chosenFlow(entry.task, { data: input, variables, place: placeOf(invocation) });
   return then === undefined ? { output: input } : { output: input, flow: then };
 }
 

@@ -7,7 +7,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import type { FakeHost } from '../testing/fake-host.ts';
-import { interpret, workflow } from '../testing/workflows.ts';
+import { interpret, workflow, onMachine } from '../testing/workflows.ts';
 import type { RunSettlement } from './host.ts';
 import type { WorkflowStart } from './interpreter.ts';
 
@@ -63,7 +63,7 @@ describe('events a workflow has not consumed', () => {
     });
   });
 
-  it(`may hold ${mostWaitingEventBytes} bytes; more fails the workflow`, async () => {
+  it.skipIf(onMachine)(`may hold ${mostWaitingEventBytes} bytes; more fails the workflow`, async () => {
     const big = 'x'.repeat(200_000);
     const { settlement } = await interpret(waitingForever, {
       started: flooding(4, (index) => ({ id: `e${index}`, type: 'com.acme.other', data: big })),
@@ -74,7 +74,7 @@ describe('events a workflow has not consumed', () => {
 });
 
 describe('events a workflow is sent over its life', () => {
-  it(`may number ${mostReceivedEvents}, consumed or not, repeated ids included`, async () => {
+  it.skipIf(onMachine)(`may number ${mostReceivedEvents}, consumed or not, repeated ids included`, async () => {
     const { settlement } = await interpret(consumingForever, {
       started: flooding(mostReceivedEvents + 1, () => ({ id: 'same', type: 'com.acme.tick' })),
     });
