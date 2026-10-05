@@ -1,6 +1,5 @@
 import { Effect } from 'effect';
 
-import { workflowEngineOf } from '../engine/engine.ts';
 import type { Submission, WorkflowEngine } from '../engine/workflow-engine.ts';
 import type { EventReceived, RunInput } from '../machine/run-input.ts';
 import type { Responder } from '../memory/memory-executor.ts';
@@ -8,6 +7,7 @@ import { memoryPorts, type MemoryPorts } from '../memory/memory-ports.ts';
 import { virtualClock, type VirtualClock } from '../memory/virtual-clock.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
 import { startedOf, testMachine, type StartRequest } from './driver-inputs.ts';
+import { engineOfFrozenRuns } from './frozen-runs.ts';
 import { runWatchOf, type RunWatch } from './run-watch.ts';
 
 export interface DriverOptions {
@@ -40,7 +40,7 @@ export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
     },
     options.respond ?? succeedWithNull,
   );
-  const engine = workflowEngineOf(ports, options.machine ?? testMachine);
+  const engine = engineOfFrozenRuns(ports, options.machine ?? testMachine);
   const given: RunInput[] = [];
   function submit(input: RunInput): Submission {
     given.push(input);

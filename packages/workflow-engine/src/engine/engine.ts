@@ -1,11 +1,13 @@
 import { Effect } from 'effect';
 
+import { runCacheOf, type RunCache } from '../cache/run-cache.ts';
 import { workflowMachine } from '../decider/workflow-machine.ts';
 import { loadedRunOf } from '../run-log/run-fold.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
 import { dispatchRun } from './output-dispatch.ts';
-import { runLoopOf, submissionOf } from './run-loop.ts';
+import { runLoopOf } from './run-loop.ts';
 import { armedTimersOf, snapshotIfDue } from './run-upkeep.ts';
+import { submissionOf } from './submission.ts';
 import type { EnginePorts, Wake, WorkflowEngine } from './workflow-engine.ts';
 
 const mostBehindRunsInOneSweep = 1024;
@@ -18,8 +20,12 @@ function dueRunsOf(ports: EnginePorts, before: number): Effect.Effect<readonly s
   );
 }
 
-export function workflowEngineOf(ports: EnginePorts, options: MachineOptions): WorkflowEngine {
-  const loop = runLoopOf(ports.runStore, workflowMachine(options));
+export function workflowEngineOf(
+  ports: EnginePorts,
+  options: MachineOptions,
+  cache: RunCache = runCacheOf(),
+): WorkflowEngine {
+  const loop = runLoopOf(ports.runStore, workflowMachine(options), cache);
   const loaded = (executionId: string): Effect.Effect<ReturnType<typeof loadedRunOf>> =>
     Effect.map(ports.runStore.load(executionId), (stored) => loadedRunOf(stored));
   const wake = (executionId: string): Effect.Effect<Wake> =>
@@ -44,7 +50,7 @@ export function workflowEngineOf(ports: EnginePorts, options: MachineOptions): W
         Effect.gen(function* () {
           const decision = yield* loop(input.executionId, input);
           if (decision.events.length > 0) {
-            yield* snapshotIfDue(ports, decision);
+            yield* snapshotIfDue(ports, cache, input.executionId, decision);
             yield* dispatchRun(ports, {
               executionId: input.executionId,
               state: decision.state,

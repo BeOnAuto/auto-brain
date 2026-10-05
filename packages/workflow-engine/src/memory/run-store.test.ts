@@ -10,3 +10,13 @@ describe('the memory run store meets the contract every run store meets', () => 
     expect(await Effect.runPromise(probe.run({ runStore: memoryRunStore(), executionId }))).toEqual(probe.expected);
   });
 });
+
+describe('the memory run store, for the tests that read it', () => {
+  it('counts the loads and the snapshots saved of each run, and none of a run it never saw', async () => {
+    const store = memoryRunStore();
+    await Effect.runPromise(store.load(executionId));
+
+    expect([store.loads(executionId), store.loads('unseen')]).toEqual([1, 0]);
+    expect(store.snapshotsSaved('unseen')).toEqual([]);
+  });
+});

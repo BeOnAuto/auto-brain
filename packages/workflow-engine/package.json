@@ -13,7 +13,8 @@
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",
     "typecheck": "tsc",
-    "test": "vitest run --coverage"
+    "test": "vitest run --coverage",
+    "measure": "node measure.ts"
   },
   "dependencies": {
     "@beonauto/ledger": "workspace:*",
