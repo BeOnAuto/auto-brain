@@ -8,7 +8,7 @@ Self-hosting gives your team control over where the runtime and its recorded dat
 
 [Xolvio Professional Services](https://www.xolv.io/contact-us) can help you assess the deployment, connect your systems and establish an operating plan. Bring your requirements for data location, access, model providers and availability.
 
-Your team will need to own infrastructure and updates, credentials and access controls, persistent storage and tested backups, monitoring, and recovery. Decide who can read recorded inputs and results, and which information can be sent to model providers.
+Your team will need to own infrastructure and updates, credentials and access controls, persistent storage and tested backups, monitoring, and recovery. Workflows also need a workflow service that the runtime connects to; without one, the runtime does not offer workflows. Decide who can read recorded inputs and results, and which information can be sent to model providers.
 
 Review [Function availability](concepts/functions.md#availability) and agree the support requirements of the version you plan to deploy before committing to a production workload.
 

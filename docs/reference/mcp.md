@@ -1,6 +1,6 @@
 # MCP reference
 
-The Auto runtime exposes brain and reason-function operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For connection setup, see [Connect your agent](https://on.auto/docs/get-started/cloud); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
+The Auto runtime exposes brain, reason-function and workflow operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For connection setup, see [Connect your agent](https://on.auto/docs/get-started/cloud); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
 
 ## Connection direction
 
@@ -24,22 +24,24 @@ Authorization uses the same organization, brain and operation permissions as the
 | `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                               |
 | `/orgs/{org}/brains/{brain}/mcp` | Function operations for one brain, without a `brain` argument                                        |
 
-On `/mcp`, the API key determines the org; tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions.
+Workflow operations are function operations. `send_execution_event` is listed only when the runtime offers workflows, and then the definition tools accept `orchestration` as well as `inference`. On `/mcp`, the API key determines the org; tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions.
 
 ## Tools
 
-Product terminology uses reason functions and runs. Tool names retain the API's `spec` and `execution` identifiers.
+Product terminology uses reason functions, workflows and runs. Tool names retain the API's `spec` and `execution` identifiers.
 
-| Work                    | Tools                                                                                                |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| Manage brains           | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                           |
-| List available models   | `list_models`, with an optional `provider` filter                                                    |
-| Manage reason functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"` |
-| Run and inspect         | `execute_spec`, `get_execution`                                                                      |
+| Work                      | Tools                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Manage brains             | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
+| List available models     | `list_models`, with an optional `provider` filter                                                        |
+| Manage reason functions   | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
+| Manage workflows          | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
+| Run and inspect           | `execute_spec`, `get_execution`                                                                          |
+| Answer a waiting workflow | `send_execution_event`                                                                                   |
 
 Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function tools are available at `/mcp` and the brain endpoint.
 
-Definition operations identify the function by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. See [HTTP operations](http.md) for field limits and retry behavior.
+Definition operations identify the function by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. See [HTTP operations](http.md) for field limits and retry behavior.
 
 Retirement is permanent. A retired name cannot be reused, and retired definitions cannot be edited or run.
 
@@ -66,6 +68,17 @@ A successful tool result contains the operation output in `structuredContent`:
 Consumers should read `structuredContent`. The first text block is not JSON.
 
 A run result includes its execution id, definition version, status and output when successful. Reading it through `get_execution` also returns the detailed record. A returned review recommending changes can still belong to a succeeded run: the operation completed and produced that recommendation.
+
+For a workflow, the summaries read like these, recorded from the [first-workflow tutorial](../tutorials/first-workflow.md):
+
+```text
+execute_spec: The workflow “review-brief-revision” has started and is still running. It carries on by itself, and how it ends can be looked up later.
+get_execution: The workflow “review-brief-revision” is still running; how it ends can be looked up again later.
+send_execution_event: Delivered the event “com.example.brief.revised” to the running workflow. The workflow uses it as soon as it is waiting for it.
+get_execution: The run of the workflow “review-brief-revision” finished. Its result is too long to repeat here; the whole of it is in the details below.
+```
+
+A workflow run is `started` when `execute_spec` returns. Read it again with `get_execution` until its status is `succeeded`, `rejected` or `failed`; the summary repeats a short result in words and points to `structuredContent` for a long one.
 
 ## Errors
 

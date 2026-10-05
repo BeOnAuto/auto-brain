@@ -17,7 +17,7 @@ Coming soon: tool access inside reason functions through a shared catalog and MC
 
 ## Documentation and help
 
-[Auto documentation](https://on.auto/docs/) covers the platform and this runtime together. Start with [Brains and methods](https://on.auto/docs/concepts/brains); consult [Functions and availability](https://on.auto/docs/concepts/functions) for current capabilities, or the [MCP reference](https://on.auto/docs/reference/mcp) when integrating an agent.
+[Auto documentation](https://on.auto/docs/) covers the platform and this runtime together. Start with [Brains and methods](https://on.auto/docs/concepts/brains) and [Workflows and runs](https://on.auto/docs/concepts/workflows); consult [Functions and availability](https://on.auto/docs/concepts/functions) for current capabilities, or the [MCP reference](https://on.auto/docs/reference/mcp) when integrating an agent.
 
 The source-available runtime is in early development and is not ready for production use; [availability](https://on.auto/docs/concepts/functions#availability) describes the current scope.
 
