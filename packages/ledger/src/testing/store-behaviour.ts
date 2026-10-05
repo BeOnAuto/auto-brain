@@ -1,0 +1,126 @@
+import { Effect, Result } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { eventAppenderOf } from '../event-appender.ts';
+import { VersionConflict } from '../version-conflict.ts';
+import { journal } from './journal.ts';
+import { aLedger, aStore, tallies, type LedgerEntry } from './ledger-entry.ts';
+import { openLedgerWith, outcomeOf } from './open-ledger.ts';
+import { tally, tallyInterruptedBy } from './tally.ts';
+
+const run = 'run/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+function numbered(from: number, count: number) {
+  return Array.from({ length: count }, (_, index) => ({ type: 'counted', data: { n: from + index } }));
+}
+
+const three = [{ type: 'counted' as const, by: 3 }];
+
+function readingAfterAVersion(entry: LedgerEntry): void {
+  describe('reading a stream after a version', () => {
+    it('gives the events after that version, and the version of the whole stream', async () => {
+      const store = await aStore(entry);
+      await store.append(run, numbered(1, 3), 0);
+      await store.append(run, numbered(4, 2), 3);
+
+      expect(await store.read(run, 3)).toEqual({ version: 5, events: [{ n: 4 }, { n: 5 }] });
+      expect(await store.read(run)).toEqual({ version: 5, events: [1, 2, 3, 4, 5].map((n) => ({ n })) });
+    });
+
+    it('gives no events and the version it was asked after when nothing follows it', async () => {
+      const store = await aStore(entry);
+      await store.append(run, numbered(1, 3), 0);
+
+      expect(await store.read(run, 3)).toEqual({ version: 3, events: [] });
+      expect(await store.read('run/nobody-wrote', 0)).toEqual({ version: 0, events: [] });
+    });
+  });
+}
+
+function appendingWithAnExpectedVersion(entry: LedgerEntry): void {
+  describe('appending with an expected version', () => {
+    it.each([0, 1, 3])(
+      'meets a version conflict and appends nothing when it expects %i of a stream at version 2',
+      async (expected) => {
+        const store = await aStore(entry);
+        await store.append(run, numbered(1, 2), 0);
+
+        expect(await outcomeOf(eventAppenderOf(store)(run, tally.eventSchema, three, expected))).toEqual(
+          Result.fail(new VersionConflict()),
+        );
+        expect(await store.read(run)).toEqual({ version: 2, events: [{ n: 1 }, { n: 2 }] });
+      },
+    );
+
+    it('meets a version conflict when it expects a version of a stream nobody wrote', async () => {
+      const store = await aStore(entry);
+
+      expect(await outcomeOf(eventAppenderOf(store)(run, tally.eventSchema, three, 1))).toEqual(
+        Result.fail(new VersionConflict()),
+      );
+      expect(await store.read(run)).toEqual({ version: 0, events: [] });
+    });
+
+    it('keeps the same event appended twice as two events', async () => {
+      const store = await aStore(entry);
+      await store.append(run, numbered(1, 1), 0);
+      await store.append(run, numbered(1, 1), 1);
+
+      expect(await store.read(run)).toEqual({ version: 2, events: [{ n: 1 }, { n: 1 }] });
+    });
+  });
+}
+
+function closedAndOpenedAgain(entry: LedgerEntry): void {
+  describe('a ledger closed and opened again', () => {
+    it('keeps what was written and goes on from there', async () => {
+      const database = await entry.aDatabase();
+      const first = await openLedgerWith(entry.ledgerOn(database));
+      await Effect.runPromise(first.ledger.execute(tallies, tally, [2, 3]));
+      await Effect.runPromise(
+        first.ledger.execute('brain/acme/sales/journal', journal, [{ type: 'entry_struck', reason: 'Duplicate' }]),
+      );
+      await first.dispose();
+
+      const second = await aLedger(entry, database);
+      const reloaded = await Effect.runPromise(
+        Effect.all([second.load(tallies, tally), second.load('brain/acme/sales/journal', journal)]),
+      );
+      const continued = await Effect.runPromise(second.execute(tallies, tally, [4]));
+
+      expect(reloaded).toEqual([
+        { state: 5, version: 2 },
+        { state: [{ type: 'entry_struck', reason: 'Duplicate' }], version: 1 },
+      ]);
+      expect(continued).toEqual({ state: 9, version: 3 });
+    });
+  });
+}
+
+function whoseDatabaseIsGone(entry: LedgerEntry): void {
+  describe('a ledger whose database is gone', () => {
+    it('answers every call after disposal with a defect', async () => {
+      const { ledger, dispose } = await openLedgerWith(entry.ledgerOn(await entry.aDatabase()));
+      await dispose();
+
+      await expect(outcomeOf(ledger.load(tallies, tally))).rejects.toThrow(entry.afterClosing);
+      await expect(outcomeOf(ledger.execute(tallies, tally, [1]))).rejects.toThrow(entry.afterClosing);
+    });
+
+    it('turns a write that fails for a reason other than a version conflict into a defect', async () => {
+      const { ledger, dispose } = await openLedgerWith(entry.ledgerOn(await entry.aDatabase()));
+      const closeTheDatabaseFirst = Effect.promise(dispose);
+
+      await expect(
+        outcomeOf(ledger.execute(tallies, tallyInterruptedBy(closeTheDatabaseFirst, 1), [1])),
+      ).rejects.toThrow(entry.closedWhileWriting);
+    });
+  });
+}
+
+export function storeBehaviour(entry: LedgerEntry): void {
+  readingAfterAVersion(entry);
+  appendingWithAnExpectedVersion(entry);
+  closedAndOpenedAgain(entry);
+  whoseDatabaseIsGone(entry);
+}

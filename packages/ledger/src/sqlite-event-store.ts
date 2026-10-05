@@ -7,11 +7,14 @@ import { ledgerLayerOver } from './ledger-layer.ts';
 
 type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
 
+const eventsWithinAHundredParameters = 8;
+
 export type SQLiteStoreOptions<Driver extends AnyDriver> = Parameters<typeof getSQLiteEventStore<Driver>>[0];
 
 export function sqliteEventStore<Driver extends AnyDriver>(optionsOf: () => SQLiteStoreOptions<Driver>): EventStore {
   const store = getSQLiteEventStore({ ...optionsOf(), schema: { autoMigration: 'None' } });
   return {
+    mostEventsInOneAppend: eventsWithinAHundredParameters,
     read: async (stream, after = 0) => {
       const { currentStreamVersion, events } = await store.readStream(stream, { from: BigInt(after + 1) });
       return {

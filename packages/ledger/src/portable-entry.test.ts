@@ -37,7 +37,17 @@ describe('the ledger entry points', () => {
 
     expect(packages.filter((name) => name.startsWith('node:'))).toEqual([]);
     expect(packages.filter((name) => name.includes('sqlite3'))).toEqual([]);
+    expect(packages).not.toContain('pg');
+    expect(packages.filter((name) => name.includes('postgresql'))).toEqual([]);
     expect(packages).toContain('@event-driven-io/emmett-sqlite');
+  });
+
+  it('keep the PostgreSQL event store and its driver behind the postgresql entry', () => {
+    const packages = [...packagesReachableFrom('postgresql/postgresql-ledger.ts')];
+
+    expect(packages).toContain('@event-driven-io/emmett-postgresql');
+    expect(packages).toContain('@event-driven-io/emmett-postgresql/pg');
+    expect(packages.filter((name) => name.includes('sqlite'))).toEqual([]);
   });
 
   it('keep the sqlite3 driver and the file system behind the sqlite3 entry', () => {

@@ -11,6 +11,7 @@ export interface RecordedStream {
 }
 
 export interface EventStore {
+  readonly mostEventsInOneAppend: number;
   readonly read: (stream: string, after?: number) => Promise<RecordedStream>;
   readonly append: (stream: string, events: readonly EncodedEvent[], expectedVersion: number) => Promise<void>;
   readonly migrate: () => Promise<void>;
