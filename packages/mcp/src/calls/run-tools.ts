@@ -1,12 +1,12 @@
 import type { Schema } from 'effect';
 
+import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
 import { callsEnded, noCalls } from '../bounds/call-bounds.ts';
 import { cutAtCodePoint } from '../bounds/text-bytes.ts';
 import { modelFacingNames } from '../names/model-facing-names.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { toolsInWords } from '../names/tool-words.ts';
 import type { ToolReply } from './call-replies.ts';
-import type { CallsEndedBecause } from './mcp-server-failed.ts';
 import type { CallSignals, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
 import { caller } from './tool-caller.ts';
 

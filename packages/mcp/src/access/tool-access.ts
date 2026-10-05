@@ -2,13 +2,13 @@ import type { Effect } from 'effect';
 
 import { defaultTiming, type Timing } from '../bounds/call-bounds.ts';
 import { secretsOfServers } from '../bounds/secrets.ts';
+import type { RunTools } from '../calls/run-tools.ts';
 import { routeClientConsole } from '../connections/console-routing.ts';
 import { serverLink, type LinkOptions } from '../connections/server-links.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
 import type { RunContext, ServerMessage, ToolsNotOpened } from './run-context.ts';
 import { openedRun } from './run-opening.ts';
-import type { RunTools } from './run-tools.ts';
 
 export interface ToolAccessOptions {
   readonly reportServerMessage: (report: ServerMessage) => void;

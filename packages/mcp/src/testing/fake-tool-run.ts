@@ -1,9 +1,9 @@
 import { Effect, Option } from 'effect';
 
-import type { ToolReply } from '../access/call-replies.ts';
 import type { ServerMessage } from '../access/run-context.ts';
-import type { RunTools } from '../access/run-tools.ts';
 import type { Timing } from '../bounds/call-bounds.ts';
+import type { ToolReply } from '../calls/call-replies.ts';
+import type { RunTools } from '../calls/run-tools.ts';
 import { serveFakeMcp, type FakeMcpServer } from './fake-mcp-server.ts';
 import { reportingAccess } from './reporting-access.ts';
 import {

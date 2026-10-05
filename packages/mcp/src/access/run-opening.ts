@@ -2,8 +2,8 @@ import { Effect } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
+import { runTools, type RunTools } from '../calls/run-tools.ts';
 import type { RunContext, ServerMessage, ToolsNotOpened } from './run-context.ts';
-import { runTools, type RunTools } from './run-tools.ts';
 import { listedOn, released } from './server-listing.ts';
 import { namedLinks, notOffered, offeredOn, unlistedOn, type Naming } from './tool-naming.ts';
 

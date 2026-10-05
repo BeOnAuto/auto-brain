@@ -2,10 +2,10 @@ import { Result } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
+import { serverSlot } from '../calls/server-slot.ts';
 import { failureOf, type FailureKind } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import { McpServerFailed, type ServerFailedBecause } from './mcp-server-failed.ts';
-import { serverSlot } from './server-slot.ts';
 import type { Listed } from './tool-naming.ts';
 
 export interface Listing {
