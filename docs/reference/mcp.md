@@ -1,16 +1,18 @@
 # MCP reference
 
-The Auto runtime exposes brain and reason-function operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For connection setup, see [Connect your agent](https://on.auto/docs/get-started/cloud); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
+The Auto runtime exposes brain and reason-function operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For Claude Code, Claude Desktop and Codex connection setup, see the [local quick start](../get-started/local.md); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
 
 ## Connection direction
 
-This is an inbound interface: an external assistant connects to Auto Cloud or a self-hosted runtime and calls its operations. It does not configure tools inside a reason function.
+This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reason function. Auto Cloud is coming soon; [request an invite](https://on.auto/request-invite) for hosted access.
 
 Internal tool access through a shared catalog, an outbound MCP gateway or direct tool lists is coming soon, together with bounded tool-call loops. None of those capabilities is enabled by adding an endpoint to an external assistant. See [Tool access inside a reason function](../concepts/functions.md#tool-access-inside-a-reason-function).
 
 ## Transport and authentication
 
-Endpoints use streamable HTTP without sessions. Clients supply the endpoint and authentication details issued for their workspace. Credentials belong in the connection configuration, outside prompts and function documents.
+Endpoints use streamable HTTP without sessions. The local quick start uses `http://localhost:8080/mcp` without an authentication header. Local mode trusts requests on your computer; do not expose it through a tunnel or public proxy.
+
+An authenticated deployment supplies its own endpoint and API key. Credentials belong in the connection configuration, outside prompts and function documents.
 
 The runtime supports protocol revision `2026-07-28` and the compatible revisions `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`. An MCP client handles protocol negotiation.
 
@@ -24,7 +26,7 @@ Authorization uses the same organization, brain and operation permissions as the
 | `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                               |
 | `/orgs/{org}/brains/{brain}/mcp` | Function operations for one brain, without a `brain` argument                                        |
 
-On `/mcp`, the API key determines the org; tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions.
+On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
 
 ## Tools
 
