@@ -102,7 +102,7 @@ The data of a record is decoded as the store's `read` decodes it: on SQLite the 
 
 ### Measurement
 
-`measure.ts` at the root of this package records these numbers again:
+`measure.ts` at the root of this package records these numbers again, writing the data of `measure/dataset.ts`:
 
 ```bash
 LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/ledger measure

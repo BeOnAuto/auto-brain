@@ -4,7 +4,7 @@ import type { Ledger } from '@beonauto/operations';
 import { Effect, type Layer } from 'effect';
 import { Client } from 'pg';
 
-import { executions, longRun, tick, timeOf } from './measure-data.ts';
+import { executions, longRun, tick, timeOf } from './measure/dataset.ts';
 import { postgresqlLedgerLayer } from './src/postgresql/postgresql-ledger.ts';
 import { cursorOf } from './src/recorded/cursor.ts';
 import { ledgerLayer } from './src/sqlite3.ts';
