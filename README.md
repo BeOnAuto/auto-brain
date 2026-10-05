@@ -8,7 +8,7 @@ Save the way your team reviews a campaign brief as a reason function. An agent s
 
 ## Quick start
 
-1. Add your Auto Cloud workspace's MCP URL and authentication details to your agent. Need access? [Contact Auto](https://on.auto/contact-us). See [connection instructions](https://on.auto/docs/get-started/cloud) or [open the Studio](https://studio.on.auto/).
+1. Add your Auto Cloud workspace's MCP URL and authentication details to your agent. Need access? [Contact Auto](https://on.auto/contact-us). See [connection instructions](https://on.auto/docs/get-started/cloud) or [request a Studio invite](https://on.auto/request-invite).
 2. Paste this into your connected agent:
 
 ```text

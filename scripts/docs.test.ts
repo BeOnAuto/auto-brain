@@ -208,7 +208,7 @@ await test('the README starts with an actionable Cloud quick start and an option
   assert.ok(readme.includes('http://localhost:8080/mcp'));
   assert.ok(readme.includes('curl http://localhost:8080/health'));
   assert.ok(readme.includes('do not expose it through a tunnel or public proxy'));
-  assert.ok(markdownDestinations(readme).some((href) => href === 'https://studio.on.auto/'));
+  assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/request-invite'));
 });
 
 await test('model discovery is documented without treating wildcard entries as runnable models', () => {
