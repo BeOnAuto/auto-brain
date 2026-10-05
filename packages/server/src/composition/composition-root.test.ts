@@ -1,4 +1,5 @@
 import { createBrain } from '@beonauto/brains';
+import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import { BrainRegistry, allPermissions, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
 import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -15,7 +16,9 @@ const alphaExists = Effect.gen(function* () {
 
 describe('the services the brain operations run on', () => {
   it('are the only services at the top level of the runtime, beside Effect’s own', async () => {
-    const runtime = ManagedRuntime.make(applicationLayer(':memory:').pipe(Layer.provideMerge(logsToStderr('json'))));
+    const runtime = ManagedRuntime.make(
+      applicationLayer(ledgerLayer({ fileName: ':memory:' })).pipe(Layer.provideMerge(logsToStderr('json'))),
+    );
 
     const keys = [...(await runtime.context()).mapUnsafe.keys()];
     await runtime.dispose();
@@ -28,7 +31,7 @@ describe('the services the brain operations run on', () => {
   });
 
   it('share one ledger, so the brain registry finds a brain the operations created', async () => {
-    const runtime = ManagedRuntime.make(applicationLayer(':memory:'));
+    const runtime = ManagedRuntime.make(applicationLayer(ledgerLayer({ fileName: ':memory:' })));
     const created = makeDispatcher([]).dispatchToOrg(createBrain.registration, {
       caller: acmeAdmin,
       org: 'acme',

@@ -3,6 +3,8 @@ import type { OperatorHintReport, ProviderMessageReport, ProviderStatus } from '
 import type { Incident } from '@beonauto/operations';
 import { Cause, Effect, Logger, type Layer } from 'effect';
 
+import type { LedgerSettings } from '../settings/ledger-settings.ts';
+
 export type LogFormat = 'json' | 'pretty';
 
 interface LogEntry {
@@ -94,6 +96,14 @@ export function logConfigFile(report?: ConfigFileReport): Effect.Effect<void> {
     ],
     { discard: true },
   );
+}
+
+export function logLedger(ledger: LedgerSettings): Effect.Effect<void> {
+  return ledger.store === 'postgresql'
+    ? Effect.logInfo(`The ledger is kept in PostgreSQL, in the database ${ledger.database} on ${ledger.host}`).pipe(
+        Effect.annotateLogs({ database: ledger.database, database_host: ledger.host }),
+      )
+    : Effect.void;
 }
 
 const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');

@@ -58,6 +58,14 @@ describe('the settings files pnpm dev reads', { timeout: developmentTestTimeoutM
     expect(allowedOrigins).toEqual(['http://localhost:5173']);
     expect(configFile?.fromFile).toEqual(['MODEL_GATEWAYS', 'MODEL_ALIASES', 'ALLOWED_ORIGINS']);
   });
+
+  it('documents the ledger in PostgreSQL in .env.example in a form that reads as written over dev.env', () => {
+    const environment = parseEnv(uncommented(readFileSync(example, 'utf8')));
+
+    const { ledger } = readSettings({ LEDGER_FILE: '.data/ledger.db', ...environment });
+
+    expect(ledger).toMatchObject({ store: 'postgresql', host: '127.0.0.1:5432', database: 'postgres' });
+  });
 });
 
 describe('the configuration file pnpm dev passes', { timeout: developmentTestTimeoutMs }, () => {
