@@ -18,6 +18,7 @@ const onSQLite: LedgerEntry = {
   },
   ledgerOn: (fileName) => ledgerLayer({ fileName }),
   storeOn: (fileName) => sqliteEventStore(() => ({ driver: sqlite3EventStoreDriver, fileName })),
+  untilReadable: () => Promise.resolve(),
 };
 
 describe('The ledger on SQLite', () => {

@@ -8,7 +8,6 @@ import {
   type ModelSettings,
 } from '@beonauto/inference';
 import { IncidentReporter, type DispatcherServices, type Ledger } from '@beonauto/operations';
-import { makeSpecOperations, type Primitive } from '@beonauto/specs';
 import { Effect, Layer } from 'effect';
 
 import { defaultServerOptions, servedBy, type ServerOptions } from '../lifecycle/lifecycle.ts';
@@ -21,6 +20,7 @@ import {
   logsToStderr,
   logWorkflowsNotOffered,
 } from '../logging/logging.ts';
+import { brainOperationsServing } from './brain-operations.ts';
 import { ledgerLayerOf } from './ledger-store.ts';
 import { routesServing } from './served-routes.ts';
 
@@ -33,7 +33,7 @@ export function applicationLayer(ledger: Layer.Layer<Ledger>): Layer.Layer<Dispa
 }
 
 interface ServedInference {
-  readonly primitive: Primitive;
+  readonly primitive: ReturnType<typeof makeInference>;
   readonly listModels: ReturnType<typeof defineListModels>;
 }
 
@@ -58,7 +58,7 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
       const orgOperations = [...brainOperations, listModels];
       if (workflows === undefined) {
         await runtime.run(logWorkflowsNotOffered);
-        return servedBy(routesServing([...orgOperations, ...makeSpecOperations(primitives)])(runtime));
+        return servedBy(routesServing([...orgOperations, ...brainOperationsServing(primitives)])(runtime));
       }
       const { serveWorkflows } = await import('../workflows/workflows.ts');
       return serveWorkflows(runtime, { settings: workflows, primitives, orgOperations, logs: logsToStderr(logFormat) });

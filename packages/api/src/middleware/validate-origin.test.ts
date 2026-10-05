@@ -17,6 +17,8 @@ describe('the Origin check', () => {
 
   it.each([
     'https://evil.example',
+    'http://console.on.auto',
+    'https://console.on.auto.evil.example',
     'http://app.example',
     'https://app.example:8443',
     'https://app.example.evil',
@@ -45,5 +47,13 @@ describe('the Origin check', () => {
     expect(await call(handler, '/health', { headers: { origin: 'https://evil.example' } })).toMatchObject({
       status: 200,
     });
+  });
+});
+
+describe('the Origin check, for the console', () => {
+  it('lets the console through without being listed', async () => {
+    expect(
+      await call(createTestHandler().handler, '/nowhere', { headers: { origin: 'https://console.on.auto' } }),
+    ).toMatchObject({ status: 404 });
   });
 });

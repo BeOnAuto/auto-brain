@@ -9,10 +9,10 @@ export const ledgerBrainRegistry: Layer.Layer<BrainRegistry, never, Ledger> = La
   Effect.gen(function* () {
     const ledger = yield* Ledger;
     return BrainRegistry.of({
-      exists: ({ org, brain }) =>
+      status: ({ org, brain }) =>
         ledger
           .load(brainsStreamOfOrg(org), registryDecider)
-          .pipe(Effect.map(({ state }) => state.get(brain)?.status === 'active')),
+          .pipe(Effect.map(({ state }) => state.get(brain)?.status ?? 'unknown')),
     });
   }),
 );

@@ -35,11 +35,14 @@ Product terminology uses reason functions and runs. Tool names retain the API's 
 | Manage brains           | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                           |
 | List available models   | `list_models`, with an optional `provider` filter                                                    |
 | Manage reason functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"` |
-| Run and inspect         | `execute_spec`, `get_execution`                                                                      |
+| Run and inspect         | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                          |
+| Follow a brain          | `list_brain_events`                                                                                  |
 
 Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function tools are available at `/mcp` and the brain endpoint.
 
 Definition operations identify the function by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. See [HTTP operations](http.md) for field limits and retry behavior.
+
+`list_executions` lists a brain's runs newest first, with optional `primitive`, `name` and `status` filters. `get_execution_history` reads what was recorded about one run, and `list_brain_events` follows everything that happened in a brain, with optional `type` and `since` filters; both take `order`. Their events carry `id`, `at`, `type`, a plain-language `summary` and `data` of at most 4 KiB. All three page with `limit` and `cursor` and answer `has_more` and `next_cursor`; a page may be short or empty while `has_more` is `true`. They work on a retired brain. See [Run history and brain events](http.md#run-history-and-brain-events) for the fields and limits.
 
 Retirement is permanent. A retired name cannot be reused, and retired definitions cannot be edited or run.
 

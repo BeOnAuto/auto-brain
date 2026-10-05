@@ -6,7 +6,9 @@ import { probe } from '../testing/probe.ts';
 
 const operations = makeSpecOperations([echo, probe().primitive]).map(({ registration }) => registration);
 
-const takingAPrimitive = operations.filter(({ name }) => name !== 'get_execution');
+const readingExecutions = new Set(['get_execution', 'list_executions', 'get_execution_history']);
+
+const takingAPrimitive = operations.filter(({ name }) => !readingExecutions.has(name));
 
 describe('the description of every operation that takes a primitive', () => {
   it('lists the primitives by name and title, with the media type of their documents and their own description', () => {

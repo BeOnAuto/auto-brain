@@ -3,9 +3,10 @@ import { Effect, Predicate } from 'effect';
 import { canAccessBrain } from '../caller/brain-access.ts';
 import type { CallerIdentity } from '../caller/caller.ts';
 import { isBrainId, isOrgId } from '../caller/identifiers.ts';
+import type { OperationKind } from '../caller/operation-scope.ts';
 import { permissionFor } from '../caller/permission.ts';
 import type { Registration } from '../definition/registration.ts';
-import { BrainRegistry } from '../ledger/brain-registry.ts';
+import { BrainRegistry, type BrainStatus } from '../ledger/brain-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import type { BrainRequest, OrgRequest } from './request.ts';
 
@@ -60,8 +61,20 @@ export function confirmOrgExists({ org }: OrgRequest): Effect.Effect<void, Rejec
   return failWith(rejectionOfOrgId(org));
 }
 
-export const confirmBrainExists = Effect.fnUntraced(function* ({ org, brain }: BrainRequest) {
+function rejectionOfBrainStatus(status: BrainStatus, kind: OperationKind, brain: string): Rejected | undefined {
+  if (status === 'unknown') {
+    return rejected('not_found', `There is no brain ${brain} in this org`);
+  }
+  return status === 'retired' && kind === 'command'
+    ? rejected('conflict', `The brain ${brain} is retired and can no longer change`, undefined, 'retired')
+    : undefined;
+}
+
+export const confirmBrainTakesCall = Effect.fnUntraced(function* (
+  { kind }: Registration<'brain'>,
+  { org, brain }: BrainRequest,
+) {
   yield* failWith(rejectionOfOrgId(org) ?? rejectionOfBrainId(brain));
-  const exists = yield* (yield* BrainRegistry).exists({ org, brain });
-  return yield* failWith(exists ? undefined : rejected('not_found', `There is no brain ${brain} in this org`));
+  const status = yield* (yield* BrainRegistry).status({ org, brain });
+  return yield* failWith(rejectionOfBrainStatus(status, kind, brain));
 });

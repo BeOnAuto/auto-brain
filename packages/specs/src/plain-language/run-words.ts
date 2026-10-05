@@ -25,7 +25,7 @@ function describedOutput(primitive: Primitive | undefined, { output }: Described
   return primitive === undefined || output === undefined ? outputBeyondWords : primitive.describeOutput(output);
 }
 
-function explainedRejectionOf(rejection: DescribedExecution['rejection']): ExplainedRejection {
+export function explainedRejectionOf(rejection: DescribedExecution['rejection']): ExplainedRejection {
   if (rejection === undefined || rejection.reason === 'conflict') {
     return { reason: 'conflict', kind: 'unworkable' };
   }

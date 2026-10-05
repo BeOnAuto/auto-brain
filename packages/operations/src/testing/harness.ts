@@ -22,6 +22,7 @@ export interface HarnessOptions {
   readonly steps?: readonly PipelineStep[];
   readonly reporter?: Layer.Layer<IncidentReporter>;
   readonly brains?: readonly BrainAddress[];
+  readonly retiredBrains?: readonly BrainAddress[];
 }
 
 export interface Harness {
@@ -41,10 +42,19 @@ const knownBrains: readonly BrainAddress[] = [
   { org: 'globex', brain: 'gamma' },
 ];
 
-export function harness({ steps = [], reporter, brains = knownBrains }: HarnessOptions = {}): Harness {
+export function harness({
+  steps = [],
+  reporter,
+  brains = knownBrains,
+  retiredBrains = [],
+}: HarnessOptions = {}): Harness {
   const ledger = memoryLedger();
   const recording = recordingReporter();
-  const services = Layer.mergeAll(ledger.layer, memoryBrainRegistry(brains), reporter ?? recording.layer);
+  const services = Layer.mergeAll(
+    ledger.layer,
+    memoryBrainRegistry(brains, retiredBrains),
+    reporter ?? recording.layer,
+  );
   const run = <A>(calls: Effect.Effect<A, never, DispatcherServices>) =>
     Effect.runPromise(calls.pipe(Effect.provide(services)));
   return {

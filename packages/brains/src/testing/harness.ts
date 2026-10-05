@@ -1,6 +1,7 @@
 import {
   makeDispatcher,
   type BrainRegistry,
+  type BrainRequest,
   type CallerIdentity,
   type DispatcherServices,
   type Ledger,
@@ -18,6 +19,10 @@ interface OrgOperation {
   readonly registration: Registration<'org'>;
 }
 
+interface BrainOperation {
+  readonly registration: Registration<'brain'>;
+}
+
 export interface Harness {
   readonly ledger: MemoryLedger;
   readonly dispatch: (
@@ -26,6 +31,7 @@ export interface Harness {
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
   readonly run: <A>(calls: Effect.Effect<A, never, DispatcherServices>, at?: string) => Promise<A>;
   readonly call: (operation: OrgOperation, request: OrgRequest, at?: string) => Promise<Outcome>;
+  readonly callInBrain: (operation: BrainOperation, request: BrainRequest, at?: string) => Promise<Outcome>;
 }
 
 export function harness(brainRegistry: Layer.Layer<BrainRegistry, never, Ledger> = memoryBrainRegistry([])): Harness {
@@ -46,13 +52,23 @@ export function harness(brainRegistry: Layer.Layer<BrainRegistry, never, Ledger>
         Effect.provide(services),
       ),
     );
-  return { ledger, dispatch, run, call: (operation, request, at) => run(dispatch(operation, request), at) };
+  return {
+    ledger,
+    dispatch,
+    run,
+    call: (operation, request, at) => run(dispatch(operation, request), at),
+    callInBrain: (operation, request, at) => run(dispatcher.dispatchToBrain(operation.registration, request), at),
+  };
 }
 
 export function toOrg(org: string): (caller: CallerIdentity, input?: unknown) => OrgRequest {
   return (caller, input = {}) => ({ caller, org, input, encoding: 'json' });
 }
 
-export function asQueryString(request: OrgRequest): OrgRequest {
+export function toBrain(org: string, brain: string): (caller: CallerIdentity, input?: unknown) => BrainRequest {
+  return (caller, input = {}) => ({ caller, org, brain, input, encoding: 'json' });
+}
+
+export function asQueryString<Request extends OrgRequest | BrainRequest>(request: Request): Request {
   return { ...request, encoding: 'strings' };
 }

@@ -3,6 +3,7 @@ import { methodNotAllowed } from 'hono/method-not-allowed';
 
 import type { ApiEnv } from './api-env.ts';
 import type { ApiOptions } from './api-options.ts';
+import { landingPage } from './landing/landing-page.ts';
 import { middlewareFor } from './middleware/middleware-chain.ts';
 import { requestIdAndSecurityHeaders } from './middleware/response-headers.ts';
 import { errorHandler, failureOfThrown } from './problem/error-boundary.ts';
@@ -17,6 +18,7 @@ export interface ApiApp {
 export function createApp(options: ApiOptions): ApiApp {
   const app = new Hono<ApiEnv>();
   const closes: Close[] = [];
+  app.use(landingPage);
   app.use(...requestIdAndSecurityHeaders);
   app.use(...middlewareFor(options));
   app.use(

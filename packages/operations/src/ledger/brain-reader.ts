@@ -1,5 +1,7 @@
 import { Context } from 'effect';
 
-import type { StreamReader } from './stream-ports.ts';
+import type { BrainRecordedReader, StreamReader } from './stream-ports.ts';
 
-export class BrainReader extends Context.Service<BrainReader, StreamReader>()('@beonauto/operations/BrainReader') {}
+export class BrainReader extends Context.Service<BrainReader, StreamReader & BrainRecordedReader>()(
+  '@beonauto/operations/BrainReader',
+) {}

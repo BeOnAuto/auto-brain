@@ -2,10 +2,10 @@ import type { StreamReader } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';
-import type { EventStore } from './event-store.ts';
+import type { StreamStore } from './event-store.ts';
 import { foldEvents } from './fold-events.ts';
 
-export function streamReaderOf(store: EventStore): StreamReader['load'] {
+export function streamReaderOf(store: StreamStore): StreamReader['load'] {
   return (stream, decider) =>
     Effect.gen(function* () {
       const recorded = yield* Effect.promise(() => store.read(stream));

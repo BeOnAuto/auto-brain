@@ -104,6 +104,35 @@ describe('access to a brain', () => {
   });
 });
 
+describe('a retired brain', () => {
+  const retiredBrains = [{ org: 'acme', brain: 'omega' }];
+  const toOmega = toBrain('acme', 'omega');
+
+  it('answers every query, so what it recorded stays readable', async () => {
+    const { dispatcher, run } = harness({ retiredBrains });
+
+    expect(await run(dispatcher.dispatchToBrain(getNote.registration, toOmega(acmeAdmin, { name: 'anvil' })))).toEqual({
+      status: 'rejected',
+      reason: 'not_found',
+      detail: 'There is no note anvil',
+    });
+  });
+
+  it('refuses every command with the conflict update_brain gives for a retired brain', async () => {
+    const { dispatcher, ledger, run } = harness({ retiredBrains });
+
+    expect(
+      await run(dispatcher.dispatchToBrain(addNote.registration, toOmega(acmeAdmin, { name: 'anvil', text: 'heavy' }))),
+    ).toEqual({
+      status: 'rejected',
+      reason: 'conflict',
+      detail: 'The brain omega is retired and can no longer change',
+      kind: 'retired',
+    });
+    expect(ledger.streamNames()).toEqual([]);
+  });
+});
+
 describe('the org id of a call', () => {
   const illFormed = 'ac/me';
   const localDeveloper = { ...acmeAdmin, org: illFormed };

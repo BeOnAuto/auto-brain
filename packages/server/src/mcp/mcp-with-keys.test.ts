@@ -26,6 +26,9 @@ const specTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'list_executions',
+  'get_execution_history',
+  'list_brain_events',
 ];
 
 let ledger: TemporaryLedger;
