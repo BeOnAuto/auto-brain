@@ -46,15 +46,48 @@ describe('the root of the server, opened in a browser', () => {
   });
 });
 
+function iconFor(page: string, scheme: string): string {
+  const link = new RegExp(
+    `<link rel="icon" href="data:image/svg\\+xml;base64,([^"]+)" media="\\(prefers-color-scheme: ${scheme}\\)"`,
+    'u',
+  );
+  return Buffer.from(link.exec(page)?.[1] ?? '', 'base64').toString();
+}
+
+function tileOf(icon: string): string | undefined {
+  return /<path d="M512\.644 100H[^"]+" fill="([^"]+)"/u.exec(icon)?.[1];
+}
+
+describe('the icon of the page at the root of the server', () => {
+  it('is the Auto mark, dark on a light browser and light on a dark one', async () => {
+    const page = await (await open(createTestHandler().handler)).text();
+
+    expect({ onLight: tileOf(iconFor(page, 'light')), onDark: tileOf(iconFor(page, 'dark')) }).toEqual({
+      onLight: '#1A1A1A',
+      onDark: '#FFFFFF',
+    });
+  });
+
+  it('is the same drawing in both, with ink and paper swapped', async () => {
+    const page = await (await open(createTestHandler().handler)).text();
+    const swapped = iconFor(page, 'light')
+      .replaceAll('#1A1A1A', 'ink')
+      .replaceAll('#FFFFFF', '#1A1A1A')
+      .replaceAll('ink', '#FFFFFF');
+
+    expect(iconFor(page, 'dark')).toBe(swapped);
+  });
+});
+
 describe('the page at the root of the server', () => {
-  it('may run no script and load only its own styles and its fonts', async () => {
+  it('may run no script and load only its own styles, its fonts and its icons', async () => {
     const response = await open(createTestHandler().handler);
     const ownStyles = createHash('sha256')
       .update(styleOf(await response.text()))
       .digest('base64');
 
     expect(response.headers.get('content-security-policy')).toBe(
-      `default-src 'none'; style-src 'sha256-${ownStyles}' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+      `default-src 'none'; style-src 'sha256-${ownStyles}' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     );
   });
 
