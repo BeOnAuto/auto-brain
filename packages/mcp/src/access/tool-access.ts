@@ -3,7 +3,6 @@ import type { Effect } from 'effect';
 import { defaultTiming, type Timing } from '../bounds/call-bounds.ts';
 import { secretsOfServers } from '../bounds/secrets.ts';
 import type { RunTools } from '../calls/run-tools.ts';
-import { routeClientConsole } from '../connections/console-routing.ts';
 import { serverLink, type LinkOptions } from '../connections/server-links.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
@@ -40,15 +39,11 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
     },
   };
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
-  const restoreConsole = routeClientConsole((message) => {
-    report({ server: 'the MCP client', message: secrets.scrub(message), execution_id: null });
-  });
   return {
     configured: settings.servers.length > 0,
     open: (execution, references) =>
       openedRun({ execution, references, links, allowed: settings.allowed, secrets, timing, report }),
     close: async () => {
-      restoreConsole();
       await Promise.all([...links.values()].map((link) => link.stop()));
     },
   };

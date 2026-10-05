@@ -35,6 +35,7 @@ function stdioSettings(args: readonly string[], changes: Partial<StdioServerSett
     brains: null,
     record_content: false,
     request_id: null,
+    secrets: [],
     ...changes,
   };
 }
@@ -74,6 +75,8 @@ function namesIn(settled: unknown): readonly string[] {
 
 const operatingSystemPrefix = '__CF_';
 
+const notJsonRpc = 'limitless: The MCP server wrote a message that is not JSON-RPC';
+
 const called = (connection: McpConnection, tool: string, input: Readonly<Record<string, unknown>> = {}) =>
   connection.call({ tool, input, meta: {}, signal: new AbortController().signal, timeoutMs: patientMs });
 
@@ -107,10 +110,11 @@ describe('one stdio server that the tests of a link share', { timeout: stdioTest
     expect(namesIn(variables)).toEqual([...environment.keys()]);
   });
 
-  it('passes over lines on stdout that are not JSON, or not JSON-RPC', async () => {
+  it('passes over lines on stdout that are not JSON, or not JSON-RPC, and reports the latter', async () => {
     expect(await called(await shared.link.take(), 'search', { query: 'acme' })).toMatchObject({
       result: { content: [{ text: 'Found 2 rows for acme.' }] },
     });
+    expect(shared.lines).toContain(notJsonRpc);
   });
 
   it('reports what the process writes to stderr, line by line, scrubbed, cut and bounded, until it is stopped', async () => {
@@ -120,11 +124,12 @@ describe('one stdio server that the tests of a link share', { timeout: stdioTest
     await link.stop();
     await connection.closed;
 
-    expect(lines).toHaveLength(101);
-    expect(lines[0]).toMatch(/^limitless: The \[redacted\] says line 1 on stderr\.+$/u);
-    expect(lines[0]).toHaveLength('limitless: '.length + 2000);
-    expect(lines.slice(1, 100).every((line) => line.length === lines[0]?.length)).toBe(true);
-    expect(lines.at(-1)).toBe(`limitless: ${outputNoLongerReported}`);
+    const written = lines.filter((line) => line !== notJsonRpc);
+    expect(written).toHaveLength(101);
+    expect(written[0]).toMatch(/^limitless: The \[redacted\] says line 1 on stderr\.+$/u);
+    expect(written[0]).toHaveLength('limitless: '.length + 2000);
+    expect(written.slice(1, 100).every((line) => line.length === written[0]?.length)).toBe(true);
+    expect(written.at(-1)).toBe(`limitless: ${outputNoLongerReported}`);
   });
 });
 

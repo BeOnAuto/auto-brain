@@ -36,6 +36,7 @@ function httpSettings(url: string, changes: Partial<HttpServerSettings> = {}): H
     brains: null,
     record_content: false,
     request_id: null,
+    secrets: [],
     ...changes,
   };
 }

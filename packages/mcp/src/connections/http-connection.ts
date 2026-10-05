@@ -20,6 +20,7 @@ export interface HttpOpening {
   readonly authProvider: AuthProvider | undefined;
   readonly timeoutMs: number;
   readonly longestRetryWaitMs: number;
+  readonly reportError: (message: string) => void;
 }
 
 interface Limited {
@@ -62,7 +63,7 @@ class ObservedHttpTransport extends StreamableHTTPClientTransport {
 }
 
 async function connectedOnce(settings: HttpServerSettings, opening: HttpOpening): Promise<McpConnection | Limited> {
-  const opened = openingClient(settings.request_id);
+  const opened = openingClient(settings.request_id, opening.reportError);
   const transport = new ObservedHttpTransport(settings, opening, opened.observations);
   try {
     await opened.client.connect(transport, { timeout: opening.timeoutMs });

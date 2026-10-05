@@ -150,7 +150,15 @@ const troubleTools: readonly FakeTool[] = [
   },
 ];
 
+export const verboseDescription = 'Answers with nothing worth the words. '.repeat(120);
+
 const namedTools: readonly FakeTool[] = [
+  {
+    name: 'verbose',
+    description: verboseDescription,
+    inputSchema: anything,
+    answer: () => text('Said.'),
+  },
   {
     name: 'graph.query.v2',
     description: 'A tool whose name holds dots.',

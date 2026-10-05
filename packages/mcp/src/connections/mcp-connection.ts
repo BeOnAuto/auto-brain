@@ -38,10 +38,15 @@ const metaField = '_meta';
 
 const clientInfo = { name: 'auto-brain', version: '1.0.0' };
 
-export function openingClient(requestIdHeader: string | null): OpenedClient {
+export function openingClient(requestIdHeader: string | null, reportError: (message: string) => void): OpenedClient {
   const client = new Client(clientInfo, { capabilities: {} });
   const { promise: closed, resolve } = Promise.withResolvers<void>();
-  Object.assign(client, { onclose: resolve });
+  Object.assign(client, {
+    onclose: resolve,
+    onerror: ({ message }: Readonly<Error>) => {
+      reportError(message);
+    },
+  });
   return { client, observations: observations(requestIdHeader), closed };
 }
 
@@ -57,8 +62,14 @@ export function observingFetch<Args extends readonly [unknown, unknown?]>(
   };
 }
 
+function contentJsonOf(answer: unknown): string {
+  const content: unknown = Reflect.get(new Object(answer), 'content');
+  const structuredContent: unknown = Reflect.get(new Object(answer), 'structuredContent');
+  return JSON.stringify(structuredContent === undefined ? { content } : { content, structuredContent });
+}
+
 function settledOf(answer: unknown): { readonly result: ToolResult; readonly resultJson: string } {
-  return { result: decodeToolResult(answer), resultJson: JSON.stringify(answer) };
+  return { result: decodeToolResult(answer), resultJson: contentJsonOf(answer) };
 }
 
 export function connectionOver(

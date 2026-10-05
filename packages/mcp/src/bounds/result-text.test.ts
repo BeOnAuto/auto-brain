@@ -10,9 +10,9 @@ import {
   resultText,
 } from './result-text.ts';
 import { secretsOf } from './secrets.ts';
-import { bytesOf, canonicalJson, cutAtCodePoint } from './text-bytes.ts';
+import { bytesOf, canonicalJson, cutAsStored, cutAtCodePoint } from './text-bytes.ts';
 
-const scrub = secretsOf([Redacted.make('Bearer graph-api-key-4f1d9a7c2b')]).scrub;
+const scrub = secretsOf([Redacted.make('graph-api-key-4f1d9a7c2b')]).scrub;
 
 describe('the text the model sees of a result', () => {
   it('shows text content as text, line by line', () => {
@@ -77,7 +77,7 @@ describe('error text', () => {
     const said = errorTextForOperator(`Rejected Bearer graph-api-key-4f1d9a7c2b ${'x'.repeat(3000)}`, scrub);
 
     expect(said).toHaveLength(2000);
-    expect(said).toMatch(/^Rejected \[redacted\] x+$/u);
+    expect(said).toMatch(/^Rejected Bearer \[redacted\] x+$/u);
   });
 });
 
@@ -91,6 +91,13 @@ describe('text as bytes', () => {
     expect(cutAtCodePoint('a😀b', 5)).toBe('a😀');
     expect(cutAtCodePoint('a😀b', 6)).toBe('a😀b');
     expect(cutAtCodePoint('a😀b', -1)).toBe('');
+  });
+
+  it('cuts text to the bytes it takes when stored as a JSON string', () => {
+    expect(cutAsStored('plain', 5)).toBe('plain');
+    expect(cutAsStored('a"b', 3)).toBe('a"');
+    expect(cutAsStored('\u0001\u0001', 7)).toBe('\u0001');
+    expect(cutAsStored('😀😀', 4)).toBe('😀');
   });
 
   it('writes JSON with its keys in order, at every depth', () => {

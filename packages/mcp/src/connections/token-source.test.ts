@@ -151,6 +151,20 @@ describe('an authorization server that refuses', () => {
     expect(fake.tokenRequests()).toBe(0);
   });
 
+  it('sends its credentials to no other authorization server, even one consistent with itself', async () => {
+    const elsewhere = await authorizationServer({ clientId: 'brain', clientSecret, expiresInSeconds: 3600 });
+    const fake = await authorizationServer({
+      clientId: 'brain',
+      clientSecret,
+      expiresInSeconds: 3600,
+      authorizationServer: elsewhere.origin,
+    });
+    const { source } = sourceOf(fake, secretAuth(fake));
+
+    await expect(source.token()).rejects.toThrow(/^Authorization server mismatch/u);
+    expect(elsewhere.tokenRequests()).toBe(0);
+  });
+
   it('fails when the authorization server refuses the credentials', async () => {
     const fake = await authorizationServer({
       clientId: 'brain',

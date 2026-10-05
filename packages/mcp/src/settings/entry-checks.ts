@@ -18,7 +18,7 @@ type Checked<A> =
   | { readonly ok: false; readonly problems: readonly SettingProblem[] };
 
 type Transport<S extends McpServerSettings> = S extends McpServerSettings
-  ? Omit<S, 'name' | 'org' | 'brains' | 'record_content' | 'request_id'>
+  ? Omit<S, 'name' | 'org' | 'brains' | 'record_content' | 'request_id' | 'secrets'>
   : never;
 
 type Auth = NonNullable<McpServerEntryFields['auth']>;
@@ -243,6 +243,7 @@ export function checkedEntry(
   name: string,
   fields: McpServerEntryFields,
   providers: readonly string[],
+  secrets: readonly Redacted.Redacted[],
 ): Result.Result<McpServerSettings, readonly SettingProblem[]> {
   const named = checkedName(name, providers);
   const org = checkedOrg(name, fields.org);
@@ -261,5 +262,6 @@ export function checkedEntry(
         brains: brains.value,
         record_content: fields.record_content ?? false,
         request_id: fields.request_id ?? null,
+        secrets,
       });
 }

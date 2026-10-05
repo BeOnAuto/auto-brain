@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./policy": "./src/policy.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {

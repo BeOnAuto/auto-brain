@@ -14,8 +14,8 @@ const redactedMark = '[redacted]';
 export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
   const known = new Set<string>();
   const add = (secret: string): void => {
-    for (const part of [secret, ...secret.split(/\s+/u)].filter((each) => each.length >= leastSecretCharacters)) {
-      known.add(part);
+    if (secret.length >= leastSecretCharacters) {
+      known.add(secret);
     }
   };
   for (const value of redacted) {
@@ -27,7 +27,7 @@ export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
   };
 }
 
-function authSecretsOf(auth: AuthSettings | null): readonly Redacted.Redacted[] {
+function credentialOf(auth: AuthSettings | null): readonly Redacted.Redacted[] {
   if (auth === null) {
     return [];
   }
@@ -35,12 +35,10 @@ function authSecretsOf(auth: AuthSettings | null): readonly Redacted.Redacted[] 
   return [credential.kind === 'client_secret' ? credential.client_secret : credential.private_key];
 }
 
-function redactedOf(server: McpServerSettings): readonly Redacted.Redacted[] {
-  return server.type === 'stdio'
-    ? [...server.env.values()]
-    : [...server.headers.values(), ...authSecretsOf(server.auth)];
+function authOf(server: McpServerSettings): AuthSettings | null {
+  return server.type === 'http' ? server.auth : null;
 }
 
 export function secretsOfServers(servers: readonly McpServerSettings[]): Secrets {
-  return secretsOf(servers.flatMap((server) => redactedOf(server)));
+  return secretsOf(servers.flatMap((server) => [...server.secrets, ...credentialOf(authOf(server))]));
 }

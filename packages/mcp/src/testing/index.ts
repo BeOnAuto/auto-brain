@@ -4,7 +4,14 @@ import { defaultTiming, type Timing } from '../bounds/call-bounds.ts';
 
 export { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer, type SeenRequest } from './fake-mcp-server.ts';
 export type { ClientRegistration } from './fake-authorization.ts';
-export { deniedText, fakeRequestIdKey, fakeToolNames, longToolName, type ReceivedCall } from './fake-tools.ts';
+export {
+  deniedText,
+  fakeRequestIdKey,
+  fakeToolNames,
+  longToolName,
+  verboseDescription,
+  type ReceivedCall,
+} from './fake-tools.ts';
 export { fakeApiKey, openFakeToolRun, type FakeToolRun } from './fake-tool-run.ts';
 export { reportingAccess, type AccessOptions, type ReportingAccess } from './reporting-access.ts';
 export {

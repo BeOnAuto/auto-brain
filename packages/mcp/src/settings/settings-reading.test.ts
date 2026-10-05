@@ -216,3 +216,29 @@ describe('the secrets of a server', () => {
     expect(JSON.stringify(refusal)).not.toContain('abk_live');
   });
 });
+
+describe('the references of a server', () => {
+  it('refuses a reference outside headers, env and auth, where a key would show in a process listing or a URL', () => {
+    const misplaced =
+      'Holds a reference to an environment variable, which only headers, env and auth may hold: an argument shows in the listing of the processes of the machine, and a URL is not a header';
+
+    expect(
+      problemsOf({
+        graph: { ...graph, url: 'https://graph.example.com/mcp?key=${GRAPH_API_KEY}' },
+        limitless: { ...limitless, args: ['--key', '${GRAPH_API_KEY}'], command: '${HOME:-/usr/local}/bin/limitless' },
+      }),
+    ).toEqual([
+      `MCP_SERVERS /graph/url: ${misplaced}`,
+      `MCP_SERVERS /limitless/command: ${misplaced}`,
+      `MCP_SERVERS /limitless/args/1: ${misplaced}`,
+    ]);
+  });
+
+  it('keeps the values of the references in headers and env as the secrets of the server', () => {
+    const [server] = serversOf({
+      graph: { ...graph, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Mode': '${MODE:-production}' } },
+    });
+
+    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey]);
+  });
+});

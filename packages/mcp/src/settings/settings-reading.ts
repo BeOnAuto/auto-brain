@@ -3,6 +3,7 @@ import { Data, Effect, Option, Result, Schema } from 'effect';
 
 import { allowedToolsOf, allowedToolsSetting } from './allowed-tools.ts';
 import { checkedEntry, mcpServersSetting } from './entry-checks.ts';
+import { misplacedReferences, secretsOfEntry } from './entry-references.ts';
 import { decodedJsonSetting, pointerOf, problem } from './json-setting.ts';
 import type { McpServerSettings, McpSettings, SettingProblem } from './mcp-settings.ts';
 import { McpServerEntrySchema, McpServersSchema, type McpServerEntryFields } from './server-entries.ts';
@@ -34,10 +35,16 @@ function readEntry(
     problem(mcpServersSetting, place, credentialAdvice),
   );
   const resolved = substituted(written, pointer, environment);
-  const references = resolved.problems.map(({ pointer: place, detail }) => problem(mcpServersSetting, place, detail));
-  return credentials.length > 0 || references.length > 0
-    ? Result.fail([...credentials, ...references])
-    : checkedEntry(name, decodeEntry(resolved.value), context.modelProviders);
+  const unresolved = resolved.problems.map(({ pointer: place, detail }) => problem(mcpServersSetting, place, detail));
+  const problems = [...credentials, ...unresolved, ...misplacedReferences(pointer, resolved.references)];
+  return problems.length > 0
+    ? Result.fail(problems)
+    : checkedEntry(
+        name,
+        decodeEntry(resolved.value),
+        context.modelProviders,
+        secretsOfEntry(pointer, resolved.references),
+      );
 }
 
 function serversOf(

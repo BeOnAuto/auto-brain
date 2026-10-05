@@ -20,6 +20,23 @@ export function cutAtCodePoint(text: string, mostBytes: number): string {
   return encoded.subarray(0, end).toString('utf8');
 }
 
+function storedBytesOf(character: string): number {
+  return bytesOf(JSON.stringify(character)) - 2;
+}
+
+export function cutAsStored(text: string, mostBytes: number): string {
+  let bytes = 0;
+  let end = 0;
+  for (const character of text) {
+    bytes += storedBytesOf(character);
+    if (bytes > mostBytes) {
+      return text.slice(0, end);
+    }
+    end += character.length;
+  }
+  return text;
+}
+
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item: unknown) => canonical(item));

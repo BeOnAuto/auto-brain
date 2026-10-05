@@ -35,7 +35,7 @@ const mostDescriptionBytes = 4096;
 
 export function runTools(parts: RunToolsParts): RunTools {
   let tally = noCalls;
-  let recorded = 0;
+  let numbers = 0;
   let ending: ToolsEnding | undefined;
   const used: ToolReference[] = [];
   const stop = new AbortController();
@@ -45,8 +45,8 @@ export function runTools(parts: RunToolsParts): RunTools {
       tally = next;
     },
     numbered: () => {
-      recorded += 1;
-      return recorded;
+      numbers += 1;
+      return numbers;
     },
     used: (reference) => {
       used.push(reference);
@@ -67,7 +67,7 @@ export function runTools(parts: RunToolsParts): RunTools {
     callsEnded: () => callsEnded(tally),
     ended: stop.signal,
     ending: () => ending,
-    calledAny: () => recorded > 0,
+    calledAny: () => used.length > 0,
     usedInWords: () => toolsInWords(used),
     close: async () => {
       await Promise.all(parts.slots.map((slot) => slot.release()));

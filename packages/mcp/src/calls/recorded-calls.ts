@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { Effect } from 'effect';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
-import { bytesOf, cutAtCodePoint } from '../bounds/text-bytes.ts';
+import { bytesOf, cutAsStored } from '../bounds/text-bytes.ts';
 
 export type CallOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out' | 'cancelled';
 
@@ -64,7 +64,7 @@ function digestOf(text: string): string {
 }
 
 function contentOf(name: string, json: string, { content, scrub }: Recording) {
-  return content ? { [name]: cutAtCodePoint(scrub(json), toolBounds.recordedContentBytes) } : {};
+  return content ? { [name]: cutAsStored(scrub(json), toolBounds.recordedContentBytes) } : {};
 }
 
 export function callStarted(call: StartedCall, recording: Recording): CallStarted {

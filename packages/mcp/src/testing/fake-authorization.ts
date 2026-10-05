@@ -9,6 +9,7 @@ export interface ClientRegistration {
   readonly publicKey?: string;
   readonly expiresInSeconds: number | null;
   readonly issuer?: string;
+  readonly authorizationServer?: string;
 }
 
 export interface FakeAuthorization {
@@ -80,7 +81,10 @@ export function fakeAuthorization(origin: string, registration: ClientRegistrati
   const documents: ReadonlyMap<string, () => Promise<Response>> = new Map([
     [
       '/.well-known/oauth-protected-resource/mcp',
-      () => Promise.resolve(json({ resource: `${origin}/mcp`, authorization_servers: [origin] })),
+      () =>
+        Promise.resolve(
+          json({ resource: `${origin}/mcp`, authorization_servers: [registration.authorizationServer ?? origin] }),
+        ),
     ],
     ['/.well-known/oauth-authorization-server', () => Promise.resolve(json(metadata))],
   ]);

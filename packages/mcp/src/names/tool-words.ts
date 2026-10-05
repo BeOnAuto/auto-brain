@@ -4,7 +4,7 @@ const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunctio
 
 const wordBoundary = /(?<lower>[a-z0-9])(?<upper>[A-Z])/gu;
 
-const separators = /[_.-]+/gu;
+const separators = /[^A-Za-z0-9]+/gu;
 
 export function inWords(name: string): string {
   return name.replaceAll(wordBoundary, '$<lower> $<upper>').replaceAll(separators, ' ').trim().toLowerCase();

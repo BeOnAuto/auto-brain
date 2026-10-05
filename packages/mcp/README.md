@@ -2,6 +2,12 @@
 
 How a brain reaches the outside world: the MCP servers the operator configures, and the tools a run is offered from them, as [decision 0003](../../docs/decisions/0003-mcp-servers.md) sets out. The server reads the settings and makes one `ToolAccess`; the inference primitive opens a run's tools through it when a reason function names `tools`, and runs the model's tool loop over what it gets back.
 
+## Entry points
+
+- `@beonauto/mcp`: the settings, `makeToolAccess` and everything it needs, the MCP client and `node:child_process` included.
+- `@beonauto/mcp/policy`: the pure helpers a caller needs without connecting to anything (`toolReferenceOf`, `toolReferenceShape`, `writtenOf` and `runBoundMs`). It loads no transport code, so the inference primitive, which parses a reason function's `tools` and bounds its run, does not load the MCP client wherever it is bundled; it takes `ToolAccess` as a type only.
+- `@beonauto/mcp/testing`: the fake server and the helpers of the tests (see Testing).
+
 ## Settings
 
 `readMcpSettings(environment, { modelProviders })` reads two settings, each JSON, which the server also writes from the configuration file's `mcp_servers` and `allowed_tools`:
@@ -9,21 +15,21 @@ How a brain reaches the outside world: the MCP servers the operator configures, 
 - `MCP_SERVERS`: an object with one entry per server, keyed by the name a reason function writes in `server/tool`.
 - `ALLOWED_TOOLS`: a list of `server/tool` and `server/*`, the tools a reason function may name. Every tool of every server when it is left out.
 
-| Field            | Of    | What it holds                                                                                                                             |
-| ---------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`           | both  | `http` or `stdio`; taken from `url` or `command` when left out                                                                            |
-| `url`            | http  | The http or https URL of a server spoken to over Streamable HTTP                                                                          |
-| `headers`        | http  | Headers sent with every request, secrets                                                                                                  |
-| `auth`           | http  | OAuth client credentials: `issuer`, `client_id`, `client_secret` or `private_key` with `algorithm`, and `scope`                           |
-| `command`        | stdio | An installed, pinned command, never a package downloaded at start such as `npx -y`                                                        |
-| `args`           | stdio | The arguments of the command                                                                                                              |
-| `env`            | stdio | The whole environment of the process, secrets: it inherits nothing else, so give `PATH` or an absolute `command`                          |
-| `org`            | both  | The org the server serves, required                                                                                                       |
-| `brains`         | both  | The brains of the org it serves; every brain of the org when left out                                                                     |
-| `record_content` | both  | `true` to record the arguments and results of calls, cut to 4 KiB, on the run; `false` when left out                                      |
-| `request_id`     | both  | The response header, or the key of the metadata of a result, in which the server carries its own id of a request, recorded with each call |
+| Field            | Of    | What it holds                                                                                                                                 |
+| ---------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`           | both  | `http` or `stdio`; taken from `url` or `command` when left out                                                                                |
+| `url`            | http  | The http or https URL of a server spoken to over Streamable HTTP                                                                              |
+| `headers`        | http  | Headers sent with every request; the values of their references are secrets                                                                   |
+| `auth`           | http  | OAuth client credentials: `issuer`, `client_id`, `client_secret` or `private_key` with `algorithm`, and `scope`                               |
+| `command`        | stdio | An installed, pinned command, never a package downloaded at start such as `npx -y`                                                            |
+| `args`           | stdio | The arguments of the command                                                                                                                  |
+| `env`            | stdio | The whole environment of the process, the values of its references secrets: it inherits nothing else, so give `PATH` or an absolute `command` |
+| `org`            | both  | The org the server serves, required                                                                                                           |
+| `brains`         | both  | The brains of the org it serves; every brain of the org when left out                                                                         |
+| `record_content` | both  | `true` to record the arguments and results of calls, cut to 4 KiB, on the run; `false` when left out                                          |
+| `request_id`     | both  | The response header, or the key of the metadata of a result, in which the server carries its own id of a request, recorded with each call     |
 
-A secret is a `${NAME}` reference to the environment, resolved when the settings are read; a header or environment value that looks like a credential written out is refused, as a model gateway's key is. The settings also refuse an entry with neither `url` nor `command` or with both, a name outside 1 to 32 lowercase letters, digits and hyphens starting with a letter, the name of a model provider or gateway, a missing org, an org or brain that is not an id, an `Authorization` header beside an `auth` block, an issuer that is not https (or http on a loopback address), a header the MCP client sets itself, the fields of the other type, and an `ALLOWED_TOOLS` entry that names no configured server. Each problem names its setting and a JSON pointer, never a value; `McpSettingsInvalid` carries them all.
+A secret is a value resolved from a `${NAME}` reference to the environment when the settings are read, an `auth` credential, or a token minted from one, and nothing else: a header such as `X-Region: production-eu` or an environment value such as `MODE=production` is not, and is never scrubbed. Only `headers`, `env` and `auth` may hold a reference: one in `url`, `command` or `args` is refused with its pointer, since a key in an argument shows in the listing of the machine's processes and a key in a URL is not a header. A header or environment value that looks like a credential written out is refused, as a model gateway's key is. The settings also refuse an entry with neither `url` nor `command` or with both, a name outside 1 to 32 lowercase letters, digits and hyphens starting with a letter, the name of a model provider or gateway, a missing org, an org or brain that is not an id, an `Authorization` header beside an `auth` block, an issuer that is not https (or http on a loopback address), a header the MCP client sets itself, the fields of the other type, and an `ALLOWED_TOOLS` entry that names no configured server. Each problem names its setting and a JSON pointer, never a value; `McpSettingsInvalid` carries them all.
 
 Nothing is learned from a server when the settings are read: the server starts without the network and without spawning anything.
 
@@ -55,7 +61,7 @@ Each entry has one link. An `http` link opens a session when a run first needs i
 
 With an `auth` block, tokens come from the MCP client's client-credentials or private-key provider, with the issuer pinned: the client sends the credential to no authorization server whose metadata names another issuer. One token is minted for every concurrent run, renewed a minute before it expires (or halfway through a shorter life), and minted again once when the server answers 401; a second 401 is a failure. Every remote request goes through the `fetch` given, the server's outbound fetch, so `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS` apply, and a certificate the server does not trust is a fixed message.
 
-The lines the MCP client writes to the console go to `reportServerMessage` as the lines of `the MCP client`.
+The MCP client has no logging option. The errors it meets, such as a line from a process that is not JSON-RPC or a stream it could not read, reach the client's `onerror`, which reports them through `reportServerMessage` as the messages of their server, scrubbed. The few warnings it writes to the console about how it was configured are left on stderr: catching them would mean patching the global console of the whole server, which every other library writes to as well.
 
 ## Bounds
 
@@ -77,7 +83,7 @@ The lines the MCP client writes to the console go to `reportServerMessage` as th
 
 ## What is recorded
 
-`tool_call_started` carries the call's number in the run, the id the model gave it, the server and tool, and the size and SHA-256 digest of the arguments as `JSON.stringify` writes them. `tool_call_answered` carries the number, the outcome (`result`, `tool_error`, `server_failure`, `timed_out` or `cancelled`), the size and digest of the result as the client hands it back, re-serialised, the duration and the JSON-RPC id. An entry with `request_id` adds the server's own id of the request; one with `record_content: true` adds the arguments and the result, cut to 4 KiB and scrubbed.
+`tool_call_started` carries the call's number in the run, the id the model gave it, the server and tool, and the size and SHA-256 digest of the arguments as `JSON.stringify` writes them. `tool_call_answered` carries the number, the outcome (`result`, `tool_error`, `server_failure`, `timed_out` or `cancelled`), the size and digest of the result's content, its `content` and `structuredContent` as the client hands them back, re-serialised, never its `_meta` or `isError`, the duration and the JSON-RPC id. An entry with `request_id` adds the server's own id of the request; one with `record_content: true` adds the arguments and the result's content, scrubbed and cut to 4 KiB as they are stored, a JSON string whose escapes count.
 
 ## Testing
 

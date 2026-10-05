@@ -48,7 +48,11 @@ function opener(settings: McpServerSettings, options: LinkOptions): () => Promis
           minted: options.secrets.add,
         });
   const { openMs, longestRetryWaitMs } = options.timing;
-  return () => openHttp(settings, { fetch: options.fetch, authProvider, timeoutMs: openMs, longestRetryWaitMs });
+  const reportError = (message: string): void => {
+    options.reportOutput(settings.name, options.secrets.scrub(message));
+  };
+  return () =>
+    openHttp(settings, { fetch: options.fetch, authProvider, timeoutMs: openMs, longestRetryWaitMs, reportError });
 }
 
 function endOf(connection: Promise<McpConnection> | undefined): Promise<void> | undefined {

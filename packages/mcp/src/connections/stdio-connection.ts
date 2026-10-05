@@ -9,6 +9,12 @@ export interface StdioOpening {
   readonly output: OutputReport;
 }
 
+function errorReport({ scrub, report }: OutputReport): (message: string) => void {
+  return (message) => {
+    report(scrub(message));
+  };
+}
+
 function environmentOf({ env }: StdioServerSettings): Readonly<Record<string, string>> {
   return Object.fromEntries(
     [...env].map(([name, value]: readonly [string, Redacted.Redacted]) => [name, Redacted.value(value)]),
@@ -16,7 +22,7 @@ function environmentOf({ env }: StdioServerSettings): Readonly<Record<string, st
 }
 
 export async function openStdio(settings: StdioServerSettings, opening: StdioOpening): Promise<McpConnection> {
-  const opened = openingClient(settings.request_id);
+  const opened = openingClient(settings.request_id, errorReport(opening.output));
   const transport = new StdioProcessTransport(
     { command: settings.command, args: settings.args, env: environmentOf(settings) },
     opened.observations,

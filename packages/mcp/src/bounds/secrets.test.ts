@@ -10,7 +10,11 @@ const environment = {
   GRAPH_PRIVATE_KEY: 'graph-private-key-7a6b',
   LIMITLESS_API_KEY: 'limitless-key-3e9d',
   MCP_SERVERS: JSON.stringify({
-    graph: { url: 'https://graph.example.com/mcp', org: 'acme', headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' } },
+    graph: {
+      url: 'https://graph.example.com/mcp',
+      org: 'acme',
+      headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Region': 'production-eu' },
+    },
     secret: {
       url: 'https://secret.example.com/mcp',
       org: 'acme',
@@ -26,28 +30,39 @@ const environment = {
         algorithm: 'RS256',
       },
     },
-    limitless: { command: 'limitless-mcp-server', org: 'acme', env: { LIMITLESS_API_KEY: '${LIMITLESS_API_KEY}' } },
+    limitless: {
+      command: 'limitless-mcp-server',
+      org: 'acme',
+      env: { LIMITLESS_API_KEY: '${LIMITLESS_API_KEY}', MODE: 'production', HOME_DIR: '/home/brain-user' },
+    },
   }),
 };
 
-describe('the secrets of the servers', () => {
-  it('scrubs every header, client secret, private key and environment value, and each word of one', () => {
-    const { servers } = Effect.runSync(readMcpSettings(environment, { modelProviders: [] }));
-    const { scrub } = secretsOfServers(servers);
+function scrubbed(text: string): string {
+  const { servers } = Effect.runSync(readMcpSettings(environment, { modelProviders: [] }));
+  return secretsOfServers(servers).scrub(text);
+}
 
+describe('the secrets of the servers', () => {
+  it('are the values of references and the credentials of auth blocks', () => {
     expect(
-      scrub(
-        'Bearer graph-api-key-4f1d9a7c2b graph-client-secret-81c2 graph-private-key-7a6b limitless-key-3e9d graph-api-key-4f1d9a7c2b',
+      scrubbed(
+        'Bearer graph-api-key-4f1d9a7c2b, graph-client-secret-81c2, graph-private-key-7a6b and limitless-key-3e9d',
       ),
-    ).toBe('[redacted] [redacted] [redacted] [redacted] [redacted]');
+    ).toBe('Bearer [redacted], [redacted], [redacted] and [redacted]');
   });
 
-  it('scrubs a token minted while the server runs, and ignores words too short to be secrets', () => {
-    const secrets = secretsOf([]);
-    secrets.add('token-1 tiny');
+  it('are never a value written out in a header or an environment', () => {
+    expect(scrubbed('Deployed to production-eu with MODE=production in /home/brain-user')).toBe(
+      'Deployed to production-eu with MODE=production in /home/brain-user',
+    );
+  });
 
-    expect(secrets.scrub('token-1 tiny')).toBe('[redacted]');
+  it('take a token minted while the server runs, and leave out what is too short to be one', () => {
+    const secrets = secretsOf([]);
+    secrets.add('tiny');
     secrets.add('minted-token-9f3e');
+
     expect(secrets.scrub('Bearer minted-token-9f3e, tiny')).toBe('Bearer [redacted], tiny');
   });
 });

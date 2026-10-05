@@ -281,17 +281,18 @@ describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, (
     });
   });
 
-  it('reports the console lines of the MCP client as the lines of the client', () => {
-    const { messages } = accessTo({});
+  it('reports the errors the MCP client meets as messages of their server', async () => {
+    const { access, messages } = accessTo({
+      limitless: { ...limitless, args: [fakeStdioServerPath, '--stdout', '{"not":"rpc"}\n'] },
+    });
 
-    console.warn('[mcp-sdk] Received a response for an unknown message ID', 7);
+    const tools = await offeredBy(access, 'limitless/search');
+    await tools.close();
 
-    expect(messages()).toEqual([
-      {
-        server: 'the MCP client',
-        message: '[mcp-sdk] Received a response for an unknown message ID 7',
-        execution_id: null,
-      },
-    ]);
+    expect(messages()).toContainEqual({
+      server: 'limitless',
+      message: 'The MCP server wrote a message that is not JSON-RPC',
+      execution_id: null,
+    });
   });
 });

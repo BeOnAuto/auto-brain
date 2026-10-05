@@ -60,6 +60,7 @@ describe('tools in words', () => {
     expect(inWords('getLifelogs')).toBe('get lifelogs');
     expect(inWords('graph.query_v2')).toBe('graph query v2');
     expect(inWords('crm-eu')).toBe('crm eu');
+    expect(inWords('reports/monthly:v2')).toBe('reports monthly v2');
   });
 
   it('says the tools a run used, by server, once each', () => {

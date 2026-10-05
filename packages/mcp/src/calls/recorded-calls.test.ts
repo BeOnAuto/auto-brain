@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
 import { Effect } from 'effect';
@@ -31,13 +32,13 @@ const digest = (text: string) => createHash('sha256').update(text).digest('hex')
 
 const aNumber: unknown = expect.any(Number);
 
+const aSmallEvent: unknown = expect.toSatisfy((bytes: number) => bytes <= 4096 + 512);
+
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
 const scrubbedArguments: unknown = expect.stringMatching(/^\{"key":"\[redacted\]","text":"x+$/u);
 
-const scrubbedResult: unknown = expect.stringMatching(
-  /^\{"_meta":\{"com\.example\/request_id":"call-1"\},"content":.*\[redacted\]/u,
-);
+const scrubbedResult: unknown = expect.stringMatching(/^\{"content":\[\{"type":"text","text":".*\[redacted\]/u);
 
 const aRequestNumber: unknown = expect.stringMatching(/^request-\d+$/u);
 
@@ -46,8 +47,8 @@ function referenceOf([written]: Call) {
   return { server, tool };
 }
 
-function recordedArgumentsLength(fact: RecordedCall | undefined): number {
-  return fact?.type === 'tool_call_started' ? String(fact.arguments_json).length : 0;
+function storedArgumentsBytes(fact: RecordedCall | undefined): number {
+  return fact?.type === 'tool_call_started' ? Buffer.byteLength(JSON.stringify(fact.arguments_json)) - 2 : 0;
 }
 
 async function recordedCalls(
@@ -143,9 +144,18 @@ describe('the content of a call', () => {
       arguments_bytes: JSON.stringify(input).length,
       arguments_json: scrubbedArguments,
     });
-    expect(recordedArgumentsLength(facts[0])).toBe(4096);
+    expect(storedArgumentsBytes(facts[0])).toBeLessThanOrEqual(4096);
+    expect(storedArgumentsBytes(facts[0])).toBeGreaterThan(4090);
     expect(facts[1]).toMatchObject({ result_json: scrubbedResult });
     expect(JSON.stringify(facts)).not.toContain(fakeApiKey);
+  });
+
+  it('records no more than 4 KiB of content as it is stored, however much its text grows when escaped', async () => {
+    const hostile = '\u0001"\\'.repeat(1500);
+    const facts = await recordedCalls({ record_content: true }, [['graph/echo', { text: hostile }]]);
+
+    expect(storedArgumentsBytes(facts[0])).toBeLessThanOrEqual(4096);
+    expect(facts.map((fact) => Buffer.byteLength(JSON.stringify(fact)))).toEqual([aSmallEvent, aSmallEvent]);
   });
 });
 

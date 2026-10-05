@@ -24,6 +24,7 @@ interface ServedBy {
   readonly brains: readonly string[] | null;
   readonly record_content: boolean;
   readonly request_id: string | null;
+  readonly secrets: readonly Redacted.Redacted[];
 }
 
 export interface HttpServerSettings extends ServedBy {
