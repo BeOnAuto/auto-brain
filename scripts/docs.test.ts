@@ -1,0 +1,222 @@
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { test } from 'node:test';
+
+const docs = resolve(import.meta.dirname, '../docs');
+const output = join(docs, '.vitepress/dist');
+const markdownDestinations = (source: string): readonly string[] =>
+  [...source.matchAll(/\]\(([^)]+)\)/gu)]
+    .map((match: readonly string[]) => match[1])
+    .filter((href) => href !== undefined);
+const navigation = readFileSync(join(docs, 'nav.json'), 'utf8');
+const pages = readdirSync(docs, { recursive: true, withFileTypes: true })
+  .filter(
+    (entry: Readonly<Dirent>) =>
+      entry.isFile() && entry.name.endsWith('.md') && !entry.parentPath.includes('.vitepress'),
+  )
+  .map((entry: Readonly<Dirent>) => join(entry.parentPath, entry.name));
+const repositoryOnlyDirectories = ['decisions', 'engineering'];
+const publicPages = pages.filter(
+  (page) => !repositoryOnlyDirectories.some((directory) => relative(docs, page).startsWith(`${directory}/`)),
+);
+const routes = [...navigation.matchAll(/"link"\s*:\s*"([^"]+)"/gu)]
+  .map((match: readonly string[]) => match[1])
+  .filter((route) => route !== undefined);
+const navigationGroups = [...navigation.matchAll(/"text"\s*:\s*"([^"]+)"\s*,\s*"items"\s*:/gu)]
+  .map((match: readonly string[]) => match[1])
+  .filter((group) => group !== undefined);
+const guides = publicPages.filter((page) => page !== join(docs, 'index.md'));
+const renderedPages = publicPages.map((page) => {
+  const filename = relative(docs, page).replace(/\.md$/u, '.html');
+  return { page, filename, html: readFileSync(join(output, filename), 'utf8') };
+});
+const localLinks = renderedPages.flatMap(({ filename, html }: Readonly<{ filename: string; html: string }>) =>
+  [...html.matchAll(/<a\s[^>]*href="([^"\s]+)"/gu)]
+    .map((match: readonly string[]) => match[1])
+    .filter((href) => href !== undefined)
+    .filter((href) => href.startsWith('/docs/') || href.startsWith('#'))
+    .map((href) => {
+      const url = new URL(href, `https://preview.test/docs/${filename}`);
+      const path = decodeURIComponent(url.pathname).replace(/^\/docs\//u, '');
+      const target = path.endsWith('/') || path === '' ? `${path}index.html` : `${path.replace(/\.html$/u, '')}.html`;
+      return { filename, href, target, fragment: decodeURIComponent(url.hash.slice(1)) };
+    }),
+);
+const fragmentLinks = localLinks.filter(({ fragment }: Readonly<{ fragment: string }>) => fragment !== '');
+const markdownLinks = publicPages.flatMap((page) =>
+  [...readFileSync(page, 'utf8').matchAll(/\]\(([^)]+\.md)(?:#[^)]*)?\)/gu)]
+    .map((match: readonly string[]) => match[1])
+    .filter((href) => href !== undefined)
+    .filter((href) => !/^https?:/u.test(href))
+    .map((href) => ({ page, href, target: resolve(dirname(page), href) })),
+);
+
+await test('navigation has unique routes and points to source pages', () => {
+  assert.equal(routes.length, new Set(routes).size);
+  for (const route of routes) {
+    assert.match(route, /^\/(?!docs\/)[a-z0-9/-]+$/u);
+    assert.ok(existsSync(join(docs, `${route}.md`)), `Navigation target missing: ${route}`);
+  }
+});
+
+await test('navigation covers every guide and source pages have titles', () => {
+  for (const page of publicPages) assert.match(readFileSync(page, 'utf8'), /^# .+/mu, `${page} needs a title`);
+  for (const page of guides) {
+    const route = `/${relative(docs, page).replace(/\.md$/u, '')}`;
+    assert.ok(routes.includes(route), `Guide missing from navigation: ${route}`);
+  }
+});
+
+await test('the public preview builds all pages with public edit links and a documentation base', () => {
+  for (const { page, filename, html } of renderedPages) {
+    assert.ok(html.includes('/docs/assets/'), `${filename} assets need the documentation base`);
+    assert.ok(
+      html.includes(`https://github.com/BeOnAuto/auto-brain/edit/main/docs/${relative(docs, page)}`),
+      `${filename} needs a public source edit link`,
+    );
+  }
+});
+
+await test('rendered local navigation resolves', () => {
+  for (const { target, filename, href } of localLinks) {
+    assert.ok(existsSync(join(output, target)), `${filename} links to missing page ${href}`);
+  }
+});
+
+await test('rendered fragment links resolve', () => {
+  for (const { target, fragment, filename, href } of fragmentLinks) {
+    const html = readFileSync(join(output, target), 'utf8');
+    assert.ok(html.includes(`id="${fragment}"`), `${filename} links to missing anchor ${href}`);
+  }
+});
+
+await test('guide Markdown does not depend on private source files', () => {
+  for (const { target, page, href } of markdownLinks) {
+    assert.ok(target.startsWith(`${docs}/`), `${page} escapes documentation source: ${href}`);
+    assert.ok(existsSync(target), `${page} links to missing Markdown: ${href}`);
+    assert.ok(publicPages.includes(target), `${page} links to an unpublished source page: ${href}`);
+  }
+});
+
+await test('engineering guides and decisions remain in the repository without entering the public preview', () => {
+  assert.ok(pages.includes(join(docs, 'decisions/README.md')));
+  assert.ok(pages.includes(join(docs, 'engineering/index.md')));
+  assert.ok(pages.includes(join(docs, 'engineering/self-host/temporal.md')));
+  assert.ok(pages.includes(join(docs, 'engineering/reference/workflow-format.md')));
+  for (const directory of repositoryOnlyDirectories) {
+    assert.equal(existsSync(join(output, directory)), false);
+    assert.equal(
+      routes.some((route) => route.startsWith(`/${directory}/`)),
+      false,
+    );
+    for (const { html } of renderedPages) assert.equal(html.includes(`href="/docs/${directory}/`), false);
+  }
+});
+
+await test('public docs offer a Cloud learning path and one self-hosting services overview', () => {
+  const selfHostPages = publicPages.filter((page) => relative(docs, page).startsWith('self-host'));
+  assert.deepEqual(selfHostPages, [join(docs, 'self-host.md')]);
+  const selfHost = readFileSync(join(docs, 'self-host.md'), 'utf8');
+  assert.ok(selfHost.includes('[Xolvio Professional Services](https://www.xolv.io/contact-us)'));
+  assert.ok(markdownDestinations(selfHost).some((href) => href === 'https://on.auto/docs/get-started/cloud'));
+  const index = readFileSync(join(docs, 'index.md'), 'utf8');
+  const destinations = markdownDestinations(index);
+  assert.ok(destinations.some((href) => href === 'https://on.auto/docs/get-started/cloud'));
+  assert.ok(destinations.includes('self-host.md'));
+  assert.ok(
+    destinations.findIndex((href) => href === 'https://on.auto/docs/get-started/cloud') <
+      destinations.indexOf('self-host.md'),
+  );
+  for (const { html } of renderedPages) assert.doesNotMatch(html, /temporal/iu);
+  for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /temporal/iu);
+});
+
+await test('documentation link checks compare the complete Markdown destination', () => {
+  const expected = 'https://on.auto/docs/get-started/cloud';
+  assert.deepEqual(markdownDestinations(`[Connect](${expected})`), [expected]);
+  const misleading = [
+    `[Wrong host](https://on.auto.example.test/docs/get-started/cloud)`,
+    `[Wrong path](https://example.test/${expected})`,
+    `[Unrelated text](https://example.test/) ${expected}`,
+  ];
+  for (const source of misleading) {
+    assert.equal(
+      markdownDestinations(source).some((href) => href === expected),
+      false,
+    );
+  }
+});
+
+await test('navigation separates concepts, learning, guides and reference', () => {
+  assert.deepEqual(navigationGroups, [
+    'Concepts',
+    'Get started',
+    'Guides',
+    'Contributing',
+    'Self-hosting',
+    'Reference',
+  ]);
+  assert.ok(routes.includes('/tutorials/first-brain'));
+  assert.ok(navigation.includes('Deployment and support'));
+  const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
+  assert.match(mcp, /^# MCP reference/mu);
+  assert.ok(mcp.includes('../tutorials/first-brain.md'));
+  assert.doesNotMatch(mcp, /Given what you know about my work|## Start with work/u);
+});
+
+await test('the first-brain tutorial supplies inputs and observable checks for two runs', () => {
+  const tutorial = readFileSync(join(docs, 'tutorials/first-brain.md'), 'utf8');
+  const inputs = [...tutorial.matchAll(/```text\n([\s\S]*?)```/gu)].map((match: readonly string[]) => match[1]);
+  assert.equal(inputs.length, 2);
+  assert.equal(inputs[0]?.includes('Total budget: USD 8,000'), true);
+  assert.equal(inputs[0]?.includes('Success measure: Generate interest in the product'), true);
+  assert.equal(inputs[1]?.includes('Finance directors at UK manufacturing companies'), true);
+  assert.equal(inputs[1]?.includes('Success measure: 100 trial registrations'), true);
+  assert.ok(markdownDestinations(tutorial).some((href) => href === 'https://on.auto/docs/get-started/cloud'));
+  assert.ok(tutorial.includes('review-campaign-brief'));
+  assert.ok(tutorial.includes('USD 10,000'));
+  assert.ok(tutorial.includes('status: succeeded'));
+  assert.ok(tutorial.includes('different execution ids'));
+  assert.ok(tutorial.includes('same definition version'));
+  assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
+});
+
+await test('docs distinguish available inbound MCP from upcoming internal tools', () => {
+  const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
+  const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
+  const readme = readFileSync(join(docs, '../README.md'), 'utf8');
+  assert.ok(mcp.includes('inbound interface'));
+  assert.ok(mcp.includes('shared catalog'));
+  assert.ok(mcp.includes('direct tool lists is coming soon'));
+  assert.ok(functions.includes('Those capabilities are not implemented'));
+  assert.ok(functions.includes('model gateways connect to language models'));
+  assert.ok(readme.includes('Coming soon: tool access inside reason functions'));
+  assert.ok(readme.includes('bounded tool-call loops'));
+});
+
+await test('model discovery is documented without treating wildcard entries as runnable models', () => {
+  const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
+  const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
+  const tutorial = readFileSync(join(docs, 'tutorials/first-brain.md'), 'utf8');
+  assert.ok(mcp.includes('`list_models`'));
+  assert.ok(mcp.includes('requires `org:read`'));
+  assert.ok(mcp.includes('not available on a brain-scoped endpoint'));
+  assert.ok(mcp.includes('`catalog_status: "partial"`'));
+  assert.ok(mcp.includes('not a model to run'));
+  assert.ok(http.includes('GET /v1/orgs/{org}/models'));
+  assert.ok(tutorial.includes('model reference that your workspace can use'));
+  assert.ok(tutorial.includes('Do not use a wildcard'));
+});
+
+await test('public workflows stay marked coming soon without legacy runnable routes', () => {
+  const workflows = readFileSync(join(docs, 'concepts/workflows.md'), 'utf8');
+  assert.match(workflows, /coming soon/iu);
+  assert.doesNotMatch(workflows, /```(?:yaml|sh|bash|json)/u);
+  const removedPages = ['get-started/self-hosted', 'reference/http-tutorial', 'reference/workflow-format'];
+  for (const page of removedPages) {
+    assert.equal(routes.includes(`/${page}`), false);
+    assert.equal(existsSync(join(output, `${page}.html`)), false);
+  }
+});
