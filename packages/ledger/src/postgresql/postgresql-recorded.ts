@@ -1,4 +1,3 @@
-import { SQL, type SQLExecutor } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
 import type { RecordedPoint, RecordedStore } from '../event-store.ts';
@@ -10,25 +9,33 @@ import {
   type RecordHead,
   type RecordedStatements,
 } from '../recorded/recorded-statements.ts';
+import { brainKeyOfStream, kindKeyOfStream } from './brain-indexes.ts';
 import { dataAsJsonText } from './json-text.ts';
 
 export type Query = (text: string, values: readonly unknown[]) => Promise<readonly unknown[]>;
 
 type Bind = (value: unknown) => string;
 
-const brainKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}')";
-
-const kindKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){4}')";
-
 const defaultPartition = 'emt:default';
 
-const belowTheOldestOpenTransaction = 'transaction_id < pg_snapshot_xmin(pg_current_snapshot())';
+const oldestWriteOfThisDatabase = `(
+  SELECT coalesce(min(running.xid), pg_snapshot_xmax(pg_current_snapshot()))
+  FROM pg_snapshot_xip(pg_current_snapshot()) AS running(xid)
+  WHERE running.xid::text::bigint % 4294967296 NOT IN (
+    SELECT backend_xid::text::bigint FROM pg_stat_activity
+    WHERE backend_xid IS NOT NULL AND datname IS DISTINCT FROM current_database()
+  )
+)`;
+
+export const belowTheHorizon = `transaction_id < ${oldestWriteOfThisDatabase}`;
 
 const PointFields = { transaction: Schema.String, position: Schema.String };
 
 const HeadFields = { ...PointFields, stream: Schema.String, type: Schema.String, recorded: Schema.String };
 
-const ExaminedRecordRows = Schema.Array(Schema.Struct({ ...HeadFields, wanted: Schema.Boolean, size: Schema.Int }));
+const ExaminedRecordRows = Schema.Array(
+  Schema.Struct({ ...HeadFields, wanted: Schema.Boolean, size: Schema.Int, examined: Schema.Int }),
+);
 
 const ExaminedRunRow = Schema.Struct({
   ...HeadFields,
@@ -76,6 +83,18 @@ function bounds(bind: Bind, { order, after, from }: ExaminationScope): string {
   return from === undefined ? beyond : `${beyond} AND (transaction_id, global_position) >= ${pointAt(bind, from)}`;
 }
 
+function horizonOf({ order }: ExaminationScope): string {
+  return order === 'asc' ? ` AND ${belowTheHorizon}` : '';
+}
+
+function matchedThroughItsIndex(bind: Bind, key: string, value: string): string {
+  return `${key} = ANY(${bind([value])}::text[])`;
+}
+
+function orderedThroughItsIndex(key: string, scope: ExaminationScope): string {
+  return `${key} ${direction(scope)}, transaction_id ${direction(scope)}, global_position ${direction(scope)}`;
+}
+
 function ofTypes(bind: Bind, column: string, types: readonly string[] | undefined): string {
   return types === undefined ? 'TRUE' : `${column} = ANY(${bind(types)}::text[])`;
 }
@@ -92,28 +111,63 @@ function headOf({ transaction, position, stream, type, recorded }: HeadRow): Rec
   return { point: [transaction, position], stream, type, recordedAt: recorded };
 }
 
+interface RecordsScope {
+  readonly bind: Bind;
+  readonly scope: ExaminationScope;
+  readonly wanted: string;
+  readonly partition: string;
+  readonly bounded: string;
+  readonly limit: string;
+}
+
+function inOrder({ scope }: RecordsScope, prefix = ''): string {
+  return `${prefix}transaction_id ${direction(scope)}, ${prefix}global_position ${direction(scope)}`;
+}
+
+function recordsWhere(key: string, value: string, records: RecordsScope): string {
+  return `SELECT transaction_id, global_position, transaction_id::text AS transaction, global_position::text AS position,
+      stream_id AS stream, message_type AS type, ${timeOf('created')} AS recorded, ${records.wanted} AS wanted, message_data
+    FROM emt_messages
+    WHERE ${matchedThroughItsIndex(records.bind, key, value)} AND partition = ${records.partition}
+      AND is_archived = FALSE${horizonOf(records.scope)}${records.bounded}
+    ORDER BY ${orderedThroughItsIndex(key, records.scope)}
+    LIMIT ${records.limit}`;
+}
+
+function recordsIn(streams: readonly string[] | undefined, records: RecordsScope): string {
+  if (streams === undefined) {
+    return recordsWhere(brainKeyOfStream, records.scope.brainKey, records);
+  }
+  const ofEachStream = streams.map((stream) => `(${recordsWhere('stream_id', stream, records)})`);
+  return `${ofEachStream.join(' UNION ALL ')} ORDER BY ${inOrder(records)} LIMIT ${records.limit}`;
+}
+
 function examineRecords(query: Query): RecordedStatements['examineRecords'] {
   return async (streams, scope) => {
     const { values, bind } = binding();
-    const wanted = ofTypes(bind, 'message_type', scope.types);
-    const inScope =
-      streams === undefined
-        ? `${brainKeyOfStream} = ${bind(scope.brainKey)}`
-        : `stream_id = ANY(${bind(streams)}::text[])`;
+    const records: RecordsScope = {
+      bind,
+      scope,
+      wanted: ofTypes(bind, 'message_type', scope.types),
+      partition: bind(defaultPartition),
+      bounded: bounds(bind, scope),
+      limit: bind(scope.examineAtMost + 1),
+    };
     const rows = await query(
-      `SELECT transaction_id::text AS transaction, global_position::text AS position, stream_id AS stream,
-          message_type AS type, ${timeOf('created')} AS recorded, ${wanted} AS wanted,
-          CASE WHEN ${wanted} THEN octet_length(message_data ->> 'json') ELSE 0 END AS size
-        FROM emt_messages
-        WHERE ${inScope} AND partition = ${bind(defaultPartition)} AND is_archived = FALSE
-          AND ${belowTheOldestOpenTransaction}${bounds(bind, scope)}
-        ORDER BY transaction_id ${direction(scope)}, global_position ${direction(scope)}
+      `SELECT transaction, position, stream, type, recorded, wanted, examined::int AS examined,
+          CASE WHEN wanted THEN octet_length(message_data ->> 'json') ELSE 0 END AS size
+        FROM (
+          SELECT scanned.*, row_number() OVER (ORDER BY ${inOrder(records, 'scanned.')}) AS examined
+          FROM (${recordsIn(streams, records)}) AS scanned
+        ) AS numbered
+        WHERE wanted OR examined >= ${bind(scope.examineAtMost)}
+        ORDER BY ${inOrder(records)}
         LIMIT ${bind(scope.answerAtMost)}`,
       values,
     );
-    return Schema.decodeUnknownSync(ExaminedRecordRows)(rows).map((row, index): ExaminedItem => {
+    return Schema.decodeUnknownSync(ExaminedRecordRows)(rows).map((row): ExaminedItem => {
       const head = headOf(row);
-      return { examined: index + 1, wanted: row.wanted, size: row.size, point: head.point, heads: [head] };
+      return { examined: row.examined, wanted: row.wanted, size: row.size, point: head.point, heads: [head] };
     });
   };
 }
@@ -127,10 +181,10 @@ function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationSc
         global_position::text AS position, stream_id AS stream, message_type AS type,
         ${timeOf('created')} AS recorded, message_data
       FROM emt_messages
-      WHERE ${kindKeyOfStream} = ${bind(`${scope.brainKey}executions/`)} AND stream_position = 1
+      WHERE ${matchedThroughItsIndex(bind, kindKeyOfStream, `${scope.brainKey}executions/`)} AND stream_position = 1
         AND partition = ${partition} AND is_archived = FALSE
-        AND ${belowTheOldestOpenTransaction}${bounds(bind, scope)}
-      ORDER BY transaction_id ${direction(scope)}, global_position ${direction(scope)}
+        ${horizonOf(scope)}${bounds(bind, scope)}
+      ORDER BY ${orderedThroughItsIndex(kindKeyOfStream, scope)}
       LIMIT ${bind(scope.examineAtMost + 1)}
     ) AS scanned`;
 }
@@ -171,7 +225,7 @@ function examineRuns(query: Query): RecordedStatements['examineRuns'] {
           SELECT transaction_id, global_position, stream_position, message_type, created, message_data
           FROM emt_messages AS m
           WHERE m.stream_id = f.stream AND m.partition = ${partition} AND m.is_archived = FALSE
-          ORDER BY m.stream_position DESC
+          ORDER BY m.transaction_id DESC, m.global_position DESC
           LIMIT 1
         ) AS latest
         WHERE ${wanted} OR f.examined >= ${bind(scope.examineAtMost)}
@@ -231,20 +285,4 @@ export function postgresqlRecordedStore(query: Query): RecordedStore {
       dataAt: dataAt(query),
     }),
   };
-}
-
-export async function createPostgreSQLBrainIndexes({ execute }: { readonly execute: SQLExecutor }): Promise<void> {
-  const brainKey = SQL.plain(brainKeyOfStream);
-  await execute.command(
-    SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain
-      ON emt_messages ((${brainKey}), transaction_id, global_position)`,
-  );
-  await execute.command(
-    SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time
-      ON emt_messages ((${brainKey}), created, transaction_id, global_position)`,
-  );
-  await execute.command(
-    SQL`CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind
-      ON emt_messages ((${SQL.plain(kindKeyOfStream)}), transaction_id, global_position) WHERE stream_position = 1`,
-  );
 }

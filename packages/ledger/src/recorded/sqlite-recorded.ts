@@ -2,6 +2,7 @@ import { SQL, type SQLExecutor } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
 import type { RecordedPoint, RecordedStore } from '../event-store.ts';
+import { createMissingIndexes, type BrainIndex, type IndexExecutor } from './missing-indexes.ts';
 import {
   pointKey,
   recordedReadingOver,
@@ -27,7 +28,9 @@ const defaultPartition = 'emt:default';
 
 const HeadFields = { position: Schema.Int, stream: Schema.String, type: Schema.String, recorded: Schema.String };
 
-const ExaminedRecordRows = Schema.Array(Schema.Struct({ ...HeadFields, wanted: Schema.Int, size: Schema.Int }));
+const ExaminedRecordRows = Schema.Array(
+  Schema.Struct({ ...HeadFields, wanted: Schema.Int, size: Schema.Int, examined: Schema.Int }),
+);
 
 const ExaminedRunRow = Schema.Struct({
   ...HeadFields,
@@ -43,6 +46,8 @@ const ExaminedRunRow = Schema.Struct({
 const PositionRows = Schema.Array(Schema.Struct({ position: Schema.Int }));
 
 const DataRows = Schema.Array(Schema.Struct({ position: Schema.Int, data: Schema.fromJsonString(Schema.Unknown) }));
+
+const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
 function headOf(position: number, stream: string, type: string, recorded: string): RecordHead {
   return { point: [String(position)], stream, type, recordedAt: `${recorded.replace(' ', 'T')}.000Z` };
@@ -75,26 +80,40 @@ function ofTypes(column: string, types: readonly string[] | undefined): SQL {
     : SQL`${SQL.plain(column)} IN (SELECT value FROM json_each(${JSON.stringify(types)}))`;
 }
 
-function inScope(streams: readonly string[] | undefined, { brainKey }: ExaminationScope): SQL {
-  return streams === undefined
-    ? SQL`${brainKeyOfStream} = ${brainKey}`
-    : SQL`stream_id IN (SELECT value FROM json_each(${JSON.stringify(streams)}))`;
+function recordsWhere(where: SQL, scope: ExaminationScope): SQL {
+  return SQL`SELECT global_position AS position, stream_id AS stream, message_type AS type, created AS recorded,
+      ${ofTypes('message_type', scope.types)} AS wanted, octet_length(message_data) AS size
+    FROM emt_messages
+    WHERE ${where} AND partition = ${defaultPartition} AND is_archived = FALSE${bounds(scope)}
+    ORDER BY global_position ${direction(scope)}
+    LIMIT ${scope.examineAtMost + 1}`;
+}
+
+function recordsIn(streams: readonly string[] | undefined, scope: ExaminationScope): SQL {
+  if (streams === undefined) {
+    return recordsWhere(SQL`${brainKeyOfStream} = ${scope.brainKey}`, scope);
+  }
+  const ofEachStream = streams.map((stream) => SQL`SELECT * FROM (${recordsWhere(SQL`stream_id = ${stream}`, scope)})`);
+  return SQL`${SQL.merge(ofEachStream, ' UNION ALL ')}
+    ORDER BY position ${direction(scope)}
+    LIMIT ${scope.examineAtMost + 1}`;
 }
 
 function examineRecords(execute: SQLExecutor): RecordedStatements['examineRecords'] {
   return async (streams, scope) => {
-    const wanted = ofTypes('message_type', scope.types);
     const { rows } = await execute.query(
-      SQL`SELECT global_position AS position, stream_id AS stream, message_type AS type, created AS recorded,
-          ${wanted} AS wanted, CASE WHEN ${wanted} THEN octet_length(message_data) ELSE 0 END AS size
-        FROM emt_messages
-        WHERE ${inScope(streams, scope)} AND partition = ${defaultPartition} AND is_archived = FALSE${bounds(scope)}
-        ORDER BY global_position ${direction(scope)}
+      SQL`SELECT position, stream, type, recorded, wanted, CASE WHEN wanted THEN size ELSE 0 END AS size, examined
+        FROM (
+          SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined
+          FROM (${recordsIn(streams, scope)}) AS scanned
+        )
+        WHERE wanted OR examined >= ${scope.examineAtMost}
+        ORDER BY examined
         LIMIT ${scope.answerAtMost}`,
     );
-    return Schema.decodeUnknownSync(ExaminedRecordRows)(rows).map((row, index): ExaminedItem => {
+    return Schema.decodeUnknownSync(ExaminedRecordRows)(rows).map((row): ExaminedItem => {
       const head = headOf(row.position, row.stream, row.type, row.recorded);
-      return { examined: index + 1, wanted: row.wanted === 1, size: row.size, point: head.point, heads: [head] };
+      return { examined: row.examined, wanted: row.wanted === 1, size: row.size, point: head.point, heads: [head] };
     });
   };
 }
@@ -187,15 +206,34 @@ export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore {
   };
 }
 
-export async function createSQLiteBrainIndexes({ execute }: { readonly execute: SQLExecutor }): Promise<void> {
-  await execute.command(
-    SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain ON emt_messages (${brainKeyOfStream}, global_position)`,
+const brainIndexes: readonly BrainIndex[] = [
+  {
+    name: 'ledger_messages_by_brain',
+    create: () =>
+      SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain ON emt_messages (${brainKeyOfStream}, global_position)`,
+  },
+  {
+    name: 'ledger_messages_by_brain_and_time',
+    create: () =>
+      SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time ON emt_messages (${brainKeyOfStream}, created)`,
+  },
+  {
+    name: 'ledger_messages_by_stream',
+    create: () =>
+      SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, global_position)`,
+  },
+  {
+    name: 'ledger_first_messages_by_kind',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind
+      ON emt_messages (${kindKeyOfStream}, global_position) WHERE stream_position = 1`,
+  },
+];
+
+export async function createSQLiteBrainIndexes(execute: IndexExecutor): Promise<void> {
+  const names = JSON.stringify(brainIndexes.map(({ name }) => name));
+  const { rows } = await execute.query(
+    SQL`SELECT name FROM sqlite_master WHERE type = 'index' AND name IN (SELECT value FROM json_each(${names}))`,
   );
-  await execute.command(
-    SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time ON emt_messages (${brainKeyOfStream}, created)`,
-  );
-  await execute.command(
-    SQL`CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind ON emt_messages (${kindKeyOfStream}, global_position)
-      WHERE stream_position = 1`,
-  );
+  const existing = new Set(Schema.decodeUnknownSync(NameRows)(rows).map(({ name }) => name));
+  await createMissingIndexes(execute, brainIndexes, existing);
 }

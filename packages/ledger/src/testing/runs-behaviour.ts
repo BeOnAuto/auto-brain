@@ -62,7 +62,13 @@ function theStreamsOfOneRun(aLedger: LedgerMaker): void {
       await happen(ledger, inAlpha('executions/r1'), noted('execution_succeeded'));
 
       const page = await reading(ledger, { kind: 'run', execution: 'r1' }, { order: 'asc', limit: 10 });
+      const succeeded = await reading(
+        ledger,
+        { kind: 'run', execution: 'r1' },
+        { order: 'desc', limit: 10, types: ['execution_succeeded'] },
+      );
 
+      expect(streamsAndTypes(succeeded)).toEqual(['brain/acme/alpha/executions/r1 execution_succeeded']);
       expect(streamsAndTypes(page)).toEqual([
         'brain/acme/alpha/executions/r1 execution_started',
         'brain/acme/alpha/runs/r1 input_applied',

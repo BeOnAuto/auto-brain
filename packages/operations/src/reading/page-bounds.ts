@@ -2,7 +2,7 @@ export const mostRecordsInAPage = 100;
 
 export const mostBytesLoadedInAPage = 4 * 1024 * 1024;
 
-export const mostRunsExaminedInAPage = 1000;
+export const mostExaminedInAPage = 1000;
 
 export interface Examined {
   readonly examined: number;

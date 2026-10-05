@@ -1,6 +1,6 @@
 import {
   boundedPage,
-  mostRunsExaminedInAPage,
+  mostExaminedInAPage,
   type Examined,
   type RecordedOrder,
   type RecordedSelection,
@@ -44,17 +44,13 @@ export function pointKey(point: RecordedPoint): string {
   return point.join(':');
 }
 
-function scopeOf(
-  brainKey: string,
-  selection: RecordedSelection,
-  { order, limit, types, after }: StoredPageRequest,
-): ExaminationScope {
-  const filteringRuns = selection.kind === 'executions' && types !== undefined;
+function scopeOf(brainKey: string, { order, limit, types, after }: StoredPageRequest): ExaminationScope {
+  const filtering = types !== undefined;
   return {
     brainKey,
     order,
-    examineAtMost: filteringRuns ? mostRunsExaminedInAPage : limit,
-    answerAtMost: filteringRuns ? limit + 2 : limit + 1,
+    examineAtMost: filtering ? mostExaminedInAPage : limit,
+    answerAtMost: filtering ? limit + 2 : limit + 1,
     ...(types === undefined ? {} : { types }),
     ...(after === undefined ? {} : { after }),
   };
@@ -100,7 +96,7 @@ async function pageWithin(
 
 export function recordedReadingOver(statements: RecordedStatements): RecordedStore['readRecorded'] {
   return async (brainKey, selection, page) => {
-    const scope = scopeOf(brainKey, selection, page);
+    const scope = scopeOf(brainKey, page);
     if (page.since === undefined) {
       return pageWithin(statements, selection, page.limit, scope);
     }
