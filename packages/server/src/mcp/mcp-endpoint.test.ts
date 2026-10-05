@@ -111,6 +111,18 @@ describe('the tools of /mcp', () => {
   });
 });
 
+function reachingOutside(tools: readonly ListedTool[]): readonly string[] {
+  return tools.filter(({ annotations }) => annotations?.['openWorldHint'] === true).map(({ name }) => name);
+}
+
+describe('the open-world hint of the tools of /mcp', () => {
+  it('is set for list_models and execute_spec, which reach model providers, and for no other tool', async () => {
+    server = await servingInference([]);
+
+    expect(reachingOutside(await listingOn('/mcp'))).toEqual(['list_models', 'execute_spec']);
+  });
+});
+
 describe('one connection to /mcp', () => {
   it('creates a brain, then creates, executes and reads back an inference spec in it', async () => {
     server = await servingInference([answers(textResult('Profits rose.'))]);

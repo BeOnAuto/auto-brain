@@ -103,6 +103,7 @@ function defineOperation<
       pathParameters,
       targetsBrain,
       successStatus: definition.successStatus ?? 200,
+      reachesOutside: definition.reachesOutside ?? false,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),

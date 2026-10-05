@@ -46,6 +46,7 @@ describe('list_models', () => {
       kind: 'query',
       name: 'list_models',
       route: { method: 'GET', path: '/models' },
+      reachesOutside: true,
     });
     expect(outcome).toMatchObject({
       status: 'succeeded',

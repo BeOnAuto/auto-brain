@@ -161,6 +161,7 @@ describe('list_models over MCP', () => {
     expect(outputConformsTo(tools, 'list_models', own.structuredContent)).toBe(true);
     expect(listedTools(tools).find(({ name }) => name === 'list_models')?.annotations).toMatchObject({
       readOnlyHint: true,
+      openWorldHint: true,
     });
     expect(plainTextIn(own)).toBe(plainWords);
     expect(internalTermsIn(plainTextIn(own))).toEqual([]);

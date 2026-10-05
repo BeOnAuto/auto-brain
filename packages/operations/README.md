@@ -67,11 +67,13 @@ When an operation is defined, it checks again what the compiler cannot see, on t
 
 At run time, when a handler fails with a reason it did not declare, the call fails; it is not rejected.
 
+A definition sets `reachesOutside: true` when its handler calls a system outside the server, such as a model provider; the registration carries it, `false` when left out, and a transport can tell its callers, as the MCP tools do with `openWorldHint`.
+
 `Unavailable` may carry a `kind`, `model_not_offered` for a model the server does not offer, and with it a `because`: `provider_not_configured` when the model's provider is not set up while others are, or `model_not_allowed` when the model is outside what the operator allows. Both reach the rejected outcome, where `explanationOf` and `unsuccessfulWords` turn them into plain words; neither is part of the problem document.
 
 `InvalidInput` is for input that matches the input schema but that the handler finds wrong, such as a document it parses. It carries a detail and its issues, each a `detail` and a JSON Pointer `pointer` into the input. A handler that declares `invalid_input` and fails with it is rejected with reason `invalid_input` and those issues, the same rejection the dispatcher gives input that breaks the schema. Every rejection carries at most 100 issues, and each issue only its `detail` and `pointer`.
 
-`getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, whether the operation targets a brain, and JSON Schema for the input and output with their definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
+`getLabel.registration` is what a catalog stores: the route, the kind, the success status, the reasons, whether the operation targets a brain, whether it reaches outside the server, and JSON Schema for the input and output with their definitions kept apart. Its `run` decodes an input, runs the handler and encodes the output; only the dispatcher calls it, because it checks nothing about the caller.
 
 `getLabel.call(input)` runs the handler in process with typed input and output, checking both against their schemas. This is how one operation calls another. The call runs with the authority of the calling operation: it does not check the permission of the operation it calls, nor run the pipeline steps.
 

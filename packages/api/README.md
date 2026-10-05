@@ -49,12 +49,12 @@ All three sit behind the same chain as every other path. Before the SDK runs, a 
 
 **Tools.** Each operation is one tool: its `name`, `title` and `description` are the operation's, and its `inputSchema` and `outputSchema` are the operation's JSON Schemas (draft 2020-12), each self-contained with an object at the root and its definitions under `$defs`. The annotations derive from the operation:
 
-| Annotation        | Value                                                     |
-| ----------------- | --------------------------------------------------------- |
-| `readOnlyHint`    | `true` for a query, `false` for a command                 |
-| `destructiveHint` | `false`                                                   |
-| `idempotentHint`  | `true` when the operation's HTTP method is `GET` or `PUT` |
-| `openWorldHint`   | `false`                                                   |
+| Annotation        | Value                                                                                                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readOnlyHint`    | `true` for a query, `false` for a command                                                                                                                                                                                 |
+| `destructiveHint` | `false`                                                                                                                                                                                                                   |
+| `idempotentHint`  | `true` when the operation's HTTP method is `GET` or `PUT`                                                                                                                                                                 |
+| `openWorldHint`   | `true` when the operation's definition says it reaches systems outside the server (`reachesOutside`), as `list_models` and an `execute_spec` that serves inference do, since they call model providers; `false` otherwise |
 
 **Calls.** On a scoped endpoint the org, and the brain of a brain endpoint, come from the URL, and the arguments are the whole input; on `/mcp` the org is the caller's own and the brain an argument. The input is decoded with the `json` encoding. A call goes through the same dispatcher and the same `settle` as an HTTP request, with the caller in the URL's org.
 

@@ -36,6 +36,10 @@ describe('the inference primitive', () => {
     expect(primitive.longestExecutionMs).toBe(1_660_000);
   });
 
+  it('reaches outside the server, since it calls a model provider', () => {
+    expect(primitive.reachesOutside).toBe(true);
+  });
+
   it('describes its document with an example that is a valid spec', () => {
     expect(primitive.description).toContain(inferenceExample);
     expect(prepared(inferenceExample).summary).toMatchObject({ description: 'Summarizes an account' });

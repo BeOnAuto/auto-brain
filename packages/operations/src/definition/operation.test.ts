@@ -97,6 +97,19 @@ describe('a registration', () => {
   });
 });
 
+describe('the reach of a registration', () => {
+  it('says it reaches systems outside the server only when its definition says so', () => {
+    const asking = defineQuery('org', {
+      ...about,
+      name: 'ask',
+      route: { method: 'GET', path: '/ask' },
+      reachesOutside: true,
+    });
+
+    expect([addNote.registration.reachesOutside, asking.registration.reachesOutside]).toEqual([false, true]);
+  });
+});
+
 describe('a definition', () => {
   it.each(['Probe', 'probe-name', '', '1probe', `p${'r'.repeat(64)}`])('may not be named %j', (name) => {
     expect(() => defineQuery('org', { ...about, name, route: { method: 'GET', path: '/probe' } })).toThrow(

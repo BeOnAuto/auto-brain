@@ -32,6 +32,7 @@ export function defineListModels(catalog: ModelCatalog) {
     title: 'List models',
     description,
     route: { method: 'GET', path: '/models' },
+    reachesOutside: true,
     inputSchema: InputSchema,
     outputSchema: ModelListSchema,
     reasons: [],

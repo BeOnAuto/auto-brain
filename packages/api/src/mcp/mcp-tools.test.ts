@@ -120,7 +120,7 @@ describe('the spec tools on a brain endpoint', () => {
 });
 
 describe('the annotations of a tool', () => {
-  it('derive from the operation: read-only for a query, idempotent for GET and PUT, never destructive, closed world', async () => {
+  it('derive from the operation: read-only for a query, idempotent for GET and PUT, never destructive, open world only when it reaches outside', async () => {
     const listing = await onAlpha((session) => session.listTools());
     const annotationsByName = Object.fromEntries(
       listedTools(listing).map(({ name, annotations }) => [name, annotations]),
@@ -131,6 +131,7 @@ describe('the annotations of a tool', () => {
       list_specs: { readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false },
       update_spec: { readOnlyHint: false, idempotentHint: true, destructiveHint: false, openWorldHint: false },
       retire_spec: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
+      execute_spec: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
     });
   });
 });
