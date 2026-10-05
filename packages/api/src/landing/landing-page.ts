@@ -5,12 +5,11 @@ import { html, raw } from 'hono/html';
 
 import type { ApiEnv } from '../api-env.ts';
 import { iconOnDark, iconOnLight, mark } from './auto-logo.ts';
+import { fontFaces } from './fonts.ts';
 
 export const consoleOrigin = 'https://console.on.auto';
 
-const fonts = 'https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=DM+Sans:wght@400;500&display=swap';
-
-const styles = `
+const styles = `${fontFaces}
 :root {
   color-scheme: light dark;
   --paper: #ffffff;
@@ -77,6 +76,7 @@ p {
   background: color-mix(in srgb, var(--running) 10%, transparent);
   font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
+  font-weight: 500;
 }
 .address::before {
   content: '';
@@ -110,8 +110,8 @@ const ownStyles = `<style>${styles}</style>`;
 
 const contentSecurityPolicy = [
   "default-src 'none'",
-  `style-src 'sha256-${createHash('sha256').update(styles).digest('base64')}' https://fonts.googleapis.com`,
-  'font-src https://fonts.gstatic.com',
+  `style-src 'sha256-${createHash('sha256').update(styles).digest('base64')}'`,
+  'font-src data:',
   'img-src data:',
   "base-uri 'none'",
   "form-action 'none'",
@@ -139,7 +139,6 @@ function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
         <title>Auto Brain</title>
         <link rel="icon" href="${iconOnLight}" media="(prefers-color-scheme: light)" />
         <link rel="icon" href="${iconOnDark}" media="(prefers-color-scheme: dark)" />
-        <link rel="stylesheet" href="${fonts}" />
         ${raw(ownStyles)}
       </head>
       <body>

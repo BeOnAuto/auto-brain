@@ -79,15 +79,42 @@ describe('the icon of the page at the root of the server', () => {
   });
 });
 
+function fontsOf(page: string): readonly string[] {
+  const embedded = page.match(/data:font\/woff2;base64,[^)]+/gu) ?? [];
+  return embedded.map((font) =>
+    Buffer.from(font.slice(font.indexOf(',') + 1), 'base64')
+      .subarray(0, 4)
+      .toString('latin1'),
+  );
+}
+
+describe('what the page at the root of the server loads', () => {
+  it('carries its two typefaces itself, as WOFF2', async () => {
+    const page = await (await open(createTestHandler().handler)).text();
+
+    expect(fontsOf(page)).toEqual(['wOF2', 'wOF2']);
+    expect(page).toContain("font-family: 'DM Mono';");
+    expect(page).toContain("font-family: 'DM Sans';");
+  });
+
+  it('names no other server than the console it opens', async () => {
+    const page = await (await open(createTestHandler().handler)).text();
+
+    expect(page.match(/https?:\/\/[^"')\s]+/gu)).toEqual([
+      'https://console.on.auto/?server=http%3A%2F%2Flocalhost%3A8080',
+    ]);
+  });
+});
+
 describe('the page at the root of the server', () => {
-  it('may run no script and load only its own styles, its fonts and its icons', async () => {
+  it('may run no script and load nothing but what it carries', async () => {
     const response = await open(createTestHandler().handler);
     const ownStyles = createHash('sha256')
       .update(styleOf(await response.text()))
       .digest('base64');
 
     expect(response.headers.get('content-security-policy')).toBe(
-      `default-src 'none'; style-src 'sha256-${ownStyles}' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+      `default-src 'none'; style-src 'sha256-${ownStyles}'; font-src data:; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     );
   });
 
