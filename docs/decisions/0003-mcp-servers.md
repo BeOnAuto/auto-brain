@@ -1,0 +1,149 @@
+# 0003 — MCP servers: a brain reaches the outside world through configured MCP servers
+
+**Status:** accepted (2026-10-05), revised four times after audit and the gateway's answers the same day
+
+## Context
+
+A brain reasons through the inference primitive: a reason function is a Markdown document whose Dotprompt front matter names the model and whose body is the prompt; `execute_spec` renders it, makes one model call through the AI SDK and records the answer. Nothing a reason function does today reaches outside the server except the model call itself. A run has one deadline, that of its model call, sixty seconds plus twenty-five milliseconds per output token, and the inference primitive declares its longest run at 1,660 seconds, which a workflow uses as the step's timeout. A run that ends `unavailable`, fails or is cancelled leaves no record; a failed run has no words of its own; `execute_spec` runs a spec again for the same id after such an ending; a workflow's `retry` runs a task again under a new id; and a workflow's timeout cancels the step on the workflow's side without stopping the run on the server's.
+
+Businesses want brains that read and act on their systems. The predecessor platform did this with a tool per vendor written inside its own code, each building the vendor's request, calling it and shaping the answer, named by stored agents in their front matter. Every integration was a developer, a pull request and a deploy, and governance lived in that code.
+
+The Model Context Protocol is how agents reach tools today. The specification defines two transports, a local process spoken to over stdio and Streamable HTTP, and for HTTP an authorization model of OAuth 2.1 bearer tokens with protected-resource metadata (RFC 9728) and discovery (RFC 8414); a server may also accept any bearer credential it issues itself, such as an API key. It defines no configuration file. The de facto one is the `mcpServers` object that Claude Desktop, Claude Code, Cursor and VS Code read: a name per server, `command`, `args` and `env` for a process, `type: http`, `url` and `headers` for a remote server. Claude Code names a server's tools `mcp__server__tool` to the model and allow-lists them as `mcp__server__*`.
+
+The first remote server we connect to is an agent services gateway, probed on 2026-10-05. It fronts the systems an organisation connected, behind five generic tools: `search` finds operations and returns the catalogue of services, `introspect` gives the shape of one type, `validate` and `dry_run` check an operation, and `execute` runs a GraphQL operation document with variables, reading or writing. It authorizes an autonomous agent by an application API key sent as a plain bearer header, which reaches the connections an organisation set up with a shared credential; a person's identity, needed for connections each person links to their own account, comes only from the gateway's browser sign-in, and the gateway's vendor says an agent acting as a person is not supported yet. Its policies attach field-level allow, mask and deny decisions to the application behind the key; a denied field answers as a tool result marked `isError` carrying a token for an access request, which its descriptions call a normal, actionable answer. Its tools carry no annotations; one `execute` reads and writes alike; every response carries a policy-epoch digest; its descriptions tell the model to page every list to its last page with explicit page sizes and to re-search when the digest changes. The gateway was also probed with OAuth client credentials and token exchange; both work in principle, the second only with administration on the gateway's side, and neither is needed for the API-key path.
+
+The installed MCP client ships both transports and the OAuth providers; the installed AI SDK runs the tool loop: tools defined at run time from a JSON Schema, a step limit, several calls in one step run in parallel, a hook per step, a mapping of each result before the model sees it, and a stop at the step limit that leaves the model's last words rather than an answer. One provider's adapter sends no tool definitions at all when tools are withheld for a step. Model providers constrain tool names to letters, digits, underscore and hyphen, 64 to 128 characters; MCP tool names may hold dots and run to 128; one provider's JSON-output fallback adds a tool of its own named `json`.
+
+Every write to a run's stream reloads the stream and appends at the version it loaded, retried three times on a conflict without delay; the run's context is built in one place for direct and workflow-started runs alike; the inference primitive already depends on the specs package that owns the execution stream; decision 0002 reads a run's status from the latest message of its stream.
+
+## Decision
+
+### 1. MCP servers are configured on the server, in the standard shape, and never in a reason function
+
+```yaml
+mcp_servers:
+  graph: # the name a reason function uses; a model gateway's name grammar, distinct from model providers and gateways
+    type: http
+    url: https://gateway.example.com/mcp
+    headers:
+      Authorization: Bearer ${GRAPH_API_KEY}
+    org: acme # the org, and optionally the brains, this entry serves
+    brains: [sales, support]
+    record_content: false # see section 5
+  limitless:
+    type: stdio
+    command: limitless-mcp-server # an installed command; the README says why not npx -y
+    args: [--port, '0']
+    env:
+      LIMITLESS_API_KEY: ${LIMITLESS_API_KEY}
+    org: acme
+allowed_tools: [graph/search, graph/introspect, graph/execute, limitless/*] # top level, like allowed_models; syntax checked at start, every tool when left out
+```
+
+`MCP_SERVERS` carries the same object as JSON in the environment. Secrets never appear in the file or the object: `${NAME}` references the environment as model gateways do, and a header or environment value that looks like a credential written out is refused at start, as a model gateway's key is. Validation at start refuses an entry with neither `url` nor `command` or with both, a name that collides with a model provider or gateway, a missing org, an `allowed_tools` entry naming no configured server, and never prints a value. Whether a server offers a tool is learned from the server, by `list_tools` and at run time, never at start, so the server starts without the network and without spawning anything.
+
+An `http` entry is a remote server reached over Streamable HTTP with the headers given; the gateway is one such entry, its application API key in the `Authorization` header. The identity the server sees is whatever the credential carries: for the gateway, the application behind the key, to which its policies, approvals and audit attach. OAuth client-credentials and private-key providers stay available as an `auth` block for servers that issue tokens that way, over the MCP client's own providers, with the issuer pinned.
+
+A `stdio` entry is a process the server spawns and speaks to over stdio, started when a run first needs it and stopped with the server, one per entry, with its environment from the entry only. Because a `command` runs on the machine, it is the operator's to write and never a document's; the README says to use an installed, pinned command rather than `npx -y`, which downloads and runs a package at start. The hosted runtime cannot spawn processes, so only `http` entries exist there, written per brain by the management plane.
+
+A reason function can only name a server configured for its own org and brain; the port that gives a run its tools takes the execution's context, which carries both.
+
+### 2. A reason function names the servers and tools it may use, in Dotprompt's own key
+
+```yaml
+---
+model: anthropic/claude-sonnet-4-5
+tools: [graph/*, limitless/get_lifelogs]
+---
+```
+
+`tools` is Dotprompt's list of tool names, each `server/tool`, as a model is `provider/model`; `server/*` means every tool the server offers that the operator allows. A name whose server is not configured for this org and brain, or that the operator does not allow, rejects the execution as `unavailable` with kind `tool_not_offered` and a `because` of `mcp_server_not_configured` or `tool_not_allowed`, in plain words that name `list_tools`; a tool the server turns out not to offer is `tool_not_listed`, found when the run connects. Which systems a gateway's generic tools may reach is the gateway's policy on the application behind the key; it is not written here, and the gateway's `execute` takes an operation document, so a list here could be enforced only by parsing the gateway's query language, which the brain does not do.
+
+The model never sees `server/tool`. Each tool gets the model-facing name `mcp__server__tool`, the convention Claude Code uses, with characters outside letters, digits and underscore mapped to underscores, cut to 64 characters with a short hash when longer, unique within the run, never `json`, and mapped back on every call. A tool's description reaches the model cut to 4 KiB.
+
+`list_tools` is a read-only operation beside `list_models`: each configured server the caller's org may use, the brains it serves, and the tools it offers that the operator allows, with their descriptions cut to 4 KiB, read from the server and kept for five minutes as model lists are, with plain words that name no `server/tool` literally.
+
+### 3. The run is a tool loop with the servers' tools, inside one model call
+
+When a reason function names tools, its run:
+
+1. takes a connection to each named server from a pool per entry: for `http`, a session over Streamable HTTP with the entry's headers, tokens renewed ahead of expiry and minted once for all concurrent runs where an `auth` block is used, a 401 re-authenticated once and then failed, a session the server has forgotten, answered 404, opened again once; for `stdio`, the entry's process, started on first use;
+2. lists the server's tools once and keeps that snapshot for the run; a `list_changed` notification does not change the snapshot, and a call to a tool the server no longer has is a tool error;
+3. offers the named tools to the model under their model-facing names with the server's input schemas unchanged, with the function's own output mode kept, text or JSON with a schema;
+4. runs the AI SDK's loop: the model calls a tool, the brain records the call (section 5), forwards it with the execution id in the request's metadata under the key `com.beonauto/execution_id`, records the answer, returns it to the model as a tool result in the same conversation, and the model continues or answers;
+5. when a bound of section 4 ends the calls, runs one more step with the tools withheld so the model answers from what it has, and treats a final step that still ends in tool calls as the model not having answered;
+6. ends an `http` session explicitly when the run ends, however it ends, and stops forwarding calls the moment the run is cancelled.
+
+A tool's result is data, never instructions: text content goes to the model as text, structured content only when there is no text content, other content as a one-line placeholder naming its type, and an `isError` result as a tool error the model may recover from, which on the gateway is the normal shape of a denial. Nothing in a result is interpreted by the brain, and a server's `instructions` from initialization are not given to the model; the function's prompt is its author's. A result over its bound is cut at a code point with a note telling the model to ask for fewer rows, fields or depth. Error text that reaches the model is scrubbed of the entry's secrets and tokens and bounded as provider messages are.
+
+### 4. Bounds
+
+| Bound                                                                                                                            | Value                                                                             | When reached                                                              |
+| -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Tool calls in one run                                                                                                            | 25                                                                                | further calls are refused as tool errors, then one step without tools     |
+| Tool results sent to the model in one run                                                                                        | 256 KiB in all                                                                    | further calls are refused as tool errors, then one step without tools     |
+| One result, as the model sees it                                                                                                 | 64 KiB                                                                            | cut at a code point, with the note                                        |
+| One call's arguments                                                                                                             | 16 KiB                                                                            | refused as a tool error                                                   |
+| The same tool with the same arguments                                                                                            | twice                                                                             | the third is refused as a tool error naming the earlier answer            |
+| Server failures in one run: transport, 5xx, a 401 after re-authentication, protocol errors, timeouts, a stdio process that exits | 5                                                                                 | the run is `unavailable`, kind `mcp_server_failed`, because `failing`     |
+| A 429                                                                                                                            | honoured, waiting at most 10 s for `Retry-After`, counted as a failure after that | as above, because `rate_limited`                                          |
+| One call's duration                                                                                                              | 30 s                                                                              | a tool error, counted as a failure                                        |
+| Opening a connection, or starting a process                                                                                      | 10 s                                                                              | the run is `unavailable`, kind `mcp_server_failed`, because `unreachable` |
+| One step's model call                                                                                                            | the model call's deadline, as today                                               | the run is `unavailable`, as a model timeout is today                     |
+| The whole run                                                                                                                    | ten minutes, or one step's deadline when that is longer                           | the run is `unavailable`, kind `tools_unfinished`, because `run_bound`    |
+| A final step that still calls tools                                                                                              |                                                                                   | the run is `unavailable`, kind `tools_unfinished`, because `no_answer`    |
+
+Once a run has recorded a tool call, every `unavailable` ending it meets carries the kind `tools_unfinished`, with `because` `server_failed`, `model_unavailable`, `run_bound` or `no_answer`, so that nothing downstream can mistake a run that may have written for one that never started; the kind and because travel with the result into a workflow, which today keeps only the reason and detail. A call refused inside the brain, over a bound, oversized or repeated, never reaches the server and is not recorded. `isError` results count toward the call bound only, never toward failures. The inference primitive's longest run stays at its declared 1,660 seconds, which already covers the run bound, so a workflow's step timeout cannot cut a tool run short. Several calls the model makes in one step run in parallel and all count. The worst case for cost is stated in the README: every step resends the conversation, so a run that uses its whole result budget sends on the order of a million tokens. The words of every `unavailable` ending above name the tools the run used, in words rather than as `server/tool`, as `list_tools` does.
+
+### 5. Every call is recorded on the run's stream as it happens, whatever the ending
+
+Each call is two events on the execution's own stream, `tool_call_started` and `tool_call_answered`, appended by the run through a journal in its context that the specs package builds beside the rest of the context, so direct and workflow-started runs record alike. Four rules make it sound on today's ledger:
+
+1. **One append at a time per run.** The journal holds a permit per run, because calls in one step run in parallel and a version conflict is retried only three times.
+2. **Record before acting.** The start event is appended before the call is sent, and the call is not sent if the append fails, so a crash between the two can never leave an unrecorded call.
+3. **A finished run takes no more tool events.** The execution decider refuses a tool event once the run has finished, so a call still in flight when a run is cancelled or fails leaves a start with no answer, which reads as an outcome unknown; and the latest message of a running run is a tool event, which decision 0002's status reads as `started`.
+4. **The state fold knows the events.** The execution state counts the run's tool calls and stops treating every event after the start as a finish.
+
+`tool_call_started` carries the call's number within the run, the id the model gave it, the server and tool, the size and SHA-256 digest of the arguments as serialised to the server with `JSON.stringify`, who and when. `tool_call_answered` carries the number, the outcome, `result`, `tool_error`, `server_failure`, `timed_out` or `cancelled`, the size and digest of the result's content as the client hands it back, re-serialised with `JSON.stringify` since the client parses the wire, the duration, the JSON-RPC id the brain sent, and the server's own request id where the entry's `request_id` names a header or metadata key that carries it. Content is recorded only where the operator says so: an entry with `record_content: true` adds the arguments and the result cut to 4 KiB of UTF-8 JSON, because what a brain's identity may see is the server's policy, while what `get_execution` shows is any holder of `brain:read`, kept on an append-only ledger. Decision 0002's presenter shows each event as a public event within its 4 KiB, and a run's history reads as what the run did. The run's final record no longer lists calls.
+
+### 6. A run that has called tools is never run again under its id, and a workflow does not repeat it by accident
+
+A tool may have written. So:
+
+- `execute_spec` answers a finished run again as it promises, and a run that is still settling as it does today; but a run whose stream holds a tool call and did not succeed is not run again under its id: the answer is `conflict` with the new kind `tools_called`, whose words say to start a new run. A run left `started` by a dead server with a tool call recorded is answered the same way and stays `started` on the ledger, because recording a finish for it could mark a duplicate still running elsewhere as failed; its history shows what was called.
+- The orchestration primitive's step that ran such a function receives that conflict as its result and is not retried; its words say the outcome is unknown.
+- A run that called tools and ended `unavailable` reaches a workflow with its kind, `tools_unfinished`, and maps to an error type of its own under that name, with a type URI of its own, never to a communication error, so a `catch` that retries communication errors does not run the tools again under a new id; a workflow that wants a retry names that type and starts a new run knowingly.
+- A workflow's timeout of a step reaches the run: the host forwards the cancellation into the run, which stops forwarding calls at once, ends the session and records its ending, so a workflow never moves on while an orphaned loop keeps writing. Carrying it needs the application runtime's `run` to take a signal, which it does not today.
+
+### 7. Secrets, egress, processes and the operator's log
+
+Headers, environment values, keys and minted tokens of an entry are `Redacted`, scrubbed from every message by the scrubber the model gateways use, and never in an event, a tool result shown to the model, or a log; the MCP client's own console output goes through the server's logger. Remote calls go through the server's outbound `fetch`, so `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS` apply, and a certificate the server does not trust is a fixed message. A `stdio` process inherits nothing from the server's environment but what the entry gives it, runs under the server's user, has its output bounded, and is restarted at most once per run when it exits. The operator's log receives a server's messages bounded, as provider messages are. A server's input schema is checked for portability to the named provider as output schemas are, with a warning. `execute_spec` keeps its open-world annotation and gains the destructive one whenever an MCP server is configured, so an assistant asks before running a function that may write.
+
+### 8. What this record does not decide
+
+A brain acting as a person on a server that keeps per-person connections, which the gateway's vendor does not support for agents yet; the probe showed the gateway's sign-in server can issue a brain a token for a person who authorised it once, so when it is wanted it is a second credential kind behind the same port, with the person recorded at the run's start. A person's approval of a tool call before it runs. The other direction, publishing the brain's own API to a gateway as a connector. A model's cost accounting per run. Tool runs on the hosted runtime, which are not offered there until decision 0001's open question on a call that outlasts one wake-up is decided, because a tool loop waits on the network and a wake-up bounds CPU, not time.
+
+## Consequences
+
+- Adding an integration is configuring a server, or on a gateway publishing a connector and approving a policy for the brain's application. Nothing changes in this repository.
+- The brain depends on two standards and their reference implementations, the MCP client and the AI SDK's tool loop, and on no vendor's API. The connection handling the client lacks, a pool per entry, renewal ahead of expiry, single-flight minting, explicit session end and one reopening, is the brain's own, small and tested.
+- A run that uses tools costs more tokens and time; the bounds make the worst case finite, the events make every call visible as it happens, and the rules of section 6 make side effects happen once.
+- A server's own policy is the hard boundary on what a brain reaches and whether it writes; the operator's `allowed_tools` and the function's `tools` list narrow within it, as `allowed_models` narrows within what a key may call; the org and brain binding keeps one org's server from another's functions.
+- A `stdio` server is a process on the machine, so it is the operator's choice alone, and the hosted runtime has none.
+
+## Verification the build must include
+
+- A fake MCP server built with the MCP server package the API already uses, served on a loopback port the system picks over Streamable HTTP with a bearer check, sessions, a 429 with `Retry-After`, a 404 for a forgotten session, a `list_changed` notification, and tools that answer text, structured content, non-text content and `isError`; the same server as a `stdio` process spawned from a test command, with an exit mid-run.
+- Settings: each refusal of section 1, with a pointer and never a value; a credential written out instead of referenced refused; an `auth` block's issuer pinned.
+- Connections: a session pooled across runs and ended on every ending; a 401 re-authenticated once and then failed; a forgotten session reopened once; a `stdio` process started once and restarted once; headers, environment values and tokens never appear in any event, log, tool result or error, checked by the existing leak test.
+- The loop: a named tool reaches the server and its result the model; model-facing names map both ways, including a dotted tool and one over the length; `isError` becomes a tool error and counts as a call only; a result over 64 KiB is cut with the note; every bound in the table is hit by one test and ends as the table says, each `unavailable` ending with its kind, because and words; the final step without tools yields an answer in text mode and in JSON mode against each configured provider's adapter with a scripted model, asserting what that step's request contains, since only the manual run proves the provider's side; a final step that still calls tools ends as the table says; a tool the function did not name is never offered; the snapshot survives a `list_changed`; a cancelled run forwards no further call.
+- Names: an unconfigured server, another org's server, a disallowed tool and an unlisted tool each reject with the right kind and because and plain words naming `list_tools`; `server/*` offers exactly the allowed tools.
+- Events: two events per call on the execution stream on every ending, cancellation included, with a start and no answer for a call in flight at cancellation; ten parallel calls in one step all recorded under the permit; a call whose start cannot be recorded is never sent; a tool event after the finish is refused; content only with `record_content`; each presents within 4 KiB; decision 0002's status reads a running run with tool events as `started`.
+- Section 6: a second `execute_spec` for an unsuccessful run with a tool call is `conflict` with kind `tools_called`, while a succeeded run is answered again; the orchestration step is not retried after that conflict; `tools_unfinished` is not a communication error to a workflow's `catch`; a workflow timeout cancels the run on the server.
+- Through the real server over HTTP and MCP: a reason function with tools runs end to end against the fake server, over both transports, `list_tools` lists them, and `execute_spec` carries the destructive annotation; one manual run against the gateway with an application API key, documented in the package README and not in CI.
+
+## Build
+
+1. `@beonauto/mcp`: the settings in the standard shape with their org and brain binding, the connection pool over the MCP client's two transports, the `auth` block over its OAuth providers, the model-facing names, the bounds, and the fake server in `src/testing`. `@beonauto/specs`: the tool-call events and the journal in the run's context, the decider's refusal after the finish, the `tools_called` conflict and the rule of section 6 in `execute_spec`. The inference primitive: the `tools` front matter key, the `ToolAccess` port taking the execution context, the loop in its model call with the final step, and the endings of section 4 with their words. The orchestration primitive: the kind carried through its result types, the error type of section 6 and the forwarded cancellation, which also touches `@beonauto/api`'s application runtime and the workflow host so a signal reaches the run. `allowed_tools` beside `allowed_models`.
+2. `list_tools`, the presenter of tool-call events for decision 0002's history, the destructive annotation, and the public documentation: the integrations guide's "tool access from inside the brain" section replaced by what exists, the configuration reference, and the reasoning format's `tools` key.
+3. The person-backed credential kind, when the gateway supports agents acting as a person, and the other direction, the brain as a connector, each in its own record.
