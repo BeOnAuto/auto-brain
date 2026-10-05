@@ -53,7 +53,9 @@ There is no read model: each call folds the stream. A pure decider holds the rul
 
 ## The brain registry port
 
-`ledgerBrainRegistry` is a `Layer` that provides the `BrainRegistry` port of `@beonauto/operations` from a `Ledger`. It answers whether a brain exists: a brain exists while the org's brain registry holds it as active, so a brain-scoped operation rejects a retired brain with `not_found`. It names the stream with `streamPrefixOfOrg`, the prefix the org-bound ports put before `brains`, so it reads the very stream the operations write.
+`ledgerBrainRegistry` is a `Layer` that provides the `BrainRegistry` port of `@beonauto/operations` from a `Ledger`. It answers the status of a brain as the org's brain registry holds it: `active` from its creation, `retired` from its retirement, and `unknown` for an id the org never created. It names the stream with `streamPrefixOfOrg`, the prefix the org-bound ports put before `brains`, so it reads the very stream the operations write.
+
+The dispatcher applies the status to every brain-scoped operation. A retired brain stays readable: every query runs on it, so what the brain recorded survives its retirement. Every command on a retired brain is refused with `conflict`, kind `retired`, and the detail `update_brain` gives, such as `The brain gamma is retired and can no longer change`. An unknown brain is `not_found`.
 
 ## Source
 
