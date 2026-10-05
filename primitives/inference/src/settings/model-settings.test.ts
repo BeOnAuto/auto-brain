@@ -28,6 +28,8 @@ describe('readModelSettings with nothing set', () => {
       vertex: { configured: false, missing: ['GOOGLE_VERTEX_PROJECT', 'GOOGLE_VERTEX_LOCATION'] },
       gateways: [],
       aliases: new Map(),
+      declared: new Map(),
+      allowed: null,
       proxy: { enabled: false, environment: {} },
     });
   });

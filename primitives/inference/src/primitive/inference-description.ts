@@ -42,7 +42,7 @@ function offerOf({ providers, aliases }: OfferedModels): string {
     return noProvider;
   }
   const examples = providers.map((provider) => `${provider}/<model id>`).join(' or ');
-  return `This server calls models through ${providers.join(', ')}: write model as <provider>/<model id>, with a model id that provider serves, for example ${examples}.${namedModels(aliases)}`;
+  return `This server calls models through ${providers.join(', ')}: write model as <provider>/<model id>, with a model id that provider serves, for example ${examples}.${namedModels(aliases)} list_models lists the models this server can call.`;
 }
 
 export const inferenceExample = [

@@ -18,6 +18,7 @@ import {
 } from './credential-sources.ts';
 import { anthropicModels, gatewayModels, googleModels, openAiModels } from './direct-providers.ts';
 import { withCertificateFailures } from './outbound-fetch.ts';
+import { installSdkGlobals } from './sdk-globals.ts';
 import type { Fetch, ModelFactory } from './sdk-model.ts';
 
 export interface FactorySources {
@@ -66,6 +67,7 @@ function cloudEntries(settings: ModelSettings, { fetch, credentials, azureTokens
 }
 
 export function modelFactories(settings: ModelSettings, sources: FactorySources): ReadonlyMap<string, ModelFactory> {
+  installSdkGlobals();
   const fetch = withCertificateFailures(sources.fetch);
   return new Map([
     ...entriesFor(settings.anthropic, (anthropic) => [['anthropic', anthropicModels(anthropic, fetch)]]),

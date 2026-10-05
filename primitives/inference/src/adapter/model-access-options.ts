@@ -1,12 +1,13 @@
 import type { Effect } from 'effect';
 
+import type { ListingCache } from '../catalog/listing-cache.ts';
 import type { CredentialSources } from './credential-sources.ts';
 import type { EntraIdentityLoader } from './entra-id.ts';
 import type { Fetch } from './sdk-model.ts';
 
 export interface ProviderMessageReport {
   readonly provider: string;
-  readonly model: string;
+  readonly model: string | null;
   readonly status: number | null;
   readonly message: string;
   readonly execution_id: string | null;
@@ -16,7 +17,7 @@ export type ReportProviderMessage = (report: ProviderMessageReport) => Effect.Ef
 
 export interface OperatorHintReport {
   readonly provider: string;
-  readonly model: string;
+  readonly model: string | null;
   readonly hint: string;
   readonly execution_id: string | null;
 }
@@ -29,4 +30,5 @@ export interface ModelAccessOptions {
   readonly loadEntraIdentity?: EntraIdentityLoader;
   readonly reportProviderMessage?: ReportProviderMessage;
   readonly reportOperatorHint?: ReportOperatorHint;
+  readonly listingCache?: ListingCache;
 }

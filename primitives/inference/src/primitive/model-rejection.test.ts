@@ -6,6 +6,7 @@ import {
   Cancelled,
   ContentRefused,
   CredentialsRejected,
+  ModelNotOffered,
   OutputInvalid,
   ProviderNotConfigured,
   ProviderUnavailable,
@@ -201,6 +202,25 @@ describe('a model of a provider the server does not have, while it has others', 
       Exit.fail(
         new Unavailable({
           detail: 'openai is not configured. Configured providers: anthropic, gateway',
+          kind: 'model_not_offered',
+        }),
+      ),
+    );
+  });
+});
+
+describe('a model outside those its operator allows', () => {
+  it('is unavailable of the kind model_not_offered, naming the models that are offered', async () => {
+    const failure = new ModelNotOffered({
+      detail: 'openai/gpt-5 is not one of the models this server offers. Offered models: anthropic/*',
+      provider: 'openai',
+      offered: ['anthropic/*'],
+    });
+
+    expect(await failingWith(() => failure)).toEqual(
+      Exit.fail(
+        new Unavailable({
+          detail: 'openai/gpt-5 is not one of the models this server offers. Offered models: anthropic/*',
           kind: 'model_not_offered',
         }),
       ),

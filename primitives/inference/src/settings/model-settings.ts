@@ -1,6 +1,7 @@
 import { Config, Data, Effect } from 'effect';
 
 import { aliasReading } from './alias-settings.ts';
+import { catalogReading } from './catalog-settings.ts';
 import { gatewayReading, type GatewaySettings } from './gateway-settings.ts';
 import {
   anthropicReading,
@@ -44,6 +45,8 @@ export interface ModelSettings {
   readonly vertex: Availability<VertexSettings>;
   readonly gateways: readonly GatewaySettings[];
   readonly aliases: ReadonlyMap<string, string>;
+  readonly declared: ReadonlyMap<string, readonly string[]>;
+  readonly allowed: readonly string[] | null;
   readonly proxy: ProxySettings;
 }
 
@@ -63,6 +66,8 @@ const sources = Config.all({
   vertex: vertexSource,
   gateways: optionalText('MODEL_GATEWAYS'),
   aliases: optionalText('MODEL_ALIASES'),
+  declared: optionalText('DECLARED_MODELS'),
+  allowed: optionalText('ALLOWED_MODELS'),
   useEnvironmentProxy: optionalText('NODE_USE_ENV_PROXY'),
   proxyVariables: Config.all(proxyVariables.map((name) => optionalText(name))),
 });
@@ -86,7 +91,12 @@ export const readModelSettings = Effect.fnUntraced(function* (environment: Envir
   const vertex = vertexReading(source.vertex);
   const gateways = yield* gatewayReading(environment, source.gateways);
   const aliases = aliasReading(source.aliases);
-  const problems = [anthropic, openai, google, bedrock, azure, vertex, gateways, aliases].flatMap(
+  const catalog = catalogReading(
+    source.declared,
+    source.allowed,
+    gateways.gateways.map(({ name }) => name),
+  );
+  const problems = [anthropic, openai, google, bedrock, azure, vertex, gateways, aliases, catalog].flatMap(
     (reading) => reading.problems,
   );
   if (problems.length > 0) {
@@ -101,6 +111,8 @@ export const readModelSettings = Effect.fnUntraced(function* (environment: Envir
     vertex: vertex.availability,
     gateways: gateways.gateways,
     aliases: aliases.aliases,
+    declared: catalog.declared,
+    allowed: catalog.allowed,
     proxy: { enabled: source.useEnvironmentProxy === '1', environment: proxyEnvironment(source.proxyVariables) },
   };
   return settings;

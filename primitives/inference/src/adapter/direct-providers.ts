@@ -8,7 +8,7 @@ import type { GatewaySettings } from '../settings/gateway-settings.ts';
 import type { AnthropicSettings, GoogleSettings, OpenAiSettings } from '../settings/provider-settings.ts';
 import type { Fetch, ModelFactory } from './sdk-model.ts';
 
-const defaultBaseUrls = {
+export const defaultBaseUrls = {
   anthropic: 'https://api.anthropic.com/v1',
   openai: 'https://api.openai.com/v1',
 } as const;
@@ -41,7 +41,7 @@ export function googleModels(settings: GoogleSettings, fetch: Fetch): ModelFacto
   return (modelId) => provider.languageModel(modelId);
 }
 
-function revealed(values: ReadonlyMap<string, Redacted.Redacted>): Record<string, string> {
+export function revealed(values: ReadonlyMap<string, Redacted.Redacted>): Record<string, string> {
   return Object.fromEntries(
     [...values].map(([name, value]: readonly [string, Redacted.Redacted]) => [name, Redacted.value(value)]),
   );

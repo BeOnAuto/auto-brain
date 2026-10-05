@@ -83,6 +83,7 @@ export function rejections(maxOutputTokens: number) {
       othersAreOffered(failure)
         ? Effect.fail(new Unavailable({ detail: failure.detail, kind: 'model_not_offered' }))
         : unavailable(failure.detail),
+    model_not_offered: ({ detail }: Detailed) => Effect.fail(new Unavailable({ detail, kind: 'model_not_offered' })),
     credentials_rejected: ({ detail }: Detailed) => unavailable(detail),
   };
 }
