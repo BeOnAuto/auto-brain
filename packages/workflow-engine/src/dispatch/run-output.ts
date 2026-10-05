@@ -13,6 +13,7 @@ const ArmTimerSchema = Schema.Struct({
   timerId: Schema.NonEmptyString,
   dueAt: InstantSchema,
   purpose: TimerPurposeSchema,
+  label: Schema.optionalKey(Schema.String),
 });
 
 const CancelTimerSchema = Schema.Struct({

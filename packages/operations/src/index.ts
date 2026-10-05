@@ -5,7 +5,7 @@ export {
   boundedPage,
   mostBytesLoadedInAPage,
   mostRecordsInAPage,
-  mostRunsExaminedInAPage,
+  mostExaminedInAPage,
   type BoundedPage,
   type Examined,
 } from './reading/page-bounds.ts';
@@ -25,6 +25,7 @@ export { IncidentReporter, type CallSummary, type Incident } from './dispatch/in
 export { InvalidInput } from './outcome/invalid-input.ts';
 export {
   InvalidCursor,
+  type InvalidCursorKind,
   type RecordedEvent,
   type RecordedOrder,
   type RecordedPage,

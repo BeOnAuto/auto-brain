@@ -4,8 +4,9 @@ import { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';
 import type { EventStore } from '../event-store.ts';
+import { createPostgreSQLBrainIndexes } from './brain-indexes.ts';
 import { dataAsJsonText } from './json-text.ts';
-import { createPostgreSQLBrainIndexes, postgresqlRecordedStore } from './postgresql-recorded.ts';
+import { postgresqlRecordedStore } from './postgresql-recorded.ts';
 
 export interface PostgreSQLOptions {
   readonly connectionString: string;

@@ -4,7 +4,12 @@ import type { BrainAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
 import { InvalidInput } from '../outcome/invalid-input.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
-import type { RecordedPage, RecordedPageRequest, RecordedSelection } from '../reading/recorded-read.ts';
+import type {
+  InvalidCursorKind,
+  RecordedPage,
+  RecordedPageRequest,
+  RecordedSelection,
+} from '../reading/recorded-read.ts';
 import type { BrainRecordedReader, RecordedReader, StreamReader, StreamWriter } from './stream-ports.ts';
 
 const streamNameGrammar = /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})*$/u;
@@ -54,10 +59,16 @@ function wellFormedPage(page: RecordedPageRequest): Effect.Effect<RecordedPageRe
     : Effect.die(new RangeError(`The time ${JSON.stringify(page.since)} a page starts from is not a time`));
 }
 
-const cursorOfAnotherRead = new InvalidInput({
-  detail: 'The cursor was not given by a read of this brain',
-  issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
-});
+const refusedCursors: Readonly<Record<InvalidCursorKind, InvalidInput>> = {
+  malformed: new InvalidInput({
+    detail: 'The cursor is malformed',
+    issues: [{ detail: 'Expected a next_cursor or an id, as a read gives it', pointer: '/cursor' }],
+  }),
+  of_another_brain: new InvalidInput({
+    detail: 'The cursor was not given by a read of this brain',
+    issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+  }),
+};
 
 function relativeTo(prefix: string): (page: RecordedPage) => RecordedPage {
   return ({ records, ...paging }) => ({
@@ -75,7 +86,7 @@ export function brainBoundRecordedReader(ledger: RecordedReader, brain: BrainAdd
         return yield* ledger.readRecorded(brain, checkedSelection, checkedPage);
       }).pipe(
         Effect.map(relativeTo(streamPrefixOfBrain(brain))),
-        Effect.mapError(() => cursorOfAnotherRead),
+        Effect.mapError(({ kind }: { readonly kind: InvalidCursorKind }) => refusedCursors[kind]),
       ),
   };
 }

@@ -1,7 +1,7 @@
 # 1. Run workflows on an engine on the ledger, not on Temporal
 
-- Status: accepted
-- Date: 2026-10-04
+- Status: accepted, amended
+- Date: 2026-10-04, amended 2026-10-05 (see Amendments)
 
 ## Context
 
@@ -18,7 +18,7 @@ We weighed three other engines. The hosted runtime's own workflow service runs o
 
 ## Decision
 
-A run is a decider in Emmett's workflow shape, on the ledger's own load-decide-append loop and conflict retry, `decisionLoop`, with a load that folds a snapshot and its tail:
+A run is a decider in Emmett's workflow shape, on the ledger's own load-decide-append loop and conflict retry, `decisionLoop`, with a load that folds a snapshot and its tail, or takes the run the engine kept loaded after the input before while its stream has no event after it:
 
 - `decide(input, state)` says what an input changes and `evolve(state, event)` applies it. The inputs are a start, a timer fired, a call answered, an event received and a cancel request, each with the time it arrived, never earlier than the input before it.
 - One stream per run. An applied input appends one event, with the version it was decided on as the expected version.
@@ -28,7 +28,7 @@ A run is a decider in Emmett's workflow shape, on the ledger's own load-decide-a
 - Deduplication lives in the run's state. Emmett is the store, never the engine: we use neither its workflow handler, which folds the whole stream for every input, nor its processors.
 - A snapshot follows once the events since the last one take as many bytes as it did, and at least 1 MiB; only the latest is kept, in chunks of at most 1 MiB under the 2 MB row limit of the hosted runtime's SQLite. A run may take 100,000 inputs and write 512 MiB of history, both checked in `decide`.
 - Four adapters sit behind small ports: run store, timers, executor and record store, with the watermark and per-run serialisation beside them.
-- In the hosted runtime: one isolate per run, its stream in the isolate's SQLite and its timers on the isolate's alarm; one for the brain's record; one for the org's registry; a scheduled sweep wakes the runs the record says are overdue.
+- In the hosted runtime: one isolate per run, its stream in the isolate's SQLite and its timers on the isolate's alarm; one for the brain's record; one for the org's registry; a scheduled sweep wakes the runs the record says are overdue and the runs whose dispatch watermark is below the version of their stream, which a shared index of each run's watermark and version names, since no table holds every isolate's stream.
 - Self-hosted, one server keeps the ledger and every run in one SQLite file, in one process; a second process on that file is unsupported. Timers go through the ledger's own SQLite driver or a separate file.
 - A PostgreSQL adapter, later, assumes no 2 MB row limit and takes a lease per run for serialisation.
 - The package `@beonauto/workflow-engine` is the workflow machine's contract, since the state is shaped by the workflow DSL, and the DSL lives in it. The orchestration primitive imports the DSL from it and keeps parsing, the primitive, the event and cancel operations and, for now, the Temporal runtime. The engine knows no brains, specs or primitives: the caller names the functions a workflow may call. Its `./dsl/*` and `./limits` entries are transitional: they keep Effect and the ledger out of the Temporal workflow bundle and go when Temporal goes.
@@ -37,9 +37,11 @@ Still open, due before the hosted adapters: how the hosted runtime executes a ca
 
 ## Consequences
 
-The main cost is rewriting the interpreter, 129 tests of it beside the DSL's 79, as a machine that steps from state to state instead of an async function Temporal replays. Its DSL, expressions and policy stay.
+The main cost is rewriting the interpreter, 129 tests of it beside the DSL's 79, as a machine that steps from state to state instead of an async function Temporal replays. Its DSL, expressions and policy stay, and so do its retry arithmetic and what a switch, a raise, a catch and a call's result decide, which both runtimes now share from the engine's DSL.
 
-Tenants see three changes. A run may hold 4 MiB of data instead of 16. A repeated event no longer counts toward the events a run takes over its life. And a workflow that executes a workflow through a primitive name it computes fails with a `validation` error, once the executor rejects the call as `invalid_arguments`, where the interpreter raises a `configuration` error today. The written case, `primitive: orchestration`, is still refused at `create_spec` as forbidden; only a computed name reaches the executor. Both errors have status 400 and settle the execution as `invalid_input`; the visible difference is the error `type`, which a `catch.errors.with` filter matches.
+Tenants see four changes. A run may hold 4 MiB of data instead of 16. A single value a run holds across a wait or a yield, such as a call's answer or the data a task passes on, may take no more than one event holds with the rest of its input's change, 1,572,864 bytes of JSON, since the event of the input that made it carries it whole; a larger one ends the run with `An input changed the run by N bytes, more than the 1572864 one event holds`, where the interpreter let one value take all the data a run holds. A repeated event no longer counts toward the events a run takes over its life. And a workflow that executes a workflow through a primitive name it computes fails with a `validation` error, once the executor rejects the call as `invalid_arguments`, where the interpreter raises a `configuration` error today. The written case, `primitive: orchestration`, is still refused at `create_spec` as forbidden; only a computed name reaches the executor. Both errors have status 400 and settle the execution as `invalid_input`; the visible difference is the error `type`, which a `catch.errors.with` filter matches.
+
+A run's history takes about seven times the bytes Temporal's did, 1,804 bytes an input against 243 for a loop that waits, since each event holds its patch, its steps and its outputs as JSON; a run of 100,000 such inputs stays within its 512 MiB. The engine's README measures it; the patch stays RFC 6902, and a run store may compress what it keeps.
 
 We give up Temporal's durable timers, deduplicated delivery, replay, web UI and operator tools. We must build and keep correct:
 
@@ -60,11 +62,20 @@ Tenant data is stored once, and a workflow needs no service beyond the server.
 
 ## Plan
 
-- The machine, on the contract and the DSL in `@beonauto/workflow-engine`.
-- A conformance suite: the same workflow probes through a fake driver, the Node adapter and the hosted adapter, seeded from the server's `src/workflow-executions` tests.
+- The machine, on the contract and the DSL in `@beonauto/workflow-engine`: built, with an engine on memory ports and a driver over it in the package's `testing` entry.
+- A conformance suite: the same workflow probes through a fake driver, the Node adapter and the hosted adapter, seeded from the server's `src/workflow-executions` tests. The probes of the ports' contract, which the memory ports pass, are in the `testing` entry for the adapters to run.
 - The adapters, a `cancel_execution` operation, and the workflow SDK's validators precompiled, since the hosted runtime allows no code generation.
 - The cutover: `pnpm dev` without Temporal's dev server, and the README.
-- Measurements before and after: the 15 recorded histories through the driver; inputs per second, and bytes per input against Temporal's 9.26 MiB for 40,000 inputs; timer lateness at p99; heap per live run; snapshot bytes per run.
+- Measurements before and after: the 15 recorded histories through the driver; inputs per second, and bytes per input against Temporal's 9.26 MiB for 40,000 inputs; timer lateness at p99; heap per live run; snapshot bytes per run. The machine's, through the memory driver, are in the engine's README; timer lateness waits for the adapters.
+
+## Amendments
+
+2026-10-05, with the machine, after its review (the engine's README has the detail and the tests):
+
+- Tenants see four changes, not three: a value held across a wait or a yield is bounded by the 1,572,864 bytes one event holds (Consequences).
+- A run is stopped when it has run `mostDurationMs`, its deadline armed at that limit exactly; the interpreter stops one an hour before, since Temporal's own timeout would end it unsettled, and the machine needs no such margin.
+- The engine keeps the runs it loaded between their inputs, in a cache bounded by runs and by bytes, so an input does not load again the snapshot and the events the input before it left; a failed append or a saved snapshot lets go of the run.
+- A run whose dispatch fell behind is found by its watermark, below the version of its stream, rather than by a note in the record, so a failed note of its due time cannot hide it from the sweep.
 
 ## Evidence
 

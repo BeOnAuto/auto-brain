@@ -3,7 +3,7 @@ import { Effect, Option, Schema } from 'effect';
 import {
   InvalidCursor,
   boundedPage,
-  mostRunsExaminedInAPage,
+  mostExaminedInAPage,
   streamPrefixOfBrain,
   type BrainAddress,
   type RecordedEvent,
@@ -51,10 +51,13 @@ function positionAfter({ cursor, order }: RecordedPageRequest, key: string): Eff
   if (cursor === undefined) {
     return Effect.succeed(order === 'asc' ? 0 : Number.POSITIVE_INFINITY);
   }
-  return Option.match(
-    Option.filter(decodeCursor(cursor), ([cursorKey]) => cursorKey === key),
-    { onNone: () => Effect.fail(new InvalidCursor()), onSome: ([, position]) => Effect.succeed(Number(position)) },
-  );
+  return Option.match(decodeCursor(cursor), {
+    onNone: () => Effect.fail(new InvalidCursor({ kind: 'malformed' })),
+    onSome: ([cursorKey, position]) =>
+      cursorKey === key
+        ? Effect.succeed(Number(position))
+        : Effect.fail(new InvalidCursor({ kind: 'of_another_brain' })),
+  });
 }
 
 function sizeOf({ data }: MemoryRecord): number {
@@ -90,9 +93,10 @@ function firstSince(inBrain: readonly MemoryRecord[], since: string | undefined)
 
 function examinedRecords(
   candidates: readonly MemoryRecord[],
-  { limit, types }: RecordedPageRequest,
+  { types }: RecordedPageRequest,
+  examineAtMost: number,
 ): readonly ExaminedRun[] {
-  return candidates.slice(0, limit + 1).map((record, index) => {
+  return candidates.slice(0, examineAtMost + 1).map((record, index) => {
     const wanted = types === undefined || types.includes(record.type);
     return {
       examined: index + 1,
@@ -109,7 +113,7 @@ function examinedRuns(
   candidates: readonly MemoryRecord[],
   { types }: RecordedPageRequest,
 ): readonly ExaminedRun[] {
-  return candidates.slice(0, mostRunsExaminedInAPage + 1).map((first, index) => {
+  return candidates.slice(0, mostExaminedInAPage + 1).map((first, index) => {
     const latest = log.reduce((last, record) => (record.stream === first.stream ? record : last), first);
     const heads = latest === first ? [first] : [first, latest];
     const wanted = types === undefined || types.includes(latest.type);
@@ -138,9 +142,9 @@ function pageOf(
         record.position >= from &&
         (page.order === 'asc' ? record.position > after : record.position < after),
     );
+    const cap = page.types === undefined && selection.kind !== 'executions' ? page.limit : mostExaminedInAPage;
     const examined =
-      selection.kind === 'executions' ? examinedRuns(log, candidates, page) : examinedRecords(candidates, page);
-    const cap = selection.kind === 'executions' ? mostRunsExaminedInAPage : page.limit;
+      selection.kind === 'executions' ? examinedRuns(log, candidates, page) : examinedRecords(candidates, page, cap);
     const { delivered, resumeAfter } = boundedPage(examined, page.limit, cap);
     const nextCursor = resumeAfter === undefined ? null : encodeCursor([key, String(resumeAfter.position)]);
     return {

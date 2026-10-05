@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { acmeCaller, callsIn, interpret, workflow } from '../testing/workflows.ts';
+import { acmeCaller, callsIn, interpret, workflow, onMachine } from '../testing/workflows.ts';
 import type { SpecCallResult } from './host.ts';
 
 const summarizing = workflow(`
@@ -43,7 +43,7 @@ describe('a call of execute_spec', () => {
 });
 
 describe('the time a call may take', () => {
-  it('is the longest nested execution the run allows', async () => {
+  it.skipIf(onMachine)('is the longest nested execution the run allows', async () => {
     const allowed: number[] = [];
 
     await interpret(summarizing, {

@@ -10,8 +10,8 @@ describe('the next time a run is due', () => {
     expect(nextDueAtOf({ ...runningState, timers: { next: 3, armed: {} } })).toBeNull();
   });
 
-  it('is noted in the record by version, with whether the run fell behind its dispatch', () => {
-    expect(runDueOf(runningState, 7, true)).toEqual({ executionId, version: 7, nextDueAt: at + 60_000, behind: true });
+  it('is noted in the record by version', () => {
+    expect(runDueOf(runningState, 7)).toEqual({ executionId, version: 7, nextDueAt: at + 60_000 });
   });
 
   it('changes only with an event that arms or cancels a timer', () => {
@@ -19,7 +19,7 @@ describe('the next time a run is due', () => {
       {
         receipt: { kind: 'cancel_requested', key: executionId, at },
         patch: [],
-        outputs: [{ kind: 'cancel_timer', executionId, timerId: `${executionId}/timers/1` }],
+        outputs: [{ kind: 'cancel_timer', executionId, timerId: '1' }],
       },
     ]);
 

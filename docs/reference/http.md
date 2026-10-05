@@ -90,7 +90,7 @@ Each event has these fields:
 
 In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count.
 
-Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: filters apply to the records a page looked at, a page stops after loading 4 MiB of stored data, and with `status` after looking at 1,000 runs. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
+Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: `primitive` and `name` apply to the runs a page looked at, records with no event type are left out, a page stops after loading 4 MiB of stored data, and with `status` or `type` after looking at 1,000 runs or records. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
 
 The brain's own creation, changes and retirement are not brain events; `get_brain` shows them. A retired brain stays readable: these reads work on it, while every change to it is refused with `conflict`.
 

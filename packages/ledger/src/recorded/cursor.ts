@@ -1,4 +1,5 @@
-import { Option, Schema } from 'effect';
+import type { InvalidCursorKind } from '@beonauto/operations';
+import { Option, Result, Schema } from 'effect';
 
 import type { RecordedPoint } from '../event-store.ts';
 
@@ -22,10 +23,18 @@ export function cursorOf(brainKey: string, point: RecordedPoint): string {
   return encodeCursor([brainKey, ...point]);
 }
 
-export function pointOf(cursor: string, brainKey: string, pointLength: number): Option.Option<RecordedPoint> {
-  return Option.flatMap(decodeCursor(cursor), ([key, ...point]) =>
-    key === brainKey && point.length === pointLength && point.every((part) => isPosition(part))
-      ? Option.some(point)
-      : Option.none(),
-  );
+export function pointOf(
+  cursor: string,
+  brainKey: string,
+  pointLength: number,
+): Result.Result<RecordedPoint, InvalidCursorKind> {
+  return Option.match(decodeCursor(cursor), {
+    onNone: () => Result.fail('malformed'),
+    onSome: ([key, ...point]) => {
+      if (point.length !== pointLength || !point.every((part) => isPosition(part))) {
+        return Result.fail('malformed');
+      }
+      return key === brainKey ? Result.succeed(point) : Result.fail('of_another_brain');
+    },
+  });
 }

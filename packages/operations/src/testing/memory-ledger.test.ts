@@ -165,6 +165,10 @@ describe('the in-memory read from a cursor', () => {
       ),
     );
 
-    expect(refusals).toEqual([new InvalidCursor(), new InvalidCursor(), new InvalidCursor()]);
+    expect(refusals).toEqual([
+      new InvalidCursor({ kind: 'of_another_brain' }),
+      new InvalidCursor({ kind: 'malformed' }),
+      new InvalidCursor({ kind: 'malformed' }),
+    ]);
   });
 });

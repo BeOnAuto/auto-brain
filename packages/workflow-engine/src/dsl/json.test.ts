@@ -7,12 +7,14 @@ import {
   isList,
   isObject,
   isTruthy,
+  itemAt,
   jsonBytesOf,
   jsonEquals,
   listField,
   measureOf,
   objectField,
   textField,
+  valueAtPointer,
   type Json,
 } from './json.ts';
 
@@ -119,5 +121,26 @@ describe('measuring JSON', () => {
 
     expect(measureOf(deep)).toStrictEqual({ work: 16 * 512, depth: 511 });
     expect(measureOf([[deep]])).toBeUndefined();
+  });
+});
+
+describe('a value by its position', () => {
+  const document = { do: [{ 'a/b': { set: { x: [1, 2] } } }], 'odd~key': 3 };
+
+  it('is the item of a list at an index, and nothing for what is not a list', () => {
+    expect(itemAt([4, 5], 1)).toBe(5);
+    expect(itemAt([4, 5], 2)).toBeUndefined();
+    expect(itemAt({ 1: 5 }, 1)).toBeUndefined();
+  });
+
+  it('is found by a JSON pointer through objects and lists, with escaped segments', () => {
+    expect(valueAtPointer(document, '/do/0/a~1b/set/x/1')).toBe(2);
+    expect(valueAtPointer(document, '/odd~0key')).toBe(3);
+    expect(valueAtPointer(document, '')).toBe(document);
+  });
+
+  it('is nothing where the pointer goes through a value that is neither', () => {
+    expect(valueAtPointer(document, '/odd~0key/deeper')).toBeUndefined();
+    expect(valueAtPointer(document, '/missing/deeper')).toBeUndefined();
   });
 });

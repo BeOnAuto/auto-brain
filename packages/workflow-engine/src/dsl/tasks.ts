@@ -1,4 +1,4 @@
-import { entriesOf, field, isList, isObject, objectField, type Json, type JsonObject } from './json.ts';
+import { entriesOf, field, isList, isObject, objectField, valueAtPointer, type Json, type JsonObject } from './json.ts';
 
 export const taskKinds = [
   'for',
@@ -75,4 +75,13 @@ export function allTaskEntries(list: Json | undefined, pointer: string): readonl
   return taskEntries(list, pointer).flatMap((entry) =>
     [entry].concat(nestedTaskLists(entry).flatMap(([nested, at]: TaskList) => allTaskEntries(nested, at))),
   );
+}
+
+export function entryAt(document: JsonObject, reference: string): TaskEntry {
+  const task = valueAtPointer(document, reference);
+  const name = reference
+    .slice(reference.lastIndexOf('/') + 1)
+    .replaceAll('~1', '/')
+    .replaceAll('~0', '~');
+  return { name, task: isObject(task) ? task : {}, reference };
 }

@@ -5,7 +5,7 @@ import {
   defaultPageLimit,
   defineQuery,
   mostRecordsInAPage,
-  mostRunsExaminedInAPage,
+  mostExaminedInAPage,
 } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
@@ -26,7 +26,7 @@ const description = [
   'and the reason of a rejection with, for unavailable, its kind.',
   '`status` keeps the executions in that status; `primitive` and `name` keep those of that primitive and spec name.',
   `\`limit\`, 1 to ${mostRecordsInAPage} and ${defaultPageLimit} when left out, is the most executions a page answers with.`,
-  `A page also stops after loading 4 MiB of stored data, and after looking at ${mostRunsExaminedInAPage} executions for a \`status\`;`,
+  `A page also stops after loading 4 MiB of stored data, and after looking at ${mostExaminedInAPage} executions for a \`status\`;`,
   '`primitive` and `name` apply to the executions a page looked at,',
   'so a page may hold fewer executions than `limit`, or none, while `has_more` is true.',
   'Read on with `cursor` set to the `next_cursor` of the page before; `next_cursor` is null when nothing remains.',

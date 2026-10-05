@@ -18,15 +18,18 @@ export function sqliteEventStore<Driver extends AnyDriver>(optionsOf: () => SQLi
   const options = optionsOf();
   const pool =
     options.pool ?? dumbo({ serialization: options.serialization, ...options.driver.mapToDumboOptions(options) });
-  const store = getSQLiteEventStore({
-    ...options,
-    pool,
-    schema: { autoMigration: 'None' },
-    hooks: { onAfterSchemaCreated: createSQLiteBrainIndexes },
+  const store = getSQLiteEventStore({ ...options, pool, schema: { autoMigration: 'None' } });
+  const streams = emmettEventStore(store, {
+    data: dataAsWritten,
+    mostEventsInOneAppend: eventsWithinAHundredParameters,
   });
   return {
-    ...emmettEventStore(store, { data: dataAsWritten, mostEventsInOneAppend: eventsWithinAHundredParameters }),
+    ...streams,
     ...sqliteRecordedStore(pool.execute),
+    migrate: async () => {
+      await streams.migrate();
+      await createSQLiteBrainIndexes(pool.execute);
+    },
   };
 }
 

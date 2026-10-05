@@ -158,6 +158,16 @@ describe('the events of a brain of one type', () => {
     ]).toEqual([['a'], ['b'], ['e']]);
   });
 
+  it('are looked for beyond the limit of a page, up to a thousand records', async () => {
+    const { reading } = await brainWithEvents();
+
+    expect(textsOf(await reading({ type: 'note_kept', order: 'asc', limit: 1 })).output).toEqual({
+      events: [{ data: { text: 'e' } }],
+      has_more: false,
+      next_cursor: null,
+    });
+  });
+
   it('leave a page they empty with a cursor', async () => {
     const { reading } = await brainWithEvents();
 

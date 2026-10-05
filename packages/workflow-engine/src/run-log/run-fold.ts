@@ -1,10 +1,11 @@
 import { Data, Schema } from 'effect';
 
 import { newRun, RunStateSchema, type RunState } from '../machine/run-state.ts';
+import { stateFormats } from './known-formats.ts';
 import { eventBytesOf, type PositionedEvent, type RunEvent } from './run-event.ts';
 import type { StoredRun } from './run-store.ts';
 import type { SinceSnapshot } from './snapshot.ts';
-import { stateFormats, type OlderFormat, type StateFormats } from './state-format.ts';
+import type { OlderFormat, StateFormats } from './state-format.ts';
 import { applyStatePatch } from './state-patch.ts';
 
 export interface LoadedRun {

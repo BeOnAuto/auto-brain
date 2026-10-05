@@ -1,9 +1,8 @@
 import type { Variables } from '@beonauto/workflow-engine/dsl/expressions';
-import { field, isObject, objectField, type Json, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import type { Json } from '@beonauto/workflow-engine/dsl/json';
+import { timedOut, timeoutMilliseconds } from '@beonauto/workflow-engine/dsl/task-outcomes';
 
-import { millisecondsOf, placeIn } from './evaluation.ts';
-import { raised } from './raised-error.ts';
-import type { RunState } from './run-state.ts';
+import { placeIn, type RunState } from './run-state.ts';
 
 export interface Deadline {
   readonly milliseconds: number | undefined;
@@ -19,21 +18,11 @@ export interface TimeoutSite {
 
 export function timeoutOf(state: RunState, site: TimeoutSite): number | undefined {
   const { declared, data, variables, reference } = site;
-  const timeout = timeoutDefinition(declared, state, reference);
-  return timeout === undefined
-    ? undefined
-    : millisecondsOf(field(timeout, 'after') ?? null, data, variables, placeIn(state, reference));
-}
-
-function timeoutDefinition(declared: Json | undefined, state: RunState, reference: string): JsonObject | undefined {
-  if (typeof declared !== 'string') {
-    return isObject(declared) ? declared : undefined;
-  }
-  const reused = objectField(state.components.timeouts, declared);
-  if (reused === undefined) {
-    throw raised('configuration', 400, `use.timeouts has no timeout ${declared}`, reference);
-  }
-  return reused;
+  return timeoutMilliseconds(declared, state.components.timeouts, {
+    data,
+    variables,
+    place: placeIn(state, reference),
+  });
 }
 
 export async function withTimeout<T>(state: RunState, deadline: Deadline, work: () => Promise<T>): Promise<T> {
@@ -58,7 +47,7 @@ export async function withTimeout<T>(state: RunState, deadline: Deadline, work: 
     return await job.result;
   } catch (error) {
     if (expired) {
-      throw raised('timeout', 408, `The task did not finish within ${milliseconds} ms`, reference);
+      throw timedOut(milliseconds, reference);
     }
     throw error;
   } finally {

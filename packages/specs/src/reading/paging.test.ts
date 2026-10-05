@@ -1,4 +1,4 @@
-import { mostRunsExaminedInAPage, type Outcome } from '@beonauto/operations';
+import { mostExaminedInAPage, type Outcome } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -109,7 +109,7 @@ describe('the bounds of a page of runs', () => {
 
   it('end a page filtered by status after looking at a thousand runs, though none matched', async () => {
     const { ledger, listing, run } = await brainWithEchoes(0);
-    const starting = Array.from({ length: mostRunsExaminedInAPage + 1 }, (_, index) =>
+    const starting = Array.from({ length: mostExaminedInAPage + 1 }, (_, index) =>
       ledger.service.execute(`brain/acme/alpha/executions/${idOf(index)}`, executionDecider, {
         type: 'start',
         primitive: 'echo',
@@ -170,13 +170,19 @@ describe('a cursor', () => {
     const ofGamma = await listing({
       cursor: cursorOf(pageOf(await call(listExecutions, toGamma(globexAdmin, { limit: 1 })))),
     });
-    const refusal = {
-      status: 'rejected',
-      reason: 'invalid_input',
-      detail: 'The cursor was not given by a read of this brain',
-      issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
-    };
-
-    expect([await listing({ cursor: 'not-a-cursor' }), ofGamma]).toEqual([refusal, refusal]);
+    expect([await listing({ cursor: 'not-a-cursor' }), ofGamma]).toEqual([
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'The cursor is malformed',
+        issues: [{ detail: 'Expected a next_cursor or an id, as a read gives it', pointer: '/cursor' }],
+      },
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'The cursor was not given by a read of this brain',
+        issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+      },
+    ]);
   });
 });

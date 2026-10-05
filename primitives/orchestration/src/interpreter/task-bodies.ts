@@ -1,3 +1,4 @@
+import { raised } from '@beonauto/workflow-engine/dsl/raised-error';
 import type { TaskKind } from '@beonauto/workflow-engine/dsl/tasks';
 
 import { callTask } from './call-task.ts';
@@ -5,7 +6,6 @@ import { raiseTask, tryTask } from './error-tasks.ts';
 import { doTask, forkTask, forTask, switchTask } from './flow-tasks.ts';
 import type { Body, Invocation } from './invocation.ts';
 import { listenTask } from './listen-task.ts';
-import { raised } from './raised-error.ts';
 import { setTask, waitTask } from './simple-tasks.ts';
 
 export type TaskBody = (invocation: Invocation) => Body | Promise<Body>;

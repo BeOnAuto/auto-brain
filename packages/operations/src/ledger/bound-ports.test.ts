@@ -156,7 +156,7 @@ describe('the read of what a brain recorded, bound to a call', () => {
 });
 
 describe('a cursor given to the read bound to a call', () => {
-  it('is refused as invalid input at /cursor when another brain gave it, or it cannot be read', async () => {
+  it('is refused as invalid input at /cursor, saying whether it is malformed or of another brain', async () => {
     const { dispatcher, ledger, run } = harness();
     await run(dispatcher.dispatchToBrain(addNote.registration, toGamma(globexAdmin, { name: 'gear', text: 'round' })));
     const { records } = await Effect.runPromise(
@@ -173,13 +173,20 @@ describe('a cursor given to the read bound to a call', () => {
       [...records.map(({ id }) => id), 'not-a-cursor'].map((cursor) => reading(cursor)),
     );
 
-    const refusal = {
-      status: 'rejected',
-      reason: 'invalid_input',
-      detail: 'The cursor was not given by a read of this brain',
-      issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
-    };
-    expect(refusals).toEqual([refusal, refusal]);
+    expect(refusals).toEqual([
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'The cursor was not given by a read of this brain',
+        issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+      },
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'The cursor is malformed',
+        issues: [{ detail: 'Expected a next_cursor or an id, as a read gives it', pointer: '/cursor' }],
+      },
+    ]);
   });
 });
 

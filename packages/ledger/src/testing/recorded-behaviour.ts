@@ -7,6 +7,7 @@ import {
   details,
   detailsOf,
   happen,
+  happenings,
   inAlpha,
   noted,
   reading,
@@ -114,21 +115,55 @@ function theBoundsOfAPage(aLedger: LedgerMaker): void {
 
       expect([first.records.length, first.hasMore, rest.records.length, rest.nextCursor]).toEqual([2, true, 1, null]);
     });
+  });
+}
 
-    it('carry a cursor on a page that a filter of types left empty', async () => {
-      const ledger = await aLedger();
-      await happen(ledger, inAlpha('notes'), noted('noted', 1), noted('noted', 2), noted('kept', 3));
+function aThousandNoted(ledger: AnyLedger): Promise<unknown> {
+  return Effect.runPromise(
+    Effect.forEach(
+      Array.from({ length: 125 }, (_, stream) => stream),
+      (stream) =>
+        ledger.execute(
+          inAlpha(`noted-${stream}`),
+          happenings,
+          Array.from({ length: 8 }, () => noted('noted')),
+        ),
+      { concurrency: 8, discard: true },
+    ),
+  );
+}
 
-      const first = await reading(ledger, everything, { order: 'asc', limit: 2, types: ['kept'] });
-      const rest = await reading(ledger, everything, {
-        order: 'asc',
-        limit: 2,
-        types: ['kept'],
-        cursor: String(first.nextCursor),
-      });
+function aFilterOfTypes(aLedger: LedgerMaker): void {
+  describe('a filter of types', () => {
+    it(
+      'examines up to 1,000 records for a page, and ends the page with a cursor past them',
+      { timeout: 60_000 },
+      async () => {
+        const ledger = await aLedger();
+        await happen(
+          ledger,
+          inAlpha('notes'),
+          ...Array.from({ length: 7 }, () => noted('noted')),
+          noted('kept', 'early'),
+        );
+        await aThousandNoted(ledger);
+        await happen(ledger, inAlpha('notes'), noted('kept', 'late'));
 
-      expect([details(first), first.hasMore, details(rest), rest.nextCursor]).toEqual([[], true, [3], null]);
-    });
+        const kept = { order: 'asc', limit: 2, types: ['kept'] } as const;
+        const first = await reading(ledger, everything, kept);
+        const empty = await reading(ledger, everything, { ...kept, cursor: String(first.records[0]?.id) });
+        const rest = await reading(ledger, everything, { ...kept, cursor: String(empty.nextCursor) });
+
+        expect([details(first), first.hasMore, details(empty), empty.hasMore, details(rest), rest.nextCursor]).toEqual([
+          ['early'],
+          true,
+          [],
+          true,
+          ['late'],
+          null,
+        ]);
+      },
+    );
   });
 }
 
@@ -158,7 +193,11 @@ function cursorsOfARead(aLedger: LedgerMaker): void {
         ),
       );
 
-      expect(refusals).toEqual([new InvalidCursor(), new InvalidCursor(), new InvalidCursor()]);
+      expect(refusals).toEqual([
+        new InvalidCursor({ kind: 'of_another_brain' }),
+        new InvalidCursor({ kind: 'malformed' }),
+        new InvalidCursor({ kind: 'malformed' }),
+      ]);
     });
   });
 }
@@ -204,6 +243,7 @@ export function recordedBehaviour(aLedger: LedgerMaker): void {
   theBrainOfARead(aLedger);
   pagesWhileAppending(aLedger);
   theBoundsOfAPage(aLedger);
+  aFilterOfTypes(aLedger);
   cursorsOfARead(aLedger);
   theTimeAPageStartsFrom(aLedger);
   runsBehaviour(aLedger);

@@ -1,4 +1,5 @@
 import { isJson, isObject, jsonBytesOf, type JsonObject } from '@beonauto/workflow-engine/dsl/json';
+import { raised, type RaisedError } from '@beonauto/workflow-engine/dsl/raised-error';
 import {
   mostReceivedEventBytes,
   mostReceivedEvents,
@@ -6,7 +7,6 @@ import {
   mostWaitingEvents,
 } from '@beonauto/workflow-engine/limits';
 
-import { raised, type RaisedError } from './raised-error.ts';
 import { retainedBytesOf } from './retained-size.ts';
 
 export type EventFilter = (event: JsonObject) => boolean;

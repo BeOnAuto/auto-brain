@@ -11,6 +11,6 @@ export function changesTimers({ event }: PositionedEvent): boolean {
   return event.outputs.some(({ kind }) => kind === 'arm_timer' || kind === 'cancel_timer');
 }
 
-export function runDueOf(state: RunState, version: number, behind: boolean): RunDue {
-  return { executionId: state.executionId, version, nextDueAt: nextDueAtOf(state), behind };
+export function runDueOf(state: RunState, version: number): RunDue {
+  return { executionId: state.executionId, version, nextDueAt: nextDueAtOf(state) };
 }

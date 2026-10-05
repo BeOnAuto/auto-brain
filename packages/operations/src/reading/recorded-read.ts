@@ -29,4 +29,6 @@ export interface RecordedPage {
   readonly nextCursor: string | null;
 }
 
-export class InvalidCursor extends Data.TaggedError('invalid_cursor') {}
+export type InvalidCursorKind = 'malformed' | 'of_another_brain';
+
+export class InvalidCursor extends Data.TaggedError('invalid_cursor')<{ readonly kind: InvalidCursorKind }> {}

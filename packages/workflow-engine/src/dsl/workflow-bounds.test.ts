@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { testFunctions, workflow } from '../testing/workflows.ts';
+import { testFunctions } from '../testing/driver-inputs.ts';
+import { workflow } from '../testing/workflows.ts';
 import { durationLimitRejections } from './duration-limits.ts';
 import { policyOf } from './policy.ts';
 

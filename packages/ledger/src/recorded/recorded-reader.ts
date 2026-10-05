@@ -5,7 +5,7 @@ import {
   type RecordedPageRequest,
   type RecordedReader,
 } from '@beonauto/operations';
-import { Effect, Option } from 'effect';
+import { Effect, Result } from 'effect';
 
 import type { RecordedPoint, RecordedStore, StoredPage, StoredPageRequest } from '../event-store.ts';
 import { cursorOf, pointOf } from './cursor.ts';
@@ -18,9 +18,9 @@ function storedRequestOf(
   if (cursor === undefined) {
     return Effect.succeed(page);
   }
-  return Option.match(pointOf(cursor, brainKey, pointLength), {
-    onNone: () => Effect.fail(new InvalidCursor()),
-    onSome: (after: RecordedPoint) => Effect.succeed({ ...page, after }),
+  return Result.match(pointOf(cursor, brainKey, pointLength), {
+    onFailure: (kind) => Effect.fail(new InvalidCursor({ kind })),
+    onSuccess: (after: RecordedPoint) => Effect.succeed({ ...page, after }),
   });
 }
 

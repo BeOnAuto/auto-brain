@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { header, testFunctions, workflow, yamlObject } from '../testing/workflows.ts';
+import { testFunctions } from '../testing/driver-inputs.ts';
+import { header, workflow, yamlObject } from '../testing/workflows.ts';
 import { policyOf } from './policy.ts';
 
 const rejectionsOf = policyOf(testFunctions);
