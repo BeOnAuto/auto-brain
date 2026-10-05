@@ -4,39 +4,41 @@ The workflow engine of [`@beonauto/workflow-engine`](../workflow-engine) on Node
 
 ## Entry
 
-`@beonauto/workflow-host` (`src/index.ts`) exports `openWorkflowHost(options)`, which opens the host's database, migrates its tables, starts its loop and answers with a `WorkflowHost`:
+`@beonauto/workflow-host` (`src/index.ts`) exports `openWorkflowHost(options)`, which opens the host's database, migrates its tables, claims the database's workflows (see [One host for a database](#one-host-for-a-database)), starts its loop if it holds them, and answers with a `WorkflowHost`:
 
-- `start(run, start)`: starts the run of an execution with the `started` input, and answers `started`; `going` when the run started before and has not settled its execution, so nothing starts again; or `settled` when the run ended and its execution was settled, since a run never starts twice in one log.
+- `start(run, start)`: starts the run of an execution with the `started` input, and answers `started`; `going` when the run started before and has not settled its execution, so nothing starts again, after trying again at once the settlement of a run that ended; or `settled` when the run ended and its execution was settled, since a run never starts twice in one log.
 - `deliver(run, event)`: gives the run an `event_received` input, and answers `delivered`, also for an event the run took before; `not_started` for a run whose `started` has not arrived; or `ended` for a run that ended.
 - `stateOf(run)`: the run's state, loaded from its store.
 - `stop()`: a clean stop, below.
 
-Both fail with the engine's `Conflict` when the run's log kept changing while an input was decided, and with `HostStopped` once the host is stopping. The caller gives the host:
+Both fail with the engine's `Conflict` when the run's log kept changing while an input was decided, with `HostElsewhere` while another host holds the database's workflows, and with `HostStopped` once the host is stopping. The caller gives the host:
 
-| Option                 | What it is                                                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `database`             | `{ store: 'sqlite', file }` or `{ store: 'postgresql', connectionString }`, the database the ledger is kept in                              |
-| `machine`              | the machine's options: the functions a workflow may call and the runtime its expressions see                                                |
-| `perform`              | `(call, run) => Effect<CallResult>`: what a call does; it never fails, a function that cannot answer answers `unreachable`                  |
-| `settle`               | `SettleExecution` of `@beonauto/specs`: how a run's outcome is recorded on its execution                                                    |
-| `reports`              | where the host tells the operator of a run it could not settle (`unsettled`), of a failure it retries (`trouble`), and of a lost connection |
-| `sweepEveryMs`         | how often the loop sweeps, 1,000 in the server                                                                                              |
-| `mostCallsAtOnce`      | how many calls run at once                                                                                                                  |
-| `clock`, `cacheBounds` | the clock, `Date.now` unless given, and the bounds of the engine's cache of loaded runs, `runCacheBounds` unless given                      |
+| Option                 | What it is                                                                                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database`             | `{ store: 'sqlite', file }` or `{ store: 'postgresql', connectionString }`, the database the ledger is kept in                                                  |
+| `machine`              | the machine's options: the functions a workflow may call and the runtime its expressions see                                                                    |
+| `perform`              | `(call, run) => Effect<CallResult>`: what a call does; it never fails, a function that cannot answer answers `unreachable`                                      |
+| `settle`               | `SettleExecution` of `@beonauto/specs`: how a run's outcome is recorded on its execution                                                                        |
+| `reports`              | where the host tells the operator of a run it could not settle (`unsettled`), of a failure it retries (`trouble`), of a lost connection, and its notes (`note`) |
+| `sweepEveryMs`         | how often the loop sweeps, 1,000 in the server                                                                                                                  |
+| `mostCallsAtOnce`      | how many calls run at once                                                                                                                                      |
+| `clock`, `cacheBounds` | the clock, `Date.now` unless given, and the bounds of the engine's cache of loaded runs, `runCacheBounds` unless given                                          |
+| `holder`               | the id the host claims the database's workflows with, a random UUID unless given                                                                                |
 
 ## Where a run is kept
 
 A run is addressed by its brain and its execution id, `{ org, brain, executionId }`, since an execution id is unique within a brain only. The engine knows a run by one opaque id, which the host makes `<org>/<brain>/<execution id>`; org ids hold no `/`, brain ids hold none, and execution ids are UUIDs, so the id splits back into its address.
 
-| What                          | Where                                                                                                     |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
-| the run's log                 | the stream `brain/<org>/<brain>/runs/<execution id>` on the ledger                                        |
-| the latest snapshot           | `workflow_snapshot_chunks`, in chunks of at most 1 MiB of UTF-8                                           |
-| timers and their tombstones   | `workflow_timers`, keyed by run and timer id                                                              |
-| calls, answers and tombstones | `workflow_calls`, keyed by the call key                                                                   |
-| the dispatch watermark        | `workflow_runs`, one row a run, with the version of the event that ended it and when a sweep last took it |
-| due times                     | `workflow_due`, one row a run                                                                             |
-| settle receipts               | `workflow_settlements`, one row a run, with the settlement recorded or the attempts that failed           |
+| What                          | Where                                                                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| the run's log                 | the stream `brain/<org>/<brain>/runs/<execution id>` on the ledger                                                     |
+| the latest snapshot           | `workflow_snapshot_chunks`, in chunks of at most 1 MiB of UTF-8                                                        |
+| timers and their tombstones   | `workflow_timers`, keyed by run and timer id                                                                           |
+| calls, answers and tombstones | `workflow_calls`, keyed by the call key                                                                                |
+| the dispatch watermark        | `workflow_runs`, one row a run, with the version of the event that ended it and when a sweep last took it              |
+| due times                     | `workflow_due`, one row a run                                                                                          |
+| settle receipts               | `workflow_settlements`, one row a run, with the settlement recorded, or the attempts that failed and when the last was |
+| the claim on the workflows    | `workflow_leases`, the row `host`, with its holder and when it lapses                                                  |
 
 The log is written with the ledger's own append, `eventAppenderOf` over the event store, and read with its stream read, `EventStore.read`, so the history of a run (`get_execution_history`, which reads `runs/<execution id>` beside `executions/<execution id>`) and the events of the brain find it, and the ledger's rule holds: the ledger writes no SQL of its own on its write path, and the host owns its tables.
 
@@ -49,11 +51,11 @@ A snapshot is not an event: it is the run's state at a version, a cache of its f
 ## The ports
 
 - **Timers.** `arm` inserts a timer unless its row exists: `armed`; an armed or fired timer is `already_armed`, a tombstone `refused_after_cancel`. `cancel` disarms an armed timer, `cancelled`; a timer never seen gets a tombstone, `tombstoned`; a fired one is `already_fired`. `sweep` inserts the timers of the run's state the table lost. The loop fires a due timer as a `timer_fired` input and marks it fired only after the engine took it, so a crash in between fires it again, and the run takes the second fire as stale.
-- **Executor.** `start` records the call as running and runs `perform` in a fiber of its own, at most `mostCallsAtOnce` at once; its answer is recorded, then given to the run as `call_answered`, then marked given. A start of a call answered before gives the answer again, `answered_again`; of one this host runs, `running`; of one recorded as running that no fiber runs, because the host that ran it died, starts it again, `started_again`. `cancel` records a tombstone and interrupts the call's fiber. A call that outlasts its step is closed by the run itself when its `call_deadline` timer fires, and the cancel that follows interrupts it here. Every sweep resumes the calls recorded as running that no fiber runs, and gives again the answers recorded but not given; so does the first sweep after a start.
-- **Record store.** `settle` records the run's outcome on its execution with `settle`, the execution settler of `@beonauto/specs`, with an empty record for a run that succeeded, and keeps the settlement as the run's receipt: the same settlement again is `already_recorded`, another `settled_otherwise`. An execution the brain does not have is `unknown_execution`. A settlement the record refuses, as when the run ended before the call that started it recorded the execution as finishing later, fails to be dispatched again, and after 20 failed attempts is given up as `settled_otherwise`, which the reporter logs. `noteDue` keeps the newest due time of a run by version, a settled run is due no more, and `dueRuns` reads them by an index on the due time.
+- **Executor.** `start` records the call as running and runs `perform` in a fiber of its own, at most `mostCallsAtOnce` at once; its answer is recorded, then given to the run as `call_answered`, then marked given. A start of a call answered before gives the answer again, `answered_again`; of one this host runs, `running`; of one recorded as running that no fiber runs, because the host that ran it died, starts it again, `started_again`. `cancel` records a tombstone and interrupts the call's fiber. A call that outlasts its step is closed by the run itself when its `call_deadline` timer fires, and the cancel that follows interrupts it here. Every sweep resumes the calls recorded as running that no fiber runs, and gives again the answers recorded but not given; so does the first sweep after a start. A call never has two fibers: a start and a resumption that race for one call begin it once. An answer that cannot be written is written again, 50 ms after the first failure and then twice as long each time up to 30 s, until it is, and the first failure is reported; the call is performed again only after the host stopped and started again with its answer unwritten.
+- **Record store.** `settle` records the run's outcome on its execution with `settle`, the execution settler of `@beonauto/specs`, with an empty record for a run that succeeded, and keeps the settlement as the run's receipt: the same settlement again is `already_recorded`, another `settled_otherwise`. An execution the brain does not have is `unknown_execution`. A settlement the record refuses, as when the run ended before the call that started it recorded the execution as finishing later, fails, so the watermark stays below the run's last event and every sweep dispatches it again; after 20 failed attempts it is tried once a minute, for ever, and the host notes it once when it begins backing off and once when it is settled at last. A start of a run that ended with its settlement pending tries the settlement again at once, whatever the back-off, and answers `settled` if it then is, and `going` otherwise, leaving the next sweep to try again rather than a minute later. `noteDue` keeps the newest due time of a run by version, a settled run is due no more, and `dueRuns` reads them by an index on the due time.
 - **Watermark.** `read` and `advance`, which never goes down. `behindRuns(limit)` joins the runs to `emt_streams` and takes those whose stream holds an event above their watermark, least recently taken first, marking each with a number that counts up with every hand-out, as the memory watermark does. A run whose last event ended it and whose watermark reached that event leaves the partial index the join walks, so a sweep reads only the runs still going.
 - **Serialiser.** One semaphore a run, made when an input comes and let go of when none waits.
-- **Reporter.** The operator's log, through `reports.unsettled`.
+- **Reporter.** The operator's log, through `reports.unsettled`, and `reports.note` for the notes of the back-off and of the claim below.
 
 Every port passes the probes of `@beonauto/workflow-engine/testing` on SQLite and on PostgreSQL (`src/testing/port-suite.ts`).
 
@@ -61,9 +63,11 @@ Every port passes the probes of `@beonauto/workflow-engine/testing` on SQLite an
 
 The loop fires timers when they are due and sweeps every `sweepEveryMs`. After each tick it sleeps until the next armed timer is due or the next sweep, whichever comes first, and a timer armed earlier than that wakes it. A sweep is the engine's `sweep` of the runs overdue by a minute, which arms again the timers a run's state holds and the table lost, and of up to 1,024 runs whose dispatch fell behind, then the resumption of calls. A timer that cannot fire, because its run's log kept changing, is put off to the next sweep and reported; a sweep that fails is reported and tried at the next.
 
-`stop()` refuses new starts and events, lets the tick in progress finish, so the decisions it takes are appended and dispatched, interrupts the calls in progress, which stay recorded as running and start again at the next start, waits for the starts and events already taken, and closes the database. Everything else is left for the next start: runs whose dispatch fell behind are swept, overdue timers fire, and calls resume.
+`stop()` refuses new starts and events, waits for the starts and events it already took, lets the tick in progress finish, so the decisions it takes are appended and dispatched, interrupts the calls in progress, which stay recorded as running and start again at the next start, lets go of its claim, and closes the database; once it stopped, no call begins. Everything else is left for the next start: runs whose dispatch fell behind are swept, overdue timers fire, and calls resume.
 
-With one server for a database, nothing else claims a run. Workflows need one server per database, on SQLite as on PostgreSQL; a lease per run, for several servers sharing a PostgreSQL database, is a later step.
+## One host for a database
+
+The host runs workflows only while it holds the claim on its database, the row `host` of `workflow_leases`, which names its holder, an id the host makes when it opens, and when the claim lapses. The host claims it when it opens and renews it every sweep, and the claim lapses three sweeps after it was last renewed. A host that finds another's claim live stands by: its starts and events fail with `HostElsewhere`, which the server answers as `unavailable` with that detail, it notes `standing_by` once, and it tries the claim again every sweep; once the claim lapsed, as when the host that held it died, or was let go of, as when that host stopped, it takes it, notes `took_over`, and runs the workflows from where the other left them. A host that cannot renew its claim for as long as a claim lasts stops running workflows and stands by, since another host may then hold the claim. The row is the same on SQLite and PostgreSQL, and a claim of each run, for several hosts sharing a database, can grow from it: a name per run beside `host`.
 
 ## Measurements
 
@@ -73,18 +77,18 @@ With one server for a database, nothing else claims a run. Workflows need one se
 - inputs a second: the long-run loop of the engine's `src/engine/long-run.test.ts`, 3,000 inputs, through the host on a clock that skips to the next due time, and 100 such runs of 100 inputs side by side;
 - recovery after a restart: a run holding a value of 1,100,000 bytes, which makes a snapshot of 1.05 MiB, and 50 events after it; the time the host took to open again, then the first input of that run, which loads the snapshot and the events after it, and the next.
 
-Measured on 2026-10-05 on an Apple M4 Max with Node 26.10.0, SQLite 3.52.0 through `sqlite3` 6.0.1, and PostgreSQL 18.6 in a local container with its default settings:
+Measured on 2026-10-05 on an Apple M4 Max with Node 26.10.0, SQLite 3.52.0 through `sqlite3` 6.0.1, and PostgreSQL 18.6 in a local container with its default settings, three times for the timers, whose lateness varies from one measurement to the next, and once for the rest:
 
-| What                                                                | SQLite                                     | PostgreSQL                                  |
-| ------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------- |
-| timer lateness over 1,000 timers                                    | 0 ms at the median, 4 ms at p99, 8 at most | 2 ms at the median, 6 ms at p99, 16 at most |
-| the long-run loop, 3,000 inputs of one run                          | 2.89 s, 1,038 inputs a second              | 16.55 s, 181 inputs a second                |
-| 100 runs of 100 inputs side by side                                 | 7.29 s, 1,372 inputs a second              | 8.23 s, 1,216 inputs a second               |
-| the host opened again                                               | 2.6 ms                                     | 23.6 ms                                     |
-| the first input after it, snapshot of 1,101,463 bytes and 50 events | 2.5 ms                                     | 22.6 ms                                     |
-| the next input, the run kept                                        | 0.6 ms                                     | 2.6 ms                                      |
+| What                                                                | SQLite                                                | PostgreSQL                                        |
+| ------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------- |
+| timer lateness over 1,000 timers                                    | 0 ms at the median, 2 to 5 ms at p99, 4 to 11 at most | 1 ms at the median, 5 ms at p99, 10 to 17 at most |
+| the long-run loop, 3,000 inputs of one run                          | 2.85 s, 1,053 inputs a second                         | 16.82 s, 178 inputs a second                      |
+| 100 runs of 100 inputs side by side                                 | 6.90 s, 1,450 inputs a second                         | 8.21 s, 1,218 inputs a second                     |
+| the host opened again                                               | 3.0 ms                                                | 27.3 ms                                           |
+| the first input after it, snapshot of 1,101,463 bytes and 50 events | 2.4 ms                                                | 22.2 ms                                           |
+| the next input, the run kept                                        | 0.6 ms                                                | 2.8 ms                                            |
 
-One run's inputs are taken one at a time, each a few round trips to the database: on PostgreSQL that bounds one run to about 180 inputs a second, while runs side by side share the database's time. The spike's timers fired 3.7 ms late at p99 when idle (`spikes/node/results/timers-precision.json`); the host's, armed by the runs it decides, fired 4 to 6 ms late at p99.
+One run's inputs are taken one at a time, each a few round trips to the database: on PostgreSQL that bounds one run to about 180 inputs a second, while runs side by side share the database's time. The spike's timers fired 3.7 ms late at p99 when idle (`spikes/node/results/timers-precision.json`); the host's, armed by the runs it decides, fired 2 to 5 ms late at p99 on SQLite and 5 ms on PostgreSQL in the three measurements here, and 9 ms on PostgreSQL in a reviewer's measurement, so allow for up to 10 ms at p99.
 
 ## Testing
 
@@ -92,8 +96,11 @@ The suites of `src/testing` run on SQLite in `src/host/host-on-sqlite.test.ts` a
 
 - the probes of every port;
 - a run that waits, calls a function, takes an event and ends, settling its execution once;
-- the long-run loop of 1,000 inputs, enough for one snapshot past half the run, once its events reach 1 MiB, and a tail of events after it, loaded again from that snapshot and the events after it to the state its whole log folds to: 1.4 s on SQLite and 5.4 s on PostgreSQL under coverage, on the machine above; the measurements above run the 3,000 of the engine's loop;
-- a host killed through its process handle while it dispatches, once while a call runs and once while it records the run's settlement, then started again on the same database: the call starts again, and the run settles once (`host-process.ts` at the root of the package is the host the test starts).
+- a long loop of 130 inputs, each of which records a value of 8,000 characters, so that its events reach 1 MiB and a snapshot is due at input 109, past half the loop, leaving a tail of 21 events; the run is loaded again from that snapshot and the events after it to the state its whole log folds to. It took 0.27 s on SQLite and 1.0 s on PostgreSQL under coverage, on the machine above. The engine's loop, whose inputs hold a number alone, needs 593 inputs for a snapshot and a tail, and 700 of them took 1.1 s on SQLite and 4.3 s on PostgreSQL, so the loop's inputs are large to keep the test within seconds on a runner ten times slower; the measurements above run the 3,000 inputs of the engine's loop;
+- a host killed through its process handle while it dispatches, once while a call runs and once while it records the run's settlement, then started again on the same database: the call starts again, and the run settles once (`host-process.ts` at the root of the package is the host the test starts);
+- two hosts on one database: the second stands by while the first holds the claim, refusing starts and performing no call, and once the first is killed through its process handle takes the workflows over and finishes the run; and a host that stops hands the claim over at the next sweep.
+
+The test databases on PostgreSQL commit without waiting for the disk (`synchronous_commit = off`), which loses nothing a test reads.
 
 The other tests run on SQLite alone, as the ledger's do for what is the same on both stores.
 
@@ -105,4 +112,4 @@ docker rm --force workflow-host-pg
 
 ## Source
 
-`src/database` opens the host's database on either store and holds its tables; `src/runs` the run's address and its store; `src/dispatch` the watermark and the serialiser; `src/timers` the timers; `src/calls` the executor; `src/settlement` the record store; `src/loop` the clock and the loop; `src/host` the host itself; and `src/testing` what the tests share, the suites both stores run among it.
+`src/database` opens the host's database on either store and holds its tables; `src/runs` the run's address and its store; `src/dispatch` the watermark and the serialiser; `src/timers` the timers; `src/calls` the executor; `src/settlement` the record store and its back-off; `src/lease` the claim on the database's workflows and its keeper; `src/loop` the clock and the loop; `src/host` the host itself; and `src/testing` what the tests share, the suites both stores run among it.
