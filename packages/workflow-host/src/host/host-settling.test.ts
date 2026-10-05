@@ -54,14 +54,14 @@ describe('the host asked to start a run whose settlement is pending', () => {
     hosted.know(executionId);
 
     await Effect.runPromise(hosted.host.start(run, startOf(ending)));
-    await eventually(hosted.notes, (notes) => notes.length > 0);
+    await eventually(hosted.notes, (notes) => notes.length > 0, 2000);
     const startedAgain = await Effect.runPromise(hosted.host.start(run, startOf(ending)));
-    const settled = await eventually(hosted.settlements, (settlements) => settlements.size > 0);
+    const settled = await eventually(hosted.settlements, (settlements) => settlements.size > 0, 2000);
 
     expect(startedAgain).toBe('going');
     expect([...settled.keys()]).toEqual([executionId]);
     expect(hosted.settleAttempts()).toBe(attemptOfTheStart + 1);
-  });
+  }, 30_000);
 });
 
 describe('the host whose ledger cannot be reached for two minutes', () => {

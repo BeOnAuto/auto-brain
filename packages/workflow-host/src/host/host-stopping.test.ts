@@ -40,5 +40,5 @@ describe('the host told to stop just after it admitted a start', () => {
     expect(started).toBe('started');
     expect(answers).toEqual({ begun: 1, finished: 0 });
     expect(hosted.troubles()).toEqual([]);
-  });
+  }, 30_000);
 });

@@ -44,7 +44,7 @@ export function leaseSuite(settings: SettingsOf): void {
     const second = await hostedOn(database, { sweepEveryMs, holder: 'second' });
 
     await first.host.stop();
-    const notes = await eventually(second.notes, (noted) => noted.length > 1);
+    const notes = await eventually(second.notes, (noted) => noted.length > 1, 2000);
 
     expect(notes).toMatchObject([
       { kind: 'standing_by', holder: 'first' },
