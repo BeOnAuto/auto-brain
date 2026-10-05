@@ -140,6 +140,10 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     ],
     ['execute_spec', executed],
     ['get_execution', await session.callTool('get_execution', inSales({ execution_id: executionId }))],
+    ['list_executions', await session.callTool('list_executions', inSales({}))],
+    ['get_execution_history', await session.callTool('get_execution_history', inSales({ execution_id: executionId }))],
+    ['list_brain_events', await session.callTool('list_brain_events', inSales({ limit: 3 }))],
+    ['list_brain_events', await session.callTool('list_brain_events', { brain: 'old-sales' })],
   ];
 }
 
@@ -173,6 +177,15 @@ async function errorsCalled(session: McpSession): Promise<Called> {
     ['a document that does not parse', await session.callTool('create_spec', inSales(broken))],
     ['a name already taken', await session.callTool('create_brain', { brain: 'sales', name: 'Sales again' })],
     ['a retired thing', await session.callTool('update_spec', inSales(retired))],
+    [
+      'a retired brain',
+      await session.callTool('create_spec', {
+        brain: 'old-sales',
+        primitive: 'inference',
+        name: 'summary',
+        source: summary,
+      }),
+    ],
     ['something missing', await session.callTool('get_brain', { brain: 'nowhere' })],
     [
       'a run that did not go through',
@@ -208,6 +221,7 @@ const audienceWords: Readonly<Record<string, string>> = {
   'a document that does not parse': 'This can be corrected and tried again',
   'a name already taken': 'that name is already taken',
   'a retired thing': 'it has been retired',
+  'a retired brain': 'it has been retired',
   'something missing': 'it, or something it refers to, could not be found',
   'a run that did not go through': 'did not go through: something the server relies on is not available',
 };

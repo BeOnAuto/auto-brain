@@ -132,6 +132,7 @@ The pieces of the operations that read the ledger:
 
 - `PublicEventSchema` is an event as a caller reads it, `{ id, at, type, summary, data }`, its `data` at most 4 KiB as JSON in UTF-8.
 - A `Presenter` turns a record of one stream kind into a public event, or `null` to hide it, and declares, for each stored type of its kind, the public name it presents it under, or `null` for a type it hides.
+- `presentationOf(presenters)` presents a record by the presenter of its stream kind, the name of its relative stream up to the first `/` (`streamKindOf`), and hides a record of a kind no presenter presents, or of a stored type its presenter hides or declares no public name for. It lists the public types of all its presenters and translates one to the stored types it stands for, which is how a filter by public type is read. Two presenters of one stream kind are refused.
 - `PagingInputFields` holds the optional input fields of a page, `limit` (1 to 100, `defaultPageLimit` 20 when left out), `cursor`, `order`, `since` and `type`, and `PagingOutputFields` the fields of an answer, `has_more` and `next_cursor`.
 
 ## Testing

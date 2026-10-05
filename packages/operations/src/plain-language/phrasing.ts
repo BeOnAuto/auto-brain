@@ -6,6 +6,35 @@ const plurals = new Intl.PluralRules('en');
 
 const sentenceEnd = /[.!?…]["”’)]*$/u;
 
+const numbersBelowTwenty = [
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'eleven',
+  'twelve',
+  'thirteen',
+  'fourteen',
+  'fifteen',
+  'sixteen',
+  'seventeen',
+  'eighteen',
+  'nineteen',
+];
+
+const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+const firstSpelledNumber = 100;
+
+const lastSpelledNumber = 599;
+
 export interface Noun {
   readonly one: string;
   readonly other: string;
@@ -23,8 +52,26 @@ export function alternatives(items: readonly string[]): string {
   return disjunction.format(items);
 }
 
+function belowAHundred(number: number): string {
+  if (number < numbersBelowTwenty.length) {
+    return String(numbersBelowTwenty[number]);
+  }
+  const ones = number % 10;
+  const tensWord = String(tens[Math.floor(number / 10)]);
+  return ones === 0 ? tensWord : `${tensWord}-${String(numbersBelowTwenty[ones])}`;
+}
+
+export function plainNumber(number: number): string {
+  if (!Number.isInteger(number) || number < firstSpelledNumber || number > lastSpelledNumber) {
+    return String(number);
+  }
+  const hundreds = `${belowAHundred(Math.floor(number / 100))} hundred`;
+  const rest = number % 100;
+  return rest === 0 ? hundreds : `${hundreds} and ${belowAHundred(rest)}`;
+}
+
 export function counted(count: number, noun: Noun): string {
-  return `${count} ${plurals.select(count) === 'one' ? noun.one : noun.other}`;
+  return `${plainNumber(count)} ${plurals.select(count) === 'one' ? noun.one : noun.other}`;
 }
 
 export function capitalized(text: string): string {

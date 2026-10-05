@@ -23,6 +23,9 @@ const specTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'list_executions',
+  'get_execution_history',
+  'list_brain_events',
 ];
 
 const inferenceDescription = makeInference({
@@ -98,12 +101,12 @@ describe('an inference spec over MCP, on the endpoint of its brain', () => {
 });
 
 describe('the spec tools an agent sees on the endpoint of a brain', () => {
-  it('are the seven spec operations, and those that name a primitive describe the document format of inference', async () => {
+  it('are the ten operations inside a brain, and those that name a primitive describe the document format of inference', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const describing = tools.filter(({ description }) => description?.includes(inferenceDescription) === true);
 
     expect(tools.map(({ name }) => name)).toEqual(specTools);
-    expect(describing.map(({ name }) => name)).toEqual(specTools.filter((name) => name !== 'get_execution'));
+    expect(describing.map(({ name }) => name)).toEqual(specTools.slice(0, 6));
   });
 
   it('tell an agent which providers and named models the server calls, before it writes a spec', async () => {
@@ -122,7 +125,7 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const schemas = tools.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
 
-    expect(schemas).toHaveLength(14);
+    expect(schemas).toHaveLength(20);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

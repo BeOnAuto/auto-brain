@@ -59,6 +59,24 @@ Reason functions normally complete within the execute request. Workflows return 
 
 Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. The runtime applies these limits independently of the request-body limit.
 
+## Run history and brain events
+
+These queries are relative to `/v1/orgs/{org}/brains/{brain}` and need `brain:read`; they work on a retired brain, whose commands are refused with `conflict`:
+
+| Operation               | Method and route                         | Input                                                        |
+| ----------------------- | ---------------------------------------- | ------------------------------------------------------------ |
+| `list_executions`       | `GET /executions`                        | Optional `primitive`, `name`, `status`, `limit` and `cursor` |
+| `get_execution_history` | `GET /executions/{execution_id}/history` | Execution id in path; optional `order`, `limit` and `cursor` |
+| `list_brain_events`     | `GET /events`                            | Optional `type`, `since`, `order`, `limit` and `cursor`      |
+
+`list_executions` answers `{ executions, has_more, next_cursor }`, newest first by the position of each run's first start in the ledger, so a run started again with the same id keeps its place. A listed run is the run as `get_execution` shows it, without `output`, `record` and the detail and issues of a rejection; a run started again and since finished shows its first start, where `get_execution` shows the latest. `status` is answered by the ledger from the type of each run's latest fact; `primitive` and `name` apply after the page is read.
+
+`get_execution_history` answers `{ events, has_more, next_cursor }` for one run, oldest first unless `order` is `desc`, and `not_found` for a run the brain does not have, decided as `get_execution` decides it. On PostgreSQL an oldest-first page of a run whose records are still behind a write open in the ledger's database is empty, with `next_cursor` null; read it again once the write ends. It reads the run's execution facts; a workflow's step log is not shown yet. `list_brain_events` answers the same shape for the brain's whole partition of the ledger, newest first unless `order` is `asc`. `type` takes one public event type; `since` keeps what the store recorded from that time on, in either order, so an event's own `at` may be a little earlier. The brain's own creation, update and retirement are recorded in the org's registry, not the brain, and are not among its events.
+
+An event is `{ id, at, type, summary, data }`: `id` is the record's opaque cursor, `at` the event's own time, `type` one of `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `spec_created`, `spec_updated` and `spec_retired`, `summary` plain words, and `data` at most 4 KiB of JSON. Inputs, outputs, records, documents and schemas appear as byte sizes; a rejection's detail is cut at a code point and its issues shown as a count and the first five; a description is cut at 300 characters and warnings counted. [`packages/specs`](https://github.com/BeOnAuto/auto-brain/blob/main/packages/specs/README.md#reading-executions) lists every field.
+
+`limit` is 1 to 100, 20 by default. A page also stops after loading 4 MiB of stored data and, with `status` or `type`, after looking at 1,000 runs or records, so it may hold fewer items than `limit`, or none, while `has_more` is `true`; read on with `next_cursor` as `cursor` until it is `null`. A cursor that does not decode or that another brain gave is `invalid_input` at `/cursor`. Cursors are not encrypted: one names a position in the ledger. On PostgreSQL, an oldest-first read stays behind the oldest transaction still writing to the ledger's database, so the newest records can appear a moment later.
+
 ## Idempotency and retries
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`.

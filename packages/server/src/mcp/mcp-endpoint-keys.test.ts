@@ -101,7 +101,7 @@ describe('a read-only key on /mcp', () => {
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the thirteen tools and reads a brain of its org', async () => {
+  it('lists the sixteen tools and reads a brain of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
@@ -112,7 +112,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
       kind,
     );
 
-    expect(outcome.tools).toBe(13);
+    expect(outcome.tools).toBe(16);
     expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha' });
   });
 });
@@ -134,7 +134,7 @@ async function toolsListedUnder(revision: string): Promise<readonly string[]> {
 
 describe('the earlier revisions on /mcp', () => {
   it.each(['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05', '2024-10-07'])(
-    'list the thirteen tools under %s',
+    'list the sixteen tools under %s',
     async (revision) => {
       const current = await asKey(acmeAdmin.key, async (session) => toolNamesIn(await session.listTools()));
 

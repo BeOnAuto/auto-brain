@@ -1,6 +1,7 @@
-import type { Registration } from '@beonauto/operations';
+import type { Presenter, Registration } from '@beonauto/operations';
 
 import type { Primitive } from '../primitive/primitive.ts';
+import { executionReadings } from '../reading/execution-reading.ts';
 import { defineCreateSpec } from './create-spec.ts';
 import { defineExecuteSpec } from './execute-spec.ts';
 import { defineGetExecution } from './get-execution.ts';
@@ -13,7 +14,10 @@ export interface BrainOperation {
   readonly registration: Registration<'brain'>;
 }
 
-export function makeSpecOperations(primitives: readonly Primitive[]): readonly BrainOperation[] {
+export function makeSpecOperations(
+  primitives: readonly Primitive[],
+  presenters?: readonly Presenter[],
+): readonly BrainOperation[] {
   return [
     defineCreateSpec(primitives),
     defineListSpecs(primitives),
@@ -22,5 +26,6 @@ export function makeSpecOperations(primitives: readonly Primitive[]): readonly B
     defineRetireSpec(primitives),
     defineExecuteSpec(primitives),
     defineGetExecution(primitives),
+    ...executionReadings(primitives, presenters),
   ];
 }
