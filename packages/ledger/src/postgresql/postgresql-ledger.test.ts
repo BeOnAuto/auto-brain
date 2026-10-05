@@ -1,9 +1,9 @@
 import { Ledger } from '@beonauto/operations';
 import { Cause, Effect } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { unreachableDatabase } from '../testing/index.ts';
-import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 describe('a ledger on PostgreSQL that cannot be reached', () => {
   it('fails to build, with a defect naming the address it tried and no credential', async () => {
@@ -16,5 +16,22 @@ describe('a ledger on PostgreSQL that cannot be reached', () => {
     expect({ dies: Cause.hasDies(cause), fails: Cause.hasFails(cause) }).toEqual({ dies: true, fails: false });
     expect(Cause.pretty(cause)).toContain(`ECONNREFUSED 127.0.0.1:${port}`);
     expect(Cause.pretty(cause)).not.toContain(password);
+  });
+
+  it('fails a read of what a brain recorded with the error of the driver', async () => {
+    const { url, port } = await unreachableDatabase();
+    const lost: Readonly<Error>[] = [];
+    const store = postgresqlEventStore({
+      connectionString: url,
+      reportLostConnection: (error) => {
+        lost.push(error);
+      },
+    });
+    onTestFinished(() => store.close());
+
+    await expect(
+      store.readRecorded('brain/acme/alpha/', { kind: 'everything' }, { order: 'asc', limit: 1 }),
+    ).rejects.toThrow(`ECONNREFUSED 127.0.0.1:${port}`);
+    expect(lost).toEqual([]);
   });
 });

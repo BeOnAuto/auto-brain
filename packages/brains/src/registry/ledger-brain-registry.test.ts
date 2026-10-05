@@ -1,4 +1,4 @@
-import { BrainRegistry, defineQuery, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
+import { BrainRegistry, defineCommand, defineQuery, makeDispatcher, type CallerIdentity } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -8,8 +8,8 @@ import { harness, toOrg } from '../testing/harness.ts';
 
 const toAcme = toOrg('acme');
 
-function existence(org: string, brain: string) {
-  return BrainRegistry.use((registry) => registry.exists({ org, brain }));
+function statusOf(org: string, brain: string) {
+  return BrainRegistry.use((registry) => registry.status({ org, brain }));
 }
 
 const Empty = Schema.Record(Schema.String, Schema.Never);
@@ -25,19 +25,36 @@ const ping = defineQuery('brain', {
   handle: () => Effect.succeed({}),
 });
 
-function pinging(caller: CallerIdentity, org: string, brain: string) {
-  return makeDispatcher([]).dispatchToBrain(ping.registration, { caller, org, brain, input: {}, encoding: 'json' });
+const poke = defineCommand('brain', {
+  name: 'poke',
+  title: 'Poke',
+  description: 'Changes nothing within a brain.',
+  route: { method: 'POST', path: '/poke' },
+  inputSchema: Empty,
+  outputSchema: Empty,
+  reasons: [],
+  handle: () => Effect.succeed({}),
+});
+
+function calling(operation: typeof ping | typeof poke, caller: CallerIdentity, org: string, brain: string) {
+  return makeDispatcher([]).dispatchToBrain(operation.registration, {
+    caller,
+    org,
+    brain,
+    input: {},
+    encoding: 'json',
+  });
 }
 
 describe('the brain registry on the ledger', () => {
-  it('finds a brain from its creation until its retirement', async () => {
+  it('knows a brain as active from its creation, and as retired from its retirement', async () => {
     const { call, run } = harness(ledgerBrainRegistry);
 
-    expect(await run(existence('acme', 'alpha'))).toBe(false);
+    expect(await run(statusOf('acme', 'alpha'))).toBe('unknown');
     await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
-    expect(await run(existence('acme', 'alpha'))).toBe(true);
+    expect(await run(statusOf('acme', 'alpha'))).toBe('active');
     await call(retireBrain, toAcme(acmeAdmin, { brain: 'alpha' }));
-    expect(await run(existence('acme', 'alpha'))).toBe(false);
+    expect(await run(statusOf('acme', 'alpha'))).toBe('retired');
   });
 
   it('reads the very stream the brain operations write', async () => {
@@ -45,29 +62,40 @@ describe('the brain registry on the ledger', () => {
     await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
 
     expect(ledger.streamNames()).toEqual(['org/acme/brains']);
-    expect(await run(existence('acme', 'alpha'))).toBe(true);
+    expect(await run(statusOf('acme', 'alpha'))).toBe('active');
   });
 
   it('keeps the brains of each org apart', async () => {
     const { call, run } = harness(ledgerBrainRegistry);
     await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
 
-    expect(await run(existence('acme', 'alpha'))).toBe(true);
-    expect(await run(existence('globex', 'alpha'))).toBe(false);
-    expect(await run(existence('acme', 'beta'))).toBe(false);
+    expect(await run(statusOf('acme', 'alpha'))).toBe('active');
+    expect(await run(statusOf('globex', 'alpha'))).toBe('unknown');
+    expect(await run(statusOf('acme', 'beta'))).toBe('unknown');
+  });
+});
+
+describe('a retired brain, to an operation within it', () => {
+  it('answers a query, so what it recorded stays readable', async () => {
+    const { call, run } = harness(ledgerBrainRegistry);
+    await call(createBrain, toOrg('globex')(globexAdmin, { brain: 'gamma', name: 'Gamma' }));
+    await call(retireBrain, toOrg('globex')(globexAdmin, { brain: 'gamma' }));
+
+    expect(await run(calling(ping, globexAdmin, 'globex', 'gamma'))).toEqual({ status: 'succeeded', output: {} });
   });
 
-  it('lets an operation within a brain access an active brain and not a retired one', async () => {
+  it('refuses a command with the conflict update_brain gives for a retired brain', async () => {
     const { call, run } = harness(ledgerBrainRegistry);
     await call(createBrain, toAcme(acmeAdmin, { brain: 'alpha', name: 'Alpha' }));
     await call(createBrain, toOrg('globex')(globexAdmin, { brain: 'gamma', name: 'Gamma' }));
     await call(retireBrain, toOrg('globex')(globexAdmin, { brain: 'gamma' }));
 
-    expect(await run(pinging(acmeAdmin, 'acme', 'alpha'))).toEqual({ status: 'succeeded', output: {} });
-    expect(await run(pinging(globexAdmin, 'globex', 'gamma'))).toEqual({
+    expect(await run(calling(poke, acmeAdmin, 'acme', 'alpha'))).toEqual({ status: 'succeeded', output: {} });
+    expect(await run(calling(poke, globexAdmin, 'globex', 'gamma'))).toEqual({
       status: 'rejected',
-      reason: 'not_found',
-      detail: 'There is no brain gamma in this org',
+      reason: 'conflict',
+      detail: 'The brain gamma is retired and can no longer change',
+      kind: 'retired',
     });
   });
 });

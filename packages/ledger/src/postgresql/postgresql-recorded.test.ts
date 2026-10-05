@@ -1,0 +1,219 @@
+import { SQL } from '@event-driven-io/dumbo';
+import { pgFormatter } from '@event-driven-io/dumbo/pg';
+import { describe, expect, it } from 'vitest';
+
+import type { IndexExecutor } from '../recorded/missing-indexes.ts';
+import { createPostgreSQLBrainIndexes } from './brain-indexes.ts';
+import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
+
+interface Asked {
+  readonly text: string;
+  readonly values: readonly unknown[];
+}
+
+function answering(...answers: readonly (readonly unknown[])[]): { readonly query: Query; readonly asked: Asked[] } {
+  const asked: Asked[] = [];
+  return {
+    asked,
+    query: (text, values) => {
+      asked.push({ text, values });
+      return Promise.resolve(answers[asked.length - 1] ?? []);
+    },
+  };
+}
+
+const alpha = 'brain/acme/alpha/';
+
+const at = '2026-10-05T09:00:00.000Z';
+
+function examined(transaction: string, position: string, wanted: boolean, order: number) {
+  const stream = `${alpha}notes`;
+  return { transaction, position, stream, type: 'noted', recorded: at, wanted, size: wanted ? 10 : 0, examined: order };
+}
+
+function stored(transaction: string, position: string, detail: string) {
+  return { transaction, position, data: { json: JSON.stringify({ type: 'noted', detail }) } };
+}
+
+function run(transaction: string, position: string, latest: readonly [string, string, string]) {
+  return {
+    ...examined(transaction, position, true, 1),
+    latest_transaction: latest[0],
+    latest_position: latest[1],
+    latest_type: latest[2],
+    latest_recorded: at,
+  };
+}
+
+const theHorizon = 'pg_snapshot_xip(pg_current_snapshot())';
+
+const brainKey = "substring(stream_id FROM '^(?:[^/]*/){3}')";
+
+const kindKey = "substring(stream_id FROM '^(?:[^/]*/){4}')";
+
+describe('the read of what a brain recorded on PostgreSQL, oldest first', () => {
+  it('walks the brain index in transaction id then position, behind the oldest write open in its database', async () => {
+    const { query, asked } = answering(
+      [
+        examined('11', '21', false, 1),
+        examined('11', '22', true, 2),
+        examined('12', '23', true, 3),
+        examined('12', '24', true, 4),
+      ],
+      [stored('11', '22', 'second'), stored('12', '23', 'third')],
+    );
+
+    const page = await postgresqlRecordedStore(query).readRecorded(
+      alpha,
+      { kind: 'everything' },
+      { order: 'asc', limit: 2, after: ['10', '20'], types: ['noted'] },
+    );
+
+    expect(page.records.map(({ point, data }) => [point, data])).toEqual([
+      [['11', '22'], { type: 'noted', detail: 'second' }],
+      [['12', '23'], { type: 'noted', detail: 'third' }],
+    ]);
+    expect(page.resumeAfter).toEqual(['12', '23']);
+    expect(asked[0]?.text).toContain(theHorizon);
+    expect(asked[0]?.text).toContain('datname IS DISTINCT FROM current_database()');
+    expect(asked[0]?.text).toContain('AND (transaction_id, global_position) > ($3::xid8, $4::bigint)');
+    expect(asked[0]?.text).toContain(`WHERE ${brainKey} = ANY($6::text[])`);
+    expect(asked[0]?.text).toContain(`ORDER BY ${brainKey} ASC, transaction_id ASC, global_position ASC`);
+    expect(asked[0]?.text).toContain('ORDER BY transaction_id ASC, global_position ASC');
+    expect(asked[0]?.values).toEqual([['noted'], 'emt:default', '10', '20', 1001, [alpha], 1000, 4]);
+    expect(asked[1]?.values).toEqual([['11', '12'], ['22', '23'], 'emt:default']);
+  });
+});
+
+describe('a read of one run on PostgreSQL, newest first', () => {
+  it('walks each of its two streams by their index and merges them, after a cursor and from a time, with no horizon', async () => {
+    const { query, asked } = answering(
+      [{ transaction: '7', position: '8' }],
+      [examined('9', '10', true, 1)],
+      [stored('9', '10', 'only')],
+    );
+
+    const page = await postgresqlRecordedStore(query).readRecorded(
+      alpha,
+      { kind: 'run', execution: 'r1' },
+      { order: 'desc', limit: 5, since: at, after: ['30', '40'] },
+    );
+
+    expect(page.records.map(({ data }) => data)).toEqual([{ type: 'noted', detail: 'only' }]);
+    expect(asked[0]?.values).toEqual([alpha, 'emt:default', at]);
+    expect(asked[1]?.text).not.toContain(theHorizon);
+    expect(asked[1]?.text).toContain('UNION ALL');
+    expect(asked[1]?.text).toContain('AND (transaction_id, global_position) < ($2::xid8, $3::bigint)');
+    expect(asked[1]?.text).toContain('AND (transaction_id, global_position) >= ($4::xid8, $5::bigint)');
+    expect(asked[1]?.text).toContain('WHERE stream_id = ANY($7::text[])');
+    expect(asked[1]?.text).toContain('ORDER BY stream_id DESC, transaction_id DESC, global_position DESC');
+    expect(asked[1]?.text).toContain('ORDER BY transaction_id DESC, global_position DESC');
+    expect(asked[1]?.values).toEqual([
+      'emt:default',
+      '30',
+      '40',
+      '7',
+      '8',
+      6,
+      [`${alpha}executions/r1`],
+      [`${alpha}runs/r1`],
+      5,
+      6,
+    ]);
+  });
+});
+
+describe('a read on PostgreSQL from a time', () => {
+  it('answers nothing when nothing was recorded from the time asked', async () => {
+    const { query, asked } = answering([]);
+
+    expect(
+      await postgresqlRecordedStore(query).readRecorded(
+        alpha,
+        { kind: 'everything' },
+        { order: 'asc', limit: 5, since: at },
+      ),
+    ).toEqual({
+      records: [],
+    });
+    expect(asked).toHaveLength(1);
+  });
+});
+
+describe('a read of runs on PostgreSQL', () => {
+  it('gives the first and the latest message of each run, and the first alone for a run of one message', async () => {
+    const { query, asked } = answering(
+      [
+        run('3', '4', ['3', '4', 'execution_started']),
+        { ...run('1', '2', ['5', '6', 'execution_succeeded']), examined: 2 },
+      ],
+      [stored('3', '4', 'r2'), stored('1', '2', 'r1'), stored('5', '6', 'r1 done')],
+    );
+
+    const page = await postgresqlRecordedStore(query).readRecorded(
+      alpha,
+      { kind: 'executions' },
+      { order: 'desc', limit: 5 },
+    );
+
+    expect(page.records.map(({ type, data }) => [type, data])).toEqual([
+      ['noted', { type: 'noted', detail: 'r2' }],
+      ['noted', { type: 'noted', detail: 'r1' }],
+      ['execution_succeeded', { type: 'noted', detail: 'r1 done' }],
+    ]);
+    expect(asked[0]?.text).toContain(`WHERE ${kindKey} = ANY($2::text[]) AND stream_position = 1`);
+    expect(asked[0]?.text).toContain(`ORDER BY ${kindKey} DESC, transaction_id DESC, global_position DESC`);
+  });
+});
+
+function executorFinding(names: readonly string[]): { readonly execute: IndexExecutor; readonly commands: string[] } {
+  const commands: string[] = [];
+  return {
+    commands,
+    execute: {
+      query: () => Promise.resolve({ rows: names.map((name) => ({ name })) }),
+      command: (sql) => {
+        commands.push(SQL.describe(sql, pgFormatter).replaceAll(/\s+/gu, ' '));
+        return Promise.resolve();
+      },
+    },
+  };
+}
+
+describe("the brain's indexes on PostgreSQL", () => {
+  it('index the brain in order and by time, each stream in order and its messages by brain and kind, then analyse', async () => {
+    const { execute, commands } = executorFinding([]);
+
+    await createPostgreSQLBrainIndexes({ execute });
+
+    expect(commands).toEqual([
+      "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), transaction_id, global_position)",
+      "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), created, transaction_id, global_position)",
+      'CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, transaction_id, global_position)',
+      "CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){4}')), stream_position, transaction_id, global_position)",
+      'ANALYZE emt_messages',
+    ]);
+  });
+
+  it('are created only when missing, so a start that finds them issues no CREATE and analyses nothing', async () => {
+    const all = [
+      'ledger_messages_by_brain',
+      'ledger_messages_by_brain_and_time',
+      'ledger_messages_by_stream',
+      'ledger_first_messages_by_kind',
+    ];
+    const present = executorFinding(all);
+    const oneMissing = executorFinding(all.filter((name) => name !== 'ledger_messages_by_stream'));
+
+    await createPostgreSQLBrainIndexes({ execute: present.execute });
+    await createPostgreSQLBrainIndexes({ execute: oneMissing.execute });
+
+    expect([present.commands, oneMissing.commands]).toEqual([
+      [],
+      [
+        'CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, transaction_id, global_position)',
+        'ANALYZE emt_messages',
+      ],
+    ]);
+  });
+});

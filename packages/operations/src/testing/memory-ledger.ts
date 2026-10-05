@@ -1,6 +1,7 @@
-import { Effect, Layer, Result, Schema } from 'effect';
+import { Clock, Effect, Layer, Result, Schema } from 'effect';
 
 import { Conflict, Ledger, type Decider, type DeclarableReason, type StreamState, type TypedEvent } from '../index.ts';
+import { memoryRecordedReader, type MemoryRecord } from './memory-recorded.ts';
 
 export interface MemoryLedger {
   readonly service: Ledger['Service'];
@@ -23,7 +24,22 @@ function folded<State, Command, Event extends TypedEvent, R extends DeclarableRe
 
 export function memoryLedger(): MemoryLedger {
   const streams = new Map<string, readonly unknown[]>();
+  const log: MemoryRecord[] = [];
   const storedIn = (stream: string): readonly unknown[] => streams.get(stream) ?? [];
+  const record = (stream: string, events: readonly TypedEvent[], encoded: readonly unknown[], at: number): void => {
+    const version = storedIn(stream).length;
+    log.push(
+      ...events.map(({ type }, index) => ({
+        position: log.length + index + 1,
+        stream,
+        streamPosition: version + index + 1,
+        type,
+        data: encoded[index],
+        recordedAt: new Date(at).toISOString(),
+      })),
+    );
+    streams.set(stream, [...storedIn(stream), ...encoded]);
+  };
   const service = Ledger.of({
     load: (stream, decider) => Effect.suspend(() => folded(decider, storedIn(stream))),
     execute: (stream, decider, command) =>
@@ -41,12 +57,13 @@ export function memoryLedger(): MemoryLedger {
         }
         const encodeEvent = Schema.encodeUnknownEffect(Schema.toCodecJson(decider.eventSchema));
         const encoded = yield* Effect.forEach(decided.success, (event) => Effect.orDie(encodeEvent(event)));
-        streams.set(stream, [...storedIn(stream), ...encoded]);
+        record(stream, decided.success, encoded, yield* Clock.currentTimeMillis);
         return {
           state: decided.success.reduce((evolved, event) => decider.evolve(evolved, event), state),
           version: version + decided.success.length,
         };
       }),
+    readRecorded: memoryRecordedReader(log),
   });
   return { service, layer: Layer.succeed(Ledger, service), streamNames: () => [...streams.keys()] };
 }

@@ -3,7 +3,7 @@ import { isExpectedVersionConflictError } from '@event-driven-io/emmett';
 import { Effect, type Schema } from 'effect';
 
 import { eventCodecOf } from './event-codec.ts';
-import type { EventStore, EncodedEvent } from './event-store.ts';
+import type { EncodedEvent, StreamStore } from './event-store.ts';
 import { VersionConflict } from './version-conflict.ts';
 
 export type EventAppender = <Event extends TypedEvent>(
@@ -13,7 +13,7 @@ export type EventAppender = <Event extends TypedEvent>(
   expectedVersion: number,
 ) => Effect.Effect<void, VersionConflict>;
 
-export function eventAppenderOf(store: EventStore): EventAppender {
+export function eventAppenderOf(store: StreamStore): EventAppender {
   return (stream, eventSchema, events, expectedVersion) => {
     if (events.length > store.mostEventsInOneAppend) {
       return Effect.die(

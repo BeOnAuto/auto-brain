@@ -9,9 +9,9 @@ import { applicationLayer } from './composition-root.ts';
 
 const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
-const alphaExists = Effect.gen(function* () {
+const statusOfAlpha = Effect.gen(function* () {
   const registry = yield* BrainRegistry;
-  return yield* registry.exists({ org: 'acme', brain: 'alpha' });
+  return yield* registry.status({ org: 'acme', brain: 'alpha' });
 });
 
 describe('the services the brain operations run on', () => {
@@ -40,9 +40,9 @@ describe('the services the brain operations run on', () => {
     });
 
     const outcome = await runtime.runPromise(created);
-    const exists = await runtime.runPromise(alphaExists);
+    const status = await runtime.runPromise(statusOfAlpha);
     await runtime.dispose();
 
-    expect({ status: outcome.status, exists }).toEqual({ status: 'succeeded', exists: true });
+    expect({ outcome: outcome.status, status }).toEqual({ outcome: 'succeeded', status: 'active' });
   });
 });

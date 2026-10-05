@@ -1,10 +1,12 @@
 import type { Ledger } from '@beonauto/operations';
+import { dumbo } from '@event-driven-io/dumbo';
 import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
 import type { Layer } from 'effect';
 
 import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
 import type { EventStore } from './event-store.ts';
 import { ledgerLayerOver } from './ledger-layer.ts';
+import { createSQLiteBrainIndexes, sqliteRecordedStore } from './recorded/sqlite-recorded.ts';
 
 type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
 
@@ -13,10 +15,22 @@ const eventsWithinAHundredParameters = 8;
 export type SQLiteStoreOptions<Driver extends AnyDriver> = Parameters<typeof getSQLiteEventStore<Driver>>[0];
 
 export function sqliteEventStore<Driver extends AnyDriver>(optionsOf: () => SQLiteStoreOptions<Driver>): EventStore {
-  return emmettEventStore(getSQLiteEventStore({ ...optionsOf(), schema: { autoMigration: 'None' } }), {
+  const options = optionsOf();
+  const pool =
+    options.pool ?? dumbo({ serialization: options.serialization, ...options.driver.mapToDumboOptions(options) });
+  const store = getSQLiteEventStore({ ...options, pool, schema: { autoMigration: 'None' } });
+  const streams = emmettEventStore(store, {
     data: dataAsWritten,
     mostEventsInOneAppend: eventsWithinAHundredParameters,
   });
+  return {
+    ...streams,
+    ...sqliteRecordedStore(pool.execute),
+    migrate: async () => {
+      await streams.migrate();
+      await createSQLiteBrainIndexes(pool.execute);
+    },
+  };
 }
 
 export function sqliteLedgerLayer<Driver extends AnyDriver>(

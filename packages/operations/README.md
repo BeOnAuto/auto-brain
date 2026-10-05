@@ -92,7 +92,7 @@ An org operation targets at most one brain, and names it `brain`. When its input
 1. The caller's org must equal the org of the call, or the call is rejected with `forbidden`.
 2. The caller must hold the permission of the operation's kind and scope: `org:read`, `org:write`, `brain:read` or `brain:write`.
 3. At brain scope, and for an org operation that targets a brain, the caller must have access to that brain.
-4. The org id must be well formed and, at brain scope, the brain id must be well formed and the brain must exist, or the call is rejected with `not_found`. An ill-formed id is never echoed back.
+4. The org id must be well formed and, at brain scope, the brain id must be well formed and the brain must exist, or the call is rejected with `not_found`. An ill-formed id is never echoed back. A retired brain stays readable: a query runs on it as on an active brain, while a command is rejected with `conflict`, kind `retired`, and the detail `The brain <id> is retired and can no longer change`, the words `update_brain` uses for a retired brain.
 5. The pipeline steps run in order.
 6. The input is decoded, rejecting unknown keys and pointing at every problem, up to 100 of them. Input nested too deeply to decode is rejected the same way.
 7. The handler runs.
@@ -104,7 +104,7 @@ The outcome is `succeeded`, `rejected` or `failed`. The error boundary turns any
 
 A transport runs a call with `settle(call, signal)` and always gets a `Settled` value: the outcome, or `cancelled` when the signal aborts the call or the call interrupts itself. Any other failure settles as `failed` with a reported incident.
 
-The dispatcher needs a `Ledger`, a `BrainRegistry` and an `IncidentReporter`. Handlers can see none of them, neither in their types nor at run time. A handler can read any other service present in the runtime's context, so the runtime must expose only these three at its top level, and an adapter must keep its own dependencies, such as a database client, inside its layer.
+The dispatcher needs a `Ledger`, a `BrainRegistry`, which answers the status of a brain, `active`, `retired` or `unknown`, and an `IncidentReporter`. Handlers can see none of them, neither in their types nor at run time. A handler can read any other service present in the runtime's context, so the runtime must expose only these three at its top level, and an adapter must keep its own dependencies, such as a database client, inside its layer.
 
 ## The ledger ports
 
@@ -116,6 +116,24 @@ For each call the dispatcher binds the ledger to the call's address. `OrgReader`
 
 `streamPrefixOfOrg({ org })` returns the prefix of an org's streams, so code that holds the unbound `Ledger`, such as a `BrainRegistry`, reads the same stream a handler names relative to its org. `streamPrefixOfBrain({ org, brain })` does the same for a brain's streams. Such code must accept only well-formed org and brain ids (`OrgIdSchema`, `BrainIdSchema`), as the dispatcher does, so that a prefix names exactly one org or brain.
 
+## Reading what a brain recorded
+
+`Ledger.readRecorded(brain, selection, page)` reads one page of what a brain recorded, in the order the ledger recorded it, and answers `{ records, hasMore, nextCursor }`. Each record is `{ id, stream, type, data, recordedAt }`: `data` is the stored event as JSON, `recordedAt` the time the store recorded it in ISO 8601, and `id` the record's own cursor. The brain is matched exactly: a read of `acme/sales` never answers a record of `acme/Sales`, `acme/sales2` or `acme/sales_x`. [Decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) records the design of this read.
+
+- The selection is `{ kind: 'everything' }`, the whole partition of the brain; `{ kind: 'run', execution }`, the two streams of one run, `executions/<id>` and `runs/<id>`; or `{ kind: 'executions' }`, the first and the latest message of every execution stream, ordered by the position of the first.
+- The page is `{ cursor?, order, limit, since?, types? }`. `order` is `asc`, oldest first, or `desc`, newest first. `since` is the lower bound of the page in either order, by the time the store recorded. `types` keeps the records of those stored types; with `executions` it keeps the runs whose latest message is of those types, which is how a status filter is answered.
+- A page is bounded by what the store examines and loads: it answers at most `limit` records, 1 to 100, examining that many without a `types` filter, and with one up to `mostExaminedInAPage`, 1,000 records, or 1,000 runs for `executions`, of which it answers those of its types, possibly none; and it loads at most 4 MiB of stored data, though the first record a page wants is always delivered. A bound ends the page with `nextCursor`, possibly with fewer records than asked or none. `boundedPage` applies these bounds over what a store examined, so every ledger bounds a page the same way.
+- `nextCursor` is null when nothing remains. A reader at the end of the brain keeps the id of the last record it read and reads on from it later.
+- A cursor is opaque. A cursor that does not decode as one fails the read with `InvalidCursor` of kind `malformed`, and one that another brain gave with kind `of_another_brain`.
+
+`BrainReader.readRecorded(selection, page)` is the same read bound to the brain of the call, so a handler never reads another brain. It names streams relative to the brain, as `load` and `execute` take them, and turns `InvalidCursor` into `InvalidInput` at `/cursor`, which a handler that declares `invalid_input` passes on: `The cursor is malformed` for a malformed cursor, and `The cursor was not given by a read of this brain` for another brain's. A run's execution id must be a well-formed stream segment and a page must hold 1 to 100 records from a valid time; anything else fails the call.
+
+The pieces of the operations that read the ledger:
+
+- `PublicEventSchema` is an event as a caller reads it, `{ id, at, type, summary, data }`, its `data` at most 4 KiB as JSON in UTF-8.
+- A `Presenter` turns a record of one stream kind into a public event, or `null` to hide it, and declares, for each stored type of its kind, the public name it presents it under, or `null` for a type it hides.
+- `PagingInputFields` holds the optional input fields of a page, `limit` (1 to 100, `defaultPageLimit` 20 when left out), `cursor`, `order`, `since` and `type`, and `PagingOutputFields` the fields of an answer, `has_more` and `next_cursor`.
+
 ## Testing
 
-`@beonauto/operations/testing` exports an in-memory `Ledger`, `BrainRegistry` and `IncidentReporter` for the tests of packages that define or serve operations.
+`@beonauto/operations/testing` exports an in-memory `Ledger`, `BrainRegistry` and `IncidentReporter` for the tests of packages that define or serve operations. `memoryBrainRegistry(active, retired)` takes the active brains and, optionally, the retired ones; any other brain is unknown. The in-memory ledger reads what a brain recorded as the ledger does, and the behaviour suite of `@beonauto/ledger` runs on it.

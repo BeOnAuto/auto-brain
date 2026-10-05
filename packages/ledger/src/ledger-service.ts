@@ -12,6 +12,7 @@ import { Effect, Result } from 'effect';
 import { eventAppenderOf } from './event-appender.ts';
 import type { EventStore } from './event-store.ts';
 import { foldEvents } from './fold-events.ts';
+import { recordedReaderOf } from './recorded/recorded-reader.ts';
 import { streamReaderOf } from './stream-reader.ts';
 import { retriedOnVersionConflict, type VersionConflict } from './version-conflict.ts';
 
@@ -77,5 +78,6 @@ export function makeLedger(store: EventStore): Ledger['Service'] {
         (named, events, expectedVersion) => append(named, decider.eventSchema, events, expectedVersion),
         decider,
       )(stream, command).pipe(Effect.map(({ state, version }) => ({ state, version }))),
+    readRecorded: recordedReaderOf(store),
   });
 }

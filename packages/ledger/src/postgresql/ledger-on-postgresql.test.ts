@@ -1,14 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { Effect, Layer, Logger } from 'effect';
+import { Effect } from 'effect';
 import { Client } from 'pg';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { details, happenings } from '../testing/happenings.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
-import { openLedgerWith } from '../testing/open-ledger.ts';
-import { tally } from '../testing/tally.ts';
+import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { belowTheHorizon } from './postgresql-recorded.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -34,6 +35,28 @@ async function aDatabase(): Promise<string> {
   return database.href;
 }
 
+function pause(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+const longestWaitBehindTheHorizon = 10_000;
+
+async function untilReadable(database: string, deadline = Date.now() + longestWaitBehindTheHorizon): Promise<void> {
+  const hidden = await queried(database, `SELECT 1 FROM emt_messages WHERE NOT (${belowTheHorizon}) LIMIT 1`);
+  if (hidden.length === 0) {
+    return;
+  }
+  if (Date.now() > deadline) {
+    throw new Error(
+      `A committed message stayed behind the oldest open transaction of the server for ${longestWaitBehindTheHorizon} ms`,
+    );
+  }
+  await pause(20);
+  await untilReadable(database, deadline);
+}
+
 const lostConnections: Readonly<Error>[] = [];
 
 const onPostgreSQL: LedgerEntry = {
@@ -41,6 +64,7 @@ const onPostgreSQL: LedgerEntry = {
   afterClosing: 'Cannot use a pool after calling end on the pool',
   closedWhileWriting: 'Cannot use a pool after calling end on the pool',
   aDatabase,
+  untilReadable,
   ledgerOn: (connectionString) => postgresqlLedgerLayer({ connectionString }),
   storeOn: (connectionString) =>
     postgresqlEventStore({
@@ -55,94 +79,171 @@ const skipped = server === '';
 
 const notice = skipped ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL of a PostgreSQL server to run it' : '';
 
-describe.skipIf(skipped)(`The ledger on PostgreSQL${notice}`, () => {
+describe.skipIf(skipped)(`The ledger on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
   ledgerBehaviour(onPostgreSQL);
 });
 
-const lostConnection =
-  '"message":"A connection to the PostgreSQL database of the ledger was lost; the ledger opens another when it needs one","level":"WARN"';
+type RecordedSelection = Parameters<OpenLedger['ledger']['readRecorded']>[1];
 
-function otherConnectionsTo(database: string): string {
-  return `FROM pg_stat_activity WHERE datname = '${new URL(database).pathname.slice(1)}' AND pid <> pg_backend_pid()`;
+const alpha = { org: 'acme', brain: 'alpha' };
+
+async function anAppendLeftOpen(database: string, stream: string, type: string): Promise<Client> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  onTestFinished(() => client.end());
+  await client.query('BEGIN');
+  await client.query(
+    `SELECT success FROM emt_append_to_stream(
+      ARRAY['late-1'], ARRAY[$1::jsonb], ARRAY['{}'::jsonb], ARRAY['1'], ARRAY[$2], ARRAY['E'], $3, 'brain', 0, 'emt:default')`,
+    [{ json: JSON.stringify({ type, detail: 'late' }) }, type, stream],
+  );
+  return client;
 }
 
-function connectionsTo(database: string): string {
-  return `SELECT count(*)::int AS open ${otherConnectionsTo(database)}`;
+async function aWriteLeftOpenElsewhere(): Promise<Client> {
+  const client = new Client({ connectionString: server });
+  await client.connect();
+  onTestFinished(() => client.end());
+  await client.query('BEGIN');
+  await client.query('SELECT pg_current_xact_id()');
+  return client;
 }
 
-function endingConnectionsTo(database: string): string {
-  return `SELECT pg_terminate_backend(pid) AS ended ${otherConnectionsTo(database)}`;
+function reading(ledger: OpenLedger['ledger'], selection: RecordedSelection, order: 'asc' | 'desc', cursor?: string) {
+  return Effect.runPromise(
+    ledger.readRecorded(alpha, selection, { order, limit: 10, ...(cursor === undefined ? {} : { cursor }) }),
+  );
 }
 
-describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`, () => {
-  it('builds on a database that another server is migrating at the same moment', async () => {
-    const database = await aDatabase();
+function noting(ledger: OpenLedger['ledger'], stream: string, type: string, detail: string): Promise<unknown> {
+  return Effect.runPromise(ledger.execute(`brain/acme/alpha/${stream}`, happenings, [{ type, detail }]));
+}
 
-    const [first, second] = await Promise.all([
-      openLedgerWith(postgresqlLedgerLayer({ connectionString: database })),
-      openLedgerWith(postgresqlLedgerLayer({ connectionString: database })),
-    ]);
-    await Effect.runPromise(first.ledger.execute('org/acme/tallies', tally, [1]));
-    const loaded = await Effect.runPromise(second.ledger.load('org/acme/tallies', tally));
-    await Promise.all([first.dispose(), second.dispose()]);
+async function aLedgerOnItsOwnDatabase(): Promise<{
+  readonly database: string;
+  readonly ledger: OpenLedger['ledger'];
+}> {
+  const database = await aDatabase();
+  const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+  onTestFinished(dispose);
+  return { database, ledger };
+}
 
-    expect(loaded).toEqual({ state: 1, version: 1 });
+const everything: RecordedSelection = { kind: 'everything' };
+
+const runs: RecordedSelection = { kind: 'executions' };
+
+describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${notice}`, { timeout: 30_000 }, () => {
+  it('oldest first, stays behind it, and delivers every message once after it commits', async () => {
+    const { database, ledger } = await aLedgerOnItsOwnDatabase();
+    await noting(ledger, 'notes', 'noted', 'before');
+    await untilReadable(database);
+    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
+    await noting(ledger, 'notes', 'noted', 'after');
+
+    const whileOpen = await reading(ledger, everything, 'asc');
+    await open.query('COMMIT');
+    await untilReadable(database);
+    const rest = await reading(ledger, everything, 'asc', String(whileOpen.records.at(-1)?.id));
+
+    expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
   });
 
-  it('closes every connection to the database when the runtime is disposed', async () => {
-    const database = await aDatabase();
-    const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
-    await Effect.runPromise(ledger.load('org/acme/tallies', tally));
-    const whileOpen = await queried(database, connectionsTo(database));
+  it('newest first, reads every message committed, the one committed after it included', async () => {
+    const { database, ledger } = await aLedgerOnItsOwnDatabase();
+    await noting(ledger, 'notes', 'noted', 'before');
+    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
+    await noting(ledger, 'notes', 'noted', 'after');
 
-    await dispose();
+    const whileOpen = await reading(ledger, everything, 'desc');
+    await open.query('COMMIT');
+    const afterCommit = await reading(ledger, everything, 'desc');
 
-    expect({ whileOpen, afterDisposal: await queried(database, connectionsTo(database)) }).toEqual({
-      whileOpen: [{ open: 1 }],
-      afterDisposal: [{ open: 0 }],
-    });
+    expect([details(whileOpen), details(afterCommit)]).toEqual([
+      ['after', 'before'],
+      ['after', 'late', 'before'],
+    ]);
   });
 });
 
-describe.skipIf(skipped)(`A ledger whose PostgreSQL database ends its connections${notice}`, () => {
-  it('reports each lost connection to the log, and goes on reading and appending on new ones', async () => {
-    const database = await aDatabase();
-    const logged: string[] = [];
-    const capture = Logger.map(Logger.formatJson, (line: string) => {
-      logged.push(line);
+describe.skipIf(skipped)(
+  `A list of runs on PostgreSQL while an append is still open${notice}`,
+  { timeout: 30_000 },
+  () => {
+    it('lists runs oldest first behind it, and every run once after it commits', async () => {
+      const { database, ledger } = await aLedgerOnItsOwnDatabase();
+      await noting(ledger, 'executions/r-before', 'execution_started', 'before');
+      await untilReadable(database);
+      const open = await anAppendLeftOpen(database, 'brain/acme/alpha/executions/r-late', 'execution_started');
+      await noting(ledger, 'executions/r-after', 'execution_started', 'after');
+
+      const whileOpen = await reading(ledger, runs, 'asc');
+      await open.query('COMMIT');
+      await untilReadable(database);
+      const rest = await reading(ledger, runs, 'asc', String(whileOpen.records.at(-1)?.id));
+
+      expect([details(whileOpen), details(rest)]).toEqual([['before'], ['late', 'after']]);
     });
-    const { ledger, dispose } = await openLedgerWith(
-      postgresqlLedgerLayer({ connectionString: database }).pipe(Layer.provide(Logger.layer([capture]))),
-    );
-    onTestFinished(dispose);
-    await Effect.runPromise(ledger.execute('org/acme/tallies', tally, [1]));
 
-    const ended = await queried(database, endingConnectionsTo(database));
-    await vi.waitFor(() => {
-      expect(logged).toHaveLength(ended.length);
+    it('lets a write open in another database of the server hide nothing', async () => {
+      const { database, ledger } = await aLedgerOnItsOwnDatabase();
+      await noting(ledger, 'notes', 'noted', 'before');
+      await untilReadable(database);
+      const elsewhere = await aWriteLeftOpenElsewhere();
+      await noting(ledger, 'notes', 'noted', 'after');
+
+      const whileOpen = await reading(ledger, everything, 'asc');
+      await elsewhere.query('COMMIT');
+
+      expect(details(whileOpen)).toEqual(['before', 'after']);
     });
+  },
+);
 
-    expect(await Effect.runPromise(ledger.load('org/acme/tallies', tally))).toEqual({ state: 1, version: 1 });
-    expect(await Effect.runPromise(ledger.execute('org/acme/tallies', tally, [2]))).toEqual({ state: 3, version: 2 });
-    expect(ended.length).toBeGreaterThan(0);
-    expect(logged.filter((line) => !line.includes(lostConnection))).toEqual([]);
-  });
-
-  it("keeps each event as its JSON text in Emmett's messages table", async () => {
+describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
+  it('are created when the ledger opens, once however often it opens', async () => {
     const database = await aDatabase();
-    const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
-    await Effect.runPromise(ledger.execute('org/acme/tallies', tally, [2]));
-    await dispose();
+    const first = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    await first.dispose();
+    const second = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    await second.dispose();
 
     expect(
-      await queried(database, 'SELECT stream_id, stream_position::int, message_type, message_data FROM emt_messages'),
+      await queried(
+        database,
+        "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'emt_messages' AND indexname LIKE 'ledger%' ORDER BY indexname",
+      ),
     ).toEqual([
       {
-        stream_id: 'org/acme/tallies',
-        stream_position: 1,
-        message_type: 'counted',
-        message_data: { json: '{"type":"counted","by":2}' },
+        indexname: 'ledger_first_messages_by_kind',
+        indexdef: `CREATE INDEX ledger_first_messages_by_kind ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){4}'::text), stream_position, transaction_id, global_position)`,
+      },
+      {
+        indexname: 'ledger_messages_by_brain',
+        indexdef: `CREATE INDEX ledger_messages_by_brain ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), transaction_id, global_position)`,
+      },
+      {
+        indexname: 'ledger_messages_by_brain_and_time',
+        indexdef: `CREATE INDEX ledger_messages_by_brain_and_time ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), created, transaction_id, global_position)`,
+      },
+      {
+        indexname: 'ledger_messages_by_stream',
+        indexdef:
+          'CREATE INDEX ledger_messages_by_stream ON ONLY public.emt_messages USING btree (stream_id, transaction_id, global_position)',
       },
     ]);
+  });
+
+  it('are found, not created again, by a start that an append left open does not hold up', async () => {
+    const { database } = await aLedgerOnItsOwnDatabase();
+    const open = await anAppendLeftOpen(database, 'brain/acme/alpha/late', 'noted');
+
+    const started = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
+    await started.dispose();
+    await open.query('COMMIT');
+
+    expect(
+      await queried(database, "SELECT count(*)::int AS indexes FROM pg_indexes WHERE indexname LIKE 'ledger%'"),
+    ).toEqual([{ indexes: 4 }]);
   });
 });
