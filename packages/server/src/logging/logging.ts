@@ -103,7 +103,9 @@ export function logLedger(ledger: LedgerSettings): Effect.Effect<void> {
     ? Effect.logInfo(`The ledger is kept in PostgreSQL, in the database ${ledger.database} on ${ledger.host}`).pipe(
         Effect.annotateLogs({ database: ledger.database, database_host: ledger.host }),
       )
-    : Effect.void;
+    : Effect.logInfo(`The ledger is kept in the file ${ledger.file}`).pipe(
+        Effect.annotateLogs({ ledger_file: ledger.file }),
+      );
 }
 
 const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');

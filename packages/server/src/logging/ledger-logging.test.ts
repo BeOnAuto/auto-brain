@@ -5,8 +5,12 @@ import { linesLoggedBy } from '../testing/logged-lines.ts';
 import { logLedger } from './logging.ts';
 
 describe('logLedger', () => {
-  it('says nothing of a ledger in a SQLite file', async () => {
-    await expect(linesLoggedBy(logLedger({ store: 'sqlite', file: 'data/ledger.db' }))).resolves.toEqual([]);
+  it('names the file of a ledger in SQLite', async () => {
+    await expect(linesLoggedBy(logLedger({ store: 'sqlite', file: 'data/ledger.db' }))).resolves.toEqual([
+      expect.stringMatching(
+        /^\{"message":"The ledger is kept in the file data\/ledger.db","level":"INFO",.*"annotations":\{"ledger_file":"data\/ledger.db"\}/u,
+      ),
+    ]);
   });
 
   it('names the database and the host of a ledger in PostgreSQL, and nothing else of its URL', async () => {

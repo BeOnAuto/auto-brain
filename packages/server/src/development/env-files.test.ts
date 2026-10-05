@@ -115,6 +115,7 @@ describe('pnpm dev with LOG_FORMAT=pretty in dev.env', { timeout: developmentTes
         .split('\n'),
     ).toEqual([
       expect.stringMatching(/^WARN {2}Local mode is on: /u),
+      expect.stringMatching(/^INFO {2}The ledger is kept in the file \S+\/ledger\.db ledger_file=\S+\/ledger\.db$/u),
       expect.stringMatching(/^WARN {2}No model provider is configured, /u),
       'INFO  Workflows are not offered because TEMPORAL_ADDRESS is unset',
       'INFO  [dev] auto-brain is ready',
