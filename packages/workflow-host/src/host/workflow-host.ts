@@ -127,10 +127,9 @@ export async function openWorkflowHost(options: HostOptions): Promise<WorkflowHo
   const { guarded, closed } = gate();
   const runs = runsOn(database, host, clock);
   const stopped = async (): Promise<void> => {
-    const drained = closed();
+    await closed();
     await loop.stop();
     await Effect.runPromise(host.executor.stop());
-    await drained;
     await database.close();
   };
   const stopping: { done?: Promise<void> } = {};
