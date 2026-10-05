@@ -1,6 +1,6 @@
-import { ReceivedEventSchema } from '@beonauto/workflow-engine';
+import { ReceivedEventSchema, newRun, workflowMachine, type RunOutput } from '@beonauto/workflow-engine';
 import { memoryDriver, type MemoryDriver } from '@beonauto/workflow-engine/testing';
-import { Option, Schema } from 'effect';
+import { Option, Result, Schema } from 'effect';
 
 import { orchestrationMachine } from '../runs/orchestration-machine.ts';
 import { endingOf, type WorkflowEnding } from './endings.ts';
@@ -73,4 +73,25 @@ export async function interpretOnMachine(run: WorkflowRun, options: MachineOptio
     commands: host.commands(),
     fake: host,
   };
+}
+
+const machine = workflowMachine(orchestrationMachine);
+
+export function outputsAtStart(run: WorkflowRun): readonly RunOutput[] {
+  const events = Result.getOrThrow(
+    machine.decide(
+      {
+        kind: 'started',
+        executionId: run.execution.id,
+        at: 0,
+        document: run.document,
+        input: run.input,
+        limits: { mostDurationMs: run.mostDuration, longestCallMs: run.longestNestedExecutionMs },
+        attributes: { org: run.execution.org, brain: run.execution.brain },
+        seed: 1,
+      },
+      newRun,
+    ),
+  );
+  return events.flatMap(({ outputs }) => outputs);
 }

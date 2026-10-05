@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RunSettlement } from '../testing/run-terms.ts';
-import { interpret, workflow } from '../testing/workflows.ts';
+import { executionId, interpret, outputsOnStarting, workflow } from '../testing/workflows.ts';
 
 function tasks(count: number, body: (index: number) => string): string {
   return `do:\n${Array.from({ length: count }, (_, index) => `  - t${index}: ${body(index)}`).join('\n')}`;
@@ -55,6 +55,8 @@ describe('a workflow that runs many pure tasks', () => {
   });
 });
 
+const zerosJustOverTheBudget = Array.from({ length: 500_000 }, () => 0);
+
 describe('a value a workflow holds', () => {
   it('may not take more work to visit than an expression may do', async () => {
     const half = `'\${ "x" * 5000000 }'`;
@@ -65,12 +67,18 @@ describe('a value a workflow holds', () => {
     );
   });
 
-  it('is admitted as the input of a workflow only if it takes no more work than that', async () => {
-    const { settlement } = await interpret(workflow('do: []'), { input: Array.from({ length: 600_000 }, () => 0) });
-
-    expect(rejectionOf(settlement)).toContain(
-      'A value takes 9600016 units of work to visit, more than the 8000000 a workflow may hold (at /)',
-    );
+  it('is admitted as the input of a workflow only if it takes no more work than that', () => {
+    expect(outputsOnStarting(workflow('do: []'), zerosJustOverTheBudget)).toEqual([
+      {
+        kind: 'settle',
+        executionId,
+        settlement: {
+          status: 'rejected',
+          reason: 'unavailable',
+          detail: 'A value takes 8000016 units of work to visit, more than the 8000000 a workflow may hold (at /)',
+        },
+      },
+    ]);
   });
 
   it('may not double by sharing itself from task to task', async () => {

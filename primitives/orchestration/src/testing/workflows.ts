@@ -5,7 +5,7 @@ import { parse } from 'yaml';
 
 import type { SpecResponder } from './machine-commands.ts';
 import type { Command, MachineHost, WorkflowStart } from './machine-host.ts';
-import { interpretOnMachine, type MachineInterpretation } from './machine-workflows.ts';
+import { interpretOnMachine, outputsAtStart, type MachineInterpretation } from './machine-workflows.ts';
 import {
   defaultLongestNestedExecutionMs,
   defaultMostDuration,
@@ -72,4 +72,8 @@ export function interpret(document: JsonObject, options: InterpretOptions = {}):
     },
     options,
   );
+}
+
+export function outputsOnStarting(document: JsonObject, input: Json): ReturnType<typeof outputsAtStart> {
+  return outputsAtStart(runOf(document, input));
 }
