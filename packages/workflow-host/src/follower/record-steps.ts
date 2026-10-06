@@ -14,6 +14,7 @@ export type PassEnd = 'caught_up' | 'more' | 'waiting';
 export interface Step {
   readonly progress: Progress;
   readonly end?: PassEnd;
+  readonly delivered?: boolean;
 }
 
 export interface StepParts {
@@ -65,8 +66,10 @@ function deliveredStep(parts: StepParts, stepping: Stepping, progress: Progress,
     if (followed === null) {
       return { progress: passedOver(record) };
     }
-    const delivered = yield* deliveredAll(parts.consumers, followed, progress, stepping.mode);
-    return delivered.end === undefined ? { progress: passedOver(record) } : delivered;
+    const { made, ...delivered } = yield* deliveredAll(parts.consumers, followed, progress, stepping.mode);
+    return delivered.end === undefined
+      ? { progress: passedOver(record), delivered: made }
+      : { ...delivered, delivered: made };
   });
 }
 

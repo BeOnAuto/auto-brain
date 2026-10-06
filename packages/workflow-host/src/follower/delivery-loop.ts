@@ -90,12 +90,16 @@ function deliveredByConsumer(
   });
 }
 
+export interface DeliveredAll extends Delivered {
+  readonly made: boolean;
+}
+
 export function deliveredAll(
   consumers: readonly Consumer[],
   followed: FollowedRecord,
   progress: Progress,
   mode: Mode,
-): Effect.Effect<Delivered> {
+): Effect.Effect<DeliveredAll> {
   return Effect.gen(function* () {
     const { first, after: resumedAfter } = resumptionOf(consumers, progress.delivered);
     let current: Delivered & { readonly budget: number } = { progress, budget: deliveriesOfARecordInAPass };
@@ -103,9 +107,9 @@ export function deliveredAll(
       const after = offset === 0 ? resumedAfter : undefined;
       current = yield* deliveredByConsumer({ followed, mode }, consumer, { ...current, after });
       if (current.end !== undefined) {
-        return current;
+        return { progress: current.progress, end: current.end, made: current.budget < deliveriesOfARecordInAPass };
       }
     }
-    return { progress: current.progress };
+    return { progress: current.progress, made: current.budget < deliveriesOfARecordInAPass };
   });
 }

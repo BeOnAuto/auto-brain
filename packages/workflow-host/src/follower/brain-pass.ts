@@ -38,6 +38,9 @@ function pagesPassed(
           yield* parts.brains.save(brainKey, progress);
           return step.end;
         }
+        if (step.delivered === true) {
+          yield* parts.brains.save(brainKey, progress);
+        }
       }
       if (!hasMore) {
         yield* parts.brains.save(brainKey, { ...progress, waiting: false });

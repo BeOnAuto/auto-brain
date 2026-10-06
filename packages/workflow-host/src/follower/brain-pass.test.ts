@@ -1,9 +1,11 @@
 import type { RecordedEvent } from '@beonauto/operations';
-import { Effect } from 'effect';
+import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { insertedListener } from '../listeners/listener-rows.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { passOf, type PassParts } from './brain-pass.ts';
+import type { Consumer } from './consumers.ts';
 import { followedBrainsOn } from './followed-brains.ts';
 
 const brainKey = 'brain/acme/alpha/';
@@ -41,6 +43,52 @@ function countedRecords(pageAt: (read: number) => Effect.Effect<readonly Recorde
   };
 }
 
+function publishedAt(position: number): RecordedEvent {
+  const event = {
+    specversion: '1.0',
+    id: `e${position}`,
+    source: '/acme',
+    type: 'com.acme.noted',
+    time: '2026-10-01T09:00:00.000Z',
+  };
+  return {
+    ...recordAt(`events/e${position}`, position),
+    type: 'event_published',
+    data: { type: 'event_published', event, filled: [], by: 'acme-admin', at: event.time },
+  };
+}
+
+function publishedThenGone(): CountedRecords {
+  return countedRecords((read) =>
+    read <= 2 ? Effect.succeed([publishedAt(1), publishedAt(2)]) : Effect.die(new Error('The ledger went away')),
+  );
+}
+
+function deliveringEach(delivered: (id: string) => void): Consumer {
+  return {
+    name: 'noting',
+    skippedAfterSweeps: 20,
+    batchOf: (followed, after) =>
+      Effect.succeed({
+        deliveries:
+          after === undefined
+            ? [
+                {
+                  key: followed.record.id,
+                  workflow: 'note',
+                  deliver: Effect.sync(() => {
+                    delivered(followed.record.id);
+                  }),
+                },
+              ]
+            : [],
+        through: followed.record.id,
+        more: false,
+      }),
+    skipped: () => Effect.void,
+  };
+}
+
 function undispatchedRun(): CountedRecords {
   return countedRecords(() => Effect.succeed([recordAt('runs/r-1', 1), recordAt('notes/n2', 2)]));
 }
@@ -49,14 +97,14 @@ function endlessNotes(): CountedRecords {
   return countedRecords((read) => Effect.succeed([recordAt(`notes/n${read}`, read)]));
 }
 
-async function passing(counted: CountedRecords) {
+async function passing(counted: CountedRecords, consumers: readonly Consumer[] = []) {
   const opened = await openedOn(await onSQLite());
   const brains = followedBrainsOn(opened);
   const pass = passOf({
     database: opened,
     records: counted.records,
     brains,
-    consumers: [],
+    consumers,
     primitive: 'orchestration',
     applySpecRecord: () => Effect.void,
     unreadable: () => Effect.void,
@@ -98,6 +146,34 @@ describe('a pass over the records of a brain', () => {
       Array.from({ length: 10 }, () => false),
       { brainKey, cursor: 'cursor-10', delivered: null, attempts: 0, waiting: true },
     ]);
+  });
+});
+
+describe('a pass that delivers records and then fails', () => {
+  it('keeps its place after each record it delivered, so the records delivered are not delivered again', async () => {
+    const delivered: string[] = [];
+    const consumer = deliveringEach((id) => {
+      delivered.push(id);
+    });
+    const { database, brains, pass } = await passing(publishedThenGone(), [consumer]);
+    await Effect.runPromise(brains.follow(brainKey, null));
+    await Effect.runPromise(
+      insertedListener(database, {
+        runId: 'acme/alpha/r-1',
+        listener: 'wait',
+        brainKey,
+        streamId: `${brainKey}runs/r-1`,
+        armedBy: 1,
+        filters: '[]',
+        workflow: 'wait',
+        passed: true,
+      }),
+    );
+
+    const exit = await Effect.runPromiseExit(pass(brainKey, 'signal'));
+    const followed = await Effect.runPromise(brains.load(brainKey));
+
+    expect([Exit.isFailure(exit), delivered, followed?.cursor]).toEqual([true, ['record-1', 'record-2'], 'cursor-2']);
   });
 });
 
