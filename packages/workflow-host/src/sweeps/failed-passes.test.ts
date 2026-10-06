@@ -29,6 +29,7 @@ interface Following {
   readonly pass: (brainKey: string) => Effect.Effect<PassEnd>;
   readonly upkeepFailing?: (sweep: number) => boolean;
   readonly registries?: (registries: readonly string[]) => Effect.Effect<void>;
+  readonly brainSeen?: (brainKey: string) => Effect.Effect<void>;
 }
 
 interface Followed {
@@ -39,7 +40,14 @@ interface Followed {
 }
 
 function followed(following: Following): Followed {
-  const { streams, sweepEveryMs, pass, upkeepFailing = () => false, registries = () => Effect.void } = following;
+  const {
+    streams,
+    sweepEveryMs,
+    pass,
+    upkeepFailing = () => false,
+    registries = () => Effect.void,
+    brainSeen = () => Effect.void,
+  } = following;
   const counts = { reads: 0, upkeeps: 0 };
   const troubles: string[] = [];
   const store = {
@@ -56,7 +64,7 @@ function followed(following: Following): Followed {
     });
   const follower = startFollower({
     pass,
-    discovery: { atStart: () => Effect.void, registriesAppended: registries, brainSeen: () => Effect.void },
+    discovery: { atStart: () => Effect.void, registriesAppended: registries, brainSeen },
     sweeps: brainSweepsOn(store, noBrains),
     upkeep: { sweep: upkeep, fireSchedules: () => Effect.void, nextScheduleAt: () => Effect.succeed(null) },
     appended: streamSignalOf(),
@@ -77,7 +85,7 @@ function followed(following: Following): Followed {
   };
 }
 
-function passesFailingFirstFor(failing: string, passed: (brainKey: string) => void) {
+function failingOnceFor<A>(failing: string, otherwise: (brainKey: string) => Effect.Effect<A>) {
   const failures = { left: 1 };
   return (brainKey: string) =>
     Effect.suspend(() => {
@@ -85,9 +93,20 @@ function passesFailingFirstFor(failing: string, passed: (brainKey: string) => vo
         failures.left -= 1;
         return Effect.die(new Error('The ledger could not be read'));
       }
-      passed(brainKey);
-      return Effect.succeed<PassEnd>('caught_up');
+      return otherwise(brainKey);
     });
+}
+
+function passesRecorded(passed: (brainKey: string) => void) {
+  return (brainKey: string) =>
+    Effect.sync((): PassEnd => {
+      passed(brainKey);
+      return 'caught_up';
+    });
+}
+
+function passesFailingFirstFor(failing: string, passed: (brainKey: string) => void) {
+  return failingOnceFor(failing, passesRecorded(passed));
 }
 
 function passedReaching(passes: readonly string[], count: number) {
@@ -137,6 +156,29 @@ describe('a sweep in which the pass over a brain fails', () => {
       'The follower of the brains failed; it tries again',
     ]);
   });
+});
+
+describe('a sweep in which following a brain it finds fails', () => {
+  it(
+    'passes the brains after it in the same sweep, and the brain again at the next sweep',
+    { timeout: 30_000 },
+    async () => {
+      const passes: string[] = [];
+      const watched = followed({
+        streams: [`${alpha}events/`, `${beta}events/`],
+        sweepEveryMs: 20,
+        pass: passesRecorded((brainKey) => {
+          passes.push(brainKey);
+        }),
+        brainSeen: failingOnceFor(alpha, () => Effect.void),
+      });
+
+      const passed = await passedReaching(passes, 2);
+
+      expect(passed).toEqual([beta, alpha]);
+      expect(watched.troubles()).toEqual(['A pass over a brain failed; the next sweep passes the brain again']);
+    },
+  );
 });
 
 describe('a sweep in which more brains fail than it has room for', () => {

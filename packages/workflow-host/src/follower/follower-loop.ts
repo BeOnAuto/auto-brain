@@ -39,7 +39,8 @@ interface Passing {
 }
 
 function passedOnce(parts: FollowerParts, wakes: Wakes, { brainKey, mode, known }: Passing) {
-  return parts.pass(brainKey, mode, known).pipe(
+  const seen = known === undefined ? parts.discovery.brainSeen(brainKey) : Effect.void;
+  return Effect.andThen(seen, () => parts.pass(brainKey, mode, known)).pipe(
     Effect.tap((end) =>
       Effect.sync(() => {
         if (end === 'more') {
@@ -80,11 +81,7 @@ function signalled(parts: FollowerParts, wakes: Wakes) {
     yield* registriesRead(parts, wakes.registriesWoken());
     yield* Effect.forEach(
       wakes.brainsWoken(),
-      (brainKey) =>
-        Effect.andThen(
-          parts.discovery.brainSeen(brainKey),
-          passedOnce(parts, wakes, { brainKey, mode: 'signal', known: undefined }),
-        ),
+      (brainKey) => passedOnce(parts, wakes, { brainKey, mode: 'signal', known: undefined }),
       { discard: true },
     );
   });
@@ -102,11 +99,7 @@ function swept(parts: FollowerParts, wakes: Wakes) {
     yield* parts.upkeep.sweep().pipe(Effect.catchCause((cause) => Effect.andThen(handedBack, Effect.failCause(cause))));
     yield* Effect.forEach(
       sweep.brains,
-      ({ brainKey, known }) =>
-        Effect.andThen(
-          known === undefined ? parts.discovery.brainSeen(brainKey) : Effect.void,
-          passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),
-        ),
+      ({ brainKey, known }) => passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),
       { discard: true },
     );
     if (sweep.again) {
