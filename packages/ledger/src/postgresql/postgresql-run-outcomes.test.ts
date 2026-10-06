@@ -4,6 +4,7 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { describe, expect, it } from 'vitest';
 
 import type { StatementExecutor } from '../event-store.ts';
+import { aRecordedFillOf, mebibyte, runIdsOf, type RecordedFill } from '../outcomes/recorded-fill.ts';
 import type { Query } from './postgresql-recorded.ts';
 import {
   afterTheSchemaWithin,
@@ -87,6 +88,32 @@ describe('the table of the outcomes of runs on PostgreSQL, as the ledger opens',
     await afterTheSchemaWithin()({ execute: without.execute });
 
     expect([found.commands, without.commands]).toEqual([[], []]);
+  });
+});
+
+async function filledOnPostgreSQL(sizes: readonly number[]): Promise<RecordedFill> {
+  const fill = aRecordedFillOf(
+    sizes,
+    (sql) => SQL.describe(sql, pgFormatter),
+    (json) => ({ json }),
+  );
+  await afterTheSchemaWithin(runTallies)({ execute: fill.execute });
+  return fill;
+}
+
+describe('the listings of the fill on PostgreSQL', () => {
+  it('ask for one run stream, then twice as many after each batch that took them all, up to 100', async () => {
+    const fill = await filledOnPostgreSQL(Array.from({ length: 300 }, () => 120));
+
+    expect(fill.listings).toEqual([1, 2, 4, 8, 16, 32, 64, 100, 100]);
+    expect(fill.keptRuns()).toEqual(runIdsOf(300));
+  });
+
+  it('ask for one again after a run stream that holds more than 16 MiB alone, and keep every run', async () => {
+    const fill = await filledOnPostgreSQL([120, 120, 120, 20 * mebibyte, 120, 120, 120, 120, 120, 120]);
+
+    expect(fill.listings).toEqual([1, 2, 4, 1, 2, 4]);
+    expect(fill.keptRuns()).toEqual(runIdsOf(10));
   });
 });
 

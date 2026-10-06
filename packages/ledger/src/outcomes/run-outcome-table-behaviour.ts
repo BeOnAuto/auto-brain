@@ -175,10 +175,36 @@ function aFillOfLargeRecords(entry: LedgerEntry): void {
   });
 }
 
+function aFillOfAnOversizedRun(entry: LedgerEntry): void {
+  describe('a fill that meets a run stream holding more than 16 MiB of records', () => {
+    it('reads that stream alone, and keeps it and every run after it', { timeout: 60_000 }, async () => {
+      const database = await entry.aDatabase();
+      const writing = await aLedger(entry, database);
+      const note = 'x'.repeat(6 * mebibyte);
+      await noting(writing, 'brain/acme/alpha/executions/over-0', began('over'), largeEnd(0, 'small'));
+      await noting(
+        writing,
+        'brain/acme/alpha/executions/over-1',
+        began('over'),
+        largeEnd(1, note),
+        largeEnd(2, note),
+        largeEnd(3, note),
+      );
+      await noting(writing, 'brain/acme/alpha/executions/over-2', began('over'), largeEnd(4, 'small'));
+      await noting(writing, 'brain/acme/alpha/executions/over-3', began('over'), largeEnd(5, 'small'));
+
+      const filled = await aLedger(entry, database, runTallies);
+
+      expect(runsOf(await reading(filled))).toEqual(['2026-10-01 over succeeded 4']);
+    });
+  });
+}
+
 export function runOutcomeTableBehaviour(entry: LedgerEntry): void {
   aProjectionThatBreaksDown(entry);
   aStoreWithoutTheProjection(entry);
   aNewTableVersion(entry);
   aFillInterruptedOrDone(entry);
   aFillOfLargeRecords(entry);
+  aFillOfAnOversizedRun(entry);
 }
