@@ -83,7 +83,7 @@ Reason functions normally complete within the execute request. A workflow run an
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 
-A run without a final result may be attempted again after an interruption or recoverable failure, except a workflow run, which runs once for its execution id. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
+A run without a final result may be attempted again after an interruption or recoverable failure, with two exceptions. A workflow run runs once for its execution id. A reason function that calls tools is never run again under its id once one of its tools may have been called: when an earlier attempt called a tool and did not succeed, or when the function names tools and an earlier attempt has started and not ended, since it may still be running. The answer is `conflict` with the kind `tools_called`; check what the run's history shows it called, then start a new run under a new id. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
 
 ## Run history and brain events
 

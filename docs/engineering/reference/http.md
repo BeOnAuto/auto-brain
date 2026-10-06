@@ -83,7 +83,7 @@ Supply `execution_id` when you need to inspect failures or retry a request. Reus
 
 Once a run succeeds or rejects invalid input, it has a final result. Calling again with the same id and input returns that recorded result. A waiting workflow also returns its existing run without restarting it. A workflow runs once for an execution id: calling again with the id of a workflow that ended without a final result, `unavailable` or `failed`, returns `conflict`; run it again under a new id.
 
-A run without a final result may be attempted again after an interruption, an unavailable dependency or another recoverable failure. A retry can use the latest definition version, which the new attempt records. Side effects must tolerate at-least-once execution; one recorded final result does not guarantee that an external action ran only once.
+A run without a final result may be attempted again after an interruption, an unavailable dependency or another recoverable failure. A retry can use the latest definition version, which the new attempt records. Side effects must tolerate at-least-once execution; one recorded final result does not guarantee that an external action ran only once. A reason function that calls tools is the exception, since its tools are the side effects: a run whose stream holds a tool call and that did not succeed, or a started run whose function names tools, is not attempted again under its id: the call answers `conflict` with the kind `tools_called`, and a new run needs a new id.
 
 ## Errors
 
