@@ -18,4 +18,8 @@ export const CallerIdentitySchema = Schema.Struct({
   brains: BrainAccessSchema,
 });
 
+export function brainCallerOf({ org, brain }: { readonly org: string; readonly brain: string }): CallerIdentity {
+  return { id: `brain:${brain}`, org, permissions: ['brain:read', 'brain:write'], brains: [brain] };
+}
+
 export class Caller extends Context.Service<Caller, CallerIdentity>()('@beonauto/operations/Caller') {}

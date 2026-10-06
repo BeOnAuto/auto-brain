@@ -77,6 +77,14 @@ function sizeOf({ data }: MemoryRecord): number {
   return utf8.encode(JSON.stringify(data)).byteLength;
 }
 
+function loads({ dataOf }: RecordedPageRequest, { type }: MemoryRecord): boolean {
+  return dataOf === undefined || dataOf.includes(type);
+}
+
+function loadedSizeOf(page: RecordedPageRequest, record: MemoryRecord): number {
+  return loads(page, record) ? sizeOf(record) : 0;
+}
+
 function inSelection(key: string, selection: RecordedSelection): (record: MemoryRecord) => boolean {
   if (selection.kind === 'run') {
     const streams = new Set([`${key}executions/${selection.execution}`, `${key}runs/${selection.execution}`]);
@@ -106,15 +114,15 @@ function firstSince(inBrain: readonly MemoryRecord[], since: string | undefined)
 
 function examinedRecords(
   candidates: readonly MemoryRecord[],
-  { types }: RecordedPageRequest,
+  page: RecordedPageRequest,
   examineAtMost: number,
 ): readonly ExaminedRun[] {
   return candidates.slice(0, examineAtMost + 1).map((record, index) => {
-    const wanted = types === undefined || types.includes(record.type);
+    const wanted = page.types === undefined || page.types.includes(record.type);
     return {
       examined: index + 1,
       wanted,
-      size: wanted ? sizeOf(record) : 0,
+      size: wanted ? loadedSizeOf(page, record) : 0,
       position: record.position,
       heads: [record],
     };
@@ -124,13 +132,13 @@ function examinedRecords(
 function examinedRuns(
   log: readonly MemoryRecord[],
   candidates: readonly MemoryRecord[],
-  { types }: RecordedPageRequest,
+  page: RecordedPageRequest,
 ): readonly ExaminedRun[] {
   return candidates.slice(0, mostExaminedInAPage + 1).map((first, index) => {
     const latest = log.reduce((last, record) => (record.stream === first.stream ? record : last), first);
     const heads = latest === first ? [first] : [first, latest];
-    const wanted = types === undefined || types.includes(latest.type);
-    const size = heads.reduce((total, head) => total + sizeOf(head), 0);
+    const wanted = page.types === undefined || page.types.includes(latest.type);
+    const size = heads.reduce((total, head) => total + loadedSizeOf(page, head), 0);
     return { examined: index + 1, wanted, size: wanted ? size : 0, position: first.position, heads };
   });
 }
@@ -139,9 +147,19 @@ function cursorAt(key: string, at: number): string {
   return cursorOfParts([key, String(at)]);
 }
 
-function recordedOf(key: string, record: MemoryRecord): RecordedEvent {
-  const { id, causationId, correlationId, stream, type, data, recordedAt } = record;
-  return { id, cursor: cursorAt(key, record.position), causationId, correlationId, stream, type, data, recordedAt };
+function recordedOf(key: string, page: RecordedPageRequest, record: MemoryRecord): RecordedEvent {
+  const { id, causationId, correlationId, stream, streamPosition: version, type, data, recordedAt } = record;
+  return {
+    id,
+    cursor: cursorAt(key, record.position),
+    causationId,
+    correlationId,
+    stream,
+    version,
+    type,
+    data: loads(page, record) ? data : undefined,
+    recordedAt,
+  };
 }
 
 function beyond({ position, inclusive }: Resumed, order: RecordedPageRequest['order']): (at: number) => boolean {
@@ -171,7 +189,7 @@ function pageOf(
     const { delivered, resumeAfter } = boundedPage(examined, page.limit, cap);
     const nextCursor = resumeAfter === undefined ? null : cursorAt(key, resumeAfter.position);
     return {
-      records: delivered.flatMap(({ heads }) => heads.map((head) => recordedOf(key, head))),
+      records: delivered.flatMap(({ heads }) => heads.map((head) => recordedOf(key, page, head))),
       hasMore: nextCursor !== null,
       nextCursor,
     };

@@ -14,6 +14,7 @@ export interface RecordedPageRequest {
   readonly limit: number;
   readonly since?: string;
   readonly types?: readonly string[];
+  readonly dataOf?: readonly string[];
 }
 
 export interface RecordedEvent {
@@ -22,6 +23,7 @@ export interface RecordedEvent {
   readonly causationId: string | null;
   readonly correlationId: string | null;
   readonly stream: string;
+  readonly version: number;
   readonly type: string;
   readonly data: unknown;
   readonly recordedAt: string;

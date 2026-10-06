@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { CallerIdentitySchema, type CallerIdentity } from '../index.ts';
+import { CallerIdentitySchema, brainCallerOf, canAccessBrain, type CallerIdentity } from '../index.ts';
 
 const isCallerIdentity = Schema.is(CallerIdentitySchema);
 
@@ -24,5 +24,20 @@ describe('a caller identity', () => {
 
   it.each(malformed)('rejects %s', (_case, identity) => {
     expect(isCallerIdentity(identity)).toBe(false);
+  });
+});
+
+describe('the caller a brain acts as itself', () => {
+  it('may read and write that brain alone, and names the brain in a way no key id can', () => {
+    const brain = brainCallerOf({ org: 'acme', brain: 'alpha' });
+
+    expect(isCallerIdentity(brain)).toBe(true);
+    expect(brain).toEqual({
+      id: 'brain:alpha',
+      org: 'acme',
+      permissions: ['brain:read', 'brain:write'],
+      brains: ['alpha'],
+    });
+    expect([canAccessBrain(brain.brains, 'alpha'), canAccessBrain(brain.brains, 'beta')]).toEqual([true, false]);
   });
 });

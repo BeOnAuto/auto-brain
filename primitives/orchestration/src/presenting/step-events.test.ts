@@ -44,6 +44,7 @@ function recordOf(steps: readonly Step[]): RecordedEvent {
     causationId: null,
     correlationId: executionId,
     stream: `runs/${executionId}`,
+    version: 1,
     type: event.type,
     data: encodeEvent(event),
     recordedAt: '2026-10-05T09:00:00.000Z',

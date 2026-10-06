@@ -19,6 +19,7 @@ function presented(event: SpecEvent, primitive = 'echo') {
     causationId: null,
     correlationId: null,
     stream: `specs/${primitive}`,
+    version: 1,
     type: event.type,
     data: encode(event),
     recordedAt: '2026-10-01T09:00:00.000Z',

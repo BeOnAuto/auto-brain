@@ -168,6 +168,7 @@ function recordOf(stream: string, type: string, data: unknown): RecordedEvent {
     causationId: null,
     correlationId: null,
     stream,
+    version: 1,
     type,
     data,
     recordedAt: fact.at,
