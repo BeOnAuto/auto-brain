@@ -3,7 +3,7 @@ import type { Event, EventStore as EmmettEventStore } from '@event-driven-io/emm
 import type { Schema } from 'effect';
 
 import type { MessageLineage, StreamStore } from '../event-store.ts';
-import { brainAppends, type AppendSignal } from '../signal/append-signal.ts';
+import { streamAppends, type AppendSignal } from '../signal/append-signal.ts';
 
 export interface EmmettStore extends Pick<EmmettEventStore, 'readStream' | 'appendToStream'> {
   readonly schema: { readonly migrate: () => Promise<unknown> };
@@ -42,7 +42,7 @@ function metadataOf(stream: string, position: number, { causationId, correlation
 
 export function emmettEventStore<Stored extends Record<string, unknown>>(
   store: EmmettStore,
-  { data, mostEventsInOneAppend, appended = brainAppends }: EmmettEventStoreOptions<Stored>,
+  { data, mostEventsInOneAppend, appended = streamAppends }: EmmettEventStoreOptions<Stored>,
 ): StreamStore {
   return {
     mostEventsInOneAppend,

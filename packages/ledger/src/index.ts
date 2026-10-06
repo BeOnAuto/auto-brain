@@ -7,8 +7,8 @@ export { recordedReaderOf } from './recorded/recorded-reader.ts';
 export { retriedOnVersionConflict, VersionConflict } from './version-conflict.ts';
 export {
   appendSignalOf,
-  brainAppends,
   brainKeyOfStream,
+  streamAppends,
   type AppendSignal,
-  type BrainAppended,
+  type StreamAppended,
 } from './signal/append-signal.ts';

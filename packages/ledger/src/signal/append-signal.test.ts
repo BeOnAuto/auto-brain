@@ -4,7 +4,7 @@ import { Effect, Result } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { dataAsWritten, emmettEventStore } from '../emmett/emmett-event-store.ts';
-import { appendSignalOf, brainAppends, brainKeyOfStream, eventAppenderOf, VersionConflict } from '../index.ts';
+import { appendSignalOf, brainKeyOfStream, eventAppenderOf, streamAppends, VersionConflict } from '../index.ts';
 import { ledgerLayer } from '../sqlite3.ts';
 import { happenings, noted } from '../testing/happenings.ts';
 import { openLedgerWith, outcomeOf } from '../testing/open-ledger.ts';
@@ -25,7 +25,7 @@ async function aStoreSignalling(appended: ReturnType<typeof appendSignalOf>) {
 const one = [{ type: 'noted', data: { n: 1 } }];
 
 describe('the signal an append raises', () => {
-  it('names the brain of every stream appended to, after the append, and nothing for a stream of no brain', async () => {
+  it('names every stream appended to, after the append', async () => {
     const signal = appendSignalOf();
     const heard: string[] = [];
     signal.listen((brainKey) => {
@@ -37,7 +37,7 @@ describe('the signal an append raises', () => {
     await store.append('org/acme/brains', one, 0);
     await store.append('brain/acme/Beta_2/runs/r1', one, 0);
 
-    expect(heard).toEqual(['brain/acme/alpha/', 'brain/acme/Beta_2/']);
+    expect(heard).toEqual(['brain/acme/alpha/events/e1', 'org/acme/brains', 'brain/acme/Beta_2/runs/r1']);
   });
 
   it('is not raised by an append that met a version conflict, nor heard once a listener has stopped', async () => {
@@ -55,12 +55,12 @@ describe('the signal an append raises', () => {
     stop();
     await store.append('brain/acme/alpha/notes', one, 1);
 
-    expect([conflicted, heard]).toEqual([Result.fail(new VersionConflict()), ['brain/acme/alpha/']]);
+    expect([conflicted, heard]).toEqual([Result.fail(new VersionConflict()), ['brain/acme/alpha/notes']]);
   });
 
   it('is the signal of the process when none is given, so every ledger of the process raises it', async () => {
     const heard: string[] = [];
-    const stop = brainAppends.listen((brainKey) => {
+    const stop = streamAppends.listen((brainKey) => {
       heard.push(brainKey);
     });
     onTestFinished(stop);
@@ -69,7 +69,7 @@ describe('the signal an append raises', () => {
 
     await Effect.runPromise(ledger.execute('brain/acme/gamma/notes', happenings, [noted('noted')]));
 
-    expect(heard).toContain('brain/acme/gamma/');
+    expect(heard).toContain('brain/acme/gamma/notes');
   });
 });
 

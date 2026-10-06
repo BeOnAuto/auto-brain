@@ -1,8 +1,8 @@
-export type BrainAppended = (brainKey: string) => void;
+export type StreamAppended = (stream: string) => void;
 
 export interface AppendSignal {
   readonly raise: (stream: string) => void;
-  readonly listen: (listener: BrainAppended) => () => void;
+  readonly listen: (listener: StreamAppended) => () => void;
 }
 
 const segmentsOfABrainKey = 3;
@@ -15,19 +15,16 @@ export function brainKeyOfStream(stream: string): string | undefined {
 }
 
 export function appendSignalOf(): AppendSignal {
-  const listeners = new Set<BrainAppended>();
+  const listeners = new Set<StreamAppended>();
   return {
     raise: (stream) => {
-      const brainKey = brainKeyOfStream(stream);
-      if (brainKey !== undefined) {
-        for (const listener of listeners) {
-          listener(brainKey);
-        }
+      for (const listener of listeners) {
+        listener(stream);
       }
     },
     listen: (listener) => {
-      const own = (brainKey: string): void => {
-        listener(brainKey);
+      const own = (stream: string): void => {
+        listener(stream);
       };
       listeners.add(own);
       return () => {
@@ -37,4 +34,4 @@ export function appendSignalOf(): AppendSignal {
   };
 }
 
-export const brainAppends: AppendSignal = appendSignalOf();
+export const streamAppends: AppendSignal = appendSignalOf();
