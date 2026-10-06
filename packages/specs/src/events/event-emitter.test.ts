@@ -4,7 +4,7 @@ import { Effect, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { publishedEventPresenter } from '../presenting/published-event-presenter.ts';
-import { eventEmitter, type Emission } from './event-emitter.ts';
+import { emittedEventRefusal, eventEmitter, type Emission } from './event-emitter.ts';
 import { publishedEventOf } from './published-events.ts';
 
 const alpha = { org: 'acme', brain: 'alpha' };
@@ -97,5 +97,21 @@ describe('an event a workflow emits that the brain does not record', () => {
     const failure = await Effect.runPromise(Effect.flip(eventEmitter(changing)(alpha, emission(told), lineage)));
 
     expect(failure).toEqual(new Conflict({ detail: 'The state changed', kind: 'concurrent_change' }));
+  });
+});
+
+describe('the refusal of an event a workflow would emit', () => {
+  it('is none for an event the brain records, and says where any other breaks its rules', () => {
+    expect([
+      emittedEventRefusal(told),
+      emittedEventRefusal('text'),
+      emittedEventRefusal(toldWith('source', 'a b')),
+      emittedEventRefusal(toldWith('type', 'reaction_refused')),
+    ]).toEqual([
+      undefined,
+      'Expected object',
+      'Expected a URI reference that is not empty, such as /ledger/eu or https://acme.example/ledger (at source)',
+      expect.stringMatching(/^Expected a type of your own, not one the brain records itself: .* \(at type\)$/u),
+    ]);
   });
 });

@@ -8,6 +8,8 @@ export const runSourcePrefix = '/executions/';
 
 export const specSourcePrefix = '/specs/';
 
+export const callerSourcePrefix = '/callers/';
+
 type WorkflowEventType =
   | 'workflow_input_applied'
   | 'step_started'
@@ -42,11 +44,13 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
 
 export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(brainTypes));
 
-export const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix];
+export const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix, callerSourcePrefix];
 
 const reservedTypesInWords = [...reservedEventTypes].join(', ');
 
-const reservedSourcesInWords = reservedSourcePrefixes.join(' or ');
+export const reservedSourcesInWords = new Intl.ListFormat('en-GB', { type: 'disjunction' }).format(
+  reservedSourcePrefixes,
+);
 
 interface Attributes {
   readonly type: string;

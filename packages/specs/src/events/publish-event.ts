@@ -10,7 +10,7 @@ import {
   recordedPublication,
   type FilledAttribute,
 } from './published-events.ts';
-import { refusingTheBrainsOwnAttributes, reservedEventTypes, reservedSourcePrefixes } from './reserved-attributes.ts';
+import { refusingTheBrainsOwnAttributes, reservedEventTypes, reservedSourcesInWords } from './reserved-attributes.ts';
 
 interface Publication {
   readonly event: CloudEvent;
@@ -20,8 +20,6 @@ interface Publication {
 const fillable: readonly FilledAttribute[] = ['id', 'time'];
 
 const reservedTypesInWords = [...reservedEventTypes].join(', ');
-
-const reservedSourcesInWords = reservedSourcePrefixes.join(' or ');
 
 function publicationOf(event: EventToPublish, at: string): Publication {
   return {

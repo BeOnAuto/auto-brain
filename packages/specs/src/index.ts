@@ -43,10 +43,11 @@ export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
 export { brainFactOf } from './events/brain-facts.ts';
 export {
+  callerSourcePrefix,
   isReservedSource,
   refusingTheBrainsOwnAttributes,
   reservedEventTypes,
-  reservedSourcePrefixes,
+  reservedSourcesInWords,
 } from './events/reserved-attributes.ts';
 export {
   CloudEventSchema,
@@ -60,6 +61,7 @@ export {
 export { publishEvent } from './events/publish-event.ts';
 export {
   emittedEventOf,
+  emittedEventRefusal,
   eventEmitter,
   type EmitEvent,
   type EmitOutcome,

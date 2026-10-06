@@ -1,5 +1,5 @@
 import { Conflict, streamPrefixOfBrain, type BrainAddress, type Ledger, type Lineage } from '@beonauto/operations';
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option, Result, Schema, SchemaIssue } from 'effect';
 
 import { jsonBytesOf } from '../execution/recorded-size.ts';
 import { CloudEventSchema, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
@@ -22,11 +22,27 @@ export type EmitEvent = (
   lineage: Lineage,
 ) => Effect.Effect<EmitOutcome, Conflict>;
 
-const decodeEvent = Schema.decodeUnknownOption(CloudEventSchema.check(refusingTheBrainsOwnAttributes));
+const EmittedEventSchema = CloudEventSchema.check(refusingTheBrainsOwnAttributes);
+
+const decodeEvent = Schema.decodeUnknownOption(EmittedEventSchema);
+
+const decodeEmitted = Schema.decodeUnknownResult(EmittedEventSchema);
+
+const formatIssues = SchemaIssue.makeFormatterDefault();
 
 export function emittedEventOf(event: Schema.Json): CloudEvent | undefined {
   return Option.getOrUndefined(
     Option.filter(decodeEvent(event), (decoded) => jsonBytesOf(decoded) <= mostPublishedEventBytes),
+  );
+}
+
+export function emittedEventRefusal(event: Schema.Json): string | undefined {
+  return Option.getOrUndefined(
+    Option.map(Result.getFailure(decodeEmitted(event)), ({ issue }: { readonly issue: SchemaIssue.Issue }) =>
+      formatIssues(issue)
+        .replaceAll(/\n\s+at \["?([^"\]]*)"?\]/gu, ' (at $1)')
+        .replaceAll('\n', '; '),
+    ),
   );
 }
 
