@@ -33,7 +33,7 @@ const eventNoun: Noun = { one: 'event', other: 'events' };
 
 const moreRemain = ' More remain after these.';
 
-const endingsInWords: Readonly<Record<ExecutionStatus, string>> = {
+export const endingsInWords: Readonly<Record<ExecutionStatus, string>> = {
   started: 'still running',
   succeeded: 'finished',
   rejected: 'did not go through',
@@ -42,7 +42,7 @@ const endingsInWords: Readonly<Record<ExecutionStatus, string>> = {
 
 const orderInWords: Readonly<Record<RecordedOrder, string>> = { asc: 'oldest first', desc: 'newest first' };
 
-function runsOfWhat(words: SpecWords, { primitive, name }: RunFilters): string {
+export function runsOfWhat(words: SpecWords, { primitive, name }: RunFilters): string {
   if (primitive === undefined) {
     return name === undefined ? '' : ` of anything named ${quoted(name)}`;
   }

@@ -1,6 +1,15 @@
 import { Clock, Effect, Layer, Result, Schema } from 'effect';
 
-import { Conflict, Ledger, type Decider, type DeclarableReason, type StreamState, type TypedEvent } from '../index.ts';
+import {
+  Conflict,
+  Ledger,
+  type Decider,
+  type DeclarableReason,
+  type RunOutcomeMapping,
+  type StreamState,
+  type TypedEvent,
+} from '../index.ts';
+import { memoryRunOutcomes } from '../run-outcomes/memory-run-outcomes.ts';
 import { memoryRecordedReader, type MemoryRecord } from './memory-recorded.ts';
 
 export interface MemoryLedger {
@@ -22,12 +31,14 @@ function folded<State, Command, Event extends TypedEvent, R extends DeclarableRe
   );
 }
 
-export function memoryLedger(): MemoryLedger {
+export function memoryLedger(runOutcomes?: RunOutcomeMapping): MemoryLedger {
   const streams = new Map<string, readonly unknown[]>();
   const log: MemoryRecord[] = [];
+  const outcomes = memoryRunOutcomes(runOutcomes);
   const storedIn = (stream: string): readonly unknown[] => streams.get(stream) ?? [];
   const record = (stream: string, events: readonly TypedEvent[], encoded: readonly unknown[], at: number): void => {
     const version = storedIn(stream).length;
+    outcomes.project(stream, events, encoded);
     log.push(
       ...events.map(({ type }, index) => ({
         position: log.length + index + 1,
@@ -64,6 +75,7 @@ export function memoryLedger(): MemoryLedger {
         };
       }),
     readRecorded: memoryRecordedReader(log),
+    readRunOutcomes: outcomes.readRunOutcomes,
   });
   return { service, layer: Layer.succeed(Ledger, service), streamNames: () => [...streams.keys()] };
 }

@@ -81,6 +81,10 @@ An event is `{ id, at, type, summary, data }`: `id` is the record's opaque curso
 
 `limit` is 1 to 100, 20 by default. A page also stops after loading 4 MiB of stored data and, with `status` or `type`, after looking at 1,000 runs or records, so it may hold fewer items than `limit`, or none, while `has_more` is `true`; read on with `next_cursor` as `cursor` until it is `null`. A cursor that does not decode or that another brain gave is `invalid_input` at `/cursor`. Cursors are not encrypted: one names a position in the ledger. On PostgreSQL, an oldest-first read stays behind the oldest transaction still writing to the ledger's database, so the newest records can appear a moment later.
 
+## Analytics
+
+`get_brain_analytics`, `GET /analytics` relative to `/v1/orgs/{org}/brains/{brain}` under `brain:read`, answers what the brain's runs did over the last 7, 14 or 30 days (`days`, 7 when left out) or between two days of the calendar (`from` and `to`, both included, at most 366 and to no later than today, in UTC), optionally of one definition (`primitive`, `name`): `{ days, runs, tokens, duration_ms, by_day, by_function }`. A run counts on the day it first started, once it has succeeded, failed or been rejected; durations are nearest-rank percentiles of the runs that succeeded or failed, from their latest start to their end, `null` when there are none; tokens sum what reasoning runs recorded, a rejected run's included. The [HTTP reference](../../reference/http.md#analytics) gives every field. The answer reads `run_outcomes_1`, a table the ledger keeps inside each append of a run's events; the [ledger README](https://github.com/BeOnAuto/auto-brain/blob/main/packages/ledger/README.md#the-outcomes-of-runs) describes it and how it is filled when a server first starts on an existing ledger.
+
 ## Idempotency and retries
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`.

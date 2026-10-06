@@ -3,7 +3,12 @@ import { Effect, Predicate, type Schema } from 'effect';
 
 import { definePrimitive, type Executed, type RunContext, type Primitive, type PrimitiveRejection } from '../index.ts';
 
-type Mishap = 'stall' | 'unavailable' | 'unoffered' | 'conflict' | 'breakdown';
+type Mishap = 'stall' | 'unavailable' | 'unoffered' | 'conflict' | 'breakdown' | 'spent' | 'overspent';
+
+export const spentUsage = {
+  input: { total: 120, uncached: 30, cache_read: 90, cache_write: 0 },
+  output: { total: 40 },
+};
 
 export interface Probe {
   readonly primitive: Primitive;
@@ -35,6 +40,15 @@ const mishaps: Readonly<Record<Mishap, Effect.Effect<never, Unavailable | Confli
   ),
   conflict: Effect.fail(new Conflict({ detail: 'The probe cannot run this spec as written; update it' })),
   breakdown: Effect.die(new Error('The probe broke down')),
+  spent: Effect.fail(
+    new Unavailable({
+      detail: 'The probe was answered, but not usably',
+      record: { usage: spentUsage, duration_ms: 25 },
+    }),
+  ),
+  overspent: Effect.fail(
+    new Unavailable({ detail: 'The probe was answered at length', record: { answer: 'x'.repeat(1_048_577) } }),
+  ),
 };
 
 function answerTo(input: Schema.Json, execution: RunContext, runs: number): Effect.Effect<Executed, InvalidInput> {

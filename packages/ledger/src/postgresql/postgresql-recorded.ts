@@ -14,7 +14,7 @@ import { dataAsJsonText } from './json-text.ts';
 
 export type Query = (text: string, values: readonly unknown[]) => Promise<readonly unknown[]>;
 
-type Bind = (value: unknown) => string;
+export type Bind = (value: unknown) => string;
 
 const defaultPartition = 'emt:default';
 
@@ -56,7 +56,7 @@ function timeOf(column: string): string {
   return `to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
 }
 
-function binding(): { readonly values: readonly unknown[]; readonly bind: Bind } {
+export function binding(): { readonly values: readonly unknown[]; readonly bind: Bind } {
   const values: unknown[] = [];
   return {
     values,

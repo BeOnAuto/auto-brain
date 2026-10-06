@@ -35,6 +35,10 @@ describe('the paging fields of an input', () => {
     { since: 'yesterday' },
     { since: '2026-10-05' },
     { since: '2026-13-05T09:00:00Z' },
+    { since: '2026-02-30T09:00:00Z' },
+    { since: '2026-04-31T09:00:00+02:00' },
+    { since: '2026-10-05T24:00:00Z' },
+    { since: '2026-10-05T23:59:00+24:00' },
     { type: '' },
   ] as const)('refuse %j', (paging) => {
     expect(Result.isFailure(decodeInput(paging))).toBe(true);

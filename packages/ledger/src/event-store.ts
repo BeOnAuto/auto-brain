@@ -1,4 +1,11 @@
-import type { RecordedOrder, RecordedSelection } from '@beonauto/operations';
+import type {
+  RecordedOrder,
+  RecordedSelection,
+  RunOutcomeGroup,
+  RunOutcomeSelection,
+  RunOutcomeWindow,
+} from '@beonauto/operations';
+import type { SQL } from '@event-driven-io/dumbo';
 import type { Schema } from 'effect';
 
 export interface EncodedEvent {
@@ -52,3 +59,18 @@ export interface RecordedStore {
 }
 
 export interface EventStore extends StreamStore, RecordedStore {}
+
+export interface RunOutcomesStore {
+  readonly readRunOutcomes: (
+    brainKey: string,
+    window: RunOutcomeWindow,
+    selection: RunOutcomeSelection,
+  ) => Promise<readonly RunOutcomeGroup[]>;
+}
+
+export interface LedgerStore extends EventStore, RunOutcomesStore {}
+
+export interface StatementExecutor {
+  readonly query: (sql: SQL) => Promise<{ readonly rows: readonly unknown[] }>;
+  readonly command: (sql: SQL) => Promise<unknown>;
+}

@@ -54,6 +54,10 @@ Once a run has recorded a tool call, every `unavailable` ending it meets has the
 
 A run that calls tools costs more: every step resends the conversation so far, so a run that uses its whole budget of 256 KiB of results sends on the order of a million tokens.
 
+## What a rejection records
+
+Some rejections come after the model answered, and so after it spent tokens: `output_invalid`, an answer that does not match the schema or is cut off at `max_output_tokens`; `content_refused` from the answer's finish; `tools_stopped` with `no_answer`, whose last step still called tools; and an answer that leaves no room in what a run records. Each of their `InvalidInput`, `Unavailable` or `Conflict` carries a `record` of `usage`, shaped as in the record of a run that succeeded, and `duration_ms`, measured with Effect's `Clock` from the model call to the rejection, or the call's own duration for an answer too large to record; `@beonauto/specs` keeps it on the run's `execution_rejected`. A failure that knows no usage, such as a deadline, the bound of a run that calls tools or tool servers that kept failing, whose SDK call threw, carries none.
+
 ## Testing
 
 `makeReasoningFunctionAdapter({ languageModel, offered, clock, tools })` makes the runtime adapter for `makeSpecOperations`; the server gives it the language model and offered-model configuration from `makeModelAccess`, plus its `ToolAccess`, and a test the scripted model below. `ReasoningFunctionAdapterOptions` names its options. `clock` is optional: without it, `today` and `now` come from Effect's `Clock`.

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { acmeAdmin } from '../testing/callers.ts';
 import { firstMoment, harness, toBrain } from '../testing/harness.ts';
-import { probe } from '../testing/probe.ts';
+import { probe, spentUsage } from '../testing/probe.ts';
 import { specOperationsFor } from '../testing/spec-operations.ts';
 
 const toAlpha = toBrain('acme', 'alpha');
@@ -121,6 +121,33 @@ describe('an execution whose primitive breaks down', () => {
       incident: reported()[0]?.id,
     });
     expect(Schema.isSchemaError(reported()[0]?.original)).toBe(true);
+    expect(await call(getExecution, readingTheExecution)).toStrictEqual({
+      status: 'succeeded',
+      output: failedExecution,
+    });
+  });
+});
+
+describe('an execution the primitive rejects after it spent something', () => {
+  it('keeps what the rejection recorded on the run, as get_execution shows it', async () => {
+    const { call, executing, getExecution, prober } = await withPlain();
+    prober.sufferOnNextRun('spent');
+
+    expect(await executing({})).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'The probe was answered, but not usably',
+    });
+    expect(await call(getExecution, readingTheExecution)).toMatchObject({
+      output: { status: 'rejected', record: { usage: spentUsage, duration_ms: 25 } },
+    });
+  });
+
+  it('fails with an incident when what it recorded is more than a run may record', async () => {
+    const { call, executing, getExecution, prober, reported } = await withPlain();
+    prober.sufferOnNextRun('overspent');
+
+    expect(await executing({})).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(await call(getExecution, readingTheExecution)).toStrictEqual({
       status: 'succeeded',
       output: failedExecution,
