@@ -6,6 +6,7 @@ import type { Layer } from 'effect';
 import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
 import type { LedgerStore } from './event-store.ts';
 import { ledgerLayerOver } from './ledger-layer.ts';
+import { keptOutcomesOnly } from './outcomes/run-outcomes-reader.ts';
 import {
   prepareSQLiteRunOutcomes,
   sqliteRunOutcomeProjections,
@@ -39,7 +40,7 @@ export function sqliteEventStore<Driver extends AnyDriver>(
   return {
     ...streams,
     ...sqliteRecordedStore(pool.execute),
-    readRunOutcomes: sqliteRunOutcomesReader(pool.execute),
+    readRunOutcomes: keptOutcomesOnly(runOutcomes, sqliteRunOutcomesReader(pool.execute)),
     migrate: async () => {
       await streams.migrate();
       await createSQLiteBrainIndexes(pool.execute);

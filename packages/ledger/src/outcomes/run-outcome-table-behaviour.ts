@@ -59,17 +59,19 @@ function aProjectionThatBreaksDown(entry: LedgerEntry): void {
 
 function aStoreWithoutTheProjection(entry: LedgerEntry): void {
   describe('a ledger opened without the projection', () => {
-    it('neither creates the table nor changes it', async () => {
+    it('neither creates the table nor changes it, and reads no outcomes', async () => {
       const database = await entry.aDatabase();
       const keeping = await aLedger(entry, database, runTallies);
       await noting(keeping, 'brain/acme/alpha/executions/r1', began('triage'));
       const fresh = await entry.aDatabase();
-      await aLedger(entry, fresh);
+      const freshWithout = await aLedger(entry, fresh);
+      await noting(freshWithout, 'brain/acme/alpha/executions/r2', began('triage'));
 
       const without = await aLedger(entry, database);
       await noting(without, 'brain/acme/alpha/executions/r1', ended('succeeded', 5));
 
       expect(runsOf(await reading(keeping))).toEqual(['2026-10-01 triage started 1']);
+      expect([await reading(without), await reading(freshWithout)]).toEqual([[], []]);
       expect(await tablesIn(entry, fresh)).toEqual([]);
     });
   });

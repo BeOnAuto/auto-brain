@@ -160,7 +160,7 @@ An inline projection of Emmett 0.43.0-beta.50 handles the messages of an append 
 
 `src/outcomes/inline-projection.ts` is the facility: an `InlineProjection` names its stored types and handles the messages of an append, each `{ stream, type, data }`, with the executor of the append's transaction. The ledger registers one, over the run streams: for each of their messages it reads the run's row if there is one, decodes the message's data as the store's reads decode it, the JSON object as written on SQLite and the `{"json": …}` wrapper read back on PostgreSQL, gives both to the mapping, and writes the row it answers with an upsert keyed by the run, or nothing when it answers `undefined`. That is one read and one write in the append for each message of a run's event, and nothing for the messages of any other stream or type. The mapping must never throw.
 
-A store opened without a mapping neither creates the table nor writes it, so every writer of a run stream must write through a store that carries the projection. Today that is the server's ledger, through which the workflow host settles runs too; the workflow host's own stores write only the logs of runs.
+A store opened without a mapping neither creates the table nor writes it, and its `readRunOutcomes` answers no groups rather than reading a table that may not be there, so every writer of a run stream must write through a store that carries the projection. Today that is the server's ledger, through which the workflow host settles runs too; the workflow host's own stores write only the logs of runs.
 
 ### The table
 

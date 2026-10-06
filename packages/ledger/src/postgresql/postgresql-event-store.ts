@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';
 import type { LedgerStore } from '../event-store.ts';
+import { keptOutcomesOnly } from '../outcomes/run-outcomes-reader.ts';
 import { dataAsJsonText } from './json-text.ts';
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
 import {
@@ -47,7 +48,7 @@ export function postgresqlEventStore({
   return {
     ...store,
     ...postgresqlRecordedStore(query),
-    readRunOutcomes: postgresqlRunOutcomesReader(query),
+    readRunOutcomes: keptOutcomesOnly(runOutcomes, postgresqlRunOutcomesReader(query)),
     close: async () => {
       await store.close();
       await pool.end();
