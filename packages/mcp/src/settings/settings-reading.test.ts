@@ -217,6 +217,27 @@ describe('the secrets of a server', () => {
   });
 });
 
+describe('a credential written into the url or the args of a server', () => {
+  it('is refused as userinfo, as a value of the query, and after the = of an argument, never printing it', () => {
+    const credential =
+      'Looks like a credential, which this setting never holds; write a reference to the environment variable that holds it instead, such as ${GRAPH_API_KEY}';
+    const refusal = refusalOf(
+      environmentOf({
+        graph: { ...graph, url: 'https://a.example/mcp?key=sk-live-x' },
+        crm: { ...graph, url: 'https://user:sk-x@a.example/mcp' },
+        limitless: { ...limitless, args: ['--key=sk-x'] },
+      }),
+    );
+
+    expect(refusal.problems.map(({ detail }) => detail)).toEqual([
+      `/graph/url: ${credential}`,
+      `/crm/url: ${credential}`,
+      `/limitless/args/0: ${credential}`,
+    ]);
+    expect(JSON.stringify(refusal)).not.toContain('sk-');
+  });
+});
+
 describe('the references of a server', () => {
   it('refuses a reference outside headers, env and auth, where a key would show in a process listing or a URL', () => {
     const misplaced =

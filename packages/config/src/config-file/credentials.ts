@@ -46,8 +46,33 @@ function looksLikeCredential(text: string): boolean {
   return credentialShapes.some((shape: Readonly<RegExp>) => shape.test(literal));
 }
 
+function credentialIn(name: string, value: string): boolean {
+  return value !== '' && ((namesCredential(name) && !holdsReference(value)) || looksLikeCredential(value));
+}
+
+function urlHoldsCredential(text: string): boolean {
+  const url = URL.parse(literalTextOf(text).trim());
+  if (url === null) {
+    return false;
+  }
+  return (
+    url.username !== '' ||
+    url.password !== '' ||
+    [...url.searchParams].some(([key, value]: readonly [string, string]) => credentialIn(key, value))
+  );
+}
+
+function assignsCredential(text: string): boolean {
+  const equals = text.indexOf('=');
+  return equals > 0 && credentialIn(text.slice(0, equals).replace(/^-+/u, ''), text.slice(equals + 1));
+}
+
 function textProblems(name: string, text: string, pointer: string): readonly FileProblem[] {
-  const refused = (namesCredential(name) && !holdsReference(text)) || looksLikeCredential(text);
+  const refused =
+    (namesCredential(name) && !holdsReference(text)) ||
+    looksLikeCredential(text) ||
+    urlHoldsCredential(text) ||
+    assignsCredential(text);
   return refused ? [{ pointer, detail: advice }] : [];
 }
 

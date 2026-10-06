@@ -132,9 +132,12 @@ describe('a setting that keeps its references', () => {
   });
 });
 
-describe('a credential written in the file', () => {
-  const secret = 'sk-proj-0123456789abcdefghijklmnop';
+const secret = 'sk-proj-0123456789abcdefghijklmnop';
 
+const writtenOut =
+  'Looks like a credential, which this file never holds; write a reference to the environment variable that holds it instead, such as ${GATEWAY_API_KEY}';
+
+describe('a credential written in the file', () => {
   it.each([
     [
       'in a key that holds a credential',
@@ -171,6 +174,49 @@ describe('a credential written in the file', () => {
     expect(environment['EXAMPLE_GATEWAYS']).toBe(
       JSON.stringify([{ name: 'g', api_key: 'k', headers: { authorization: 'Bearer t' }, enabled: true }]),
     );
+  });
+});
+
+describe('a credential written in a URL or an argument', () => {
+  it.each([
+    [
+      'as the user and password of a URL',
+      `example_gateways: [{ name: g, base_url: "https://user:plain-text@a.example/v1" }]\n`,
+      '1:41 example_gateways[0].base_url',
+    ],
+    [
+      'in the query of a URL, under a name that holds a credential',
+      `example_gateways: [{ name: g, base_url: "https://a.example/v1?key=plain-text" }]\n`,
+      '1:41 example_gateways[0].base_url',
+    ],
+    [
+      'in the query of a URL, in the shape of a key',
+      `example_gateways: [{ name: g, base_url: "https://a.example/v1?q=${secret}" }]\n`,
+      '1:41 example_gateways[0].base_url',
+    ],
+    [
+      'after the = of an argument that names a credential',
+      `example_gateways: [{ name: g, args: ["--api-key=plain-text"] }]\n`,
+      '1:38 example_gateways[0].args[0]',
+    ],
+  ])('is refused %s, without the value', (_, text, place) => {
+    const message = problemsIn(text);
+
+    expect(message).toBe(`The configuration file auto-brain.yaml is invalid: auto-brain.yaml:${place}: ${writtenOut}`);
+    expect(message).not.toContain('plain-text');
+    expect(message).not.toContain(secret);
+  });
+
+  it('leaves alone a URL and an argument that hold no credential', () => {
+    const plain = {
+      link: 'https://a.example/v1?api-version=2026-01-01',
+      mode: '--mode=read',
+      bare: '=x',
+      empty: '--key=',
+    };
+    const { environment } = configured(`example_servers: { graph: { headers: ${JSON.stringify(plain)} } }\n`);
+
+    expect(environment['EXAMPLE_SERVERS']).toBe(JSON.stringify({ graph: { headers: plain } }));
   });
 });
 
