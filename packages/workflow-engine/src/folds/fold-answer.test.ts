@@ -65,15 +65,22 @@ describe('the answer of a worker that folds a page', () => {
 });
 
 describe('the budget of a page a worker folds', () => {
-  it('counts its budget from when the pool started the page, when the pool says so', () => {
-    const late = { ...clock, now: () => 5000 };
-    const view = { fold: '. + $event.data', filters: [{ type: 'noted' }], view: 1, events: [0, 1] };
+  it('counts from its first fold, so what the worker does before it folds never spends it', () => {
+    const time = { now: 0 };
+    const slowToPrepare = {
+      ...clock,
+      now: () => time.now,
+      checkOf: () => {
+        time.now += 5000;
+        return passing;
+      },
+    };
+    const view = { fold: '. + $event.data', filters: [{ type: 'noted' }], view: 1, schema: {}, events: [0, 1] };
     const twice = { ...page, events: [...page.events, ...page.events], views: [view] };
 
-    expect(foldAnswerOf(foldPageData({ ...page, startedAt: 0 }), late)).toMatchObject({ early: false });
-    expect(foldAnswerOf(foldPageData({ ...twice, startedAt: 0 }), late)).toMatchObject({
-      early: true,
-      views: [{ folded: 1, through: 0 }],
+    expect(foldAnswerOf(foldPageData(twice), slowToPrepare)).toMatchObject({
+      early: false,
+      views: [{ view: '5', folded: 2, through: 1 }],
     });
   });
 });

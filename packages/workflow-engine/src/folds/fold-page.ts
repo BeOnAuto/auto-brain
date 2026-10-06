@@ -32,7 +32,6 @@ export interface FoldPage {
   readonly foldDeadlineMs: number;
   readonly pageBudgetMs: number;
   readonly mostViewBytes: number;
-  readonly startedAt?: number;
 }
 
 export interface FoldedView {
@@ -85,8 +84,7 @@ interface PlacedEvent {
 interface Turns {
   readonly page: FoldPage;
   readonly host: FoldHost;
-  readonly startedAt: number;
-  readonly taken: () => number;
+  readonly firstFoldAt: () => number | undefined;
   readonly take: () => void;
 }
 
@@ -196,8 +194,9 @@ function isGoing({ state }: Folding): boolean {
   return state.stall === undefined && state.overtime === undefined;
 }
 
-function isSpent({ page, host, startedAt, taken }: Turns): boolean {
-  return taken() > 0 && host.now() - startedAt >= page.pageBudgetMs;
+function isSpent({ page, host, firstFoldAt }: Turns): boolean {
+  const first = firstFoldAt();
+  return first !== undefined && host.now() - first >= page.pageBudgetMs;
 }
 
 interface EventFolded {
@@ -226,14 +225,13 @@ function viewsOf(foldings: readonly Folding[]): readonly FoldedView[] {
 }
 
 function turnsOf(page: FoldPage, host: FoldHost): Turns {
-  const counted = { turns: 0 };
+  const first: { at?: number } = {};
   return {
     page,
     host,
-    startedAt: page.startedAt ?? host.now(),
-    taken: () => counted.turns,
+    firstFoldAt: () => first.at,
     take: () => {
-      counted.turns += 1;
+      first.at ??= host.now();
     },
   };
 }

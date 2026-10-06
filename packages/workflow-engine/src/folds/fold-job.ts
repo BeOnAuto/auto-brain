@@ -36,17 +36,14 @@ export function foldJobOf(
   const { waitMs, deadlineMs } = request;
   const page = Struct.omit(request, ['waitMs', 'deadlineMs', 'worker']);
   const progress = foldProgress();
-  const jobFrom = (startedAt: number): Job<FoldAnswer> => ({
+  const job: Job<FoldAnswer> = {
     module,
-    workerData: { ...foldPageData({ ...page, startedAt }), progress: { shared: progress.shared } },
+    workerData: { ...foldPageData(page), progress: { shared: progress.shared } },
     decode: decodeFoldAnswer,
-  });
+  };
   return {
     waitMs,
-    run: async () => {
-      const started = performance.now();
-      const ending = await evaluate(jobFrom(performance.timeOrigin + started), { until: started + deadlineMs, signal });
-      return withProgress(ending, progress.last());
-    },
+    run: async () =>
+      withProgress(await evaluate(job, { until: performance.now() + deadlineMs, signal }), progress.last()),
   };
 }

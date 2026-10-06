@@ -16,7 +16,6 @@ export interface FoldPageData {
   readonly foldDeadlineMs: number;
   readonly pageBudgetMs: number;
   readonly mostViewBytes: number;
-  readonly startedAt?: number;
 }
 
 const unreadable: FoldAnswerData = { ran: 'unreadable' };
@@ -24,11 +23,6 @@ const unreadable: FoldAnswerData = { ran: 'unreadable' };
 function numberOf(data: unknown, name: string): number {
   const value = fieldOf(data, name);
   return typeof value === 'number' ? value : Number.NaN;
-}
-
-function startedAtOf(data: unknown): Pick<FoldPage, 'startedAt'> {
-  const startedAt = fieldOf(data, 'startedAt');
-  return typeof startedAt === 'number' ? { startedAt } : {};
 }
 
 function jsonOf(value: unknown): Json | undefined {
@@ -98,7 +92,6 @@ function pageOf(data: unknown): FoldPage | undefined {
     foldDeadlineMs: numberOf(data, 'foldDeadlineMs'),
     pageBudgetMs: numberOf(data, 'pageBudgetMs'),
     mostViewBytes: numberOf(data, 'mostViewBytes'),
-    ...startedAtOf(data),
   };
 }
 
