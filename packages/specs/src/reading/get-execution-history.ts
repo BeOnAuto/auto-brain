@@ -5,11 +5,12 @@ import {
   PublicEventSchema,
   defaultPageLimit,
   defineQuery,
+  eventsPageOf,
   mostRecordsInAPage,
   presentationOf,
+  type PagedEvent,
   type Presentation,
   type Presenter,
-  type PublicEvent,
   type RecordedEvent,
   type RecordedOrder,
 } from '@beonauto/operations';
@@ -23,8 +24,9 @@ import { historyFound } from '../plain-language/reading-words.ts';
 const description = [
   'Reads what happened in one run of the brain, one page at a time,',
   'oldest first, or newest first when `order` is desc.',
-  'Each event carries its `id`, `at`, when it happened by its own clock, its `type`,',
-  'a `summary` in plain words, and its `data`, at most 4 KiB as JSON:',
+  'Each event carries its `id`, which stays the same on every read, its `cursor`, the place to read on from,',
+  'its `causation_id`, the id of the event that directly led to it or null,',
+  '`at`, when it happened by its own clock, its `type`, a `summary` in plain words, and its `data`, at most 4 KiB as JSON:',
   'execution_started with the definition type, name and version and who started it;',
   'execution_deferred when the work goes on after the call that started it;',
   'execution_succeeded; execution_rejected with the reason, the detail and the first five issues; execution_failed;',
@@ -33,15 +35,20 @@ const description = [
   '(result, tool_error, server_failure, timed_out or cancelled), the size and digest of the result and how long it took.',
   'A call with a start and no answer was in flight when the run ended, so its outcome is unknown.',
   'A workflow also shows workflow_input_applied for each input its run took: the kind and key of the input,',
-  'how many steps moved, the first five with their outcomes, and the kinds of what the run did next.',
+  'how many steps moved, the first five with their outcomes, and the kinds of what the run did next;',
+  'then one event for each step entry of that input: step_started, step_waiting with what it waits for,',
+  'step_finished, step_failed with its error, and step_skipped, each with the name, reference, run and times of the step,',
+  'and on the step_waiting of a call the execution_id of the run it started, whose events name that step_waiting as their cause.',
   'Inputs, outputs, records, arguments and results appear as their sizes in bytes,',
   'with the arguments and the result cut to 2 KiB only when the operator records their content;',
   'get_execution reads the output and the record.',
   'A run started again with the same id shows each attempt.',
   'Within a page, events are ordered by when each happened.',
-  `\`limit\`, 1 to ${mostRecordsInAPage} and ${defaultPageLimit} when left out, is the most events a page looks at,`,
-  'and a page also stops after loading 4 MiB of stored data, so it may hold fewer events than `limit`.',
-  'Read on with `cursor` set to the `next_cursor` of the page before; `next_cursor` is null when nothing remains.',
+  `\`limit\`, 1 to ${mostRecordsInAPage} and ${defaultPageLimit} when left out, is the most events a page answers with,`,
+  'step events included, so a page may end inside the events of one input;',
+  'a page also stops after loading 4 MiB of stored data, so it may hold fewer events than `limit`.',
+  'Read on with `cursor` set to the `next_cursor` of the page before, or to the `cursor` of an event;',
+  '`next_cursor` is null when nothing remains.',
   '`execution_id` is the UUID that execute_spec answered with or was given.',
   'Oldest first, the newest events of a run may take a moment to appear, while the ledger still writes:',
   'a page of a run that exists may then be empty with next_cursor null, and a later read shows them.',
@@ -58,47 +65,36 @@ const ExecutionHistoryInput = Schema.Struct({
 
 const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...PagingOutputFields });
 
-interface Presented {
-  readonly stream: string;
-  readonly event: PublicEvent;
-}
-
 const byOwnTimeThenStream = Order.combine(
-  Order.mapInput(Order.Number, ({ event }: Presented) => Date.parse(event.at)),
-  Order.mapInput(Order.String, ({ stream }: Presented) => stream),
+  Order.mapInput(Order.Number, ({ event }: PagedEvent) => Date.parse(event.at)),
+  Order.mapInput(Order.String, ({ stream }: PagedEvent) => stream),
 );
 
-const inOrder: Readonly<Record<RecordedOrder, Order.Order<Presented>>> = {
+const inOrder: Readonly<Record<RecordedOrder, Order.Order<PagedEvent>>> = {
   asc: byOwnTimeThenStream,
   desc: Order.flip(byOwnTimeThenStream),
 };
-
-function presentedBy({ present }: Presentation): (recorded: RecordedEvent) => readonly Presented[] {
-  return (recorded) => {
-    const event = present(recorded);
-    return event === null ? [] : [{ stream: recorded.stream, event }];
-  };
-}
 
 function requireExecution(id: string, records: readonly RecordedEvent[]) {
   return records.length > 0 ? Effect.void : loadExecution(id).pipe(Effect.flatMap((state) => executionOf(id, state)));
 }
 
 function historyReader(presentation: Presentation) {
-  const presented = presentedBy(presentation);
   return Effect.fnUntraced(function* ({
     execution_id: id,
     order = 'asc',
     limit = defaultPageLimit,
     cursor,
   }: typeof ExecutionHistoryInput.Type) {
-    const page = yield* (yield* BrainReader).readRecorded(
-      { kind: 'run', execution: id },
-      { order, limit, ...(cursor === undefined ? {} : { cursor }) },
-    );
+    const paging = { order, limit, ...(cursor === undefined ? {} : { cursor }) };
+    const page = yield* (yield* BrainReader).readRecorded({ kind: 'run', execution: id }, paging);
     yield* requireExecution(id, page.records);
-    const events = page.records.flatMap((recorded) => presented(recorded)).toSorted(inOrder[order]);
-    return { events: events.map(({ event }) => event), has_more: page.hasMore, next_cursor: page.nextCursor };
+    const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, paging);
+    return {
+      events: events.toSorted(inOrder[order]).map(({ event }) => event),
+      has_more: hasMore,
+      next_cursor: nextCursor,
+    };
   });
 }
 

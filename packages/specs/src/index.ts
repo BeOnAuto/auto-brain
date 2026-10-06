@@ -6,6 +6,7 @@ export {
   definePrimitive,
   type Executed,
   type RunContext,
+  type RunLineage,
   type Finished,
   type FinishesLater,
   type PreparedDefinition,

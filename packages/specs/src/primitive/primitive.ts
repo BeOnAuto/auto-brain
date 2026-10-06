@@ -14,6 +14,11 @@ export interface ToolCallJournal {
   readonly record: (fact: ToolCallFact) => Effect.Effect<boolean>;
 }
 
+export interface RunLineage {
+  readonly startId: string;
+  readonly correlationId: string;
+}
+
 export interface RunContext {
   readonly id: string;
   readonly org: string;
@@ -21,6 +26,7 @@ export interface RunContext {
   readonly caller: CallerIdentity;
   readonly spec: { readonly name: string; readonly version: number };
   readonly journal: ToolCallJournal;
+  readonly lineage: RunLineage;
 }
 
 export interface Finished {
