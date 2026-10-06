@@ -4,7 +4,7 @@ import { onTestFinished } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import type { DatabaseSettings } from '../database/host-databases.ts';
-import { openWorkflowHost, type WorkflowHost } from '../host/workflow-host.ts';
+import { openWorkflowHost, type HostOptions, type WorkflowHost } from '../host/workflow-host.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { recordingReports, recordingSettlements, type RecordingReports } from '../testing/recording-reports.ts';
@@ -27,6 +27,7 @@ export interface ReactingOptions {
   readonly failure?: FailingStart;
   readonly start?: RecordedReactions['options']['start'];
   readonly appended?: RecordedReactions['options']['appended'];
+  readonly consumers?: HostOptions['consumers'];
 }
 
 export async function reactingHost(options: ReactingOptions = {}): Promise<ReactingHost> {
@@ -47,6 +48,7 @@ export async function reactingHost(options: ReactingOptions = {}): Promise<React
       ...(options.appended === undefined ? {} : { appended: options.appended }),
     },
     ...(options.clock === undefined ? {} : { clock: options.clock }),
+    ...(options.consumers === undefined ? {} : { consumers: options.consumers }),
   });
   onTestFinished(() => host.stop());
   const database = await openedOn(settings);

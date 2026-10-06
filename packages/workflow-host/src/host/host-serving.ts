@@ -1,12 +1,14 @@
 import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
+import type { Consumer } from '../follower/consumers.ts';
 import { startLoop } from '../loop/host-loop.ts';
 import { startReacting } from '../reactions/host-reactions.ts';
 import { hostEngineOn, type EngineOptions, type HostEngine } from './host-engine.ts';
 
 export interface ServingOptions extends EngineOptions {
   readonly sweepEveryMs: number;
+  readonly consumers?: readonly Consumer[];
 }
 
 export interface Serving {
@@ -40,6 +42,7 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
     },
     options.reactions,
     engine.reacting.refusals,
+    options.consumers ?? [],
   );
   return {
     engine,

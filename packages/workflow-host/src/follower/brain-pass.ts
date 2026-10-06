@@ -13,6 +13,7 @@ export interface PassParts extends StepParts {
   readonly database: HostDatabase;
   readonly records: Pick<BrainRecords, 'after'>;
   readonly brains: FollowedBrains;
+  readonly readsEveryRecord: boolean;
 }
 
 const pagesInAPass = 10;
@@ -66,7 +67,7 @@ export function passOf(parts: PassParts) {
       if (glance.records.length === 0 && !glance.hasMore) {
         return 'caught_up';
       }
-      const withData = yield* reactsInBrain(parts.database, brainKey);
+      const withData = parts.readsEveryRecord || (yield* reactsInBrain(parts.database, brainKey));
       const stepping = { brainKey, gate: runGateOf(parts.database, brainKey), mode, withData };
       return yield* pagesPassed(parts, stepping, followed, withData ? undefined : glance);
     });

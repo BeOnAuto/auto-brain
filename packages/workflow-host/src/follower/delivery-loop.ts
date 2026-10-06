@@ -5,7 +5,7 @@ import type { Progress } from './followed-brains.ts';
 
 export type Mode = 'signal' | 'sweep';
 
-export interface Delivered {
+interface Delivered {
   readonly progress: Progress;
   readonly end?: 'waiting' | 'more';
 }
@@ -90,7 +90,7 @@ function deliveredByConsumer(
   });
 }
 
-export interface DeliveredAll extends Delivered {
+interface DeliveredAll extends Delivered {
   readonly made: boolean;
 }
 

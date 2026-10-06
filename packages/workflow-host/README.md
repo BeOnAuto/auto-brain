@@ -25,6 +25,7 @@ Both fail with the engine's `Conflict` when the run's log kept changing while an
 | `clock`, `cacheBounds` | the clock, `Date.now` unless given, and the bounds of the engine's cache of loaded runs, `runCacheBounds` unless given                                                                                                                            |
 | `holder`               | the id the host claims the database's workflows with, a random UUID unless given                                                                                                                                                                  |
 | `reactions`            | what the host needs to react to the records of the brains, below: the primitive whose specs are workflows, how a spec's source is read as its trigger, how a reaction starts a run, how an emitted event is recorded, and the signal of an append |
+| `consumers`            | more consumers of the records of the brains, after the host's own, none unless given (see [The follower](#the-follower))                                                                                                                          |
 
 ## Where a run is kept
 
@@ -110,7 +111,7 @@ interface Consumer {
 }
 ```
 
-`batchOf` answers up to `most` deliveries after the key of the last one made, each with a key, the workflow it is for and the effect that makes it, the key of the last candidate it looked at and whether more are left; at most 100 deliveries of a record are made in a pass, and the next pass goes on from the last key. A delivery that fails holds the record and is tried again at every sweep, not at a signal; after `skippedAfterSweeps` failed sweeps the consumer's `skipped` says so and the follower goes on. The two consumers here are the offers to listeners and the starts of triggered workflows, and both skip after 20 sweeps.
+`batchOf` answers up to `most` deliveries after the key of the last one made, each with a key, the workflow it is for and the effect that makes it, the key of the last candidate it looked at and whether more are left; at most 100 deliveries of a record are made in a pass, counted across all the consumers, and the next pass goes on from the last key, at the consumer it stopped at. A delivery that fails holds the record and is tried again at every sweep, not at a signal; after `skippedAfterSweeps` failed sweeps the consumer's `skipped` says so and the follower goes on. The two consumers here are the offers to listeners and the starts of triggered workflows, and both skip after 20 sweeps. A caller gives the host more through the option `consumers`, with `Consumer`, `Delivery`, `DeliveryFailed`, `FollowedRecord` and `FollowedEvent` exported from the package: they are handed every event and fact after the two, a consumer that must never skip a delivery sets `skippedAfterSweeps` to `Infinity`, and while the host has any, the follower reads the records of every brain with their data, since it cannot tell which a consumer of its caller wants.
 
 ### Listeners and offers
 

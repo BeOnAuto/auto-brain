@@ -113,6 +113,7 @@ async function passing(
     applySpecRecord: () => Effect.void,
     unreadable: () => Effect.void,
     passedEarly,
+    readsEveryRecord: false,
   });
   return { database: opened, brains, pass };
 }

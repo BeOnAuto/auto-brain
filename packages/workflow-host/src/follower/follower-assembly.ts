@@ -2,7 +2,7 @@ import { reactingOn } from '../reactions/reacting.ts';
 import type { ReactionUse } from '../reactions/reaction-consumers.ts';
 import { brainSweepsOn } from '../sweeps/brain-sweeps.ts';
 import { brainDiscoveryOn } from './brain-discovery.ts';
-import { passOf } from './brain-pass.ts';
+import { passOf, type PassParts } from './brain-pass.ts';
 import type { BrainRecords } from './brain-records.ts';
 import { followedBrainsOn } from './followed-brains.ts';
 import type { FollowerHost } from './follower-host.ts';
@@ -13,6 +13,7 @@ export interface FollowerAssembly extends ReactionUse {
   readonly records: BrainRecords;
   readonly appended: FollowerParts['appended'];
   readonly pace: FollowerParts['pace'];
+  readonly consumers: PassParts['consumers'];
 }
 
 export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Follower {
@@ -23,7 +24,8 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     database,
     records: assembly.records,
     brains,
-    consumers: reacting.consumers,
+    consumers: [...reacting.consumers, ...assembly.consumers],
+    readsEveryRecord: assembly.consumers.length > 0,
     primitive: assembly.options.primitive,
     applySpecRecord: reacting.applySpecRecord,
     unreadable: (brainKey, record) =>

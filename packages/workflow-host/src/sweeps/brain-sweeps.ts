@@ -5,7 +5,7 @@ import { isOrgRegistry } from '../follower/brain-discovery.ts';
 import type { FollowedBrain, FollowedBrains } from '../follower/followed-brains.ts';
 import { followedBrainOf } from './wakes.ts';
 
-export interface SweptBrain {
+interface SweptBrain {
   readonly brainKey: string;
   readonly known: FollowedBrain | undefined;
 }

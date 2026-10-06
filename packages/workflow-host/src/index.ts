@@ -1,5 +1,7 @@
 export type { Perform, Trouble } from './calls/host-executor.ts';
 export type { DatabaseSettings } from './database/host-databases.ts';
+export { DeliveryFailed, type Consumer, type Delivery, type FollowedRecord } from './follower/consumers.ts';
+export type { FollowedEvent } from './follower/followed-events.ts';
 export { HostStopped } from './host/host-gate.ts';
 export type { HostNote, HostReports, UnsettledRun } from './host/host-reports.ts';
 export { HostElsewhere, type DeliveryAnswer, type RunStart, type StartAnswer } from './host/run-requests.ts';
