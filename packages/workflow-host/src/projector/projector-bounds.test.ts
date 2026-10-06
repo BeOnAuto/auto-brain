@@ -34,7 +34,7 @@ function partsOf(views: ViewHarness, database: HostDatabase, pagesPerWake: numbe
   return {
     database,
     note: () => Effect.void,
-    settings: views.settingsOf({ pagesPerWake }),
+    settings: views.settingsOf({ pagesPerWake, folding: { ...foldingOf(), pageBudgetMs: 60_000 } }),
     share: Semaphore.makeUnsafe(2),
     reconciling: { database, definitionType: 'recollection', rebuildsAtOnce: 4, definitions: new Map() },
     resting: { isResting: () => false, rest: Function.constVoid },
