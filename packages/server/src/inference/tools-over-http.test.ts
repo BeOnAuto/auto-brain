@@ -142,6 +142,8 @@ describe('running again a run that called tools, over HTTP', () => {
     expect(first).toMatchObject({
       status: 503,
       body: {
+        type: 'https://on.auto/problems/tools_unfinished',
+        title: 'Tools unfinished',
         reason: 'unavailable',
         detail: 'anthropic did not answer within 60000 ms, after the run called the search tool of graph',
         kind: 'tools_unfinished',

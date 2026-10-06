@@ -133,6 +133,25 @@ API errors use RFC 9457 problem documents with `Content-Type: application/proble
 | 500    | `internal`                                 |
 | 503    | `unavailable`                              |
 
+A problem document's `type` is a URI that names its kind of problem:
+
+| Type                                              | Status | Means                                                                                                    |
+| ------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- |
+| `https://on.auto/problems/bad_request`            | 400    | The request is malformed, such as a field given twice or a body that is not a JSON object                |
+| `https://on.auto/problems/unauthenticated`        | 401    | Credentials are missing or invalid                                                                       |
+| `https://on.auto/problems/forbidden`              | 403    | The credentials may not do that                                                                          |
+| `https://on.auto/problems/origin_not_allowed`     | 403    | A browser sent the request from an origin the server does not allow                                      |
+| `https://on.auto/problems/not_found`              | 404    | Something the request names does not exist                                                               |
+| `https://on.auto/problems/method_not_allowed`     | 405    | The path does not take that method                                                                       |
+| `https://on.auto/problems/conflict`               | 409    | The request clashes with what is there                                                                   |
+| `https://on.auto/problems/content_too_large`      | 413    | The body is larger than 1 MiB                                                                            |
+| `https://on.auto/problems/unsupported_media_type` | 415    | The body is not sent as `application/json` in UTF-8                                                      |
+| `https://on.auto/problems/invalid_input`          | 422    | The input does not fit, with the `errors` that point at it                                               |
+| `https://on.auto/problems/client_closed_request`  | 499    | The client went away before the answer                                                                   |
+| `https://on.auto/problems/internal`               | 500    | Something went wrong inside the server                                                                   |
+| `https://on.auto/problems/unavailable`            | 503    | Something the server relies on cannot serve now                                                          |
+| `https://on.auto/problems/tools_unfinished`       | 503    | A run called tools and could not finish; its `reason` is `unavailable`, and it is never retried as it is |
+
 A 500 response contains an incident reference. Its `instance` and the `x-request-id` response header identify the server log entry. Include that reference when reporting a problem, without sharing credentials or confidential input. Malformed HTTP can return a bare status before the API handles it.
 
 A function naming a model outside the deployment's allow list returns `unavailable` with kind `model_not_offered` and `because: "model_not_allowed"`, before calling the provider. A missing provider can return the same kind with `because: "provider_not_configured"`. Use `list_models` to inspect the offered references.

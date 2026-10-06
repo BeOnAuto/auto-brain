@@ -29,6 +29,22 @@ describe('problemOf', () => {
     });
   });
 
+  it('describes a run that called tools and could not finish with a type of its own, and any other kind by its reason', () => {
+    expect(problemOf('unavailable', 'It stopped', { kind: 'tools_unfinished', because: 'server_failed' })).toEqual({
+      type: 'https://on.auto/problems/tools_unfinished',
+      title: 'Tools unfinished',
+      status: 503,
+      detail: 'It stopped',
+      reason: 'unavailable',
+      kind: 'tools_unfinished',
+      because: 'server_failed',
+    });
+    expect(problemOf('unavailable', 'Not offered', { kind: 'tool_not_offered' })).toMatchObject({
+      type: 'https://on.auto/problems/unavailable',
+      title: 'Unavailable',
+    });
+  });
+
   it('carries the issues that point at invalid input', () => {
     const errors = [{ detail: 'Expected a string', pointer: '/name' }];
 

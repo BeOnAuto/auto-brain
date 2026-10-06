@@ -163,15 +163,18 @@ Each time the task runs, including on a retry, it starts a separate run of the f
 
 A run of the function that does not succeed raises an error the workflow can catch:
 
-| The function's run            | Error type      | Status |
-| ----------------------------- | --------------- | ------ |
-| Rejected with `invalid_input` | `validation`    | 400    |
-| Rejected with `forbidden`     | `authorization` | 403    |
-| Rejected with `not_found`     | `configuration` | 404    |
-| Rejected with `conflict`      | `runtime`       | 409    |
-| Rejected with `unavailable`   | `communication` | 503    |
-| Failed                        | `runtime`       | 500    |
-| Could not be reached          | `communication` | 503    |
+| The function's run                                         | Error type                                  | Status |
+| ---------------------------------------------------------- | ------------------------------------------- | ------ |
+| Rejected with `invalid_input`                              | `validation`                                | 400    |
+| Rejected with `forbidden`                                  | `authorization`                             | 403    |
+| Rejected with `not_found`                                  | `configuration`                             | 404    |
+| Rejected with `conflict`                                   | `runtime`                                   | 409    |
+| Rejected with `unavailable`                                | `communication`                             | 503    |
+| Rejected with `unavailable` of the kind `tools_unfinished` | `https://on.auto/problems/tools_unfinished` | 503    |
+| Failed                                                     | `runtime`                                   | 500    |
+| Could not be reached                                       | `communication`                             | 503    |
+
+The short types are under `https://open-workflow-specification.org/spec/1.0.0/errors/`. A reason function that called tools and could not finish has a type of its own, the [problem type](http.md#responses-and-errors) `https://on.auto/problems/tools_unfinished`, never `communication`: its tools may have changed something, so a `catch` that retries communication errors does not run them again under a new id. A workflow that wants another run names that type in its `catch` and starts one knowingly.
 
 The error's `title` names the definition and, for a rejection, its reason; its `detail` carries the detail the run gave. A rejection that has a kind carries it as the error's `kind`, and its cause as `because`, as the [HTTP problem document](http.md#responses-and-errors) does: a reason function whose tools are not offered is `tool_not_offered`, one whose tool server cannot be used `mcp_server_failed`, and one that called tools and could not finish `tools_unfinished`, its tools having perhaps changed something. A `catch` reads them in the error it catches, so `when: '${ $error.kind == "tool_not_offered" }'` handles only that, and `${ $error.because }` names why.
 

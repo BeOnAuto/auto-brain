@@ -35,7 +35,7 @@ describe('the error of a call that did not succeed', () => {
     } as const;
 
     expect(errorAsJson(callErrorOf(rejected, site))).toEqual({
-      type: errorType('communication'),
+      type: 'https://on.auto/problems/tools_unfinished',
       status: 503,
       title: 'The function notify rejected the execution with unavailable',
       detail: 'A tool server kept failing',
@@ -46,5 +46,14 @@ describe('the error of a call that did not succeed', () => {
     expect(
       callErrorOf({ status: 'rejected', reason: 'conflict', detail: 'Called', kind: 'tools_called' }, site),
     ).not.toHaveProperty('because');
+  });
+
+  it('is of the type of its own a kind has, never a communication error, and of the type of its reason for any other kind', () => {
+    const unavailable = { status: 'rejected', reason: 'unavailable', detail: 'No' } as const;
+
+    expect([
+      callErrorOf({ ...unavailable, kind: 'tools_unfinished' }, site).type,
+      callErrorOf({ ...unavailable, kind: 'mcp_server_failed' }, site).type,
+    ]).toEqual(['https://on.auto/problems/tools_unfinished', errorType('communication')]);
   });
 });

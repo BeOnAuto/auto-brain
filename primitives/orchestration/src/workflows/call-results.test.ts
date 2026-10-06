@@ -81,7 +81,7 @@ describe('a rejected execution that names its kind and because', () => {
     expect(await caughtFor(() => rejected)).toEqual({
       kind: 'completed',
       output: {
-        type: `${types}/communication`,
+        type: 'https://on.auto/problems/tools_unfinished',
         status: 503,
         instance: '/do/0/lookup/try/0/fetch',
         title: 'The inference spec lookup rejected the execution with unavailable',
@@ -102,6 +102,39 @@ describe('a rejected execution that names its kind and because', () => {
       type: 'UncaughtError',
       message: 'The inference spec lookup rejected the execution with unavailable: No (at /do/0/lookup/try/0/fetch)',
     });
+  });
+});
+
+const retryingCommunication = workflow(`
+do:
+  - lookup:
+      try:
+        - fetch:
+            call: execute_spec
+            with: { primitive: inference, name: lookup, input: {} }
+      catch:
+        errors:
+          with: { type: https://open-workflow-specification.org/spec/1.0.0/errors/communication }
+        retry: { delay: PT1S, limit: { attempt: { count: 3 } } }
+`);
+
+describe('a run of a function that called tools and could not finish', () => {
+  it('is not caught by a retry of communication errors, so its tools never run again under another id', async () => {
+    const calls: string[] = [];
+    const { ending } = await interpret(retryingCommunication, {
+      respond: ({ run }) => {
+        calls.push(`run ${run}`);
+        return { status: 'rejected', reason: 'unavailable', detail: 'It stopped', kind: 'tools_unfinished' };
+      },
+    });
+
+    expect(ending).toEqual({
+      kind: 'failed',
+      type: 'UncaughtError',
+      message:
+        'The inference spec lookup rejected the execution with unavailable: It stopped (at /do/0/lookup/try/0/fetch)',
+    });
+    expect(calls).toEqual(['run 1']);
   });
 });
 

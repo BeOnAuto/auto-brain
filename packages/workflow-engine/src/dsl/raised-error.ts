@@ -1,4 +1,4 @@
-import type { Settlement } from '@beonauto/operations';
+import { isKindWithType, problemTypeOf, type Settlement } from '@beonauto/operations';
 
 import type { DslError } from '../machine/dsl-error.ts';
 import { mostOutputBytes } from '../machine/limits.ts';
@@ -156,8 +156,9 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
   }
   const [kind, status]: Classification =
     result.status === 'rejected' ? (rejections[result.reason] ?? ['runtime', 500]) : ['runtime', 500];
+  const ownKind = result.status === 'rejected' ? result.kind : undefined;
   return {
-    type: errorType(kind),
+    type: isKindWithType(ownKind) ? problemTypeOf(ownKind) : errorType(kind),
     status,
     title:
       result.status === 'rejected'

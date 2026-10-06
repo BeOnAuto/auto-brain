@@ -23,7 +23,7 @@ A path with no route gets `404` `not_found`, and a method the path does not serv
 - **Body.** A body must be a JSON object sent as `application/json` in UTF-8, with no `Content-Encoding` other than `identity`, and no larger than 1 MiB. Otherwise it is `413` `content_too_large`, `415` `unsupported_media_type` or `400` `bad_request`.
 - **Answer.** A success is the operation's output as JSON with the operation's success status (`200`, or `201` where the operation says so) and `Cache-Control: no-store`.
 
-An outcome that is not a success becomes a problem document:
+An outcome that is not a success becomes a problem document. Its `type` is `https://on.auto/problems/<reason>` and its `title` the reason's, from the registry of problem types in `src/problem/problem.ts`, except for a kind that has a type of its own, `kindsWithTypes` of `@beonauto/operations`: a rejection of the kind `tools_unfinished` is `https://on.auto/problems/tools_unfinished`, titled `Tools unfinished`, with its reason `unavailable` and its status 503, and the workflow engine raises the same type for it, never a communication error.
 
 | Outcome   | Status and reason                                                                                                                                                                                                                      |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

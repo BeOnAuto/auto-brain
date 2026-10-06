@@ -1,4 +1,11 @@
-import type { RejectionKind, UnavailableBecause, UnavailableKind } from '@beonauto/operations';
+import {
+  isKindWithType,
+  problemTypeOf,
+  type KindWithType,
+  type RejectionKind,
+  type UnavailableBecause,
+  type UnavailableKind,
+} from '@beonauto/operations';
 
 export type ProblemReason =
   | 'invalid_input'
@@ -55,6 +62,19 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
   internal: { status: 500, title: 'Internal error' },
 };
 
+const kindProblemTypes: Readonly<Record<KindWithType, ProblemType>> = {
+  tools_unfinished: { status: 503, title: 'Tools unfinished' },
+};
+
+function problemTypeFor(
+  reason: ProblemReason,
+  kind: RejectionKind | undefined,
+): ProblemType & { readonly type: string } {
+  return isKindWithType(kind)
+    ? { type: problemTypeOf(kind), ...kindProblemTypes[kind] }
+    : { type: problemTypeOf(reason), ...problemTypes[reason] };
+}
+
 const problemMediaType = 'application/problem+json';
 
 const retryAfterSeconds = '5';
@@ -70,8 +90,8 @@ function isWorthRetrying({ reason, kind }: Problem): boolean {
 }
 
 export function problemOf(reason: ProblemReason, detail: string, optional: OptionalProblemMembers = {}): Problem {
-  const { status, title } = problemTypes[reason];
-  return { type: `https://on.auto/problems/${reason}`, title, status, detail, reason, ...optional };
+  const { type, status, title } = problemTypeFor(reason, optional.kind);
+  return { type, title, status, detail, reason, ...optional };
 }
 
 export function internalErrorProblem(incident: string): Problem {
