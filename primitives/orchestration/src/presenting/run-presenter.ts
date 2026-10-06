@@ -53,7 +53,7 @@ function inputShown(receipt: InputReceipt, executionId: string): Schema.JsonObje
   return { kind: receipt.kind, key: receipt.kind === 'timer_fired' ? receipt.key : executionId };
 }
 
-export function movedOf(steps: readonly (Step | EarlierStep)[]): readonly Moved[] {
+function movedOf(steps: readonly (Step | EarlierStep)[]): readonly Moved[] {
   const moved = new Map<string, Moved>();
   for (const { reference, run, outcome } of steps) {
     moved.set(JSON.stringify([reference, run]), { reference, run, outcome });
