@@ -1,5 +1,11 @@
 import { internalTermsIn } from '@beonauto/api/testing';
-import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@beonauto/operations';
+import {
+  PublicEventSchema,
+  cursorWithin,
+  mostPublicEventDataBytes,
+  presentationOf,
+  type RecordedEvent,
+} from '@beonauto/operations';
 import {
   RunEventSchema,
   callKeyText,
@@ -70,7 +76,7 @@ describe('an input a workflow took, in the history of its run', () => {
 
     expect(present(recordOf(event))).toEqual({
       id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-      cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+      cursor: cursorWithin('WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ', 0),
       causation_id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
       at: '2026-10-05T09:00:00.000Z',
       type: 'workflow_input_applied',
