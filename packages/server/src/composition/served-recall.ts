@@ -9,7 +9,7 @@ import { openWorkflowStore, type ProjectorSettings, type WorkflowStore } from '@
 import type { Settings } from '../settings/settings.ts';
 import { hostDatabaseOf, hostReports } from '../workflows/host-dependencies.ts';
 
-export interface ServedRecall {
+interface ServedRecall {
   readonly primitive: Primitive;
   readonly store: WorkflowStore;
   readonly views: ProjectorSettings;
