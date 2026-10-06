@@ -7,18 +7,20 @@ describe('the types of problems', () => {
     expect(problemTypeOf('unavailable')).toBe('https://on.auto/problems/unavailable');
   });
 
-  it('give tools_unfinished and tools_called types of their own, and no other kind', () => {
-    expect(kindsWithTypes).toEqual(['tools_unfinished', 'tools_called']);
+  it('give tools_unfinished, tools_called and rebuilding types of their own, and no other kind', () => {
+    expect(kindsWithTypes).toEqual(['tools_unfinished', 'tools_called', 'rebuilding']);
     expect([
       isKindWithType('tools_unfinished'),
       isKindWithType('tools_called'),
+      isKindWithType('rebuilding'),
+      isKindWithType('stalled'),
       isKindWithType('tool_not_offered'),
       isKindWithType('toString'),
       isKindWithType(),
-    ]).toEqual([true, true, false, false, false]);
+    ]).toEqual([true, true, true, false, false, false, false]);
   });
 
   it('keep the reason of each kind with a type of its own', () => {
-    expect(kindsWithTypes.map((kind) => reasonOfKind(kind))).toEqual(['unavailable', 'conflict']);
+    expect(kindsWithTypes.map((kind) => reasonOfKind(kind))).toEqual(['unavailable', 'conflict', 'unavailable']);
   });
 });

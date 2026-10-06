@@ -44,6 +44,15 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   },
   concurrent_change: { why: 'something else changed it at the same moment', remedy: 'Trying again should work.' },
   unworkable: { why: 'it cannot work as it is written', remedy: correctable },
+  stalled: {
+    why: 'what it keeps of the brain’s history stopped at a recorded event it could not take in',
+    remedy:
+      'It answers again once a corrected version is saved, which builds it anew from the history; the details below say which event stopped it and why.',
+  },
+  rebuilding: {
+    why: 'what it keeps of the brain’s history is still being built from that history',
+    remedy: 'Nothing needs to change: trying again in a little while should work.',
+  },
   tools_called: {
     why: 'this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something',
     remedy:
