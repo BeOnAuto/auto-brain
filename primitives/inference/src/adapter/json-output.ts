@@ -1,3 +1,4 @@
+import { shapeIssues } from '@beonauto/specs/document';
 import { jsonSchema, Output } from 'ai';
 import { Result, type Schema } from 'effect';
 import type { JSONSchema7 } from 'json-schema';
@@ -5,7 +6,6 @@ import type { JSONSchema7 } from 'json-schema';
 import { SpecInvalid } from '../failure/spec-invalid.ts';
 import type { JsonOutput } from '../model/model-request.ts';
 import type { AnswerSchema } from '../schema/answer-schema.ts';
-import { shapeIssues } from '../schema/schema-shape.ts';
 import { AnswerMismatch } from './answer-mismatch.ts';
 
 function isProviderSchema(document: Schema.JsonObject): document is Schema.JsonObject & JSONSchema7 {

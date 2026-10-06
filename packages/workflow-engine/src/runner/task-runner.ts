@@ -1,10 +1,10 @@
 import { admitted, holds, transform } from '../dsl/evaluation.ts';
-import type { Variables } from '../dsl/expressions.ts';
 import { field, objectField, textField, type Json } from '../dsl/json.ts';
 import { caughtRaise, raised } from '../dsl/raised-error.ts';
 import { timedOut, timeoutMilliseconds } from '../dsl/task-outcomes.ts';
 import { entryAt, typeOf, type TaskEntry } from '../dsl/tasks.ts';
 import type { TaskFrame, ValueId, Variables as Scope } from '../machine/run-state.ts';
+import type { Variables } from '../programs/program-running.ts';
 import { cancelBody, resumeBody, startBody } from '../tasks/task-bodies.ts';
 import {
   raisedOf,

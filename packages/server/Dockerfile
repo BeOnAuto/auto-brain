@@ -18,6 +18,7 @@ COPY packages/operations/package.json packages/operations/
 COPY packages/specs/package.json packages/specs/
 COPY packages/workflow-engine/package.json packages/workflow-engine/
 COPY packages/workflow-host/package.json packages/workflow-host/
+COPY primitives/computation/package.json primitives/computation/
 COPY primitives/inference/package.json primitives/inference/
 COPY primitives/orchestration/package.json primitives/orchestration/
 RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
@@ -49,6 +50,7 @@ COPY packages/server/src packages/server/src
 COPY packages/specs/src packages/specs/src
 COPY packages/workflow-engine/src packages/workflow-engine/src
 COPY packages/workflow-host/src packages/workflow-host/src
+COPY primitives/computation/src primitives/computation/src
 COPY primitives/inference/src primitives/inference/src
 COPY primitives/orchestration/src primitives/orchestration/src
 RUN apt-get update \

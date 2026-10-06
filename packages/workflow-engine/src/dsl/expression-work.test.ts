@@ -101,7 +101,7 @@ describe('each operation that builds or visits values', () => {
     ['compiles a regex', '"a" | test("(?:a{60}){60}")', null, 50_000],
     ['repeats a regex that compiles to nothing', '"a" | test("(?:){100000}")', null, 1_000_000],
     ['passes the regex machine through instructions', '.s | test("(?:|){2000}b")', { s: 'a'.repeat(1000) }, 1_000_000],
-    ['copies the capture slots of a regex', 'test("(" * 1000 + "a" + ")" * 1000)', 'b'.repeat(10), 1_000_000],
+    ['copies the capture slots of a regex', 'test("()" * 1000 + "a")', 'b'.repeat(10), 1_000_000],
     ['tests the members of a regex class', '.s | test("[" + "b" * 1000 + "]")', { s: 'a'.repeat(10_000) }, 1_000_000],
     ['prepares a regex search', '.s | gsub("x|(?:y{4000})"; "")', { s: 'x'.repeat(2000) }, 1_000_000],
     ['changes case', '.s | ascii_downcase', { s: capitals }, 1_000_000],

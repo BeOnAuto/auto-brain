@@ -203,7 +203,7 @@ catalogs:
       version: 5.0.2
 
 patchedDependencies:
-  '@gabrielbryk/jq-ts@1.7.0': aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa
+  '@gabrielbryk/jq-ts@1.7.0': 1bc23bba69fd4f1b369a5a4e0209184669d2a9b1560ce133be492a258344658e
 
 importers:
 
@@ -438,6 +438,9 @@ importers:
       '@beonauto/brains':
         specifier: workspace:*
         version: link:../brains
+      '@beonauto/computation':
+        specifier: workspace:*
+        version: link:../../primitives/computation
       '@beonauto/config':
         specifier: workspace:*
         version: link:../config
@@ -493,6 +496,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
     devDependencies:
       '@beonauto/brains':
         specifier: workspace:*
@@ -514,7 +520,7 @@ importers:
         version: link:../operations
       '@gabrielbryk/jq-ts':
         specifier: 1.7.0
-        version: 1.7.0(patch_hash=aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa)(typescript@7.0.2)
+        version: 1.7.0(patch_hash=1bc23bba69fd4f1b369a5a4e0209184669d2a9b1560ce133be492a258344658e)(typescript@7.0.2)
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -578,6 +584,28 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
 
+  primitives/computation:
+    dependencies:
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../../packages/operations
+      '@beonauto/specs':
+        specifier: workspace:*
+        version: link:../../packages/specs
+      '@beonauto/workflow-engine':
+        specifier: workspace:*
+        version: link:../../packages/workflow-engine
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+
   primitives/inference:
     dependencies:
       '@ai-sdk/amazon-bedrock':
@@ -625,9 +653,6 @@ importers:
       liquidjs:
         specifier: 10.29.0
         version: 10.29.0
-      yaml:
-        specifier: 2.9.1
-        version: 2.9.1
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -5785,7 +5810,7 @@ snapshots:
       - snappy
       - socks
 
-  '@gabrielbryk/jq-ts@1.7.0(patch_hash=aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa)(typescript@7.0.2)':
+  '@gabrielbryk/jq-ts@1.7.0(patch_hash=1bc23bba69fd4f1b369a5a4e0209184669d2a9b1560ce133be492a258344658e)(typescript@7.0.2)':
     dependencies:
       typescript: 7.0.2
 

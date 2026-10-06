@@ -1,11 +1,11 @@
 import { toolReferenceOf, toolReferenceShape, type ToolReference } from '@beonauto/mcp/policy';
+import { issueAt, type DocumentIssue, type SourceLines } from '@beonauto/specs/document';
 import { JsonPointer, Option, Result, type Schema } from 'effect';
 
 import { parseModelReference } from '../model/model-reference.ts';
 import type { GenerationSettings } from '../model/model-request.ts';
 import { optionCheckFor, providerNamespaces } from '../model/offered-provider-options.ts';
 import { requestIssues } from '../model/request-checks.ts';
-import { issueAt, type DocumentIssue, type SourceLines } from './document-issue.ts';
 import type { ConfigSection } from './front-matter-schema.ts';
 
 type ProviderOptions = Readonly<Record<string, Schema.JsonObject>>;

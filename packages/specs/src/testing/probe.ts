@@ -3,7 +3,7 @@ import { Effect, Predicate, type Schema } from 'effect';
 
 import { definePrimitive, type Executed, type RunContext, type Primitive, type PrimitiveRejection } from '../index.ts';
 
-type Mishap = 'stall' | 'unavailable' | 'unoffered' | 'conflict' | 'breakdown' | 'spent' | 'overspent';
+type Mishap = 'stall' | 'unavailable' | 'unoffered' | 'conflict' | 'unworkable' | 'breakdown' | 'spent' | 'overspent';
 
 export const spentUsage = {
   input: { total: 120, uncached: 30, cache_read: 90, cache_write: 0 },
@@ -39,6 +39,9 @@ const mishaps: Readonly<Record<Mishap, Effect.Effect<never, Unavailable | Confli
     }),
   ),
   conflict: Effect.fail(new Conflict({ detail: 'The probe cannot run this spec as written; update it' })),
+  unworkable: Effect.fail(
+    new Conflict({ detail: 'The program of the probe raised an error on line 2: stop', kind: 'unworkable' }),
+  ),
   breakdown: Effect.die(new Error('The probe broke down')),
   spent: Effect.fail(
     new Unavailable({

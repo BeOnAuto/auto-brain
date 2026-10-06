@@ -1,8 +1,10 @@
 import { setTimeout } from 'node:timers/promises';
 
+import type { McpSession, ToolResult } from '@beonauto/api/testing';
 import type { ScriptedReply } from '@beonauto/inference/testing';
 import { Option, Schema } from 'effect';
 
+import type { ProgramPoolOf } from '../composition/served-computation.ts';
 import type { RequestOptions, TestResponse } from './http-client.ts';
 import { servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 
@@ -17,8 +19,9 @@ const executionOf = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schem
 export function servingWorkflows(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
+  programPoolOf?: ProgramPoolOf,
 ): Promise<ReasoningServer> {
-  return servingReasoning(replies, environment);
+  return servingReasoning(replies, environment, undefined, programPoolOf);
 }
 
 export function workflowSource(name: string, steps: string): string {
@@ -44,4 +47,13 @@ export async function settledExecution(
   }
   await setTimeout(100);
   return settledExecution(server, path, options);
+}
+
+export async function settledOverMcp(session: McpSession, executionId: string): Promise<ToolResult> {
+  const reading = await session.callTool('get_execution', { execution_id: executionId });
+  if (!isStarted(reading.structuredContent)) {
+    return reading;
+  }
+  await setTimeout(100);
+  return settledOverMcp(session, executionId);
 }

@@ -1,6 +1,6 @@
 import type { DslError } from '../machine/dsl-error.ts';
+import type { Variables } from '../programs/program-running.ts';
 import { evaluateTemplate, holds, millisecondsOf, type Place } from './evaluation.ts';
-import type { Variables } from './expressions.ts';
 import {
   entriesOf,
   field,

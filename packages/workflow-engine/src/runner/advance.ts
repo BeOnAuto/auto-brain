@@ -1,6 +1,5 @@
 import type { CallResult } from '@beonauto/operations';
 
-import type { Variables } from '../dsl/expressions.ts';
 import type { Json } from '../dsl/json.ts';
 import type { TaskEntry, TaskKind } from '../dsl/tasks.ts';
 import type { ReceivedEvent } from '../inbox/received-event.ts';
@@ -13,6 +12,7 @@ import type {
   ValueId,
   Variables as Scope,
 } from '../machine/run-state.ts';
+import type { Variables } from '../programs/program-running.ts';
 import type { Session } from './session.ts';
 
 export type Signal =

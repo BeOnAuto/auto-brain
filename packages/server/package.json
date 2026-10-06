@@ -17,6 +17,7 @@
   "dependencies": {
     "@beonauto/api": "workspace:*",
     "@beonauto/brains": "workspace:*",
+    "@beonauto/computation": "workspace:*",
     "@beonauto/config": "workspace:*",
     "@beonauto/identity": "workspace:*",
     "@beonauto/inference": "workspace:*",

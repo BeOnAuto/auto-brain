@@ -1,7 +1,7 @@
+import type { DocumentIssue } from '@beonauto/specs/document';
 import { Predicate, type Schema } from 'effect';
 
 import type { VariableReference } from '../template/compiled-template.ts';
-import type { DocumentIssue } from './document-issue.ts';
 
 const moments: ReadonlyMap<string, string> = new Map([
   ['today', 'the date, as YYYY-MM-DD'],

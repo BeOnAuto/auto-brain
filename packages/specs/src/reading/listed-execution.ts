@@ -1,4 +1,9 @@
-import { UnavailableBecauseSchema, UnavailableKindSchema, type RecordedEvent } from '@beonauto/operations';
+import {
+  ConflictKindSchema,
+  UnavailableBecauseSchema,
+  UnavailableKindSchema,
+  type RecordedEvent,
+} from '@beonauto/operations';
 import { Effect, Schema, Struct } from 'effect';
 
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
@@ -9,10 +14,11 @@ import { RunSchema, type Run, type ExecutionRejection } from '../execution/execu
 
 const ListedRejectionSchema = Schema.Struct({
   reason: Schema.Literals(['invalid_input', 'unavailable', 'conflict']),
-  kind: Schema.optionalKey(UnavailableKindSchema),
+  kind: Schema.optionalKey(Schema.Union([UnavailableKindSchema, ConflictKindSchema])),
   because: Schema.optionalKey(UnavailableBecauseSchema),
 }).annotate({
-  description: 'Why the runtime adapter rejected the run: its reason, and for unavailable the kind and because it gave',
+  description:
+    'Why the runtime adapter rejected the run: its reason, the kind it gave for unavailable or conflict, and for unavailable the because it gave',
 });
 
 export const ListedRunSchema = Schema.Struct({
@@ -40,8 +46,12 @@ function runsOf(records: readonly RecordedEvent[]): ReadonlyMap<string, readonly
 }
 
 function listedRejectionOf(rejection: ExecutionRejection): ListedRejection {
-  if (rejection.reason !== 'unavailable') {
+  if (rejection.reason === 'invalid_input') {
     return { reason: rejection.reason };
+  }
+  if (rejection.reason === 'conflict') {
+    const { reason, kind } = rejection;
+    return { reason, ...(kind === undefined ? {} : { kind }) };
   }
   const { reason, kind, because } = rejection;
   return { reason, ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };

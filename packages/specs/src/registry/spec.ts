@@ -61,12 +61,14 @@ export type Definition = typeof DefinitionSchema.Type;
 
 export type ReasoningFunctionDefinition = Definition & { readonly primitive: 'inference' };
 
-export type BrainFunctionDefinition = ReasoningFunctionDefinition;
+export type ComputationFunctionDefinition = Definition & { readonly primitive: 'computation' };
+
+export type BrainFunctionDefinition = ReasoningFunctionDefinition | ComputationFunctionDefinition;
 
 export type WorkflowDefinition = Definition & { readonly primitive: 'orchestration' };
 
 export function isBrainFunctionDefinition(definition: Definition): definition is BrainFunctionDefinition {
-  return definition.primitive === 'inference';
+  return definition.primitive === 'inference' || definition.primitive === 'computation';
 }
 
 export function isWorkflowDefinition(definition: Definition): definition is WorkflowDefinition {

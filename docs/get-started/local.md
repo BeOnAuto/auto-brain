@@ -64,7 +64,7 @@ curl http://localhost:8080/health
 
 You should see `{"status":"ok"}`. The MCP endpoint is `http://localhost:8080/mcp`.
 
-This local mode needs no authentication header and trusts callers on your computer. Do not expose it through a tunnel or public proxy. The server runs reasoning functions, such as the example below, and workflows.
+This local mode needs no authentication header and trusts callers on your computer. Do not expose it through a tunnel or public proxy. The server runs reasoning functions, such as the example below, computation functions and workflows.
 
 ## 4. Connect your agent {#connect-your-agent}
 

@@ -1,6 +1,6 @@
+import { pointerOf } from '@beonauto/specs/document';
 import { Result, SchemaIssue, type Schema, type StandardSchema } from 'effect';
 
-import { pointerOf } from '../schema/json-bounds.ts';
 import { problem, type SettingProblem } from './setting-values.ts';
 
 type IssueSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;

@@ -4,6 +4,7 @@
     "*.ts",
     "packages/*/*.ts",
     "packages/*/measure",
+    "primitives/*/measure",
     "packages/*/src",
     "primitives/*/*.ts",
     "primitives/*/src"

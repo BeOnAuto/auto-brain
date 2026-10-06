@@ -8,7 +8,7 @@ A workflow is a saved definition that coordinates a brain's functions through st
 
 A function defines a reusable operation; a step is where a workflow uses it. A reasoning function such as `review-campaign-brief` can be called directly by an agent and used as a step in more than one workflow. Other steps decide what happens next, wait, repeat work or handle errors without calling a function.
 
-In the current runtime, the functions a workflow calls are reasoning functions in the same brain. A workflow reaches outside the brain only through those functions: it makes no network calls of its own. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
+In the current runtime, the functions a workflow calls are reasoning functions in the same brain and, in a self-hosted runtime, computation functions. A workflow reaches outside the brain only through those functions: it makes no network calls of its own, and a computation function reaches nothing outside either. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
 
 A budget-review workflow could assess the options with a reasoning function, then wait for a person's approval. The evidence arrives as the run's input or with an event, and the approval is an event sent to the waiting run. [Build your first workflow](../tutorials/first-workflow.md) builds a small version: it reviews a campaign brief, waits for the revised brief, and reviews that.
 

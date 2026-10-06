@@ -30,6 +30,7 @@ describe('readSettings', () => {
       localMode: false,
       logFormat: 'json',
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
+      computation: { workers: 4 },
     });
   });
 
@@ -56,6 +57,7 @@ describe('readSettings', () => {
       localMode: true,
       logFormat: 'pretty',
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
+      computation: { workers: 4 },
       configFile: undefined,
     });
   });

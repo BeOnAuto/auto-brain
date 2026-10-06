@@ -41,7 +41,8 @@ function rejectionShown(rejection: ExecutionRejection) {
     return { reason: rejection.reason, detail, ...issuesShown(rejection.issues) };
   }
   if (rejection.reason === 'conflict') {
-    return { reason: rejection.reason, detail };
+    const { reason, kind } = rejection;
+    return { reason, detail, ...(kind === undefined ? {} : { kind }) };
   }
   const { reason, kind, because } = rejection;
   return { reason, detail, ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };

@@ -199,7 +199,7 @@ describe('a run listed after it started again or did not go through', () => {
     const { executing, listing, prober } = await brainWithRuns();
     prober.sufferOnNextRun('unoffered');
     await executing(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
-    prober.sufferOnNextRun('conflict');
+    prober.sufferOnNextRun('unworkable');
     await executing(plain, {}, hashedChild, '2026-10-01T09:02:00.000Z');
     prober.sufferOnNextRun('unavailable');
     await executing(plain, {}, startedTwice, '2026-10-01T09:03:00.000Z');
@@ -208,7 +208,7 @@ describe('a run listed after it started again or did not go through', () => {
       output: {
         executions: [
           { execution_id: startedTwice, rejection: { reason: 'unavailable' } },
-          { execution_id: hashedChild, rejection: { reason: 'conflict' } },
+          { execution_id: hashedChild, rejection: { reason: 'conflict', kind: 'unworkable' } },
           {
             execution_id: callerChosen,
             rejection: { reason: 'unavailable', kind: 'model_not_offered', because: 'provider_not_configured' },
@@ -216,6 +216,19 @@ describe('a run listed after it started again or did not go through', () => {
         ],
       },
     });
+  });
+});
+
+describe('a conflict in the list of runs', () => {
+  it('shows its reason alone when it has no kind', async () => {
+    const { executing, listing, prober } = await brainWithRuns();
+    prober.sufferOnNextRun('conflict');
+    await executing(plain, {}, callerChosen, '2026-10-01T09:01:00.000Z');
+
+    expect(await listing()).toMatchObject({
+      output: { executions: [{ execution_id: callerChosen, rejection: { reason: 'conflict' } }] },
+    });
+    expect(await listing()).not.toMatchObject({ output: { executions: [{ rejection: { kind: 'unworkable' } }] } });
   });
 });
 
