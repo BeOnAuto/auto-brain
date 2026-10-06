@@ -75,18 +75,18 @@ describe('settling an execution', () => {
 
   it('is rejected for an execution that ended with another result', () => {
     expect(decided(settling(unavailability), started, deferred, { ...success, ...start })).toEqual(
-      Result.fail(new Conflict({ detail: 'The execution already ended with another result' })),
+      Result.fail(new Conflict({ detail: 'The run already ended with another result' })),
     );
   });
 
   it('is rejected for an execution that runs within its call, and for one the brain does not have', () => {
     expect(decided(settling(success), started)).toEqual(
       Result.fail(
-        new Conflict({ detail: 'The execution runs within the call that started it, so it cannot be settled' }),
+        new Conflict({ detail: 'The run executes within the call that started it, so it cannot be settled' }),
       ),
     );
     expect(decided(settling(success))).toEqual(
-      Result.fail(new NotFound({ detail: 'There is no such execution in this brain' })),
+      Result.fail(new NotFound({ detail: 'There is no such run in this brain' })),
     );
   });
 

@@ -53,7 +53,7 @@ describe('get_execution rejecting', () => {
     expect(await call(getExecution, toAlpha(acmeAdmin, { execution_id: unknownId }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: `There is no execution ${unknownId} in this brain`,
+      detail: `There is no run ${unknownId} in this brain`,
     });
   });
 

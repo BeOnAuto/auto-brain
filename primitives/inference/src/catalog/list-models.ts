@@ -8,8 +8,8 @@ import { ModelListSchema } from './model-list.ts';
 const task = 'list the models this server can call';
 
 const description = [
-  'Lists the models this server can call, in the shape of the list of models of the OpenAI API, so a spec can name one that works.',
-  'Each entry has the id a spec gives as its model (provider/model id), object model, created (seconds since 1970, 0 when the provider does not say),',
+  'Lists the models this server can call, in the shape of the list of models of the OpenAI API, so a reasoning function can name one that works.',
+  'Each entry has the id a reasoning function gives as its model (provider/model id), object model, created (seconds since 1970, 0 when the provider does not say),',
   'owned_by (the provider prefix that serves it) and, when the provider reports them, name, context_window and max_tokens.',
   'An alias its operator set is listed by its own name, with resolved_to naming the model it is sent to;',
   'an entry whose id ends in * has pattern true and stands for any model id in place of the *.',

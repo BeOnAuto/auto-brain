@@ -25,7 +25,7 @@ const unavailable: ExecutionEvent = {
 const failed: ExecutionEvent = { type: 'execution_failed', ...finish };
 
 const anotherRequest = new Conflict({
-  detail: 'The execution id belongs to an execution of another spec or with another input',
+  detail: 'The run id belongs to a run of another definition or with another input',
 });
 
 function stateAfter(...events: readonly ExecutionEvent[]) {

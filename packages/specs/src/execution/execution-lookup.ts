@@ -6,7 +6,7 @@ import type { Run, RunDetail, ExecutionRejection } from './execution.ts';
 
 function recorded(id: string, state: ExecutionState): Effect.Effect<RecordedExecution, NotFound> {
   return state === undefined
-    ? Effect.fail(new NotFound({ detail: `There is no execution ${id} in this brain` }))
+    ? Effect.fail(new NotFound({ detail: `There is no run ${id} in this brain` }))
     : Effect.succeed(state);
 }
 

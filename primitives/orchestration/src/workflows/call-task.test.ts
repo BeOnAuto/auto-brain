@@ -96,14 +96,14 @@ describe('the arguments of execute_spec', () => {
     expect(callsIn(commands)).toEqual([]);
   });
 
-  it('are rejected when the input is larger than an execution takes', async () => {
+  it('are rejected when the input is larger than a run takes', async () => {
     const { settlement } = await interpret(summarizing, { input: { text: 'x'.repeat(262_200) } });
 
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'The input of execute_spec takes 262211 bytes as JSON, more than the 262144 an execution takes (at /do/0/summarize)',
+        'The input of execute_spec takes 262211 bytes as JSON, more than the 262144 a run takes (at /do/0/summarize)',
     });
   });
 });

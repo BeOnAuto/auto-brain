@@ -137,7 +137,7 @@ describe('an execution of a spec the provider rejects', () => {
   it('answers 409 with the message of the provider, and records the conflict', async () => {
     const response = await failingWith(rejectedSpec, aDinner);
     const detail =
-      "openai answered HTTP 400: the request was rejected as invalid; update the spec. The provider said: Unsupported parameter: 'temperature'";
+      "openai answered HTTP 400: the request was rejected as invalid; update the reasoning function definition. The provider said: Unsupported parameter: 'temperature'";
 
     expect(response).toMatchObject({ status: 409, body: { reason: 'conflict', detail } });
     expect(await server.call('GET', `${alpha}/executions/${executionId}`)).toMatchObject({
@@ -151,7 +151,7 @@ describe('an execution of a spec the provider rejects', () => {
       body: {
         reason: 'conflict',
         detail:
-          'openai stopped the answer at max_output_tokens (300) before the JSON was complete; raise config.max_output_tokens in the spec',
+          'openai stopped the answer at max_output_tokens (300) before the JSON was complete; raise config.max_output_tokens in the reasoning function definition',
       },
     });
   });

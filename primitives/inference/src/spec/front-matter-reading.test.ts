@@ -5,7 +5,7 @@ import { documentOf, issuesIn, parsed } from '../testing/spec-documents.ts';
 describe('the split of a document', () => {
   it('needs front matter that opens on the first line', () => {
     expect(issuesIn('model: openai/gpt-5\n---\nHello')).toEqual([
-      'Line 1: A spec document starts with a line of three dashes (---) that opens its front matter of YAML',
+      'Line 1: A reasoning function definition starts with a line of three dashes (---) that opens its front matter of YAML',
     ]);
     expect(issuesIn('\n---\nmodel: openai/gpt-5\n---\nHello')).toHaveLength(1);
   });

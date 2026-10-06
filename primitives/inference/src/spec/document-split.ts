@@ -21,7 +21,9 @@ export function splitDocument(source: string): Result.Result<DocumentParts, read
   const lines = (source.startsWith(byteOrderMark) ? source.slice(1) : source).split(/\r?\n/u);
   if (!delimiter.test(String(lines[0]))) {
     return Result.fail(
-      issue('A spec document starts with a line of three dashes (---) that opens its front matter of YAML'),
+      issue(
+        'A reasoning function definition starts with a line of three dashes (---) that opens its front matter of YAML',
+      ),
     );
   }
   const closing = lines.findIndex((line, index) => index > 0 && delimiter.test(line));

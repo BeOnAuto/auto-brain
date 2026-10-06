@@ -91,7 +91,7 @@ const invalidDocuments: readonly (readonly [string, string, string])[] = [
   [
     'without front matter',
     'Summarize {{ input.text }}',
-    'Line 1: A spec document starts with a line of three dashes (---) that opens its front matter of YAML',
+    'Line 1: A reasoning function definition starts with a line of three dashes (---) that opens its front matter of YAML',
   ],
   [
     'whose front matter is not closed',
@@ -141,7 +141,7 @@ const invalidDocuments: readonly (readonly [string, string, string])[] = [
   [
     'that reads a variable it may not',
     '---\nmodel: openai/gpt-5\n---\n{{ secrets }}',
-    'Line 4: secrets is not a variable of an inference template, which reads input, today and now; assign it first',
+    'Line 4: secrets is not a variable of a reasoning function’s prompt template, which reads input, today and now; assign it first',
   ],
 ];
 

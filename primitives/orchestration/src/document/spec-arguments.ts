@@ -32,7 +32,7 @@ export function specArgumentsOf(arguments_: Json): SpecArguments | ArgumentsProb
   return bytes > mostSpecInputBytes
     ? {
         kind: 'validation',
-        title: `The input of ${executeSpecFunction} takes ${bytes} bytes as JSON, more than the ${mostSpecInputBytes} an execution takes`,
+        title: `The input of ${executeSpecFunction} takes ${bytes} bytes as JSON, more than the ${mostSpecInputBytes} a run takes`,
       }
     : { primitive, name, input };
 }

@@ -15,7 +15,7 @@ const run = { executionId: runId, attributes: {} };
 const succeeded: Settlement = { status: 'succeeded', output: 'done' };
 
 const stillRunning = new Conflict({
-  detail: 'The execution runs within the call that started it, so it cannot be settled',
+  detail: 'The run executes within the call that started it, so it cannot be settled',
 });
 
 const execution = {

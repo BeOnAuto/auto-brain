@@ -73,7 +73,7 @@ A primitive has:
 - `mediaType`: the media type of its spec documents, such as `text/markdown`.
 - `parse(source)`: turns the document into the primitive's own value. Parsing is validation: everything that can be checked without running is checked here. It fails with `InvalidInput`, whose issues each say in `detail` where in the document and what is wrong (line and problem). An issue's `pointer` addresses the document as a whole, so it is `''`; the operations answer it under `/source`.
 - `summarize(parsed)`: what the operations show about a spec without knowing the primitive: an optional `description`, optional JSON Schemas of the input an execution takes (`inputSchema`) and the output it gives (`outputSchema`), and optional `warnings`: what `parse` found that does not stop the spec from being accepted but may not work everywhere, each a line of text that says where in the document (for inference: a schema some providers reject or do not enforce).
-- `execute(parsed, input, execution)`: runs the spec. `input` is the caller's JSON value; `execution` carries its `id`, the `org`, the `brain`, the `caller` who started it (the identity the call was authorized for), the `spec` that runs, by `name` and `version`, and the `journal` through which it records the tool calls it makes (see [Tool calls](#tool-calls)). It answers with the `output`, a JSON value returned to the caller, and a `record`, a JSON object of what happened, stored with the execution (for inference: the rendered prompt, the model, token usage). It fails with `InvalidInput`, with pointers into the input (`/name` above; the operations answer them under `/input`); with `Unavailable` when something the primitive depends on cannot serve now and retrying may work; or with `Conflict` when the spec cannot run as written, which only running it can tell (for inference: a model the provider does not have), so the spec must be updated before it can run. A primitive that starts work which finishes after the call returns, such as a workflow, answers `{ finishesLater: true, record }` instead, the record saying what it started (for a workflow: its run reference); see [Executions that finish later](#executions-that-finish-later).
+- `execute(parsed, input, execution)`: runs the spec. `input` is the caller's JSON value; `execution` carries its `id`, the `org`, the `brain`, the `caller` who started it (the identity the call was authorized for), the `spec` that runs, by `name` and `version`, and the `journal` through which it records the tool calls it makes (see [Tool calls](#tool-calls)). It answers with the `output`, a JSON value returned to the caller, and a `record`, a JSON object of what happened, stored with the execution (for inference: the rendered prompt, the model, token usage). It fails with `InvalidInput`, with pointers into the input (`/name` above; the operations answer them under `/input`); with `Unavailable` when something the primitive depends on cannot serve now and retrying may work; or with `Conflict` when the spec cannot run as written, which only running it can tell (for inference: a model the provider does not have), so the spec must be updated before it can run. A primitive that starts work which finishes after the call returns, such as a workflow, answers `{ finishesLater: true, record }` instead, the record saying what it started (for a workflow: its run reference); see [Runs that finish later](#executions-that-finish-later).
 
 The compiler holds a primitive to its contract. The value `parse` gives is the value `summarize` and `execute` take. `parse` may fail only with `InvalidInput`, and `execute` only with `InvalidInput`, `Unavailable` or `Conflict` (the union `PrimitiveRejection`). Neither may ask for a service: whatever a primitive needs, such as a model client, it closes over when it is made. The output must be JSON and the record a JSON object.
 
@@ -81,11 +81,11 @@ TypeScript infers the parsed value from `parse` when `parse` is a function decla
 
 `parse` runs on every create, update and execution, and its parsed value is not kept, so it must give the same answer for the same document and be quick. A defect in `execute`, or an output that is not JSON, fails the execution.
 
-A call cancelled while `execute` runs, because its client went away or the server is stopping, stops `execute` and records the execution `failed`. A retry with its id can run it again only if no recorded tool call blocks another attempt; see [Execution ids and retries](#execution-ids-and-retries). A primitive that defines `whenCancelled: 'finish'` is not stopped: the call waits for `execute` to end and records its answer. Recording the start and the end of an execution is never cut short. An abrupt process crash can still leave a run `started` when it prevents the ending from being recorded.
+A call cancelled while `execute` runs, because its client went away or the server is stopping, stops `execute` and records the execution `failed`. A retry with its id can run it again only if no recorded tool call blocks another attempt; see [Run ids and retries](#execution-ids-and-retries). A primitive that defines `whenCancelled: 'finish'` is not stopped: the call waits for `execute` to end and records its answer. Recording the start and the end of an execution is never cut short. An abrupt process crash can still leave a run `started` when it prevents the ending from being recorded.
 
 ## The operations
 
-`makeSpecOperations(primitives, presenters?)` returns the nine operations for a catalog. All are brain operations, so their routes are relative to the brain. `defineCreateSpec`, `defineListSpecs`, `defineGetSpec`, `defineUpdateSpec`, `defineRetireSpec`, `defineExecuteSpec` and `defineListExecutions` make one of them each for a list of primitives, `getExecution` is another, and `defineGetExecutionHistory(presenters)` the last; `presenters` defaults to `makeSpecPresenters(primitives)` (see [Reading executions](#reading-executions)). The list must hold at least one primitive, and no two of the same name.
+`makeSpecOperations(primitives, presenters?)` returns the nine operations for a catalog. All are brain operations, so their routes are relative to the brain. `defineCreateSpec`, `defineListSpecs`, `defineGetSpec`, `defineUpdateSpec`, `defineRetireSpec`, `defineExecuteSpec` and `defineListExecutions` make one of them each for a list of primitives, `getExecution` is another, and `defineGetExecutionHistory(presenters)` the last; `presenters` defaults to `makeSpecPresenters(primitives)` (see [Reading runs](#reading-executions)). The list must hold at least one primitive, and no two of the same name.
 
 | Operation               | Kind    | Route                                    | Input                                                                                 | Answer                                                | Rejections of the handler                               |
 | ----------------------- | ------- | ---------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------- |
@@ -113,7 +113,9 @@ A spec carries `primitive`, `name`, `version`, `status` (`active` or `retired`),
 
 The queries need `brain:read` and the commands `brain:write`. `execute_spec` is a command, because it records an execution, so a caller that may only read cannot execute a spec.
 
-## Executions
+<span id="executions"></span>
+
+## Runs
 
 An execution carries `execution_id`, `primitive`, `name`, `spec_version`, `status`, `output` when it succeeded, `rejection` (`reason`, `detail`, `issues` for `invalid_input`, and for `unavailable` the `kind` and `because` the primitive gave) when the primitive rejected it, `started_at`, `started_by`, and `finished_at` once it ended. `get_execution` also shows the `record` the primitive gave of what it did: of the run that succeeded, or of the work it started that finishes later, kept when that work ends rejected or failed and dropped when a retry starts the execution again. `execute_spec` answers without the record, which can be large, since the output is what its caller asked for. Its status is `started` while it runs, while work it started finishes after the call returned, or when the process ended before it finished; then `succeeded`, `rejected` or `failed`.
 
@@ -128,7 +130,9 @@ The ledger's cloud store holds at most 2 MB in a row, so an execution records bo
 
 JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`, and in the description of `execute_spec`. `mostInputBytes` and `mostResultBytes` export them, so that a primitive can keep what it answers within them.
 
-### Execution ids and retries
+<span id="execution-ids-and-retries"></span>
+
+### Run ids and retries
 
 A caller may name an execution with `execution_id`, a UUID; otherwise the operation makes one, a version 7 UUID. Ids are kept in lowercase. An id belongs to one execution: one primitive, one spec and one input. A call with an id of another spec or another input meets `conflict`.
 
@@ -138,7 +142,9 @@ An execution that called tools is the exception, because a tool may have changed
 
 So execution is **at least once**: the primitive may run more than once for one id, when a call is retried after the server stopped during a run, after `unavailable`, a `conflict` the primitive found, or a failure, or when two calls with the same id run at the same moment and the ledger lets both start. Each id has **exactly one recorded result**: the first final result recorded for it is never replaced, and every later call with the id answers it. A primitive that acts on the world, such as one that sends a message, must tolerate running twice for the same `execution.id`.
 
-### Executions that finish later
+<span id="executions-that-finish-later"></span>
+
+### Runs that finish later
 
 A primitive may state `longestExecutionMs`, the longest one execution may legitimately take (for inference: the deadline of a model call for the most output tokens, 60 seconds and 25 ms a token, 1660000 ms for 64000); a workflow gives a nested execution that long, and a minute more, before its call fails. A primitive that states none is given 10 minutes. A primitive states `reachesOutside: true` when its executions call systems outside the server, as inference calls model providers; `execute_spec` then says it reaches outside, which its MCP tool shows as `openWorldHint`. A primitive states `mayChangeOutside: true` when those calls may change something there, as inference does once an MCP server is configured; `execute_spec` then says so, which its MCP tool shows as `destructiveHint`, so that an assistant asks before running a spec.
 
@@ -166,7 +172,9 @@ settle(execution, { status: 'failed' });
 
 The settlement is recorded as done by the caller who started the execution. A deferred execution settled as `unavailable` or `failed` has no final result, so a call with its id runs it again, as any other.
 
-## Reading executions
+<span id="reading-executions"></span>
+
+## Reading runs
 
 `list_executions` lists the executions of a brain, newest first by the position of the first message of each execution stream, so an execution started again with the same id keeps the place of its first start, and two started in the same millisecond keep a fixed order. It reads the ledger's selection of the first and the latest message of every execution stream (`BrainReader.readRecorded({ kind: 'executions' }, page)`) and folds the two with the execution decider's `evolve`, so a `ListedRun` (`ListedExecution` for compatibility) is the run as `get_execution` shows it, without its `output`, its `record` and the `detail` and `issues` of a rejection: `execution_id`, `primitive`, `name`, `spec_version`, `status`, `started_at`, `started_by`, `finished_at`, and a `rejection` of `reason`, with the `kind` and `because` of `unavailable`. When the latest message is a start, the execution shows that start; when the execution was started again and has since finished, it shows its first start, since the selection holds no other, while `get_execution` shows the latest.
 
@@ -218,7 +226,7 @@ A primitive whose executions call tools, as inference does through MCP servers (
 - `tool_call_started`, before the call is sent: its `number` within the run, the `call_id` the model gave it, the `server` and `tool`, the size and SHA-256 digest of its arguments as sent (`arguments_bytes`, `arguments_sha256`), and `arguments_json`, cut to 4 KiB, when the server's operator records content;
 - `tool_call_answered`: the `number`, the `outcome` (`result`, `tool_error`, `server_failure`, `timed_out` or `cancelled`), the size and digest of the result (`result_bytes`, `result_sha256`, null when there is none), `duration_ms`, the `jsonrpc_id` sent, `server_request_id` when the server's entry names where it carries one, and `result_json`, cut to 4 KiB, when content is recorded.
 
-The journal is built with the rest of the context in one place, so executions started directly and by a workflow record alike. It holds a permit per execution, so the calls of one step, made at once, append one at a time, as an append is retried only three times on a version conflict. The decider refuses a tool event once the execution has finished, however it ended: a call still in flight then keeps a start and no answer, which reads as an outcome unknown. The state counts the calls, which is what keeps an execution that called tools from running again under its id (see [Execution ids and retries](#execution-ids-and-retries)).
+The journal is built with the rest of the context in one place, so executions started directly and by a workflow record alike. It holds a permit per execution, so the calls of one step, made at once, append one at a time, as an append is retried only three times on a version conflict. The decider refuses a tool event once the execution has finished, however it ended: a call still in flight then keeps a start and no answer, which reads as an outcome unknown. The state counts the calls, which is what keeps an execution that called tools from running again under its id (see [Run ids and retries](#execution-ids-and-retries)).
 
 ## Testing
 

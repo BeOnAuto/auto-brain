@@ -57,7 +57,7 @@ describe('the input of an execution', () => {
     expect(await executing(withSchema, { words: 0, colour: 'red' })).toEqual(
       Exit.fail(
         new InvalidInput({
-          detail: 'The input does not match the input schema of the spec',
+          detail: 'The input does not match the reasoning function’s input schema',
           issues: [
             { pointer: '/colour', detail: 'Expected no excess property' },
             { pointer: '/text', detail: 'Missing key' },

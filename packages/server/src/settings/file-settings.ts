@@ -42,7 +42,7 @@ export const fileSettings: readonly FileSetting[] = [
     'MODEL_ALIASES',
     ModelAliasesSchema.annotate({
       description:
-        'Model references a spec may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it',
+        'Model references a reasoning function may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it',
     }),
     asJson,
   ),
@@ -58,7 +58,7 @@ export const fileSettings: readonly FileSetting[] = [
     'ALLOWED_MODELS',
     AllowedModelsSchema.annotate({
       description:
-        'The only model references a spec may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it',
+        'The only model references a reasoning function may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it',
     }),
     asJson,
   ),

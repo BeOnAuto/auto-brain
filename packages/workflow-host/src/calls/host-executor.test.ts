@@ -144,6 +144,35 @@ describe('the executor of the host, answering', () => {
   });
 });
 
+describe('the executor of the host, resuming recorded answers', () => {
+  it.each<CallResult>([
+    { status: 'failed', detail: 'The execution failed with incident inc-1' },
+    {
+      status: 'rejected',
+      reason: 'invalid_arguments',
+      detail: 'The input of execute_spec takes 262211 bytes as JSON, more than the 262144 an execution takes',
+    },
+  ])('redelivers a stored $status result with its historical wording unchanged', async (historical) => {
+    const calls = await executing(() => Effect.succeed(historical));
+    const refusing = calls.executorOn(() => Effect.fail(new Error('The run is busy')));
+    await Effect.runPromise(refusing.executor.start(call, run));
+    await Effect.runPromise(refusing.idle());
+    const answers: CallResult[] = [];
+    const giving = calls.executorOn((_key, result) =>
+      Effect.sync(() => {
+        answers.push(result);
+      }),
+    );
+
+    expect(await Effect.runPromise(giving.resume())).toBe(1);
+    await Effect.runPromise(giving.idle());
+
+    expect(answers).toEqual([historical]);
+    expect(calls.performed()).toBe(1);
+    expect(await Effect.runPromise(giving.resume())).toBe(0);
+  });
+});
+
 describe('the executor of the host, failing to record an answer', () => {
   it('writes it again until it is written, never performing the call again meanwhile, and then gives it', async () => {
     const calls = await executing((database) =>

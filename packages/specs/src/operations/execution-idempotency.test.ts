@@ -67,7 +67,7 @@ describe('an execution id', () => {
     const taken = {
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The execution id belongs to an execution of another spec or with another input',
+      detail: 'The run id belongs to a run of another definition or with another input',
     };
 
     expect(await executingOf('probe', 'other', { who: 'Ada' })).toEqual(taken);

@@ -12,7 +12,7 @@ type Withholding =
   | 'it brings in tools or servers'
   | 'it adds raw fields to the request'
   | 'the front matter sets it'
-  | 'it carries conversation state, and a spec makes one call'
+  | 'the runtime manages conversation state'
   | 'it asks for output the runtime does not read'
   | 'it changes how the runtime sends the request';
 
@@ -48,7 +48,7 @@ const headers = withheld('it sets request headers or betas');
 const tools = withheld('it brings in tools or servers');
 const rawFields = withheld('it adds raw fields to the request');
 const frontMatter = withheld('the front matter sets it');
-const conversation = withheld('it carries conversation state, and a spec makes one call');
+const conversation = withheld('the runtime manages conversation state');
 const unreadOutput = withheld('it asks for output the runtime does not read');
 const sending = withheld('it changes how the runtime sends the request');
 

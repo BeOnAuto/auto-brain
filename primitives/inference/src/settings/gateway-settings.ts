@@ -97,13 +97,14 @@ const gatewayFields = {
   ),
   expose_provider_messages: Schema.optionalKey(
     Schema.Boolean.annotate({
-      description: "true when the gateway's error messages are safe to show to the callers of a spec. Default false",
+      description:
+        "true when the gateway's error messages are safe to show to callers of a reasoning function. Default false",
     }),
   ),
   allowed_provider_options: Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
       description:
-        'The top-level request body fields a spec may set for this gateway through provider_options, such as user and metadata. Default none',
+        'The top-level request body fields a reasoning function may set for this gateway through provider_options, such as user and metadata. Default none',
     }),
   ),
 };

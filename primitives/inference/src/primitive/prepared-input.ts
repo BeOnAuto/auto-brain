@@ -25,6 +25,8 @@ export function preparedInput(
     : Result.match(schema.validate(merged), {
         onSuccess: () => Effect.succeed(merged),
         onFailure: (issues) =>
-          Effect.fail(new InvalidInput({ detail: 'The input does not match the input schema of the spec', issues })),
+          Effect.fail(
+            new InvalidInput({ detail: 'The input does not match the reasoning function’s input schema', issues }),
+          ),
       });
 }

@@ -58,7 +58,7 @@ function finishing(result: ExecutionResult): ExecutionCommand {
 }
 
 const anotherRequest = new Conflict({
-  detail: 'The execution id belongs to an execution of another spec or with another input',
+  detail: 'The run id belongs to a run of another definition or with another input',
 });
 
 describe('starting an execution', () => {

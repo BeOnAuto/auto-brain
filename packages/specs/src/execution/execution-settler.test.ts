@@ -19,7 +19,7 @@ const settled = {
 
 const success: Settlement = { status: 'succeeded', output: 'handed on', record: { steps: 3 } };
 
-const noSuchExecution = Result.fail(new NotFound({ detail: 'There is no such execution in this brain' }));
+const noSuchExecution = Result.fail(new NotFound({ detail: 'There is no such run in this brain' }));
 
 describe('settling a deferred execution', () => {
   it('records its success, which a read and a call with its id then answer, without running it again', async () => {
@@ -47,7 +47,7 @@ describe('settling a deferred execution', () => {
 
     expect(await settling(success)).toStrictEqual(first);
     expect(await settling({ status: 'failed' })).toEqual(
-      Result.fail(new Conflict({ detail: 'The execution already ended with another result' })),
+      Result.fail(new Conflict({ detail: 'The run already ended with another result' })),
     );
   });
 });
@@ -115,7 +115,7 @@ describe('settling an execution', () => {
     );
 
     expect(await settling(success)).toEqual(
-      Result.fail(new Conflict({ detail: 'The execution already ended with another result' })),
+      Result.fail(new Conflict({ detail: 'The run already ended with another result' })),
     );
   });
 });

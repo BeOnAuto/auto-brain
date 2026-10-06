@@ -106,7 +106,7 @@ describe('a call of a workflow whose run names no caller', () => {
 
     expect(await Effect.runPromise(perform(classify, { ...run, attributes: {} }))).toEqual({
       status: 'failed',
-      detail: 'The run names no brain and no caller to execute a spec for',
+      detail: 'The run names no brain and no caller to run a definition for',
     });
   });
 });
@@ -137,7 +137,7 @@ describe('the answer of a spec a workflow called', () => {
     });
     expect(await Effect.runPromise(large.perform(classify, run))).toEqual({
       status: 'failed',
-      detail: 'The spec answered with 1048578 bytes as JSON, more than the 1048576 a workflow takes',
+      detail: 'The run returned 1048578 bytes as JSON, more than the 1048576 a workflow takes',
     });
   });
 

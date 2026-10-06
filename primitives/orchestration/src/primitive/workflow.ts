@@ -17,7 +17,7 @@ export interface WorkflowAdapterDependencies {
 }
 
 const ranBefore =
-  'This execution id already ran its workflow, which ended; a workflow runs once for an execution id, so execute it with a new execution id to run it again';
+  'This run ID already ran its workflow, which ended; a workflow runs once for a run ID, so use a new run ID to run it again';
 
 const notNow = 'The workflow cannot start now; try again shortly';
 

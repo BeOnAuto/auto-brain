@@ -114,7 +114,7 @@ describe('the issues of a document', () => {
       'Line 2, /model: Expected provider/model, for example anthropic/claude-sonnet-4-5',
       'Line 4, /config/temperature: Expected number',
       'Line 5, /flavour: flavour is not a key of the front matter; it takes description, model, config, input, output, provider_options, tools',
-      'Line 7: customer is not a variable of an inference template, which reads input, today and now; assign it first',
+      'Line 7: customer is not a variable of a reasoning function’s prompt template, which reads input, today and now; assign it first',
     ]);
   });
 

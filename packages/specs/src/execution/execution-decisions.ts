@@ -63,7 +63,7 @@ export function claimOf(state: ExecutionState, request: ExecutionRequest): Resul
   }
   if (!isSameRequest(state, request)) {
     return Result.fail(
-      new Conflict({ detail: 'The execution id belongs to an execution of another spec or with another input' }),
+      new Conflict({ detail: 'The run id belongs to a run of another definition or with another input' }),
     );
   }
   return claimOfRecorded(state);
@@ -112,14 +112,14 @@ function unsettleable({ result }: RecordedExecution): Conflict {
   return new Conflict({
     detail:
       result === undefined
-        ? 'The execution runs within the call that started it, so it cannot be settled'
-        : 'The execution already ended with another result',
+        ? 'The run executes within the call that started it, so it cannot be settled'
+        : 'The run already ended with another result',
   });
 }
 
 function decideSettlement({ result, at }: ExecutionSettlement, state: ExecutionState): Decision {
   if (state === undefined) {
-    return Result.fail(new NotFound({ detail: 'There is no such execution in this brain' }));
+    return Result.fail(new NotFound({ detail: 'There is no such run in this brain' }));
   }
   if (Equal.equals(state.result, result)) {
     return nothingToRecord;

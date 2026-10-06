@@ -11,13 +11,13 @@
 # DATABASE_URL, the PostgreSQL database of the ledger, holds a password, so it
 # is read from the environment only and has no key here.
 
-# OpenAI-compatible gateways; a spec then names gateway/<model id>.
+# OpenAI-compatible gateways; a reasoning function then names gateway/<model id>.
 model_gateways:
   - name: gateway
     base_url: https://gateway.example.com/v1
     api_key: ${GATEWAY_API_KEY}
 
-# Send every anthropic/<model id> a spec names through the gateway.
+# Send every anthropic/<model id> a reasoning function names through the gateway.
 model_aliases:
   anthropic/*: gateway/anthropic/*
 
@@ -30,8 +30,8 @@ model_aliases:
 #   gateway:
 #     - anthropic/claude-haiku-4-5
 
-# The only models a spec may name and list_models shows; every model when
-# left out. A trailing * stands for any model id.
+# The only models a reasoning function may name and list_models shows; every
+# model when left out. A trailing * stands for any model id.
 # allowed_models:
 #   - anthropic/*
 #   - gateway/anthropic/claude-haiku-4-5

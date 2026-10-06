@@ -239,7 +239,7 @@ describe('get_execution_history rejecting', () => {
     const notFound = {
       status: 'rejected',
       reason: 'not_found',
-      detail: `There is no execution ${executionId} in this brain`,
+      detail: `There is no run ${executionId} in this brain`,
     };
     const [firstOfAnother] = idsIn(await reading({ execution_id: otherId }));
 

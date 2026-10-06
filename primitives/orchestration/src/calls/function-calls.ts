@@ -12,7 +12,7 @@ const mostSpecOutputBytes = 1_048_576;
 
 const noCaller: CallResult = {
   status: 'failed',
-  detail: 'The run names no brain and no caller to execute a spec for',
+  detail: 'The run names no brain and no caller to run a definition for',
 };
 
 function rejectionDetail(
@@ -42,7 +42,7 @@ function callResultOf(result: DefinitionRunResult): CallResult {
   return bytes > mostSpecOutputBytes
     ? {
         status: 'failed',
-        detail: `The spec answered with ${bytes} bytes as JSON, more than the ${mostSpecOutputBytes} a workflow takes`,
+        detail: `The run returned ${bytes} bytes as JSON, more than the ${mostSpecOutputBytes} a workflow takes`,
       }
     : result;
 }

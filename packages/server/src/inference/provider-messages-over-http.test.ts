@@ -53,7 +53,7 @@ describe('an execution whose gateway rejects the model', () => {
       body: { input: {}, execution_id: executionId },
     });
     const recorded = await request(server.port, 'GET', `${alpha}/executions/${executionId}`);
-    const detail = 'gateway answered HTTP 404: the model was not found; update the spec';
+    const detail = 'gateway answered HTTP 404: the model was not found; update the reasoning function definition';
 
     expect(executed).toMatchObject({ status: 409, body: { reason: 'conflict', detail } });
     expect(recorded).toMatchObject({

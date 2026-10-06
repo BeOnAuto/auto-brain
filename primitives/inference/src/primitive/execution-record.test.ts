@@ -63,7 +63,7 @@ describe('the record of an execution', () => {
       Exit.fail(
         new Conflict({
           detail:
-            'The answer takes more than an execution can record (1048576 bytes with its record); lower config.max_output_tokens in the spec',
+            'The answer takes more than a run can record (1048576 bytes with its record); lower config.max_output_tokens in the reasoning function definition',
         }),
       ),
     );

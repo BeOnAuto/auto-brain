@@ -74,7 +74,7 @@ function rejectionOf({ reason, detail, kind, because }: Rejected): ExecutionResu
 function streamOf(address: ExecutionAddress): Effect.Effect<string, NotFound> {
   return isWellFormed(address)
     ? Effect.succeed(`${streamPrefixOfBrain(address)}${executionStreamOf(address.id.toLowerCase())}`)
-    : Effect.fail(new NotFound({ detail: 'There is no such execution in this brain' }));
+    : Effect.fail(new NotFound({ detail: 'There is no such run in this brain' }));
 }
 
 function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {

@@ -20,7 +20,7 @@ export function knownExecutions(): { readonly settle: SettleExecution; readonly 
     settle: ({ id }) =>
       known.has(id)
         ? Effect.succeed(settledExecution)
-        : Effect.fail(new NotFound({ detail: 'There is no such execution in this brain' })),
+        : Effect.fail(new NotFound({ detail: 'There is no such run in this brain' })),
     know: (id) => {
       known.add(id);
     },

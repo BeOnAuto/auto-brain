@@ -29,7 +29,11 @@ describe('an execution whose gateway rejects the spec', () => {
     const { exit, reports } = await executedThroughGateway(gateway);
 
     expect(exit).toEqual(
-      Exit.fail(new Conflict({ detail: 'gateway answered HTTP 404: the model was not found; update the spec' })),
+      Exit.fail(
+        new Conflict({
+          detail: 'gateway answered HTTP 404: the model was not found; update the reasoning function definition',
+        }),
+      ),
     );
     expect(gatewayInternals.filter((internal) => exposedText(exit).includes(internal))).toEqual([]);
     expect(reports).toEqual([
@@ -49,7 +53,7 @@ describe('an execution whose gateway rejects the spec', () => {
     expect(exit).toEqual(
       Exit.fail(
         new Conflict({
-          detail: `gateway answered HTTP 404: the model was not found; update the spec. The provider said: ${gatewayErrorText.slice(0, 300)}`,
+          detail: `gateway answered HTTP 404: the model was not found; update the reasoning function definition. The provider said: ${gatewayErrorText.slice(0, 300)}`,
         }),
       ),
     );
