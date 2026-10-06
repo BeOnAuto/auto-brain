@@ -25,7 +25,7 @@ const openai: Provider = {
   answer: openAiResponse('Acme has 2 rows.'),
 };
 
-const boundedOpenQuery: Schema.JsonObject = {
+const boundedQuery: Schema.JsonObject = {
   type: 'object',
   properties: { query: { type: 'string', maxLength: 80 } },
   required: ['query'],
@@ -40,37 +40,40 @@ async function offeredOnlyTheSearch(provider: Provider, inputSchema: Schema.Json
 }
 
 describe('the warnings of a run whose tools have an input schema', () => {
-  it('say where the input schema of a tool is not portable to the provider of the run, and nothing about other providers', async () => {
-    const forAnthropic = await offeredOnlyTheSearch(anthropic, boundedOpenQuery);
-    const forOpenAi = await offeredOnlyTheSearch(openai, boundedOpenQuery);
+  it("say where the provider of the run may not hold a tool's arguments to its input schema, and nothing for another provider", async () => {
+    const forAnthropic = await offeredOnlyTheSearch(anthropic, boundedQuery);
+    const forOpenAi = await offeredOnlyTheSearch(openai, boundedQuery);
 
-    expect(forAnthropic.warnings).toEqual([
-      {
-        type: 'compatibility',
-        feature: `${searchTool} inputSchema#/properties/query/maxLength`,
-        detail:
-          'maxLength is not enforced while Anthropic models write the answer; an answer outside it fails as output_invalid',
-      },
+    expect([forAnthropic.warnings, forOpenAi.warnings]).toEqual([
+      [
+        {
+          type: 'compatibility',
+          feature: `${searchTool} inputSchema#/properties/query/maxLength`,
+          detail:
+            "maxLength is not enforced while Anthropic models write a tool's arguments; arguments outside it reach the tool, which may refuse them",
+        },
+      ],
+      [],
     ]);
+  });
+
+  it('say where the provider of the run may refuse the input schema itself', async () => {
+    const forOpenAi = await offeredOnlyTheSearch(openai, { type: 'array', items: { type: 'string' } });
+
     expect(forOpenAi.warnings).toEqual([
       {
         type: 'compatibility',
-        feature: `${searchTool} inputSchema#`,
-        detail: 'An object should set "additionalProperties": false; strict structured outputs reject open objects',
+        feature: `${searchTool} inputSchema#/type`,
+        detail: 'The root of the schema should be "type": "object"',
       },
     ]);
   });
 
-  it('say nothing of an input schema portable to the provider of the run', async () => {
-    const closedQuery = {
-      type: 'object',
-      properties: { query: { type: 'string' } },
-      required: ['query'],
-      additionalProperties: false,
-    };
+  it('say nothing of an open object with optional properties, since tools are not sent as strict structured outputs', async () => {
+    const openQuery = { type: 'object', properties: { query: { type: 'string' }, limit: { type: 'integer' } } };
 
-    const forAnthropic = await offeredOnlyTheSearch(anthropic, closedQuery);
-    const forOpenAi = await offeredOnlyTheSearch(openai, closedQuery);
+    const forAnthropic = await offeredOnlyTheSearch(anthropic, openQuery);
+    const forOpenAi = await offeredOnlyTheSearch(openai, openQuery);
 
     expect([forAnthropic.warnings, forOpenAi.warnings]).toEqual([[], []]);
   });

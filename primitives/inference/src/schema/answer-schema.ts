@@ -10,7 +10,7 @@ import {
   type SchemaIssue as Issue,
 } from './json-bounds.ts';
 import { referenceLoopIssues } from './reference-loops.ts';
-import { portabilityOf, type PortabilityIssue } from './schema-portability.ts';
+import { portabilityOf, toolInputPortabilityOf, type PortabilityIssue } from './schema-portability.ts';
 import { shapeIssues } from './schema-shape.ts';
 
 export const schemaLimits = {
@@ -132,9 +132,9 @@ export function compileAnswerSchema(document: unknown): Result.Result<AnswerSche
   );
 }
 
-export function notPortableIn(document: unknown): readonly PortabilityIssue[] {
+export function notPortableAsToolInput(document: unknown): readonly PortabilityIssue[] {
   const bounded = boundedDocument(document);
-  return Result.isSuccess(bounded) ? portabilityOf(bounded.success).not_portable : [];
+  return Result.isSuccess(bounded) ? toolInputPortabilityOf(bounded.success) : [];
 }
 
 export function checkAnswerSchema(document: unknown): SchemaReport {
