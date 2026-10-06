@@ -232,7 +232,7 @@ A brain takes events from outside and records facts of its own, both in the shap
 | `execution_started`, `execution_succeeded`, `execution_rejected`, `execution_failed` | `/executions/<id>`          | `<primitive>/<name>` | `primitive`, `name`, `version`, `caller`, and for a success its `output` when the whole event takes at most 240 KiB and its data nests at most 510 levels, and its `output_bytes` otherwise |
 | `spec_created`, `spec_updated`, `spec_retired`                                       | `/specs/<primitive>/<name>` | none                 | `primitive`, `name`, `version` but on a retirement, `caller`                                                                                                                                |
 
-The event's `type` is the stored type, its `id` the record's id and its `time` the time the stored event holds. Deferrals, tool calls, the run logs of workflows and every other stream kind yield no event. A finish names what ran because the decider records the definition on it (see [Storage](#storage)).
+The event's `type` is the stored type, its `id` the record's id and its `time` the time the stored event holds. Deferrals, tool calls, the run logs of workflows and every other stream kind yield no event, and so does a record that does not decode as an event of its stream, so a reader of the ledger never fails on one. A finish names what ran because the decider records the definition on it (see [Storage](#storage)).
 
 ## Tool calls
 

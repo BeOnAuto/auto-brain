@@ -1,5 +1,5 @@
 import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
-import { Schema } from 'effect';
+import { Option, Schema } from 'effect';
 
 import {
   ExecutionEventSchema,
@@ -28,9 +28,9 @@ const runFactTypes: readonly RunFact['type'][] = [
   'execution_failed',
 ];
 
-const decodeExecutionEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ExecutionEventSchema));
+const decodeExecutionEvent = Schema.decodeUnknownOption(Schema.toCodecJson(ExecutionEventSchema));
 
-const decodeSpecEvent = Schema.decodeUnknownSync(Schema.toCodecJson(SpecEventSchema));
+const decodeSpecEvent = Schema.decodeUnknownOption(Schema.toCodecJson(SpecEventSchema));
 
 function isRunFact(event: ExecutionEvent): event is RunFact {
   return runFactTypes.some((type) => type === event.type);
@@ -74,11 +74,8 @@ export function brainFactOf({ id, stream, data }: RecordedEvent): CloudEvent | u
   const kind = streamKindOf(stream);
   const named = stream.slice(kind.length + 1);
   if (kind === 'specs') {
-    return specFactOf(id, named, decodeSpecEvent(data));
+    return Option.getOrUndefined(Option.map(decodeSpecEvent(data), (event) => specFactOf(id, named, event)));
   }
-  if (kind !== 'executions') {
-    return undefined;
-  }
-  const event = decodeExecutionEvent(data);
-  return isRunFact(event) ? runFactOf(id, named, event) : undefined;
+  const runFact = kind === 'executions' ? Option.filter(decodeExecutionEvent(data), isRunFact) : Option.none();
+  return Option.getOrUndefined(Option.map(runFact, (event) => runFactOf(id, named, event)));
 }
