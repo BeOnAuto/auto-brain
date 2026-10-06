@@ -209,12 +209,14 @@ Measured on 2026-10-06 on an Apple M4 Max, with Node 26.10, the ledger on SQLite
 
 | Store      | Runs in the window | The read    | The aggregate over the records | Open and fill |
 | ---------- | ------------------ | ----------- | ------------------------------ | ------------- |
-| SQLite     | 10,000             | 8.35 (19.7) | 1,613 (2,322)                  | 2.77 s        |
+| SQLite     | 10,000             | 5.87 (6.11) | 1,613 (2,322)                  | 0.69 s        |
 | PostgreSQL | 10,000             | 6.28 (6.69) | 117 (118)                      | 4.31 s        |
 | SQLite     | 100,000            | 107 (111)   | 13,850 (13,974)                | 7.59 s        |
 | PostgreSQL | 100,000            | 58.7 (62.6) | 888 (895)                      | 42.7 s        |
 
-The read grows with the runs of the window, since it reads one row of the table for each, and crosses the bar of 50 ms a page that [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) set at about 48,000 runs in a window on SQLite and 85,000 on PostgreSQL, by the line between the two sizes. A rollup per day is the next step for a window that holds more than about 50,000 runs, as that of a brain that runs that often in 30 days, or a longer window. The aggregate over the records costs 15 to 190 times the read, since it parses every record.
+The read and the open and fill of SQLite at 10,000 runs were measured again on a quiet machine, since the first run of that row was under load; two quiet runs agreed within a tenth of a millisecond and a few hundredths of a second. The aggregate in that row and the other rows are from the first measurement.
+
+The read grows with the runs of the window, since it reads one row of the table for each, and crosses the bar of 50 ms a page that [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) set at about 49,000 runs in a window on SQLite and 85,000 on PostgreSQL, by the line between the two sizes. A rollup per day is the next step for a window that holds more than about 50,000 runs, as that of a brain that runs that often in 30 days, or a longer window. The aggregate over the records costs 15 to 275 times the read, since it parses every record.
 
 **The append.** 1,000 runs each append their start and then their finish, with a record of 2 KiB, one append at a time, to a ledger opened without the projection and to one opened with it. Times are the median and the 95th percentile of the 2,000 appends, in milliseconds:
 
