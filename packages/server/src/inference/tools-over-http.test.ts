@@ -49,6 +49,7 @@ async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]
         org: 'acme',
         record_content: true,
       },
+      crm: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'globex' },
       limitless: {
         command: process.execPath,
         args: [fakeStdioServerPath],
@@ -67,6 +68,9 @@ async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]
   });
   await server.call('POST', `${alpha}/specs/inference`, {
     body: { name: 'echo', source: reasonFunction('graph/echo') },
+  });
+  await server.call('POST', `${alpha}/specs/inference`, {
+    body: { name: 'crm', source: reasonFunction('crm/search') },
   });
   return server;
 }
@@ -151,6 +155,23 @@ describe('running again a run that called tools, over HTTP', () => {
     });
     expect(fake.received()).toHaveLength(1);
     expect(server.modelCalls()).toBe(1);
+  });
+});
+
+describe('a server bound to another org, over HTTP', () => {
+  it('is not offered to the functions of this org, which reach nothing of it', async () => {
+    const fake = await fakeGraph();
+    const server = await serving(fake);
+
+    const refused = await executing(server, 'crm');
+
+    expect(refused).toMatchObject({
+      status: 503,
+      body: { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
+    });
+    expect(refused.headers.get('retry-after')).toBeNull();
+    expect(fake.seen()).toEqual([]);
+    expect(server.modelCalls()).toBe(0);
   });
 });
 

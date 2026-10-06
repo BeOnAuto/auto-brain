@@ -146,7 +146,7 @@ describe('a reason function with tools over MCP', () => {
       'Could not run the reason function “summary”: it called tools but could not finish, because the model stopped answering. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
     );
     expect(plainTextIn(again)).toMatch(
-      /^Could not run the reason function “summary”: an earlier attempt of this run called tools and did not succeed/u,
+      /^Could not run the reason function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something\. So it was not run again/u,
     );
     expect(fake.received()).toHaveLength(1);
   });
