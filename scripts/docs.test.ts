@@ -285,3 +285,15 @@ await test('public workflows are available and link their format and tutorial, w
     assert.equal(existsSync(join(output, `${page}.html`)), false);
   }
 });
+
+await test('computation functions are available in a self-hosted runtime, with their format beside the other formats', () => {
+  const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
+  const format = readFileSync(join(docs, 'reference/computation-format.md'), 'utf8');
+  assert.match(functions, /\| Computation +\| A computation function +\| Available in a self-hosted runtime +\|/u);
+  assert.ok(markdownDestinations(functions).includes('../reference/computation-format.md'));
+  assert.ok(routes.indexOf('/reference/reasoning-format') < routes.indexOf('/reference/computation-format'));
+  assert.ok(routes.indexOf('/reference/computation-format') < routes.indexOf('/reference/workflow-format'));
+  assert.ok(format.includes('Auto Cloud does not offer them yet'));
+  assert.ok(format.includes('compute money in whole minor units'));
+  for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /compute functions?\b/iu);
+});

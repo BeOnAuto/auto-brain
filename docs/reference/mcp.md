@@ -26,19 +26,20 @@ Authorization uses the same organization, brain and operation permissions as the
 | `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                                                    |
 | `/orgs/{org}/brains/{brain}/mcp` | Function and workflow operations for one brain, without a `brain` argument                                                |
 
-Functions and workflows share the definition tools: those tools accept `inference` for reasoning functions and `orchestration` for workflows. Workflow operations also include `send_execution_event`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
+Functions and workflows share the definition tools: those tools accept `inference` for reasoning functions, `computation` for computation functions in a self-hosted runtime, and `orchestration` for workflows. Workflow operations also include `send_execution_event`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
 
 ## Tools
 
-| Work                       | Tools                                                                                                    |
-| -------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Manage brains              | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
-| List available models      | `list_models`, with an optional `provider` filter                                                        |
-| Manage reasoning functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
-| Manage workflows           | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
-| Run and inspect            | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
-| Answer a waiting workflow  | `send_execution_event`                                                                                   |
-| Follow a brain             | `list_brain_events`                                                                                      |
+| Work                         | Tools                                                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Manage brains                | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
+| List available models        | `list_models`, with an optional `provider` filter                                                        |
+| Manage reasoning functions   | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
+| Manage computation functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "computation"`   |
+| Manage workflows             | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
+| Run and inspect              | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
+| Answer a waiting workflow    | `send_execution_event`                                                                                   |
+| Follow a brain               | `list_brain_events`                                                                                      |
 
 Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function and workflow tools are available at `/mcp` and the brain endpoint.
 

@@ -58,6 +58,14 @@ The [workflow adapter](../reference/workflow-format.md) runs workflow specs in t
 | `ORCHESTRATION_NESTED_EXECUTIONS` | `32`    | How many nested executions the server runs at once, from 1 to 1000; shared by every org |
 | `ORCHESTRATION_SWEEP_INTERVAL`    | `PT1S`  | How often the server sweeps the runs, an ISO 8601 duration from `PT0.01S` to `PT1M`     |
 
+The [computation function adapter](../../reference/computation-format.md) runs each run of a computation function in a worker thread of its own, started for the run and ended with it, with this setting:
+
+| Variable              | Default | Purpose                                                                                                                             |
+| --------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `COMPUTATION_WORKERS` | `4`     | How many computation functions the server runs at once, from 1 to 64; a run that finds none free within 10 seconds is `unavailable` |
+
+A worker is stopped when its heap grows past 256 MiB, and it has a stack of 64 MiB, so plan for about 320 MiB for each worker on top of the server's own memory, about 1.25 GiB for the default four. A value outside the range stops the server at start, naming the setting.
+
 The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, where that user may write, as it may only in `/tmp`, `/var/tmp`, `/run/lock` and its home `/home/node` besides, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built. A second `SIGTERM` or `SIGINT` ends the server at once with exit code 1.
 
 ## The ledger in PostgreSQL
