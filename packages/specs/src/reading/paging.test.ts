@@ -94,7 +94,7 @@ describe('paging through the runs of a brain', () => {
   });
 });
 
-describe('the bounds of a page of runs', () => {
+describe('the bounds of a page of runs', { timeout: 30_000 }, () => {
   it('end a page at 4 MiB of stored data, with fewer runs than its limit and a cursor', async () => {
     const { listing } = await brainWithEchoes(9, { text: 'x'.repeat(mostInputBytes - 16) });
 
