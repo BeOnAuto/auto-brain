@@ -34,6 +34,30 @@ export interface OpenedClient {
   readonly closed: Promise<void>;
 }
 
+export interface OutputReport {
+  readonly scrub: (text: string) => string;
+  readonly report: (line: string) => void;
+}
+
+const mostReportedLines = 100;
+
+const mostReportedCharacters = 2000;
+
+export const errorsNoLongerReported = 'The MCP server caused more errors than are reported; the rest is not shown';
+
+export function boundedReport({ scrub, report }: OutputReport, noLongerReported: string): (line: string) => void {
+  let reported = 0;
+  return (line) => {
+    reported += 1;
+    if (reported <= mostReportedLines) {
+      report(scrub(line).slice(0, mostReportedCharacters));
+    }
+    if (reported === mostReportedLines + 1) {
+      report(noLongerReported);
+    }
+  };
+}
+
 const metaField = '_meta';
 
 const clientInfo = { name: 'auto-brain', version: '1.0.0' };

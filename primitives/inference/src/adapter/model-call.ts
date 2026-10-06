@@ -56,7 +56,7 @@ export async function callModel(
     const result = await generateText(call);
     return (
       loop.unanswered(target.provider, result.finishReason, result.usage) ??
-      settledAnswer(target, projected(result, response.id), { kind: 'text' })
+      settledAnswer(target, projected(result, response.id), { kind: 'text' }, request.tools)
     );
   }
   const output = jsonOutput(request.output);
@@ -70,6 +70,7 @@ export async function callModel(
       target,
       projected(result, response.id),
       readOutput(() => result.output),
+      request.tools,
     )
   );
 }

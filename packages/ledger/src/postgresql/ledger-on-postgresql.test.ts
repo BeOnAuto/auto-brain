@@ -9,7 +9,6 @@ import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
 import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
-import { belowTheHorizon } from './postgresql-recorded.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -43,8 +42,23 @@ function pause(milliseconds: number): Promise<void> {
 
 const longestWaitBehindTheHorizon = 10_000;
 
-async function untilReadable(database: string, deadline = Date.now() + longestWaitBehindTheHorizon): Promise<void> {
-  const hidden = await queried(database, `SELECT 1 FROM emt_messages WHERE NOT (${belowTheHorizon}) LIMIT 1`);
+function olderThanEveryWriteOpenOnTheServer(besides: string): string {
+  return `transaction_id < (
+    SELECT coalesce(min(running.xid), pg_snapshot_xmax(pg_current_snapshot()))
+    FROM pg_snapshot_xip(pg_current_snapshot()) AS running(xid)
+    WHERE running.xid::text <> '${besides}'
+  )`;
+}
+
+async function untilReadable(
+  database: string,
+  besides = '',
+  deadline = Date.now() + longestWaitBehindTheHorizon,
+): Promise<void> {
+  const hidden = await queried(
+    database,
+    `SELECT 1 FROM emt_messages WHERE NOT (${olderThanEveryWriteOpenOnTheServer(besides)}) LIMIT 1`,
+  );
   if (hidden.length === 0) {
     return;
   }
@@ -54,7 +68,7 @@ async function untilReadable(database: string, deadline = Date.now() + longestWa
     );
   }
   await pause(20);
-  await untilReadable(database, deadline);
+  await untilReadable(database, besides, deadline);
 }
 
 const lostConnections: Readonly<Error>[] = [];
@@ -104,13 +118,18 @@ async function anAppendLeftOpen(database: string, stream: string, type: string):
   return client;
 }
 
-async function aWriteLeftOpenElsewhere(): Promise<Client> {
+interface OpenWrite {
+  readonly client: Client;
+  readonly id: string;
+}
+
+async function aWriteLeftOpenElsewhere(): Promise<OpenWrite> {
   const client = new Client({ connectionString: server });
   await client.connect();
   onTestFinished(() => client.end());
   await client.query('BEGIN');
-  await client.query('SELECT pg_current_xact_id()');
-  return client;
+  const { rows } = await client.query<{ readonly id: string }>('SELECT pg_current_xact_id()::text AS id');
+  return { client, id: rows[0]?.id ?? '' };
 }
 
 function reading(ledger: OpenLedger['ledger'], selection: RecordedSelection, order: 'asc' | 'desc', cursor?: string) {
@@ -192,12 +211,12 @@ describe.skipIf(skipped)(
     it('lets a write open in another database of the server hide nothing', async () => {
       const { database, ledger } = await aLedgerOnItsOwnDatabase();
       await noting(ledger, 'notes', 'noted', 'before');
-      await untilReadable(database);
       const elsewhere = await aWriteLeftOpenElsewhere();
       await noting(ledger, 'notes', 'noted', 'after');
+      await untilReadable(database, elsewhere.id);
 
       const whileOpen = await reading(ledger, everything, 'asc');
-      await elsewhere.query('COMMIT');
+      await elsewhere.client.query('COMMIT');
 
       expect(details(whileOpen)).toEqual(['before', 'after']);
     });
