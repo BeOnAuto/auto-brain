@@ -44,11 +44,20 @@ function countAt(record: unknown, path: readonly string[]): number | null {
   return typeof found === 'number' && Number.isSafeInteger(found) && found >= 0 ? found : null;
 }
 
-function tokensOf(record: unknown): Pick<RunOutcome, 'inputTokens' | 'outputTokens' | 'cachedTokens'> {
+type Tokens = Pick<RunOutcome, 'inputTokens' | 'outputTokens' | 'cachedTokens'>;
+
+function sumOf(kept: number | null, spent: number | null): number | null {
+  if (kept === null || spent === null) {
+    return kept ?? spent;
+  }
+  return kept + spent;
+}
+
+function tokensAfter(kept: Tokens, record: unknown): Tokens {
   return {
-    inputTokens: countAt(record, ['usage', 'input', 'total']),
-    outputTokens: countAt(record, ['usage', 'output', 'total']),
-    cachedTokens: countAt(record, ['usage', 'input', 'cache_read']),
+    inputTokens: sumOf(kept.inputTokens, countAt(record, ['usage', 'input', 'total'])),
+    outputTokens: sumOf(kept.outputTokens, countAt(record, ['usage', 'output', 'total'])),
+    cachedTokens: sumOf(kept.cachedTokens, countAt(record, ['usage', 'input', 'cache_read'])),
   };
 }
 
@@ -57,22 +66,23 @@ function durationBetween(startedAt: string, finishedAt: string): number | null {
   return Number.isSafeInteger(duration) ? Math.max(0, duration) : null;
 }
 
-type Attempt = Omit<RunOutcome, 'startedDay' | 'startedAt' | 'primitive' | 'name'>;
+type Attempt = Pick<RunOutcome, 'lastStartedAt' | 'status' | 'durationMs'>;
 
 function started(row: RunOutcome | undefined, { primitive, name, at }: Started): RunOutcome {
-  const again: Attempt = { lastStartedAt: at, status: 'started', durationMs: null, ...noTokens };
-  return row === undefined ? { startedDay: dayOf(at), startedAt: at, primitive, name, ...again } : { ...row, ...again };
+  const again: Attempt = { lastStartedAt: at, status: 'started', durationMs: null };
+  return row === undefined
+    ? { startedDay: dayOf(at), startedAt: at, primitive, name, ...again, ...noTokens }
+    : { ...row, ...again };
 }
 
 function finished(row: RunOutcome | undefined, { type, at, record }: Finished): RunOutcome {
   const status = statusOf[type];
-  const tokens = tokensOf(record);
   if (row === undefined) {
     const notStarted = { startedDay: dayOf(at), startedAt: at, lastStartedAt: at, primitive: '', name: '' };
-    return { ...notStarted, status, durationMs: null, ...tokens };
+    return { ...notStarted, status, durationMs: null, ...tokensAfter(noTokens, record) };
   }
   const durationMs = status === 'rejected' ? null : durationBetween(row.lastStartedAt, at);
-  return { ...row, status, durationMs, ...tokens };
+  return { ...row, status, durationMs, ...tokensAfter(row, record) };
 }
 
 export const runOutcomeMapping: RunOutcomeMapping = {

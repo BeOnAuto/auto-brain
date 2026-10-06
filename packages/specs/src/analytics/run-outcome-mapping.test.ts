@@ -101,6 +101,10 @@ describe('the outcome of a rejected run', () => {
   });
 });
 
+function spent(input: number, output: number) {
+  return { usage: { input: { total: input }, output: { total: output } } };
+}
+
 describe('the outcome of a run started again or measured oddly', () => {
   it('keeps its first start when started again, and measures the attempt started last', () => {
     const failed = { type: 'execution_failed', ...fact, at: '2026-10-01T09:01:00.000Z' };
@@ -116,6 +120,29 @@ describe('the outcome of a run started again or measured oddly', () => {
     expect([keptAfter(started, failed, again), keptAfter(started, failed, again, succeeded)]).toEqual([
       { ...firstStart, lastStartedAt: '2026-10-02T10:00:00.000Z', status: 'started', durationMs: null, ...noTokens },
       { ...firstStart, lastStartedAt: '2026-10-02T10:00:00.000Z', status: 'succeeded', durationMs: 5000, ...noTokens },
+    ]);
+  });
+
+  it('adds up the tokens of every attempt, while it measures the last one alone', () => {
+    const rejected = {
+      type: 'execution_rejected',
+      rejection: { reason: 'unavailable', detail: 'The answer is not JSON' },
+      record: spent(500, 40),
+      ...fact,
+      at: '2026-10-01T09:00:02.000Z',
+    };
+    const again = startedAt('2026-10-01T10:00:00.000Z');
+    const succeeded = {
+      type: 'execution_succeeded',
+      output: 'ok',
+      record: spent(100, 10),
+      ...fact,
+      at: '2026-10-01T10:00:00.300Z',
+    };
+
+    expect([keptAfter(started, rejected, again), keptAfter(started, rejected, again, succeeded)]).toMatchObject([
+      { status: 'started', inputTokens: 500, outputTokens: 40, cachedTokens: null },
+      { status: 'succeeded', durationMs: 300, inputTokens: 600, outputTokens: 50, cachedTokens: null },
     ]);
   });
 });

@@ -21,7 +21,8 @@ const description = [
   'A run still going counts nowhere. Durations run from the latest start of a run to its end,',
   'for the runs that succeeded or failed; a rejected run counts in runs and in tokens when it recorded them,',
   'never in durations. A percentile is the nearest rank over those durations, and null when there are none.',
-  'Tokens sum what the runs recorded, 0 when none did; `cached` is the part of `input` read from a cache.',
+  'Tokens sum what the runs recorded, over every attempt of a run started again under its id, 0 when none did;',
+  '`cached` is the part of `input` read from a cache.',
   '`by_day` holds every day of the window, oldest first, and `by_function` the definitions with the most runs first.',
   'Rejected with invalid_input for a window it cannot read, such as a day that is not in the calendar.',
 ].join(' ');

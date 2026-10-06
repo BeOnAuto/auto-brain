@@ -209,7 +209,7 @@ The example shortens `by_day`, which holds every day of the window, oldest first
 | `by_day`      | The same `runs`, `tokens` and `duration_ms` for each `day`                                                                                                                                                                                     |
 | `by_function` | Each definition by `primitive` and `name`, with `runs`, how many of its runs ended; the most runs first, then by `primitive` and `name`                                                                                                        |
 
-A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order. Rejected runs count in `runs` and in `tokens`, never in `duration_ms`; workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended. The answer reads a table the runtime keeps as each run is recorded, so it is as current as the runs themselves. A brain that does not exist returns `not_found`; a retired brain answers like any other.
+A run started again under its `execution_id` counts once: its tokens add up over every attempt that ended, while its duration is that of its last attempt. A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order. Rejected runs count in `runs` and in `tokens`, never in `duration_ms`; workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended. The answer reads a table the runtime keeps as each run is recorded, so it is as current as the runs themselves. A brain that does not exist returns `not_found`; a retired brain answers like any other.
 
 ## Responses and errors
 
