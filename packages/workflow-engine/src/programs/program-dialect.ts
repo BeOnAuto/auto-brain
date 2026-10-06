@@ -17,7 +17,7 @@ interface Scope {
 
 interface Checking {
   readonly why: ReadonlyMap<string, string>;
-  readonly given: ReadonlySet<string> | undefined;
+  readonly unbound: (name: string, node: unknown) => readonly ProgramIssue[];
 }
 
 type Check = (node: unknown, scope: Scope, checking: Checking) => readonly ProgramIssue[];
@@ -64,18 +64,13 @@ function childIssues(node: unknown, scope: Scope, checking: Checking): readonly 
   return allIssuesIn(childrenOf(node), scope, checking);
 }
 
-function variableIssues(node: unknown, scope: Scope, { why, given }: Checking): readonly ProgramIssue[] {
+function variableIssues(node: unknown, scope: Scope, { why, unbound }: Checking): readonly ProgramIssue[] {
   const name = textOf(node, 'name');
   if (scope.variables.has(name)) {
     return [];
   }
   const refusal = why.get(`$${name}`);
-  if (refusal !== undefined) {
-    return issueAt(node, `$${name} ${refusal}`);
-  }
-  return given === undefined || given.has(name)
-    ? []
-    : issueAt(node, `$${name} is not defined; bind it with as, reduce or foreach before using it`);
+  return refusal === undefined ? unbound(name, node) : issueAt(node, `$${name} ${refusal}`);
 }
 
 function callIssues(node: unknown, scope: Scope, checking: Checking): readonly ProgramIssue[] {
@@ -123,9 +118,19 @@ function byPlace(first: ProgramIssue, second: ProgramIssue): number {
 }
 
 export function dialectIssues(program: unknown, { refused, variables }: Dialect): readonly ProgramIssue[] {
-  const checking = {
+  const given = variables === undefined ? undefined : new Set(variables);
+  const checking: Checking = {
     why: new Map(refused.map(({ name, why }: Refusal) => [name, why])),
-    given: variables === undefined ? undefined : new Set(variables),
+    unbound: (name, node) =>
+      given === undefined || given.has(name)
+        ? []
+        : issueAt(node, `$${name} is not defined; bind it with as, reduce or foreach before using it`),
   };
   return issuesIn(program, emptyScope, checking).toSorted(byPlace);
+}
+
+export function freeVariablesIn(program: unknown): readonly string[] {
+  const checking: Checking = { why: new Map(), unbound: (name, node) => issueAt(node, name) };
+  const unbound = issuesIn(program, emptyScope, checking).toSorted(byPlace);
+  return [...new Set(unbound.map(({ detail }) => detail))];
 }

@@ -47,6 +47,7 @@ const brainTools = [
   'list_executions',
   'get_execution_history',
   'list_brain_events',
+  'publish_event',
   'send_execution_event',
 ];
 

@@ -1,7 +1,7 @@
 import { parse, runAst, validate } from '@gabrielbryk/jq-ts';
 
 import type { Json } from '../dsl/json.ts';
-import { dialectIssues, type Dialect } from './program-dialect.ts';
+import { dialectIssues, freeVariablesIn, type Dialect } from './program-dialect.ts';
 import {
   evalOptionsOf,
   failureOf,
@@ -14,6 +14,7 @@ import { childrenOf, issueOf, spanOf, type ProgramIssue } from './program-tree.t
 
 export interface Program {
   readonly run: (input: Json, options: ProgramOptions) => ProgramRun;
+  readonly freeVariables: readonly string[];
 }
 
 export type ProgramIssues = readonly [ProgramIssue, ...ProgramIssue[]];
@@ -53,6 +54,7 @@ export function compileProgram(source: string, dialect: Dialect): CompiledProgra
     validate(tree);
     return {
       program: {
+        freeVariables: freeVariablesIn(tree),
         run: (input, options) => {
           const usage = { work: 0 };
           try {

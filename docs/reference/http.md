@@ -1,6 +1,6 @@
 # HTTP API
 
-The HTTP API provides brain management, reasoning-function, computation-function and workflow definitions, recorded runs, events for waiting workflows, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reasoning-function, computation-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
 
 The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function, `computation` for a computation function and `orchestration` for a workflow.
 
@@ -8,7 +8,7 @@ The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API 
 
 Send credentials as `Authorization: Bearer <key>` and command bodies as UTF-8 JSON with `Content-Type: application/json`. Keep credentials out of prompts and source documents.
 
-Org routes begin at `/v1/orgs/{org}`. Brain routes begin at `/v1/orgs/{org}/brains/{brain}`. Each API key belongs to one org and has permissions for a set of brains. Reading definitions and runs requires `brain:read`; creating, changing or running a function or workflow, and sending an event, require `brain:write`.
+Org routes begin at `/v1/orgs/{org}`. Brain routes begin at `/v1/orgs/{org}/brains/{brain}`. Each API key belongs to one org and has permissions for a set of brains. Reading definitions and runs requires `brain:read`; creating, changing or running a function or workflow, and sending or publishing an event, require `brain:write`.
 
 Request bodies may be at most 1 MiB; compressed bodies are not accepted. Query parameters belong to GET requests. A field cannot be supplied in more than one location.
 
@@ -89,6 +89,48 @@ Supply `execution_id` when you need to inspect failures or retry a request. Reus
 
 A run without a final result may be attempted again after an interruption or recoverable failure, with two exceptions. A workflow run runs once for its execution id. A reasoning function that calls tools is never run again under its id once one of its tools may have been called: when an earlier attempt called a tool and did not succeed, or when the function names tools and an earlier attempt has started and not ended, since it may still be running. The answer is `conflict` with the kind `tools_called`; check what the run's history shows it called, then start a new run under a new id. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
 
+## Publishing events
+
+`publish_event` records an event in a brain, such as a month closed in a ledger or a deal won in a CRM. It is `POST /v1/orgs/{org}/brains/{brain}/events`, relative to the brain like the routes above, and needs `brain:write`. Its body holds `event`, a [CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md) event:
+
+| Attribute                       | Required | Contents                                                                                                      |
+| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
+| `source`                        | Yes      | Where the event comes from, a URI reference such as `/ledger/eu` or `https://acme.example/ledger`             |
+| `type`                          | Yes      | What happened, such as `com.acme.ledger.month-closed`                                                         |
+| `id`                            | No       | Unique among the events of its source; the runtime makes one when you leave it out                            |
+| `time`                          | No       | When it happened, in RFC 3339 such as `2026-10-01T09:00:00Z`; the runtime takes the time it records the event |
+| `subject`                       | No       | What the event is about within its source                                                                     |
+| `specversion`                   | No       | `1.0`                                                                                                         |
+| `datacontenttype`, `dataschema` | No       | The media type of `data`, and the absolute URI of a schema it follows                                         |
+| `data`                          | No       | Any JSON value                                                                                                |
+
+`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. Any other attribute is an extension: its name is lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given.
+
+```http
+POST /v1/orgs/acme/brains/finance/events
+Content-Type: application/json
+
+{
+  "event": {
+    "source": "/ledger/eu",
+    "type": "com.acme.ledger.month-closed",
+    "id": "2026-09",
+    "subject": "september",
+    "data": { "region": "eu", "revenue": 120000 }
+  }
+}
+```
+
+It returns 200 with the event's `id` and `time`, and `recorded_at`, when the brain recorded it:
+
+```json
+{ "id": "2026-09", "time": "2026-10-01T09:00:00.000Z", "recorded_at": "2026-10-01T09:00:00.000Z" }
+```
+
+A brain holds one event for each `source` and `id`. Publishing the same event again records nothing and returns the first `id`, `time` and `recorded_at`, so a request can be retried with the same id; a retry that leaves out `time` is the same event. A different event with the same `source` and `id` returns `conflict`. Without an `id`, every request records a new event.
+
+The event, with its id and time filled in, may take at most 240 KiB as JSON. The types `execution_started`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `spec_created`, `spec_updated` and `spec_retired`, and sources beginning `/executions/` or `/specs/`, name the facts the runtime records itself; an event that uses them returns `invalid_input` at `/event/type` or `/event/source`. `list_brain_events` shows each published event as an `event_published` event.
+
 ## Run history and brain events
 
 These routes are relative to `/v1/orgs/{org}/brains/{brain}` and need `brain:read`:
@@ -101,21 +143,21 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}` and need `brain:rea
 
 `list_executions` returns `executions`, newest first by when each run first started. A listed run has the fields `get_execution` returns, without `output`, `record` and the detail and issues of a rejection; a rejection shows its `reason`, with `kind` and `because` when the function gave them. `status` keeps the runs whose status is `started`, `succeeded`, `rejected` or `failed`, and `primitive` and `name` keep the runs of one definition.
 
-`get_execution_history` returns the `events` of one run, oldest first unless `order` is `desc`: the facts the runtime recorded about the run, each start and how it ended. Tool-using runs also record `tool_call_started` and `tool_call_answered`. A run that does not exist in the brain returns `not_found`. For a workflow, the history also holds one `workflow_input_applied` event for each input its run took. `list_brain_events` returns the `events` of the whole brain, newest first unless `order` is `asc`: definitions created, updated and retired, runs started and ended, tool calls and the inputs workflow runs took. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the brain recorded from that time on, in either order.
+`get_execution_history` returns the `events` of one run, oldest first unless `order` is `desc`: the facts the runtime recorded about the run, each start and how it ended. Tool-using runs also record `tool_call_started` and `tool_call_answered`. A run that does not exist in the brain returns `not_found`. For a workflow, the history also holds one `workflow_input_applied` event for each input its run took. `list_brain_events` returns the `events` of the whole brain, newest first unless `order` is `asc`: definitions created, updated and retired, runs started and ended, tool calls, the inputs workflow runs took and the events published to the brain. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the brain recorded from that time on, in either order.
 
 Tool-call events identify the server, tool, argument and result sizes and digests, and how each call ended. Content is omitted unless the operator enables `record_content`. Recorded content is scrubbed and bounded; the history API shows at most 2 KiB of each recorded argument or result. Anyone with read access to the brain can read that history. A started call without an answer may have had an external effect; absence of an answer does not prove it was cancelled before acting.
 
 Each event has these fields:
 
-| Field     | Contents                                                                                                                                                                               |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`      | The event's id, which also works as a `cursor` to read on after it                                                                                                                     |
-| `at`      | When it happened, by its own clock, in ISO 8601 UTC                                                                                                                                    |
-| `type`    | `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `workflow_input_applied`, `spec_created`, `spec_updated` or `spec_retired` |
-| `summary` | A sentence in plain language                                                                                                                                                           |
-| `data`    | The facts of the event, at most 4 KiB as JSON                                                                                                                                          |
+| Field     | Contents                                                                                                                                                                                                  |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`      | The event's id, which also works as a `cursor` to read on after it                                                                                                                                        |
+| `at`      | When it happened, by its own clock, in ISO 8601 UTC                                                                                                                                                       |
+| `type`    | `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `workflow_input_applied`, `spec_created`, `spec_updated`, `spec_retired` or `event_published` |
+| `summary` | A sentence in plain language                                                                                                                                                                              |
+| `data`    | The facts of the event, at most 4 KiB as JSON                                                                                                                                                             |
 
-In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count. A `workflow_input_applied` event shows the kind and key of the input, how many steps it moved and the first five, each with its task, run and outcome, the kind and because of a function's rejection that has them, in its words too, and the kinds of what the run did next; it never shows the run's data.
+In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count. A `workflow_input_applied` event shows the kind and key of the input, how many steps it moved and the first five, each with its task, run and outcome, the kind and because of a function's rejection that has them, in its words too, and the kinds of what the run did next; it never shows the run's data. An `event_published` event shows the published event's `event_id`, `event_type`, `source`, `subject` and `time`, the size of its data as `data_bytes`, and which attributes the runtime `filled` in.
 
 Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: `primitive` and `name` apply to the runs a page looked at, records with no event type are left out, a page stops after loading 4 MiB of stored data, and with `status` or `type` after looking at 1,000 runs or records. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
 

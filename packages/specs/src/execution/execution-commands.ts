@@ -15,7 +15,7 @@ export interface ExecutionStart extends ExecutionRequest {
 }
 
 type WithoutFact<Event> = Event extends ExecutionFinished | ExecutionDeferred | ToolCallEvent
-  ? Omit<Event, 'by' | 'at'>
+  ? Omit<Event, 'by' | 'at' | 'primitive' | 'name' | 'spec_version'>
   : never;
 
 export type ExecutionResult = WithoutFact<ExecutionFinished>;

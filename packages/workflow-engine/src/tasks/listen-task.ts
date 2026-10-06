@@ -1,18 +1,8 @@
 import { evaluate } from '../dsl/evaluation.ts';
-import { enclosedBody } from '../dsl/expressions.ts';
-import {
-  entriesOf,
-  field,
-  isObject,
-  jsonEquals,
-  objectField,
-  textField,
-  type Json,
-  type JsonEntry,
-  type JsonObject,
-} from '../dsl/json.ts';
+import { field, isObject, objectField, textField, type JsonObject } from '../dsl/json.ts';
 import type { Located } from '../dsl/policy-checks.ts';
 import { eventFiltersOf } from '../dsl/task-policy.ts';
+import { hasAttributes } from '../filters/event-filter.ts';
 import type { FrameBody, ValueId } from '../machine/run-state.ts';
 import { doneOf, waitingOn, type BodyAdvance, type Invocation, type Signal } from '../runner/advance.ts';
 
@@ -20,24 +10,10 @@ type ListenBody = Extract<FrameBody, { readonly kind: 'listen' }>;
 
 type EventFilter = (event: JsonObject) => boolean;
 
-function propertyMatches(expected: Json, actual: Json, invocation: Invocation): boolean {
-  const body = enclosedBody(expected);
-  if (body === undefined) {
-    return jsonEquals(expected, actual);
-  }
-  const verdict = evaluate(
-    body,
-    actual,
-    invocation.variables,
-    invocation.machine.session.placeAt(invocation.entry.reference),
-  );
-  return verdict !== null && verdict !== false;
-}
-
 function acceptsBy(properties: JsonObject, invocation: Invocation): EventFilter {
   return (event) =>
-    entriesOf(properties).every(([name, expected]: JsonEntry) =>
-      propertyMatches(expected, field(event, name) ?? null, invocation),
+    hasAttributes(event, properties, (expression, value) =>
+      evaluate(expression, value, invocation.variables, invocation.machine.session.placeAt(invocation.entry.reference)),
     );
 }
 

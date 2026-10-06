@@ -4,6 +4,8 @@ import { ExecutionRejectionSchema } from './execution.ts';
 
 const fact = { by: Schema.String, at: Schema.String };
 
+const ofTheDefinition = { primitive: Schema.String, name: Schema.String, spec_version: Schema.Int };
+
 const ExecutionStartedSchema = Schema.Struct({
   type: Schema.Literal('execution_started'),
   primitive: Schema.String,
@@ -24,16 +26,22 @@ const ExecutionSucceededSchema = Schema.Struct({
   type: Schema.Literal('execution_succeeded'),
   output: Schema.Json,
   record: Schema.JsonObject,
+  ...ofTheDefinition,
   ...fact,
 });
 
 const ExecutionRejectedSchema = Schema.Struct({
   type: Schema.Literal('execution_rejected'),
   rejection: ExecutionRejectionSchema,
+  ...ofTheDefinition,
   ...fact,
 });
 
-const ExecutionFailedSchema = Schema.Struct({ type: Schema.Literal('execution_failed'), ...fact });
+const ExecutionFailedSchema = Schema.Struct({
+  type: Schema.Literal('execution_failed'),
+  ...ofTheDefinition,
+  ...fact,
+});
 
 const ToolCallOutcomeSchema = Schema.Literals(['result', 'tool_error', 'server_failure', 'timed_out', 'cancelled']);
 

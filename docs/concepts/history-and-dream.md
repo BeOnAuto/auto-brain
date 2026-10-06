@@ -18,6 +18,12 @@ Standalone recall definitions are planned. Today you can read a brain's recorded
 
 These reads page through long histories and keep working after a brain is retired. Events show the sizes of inputs and outputs rather than the values; `get_execution` returns a run's result in full. A brain's own creation and retirement belong to its organization and are not among its events. A workflow run's history also shows, for each input the run took, the steps that moved and how they ended. See [Run history and brain events](../reference/http.md#run-history-and-brain-events).
 
+## Publishing events
+
+A brain's history can also hold what happened elsewhere, such as a month closed in a ledger or a deal won in a CRM. `publish_event` records such an event in the brain, in the CloudEvents shape that many systems already send: where it comes from, what happened, and optionally what it is about, when it happened and its data. The event then appears in `list_brain_events` beside the definitions and runs the brain recorded.
+
+An event is identified by its source and its id, and a brain keeps one event for each pair. Publishing the same event again records nothing and returns what was recorded the first time, so a sender can retry safely; a different event under the same source and id is refused. The brain's own facts, such as a run that finished or a definition that changed, use types and sources the brain keeps for itself, so a published event cannot pass for one. Starting a workflow when an event arrives is planned, as the event trigger in [Brain terminology](terminology.md#definitions-and-runs). See [Publishing events](../reference/http.md#publishing-events) for the attributes and limits.
+
 ## Dream
 
 Coming soon.

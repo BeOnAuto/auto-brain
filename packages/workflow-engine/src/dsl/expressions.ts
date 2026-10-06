@@ -72,6 +72,11 @@ export function checkExpression(source: string): string | undefined {
   return issue === undefined ? undefined : problemOf(source, issue);
 }
 
+export function freeVariablesOf(source: string): readonly string[] {
+  const program = compile(source);
+  return 'issues' in program ? [] : program.program.freeVariables;
+}
+
 function evaluationOf(source: string, run: ProgramRun): Evaluation {
   if (run.ran === 'answered') {
     return { value: run.value, work: run.work };
