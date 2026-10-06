@@ -55,7 +55,7 @@ export async function callModel(
   if (request.output.type === 'text') {
     const result = await generateText(call);
     return (
-      loop.unanswered(target.provider, result.finishReason) ??
+      loop.unanswered(target.provider, result.finishReason, result.usage) ??
       settledAnswer(target, projected(result, response.id), { kind: 'text' })
     );
   }
@@ -65,7 +65,7 @@ export async function callModel(
   }
   const result = await generateText({ ...call, output: output.success });
   return (
-    loop.unanswered(target.provider, result.finishReason) ??
+    loop.unanswered(target.provider, result.finishReason, result.usage) ??
     settledAnswer(
       target,
       projected(result, response.id),

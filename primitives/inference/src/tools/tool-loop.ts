@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { FinishReason, ModelMessage, Tool } from 'ai';
 import { Result } from 'effect';
 
+import { tokenUsage, type SdkUsage } from '../adapter/answer-mapping.ts';
 import { ToolsStopped } from '../failure/tools-stopped.ts';
 import type { ModelTools } from '../model/model-request.ts';
 import { finalStepMessages, type StepMessage } from './final-step.ts';
@@ -19,18 +20,27 @@ export interface ToolLoop {
   readonly tools: Readonly<Record<string, Tool>>;
   readonly prepareStep: (step: { readonly messages: readonly StepMessage[] }) => FinalStep | NoChange;
   readonly stopWhen: () => boolean;
-  readonly unanswered: (provider: string, finishReason: FinishReason) => Result.Result<never, ToolsStopped> | undefined;
+  readonly unanswered: (
+    provider: string,
+    finishReason: FinishReason,
+    usage: SdkUsage,
+  ) => Result.Result<never, ToolsStopped> | undefined;
 }
 
 function neverUnanswered(): undefined {}
 
-function unanswered(provider: string, finishReason: FinishReason): Result.Result<never, ToolsStopped> | undefined {
+function unanswered(
+  provider: string,
+  finishReason: FinishReason,
+  usage: SdkUsage,
+): Result.Result<never, ToolsStopped> | undefined {
   return finishReason === 'tool-calls'
     ? Result.fail(
         new ToolsStopped({
           detail: `${provider} kept calling tools in the step that withheld them, instead of answering`,
           provider,
           because: 'no_answer',
+          usage: tokenUsage(usage),
         }),
       )
     : undefined;
