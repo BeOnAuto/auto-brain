@@ -1,5 +1,5 @@
 import type { Decider } from '@beonauto/operations';
-import { Effect, Result } from 'effect';
+import { Effect, Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { ExecutionEventSchema, type ExecutionEvent } from '../execution/execution-events.ts';
@@ -28,8 +28,13 @@ function started(name: string, at: string, primitive = 'inference'): ExecutionEv
   return { type: 'execution_started', primitive, name, spec_version: 1, input: {}, ...fact, at };
 }
 
-function succeeded(at: string, record = {}): ExecutionEvent {
-  return { type: 'execution_succeeded', output: 'ok', record, ...fact, at };
+function succeeded(
+  at: string,
+  record: Schema.JsonObject = {},
+  name = 'triage',
+  primitive = 'inference',
+): ExecutionEvent {
+  return { type: 'execution_succeeded', output: 'ok', record, primitive, name, spec_version: 1, ...fact, at };
 }
 
 function running(specs: Harness, stream: string, ...events: readonly ExecutionEvent[]): Promise<unknown> {
@@ -49,6 +54,9 @@ async function aBrainWithRuns(): Promise<Harness> {
     type: 'execution_rejected',
     rejection,
     record: { usage: { input: { total: 10, cache_read: 0 }, output: { total: 2 } } },
+    primitive: 'inference',
+    name: 'triage',
+    spec_version: 1,
     ...fact,
     at: '2026-10-05T10:00:00.500Z',
   });
@@ -56,7 +64,7 @@ async function aBrainWithRuns(): Promise<Harness> {
     specs,
     'brain/acme/alpha/executions/r3',
     started('approval', '2026-10-06T08:00:00.000Z', 'orchestration'),
-    succeeded('2026-10-06T08:00:02.000Z'),
+    succeeded('2026-10-06T08:00:02.000Z', {}, 'approval', 'orchestration'),
   );
   await running(specs, 'brain/acme/alpha/executions/r4', started('draft', '2026-10-06T09:00:00.000Z'));
   await running(

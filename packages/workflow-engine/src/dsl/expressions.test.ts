@@ -4,6 +4,7 @@ import {
   checkExpression,
   enclosedBody,
   expressionSource,
+  freeVariablesOf,
   mostCompiledCharacters,
   runExpression,
 } from './expressions.ts';
@@ -108,5 +109,30 @@ describe('a failing expression', () => {
     expect(runExpression('error("x" * 5000)', null, {}, budget)).toMatchObject({
       problem: `${problem.slice(0, 1000)}…`,
     });
+  });
+});
+
+describe('the free variables of an expression', () => {
+  it('are the variables it reads and does not bind itself, each named once', () => {
+    expect(freeVariablesOf('.region == "eu"')).toEqual([]);
+    expect(freeVariablesOf('.id == $context.id and .by == $workflow.input.by and $context.on')).toEqual([
+      'context',
+      'workflow',
+    ]);
+    expect(freeVariablesOf('"\\($input.who) was here"')).toEqual(['input']);
+  });
+
+  it('leave out what as, reduce and foreach bind, only where they bind it', () => {
+    expect(freeVariablesOf('.a as $a | $a + 1')).toEqual([]);
+    expect(freeVariablesOf('.items as [$first, {name: $name}] | $first + $name')).toEqual([]);
+    expect(freeVariablesOf('$a as $a | $a')).toEqual(['a']);
+    expect(freeVariablesOf('reduce .[] as $item (0; . + $item)')).toEqual([]);
+    expect(freeVariablesOf('reduce .[] as $item ($item; . + 1)')).toEqual(['item']);
+    expect(freeVariablesOf('[foreach .[] as $n (0; . + $n; [$n, .])]')).toEqual([]);
+    expect(freeVariablesOf('[foreach .[] as $n (0; . + $n)] | $n')).toEqual(['n']);
+  });
+
+  it('are none for an expression that does not compile, which a check refuses', () => {
+    expect(freeVariablesOf('.[')).toEqual([]);
   });
 });

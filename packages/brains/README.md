@@ -43,7 +43,7 @@ Before a handler runs, the dispatcher rejects with `forbidden` a caller of anoth
 
 ## What happened in a brain
 
-`defineListBrainEvents(presenters)` makes `list_brain_events`, a brain query at `GET /events` relative to the brain, under `brain:read`. It takes the presenters as a parameter, the way `makeSpecOperations` takes primitives, so this package depends on `@beonauto/operations` alone; the server passes the presenters of every package that owns a stream kind, today `makeSpecPresenters` of `@beonauto/specs`. At least one presenter must show at least one type of event.
+`defineListBrainEvents(presenters)` makes `list_brain_events`, a brain query at `GET /events` relative to the brain, under `brain:read`. It takes the presenters as a parameter, the way `makeSpecOperations` takes primitives, so this package depends on `@beonauto/operations` alone; the server passes the presenters of every package that owns a stream kind, today `makeSpecPresenters` of `@beonauto/specs`, which presents the specs, the executions and the events published to the brain with `publish_event`. At least one presenter must show at least one type of event.
 
 | Input    | What it does                                                                                                                          |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |

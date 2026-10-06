@@ -20,7 +20,8 @@ import { eventsFound } from '../plain-language/feed-words.ts';
 function descriptionFor(publicTypes: readonly string[]): string {
   return [
     'Follows what happened in the brain, one page at a time, newest first, or oldest first when `order` is asc:',
-    'what its specs and executions recorded, such as specs created, updated and retired, and executions started and how they ended.',
+    'what its specs and executions recorded, such as specs created, updated and retired, and executions started and how they ended,',
+    'and the events published to it with publish_event, each with its type, source and time and the size of its data.',
     'Each event carries its `id`, `at`, when it happened by its own clock, its `type`,',
     'a `summary` in plain words, and its `data`, at most 4 KiB as JSON.',
     `\`type\` keeps the events of one type: ${publicTypes.join(', ')}.`,

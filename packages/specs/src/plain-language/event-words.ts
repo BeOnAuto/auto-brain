@@ -1,4 +1,4 @@
-import { capitalized, explanationOf, plainNumber } from '@beonauto/operations';
+import { capitalized, explanationOf, plainNumber, quoted } from '@beonauto/operations';
 
 import type { ToolCallAnswered } from '../execution/execution-events.ts';
 import type { ExecutionRejection } from '../execution/execution.ts';
@@ -52,4 +52,8 @@ export function toolCalled(number: number, server: string, tool: string): string
 
 export function toolAnswered(number: number, outcome: ToolCallAnswered['outcome']): string {
   return `Tool call ${plainNumber(number)} ${answers[outcome]}.`;
+}
+
+export function eventPublished(type: string): string {
+  return `The event ${quoted(type)} was published to the brain.`;
 }

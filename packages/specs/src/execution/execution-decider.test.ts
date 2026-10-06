@@ -14,32 +14,38 @@ const greeting = { primitive: 'echo', name: 'greet', input: { who: 'Ada', tags: 
 
 const started: ExecutionEvent = { type: 'execution_started', ...greeting, spec_version: 1, ...start };
 
+const ofGreet = { primitive: 'echo', name: 'greet', spec_version: 1 };
+
 const succeeded: ExecutionEvent = {
   type: 'execution_succeeded',
   output: 'Hello Ada',
   record: { model: 'x' },
+  ...ofGreet,
   ...finish,
 };
 
 const rejectedInput: ExecutionEvent = {
   type: 'execution_rejected',
   rejection: { reason: 'invalid_input', detail: 'No', issues: [{ detail: 'Expected a name', pointer: '/input/who' }] },
+  ...ofGreet,
   ...finish,
 };
 
 const unavailable: ExecutionEvent = {
   type: 'execution_rejected',
   rejection: { reason: 'unavailable', detail: 'The model is busy' },
+  ...ofGreet,
   ...finish,
 };
 
 const conflicted: ExecutionEvent = {
   type: 'execution_rejected',
   rejection: { reason: 'conflict', detail: 'The model takes no seed; update the spec' },
+  ...ofGreet,
   ...finish,
 };
 
-const failed: ExecutionEvent = { type: 'execution_failed', ...finish };
+const failed: ExecutionEvent = { type: 'execution_failed', ...ofGreet, ...finish };
 
 function stateAfter(...events: readonly ExecutionEvent[]) {
   return events.reduce((state, event) => executionDecider.evolve(state, event), executionDecider.initialState);
@@ -105,6 +111,12 @@ describe('finishing an execution', () => {
       decided(finishing({ type: 'execution_succeeded', output: 'Hello Ada', record: { model: 'x' } }), started),
     ).toStrictEqual(Result.succeed([succeeded]));
     expect(decided(finishing({ type: 'execution_failed' }), started)).toStrictEqual(Result.succeed([failed]));
+  });
+
+  it('records the primitive, the name and the version of the definition the latest attempt ran', () => {
+    expect(
+      decided(finishing({ type: 'execution_failed' }), started, unavailable, { ...started, spec_version: 2 }),
+    ).toStrictEqual(Result.succeed([{ ...failed, spec_version: 2 }]));
   });
 
   it('records the result of another attempt after unavailable or a failure', () => {
