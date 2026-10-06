@@ -52,8 +52,21 @@ function sweptBy({ engine, resume, trouble }: LoopParts, now: number): Effect.Ef
   );
 }
 
+function nextDueOf({ timers, trouble }: LoopParts): Effect.Effect<number | null> {
+  return timers
+    .nextDueAt()
+    .pipe(
+      Effect.catchCause((cause) =>
+        Effect.as(
+          trouble('The next due time of the timers could not be read; the loop waits for the next sweep', cause),
+          null,
+        ),
+      ),
+    );
+}
+
 export function startLoop(parts: LoopParts): HostLoop {
-  const { clock, timers, sweepEveryMs } = parts;
+  const { clock, sweepEveryMs } = parts;
   const plan = {
     wakeAt: Number.NEGATIVE_INFINITY,
     armedSince: Number.POSITIVE_INFINITY,
@@ -67,10 +80,14 @@ export function startLoop(parts: LoopParts): HostLoop {
       plan.lastSweptAt = now;
     }
     return Effect.andThen(firedDue(parts, now), sweepDue ? sweptBy(parts, now) : Effect.void);
-  });
+  }).pipe(
+    Effect.catchCause((cause) =>
+      parts.trouble('The timers of the runs could not be read; the loop tries again', cause),
+    ),
+  );
   const wait = Effect.gen(function* () {
     plan.armedSince = Number.POSITIVE_INFINITY;
-    const nextDue = (yield* timers.nextDueAt()) ?? Number.POSITIVE_INFINITY;
+    const nextDue = (yield* nextDueOf(parts)) ?? Number.POSITIVE_INFINITY;
     plan.wakeAt = Math.min(nextDue, plan.lastSweptAt + sweepEveryMs, plan.armedSince);
     plan.signal = Promise.withResolvers<void>();
     const { promise } = plan.signal;

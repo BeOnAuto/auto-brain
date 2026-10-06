@@ -8,6 +8,7 @@ import { Effect, Function, Schema } from 'effect';
 
 import type { DatabaseSettings } from './src/database/host-databases.ts';
 import { openWorkflowHost, type WorkflowHost } from './src/host/workflow-host.ts';
+import { recordedReactions } from './src/reaction-testing/recorded-reactions.ts';
 
 const [settingsText = '', mode = '', settlementsFile = '', sweepEveryMs = '20'] = process.argv.slice(2);
 
@@ -75,6 +76,7 @@ const host = await openWorkflowHost({
   },
   sweepEveryMs: Number(sweepEveryMs),
   mostCallsAtOnce: 1,
+  reactions: recordedReactions().options,
 });
 
 if (mode === 'finish') {

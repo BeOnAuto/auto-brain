@@ -12,6 +12,25 @@ type Decision = Result.Result<readonly SpecEvent[], Rejection<'not_found' | 'con
 
 const nothingToRecord: Decision = Result.succeed([]);
 
+export const mostReactingDefinitions = 1024;
+
+function reactingOtherThan(registry: SpecRegistry, name: string): number {
+  return [...registry.values()].filter((spec) => spec.status === 'active' && spec.reacts === true && spec.name !== name)
+    .length;
+}
+
+function beyondTheReactingBound(
+  primitive: string,
+  registry: SpecRegistry,
+  { name, content }: Pick<SpecCreation, 'name' | 'content'>,
+): Conflict | undefined {
+  return content.reacts === true && reactingOtherThan(registry, name) >= mostReactingDefinitions
+    ? new Conflict({
+        detail: `The brain already has ${mostReactingDefinitions} ${definitionResourceLabel(primitive)}s that start on their own, the most a brain holds; retire one, or save this one without its schedule`,
+      })
+    : undefined;
+}
+
 function recording(event: SpecEvent): Decision {
   return Result.succeed([event]);
 }
@@ -52,9 +71,13 @@ function decideCreation(
     return Result.fail(takenBy(rules.primitive, existing));
   }
   const active = activeIn(registry);
-  return active < rules.mostActive
+  if (active >= rules.mostActive) {
+    return Result.fail(tooMany(rules, active, 'creating another'));
+  }
+  const beyond = beyondTheReactingBound(rules.primitive, registry, { name, content });
+  return beyond === undefined
     ? recording({ type: 'spec_created', name, version: 1, content, by, at })
-    : Result.fail(tooMany(rules, active, 'creating another'));
+    : Result.fail(beyond);
 }
 
 function decideUpdate(
@@ -79,9 +102,13 @@ function decideUpdate(
     return nothingToRecord;
   }
   const active = activeIn(registry);
-  return active > rules.mostActive
-    ? Result.fail(tooMany(rules, active, 'saving another version'))
-    : recording({ type: 'spec_updated', name, version: existing.version + 1, content, by, at });
+  if (active > rules.mostActive) {
+    return Result.fail(tooMany(rules, active, 'saving another version'));
+  }
+  const beyond = beyondTheReactingBound(primitive, registry, { name, content });
+  return beyond === undefined
+    ? recording({ type: 'spec_updated', name, version: existing.version + 1, content, by, at })
+    : Result.fail(beyond);
 }
 
 function decideRetirement(

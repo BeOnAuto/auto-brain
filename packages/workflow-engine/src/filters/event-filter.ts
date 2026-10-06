@@ -13,7 +13,7 @@ import {
 } from '../dsl/json.ts';
 import { forbidden, rejection, type Rejection } from '../dsl/policy-checks.ts';
 import { caughtRaise } from '../dsl/raised-error.ts';
-import { eventFilterRejections } from '../dsl/task-policy.ts';
+import { eventFilterRejections, eventFiltersOf, type LocatedFilter } from '../dsl/task-policy.ts';
 import { pointerTo } from '../dsl/tasks.ts';
 import type { DslError } from '../machine/dsl-error.ts';
 import { meterOf } from '../runner/run-tables.ts';
@@ -117,6 +117,34 @@ export function literalFilterOf(filter: Json | undefined, pointer: string): Lite
   const dataNeedsVariables = needsVariables(field(attributes, 'data'));
   return {
     filter: { reference: pointer, type, attributes: testedOf(attributes, dataNeedsVariables), dataNeedsVariables },
+  };
+}
+
+export function brainWideFilterOf(filter: Json | undefined): JsonObject | undefined {
+  const attributes = isObject(filter) ? objectField(filter, 'with') : undefined;
+  const type = attributes === undefined ? undefined : field(attributes, 'type');
+  return typeof type === 'string' && type !== '' && enclosedBody(type) === undefined ? attributes : undefined;
+}
+
+export function listenFiltersOf(task: Json | undefined): readonly JsonObject[] {
+  const to = objectField(objectField(isObject(task) ? task : {}, 'listen') ?? {}, 'to') ?? {};
+  return eventFiltersOf(to, '').flatMap(([filter]: LocatedFilter) => {
+    const attributes = brainWideFilterOf(filter);
+    return attributes === undefined ? [] : [attributes];
+  });
+}
+
+export function listenerFilterOf(attributes: JsonObject, reference: string): LiteralFilter | undefined {
+  const type = field(attributes, 'type');
+  if (typeof type !== 'string' || brainWideFilterOf({ with: attributes }) === undefined) {
+    return undefined;
+  }
+  const tested = entriesOf(attributes).filter(([, expected]: JsonEntry) => !needsVariables(expected));
+  return {
+    reference,
+    type,
+    attributes: Object.fromEntries(tested),
+    dataNeedsVariables: tested.length < entriesOf(attributes).length,
   };
 }
 

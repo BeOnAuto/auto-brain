@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
 import { Conflict, type Decider } from '@beonauto/operations';
-import { Effect, Equal, Result, Schema } from 'effect';
+import { Effect, Equal, Option, Result, Schema } from 'effect';
 
 import { CloudEventSchema, type CloudEvent } from './cloud-event.ts';
 import { instantOf } from './event-time.ts';
@@ -11,10 +11,20 @@ const FilledAttributeSchema = Schema.Literals(['id', 'time']);
 
 export type FilledAttribute = typeof FilledAttributeSchema.Type;
 
+const EmitterSchema = Schema.Struct({
+  execution_id: Schema.String,
+  workflow: Schema.String,
+  version: Schema.Int,
+});
+
+export type Emitter = typeof EmitterSchema.Type;
+
 export const EventPublishedSchema = Schema.Struct({
   type: Schema.Literal('event_published'),
   event: CloudEventSchema,
   filled: Schema.Array(FilledAttributeSchema),
+  emitted_by: Schema.optionalKey(EmitterSchema),
+  depth: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))),
   by: Schema.String,
   at: Schema.String,
 });
@@ -75,4 +85,10 @@ export function recordedPublication(state: PublishedEventState): Effect.Effect<E
   return state === undefined
     ? Effect.die(new Error('The stream of a published event holds no event once it is published'))
     : Effect.succeed(state);
+}
+
+const decodePublished = Schema.decodeUnknownOption(Schema.toCodecJson(EventPublishedSchema));
+
+export function publishedEventOf(data: unknown): EventPublished | undefined {
+  return Option.getOrUndefined(decodePublished(data));
 }

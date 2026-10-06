@@ -9,9 +9,12 @@ export {
 } from './dispatch/dispatch-watermark.ts';
 export {
   RunOutputSchema,
+  type ArmListener,
   type ArmTimer,
   type CancelCall,
+  type CancelListener,
   type CancelTimer,
+  type EmitEvent,
   type RunOutput,
   type Settle,
   type StartCall,
@@ -24,6 +27,7 @@ export { readDuration } from './dsl/durations.ts';
 export {
   field,
   isObject,
+  valueAtPointer,
   jsonBytesOf,
   measureOf,
   mostValueDepth,
@@ -41,9 +45,13 @@ export { runCacheBounds, runCacheOf, type RunCache, type RunCacheBounds } from '
 export { workflowEngineOf } from './engine/engine.ts';
 export { SplitDecision, runLoopOf, type RunDecision } from './engine/run-loop.ts';
 export { submissionOf } from './engine/submission.ts';
-export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
+export type { EnginePorts } from './engine/engine-ports.ts';
+export type { Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
 export {
+  brainWideFilterOf,
+  listenFiltersOf,
+  listenerFilterOf,
   literalFilterOf,
   matchEvent,
   type FilterVerdict,
@@ -71,6 +79,9 @@ export { InputReceiptSchema, inputTimeOf, receiptOf, type InputReceipt } from '.
 export { InstantSchema, clampedAt } from './machine/instant.ts';
 export {
   mostCallArgumentsBytes,
+  mostEmittedEventBytes,
+  mostEmittedEventSize,
+  mostEmittedEvents,
   mostEventBytes,
   mostEventIdLength,
   mostExpressionWork,
@@ -91,6 +102,7 @@ export {
   RunInputSchema,
   type CallAnswered,
   type CancelRequested,
+  type EventOffered,
   type EventReceived,
   type RunInput,
   type RunInputKind,
@@ -104,6 +116,7 @@ export {
   type ArmedTimer,
   type Branch,
   type CursorCurrent,
+  type EmittedEvents,
   type FrameBody,
   type HeldValue,
   type InboxState,
@@ -161,6 +174,14 @@ export {
   type StatePatch,
 } from './run-log/state-patch.ts';
 export type { MachineOptions } from './runner/run-descriptors.ts';
+export type {
+  EmitReceipt,
+  Emitter,
+  ListenerArmReceipt,
+  ListenerCancelReceipt,
+  Listeners,
+} from './reactions/reaction-ports.ts';
+export { emittedEventIdOf } from './tasks/emit-task.ts';
 export type { RunSerialiser } from './serialisation/run-serialiser.ts';
 export {
   isTroubling,

@@ -5,6 +5,7 @@ import { Effect, type Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { orchestratedBrain, type OrchestratedBrain } from '../testing/orchestrated-brain.ts';
+import { acmeCaller } from '../testing/workflows.ts';
 import { defineSendExecutionEvent } from './send-execution-event.ts';
 
 let brain: OrchestratedBrain;
@@ -85,13 +86,16 @@ describe('send_execution_event', () => {
     });
   });
 
-  it('gives an event an id and the time it was sent', async () => {
+  it('gives an event an id, the caller who sent it as its source, and the time it was sent', async () => {
     const executionId = idOf(2);
     await startedApproval(executionId);
 
     const sent = await brain.call(sendEvent, { execution_id: executionId, event: { type: 'com.acme.other' } });
 
-    expect(sent).toMatchObject({ status: 'succeeded', output: { event: { type: 'com.acme.other' } } });
+    expect(sent).toMatchObject({
+      status: 'succeeded',
+      output: { event: { type: 'com.acme.other', source: `/callers/${acmeCaller.id}` } },
+    });
     expect(JSON.stringify(sent)).toMatch(/"id":"[0-9a-f-]{36}","time":"\d{4}-\d{2}-\d{2}T/u);
   });
 });
@@ -244,7 +248,12 @@ describe('the plain language of send_execution_event', () => {
   const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
   it('says which event reached the running workflow', () => {
-    const delivered = { type: 'com.acme.approval.decided', id: 'e-1', time: '2026-10-02T09:00:00.000Z' };
+    const delivered = {
+      type: 'com.acme.approval.decided',
+      id: 'e-1',
+      source: '/callers/acme-admin',
+      time: '2026-10-02T09:00:00.000Z',
+    };
 
     expect(
       sendEvent.registration.plainLanguage?.outcome(

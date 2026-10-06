@@ -41,6 +41,11 @@ const startedCallingTools = new Conflict({
 
 const runFinished = new Conflict({ detail: 'The run has finished, so it records no more tool calls' });
 
+export const runTaken = new Conflict({
+  detail: 'A run under this id is going or has ended with a result, so this start records nothing',
+  kind: 'taken',
+});
+
 function isSameRequest({ input, execution }: RecordedExecution, request: ExecutionRequest): boolean {
   return (
     execution.primitive === request.primitive && execution.name === request.name && Equal.equals(input, request.input)
@@ -74,8 +79,12 @@ function startedCallingToolsBefore(start: ExecutionStart, state: ExecutionState)
   return state !== undefined && isRunning(state) && (state.callsTools || start.calls_tools);
 }
 
+function ofDepth(depth: number): { readonly depth?: number } {
+  return depth > 0 ? { depth } : {};
+}
+
 function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
-  const { primitive, name, input, spec_version, calls_tools, by, at } = start;
+  const { primitive, name, input, spec_version, calls_tools, depth = 0, by, at } = start;
   return {
     type: 'execution_started',
     primitive,
@@ -83,12 +92,26 @@ function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
     spec_version,
     input,
     ...(calls_tools ? { calls_tools } : {}),
+    ...ofDepth(depth),
     by,
     at,
   };
 }
 
+function startsAgain(start: ExecutionStart, state: RecordedExecution): boolean {
+  return !isRunning(state) && !needsNoRun(state) && !calledTools(state) && isSameRequest(state, start);
+}
+
+function decideCreateOnly(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
+  return state === undefined || startsAgain(start, state)
+    ? Result.succeed([startedEvent(start)])
+    : Result.fail(runTaken);
+}
+
 function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
+  if (start.createOnly === true) {
+    return decideCreateOnly(start, state);
+  }
   return Result.flatMap(claimOf(state, start), (claim): Decision => {
     if (claim === 'answer') {
       return nothingToRecord;
@@ -101,14 +124,14 @@ function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionSt
 
 function recordedOutcome(
   result: ExecutionOutcome,
-  { execution }: RecordedExecution,
+  { execution, depth }: RecordedExecution,
   metadata: CommandMetadata,
 ): ExecutionEvent {
   if (result.type === 'execution_deferred') {
     return { ...result, ...metadata };
   }
   const { primitive, name, spec_version } = execution;
-  return { ...result, primitive, name, spec_version, ...metadata };
+  return { ...result, primitive, name, spec_version, ...ofDepth(depth), ...metadata };
 }
 
 function decideFinish({ result, by, at }: ExecutionFinish & CommandMetadata, state: ExecutionState): Decision {

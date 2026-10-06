@@ -7,7 +7,8 @@ import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { openWorkflowStore, type ProjectorSettings, type WorkflowStore } from '@beonauto/workflow-host';
 
 import type { Settings } from '../settings/settings.ts';
-import { hostDatabaseOf, hostReports } from '../workflows/host-dependencies.ts';
+import { hostDatabaseOf } from '../workflows/host-dependencies.ts';
+import { hostReports } from '../workflows/host-reports.ts';
 
 interface ServedRecall {
   readonly primitive: Primitive;

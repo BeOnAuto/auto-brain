@@ -39,7 +39,7 @@ function started(
   { runs, mostDurationMs, longestCallMs }: WorkflowAdapterDependencies,
   document: WorkflowDefinitionDocument,
   input: Schema.Json,
-  { id, org, brain, caller, spec, lineage }: RunContext,
+  { id, org, brain, caller, spec, lineage, depth }: RunContext,
 ): Effect.Effect<FinishesLater, Conflict | Unavailable> {
   return Effect.gen(function* () {
     const seed = yield* Random.nextIntBetween(0, mostSeed);
@@ -49,6 +49,7 @@ function started(
       execution_id: id,
       spec,
       caller,
+      depth,
       lineage: { start: lineage.startId, correlation: lineage.correlationId },
     };
     const answer = yield* runs

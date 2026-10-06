@@ -1,3 +1,5 @@
+import { Schema } from 'effect';
+
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
 import { heldBytesOf } from '../machine/held-values.ts';
 import type { Started } from '../machine/run-input.ts';
@@ -102,6 +104,7 @@ const running: RunState = {
     waiting: [{ event: { id: 'event-2', type: 'com.acme.approval', data: { approved: true } }, bytes: 80 }],
     waitingBytes: 80,
     receivedIds: ['event-1', 'event-2'],
+    offeredIds: [],
     received: 2,
     receivedBytes: 160,
   },
@@ -139,6 +142,21 @@ const running: RunState = {
 };
 
 export const runningState: RunState = { ...running, heldBytes: heldBytesOf(running) };
+
+const decodeFields = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Json));
+
+const addedInFormatFive: ReadonlySet<string> = new Set(['listeners', 'emitted', 'offeredIds']);
+
+function withoutFormatFive(fields: Readonly<Record<string, Schema.Json>>): Readonly<Record<string, Schema.Json>> {
+  return Object.fromEntries(
+    Object.entries(fields).filter(([key]: readonly [string, Schema.Json]) => !addedInFormatFive.has(key)),
+  );
+}
+
+export function beforeFormatFive(state: unknown): unknown {
+  const fields = decodeFields(state);
+  return { ...withoutFormatFive(fields), inbox: withoutFormatFive(decodeFields(fields['inbox'])) };
+}
 
 export const started: Started = {
   kind: 'started',

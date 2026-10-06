@@ -1,5 +1,7 @@
 export type { Perform, Trouble } from './calls/host-executor.ts';
 export type { DatabaseSettings } from './database/host-databases.ts';
+export { DeliveryFailed, type Consumer, type Delivery, type FollowedRecord } from './follower/consumers.ts';
+export type { FollowedEvent } from './follower/followed-events.ts';
 export { HostStopped } from './host/host-gate.ts';
 export type { HostNote, HostReports, UnsettledRun } from './host/host-reports.ts';
 export { HostElsewhere, type DeliveryAnswer, type RunStart, type StartAnswer } from './host/run-requests.ts';
@@ -17,3 +19,15 @@ export type { FoldedEvent, KeptView, StallCause, StalledEvent, ViewPhase, ViewSt
 export type { ViewsPort } from './views/views-port.ts';
 export type { HostClock } from './loop/host-clock.ts';
 export type { RunAddress } from './runs/run-address.ts';
+export {
+  StartRefused,
+  type ReactionOptions,
+  type ReactionStart,
+  type StartReaction,
+  type Trigger,
+} from './reactions/reaction-options.ts';
+export { StartRejected } from './reactions/start-rejected.ts';
+export { cronRejectionOf } from './schedules/schedule-times.ts';
+export { mostListenersInABrain } from './listeners/sql-listeners.ts';
+export { mostReactionDepth } from './reactions/subscription-starts.ts';
+export { mostDeferredStarts, mostStartsAMinute } from './reactions/start-rates.ts';

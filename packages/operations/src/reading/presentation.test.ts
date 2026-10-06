@@ -9,6 +9,7 @@ function recorded(stream: string, type: string): RecordedEvent {
     causationId: null,
     correlationId: null,
     stream,
+    version: 1,
     type,
     data: {},
     recordedAt: '2026-10-05T09:00:00.000Z',

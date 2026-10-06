@@ -6,7 +6,7 @@ import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { findSpec } from '../registry/registry-lookup.ts';
 import { DefinitionSchema } from '../registry/spec.ts';
-import { loadRegistry } from './registry-access.ts';
+import { loadRegistry, reactingSince } from './registry-access.ts';
 import { SpecNameField } from './spec-fields.ts';
 import { specOf } from './spec-views.ts';
 
@@ -30,7 +30,11 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
         const registry = yield* loadRegistry(primitive.name);
-        const spec = specOf(primitive, yield* findSpec(registry, primitive.name, name));
+        const stored = yield* findSpec(registry, primitive.name, name);
+        const spec =
+          stored.reacts === true && stored.status === 'active'
+            ? { ...specOf(primitive, stored), reacts_since: yield* reactingSince(primitive.name, stored) }
+            : specOf(primitive, stored);
         const { org, brain } = yield* BrainContext;
         const standing = yield* primitive.standing({ org, brain, name, version: spec.version, status: spec.status });
         return standing === undefined ? spec : { ...spec, standing };

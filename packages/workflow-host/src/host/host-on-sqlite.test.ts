@@ -1,5 +1,6 @@
 import { describe } from 'vitest';
 
+import { reactionSuite } from '../reaction-testing/reaction-suite.ts';
 import { failureSuite } from '../testing/failure-suite.ts';
 import { onSQLite } from '../testing/host-files.ts';
 import { claimSuite, leaseSuite } from '../testing/lease-suite.ts';
@@ -22,6 +23,10 @@ describe('the host on SQLite', () => {
 
   describe('killed while it dispatches, then started again', () => {
     failureSuite(onSQLite);
+  });
+
+  describe('the reactions of its brains', () => {
+    reactionSuite(onSQLite);
   });
 
   describe('one of two hosts on one database', () => {

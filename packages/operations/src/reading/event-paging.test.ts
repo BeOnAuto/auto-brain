@@ -14,6 +14,7 @@ function recordOf(position: number, steps: number): RecordedEvent {
     causationId: null,
     correlationId: null,
     stream: 'runs/r1',
+    version: position,
     type: 'moved',
     data: { position, steps },
     recordedAt: '2026-10-05T09:00:00.000Z',

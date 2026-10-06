@@ -6,7 +6,7 @@ import { onTestFinished } from 'vitest';
 
 import type { HostNote } from '../host/host-reports.ts';
 import { openWorkflowHost, type HostOptions, type WorkflowHost } from '../host/workflow-host.ts';
-import type { HostClock } from '../loop/host-clock.ts';
+import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
 import { recordingReports, recordingSettlements } from './recording-reports.ts';
 
 export interface HostedRuns {
@@ -22,7 +22,7 @@ export interface HostedRuns {
 
 export interface HostedOptions {
   readonly answer?: (call: StartCall) => Effect.Effect<CallResult>;
-  readonly clock?: HostClock;
+  readonly clock?: NonNullable<HostOptions['clock']>;
   readonly sweepEveryMs?: number;
   readonly ledgerDown?: () => boolean;
   readonly holder?: string;
@@ -49,6 +49,7 @@ export async function hostedOn(settings: HostOptions['database'], options: Hoste
     reports: recorded.reports,
     sweepEveryMs: options.sweepEveryMs ?? 50,
     mostCallsAtOnce: 4,
+    reactions: recordedReactions().options,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.holder === undefined ? {} : { holder: options.holder }),
     ...(options.views === undefined ? {} : { views: options.views }),

@@ -60,7 +60,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
@@ -170,6 +170,15 @@
           }
         },
         {
+          "op": "add",
+          "path": "/listeners/[\"0199a3c4-7d2e-7c1a-9b3f-000000000305\",\"~1do~10~1await\",1]",
+          "value": {
+            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+            "reference": "/do/0/await",
+            "run": 1
+          }
+        },
+        {
           "op": "replace",
           "path": "/heldBytes",
           "value": 8347
@@ -231,7 +240,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2093
+          "value": 2438
         }
       ],
       "outputs": [
@@ -242,12 +251,25 @@
           "dueAt": 1793437200000,
           "purpose": "deadline",
           "label": "the most the workflow may run"
+        },
+        {
+          "kind": "arm_listener",
+          "key": {
+            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+            "reference": "/do/0/await",
+            "run": 1
+          },
+          "filters": [
+            {
+              "type": "approved"
+            }
+          ]
         }
       ]
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "event_received",
         "key": "e1",
@@ -297,14 +319,14 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2696
+          "value": 3041
         }
       ],
       "outputs": []
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "event_received",
         "key": "e2",
@@ -345,6 +367,10 @@
         {
           "op": "remove",
           "path": "/timers/armed/1"
+        },
+        {
+          "op": "remove",
+          "path": "/listeners/[\"0199a3c4-7d2e-7c1a-9b3f-000000000305\",\"~1do~10~1await\",1]"
         },
         {
           "op": "replace",
@@ -397,10 +423,18 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3984
+          "value": 4551
         }
       ],
       "outputs": [
+        {
+          "kind": "cancel_listener",
+          "key": {
+            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+            "reference": "/do/0/await",
+            "run": 1
+          }
+        },
         {
           "kind": "cancel_timer",
           "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",

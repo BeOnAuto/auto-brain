@@ -27,12 +27,13 @@ function storedRequestOf(
 
 function recordedPageOf(brainKey: string): (stored: StoredPage) => RecordedPage {
   return ({ records, resumeAfter, lastExamined }) => ({
-    records: records.map(({ point, id, causationId, correlationId, stream, type, data, recordedAt }) => ({
+    records: records.map(({ point, id, causationId, correlationId, stream, version, type, data, recordedAt }) => ({
       id,
       cursor: cursorOf(brainKey, point),
       causationId,
       correlationId,
       stream,
+      version,
       type,
       data,
       recordedAt,

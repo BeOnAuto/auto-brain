@@ -38,6 +38,7 @@ The same code runs in Node, where one server keeps every run in one SQLite file,
 | timers        | `src/timers`        | timer ids and what each timer is for                                   | `Timers`                                |
 | inbox         | `src/inbox`         | the external events a run receives                                     | none: events arrive as `event_received` |
 | filters       | `src/filters`       | an event filter read and matched over an event alone                   | none: pure                              |
+| reactions     | `src/reactions`     | the ports a run reacts through, its listeners and its emissions        | `Listeners`, `Emitter`                  |
 | executor      | `src/executor`      | call keys                                                              | `Executor`                              |
 | dispatch      | `src/dispatch`      | outputs, the watermark, the order of a dispatch, a run's next due time | `DispatchWatermark`                     |
 | serialisation | `src/serialisation` | one input at a time for each run                                       | `RunSerialiser`                         |
@@ -89,19 +90,24 @@ A view whose filter does not compile, runs out of work or nests too deep, or who
 
 A `listen` task matches each event against its filters with the run's variables (`src/tasks/listen-task.ts`). `literalFilterOf(filter, pointer)` reads one filter of the same shape, `{ with: { … } }`, so that an event can be matched without a run. Its `with` names a `type`, written out as text that is not empty; it may name a `source` and a `subject`, written out the same way, and a `data`, either written out, which is compared as JSON, or an expression. The reading refuses any other attribute, any key of the filter but `with`, and what the policy refuses in a `listen` filter, `correlate` and an expression that does not compile, through the same check, `eventFilterRejections`. A `data` expression that reads a variable it does not bind, such as `$context`, needs a run's variables: the reading leaves it out of what it tests and says so with `dataNeedsVariables`. `freeVariablesOf` in `src/dsl/expressions.ts` finds those variables in the compiled expression, whose `Program` names them as `freeVariables`, found by the walk of the dialect check (`freeVariablesIn`), which leaves out the ones an `as`, a `reduce` or a `foreach` binds where it binds them.
 
+A `listen` filter reaches events beyond its run when its `with` names a `type` written out, text that is not an expression and not empty: `brainWideFilterOf(filter)` answers its `with`, or nothing. `listenerFilterOf(with, pointer)` reads such a `with` for a reader that matches without a run, keeping its attributes written out and its expressions that read no variable they do not bind, leaving out those that need the run's variables, and saying so with `dataNeedsVariables`; any attribute may be such an expression, not only `data`.
+
 `matchEvent(filter, event, now)` answers whether the event has the filter's attributes, by the comparison a `listen` task makes, `hasAttributes`: `true`, `false`, or `{ error }`, the `DslError` a run would raise, for a `data` expression that fails or does more than the 8,000,000 units of work one expression may. It evaluates with no variables, under a meter of its own, and gives jq's `now` the time it is given.
 
 ## Inputs
 
-| Input              | Carries                                                                         | Stale when                                               |
-| ------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `started`          | the document, the input, the limits, the attributes and a seed for random draws | the run has started (`started_before`)                   |
-| `timer_fired`      | the timer id                                                                    | the timer is not armed: never armed, fired, cancelled    |
-| `call_answered`    | the call key and the result: succeeded, rejected, failed or unreachable         | the call is not open: never started, answered, cancelled |
-| `event_received`   | the event, with an `id` of 1 to 256 characters and a `type`                     | the run has received an event with that id               |
-| `cancel_requested` | nothing more                                                                    | a cancel was requested before                            |
+| Input              | Carries                                                                         | Stale when                                                                           |
+| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `started`          | the document, the input, the limits, the attributes and a seed for random draws | the run has started (`started_before`)                                               |
+| `timer_fired`      | the timer id                                                                    | the timer is not armed: never armed, fired, cancelled                                |
+| `call_answered`    | the call key and the result: succeeded, rejected, failed or unreachable         | the call is not open: never started, answered, cancelled                             |
+| `event_received`   | the event, with an `id` of 1 to 256 characters and a `type`                     | the run has received an event with that id                                           |
+| `event_offered`    | the key of the offer, 1 to 256 characters, the key of a listener, and the event | the run took an offer of that key, holds no such listener, or the listen declines it |
+| `cancel_requested` | nothing more                                                                    | a cancel was requested before                                                        |
 
 Every input carries the execution id and `at`. Any input but `started` is `not_started` for a run that has not started and `run_ended` for one that has ended. Three inputs are never taken as stale, because they mean an adapter routed wrongly: an input for another execution, and a second `started` with another document or another input. `staleReasonOf` dies on them with `RunMismatch`.
+
+An offer is an event a reader found beyond the run, for a listen that may want it (see [Listeners and offers](#listeners-and-offers)). The machine applies it only while that listen is open: it evaluates the listen's filters that name a type, with the run's variables, in the session of the input and under its meter, takes the offer into the first of them it fits, and carries that verdict into the decision, so the filters are evaluated once. An offer the listen declines is stale and appends nothing; one whose check fails, as an expression that raises, is stale too, and `submit` answers it with `declined`, the words of the error, for the adapter to report, since an offer is speculative; an event sent to the run whose check fails raises in the run, as before.
 
 For `send_execution_event`, the API answers an event the run received before (`event_received_before`) with success, since the event is delivered, and an event for a run that has ended (`run_ended`) with `not_found`, as today. A repeated event appends nothing, so it no longer counts toward the 1,024 events and 4 MiB a run takes over its life; under Temporal it did.
 
@@ -135,7 +141,7 @@ Compression is not part of the format. A run store may compress the events and s
 
 ## State formats
 
-Every event and every snapshot names its state format; `stateFormat` is 4. A change to the state's schema is a new format, and:
+Every event and every snapshot names its state format; `stateFormat` is 5. A change to the state's schema is a new format, and:
 
 - each event is folded under its own format, and a state that crosses to a newer format is read strictly under the old one and upcast by that format's upcaster (`OlderFormat.read`, `OlderFormat.upcast`) before the next event applies;
 - formats never go back within a stream, and a format newer than the code is refused, both when the run loads (`UnreadableRun`);
@@ -146,6 +152,8 @@ Format 2 came with the machine: a frame records when it started and the context 
 Format 3 came with the kind and because of a rejection: a call's result, `CallResultSchema` of `@beonauto/operations`, may name the `kind` and `because` of a rejection, and the error it raises, `DslError`, keeps them, so a failed branch, a `try` backing off and a run that ended raised hold them, and a `catch` reads them in its error. A state of format 2 is a state of format 3 as it is: format 2 is read strictly with its own frozen schema (`src/run-log/format-two.ts`), which refuses an error with either member, and passed on unchanged. Format 1 reads its errors and its outcome with format 2's frozen schemas, as it did, and both read with frozen copies of every schema they use, the instant, the call key, a received event, the run's limits and the purposes of timers among them, so a change to the current schemas cannot change how a state of format 1 or 2 reads.
 
 Format 4 came with the step entries: across inputs the state keeps, in a list waiting for a yield's timer, `after`, the entry that came before the yield, so the task after it is caused by that entry; in a `try` backing off, `failed`, the entry that failed the attempt, so the next attempt is caused by it; and in a listen, `waited`, the `waiting` entries it recorded, so the next one counts on. Format 3 is read strictly with its own frozen schema (`src/run-log/format-three.ts`) and upcast: a yield and a back-off were caused by `input`, and a listen waited once. Events of formats 1 to 3 keep their steps as they were recorded, `{ reference, run, outcome }`, one for each run of a task with how it ended the input, and no `resumed`; the event schema reads both.
+
+Format 5 came with reactions: the state keeps `listeners`, the listen tasks open with a filter that names a type, by the key of their task run; `emitted`, the count and the bytes of the events the run emitted; `inbox.offeredIds`, the keys of the offers it took, a list apart from `receivedIds`; and a listen for all of several filters keeps its events by filter, `consumed[i]` the event of filter `i` or null, since it takes events in any order. Format 4 is read strictly with its own frozen schema (`src/run-log/format-four.ts`) and upcast: no offers and no emissions, a listener for every open listen whose task names a type in a filter, found in the document the state holds, and its events, taken in filter order, already where format 5 keeps them.
 
 Patches are never rewritten: a patch applies only to the format it was written for. `evolve` applies a patch strictly, `add` to a member that exists or `replace` and `remove` of one that does not die with `PatchFailed`, and the result must decode as the state with no member the format does not describe (`onExcessProperty: 'error'`), so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
 
@@ -163,13 +171,16 @@ Frames never store the document: they name tasks by reference, a JSON Pointer in
 
 ## Outputs and receipts
 
-| Output         | Carries                                                       | Idempotent by | Port                 | Receipts                                                                        |
-| -------------- | ------------------------------------------------------------- | ------------- | -------------------- | ------------------------------------------------------------------------------- |
-| `arm_timer`    | timer id, due time, purpose, a label                          | timer id      | `Timers.arm`         | `armed`, `already_armed`, `refused_after_cancel`                                |
-| `cancel_timer` | timer id                                                      | timer id      | `Timers.cancel`      | `cancelled`, `already_fired`, `tombstoned`                                      |
-| `start_call`   | call key, the function, its arguments, the longest it may run | call key      | `Executor.start`     | `started`, `started_again`, `running`, `answered_again`, `refused_after_cancel` |
-| `cancel_call`  | call key                                                      | call key      | `Executor.cancel`    | `cancelled`, `already_answered`, `tombstoned`                                   |
-| `settle`       | execution id and settlement                                   | execution id  | `RecordStore.settle` | `recorded`, `already_recorded`, `settled_otherwise`, `unknown_execution`        |
+| Output            | Carries                                                        | Idempotent by  | Port                 | Receipts                                                                        |
+| ----------------- | -------------------------------------------------------------- | -------------- | -------------------- | ------------------------------------------------------------------------------- |
+| `arm_timer`       | timer id, due time, purpose, a label                           | timer id       | `Timers.arm`         | `armed`, `already_armed`, `refused_after_cancel`                                |
+| `cancel_timer`    | timer id                                                       | timer id       | `Timers.cancel`      | `cancelled`, `already_fired`, `tombstoned`                                      |
+| `start_call`      | call key, the function, its arguments, the longest it may run  | call key       | `Executor.start`     | `started`, `started_again`, `running`, `answered_again`, `refused_after_cancel` |
+| `cancel_call`     | call key                                                       | call key       | `Executor.cancel`    | `cancelled`, `already_answered`, `tombstoned`                                   |
+| `arm_listener`    | the key of the listen's task run, its filters that name a type | the key        | `Listeners.arm`      | `armed`, `already_armed`, `refused`                                             |
+| `cancel_listener` | the key                                                        | the key        | `Listeners.cancel`   | `cancelled`, `not_armed`                                                        |
+| `emit_event`      | the key of the emit's task run, the event                      | the event's id | `Emitter.emit`       | `recorded`, `already_recorded`, `refused`                                       |
+| `settle`          | execution id and settlement                                    | execution id   | `RecordStore.settle` | `recorded`, `already_recorded`, `settled_otherwise`, `unknown_execution`        |
 
 `Timers.arm` and `RecordStore.settle` are also given the origin of the output, `{ version, lastStep }`: the version of the event that holds it and the key of that event's last step entry, or null. An adapter keeps the version an arm came from, so the record of a timer's fire can name the record that armed it, and settles a run with the last step of the event that ended it as the cause.
 
@@ -185,13 +196,16 @@ The machine checks only the size of a call's arguments, at most 264 KiB as JSON.
 
 ## Idempotency keys
 
-| Key          | Made of                                                  | Deduplicated in                                 |
-| ------------ | -------------------------------------------------------- | ----------------------------------------------- |
-| execution id | given by the adapter that starts the run                 | the run's status; `RecordStore` by execution id |
-| timer id     | `<n>`, counting up within the run                        | `state.timers.armed`; `Timers` by run and id    |
-| call key     | execution id, the task's reference, the run of that task | `state.calls`; `Executor` by `callKeyText(key)` |
-| event id     | the external event's own `id`                            | `state.inbox.receivedIds`                       |
-| value id     | n counting up within the run                             | `state.machine.values`                          |
+| Key          | Made of                                                     | Deduplicated in                                 |
+| ------------ | ----------------------------------------------------------- | ----------------------------------------------- |
+| execution id | given by the adapter that starts the run                    | the run's status; `RecordStore` by execution id |
+| timer id     | `<n>`, counting up within the run                           | `state.timers.armed`; `Timers` by run and id    |
+| call key     | execution id, the task's reference, the run of that task    | `state.calls`; `Executor` by `callKeyText(key)` |
+| event id     | the external event's own `id`                               | `state.inbox.receivedIds`                       |
+| offer key    | given by the adapter that offers, the id of what it found   | `state.inbox.offeredIds`                        |
+| listener key | execution id, the listen's reference, the run of that task  | `state.listeners`; `Listeners` by the key       |
+| emitted id   | a version 5 UUID of the emit's call key, `emittedEventIdOf` | the store the `Emitter` writes                  |
+| value id     | n counting up within the run                                | `state.machine.values`                          |
 
 A run keeps one counter of runs for each task reference, `state.runs`, so the third time a task runs its run is 3, and a call it starts has that run in its key. An adapter that gives a call its own execution, as a call to a spec has, derives that execution's id from the call key, so a call dispatched twice is one execution.
 
@@ -241,7 +255,9 @@ A snapshot holds at most about 5.3 MiB: the held data (4 MiB: the values, the do
 | work in one input                     | 8,000,000, at most 16,000,000                     | at 8,000,000 the machine yields between two tasks, as at 100 tasks; past 16,000,000 an expression raises a runtime error, since nothing yields within a task                                                                                                                        |
 | tasks without waiting                 | 10,000                                            | the run ends, raised, as today                                                                                                                                                                                                                                                      |
 | events waiting in the inbox           | 64, 1 MiB                                         | the run ends, raised, as today                                                                                                                                                                                                                                                      |
-| events a run receives                 | 1,024, 4 MiB                                      | the run ends, raised, as today; it also bounds the ids kept                                                                                                                                                                                                                         |
+| events a run receives                 | 1,024, 4 MiB                                      | the run ends, raised, as today; it also bounds the ids kept; the offers it took count with the events sent to it                                                                                                                                                                    |
+| events a run emits                    | 1,024, 4 MiB                                      | the emit task raises a `runtime` error, status 500, which the workflow's `try` can catch                                                                                                                                                                                            |
+| an emitted event                      | 245,760 bytes                                     | the emit task raises a `validation` error, status 400                                                                                                                                                                                                                               |
 | inputs a run takes                    | 100,000                                           | checked in `decide` from `state.inputs`: the run ends, raised                                                                                                                                                                                                                       |
 | history                               | 512 MiB                                           | checked in `decide` from `state.historyBytes`: the run ends, raised                                                                                                                                                                                                                 |
 | a call                                | `longestCallMs`                                   | its `call_deadline` timer fires: the task fails with a communication error                                                                                                                                                                                                          |
@@ -259,7 +275,7 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 5. **[engine]** An applied input appends exactly one event, in one append, with the version the decision was made on as the expected version; the loop dies with `SplitDecision` on a decision of more than one event and appends nothing (`src/engine/run-loop.test.ts`).
 6. **[engine]** A stale input appends nothing, and neither does an input to a run that has not started (`src/decider/deduplication.test.ts`).
 7. **[engine]** A late answer, a duplicate answer, a second delivery of an event and the fire of a cancelled timer are stale inputs (`src/machine/admission.test.ts`, `src/decider/deduplication.test.ts`, `src/tasks/call-task.test.ts`).
-8. **[engine]** The deduplication state is bounded: armed timers and open calls are what is outstanding, and a run keeps at most 1,024 event ids, the ids of the events it took; the event past the bound ends the run and is not kept (`src/runner/run-inbox.test.ts`).
+8. **[engine]** The deduplication state is bounded: armed timers, open calls and armed listeners are what is outstanding, and a run keeps at most 1,024 ids of events it took and keys of offers it took together; the event or offer past the bound ends the run and is not kept (`src/runner/run-inbox.test.ts`, `src/tasks/listen-orders.test.ts`).
 9. **[engine]** Timer ids and value ids are never reused within a run, and the run counter of a task reference only counts up.
 10. **[engine]** The outputs of a run are exactly the `outputs` of its events, and an output is dispatched only after the event that holds it is appended.
 11. **[adapter]** A timer is armed at most once and fires at least once until cancelled; a call is answered at most once, a start of a call neither answered nor running starts it again, and every cancel of a key that has not fired or been answered, seen or not, leaves a tombstone that refuses a later arm or start. A timer id is unique only within its run, so the timer store keys a timer by its run and its id (the probes of `src/testing/port-probes.ts`).
@@ -277,8 +293,8 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 23. **[engine]** `lastInputAt` never decreases, and a fired timer's input is never earlier than the time it was due (`src/machine/input-receipt.test.ts`).
 24. **[engine]** A snapshot at version v is the fold of events 1 to v, and is written only after event v is durable; **[adapter]** the run store writes it only then.
 25. **[engine]** A dispatch takes outputs in the order of the stream and stops at the first that fails (`src/dispatch/dispatch-watermark.test.ts`).
-26. **[engine]** Every armed timer and every open call has exactly one `arm_timer` or `start_call` and at most one cancel in the stream; a timer an input arms and cancels, or a call it starts and cancels, appears in none of its outputs, so the ports never see it (`src/decider/run-events.test.ts`).
-27. **[engine]** An ended run has no armed timers and no open calls (`src/decider/open-calls.test.ts`).
+26. **[engine]** Every armed timer, every open call and every armed listener has exactly one `arm_timer`, `start_call` or `arm_listener` and at most one cancel in the stream; a timer an input arms and cancels, a call it starts and cancels, or a listener it arms and cancels, appears in none of its outputs, so the ports never see it (`src/decider/run-events.test.ts`, `src/tasks/listen-orders.test.ts`).
+27. **[engine]** An ended run has no armed timers, no open calls and no armed listeners (`src/decider/open-calls.test.ts`, `src/tasks/listen-orders.test.ts`).
 28. **[engine]** `settle` appears once in a stream, in its last event (`src/decider/run-lifecycle.test.ts`).
 29. **[engine]** A run takes at most 100,000 inputs and 512 MiB of history, both checked in `decide` from the state; the input that would go past either ends the run (`src/decider/run-bounds.test.ts`).
 30. **[engine]** Every event and every snapshot names its state format; formats never go back within a stream, a format newer than the code is refused, and a committed corpus of every format loads (`src/run-log/run-fold.test.ts`, `src/run-log/corpus.test.ts`).
@@ -299,6 +315,18 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 - An event leaves out a timer or a call that the same input opened and closed (invariant 26), and its other outputs keep the order the session emitted them in.
 - A run ends with its outcome, settled once in its last event. An input that would pass a bound (inputs, history, held data, the size of one event) ends the run, raised, in a small event of its own.
 - The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it, the step entries and their causes in `src/steps`. The workflow adapter runs its tests of how a workflow runs through this driver (`primitives/orchestration/src/workflows`), and replays its 15 recorded input logs through the machine (`primitives/orchestration/input-logs/`).
+
+## Listeners and offers
+
+A `listen` task that waits arms a listener when at least one of its filters names a type: its event carries `arm_listener`, with the key of the task run, `{ executionId, reference, run }`, and the `with` of those filters, and the state keeps the key in `listeners`. When the listen ends, by taking its events, by a timeout, a cancel or the end of the run, its event carries `cancel_listener`. A listen that an event already waiting satisfies at once never arms one. An adapter keeps the listeners its dispatch hands it and offers them the events it finds, as `event_offered`, keyed by what it found them by; the machine applies an offer only while that exact listen is open. A listen for one or any filter takes an offer that one of its filters naming a type accepts; a listen for all takes it into the first of those filters, in list order, that no event satisfies yet and that it fits, and hands its events on in filter order once each filter has one. Events sent to the run take the same order-free way: each filter takes the earliest waiting event it fits. A filter that names no type keeps its meaning: it sees only the events sent to its run. The keys of offers and the ids of sent events are two lists, so neither blocks the other, and both count toward the 1,024 events a run takes (`src/tasks/listen-offers.test.ts`, `src/tasks/listen-orders.test.ts`).
+
+## Emitting an event
+
+An `emit` task, `emit: { event: { with: { type, source, … } } }`, evaluates `with` as a template on its input and emits the event: `type` and `source` are text that is not empty, and `id` is refused, since the runtime gives the event `emittedEventIdOf` its call key, a version 5 UUID, so a run that is stopped and resumed emits it once; `specversion` is 1.0, and `time` is the time given or the time of the input. Its event carries `emit_event` with the key and the event, and the state counts it in `emitted`. The task hands its input on. The functions a machine is given may refuse more: `emitRejections(with, pointer)` when a document is checked, and `emitRefusal(event)` when the event is made, which the task raises as a `validation` error (`src/tasks/emit-task.test.ts`).
+
+## A schedule
+
+The policy refuses `schedule` unless the functions it is given check it, with `scheduleRejections(schedule, pointer)`, which the workflow adapter gives (`primitives/orchestration`). The machine never reads a schedule: a run starts the same way however it was started.
 
 ## The cache of loaded runs
 

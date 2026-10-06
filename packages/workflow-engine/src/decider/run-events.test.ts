@@ -21,6 +21,19 @@ function declinedThenApproved(driver: MemoryDriver, running: string): void {
 }
 
 describe('the outputs of an event', () => {
+  it('leave out a listener the same input armed and cancelled, and keep one armed and cancelled apart', () => {
+    const key = { executionId, reference: '/do/0/await', run: 1 };
+    const other = { executionId, reference: '/do/1/await', run: 1 };
+
+    expect(
+      withoutUndone([
+        { kind: 'arm_listener', key, filters: [] },
+        { kind: 'cancel_listener', key },
+        { kind: 'cancel_listener', key: other },
+      ]),
+    ).toEqual([{ kind: 'cancel_listener', key: other }]);
+  });
+
   it('leave out a timer the same input armed and cancelled, such as the deadline of a run that ends at once', () => {
     const run = drivenRun(workflow('do:\n  - greet: { set: { done: true } }'));
 

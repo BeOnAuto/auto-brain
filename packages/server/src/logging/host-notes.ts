@@ -39,6 +39,24 @@ function viewStalled({ brain, name, version }: NoteOf<'view_stalled'>): Effect.E
   ).pipe(Effect.annotateLogs({ brain, recall_function: name, version }));
 }
 
+function offerDeclined({ run, detail }: NoteOf<'offer_declined'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'A run waiting for an event of its brain did not take one, since its filter failed on the event',
+  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, error: detail }));
+}
+
+function recordUnreadable({ org, brain, recordId, type }: NoteOf<'record_unreadable'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'A record of the brain could not be read to match triggers and waiting runs against; it was passed over',
+  ).pipe(Effect.annotateLogs({ org, brain, record_id: recordId, type }));
+}
+
+function runRecordPassed({ run, version, sweeps }: NoteOf<'run_record_passed'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    `A record of a run's log was passed before the run's outputs were dispatched, after ${sweeps} sweeps held it; a listener it armed takes events once it is kept, and none recorded before`,
+  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, version }));
+}
+
 const loggers: { readonly [Kind in HostNote['kind']]: (note: NoteOf<Kind>) => Effect.Effect<void> } = {
   standing_by: standingBy,
   took_over: tookOver,
@@ -46,6 +64,9 @@ const loggers: { readonly [Kind in HostNote['kind']]: (note: NoteOf<Kind>) => Ef
   settled_after_back_off: settledAfterBackingOff,
   record_passed_over: passedOver,
   view_stalled: viewStalled,
+  offer_declined: offerDeclined,
+  record_unreadable: recordUnreadable,
+  run_record_passed: runRecordPassed,
 };
 
 function loggedBy<Kind extends HostNote['kind']>(note: NoteOf<Kind>): Effect.Effect<void> {

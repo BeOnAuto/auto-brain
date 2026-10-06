@@ -33,11 +33,13 @@ export interface StoredPageRequest {
   readonly limit: number;
   readonly since?: string;
   readonly types?: readonly string[];
+  readonly dataOf?: readonly string[];
 }
 
 interface StoredRecord extends MessageLineage {
   readonly point: RecordedPoint;
   readonly stream: string;
+  readonly version: number;
   readonly type: string;
   readonly data: unknown;
   readonly recordedAt: string;
@@ -67,6 +69,12 @@ export interface StreamStore {
   readonly close: () => Promise<void>;
 }
 
+export interface AppendedStreams {
+  readonly streams: readonly string[];
+  readonly through: RecordedPoint;
+  readonly more: boolean;
+}
+
 export interface RecordedStore {
   readonly pointLength: number;
   readonly readRecorded: (
@@ -74,6 +82,7 @@ export interface RecordedStore {
     selection: RecordedSelection,
     page: StoredPageRequest,
   ) => Promise<StoredPage>;
+  readonly readAppended: (after: RecordedPoint | undefined, most: number) => Promise<AppendedStreams>;
 }
 
 export interface DefinitionStream {

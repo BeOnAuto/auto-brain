@@ -9,7 +9,7 @@ export type Bind = (value: unknown) => string;
 
 export const defaultPartition = 'emt:default';
 
-const oldestWriteOfThisDatabase = `(
+export const oldestWriteOfThisDatabase = `(
   SELECT coalesce(min(running.xid), pg_snapshot_xmax(pg_current_snapshot()))
   FROM pg_snapshot_xip(pg_current_snapshot()) AS running(xid)
   WHERE running.xid::text::bigint % 4294967296 NOT IN (
@@ -32,8 +32,10 @@ export const HeadFields = {
   ...PointFields,
   ...LineageFields,
   stream: Schema.String,
+  version: Schema.Int,
   type: Schema.String,
   recorded: Schema.String,
+  size: Schema.Int,
 };
 
 export const lineageColumns = `message_id AS id, message_metadata ->> 'causationId' AS causation,
@@ -93,26 +95,48 @@ export function ofTypes(bind: Bind, column: string, types: readonly string[] | u
   return types === undefined ? 'TRUE' : `${column} = ANY(${bind(types)}::text[])`;
 }
 
+interface Sized {
+  readonly wanted: string;
+  readonly types: string | undefined;
+}
+
+export function sizedTypesOf(bind: Bind, { sized }: ExaminationScope): string | undefined {
+  return sized === undefined || sized.length === 0 ? undefined : bind(sized);
+}
+
+export function sizeOf({ wanted, types }: Sized, { sized }: ExaminationScope, message: string, type: string): string {
+  if (sized === undefined) {
+    return `CASE WHEN ${wanted} THEN octet_length(${message}.message_data ->> 'json') ELSE 0 END`;
+  }
+  return types === undefined
+    ? '0'
+    : `CASE WHEN ${wanted} AND ${type} = ANY(${types}::text[]) THEN octet_length(${message}.message_data ->> 'json') ELSE 0 END`;
+}
+
 interface HeadRow {
   readonly transaction: string;
   readonly position: string;
   readonly stream: string;
+  readonly version: number;
   readonly type: string;
   readonly recorded: string;
   readonly id: string;
   readonly causation: string | null;
   readonly correlation: string | null;
+  readonly size: number;
 }
 
 export function headOf({
   transaction,
   position,
   stream,
+  version,
   type,
   recorded,
   id,
   causation,
   correlation,
+  size,
 }: HeadRow): RecordHead {
   return {
     point: [transaction, position],
@@ -120,7 +144,9 @@ export function headOf({
     causationId: causation,
     correlationId: correlation,
     stream,
+    version,
     type,
     recordedAt: recorded,
+    size,
   };
 }

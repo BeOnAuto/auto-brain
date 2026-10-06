@@ -11,11 +11,14 @@ function keyOf(output: RunOutput): string | undefined {
   if (output.kind === 'arm_timer' || output.kind === 'cancel_timer') {
     return `timer ${output.timerId}`;
   }
+  if (output.kind === 'arm_listener' || output.kind === 'cancel_listener') {
+    return `listener ${callKeyText(output.key)}`;
+  }
   return output.kind === 'start_call' || output.kind === 'cancel_call' ? `call ${callKeyText(output.key)}` : undefined;
 }
 
 function isOpening(output: RunOutput): boolean {
-  return output.kind === 'arm_timer' || output.kind === 'start_call';
+  return output.kind === 'arm_timer' || output.kind === 'start_call' || output.kind === 'arm_listener';
 }
 
 export function withoutUndone(outputs: readonly RunOutput[]): readonly RunOutput[] {

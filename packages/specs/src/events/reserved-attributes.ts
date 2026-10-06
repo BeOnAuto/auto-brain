@@ -8,13 +8,16 @@ export const runSourcePrefix = '/executions/';
 
 export const specSourcePrefix = '/specs/';
 
+export const callerSourcePrefix = '/callers/';
+
 type WorkflowEventType =
   | 'workflow_input_applied'
   | 'step_started'
   | 'step_waiting'
   | 'step_finished'
   | 'step_failed'
-  | 'step_skipped';
+  | 'step_skipped'
+  | 'reaction_refused';
 
 type FeedType = ExecutionEvent['type'] | SpecEvent['type'] | EventPublished['type'] | WorkflowEventType;
 
@@ -36,15 +39,18 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   step_finished: true,
   step_failed: true,
   step_skipped: true,
+  reaction_refused: true,
 };
 
 export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(brainTypes));
 
-export const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix];
+const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix, callerSourcePrefix];
 
 const reservedTypesInWords = [...reservedEventTypes].join(', ');
 
-const reservedSourcesInWords = reservedSourcePrefixes.join(' or ');
+export const reservedSourcesInWords = new Intl.ListFormat('en-GB', { type: 'disjunction' }).format(
+  reservedSourcePrefixes,
+);
 
 interface Attributes {
   readonly type: string;

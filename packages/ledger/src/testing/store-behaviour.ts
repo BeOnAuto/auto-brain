@@ -1,6 +1,6 @@
 import { messageIdOf } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { eventAppenderOf } from '../event-appender.ts';
 import type { RecordedStream } from '../event-store.ts';
@@ -59,6 +59,60 @@ function theLineageOfEachMessage(entry: LedgerEntry): void {
         { id: messageIdOf(run, 2), causationId: null, correlationId: null },
         { id: messageIdOf(run, 3), causationId: 'cause', correlationId: 'root' },
       ]);
+    });
+  });
+}
+
+async function aStoreAndItsDatabase(entry: LedgerEntry) {
+  const database = await entry.aDatabase();
+  const store = entry.storeOn(database);
+  onTestFinished(() => store.close());
+  await store.migrate();
+  return { store, readable: () => entry.untilReadable(database) };
+}
+
+function readingWhatWasAppended(entry: LedgerEntry): void {
+  describe('reading which streams were appended to after a point', () => {
+    it('names each kind of stream of a brain once, and each stream outside a brain, appended to after the point', async () => {
+      const { store, readable } = await aStoreAndItsDatabase(entry);
+      await store.append('org/acme/brains', numbered(1, 1), 0);
+      await readable();
+      const before = await store.readAppended(undefined, 100);
+      await store.append('brain/acme/alpha/events/e1', numbered(1, 1), 0);
+      await store.append('brain/acme/alpha/events/e2', numbered(1, 2), 0);
+      await store.append('brain/acme/alpha/runs/r1', numbered(1, 1), 0);
+      await store.append('org/acme/brains', numbered(2, 1), 1);
+      await readable();
+
+      const appended = await store.readAppended(before.through, 100);
+      const nothingSince = await store.readAppended(appended.through, 100);
+
+      expect(appended.streams.toSorted()).toEqual([
+        'brain/acme/alpha/events/',
+        'brain/acme/alpha/runs/',
+        'org/acme/brains',
+      ]);
+      expect(appended.more).toBe(false);
+      expect(nothingSince).toEqual({ streams: [], through: appended.through, more: false });
+    });
+
+    it('reads at most as many messages as it is asked, and the next read goes on after the last it read', async () => {
+      const { store, readable } = await aStoreAndItsDatabase(entry);
+      await readable();
+      const before = await store.readAppended(undefined, 100);
+      await store.append('brain/acme/alpha/events/e1', numbered(1, 1), 0);
+      await store.append('brain/acme/beta/events/e1', numbered(1, 1), 0);
+      await store.append('brain/acme/gamma/events/e1', numbered(1, 1), 0);
+      await readable();
+
+      const first = await store.readAppended(before.through, 2);
+      const next = await store.readAppended(first.through, 2);
+
+      expect([first.streams.toSorted(), first.more]).toEqual([
+        ['brain/acme/alpha/events/', 'brain/acme/beta/events/'],
+        true,
+      ]);
+      expect([next.streams, next.more]).toEqual([['brain/acme/gamma/events/'], false]);
     });
   });
 }
@@ -147,6 +201,7 @@ function whoseDatabaseIsGone(entry: LedgerEntry): void {
 export function storeBehaviour(entry: LedgerEntry): void {
   readingAfterAVersion(entry);
   theLineageOfEachMessage(entry);
+  readingWhatWasAppended(entry);
   appendingWithAnExpectedVersion(entry);
   closedAndOpenedAgain(entry);
   whoseDatabaseIsGone(entry);

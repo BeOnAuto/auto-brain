@@ -1,6 +1,7 @@
 import { SQL, type SQLExecutor } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
+import { sqliteAppended } from '../appended/sqlite-appended.ts';
 import { sqliteDefinitionStreams } from '../definitions/sqlite-definition-streams.ts';
 import type { DefinitionStreamsStore, RecordedPoint, RecordedStore } from '../event-store.ts';
 import {
@@ -25,6 +26,7 @@ const Lineage = {
 const HeadFields = {
   position: Schema.Int,
   stream: Schema.String,
+  version: Schema.Int,
   type: Schema.String,
   recorded: Schema.String,
   ...Lineage,
@@ -39,6 +41,7 @@ const ExaminedRunRow = Schema.Struct({
   examined: Schema.Int,
   size: Schema.Int,
   latest_position: Schema.Int,
+  latest_version: Schema.Int,
   latest_type: Schema.String,
   latest_recorded: Schema.String,
   latest_size: Schema.Int,
@@ -55,22 +58,26 @@ const DataRows = Schema.Array(Schema.Struct({ position: Schema.Int, data: Schema
 interface HeadRow {
   readonly position: number;
   readonly stream: string;
+  readonly version: number;
   readonly type: string;
   readonly recorded: string;
   readonly id: string;
   readonly causation: string | null;
   readonly correlation: string | null;
+  readonly size: number;
 }
 
-function headOf({ position, stream, type, recorded, id, causation, correlation }: HeadRow): RecordHead {
+function headOf({ position, stream, version, type, recorded, id, causation, correlation, size }: HeadRow): RecordHead {
   return {
     point: [String(position)],
     id,
     causationId: causation,
     correlationId: correlation,
     stream,
+    version,
     type,
     recordedAt: `${recorded.replace(' ', 'T')}.000Z`,
+    size,
   };
 }
 
@@ -108,8 +115,18 @@ function ofTypes(column: string, types: readonly string[] | undefined): SQL {
     : SQL`${SQL.plain(column)} IN (SELECT value FROM json_each(${JSON.stringify(types)}))`;
 }
 
+function sizeOf({ sized }: ExaminationScope, wanted: SQL, type: string, size: string): SQL {
+  if (sized === undefined) {
+    return SQL`CASE WHEN ${wanted} THEN ${SQL.plain(size)} ELSE 0 END`;
+  }
+  return sized.length === 0
+    ? SQL`0`
+    : SQL`CASE WHEN ${wanted} AND ${ofTypes(type, sized)} THEN ${SQL.plain(size)} ELSE 0 END`;
+}
+
 function recordsWhere(where: SQL, scope: ExaminationScope): SQL {
-  return SQL`SELECT global_position AS position, stream_id AS stream, message_type AS type, created AS recorded,
+  return SQL`SELECT global_position AS position, stream_id AS stream, stream_position AS version,
+      message_type AS type, created AS recorded,
       message_id AS id, json_extract(message_metadata, '$.causationId') AS causation,
       ${correlationOfMessage} AS correlation,
       ${ofTypes('message_type', scope.types)} AS wanted, octet_length(message_data) AS size
@@ -140,8 +157,8 @@ function recordsIn(selected: RecordsSelected, scope: ExaminationScope): SQL {
 function examineRecords(execute: SQLExecutor): RecordedStatements['examineRecords'] {
   return async (selected, scope) => {
     const { rows } = await execute.query(
-      SQL`SELECT position, stream, type, recorded, id, causation, correlation, wanted,
-          CASE WHEN wanted THEN size ELSE 0 END AS size, examined
+      SQL`SELECT position, stream, version, type, recorded, id, causation, correlation, wanted,
+          ${sizeOf(scope, SQL`wanted`, 'type', 'size')} AS size, examined
         FROM (
           SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined,
             count(*) OVER () AS scanned_count
@@ -162,7 +179,8 @@ function firstMessagesOfRuns(scope: ExaminationScope): SQL {
   return SQL`SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined,
       count(*) OVER () AS scanned_count
     FROM (
-      SELECT global_position AS position, stream_id AS stream, message_type AS type, created AS recorded,
+      SELECT global_position AS position, stream_id AS stream, stream_position AS version,
+        message_type AS type, created AS recorded,
         message_id AS id, json_extract(message_metadata, '$.causationId') AS causation,
         ${correlationOfMessage} AS correlation, octet_length(message_data) AS size
       FROM emt_messages
@@ -180,16 +198,18 @@ function examinedRunOf(row: typeof ExaminedRunRow.Type): ExaminedItem {
   const latest = headOf({
     position: row.latest_position,
     stream: row.stream,
+    version: row.latest_version,
     type: row.latest_type,
     recorded: row.latest_recorded,
     id: row.latest_id,
     causation: row.latest_causation,
     correlation: row.latest_correlation,
+    size: row.latest_size,
   });
   return {
     examined: row.examined,
     wanted,
-    size: wanted ? row.size + (alone ? 0 : row.latest_size) : 0,
+    size: row.size + (alone ? 0 : row.latest_size),
     point: first.point,
     heads: alone ? [first] : [first, latest],
   };
@@ -199,9 +219,11 @@ function examineRuns(execute: SQLExecutor): RecordedStatements['examineRuns'] {
   return async (scope) => {
     const wanted = ofTypes('latest.message_type', scope.types);
     const { rows } = await execute.query(
-      SQL`SELECT f.position, f.stream, f.type, f.recorded, f.id, f.causation, f.correlation, f.examined, f.size,
-          latest.global_position AS latest_position, latest.message_type AS latest_type,
-          latest.created AS latest_recorded, octet_length(latest.message_data) AS latest_size,
+      SQL`SELECT f.position, f.stream, f.version, f.type, f.recorded, f.id, f.causation, f.correlation, f.examined,
+          ${sizeOf(scope, wanted, 'f.type', 'f.size')} AS size,
+          latest.global_position AS latest_position, latest.stream_position AS latest_version,
+          latest.message_type AS latest_type, latest.created AS latest_recorded,
+          ${sizeOf(scope, wanted, 'latest.message_type', 'octet_length(latest.message_data)')} AS latest_size,
           latest.message_id AS latest_id, json_extract(latest.message_metadata, '$.causationId') AS latest_causation,
           json_extract(latest.message_metadata, '$.correlationId') AS latest_correlation, ${wanted} AS wanted
         FROM (${firstMessagesOfRuns(scope)}) AS f
@@ -251,6 +273,7 @@ export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore & Defin
   return {
     ...sqliteDefinitionStreams(execute),
     pointLength: 1,
+    readAppended: sqliteAppended(execute),
     readRecorded: recordedReadingOver({
       firstPointSince: firstPointSince(execute),
       examineRecords: examineRecords(execute),

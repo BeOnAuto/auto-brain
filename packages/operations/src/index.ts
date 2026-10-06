@@ -14,7 +14,7 @@ export { isCalendarDay } from './reading/calendar-days.ts';
 export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
 export { CallLineage, type GivenLineage } from './caller/call-lineage.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
-export { Caller, CallerIdentitySchema, type CallerIdentity } from './caller/caller.ts';
+export { Caller, CallerIdentitySchema, brainCallerOf, type CallerIdentity } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
 export { Conflict, ConflictKindSchema, type ConflictKind } from './outcome/conflict.ts';

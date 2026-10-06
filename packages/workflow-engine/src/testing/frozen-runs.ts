@@ -1,6 +1,7 @@
 import { runCacheOf, type RunCache } from '../cache/run-cache.ts';
+import type { EnginePorts } from '../engine/engine-ports.ts';
 import { workflowEngineOf } from '../engine/engine.ts';
-import type { EnginePorts, WorkflowEngine } from '../engine/workflow-engine.ts';
+import type { WorkflowEngine } from '../engine/workflow-engine.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
 
 export function deeplyFrozen<T>(value: T): T {

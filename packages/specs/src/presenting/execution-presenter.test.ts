@@ -23,6 +23,7 @@ function recorded(event: ExecutionEvent): RecordedEvent {
     causationId: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
     correlationId: executionId,
     stream: `executions/${executionId}`,
+    version: 1,
     type: event.type,
     data: encode(event),
     recordedAt: '2026-10-01T09:00:02.000Z',

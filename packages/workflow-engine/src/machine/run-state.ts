@@ -60,7 +60,7 @@ export type FrameBody =
       readonly label: string;
       readonly deadline: string;
     }
-  | { readonly kind: 'listen'; readonly consumed: readonly ValueId[]; readonly waited: number };
+  | { readonly kind: 'listen'; readonly consumed: readonly (ValueId | null)[]; readonly waited: number };
 
 export interface TaskFrame {
   readonly reference: string;
@@ -105,8 +105,14 @@ export interface InboxState {
   readonly waiting: readonly WaitingEvent[];
   readonly waitingBytes: number;
   readonly receivedIds: readonly string[];
+  readonly offeredIds: readonly string[];
   readonly received: number;
   readonly receivedBytes: number;
+}
+
+export interface EmittedEvents {
+  readonly count: number;
+  readonly bytes: number;
 }
 
 export interface RunState {
@@ -122,6 +128,8 @@ export interface RunState {
   readonly runs: Readonly<Record<string, number>>;
   readonly timers: { readonly next: number; readonly armed: Readonly<Record<string, ArmedTimer>> };
   readonly calls: Readonly<Record<string, CallKey>>;
+  readonly listeners: Readonly<Record<string, CallKey>>;
+  readonly emitted: EmittedEvents;
   readonly inbox: InboxState;
   readonly heldBytes: number;
   readonly historyBytes: number;
@@ -190,7 +198,11 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
     label: Schema.String,
     deadline: Schema.String,
   }),
-  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema), waited: IntSchema }),
+  Schema.Struct({
+    kind: Schema.Literal('listen'),
+    consumed: Schema.Array(Schema.NullOr(ValueIdSchema)),
+    waited: IntSchema,
+  }),
 ]);
 
 const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
@@ -238,10 +250,13 @@ export const RunStateSchema: Schema.Codec<RunState> = Schema.Struct({
     ),
   }),
   calls: Schema.Record(Schema.String, CallKeySchema),
+  listeners: Schema.Record(Schema.String, CallKeySchema),
+  emitted: Schema.Struct({ count: IntSchema, bytes: IntSchema }),
   inbox: Schema.Struct({
     waiting: Schema.Array(Schema.Struct({ event: ReceivedEventSchema, bytes: IntSchema })),
     waitingBytes: IntSchema,
     receivedIds: Schema.Array(Schema.String),
+    offeredIds: Schema.Array(Schema.String),
     received: IntSchema,
     receivedBytes: IntSchema,
   }),
@@ -271,7 +286,9 @@ export const newRun: RunState = {
   runs: {},
   timers: { next: 1, armed: {} },
   calls: {},
-  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], received: 0, receivedBytes: 0 },
+  listeners: {},
+  emitted: { count: 0, bytes: 0 },
+  inbox: { waiting: [], waitingBytes: 0, receivedIds: [], offeredIds: [], received: 0, receivedBytes: 0 },
   heldBytes: 0,
   historyBytes: 0,
   stepsWithoutWaiting: 0,

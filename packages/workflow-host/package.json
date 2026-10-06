@@ -5,7 +5,8 @@
   "license": "Elastic-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",
@@ -14,12 +15,14 @@
     "measure": "node measure.ts"
   },
   "dependencies": {
+    "@beonauto/brains": "workspace:*",
     "@beonauto/ledger": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/specs": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
     "@event-driven-io/dumbo": "0.13.0-beta.56",
     "@event-driven-io/emmett-sqlite": "0.43.0-beta.50",
+    "croner": "10.0.1",
     "effect": "catalog:",
     "pg": "8.23.1",
     "sqlite3": "6.0.1"

@@ -12,4 +12,5 @@ export interface OrgRequest {
 export interface BrainRequest extends OrgRequest {
   readonly brain: string;
   readonly lineage?: Lineage;
+  readonly depth?: number;
 }

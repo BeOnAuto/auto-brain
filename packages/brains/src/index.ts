@@ -7,3 +7,5 @@ export { listBrains } from './operations/list-brains.ts';
 export { retireBrain } from './operations/retire-brain.ts';
 export { updateBrain } from './operations/update-brain.ts';
 export { BrainSchema, type Brain } from './registry/brain.ts';
+export { brainCreatedOf } from './registry/created-brains.ts';
+export { brainsStreamOfOrg } from './registry/brains-stream.ts';

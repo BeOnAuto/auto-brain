@@ -2,6 +2,7 @@ import type { CallResult } from '@beonauto/operations';
 
 import type { Json } from '../dsl/json.ts';
 import type { TaskEntry, TaskKind } from '../dsl/tasks.ts';
+import type { ReceivedEvent } from '../inbox/received-event.ts';
 import type { DslError } from '../machine/dsl-error.ts';
 import type {
   ArmedTimer,
@@ -17,7 +18,8 @@ import type { Session } from './session.ts';
 export type Signal =
   | { readonly kind: 'timer'; readonly timerId: string; readonly timer: ArmedTimer }
   | { readonly kind: 'answer'; readonly key: string; readonly result: CallResult }
-  | { readonly kind: 'events' };
+  | { readonly kind: 'events' }
+  | { readonly kind: 'offer'; readonly listener: string; readonly slot: number; readonly event: ReceivedEvent };
 
 export interface Raised {
   readonly kind: 'raised';
@@ -51,6 +53,7 @@ export interface Runner {
   readonly startTask: (machine: Machine, entry: TaskEntry, rawInput: ValueId, scope: Scope) => TaskAdvance;
   readonly resumeTask: (machine: Machine, frame: TaskFrame, signal: Signal) => TaskAdvance | undefined;
   readonly cancelTask: (machine: Machine, frame: TaskFrame) => void;
+  readonly invocationAt: (machine: Machine, frame: TaskFrame) => Invocation;
   readonly startList: (machine: Machine, start: ListStart) => ListAdvance;
   readonly yieldList: (machine: Machine, start: ListStart, reference: string) => ListAdvance;
   readonly resumeList: (machine: Machine, cursor: ListCursor, signal: Signal) => ListAdvance | undefined;

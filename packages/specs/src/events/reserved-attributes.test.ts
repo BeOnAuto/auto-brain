@@ -41,20 +41,26 @@ describe('the types and sources of what the brain records itself', () => {
       'step_finished',
       'step_failed',
       'step_skipped',
+      'reaction_refused',
     ]);
     const shown = makeSpecPresenters([echo]).flatMap(({ publicNames }) => Object.values(publicNames).flat());
     expect(shown.filter((name) => !reservedEventTypes.has(name))).toEqual([]);
     expect(
-      ['/executions/1', '/specs/inference/summary', '/executions', 'executions/1', '/ledger/eu'].map((source) =>
-        isReservedSource(source),
-      ),
-    ).toEqual([true, true, false, false, false]);
+      [
+        '/executions/1',
+        '/specs/inference/summary',
+        '/callers/acme-admin',
+        '/executions',
+        'executions/1',
+        '/ledger/eu',
+      ].map((source) => isReservedSource(source)),
+    ).toEqual([true, true, true, false, false, false]);
   });
 
   it('are refused in an event from outside, each where it is given', () => {
     expect(refusals({ type: 'execution_succeeded', source: '/executions/0199a3c4' })).toEqual([
-      '/type: Expected a type of your own, not one the brain records itself: execution_started, execution_deferred, execution_succeeded, execution_rejected, execution_failed, tool_call_started, tool_call_answered, spec_created, spec_updated, spec_retired, event_published, workflow_input_applied, step_started, step_waiting, step_finished, step_failed, step_skipped',
-      '/source: Expected a source of your own, not one under /executions/ or /specs/, which the brain records itself',
+      '/type: Expected a type of your own, not one the brain records itself: execution_started, execution_deferred, execution_succeeded, execution_rejected, execution_failed, tool_call_started, tool_call_answered, spec_created, spec_updated, spec_retired, event_published, workflow_input_applied, step_started, step_waiting, step_finished, step_failed, step_skipped, reaction_refused',
+      '/source: Expected a source of your own, not one under /executions/, /specs/ or /callers/, which the brain records itself',
     ]);
     expect(
       ['execution_deferred', 'tool_call_started', 'event_published', 'workflow_input_applied', 'step_waiting'].map(

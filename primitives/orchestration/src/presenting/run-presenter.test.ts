@@ -59,6 +59,7 @@ function recordOf(event: RunEvent): RecordedEvent {
     causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
     correlationId: executionId,
     stream: `runs/${executionId}`,
+    version: 1,
     type: event.type,
     data: encodeEvent(event),
     recordedAt: '2026-10-05T09:00:00.000Z',

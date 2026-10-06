@@ -27,6 +27,12 @@ const listedDefinitionFields = {
         'What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings',
     }),
   ),
+  reacts: Schema.optionalKey(
+    Schema.Literal(true).annotate({
+      description:
+        'true for a definition that starts runs on its own: a workflow whose schedule starts it on events or on time',
+    }),
+  ),
   created_at: Schema.String.annotate({ description: 'When the definition was created, in ISO 8601 UTC' }),
   created_by: Schema.String.annotate({ description: 'The id of the caller who created the definition' }),
   updated_at: Schema.String.annotate({ description: 'When the definition last changed, in ISO 8601 UTC' }),
@@ -48,6 +54,12 @@ export const ListedDefinitionSchema = Schema.Struct(listedDefinitionFields).anno
 export const DefinitionSchema = Schema.Struct({
   ...listedDefinitionFields,
   source: Schema.String.annotate({ description: 'The definition document' }),
+  reacts_since: Schema.optionalKey(
+    Schema.String.annotate({
+      description:
+        'For a definition that reacts, the id of the record that made its current version, the first record of the brain it reacts to',
+    }),
+  ),
   standing: Schema.optionalKey(StandingField),
 }).annotate({ identifier: 'Definition', description: 'A saved definition, with its document' });
 
@@ -78,6 +90,6 @@ export function isWorkflowDefinition(definition: Definition): definition is Work
 
 export type ListedDefinition = typeof ListedDefinitionSchema.Type;
 
-export type StoredDefinition = Omit<Definition, 'primitive' | 'media_type' | 'standing'> & {
+export type StoredDefinition = Omit<Definition, 'primitive' | 'media_type' | 'reacts_since' | 'standing'> & {
   readonly details?: Schema.JsonObject;
 };

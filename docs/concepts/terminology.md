@@ -55,7 +55,7 @@ A method does not require a `Method` resource. A shared function remains one def
 
 Definitions, versions, runs and results are separate concepts. The runtime versions definitions and records the version each run uses. It does not currently let a caller select an arbitrary historical definition version to run. Workflow steps can call reasoning functions in the same brain; calling another workflow, or a subworkflow, is not supported yet.
 
-The configured trigger types are **Schedule trigger** and **Event trigger**. Both are planned. Manual execution is a **Run** action. Sending an approval or other input to a waiting run answers that run; it does not start a new one. Existing workflow timers and event waits are control steps, not configured triggers.
+The configured trigger types are **Schedule trigger** and **Event trigger**; a workflow names one in its schedule. Manual execution is a **Run** action. Sending an approval or other input to a waiting run answers that run; it does not start a new one. Existing workflow timers and event waits are control steps, not configured triggers.
 
 See [Workflows and runs](workflows.md) for the implemented version, retry, waiting and event behavior.
 
@@ -70,7 +70,7 @@ See [Workflows and runs](workflows.md) for the implemented version, retry, waiti
 | Predictive model | A model created or used by a prediction function.                                                        |
 | Source           | Information a function can consult.                                                                      |
 | Event            | A recorded fact that something happened.                                                                 |
-| Schedule         | Timing and timezone configuration for a schedule trigger.                                                |
+| Schedule         | Timing configuration for a schedule trigger, in UTC.                                                     |
 | Projection       | A defined derivation of a view or state from event history.                                              |
 | Memory           | The broader ability to retain information and make it available.                                         |
 | Event ledger     | One source of recorded history.                                                                          |

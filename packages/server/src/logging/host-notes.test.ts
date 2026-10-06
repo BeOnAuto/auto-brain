@@ -69,3 +69,45 @@ describe('the notes of the views the workflow host keeps', () => {
     expect(lines[1]).toContain('"annotations":{"brain":"brain/acme/alpha/","recall_function":"reviews","version":2}');
   });
 });
+
+describe('the note of a record of a run passed before its outputs were dispatched', () => {
+  it('warns that a listener the record armed takes no event recorded before it is kept', async () => {
+    const [line] = await linesLoggedBy(logHostNote({ kind: 'run_record_passed', run, version: 4, sweeps: 20 }));
+
+    expect(line).toContain(
+      '"message":"A record of a run\'s log was passed before the run\'s outputs were dispatched, after 20 sweeps held it; a listener it armed takes events once it is kept, and none recorded before","level":"WARN"',
+    );
+    expect(line).toContain(
+      '"annotations":{"org":"acme","brain":"alpha","execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","version":4}',
+    );
+  });
+});
+
+describe('the notes of the reactions of the workflow host', () => {
+  it('warn of an event a waiting run did not take because its filter failed, and of a record the triggers could not read', async () => {
+    const lines = [
+      ...(await linesLoggedBy(logHostNote({ kind: 'offer_declined', run, detail: 'An expression failed' }))),
+      ...(await linesLoggedBy(
+        logHostNote({
+          kind: 'record_unreadable',
+          org: 'acme',
+          brain: 'alpha',
+          recordId: 'r-1',
+          type: 'event_published',
+        }),
+      )),
+    ];
+
+    expect(lines).toEqual([
+      expect.stringContaining(
+        '"message":"A run waiting for an event of its brain did not take one, since its filter failed on the event","level":"WARN"',
+      ),
+      expect.stringContaining(
+        '"message":"A record of the brain could not be read to match triggers and waiting runs against; it was passed over","level":"WARN"',
+      ),
+    ]);
+    expect(lines[1]).toContain(
+      '"annotations":{"org":"acme","brain":"alpha","record_id":"r-1","type":"event_published"}',
+    );
+  });
+});

@@ -12,10 +12,12 @@ export interface ExecutionStart extends ExecutionRequest {
   readonly type: 'start';
   readonly spec_version: number;
   readonly calls_tools: boolean;
+  readonly depth?: number;
+  readonly createOnly?: true;
 }
 
 type WithoutFact<Event> = Event extends ExecutionFinished | ExecutionDeferred | ToolCallEvent
-  ? Omit<Event, 'by' | 'at' | 'primitive' | 'name' | 'spec_version'>
+  ? Omit<Event, 'by' | 'at' | 'primitive' | 'name' | 'spec_version' | 'depth'>
   : never;
 
 export type ExecutionResult = WithoutFact<ExecutionFinished>;

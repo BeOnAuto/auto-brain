@@ -12,7 +12,8 @@ import type { RunState } from '../machine/run-state.ts';
 import type { PositionedEvent, RunEvent } from '../run-log/run-event.ts';
 import { isTroubling } from '../settlement/record-store.ts';
 import { isRecordedStep, keyOf } from '../steps/step-entry.ts';
-import type { EnginePorts, Wake } from './workflow-engine.ts';
+import type { EnginePorts } from './engine-ports.ts';
+import type { Wake } from './workflow-engine.ts';
 
 function performed(
   ports: EnginePorts,
@@ -31,6 +32,15 @@ function performed(
   }
   if (output.kind === 'cancel_call') {
     return ports.executor.cancel(output, run);
+  }
+  if (output.kind === 'arm_listener') {
+    return ports.listeners.arm(output, run, origin);
+  }
+  if (output.kind === 'cancel_listener') {
+    return ports.listeners.cancel(output, run);
+  }
+  if (output.kind === 'emit_event') {
+    return ports.emitter.emit(output, run, origin);
   }
   return ports.recordStore
     .settle({ executionId: output.executionId, settlement: output.settlement }, run, origin)

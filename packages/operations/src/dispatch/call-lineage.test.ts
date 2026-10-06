@@ -20,12 +20,12 @@ const note = defineCommand('brain', {
   description: 'Notes that it was called, with the lineage the call was given.',
   route: { method: 'POST', path: '/notes' },
   inputSchema: Schema.Record(Schema.String, Schema.Never),
-  outputSchema: Schema.Struct({ version: Schema.Int }),
+  outputSchema: Schema.Struct({ version: Schema.Int, depth: Schema.Int }),
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* () {
-    const { lineage } = yield* CallLineage;
+    const { lineage, depth } = yield* CallLineage;
     const { version } = yield* (yield* BrainWriter).execute('notes', notes, null, lineage ?? undefined);
-    return { version };
+    return { version, depth };
   }),
 });
 
@@ -45,6 +45,20 @@ describe('the lineage of a call', () => {
     expect(records.map(({ id, causationId, correlationId }) => ({ id, causationId, correlationId }))).toEqual([
       { id: messageIdOf('brain/acme/alpha/notes', 1), ...lineage },
       { id: messageIdOf('brain/acme/alpha/notes', 2), causationId: null, correlationId: null },
+    ]);
+  });
+
+  it('carries the reaction depth the request was given, and 0 for a request that gave none', async () => {
+    const { dispatcher, run } = harness();
+
+    const outcomes = [
+      await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), depth: 3 })),
+      await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin))),
+    ];
+
+    expect(outcomes).toEqual([
+      { status: 'succeeded', output: { version: 1, depth: 3 } },
+      { status: 'succeeded', output: { version: 2, depth: 0 } },
     ]);
   });
 });

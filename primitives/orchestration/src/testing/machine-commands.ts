@@ -70,6 +70,12 @@ function commandOf(run: WorkflowRun, labels: Map<string, string>, { at, output }
   if (output.kind === 'cancel_call') {
     return [{ kind: 'cancelled', summary: output.key.reference }];
   }
+  if (output.kind === 'emit_event') {
+    return [{ kind: 'emitted', event: output.event }];
+  }
+  if (output.kind !== 'settle') {
+    return [];
+  }
   const { org, brain, id, spec } = run.execution;
   return [{ kind: 'settle', request: { org, brain, spec: spec.name, executionId: id, settlement: output.settlement } }];
 }

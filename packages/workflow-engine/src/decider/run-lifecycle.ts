@@ -3,8 +3,7 @@ import { field, objectField } from '../dsl/json.ts';
 import { policyOf } from '../dsl/policy.ts';
 import { RaisedError, caughtRaise, errorType, outcomeOfOutput } from '../dsl/raised-error.ts';
 import { timedOut, timeoutMilliseconds } from '../dsl/task-outcomes.ts';
-import { callKeyText } from '../executor/call-key.ts';
-import type { RunInput, Started } from '../machine/run-input.ts';
+import type { Started } from '../machine/run-input.ts';
 import type { FrameBody } from '../machine/run-state.ts';
 import {
   listBodyOf,
@@ -106,7 +105,7 @@ function startRoot(machine: Machine, inputId: number): void {
   settledRoot(machine, frame, listBodyOf(machine.runner.startList(machine, { pointer: '/do', data, variables: {} })));
 }
 
-function startRun(machine: Machine, started: Started): void {
+export function startRun(machine: Machine, started: Started): void {
   const { session } = machine;
   const input = session.hold(started.input);
   session.begin({
@@ -143,7 +142,7 @@ function rootInvocation(machine: Machine, frame: FramePrefix): Invocation {
 function resumeRoot(machine: Machine, frame: FramePrefix & { readonly body: FrameBody }, signal: Signal): void {
   const { session } = machine;
   if (signal.kind === 'timer' && signal.timerId === frame.timeout) {
-    cancelBody(machine, frame.body);
+    cancelBody(machine, frame);
     session.end({ kind: 'raised', error: timedOut(signal.timer.dueAt - signal.timer.armedAt, root).error });
     return;
   }
@@ -153,45 +152,11 @@ function resumeRoot(machine: Machine, frame: FramePrefix & { readonly body: Fram
   }
 }
 
-function resumeRun(machine: Machine, signal: Signal): void {
+export function resumeRun(machine: Machine, signal: Signal): void {
   const frame = machine.session.root();
   if (frame !== null) {
     endingOnRaise(machine, () => {
       resumeRoot(machine, frame, signal);
     });
-  }
-}
-
-function fired(machine: Machine, timerId: string): void {
-  for (const timer of machine.session.timers.fire(timerId)) {
-    if (timer.purpose === 'deadline') {
-      machine.session.end({ kind: 'overran', milliseconds: timer.dueAt - timer.armedAt });
-    } else {
-      resumeRun(machine, { kind: 'timer', timerId, timer });
-    }
-  }
-}
-
-function received(machine: Machine, input: Extract<RunInput, { readonly kind: 'event_received' }>): void {
-  const overflow = machine.session.receiveEvent(input.event);
-  if (overflow === undefined) {
-    resumeRun(machine, { kind: 'events' });
-  } else {
-    machine.session.end({ kind: 'raised', error: overflow });
-  }
-}
-
-export function applied(machine: Machine, input: RunInput): void {
-  if (input.kind === 'started') {
-    startRun(machine, input);
-  } else if (input.kind === 'timer_fired') {
-    fired(machine, input.timerId);
-  } else if (input.kind === 'call_answered') {
-    resumeRun(machine, { kind: 'answer', key: callKeyText(input.key), result: input.result });
-  } else if (input.kind === 'event_received') {
-    received(machine, input);
-  } else {
-    machine.session.requestCancel();
-    machine.session.end({ kind: 'cancelled' });
   }
 }

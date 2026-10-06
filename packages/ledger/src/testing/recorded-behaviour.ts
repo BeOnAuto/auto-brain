@@ -2,6 +2,7 @@ import { InvalidCursor, type RecordedEvent, type RecordedOrder, type RecordedSel
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { headsBehaviour } from '../heads/heads-behaviour.ts';
 import { lineageBehaviour } from '../lineage/lineage-behaviour.ts';
 import {
   alpha,
@@ -284,4 +285,5 @@ export function recordedBehaviour(aLedger: LedgerMaker): void {
   theTimeAPageStartsFrom(aLedger);
   runsBehaviour(aLedger);
   lineageBehaviour(aLedger);
+  headsBehaviour(aLedger);
 }

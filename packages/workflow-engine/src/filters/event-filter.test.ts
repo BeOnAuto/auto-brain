@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Json, JsonObject } from '../dsl/json.ts';
-import { literalFilterOf, matchEvent, type LiteralFilter } from './event-filter.ts';
+import {
+  brainWideFilterOf,
+  listenFiltersOf,
+  listenerFilterOf,
+  literalFilterOf,
+  matchEvent,
+  type FilterVerdict,
+  type LiteralFilter,
+} from './event-filter.ts';
 
 const at = '/schedule/on/one';
 
@@ -203,5 +211,57 @@ describe('an event filter that tests what cannot be matched as it is', () => {
       { pointer: `${at}/until`, detail: 'until is not part of an event filter, which takes with', forbidden: true },
     ]);
     expect(rejections[1]?.detail).toContain(' .[ ');
+  });
+});
+
+function matchedIfRead(filter: LiteralFilter | undefined): FilterVerdict | undefined {
+  return filter === undefined ? undefined : matchEvent(filter, monthClosed, now);
+}
+
+describe('a filter of a listen task that reaches events beyond its run', () => {
+  it('is one whose type is written out, and none whose type is computed, missing or empty', () => {
+    const filters: readonly Json[] = [
+      { with: { type: 'com.acme.closed', source: '/ledger' } },
+      { with: { type: '${ "com.acme.closed" }' } },
+      { with: { source: '/ledger' } },
+      { with: { type: '' } },
+      'not a filter',
+    ];
+
+    expect(filters.map((filter) => brainWideFilterOf(filter))).toEqual([
+      { type: 'com.acme.closed', source: '/ledger' },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('is matched by its literal attributes and its closed expressions, leaving those that need the run’s variables', () => {
+    const listener = listenerFilterOf(
+      { type: 'com.acme.ledger.month-closed', subject: 'september', data: '${ .region == $context.region }' },
+      '/do/0/await/listen/to/one',
+    );
+    const closed = listenerFilterOf({ type: 'com.acme.ledger.month-closed', data: '${ .region == "us" }' }, '/x');
+
+    expect(listener).toEqual({
+      reference: '/do/0/await/listen/to/one',
+      type: 'com.acme.ledger.month-closed',
+      attributes: { type: 'com.acme.ledger.month-closed', subject: 'september' },
+      dataNeedsVariables: true,
+    });
+    expect([listener, closed].map((filter) => matchedIfRead(filter))).toEqual([true, false]);
+    expect(listenerFilterOf({ type: '${ "x" }' }, '/x')).toBeUndefined();
+  });
+});
+
+describe('the filters of a listen task that reach events beyond its run', () => {
+  it('are those whose type is written out, of one, any or all, and none of a task that is no listen', () => {
+    expect([
+      listenFiltersOf({ listen: { to: { one: { with: { type: 'a' } } } } }),
+      listenFiltersOf({ listen: { to: { all: [{ with: { type: 'a' } }, { with: { source: '/b' } }] } } }),
+      listenFiltersOf({ set: {} }),
+      listenFiltersOf(null),
+    ]).toEqual([[{ type: 'a' }], [{ type: 'a' }], [], []]);
   });
 });

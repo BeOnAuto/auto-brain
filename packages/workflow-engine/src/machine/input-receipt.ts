@@ -22,6 +22,7 @@ export const InputReceiptSchema = Schema.Union([
     ),
   }),
   Schema.Struct({ kind: Schema.Literal('event_received'), ...keyed, eventType: Schema.String }),
+  Schema.Struct({ kind: Schema.Literal('event_offered'), ...keyed, eventType: Schema.String }),
   Schema.Struct({ kind: Schema.Literal('cancel_requested'), ...keyed }),
 ]);
 
@@ -62,6 +63,9 @@ export function receiptOf(input: RunInput, at: number): InputReceipt {
   }
   if (input.kind === 'event_received') {
     return { kind: input.kind, key: input.event.id, at, eventType: input.event.type };
+  }
+  if (input.kind === 'event_offered') {
+    return { kind: input.kind, key: input.key, at, eventType: input.event.type };
   }
   return { kind: input.kind, key: input.executionId, at };
 }

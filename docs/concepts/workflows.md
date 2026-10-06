@@ -34,13 +34,30 @@ Each call to a function starts a run of that function, recorded under its own ex
 
 A run starts when a caller executes the workflow with `execute_spec`, giving its input. The call answers at once with the run's execution id and the status `started`; the run then carries on by itself. Executing again with the same execution id and input returns that run as it stands rather than starting another. A workflow runs once for each execution id: executing again with the id of a run that ended without a result, `rejected` as `unavailable` or `failed`, is refused with `conflict`, so start a new run under a new execution id.
 
+A run also starts when a trigger of the workflow fires, as the next section describes.
+
 Every step acts for the caller who started the run, with the permissions that caller had at the start, for as long as the run lasts. The longest a run may last is 30 days unless the deployment sets a different limit, and a run still going when it reaches that limit fails.
+
+## Triggers
+
+A workflow can start on its own. Its document's `schedule` names one trigger:
+
+- An **event trigger** starts a run for each event of the brain that matches its filter: an event published with `publish_event`, an event another workflow emits, or one of the brain's own facts, such as a reasoning function's run that succeeded. The run's input is a list holding the event.
+- A **schedule trigger** starts a run at the times a `cron` rule names, in UTC, or every period of at least a minute. The run's input says when it was due. One run of a schedule runs at a time: a time due while the run before still runs is skipped.
+
+A run a trigger starts acts as the brain itself, shown as `brain:` and the brain's name in `started_by`, rather than for a person. A trigger applies from when its version is saved, never to what the brain recorded before. Each event or due time starts its run once, even across a restart of the runtime.
+
+A workflow does not start for its own runs or for the events they emit, a chain of runs started by events stops at a depth of 8, and a trigger starts at most 60 runs of its workflow a minute. What a trigger did not start appears among the brain's events as `reaction_refused`. The [workflow format](../reference/workflow-format.md#triggers) gives the exact rules.
+
+A workflow can also announce something with an `emit` step, which records an event in the brain; another workflow's event trigger, or a run waiting for that event, can take it.
 
 ## Waiting and answering
 
 A run waits while a step's function runs, while a timer or a retry delay passes, and while a step listens for an event. It shows the status `started` throughout.
 
 An event answers a waiting run. A caller sends it with `send_execution_event`, naming the run's execution id and giving the event a `type` and, usually, `data`. The event belongs to that run: it does not start another one. An event that arrives before the run listens for it is kept until a step takes it, and an event repeated with the same id is taken once, so a sender can retry safely. A run that has ended refuses events.
+
+A step that listens for an event whose type it names also hears the events of the whole brain while it listens: one published with `publish_event`, emitted by another workflow, or one of the brain's facts. The run checks the event against its own filter, so it can take only the event about the case it handles. An event published before the step listened, or after it stopped, does not reach it; send the event to the run itself when it must not be missed.
 
 An approval works this way: the workflow listens for an event such as `com.example.brief.decided`, and the person's answer arrives as that event's data. A step can give up waiting after a set time and continue on another path.
 
@@ -64,6 +81,6 @@ A rejection's reason is `invalid_input` when the error says the input or the doc
 
 ## Planned
 
-Schedule triggers and event triggers are planned. A schedule trigger will hold its timing rule and timezone; an event trigger will hold its event type and matching conditions. Today a run starts only when a caller executes the workflow. Timers and event waits inside a run are control steps, not triggers for new runs.
+A schedule trigger reads its times in UTC; time zones are planned. Starting one run from several events that belong together is planned too. Timers and event waits inside a run are control steps, not triggers for new runs.
 
 A workflow cannot currently call another workflow. The name for that use, when supported, is a workflow step or subworkflow.

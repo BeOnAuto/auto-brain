@@ -20,6 +20,7 @@ type RunData = {
   readonly name: string;
   readonly version: number;
   readonly caller: string;
+  readonly depth: number;
 };
 
 const runFactTypes: readonly RunFact['type'][] = [
@@ -49,8 +50,8 @@ function withOutput(fact: CloudEvent, data: RunData, output: Schema.Json): Cloud
 }
 
 function runFactOf(id: string, execution: string, event: RunFact): CloudEvent {
-  const { primitive, name, spec_version: version, by: caller, at: time } = event;
-  const data: RunData = { primitive, name, version, caller };
+  const { primitive, name, spec_version: version, by: caller, at: time, depth = 0 } = event;
+  const data: RunData = { primitive, name, version, caller, depth };
   const fact = {
     specversion: '1.0',
     id,

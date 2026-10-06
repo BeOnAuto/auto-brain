@@ -55,3 +55,11 @@ export function toolAnswered(number: number, outcome: ToolCallAnswered['outcome'
 export function eventPublished(type: string): string {
   return `The event ${quoted(type)} was published to the brain.`;
 }
+
+export function eventEmitted(type: string, workflow: string): string {
+  return `The workflow ${quoted(workflow)} emitted the event ${quoted(type)}.`;
+}
+
+export function reactionsRefused(workflow: string): string {
+  return `The workflow ${quoted(workflow)} was not started for everything its trigger matched in a minute; the details say how often and why.`;
+}

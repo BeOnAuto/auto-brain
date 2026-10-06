@@ -14,6 +14,8 @@ import {
   matchedThroughItsIndex,
   ofTypes,
   orderedThroughItsIndex,
+  sizedTypesOf,
+  sizeOf,
   timeOf,
   type Bind,
   type Query,
@@ -24,13 +26,14 @@ const ExaminedRunRow = Schema.Struct({
   examined: Schema.Int,
   latest_transaction: Schema.String,
   latest_position: Schema.String,
+  latest_version: Schema.Int,
   latest_type: Schema.String,
   latest_recorded: Schema.String,
   latest_id: Schema.String,
   latest_causation: Schema.NullOr(Schema.String),
   latest_correlation: Schema.NullOr(Schema.String),
   wanted: Schema.Boolean,
-  size: Schema.Int,
+  latest_size: Schema.Int,
 });
 
 function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationScope): string {
@@ -39,8 +42,8 @@ function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationSc
     ) AS examined, count(*) OVER () AS scanned_count
     FROM (
       SELECT transaction_id, global_position, transaction_id::text AS transaction,
-        global_position::text AS position, stream_id AS stream, message_type AS type,
-        ${timeOf('created')} AS recorded, ${lineageColumns}, message_data
+        global_position::text AS position, stream_id AS stream, stream_position::int AS version,
+        message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns}, message_data
       FROM emt_messages
       WHERE ${matchedThroughItsIndex(bind, kindKeyOfStream, `${scope.brainKey}executions/`)} AND stream_position = 1
         AND partition = ${partition} AND is_archived = FALSE
@@ -57,16 +60,18 @@ function examinedRunOf(row: typeof ExaminedRunRow.Type): ExaminedItem {
     transaction: row.latest_transaction,
     position: row.latest_position,
     stream: row.stream,
+    version: row.latest_version,
     type: row.latest_type,
     recorded: row.latest_recorded,
     id: row.latest_id,
     causation: row.latest_causation,
     correlation: row.latest_correlation,
+    size: row.latest_size,
   });
   return {
     examined: row.examined,
     wanted: row.wanted,
-    size: row.size,
+    size: row.size + (alone ? 0 : row.latest_size),
     point: first.point,
     heads: alone ? [first] : [first, latest],
   };
@@ -76,17 +81,19 @@ export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
   return async (scope) => {
     const { values, bind } = binding();
     const wanted = ofTypes(bind, 'latest.message_type', scope.types);
+    const sized = { wanted, types: sizedTypesOf(bind, scope) };
     const partition = bind(defaultPartition);
     const rows = await query(
-      `SELECT f.transaction, f.position, f.stream, f.type, f.recorded, f.id, f.causation, f.correlation,
+      `SELECT f.transaction, f.position, f.stream, f.version, f.type, f.recorded, f.id, f.causation, f.correlation,
           f.examined::int AS examined,
           latest.transaction_id::text AS latest_transaction, latest.global_position::text AS latest_position,
+          latest.stream_position::int AS latest_version,
           latest.message_type AS latest_type, ${timeOf('latest.created')} AS latest_recorded,
           latest.message_id AS latest_id, latest.message_metadata ->> 'causationId' AS latest_causation,
           latest.message_metadata ->> 'correlationId' AS latest_correlation, ${wanted} AS wanted,
-          CASE WHEN ${wanted} THEN octet_length(f.message_data ->> 'json')
-            + CASE WHEN latest.stream_position = 1 THEN 0 ELSE octet_length(latest.message_data ->> 'json') END
-          ELSE 0 END AS size
+          ${sizeOf(sized, scope, 'f', 'f.type')} AS size,
+          CASE WHEN latest.stream_position <> 1 THEN ${sizeOf(sized, scope, 'latest', 'latest.message_type')}
+          ELSE 0 END AS latest_size
         FROM (${firstMessagesOfRuns(bind, partition, scope)}) AS f
         CROSS JOIN LATERAL (
           SELECT transaction_id, global_position, stream_position, message_type, created, message_data,

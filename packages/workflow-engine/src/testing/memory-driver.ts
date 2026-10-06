@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 
 import type { Submission, WorkflowEngine } from '../engine/workflow-engine.ts';
-import type { EventReceived, RunInput } from '../machine/run-input.ts';
+import type { EventOffered, EventReceived, RunInput } from '../machine/run-input.ts';
 import type { Responder } from '../memory/memory-executor.ts';
 import { memoryPorts, type MemoryPorts } from '../memory/memory-ports.ts';
 import { virtualClock, type VirtualClock } from '../memory/virtual-clock.ts';
@@ -24,6 +24,7 @@ export interface MemoryDriver extends RunWatch {
   readonly start: (request: StartRequest) => Submission;
   readonly submit: (input: RunInput) => Submission;
   readonly deliver: (executionId: string, event: EventReceived['event']) => Submission;
+  readonly offer: (offer: Omit<EventOffered, 'kind' | 'at'>) => Submission;
   readonly cancel: (executionId: string) => Submission;
   readonly at: (milliseconds: number, action: () => void) => void;
   readonly inputsOf: (executionId: string) => readonly RunInput[];
@@ -57,6 +58,7 @@ export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
     },
     submit,
     deliver: (executionId, event) => submit({ kind: 'event_received', executionId, at: clock.now(), event }),
+    offer: (offer) => submit({ ...offer, kind: 'event_offered', at: clock.now() }),
     cancel: (executionId) => submit({ kind: 'cancel_requested', executionId, at: clock.now() }),
     at: (milliseconds, action) => {
       const due = clock.now() + milliseconds;

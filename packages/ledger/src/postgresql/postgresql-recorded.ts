@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { postgresqlAppended } from '../appended/postgresql-appended.ts';
 import type { DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
 import {
   pointKey,
@@ -25,6 +26,8 @@ import {
   matchedThroughItsIndex,
   ofTypes,
   PointFields,
+  sizedTypesOf,
+  sizeOf,
   timeOf,
   type Bind,
   type Query,
@@ -32,9 +35,7 @@ import {
 
 export type { Query } from './recorded-parts.ts';
 
-const ExaminedRecordRows = Schema.Array(
-  Schema.Struct({ ...HeadFields, wanted: Schema.Boolean, size: Schema.Int, examined: Schema.Int }),
-);
+const ExaminedRecordRows = Schema.Array(Schema.Struct({ ...HeadFields, wanted: Schema.Boolean, examined: Schema.Int }));
 
 const PointRows = Schema.Array(Schema.Struct(PointFields));
 
@@ -62,8 +63,8 @@ function recordsWhere(keys: readonly Keyed[], records: RecordsScope): string {
   const matched = keys.map(({ key, value }) => matchedThroughItsIndex(records.bind, key, value)).join(' AND ');
   const ordered = keys.map(({ key }) => `${key} ${direction(records.scope)}`).join(', ');
   return `SELECT transaction_id, global_position, transaction_id::text AS transaction, global_position::text AS position,
-      stream_id AS stream, message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns},
-      ${records.wanted} AS wanted, message_data
+      stream_id AS stream, stream_position::int AS version, message_type AS type, ${timeOf('created')} AS recorded,
+      ${lineageColumns}, ${records.wanted} AS wanted, message_data
     FROM emt_messages
     WHERE ${matched} AND partition = ${records.partition}
       AND is_archived = FALSE${horizonOf(records.scope)}${records.bounded}
@@ -96,10 +97,10 @@ function examineRecords(query: Query): RecordedStatements['examineRecords'] {
       bounded: bounds(bind, scope),
       limit: bind(scope.examineAtMost + 1),
     };
+    const size = sizeOf({ wanted: 'wanted', types: sizedTypesOf(bind, scope) }, scope, 'numbered', 'type');
     const rows = await query(
-      `SELECT transaction, position, stream, type, recorded, id, causation, correlation, wanted,
-          examined::int AS examined,
-          CASE WHEN wanted THEN octet_length(message_data ->> 'json') ELSE 0 END AS size
+      `SELECT transaction, position, stream, version, type, recorded, id, causation, correlation, wanted,
+          examined::int AS examined, ${size} AS size
         FROM (
           SELECT scanned.*, row_number() OVER (ORDER BY ${inOrder(records, 'scanned.')}) AS examined,
             count(*) OVER () AS scanned_count
@@ -159,6 +160,7 @@ export function postgresqlRecordedStore(query: Query): RecordedStore & Definitio
   return {
     ...postgresqlDefinitionStreams(query),
     pointLength: 2,
+    readAppended: postgresqlAppended(query),
     readRecorded: recordedReadingOver({
       firstPointSince: firstPointSince(query),
       examineRecords: examineRecords(query),

@@ -50,9 +50,9 @@ export function typesToRead(named: readonly string[]): readonly string[] {
 }
 
 function eventOf(brainKey: string, record: StoredRecord): CloudEvent | undefined {
-  const { id, causationId, correlationId, type, data, recordedAt } = record;
+  const { id, causationId, correlationId, version, type, data, recordedAt } = record;
   const stream = record.stream.slice(brainKey.length);
-  return brainEventOf({ id, cursor: '', causationId, correlationId, stream, type, data, recordedAt });
+  return brainEventOf({ id, cursor: '', causationId, correlationId, stream, version, type, data, recordedAt });
 }
 
 function placedOf(brainKey: string, record: StoredRecord): PageEvent | PassedOver {

@@ -19,6 +19,7 @@ function recorded(published: EventPublished): RecordedEvent {
     causationId: null,
     correlationId: null,
     stream: publishedEventStreamOf(published.event.source, published.event.id),
+    version: 1,
     type: published.type,
     data: encode(published),
     recordedAt: '2026-10-01T09:00:02.000Z',

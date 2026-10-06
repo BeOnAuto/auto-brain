@@ -3,9 +3,10 @@ import { Effect } from 'effect';
 import type { RunCache } from '../cache/run-cache.ts';
 import type { ArmTimer } from '../dispatch/run-output.ts';
 import type { ArmedTimer, RunState } from '../machine/run-state.ts';
+import { loadedRunOf, type LoadedRun } from '../run-log/run-fold.ts';
 import { isSnapshotDue, sinceSnapshotAfter, snapshotOf } from '../run-log/snapshot.ts';
+import type { EnginePorts } from './engine-ports.ts';
 import type { RunDecision } from './run-loop.ts';
-import type { EnginePorts } from './workflow-engine.ts';
 
 export function snapshotIfDue(
   ports: EnginePorts,
@@ -28,4 +29,8 @@ export function armedTimersOf(executionId: string, state: RunState): readonly Ar
     dueAt,
     purpose,
   }));
+}
+
+export function loadedFrom(ports: EnginePorts, executionId: string): Effect.Effect<LoadedRun> {
+  return Effect.map(ports.runStore.load(executionId), (stored) => loadedRunOf(stored));
 }

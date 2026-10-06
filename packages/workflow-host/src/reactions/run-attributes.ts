@@ -1,0 +1,33 @@
+import { Option, Schema } from 'effect';
+
+const ReactionAttributesSchema = Schema.Struct({
+  spec: Schema.Struct({ name: Schema.String, version: Schema.Int }),
+  caller: Schema.Struct({ id: Schema.String }),
+  depth: Schema.optionalKey(Schema.Int),
+  lineage: Schema.optionalKey(Schema.Struct({ correlation: Schema.String })),
+});
+
+export interface RunReaction {
+  readonly workflow: string;
+  readonly version: number;
+  readonly caller: string;
+  readonly depth: number;
+  readonly correlation: string | undefined;
+}
+
+const decodeAttributes = Schema.decodeUnknownOption(ReactionAttributesSchema);
+
+const unnamed: RunReaction = { workflow: 'workflow', version: 0, caller: 'unknown', depth: 0, correlation: undefined };
+
+export function reactionOfRun(attributes: Schema.JsonObject): RunReaction {
+  return Option.match(decodeAttributes(attributes), {
+    onNone: () => unnamed,
+    onSome: ({ spec, caller, depth = 0, lineage }) => ({
+      workflow: spec.name,
+      version: spec.version,
+      caller: caller.id,
+      depth,
+      correlation: lineage?.correlation,
+    }),
+  });
+}

@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
+import { BrainContext, Caller, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import {
+  callerSourcePrefix,
   EventSourceSchema,
   getExecution,
   isWorkflowRun,
@@ -9,7 +10,7 @@ import {
   refusingForbiddenCharacters,
   refusingTheBrainsOwnAttributes,
   reservedEventTypes,
-  reservedSourcePrefixes,
+  reservedSourcesInWords,
 } from '@beonauto/specs';
 import {
   jsonBytesOf,
@@ -90,6 +91,9 @@ const EventSchema = Schema.Struct({
 const DeliveredEventSchema = Schema.Struct({
   ...EventFields,
   id: Schema.String.annotate({ description: 'The id of the event' }),
+  source: Schema.String.annotate({
+    description: `Where the event comes from: as given, or ${callerSourcePrefix} and the id of the caller who sent it`,
+  }),
   time: Schema.String.annotate({ description: 'When the event was sent, in ISO 8601 UTC' }),
 }).annotate({ identifier: 'DeliveredEvent', description: 'The event as the workflow received it' });
 
@@ -98,13 +102,13 @@ const description = [
   'with its id and the time it was sent.',
   '`execution_id` names the workflow run that is still started. This resumes waiting work; it does not start a new run.',
   `\`event\` has a \`type\` and an optional \`id\` (each at most ${mostNameLength} characters), \`source\`, a URI reference`,
-  `such as /ledger/eu, and \`subject\` (each at most ${mostTextLength} characters; no text may hold a control character, a lone surrogate or a`,
+  `such as /ledger/eu, or ${callerSourcePrefix} and the id of the caller when it is left out, and \`subject\` (each at most ${mostTextLength} characters; no text may hold a control character, a lone surrogate or a`,
   'noncharacter, and type, id and subject need a character that is not a space) and `data` (any JSON value that nests at most',
   `${mostDataDepth} levels deep); the whole event takes at most ${mostEventBytes} bytes as JSON.`,
   'A listen task consumes an event whose attributes match its filter; an event no task consumes yet waits',
   'in the workflow, and an event with an id the workflow already received is ignored, so a call can be',
   'retried safely with the same id.',
-  `The types ${[...reservedEventTypes].join(', ')} and sources under ${reservedSourcePrefixes.join(' or ')}`,
+  `The types ${[...reservedEventTypes].join(', ')} and sources under ${reservedSourcesInWords}`,
   "are the brain's own, for what it records itself, and are refused with invalid_input.",
   `A workflow holds at most ${mostWaitingEvents} events it has not consumed (${mostWaitingEventBytes} bytes), and takes`,
   `at most ${mostReceivedEvents} events (${mostReceivedEventBytes} bytes as JSON) over its life; one more fails it, and`,
@@ -131,7 +135,13 @@ export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {
         return yield* new NotFound({ detail: noRunningWorkflow });
       }
       const { org, brain } = yield* BrainContext;
-      const delivered = { ...event, id: event.id ?? randomUUID(), time: DateTime.formatIso(yield* DateTime.now) };
+      const { id: caller } = yield* Caller;
+      const delivered = {
+        ...event,
+        id: event.id ?? randomUUID(),
+        source: event.source ?? `${callerSourcePrefix}${caller}`,
+        time: DateTime.formatIso(yield* DateTime.now),
+      };
       const answer = yield* runs
         .deliver({ org, brain, executionId }, delivered)
         .pipe(Effect.mapError(unavailableUnless(notNow)));

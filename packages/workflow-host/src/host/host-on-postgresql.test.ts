@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { describe, onTestFinished } from 'vitest';
 
+import { reactionSuite } from '../reaction-testing/reaction-suite.ts';
 import { failureSuite } from '../testing/failure-suite.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { claimSuite, leaseSuite } from '../testing/lease-suite.ts';
@@ -53,6 +54,10 @@ describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
 
   describe('killed while it dispatches, then started again', () => {
     failureSuite(onPostgreSQL);
+  });
+
+  describe('the reactions of its brains', () => {
+    reactionSuite(onPostgreSQL);
   });
 
   describe('one of two hosts on one database', () => {

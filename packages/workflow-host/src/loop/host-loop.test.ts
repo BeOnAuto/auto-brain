@@ -7,7 +7,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { eventually } from '../testing/eventually.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runId } from '../testing/probe-subjects.ts';
-import { sqlTimers, type DueTimer } from '../timers/sql-timers.ts';
+import { sqlTimers, type DueTimer, type TimerTable } from '../timers/sql-timers.ts';
 import { systemClock } from './host-clock.ts';
 import { startLoop, type HostLoop } from './host-loop.ts';
 
@@ -25,6 +25,26 @@ interface LoopingOptions {
   readonly sweepEveryMs: number;
   readonly fire?: (timer: DueTimer) => Effect.Effect<void, unknown>;
   readonly sweep?: () => Effect.Effect<void>;
+  readonly readsFailing?: number;
+}
+
+function failingReadsOf(timers: TimerTable, readsFailing: number): TimerTable {
+  const dueFailing = failingFirst(readsFailing);
+  const nextDueFailing = failingFirst(readsFailing);
+  return {
+    ...timers,
+    due: (now, limit) => dueFailing(timers.due(now, limit)),
+    nextDueAt: () => nextDueFailing(timers.nextDueAt()),
+  };
+}
+
+function failingFirst(times: number) {
+  const failures = { left: times };
+  return <A>(read: Effect.Effect<A>): Effect.Effect<A> =>
+    Effect.suspend(() => {
+      failures.left -= 1;
+      return failures.left < 0 ? read : Effect.die(new Error('The database is down'));
+    });
 }
 
 const firedAtOnce = (): Effect.Effect<void> => Effect.void;
@@ -37,7 +57,8 @@ const noEngine: WorkflowEngine = {
   sweep: () => Effect.succeed({ runs: 0, timersArmedAgain: 0 }),
 };
 
-async function looping({ sweepEveryMs, fire = firedAtOnce, sweep = sweptAtOnce }: LoopingOptions): Promise<Looping> {
+async function looping(options: LoopingOptions): Promise<Looping> {
+  const { sweepEveryMs, fire = firedAtOnce, sweep = sweptAtOnce, readsFailing = 0 } = options;
   const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
   const fired: string[] = [];
   const troubles: string[] = [];
@@ -48,7 +69,7 @@ async function looping({ sweepEveryMs, fire = firedAtOnce, sweep = sweptAtOnce }
   });
   const loop = startLoop({
     clock: systemClock,
-    timers,
+    timers: failingReadsOf(timers, readsFailing),
     engine: {
       ...noEngine,
       sweep: () =>
@@ -125,6 +146,21 @@ describe('the loop of the host, sweeping and stopping', () => {
     await eventually(loop.sweeps, (sweeps) => sweeps >= 2);
 
     expect(new Set(loop.troubles())).toEqual(new Set(['A sweep of the runs failed; the next sweep tries again']));
+  });
+
+  it('reports a read of its timers that failed, and fires them once the reads come back', async () => {
+    const loop = await looping({ sweepEveryMs: 20, readsFailing: 1 });
+
+    await loop.arm('1', 0);
+    const fired = await eventually(loop.fired, (timers) => timers.length > 0);
+
+    expect([fired, new Set(loop.troubles())]).toEqual([
+      ['1'],
+      new Set([
+        'The timers of the runs could not be read; the loop tries again',
+        'The next due time of the timers could not be read; the loop waits for the next sweep',
+      ]),
+    ]);
   });
 
   it('finishes the timer it is firing when it is stopped', async () => {

@@ -31,6 +31,7 @@ function ofRun(event: ExecutionEvent): RecordedEvent {
     causationId: null,
     correlationId: null,
     stream: executionStreamOf(executionId),
+    version: 1,
     type: event.type,
     data: encodeExecutionEvent(event),
     recordedAt: fact.at,
@@ -44,6 +45,7 @@ function ofSpecs(event: SpecEvent): RecordedEvent {
     causationId: null,
     correlationId: null,
     stream: specsStreamOf('inference'),
+    version: 1,
     type: event.type,
     data: encodeSpecEvent(event),
     recordedAt: fact.at,
@@ -58,7 +60,7 @@ const aboutTheRun = {
   time: fact.at,
 };
 
-const ofTheRun = { primitive: 'inference', name: 'summary', version: 3, caller: 'acme-admin' };
+const ofTheRun = { primitive: 'inference', name: 'summary', version: 3, caller: 'acme-admin', depth: 0 };
 
 describe('the facts of a run as events', () => {
   it('are its start and its endings, about the run, from the record and its time, naming what ran', () => {
@@ -183,9 +185,17 @@ describe('the facts of a definition as events', () => {
   });
 });
 
+const about = {
+  id: recordId,
+  cursor: recordId,
+  causationId: null,
+  correlationId: null,
+  version: 1,
+  recordedAt: fact.at,
+};
+
 describe('the records that are no facts of the brain', () => {
   it('are the records it cannot read as what their stream holds, which it answers with none, never a failure', () => {
-    const about = { id: recordId, cursor: recordId, causationId: null, correlationId: null, recordedAt: fact.at };
     const unreadable: readonly RecordedEvent[] = [
       {
         ...about,
@@ -201,30 +211,12 @@ describe('the records that are no facts of the brain', () => {
   });
 
   it('are the run logs and every other stream kind', () => {
-    expect(
-      brainFactOf({
-        id: recordId,
-        cursor: recordId,
-        causationId: null,
-        correlationId: null,
-        stream: `runs/${executionId}`,
-        type: 'input_applied',
-        data: {},
-        recordedAt: fact.at,
-      }),
-    ).toBeUndefined();
-    expect(
-      brainFactOf({
-        id: recordId,
-        cursor: recordId,
-        causationId: null,
-        correlationId: null,
-        stream: 'events/0199a3c4',
-        type: 'event_published',
-        data: {},
-        recordedAt: fact.at,
-      }),
-    ).toBeUndefined();
+    const others: readonly RecordedEvent[] = [
+      { ...about, stream: `runs/${executionId}`, type: 'input_applied', data: {} },
+      { ...about, stream: 'events/0199a3c4', type: 'event_published', data: {} },
+    ];
+
+    expect(others.map((record) => brainFactOf(record))).toEqual([undefined, undefined]);
   });
 });
 
@@ -258,6 +250,7 @@ const ofPublished = (data: unknown, type = 'event_published'): RecordedEvent => 
   causationId: 'c-1',
   correlationId: null,
   stream: 'events/0199a3c4',
+  version: 1,
   type,
   data,
   recordedAt: fact.at,

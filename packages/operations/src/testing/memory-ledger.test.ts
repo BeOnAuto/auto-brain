@@ -150,6 +150,38 @@ describe('the in-memory read from a time or of some types', () => {
   });
 });
 
+describe('the in-memory read that loads the data of some types alone', () => {
+  it('gives every record its version in its stream, and data only to the types asked for', async () => {
+    const ledger = memoryLedger();
+
+    const pages = await run(
+      Effect.gen(function* () {
+        yield* aBrainWith(ledger);
+        return yield* Effect.all([
+          reading(ledger, everything, { order: 'asc', limit: 10, dataOf: ['execution_succeeded'] }),
+          reading(ledger, { kind: 'executions' }, { order: 'asc', limit: 10, dataOf: [] }),
+        ]);
+      }),
+    );
+
+    expect(
+      pages.map(({ records }) => records.map(({ type, version, data }) => [type, version, data !== undefined])),
+    ).toEqual([
+      [
+        ['execution_started', 1, false],
+        ['input_applied', 1, false],
+        ['execution_succeeded', 2, true],
+        ['execution_started', 1, false],
+      ],
+      [
+        ['execution_started', 1, false],
+        ['execution_succeeded', 2, false],
+        ['execution_started', 1, false],
+      ],
+    ]);
+  });
+});
+
 describe('the in-memory read from a cursor', () => {
   it('refuses a cursor of another brain, or one it cannot read', async () => {
     const ledger = memoryLedger();

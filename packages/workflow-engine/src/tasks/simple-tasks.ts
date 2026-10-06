@@ -28,7 +28,7 @@ export function startRaise(invocation: Invocation): BodyAdvance {
 }
 
 export function startRejected({ entry }: Invocation): BodyAdvance {
-  throw raised('configuration', 400, 'emit and run tasks are not allowed by this runtime', entry.reference);
+  throw raised('configuration', 400, 'run tasks are not allowed by this runtime', entry.reference);
 }
 
 export function startWait(invocation: Invocation): BodyAdvance {
