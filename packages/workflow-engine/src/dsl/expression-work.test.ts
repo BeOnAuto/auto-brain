@@ -4,6 +4,7 @@ import {
   childHeapMegabytes,
   childTimeoutMs,
   evaluateInAChild,
+  evaluateInAChildWithin,
   stoppedEvaluationOf,
 } from '../testing/expressions-in-a-child.ts';
 import { runExpression, type Evaluation } from './expressions.ts';
@@ -28,6 +29,10 @@ const ragged: Json = [numbers, ...Array.from({ length: 100 }, () => [])];
 const alternatives = Array.from({ length: 10 }, () => 'a').join('|');
 
 const ropeLength = 4_000_000;
+
+const keyLength = 64_000_000;
+
+const deadlineMs = 200;
 
 const workPerValue = 16;
 
@@ -216,21 +221,20 @@ describe('comparing a short string with a long one', { timeout: 2 * childTimeout
   });
 });
 
-describe('the deadline of an expression', () => {
+describe('the deadline of an expression', { timeout: 2 * childTimeoutMs }, () => {
   it('stops an expression that runs past it, as exhausted as the work budget would, with its own error', () => {
-    const source = '("a" * 64000000) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))';
-    const deadline = { milliseconds: 200, clock: () => performance.now() };
-    const started = performance.now();
+    const source = `("a" * ${keyLength}) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))`;
 
-    const evaluation = runExpression(source, null, {}, { now, mostWork: Number.MAX_SAFE_INTEGER, deadline });
-    const elapsed = performance.now() - started;
+    const { ended, output } = evaluateInAChildWithin(source, Number.MAX_SAFE_INTEGER, deadlineMs);
 
+    expect(ended).toEqual({ status: 0, signal: null });
+    const evaluation = stoppedEvaluationOf(output);
     expect(evaluation).toMatchObject({
       problem: `${source}: LimitError: Deadline exceeded`,
       exhausted: true,
       limit: 'deadline',
     });
-    expect(elapsed).toBeGreaterThanOrEqual(200);
+    expect(evaluation.elapsed).toBeGreaterThanOrEqual(deadlineMs);
   });
 
   it('is read on the clock it is given, at most once in 4096 units of work', () => {
