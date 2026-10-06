@@ -1,0 +1,36 @@
+import { runTallies } from '@beonauto/operations/testing';
+import { SQL } from '@event-driven-io/dumbo';
+import { sqliteFormatter } from '@event-driven-io/dumbo/sqlite';
+import { describe, expect, it } from 'vitest';
+
+import { aRecordedFillOf, mebibyte, runIdsOf, type RecordedFill } from './recorded-fill.ts';
+import { prepareSQLiteRunOutcomes } from './sqlite-run-outcomes.ts';
+
+async function filledOnSQLite(sizes: readonly number[]): Promise<RecordedFill> {
+  const fill = aRecordedFillOf(
+    sizes,
+    (sql) => SQL.describe(sql, sqliteFormatter),
+    (json) => json,
+  );
+  await prepareSQLiteRunOutcomes(
+    { execute: fill.execute, withTransaction: (handle) => handle({ execute: fill.execute }) },
+    runTallies,
+  );
+  return fill;
+}
+
+describe('the listings of the fill on SQLite', () => {
+  it('ask for one run stream, then twice as many after each batch that took them all, up to 100', async () => {
+    const fill = await filledOnSQLite(Array.from({ length: 300 }, () => 120));
+
+    expect(fill.listings).toEqual([1, 2, 4, 8, 16, 32, 64, 100, 100]);
+    expect(fill.keptRuns()).toEqual(runIdsOf(300));
+  });
+
+  it('ask for one again after a run stream that holds more than 16 MiB alone, and keep every run', async () => {
+    const fill = await filledOnSQLite([120, 120, 120, 20 * mebibyte, 120, 120, 120, 120, 120, 120]);
+
+    expect(fill.listings).toEqual([1, 2, 4, 1, 2, 4]);
+    expect(fill.keptRuns()).toEqual(runIdsOf(10));
+  });
+});
