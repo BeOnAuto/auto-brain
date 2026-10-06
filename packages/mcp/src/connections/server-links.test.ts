@@ -1,5 +1,7 @@
-import { Redacted } from 'effect';
-import { afterEach, describe, expect, it } from 'vitest';
+import { setTimeout as delay } from 'node:timers/promises';
+
+import { Predicate, Redacted } from 'effect';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { secretsOf } from '../bounds/secrets.ts';
 import type { AuthSettings, HttpServerSettings } from '../settings/mcp-settings.ts';
@@ -7,7 +9,7 @@ import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '../testin
 import { ignored } from './ignored.ts';
 import type { CallSettled, McpConnection } from './mcp-connection.ts';
 import { failureOf } from './server-failures.ts';
-import { serverLink } from './server-links.ts';
+import { serverLink, type LinkOptions } from './server-links.ts';
 
 const timing = { callMs: 5000, openMs: 5000, longestRetryWaitMs: 1000 };
 
@@ -50,7 +52,7 @@ function authOf(fake: FakeMcpServer): AuthSettings {
   };
 }
 
-function linked(settings: HttpServerSettings) {
+function linked(settings: HttpServerSettings, options: Partial<LinkOptions> = {}) {
   const secrets = secretsOf([]);
   const link = serverLink(settings, {
     fetch: globalThis.fetch,
@@ -58,9 +60,22 @@ function linked(settings: HttpServerSettings) {
     now: Date.now,
     timing,
     reportOutput: ignored,
+    ...options,
   });
   closing.push(link.stop);
   return { link, secrets };
+}
+
+function fetchWithDeletion<Args extends readonly [unknown, unknown?]>(
+  original: (...args: Args) => Promise<Response>,
+  deleting: (request: unknown) => Promise<Response>,
+): (...args: Args) => Promise<Response> {
+  return (...args) => {
+    const [, request] = args;
+    return Predicate.hasProperty(request, 'method') && request.method === 'DELETE'
+      ? deleting(request)
+      : original(...args);
+  };
 }
 
 const searched = (connection: McpConnection) =>
@@ -187,6 +202,68 @@ describe('the headers and the end of a session', () => {
     await link.stop();
 
     expect(fake.endedSessions()).toBe(1);
+  });
+});
+
+const endings: readonly ('release' | 'stop')[] = ['release', 'stop'];
+
+describe('an http server that does not end its session', () => {
+  it.each(endings)('bounds %s and aborts a session deletion that never answers', async (ending) => {
+    const fake = await fakeServer();
+    const deleting = Promise.withResolvers<unknown>();
+    const unanswered = Promise.withResolvers<Response>();
+    const { link } = linked(httpSettings(fake.url), {
+      timing: { ...timing, openMs: 1000 },
+      fetch: fetchWithDeletion(fetch, (request) => {
+        deleting.resolve(request);
+        return unanswered.promise;
+      }),
+    });
+    const connection = await link.take();
+    const finished = link[ending]().then(() => true);
+    const request = await deleting.promise;
+    const deadline = new AbortController();
+
+    try {
+      expect(await Promise.race([finished, delay(2500, false, { signal: deadline.signal })])).toBe(true);
+      expect(request).toHaveProperty('signal.aborted', true);
+      await connection.closed;
+    } finally {
+      deadline.abort();
+      unanswered.resolve(new Response(null, { status: 204 }));
+      await finished;
+    }
+  });
+
+  it('closes the local connection even when the server refuses deletion', async () => {
+    const fake = await fakeServer();
+    const { link } = linked(httpSettings(fake.url), {
+      fetch: fetchWithDeletion(fetch, () => Promise.resolve(new Response(null, { status: 500 }))),
+    });
+    const connection = await link.take();
+
+    await expect(link.release().then(() => connection.closed)).resolves.toBeUndefined();
+  });
+});
+
+describe('an http session that ends before the deadline', () => {
+  it('clears the cleanup deadline when the server answers', async () => {
+    const fake = await fakeServer();
+    const { link } = linked(httpSettings(fake.url));
+    const connection = await link.take();
+    const scheduled = vi.spyOn(globalThis, 'setTimeout');
+    const cleared = vi.spyOn(globalThis, 'clearTimeout');
+
+    try {
+      await link.release();
+      const deadline = scheduled.mock.calls.findIndex((call: readonly unknown[]) => call[1] === timing.openMs);
+      expect(deadline).toBeGreaterThanOrEqual(0);
+      expect(cleared).toHaveBeenCalledWith(scheduled.mock.results[deadline]?.value);
+      await expect(connection.closed).resolves.toBeUndefined();
+    } finally {
+      scheduled.mockRestore();
+      cleared.mockRestore();
+    }
   });
 });
 

@@ -1,4 +1,4 @@
-import { setTimeout } from 'node:timers/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import {
   parseJSONRPCMessage,
@@ -75,8 +75,14 @@ async function connectedOnce(settings: HttpServerSettings, opening: HttpOpening)
     throw failure;
   }
   return connectionOver(opened.client, opened.observations, opened.closed, async () => {
-    await transport.terminateSession().catch(ignored);
-    await opened.client.close();
+    const expired = Promise.withResolvers<void>();
+    const timer = setTimeout(expired.resolve, opening.timeoutMs);
+    try {
+      await Promise.race([transport.terminateSession().catch(ignored), expired.promise]);
+    } finally {
+      clearTimeout(timer);
+      await opened.client.close();
+    }
   });
 }
 
@@ -93,7 +99,7 @@ export async function openHttp(settings: HttpServerSettings, opening: HttpOpenin
   if (retryAfterMs === null || retryAfterMs > opening.longestRetryWaitMs) {
     throw failure;
   }
-  await setTimeout(retryAfterMs);
+  await delay(retryAfterMs);
   const second = await connectedOnce(settings, opening);
   if (isLimited(second)) {
     throw second.failure;

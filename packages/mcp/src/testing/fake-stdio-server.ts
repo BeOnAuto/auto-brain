@@ -11,6 +11,7 @@ const exitCode = 3;
 const { values } = parseArgs({
   options: {
     stdout: { type: 'string', default: '' },
+    'repeat-stdout': { type: 'string', default: '1' },
     chatter: { type: 'string', default: '1' },
     pad: { type: 'string', default: '0' },
     'linger-ms': { type: 'string', default: '1' },
@@ -38,7 +39,7 @@ for (let line = 1; line <= Number(values.chatter); line += 1) {
   say(`The fake MCP server says line ${line} on stderr${'.'.repeat(Number(values.pad))}\n`);
 }
 
-process.stdout.write(values.stdout);
+process.stdout.write(values.stdout.repeat(Number(values['repeat-stdout'])));
 
 setTimeout(say, Number(values['linger-ms']), 'The fake MCP server lingered\n');
 

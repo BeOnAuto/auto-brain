@@ -29,12 +29,24 @@ function needsHash(name: string, plainNames: readonly string[]): boolean {
   return name.length > mostModelFacingCharacters || plainNames.indexOf(name) !== plainNames.lastIndexOf(name);
 }
 
+function distinctName(candidate: string, used: Set<string>): string {
+  let name = candidate;
+  for (let sequence = 1; used.has(name); sequence += 1) {
+    const suffix = `_${sequence}`;
+    name = `${candidate.slice(0, mostModelFacingCharacters - suffix.length)}${suffix}`;
+  }
+  used.add(name);
+  return name;
+}
+
 export function modelFacingNames<Item extends Referring>(
   items: readonly Item[],
 ): readonly (Item & { readonly name: string })[] {
   const plainNames = items.map(({ reference }) => plainNameOf(reference));
+  const used = new Set<string>();
   return items.map((item) => {
     const plain = plainNameOf(item.reference);
-    return { ...item, name: needsHash(plain, plainNames) ? hashedNameOf(item.reference) : plain };
+    const candidate = needsHash(plain, plainNames) ? hashedNameOf(item.reference) : plain;
+    return { ...item, name: distinctName(candidate, used) };
   });
 }

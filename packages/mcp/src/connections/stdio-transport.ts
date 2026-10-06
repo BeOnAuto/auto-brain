@@ -94,19 +94,18 @@ export class StdioProcessTransport implements Transport {
   }
 
   #drain(): void {
-    const message = this.#next();
-    if (message !== null) {
+    for (let message = this.#next(); message !== null; message = this.#next()) {
       this.onmessage?.(message);
-      this.#drain();
     }
   }
 
   #next(): JSONRPCMessage | null {
-    try {
-      return this.#readBuffer.readMessage();
-    } catch (error) {
-      this.onerror?.(new Error('The MCP server wrote a message that is not JSON-RPC', { cause: error }));
-      return this.#next();
+    while (true) {
+      try {
+        return this.#readBuffer.readMessage();
+      } catch (error) {
+        this.onerror?.(new Error('The MCP server wrote a message that is not JSON-RPC', { cause: error }));
+      }
     }
   }
 

@@ -134,6 +134,29 @@ describe('one stdio server that the tests of a link share', { timeout: stdioTest
 });
 
 describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
+  it('passes over a large batch of non-RPC messages without exhausting the call stack', async () => {
+    const { link, lines } = linked(stdioSettings(['--stdout', '{}\n'.repeat(20_000)]));
+
+    expect(await called(await link.take(), 'search', { query: 'acme' })).toMatchObject({
+      result: { content: [{ text: 'Found 2 rows for acme.' }] },
+    });
+    expect(lines.filter((line) => line === notJsonRpc)).toHaveLength(20_000);
+  });
+
+  it('drains a large batch of notifications interleaved with invalid messages', async () => {
+    const notification = JSON.stringify({
+      jsonrpc: '2.0',
+      method: 'notifications/progress',
+      params: { progressToken: 'unused', progress: 1 },
+    });
+    const { link, lines } = linked(stdioSettings(['--stdout', `${notification}\n{}\n`, '--repeat-stdout', '20000']));
+
+    expect(await called(await link.take(), 'search', { query: 'acme' })).toMatchObject({
+      result: { content: [{ text: 'Found 2 rows for acme.' }] },
+    });
+    expect(lines.filter((line) => line === notJsonRpc)).toHaveLength(20_000);
+  });
+
   it('closes a process that writes more than its output may take at once', async () => {
     const { link } = linked(stdioSettings([]));
     const connection = await link.take();
