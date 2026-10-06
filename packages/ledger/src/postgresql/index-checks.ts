@@ -1,0 +1,48 @@
+import { Client } from 'pg';
+
+import { definitionStreamsStatement } from './postgresql-definition-streams.ts';
+
+const throughTheIndex = `Index Cond: ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text) = `;
+
+export async function definitionStreamsIndexed(database: string): Promise<boolean> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  try {
+    await client.query('SET enable_seqscan = off');
+    const { rows } = await client.query<Readonly<Record<string, unknown>>>(`EXPLAIN ${definitionStreamsStatement}`, [
+      'recollection',
+      'emt:default',
+    ]);
+    return rows.some((row) => String(row['QUERY PLAN']).includes(throughTheIndex));
+  } finally {
+    await client.end();
+  }
+}
+
+export const theBrainIndexes = [
+  {
+    indexname: 'ledger_definition_streams',
+    indexdef: `CREATE INDEX ledger_definition_streams ON ONLY public.emt_streams USING btree ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text)) WHERE ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text) IS NOT NULL)`,
+  },
+  {
+    indexname: 'ledger_first_messages_by_kind',
+    indexdef: `CREATE INDEX ledger_first_messages_by_kind ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){4}'::text), stream_position, transaction_id, global_position)`,
+  },
+  {
+    indexname: 'ledger_messages_by_brain',
+    indexdef: `CREATE INDEX ledger_messages_by_brain ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), transaction_id, global_position)`,
+  },
+  {
+    indexname: 'ledger_messages_by_brain_and_correlation',
+    indexdef: `CREATE INDEX ledger_messages_by_brain_and_correlation ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), ((message_metadata ->> 'correlationId'::text)), transaction_id, global_position)`,
+  },
+  {
+    indexname: 'ledger_messages_by_brain_and_time',
+    indexdef: `CREATE INDEX ledger_messages_by_brain_and_time ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), created, transaction_id, global_position)`,
+  },
+  {
+    indexname: 'ledger_messages_by_stream',
+    indexdef:
+      'CREATE INDEX ledger_messages_by_stream ON ONLY public.emt_messages USING btree (stream_id, transaction_id, global_position)',
+  },
+];

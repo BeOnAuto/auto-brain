@@ -13,6 +13,7 @@ export interface Examined {
 export interface BoundedPage<Item extends Examined> {
   readonly delivered: readonly Item[];
   readonly resumeAfter: Item | undefined;
+  readonly lastExamined: Item | undefined;
 }
 
 function overBudget(delivered: readonly Examined[], loaded: number, { size }: Examined): boolean {
@@ -30,7 +31,7 @@ export function boundedPage<Item extends Examined>(
   for (const item of examined) {
     const full = item.wanted && (delivered.length === limit || overBudget(delivered, loaded, item));
     if (item.examined > examinedAtMost || full) {
-      return { delivered, resumeAfter: lastExamined };
+      return { delivered, resumeAfter: lastExamined, lastExamined };
     }
     if (item.wanted) {
       delivered.push(item);
@@ -38,5 +39,5 @@ export function boundedPage<Item extends Examined>(
     }
     lastExamined = item;
   }
-  return { delivered, resumeAfter: undefined };
+  return { delivered, resumeAfter: undefined, lastExamined };
 }

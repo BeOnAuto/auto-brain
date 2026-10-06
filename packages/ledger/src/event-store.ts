@@ -43,9 +43,15 @@ interface StoredRecord extends MessageLineage {
   readonly recordedAt: string;
 }
 
+export interface StoredPlace {
+  readonly point: RecordedPoint;
+  readonly recordedAt: string;
+}
+
 export interface StoredPage {
   readonly records: readonly StoredRecord[];
   readonly resumeAfter?: RecordedPoint;
+  readonly lastExamined?: StoredPlace;
 }
 
 export interface StreamStore {
@@ -70,7 +76,16 @@ export interface RecordedStore {
   ) => Promise<StoredPage>;
 }
 
-export interface EventStore extends StreamStore, RecordedStore {}
+export interface DefinitionStream {
+  readonly stream: string;
+  readonly version: number;
+}
+
+export interface DefinitionStreamsStore {
+  readonly definitionStreams: (definitionType: string) => Promise<readonly DefinitionStream[]>;
+}
+
+export interface EventStore extends StreamStore, RecordedStore, DefinitionStreamsStore {}
 
 export interface RunOutcomesStore {
   readonly readRunOutcomes: (

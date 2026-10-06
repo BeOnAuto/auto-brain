@@ -1,6 +1,7 @@
 import type { Ledger } from '@beonauto/operations';
 import { Effect } from 'effect';
 
+import { definitionStreamsBehaviour } from '../definitions/definition-streams-behaviour.ts';
 import { runOutcomeTableBehaviour } from '../outcomes/run-outcome-table-behaviour.ts';
 import { runOutcomesBehaviour } from '../outcomes/run-outcomes-behaviour.ts';
 import { commandsBehaviour } from './commands-behaviour.ts';
@@ -25,6 +26,7 @@ export function ledgerBehaviour(entry: LedgerEntry): void {
   commandsBehaviour(entry);
   eventsBehaviour(entry);
   storeBehaviour(entry);
+  definitionStreamsBehaviour(entry);
   recordedBehaviour(() => aLedgerReadingWhatCommitted(entry));
   runOutcomesBehaviour((runOutcomes) => aLedger(entry, undefined, runOutcomes));
   runOutcomeTableBehaviour(entry);

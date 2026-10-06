@@ -1,3 +1,10 @@
+export {
+  appendSignal,
+  brainKeyOfStream,
+  signalledOn,
+  type AppendListener,
+  type AppendSignal,
+} from './appends/append-signal.ts';
 export { eventAppenderOf, type EventAppender } from './event-appender.ts';
 export { eventCodecOf, type EventCodec } from './event-codec.ts';
 export type { EncodedEvent, EventStore, RecordedStream } from './event-store.ts';

@@ -1,8 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
 
+import { SQL, dumbo } from '@event-driven-io/dumbo';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
 import { describe, onTestFinished } from 'vitest';
 
+import { definitionStreamsQuery } from './definitions/sqlite-definition-streams.ts';
 import { sqliteEventStore } from './index.ts';
 import { ledgerLayer } from './sqlite3.ts';
 import { ledgerBehaviour } from './testing/ledger-behaviour.ts';
@@ -15,6 +17,16 @@ function queried(fileName: string, statement: string): Promise<readonly unknown[
     return Promise.resolve(database.prepare(statement).all());
   } finally {
     database.close();
+  }
+}
+
+async function definitionStreamsIndexed(fileName: string): Promise<boolean> {
+  const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions({ fileName }));
+  try {
+    const { rows } = await pool.execute.query(SQL`EXPLAIN QUERY PLAN ${definitionStreamsQuery('recollection')}`);
+    return JSON.stringify(rows).includes('USING INDEX ledger_definition_streams');
+  } finally {
+    await pool.close();
   }
 }
 
@@ -31,6 +43,7 @@ const onSQLite: LedgerEntry = {
   storeOn: (fileName) => sqliteEventStore(() => ({ driver: sqlite3EventStoreDriver, fileName })),
   untilReadable: () => Promise.resolve(),
   queried,
+  definitionStreamsIndexed,
   outcomeTables: "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'run_outcomes_*' ORDER BY name",
 };
 

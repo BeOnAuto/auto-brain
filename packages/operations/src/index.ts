@@ -36,6 +36,7 @@ export { IncidentReporter, type CallSummary, type Incident } from './dispatch/in
 export { InvalidInput } from './outcome/invalid-input.ts';
 export {
   InvalidCursor,
+  type ExaminedPlace,
   type InvalidCursorKind,
   type RecordedEvent,
   type RecordedOrder,
