@@ -3,7 +3,7 @@ import type { FetchLike } from '@modelcontextprotocol/client';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import type { McpServerSettings } from '../settings/mcp-settings.ts';
-import { openHttp } from './http-connection.ts';
+import { openHttp, systemTimer, type Timer } from './http-connection.ts';
 import { ignored } from './ignored.ts';
 import type { McpConnection } from './mcp-connection.ts';
 import { openStdio } from './stdio-connection.ts';
@@ -21,6 +21,7 @@ export interface LinkOptions {
   readonly fetch: FetchLike;
   readonly secrets: Secrets;
   readonly now: () => number;
+  readonly timer?: Timer;
   readonly timing: Timing;
   readonly reportOutput: (server: string, line: string) => void;
 }
@@ -52,7 +53,14 @@ function opener(settings: McpServerSettings, options: LinkOptions): () => Promis
     options.reportOutput(settings.name, options.secrets.scrub(message));
   };
   return () =>
-    openHttp(settings, { fetch: options.fetch, authProvider, timeoutMs: openMs, longestRetryWaitMs, reportError });
+    openHttp(settings, {
+      fetch: options.fetch,
+      authProvider,
+      timeoutMs: openMs,
+      longestRetryWaitMs,
+      reportError,
+      timer: options.timer ?? systemTimer,
+    });
 }
 
 function endOf(connection: Promise<McpConnection> | undefined): Promise<void> | undefined {

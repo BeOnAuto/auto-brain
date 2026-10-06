@@ -93,6 +93,7 @@ The MCP client has no logging option. The errors it meets, such as a line from a
 - `fakeStdioServerPath` runs the same tools over stdio under `node`, with `--chatter`, `--pad`, `--stdout`, `--linger-ms` and `--start-once` to make it talk, misbehave or fail to start again. Start it with `process.execPath` directly, never through a package manager: it imports only the MCP server package and the fake's tools, not `effect`, and answers its first message in about 90 ms on a laptop. A spawn is real time, so a test that starts it takes `stdioTestTimeoutMs`, 30 s, and its connection `patientTiming`, and a file shares one process across the tests that only need it running.
 - Its tools answer text (`search`, `echo`, `graph.query.v2`), structured content (`profile`), non-text content (`photo`), a denial marked `isError` (`denied`), an error (`broken`), slowly (`sleep`), at length (`large`), with its environment (`environment`), or by exiting (`exit`).
 - `openFakeToolRun`, `reportingAccess`, `recordingCallJournal`, `toolRun`, `controlledSignals` and `inTurn` open a run's tools against it.
+- `recordingTimer` stands in for the timer a link's options take, which bounds the end of a session: it records each wait and whether it was stopped, so a test of that deadline touches no global timer.
 
 ## A manual run against an agent services gateway
 

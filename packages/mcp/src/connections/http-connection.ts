@@ -15,12 +15,26 @@ import { connectionOver, observingFetch, openingClient, type McpConnection } fro
 import type { Observations } from './observed-requests.ts';
 import { failureOf } from './server-failures.ts';
 
+export interface Timer {
+  readonly after: (ms: number, expire: () => void) => () => void;
+}
+
+export const systemTimer: Timer = {
+  after: (ms, expire) => {
+    const timeout = setTimeout(expire, ms);
+    return () => {
+      clearTimeout(timeout);
+    };
+  },
+};
+
 export interface HttpOpening {
   readonly fetch: FetchLike;
   readonly authProvider: AuthProvider | undefined;
   readonly timeoutMs: number;
   readonly longestRetryWaitMs: number;
   readonly reportError: (message: string) => void;
+  readonly timer: Timer;
 }
 
 interface Limited {
@@ -76,11 +90,11 @@ async function connectedOnce(settings: HttpServerSettings, opening: HttpOpening)
   }
   return connectionOver(opened.client, opened.observations, opened.closed, async () => {
     const expired = Promise.withResolvers<void>();
-    const timer = setTimeout(expired.resolve, opening.timeoutMs);
+    const stopWaiting = opening.timer.after(opening.timeoutMs, expired.resolve);
     try {
       await Promise.race([transport.terminateSession().catch(ignored), expired.promise]);
     } finally {
-      clearTimeout(timer);
+      stopWaiting();
       await opened.client.close();
     }
   });

@@ -1,11 +1,11 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { Predicate, Redacted } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { secretsOf } from '../bounds/secrets.ts';
 import type { AuthSettings, HttpServerSettings } from '../settings/mcp-settings.ts';
-import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '../testing/index.ts';
+import { recordingTimer, serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '../testing/index.ts';
 import { ignored } from './ignored.ts';
 import type { CallSettled, McpConnection } from './mcp-connection.ts';
 import { failureOf } from './server-failures.ts';
@@ -247,23 +247,16 @@ describe('an http server that does not end its session', () => {
 });
 
 describe('an http session that ends before the deadline', () => {
-  it('clears the cleanup deadline when the server answers', async () => {
+  it('stops waiting for the deadline when the server answers', async () => {
     const fake = await fakeServer();
-    const { link } = linked(httpSettings(fake.url));
+    const { timer, waits } = recordingTimer();
+    const { link } = linked(httpSettings(fake.url), { timer });
     const connection = await link.take();
-    const scheduled = vi.spyOn(globalThis, 'setTimeout');
-    const cleared = vi.spyOn(globalThis, 'clearTimeout');
 
-    try {
-      await link.release();
-      const deadline = scheduled.mock.calls.findIndex((call: readonly unknown[]) => call[1] === timing.openMs);
-      expect(deadline).toBeGreaterThanOrEqual(0);
-      expect(cleared).toHaveBeenCalledWith(scheduled.mock.results[deadline]?.value);
-      await expect(connection.closed).resolves.toBeUndefined();
-    } finally {
-      scheduled.mockRestore();
-      cleared.mockRestore();
-    }
+    await link.release();
+
+    await expect(connection.closed).resolves.toBeUndefined();
+    expect(waits()).toEqual([{ ms: timing.openMs, stopped: true }]);
   });
 });
 
