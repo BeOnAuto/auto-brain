@@ -1,4 +1,5 @@
 import type { BrainContext } from '../caller/brain-context.ts';
+import type { CallLineage } from '../caller/call-lineage.ts';
 import type { Caller } from '../caller/caller.ts';
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import type { OrgContext } from '../caller/org-context.ts';
@@ -14,7 +15,7 @@ interface ServicesByScopeAndKind {
   };
   readonly brain: {
     readonly query: Caller | BrainContext | BrainReader;
-    readonly command: Caller | BrainContext | BrainReader | BrainWriter;
+    readonly command: Caller | BrainContext | BrainReader | BrainWriter | CallLineage;
   };
 }
 

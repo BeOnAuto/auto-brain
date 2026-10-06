@@ -11,6 +11,7 @@ export {
 } from './reading/page-bounds.ts';
 export { BrainReader } from './ledger/brain-reader.ts';
 export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
+export { CallLineage, type GivenLineage } from './caller/call-lineage.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
 export { Caller, CallerIdentitySchema, type CallerIdentity } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
@@ -26,6 +27,8 @@ export {
 export type { Decider, StreamState, TypedEvent } from './ledger/decider.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';
+export { cursorOfParts, cursorWithin, partsOfCursor, type CursorPart } from './reading/cursor-parts.ts';
+export { eventsPageOf, type EventPaging, type EventsPage, type PagedEvent } from './reading/event-paging.ts';
 export type { HandlerServices } from './definition/handler-services.ts';
 export { BrainIdSchema, OrgIdSchema } from './caller/identifiers.ts';
 export { IncidentReporter, type CallSummary, type Incident } from './dispatch/incident-reporter.ts';
@@ -42,6 +45,7 @@ export {
 export type { Issue } from './outcome/issue.ts';
 export type { JsonSchemaDocument } from './definition/json-schema.ts';
 export { Ledger } from './ledger/ledger.ts';
+export { messageIdOf, noLineage, type Lineage } from './ledger/message-lineage.ts';
 export { NotFound } from './outcome/not-found.ts';
 export { defineCommand, defineQuery, type Operation } from './definition/operation.ts';
 export { OrgReader } from './ledger/org-reader.ts';
@@ -94,4 +98,5 @@ export {
   type UnavailableBecause,
   type UnavailableKind,
 } from './outcome/unavailable.ts';
+export { uuidV5 } from './uuid/uuid-v5.ts';
 export { randomUUIDv7 } from './uuid/uuid-v7.ts';

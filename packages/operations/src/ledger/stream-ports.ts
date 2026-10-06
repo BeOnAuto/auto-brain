@@ -6,6 +6,7 @@ import type { InvalidInput } from '../outcome/invalid-input.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { InvalidCursor, RecordedPage, RecordedPageRequest, RecordedSelection } from '../reading/recorded-read.ts';
 import type { Decider, StreamState, TypedEvent } from './decider.ts';
+import type { Lineage } from './message-lineage.ts';
 
 export interface StreamReader {
   readonly load: <State, Command, Event extends TypedEvent, R extends DeclarableReason>(
@@ -19,6 +20,7 @@ export interface StreamWriter {
     stream: string,
     decider: Decider<State, Command, Event, R>,
     command: Command,
+    lineage?: Lineage,
   ) => Effect.Effect<StreamState<State>, Rejection<R> | Conflict>;
 }
 

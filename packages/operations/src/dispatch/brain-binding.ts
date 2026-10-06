@@ -1,6 +1,7 @@
 import { Context, Effect } from 'effect';
 
 import { BrainContext } from '../caller/brain-context.ts';
+import { CallLineage } from '../caller/call-lineage.ts';
 import { Caller } from '../caller/caller.ts';
 import type { Registration } from '../definition/registration.ts';
 import {
@@ -12,14 +13,13 @@ import {
 import { BrainReader } from '../ledger/brain-reader.ts';
 import { BrainWriter } from '../ledger/brain-writer.ts';
 import type { RecordedReader, StreamReader, StreamWriter } from '../ledger/stream-ports.ts';
-import type { Succeeded, Rejected } from '../outcome/outcome.ts';
 import type { BrainRequest } from './request.ts';
 
 export function runInBrain(
   registration: Registration<'brain'>,
-  { caller, org, brain, input, encoding }: BrainRequest,
+  { caller, org, brain, input, encoding, lineage }: BrainRequest,
   ledger: StreamReader & StreamWriter & RecordedReader,
-): Effect.Effect<Succeeded, Rejected> {
+) {
   const prefix = streamPrefixOfBrain({ org, brain });
   const forQueries = Context.make(Caller, caller).pipe(
     Context.add(BrainContext, { org, brain }),
@@ -28,9 +28,11 @@ export function runInBrain(
       ...brainBoundRecordedReader(ledger, { org, brain }),
     }),
   );
+  const forCommands = forQueries.pipe(
+    Context.add(BrainWriter, prefixedWriter(ledger, prefix)),
+    Context.add(CallLineage, { lineage: lineage ?? null }),
+  );
   return registration.kind === 'query'
     ? registration.run(input, encoding).pipe(Effect.provideContext(forQueries))
-    : registration
-        .run(input, encoding)
-        .pipe(Effect.provideContext(forQueries.pipe(Context.add(BrainWriter, prefixedWriter(ledger, prefix)))));
+    : registration.run(input, encoding).pipe(Effect.provideContext(forCommands));
 }
