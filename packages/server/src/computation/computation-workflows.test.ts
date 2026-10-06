@@ -1,4 +1,4 @@
-import { withMcpSession, type McpSession, type ToolResult } from '@beonauto/api/testing';
+import { withMcpSession } from '@beonauto/api/testing';
 import { campaignPace, campaignRows, scriptedPool } from '@beonauto/computation/testing';
 import { jsonResult, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
@@ -12,6 +12,7 @@ import {
   executionIdIn,
   servingWorkflows,
   settledExecution,
+  settledOverMcp,
   workflowSource,
   workflowTestTimeoutMs,
 } from '../testing/workflow-server.ts';
@@ -228,11 +229,6 @@ describe(
     });
   },
 );
-
-async function settledOverMcp(session: McpSession, executionId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_execution', { execution_id: executionId });
-  return reading.structuredContent?.['status'] === 'started' ? settledOverMcp(session, executionId) : reading;
-}
 
 describe('a workflow whose computation function raises a long error', { timeout: workflowTestTimeoutMs }, () => {
   it('catches it as the runtime error of status 409 the format documents, its text cut at 1,024 bytes', async () => {

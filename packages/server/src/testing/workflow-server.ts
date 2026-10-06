@@ -1,5 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
+import type { McpSession, ToolResult } from '@beonauto/api/testing';
 import type { ScriptedReply } from '@beonauto/inference/testing';
 import { Option, Schema } from 'effect';
 
@@ -46,4 +47,13 @@ export async function settledExecution(
   }
   await setTimeout(100);
   return settledExecution(server, path, options);
+}
+
+export async function settledOverMcp(session: McpSession, executionId: string): Promise<ToolResult> {
+  const reading = await session.callTool('get_execution', { execution_id: executionId });
+  if (!isStarted(reading.structuredContent)) {
+    return reading;
+  }
+  await setTimeout(100);
+  return settledOverMcp(session, executionId);
 }

@@ -11,7 +11,7 @@ export interface DocumentParts {
 
 const delimiter = /^---[ \t]*$/u;
 
-const byteOrderMark = '﻿';
+const byteOrderMark = '\uFEFF';
 
 function issue(detail: string): readonly DocumentIssue[] {
   return [{ line: 1, pointer: '', detail }];

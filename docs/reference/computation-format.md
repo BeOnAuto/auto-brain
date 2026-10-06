@@ -133,7 +133,7 @@ The language is the dialect of jq that [workflow expressions](workflow-format.md
 - Function parameters are filters, never `$variables`: write `def f(a): a;`, not `def f($a): $a;`.
 - `getpath` cannot be the target of an update such as `|=`, and the alternative destructuring operator `?//` is not supported.
 - Regular expressions have no lookahead or backreferences.
-- `strftime` does not support `%c`.
+- `strftime` does not support `%c`: `0 | strftime("%c")` gives `"%c"` unchanged.
 
 ## How a run ends
 
