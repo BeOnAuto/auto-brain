@@ -7,6 +7,7 @@ import { readComputationSettings, type ComputationSettings } from './computation
 import { fileSettings } from './file-settings.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
 import { readReasoningSettings, type ReasoningSettings } from './reasoning-settings.ts';
+import { readRecallSettings, type RecallSettings } from './recall-settings.ts';
 import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
 
 interface ConfigFileSources {
@@ -22,6 +23,7 @@ export interface Settings extends ReasoningSettings, AccessSettings {
   readonly ledger: LedgerSettings;
   readonly workflows: WorkflowSettings;
   readonly computation: ComputationSettings;
+  readonly recall: RecallSettings;
   readonly configFile: ConfigFileSources | undefined;
 }
 
@@ -37,6 +39,7 @@ export function readSettings(given: Environment): Settings {
   const { models, mcp } = readReasoningSettings(environment, file);
   const workflows = Effect.runSync(readWorkflowSettings(environment));
   const computation = Effect.runSync(readComputationSettings(environment));
+  const recall = Effect.runSync(readRecallSettings(environment));
   return {
     host,
     port,
@@ -49,6 +52,7 @@ export function readSettings(given: Environment): Settings {
     mcp,
     workflows,
     computation,
+    recall,
     configFile: sourcesOf(file),
   };
 }

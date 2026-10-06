@@ -9,6 +9,7 @@ export type ProgramPoolOf = (settings: ComputationSettings) => ProgramPool;
 
 export interface ServedComputation {
   readonly primitive: Primitive;
+  readonly pool: ProgramPool;
   readonly withPoolClosed: (served: Served) => Served;
 }
 
@@ -19,6 +20,7 @@ export function computationServedBy(settings: ComputationSettings, poolOf: Progr
   const pool = poolOf(settings);
   return {
     primitive: makeComputationFunctionAdapter({ pool }),
+    pool,
     withPoolClosed: ({ routes, stopWork }) => ({
       routes,
       stopWork: async () => {

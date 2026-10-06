@@ -27,12 +27,32 @@ function settledAfterBackingOff({ run, attempts }: NoteOf<'settled_after_back_of
   );
 }
 
+function passedOver({ brain, record }: NoteOf<'record_passed_over'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'A recorded event of a brain could not be read as an event, so no recall function folds it',
+  ).pipe(Effect.annotateLogs({ brain, record }));
+}
+
+function viewStalled({ brain, name, version }: NoteOf<'view_stalled'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'The view of a recall function stopped at an event its fold could not take; saving a corrected version rebuilds it',
+  ).pipe(Effect.annotateLogs({ brain, recall_function: name, version }));
+}
+
+const loggers: { readonly [Kind in HostNote['kind']]: (note: NoteOf<Kind>) => Effect.Effect<void> } = {
+  standing_by: standingBy,
+  took_over: tookOver,
+  settle_backing_off: backingOff,
+  settled_after_back_off: settledAfterBackingOff,
+  record_passed_over: passedOver,
+  view_stalled: viewStalled,
+};
+
+function loggedBy<Kind extends HostNote['kind']>(note: NoteOf<Kind>): Effect.Effect<void> {
+  const logger: (note: NoteOf<Kind>) => Effect.Effect<void> = loggers[note.kind];
+  return logger(note);
+}
+
 export function logHostNote(note: HostNote): Effect.Effect<void> {
-  if (note.kind === 'standing_by') {
-    return standingBy(note);
-  }
-  if (note.kind === 'took_over') {
-    return tookOver(note);
-  }
-  return note.kind === 'settle_backing_off' ? backingOff(note) : settledAfterBackingOff(note);
+  return loggedBy(note);
 }

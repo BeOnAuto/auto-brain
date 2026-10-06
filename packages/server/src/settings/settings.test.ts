@@ -31,6 +31,7 @@ describe('readSettings', () => {
       logFormat: 'json',
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
       computation: { workers: 4 },
+      recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
     });
   });
 
@@ -58,6 +59,7 @@ describe('readSettings', () => {
       logFormat: 'pretty',
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
       computation: { workers: 4 },
+      recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
       configFile: undefined,
     });
   });

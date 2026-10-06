@@ -25,6 +25,7 @@
     "@beonauto/mcp": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/orchestration": "workspace:*",
+    "@beonauto/recollection": "workspace:*",
     "@beonauto/specs": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
     "@beonauto/workflow-host": "workspace:*",

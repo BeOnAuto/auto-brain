@@ -13,7 +13,14 @@ import {
   type Primitive,
   type SettleExecution,
 } from '@beonauto/specs';
-import { openWorkflowHost, type DatabaseSettings, type HostReports, type WorkflowHost } from '@beonauto/workflow-host';
+import {
+  openWorkflowHost,
+  type DatabaseSettings,
+  type HostReports,
+  type ProjectorSettings,
+  type WorkflowHost,
+  type WorkflowStore,
+} from '@beonauto/workflow-host';
 import { Effect, Exit, Redacted } from 'effect';
 
 import { logHostNote } from '../logging/host-notes.ts';
@@ -25,6 +32,8 @@ export interface HostParts {
   readonly ledger: LedgerSettings;
   readonly workflows: WorkflowSettings;
   readonly primitives: readonly Primitive[];
+  readonly store: WorkflowStore;
+  readonly views: ProjectorSettings;
 }
 
 const unsettledBecause = {
@@ -93,10 +102,11 @@ export function hostDatabaseOf(ledger: LedgerSettings): DatabaseSettings {
 export async function openedHost(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { ledger, workflows, primitives }: HostParts,
+  { workflows, primitives, store, views }: HostParts,
 ): Promise<WorkflowHost> {
   const host = await openWorkflowHost({
-    database: hostDatabaseOf(ledger),
+    database: store,
+    views,
     machine: orchestrationMachine,
     perform: definitionCalls(nestedExecutions(runtime, dispatcher, defineExecuteSpec(primitives))),
     settle: settlements(runtime),
