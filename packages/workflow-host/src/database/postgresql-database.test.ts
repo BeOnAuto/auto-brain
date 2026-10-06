@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DatabaseFailed, HostDatabase } from './host-database.ts';
 import { openHostDatabase } from './host-databases.ts';
-import { hostTables } from './host-tables.ts';
+import { armedByAddedWhenMissing, hostTables } from './host-tables.ts';
 import { postgresqlDatabaseOn, type Connection, type Connections } from './postgresql-database.ts';
 import { statement, textOnPostgreSQL, type StatementValue } from './statement.ts';
 
@@ -43,7 +43,7 @@ function telling(failingOn = '', rowsOf = (text: string): readonly unknown[] => 
     store: {
       mostEventsInOneAppend: 64,
       pointLength: 2,
-      read: () => Promise.resolve({ version: 0, events: [] }),
+      read: () => Promise.resolve({ version: 0, events: [], lineages: [] }),
       append: () => Promise.resolve(),
       readRecorded: () => Promise.resolve({ records: [] }),
       migrate: () => saying('store migrated'),
@@ -81,6 +81,7 @@ const migrationAsked: readonly Asked[] = [
   { text: 'BEGIN', values: [] },
   { text: 'SELECT pg_advisory_xact_lock($1)', values: [7_461_239_041] },
   ...hostTables.map((table) => ({ text: textOnPostgreSQL(table), values: [] })),
+  { text: textOnPostgreSQL(armedByAddedWhenMissing), values: [] },
   { text: 'COMMIT', values: [] },
 ];
 

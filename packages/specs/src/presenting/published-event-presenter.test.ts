@@ -14,7 +14,10 @@ const recordId = 'WyJicmFpbi9hY21lL2FscGhhLyIsIjMiXQ';
 
 function recorded(published: EventPublished): RecordedEvent {
   return {
-    id: recordId,
+    id: '5c6f1a43-0d6e-5b2a-9c1e-7e3f2a1b0c9d',
+    cursor: recordId,
+    causationId: null,
+    correlationId: null,
     stream: publishedEventStreamOf(published.event.source, published.event.id),
     type: published.type,
     data: encode(published),
@@ -38,19 +41,23 @@ describe('the presenter of a published event', () => {
       at: '2026-10-01T09:00:01.000Z',
     };
 
-    expect(present(recorded(published))).toEqual({
-      id: recordId,
-      at: '2026-10-01T09:00:01.000Z',
-      type: 'event_published',
-      summary: 'The event “com.acme.ledger.opened” was published to the brain.',
-      data: {
-        event_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
-        event_type: 'com.acme.ledger.opened',
-        source: 'https://acme.example/ledger',
-        time: '2026-10-01T09:00:01.000Z',
-        filled: ['id', 'time'],
-        by: 'acme-admin',
+    expect(present(recorded(published))).toEqual([
+      {
+        id: '5c6f1a43-0d6e-5b2a-9c1e-7e3f2a1b0c9d',
+        cursor: recordId,
+        causation_id: null,
+        at: '2026-10-01T09:00:01.000Z',
+        type: 'event_published',
+        summary: 'The event “com.acme.ledger.opened” was published to the brain.',
+        data: {
+          event_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+          event_type: 'com.acme.ledger.opened',
+          source: 'https://acme.example/ledger',
+          time: '2026-10-01T09:00:01.000Z',
+          filled: ['id', 'time'],
+          by: 'acme-admin',
+        },
       },
-    });
+    ]);
   });
 });

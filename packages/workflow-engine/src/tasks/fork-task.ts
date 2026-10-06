@@ -11,6 +11,7 @@ import {
   type Signal,
   type TaskAdvance,
 } from '../runner/advance.ts';
+import type { StepKey } from '../steps/step-entry.ts';
 
 type ForkBody = Extract<FrameBody, { readonly kind: 'fork' }>;
 
@@ -21,6 +22,10 @@ type Finished = Extract<Branch, { readonly state: 'finished' }>;
 function entriesOf(invocation: Invocation): readonly TaskEntry[] {
   const { reference } = invocation.entry;
   return taskEntries(field(objectField(invocation.entry.task, 'fork') ?? {}, 'branches'), `${reference}/fork/branches`);
+}
+
+function forkStarted({ frame }: Invocation): StepKey {
+  return { reference: frame.reference, run: frame.run, outcome: 'started', times: 1 };
 }
 
 function failuresIn(branches: readonly Branch[]): number {
@@ -108,9 +113,11 @@ function settled(invocation: Invocation, compete: boolean, branches: readonly Br
 }
 
 export function startFork(invocation: Invocation): BodyAdvance {
+  const { session } = invocation.machine;
   const compete = field(objectField(invocation.entry.task, 'fork') ?? {}, 'compete') === true;
   const branches: Branch[] = [];
   for (const entry of entriesOf(invocation)) {
+    session.causedBy(forkStarted(invocation));
     branches.push(started(invocation, entry, failuresIn(branches)));
   }
   return settled(invocation, compete, branches);
@@ -120,6 +127,7 @@ function resumedBranch(invocation: Invocation, branch: Branch, signal: Signal, o
   const { machine, frame } = invocation;
   if (branch.state === 'yielding' && signal.kind === 'timer' && signal.timerId === branch.timer) {
     const entry = entryAt(machine.session.document(), signal.timer.reference);
+    machine.session.causedBy(forkStarted(invocation));
     return branchOf(machine.runner.startTask(machine, entry, frame.input, frame.variables), order);
   }
   const advance = branch.state === 'running' ? machine.runner.resumeTask(machine, branch.task, signal) : undefined;

@@ -277,7 +277,7 @@ jobs:
             '["conflict","unworkable","The program raised an error on line 4: no rows"]'
           docker stop computation
           test "$(docker inspect computation --format '{{.State.ExitCode}}')" = 0
-      - name: Run workflows across a restart, and read the steps of a run
+      - name: Run workflows across a restart, and read the steps of a run and their causes
         timeout-minutes: 5
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
@@ -337,9 +337,13 @@ jobs:
           settled approved.json "$waiting"
           test "$(jq --compact-output '[.status, .output]' approved.json)" = '["succeeded",[{"approved":true}]]'
           test "$(call history.json "$brain/executions/$waiting/history")" = 200
-          test "$(jq --compact-output '[.events[] | select(.type == "workflow_input_applied")
-            | [.data.input.kind, .data.steps[0].task, .data.steps[0].outcome]]' history.json)" = \
-            '[["started","/do/0/decide","waiting"],["event_received","/do/0/decide","completed"]]'
+          jq --exit-status '(.events | INDEX(.id) as $by
+            | [.[] | [.type, (.data.name // .data.input.kind), $by[.causation_id // ""].type]] | sort) == [
+              ["execution_deferred", null, "execution_started"], ["execution_started", "approval", null],
+              ["execution_succeeded", null, "step_finished"], ["step_finished", "decide", "step_waiting"],
+              ["step_waiting", "decide", "workflow_input_applied"],
+              ["workflow_input_applied", "event_received", "step_waiting"],
+              ["workflow_input_applied", "started", "execution_started"]]' history.json
           stop_server workflows-second
       - name: Read the analytics of a brain
         timeout-minutes: 2

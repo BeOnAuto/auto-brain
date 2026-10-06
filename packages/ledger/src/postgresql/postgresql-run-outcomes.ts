@@ -14,7 +14,7 @@ import {
 import { preparedRunOutcomes } from '../outcomes/run-outcome-table.ts';
 import { createPostgreSQLBrainIndexes } from './brain-indexes.ts';
 import { dataAsJsonText } from './json-text.ts';
-import { binding, type Bind, type Query } from './postgresql-recorded.ts';
+import { binding, type Bind, type Query } from './recorded-parts.ts';
 
 const table = SQL.plain(runOutcomesTable);
 

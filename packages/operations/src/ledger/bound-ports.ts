@@ -48,14 +48,19 @@ export function prefixedReader(ledger: StreamReader, prefix: string): StreamRead
 
 export function prefixedWriter(ledger: StreamWriter, prefix: string): StreamWriter {
   return {
-    execute: (stream, decider, command) =>
-      wellFormed(stream).pipe(Effect.flatMap((relative) => ledger.execute(`${prefix}${relative}`, decider, command))),
+    execute: (stream, decider, command, lineage) =>
+      wellFormed(stream).pipe(
+        Effect.flatMap((relative) => ledger.execute(`${prefix}${relative}`, decider, command, lineage)),
+      ),
   };
 }
 
 function wellFormedSelection(selection: RecordedSelection): Effect.Effect<RecordedSelection> {
-  return selection.kind === 'run'
-    ? wellFormed(`executions/${selection.execution}`).pipe(Effect.as(selection))
+  if (selection.kind === 'run') {
+    return wellFormed(`executions/${selection.execution}`).pipe(Effect.as(selection));
+  }
+  return selection.kind === 'correlated'
+    ? wellFormed(`executions/${selection.correlation}`).pipe(Effect.as(selection))
     : Effect.succeed(selection);
 }
 
@@ -71,11 +76,13 @@ function wellFormedPage(page: RecordedPageRequest): Effect.Effect<RecordedPageRe
 const refusedCursors: Readonly<Record<InvalidCursorKind, InvalidInput>> = {
   malformed: new InvalidInput({
     detail: 'The cursor is malformed',
-    issues: [{ detail: 'Expected a next_cursor or an id, as a read gives it', pointer: '/cursor' }],
+    issues: [{ detail: 'Expected a next_cursor or the cursor of an event, as a read gives it', pointer: '/cursor' }],
   }),
   of_another_brain: new InvalidInput({
     detail: 'The cursor was not given by a read of this brain',
-    issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+    issues: [
+      { detail: 'Expected a next_cursor or the cursor of an event that a read of this brain gave', pointer: '/cursor' },
+    ],
   }),
 };
 

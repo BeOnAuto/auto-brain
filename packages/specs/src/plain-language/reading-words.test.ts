@@ -27,7 +27,9 @@ function listed(executions: readonly unknown[], filters: object = {}, hasMore = 
 }
 
 const event = {
-  id: 'WyJicmFpbiJd',
+  id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
+  cursor: 'WyJicmFpbiJd',
+  causation_id: null,
   at: '2026-10-01T09:00:00.000Z',
   type: 'execution_started',
   summary: 'A run started.',

@@ -1,4 +1,5 @@
 import type {
+  Lineage,
   RecordedOrder,
   RecordedSelection,
   RunOutcomeGroup,
@@ -13,22 +14,28 @@ export interface EncodedEvent {
   readonly data: Schema.JsonObject;
 }
 
+export interface MessageLineage extends Lineage {
+  readonly id: string;
+}
+
 export interface RecordedStream {
   readonly version: number;
   readonly events: readonly unknown[];
+  readonly lineages: readonly MessageLineage[];
 }
 
 export type RecordedPoint = readonly string[];
 
 export interface StoredPageRequest {
   readonly after?: RecordedPoint;
+  readonly at?: RecordedPoint;
   readonly order: RecordedOrder;
   readonly limit: number;
   readonly since?: string;
   readonly types?: readonly string[];
 }
 
-interface StoredRecord {
+interface StoredRecord extends MessageLineage {
   readonly point: RecordedPoint;
   readonly stream: string;
   readonly type: string;
@@ -44,7 +51,12 @@ export interface StoredPage {
 export interface StreamStore {
   readonly mostEventsInOneAppend: number;
   readonly read: (stream: string, after?: number) => Promise<RecordedStream>;
-  readonly append: (stream: string, events: readonly EncodedEvent[], expectedVersion: number) => Promise<void>;
+  readonly append: (
+    stream: string,
+    events: readonly EncodedEvent[],
+    expectedVersion: number,
+    lineage?: Lineage,
+  ) => Promise<void>;
   readonly migrate: () => Promise<void>;
   readonly close: () => Promise<void>;
 }

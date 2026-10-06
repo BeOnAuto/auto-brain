@@ -7,6 +7,8 @@ export const brainKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}')";
 
 export const kindKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){4}')";
 
+export const correlationOfMessage = "(message_metadata ->> 'correlationId')";
+
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
 const brainKey = SQL.plain(brainKeyOfStream);
@@ -31,6 +33,11 @@ const brainIndexes: readonly BrainIndex[] = [
     name: 'ledger_first_messages_by_kind',
     create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind
       ON emt_messages ((${SQL.plain(kindKeyOfStream)}), stream_position, transaction_id, global_position)`,
+  },
+  {
+    name: 'ledger_messages_by_brain_and_correlation',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation
+      ON emt_messages ((${brainKey}), ${SQL.plain(correlationOfMessage)}, transaction_id, global_position)`,
   },
 ];
 

@@ -1,106 +1,19 @@
-import type { Decider, Outcome, Presenter } from '@beonauto/operations';
-import { memoryBrainRegistry } from '@beonauto/operations/testing';
-import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineListBrainEvents } from '../index.ts';
+import {
+  brainFeed,
+  brainWithEvents,
+  everyText,
+  listBrainEvents,
+  presenterOf,
+  textsIn,
+  textsOf,
+  toAlpha,
+  withCursor,
+} from '../testing/brain-feed.ts';
 import { acmeAdmin, globexAdmin } from '../testing/callers.ts';
-import { asQueryString, harness, toBrain } from '../testing/harness.ts';
-
-const FactSchema = Schema.Struct({
-  type: Schema.Literals(['added', 'hidden', 'kept']),
-  text: Schema.String,
-  at: Schema.String,
-});
-
-type Fact = typeof FactSchema.Type;
-
-const recorder: Decider<null, Fact, Fact> = {
-  initialState: null,
-  evolve: (state) => state,
-  decide: (fact) => Result.succeed([fact]),
-  eventSchema: FactSchema,
-};
-
-const decodeFact = Schema.decodeUnknownSync(FactSchema);
-
-function presenterOf(streamKind: string, publicNames: Readonly<Record<string, string | null>>): Presenter {
-  return {
-    streamKind,
-    publicNames,
-    present: ({ id, type, data }) => {
-      const { text, at } = decodeFact(data);
-      return { id, at, type: String(publicNames[type]), summary: 'Something happened.', data: { text } };
-    },
-  };
-}
-
-const notes = presenterOf('notes', { added: 'note_added', hidden: null, kept: 'note_kept' });
-
-const shelves = presenterOf('shelves', { added: 'shelf_filled' });
-
-const listBrainEvents = defineListBrainEvents([notes, shelves]);
-
-const brains = memoryBrainRegistry(
-  [
-    { org: 'acme', brain: 'alpha' },
-    { org: 'globex', brain: 'gamma' },
-  ],
-  [{ org: 'acme', brain: 'old' }],
-);
-
-const toAlpha = toBrain('acme', 'alpha');
-
-const TextsSchema = Schema.Struct({
-  output: Schema.Struct({
-    events: Schema.Array(Schema.Struct({ data: Schema.Struct({ text: Schema.String }) })),
-    has_more: Schema.Boolean,
-    next_cursor: Schema.NullOr(Schema.String),
-  }),
-});
-
-const textsOf = Schema.decodeUnknownSync(TextsSchema);
-
-function textsIn(outcome: Outcome): readonly string[] {
-  return textsOf(outcome).output.events.map(({ data }) => data.text);
-}
-
-function withCursor(cursor: string | undefined): object {
-  return cursor === undefined ? {} : { cursor };
-}
-
-function brainFeed() {
-  const feed = harness(brains);
-  let minute = 0;
-  const recording = (stream: string, type: Fact['type'], text: string, brain = 'brain/acme/alpha') => {
-    minute += 1;
-    const at = `2026-10-01T09:${String(minute).padStart(2, '0')}:00.000Z`;
-    return feed.run(Effect.orDie(feed.ledger.service.execute(`${brain}/${stream}`, recorder, { type, text, at })), at);
-  };
-  const reading = (input: object = {}) => feed.callInBrain(listBrainEvents, toAlpha(acmeAdmin, input));
-  return { ...feed, recording, reading };
-}
-
-async function brainWithEvents() {
-  const feed = brainFeed();
-  await feed.recording('notes', 'added', 'a');
-  await feed.recording('shelves/red', 'added', 'b');
-  await feed.recording('notes', 'hidden', 'c');
-  await feed.recording('secrets', 'added', 'd');
-  await feed.recording('notes', 'kept', 'e');
-  return feed;
-}
-
-async function everyText(
-  read: (cursor: string | undefined) => Promise<Outcome>,
-  between: () => Promise<unknown>,
-  cursor?: string,
-): Promise<readonly string[]> {
-  const page = await read(cursor);
-  await between();
-  const { next_cursor: next } = textsOf(page).output;
-  return [...textsIn(page), ...(next === null ? [] : await everyText(read, between, next))];
-}
+import { asQueryString, toBrain } from '../testing/harness.ts';
 
 describe('list_brain_events', () => {
   it('is a brain query at GET /events whose type names the public types of its presenters', () => {
@@ -110,7 +23,11 @@ describe('list_brain_events', () => {
       title: 'List brain events',
       route: { method: 'GET', path: '/events' },
       reasons: ['invalid_input'],
-      input: { schema: { properties: { type: { enum: ['note_added', 'note_kept', 'shelf_filled'] } } } },
+      input: {
+        schema: {
+          properties: { type: { enum: ['note_added', 'note_kept', 'shelf_filled', 'run_moved', 'run_stepped'] } },
+        },
+      },
     });
     expect(listBrainEvents.registration.description).toContain(
       "The brain's own creation, update and retirement are not among the events",

@@ -1,5 +1,6 @@
 import type { CallerIdentity } from '../caller/caller.ts';
 import type { InputEncoding } from '../definition/registration.ts';
+import type { Lineage } from '../ledger/message-lineage.ts';
 
 export interface OrgRequest {
   readonly caller: CallerIdentity;
@@ -10,4 +11,5 @@ export interface OrgRequest {
 
 export interface BrainRequest extends OrgRequest {
   readonly brain: string;
+  readonly lineage?: Lineage;
 }

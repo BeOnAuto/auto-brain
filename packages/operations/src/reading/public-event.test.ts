@@ -8,7 +8,9 @@ const decodeEvent = Schema.decodeUnknownResult(PublicEventSchema);
 function eventWithData(bytes: number) {
   const free = bytes - JSON.stringify({ text: '' }).length;
   return {
-    id: 'WyJicmFpbi9hY21lL3NhbGVzLyIsIjQyIl0',
+    id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
+    cursor: 'WyJicmFpbi9hY21lL3NhbGVzLyIsIjQyIl0',
+    causation_id: null,
     at: '2026-10-05T09:00:00.000Z',
     type: 'run_started',
     summary: 'A run of the summary reasoning started',

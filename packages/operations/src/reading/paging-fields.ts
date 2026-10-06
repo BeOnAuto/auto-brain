@@ -22,7 +22,7 @@ export const PagingInputFields = {
   ),
   cursor: Schema.optionalKey(
     Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(longestCursor)).annotate({
-      description: 'The next_cursor of the page before, or the id of an item, to read on after it',
+      description: 'The next_cursor of the page before, or the cursor of an item, to read on after it',
     }),
   ),
   order: Schema.optionalKey(

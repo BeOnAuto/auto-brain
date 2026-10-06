@@ -1,4 +1,12 @@
-import { BrainReader, BrainWriter, randomUUIDv7 } from '@beonauto/operations';
+import {
+  BrainContext,
+  BrainReader,
+  BrainWriter,
+  messageIdOf,
+  randomUUIDv7,
+  streamPrefixOfBrain,
+  type Lineage,
+} from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { ExecutionFinish, ExecutionStart } from '../execution/execution-commands.ts';
@@ -14,11 +22,20 @@ export function loadExecution(id: string): Effect.Effect<ExecutionState, never, 
   );
 }
 
-export const recordExecution = Effect.fnUntraced(function* (id: string, command: ExecutionStart | ExecutionFinish) {
+export const recordExecution = Effect.fnUntraced(function* (
+  id: string,
+  command: ExecutionStart | ExecutionFinish,
+  lineage: Lineage,
+) {
   const metadata = yield* commandMetadata;
-  const { state } = yield* (yield* BrainWriter).execute(executionStreamOf(id), executionDecider, {
-    ...command,
-    ...metadata,
-  });
-  return state;
+  const { state, version } = yield* (yield* BrainWriter).execute(
+    executionStreamOf(id),
+    executionDecider,
+    { ...command, ...metadata },
+    lineage,
+  );
+  return {
+    state,
+    messageId: messageIdOf(`${streamPrefixOfBrain(yield* BrainContext)}${executionStreamOf(id)}`, version),
+  };
 });

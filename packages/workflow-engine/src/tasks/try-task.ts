@@ -16,6 +16,7 @@ import {
   type Machine,
   type Signal,
 } from '../runner/advance.ts';
+import type { StepCause } from '../steps/step-entry.ts';
 
 type TryBody = Extract<FrameBody, { readonly kind: 'try' }>;
 
@@ -118,7 +119,7 @@ function handled(invocation: Invocation, retry: RetryState, error: DslError): Bo
     milliseconds: delay,
     label: `${reference} retry ${retry.attempt + 1}`,
   });
-  return waitingOn({ kind: 'try', ...retry, phase: { kind: 'backing_off', timer, error } });
+  return waitingOn({ kind: 'try', ...retry, phase: { kind: 'backing_off', timer, error, failed: session.cause() } });
 }
 
 export function startTry(invocation: Invocation): BodyAdvance {
@@ -126,6 +127,11 @@ export function startTry(invocation: Invocation): BodyAdvance {
 }
 
 type Trying = Extract<TryBody['phase'], { readonly kind: 'trying' }>;
+
+function retried(invocation: Invocation, body: TryBody, failed: StepCause): BodyAdvance {
+  invocation.machine.session.causedBy(failed);
+  return attempted(invocation, { attempt: body.attempt + 1, startedAt: body.startedAt });
+}
 
 function resumeTrying(invocation: Invocation, body: TryBody, trying: Trying, signal: Signal): BodyAdvance | undefined {
   const { list, attemptLimit } = trying;
@@ -148,7 +154,7 @@ export function resumeTry(invocation: Invocation, body: TryBody, signal: Signal)
   }
   if (phase.kind === 'backing_off') {
     return signal.kind === 'timer' && signal.timerId === phase.timer
-      ? attempted(invocation, { attempt: body.attempt + 1, startedAt: body.startedAt })
+      ? retried(invocation, body, phase.failed)
       : undefined;
   }
   const advance = machine.runner.resumeList(machine, phase.list, signal);

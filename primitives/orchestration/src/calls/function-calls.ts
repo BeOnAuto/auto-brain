@@ -1,5 +1,5 @@
 import { invalidArguments, type CallResult } from '@beonauto/operations';
-import { jsonBytesOf } from '@beonauto/workflow-engine';
+import { jsonBytesOf, stepEventIdOf } from '@beonauto/workflow-engine';
 import type { Perform } from '@beonauto/workflow-host';
 import { Effect, Option } from 'effect';
 
@@ -51,13 +51,23 @@ export function definitionCalls(executeSpec: RunDefinition): Perform {
   return (call, run) =>
     Option.match(attributesOfRun(run.attributes), {
       onNone: () => Effect.succeed(noCaller),
-      onSome: ({ org, brain, execution_id: workflowExecution, caller }) => {
+      onSome: ({ org, brain, execution_id: workflowExecution, caller, lineage }) => {
         const spec = specArgumentsOf(call.arguments);
         if (isArgumentsProblem(spec)) {
           return Effect.succeed<CallResult>({ status: 'rejected', reason: invalidArguments, detail: spec.title });
         }
-        const executionId = nestedExecutionId(workflowExecution, call.key.reference, call.key.run);
-        return executeSpec({ org, brain, caller, ...spec, executionId }).pipe(Effect.map(callResultOf));
+        const { reference, run: count } = call.key;
+        const executionId = nestedExecutionId(workflowExecution, reference, count);
+        const waiting = stepEventIdOf(workflowExecution, { reference, run: count, outcome: 'waiting', times: 1 });
+        const correlationId = lineage?.correlation ?? workflowExecution;
+        return executeSpec({
+          org,
+          brain,
+          caller,
+          ...spec,
+          executionId,
+          lineage: { causationId: waiting, correlationId },
+        }).pipe(Effect.map(callResultOf));
       },
     });
 }

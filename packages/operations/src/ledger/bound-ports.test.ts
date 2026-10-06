@@ -154,6 +154,20 @@ describe('the read of what a brain recorded, bound to a call', () => {
       ),
     ).toEqual({ status: 'succeeded', output: { streams: [], ids: [], next_cursor: null } });
   });
+
+  it('reads what one run and the runs it caused recorded, by their correlation', async () => {
+    const { dispatcher, run } = harness();
+    await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(acmeAdmin, { name: 'anvil', text: 'heavy' })));
+
+    expect(
+      await run(
+        dispatcher.dispatchToBrain(
+          readNoteHistory.registration,
+          toAlpha(acmeAdmin, { limit: 10, correlation: 'run-1' }),
+        ),
+      ),
+    ).toEqual({ status: 'succeeded', output: { streams: [], ids: [], next_cursor: null } });
+  });
 });
 
 describe('a cursor given to the read bound to a call', () => {
@@ -171,7 +185,7 @@ describe('a cursor given to the read bound to a call', () => {
       run(dispatcher.dispatchToBrain(readNoteHistory.registration, toAlpha(acmeAdmin, { limit: 10, cursor })));
 
     const refusals = await Promise.all(
-      [...records.map(({ id }) => id), 'not-a-cursor'].map((cursor) => reading(cursor)),
+      [...records.map(({ cursor }) => cursor), 'not-a-cursor'].map((cursor) => reading(cursor)),
     );
 
     expect(refusals).toEqual([
@@ -179,13 +193,20 @@ describe('a cursor given to the read bound to a call', () => {
         status: 'rejected',
         reason: 'invalid_input',
         detail: 'The cursor was not given by a read of this brain',
-        issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+        issues: [
+          {
+            detail: 'Expected a next_cursor or the cursor of an event that a read of this brain gave',
+            pointer: '/cursor',
+          },
+        ],
       },
       {
         status: 'rejected',
         reason: 'invalid_input',
         detail: 'The cursor is malformed',
-        issues: [{ detail: 'Expected a next_cursor or an id, as a read gives it', pointer: '/cursor' }],
+        issues: [
+          { detail: 'Expected a next_cursor or the cursor of an event, as a read gives it', pointer: '/cursor' },
+        ],
       },
     ]);
   });
@@ -197,6 +218,7 @@ describe('a page the read bound to a call cannot hold', () => {
     [{ limit: 101 }, 'RangeError: A page holds 1 to 100 records, not 101'],
     [{ limit: 10, since: 'yesterday' }, 'RangeError: The time "yesterday" a page starts from is not a time'],
     [{ limit: 10, execution: 'a/../b' }, 'Error: The stream name "executions/a/../b" is malformed'],
+    [{ limit: 10, correlation: 'a/../b' }, 'Error: The stream name "executions/a/../b" is malformed'],
   ] as const)('fails the call, %j', async (input, defect) => {
     const { dispatcher, reported, run } = harness();
 

@@ -33,6 +33,7 @@ export function eventOf(state: RunState, result: SessionResult, receipt: InputRe
       format: stateFormat,
       receipt,
       steps: result.steps,
+      resumed: result.resumed,
       patch: patchBetween(state, result.state),
       outputs: withoutUndone(result.outputs),
     },

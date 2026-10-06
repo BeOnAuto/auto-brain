@@ -33,7 +33,7 @@ describe('the data of an event kept as its JSON text', () => {
     const read = await store.read(run);
     const stored = await emmett.readStream(run);
 
-    expect(read).toEqual({ version: 1, events: [awkward] });
+    expect(read).toMatchObject({ version: 1, events: [awkward] });
     expect(JSON.stringify(read.events)).toBe(JSON.stringify([awkward]));
     expect(
       stored.events.map(({ type, data }: { readonly type: string; readonly data: unknown }) => ({ type, data })),
@@ -45,9 +45,9 @@ describe('the data of an event kept as its JSON text', () => {
     await store.migrate();
     await store.append(run, [{ type: 'noted', data: awkward }], 0);
 
-    expect(await outcomeOf(eventAppenderOf(store)(run, tally.eventSchema, [{ type: 'counted', by: 1 }], 0))).toEqual(
+    expect(await outcomeOf(eventAppenderOf(store, tally.eventSchema)(run, [{ type: 'counted', by: 1 }], 0))).toEqual(
       Result.fail(new VersionConflict()),
     );
-    expect(await store.read(run)).toEqual({ version: 1, events: [awkward] });
+    expect(await store.read(run)).toMatchObject({ version: 1, events: [awkward] });
   });
 });

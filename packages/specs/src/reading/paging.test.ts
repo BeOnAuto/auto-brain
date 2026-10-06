@@ -176,13 +176,20 @@ describe('a cursor', () => {
         status: 'rejected',
         reason: 'invalid_input',
         detail: 'The cursor is malformed',
-        issues: [{ detail: 'Expected a next_cursor or an id, as a read gives it', pointer: '/cursor' }],
+        issues: [
+          { detail: 'Expected a next_cursor or the cursor of an event, as a read gives it', pointer: '/cursor' },
+        ],
       },
       {
         status: 'rejected',
         reason: 'invalid_input',
         detail: 'The cursor was not given by a read of this brain',
-        issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+        issues: [
+          {
+            detail: 'Expected a next_cursor or the cursor of an event that a read of this brain gave',
+            pointer: '/cursor',
+          },
+        ],
       },
     ]);
   });

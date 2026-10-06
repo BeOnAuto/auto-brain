@@ -10,6 +10,8 @@ import { runId } from '../testing/probe-subjects.ts';
 import { ledgerRecordStore } from './ledger-record-store.ts';
 import { settleAttemptsBeforeBackingOff, settleBackOffMs } from './settle-attempts.ts';
 
+const settledBy = { version: 2, lastStep: null };
+
 const run = { executionId: runId, attributes: {} };
 
 const succeeded: Settlement = { status: 'succeeded', output: 'done' };
@@ -67,12 +69,14 @@ async function recording(): Promise<Recording> {
 
 function settledOnce(recorded: Recording): Promise<Result.Result<string, { readonly detail: string }>> {
   return Effect.runPromise(
-    Effect.result(recorded.recordStore.settle({ executionId: runId, settlement: succeeded }, run)),
+    Effect.result(recorded.recordStore.settle({ executionId: runId, settlement: succeeded }, run, settledBy)),
   );
 }
 
 function refusedEveryAttemptBeforeBackingOff(recorded: Recording): Promise<readonly { readonly detail: string }[]> {
-  const refused = Effect.flip(recorded.recordStore.settle({ executionId: runId, settlement: succeeded }, run));
+  const refused = Effect.flip(
+    recorded.recordStore.settle({ executionId: runId, settlement: succeeded }, run, settledBy),
+  );
   return Effect.runPromise(Effect.forEach(Array.from({ length: settleAttemptsBeforeBackingOff }), () => refused));
 }
 
