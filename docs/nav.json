@@ -24,8 +24,16 @@
     "text": "Get started",
     "items": [
       {
+        "text": "Connect your agent",
+        "link": "/get-started/local"
+      },
+      {
         "text": "Build your first brain",
         "link": "/tutorials/first-brain"
+      },
+      {
+        "text": "Build your first workflow",
+        "link": "/tutorials/first-workflow"
       }
     ]
   },
@@ -35,15 +43,6 @@
       {
         "text": "Use Auto with Apollo",
         "link": "/integrations/apollo"
-      }
-    ]
-  },
-  {
-    "text": "Contributing",
-    "items": [
-      {
-        "text": "Documentation contributions",
-        "link": "/contributing/documentation"
       }
     ]
   },
@@ -68,8 +67,21 @@
         "link": "/reference/reasoning-format"
       },
       {
+        "text": "Workflow format",
+        "link": "/reference/workflow-format"
+      },
+      {
         "text": "HTTP API",
         "link": "/reference/http"
+      }
+    ]
+  },
+  {
+    "text": "Contributing",
+    "items": [
+      {
+        "text": "Documentation contributions",
+        "link": "/contributing/documentation"
       }
     ]
   }

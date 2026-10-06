@@ -14,7 +14,7 @@ describe('the next time a run is due', () => {
     expect(runDueOf(runningState, 7)).toEqual({ executionId, version: 7, nextDueAt: at + 60_000 });
   });
 
-  it('changes only with an event that arms or cancels a timer', () => {
+  it('changes only with an event that arms, cancels or fires a timer', () => {
     const cancelling = streamOf([
       {
         receipt: { kind: 'cancel_requested', key: executionId, at },
@@ -23,7 +23,7 @@ describe('the next time a run is due', () => {
       },
     ]);
 
-    expect([...exampleStream, ...cancelling].map((event) => changesTimers(event))).toEqual([false, true, false, true]);
+    expect([...exampleStream, ...cancelling].map((event) => changesTimers(event))).toEqual([false, true, true, true]);
   });
 });
 

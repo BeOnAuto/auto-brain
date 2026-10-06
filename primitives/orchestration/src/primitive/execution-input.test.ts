@@ -1,15 +1,16 @@
-import type { Json } from '@beonauto/workflow-engine/dsl/json';
+import { memoryLedger } from '@beonauto/operations/testing';
+import type { Json } from '@beonauto/workflow-engine';
+import { HostElsewhere } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { brainWith } from '../testing/brain.ts';
-import type { OrchestrationClient } from './orchestration-client.ts';
-import { makeOrchestration } from './orchestration-primitive.ts';
+import { brainOn } from '../testing/brain.ts';
+import { makeOrchestration, type OrchestrationDependencies } from './orchestration-primitive.ts';
 
-const neverStarted: OrchestrationClient = {
-  mostDuration: 30 * 24 * 3_600_000,
-  start: () => Effect.die('A workflow started'),
-  signal: () => Effect.die('An event was sent'),
+const neverStarted: OrchestrationDependencies = {
+  runs: { start: () => Effect.die('A workflow started') },
+  mostDurationMs: 30 * 24 * 3_600_000,
+  longestCallMs: 660_000,
 };
 
 const flow = `document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\ndo: []\n`;
@@ -19,7 +20,7 @@ function nested(depth: number): Json {
 }
 
 async function executing(input: Json) {
-  const brain = brainWith([makeOrchestration({ client: neverStarted })]);
+  const brain = brainOn(memoryLedger(), [makeOrchestration(neverStarted)]);
   await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source: flow });
   return brain.call(brain.executeSpec, { primitive: 'orchestration', name: 'flow', input });
 }
@@ -34,8 +35,8 @@ describe('executing a workflow spec with an input a workflow may not hold', () =
     });
   });
 
-  it('checks its document against the most a workflow may run that its client was set with', async () => {
-    const brain = brainWith([makeOrchestration({ client: { ...neverStarted, mostDuration: 10_800_000 } })]);
+  it('checks its document against the most a workflow may run that it was set with', async () => {
+    const brain = brainOn(memoryLedger(), [makeOrchestration({ ...neverStarted, mostDurationMs: 10_800_000 })]);
     const source = `document: { dsl: '1.0.3', namespace: acme, name: flow, version: '1.0.0' }\ndo: [{ pause: { wait: PT4H } }]\n`;
 
     expect(await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source })).toMatchObject({
@@ -54,8 +55,26 @@ describe('executing a workflow spec with an input a workflow may not hold', () =
   });
 });
 
+describe('executing a workflow spec while another server runs the workflows of the database', () => {
+  it('is rejected as unavailable with the words of the host', async () => {
+    const detail = 'The workflows of this database run in another server';
+    const elsewhere = makeOrchestration({
+      ...neverStarted,
+      runs: { start: () => Effect.fail(new HostElsewhere({ detail })) },
+    });
+    const brain = brainOn(memoryLedger(), [elsewhere]);
+    await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'flow', source: flow });
+
+    expect(await brain.call(brain.executeSpec, { primitive: 'orchestration', name: 'flow' })).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail,
+    });
+  });
+});
+
 describe('the words of the orchestration primitive', () => {
-  const orchestration = makeOrchestration({ client: neverStarted });
+  const orchestration = makeOrchestration(neverStarted);
 
   it('calls a spec a workflow', () => {
     expect(orchestration.noun).toEqual({ one: 'workflow', other: 'workflows' });

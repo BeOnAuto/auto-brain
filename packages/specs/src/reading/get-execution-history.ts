@@ -32,6 +32,8 @@ const description = [
   'and the size and SHA-256 digest of its arguments, and tool_call_answered with its outcome',
   '(result, tool_error, server_failure, timed_out or cancelled), the size and digest of the result and how long it took.',
   'A call with a start and no answer was in flight when the run ended, so its outcome is unknown.',
+  'A workflow also shows workflow_input_applied for each input its run took: the kind and key of the input,',
+  'how many steps moved, the first five with their outcomes, and the kinds of what the run did next.',
   'Inputs, outputs, records, arguments and results appear as their sizes in bytes,',
   'with the arguments and the result cut to 2 KiB only when the operator records their content;',
   'get_execution reads the output and the record.',

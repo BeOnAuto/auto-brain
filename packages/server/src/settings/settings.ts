@@ -1,7 +1,6 @@
 import { configurationOf, readServerConfig, type Environment, type FileUse } from '@beonauto/config';
 import { readApiKeys, type ApiKey } from '@beonauto/identity';
-import { readTemporalSettings, type TemporalSettings } from '@beonauto/orchestration/settings';
-import { Config, ConfigProvider, Effect, Option, Result } from 'effect';
+import { Config, ConfigProvider, Effect, Result } from 'effect';
 
 import type { LogFormat } from '../logging/logging.ts';
 import { fileSettings } from './file-settings.ts';
@@ -9,6 +8,7 @@ import { InvalidSettingsError } from './invalid-settings-error.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
 import { Origin } from './origin.ts';
 import { readReasoningSettings, type ReasoningSettings } from './reasoning-settings.ts';
+import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
 
 interface ConfigFileSources {
   readonly path: string;
@@ -24,7 +24,7 @@ export interface Settings extends ReasoningSettings {
   readonly ledger: LedgerSettings;
   readonly localMode: boolean;
   readonly logFormat: LogFormat;
-  readonly workflows: TemporalSettings | undefined;
+  readonly workflows: WorkflowSettings;
   readonly configFile: ConfigFileSources | undefined;
 }
 
@@ -47,7 +47,7 @@ export function readSettings(given: Environment): Settings {
   const { allowedOrigins, localMode, logFormat } = Effect.runSync(read);
   const ledger = Effect.runSync(readLedgerSettings(environment));
   const { models, mcp } = readReasoningSettings(environment, file);
-  const workflows = Option.getOrUndefined(Effect.runSync(readTemporalSettings(environment)));
+  const workflows = Effect.runSync(readWorkflowSettings(environment));
   return {
     host,
     port,

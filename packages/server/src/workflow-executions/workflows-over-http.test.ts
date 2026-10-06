@@ -1,4 +1,5 @@
 import { answers, jsonResult, textResult, type ScriptedReply } from '@beonauto/inference/testing';
+import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type InferenceServer } from '../testing/inference-server.ts';
@@ -80,6 +81,12 @@ const careless = workflowSource(
       call: execute_spec
       with: { primitive: inference, name: summary, input: { text: 7 } }
 `,
+);
+
+const historyOf = Schema.decodeUnknownSync(
+  Schema.Struct({
+    events: Schema.Array(Schema.Struct({ type: Schema.String, summary: Schema.String, data: Schema.Unknown })),
+  }),
 );
 
 let server: InferenceServer;
@@ -174,5 +181,54 @@ describe('a nested spec that rejects its input, over HTTP', { timeout: workflowT
     expect(await settledExecution(server, `${alpha}/executions/${executionId}`)).toMatchObject({
       body: { status: 'rejected', rejection: { reason: 'invalid_input' } },
     });
+  });
+});
+
+describe('the history of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+  it('shows each input the run took, with the steps that moved and how they ended', async () => {
+    await serving(answers(jsonResult({ approve: false })));
+
+    const executionId = await executed('expense-review', { expense: 'a yacht' });
+    await settledExecution(server, `${alpha}/executions/${executionId}`);
+    const history = await server.call('GET', `${alpha}/executions/${executionId}/history`);
+
+    const { events } = historyOf(history.body);
+    const callKey = JSON.stringify([`acme/alpha/${executionId}`, '/do/0/judge', 1]);
+
+    expect(events.map(({ type }) => type).toSorted()).toEqual([
+      'execution_deferred',
+      'execution_started',
+      'execution_succeeded',
+      'workflow_input_applied',
+      'workflow_input_applied',
+    ]);
+    expect(events.filter(({ type }) => type === 'workflow_input_applied')).toEqual([
+      {
+        type: 'workflow_input_applied',
+        summary: 'The workflow started, and 1 step moved.',
+        data: {
+          execution_id: executionId,
+          input: { kind: 'started', key: executionId },
+          step_count: 1,
+          steps: [{ task: '/do/0/judge', run: 1, outcome: 'waiting' }],
+          output_kinds: ['arm_timer', 'start_call'],
+        },
+      },
+      {
+        type: 'workflow_input_applied',
+        summary: 'A function the workflow called answered, and 3 steps moved; the workflow ended.',
+        data: {
+          execution_id: executionId,
+          input: { kind: 'call_answered', key: callKey, status: 'succeeded' },
+          step_count: 3,
+          steps: [
+            { task: '/do/0/judge', run: 1, outcome: 'completed' },
+            { task: '/do/1/route', run: 1, outcome: 'completed' },
+            { task: '/do/3/decline', run: 1, outcome: 'completed' },
+          ],
+          output_kinds: ['cancel_timer', 'settle'],
+        },
+      },
+    ]);
   });
 });
