@@ -148,6 +148,7 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     ],
     ['list_brain_events', await session.callTool('list_brain_events', inSales({ limit: 3 }))],
     ['list_brain_events', await session.callTool('list_brain_events', { brain: 'old-sales' })],
+    ['get_brain_analytics', await session.callTool('get_brain_analytics', inSales({ days: 30 }))],
   ];
 }
 

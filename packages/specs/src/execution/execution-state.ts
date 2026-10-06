@@ -54,10 +54,15 @@ function finishedRecord(
   return { ...attempt, status: 'failed' };
 }
 
+function recordOf(event: ExecutionFinished): Schema.JsonObject | undefined {
+  return event.type === 'execution_failed' ? undefined : event.record;
+}
+
 function finishedExecution(state: RecordedExecution, event: ExecutionFinished): RecordedExecution {
   const result = resultOf(event);
   const finished = { ...state, execution: finishedRecord(state.execution, result, event.at), result };
-  return event.type === 'execution_succeeded' ? { ...finished, record: event.record } : finished;
+  const record = recordOf(event);
+  return record === undefined ? finished : { ...finished, record };
 }
 
 function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, ExecutionStarted>): RecordedExecution {

@@ -30,4 +30,5 @@ export class Unavailable extends Data.TaggedError('unavailable')<{
   readonly detail: string;
   readonly kind?: UnavailableKind;
   readonly because?: UnavailableBecause;
+  readonly record?: Schema.JsonObject;
 }> {}

@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import type { BrainAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
 import { InvalidInput } from '../outcome/invalid-input.ts';
+import { isCalendarDay } from '../reading/calendar-days.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
 import type {
   InvalidCursorKind,
@@ -10,7 +11,15 @@ import type {
   RecordedPageRequest,
   RecordedSelection,
 } from '../reading/recorded-read.ts';
-import type { BrainRecordedReader, RecordedReader, StreamReader, StreamWriter } from './stream-ports.ts';
+import type { RunOutcomeWindow } from '../run-outcomes/run-outcomes.ts';
+import type {
+  BrainRecordedReader,
+  BrainRunOutcomesReader,
+  RecordedReader,
+  RunOutcomesReader,
+  StreamReader,
+  StreamWriter,
+} from './stream-ports.ts';
 
 const streamNameGrammar = /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})*$/u;
 
@@ -88,5 +97,19 @@ export function brainBoundRecordedReader(ledger: RecordedReader, brain: BrainAdd
         Effect.map(relativeTo(streamPrefixOfBrain(brain))),
         Effect.mapError(({ kind }: { readonly kind: InvalidCursorKind }) => refusedCursors[kind]),
       ),
+  };
+}
+
+function wellFormedWindow(window: RunOutcomeWindow): Effect.Effect<RunOutcomeWindow> {
+  const { from, to } = window;
+  return isCalendarDay(from) && isCalendarDay(to) && from <= to
+    ? Effect.succeed(window)
+    : Effect.die(new RangeError(`The days from ${JSON.stringify(from)} to ${JSON.stringify(to)} are not a window`));
+}
+
+export function brainBoundRunOutcomesReader(ledger: RunOutcomesReader, brain: BrainAddress): BrainRunOutcomesReader {
+  return {
+    readRunOutcomes: (window, selection) =>
+      wellFormedWindow(window).pipe(Effect.flatMap((checked) => ledger.readRunOutcomes(brain, checked, selection))),
   };
 }

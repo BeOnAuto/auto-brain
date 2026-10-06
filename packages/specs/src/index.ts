@@ -71,6 +71,8 @@ export {
   type Definition,
 } from './registry/spec.ts';
 export { makeSpecOperations, type BrainOperation } from './operations/spec-operations.ts';
+export { defineGetBrainAnalytics } from './analytics/get-brain-analytics.ts';
+export { runOutcomeMapping } from './analytics/run-outcome-mapping.ts';
 export {
   definitionResourceLabel,
   functionCategoryLabels,
