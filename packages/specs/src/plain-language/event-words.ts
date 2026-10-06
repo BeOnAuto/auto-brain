@@ -61,3 +61,7 @@ export function eventPublished(type: string): string {
 export function eventEmitted(type: string, workflow: string): string {
   return `The workflow ${quoted(workflow)} emitted the event ${quoted(type)}.`;
 }
+
+export function reactionsRefused(workflow: string): string {
+  return `The workflow ${quoted(workflow)} was not started for everything its trigger matched in a minute; the details say how often and why.`;
+}

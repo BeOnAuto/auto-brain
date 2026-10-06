@@ -68,6 +68,7 @@ export {
   type Emission,
 } from './events/event-emitter.ts';
 export { publishedEventOf, type EventPublished } from './events/published-events.ts';
+export { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from './events/reaction-refusals.ts';
 export { mostReactingDefinitions } from './registry/registry-decisions.ts';
 export { specChangeOf, type SpecChange } from './registry/spec-changes.ts';
 export { runStartedOf, type RunStarted } from './execution/run-starts.ts';
