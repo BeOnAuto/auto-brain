@@ -27,6 +27,7 @@ export { readDuration } from './dsl/durations.ts';
 export {
   field,
   isObject,
+  valueAtPointer,
   jsonBytesOf,
   measureOf,
   mostValueDepth,
@@ -49,6 +50,7 @@ export type { Submission, SweepReport, Wake, WorkflowEngine } from './engine/wor
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
 export {
   brainWideFilterOf,
+  listenFiltersOf,
   listenerFilterOf,
   literalFilterOf,
   matchEvent,

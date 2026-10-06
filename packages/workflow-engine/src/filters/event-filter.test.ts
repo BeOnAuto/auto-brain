@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import {
   brainWideFilterOf,
+  listenFiltersOf,
   listenerFilterOf,
   literalFilterOf,
   matchEvent,
@@ -251,5 +252,16 @@ describe('a filter of a listen task that reaches events beyond its run', () => {
     });
     expect([listener, closed].map((filter) => matchedIfRead(filter))).toEqual([true, false]);
     expect(listenerFilterOf({ type: '${ "x" }' }, '/x')).toBeUndefined();
+  });
+});
+
+describe('the filters of a listen task that reach events beyond its run', () => {
+  it('are those whose type is written out, of one, any or all, and none of a task that is no listen', () => {
+    expect([
+      listenFiltersOf({ listen: { to: { one: { with: { type: 'a' } } } } }),
+      listenFiltersOf({ listen: { to: { all: [{ with: { type: 'a' } }, { with: { source: '/b' } }] } } }),
+      listenFiltersOf({ set: {} }),
+      listenFiltersOf(null),
+    ]).toEqual([[{ type: 'a' }], [{ type: 'a' }], [], []]);
   });
 });
