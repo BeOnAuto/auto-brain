@@ -1,11 +1,37 @@
 import { Schema } from 'effect';
 
-import { CallKeySchema } from '../executor/call-key.ts';
-import { ReceivedEventSchema } from '../inbox/received-event.ts';
-import { InstantSchema } from '../machine/instant.ts';
-import { RunLimitsSchema } from '../machine/run-input.ts';
-import { TimerPurposeSchema } from '../timers/timer-id.ts';
 import type { OlderFormat } from './state-format.ts';
+
+export const InstantSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
+
+export const CallKeySchema = Schema.Struct({
+  executionId: Schema.NonEmptyString,
+  reference: Schema.String,
+  run: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+});
+
+export const ReceivedEventSchema = Schema.StructWithRest(
+  Schema.Struct({
+    id: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+    type: Schema.NonEmptyString,
+  }),
+  [Schema.Record(Schema.String, Schema.Json)],
+);
+
+export const RunLimitsSchema = Schema.Struct({
+  mostDurationMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  longestCallMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+});
+
+export const TimerPurposeSchema = Schema.Literals([
+  'wait',
+  'timeout',
+  'retry_delay',
+  'attempt_limit',
+  'deadline',
+  'call_deadline',
+  'yield',
+]);
 
 export const DslErrorSchema = Schema.Struct({
   type: Schema.String,

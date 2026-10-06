@@ -1,11 +1,14 @@
 import { Schema } from 'effect';
 
-import { CallKeySchema } from '../executor/call-key.ts';
-import { ReceivedEventSchema } from '../inbox/received-event.ts';
-import { InstantSchema } from '../machine/instant.ts';
-import { RunLimitsSchema } from '../machine/run-input.ts';
-import { TimerPurposeSchema } from '../timers/timer-id.ts';
-import { DslErrorSchema, RunOutcomeSchema } from './format-two.ts';
+import {
+  CallKeySchema,
+  DslErrorSchema,
+  InstantSchema,
+  ReceivedEventSchema,
+  RunLimitsSchema,
+  RunOutcomeSchema,
+  TimerPurposeSchema,
+} from './format-two.ts';
 import type { OlderFormat } from './state-format.ts';
 import { isRecord } from './state-patch.ts';
 
