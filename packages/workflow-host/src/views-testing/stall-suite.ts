@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
+import { secondFoldWithBudget } from './pool-faults.ts';
 import {
   breakingFoldWorker,
   breaksTheWorker,
@@ -134,6 +135,24 @@ function lostPageTests(settingsOf: SettingsOf): void {
     });
   });
 
+  it('keeps every event it folded before the one its worker broke on, when folding up to it ends early', async () => {
+    const views = await viewHarness(await settingsOf(), { foldWorker: breakingFoldWorker });
+    await views.saved('outputs', collecting);
+    await views.ranEach('inference/runs', [1, 2, breaksTheWorker]);
+    const pool = secondFoldWithBudget(views.pool, 0);
+    views.start({ pool, overtimesBeforeStall: 2, sweepEveryMs: 20 });
+
+    const kept = await views.until('outputs', isStalled);
+
+    expect(kept).toMatchObject({
+      view: [1, 2],
+      folded: 2,
+      stall: { kind: 'crash', message: 'The fold was stopped by its crash 2 times' },
+    });
+  });
+}
+
+function neighbourTests(settingsOf: SettingsOf): void {
   it('never charges a view the time its neighbours took on the same event', async () => {
     const views = await viewHarness(await settingsOf());
     const names = ['first', 'second', 'third', 'fourth'];
@@ -156,5 +175,6 @@ export function stallSuite(settingsOf: SettingsOf): void {
     stoppingTests(settingsOf);
     afterTheStallTests(settingsOf);
     lostPageTests(settingsOf);
+    neighbourTests(settingsOf);
   });
 }

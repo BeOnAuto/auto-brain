@@ -138,7 +138,12 @@ function salvagedTry(going: Folding, lost: Try, parts: PageFolding): Effect.Effe
       const [salvaged] = outcome.ran === 'folded' ? outcome.views : [];
       return salvaged === undefined || salvaged.stall !== undefined || salvaged.overtime !== undefined
         ? lostTryOf(going.row, lost)
-        : salvagedTryOf(going.row, salvaged, { page, early: false, retries: lost.retries }, lost);
+        : salvagedTryOf(
+            going.row,
+            salvaged,
+            { page, early: outcome.ran === 'folded' && outcome.early, retries: lost.retries },
+            lost,
+          );
     }),
   );
 }

@@ -52,6 +52,17 @@ export function racingOnce(pool: ProgramPool, race: () => Promise<unknown>): Pro
   };
 }
 
+export function secondFoldWithBudget(pool: ProgramPool, pageBudgetMs: number): ProgramPool {
+  const counted = { folds: 0 };
+  return {
+    ...pool,
+    fold: (request, signal) => {
+      counted.folds += 1;
+      return pool.fold(counted.folds === 2 ? { ...request, pageBudgetMs } : request, signal);
+    },
+  };
+}
+
 function held<Gated>(gate: (wait: () => Promise<void>) => Gated): Held<Gated> {
   const opened = Promise.withResolvers<void>();
   const counts = { waiting: 0, most: 0, total: 0 };
