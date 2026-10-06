@@ -6,8 +6,6 @@ import { wordsOf } from './in-words.ts';
 import { explainedRejectionOf } from './run-words.ts';
 import type { SpecWords } from './spec-words.ts';
 
-export const runCarriesOn = 'A run carries on by itself, and finishes later.';
-
 export const runFinished = 'A run finished.';
 
 export const runBrokeDown = 'A run broke down because of a problem inside the server.';

@@ -29,10 +29,10 @@ const workflowLimits: Omit<ProgramLimits, 'mostWork'> = {
   mostSteps: 200_000,
   mostDepth: 200,
   mostOutputs: 10_000,
-  mostValueDepth: Number.POSITIVE_INFINITY,
+  mostValueDepth,
 };
 
-const raisedLimits: ReadonlySet<Limit> = new Set(['depth', 'stack']);
+const raisedLimits: ReadonlySet<Limit> = new Set(['depth', 'value depth', 'stack']);
 
 const enclosedExpression = /^\s*\$\{(?<body>[\s\S]*)\}\s*$/u;
 

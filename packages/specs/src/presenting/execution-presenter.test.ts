@@ -67,25 +67,27 @@ describe('the presenter of the events of an execution', () => {
   });
 });
 
-describe('the presenter of the end of an execution', () => {
-  it('presents work that finishes later, and a success, with the sizes of what they recorded', () => {
+describe('the presenter of work that finishes later', () => {
+  it('presents nothing for it and names no public type of it, so a history goes on from the start', () => {
+    const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'r-1' }, ...fact };
+    const executions = makeSpecPresenters([echo]).find(({ streamKind }) => streamKind === 'executions');
+
     expect([
-      presented({ type: 'execution_deferred', record: { run: 'r-1' }, ...fact }),
-      presented({ type: 'execution_succeeded', output: 'Hello', record: {}, ...ofGreet, ...fact }),
-    ]).toEqual([
-      {
-        ...shown,
-        type: 'execution_deferred',
-        summary: 'A run carries on by itself, and finishes later.',
-        data: { execution_id: executionId, by: 'acme-admin', record_bytes: 13 },
-      },
-      {
-        ...shown,
-        type: 'execution_succeeded',
-        summary: 'A run finished.',
-        data: { execution_id: executionId, by: 'acme-admin', output_bytes: 7, record_bytes: 2 },
-      },
-    ]);
+      present(recorded(deferred)),
+      executions?.present(recorded(deferred)),
+      executions?.publicNames['execution_deferred'],
+    ]).toEqual([[], [], []]);
+  });
+});
+
+describe('the presenter of the end of an execution', () => {
+  it('presents a success with the sizes of what it recorded', () => {
+    expect(presented({ type: 'execution_succeeded', output: 'Hello', record: {}, ...ofGreet, ...fact })).toEqual({
+      ...shown,
+      type: 'execution_succeeded',
+      summary: 'A run finished.',
+      data: { execution_id: executionId, by: 'acme-admin', output_bytes: 7, record_bytes: 2 },
+    });
   });
 
   it('presents a failure without blame', () => {

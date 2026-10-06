@@ -15,7 +15,7 @@ A self-hosted runtime runs recall functions over a brain's own history. A recall
 You can also read a brain's recorded history in three ways, over HTTP and MCP:
 
 - `list_executions` lists the runs of a brain, newest first, and can keep only the runs of one function or in one status.
-- `get_execution_history` reads the history of one run: the facts recorded about it, from each start to how it ended, each with when it happened and a plain-language summary.
+- `get_execution_history` reads the history of one run: each start, what the run did, such as the tool calls of a reasoning function or the inputs and steps of a workflow, and how it ended, each with when it happened and a plain-language summary.
 - `list_brain_events` follows everything recorded in a brain, such as definitions created, updated and retired and runs started and ended, and can keep one type of event, what was recorded since a time, or everything one run and the runs it started recorded.
 
 These reads page through long histories and keep working after a brain is retired. Events show the sizes of inputs and outputs rather than the values; `get_execution` returns a run's result in full. A brain's own creation and retirement belong to its organization and are not among its events. A workflow run's history also shows, for each input the run took, the steps that moved and how they ended, and every event names the event that led to it. See [Run history and brain events](../reference/http.md#run-history-and-brain-events).

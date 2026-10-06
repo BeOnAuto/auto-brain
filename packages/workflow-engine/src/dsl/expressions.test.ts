@@ -13,6 +13,10 @@ const now = Date.parse('2026-10-01T09:00:00.000Z');
 
 const budget = { now, mostWork: 8_000_000 };
 
+function framesDeeper<Value>(frames: number, evaluated: () => Value): Value {
+  return frames === 0 ? evaluated() : framesDeeper(frames - 1, evaluated);
+}
+
 function padded(index: number): string {
   return `("${'x'.repeat(1000)}" | length) + .a + ${index}`;
 }
@@ -84,14 +88,16 @@ describe('a failing expression', () => {
     });
   });
 
-  it('gives a problem when it gives what JSON cannot carry or nests too deeply', () => {
-    const problem = 'gave a value that is not JSON or nests more than 512 levels deep';
-
-    expect(runExpression('nan', null, {}, budget)).toMatchObject({ problem: `nan ${problem}`, exhausted: false });
-    expect(runExpression('reduce range(513) as $i (0; [.])', null, {}, budget)).toMatchObject({
-      problem: `reduce range(513) as $i (0; [.]) ${problem}`,
+  it('gives a problem when it gives what JSON cannot carry, or builds a value that nests past 512 levels', () => {
+    expect(runExpression('nan', null, {}, budget)).toMatchObject({
+      problem: 'nan gave a value that is not JSON or nests more than 512 levels deep',
+      exhausted: false,
     });
-    expect(runExpression('reduce range(511) as $i (0; [.]) | length', null, {}, budget)).toMatchObject({ value: 1 });
+    expect(runExpression('reduce range(513) as $i (0; [.])', null, {}, budget)).toMatchObject({
+      problem: 'reduce range(513) as $i (0; [.]): LimitError: Value depth limit exceeded',
+      exhausted: false,
+    });
+    expect(runExpression('reduce range(512) as $i (0; [.]) | length', null, {}, budget)).toMatchObject({ value: 1 });
   });
 
   it('gives a problem when it does not parse, and the same problem when run', () => {
@@ -118,6 +124,14 @@ describe('an expression that would depend on the stack', () => {
       problem: 'def f: f; f: RuntimeError: Max depth exceeded',
       exhausted: false,
     });
+  });
+
+  it('gives the problem of the depth of a value past 512 levels, the same on the main thread and 3,000 frames deeper', () => {
+    const deep = 'reduce range(2000) as $i (null; [.]) | tojson | length';
+    const tooDeep = { problem: `${deep}: LimitError: Value depth limit exceeded`, exhausted: false };
+
+    expect(runExpression(deep, null, {}, budget)).toMatchObject(tooDeep);
+    expect(framesDeeper(3000, () => runExpression(deep, null, {}, budget))).toMatchObject(tooDeep);
   });
 
   it('gives a problem for a regular expression whose groups nest past 128, which try catches, on any stack', () => {

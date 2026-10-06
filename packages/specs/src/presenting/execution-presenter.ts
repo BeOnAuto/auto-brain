@@ -1,7 +1,9 @@
 import type { Presenter } from '@beonauto/operations';
+import { Schema } from 'effect';
 
 import {
   ExecutionEventSchema,
+  type ExecutionDeferred,
   type ExecutionEvent,
   type ToolCallAnswered,
   type ToolCallEvent,
@@ -11,7 +13,6 @@ import type { ExecutionRejection } from '../execution/execution.ts';
 import { jsonBytesOf } from '../execution/recorded-size.ts';
 import {
   runBrokeDown,
-  runCarriesOn,
   runFinished,
   runRejected,
   runStarted,
@@ -28,7 +29,9 @@ import {
   mostDigestBytes,
   mostNameBytes,
 } from './event-data.ts';
-import { eventPresenter, type Account } from './event-presenter.ts';
+import type { Account } from './event-presenter.ts';
+
+type ShownExecutionEvent = Exclude<ExecutionEvent, ExecutionDeferred>;
 
 interface Fact {
   readonly execution_id: string;
@@ -99,7 +102,7 @@ function toolCallAccount(event: ToolCallEvent, fact: Fact): Account {
   return event.type === 'tool_call_started' ? callStartedAccount(event, fact) : callAnsweredAccount(event, fact);
 }
 
-function accountOf(words: SpecWords, event: ExecutionEvent, executionId: string): Account {
+function accountOf(words: SpecWords, event: ShownExecutionEvent, executionId: string): Account {
   const fact = { execution_id: executionId, by: cutAtCodePoint(event.by, mostCallerBytes) };
   if (event.type === 'tool_call_started' || event.type === 'tool_call_answered') {
     return toolCallAccount(event, fact);
@@ -111,9 +114,6 @@ function accountOf(words: SpecWords, event: ExecutionEvent, executionId: string)
       data: { ...fact, primitive, name, spec_version, input_bytes: jsonBytesOf(input) },
     };
   }
-  if (event.type === 'execution_deferred') {
-    return { summary: runCarriesOn, data: { ...fact, record_bytes: jsonBytesOf(event.record) } };
-  }
   if (event.type === 'execution_succeeded') {
     const sizes = { output_bytes: jsonBytesOf(event.output), record_bytes: jsonBytesOf(event.record) };
     return { summary: runFinished, data: { ...fact, ...sizes } };
@@ -124,19 +124,31 @@ function accountOf(words: SpecWords, event: ExecutionEvent, executionId: string)
   return { summary: runBrokeDown, data: fact };
 }
 
+const executionsKind = 'executions';
+
+const shownNames: Readonly<Record<ShownExecutionEvent['type'], readonly [string]>> = {
+  execution_started: ['execution_started'],
+  execution_succeeded: ['execution_succeeded'],
+  execution_rejected: ['execution_rejected'],
+  execution_failed: ['execution_failed'],
+  tool_call_started: ['tool_call_started'],
+  tool_call_answered: ['tool_call_answered'],
+};
+
+const decodeExecutionEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ExecutionEventSchema));
+
 export function executionPresenter(words: SpecWords): Presenter {
-  return eventPresenter<ExecutionEvent['type'], ExecutionEvent>({
-    streamKind: 'executions',
-    eventSchema: ExecutionEventSchema,
-    publicNames: {
-      execution_started: ['execution_started'],
-      execution_deferred: ['execution_deferred'],
-      execution_succeeded: ['execution_succeeded'],
-      execution_rejected: ['execution_rejected'],
-      execution_failed: ['execution_failed'],
-      tool_call_started: ['tool_call_started'],
-      tool_call_answered: ['tool_call_answered'],
+  return {
+    streamKind: executionsKind,
+    publicNames: { ...shownNames, execution_deferred: [] },
+    present: ({ id, cursor, causationId, stream, data }) => {
+      const event = decodeExecutionEvent(data);
+      if (event.type === 'execution_deferred') {
+        return [];
+      }
+      const [type] = shownNames[event.type];
+      const account = accountOf(words, event, stream.slice(executionsKind.length + 1));
+      return [{ id, cursor, causation_id: causationId, at: event.at, type, ...account }];
     },
-    account: (event, executionId) => accountOf(words, event, executionId),
-  });
+  };
 }

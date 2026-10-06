@@ -192,7 +192,7 @@ The table is `run_outcomes_1`, with the index `run_outcomes_1_by_brain_and_day` 
 
 When the ledger opens with a mapping, it looks the table up by name in the catalog, as it does its indexes, and does nothing more when it finds it. When it does not, it creates the table and its index, fills it by replaying every run stream of the store, drops the tables of earlier versions, `run_outcomes_0` and below, and analyses the new one, all in one transaction, so that a fill that is interrupted, by a mapping that throws or a process that stops, leaves nothing behind and is done again at the next open. On SQLite this runs after Emmett's migration and the indexes, on the same connections; on PostgreSQL in `onAfterSchemaCreated`, inside the migration's transaction and under its advisory lock, so that servers that start together fill the table once. Emmett's migrator waits 10 s for that lock, so a server that starts while another fills a large ledger stops at start, and is started again once the first is ready.
 
-No index lists the run streams across brains, so the fill scans the store's streams, `emt_streams`, for the names of run streams in the order of their names, 100 at a time with the size of their messages of the mapping's types, and takes of them as many as hold at most 16 MiB of those messages, at least one, so that a ledger of records of 1 MiB does not hold hundreds of megabytes at once. For each batch it reads, in one statement, those messages in their order, decodes each as the store's reads do, folds the messages of each stream through the mapping, and writes the rows in upserts of 8 on SQLite, within the 100 parameters of a hosted SQLite, and of 500 on PostgreSQL. A change to what the table keeps is a new version, `run_outcomes_2`, which the next server fills this way and whose fill drops `run_outcomes_1`. Servers of different versions do not share a database at once.
+No index lists the run streams across brains, so the fill scans the store's streams, `emt_streams`, for the names of run streams in the order of their names, with the size of their messages of the mapping's types, and takes of them as many as hold at most 16 MiB of those messages, at least one, so that a ledger of records of 1 MiB does not hold hundreds of megabytes at once. It lists as many streams as the batch before showed fit: one at first, then as many as 16 MiB holds at the bytes per stream of the streams the batch before took, at most twice as many as it listed before and at most 100. On PostgreSQL the size is the length of each record's text, which reads the record, so listing 100 streams of records of 1 MiB would read 100 MiB to load 16 MiB; listed this way, the fill sizes about as many bytes as it loads. For each batch it reads, in one statement, those messages in their order, decodes each as the store's reads do, folds the messages of each stream through the mapping, and writes the rows in upserts of 8 on SQLite, within the 100 parameters of a hosted SQLite, and of 500 on PostgreSQL. A change to what the table keeps is a new version, `run_outcomes_2`, which the next server fills this way and whose fill drops `run_outcomes_1`. Servers of different versions do not share a database at once.
 
 ### Reading it
 
@@ -206,7 +206,7 @@ The read answers, in one statement over the index, the rows of the brain whose `
 LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/ledger measure:outcomes
 ```
 
-`LEDGER_MEASURE_OUTCOME_RUNS` sets the sizes, `10000,100000` when left out, and `LEDGER_MEASURE_FILL_TICKS` the ticks of the ledger the fill replays, 100,000 when left out.
+`LEDGER_MEASURE_OUTCOME_RUNS` sets the sizes, `10000,100000` when left out, and `LEDGER_MEASURE_FILL_TICKS` the ticks of the ledger the fill replays, 100,000 when left out. `LEDGER_MEASURE_PARTS` picks what it measures, `read,append,fill,large-fill` when left out.
 
 Measured on 2026-10-06 on an Apple M4 Max, with Node 26.10, the ledger on SQLite 3.52.0 through `sqlite3` 6.0.1 on a file, and PostgreSQL 18.6 in a local container with its default settings, as [Measurement](#measurement) was; the data is written with SQL, on SQLite through `node:sqlite` (SQLite 3.53.4), and the aggregate over the records below runs there too.
 
@@ -214,12 +214,14 @@ Measured on 2026-10-06 on an Apple M4 Max, with Node 26.10, the ledger on SQLite
 
 | Store      | Runs in the window | The read    | The aggregate over the records | Open and fill |
 | ---------- | ------------------ | ----------- | ------------------------------ | ------------- |
-| SQLite     | 10,000             | 8.35 (19.7) | 1,613 (2,322)                  | 2.77 s        |
+| SQLite     | 10,000             | 5.87 (6.11) | 1,613 (2,322)                  | 0.69 s        |
 | PostgreSQL | 10,000             | 6.28 (6.69) | 117 (118)                      | 4.31 s        |
 | SQLite     | 100,000            | 107 (111)   | 13,850 (13,974)                | 7.59 s        |
 | PostgreSQL | 100,000            | 58.7 (62.6) | 888 (895)                      | 42.7 s        |
 
-The read grows with the runs of the window, since it reads one row of the table for each, and crosses the bar of 50 ms a page that [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) set at about 48,000 runs in a window on SQLite and 85,000 on PostgreSQL, by the line between the two sizes. A rollup per day is the next step for a window that holds more than about 50,000 runs, as that of a brain that runs that often in 30 days, or a longer window. The aggregate over the records costs 15 to 190 times the read, since it parses every record.
+The read and the open and fill of SQLite at 10,000 runs were measured again on a quiet machine, since the first run of that row was under load; two quiet runs agreed within a tenth of a millisecond and a few hundredths of a second. The aggregate in that row and the other rows are from the first measurement.
+
+The read grows with the runs of the window, since it reads one row of the table for each, and crosses the bar of 50 ms a page that [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) set at about 49,000 runs in a window on SQLite and 85,000 on PostgreSQL, by the line between the two sizes. A rollup per day is the next step for a window that holds more than about 50,000 runs, as that of a brain that runs that often in 30 days, or a longer window. The aggregate over the records costs 15 to 275 times the read, since it parses every record.
 
 **The append.** 1,000 runs each append their start and then their finish, with a record of 2 KiB, one append at a time, to a ledger opened without the projection and to one opened with it. Times are the median and the 95th percentile of the 2,000 appends, in milliseconds:
 
@@ -228,7 +230,18 @@ The read grows with the runs of the window, since it reads one row of the table 
 | SQLite     | 0.27 (0.41)            | 0.35 (0.41) |
 | PostgreSQL | 1.34 (1.65)            | 1.81 (2.25) |
 
-**The fill.** The ledger of [Measurement](#measurement), 1,197,287 messages of which about 800,000 run streams, written without the table and opened with the mapping: the open that fills the table took 6.69 s on SQLite and 29.3 s on PostgreSQL, against 0.01 s and 0.02 s for an open that finds it. That is the start of the first server of this version on such a ledger; on PostgreSQL a second server started meanwhile waits 10 s for the migration lock and stops. Every number of this section was measured on Node 26.10 with the fill as it is, its batches bound by 100 streams and 16 MiB of records; the size of each stream, which the bound needs, is read with the listing of the streams, and on PostgreSQL that reads each record a second time.
+**The fill.** The ledger of [Measurement](#measurement), 1,197,287 messages of which about 800,000 run streams, written without the table and opened with the mapping: the open that fills the table took 6.69 s on SQLite and 29.3 s on PostgreSQL, against 0.01 s and 0.02 s for an open that finds it. That is the start of the first server of this version on such a ledger; on PostgreSQL a second server started meanwhile waits 10 s for the migration lock and stops. Every number of this section was measured on Node 26.10. Those of this fill and of the open and fill in the read were measured with the fill that listed 100 streams for each batch; on those ledgers 100 streams hold less than 16 MiB, so the fill as it is lists 100 streams from its eighth batch on and reads what that fill read.
+
+**The fill of large records.** 300 runs of one brain, each a start and a finish, 276 of them succeeded with a record of 1 MiB and the other 24 rejected or failed with a finish of less than 1 KiB, written without the table and opened with the mapping, by the fill that listed 100 streams for each batch and by the fill as it is. The record pages are the pages of the TOAST table of `emt_messages` that PostgreSQL read during the open, from `pg_statio_user_tables`, the same at every run. The machine was busy throughout, at a load of 100 to 140 on 16 cores, so the times are the fastest and the slowest of 10 runs of the first fill and 9 of the second.
+
+| Store      | The fill            | Record pages read | Open and fill, fastest (slowest) |
+| ---------- | ------------------- | ----------------- | -------------------------------- |
+| SQLite     | Listing 100 streams |                   | 0.44 s (3.87 s)                  |
+| SQLite     | As it is            |                   | 0.26 s (3.34 s)                  |
+| PostgreSQL | Listing 100 streams | 1,793 MiB         | 2.27 s (9.52 s)                  |
+| PostgreSQL | As it is            | 586 MiB           | 1.70 s (8.69 s)                  |
+
+The pages read fall from 6.5 times the 276 MiB of records the fill loads to 2.1 times. With `log_min_duration_statement = 0` on the server, four runs of each fill, the 19 listings of the first fill took 0.88 to 1.35 s and the 22 of the fill as it is 0.34 to 0.46 s, against 0.53 to 0.65 s for the loads of either fill in two runs of each, and 2.2 to 3.5 s in the other two, which is where the slowest times above come from: the listings now cost less than the loads they size. SQLite reads the length of a record from its header, not its text: `octet_length` over 300 records of 1 MiB took 0.24 ms through `sqlite3` 6.0.1, against 69 ms over the same text joined to an empty string, so on SQLite the two fills read the same records and differ only in the number of their listings.
 
 ## Creating the layer
 

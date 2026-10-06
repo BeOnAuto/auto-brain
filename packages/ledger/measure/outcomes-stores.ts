@@ -22,6 +22,7 @@ export interface Bench {
   readonly ledgerOn: (place: Place, runOutcomes?: RunOutcomeMapping) => Layer.Layer<Ledger>;
   readonly write: (place: Place, count: number, rowsOf: RowsOf) => Promise<void>;
   readonly aggregate: (place: Place) => Promise<number>;
+  readonly recordBytesRead?: (place: Place) => Promise<number>;
 }
 
 const runsInAWrite = 200;
@@ -142,6 +143,13 @@ const postgresqlStreams = `INSERT INTO emt_streams (stream_id, stream_position, 
   FROM jsonb_to_recordset($1::jsonb) AS r(stream text, position int) GROUP BY stream
   ON CONFLICT (stream_id, partition, is_archived) DO UPDATE SET stream_position = excluded.stream_position`;
 
+const recordPagesRead = `SELECT coalesce(sum(coalesce(toast_blks_read, 0) + coalesce(toast_blks_hit, 0)), 0)::float8
+    * current_setting('block_size')::float8 AS bytes
+  FROM pg_statio_user_tables WHERE relname LIKE 'emt\\_messages%'`;
+
+const otherClients = `SELECT count(*)::int AS others FROM pg_stat_activity
+  WHERE datname = current_database() AND backend_type = 'client backend' AND pid <> pg_backend_pid()`;
+
 async function connected<A>(
   location: string,
   use: (client: Readonly<Pick<Client, 'query'>>) => Promise<A>,
@@ -153,6 +161,24 @@ async function connected<A>(
   } finally {
     await client.end();
   }
+}
+
+async function aloneOn(client: Readonly<Pick<Client, 'query'>>): Promise<void> {
+  const { rows } = await client.query<{ readonly others: number }>(otherClients);
+  if ((rows[0]?.others ?? 0) > 0) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, 50);
+    });
+    await aloneOn(client);
+  }
+}
+
+function recordBytesReadIn({ location }: Place): Promise<number> {
+  return connected(location, async (client) => {
+    await aloneOn(client);
+    const { rows } = await client.query<{ readonly bytes: number }>(recordPagesRead);
+    return rows[0]?.bytes ?? 0;
+  });
 }
 
 export function onPostgreSQL(server: string): Bench {
@@ -198,5 +224,6 @@ export function onPostgreSQL(server: string): Bench {
         ]);
         return rows[0]?.runs ?? 0;
       }),
+    recordBytesRead: recordBytesReadIn,
   };
 }
