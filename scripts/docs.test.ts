@@ -240,7 +240,8 @@ await test('the local quick start gives runnable setup and distinguishes local c
   assert.ok(guide.includes('third-party'));
   assert.ok(guide.includes("remote connector runs from Anthropic's servers"));
   assert.ok(guide.includes('Do not expose it through a tunnel or public proxy'));
-  assert.ok(guide.includes('Auto Cloud is coming soon'));
+  assert.match(guide, /::: info Auto Cloud\n.*invite-only.*request-invite.*\n:::\n\nThis setup/u);
+  assert.doesNotMatch(guide, /Auto Cloud is coming soon|You do not need an Auto Cloud account/u);
   assert.ok(guide.includes('## Hosted brains'));
   assert.doesNotMatch(guide, /Prefer a hosted brain/u);
   assert.ok(guide.includes('You can also host your own brain'));

@@ -4,7 +4,11 @@ description: Start Auto Brain on your computer and connect Claude Code, Claude D
 
 # Quick start: connect your agent
 
-Run Auto Brain on your computer and use your agent to create a reusable function. You do not need an Auto Cloud account.
+Run Auto Brain on your computer and use your agent to create a reusable function.
+
+::: info Auto Cloud
+Our hosted option is currently invite-only. [Request an invitation](https://on.auto/request-invite).
+:::
 
 This setup is for macOS or Linux. You need [Git](https://git-scm.com/downloads), [pnpm](https://pnpm.io/installation), and an agent such as Claude Code or Codex on the same computer. The Claude Desktop instructions below are for macOS. To run a reason function, Auto also needs access to a model provider. Your agent's subscription does not supply the server's model credentials.
 
@@ -133,6 +137,6 @@ The runtime is in early development and is not ready for production use.
 
 ## Hosted brains
 
-Auto Cloud is coming soon. [Request an invite](https://on.auto/request-invite).
+Auto Cloud is currently invite-only. [Request an invitation](https://on.auto/request-invite).
 
 You can also host your own brain. See the [self-hosting guide](../self-host.md) for deployment options and support.
