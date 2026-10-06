@@ -26,6 +26,7 @@ export interface ReactingOptions {
   readonly sweepEveryMs?: number;
   readonly failure?: FailingStart;
   readonly start?: RecordedReactions['options']['start'];
+  readonly appended?: RecordedReactions['options']['appended'];
 }
 
 export async function reactingHost(options: ReactingOptions = {}): Promise<ReactingHost> {
@@ -40,7 +41,11 @@ export async function reactingHost(options: ReactingOptions = {}): Promise<React
     reports: reports.reports,
     sweepEveryMs: options.sweepEveryMs ?? 20,
     mostCallsAtOnce: 4,
-    reactions: { ...reactions.options, start: options.start ?? reactions.options.start },
+    reactions: {
+      ...reactions.options,
+      start: options.start ?? reactions.options.start,
+      ...(options.appended === undefined ? {} : { appended: options.appended }),
+    },
     ...(options.clock === undefined ? {} : { clock: options.clock }),
   });
   onTestFinished(() => host.stop());

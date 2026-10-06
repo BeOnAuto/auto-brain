@@ -3,11 +3,12 @@ import { Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';
 import type { HostClock } from '../loop/host-clock.ts';
+import type { BrainSweeps } from '../sweeps/brain-sweeps.ts';
+import { wakesOf, type Wakes } from '../sweeps/wakes.ts';
 import type { Discovery } from './brain-discovery.ts';
 import type { Mode } from './delivery-loop.ts';
-import type { FollowedBrain, FollowedBrains } from './followed-brains.ts';
+import type { FollowedBrain } from './followed-brains.ts';
 import type { PassEnd } from './record-steps.ts';
-import { wakesOf, type Wakes } from './wakes.ts';
 
 export interface Upkeep {
   readonly sweep: () => Effect.Effect<void>;
@@ -18,7 +19,7 @@ export interface Upkeep {
 export interface FollowerParts {
   readonly pass: (brainKey: string, mode: Mode, known?: FollowedBrain) => Effect.Effect<PassEnd>;
   readonly discovery: Discovery;
-  readonly brains: FollowedBrains;
+  readonly sweeps: BrainSweeps;
   readonly upkeep: Upkeep;
   readonly appended: AppendSignal;
   readonly clock: HostClock;
@@ -31,12 +32,10 @@ export interface Follower {
   readonly stop: () => Promise<void>;
 }
 
-const brainsInASweep = 128;
-
 interface Passing {
   readonly brainKey: string;
   readonly mode: Mode;
-  readonly known?: FollowedBrain;
+  readonly known: FollowedBrain | undefined;
 }
 
 function passedOnce(parts: FollowerParts, wakes: Wakes, { brainKey, mode, known }: Passing) {
@@ -49,15 +48,20 @@ function passedOnce(parts: FollowerParts, wakes: Wakes, { brainKey, mode, known 
   );
 }
 
+function registriesRead(parts: FollowerParts, registries: readonly string[]): Effect.Effect<void> {
+  return registries.length === 0 ? Effect.void : parts.discovery.registriesAppended(registries);
+}
+
 function signalled(parts: FollowerParts, wakes: Wakes) {
   return Effect.gen(function* () {
-    if (wakes.orgsWoken()) {
-      yield* parts.discovery.orgsChanged();
-    }
+    yield* registriesRead(parts, wakes.registriesWoken());
     yield* Effect.forEach(
       wakes.brainsWoken(),
       (brainKey) =>
-        Effect.andThen(parts.discovery.brainSeen(brainKey), passedOnce(parts, wakes, { brainKey, mode: 'signal' })),
+        Effect.andThen(
+          parts.discovery.brainSeen(brainKey),
+          passedOnce(parts, wakes, { brainKey, mode: 'signal', known: undefined }),
+        ),
       { discard: true },
     );
   });
@@ -65,14 +69,17 @@ function signalled(parts: FollowerParts, wakes: Wakes) {
 
 function swept(parts: FollowerParts, wakes: Wakes) {
   return Effect.gen(function* () {
-    yield* parts.discovery.orgsChanged();
+    const sweep = yield* parts.sweeps.next();
+    yield* registriesRead(parts, sweep.registries);
     yield* parts.upkeep.sweep();
-    const due = yield* parts.brains.dueForASweep(brainsInASweep);
     yield* Effect.forEach(
-      due,
-      (brain) => passedOnce(parts, wakes, { brainKey: brain.brainKey, mode: 'sweep', known: brain }),
+      sweep.brains,
+      ({ brainKey, known }) => passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),
       { discard: true },
     );
+    if (sweep.again) {
+      wakes.sweepSoon();
+    }
   });
 }
 
@@ -87,17 +94,15 @@ function tickOf(parts: FollowerParts, wakes: Wakes) {
   }).pipe(Effect.catchCause((cause) => parts.trouble('The follower of the brains failed; it tries again', cause)));
 }
 
-function startedOf({ discovery, trouble, pace, sweepEveryMs }: FollowerParts): Effect.Effect<void> {
-  const started: Effect.Effect<void> = discovery
-    .atStart()
-    .pipe(
-      Effect.catchCause((cause) =>
-        trouble(
-          'The follower of the brains could not find the brains at its start; it tries again at the next sweep',
-          cause,
-        ).pipe(Effect.andThen(pace.sleep(sweepEveryMs)), Effect.andThen(Effect.suspend(() => started))),
-      ),
-    );
+function startedOf({ sweeps, discovery, trouble, pace, sweepEveryMs }: FollowerParts): Effect.Effect<void> {
+  const started: Effect.Effect<void> = Effect.andThen(sweeps.started(), discovery.atStart()).pipe(
+    Effect.catchCause((cause) =>
+      trouble(
+        'The follower of the brains could not find the brains at its start; it tries again at the next sweep',
+        cause,
+      ).pipe(Effect.andThen(pace.sleep(sweepEveryMs)), Effect.andThen(Effect.suspend(() => started))),
+    ),
+  );
   return started;
 }
 

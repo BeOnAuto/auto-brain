@@ -1,6 +1,8 @@
 import { messageIdOf } from '@beonauto/operations';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { statement } from '../database/statement.ts';
 import {
   alpha,
   brainCreated,
@@ -53,6 +55,27 @@ describe('a brain its org creates while the host runs', () => {
     await specRecorded(store, { name: 'watch', version: 1, trigger: sentinel }, beta);
     await published(store, { id: 's1', type: 'com.acme.sentinel' }, {}, beta);
     const starts = await startsReaching(reacting, 1);
+
+    expect(starts.map(({ brain, workflow }) => [brain, workflow])).toEqual([['beta', 'watch']]);
+  });
+});
+
+describe('a brain its org created while the host was stopped', () => {
+  it('is followed from its first record when the host starts again', async () => {
+    const settings = await onSQLite();
+    const first = await reactingHost({ settings });
+    await brainCreated(first.database.store, 'alpha');
+    await until(
+      () => Effect.runPromise(first.database.read(statement`SELECT position FROM workflow_followed_orgs`)),
+      (rows) => rows.length > 0,
+    );
+    await first.host.stop();
+
+    await brainCreated(first.database.store, 'beta');
+    await specRecorded(first.database.store, { name: 'watch', version: 1, trigger: sentinel }, beta);
+    await published(first.database.store, { id: 's1', type: 'com.acme.sentinel' }, {}, beta);
+    const second = await reactingHost({ settings });
+    const starts = await startsReaching(second, 1);
 
     expect(starts.map(({ brain, workflow }) => [brain, workflow])).toEqual([['beta', 'watch']]);
   });

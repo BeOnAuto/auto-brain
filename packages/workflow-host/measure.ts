@@ -38,7 +38,7 @@ async function measuredOn({ store, aDatabase, removeAll }: MeasuredStore): Promi
     write(latencyLine(store, 'without', await reactionLatencyOn(await aDatabase(), { ...reacted, signalled: false })));
     const sweep = await sweepCostOn(await aDatabase(), 1000, 10);
     write(
-      `${store}: a pass over each of ${sweep.brains} brains, ${sweep.reacting} with an event trigger, took ${sweep.firstMs.toFixed(0)} ms reading one new record in each, and ${sweep.steadyMs.toFixed(0)} ms with nothing new`,
+      `${store}: ${sweep.brains} followed brains, ${sweep.reacting} with an event trigger: the sweeps after the start went over them in ${sweep.roundMs.toFixed(0)} ms, a sweep with nothing new took ${sweep.idleMs.toFixed(2)} ms at the median, and the sweeps after one new record in each took ${sweep.changedMs.toFixed(0)} ms`,
     );
     const recovery = await recoveryOn(await aDatabase());
     write(

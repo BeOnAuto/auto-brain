@@ -7,13 +7,19 @@ import { brainRecordsOf } from '../src/follower/brain-records.ts';
 import { followedBrainsOn } from '../src/follower/followed-brains.ts';
 import { eventTrigger, published, specRecorded, triggerOfSource } from '../src/reaction-testing/brain-writes.ts';
 import { specRecordsOn } from '../src/reactions/spec-records.ts';
+import { brainSweepsOn, type BrainSweeps } from '../src/sweeps/brain-sweeps.ts';
 
 export interface SweepCost {
   readonly brains: number;
   readonly reacting: number;
-  readonly firstMs: number;
-  readonly steadyMs: number;
+  readonly roundMs: number;
+  readonly idleMs: number;
+  readonly changedMs: number;
 }
+
+type Pass = ReturnType<typeof passOf>;
+
+const idleSweeps = 20;
 
 function brainKeyOf(index: number): string {
   return `brain/acme/b${index}/`;
@@ -24,6 +30,28 @@ function inTurn(count: number, step: (index: number) => Promise<unknown>): Promi
     (before, index) => before.then(() => step(index)).then(Function.constVoid),
     Promise.resolve(),
   );
+}
+
+function sweptUntilEmpty(sweeps: BrainSweeps, pass: Pass): Effect.Effect<void> {
+  return Effect.gen(function* () {
+    for (;;) {
+      const sweep = yield* sweeps.next();
+      if (sweep.brains.length === 0) {
+        return;
+      }
+      yield* Effect.forEach(sweep.brains, ({ brainKey, known }) => pass(brainKey, 'sweep', known), { discard: true });
+    }
+  });
+}
+
+async function timed(work: Effect.Effect<void>): Promise<number> {
+  const began = performance.now();
+  await Effect.runPromise(work);
+  return performance.now() - began;
+}
+
+function medianOf(times: readonly number[]): number {
+  return times.toSorted((left, right) => left - right)[Math.floor(times.length / 2)] ?? 0;
 }
 
 export async function sweepCostOn(database: DatabaseSettings, brains: number, reacting: number): Promise<SweepCost> {
@@ -50,17 +78,17 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
   });
-  const sweep = async (): Promise<number> => {
-    const began = performance.now();
-    const due = await Effect.runPromise(followed.dueForASweep(brains));
-    await inTurn(due.length, (index) => {
-      const brain = due[index];
-      return brain === undefined ? Promise.resolve() : Effect.runPromise(pass(brain.brainKey, 'sweep', brain));
-    });
-    return performance.now() - began;
-  };
-  const firstMs = await sweep();
-  const steadyMs = await sweep();
+  const sweeps = brainSweepsOn(opened.store, followed);
+  await Effect.runPromise(sweeps.started());
+  const roundMs = await timed(sweptUntilEmpty(sweeps, pass));
+  const idle: number[] = [];
+  await inTurn(idleSweeps, async () => {
+    idle.push(await timed(sweptUntilEmpty(sweeps, pass)));
+  });
+  await inTurn(brains, (index) =>
+    published(opened.store, { id: `n${index}`, type: 'com.measure.other' }, {}, brainKeyOf(index)),
+  );
+  const changedMs = await timed(sweptUntilEmpty(sweeps, pass));
   await opened.close();
-  return { brains, reacting, firstMs, steadyMs };
+  return { brains, reacting, roundMs, idleMs: medianOf(idle), changedMs };
 }

@@ -1,7 +1,6 @@
-import type { AppendSignal } from '@beonauto/ledger';
-
 import { reactingOn } from '../reactions/reacting.ts';
 import type { ReactionUse } from '../reactions/reaction-consumers.ts';
+import { brainSweepsOn } from '../sweeps/brain-sweeps.ts';
 import { brainDiscoveryOn } from './brain-discovery.ts';
 import { passOf } from './brain-pass.ts';
 import type { BrainRecords } from './brain-records.ts';
@@ -12,7 +11,7 @@ import { brainOfKey } from './record-steps.ts';
 
 export interface FollowerAssembly extends ReactionUse {
   readonly records: BrainRecords;
-  readonly appended: AppendSignal;
+  readonly appended: FollowerParts['appended'];
   readonly pace: FollowerParts['pace'];
 }
 
@@ -47,7 +46,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
   return startFollower({
     pass,
     discovery,
-    brains,
+    sweeps: brainSweepsOn(database.store, brains),
     upkeep: reacting.upkeep,
     appended: assembly.appended,
     clock,

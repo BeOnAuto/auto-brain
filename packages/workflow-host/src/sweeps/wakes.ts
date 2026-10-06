@@ -1,44 +1,51 @@
 import { brainKeyOfStream } from '@beonauto/ledger';
 
-import { isOrgRegistry } from './brain-discovery.ts';
+import { isOrgRegistry } from '../follower/brain-discovery.ts';
 
 export interface Wakes {
   readonly woken: (stream: string) => void;
   readonly brainAgain: (brainKey: string) => void;
   readonly brainsWoken: () => readonly string[];
-  readonly orgsWoken: () => boolean;
+  readonly registriesWoken: () => readonly string[];
   readonly anyWoken: () => boolean;
   readonly nextSignal: () => Promise<void>;
   readonly sweepDue: (now: number) => boolean;
+  readonly sweepSoon: () => void;
   readonly nextSweepAt: () => number;
+}
+
+export function followedBrainOf(stream: string): string | undefined {
+  const brainKey = brainKeyOfStream(stream);
+  return brainKey === undefined || stream.startsWith(`${brainKey}runs/`) ? undefined : brainKey;
+}
+
+function takenFrom(keys: Set<string>): readonly string[] {
+  const taken = [...keys];
+  keys.clear();
+  return taken;
 }
 
 export function wakesOf(sweepEveryMs: number): Wakes {
   const brains = new Set<string>();
-  const state = { orgs: false, signal: Promise.withResolvers<void>(), lastSweptAt: 0 };
+  const registries = new Set<string>();
+  const state = { signal: Promise.withResolvers<void>(), lastSweptAt: 0 };
   return {
     woken: (stream) => {
-      const brainKey = brainKeyOfStream(stream);
-      if (brainKey !== undefined && !stream.startsWith(`${brainKey}runs/`)) {
+      const brainKey = followedBrainOf(stream);
+      if (brainKey !== undefined) {
         brains.add(brainKey);
       }
-      state.orgs ||= isOrgRegistry(stream);
+      if (isOrgRegistry(stream)) {
+        registries.add(stream);
+      }
       state.signal.resolve();
     },
     brainAgain: (brainKey) => {
       brains.add(brainKey);
     },
-    brainsWoken: () => {
-      const keys = [...brains];
-      brains.clear();
-      return keys;
-    },
-    orgsWoken: () => {
-      const woken = state.orgs;
-      state.orgs = false;
-      return woken;
-    },
-    anyWoken: () => brains.size > 0 || state.orgs,
+    brainsWoken: () => takenFrom(brains),
+    registriesWoken: () => takenFrom(registries),
+    anyWoken: () => brains.size > 0 || registries.size > 0,
     nextSignal: () => {
       state.signal = Promise.withResolvers();
       return state.signal.promise;
@@ -47,6 +54,9 @@ export function wakesOf(sweepEveryMs: number): Wakes {
       const due = now >= state.lastSweptAt + sweepEveryMs;
       state.lastSweptAt = due ? now : state.lastSweptAt;
       return due;
+    },
+    sweepSoon: () => {
+      state.lastSweptAt = Number.NEGATIVE_INFINITY;
     },
     nextSweepAt: () => state.lastSweptAt + sweepEveryMs,
   };

@@ -4,23 +4,26 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { systemClock } from '../loop/host-clock.ts';
 import { until } from '../reaction-testing/until.ts';
+import type { Sweep } from '../sweeps/brain-sweeps.ts';
 import { startFollower } from './follower-loop.ts';
 import type { PassEnd } from './record-steps.ts';
 
 const anHour = 3_600_000;
+
+const nothingToSweep: Sweep = { registries: [], brains: [], again: false };
 
 interface Watched {
   readonly raise: (stream: string) => void;
   readonly log: () => readonly string[];
 }
 
-interface Failing {
-  readonly sweepEveryMs: number;
-  readonly atStart: number;
-  readonly nextScheduleAt: number;
+interface Following {
+  readonly passEnds?: readonly (PassEnd | 'fails')[];
+  readonly sweeps?: readonly Sweep[];
+  readonly sweepEveryMs?: number;
+  readonly startsFailing?: number;
+  readonly schedulesFailing?: number;
 }
-
-const neverFailing: Failing = { sweepEveryMs: anHour, atStart: 0, nextScheduleAt: 0 };
 
 function failingFirst<A>(times: number, read: Effect.Effect<A>): () => Effect.Effect<A> {
   const failures = { left: times };
@@ -31,43 +34,47 @@ function failingFirst<A>(times: number, read: Effect.Effect<A>): () => Effect.Ef
     });
 }
 
-function followerWith(passEnds: readonly (PassEnd | 'fails')[], failing: Failing = neverFailing): Watched {
+function inTurn<A>(items: readonly A[], after: A): () => A {
+  const taken = { next: 0 };
+  return () => {
+    const item = items[taken.next] ?? after;
+    taken.next += 1;
+    return item;
+  };
+}
+
+function followerWith(following: Following = {}): Watched {
   const log: string[] = [];
   const logged = (line: string) =>
     Effect.sync(() => {
       log.push(line);
     });
   const appended = appendSignalOf();
-  const ends = { next: 0 };
+  const passEnd = inTurn<PassEnd | 'fails'>(following.passEnds ?? [], 'caught_up');
+  const sweep = inTurn(following.sweeps ?? [], nothingToSweep);
   const follower = startFollower({
     pass: (brainKey, mode) =>
       Effect.suspend(() => {
-        const end = passEnds[ends.next] ?? 'caught_up';
-        ends.next += 1;
+        const end = passEnd();
         return end === 'fails'
           ? Effect.die(new Error('The pass broke'))
           : Effect.as(logged(`pass ${brainKey} ${mode}`), end);
       }),
     discovery: {
-      atStart: failingFirst(failing.atStart, logged('start')),
-      orgsChanged: () => logged('orgs'),
+      atStart: failingFirst(following.startsFailing ?? 0, logged('start')),
+      registriesAppended: (registries) => logged(`registries ${registries.join(' ')}`),
       brainSeen: () => Effect.void,
     },
-    brains: {
-      follow: () => Effect.void,
-      load: () => Effect.die(new Error('The loop loads no brain')),
-      save: () => Effect.void,
-      dueForASweep: () => Effect.succeed([]),
-    },
+    sweeps: { started: () => logged('anchored'), next: () => Effect.sync(sweep) },
     upkeep: {
       sweep: () => logged('sweep'),
       fireSchedules: () => Effect.void,
-      nextScheduleAt: failingFirst(failing.nextScheduleAt, Effect.succeed(null)),
+      nextScheduleAt: failingFirst(following.schedulesFailing ?? 0, Effect.succeed(null)),
     },
     appended,
     clock: systemClock,
     pace: systemClock,
-    sweepEveryMs: failing.sweepEveryMs,
+    sweepEveryMs: following.sweepEveryMs ?? anHour,
     trouble: (what) => logged(what),
   });
   onTestFinished(() => follower.stop());
@@ -82,18 +89,18 @@ function logReaching(watched: Watched, length: number) {
 }
 
 describe('the follower of the brains', () => {
-  it('finds the brains at its start, then sweeps, and asks again when an org registry is appended to', async () => {
-    const watched = followerWith([]);
+  it('takes its place in the ledger and finds the brains at its start, sweeps, and reads a registry appended to', async () => {
+    const watched = followerWith();
     await logReaching(watched, 3);
 
     watched.raise('org/acme/brains');
     const log = await logReaching(watched, 4);
 
-    expect(log).toEqual(['start', 'orgs', 'sweep', 'orgs']);
+    expect(log).toEqual(['anchored', 'start', 'sweep', 'registries org/acme/brains']);
   });
 
   it('passes a brain an event was appended to, not one a run appended to, and again while the pass says there is more', async () => {
-    const watched = followerWith(['more', 'more', 'caught_up']);
+    const watched = followerWith({ passEnds: ['more', 'more', 'caught_up'] });
     await logReaching(watched, 3);
 
     watched.raise('brain/acme/beta/runs/r-1');
@@ -107,26 +114,47 @@ describe('the follower of the brains', () => {
       'pass brain/acme/alpha/ signal',
     ]);
   });
+
+  it('reads the registries a sweep names, passes the brains it hands out, and sweeps again at once when it says so', async () => {
+    const handedOut: Sweep = {
+      registries: ['org/acme/brains'],
+      brains: [{ brainKey: 'brain/acme/alpha/', known: undefined }],
+      again: true,
+    };
+    const watched = followerWith({ sweeps: [handedOut] });
+
+    const log = await logReaching(watched, 6);
+
+    expect(log).toEqual([
+      'anchored',
+      'start',
+      'registries org/acme/brains',
+      'sweep',
+      'pass brain/acme/alpha/ sweep',
+      'sweep',
+    ]);
+  });
 });
 
 describe('the follower of the brains, when a read fails', () => {
   it('says a read that failed at its start or while it waits is trouble, and reads again at the next sweep', async () => {
-    const watched = followerWith([], { sweepEveryMs: 20, atStart: 1, nextScheduleAt: 1 });
+    const watched = followerWith({ sweepEveryMs: 20, startsFailing: 1, schedulesFailing: 1 });
 
-    const log = await logReaching(watched, 6);
+    const log = await logReaching(watched, 7);
 
-    expect(log.slice(0, 6)).toEqual([
+    expect(log.slice(0, 7)).toEqual([
+      'anchored',
       'The follower of the brains could not find the brains at its start; it tries again at the next sweep',
+      'anchored',
       'start',
-      'orgs',
       'sweep',
       'The next due time of the schedules could not be read; the follower waits for the next sweep',
-      'orgs',
+      'sweep',
     ]);
   });
 
   it('says a pass that fails is trouble, and passes again at the next signal', async () => {
-    const watched = followerWith(['fails']);
+    const watched = followerWith({ passEnds: ['fails'] });
     await logReaching(watched, 3);
 
     watched.raise('brain/acme/alpha/events/e1');

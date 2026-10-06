@@ -18,7 +18,8 @@ export interface FollowedBrains {
   readonly follow: (brainKey: string, cursor: string | null) => Effect.Effect<void>;
   readonly load: (brainKey: string) => Effect.Effect<FollowedBrain | undefined>;
   readonly save: (brainKey: string, progress: Progress) => Effect.Effect<void>;
-  readonly dueForASweep: (limit: number) => Effect.Effect<readonly FollowedBrain[]>;
+  readonly waitingForASweep: (limit: number) => Effect.Effect<readonly FollowedBrain[]>;
+  readonly following: (after: string, limit: number) => Effect.Effect<readonly FollowedBrain[]>;
 }
 
 const BrainRow = Schema.Struct({
@@ -51,6 +52,33 @@ function loaded(database: HostDatabase, brainKey: string): Effect.Effect<Followe
   ).pipe(Effect.map(([row]) => (row === undefined ? undefined : followedOf(row))));
 }
 
+function waitingTakenFor(database: HostDatabase, limit: number): Effect.Effect<readonly FollowedBrain[]> {
+  return Effect.gen(function* () {
+    const waiting = yield* Effect.orDie(
+      database.read(
+        statement`SELECT brain_key FROM workflow_followed_brains WHERE waiting = 1 ORDER BY checked, brain_key LIMIT ${limit}`,
+      ),
+    );
+    if (waiting.length === 0) {
+      return [];
+    }
+    const taken = yield* Effect.orDie(
+      rowsOf(
+        BrainRow,
+        database.write(
+          statement`UPDATE workflow_followed_brains
+            SET checked = (SELECT COALESCE(MAX(checked), 0) + 1 FROM workflow_followed_brains WHERE waiting = 1)
+            WHERE brain_key IN (
+              SELECT brain_key FROM workflow_followed_brains WHERE waiting = 1 ORDER BY checked, brain_key LIMIT ${limit}
+            )
+            RETURNING brain_key, cursor, delivered, attempts, waiting`,
+        ),
+      ),
+    );
+    return taken.map((row) => followedOf(row));
+  });
+}
+
 export function followedBrainsOn(database: HostDatabase): FollowedBrains {
   return {
     follow: (brainKey, cursor) =>
@@ -73,17 +101,14 @@ export function followedBrainsOn(database: HostDatabase): FollowedBrains {
           ),
         ),
       ),
-    dueForASweep: (limit) =>
+    waitingForASweep: (limit) => waitingTakenFor(database, limit),
+    following: (after, limit) =>
       Effect.orDie(
         rowsOf(
           BrainRow,
-          database.write(
-            statement`UPDATE workflow_followed_brains
-              SET checked = (SELECT COALESCE(MAX(checked), 0) + 1 FROM workflow_followed_brains)
-              WHERE brain_key IN (
-                SELECT brain_key FROM workflow_followed_brains ORDER BY waiting DESC, checked, brain_key LIMIT ${limit}
-              )
-              RETURNING brain_key, cursor, delivered, attempts, waiting`,
+          database.read(
+            statement`SELECT brain_key, cursor, delivered, attempts, waiting FROM workflow_followed_brains
+              WHERE brain_key > ${after} ORDER BY brain_key LIMIT ${limit}`,
           ),
         ),
       ).pipe(Effect.map((rows) => rows.map((row) => followedOf(row)))),
