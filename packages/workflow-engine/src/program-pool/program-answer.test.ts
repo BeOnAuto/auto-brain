@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { answerOf } from './program-answer.ts';
+import { answerOf, type OutputIssue } from './program-answer.ts';
 import { liftedLimits } from './program-pool.ts';
 
 const clock = (): number => 0;
@@ -44,6 +44,31 @@ describe('the answer of a worker', () => {
     expect(answerOf({ source: '.', input: '1', limits: {} }, clock)).toMatchObject({
       ran: 'raised',
       issue: { detail: 'Step limit exceeded' },
+    });
+  });
+});
+
+function accepting(): readonly OutputIssue[] {
+  return [];
+}
+
+function refusing(output: unknown): readonly OutputIssue[] {
+  return [
+    { pointer: `/${'k'.repeat(2000)}`, detail: 'Expected no excess property' },
+    { pointer: '', detail: `got ${JSON.stringify(output)} ${'x'.repeat(2000)}` },
+  ];
+}
+
+describe('the answer of a worker that checks the output', () => {
+  it('answers the output when the check finds nothing, and the issues it finds when it does, the pointer and the detail of each cut at 1,024 bytes apart', () => {
+    expect(answerOf(request, clock, accepting)).toMatchObject({ ran: 'answered', output: '[2,3]' });
+    expect(answerOf(request, clock, refusing)).toEqual({
+      ran: 'mismatched',
+      issues: [
+        { pointer: `/${'k'.repeat(1023)}…`, detail: 'Expected no excess property' },
+        { pointer: '', detail: `got [2,3] ${'x'.repeat(1014)}…` },
+      ],
+      work: 1392,
     });
   });
 });

@@ -52,7 +52,35 @@ describe('a run whose program cannot work as written', { timeout: workerTestTime
 
   it('ends in conflict when its output takes more than a run can record', async () => {
     expect(await ended('"x" * 1100000')).toEqual(
-      unworkable("The program's output takes 1100002 bytes as JSON, more than the 1048320 a run can record"),
+      unworkable("The program's output takes more than the 1048320 bytes as JSON a run can record"),
+    );
+  });
+
+  it('measures an output before writing it, so one that would take 240 MB as JSON ends in conflict and the pool runs on', async () => {
+    const run = computationWith();
+
+    expect(await run.executing(programDocument('("\\u0001Ā" * 15000000) | [., .]'), null)).toEqual(
+      unworkable("The program's output takes more than the 1048320 bytes as JSON a run can record"),
+    );
+    expect(await run.executing(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
+  });
+});
+
+describe('the text of a long error', { timeout: workerTestTimeoutMs }, () => {
+  it('cuts the text of the error at 1,024 bytes', async () => {
+    expect(await ended('error("x" * 30000000)')).toEqual(
+      unworkable(`The program raised an error on line 4: ${'x'.repeat(1024)}…`),
+    );
+  });
+
+  it('cuts the pointer of an issue of an output the schema refuses at 1,024 bytes, and keeps what it says', async () => {
+    const closed =
+      'language: jq\noutput: {schema: {type: object, properties: {total: {type: integer}}, additionalProperties: false}}';
+
+    expect(await ended('{("k" * 300000): 1}', closed)).toEqual(
+      unworkable(
+        `The program's output does not match the output schema: /${'k'.repeat(1023)}…: Expected no excess property`,
+      ),
     );
   });
 });
@@ -92,6 +120,41 @@ describe('a run that reaches a bound of its program', { timeout: workerTestTimeo
     expect(await run.executing(programDocument(recursion), 3000)).toEqual(
       unworkable('The program recursed deeper than the 10000 levels of evaluation a run may nest, on line 4'),
     );
+    expect(await run.executing(programDocument('error("Max depth exceeded")'), null)).toEqual(
+      unworkable('The program raised an error on line 4: Max depth exceeded'),
+    );
+  });
+});
+
+describe('a run that would depend on the stack of its host', { timeout: workerTestTimeoutMs }, () => {
+  it('refuses a regular expression whose groups nest past 128 as the program raising, which try catches the same on every host', async () => {
+    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
+
+    expect(await ended(nested)).toEqual(
+      unworkable('The program raised an error on line 4: regex too large: groups nested more than 128 deep'),
+    );
+    expect(await ended(`try (${nested}) catch .`)).toMatchObject(
+      Exit.succeed({ output: 'regex too large: groups nested more than 128 deep' }),
+    );
+  });
+
+  it('ends in conflict when the stack of its worker overflows, an error the program cannot catch', async () => {
+    const overflowing = scriptedPool(
+      [
+        {
+          ran: 'exhausted',
+          limit: 'stack',
+          issue: { detail: 'Maximum call stack size exceeded', span: { start: 0, end: 0 }, error: 'RangeError' },
+          work: 10,
+          milliseconds: 5,
+        },
+      ],
+      poolOf(),
+    );
+
+    expect(await computationWith(overflowing).executing(programDocument('.'), null)).toEqual(
+      unworkable('The program went deeper than the 64 MiB stack of a run allows'),
+    );
   });
 });
 
@@ -114,7 +177,7 @@ describe('a run of the server that cannot finish', { timeout: workerTestTimeoutM
     expect(await small.executing(programDocument('[range(1000000) | {a: .}] | length'), null)).toEqual(
       Exit.fail(
         new Unavailable({
-          detail: 'The run took more than the 256 MiB of memory a computation function may use, and was stopped',
+          detail: 'The run took more than the 16 MiB of memory a computation function may use, and was stopped',
         }),
       ),
     );

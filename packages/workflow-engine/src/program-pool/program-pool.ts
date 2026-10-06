@@ -19,6 +19,7 @@ export interface PoolSettings {
   readonly heapMegabytes: number;
   readonly worker?: Readonly<URL>;
   readonly foldWorker?: Readonly<URL>;
+  readonly environment?: Readonly<Record<string, string>>;
 }
 
 export interface ProgramRequest {
@@ -29,12 +30,15 @@ export interface ProgramRequest {
   readonly limits: ProgramLimits;
   readonly deadlineMs: number;
   readonly mostOutputBytes: number;
+  readonly worker?: Readonly<URL>;
+  readonly context?: Json;
 }
 
 export type PoolOutcome = Ending<ProgramAnswer> & { readonly milliseconds: number };
 
 export interface ProgramPool {
   readonly workers: number;
+  readonly heapMegabytes: number;
   readonly run: (request: ProgramRequest, signal?: Readonly<AbortSignal>) => Promise<PoolOutcome>;
   readonly fold: (request: FoldRequest, signal?: Readonly<AbortSignal>) => Promise<FoldOutcome>;
   readonly close: () => Promise<void>;
@@ -116,18 +120,26 @@ function watchUntil<Answer>(
   };
 }
 
-function workerOptions(workerData: unknown, heapMegabytes: number): WorkerOptions {
-  return { workerData, resourceLimits: { maxOldGenerationSizeMb: heapMegabytes, stackSizeMb: workerStackMegabytes } };
+function workerOptions(workerData: unknown, settings: PoolSettings): WorkerOptions {
+  return {
+    workerData,
+    resourceLimits: { maxOldGenerationSizeMb: settings.heapMegabytes, stackSizeMb: workerStackMegabytes },
+    env: { ...settings.environment },
+  };
 }
 
 function programJob(module: Readonly<URL>, request: ProgramRequest, until: number): Job<ProgramAnswer> {
-  const { variables = {}, ...rest } = request;
+  const { source, input, variables = {}, dialect, limits, mostOutputBytes, context = null } = request;
   return {
     module,
     workerData: {
-      ...rest,
-      input: JSON.stringify(request.input),
+      source,
+      input: JSON.stringify(input),
       variables: JSON.stringify(variables),
+      dialect,
+      limits,
+      mostOutputBytes,
+      context,
       deadlineAt: performance.timeOrigin + until,
     },
     decode: decodeProgramAnswer,
@@ -155,10 +167,8 @@ export function programPool(settings: PoolSettings): ProgramPool {
   const slots = poolSlots(settings.workers);
   const stops = new Set<() => Promise<number>>();
   const state = { closing: false };
-  const programModule = new URL((settings.worker ?? programWorker).href);
-  const foldModule = new URL((settings.foldWorker ?? foldWorker).href);
   const evaluate: Evaluate = async (job, running) => {
-    const worker = new Worker(job.module, workerOptions(job.workerData, settings.heapMegabytes));
+    const worker = new Worker(new URL(job.module.href), workerOptions(job.workerData, settings));
     const stop = (): Promise<number> => worker.terminate();
     stops.add(stop);
     const watch = watchUntil(running, () => state.closing, job.decode);
@@ -171,17 +181,19 @@ export function programPool(settings: PoolSettings): ProgramPool {
   };
   return {
     workers: settings.workers,
+    heapMegabytes: settings.heapMegabytes,
     run: async (request, signal) => {
       const started = performance.now();
       const until = started + request.deadlineMs;
+      const module = settings.worker ?? request.worker ?? programWorker;
       const ending = await admitted(slots, until, signal, () =>
-        evaluate(programJob(programModule, request, until), { until, signal }),
+        evaluate(programJob(module, request, until), { until, signal }),
       );
       return { ...ending, milliseconds: performance.now() - started };
     },
     fold: async (request, signal) => {
       const started = performance.now();
-      const job = foldJobOf(foldModule, evaluate, request, signal);
+      const job = foldJobOf(settings.foldWorker ?? request.worker ?? foldWorker, evaluate, request, signal);
       const ending = await admitted(slots, started + job.waitMs, signal, job.run);
       return { ...ending, milliseconds: performance.now() - started };
     },

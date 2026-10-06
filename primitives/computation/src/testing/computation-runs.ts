@@ -34,10 +34,17 @@ afterEach(async () => {
   await Promise.all(pools.splice(0).map((pool) => pool.close()));
 });
 
+const measured: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(process.env).flatMap(([key, value]: readonly [string, string | undefined]) =>
+    key === 'NODE_V8_COVERAGE' && value !== undefined ? [[key, value]] : [],
+  ),
+);
+
 export function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
   const pool = programPool({
     workers: computationBounds.workers,
     heapMegabytes: computationBounds.heapMegabytes,
+    environment: measured,
     ...settings,
   });
   pools.push(pool);

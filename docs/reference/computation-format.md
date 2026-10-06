@@ -10,6 +10,7 @@ Numbers are double-precision floating point. Integers are exact up to 2^53, ther
 
 The source is Markdown with YAML front matter followed by the program. This example turns rows of campaign costs into spend, projection and pace per campaign, in cents:
 
+<!-- prettier-ignore -->
 ```markdown
 ---
 description: Spend, pace and projection per campaign, in cents, for a reporting period
@@ -19,23 +20,8 @@ input:
     type: object
     required: [rows, period]
     properties:
-      rows:
-        {
-          type: array,
-          items:
-            {
-              type: object,
-              required: [campaign, cost_cents, budget_cents],
-              properties:
-                { campaign: { type: string }, cost_cents: { type: integer }, budget_cents: { type: integer } },
-            },
-        }
-      period:
-        {
-          type: object,
-          required: [days_elapsed, days_total],
-          properties: { days_elapsed: { type: integer, minimum: 1 }, days_total: { type: integer, minimum: 1 } },
-        }
+      rows: { type: array, items: { type: object, required: [campaign, cost_cents, budget_cents], properties: { campaign: { type: string }, cost_cents: { type: integer }, budget_cents: { type: integer } } } }
+      period: { type: object, required: [days_elapsed, days_total], properties: { days_elapsed: { type: integer, minimum: 1 }, days_total: { type: integer, minimum: 1 } } }
 output:
   schema:
     type: object
@@ -44,14 +30,13 @@ output:
       campaigns: { type: array, items: { type: object } }
       total_spend_cents: { type: integer }
 ---
-
 .period as $p
 | .rows
 | group_by(.campaign)
 | map({ campaign: .[0].campaign,
-spend_cents: (map(.cost_cents) | add),
-budget_cents: .[0].budget_cents,
-projected_cents: ((map(.cost_cents) | add) * $p.days_total / $p.days_elapsed | floor) })
+        spend_cents: (map(.cost_cents) | add),
+        budget_cents: .[0].budget_cents,
+        projected_cents: ((map(.cost_cents) | add) * $p.days_total / $p.days_elapsed | floor) })
 | map(. + { pace_permille: (if .budget_cents == 0 then null else (.projected_cents * 1000 / .budget_cents | floor) end) })
 | { campaigns: ., total_spend_cents: (map(.spend_cents) | add) }
 ```
@@ -148,42 +133,44 @@ The language is the dialect of jq that [workflow expressions](workflow-format.md
 - Function parameters are filters, never `$variables`: write `def f(a): a;`, not `def f($a): $a;`.
 - `getpath` cannot be the target of an update such as `|=`, and the alternative destructuring operator `?//` is not supported.
 - Regular expressions have no lookahead or backreferences.
-- `strftime` does not support `%c`.
+- `strftime` does not support `%c`: `0 | strftime("%c")` gives `"%c"` unchanged.
 
 ## How a run ends
 
 A run first checks the input against `input.schema`, then applies the program, requires exactly one output and checks it against `output.schema`. It ends in one of these ways:
 
-| Ending                        | When                                                                                                                                                                                                                                            |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `succeeded`                   | The program gave one output that matches the output schema                                                                                                                                                                                      |
-| `invalid_input`               | The input does not match the input schema, with a pointer to each problem, or nests deeper than 512 levels                                                                                                                                      |
-| `conflict`, kind `unworkable` | The program raised an error, gave no output or more than one, did more work, built a deeper value or recursed deeper than a run may, gave `nan` or `infinite`, or answered what the output schema refuses or what does not fit the run's record |
-| `unavailable`                 | The run took longer or used more memory than a run may, or found no turn to run within its time                                                                                                                                                 |
-| `failed`                      | The runtime itself broke down                                                                                                                                                                                                                   |
+| Ending                        | When                                                                                                                                                                                                                                                                             |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `succeeded`                   | The program gave one output that matches the output schema                                                                                                                                                                                                                       |
+| `invalid_input`               | The input does not match the input schema, with a pointer to each problem, or nests deeper than 512 levels                                                                                                                                                                       |
+| `conflict`, kind `unworkable` | The program raised an error, gave no output or more than one, did more work, built a deeper value or recursed deeper than a run may, overflowed the stack of its run, gave `nan` or `infinite`, or answered what the output schema refuses or what does not fit the run's record |
+| `unavailable`                 | The run took longer or used more memory than a run may, or found no turn to run within its time                                                                                                                                                                                  |
+| `failed`                      | The runtime itself broke down                                                                                                                                                                                                                                                    |
 
-A `conflict` of the kind `unworkable` names the program's own error and the line of the document it came from, such as `The program raised an error on line 4: no rows`. The same input gives the same result every time, so running it again does not help: update the definition, or change the input. `get_execution` shows the kind on the run's rejection, and `list_executions` shows it in the listing.
+A `conflict` of the kind `unworkable` names the program's own error and the line of the document it came from, such as `The program raised an error on line 4: no rows`. The text of the program's error is cut at 1,024 bytes of UTF-8 and marked with `…`, and so are the pointer and the detail of each issue of an output the schema refuses, each on its own, so an issue at a very long key still says what is wrong. A long error is answered, recorded and passed to a workflow at that size. The same input gives the same result every time, so running it again does not help: update the definition, or change the input. `get_execution` shows the kind on the run's rejection, and `list_executions` shows it in the listing.
 
 A run that succeeds records `language`, `work`, the units of work it spent, `duration_ms`, and `input_bytes` and `output_bytes`, the sizes of its input and output as JSON. `get_execution` returns that record with the output.
 
 ## Bounds
 
-| Bound                  | Value                                                                                                                                                                    | When it is reached                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| Document               | 65,536 bytes in UTF-8, as every definition                                                                                                                               | Refused when saved                             |
-| Nesting of the program | 128 levels: each expression inside another counts one, and so does each link of a chain of pipes, of operators such as `+`, `and` or `//`, of definitions or of bindings | Refused when saved, with the line              |
-| Input                  | 256 KiB as JSON, as every run, nested at most 512 levels                                                                                                                 | `invalid_input`                                |
-| Work                   | 64,000,000 units                                                                                                                                                         | `conflict`, `unworkable`, with the units spent |
-| Depth of a value       | 512 levels, wherever a value is built: by construction, by an update of a path and by `fromjson`                                                                         | `conflict`, `unworkable`                       |
-| Recursion              | 10,000 levels of evaluation, which a function that calls itself once, such as `def g: if . == 0 then 0 else (. - 1 \| g) end`, reaches after 1,999 calls                 | `conflict`, `unworkable`                       |
-| Output                 | 1 MiB as JSON together with the run's record, as every run, which leaves the output 1,048,320 bytes                                                                      | `conflict`, `unworkable`                       |
-| Duration               | 10 seconds from the start of the run, its wait for a turn included                                                                                                       | `unavailable`                                  |
-| Memory                 | 256 MiB                                                                                                                                                                  | `unavailable`                                  |
-| Runs at once           | 4 by default, which the operator of a self-hosted runtime can change; a run waits for its turn within its 10 seconds                                                     | `unavailable`                                  |
+| Bound                  | Value                                                                                                                                                                    | When it is reached                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Document               | 65,536 bytes in UTF-8, as every definition                                                                                                                               | Refused when saved                                          |
+| Nesting of the program | 128 levels: each expression inside another counts one, and so does each link of a chain of pipes, of operators such as `+`, `and` or `//`, of definitions or of bindings | Refused when saved, with the line                           |
+| Input                  | 256 KiB as JSON, as every run, nested at most 512 levels                                                                                                                 | `invalid_input`                                             |
+| Work                   | 64,000,000 units                                                                                                                                                         | `conflict`, `unworkable`, with the units spent              |
+| Depth of a value       | 512 levels, wherever a value is built: by construction, by an update of a path and by `fromjson`                                                                         | `conflict`, `unworkable`                                    |
+| Recursion              | 10,000 levels of evaluation, which a function that calls itself once, such as `def g: if . == 0 then 0 else (. - 1 \| g) end`, reaches after 1,999 calls                 | `conflict`, `unworkable`                                    |
+| Regular expression     | 4,096 compiled instructions, and groups nested at most 128 deep                                                                                                          | The program raises `regex too large`, which `try` can catch |
+| Output                 | 1 MiB as JSON together with the run's record, as every run, which leaves the output 1,048,320 bytes, measured before it is written                                       | `conflict`, `unworkable`                                    |
+| Text of an error       | 1,024 bytes of the program's error, and of the pointer and of the detail of each issue of an output the schema refuses, then `…`                                         | Cut, in the `conflict`                                      |
+| Duration               | 10 seconds from the start of the run, its wait for a turn included                                                                                                       | `unavailable`                                               |
+| Memory                 | 256 MiB                                                                                                                                                                  | `unavailable`                                               |
+| Runs at once           | 4 by default, which the operator of a self-hosted runtime can change; a run waits for its turn within its 10 seconds                                                     | `unavailable`                                               |
 
 Work is counted in units of about one character of data handled, so it does not depend on the machine, and the same program and input spend the same units on every run. The example above spends 1,939,824 units on 1,000 rows, 3,857,976 on 2,000 and 7,694,800 on 4,000. The largest input a run takes holds 3,911 such rows, 262,092 bytes, on which the example spends 7,533,024 units, so the bound on work stops a program whose work grows faster than its data, never the example.
 
-The duration is a safeguard for what work does not stop. Measured on Node 26.10.0 on an Apple M4 Max, the example over 3,911 rows took 4.0 ms at the median, every construct the work counts spent the 64,000,000 units of a run in at most 414 ms, and a run took about 28 ms more than its program, to start the program apart from the server and end it. A run that never answered was stopped 0.9 ms after a deadline of 500 ms.
+The duration is a safeguard for what work does not stop. Measured on Node 26.10.0 on an Apple M4 Max, the example over 3,911 rows took 4.0 ms at the median, every construct the work counts spent the 64,000,000 units of a run in at most 414 ms, and a run took about 28 ms more than its program, to start the program apart from the server and end it, or roughly 120 to 160 ms more when the function has an output schema, since the output is then checked where the program ran. Keeping what runs programs ready between runs, the next step, would save most of both. A run that never answered was stopped 0.9 ms after a deadline of 500 ms.
 
 ## In a workflow
 

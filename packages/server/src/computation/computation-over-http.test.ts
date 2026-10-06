@@ -128,6 +128,40 @@ describe(
   },
 );
 
+describe('an output too large to record, over HTTP', { timeout: computationTestTimeoutMs }, () => {
+  it('ends in conflict for an output that would take 240 MB as JSON, measured before it is written, and the server answers on', async () => {
+    await serving();
+    const doubled = ['---', 'language: jq', '---', '("\\u0001Ā" * 15000000) | [., .]'].join('\n');
+    await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'doubled', source: doubled } });
+
+    expect(await executing('doubled', { input: null })).toMatchObject({
+      status: 409,
+      body: {
+        reason: 'conflict',
+        kind: 'unworkable',
+        detail: "The program's output takes more than the 1048320 bytes as JSON a run can record",
+      },
+    });
+    expect(await executing('pace', { input: campaignRows(2) })).toMatchObject({ status: 200 });
+  });
+});
+
+describe('a long error, over HTTP', { timeout: computationTestTimeoutMs }, () => {
+  it('answers, records and lists the text of the error cut at 1,024 bytes', async () => {
+    await serving();
+    const shouting = ['---', 'language: jq', '---', 'error("x" * 30000000)'].join('\n');
+    await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'shouting', source: shouting } });
+    const detail = `The program raised an error on line 4: ${'x'.repeat(1024)}…`;
+
+    const executed = await executing('shouting', { input: null, execution_id: executionId });
+    const read = await server.call('GET', `${alpha}/executions/${executionId}`);
+
+    expect(executed).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'unworkable', detail } });
+    expect(read.body).toMatchObject({ rejection: { reason: 'conflict', kind: 'unworkable', detail } });
+    expect(JSON.stringify(read.body).length).toBeLessThan(2048);
+  });
+});
+
 describe(
   'the definitions and inputs of computation functions, over HTTP',
   { timeout: computationTestTimeoutMs },

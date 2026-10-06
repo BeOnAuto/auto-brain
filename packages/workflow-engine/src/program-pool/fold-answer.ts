@@ -1,6 +1,6 @@
 import { Option, Schema } from 'effect';
 
-import { foldPage, type FoldClock, type FoldPage, type FoldedPage } from '../folds/fold-page.ts';
+import { foldPage, type FoldHost, type FoldPage, type FoldedPage } from '../folds/fold-page.ts';
 import type { FoldAnswerSchema } from './fold-messages.ts';
 
 type FoldAnswerData = typeof FoldAnswerSchema.Encoded;
@@ -54,9 +54,9 @@ function answerFrom({ through, early, views }: FoldedPage): FoldAnswerData {
   };
 }
 
-export function foldAnswerOf(data: unknown, clock: FoldClock): FoldAnswerData {
+export function foldAnswerOf(data: unknown, host: FoldHost): FoldAnswerData {
   return Option.match(decodePage(data), {
     onNone: () => unreadable,
-    onSome: (page) => answerFrom(foldPage(page, clock)),
+    onSome: (page) => answerFrom(foldPage(page, host)),
   });
 }

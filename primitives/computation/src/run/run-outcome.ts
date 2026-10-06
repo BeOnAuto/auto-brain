@@ -1,7 +1,13 @@
 import { Conflict, Unavailable } from '@beonauto/operations';
 import type { Finished } from '@beonauto/specs';
-import { lineOf, type PoolOutcome, type ProgramSpan, type Stopped } from '@beonauto/workflow-engine/dsl';
-import { Effect, Result, type Schema } from 'effect';
+import {
+  lineOf,
+  type PoolOutcome,
+  type ProgramSpan,
+  type Stopped,
+  workerStackMegabytes,
+} from '@beonauto/workflow-engine/dsl';
+import { Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
 import { computationBounds, mostOutputBytes } from './run-bounds.ts';
@@ -10,6 +16,7 @@ export interface RunFacts {
   readonly document: ComputationFunctionDefinitionDocument;
   readonly inputBytes: number;
   readonly workers: number;
+  readonly heapMegabytes: number;
   readonly deadlineMs: number;
 }
 
@@ -18,10 +25,6 @@ type Ending = Effect.Effect<Finished, Conflict | Unavailable>;
 type Answered = Extract<PoolOutcome, { readonly ran: 'answered' }>;
 
 type Exhausted = Extract<PoolOutcome, { readonly ran: 'exhausted' }>;
-
-const mostIssuesInADetail = 3;
-
-const recursionTooDeep = 'Max depth exceeded';
 
 function unworkable(detail: string): Ending {
   return Effect.fail(new Conflict({ detail, kind: 'unworkable' }));
@@ -42,22 +45,14 @@ function recordOf(answered: Answered, { inputBytes }: RunFacts): Schema.JsonObje
 }
 
 function finishedWith(answered: Answered, facts: RunFacts): Ending {
-  const { schema } = facts.document.output;
-  const checked = schema === undefined ? Result.succeed(answered.output) : schema.validate(answered.output);
-  if (Result.isFailure(checked)) {
-    const issues = checked.failure
-      .slice(0, mostIssuesInADetail)
-      .map(({ pointer, detail }) => `${pointer === '' ? 'the output' : pointer}: ${detail}`);
-    return unworkable(`The program's output does not match the output schema: ${issues.join('; ')}`);
-  }
   return Effect.succeed({ output: answered.output, record: recordOf(answered, facts) });
 }
 
 const stoppedBecause: Readonly<Record<Stopped, (facts: RunFacts) => string>> = {
   deadline: ({ deadlineMs }) =>
     `The run took longer than the ${deadlineMs} ms a computation function may run, and was stopped`,
-  memory: () =>
-    `The run took more than the ${computationBounds.heapMegabytes} MiB of memory a computation function may use, and was stopped`,
+  memory: ({ heapMegabytes }) =>
+    `The run took more than the ${heapMegabytes} MiB of memory a computation function may use, and was stopped`,
   busy: ({ workers, deadlineMs }) =>
     `No worker was free to run it within ${deadlineMs} ms; this server runs ${workers} computation functions at once`,
   cancelled: () => 'The run was stopped before it ended',
@@ -69,6 +64,14 @@ function exhaustedWith({ limit, issue, work }: Exhausted, facts: RunFacts): Endi
   if (limit === 'deadline') {
     return Effect.fail(new Unavailable({ detail: stoppedBecause.deadline(facts) }));
   }
+  if (limit === 'depth') {
+    return unworkable(
+      `The program recursed deeper than the ${computationBounds.mostEvaluationDepth} levels of evaluation a run may nest, on line ${line}`,
+    );
+  }
+  if (limit === 'stack') {
+    return unworkable(`The program went deeper than the ${workerStackMegabytes} MiB stack of a run allows`);
+  }
   return limit === 'work'
     ? unworkable(
         `The program did more than the ${computationBounds.mostWork} units of work a run may do, on line ${line}, having done ${work}`,
@@ -79,24 +82,24 @@ function exhaustedWith({ limit, issue, work }: Exhausted, facts: RunFacts): Endi
 }
 
 function raisedWith(detail: string, span: ProgramSpan, { document }: RunFacts): Ending {
-  const line = lineAt(document, span);
-  return detail === recursionTooDeep
-    ? unworkable(
-        `The program recursed deeper than the ${computationBounds.mostEvaluationDepth} levels of evaluation a run may nest, on line ${line}`,
-      )
-    : unworkable(`The program raised an error on line ${line}: ${detail}`);
+  return unworkable(`The program raised an error on line ${lineAt(document, span)}: ${detail}`);
 }
 
-type Unworkable = Extract<PoolOutcome, { readonly ran: 'oversized' | 'unanswered' | 'unfit' | 'refused' }>;
+type Unworkable = Extract<
+  PoolOutcome,
+  { readonly ran: 'oversized' | 'mismatched' | 'unanswered' | 'unfit' | 'refused' }
+>;
 
 function unworkableWith(outcome: Unworkable): Ending {
   if (outcome.ran === 'refused') {
     return Effect.die(new Error('The worker refused a program the definition was accepted with'));
   }
+  if (outcome.ran === 'mismatched') {
+    const issues = outcome.issues.map(({ pointer, detail }) => `${pointer === '' ? 'the output' : pointer}: ${detail}`);
+    return unworkable(`The program's output does not match the output schema: ${issues.join('; ')}`);
+  }
   if (outcome.ran === 'oversized') {
-    return unworkable(
-      `The program's output takes ${outcome.bytes} bytes as JSON, more than the ${mostOutputBytes} a run can record`,
-    );
+    return unworkable(`The program's output takes more than the ${mostOutputBytes} bytes as JSON a run can record`);
   }
   if (outcome.ran === 'unfit') {
     return unworkable('The program gave a number JSON cannot carry, such as nan or infinite');

@@ -16,18 +16,19 @@ The program is compiled with the evaluator of [`@beonauto/workflow-engine/dsl`](
 
 1. refuses an input nested deeper than 512 levels, and one its input schema refuses, as `invalid_input` with the schema's pointers;
 2. asks the pool to run the program on the input with `computationLimits`, `liftedLimits` of the engine with the work bound, in `exactly one` mode, with the deadline counted from the start of the run and an output of at most `mostOutputBytes`, 1 MiB less 256 bytes for the record;
-3. turns the outcome into the run's ending (`src/run/run-outcome.ts`):
+3. for a definition with an output schema, names its own worker module, `src/run/output-worker.ts`, and the schema as the request's context, so the worker that runs the program also checks the output against the schema, under the run's deadline, and the thread that serves requests never waits on the check: a 1 MiB output against a recursive schema had taken 1,038 ms there;
+4. turns the outcome into the run's ending (`src/run/run-outcome.ts`):
 
-| Outcome of the pool                                                           | Ending                                                                                                                              |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| answered, and the output schema accepts it                                    | succeeded, with the output and the record `{ language, work, duration_ms, input_bytes, output_bytes }`                              |
-| answered, and the output schema refuses it                                    | `conflict`, kind `unworkable`, with the first three issues                                                                          |
-| raised                                                                        | `conflict`, `unworkable`: `The program raised an error on line N: <its error>`, or for `Max depth exceeded` the depth of evaluation |
-| exhausted by work or by the depth of a value                                  | `conflict`, `unworkable`, with the bound, the line and, for work, the units spent                                                   |
-| no output or more than one, an output that is not JSON, or one over its bytes | `conflict`, `unworkable`                                                                                                            |
-| exhausted by the deadline, or stopped by the deadline, memory, no free worker | `unavailable`, with words that name the bound or the number of workers                                                              |
-| stopped because the call was cancelled or the server is stopping              | `unavailable`; the operations record the cancelled run as `failed`                                                                  |
-| crashed, or refused by a worker although the definition was accepted          | a defect: the call fails with an incident and the run is `failed`                                                                   |
+| Outcome of the pool                                                           | Ending                                                                                                                  |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| answered, the output schema, if any, accepting it                             | succeeded, with the output and the record `{ language, work, duration_ms, input_bytes, output_bytes }`                  |
+| mismatched: its worker found the output does not match the output schema      | `conflict`, kind `unworkable`, with the first three issues, the pointer and the detail of each cut at 1,024 bytes apart |
+| raised                                                                        | `conflict`, `unworkable`: `The program raised an error on line N: <its error>`, its text cut at 1,024 bytes             |
+| exhausted by work, the depth of a value, the depth of evaluation or the stack | `conflict`, `unworkable`, with the bound, the line and, for work, the units spent                                       |
+| no output or more than one, an output that is not JSON, or one over its bytes | `conflict`, `unworkable`                                                                                                |
+| exhausted by the deadline, or stopped by the deadline, memory, no free worker | `unavailable`, with words that name the bound or the number of workers                                                  |
+| stopped because the call was cancelled or the server is stopping              | `unavailable`; the operations record the cancelled run as `failed`                                                      |
+| crashed, or refused by a worker although the definition was accepted          | a defect: the call fails with an incident and the run is `failed`                                                       |
 
 A `conflict` of the kind `unworkable` is recorded with its kind, so the run, the listing and the history show it, and a workflow sees a `runtime` error of status 409 with that kind, which a retry policy matching 503 leaves alone. The words of a run that succeeded say `Its result: ...` from the output, or that it is too long to repeat.
 
@@ -53,7 +54,7 @@ The hosted runtime does not offer computation functions until its adapter bounds
 
 Under a load average of 55 on the same machine, the same script measured the slowest construct at 4,607 ms and the example at 42.3 ms, and the deadline of 10 seconds leaves room for a host that busy.
 
-Each run starts a worker of its own and ends it with the run, so nothing one run leaves in a worker reaches the next and a worker terminated at its deadline never has to be replaced; that costs 27.5 ms a run at the median, most of it the worker stripping the types of its modules as it loads them. If that time matters, a pool that keeps warm workers between runs is the next step.
+Each run starts a worker of its own and ends it with the run, so nothing one run leaves in a worker reaches the next and a worker terminated at its deadline never has to be replaced; that costs 27.5 ms a run at the median, most of it the worker stripping the types of its modules as it loads them. A run of a definition with an output schema costs more, roughly 120 to 160 ms a run on the same machine, because its worker also loads `effect` and the schema compiler to check the output (163.9 ms at the median of 30 under a load average of 130). If that time matters, a pool that keeps warm workers between runs is the next step: it would load the evaluator and the compiler once.
 
 ## Testing
 

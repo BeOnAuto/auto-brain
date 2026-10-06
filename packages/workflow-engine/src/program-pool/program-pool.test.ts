@@ -20,8 +20,12 @@ function workerOf(source: string): URL {
 
 const blocking = workerOf('while (true) {}');
 
+const coverage = process.env['NODE_V8_COVERAGE'];
+
+const measured = coverage === undefined ? {} : { NODE_V8_COVERAGE: coverage };
+
 function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
-  const pool = programPool({ workers: 4, heapMegabytes: 64, ...settings });
+  const pool = programPool({ workers: 4, heapMegabytes: 64, environment: measured, ...settings });
   pools.push(pool);
   return pool;
 }
@@ -74,8 +78,27 @@ describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }
     expect(await pool.run(request(recursion, 500))).toMatchObject({ ran: 'answered', output: 0 });
     expect(await pool.run(request(recursion, 1500))).toMatchObject({ ran: 'answered', output: 0 });
     expect(await pool.run(request(recursion, 3000))).toMatchObject({
-      ran: 'raised',
+      ran: 'exhausted',
+      limit: 'depth',
       issue: { detail: 'Max depth exceeded', error: 'RuntimeError' },
+    });
+  });
+});
+
+describe('a program that would depend on the stack of its worker', { timeout: poolTestTimeoutMs }, () => {
+  it('refuses a regular expression whose groups nest past 128 the same way in a worker, and ends a stack overflow as a limit', async () => {
+    const pool = poolOf({ heapMegabytes: 256 });
+    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
+    const recursion = 'def g: if . == 0 then 0 else (. - 1 | g) end; try (1000000 | g) catch "caught"';
+    const unbounded = { ...liftedLimits(64_000_000), mostDepth: Number.POSITIVE_INFINITY };
+
+    expect(await pool.run(request(`try (${nested}) catch .`))).toMatchObject({
+      ran: 'answered',
+      output: 'regex too large: groups nested more than 128 deep',
+    });
+    expect(await pool.run(request(recursion, null, { limits: unbounded }))).toMatchObject({
+      ran: 'exhausted',
+      limit: 'stack',
     });
   });
 });
@@ -88,11 +111,29 @@ describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, ()
     });
   });
 
-  it('answers the size of an output larger than it may give, without the output', async () => {
-    expect(await poolOf().run(request('"x" * 100', null, { mostOutputBytes: 50 }))).toMatchObject({
-      ran: 'oversized',
-      bytes: 102,
+  it('cuts the text of an error the program raised at 1,024 bytes, so a long one never crosses whole', async () => {
+    expect(await poolOf().run(request('error("x" * 30000000)'))).toMatchObject({
+      ran: 'raised',
+      issue: { detail: `${'x'.repeat(1024)}…` },
     });
+  });
+
+  it('answers that an output is larger than it may give, without the output', async () => {
+    const outcome = await poolOf().run(request('"x" * 100', null, { mostOutputBytes: 50 }));
+
+    expect(outcome).toMatchObject({ ran: 'oversized' });
+    expect(outcome).not.toHaveProperty('output');
+  });
+
+  it('measures an output before it writes it, so an output that would take 240 MB as JSON is refused and the worker lives', async () => {
+    const pool = poolOf({ heapMegabytes: 256 });
+
+    expect(
+      await pool.run(request('("\\u0001Ā" * 15000000) | [., .]', null, { mostOutputBytes: 1_048_320 })),
+    ).toMatchObject({
+      ran: 'oversized',
+    });
+    expect(await pool.run(request('[.[] | . + 1]', [1, 2]))).toMatchObject({ ran: 'answered', output: [2, 3] });
   });
 
   it('answers that the input nests too deep', async () => {
@@ -142,6 +183,48 @@ describe('the workers of a pool', { timeout: poolTestTimeoutMs }, () => {
     expect(await Promise.all(four)).toMatchObject(
       Array.from({ length: 4 }, () => ({ ran: 'stopped', because: 'closing' })),
     );
+  });
+});
+
+describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
+  it("answers that request, with the context the request gives, while other requests keep the pool's worker", async () => {
+    const echoing = workerOf(
+      [
+        "import { parentPort, workerData } from 'node:worker_threads';",
+        "const output = JSON.stringify({ context: workerData.context, worker: 'named' });",
+        "parentPort.postMessage({ ran: 'answered', output, bytes: output.length, work: 0 });",
+      ].join('\n'),
+    );
+    const pool = poolOf();
+    const context = { schema: { type: 'string' } };
+
+    expect(await pool.run(request('.', null, { worker: echoing, context }))).toMatchObject({
+      ran: 'answered',
+      output: { context, worker: 'named' },
+    });
+    expect(await pool.run(request('.', null, { worker: echoing }))).toMatchObject({ output: { context: null } });
+    expect(await pool.run(request('[.]', 1))).toMatchObject({ ran: 'answered', output: [1] });
+  });
+});
+
+describe('the environment of a worker', { timeout: poolTestTimeoutMs }, () => {
+  it('is empty unless the pool is given one, so no setting of the server, such as a key, reaches a program or its worker', async () => {
+    const reading = workerOf(
+      [
+        "import { parentPort } from 'node:worker_threads';",
+        'const output = JSON.stringify(Object.keys(process.env));',
+        "parentPort.postMessage({ ran: 'answered', output, bytes: output.length, work: 0 });",
+      ].join('\n'),
+    );
+
+    expect(Object.keys(process.env).length).toBeGreaterThan(1);
+    const unset = programPool({ workers: 1, heapMegabytes: 64, worker: reading });
+    pools.push(unset);
+
+    expect(await unset.run(request('.'))).toMatchObject({ ran: 'answered', output: [] });
+    expect(await poolOf({ worker: reading, environment: { ONLY: 'this' } }).run(request('.'))).toMatchObject({
+      output: ['ONLY'],
+    });
   });
 });
 

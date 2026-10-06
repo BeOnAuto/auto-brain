@@ -1,10 +1,10 @@
-import { jsonBytesOf, type Json, type JsonObject } from '../dsl/json.ts';
+import type { Json, JsonObject } from '../dsl/json.ts';
 import { literalFilterOf, matchEvent, type LiteralFilter } from '../filters/event-filter.ts';
+import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
 import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
 import type { ProgramLimits, ProgramRun } from '../programs/program-running.ts';
 import type { ProgramSpan } from '../programs/program-tree.ts';
-import { viewCheckOf, type ViewCheck } from './view-schema.ts';
 
 export type StallKind = 'raised' | 'none' | 'several' | 'work' | 'depth' | 'unfit' | 'size' | 'schema' | 'refused';
 
@@ -49,9 +49,12 @@ export interface FoldedPage {
   readonly views: readonly FoldedView[];
 }
 
-export interface FoldClock {
+export type ViewCheck = (view: Json) => string | undefined;
+
+export interface FoldHost {
   readonly now: () => number;
   readonly folding: (event: number, view: number) => void;
+  readonly checkOf: (schema: JsonObject) => ViewCheck;
 }
 
 interface Prepared {
@@ -68,18 +71,10 @@ interface Folding {
 
 type Step = { readonly view: Json } | { readonly stall: Omit<FoldStall, 'at'> } | { readonly overtime: true };
 
-const mostMessageLength = 1000;
-
-const recursionTooDeep = 'Max depth exceeded';
-
 const anywhere: ProgramSpan | null = null;
 
-function messageOf(text: string): string {
-  return text.length > mostMessageLength ? `${text.slice(0, mostMessageLength)}…` : text;
-}
-
 function stalled(kind: StallKind, message: string, span: ProgramSpan | null = anywhere): Step {
-  return { stall: { kind, message: messageOf(message), span } };
+  return { stall: { kind, message: textWithin(message, mostIssueBytes), span } };
 }
 
 function filtersOf(attributes: readonly JsonObject[]): readonly LiteralFilter[] {
@@ -89,12 +84,12 @@ function filtersOf(attributes: readonly JsonObject[]): readonly LiteralFilter[] 
   });
 }
 
-function foldingOf({ fold, filters, view, schema, events }: FoldingView, dialect: Dialect): Folding {
+function foldingOf({ fold, filters, view, schema, events }: FoldingView, dialect: Dialect, host: FoldHost): Folding {
   return {
     prepared: {
       compiled: compileProgram(fold, dialect),
       filters: filtersOf(filters),
-      check: schema === undefined ? undefined : viewCheckOf(schema),
+      check: schema === undefined ? undefined : host.checkOf(schema),
       considered: new Set(events),
     },
     state: { view, folded: 0, lastFolded: -1, work: 0 },
@@ -106,9 +101,8 @@ function matches({ filters }: Prepared, event: JsonObject): boolean {
 }
 
 function answeredStep(value: Json, { check }: Prepared, page: FoldPage): Step {
-  const bytes = jsonBytesOf(value);
-  if (bytes > page.mostViewBytes) {
-    return stalled('size', `The view takes ${bytes} bytes as JSON, more than the ${page.mostViewBytes} it may`);
+  if (jsonBytesWithin(value, page.mostViewBytes) > page.mostViewBytes) {
+    return stalled('size', `The view takes more than the ${page.mostViewBytes} bytes as JSON a view may`);
   }
   const refused = check?.(value);
   return refused === undefined ? { view: value } : stalled('schema', refused);
@@ -119,8 +113,7 @@ function stepOf(run: ProgramRun, prepared: Prepared, page: FoldPage): Step {
     return answeredStep(run.value, prepared, page);
   }
   if (run.ran === 'raised') {
-    const { detail, span } = run.issue;
-    return stalled(detail === recursionTooDeep ? 'depth' : 'raised', detail, span);
+    return stalled('raised', run.issue.detail, run.issue.span);
   }
   if (run.ran === 'exhausted') {
     if (run.limit === 'deadline') {
@@ -144,7 +137,7 @@ interface Folded {
   readonly work: number;
 }
 
-function foldedStep({ prepared, state }: Folding, event: JsonObject, page: FoldPage, clock: FoldClock): Folded {
+function foldedStep({ prepared, state }: Folding, event: JsonObject, page: FoldPage, clock: FoldHost): Folded {
   if ('issues' in prepared.compiled) {
     const [{ detail, span }] = prepared.compiled.issues;
     return { step: stalled('refused', `The fold does not compile on this server: ${detail}`, span), work: 0 };
@@ -174,7 +167,7 @@ function foldEvent(
   foldings: readonly Folding[],
   { at, event }: PlacedEvent,
   page: FoldPage,
-  clock: FoldClock,
+  clock: FoldHost,
 ): readonly Folding[] {
   return foldings.map((folding, index) => {
     if (!isGoing(folding) || !folding.prepared.considered.has(at) || !matches(folding.prepared, event)) {
@@ -189,10 +182,10 @@ function viewsOf(foldings: readonly Folding[]): readonly FoldedView[] {
   return foldings.map(({ state }) => state);
 }
 
-export function foldPage(page: FoldPage, clock: FoldClock): FoldedPage {
+export function foldPage(page: FoldPage, clock: FoldHost): FoldedPage {
   const startedAt = clock.now();
   const last = page.events.length - 1;
-  let foldings: readonly Folding[] = page.views.map((view) => foldingOf(view, page.dialect));
+  let foldings: readonly Folding[] = page.views.map((view) => foldingOf(view, page.dialect, clock));
   for (const [at, event] of page.events.entries()) {
     foldings = foldEvent(foldings, { at, event }, page, clock);
     if (at < last && clock.now() - startedAt >= page.pageBudgetMs) {

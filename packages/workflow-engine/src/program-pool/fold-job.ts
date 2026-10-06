@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { Schema, Struct } from 'effect';
 
 import type { FoldPage } from '../folds/fold-page.ts';
 import { foldPageData } from './fold-answer.ts';
@@ -9,6 +9,7 @@ import { isInterrupted, type Ending, type Evaluate, type Interrupted, type Job }
 export interface FoldRequest extends FoldPage {
   readonly waitMs: number;
   readonly deadlineMs: number;
+  readonly worker?: Readonly<URL>;
 }
 
 type FoldEnding = FoldAnswer | (Interrupted & { readonly progress?: FoldPlace });
@@ -32,7 +33,8 @@ export function foldJobOf(
   request: FoldRequest,
   signal?: Readonly<AbortSignal>,
 ): FoldJob {
-  const { waitMs, deadlineMs, ...page } = request;
+  const { waitMs, deadlineMs } = request;
+  const page = Struct.omit(request, ['waitMs', 'deadlineMs', 'worker']);
   const progress = foldProgress();
   const job: Job<FoldAnswer> = {
     module,

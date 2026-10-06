@@ -39,12 +39,20 @@ function request(source: string, input: number | null, deadlineMs: number = comp
   };
 }
 
-async function startup(pool: ProgramPool): Promise<string> {
-  const samples = await inTurn(
-    Array.from({ length: 30 }, (_, index) => index),
-    async (index) => (await pool.run(request('.', index))).milliseconds,
+const outputWorker = new URL('../src/run/output-worker.ts', import.meta.url);
+
+async function startup(pool: ProgramPool): Promise<readonly string[]> {
+  const indexes = Array.from({ length: 30 }, (_, index) => index);
+  const plain = await inTurn(indexes, async (index) => (await pool.run(request('.', index))).milliseconds);
+  const checked = await inTurn(
+    indexes,
+    async (index) =>
+      (await pool.run({ ...request('.', index), worker: outputWorker, context: { type: 'integer' } })).milliseconds,
   );
-  return `a run of a program that answers at once, worker started and ended: ${formatted(median(samples), 1)} ms at the median of ${samples.length}`;
+  return [
+    `a run of a program that answers at once, worker started and ended: ${formatted(median(plain), 1)} ms at the median of ${plain.length}`,
+    `the same with an output schema, checked in its worker: ${formatted(median(checked), 1)} ms at the median of ${checked.length}`,
+  ];
 }
 
 async function termination(): Promise<string> {
@@ -89,7 +97,7 @@ function heapOf(source: string): Promise<string> {
 export async function workersMeasured(): Promise<readonly string[]> {
   const pool = programPool({ workers: 1, heapMegabytes: computationBounds.heapMegabytes });
   const lines = [
-    await startup(pool),
+    ...(await startup(pool)),
     await termination(),
     `the deepest recursion of ${recursion} within the bound of ${formatted(mostEvaluationDepth)} levels of evaluation: ${formatted(await deepestRecursion(pool, mostEvaluationDepth))} calls`,
     `the deepest it reaches in a worker's stack of ${workerStackMegabytes} MiB with no bound: ${formatted(await deepestRecursion(pool, Number.POSITIVE_INFINITY))} calls`,

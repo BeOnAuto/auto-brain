@@ -5,9 +5,13 @@ import { foldAnswerOf, foldPageData } from './fold-answer.ts';
 import { foldProgress, progressOf } from './fold-progress.ts';
 import { liftedLimits } from './program-pool.ts';
 
-const clock = { now: () => 0, folding: Function.constVoid };
+const clock = { now: () => 0, folding: Function.constVoid, checkOf: () => passing };
 
 const someWork: unknown = expect.any(Number);
+
+function passing(): undefined {
+  return undefined;
+}
 
 const page = {
   events: [{ type: 'noted', data: 2 }],

@@ -10,6 +10,8 @@ const timerSlackMs = 2;
 
 const pools: ProgramPool[] = [];
 
+const noSchemaChecked: unknown = expect.stringContaining('checks no view schema');
+
 const noted = { type: 'noted' };
 
 const events: readonly JsonObject[] = [
@@ -25,8 +27,12 @@ const markingThenBlocking = workerOf(
   'import { workerData } from "node:worker_threads"; const place = new Int32Array(workerData.progress.shared); Atomics.store(place, 0, 1); Atomics.store(place, 1, 0); while (true) {}',
 );
 
+const coverage = process.env['NODE_V8_COVERAGE'];
+
+const measured = coverage === undefined ? {} : { NODE_V8_COVERAGE: coverage };
+
 function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
-  const pool = programPool({ workers: 4, heapMegabytes: 64, ...settings });
+  const pool = programPool({ workers: 4, heapMegabytes: 64, environment: measured, ...settings });
   pools.push(pool);
   return pool;
 }
@@ -57,9 +63,8 @@ afterEach(async () => {
 
 describe('a page of folds in a worker of the pool', { timeout: poolTestTimeoutMs }, () => {
   it('answers each view after the page, what it folded and the work it did', async () => {
-    const schema = { type: 'integer' };
     const outcome = await poolOf().fold(
-      request([viewOf('. + $event.data.n', { schema }), viewOf('[.] + [$event.data.n]', { view: [], events: [1] })]),
+      request([viewOf('. + $event.data.n'), viewOf('[.] + [$event.data.n]', { view: [], events: [1] })]),
     );
 
     expect(outcome).toMatchObject({
@@ -72,6 +77,12 @@ describe('a page of folds in a worker of the pool', { timeout: poolTestTimeoutMs
       ],
     });
     expect(outcome.milliseconds).toBeGreaterThan(0);
+  });
+
+  it("stalls a view that keeps a schema, which the engine's own worker checks none of", async () => {
+    expect(await poolOf().fold(request([viewOf('. + 1', { schema: { type: 'integer' } })]))).toMatchObject({
+      views: [{ stall: { at: 0, kind: 'schema', message: noSchemaChecked } }],
+    });
   });
 
   it('stalls a fold at the fixed depth of evaluation on the stack of every worker', async () => {

@@ -2,6 +2,7 @@ import type { Environment } from '@beonauto/config';
 import { Config, ConfigProvider, Effect } from 'effect';
 
 import { InvalidSettingsError } from './invalid-settings-error.ts';
+import { countOf } from './workflow-settings.ts';
 
 export interface ComputationSettings {
   readonly workers: number;
@@ -9,17 +10,11 @@ export interface ComputationSettings {
 
 const setting = 'COMPUTATION_WORKERS';
 
-const wholeNumber = /^\d{1,2}$/u;
-
 const least = 1;
 
 const most = 64;
 
 const source = Config.String(setting).pipe(Config.withDefault('4'));
-
-function countOf(text: string): number {
-  return wholeNumber.test(text.trim()) ? Number(text.trim()) : Number.NaN;
-}
 
 export function readComputationSettings(
   environment: Environment,

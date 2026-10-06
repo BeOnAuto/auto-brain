@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { liftedLimits } from '../program-pool/program-pool.ts';
-import { foldPage, type FoldClock, type FoldPage, type FoldingView } from './fold-page.ts';
+import { foldPage, type FoldHost, type FoldPage, type FoldingView, type ViewCheck } from './fold-page.ts';
 
 const foldDialect = {
   refused: [
@@ -46,7 +46,15 @@ function pageOf(views: readonly FoldingView[], more: Partial<FoldPage> = {}): Fo
   };
 }
 
-function stillClock(): FoldClock & { readonly marks: readonly string[] } {
+function entriesAtMost(schema: JsonObject): ViewCheck {
+  const most = Number(schema['maxProperties']);
+  return (view) =>
+    typeof view === 'object' && view !== null && Object.keys(view).length > most
+      ? `the view: Expected a value with at most ${most} entry`
+      : undefined;
+}
+
+function stillClock(): FoldHost & { readonly marks: readonly string[] } {
   const marks: string[] = [];
   return {
     marks,
@@ -54,10 +62,11 @@ function stillClock(): FoldClock & { readonly marks: readonly string[] } {
     folding: (event, view) => {
       marks.push(`${event}:${view}`);
     },
+    checkOf: entriesAtMost,
   };
 }
 
-function slowFirstFold(stepMs: number): FoldClock {
+function slowFirstFold(stepMs: number): FoldHost {
   const time = { now: 0, slow: false };
   return {
     now: () => {
@@ -67,10 +76,11 @@ function slowFirstFold(stepMs: number): FoldClock {
     folding: (event, view) => {
       time.slow = event === 0 && view === 0;
     },
+    checkOf: entriesAtMost,
   };
 }
 
-function runningClock(stepMs: number): FoldClock {
+function runningClock(stepMs: number): FoldHost {
   const time = { now: 0 };
   return {
     now: () => {
@@ -78,6 +88,7 @@ function runningClock(stepMs: number): FoldClock {
       return time.now;
     },
     folding: Function.constVoid,
+    checkOf: entriesAtMost,
   };
 }
 
@@ -175,7 +186,7 @@ describe('a view that stalls in a page of folds', () => {
       'outgrows its bound',
       '"x" * 600000',
       {},
-      { kind: 'size', message: 'The view takes 600002 bytes as JSON, more than the 524288 it may' },
+      { kind: 'size', message: 'The view takes more than the 524288 bytes as JSON a view may' },
     ],
     ['uses what its dialect refuses', '. + $ARGS', 0, { kind: 'refused', message: refusedArgs }],
   ])('stalls at the event when its fold %s, never folding another', (_ending, fold, view, stall) => {
@@ -200,10 +211,10 @@ describe('a view that stalls on what its fold answers', () => {
     });
   });
 
-  it('cuts the message of a stall at a thousand characters', () => {
+  it('cuts the message of a stall at 1,024 bytes', () => {
     const folded = foldPage(pageOf([viewOf('error("x" * 5000)')]), stillClock());
 
-    expect(folded.views[0]?.stall?.message).toBe(`${'x'.repeat(1000)}…`);
+    expect(folded.views[0]?.stall?.message).toBe(`${'x'.repeat(1024)}…`);
   });
 
   it('marks the event whose fold ran past its deadline, so it can be tried again, and folds nothing more', () => {

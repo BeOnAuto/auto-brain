@@ -4,7 +4,7 @@ import { Option, Schema } from 'effect';
 import { fakeAuthorization, type ClientRegistration, type FakeAuthorization } from './fake-authorization.ts';
 import { fakeSessions, type FakeSessions } from './fake-sessions.ts';
 import type { ReceivedCall } from './fake-tools.ts';
-import { serveOnLoopback, type FetchHandler } from './loopback-server.ts';
+import { serveOnLoopback, type FailedRequest, type FetchHandler } from './loopback-server.ts';
 
 export interface FakeMcpOptions {
   readonly bearer?: string;
@@ -23,6 +23,7 @@ export interface FakeMcpServer {
   readonly url: string;
   readonly origin: string;
   readonly seen: () => readonly SeenRequest[];
+  readonly failures: () => readonly FailedRequest[];
   readonly received: () => readonly ReceivedCall[];
   readonly openSessions: () => number;
   readonly endedSessions: () => number;
@@ -200,6 +201,7 @@ export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
     url: `${listening.origin}/mcp`,
     origin: listening.origin,
     seen: () => [...seen],
+    failures: listening.failures,
     received: () => [...received],
     openSessions: sessions.open,
     endedSessions: sessions.ended,

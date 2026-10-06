@@ -112,6 +112,27 @@ describe('a failing expression', () => {
   });
 });
 
+describe('an expression that would depend on the stack', () => {
+  it('gives a problem, as it always did, when it recurses past its depth', () => {
+    expect(runExpression('def f: f; f', null, {}, budget)).toMatchObject({
+      problem: 'def f: f; f: RuntimeError: Max depth exceeded',
+      exhausted: false,
+    });
+  });
+
+  it('gives a problem for a regular expression whose groups nest past 128, which try catches, on any stack', () => {
+    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
+
+    expect(runExpression(nested, null, {}, budget)).toMatchObject({
+      problem: `${nested}: RuntimeError: regex too large: groups nested more than 128 deep`,
+      exhausted: false,
+    });
+    expect(runExpression(`try (${nested}) catch .`, null, {}, budget)).toMatchObject({
+      value: 'regex too large: groups nested more than 128 deep',
+    });
+  });
+});
+
 describe('the free variables of an expression', () => {
   it('are the variables it reads and does not bind itself, each named once', () => {
     expect(freeVariablesOf('.region == "eu"')).toEqual([]);
