@@ -95,23 +95,71 @@ For this document, `create_spec` takes `primitive: "orchestration"`, a workflow 
 
 ## Document fields
 
-| Field                                       | Purpose                                                                                               |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `document.dsl`                              | Required DSL version, from `1.0.0` to `1.0.3`                                                         |
-| `document.namespace`, `document.name`       | Required names of the document                                                                        |
-| `document.version`                          | Required semantic version of the document, such as `1.0.0`                                            |
-| `document.title`, `document.summary`        | Optional; the summary, or else the title, becomes the definition's `description`                      |
-| `input.schema.document`                     | Optional inline JSON Schema, published as the definition's `input_schema`                             |
-| `input.from`                                | Optional expression or template that shapes the run's input before the first task                     |
-| `do`                                        | Required list of named tasks, run in order                                                            |
-| `output.as`                                 | Optional expression or template that shapes the run's output                                          |
-| `output.schema.document`                    | Optional inline JSON Schema, published as the definition's `output_schema`                            |
-| `timeout`                                   | Optional limit for the whole run: `after` with a duration, or the name of a timeout in `use.timeouts` |
-| `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks refer to by name                        |
+| Field                                       | Purpose                                                                                                  |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `document.dsl`                              | Required DSL version, from `1.0.0` to `1.0.3`                                                            |
+| `document.namespace`, `document.name`       | Required names of the document                                                                           |
+| `document.version`                          | Required semantic version of the document, such as `1.0.0`                                               |
+| `document.title`, `document.summary`        | Optional; the summary, or else the title, becomes the definition's `description`                         |
+| `input.schema.document`                     | Optional inline JSON Schema, published as the definition's `input_schema`                                |
+| `input.from`                                | Optional expression or template that shapes the run's input before the first task                        |
+| `schedule`                                  | Optional trigger that starts the workflow on its own: `on`, `cron` or `every`; see [Triggers](#triggers) |
+| `do`                                        | Required list of named tasks, run in order                                                               |
+| `output.as`                                 | Optional expression or template that shapes the run's output                                             |
+| `output.schema.document`                    | Optional inline JSON Schema, published as the definition's `output_schema`                               |
+| `timeout`                                   | Optional limit for the whole run: `after` with a duration, or the name of a timeout in `use.timeouts`    |
+| `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks refer to by name                           |
 
 The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails: a reasoning function, for example, rejects input that does not match its own schema. Schemas must be written inline under `document`, as JSON Schema.
 
 `document.version` is part of the document you write. The definition's `version` counts saved changes: it is 1 when the workflow is created and increases each time `update_spec` changes the document.
+
+## Triggers
+
+A workflow whose document has a `schedule` starts on its own, besides when a caller executes it. The schedule names one trigger: an event trigger, `on`, or a schedule trigger, `cron` or `every`.
+
+| Trigger          | Starts a run                                               | Input of the run                    |
+| ---------------- | ---------------------------------------------------------- | ----------------------------------- |
+| `schedule.on`    | For each event of the brain that matches its filter        | A list holding the event            |
+| `schedule.cron`  | At each time its five fields name, in UTC                  | `{ "schedule": { "due": <time> } }` |
+| `schedule.every` | At each multiple of its period after the version was saved | `{ "schedule": { "due": <time> } }` |
+
+This event trigger starts a run for each brief submitted with a high priority, and these schedule triggers start one at nine in the morning, UTC, on working days, and one every fifteen minutes:
+
+```yaml
+schedule:
+  on:
+    one:
+      with: { type: com.example.brief.submitted, data: '${ .priority == "high" }' }
+```
+
+```yaml
+schedule:
+  cron: '0 9 * * 1-5'
+```
+
+```yaml
+schedule:
+  every: PT15M
+```
+
+`on.one` takes one filter and `on.any` a list of at least one; a run starts when any of them matches. A filter names the `type` of its events as written text, and may name `source` and `subject` as written text and `data` as a value or as an expression over the event alone, such as `data: '${ .region == "eu" }'`; an expression cannot use the variables of a run, such as `$workflow`, since no run exists yet. An expression that fails on an event does not match it, and the brain records that once. A filter matches every event the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts, such as `execution_succeeded`, whose `source` is `/executions/<execution id>` and whose `subject` names the definition, as `inference/summarize`.
+
+`cron` has the five fields minute, hour, day of month, month and day of week, read in UTC; when both day of month and day of week are restricted, a day that matches either is due. `every` is a [duration](#durations) of at least a minute, counted from when the version was saved.
+
+A trigger applies from the moment its version is saved: nothing recorded before is matched. Saving a version without a schedule, or retiring the workflow, stops it, and a new version replaces the trigger of the one before. A run a trigger starts uses the version that declared the trigger, and its `execution_id` is derived from the workflow, that version, and the event or the due time, so an event or a time starts it once.
+
+A run a trigger starts acts as the brain itself: its `started_by` is `brain:` and the brain's name, and each step acts with read and write access to that brain and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
+
+These keep triggers from running away:
+
+- A workflow does not start for a fact about one of its own runs, about a run one of its runs started, or for an event one of its runs emitted.
+- A chain of runs started by events stops at a depth of 8. An event published from outside counts 1, an event or fact about a run counts one more than the run, and a run its trigger starts takes the depth of what it matched; a match deeper than 8 starts nothing.
+- A trigger starts at most 60 runs of its workflow a minute. More wait for a later minute, at most 1,000 of them, and one more is refused.
+- A schedule trigger has one run at a time: a time due while the run before it still runs is skipped. After the runtime was stopped, only the latest of the times it missed runs.
+- A start the brain refuses, as once the brain is retired, is not tried again; one it cannot take at that moment is tried again at each sweep, about twenty times, before it is given up.
+
+What a trigger did not start is recorded in the brain as a `reaction_refused` event of its workflow, at most once a minute, with how many and the last reason; `list_brain_events` shows it beside the runs triggers started.
 
 ## Tasks
 
@@ -129,6 +177,7 @@ Each item of a task list is a mapping with one key, the task's name. Its value d
 | `raise`              | `raise.error`: an error, or the name of one in `use.errors`                                            | None; it raises the error                                                 |
 | `wait`               | A duration                                                                                             | Its input, unchanged                                                      |
 | `listen`             | `listen.to` with `one`, `any` or `all`, and optional `listen.read`                                     | A list with the data of each event it took                                |
+| `emit`               | `emit.event.with`, the event's attributes, with `type` and `source`                                    | Its input, unchanged                                                      |
 
 Every task also accepts these fields:
 
@@ -183,7 +232,7 @@ The error's `title` names the definition and, for a rejection, its reason; its `
 
 ### Waiting for events
 
-A `listen` task waits for events sent to the run with `send_execution_event`, through [HTTP](http.md) or [MCP](mcp.md):
+A `listen` task waits for events sent to the run with `send_execution_event`, through [HTTP](http.md) or [MCP](mcp.md), and, through a filter that names its `type` as written text, for the events of the whole brain:
 
 - `listen.to.one` takes one event that matches its filter.
 - `listen.to.any` takes the first event that matches any filter in its list.
@@ -194,6 +243,24 @@ A filter's `with` names event attributes, such as `type`, `source`, `subject` or
 The task's output is a list with the `data` of each event it took. With `listen.read: envelope` or `raw`, the list holds the whole events: `type`, `id`, `time`, and the `source`, `subject` and `data` that were sent.
 
 An event sent before a `listen` task waits for it is kept, and the task takes the earliest event that matches. An event whose `id` the run has already received is ignored, so a sender can retry with the same id. Waiting `until` a condition, `foreach` and `correlate` are not supported.
+
+A filter whose `type` is written out, such as `type: com.example.brief.decided`, also hears the events the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts. Such an event reaches the run only while the task listens; one recorded before the task began to listen, or after it ended, is not offered to it. The run checks the rest of its filter itself, with its own variables, so `data: '${ .ticket == $workflow.input.ticket }'` takes only the event about the run's own ticket. With `all`, the events may come in any order. A filter that computes its `type` hears only events sent to the run. A run never takes an event it emitted itself. Send an event to the run by its execution id when the run must not miss it. A brain has at most 4,096 tasks listening for its events at once; one more hears only events sent to its run.
+
+### Emitting an event
+
+An `emit` task records an event in the brain, as `publish_event` would, and hands its input on. `emit.event.with` holds the event's attributes: `type` and `source` are required, and `subject`, `time`, `data`, `datacontenttype`, `dataschema` and extension attributes are optional; any of them can be an expression. A `source` written out is an absolute URI, such as `https://example.com/campaigns`, as the DSL requires; write a relative one, such as `/campaigns`, as an expression, `'${ "/campaigns" }'`.
+
+```yaml
+- announce:
+    emit:
+      event:
+        with:
+          type: com.example.brief.approved
+          source: https://example.com/campaigns
+          data: { brief: '${ .brief }' }
+```
+
+An emitted event takes no `id`: the runtime gives it one made from the run and the task, so a run that goes on after a restart emits the event once. Its `time` is the time of the step unless the task gives one. `list_brain_events` shows it as an `event_published` event with the run and the workflow that emitted it, and a workflow whose trigger matches it starts, one level deeper than the run that emitted it. A type or a source the brain keeps for its own facts is refused when the document is saved, and fails the task with a `validation` error when an expression computes it.
 
 ### Errors, retries and timeouts
 
@@ -302,21 +369,24 @@ Line 7, column 12: at /do/1/loop/for: It needs in
 
 These are refused when a document is saved:
 
-| Refused                                                                                 | Reason given                                                    |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `run` and `emit` tasks                                                                  | The runtime does not run them                                   |
-| `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a` or `mcp`                         | A workflow reaches the world only through its brain's functions |
-| A `call` of anything other than `execute_spec`                                          | `execute_spec` is the one function                              |
-| `execute_spec` of an `orchestration` definition                                         | A workflow cannot execute another workflow                      |
-| `schedule`                                                                              | A workflow starts when it is executed                           |
-| `use.catalogs`, `use.extensions`, `use.functions`, `use.secrets`, `use.authentications` | Not supported                                                   |
-| `listen` with `until`, `foreach` or `correlate`                                         | Not supported                                                   |
-| Schemas on tasks, and schemas not written inline as JSON Schema                         | Task schemas are not checked; external schemas are not fetched  |
-| A `then` naming no task in the same list, or a jump from a fork branch                  | Flow must stay within the list                                  |
-| A name in `raise.error`, `retry` or `timeout` missing from `use`                        | The reference must exist                                        |
-| `localtime`, `strflocaltime`, and expressions that do not parse                         | Expressions must be valid and deterministic                     |
-| An expression that nests more than 128 levels                                           | See [Expressions](#expressions)                                 |
-| Durations in years or months, or longer than a run may last                             | See [Durations](#durations) and [Limits](#limits)               |
+| Refused                                                                                        | Reason given                                                    |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `run` tasks                                                                                    | The runtime does not run them                                   |
+| `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a` or `mcp`                                | A workflow reaches the world only through its brain's functions |
+| A `call` of anything other than `execute_spec`                                                 | `execute_spec` is the one function                              |
+| `execute_spec` of an `orchestration` definition                                                | A workflow cannot execute another workflow                      |
+| `schedule.after`, `schedule.on.all`, `schedule.on.until`, or more than one trigger             | A trigger starts one run for each event or time                 |
+| A trigger filter without a written `type`, or with a `data` expression that uses `$` variables | A trigger is matched before any run exists                      |
+| `schedule.every` shorter than a minute, or a `cron` that is not five fields or names no time   | See [Triggers](#triggers)                                       |
+| An `emit` without `type` or `source`, with an `id`, or with a type or source the brain keeps   | See [Emitting an event](#emitting-an-event)                     |
+| `use.catalogs`, `use.extensions`, `use.functions`, `use.secrets`, `use.authentications`        | Not supported                                                   |
+| `listen` with `until`, `foreach` or `correlate`                                                | Not supported                                                   |
+| Schemas on tasks, and schemas not written inline as JSON Schema                                | Task schemas are not checked; external schemas are not fetched  |
+| A `then` naming no task in the same list, or a jump from a fork branch                         | Flow must stay within the list                                  |
+| A name in `raise.error`, `retry` or `timeout` missing from `use`                               | The reference must exist                                        |
+| `localtime`, `strflocaltime`, and expressions that do not parse                                | Expressions must be valid and deterministic                     |
+| An expression that nests more than 128 levels                                                  | See [Expressions](#expressions)                                 |
+| Durations in years or months, or longer than a run may last                                    | See [Durations](#durations) and [Limits](#limits)               |
 
 ## How a run ends
 
@@ -349,7 +419,18 @@ A timeout that is not caught therefore rejects the run as `unavailable`, and a c
 | An event                     | 256 KiB as JSON; `type` and `id` at most 256 characters, `source` and `subject` at most 1,024           |
 | Events waiting to be taken   | 64, or 1 MiB as JSON                                                                                    |
 | Events over a run's life     | 1,024, or 4 MiB as JSON                                                                                 |
+| Events a run emits           | 1,024, or 4 MiB as JSON, over its life                                                                  |
+| An emitted event             | 240 KiB as JSON                                                                                         |
+| Workflows with a trigger     | 1,024 in a brain; saving one more is refused with `conflict`                                            |
+| Tasks listening to a brain   | 4,096 at once; one more hears only the events sent to its run                                           |
+| Runs a trigger starts        | 60 a minute for each workflow; at most 1,000 more wait for a later minute                               |
+| Depth of a chain of triggers | 8                                                                                                       |
+| `schedule.every`             | At least a minute                                                                                       |
 
-A duration written in the document that is longer than a run may last is refused when the document is saved; one that an expression computes fails its task with a `configuration` error. Exceeding the limits on held data, a value kept across a wait, tasks without waiting, inputs or history ends the run at once, rejected as `unavailable` with a `runtime` error of status 500. One event more than the event limits allow ends the run at once, rejected, and later events to it are refused with `not_found`.
+A duration written in the document that is longer than a run may last is refused when the document is saved; one that an expression computes fails its task with a `configuration` error. Exceeding the limits on held data, a value kept across a wait, tasks without waiting, inputs or history ends the run at once, rejected as `unavailable` with a `runtime` error of status 500. One event more than the event limits allow ends the run at once, rejected, and later events to it are refused with `not_found`. An emit beyond the limit on emitted events fails its task with a `runtime` error of status 500, which the workflow's `try` can catch, and an emitted event larger than 240 KiB with a `validation` error of status 400.
+
+## Upgrading
+
+An event sent to a run without a `source` now has the source `/callers/` and the id of the caller who sent it, so that every event says where it came from. A `listen` filter of `source: null` therefore no longer matches an event sent to the run; match it on its `type`, or test the `source` it is sent with.
 
 </div>

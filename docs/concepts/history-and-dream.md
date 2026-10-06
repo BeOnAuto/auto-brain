@@ -24,7 +24,11 @@ These reads page through long histories and keep working after a brain is retire
 
 A brain's history can also hold what happened elsewhere, such as a month closed in a ledger or a deal won in a CRM. `publish_event` records such an event in the brain, in the CloudEvents shape that many systems already send: where it comes from, what happened, and optionally what it is about, when it happened and its data. The event then appears in `list_brain_events` beside the definitions and runs the brain recorded.
 
-An event is identified by its source and its id, and a brain keeps one event for each pair. Publishing the same event again records nothing and returns what was recorded the first time, so a sender can retry safely; a different event under the same source and id is refused. The brain's own facts, such as a run that finished or a definition that changed, use types and sources the brain keeps for itself, so a published event cannot pass for one. Starting a workflow when an event arrives is planned, as the event trigger in [Brain terminology](terminology.md#definitions-and-runs). See [Publishing events](../reference/http.md#publishing-events) for the attributes and limits.
+An event is identified by its source and its id, and a brain keeps one event for each pair. Publishing the same event again records nothing and returns what was recorded the first time, so a sender can retry safely; a different event under the same source and id is refused. The brain's own facts, such as a run that finished or a definition that changed, use types and sources the brain keeps for itself, so a published event cannot pass for one. See [Publishing events](../reference/http.md#publishing-events) for the attributes and limits.
+
+## Reactions
+
+What the brain records can start work. A workflow with an event trigger starts a run for each event that matches it, whether published, emitted by another workflow's `emit` step, or one of the brain's own facts, and a run waiting for an event takes a matching one while it waits. The brain matches events in the order it recorded them, the order `list_brain_events` shows, so the history explains each reaction: the event, then the run it started, whose start names that event as its cause. An emitted event shows the run and the workflow that emitted it. What a trigger did not start, past one of its limits, is recorded as a `reaction_refused` event of the workflow, at most once a minute, with how many and why. [Workflows and runs](workflows.md#triggers) describes triggers.
 
 ## Dream
 
