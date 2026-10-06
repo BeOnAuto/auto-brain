@@ -19,8 +19,10 @@ function succeeded(campaign: Json, verdict: Json, time: string): JsonObject {
   return { ...reviewed, source: '/executions/run', time, data: { output: { campaign, verdict } } };
 }
 
+const springApproved = succeeded('spring', 'approve', '2026-10-01T09:00:00Z');
+
 const events: readonly JsonObject[] = [
-  succeeded('spring', 'approve', '2026-10-01T09:00:00Z'),
+  springApproved,
   { type: 'execution_started', subject: 'inference/review-brief', time: '2026-10-01T09:00:01Z', data: {} },
   succeeded('summer', 'reject', '2026-10-01T09:00:02Z'),
   succeeded('spring', 'reject', '2026-10-01T09:00:03Z'),
@@ -80,6 +82,20 @@ function slowFirstFold(stepMs: number): FoldHost {
   };
 }
 
+function foldsTaking(stepMs: number): FoldHost & { readonly marks: readonly string[] } {
+  const time = { now: 0 };
+  const marks: string[] = [];
+  return {
+    marks,
+    now: () => time.now,
+    folding: (event, view) => {
+      marks.push(`${event}:${view}`);
+      time.now += stepMs;
+    },
+    checkOf: entriesAtMost,
+  };
+}
+
 function runningClock(stepMs: number): FoldHost {
   const time = { now: 0 };
   return {
@@ -99,7 +115,6 @@ describe('a page of folds', () => {
     const folded = foldPage(pageOf([viewOf(byCampaign), viewOf('. + 1', { view: 0, events: [2, 3] })]), clock);
 
     expect(folded).toMatchObject({
-      through: 3,
       early: false,
       views: [
         {
@@ -112,70 +127,64 @@ describe('a page of folds', () => {
           },
           folded: 3,
           lastFolded: 3,
+          through: 3,
         },
-        { view: 2, folded: 2, lastFolded: 3 },
+        { view: 2, folded: 2, lastFolded: 3, through: 3 },
       ],
     });
-    expect(clock.marks).toEqual(['0:0', '2:0', '2:1', '3:0', '3:1']);
-  });
-
-  it('matches a filter by its source, subject and data, and leaves out an event whose data the filter cannot test', () => {
-    const filters = [
-      {
-        type: 'execution_succeeded',
-        subject: 'inference/review-brief',
-        data: '${ .output.verdict | ascii_upcase == "REJECT" }',
-      },
-    ];
-    const withNumber = [...events, succeeded('autumn', 7, '2026-10-01T09:00:04Z')];
-
-    const folded = foldPage(
-      pageOf([viewOf('. + 1', { view: 0, filters, events: [0, 1, 2, 3, 4] })], { events: withNumber }),
-      stillClock(),
-    );
-
-    expect(folded.views[0]).toMatchObject({ view: 2, folded: 2, lastFolded: 3 });
+    expect(clock.marks).toEqual(['0:0', '1:0', '2:0', '2:1', '3:0', '3:1']);
   });
 });
 
 describe('the events a page of folds folds', () => {
-  it('never matches an event that lacks an attribute its filter names', () => {
-    const filters = [{ type: 'execution_started', source: '/executions/run' }];
-
-    expect(foldPage(pageOf([viewOf('. + 1', { view: 0, filters })]), stillClock()).views[0]).toMatchObject({
-      folded: 0,
-    });
-  });
-
-  it('never matches a filter that names no type', () => {
-    const folded = foldPage(
-      pageOf([viewOf('. + 1', { view: 0, filters: [{ subject: 'inference/review-brief' }] })]),
-      stillClock(),
-    );
-
-    expect(folded.views[0]).toMatchObject({ view: 0, folded: 0 });
-  });
-
   it('keeps a view as it was when no event of the page is one it considers', () => {
     expect(foldPage(pageOf([viewOf(byCampaign, { events: [] })]), stillClock()).views[0]).toEqual({
       view: {},
       folded: 0,
       lastFolded: -1,
+      through: 3,
       work: 0,
     });
-    expect(foldPage(pageOf([], { events: [] }), stillClock())).toEqual({ through: -1, early: false, views: [] });
+    expect(foldPage(pageOf([], { events: [] }), stillClock())).toEqual({ early: false, views: [] });
   });
 
-  it('ends early, between two events, once its budget of time is spent, every view having considered the same events', () => {
+  it('ends early once its budget of time is spent, before the next fold, each view answering how far it went', () => {
     const folded = foldPage(pageOf([viewOf('. + 1', { view: 0 })], { pageBudgetMs: 5 }), runningClock(3));
 
-    expect(folded).toMatchObject({ through: 0, early: true, views: [{ view: 1, folded: 1, lastFolded: 0 }] });
+    expect(folded).toMatchObject({ early: true, views: [{ view: 1, folded: 1, lastFolded: 0, through: 0 }] });
+  });
+
+  it('checks its budget before every fold, so a neighbour of a slow fold is never folded past the budget', () => {
+    const slowFolds = foldsTaking(2100);
+    const views = Array.from({ length: 4 }, () => viewOf('. + 1', { view: 0, events: [0] }));
+
+    const folded = foldPage(pageOf(views, { events: [springApproved], foldDeadlineMs: 5000 }), slowFolds);
+
+    expect(folded).toMatchObject({
+      early: true,
+      views: [
+        { folded: 1, through: 0 },
+        { folded: 0, through: -1 },
+        { folded: 0, through: -1 },
+        { folded: 0, through: -1 },
+      ],
+    });
+    expect(slowFolds.marks).toEqual(['0:0']);
+    expect(folded.views.some(({ overtime }) => overtime !== undefined)).toBe(false);
+  });
+
+  it('runs at least one fold a page, however small its budget', () => {
+    const folded = foldPage(pageOf([viewOf('. + 1', { view: 0 })], { pageBudgetMs: 0 }), runningClock(3));
+
+    expect(folded).toMatchObject({ early: true, views: [{ folded: 1, through: 0 }] });
   });
 });
 
 const refusedArgs: unknown = expect.stringContaining('$ARGS reads arguments');
 
 const unboundInput: unknown = expect.stringContaining('$input is not defined');
+
+const filterUnbound: unknown = expect.stringContaining('A filter does not compile on this server: $x is not defined');
 
 describe('a view that stalls in a page of folds', () => {
   it.each<readonly [string, string, Json, Readonly<Record<string, unknown>>]>([
@@ -245,6 +254,33 @@ describe('a view that stalls on what its fold answers', () => {
     expect(folded.views[0]?.stall).toMatchObject({
       kind: 'refused',
       message: unboundInput,
+    });
+  });
+});
+
+describe('the filters of a view in a page of folds', () => {
+  it('run under the deadline and the limits of its fold, after the fold that was going is marked', () => {
+    const slowFilter = [{ type: 'execution_succeeded', data: '${ reduce range(100000) as $i (0; . + $i) > 0 }' }];
+    const greedyFilter = [{ type: 'execution_succeeded', data: '${ ("x" * 20000000 | length) > 0 }' }];
+    const views = [
+      viewOf('. + 1', { view: 0, filters: slowFilter }),
+      viewOf('. + 1', { view: 0, filters: greedyFilter }),
+      viewOf('. + 1', { view: 0 }),
+    ];
+
+    const folded = foldPage(pageOf(views, { foldDeadlineMs: 10, pageBudgetMs: 1_000_000 }), slowFirstFold(20));
+
+    expect(folded.views[0]).toMatchObject({ view: 0, folded: 0, overtime: 0 });
+    expect(folded.views[1]).toMatchObject({ view: 0, folded: 0, stall: { at: 0, kind: 'work' } });
+    expect(folded.views[2]).toMatchObject({ view: 3, folded: 3 });
+  });
+
+  it('stall a view whose filter does not compile on this server', () => {
+    const filters = [{ type: 'execution_succeeded', data: '${ $x }' }];
+
+    expect(foldPage(pageOf([viewOf('. + 1', { view: 0, filters })]), stillClock()).views[0]).toMatchObject({
+      folded: 0,
+      stall: { at: 0, kind: 'refused', message: filterUnbound },
     });
   });
 });

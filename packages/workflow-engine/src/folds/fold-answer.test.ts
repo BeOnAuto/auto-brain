@@ -1,9 +1,9 @@
 import { Function } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { liftedLimits } from '../program-pool/program-pool.ts';
 import { foldAnswerOf, foldPageData } from './fold-answer.ts';
 import { foldProgress, progressOf } from './fold-progress.ts';
-import { liftedLimits } from './program-pool.ts';
 
 const clock = { now: () => 0, folding: Function.constVoid, checkOf: () => passing };
 
@@ -28,9 +28,8 @@ describe('the answer of a worker that folds a page', () => {
   it('folds the page it is given, as the page crosses to it, and answers each view as JSON text', () => {
     expect(foldAnswerOf(foldPageData(page), clock)).toEqual({
       ran: 'folded',
-      through: 0,
       early: false,
-      views: [{ view: '3', folded: 1, lastFolded: 0, work: someWork }],
+      views: [{ view: '3', folded: 1, lastFolded: 0, through: 0, work: someWork }],
     });
   });
 
@@ -61,6 +60,20 @@ describe('the answer of a worker that folds a page', () => {
 
     expect(foldAnswerOf({ ...data, views: [{ ...view, events: [0, 'zero'] }] }, clock)).toMatchObject({
       views: [{ view: '3', folded: 1 }],
+    });
+  });
+});
+
+describe('the budget of a page a worker folds', () => {
+  it('counts its budget from when the pool started the page, when the pool says so', () => {
+    const late = { ...clock, now: () => 5000 };
+    const view = { fold: '. + $event.data', filters: [{ type: 'noted' }], view: 1, events: [0, 1] };
+    const twice = { ...page, events: [...page.events, ...page.events], views: [view] };
+
+    expect(foldAnswerOf(foldPageData({ ...page, startedAt: 0 }), late)).toMatchObject({ early: false });
+    expect(foldAnswerOf(foldPageData({ ...twice, startedAt: 0 }), late)).toMatchObject({
+      early: true,
+      views: [{ folded: 1, through: 0 }],
     });
   });
 });

@@ -224,7 +224,6 @@ describe('the machine, its runner, its tasks and its decider, the run log and th
   it('evaluate expressions with work as their only budget, so no deadline makes them read a clock', () => {
     expect(expressionCallsUnder(everySource)).toEqual([
       'dsl/evaluation.ts: source, data, variables, { now: place.now, mostWork }',
-      'folds/fold-filters.ts: body, actual, noVariables, { now: 0, mostWork: mostExpressionWork }',
     ]);
   });
 });

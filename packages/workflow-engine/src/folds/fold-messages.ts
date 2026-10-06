@@ -12,13 +12,13 @@ const StallSchema = Schema.Struct({
 export const FoldAnswerSchema = Schema.Union([
   Schema.Struct({
     ran: Schema.Literal('folded'),
-    through: Schema.Number,
     early: Schema.Boolean,
     views: Schema.Array(
       Schema.Struct({
         view: Schema.fromJsonString(Schema.Json),
         folded: Schema.Number,
         lastFolded: Schema.Number,
+        through: Schema.Number,
         work: Schema.Number,
         stall: Schema.optionalKey(StallSchema),
         overtime: Schema.optionalKey(Schema.Number),

@@ -3,15 +3,15 @@ import { Worker, type WorkerOptions } from 'node:worker_threads';
 import { Option, Schema } from 'effect';
 
 import { mostValueDepth, type Json } from '../dsl/json.ts';
+import { foldJobOf, type FoldOutcome, type FoldRequest } from '../folds/fold-job.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
 import type { ProgramLimits, Variables } from '../programs/program-running.ts';
 import { fieldOf, textOf } from '../programs/program-tree.ts';
-import { foldJobOf, type FoldOutcome, type FoldRequest } from './fold-job.ts';
 import { stopped, type Ending, type Evaluate, type Interrupted, type Job, type Running } from './pool-job.ts';
 import { poolSlots, type PoolSlots } from './pool-slots.ts';
 import { ProgramAnswerSchema, type ProgramAnswer } from './program-messages.ts';
 
-export type { FoldOutcome, FoldRequest } from './fold-job.ts';
+export type { FoldOutcome, FoldRequest } from '../folds/fold-job.ts';
 export type { Stopped } from './pool-job.ts';
 
 export interface PoolSettings {

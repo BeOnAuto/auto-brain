@@ -2,9 +2,9 @@ import type { Json, JsonObject } from '../dsl/json.ts';
 import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
 import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
-import type { ProgramLimits, ProgramRun } from '../programs/program-running.ts';
+import type { Deadline, ProgramLimits, ProgramRun } from '../programs/program-running.ts';
 import type { ProgramSpan } from '../programs/program-tree.ts';
-import { hasTheAttributes } from './fold-filters.ts';
+import { matchingOf, preparedFilters, type Matching, type PreparedFilter, type RunTest } from './fold-filters.ts';
 
 export type StallKind = 'raised' | 'none' | 'several' | 'work' | 'depth' | 'unfit' | 'size' | 'schema' | 'refused';
 
@@ -32,19 +32,20 @@ export interface FoldPage {
   readonly foldDeadlineMs: number;
   readonly pageBudgetMs: number;
   readonly mostViewBytes: number;
+  readonly startedAt?: number;
 }
 
 export interface FoldedView {
   readonly view: Json;
   readonly folded: number;
   readonly lastFolded: number;
+  readonly through: number;
   readonly work: number;
   readonly stall?: FoldStall;
   readonly overtime?: number;
 }
 
 export interface FoldedPage {
-  readonly through: number;
   readonly early: boolean;
   readonly views: readonly FoldedView[];
 }
@@ -59,7 +60,7 @@ export interface FoldHost {
 
 interface Prepared {
   readonly compiled: CompiledProgram;
-  readonly filters: readonly JsonObject[];
+  readonly filters: readonly PreparedFilter[];
   readonly check: ViewCheck | undefined;
   readonly considered: ReadonlySet<number>;
 }
@@ -71,6 +72,24 @@ interface Folding {
 
 type Step = { readonly view: Json } | { readonly stall: Omit<FoldStall, 'at'> } | { readonly overtime: true };
 
+interface Folded {
+  readonly step: Step;
+  readonly work: number;
+}
+
+interface PlacedEvent {
+  readonly at: number;
+  readonly event: JsonObject;
+}
+
+interface Turns {
+  readonly page: FoldPage;
+  readonly host: FoldHost;
+  readonly startedAt: number;
+  readonly taken: () => number;
+  readonly take: () => void;
+}
+
 const anywhere: ProgramSpan | null = null;
 
 function stalled(kind: StallKind, message: string, span: ProgramSpan | null = anywhere): Step {
@@ -81,16 +100,12 @@ function foldingOf({ fold, filters, view, schema, events }: FoldingView, dialect
   return {
     prepared: {
       compiled: compileProgram(fold, dialect),
-      filters,
+      filters: preparedFilters(filters, dialect),
       check: schema === undefined ? undefined : host.checkOf(schema),
       considered: new Set(events),
     },
-    state: { view, folded: 0, lastFolded: -1, work: 0 },
+    state: { view, folded: 0, lastFolded: -1, through: -1, work: 0 },
   };
-}
-
-function matches({ filters }: Prepared, event: JsonObject): boolean {
-  return filters.some((filter) => hasTheAttributes(filter, event));
 }
 
 function answeredStep(value: Json, { check }: Prepared, page: FoldPage): Step {
@@ -101,6 +116,13 @@ function answeredStep(value: Json, { check }: Prepared, page: FoldPage): Step {
   return refused === undefined ? { view: value } : stalled('schema', refused);
 }
 
+function exhaustedStep(run: Extract<ProgramRun, { readonly ran: 'exhausted' }>): Step {
+  if (run.limit === 'deadline') {
+    return { overtime: true };
+  }
+  return stalled(run.limit === 'work' ? 'work' : 'depth', run.issue.detail, run.issue.span);
+}
+
 function stepOf(run: ProgramRun, prepared: Prepared, page: FoldPage): Step {
   if (run.ran === 'answered') {
     return answeredStep(run.value, prepared, page);
@@ -109,10 +131,7 @@ function stepOf(run: ProgramRun, prepared: Prepared, page: FoldPage): Step {
     return stalled('raised', run.issue.detail, run.issue.span);
   }
   if (run.ran === 'exhausted') {
-    if (run.limit === 'deadline') {
-      return { overtime: true };
-    }
-    return stalled(run.limit === 'work' ? 'work' : 'depth', run.issue.detail, run.issue.span);
+    return exhaustedStep(run);
   }
   if (run.ran === 'unanswered') {
     return stalled(run.outputs === 0 ? 'none' : 'several', `The fold gave ${run.outputs} outputs`);
@@ -120,70 +139,114 @@ function stepOf(run: ProgramRun, prepared: Prepared, page: FoldPage): Step {
   return stalled('unfit', 'The fold gave a number JSON cannot carry, such as nan or infinite');
 }
 
-interface PlacedEvent {
-  readonly at: number;
-  readonly event: JsonObject;
+function deadlineOf(turnStartedAt: number, { page, host }: Turns): Deadline {
+  return { milliseconds: Math.max(0, turnStartedAt + page.foldDeadlineMs - host.now()), clock: host.now };
 }
 
-interface Folded {
-  readonly step: Step;
-  readonly work: number;
-}
-
-function foldedStep({ prepared, state }: Folding, event: JsonObject, page: FoldPage, clock: FoldHost): Folded {
+function foldedStep({ prepared, state }: Folding, event: JsonObject, turns: Turns, turnStartedAt: number): Folded {
   if ('issues' in prepared.compiled) {
     const [{ detail, span }] = prepared.compiled.issues;
     return { step: stalled('refused', `The fold does not compile on this server: ${detail}`, span), work: 0 };
   }
   const run = prepared.compiled.program.run(state.view, {
-    limits: page.limits,
+    limits: turns.page.limits,
     outputs: 'exactly one',
-    variables: { [page.variable]: event },
-    deadline: { milliseconds: page.foldDeadlineMs, clock: clock.now },
+    variables: { [turns.page.variable]: event },
+    deadline: deadlineOf(turnStartedAt, turns),
   });
-  return { step: stepOf(run, prepared, page), work: run.work };
+  return { step: stepOf(run, prepared, turns.page), work: run.work };
+}
+
+function matchedStep(matching: Exclude<Matching, { readonly matched: boolean }>): Folded {
+  if ('refused' in matching) {
+    const [{ detail, span }] = matching.refused.issues;
+    return { step: stalled('refused', `A filter does not compile on this server: ${detail}`, span), work: 0 };
+  }
+  return { step: exhaustedStep(matching.exhausted), work: matching.work };
 }
 
 function after(state: FoldedView, at: number, { step, work }: Folded): FoldedView {
-  const spent = { ...state, work: state.work + work };
+  const spent = { ...state, through: at, work: state.work + work };
   if ('view' in step) {
     return { ...spent, view: step.view, folded: state.folded + 1, lastFolded: at };
   }
   return 'stall' in step ? { ...spent, stall: { at, ...step.stall } } : { ...spent, overtime: at };
 }
 
+function turnOf(folding: Folding, { at, event }: PlacedEvent, turns: Turns): FoldedView {
+  const turnStartedAt = turns.host.now();
+  const runTest: RunTest = (test, actual) =>
+    test.program.run(actual, {
+      limits: turns.page.limits,
+      outputs: 'first',
+      deadline: deadlineOf(turnStartedAt, turns),
+    });
+  const matching = matchingOf(folding.prepared.filters, event, runTest);
+  if (!('matched' in matching)) {
+    return after(folding.state, at, matchedStep(matching));
+  }
+  if (!matching.matched) {
+    return { ...folding.state, through: at, work: folding.state.work + matching.work };
+  }
+  const folded = foldedStep(folding, event, turns, turnStartedAt);
+  return after(folding.state, at, { step: folded.step, work: folded.work + matching.work });
+}
+
 function isGoing({ state }: Folding): boolean {
   return state.stall === undefined && state.overtime === undefined;
 }
 
-function foldEvent(
-  foldings: readonly Folding[],
-  { at, event }: PlacedEvent,
-  page: FoldPage,
-  clock: FoldHost,
-): readonly Folding[] {
-  return foldings.map((folding, index) => {
-    if (!isGoing(folding) || !folding.prepared.considered.has(at) || !matches(folding.prepared, event)) {
-      return folding;
+function isSpent({ page, host, startedAt, taken }: Turns): boolean {
+  return taken() > 0 && host.now() - startedAt >= page.pageBudgetMs;
+}
+
+interface EventFolded {
+  readonly foldings: readonly Folding[];
+  readonly early: boolean;
+}
+
+function foldEvent(foldings: readonly Folding[], placed: PlacedEvent, turns: Turns): EventFolded {
+  const next: Folding[] = [];
+  for (const [index, folding] of foldings.entries()) {
+    if (!isGoing(folding) || !folding.prepared.considered.has(placed.at)) {
+      next.push({ ...folding, state: { ...folding.state, through: placed.at } });
+    } else if (isSpent(turns)) {
+      return { foldings: [...next, ...foldings.slice(index)], early: true };
+    } else {
+      turns.take();
+      turns.host.folding(placed.at, index);
+      next.push({ ...folding, state: turnOf(folding, placed, turns) });
     }
-    clock.folding(at, index);
-    return { ...folding, state: after(folding.state, at, foldedStep(folding, event, page, clock)) };
-  });
+  }
+  return { foldings: next, early: false };
 }
 
 function viewsOf(foldings: readonly Folding[]): readonly FoldedView[] {
   return foldings.map(({ state }) => state);
 }
 
-export function foldPage(page: FoldPage, clock: FoldHost): FoldedPage {
-  const startedAt = clock.now();
-  const last = page.events.length - 1;
-  let foldings: readonly Folding[] = page.views.map((view) => foldingOf(view, page.dialect, clock));
+function turnsOf(page: FoldPage, host: FoldHost): Turns {
+  const counted = { turns: 0 };
+  return {
+    page,
+    host,
+    startedAt: page.startedAt ?? host.now(),
+    taken: () => counted.turns,
+    take: () => {
+      counted.turns += 1;
+    },
+  };
+}
+
+export function foldPage(page: FoldPage, host: FoldHost): FoldedPage {
+  const turns = turnsOf(page, host);
+  let foldings: readonly Folding[] = page.views.map((view) => foldingOf(view, page.dialect, host));
   for (const [at, event] of page.events.entries()) {
-    foldings = foldEvent(foldings, { at, event }, page, clock);
-    if (at < last && clock.now() - startedAt >= page.pageBudgetMs) {
-      return { through: at, early: true, views: viewsOf(foldings) };
+    const folded = foldEvent(foldings, { at, event }, turns);
+    foldings = folded.foldings;
+    if (folded.early) {
+      return { early: true, views: viewsOf(foldings) };
     }
   }
-  return { through: last, early: false, views: viewsOf(foldings) };
+  return { early: false, views: viewsOf(foldings) };
 }

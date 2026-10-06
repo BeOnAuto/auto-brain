@@ -1,10 +1,10 @@
 import { Schema, Struct } from 'effect';
 
-import type { FoldPage } from '../folds/fold-page.ts';
+import { isInterrupted, type Ending, type Evaluate, type Interrupted, type Job } from '../program-pool/pool-job.ts';
 import { foldPageData } from './fold-answer.ts';
 import { FoldAnswerSchema, type FoldAnswer } from './fold-messages.ts';
+import type { FoldPage } from './fold-page.ts';
 import { foldProgress, type FoldPlace } from './fold-progress.ts';
-import { isInterrupted, type Ending, type Evaluate, type Interrupted, type Job } from './pool-job.ts';
 
 export interface FoldRequest extends FoldPage {
   readonly waitMs: number;
@@ -36,14 +36,17 @@ export function foldJobOf(
   const { waitMs, deadlineMs } = request;
   const page = Struct.omit(request, ['waitMs', 'deadlineMs', 'worker']);
   const progress = foldProgress();
-  const job: Job<FoldAnswer> = {
+  const jobFrom = (startedAt: number): Job<FoldAnswer> => ({
     module,
-    workerData: { ...foldPageData(page), progress: { shared: progress.shared } },
+    workerData: { ...foldPageData({ ...page, startedAt }), progress: { shared: progress.shared } },
     decode: decodeFoldAnswer,
-  };
+  });
   return {
     waitMs,
-    run: async () =>
-      withProgress(await evaluate(job, { until: performance.now() + deadlineMs, signal }), progress.last()),
+    run: async () => {
+      const started = performance.now();
+      const ending = await evaluate(jobFrom(performance.timeOrigin + started), { until: started + deadlineMs, signal });
+      return withProgress(ending, progress.last());
+    },
   };
 }

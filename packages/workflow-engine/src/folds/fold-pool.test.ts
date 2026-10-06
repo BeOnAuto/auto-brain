@@ -1,8 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { JsonObject } from '../dsl/json.ts';
-import type { FoldingView } from '../folds/fold-page.ts';
-import { liftedLimits, programPool, type FoldRequest, type PoolSettings, type ProgramPool } from './program-pool.ts';
+import {
+  liftedLimits,
+  programPool,
+  type FoldRequest,
+  type PoolSettings,
+  type ProgramPool,
+} from '../program-pool/program-pool.ts';
+import type { FoldingView } from './fold-page.ts';
 
 const poolTestTimeoutMs = 30_000;
 
@@ -69,11 +75,10 @@ describe('a page of folds in a worker of the pool', { timeout: poolTestTimeoutMs
 
     expect(outcome).toMatchObject({
       ran: 'folded',
-      through: 1,
       early: false,
       views: [
-        { view: 3, folded: 2, lastFolded: 1 },
-        { view: [[], 2], folded: 1, lastFolded: 1 },
+        { view: 3, folded: 2, lastFolded: 1, through: 1 },
+        { view: [[], 2], folded: 1, lastFolded: 1, through: 1 },
       ],
     });
     expect(outcome.milliseconds).toBeGreaterThan(0);

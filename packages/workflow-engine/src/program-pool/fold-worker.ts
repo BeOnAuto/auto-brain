@@ -1,7 +1,7 @@
 import { parentPort, workerData } from 'node:worker_threads';
 
-import { foldAnswerOf } from './fold-answer.ts';
-import { progressOf } from './fold-progress.ts';
+import { foldAnswerOf } from '../folds/fold-answer.ts';
+import { progressOf } from '../folds/fold-progress.ts';
 
 const progress = progressOf(workerData);
 

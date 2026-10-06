@@ -1,21 +1,73 @@
-import { enclosedBody, runExpression } from '../dsl/expressions.ts';
+import { enclosedBody } from '../dsl/expressions.ts';
 import { entriesOf, field, isTruthy, jsonEquals, type Json, type JsonEntry, type JsonObject } from '../dsl/json.ts';
-import { mostExpressionWork } from '../machine/limits.ts';
+import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
+import type { Dialect } from '../programs/program-dialect.ts';
+import type { ProgramRun } from '../programs/program-running.ts';
 
-const noVariables = {};
+type Expected =
+  | { readonly name: string; readonly value: Json }
+  | { readonly name: string; readonly test: CompiledProgram };
 
-function attributeMatches(expected: Json, actual: Json): boolean {
-  const body = enclosedBody(expected);
-  if (body === undefined) {
-    return jsonEquals(expected, actual);
-  }
-  const evaluation = runExpression(body, actual, noVariables, { now: 0, mostWork: mostExpressionWork });
-  return 'value' in evaluation && isTruthy(evaluation.value);
+export interface PreparedFilter {
+  readonly expected: readonly Expected[];
 }
 
-export function hasTheAttributes(filter: JsonObject, event: JsonObject): boolean {
-  return (
-    typeof field(filter, 'type') === 'string' &&
-    entriesOf(filter).every(([name, expected]: JsonEntry) => attributeMatches(expected, field(event, name) ?? null))
-  );
+type Exhausted = Extract<ProgramRun, { readonly ran: 'exhausted' }>;
+
+export type Matching =
+  | { readonly matched: boolean; readonly work: number }
+  | { readonly exhausted: Exhausted; readonly work: number }
+  | { readonly refused: Extract<CompiledProgram, { readonly issues: unknown }> };
+
+export type RunTest = (test: Extract<CompiledProgram, { readonly program: unknown }>, actual: Json) => ProgramRun;
+
+function expectedOf([name, value]: JsonEntry, dialect: Dialect): Expected {
+  const body = enclosedBody(value);
+  return body === undefined ? { name, value } : { name, test: compileProgram(body, dialect) };
+}
+
+export function preparedFilters(filters: readonly JsonObject[], dialect: Dialect): readonly PreparedFilter[] {
+  const tests: Dialect = { refused: dialect.refused, variables: [] };
+  return filters
+    .filter((filter) => typeof field(filter, 'type') === 'string')
+    .map((filter) => ({ expected: entriesOf(filter).map((entry: JsonEntry) => expectedOf(entry, tests)) }));
+}
+
+function attributeMatching(expected: Expected, event: JsonObject, runTest: RunTest): Matching {
+  const actual = field(event, expected.name) ?? null;
+  if ('value' in expected) {
+    return { matched: jsonEquals(expected.value, actual), work: 0 };
+  }
+  if ('issues' in expected.test) {
+    return { refused: expected.test };
+  }
+  const run = runTest(expected.test, actual);
+  if (run.ran === 'exhausted') {
+    return { exhausted: run, work: run.work };
+  }
+  return { matched: run.ran === 'answered' && isTruthy(run.value), work: run.work };
+}
+
+function filterMatching({ expected }: PreparedFilter, event: JsonObject, runTest: RunTest): Matching {
+  let work = 0;
+  for (const each of expected) {
+    const matching = attributeMatching(each, event, runTest);
+    if (!('matched' in matching) || !matching.matched) {
+      return 'matched' in matching ? { matched: false, work: work + matching.work } : matching;
+    }
+    work += matching.work;
+  }
+  return { matched: true, work };
+}
+
+export function matchingOf(filters: readonly PreparedFilter[], event: JsonObject, runTest: RunTest): Matching {
+  let work = 0;
+  for (const filter of filters) {
+    const matching = filterMatching(filter, event, runTest);
+    if (!('matched' in matching) || matching.matched) {
+      return 'matched' in matching ? { matched: true, work: work + matching.work } : matching;
+    }
+    work += matching.work;
+  }
+  return { matched: false, work };
 }

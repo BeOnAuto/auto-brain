@@ -43,4 +43,4 @@ export type {
   StallKind,
   ViewCheck,
 } from './folds/fold-page.ts';
-export type { FoldPlace } from './program-pool/fold-progress.ts';
+export type { FoldPlace } from './folds/fold-progress.ts';
