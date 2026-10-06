@@ -53,6 +53,8 @@ The hosted runtime does not offer computation functions until its adapter bounds
 
 Under a load average of 55 on the same machine, the same script measured the slowest construct at 4,607 ms and the example at 42.3 ms, and the deadline of 10 seconds leaves room for a host that busy.
 
+Each run starts a worker of its own and ends it with the run, so nothing one run leaves in a worker reaches the next and a worker terminated at its deadline never has to be replaced; that costs 27.5 ms a run at the median, most of it the worker stripping the types of its modules as it loads them. If that time matters, a pool that keeps warm workers between runs is the next step.
+
 ## Testing
 
 `@beonauto/computation/testing` exports `campaignPace`, the example document, `campaignRows(count)`, an input of that many rows over four campaigns, and `scriptedPool(script, otherwise)`, a pool that answers with the outcomes of its script in turn and then hands runs to `otherwise`, for the tests of the server that need an outcome a real worker gives only rarely. The tests of this package run real workers; the cents of the example are checked against a computation in big integers over 1,000 rows.

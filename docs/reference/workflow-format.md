@@ -284,6 +284,8 @@ Expressions are [jq](https://jqlang.org). A string enclosed in `${ }` is an expr
 
 An expression may do a bounded amount of work, about one pass over a few megabytes of data. One that does more fails its task with a `runtime` error that the workflow's `try` can catch and jq's `try` cannot.
 
+An expression may nest at most 128 levels: each expression inside another counts one, and so does each link of a chain of pipes, of operators such as `+`, `and` or `//`, of definitions or of bindings, so `. | . | .` nests three. A deeper one is refused when the document is saved, with an issue at the expression that ends `The program nests more than 128 levels deep`.
+
 Quote an expression that contains `: ` or that sits inside a `{ }` mapping, as the examples do; otherwise YAML reads its colon or braces and the document is refused.
 
 ### Durations
@@ -313,6 +315,7 @@ These are refused when a document is saved:
 | A `then` naming no task in the same list, or a jump from a fork branch                  | Flow must stay within the list                                  |
 | A name in `raise.error`, `retry` or `timeout` missing from `use`                        | The reference must exist                                        |
 | `localtime`, `strflocaltime`, and expressions that do not parse                         | Expressions must be valid and deterministic                     |
+| An expression that nests more than 128 levels                                           | See [Expressions](#expressions)                                 |
 | Durations in years or months, or longer than a run may last                             | See [Durations](#durations) and [Limits](#limits)               |
 
 ## How a run ends
@@ -332,6 +335,7 @@ A timeout that is not caught therefore rejects the run as `unavailable`, and a c
 | Source document              | 65,536 bytes in UTF-8                                                                                   |
 | Nested task lists            | 64 levels                                                                                               |
 | Nested values                | 512 levels                                                                                              |
+| Nesting of an expression     | 128 levels, refused when the document is saved                                                          |
 | Branches of a fork           | 32                                                                                                      |
 | Duration of a run            | 30 days, unless the deployment sets between 2 hours and 365 days; a run still going at that limit fails |
 | Input of a run               | 256 KiB as JSON                                                                                         |
