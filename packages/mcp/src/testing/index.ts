@@ -12,7 +12,9 @@ export {
   verboseDescription,
   type ReceivedCall,
 } from './fake-tools.ts';
+export { fetchWithDeletion } from './deleting-fetch.ts';
 export { fakeApiKey, openFakeToolRun, type FakeToolRun } from './fake-tool-run.ts';
+export { recordingTimer, type RecordingTimer, type Wait } from './recording-timer.ts';
 export { reportingAccess, type AccessOptions, type ReportingAccess } from './reporting-access.ts';
 export {
   controlledSignals,

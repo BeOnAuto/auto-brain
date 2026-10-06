@@ -61,7 +61,7 @@ Each entry has one link. An `http` link opens a session when a run first needs i
 
 With an `auth` block, tokens come from the MCP client's client-credentials or private-key provider, with the issuer pinned: the client sends the credential to no authorization server whose metadata names another issuer. One token is minted for every concurrent run, renewed a minute before it expires (or halfway through a shorter life), and minted again once when the server answers 401; a second 401 is a failure. Every remote request goes through the `fetch` given, the server's outbound fetch, so `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS` apply, and a certificate the server does not trust is a fixed message.
 
-The MCP client has no logging option. The errors it meets, such as a line from a process that is not JSON-RPC or a stream it could not read, reach the client's `onerror`, which reports them through `reportServerMessage` as the messages of their server, scrubbed. The few warnings it writes to the console about how it was configured are left on stderr: catching them would mean patching the global console of the whole server, which every other library writes to as well.
+The MCP client has no logging option. The errors it meets, such as a line from a process that is not JSON-RPC or a stream it could not read, reach the client's `onerror`, which reports them through `reportServerMessage` as the messages of their server, scrubbed. They are bounded as the stderr of a `stdio` process is: at most 100 of 2000 characters for each process started or session opened, then one line saying the rest is not shown. The few warnings it writes to the console about how it was configured are left on stderr: catching them would mean patching the global console of the whole server, which every other library writes to as well.
 
 ## Bounds
 
@@ -89,10 +89,11 @@ The MCP client has no logging option. The errors it meets, such as a line from a
 
 `@beonauto/mcp/testing` holds a fake MCP server built with the MCP server package:
 
-- `serveFakeMcp({ bearer?, client?, requestIdHeader? })` serves it over Streamable HTTP on a loopback port the system picks, with a bearer check or a fake authorization server, sessions, and ways to answer the next requests with a status (`answerNextWith`, for a 429 with `Retry-After`), forget every session (a 404), revoke tokens (a 401), remove a tool and send `list_changed`.
+- `serveFakeMcp({ bearer?, client?, requestIdHeader? })` serves it over Streamable HTTP on a loopback port the system picks, with a bearer check or a fake authorization server, sessions, and ways to answer the next requests with a status (`answerNextWith`, for a 429 with `Retry-After`), answer the next tool call after messages that are not JSON-RPC (`answerNextCallAfterNoise`), forget every session (a 404), revoke tokens (a 401), remove a tool and send `list_changed`.
 - `fakeStdioServerPath` runs the same tools over stdio under `node`, with `--chatter`, `--pad`, `--stdout`, `--linger-ms` and `--start-once` to make it talk, misbehave or fail to start again. Start it with `process.execPath` directly, never through a package manager: it imports only the MCP server package and the fake's tools, not `effect`, and answers its first message in about 90 ms on a laptop. A spawn is real time, so a test that starts it takes `stdioTestTimeoutMs`, 30 s, and its connection `patientTiming`, and a file shares one process across the tests that only need it running.
 - Its tools answer text (`search`, `echo`, `graph.query.v2`), structured content (`profile`), non-text content (`photo`), a denial marked `isError` (`denied`), an error (`broken`), slowly (`sleep`), at length (`large`), with its environment (`environment`), or by exiting (`exit`).
 - `openFakeToolRun`, `reportingAccess`, `recordingCallJournal`, `toolRun`, `controlledSignals` and `inTurn` open a run's tools against it.
+- `recordingTimer` stands in for the timer a link's options take, which bounds the end of a session: it records each wait and whether it was stopped, so a test of that deadline touches no global timer. `fetchWithDeletion` sends a session's `DELETE` to a handler of the test's own.
 
 ## A manual run against an agent services gateway
 

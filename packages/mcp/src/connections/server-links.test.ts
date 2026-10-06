@@ -1,13 +1,18 @@
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { Predicate, Redacted } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Redacted } from 'effect';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { secretsOf } from '../bounds/secrets.ts';
 import type { AuthSettings, HttpServerSettings } from '../settings/mcp-settings.ts';
-import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '../testing/index.ts';
-import { ignored } from './ignored.ts';
-import type { CallSettled, McpConnection } from './mcp-connection.ts';
+import {
+  fetchWithDeletion,
+  recordingTimer,
+  serveFakeMcp,
+  type FakeMcpOptions,
+  type FakeMcpServer,
+} from '../testing/index.ts';
+import { errorsNoLongerReported, type CallSettled, type McpConnection } from './mcp-connection.ts';
 import { failureOf } from './server-failures.ts';
 import { serverLink, type LinkOptions } from './server-links.ts';
 
@@ -54,28 +59,19 @@ function authOf(fake: FakeMcpServer): AuthSettings {
 
 function linked(settings: HttpServerSettings, options: Partial<LinkOptions> = {}) {
   const secrets = secretsOf([]);
+  const reported: string[] = [];
   const link = serverLink(settings, {
     fetch: globalThis.fetch,
     secrets,
     now: Date.now,
     timing,
-    reportOutput: ignored,
+    reportOutput: (_server, line) => {
+      reported.push(line);
+    },
     ...options,
   });
   closing.push(link.stop);
-  return { link, secrets };
-}
-
-function fetchWithDeletion<Args extends readonly [unknown, unknown?]>(
-  original: (...args: Args) => Promise<Response>,
-  deleting: (request: unknown) => Promise<Response>,
-): (...args: Args) => Promise<Response> {
-  return (...args) => {
-    const [, request] = args;
-    return Predicate.hasProperty(request, 'method') && request.method === 'DELETE'
-      ? deleting(request)
-      : original(...args);
-  };
+  return { link, secrets, reported };
 }
 
 const searched = (connection: McpConnection) =>
@@ -247,23 +243,16 @@ describe('an http server that does not end its session', () => {
 });
 
 describe('an http session that ends before the deadline', () => {
-  it('clears the cleanup deadline when the server answers', async () => {
+  it('stops waiting for the deadline when the server answers', async () => {
     const fake = await fakeServer();
-    const { link } = linked(httpSettings(fake.url));
+    const { timer, waits } = recordingTimer();
+    const { link } = linked(httpSettings(fake.url), { timer });
     const connection = await link.take();
-    const scheduled = vi.spyOn(globalThis, 'setTimeout');
-    const cleared = vi.spyOn(globalThis, 'clearTimeout');
 
-    try {
-      await link.release();
-      const deadline = scheduled.mock.calls.findIndex((call: readonly unknown[]) => call[1] === timing.openMs);
-      expect(deadline).toBeGreaterThanOrEqual(0);
-      expect(cleared).toHaveBeenCalledWith(scheduled.mock.results[deadline]?.value);
-      await expect(connection.closed).resolves.toBeUndefined();
-    } finally {
-      scheduled.mockRestore();
-      cleared.mockRestore();
-    }
+    await link.release();
+
+    await expect(connection.closed).resolves.toBeUndefined();
+    expect(waits()).toEqual([{ ms: timing.openMs, stopped: true }]);
   });
 });
 
@@ -295,5 +284,16 @@ describe('a link to an http server with an auth block', () => {
       message: 'The MCP server answered HTTP 401',
     });
     expect(fake.tokenRequests()).toBe(3);
+  });
+});
+
+describe('an http server that sends what is not JSON-RPC', () => {
+  it('has the first 100 of the errors it causes reported, and then a line saying the rest is not shown', async () => {
+    const fake = await fakeServer();
+    const { link, reported } = linked(httpSettings(fake.url));
+    fake.answerNextCallAfterNoise(150);
+
+    expect(await searched(await link.take())).toHaveProperty('result.content.0.text', 'Found 2 rows for acme.');
+    expect([reported.length, reported.indexOf(errorsNoLongerReported)]).toEqual([101, 100]);
   });
 });
