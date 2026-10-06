@@ -6,6 +6,7 @@ import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle
 import { logIncident, logLedger } from '../logging/logging.ts';
 import { serveWorkflows } from '../workflows/workflows.ts';
 import { ledgerLayerOf } from './ledger-store.ts';
+import { computationServedBy, workerPool, type ProgramPoolOf } from './served-computation.ts';
 import { reasoningServedBy, loggedModelAccess, type ModelAccessOf } from './served-inference.ts';
 
 const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter.of({ report: logIncident }));
@@ -14,17 +15,22 @@ export function applicationLayer(ledger: Layer.Layer<Ledger>): Layer.Layer<Dispa
   return Layer.mergeAll(ledger, ledgerBrainRegistry.pipe(Layer.provide(ledger)), loggingIncidentReporter);
 }
 
-export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions<DispatcherServices> {
+export function compositionRootWith(
+  modelAccessOf: ModelAccessOf,
+  programPoolOf: ProgramPoolOf = workerPool,
+): ServerOptions<DispatcherServices> {
   return {
     ...defaultServerOptions,
     runtimeLayer: ({ ledger }) => applicationLayer(ledgerLayerOf(ledger)),
     serve: async (runtime, settings) => {
       const { ledger, workflows } = settings;
       await runtime.run(logLedger(ledger));
-      const { primitive, listModels, withToolsClosed } = await reasoningServedBy(runtime, settings, modelAccessOf);
-      const orgOperations = [...brainOperations, listModels];
-      return withToolsClosed(
-        await serveWorkflows(runtime, { ledger, workflows, primitives: [primitive], orgOperations }),
+      const reasoning = await reasoningServedBy(runtime, settings, modelAccessOf);
+      const computation = computationServedBy(settings.computation, programPoolOf);
+      const orgOperations = [...brainOperations, reasoning.listModels];
+      const primitives = [reasoning.primitive, computation.primitive];
+      return computation.withPoolClosed(
+        reasoning.withToolsClosed(await serveWorkflows(runtime, { ledger, workflows, primitives, orgOperations })),
       );
     },
   };

@@ -87,11 +87,11 @@ function primitivesOfCreateSpec(listing: unknown): readonly string[] {
 }
 
 describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists eight tools on the endpoint of a brain, and both primitives in the spec tools', async () => {
+  it('lists eight tools on the endpoint of a brain, and every primitive in the spec tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
     expect(toolNamesIn(listing)).toEqual(brainTools);
-    expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'orchestration']);
+    expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'computation', 'orchestration']);
   });
 
   it('executes a workflow that calls a reasoning function definition and waits for an event the tools send', async () => {

@@ -3,6 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import type { ScriptedReply } from '@beonauto/inference/testing';
 import { Option, Schema } from 'effect';
 
+import type { ProgramPoolOf } from '../composition/served-computation.ts';
 import type { RequestOptions, TestResponse } from './http-client.ts';
 import { servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 
@@ -17,8 +18,9 @@ const executionOf = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schem
 export function servingWorkflows(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
+  programPoolOf?: ProgramPoolOf,
 ): Promise<ReasoningServer> {
-  return servingReasoning(replies, environment);
+  return servingReasoning(replies, environment, undefined, programPoolOf);
 }
 
 export function workflowSource(name: string, steps: string): string {
