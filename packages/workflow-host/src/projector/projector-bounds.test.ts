@@ -43,14 +43,32 @@ function partsOf(views: ViewHarness, database: HostDatabase, pagesPerWake: numbe
   };
 }
 
+function runsOf(count: number): readonly number[] {
+  return Array.from({ length: count }, (_, run) => run);
+}
+
 describe('the pages of a pass', { timeout: viewTestTimeoutMs }, () => {
-  it('reads at most the pages a pass may, and asks for another pass', async () => {
+  it('reads at most the pages a pass may for a live view, and asks for another pass', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
-    await views.ranInOneStream(
-      'inference/runs',
-      Array.from({ length: 2500 }, (_, run) => run),
-    );
+    await views.ran('inference/runs', 1);
+    await Effect.runPromise(brainPass(partsOf(views, views.store.database, 10), alphaKey));
+    const caughtUp = await views.viewOf('runs');
+    await views.ranInOneStream('inference/runs', runsOf(2500));
+    const reads = heldReads(views.store.database);
+    reads.open();
+
+    const more = await Effect.runPromise(brainPass(partsOf(views, reads.gated, 2), alphaKey));
+    const kept = await views.viewOf('runs');
+
+    expect([caughtUp?.phase, caughtUp?.folded]).toEqual(['live', 1]);
+    expect([more, reads.total(), kept?.phase, kept?.folded]).toEqual([true, 2, 'live', 2001]);
+  });
+
+  it('reads at most the pages a pass may for a rebuilding view, and asks for another pass', async () => {
+    const views = await viewHarness(await onSQLite());
+    await views.saved('runs', counting);
+    await views.ranInOneStream('inference/runs', runsOf(2500));
     const reads = heldReads(views.store.database);
     reads.open();
 
