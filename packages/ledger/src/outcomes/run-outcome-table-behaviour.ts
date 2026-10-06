@@ -156,11 +156,11 @@ function aFillOfLargeRecords(entry: LedgerEntry): void {
     it('reads them at most 16 MiB at a time, and keeps every run', { timeout: 60_000 }, async () => {
       const database = await entry.aDatabase();
       const writing = await aLedger(entry, database);
-      const note = 'x'.repeat(1.5 * mebibyte);
+      const notes = [1, 1, 1, 6, 6, 6].map((mebibytes) => 'x'.repeat(mebibytes * mebibyte));
       await Effect.runPromise(
         Effect.forEach(
-          Array.from({ length: 12 }, (_, index) => index),
-          (index) =>
+          notes,
+          (note, index) =>
             Effect.promise(() =>
               noting(writing, `brain/acme/alpha/executions/large-${index}`, began('large'), largeEnd(index, note)),
             ),
@@ -170,7 +170,32 @@ function aFillOfLargeRecords(entry: LedgerEntry): void {
 
       const filled = await aLedger(entry, database, runTallies);
 
-      expect(runsOf(await reading(filled))).toEqual(['2026-10-01 large succeeded 12']);
+      expect(runsOf(await reading(filled))).toEqual(['2026-10-01 large succeeded 6']);
+    });
+  });
+}
+
+function aFillOfAnOversizedRun(entry: LedgerEntry): void {
+  describe('a fill that meets a run stream holding more than 16 MiB of records', () => {
+    it('reads that stream alone, and keeps it and every run after it', { timeout: 60_000 }, async () => {
+      const database = await entry.aDatabase();
+      const writing = await aLedger(entry, database);
+      const note = 'x'.repeat(6 * mebibyte);
+      await noting(writing, 'brain/acme/alpha/executions/over-0', began('over'), largeEnd(0, 'small'));
+      await noting(
+        writing,
+        'brain/acme/alpha/executions/over-1',
+        began('over'),
+        largeEnd(1, note),
+        largeEnd(2, note),
+        largeEnd(3, note),
+      );
+      await noting(writing, 'brain/acme/alpha/executions/over-2', began('over'), largeEnd(4, 'small'));
+      await noting(writing, 'brain/acme/alpha/executions/over-3', began('over'), largeEnd(5, 'small'));
+
+      const filled = await aLedger(entry, database, runTallies);
+
+      expect(runsOf(await reading(filled))).toEqual(['2026-10-01 over succeeded 4']);
     });
   });
 }
@@ -181,4 +206,5 @@ export function runOutcomeTableBehaviour(entry: LedgerEntry): void {
   aNewTableVersion(entry);
   aFillInterruptedOrDone(entry);
   aFillOfLargeRecords(entry);
+  aFillOfAnOversizedRun(entry);
 }

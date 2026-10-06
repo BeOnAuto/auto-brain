@@ -52,6 +52,25 @@ describe('an expression of a task', () => {
   });
 });
 
+describe('a value an expression of a task builds', () => {
+  it('nested deeper than 512 levels raises an expression error with the depth of a value', () => {
+    const run = drivenRun(
+      workflow("do:\n  - deep: { set: '${ reduce range(2000) as $i (null; [.]) | tojson | length }' }"),
+    );
+
+    expect(run.outcome).toEqual({
+      kind: 'raised',
+      error: {
+        type: errorType('expression'),
+        status: 400,
+        title: 'An expression failed',
+        detail: ' reduce range(2000) as $i (null; [.]) | tojson | length : LimitError: Value depth limit exceeded',
+        instance: '/do/0/deep',
+      },
+    });
+  });
+});
+
 describe('a value a task gives', () => {
   it('that takes more work to visit than a workflow may hold raises a runtime error', () => {
     const run = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: ada } }'), {

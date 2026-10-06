@@ -351,6 +351,8 @@ Expressions are [jq](https://jqlang.org). A string enclosed in `${ }` is an expr
 
 An expression may do a bounded amount of work, about one pass over a few megabytes of data. One that does more fails its task with a `runtime` error that the workflow's `try` can catch and jq's `try` cannot.
 
+A value an expression builds may nest at most 512 levels, as a value a run holds may. One that would nest deeper fails its task with an `expression` error ending `Value depth limit exceeded`, the same wherever the runtime evaluates it, which the workflow's `try` can catch and jq's `try` cannot.
+
 An expression may nest at most 128 levels: each expression inside another counts one, and so does each link of a chain of pipes, of operators such as `+`, `and` or `//`, of definitions or of bindings, so `. | . | .` nests three. A deeper one is refused when the document is saved, with an issue at the expression that ends `The program nests more than 128 levels deep`.
 
 Quote an expression that contains `: ` or that sits inside a `{ }` mapping, as the examples do; otherwise YAML reads its colon or braces and the document is refused.

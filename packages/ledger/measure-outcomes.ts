@@ -18,6 +18,12 @@ const recordBytes = 65_536;
 
 const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
 
+const parts = new Set((process.env['LEDGER_MEASURE_PARTS'] ?? 'read,append,fill,large-fill').split(','));
+
+const largeRuns = 300;
+
+const largeRecordBytes = 1_048_576;
+
 const big = { org: 'o1', brain: 'big' };
 
 const RunEventSchema = Schema.StructWithRest(Schema.Struct({ type: Schema.String }), [
@@ -178,22 +184,52 @@ async function theFill(bench: Bench): Promise<void> {
   write(`| ${bench.store} | ${fillTicks} | ${runs} | ${seconds(opening.took)} | ${seconds(filling.took)} |`);
 }
 
+function mebibytesBetween(before: number | undefined, after: number | undefined): string {
+  return before === undefined || after === undefined ? '' : `${Math.round((after - before) / 1_048_576)} MiB`;
+}
+
+async function theLargeFill(bench: Bench): Promise<void> {
+  const place = await bench.aPlace();
+  await (await openLedgerWith(bench.ledgerOn(place))).dispose();
+  await bench.write(place, largeRuns, (index) => runOf('big', index, largeRecordBytes));
+  const opening = await timed(() => openLedgerWith(bench.ledgerOn(place)));
+  await opening.answer.dispose();
+  const readBefore = await bench.recordBytesRead?.(place);
+  const filling = await timed(() => openLedgerWith(bench.ledgerOn(place, runOutcomeMapping)));
+  const runs = await readingOf(filling.answer.ledger)();
+  await filling.answer.dispose();
+  const read = mebibytesBetween(readBefore, await bench.recordBytesRead?.(place));
+  await place.drop();
+  write(`| ${bench.store} | ${largeRuns} | ${runs} | ${seconds(opening.took)} | ${seconds(filling.took)} | ${read} |`);
+}
+
 const benches: readonly Bench[] = postgresqlServer === '' ? [onSQLite] : [onSQLite, onPostgreSQL(postgresqlServer)];
 
 async function inTurn(each: (bench: Bench) => Promise<void>): Promise<void> {
   await Effect.runPromise(Effect.forEach(benches, (bench) => Effect.promise(() => each(bench)), { discard: true }));
 }
 
-write(
-  '| Store | Runs in the window | Runs read | Read, median (slowest) ms | Runs aggregated | Aggregate over the records, median (slowest) ms | Open | Open and fill |',
-);
-write('| --- | --- | --- | --- | --- | --- | --- | --- |');
-await Effect.runPromise(
-  Effect.forEach(sizes, (runs) => Effect.promise(() => inTurn((bench) => theRead(bench, runs))), { discard: true }),
-);
-write('\n| Store | Append without the projection, median (p95) ms | Append with it, median (p95) ms |');
-write('| --- | --- | --- |');
-await inTurn(theAppend);
-write('\n| Store | Ticks of the dataset | Runs of its big brain kept | Open | Open and fill |');
-write('| --- | --- | --- | --- | --- |');
-await inTurn(theFill);
+if (parts.has('read')) {
+  write(
+    '| Store | Runs in the window | Runs read | Read, median (slowest) ms | Runs aggregated | Aggregate over the records, median (slowest) ms | Open | Open and fill |',
+  );
+  write('| --- | --- | --- | --- | --- | --- | --- | --- |');
+  await Effect.runPromise(
+    Effect.forEach(sizes, (runs) => Effect.promise(() => inTurn((bench) => theRead(bench, runs))), { discard: true }),
+  );
+}
+if (parts.has('append')) {
+  write('\n| Store | Append without the projection, median (p95) ms | Append with it, median (p95) ms |');
+  write('| --- | --- | --- |');
+  await inTurn(theAppend);
+}
+if (parts.has('fill')) {
+  write('\n| Store | Ticks of the dataset | Runs of its big brain kept | Open | Open and fill |');
+  write('| --- | --- | --- | --- | --- |');
+  await inTurn(theFill);
+}
+if (parts.has('large-fill')) {
+  write('\n| Store | Runs, most with a record of 1 MiB | Runs kept | Open | Open and fill | Record pages read |');
+  write('| --- | --- | --- | --- | --- | --- |');
+  await inTurn(theLargeFill);
+}

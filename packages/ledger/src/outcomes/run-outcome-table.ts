@@ -60,24 +60,39 @@ function withinBytes(listed: readonly SizedStream[]): readonly string[] {
   return taken;
 }
 
-async function batchFilledAfter(
+interface Batch {
+  readonly after: string;
+  readonly listing: number;
+}
+
+function batchAfter({ listing }: Batch, listed: readonly SizedStream[], taken: readonly string[]): Batch | undefined {
+  const last = taken.at(-1);
+  if (last === undefined || (taken.length === listed.length && listed.length < listing)) {
+    return undefined;
+  }
+  const takenBytes = listed.slice(0, taken.length).reduce((total, { size }) => total + size, 0);
+  const fitting = Math.floor((mostBytesInABatch * taken.length) / takenBytes);
+  return { after: last, listing: Math.max(1, Math.min(runStreamsInABatch, 2 * listing, fitting)) };
+}
+
+async function batchFilled(
   keeping: RunOutcomeKeeping,
   execute: StatementExecutor,
-  after: string,
-): Promise<string | undefined> {
+  batch: Batch,
+): Promise<Batch | undefined> {
   const { statements, mapping } = keeping;
-  const listed = await streamsIn(execute, statements.runStreamsAfter(after, runStreamsInABatch, mapping.types));
+  const listed = await streamsIn(execute, statements.runStreamsAfter(batch.after, batch.listing, mapping.types));
   const streams = withinBytes(listed);
   const messages = streams.length === 0 ? [] : await messagesIn(execute, statements.messagesOf(streams, mapping.types));
   const kept = replayedRows(keeping, streams, messages);
   await inTurn(chunksOf(kept, statements.rowsInAWrite), (rows) => execute.command(rowsWrite(rows)));
-  return streams.length < listed.length || listed.length === runStreamsInABatch ? streams.at(-1) : undefined;
+  return batchAfter(batch, listed, streams);
 }
 
-async function filledAfter(keeping: RunOutcomeKeeping, execute: StatementExecutor, after: string): Promise<void> {
-  const last = await batchFilledAfter(keeping, execute, after);
-  if (last !== undefined) {
-    await filledAfter(keeping, execute, last);
+async function filledFrom(keeping: RunOutcomeKeeping, execute: StatementExecutor, batch: Batch): Promise<void> {
+  const next = await batchFilled(keeping, execute, batch);
+  if (next !== undefined) {
+    await filledFrom(keeping, execute, next);
   }
 }
 
@@ -88,7 +103,7 @@ async function created(
 ): Promise<void> {
   const { statements } = keeping;
   await inTurn(statements.create(), (statement) => execute.command(statement));
-  await filledAfter(keeping, execute, '');
+  await filledFrom(keeping, execute, { after: '', listing: 1 });
   await inTurn(
     tables.filter((name) => isEarlierVersion(name)),
     (name) => execute.command(tableDrop(name)),

@@ -26,7 +26,6 @@ const description = [
   'its `causation_id`, the id of the event that directly led to it or null,',
   '`at`, when it happened by its own clock, its `type`, a `summary` in plain words, and its `data`, at most 4 KiB as JSON:',
   'execution_started with the definition type, name and version and who started it;',
-  'execution_deferred when the work goes on after the call that started it;',
   'execution_succeeded; execution_rejected with the reason, the detail and the first five issues; execution_failed;',
   'and, for each tool the run called, tool_call_started with the number of the call, the server and the tool',
   'and the size and SHA-256 digest of its arguments, and tool_call_answered with its outcome',
