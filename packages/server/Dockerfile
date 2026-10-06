@@ -21,6 +21,7 @@ COPY packages/workflow-host/package.json packages/workflow-host/
 COPY primitives/computation/package.json primitives/computation/
 COPY primitives/inference/package.json primitives/inference/
 COPY primitives/orchestration/package.json primitives/orchestration/
+COPY primitives/recollection/package.json primitives/recollection/
 RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
 RUN --network=none npm_config_build_from_source=sqlite3 npm_config_nodedir=/usr/local \
   pnpm rebuild --filter @beonauto/server... sqlite3 \
@@ -53,6 +54,7 @@ COPY packages/workflow-host/src packages/workflow-host/src
 COPY primitives/computation/src primitives/computation/src
 COPY primitives/inference/src primitives/inference/src
 COPY primitives/orchestration/src primitives/orchestration/src
+COPY primitives/recollection/src primitives/recollection/src
 RUN apt-get update \
   && apt-get install --yes --no-install-recommends tini \
   && rm -rf /var/lib/apt/lists/* \

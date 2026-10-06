@@ -1,4 +1,6 @@
+export { enclosedBody } from './dsl/expressions.ts';
 export { isJson, jsonBytesOf, measureOf, mostValueDepth, type Json, type JsonObject } from './dsl/json.ts';
+export { literalFilterOf, type LiteralFilterReading } from './filters/event-filter.ts';
 export { mostIssueBytes, textWithin } from './programs/byte-sizes.ts';
 export {
   compileProgram,
@@ -24,9 +26,21 @@ export {
   mostEvaluationDepth,
   programPool,
   workerStackMegabytes,
+  type FoldOutcome,
+  type FoldRequest,
   type PoolOutcome,
   type PoolSettings,
   type ProgramPool,
   type ProgramRequest,
   type Stopped,
 } from './program-pool/program-pool.ts';
+export type {
+  FoldPage,
+  FoldStall,
+  FoldedPage,
+  FoldedView,
+  FoldingView,
+  StallKind,
+  ViewCheck,
+} from './folds/fold-page.ts';
+export type { FoldPlace } from './folds/fold-progress.ts';

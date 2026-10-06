@@ -36,7 +36,7 @@ const ExaminedRunRow = Schema.Struct({
 function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationScope): string {
   return `SELECT scanned.*, row_number() OVER (
       ORDER BY scanned.transaction_id ${direction(scope)}, scanned.global_position ${direction(scope)}
-    ) AS examined
+    ) AS examined, count(*) OVER () AS scanned_count
     FROM (
       SELECT transaction_id, global_position, transaction_id::text AS transaction,
         global_position::text AS position, stream_id AS stream, message_type AS type,
@@ -96,7 +96,7 @@ export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
           ORDER BY m.transaction_id DESC, m.global_position DESC
           LIMIT 1
         ) AS latest
-        WHERE ${wanted} OR f.examined >= ${bind(scope.examineAtMost)}
+        WHERE ${wanted} OR f.examined >= ${bind(scope.examineAtMost)} OR f.examined = f.scanned_count
         ORDER BY f.transaction_id ${direction(scope)}, f.global_position ${direction(scope)}
         LIMIT ${bind(scope.answerAtMost)}`,
       values,

@@ -14,6 +14,7 @@ export interface LedgerEntry {
   readonly storeOn: (database: string) => LedgerStore;
   readonly untilReadable: (database: string) => Promise<void>;
   readonly queried: (database: string, statement: string) => Promise<readonly unknown[]>;
+  readonly definitionStreamsIndexed: (database: string) => Promise<boolean>;
   readonly outcomeTables: string;
 }
 

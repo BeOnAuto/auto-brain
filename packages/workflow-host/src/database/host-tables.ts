@@ -1,3 +1,4 @@
+import { viewsTable } from '../views/view-statements.ts';
 import { statement, type Statement } from './statement.ts';
 
 export const timerColumnsOnSQLite = statement`SELECT name FROM pragma_table_info('workflow_timers')`;
@@ -63,4 +64,5 @@ export const hostTables: readonly Statement[] = [
     holder TEXT NOT NULL,
     expires_at BIGINT NOT NULL
   )`,
+  viewsTable,
 ];

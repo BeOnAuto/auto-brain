@@ -2,7 +2,6 @@ import type { Conflict } from '@beonauto/operations';
 import type { ReceivedEvent, RunState } from '@beonauto/workflow-engine';
 import type { Effect } from 'effect';
 
-import { openHostDatabase, type DatabaseSettings } from '../database/host-databases.ts';
 import { systemClock, type HostClock } from '../loop/host-clock.ts';
 import { runIdOf, type RunAddress } from '../runs/run-address.ts';
 import { gate, type HostStopped } from './host-gate.ts';
@@ -15,9 +14,10 @@ import {
   type RunStart,
   type StartAnswer,
 } from './run-requests.ts';
+import { storeOf, type StoreSettings } from './workflow-store.ts';
 
 export interface HostOptions extends Omit<ServingOptions, 'clock'> {
-  readonly database: DatabaseSettings;
+  readonly database: StoreSettings;
   readonly clock?: HostClock;
   readonly holder?: string;
 }
@@ -33,7 +33,7 @@ export interface WorkflowHost {
 
 export async function openWorkflowHost(options: HostOptions): Promise<WorkflowHost> {
   const clock = options.clock ?? systemClock;
-  const database = await openHostDatabase(options.database, options.reports.lostConnection);
+  const { database } = await storeOf(options.database, options.reports.lostConnection);
   const standing = await standingOn(database, { ...options, clock }, options.holder);
   const { guarded, closed } = gate();
   const runs = runRequests({ database, clock, serving: standing.serving });

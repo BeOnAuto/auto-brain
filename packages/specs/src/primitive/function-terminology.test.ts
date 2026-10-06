@@ -43,6 +43,7 @@ describe('brain function terminology', () => {
   it('labels known resources without reclassifying custom runtime adapters as functions', () => {
     expect(definitionResourceLabel('inference')).toBe('reasoning function');
     expect(definitionResourceLabel('computation')).toBe('computation function');
+    expect(definitionResourceLabel('recollection')).toBe('recall function');
     expect(definitionResourceLabel('orchestration')).toBe('workflow');
     expect(definitionResourceLabel('echo')).toBe('echo definition');
     expect(definitionResourceLabel('agent')).toBe('agent definition');

@@ -66,6 +66,16 @@ The [computation function adapter](../../reference/computation-format.md) runs e
 
 A worker is stopped when its heap grows past 256 MiB, and it has a stack of 64 MiB, so plan for about 320 MiB for each worker on top of the server's own memory, about 1.25 GiB for the default four. A value outside the range stops the server at start, naming the setting.
 
+The [recall function adapter](../../reference/recall-format.md) shares those workers: a run of a recall function answers in one, and the server that runs the workflows keeps the views of recall functions, folding each page of a brain's history in one, using at most half of them at once and at least one. It keeps each view in a table beside the workflows' tables, in the ledger's database, so a view needs no other storage. These settings bound it:
+
+| Variable                      | Default | Purpose                                                                                                                                    |
+| ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RECOLLECTION_MAX_FUNCTIONS`  | `32`    | How many active recall functions a brain may keep, from 1 to 1000; lowering it below what a brain keeps refuses its saves and nothing else |
+| `RECOLLECTION_MAX_REBUILDS`   | `4`     | How many views of one brain are built at once, from 1 to 64; the others wait in the order they were saved                                  |
+| `RECOLLECTION_BRAINS_AT_ONCE` | `4`     | How many brains the server folds at once, from 1 to 64                                                                                     |
+
+A value outside its range stops the server at start, naming the setting.
+
 The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, where that user may write, as it may only in `/tmp`, `/var/tmp`, `/run/lock` and its home `/home/node` besides, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built. A second `SIGTERM` or `SIGINT` ends the server at once with exit code 1.
 
 ## The ledger in PostgreSQL

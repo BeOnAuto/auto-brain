@@ -35,6 +35,11 @@ const listedDefinitionFields = {
   ),
 };
 
+const StandingField = Schema.JsonObject.annotate({
+  description:
+    'How the definition stands where its runtime adapter keeps something for it, read when the definition is: for a recall function, the view it keeps, with its state (live, rebuilding, waiting or stalled), its version, its checkpoint, the events folded and how far it lags the brain',
+});
+
 export const ListedDefinitionSchema = Schema.Struct(listedDefinitionFields).annotate({
   identifier: 'ListedDefinition',
   description: 'A saved definition, without its document',
@@ -43,6 +48,7 @@ export const ListedDefinitionSchema = Schema.Struct(listedDefinitionFields).anno
 export const DefinitionSchema = Schema.Struct({
   ...listedDefinitionFields,
   source: Schema.String.annotate({ description: 'The definition document' }),
+  standing: Schema.optionalKey(StandingField),
 }).annotate({ identifier: 'Definition', description: 'A saved definition, with its document' });
 
 export type Definition = typeof DefinitionSchema.Type;
@@ -51,12 +57,19 @@ export type ReasoningFunctionDefinition = Definition & { readonly primitive: 'in
 
 export type ComputationFunctionDefinition = Definition & { readonly primitive: 'computation' };
 
-export type BrainFunctionDefinition = ReasoningFunctionDefinition | ComputationFunctionDefinition;
+export type RecallFunctionDefinition = Definition & { readonly primitive: 'recollection' };
+
+export type BrainFunctionDefinition =
+  | ReasoningFunctionDefinition
+  | ComputationFunctionDefinition
+  | RecallFunctionDefinition;
+
+const brainFunctionTypes: ReadonlySet<string> = new Set(['inference', 'computation', 'recollection']);
 
 export type WorkflowDefinition = Definition & { readonly primitive: 'orchestration' };
 
 export function isBrainFunctionDefinition(definition: Definition): definition is BrainFunctionDefinition {
-  return definition.primitive === 'inference' || definition.primitive === 'computation';
+  return brainFunctionTypes.has(definition.primitive);
 }
 
 export function isWorkflowDefinition(definition: Definition): definition is WorkflowDefinition {
@@ -65,4 +78,6 @@ export function isWorkflowDefinition(definition: Definition): definition is Work
 
 export type ListedDefinition = typeof ListedDefinitionSchema.Type;
 
-export type StoredDefinition = Omit<Definition, 'primitive' | 'media_type'>;
+export type StoredDefinition = Omit<Definition, 'primitive' | 'media_type' | 'standing'> & {
+  readonly details?: Schema.JsonObject;
+};

@@ -8,6 +8,7 @@ import { details, happenings } from '../testing/happenings.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
 import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
+import { definitionStreamsPlan, theBrainIndexes } from './index-checks.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -18,6 +19,19 @@ async function queried(database: string, statement: string): Promise<readonly un
   try {
     const { rows } = await client.query<Readonly<Record<string, unknown>>>(statement);
     return rows;
+  } finally {
+    await client.end();
+  }
+}
+
+async function definitionStreamsIndexed(database: string): Promise<boolean> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  try {
+    await client.query('SET enable_seqscan = off');
+    const { explained, values, throughTheIndex } = definitionStreamsPlan;
+    const plan = await client.query<Readonly<Record<string, unknown>>>(explained, values);
+    return plan.rows.some((row) => String(row['QUERY PLAN']).includes(throughTheIndex));
   } finally {
     await client.end();
   }
@@ -89,6 +103,7 @@ const onPostgreSQL: LedgerEntry = {
       },
     }),
   queried,
+  definitionStreamsIndexed,
   outcomeTables:
     "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_outcomes_[0-9]+$' ORDER BY relname",
 };
@@ -245,30 +260,6 @@ describe.skipIf(skipped)(
   },
 );
 
-const theBrainIndexes = [
-  {
-    indexname: 'ledger_first_messages_by_kind',
-    indexdef: `CREATE INDEX ledger_first_messages_by_kind ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){4}'::text), stream_position, transaction_id, global_position)`,
-  },
-  {
-    indexname: 'ledger_messages_by_brain',
-    indexdef: `CREATE INDEX ledger_messages_by_brain ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), transaction_id, global_position)`,
-  },
-  {
-    indexname: 'ledger_messages_by_brain_and_correlation',
-    indexdef: `CREATE INDEX ledger_messages_by_brain_and_correlation ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), ((message_metadata ->> 'correlationId'::text)), transaction_id, global_position)`,
-  },
-  {
-    indexname: 'ledger_messages_by_brain_and_time',
-    indexdef: `CREATE INDEX ledger_messages_by_brain_and_time ON ONLY public.emt_messages USING btree ("substring"(stream_id, '^(?:[^/]*/){3}'::text), created, transaction_id, global_position)`,
-  },
-  {
-    indexname: 'ledger_messages_by_stream',
-    indexdef:
-      'CREATE INDEX ledger_messages_by_stream ON ONLY public.emt_messages USING btree (stream_id, transaction_id, global_position)',
-  },
-];
-
 describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
   it('are created when the ledger opens, once however often it opens', async () => {
     const database = await aDatabase();
@@ -280,7 +271,7 @@ describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout
     expect(
       await queried(
         database,
-        "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'emt_messages' AND indexname LIKE 'ledger%' ORDER BY indexname",
+        "SELECT indexname, indexdef FROM pg_indexes WHERE tablename IN ('emt_messages', 'emt_streams') AND indexname LIKE 'ledger%' ORDER BY indexname",
       ),
     ).toEqual(theBrainIndexes);
   });
@@ -295,6 +286,6 @@ describe.skipIf(skipped)(`The brain's indexes on PostgreSQL${notice}`, { timeout
 
     expect(
       await queried(database, "SELECT count(*)::int AS indexes FROM pg_indexes WHERE indexname LIKE 'ledger%'"),
-    ).toEqual([{ indexes: 5 }]);
+    ).toEqual([{ indexes: 6 }]);
   });
 });

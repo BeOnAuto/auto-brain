@@ -22,18 +22,20 @@ const reasoningFunction: Definition = {
 
 const computationFunction: Definition = { ...reasoningFunction, primitive: 'computation', source: '.a + 1' };
 
+const recallFunction: Definition = { ...reasoningFunction, primitive: 'recollection', source: '. + 1' };
+
 const workflow: Definition = { ...reasoningFunction, primitive: 'orchestration', media_type: 'application/yaml' };
 
 describe('a saved definition', () => {
-  it('is a brain function when it is a reasoning or a computation function, and a workflow when it is a workflow', () => {
-    const definitions = [reasoningFunction, computationFunction, workflow];
+  it('is a brain function when it is a reasoning, a computation or a recall function, and a workflow when it is a workflow', () => {
+    const definitions = [reasoningFunction, computationFunction, recallFunction, workflow];
 
     const functions = definitions.filter((definition) => isBrainFunctionDefinition(definition));
     const workflows = definitions.filter((definition) => isWorkflowDefinition(definition));
 
     expectTypeOf(functions).toEqualTypeOf<BrainFunctionDefinition[]>();
     expectTypeOf(workflows).toEqualTypeOf<WorkflowDefinition[]>();
-    expect([functions, workflows]).toEqual([[reasoningFunction, computationFunction], [workflow]]);
+    expect([functions, workflows]).toEqual([[reasoningFunction, computationFunction, recallFunction], [workflow]]);
   });
 
   it.each(['echo', 'reason', 'workflow', 'interaction', 'prediction', 'recall', 'compute'])(

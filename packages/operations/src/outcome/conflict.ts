@@ -5,6 +5,7 @@ export const ConflictKindSchema = Schema.Literals([
   'retired',
   'concurrent_change',
   'unworkable',
+  'stalled',
   'tools_called',
 ]);
 

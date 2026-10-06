@@ -7,7 +7,7 @@ import type { ExecutionEvent } from '../execution/execution-events.ts';
 import { jsonBytesOf } from '../execution/recorded-size.ts';
 import type { SpecEvent } from '../registry/spec-events.ts';
 import { specsDecider, specsStreamOf } from '../registry/specs-decider.ts';
-import { brainFactOf } from './brain-facts.ts';
+import { brainEventOf, brainFactOf } from './brain-facts.ts';
 import { CloudEventSchema, mostPublishedEventBytes } from './cloud-event.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -225,5 +225,62 @@ describe('the records that are no facts of the brain', () => {
         recordedAt: fact.at,
       }),
     ).toBeUndefined();
+  });
+});
+
+describe('the cause and the run of a fact', () => {
+  it('are the extension attributes causationid and correlationid, when the record has them', () => {
+    const caused = {
+      ...ofRun({ type: 'execution_failed', ...ofSummary, ...fact }),
+      causationId: 'c-1',
+      correlationId: 'r-1',
+    };
+    const correlated = { ...ofRun({ type: 'execution_failed', ...ofSummary, ...fact }), correlationId: 'r-1' };
+
+    expect([brainFactOf(caused), brainFactOf(correlated)]).toEqual([
+      { ...aboutTheRun, type: 'execution_failed', data: ofTheRun, causationid: 'c-1', correlationid: 'r-1' },
+      { ...aboutTheRun, type: 'execution_failed', data: ofTheRun, correlationid: 'r-1' },
+    ]);
+  });
+});
+
+const published = {
+  specversion: '1.0',
+  id: 'm-2026-09',
+  source: '/ledger/eu',
+  type: 'com.acme.ledger.month-closed',
+  time: '2026-10-01T08:59:00Z',
+  data: { region: 'eu' },
+};
+const ofPublished = (data: unknown, type = 'event_published'): RecordedEvent => ({
+  id: recordId,
+  cursor: recordId,
+  causationId: 'c-1',
+  correlationId: null,
+  stream: 'events/0199a3c4',
+  type,
+  data,
+  recordedAt: fact.at,
+});
+
+describe('the events of a brain', () => {
+  it('are the facts of the brain and the events published to it, as their publishers gave them', () => {
+    expect(
+      brainEventOf(
+        ofPublished({ type: 'event_published', event: published, filled: [], by: 'acme-admin', at: fact.at }),
+      ),
+    ).toEqual(published);
+    expect(brainEventOf(ofRun({ type: 'execution_failed', ...ofSummary, ...fact }))).toEqual({
+      ...aboutTheRun,
+      type: 'execution_failed',
+      data: ofTheRun,
+    });
+  });
+
+  it('leave out a published record that is not one, and a record of that stream of another type', () => {
+    expect([brainEventOf(ofPublished({ type: 'event_published' })), brainEventOf(ofPublished({}, 'noted'))]).toEqual([
+      undefined,
+      undefined,
+    ]);
   });
 });

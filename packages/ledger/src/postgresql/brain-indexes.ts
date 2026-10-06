@@ -9,6 +9,8 @@ export const kindKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){4}')";
 
 export const correlationOfMessage = "(message_metadata ->> 'correlationId')";
 
+export const definitionTypeOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}specs/([^/]+)$')";
+
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
 const brainKey = SQL.plain(brainKeyOfStream);
@@ -39,6 +41,11 @@ const brainIndexes: readonly BrainIndex[] = [
     create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation
       ON emt_messages ((${brainKey}), ${SQL.plain(correlationOfMessage)}, transaction_id, global_position)`,
   },
+  {
+    name: 'ledger_definition_streams',
+    create: () => SQL`CREATE INDEX IF NOT EXISTS ledger_definition_streams
+      ON emt_streams ((${SQL.plain(definitionTypeOfStream)})) WHERE (${SQL.plain(definitionTypeOfStream)}) IS NOT NULL`,
+  },
 ];
 
 export async function createPostgreSQLBrainIndexes({ execute }: { readonly execute: IndexExecutor }): Promise<void> {
@@ -53,6 +60,6 @@ export async function createPostgreSQLBrainIndexes({ execute }: { readonly execu
   const existing = new Set(Schema.decodeUnknownSync(NameRows)(rows).map(({ name }) => name));
   const created = await createMissingIndexes(execute, brainIndexes, existing);
   if (created > 0) {
-    await execute.command(SQL`ANALYZE emt_messages`);
+    await execute.command(SQL`ANALYZE emt_messages, emt_streams`);
   }
 }

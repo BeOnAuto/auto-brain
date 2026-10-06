@@ -27,10 +27,16 @@ export interface RecordedEvent {
   readonly recordedAt: string;
 }
 
+export interface ExaminedPlace {
+  readonly cursor: string;
+  readonly recordedAt: string;
+}
+
 export interface RecordedPage {
   readonly records: readonly RecordedEvent[];
   readonly hasMore: boolean;
   readonly nextCursor: string | null;
+  readonly lastExamined: ExaminedPlace | null;
 }
 
 export type InvalidCursorKind = 'malformed' | 'of_another_brain';

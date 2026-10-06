@@ -168,6 +168,40 @@ function aFilterOfTypes(aLedger: LedgerMaker): void {
   });
 }
 
+function theLastRecordExamined(aLedger: LedgerMaker): void {
+  describe('the last record a page examined', () => {
+    it('is named even at the end of the history, past records of types it does not want', async () => {
+      const ledger = await aLedger();
+      await happen(ledger, inAlpha('notes'), noted('kept', 1), noted('noted', 2), noted('noted', 3));
+      const kept = { order: 'asc', limit: 10, types: ['kept'] } as const;
+
+      const first = await reading(ledger, everything, kept);
+      const whole = await reading(ledger, everything, { order: 'asc', limit: 10 });
+      const atTheEnd = await reading(ledger, everything, { ...kept, cursor: String(first.lastExamined?.cursor) });
+      await happen(ledger, inAlpha('notes'), noted('kept', 4));
+      const later = await reading(ledger, everything, { ...kept, cursor: String(first.lastExamined?.cursor) });
+
+      expect([details(first), first.nextCursor, first.lastExamined]).toEqual([
+        [1],
+        null,
+        { cursor: whole.records[2]?.cursor, recordedAt: whole.records[2]?.recordedAt },
+      ]);
+      expect([details(atTheEnd), atTheEnd.lastExamined, details(later)]).toEqual([[], null, [4]]);
+    });
+
+    it('is the record a page that is cut short reads on after', async () => {
+      const ledger = await aLedger();
+      await happen(ledger, inAlpha('notes'), noted('noted', 1), noted('noted', 2), noted('noted', 3));
+      await happen(ledger, inAlpha('executions/run-1'), noted('execution_started'));
+
+      const cut = await reading(ledger, everything, { order: 'asc', limit: 2 });
+      const runs = await reading(ledger, { kind: 'executions' }, { order: 'asc', limit: 10 });
+
+      expect([cut.lastExamined?.cursor, runs.lastExamined?.cursor]).toEqual([cut.nextCursor, runs.records[0]?.cursor]);
+    });
+  });
+}
+
 function cursorsOfARead(aLedger: LedgerMaker): void {
   describe('the cursor of a read', () => {
     it('is the cursor of each record, which reads on after it', async () => {
@@ -245,6 +279,7 @@ export function recordedBehaviour(aLedger: LedgerMaker): void {
   pagesWhileAppending(aLedger);
   theBoundsOfAPage(aLedger);
   aFilterOfTypes(aLedger);
+  theLastRecordExamined(aLedger);
   cursorsOfARead(aLedger);
   theTimeAPageStartsFrom(aLedger);
   runsBehaviour(aLedger);

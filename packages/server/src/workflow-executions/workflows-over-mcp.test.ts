@@ -93,7 +93,7 @@ describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
     expect(toolNamesIn(listing)).toEqual(brainTools);
-    expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'computation', 'orchestration']);
+    expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'computation', 'recollection', 'orchestration']);
   });
 
   it('executes a workflow that calls a reasoning function definition and waits for an event the tools send', async () => {

@@ -1,4 +1,6 @@
+import { idleViewsOn } from './measure/idle-views.ts';
 import { timerLatenessOn } from './measure/lateness.ts';
+import { rebuildOn } from './measure/rebuild.ts';
 import { recoveryOn } from './measure/recovery.ts';
 import { measuredStores, type MeasuredStore } from './measure/stores.ts';
 import { throughputOn, type Throughput } from './measure/throughput.ts';
@@ -25,6 +27,14 @@ async function measuredOn({ store, aDatabase, removeAll }: MeasuredStore): Promi
     const recovery = await recoveryOn(await aDatabase());
     write(
       `${store}: after a restart, a snapshot of ${recovery.snapshotBytes} bytes and ${recovery.eventsAfterIt} events after it: the host opened in ${recovery.openMs.toFixed(1)} ms, the first input took ${recovery.firstInputMs.toFixed(1)} ms and the next ${recovery.nextInputMs.toFixed(1)} ms`,
+    );
+    const rebuild = await rebuildOn(await aDatabase(), 100_000);
+    write(
+      `${store}: a view rebuilt over ${rebuild.events} matching events in ${(rebuild.milliseconds / 1000).toFixed(2)} s, ${Math.round((rebuild.events * 1000) / rebuild.milliseconds)} events a second, in ${rebuild.pages} pages and ${rebuild.writes} writes of its row, to a view of ${rebuild.viewBytes} bytes`,
+    );
+    const idle = await idleViewsOn(await aDatabase(), 32, 10);
+    write(
+      `${store}: ${idle.views} live views of ${idle.viewBytes} bytes each, with no new events, kept the event loop busy ${idle.busyMsASecond.toFixed(1)} ms a second over ${idle.seconds} s`,
     );
   } finally {
     await removeAll();

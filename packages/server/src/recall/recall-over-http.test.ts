@@ -1,0 +1,128 @@
+import { scriptedPool } from '@beonauto/computation/testing';
+import { Schema } from 'effect';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { workerPool } from '../composition/served-computation.ts';
+import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import {
+  brainWithReviews,
+  liveWith,
+  recallTestTimeoutMs,
+  recalled,
+  reviewed,
+  servingRecall,
+  standingUntil,
+  verdicts,
+} from '../testing/recall-server.ts';
+
+const decodeHistory = Schema.decodeUnknownSync(
+  Schema.Struct({
+    events: Schema.Array(Schema.Struct({ type: Schema.String, summary: Schema.String, data: Schema.Unknown })),
+  }),
+);
+
+const decodeExecution = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
+
+const anyText: unknown = expect.any(String);
+
+const closing: (() => Promise<void>)[] = [];
+
+afterEach(async () => {
+  await Promise.all(closing.splice(0).map((close) => close()));
+});
+
+async function reviewing(...outputs: readonly Schema.Json[]): Promise<ReasoningServer> {
+  const server = await servingRecall(verdicts(...outputs));
+  closing.push(server.stop);
+  await brainWithReviews(server);
+  await reviewed(server, outputs.length);
+  return server;
+}
+
+describe('a recall function over HTTP', { timeout: recallTestTimeoutMs }, () => {
+  it('folds the runs of a reasoning function in order, guarded against what an output may be, one over the event bound seen as its size', async () => {
+    const server = await reviewing(
+      { campaign: 'spring', verdict: 'approve' },
+      'a plain text answer',
+      ['an', 'array'],
+      { campaign: 7, verdict: 3 },
+      { campaign: 'spring', verdict: 'x'.repeat(300_000) },
+      { campaign: 'spring', verdict: 'reject' },
+    );
+
+    const standing = await standingUntil(server, 'reviews', liveWith(6));
+    const spring = await recalled(server, 'reviews', { campaign: 'spring' });
+    const unknown = await recalled(server, 'reviews', { campaign: 'unknown', last: 10 });
+
+    expect(standing).toMatchObject({ standing: { state: 'live', version: 1, folded: 6, lag_ms: 0 } });
+    expect(spring).toMatchObject({
+      status: 200,
+      body: { status: 'succeeded', output: [{ verdict: 'approve' }, { verdict: 'reject' }] },
+    });
+    expect(unknown).toMatchObject({
+      body: { output: [{ verdict: 'none' }, { verdict: 'none' }, { verdict: '3' }, { verdict: 'none' }] },
+    });
+  });
+
+  it('records the checkpoint it answered at, shown by the run and told in its history within 4 KiB', async () => {
+    const server = await reviewing({ campaign: 'spring', verdict: 'approve' });
+    await standingUntil(server, 'reviews', liveWith(1));
+
+    const run = decodeExecution((await recalled(server, 'reviews', { campaign: 'spring' })).body).execution_id;
+    const read = await server.call('GET', `${alpha}/executions/${run}`);
+    const { events } = decodeHistory((await server.call('GET', `${alpha}/executions/${run}/history`)).body);
+
+    expect(read.body).toMatchObject({
+      primitive: 'recollection',
+      name: 'reviews',
+      record: { language: 'jq', view: { version: 1, folded: 1, checkpoint: anyText } },
+    });
+    expect(events.map(({ type }) => type)).toEqual(['execution_started', 'execution_succeeded']);
+    expect(events.every(({ data }) => JSON.stringify(data).length <= 4096)).toBe(true);
+  });
+});
+
+describe('the input of a run of a recall function over HTTP', { timeout: recallTestTimeoutMs }, () => {
+  it('runs with an empty input when it is given none, and refuses an input its schema refuses with a pointer', async () => {
+    const server = await reviewing({ campaign: 'spring', verdict: 'approve' });
+    await standingUntil(server, 'reviews', liveWith(1));
+
+    const withoutInput = await server.call('POST', `${alpha}/specs/recollection/reviews/execute`, { body: {} });
+
+    expect(withoutInput).toMatchObject({
+      status: 422,
+      body: { reason: 'invalid_input', errors: [{ pointer: '/input/campaign', detail: 'Missing key' }] },
+    });
+  });
+});
+
+describe('a run of a recall function the server cannot finish, over HTTP', { timeout: recallTestTimeoutMs }, () => {
+  it('is unavailable when no worker is free to answer, and failed when the worker answering breaks', async () => {
+    const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }), {}, (settings) =>
+      scriptedPool(
+        [
+          { ran: 'stopped', because: 'busy', milliseconds: 10_000 },
+          { ran: 'crashed', detail: 'The worker failed: broken', milliseconds: 1 },
+        ],
+        workerPool(settings),
+      ),
+    );
+    closing.push(server.stop);
+    await brainWithReviews(server, 1);
+    await standingUntil(server, 'reviews', liveWith(1));
+
+    const busy = await recalled(server, 'reviews', { campaign: 'spring' });
+    const broken = await recalled(server, 'reviews', { campaign: 'spring' });
+    const runs = await server.call('GET', `${alpha}/executions?primitive=recollection`);
+
+    expect(busy).toMatchObject({
+      status: 503,
+      body: {
+        reason: 'unavailable',
+        detail: 'No worker was free to answer within 10000 ms; this server runs 4 programs at once',
+      },
+    });
+    expect(broken).toMatchObject({ status: 500, body: { reason: 'internal' } });
+    expect(runs.body).toMatchObject({ executions: [{ status: 'failed' }, { status: 'rejected' }] });
+  });
+});

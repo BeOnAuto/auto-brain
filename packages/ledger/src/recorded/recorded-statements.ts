@@ -6,7 +6,14 @@ import {
   type RecordedSelection,
 } from '@beonauto/operations';
 
-import type { MessageLineage, RecordedPoint, RecordedStore, StoredPage, StoredPageRequest } from '../event-store.ts';
+import type {
+  MessageLineage,
+  RecordedPoint,
+  RecordedStore,
+  StoredPage,
+  StoredPageRequest,
+  StoredPlace,
+} from '../event-store.ts';
 
 export interface RecordHead extends MessageLineage {
   readonly point: RecordedPoint;
@@ -17,7 +24,7 @@ export interface RecordHead extends MessageLineage {
 
 export interface ExaminedItem extends Examined {
   readonly point: RecordedPoint;
-  readonly heads: readonly RecordHead[];
+  readonly heads: readonly [RecordHead, ...RecordHead[]];
 }
 
 export interface ExaminationScope {
@@ -84,6 +91,10 @@ function examine(
   return statements.examineRecords(selectedOf(scope.brainKey, selection), scope);
 }
 
+function placeOf({ point, heads: [first] }: ExaminedItem): StoredPlace {
+  return { point, recordedAt: first.recordedAt };
+}
+
 async function pageWithin(
   statements: RecordedStatements,
   selection: RecordedSelection,
@@ -91,7 +102,7 @@ async function pageWithin(
   scope: ExaminationScope,
 ): Promise<StoredPage> {
   const examined = await examine(statements, selection, scope);
-  const { delivered, resumeAfter } = boundedPage(examined, limit, scope.examineAtMost);
+  const { delivered, resumeAfter, lastExamined } = boundedPage(examined, limit, scope.examineAtMost);
   const heads = delivered.flatMap((item) => item.heads);
   const data =
     heads.length === 0 ? new Map<string, unknown>() : await statements.dataAt(heads.map(({ point }) => point));
@@ -105,7 +116,11 @@ async function pageWithin(
     recordedAt,
     data: data.get(pointKey(point)),
   }));
-  return resumeAfter === undefined ? { records } : { records, resumeAfter: resumeAfter.point };
+  return {
+    records,
+    ...(resumeAfter === undefined ? {} : { resumeAfter: resumeAfter.point }),
+    ...(lastExamined === undefined ? {} : { lastExamined: placeOf(lastExamined) }),
+  };
 }
 
 export function recordedReadingOver(statements: RecordedStatements): RecordedStore['readRecorded'] {

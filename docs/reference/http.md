@@ -1,8 +1,8 @@
 # HTTP API
 
-The HTTP API provides brain management, reasoning-function, computation-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, and the brain's analytics. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reasoning-function, computation-function, recall-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, and the brain's analytics. Requests use the API base URL and credentials supplied for the workspace.
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function, `computation` for a computation function and `orchestration` for a workflow.
+The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function, `computation` for a computation function, `recollection` for a recall function and `orchestration` for a workflow.
 
 ## Requests and access
 
@@ -56,6 +56,10 @@ Changing a document creates a version. Updating it with identical source records
 
 A self-hosted runtime offers computation functions under the same operations, with `computation` in place of `inference` in each route, such as `POST /specs/computation` and `POST /specs/computation/{name}/execute`. The `source` is a [computation function document](computation-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above. A run completes within the execute request. A program that cannot give its output for the input, because it raised an error, gave no output or more than one, or did more work or nested deeper than a run may, answers `conflict` with the kind `unworkable`; the same input gives the same answer again, so change the definition or the input rather than retrying.
 
+## Recall functions
+
+A self-hosted runtime offers recall functions under the same operations, with `recollection` in place of `inference` in each route, such as `POST /specs/recollection` and `POST /specs/recollection/{name}/execute`. The `source` is a [recall function document](recall-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above; a brain keeps at most 32 active recall functions, and a save past that answers `conflict`. A run completes within the execute request, answering from the function's view as it stands. While the view of the latest version is still being built, a run answers `unavailable` with the kind `rebuilding` and a `Retry-After`; while the view has stalled, `conflict` with the kind `stalled`; and an answer that cannot give its output, `conflict` with the kind `unworkable`. `get_spec` adds the view's `standing`, and `get_execution` the checkpoint the run answered at in its `record`; see [How the view is kept](recall-format.md#how-the-view-is-kept).
+
 ## Workflows
 
 These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
@@ -83,7 +87,7 @@ A workflow runs once for each `execution_id`. Executing it again with the `execu
 
 A run records its `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. Successful runs include `output`; rejected runs include a rejection. `get_execution` also returns the detailed `record`.
 
-Reasoning and computation functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, as deep as a workflow holds a value; a deeper one returns `invalid_input` at `/input`. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
+Reasoning, computation and recall functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, as deep as a workflow holds a value; a deeper one returns `invalid_input` at `/input`. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 
@@ -256,6 +260,7 @@ A problem document's `type` is a URI that names its kind of problem:
 | `https://on.auto/problems/internal`               | 500    | Something went wrong inside the server                                                                   |
 | `https://on.auto/problems/unavailable`            | 503    | Something the server relies on cannot serve now                                                          |
 | `https://on.auto/problems/tools_unfinished`       | 503    | A run called tools and could not finish; its `reason` is `unavailable`, and it is never retried as it is |
+| `https://on.auto/problems/rebuilding`             | 503    | The view of a recall function is still being built; its `reason` is `unavailable`; try again later       |
 
 A 500 response contains an incident reference. Its `instance` and the `x-request-id` response header identify the server log entry. Include that reference when reporting a problem, without sharing credentials or confidential input. Malformed HTTP can return a bare status before the API handles it.
 
