@@ -34,7 +34,7 @@ function chooserOf(seed: number): Choose {
 
 function cursorOf(choose: Choose, depth: number): ListCursor {
   const running = depth > 0 && choose(3) > 0;
-  const idle = { kind: 'yielding' as const, timer: 't' };
+  const idle = { kind: 'yielding' as const, timer: 't', after: 'input' as const };
   return {
     pointer: '/do',
     position: choose(4),
@@ -79,7 +79,12 @@ function bodyOf(choose: Choose, depth: number): FrameBody {
       kind: 'try',
       attempt: 2,
       startedAt: 0,
-      phase: { kind: 'backing_off', timer: 't', error: { type: 'runtime', status: 500, instance: '/do/0' } },
+      phase: {
+        kind: 'backing_off',
+        timer: 't',
+        error: { type: 'runtime', status: 500, instance: '/do/0' },
+        failed: 'input',
+      },
     }),
     () => ({ kind: 'wait', timer: 't' }),
     () => ({
@@ -90,7 +95,7 @@ function bodyOf(choose: Choose, depth: number): FrameBody {
       label: 'notify',
       deadline: 't',
     }),
-    () => ({ kind: 'listen', consumed: [choose(valueCount), choose(valueCount)] }),
+    () => ({ kind: 'listen', consumed: [choose(valueCount), choose(valueCount)], waited: 1 }),
   ];
   return kinds[choose(kinds.length)]?.() ?? { kind: 'wait', timer: 't' };
 }

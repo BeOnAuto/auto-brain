@@ -1,0 +1,133 @@
+import { describe, expect, it } from 'vitest';
+
+import { drivenRun, timersArmedIn, type DrivenRun } from '../testing/run-history.ts';
+import { workflow } from '../testing/workflows.ts';
+import { isRecordedStep, mostNameBytes, mostTitleBytes } from './step-entry.ts';
+
+function resumedAlong({ events }: DrivenRun): readonly unknown[] {
+  return events.map(({ event }) => event.resumed);
+}
+
+function causesAlong({ driver }: DrivenRun, executionId: string): readonly unknown[] {
+  return driver.ports.runStore.lineages(executionId).map(({ cause }) => cause);
+}
+
+const waited = (reference: string, times = 1) => ({ reference, run: 1, times });
+
+function waitsAlong({ events }: DrivenRun): readonly unknown[] {
+  return events
+    .flatMap(({ event }) => event.steps.filter((step) => isRecordedStep(step)))
+    .filter(({ outcome }) => outcome === 'waiting')
+    .map((step) => step.waits_for);
+}
+
+describe('the waiting entry an input resumed', () => {
+  it('is the wait a timer ended, the call an answer or its deadline ended, and the listen an event moved', () => {
+    const runs = [
+      drivenRun(workflow('do:\n  - pause: { wait: PT1S }')),
+      drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: ada } }'), {
+        respond: () => ({ result: { status: 'succeeded', output: null } }),
+      }),
+      drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: ada } }'), {
+        respond: () => 'never',
+        limits: { longestCallMs: 1000 },
+      }),
+      drivenRun(workflow('do:\n  - hear: { listen: { to: { one: { with: { type: go } } } } }'), {
+        meanwhile: (driver, executionId) => {
+          driver.at(10, () => {
+            driver.deliver(executionId, { id: 'n', type: 'other' });
+          });
+          driver.at(20, () => {
+            driver.deliver(executionId, { id: 'g', type: 'go' });
+          });
+        },
+      }),
+    ];
+
+    expect(runs.map((run) => resumedAlong(run))).toEqual([
+      [null, waited('/do/0/pause')],
+      [null, waited('/do/0/ask')],
+      [null, waited('/do/0/ask')],
+      [null, null, waited('/do/0/hear')],
+    ]);
+  });
+
+  it('is none for a timer of a timeout or a yield, and for a cancel', () => {
+    const runs = [
+      drivenRun(workflow('do:\n  - slow: { timeout: { after: PT1S }, wait: PT1H }')),
+      drivenRun(workflow("do:\n  - each: { for: { in: '${ [range(0; 120)] }' }, do: [{ one: { set: {} } }] }")),
+      drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
+        meanwhile: (driver, executionId) => {
+          driver.cancel(executionId);
+        },
+      }),
+    ];
+
+    expect(runs.map((run) => resumedAlong(run))).toEqual([
+      [null, null],
+      [null, null, null],
+      [null, null],
+    ]);
+  });
+});
+
+describe('the cause the engine gives the run store with each record', () => {
+  it('is the start, the waiting entry it resumed, the timer that fired, or nothing, with the attributes of the run', () => {
+    const run = drivenRun(
+      workflow('do:\n  - pause: { wait: PT1S }\n  - slow: { timeout: { after: PT1S }, wait: PT1H }'),
+    );
+    const executionId = run.ended.executionId;
+    const cancelled = drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
+      meanwhile: (driver, running) => {
+        driver.cancel(running);
+      },
+    });
+
+    expect(causesAlong(run, executionId)).toEqual([
+      { kind: 'start' },
+      { kind: 'resumed', step: { reference: '/do/0/pause', run: 1, outcome: 'waiting', times: 1 } },
+      { kind: 'timer', timerId: timersArmedIn(run.events, 'timeout')[0]?.timerId },
+    ]);
+    expect(causesAlong(cancelled, executionId)).toEqual([{ kind: 'start' }, { kind: 'none' }]);
+    expect(run.driver.ports.runStore.lineages(executionId).map(({ attributes }) => attributes)).toEqual([{}, {}, {}]);
+    expect(run.driver.ports.runStore.lineages('no run')).toEqual([]);
+  });
+});
+
+describe('what a waiting step waits for', () => {
+  it('is a timer for a wait, an event for a listen, and a call for a call', () => {
+    const run = drivenRun(
+      workflow(
+        'do:\n  - pause: { wait: PT1S }\n  - hear: { listen: { to: { one: { with: { type: go } } } } }\n  - ask: { call: notify, with: { to: ada } }',
+      ),
+      {
+        respond: () => ({ result: { status: 'succeeded', output: null } }),
+        meanwhile: (driver, executionId) => {
+          driver.at(2000, () => {
+            driver.deliver(executionId, { id: 'g', type: 'go' });
+          });
+        },
+      },
+    );
+
+    expect(waitsAlong(run)).toEqual(['timer', 'event', 'call']);
+  });
+});
+
+describe('the name and the error of a step', () => {
+  it('are cut, the name at 256 bytes and the title of the error at 1 KiB, at a code point', () => {
+    const name = `${'n'.repeat(mostNameBytes - 1)}é`;
+    const title = 'é'.repeat(mostTitleBytes);
+    const run = drivenRun(
+      workflow(
+        `do:\n  - ${name}: { raise: { error: { type: https://example.com/no, status: 400, title: '${title}' } } }`,
+      ),
+    );
+    const raised = run.events.flatMap(({ event }) => event.steps.filter((step) => isRecordedStep(step))).at(1);
+
+    expect(raised).toMatchObject({
+      name: 'n'.repeat(mostNameBytes - 1),
+      error: { type: 'https://example.com/no', title: 'é'.repeat(mostTitleBytes / 2) },
+    });
+  });
+});

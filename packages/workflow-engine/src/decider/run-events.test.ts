@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { taskNameOf } from '../dsl/tasks.ts';
+import { isRecordedStep, type Step, type StepCause } from '../steps/step-entry.ts';
 import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { drivenRun, outputKindsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
@@ -50,8 +52,16 @@ do:
   });
 });
 
+function causeLine(cause: StepCause): string {
+  return cause === 'input' ? 'input' : `${taskNameOf(cause.reference)} ${cause.outcome}`;
+}
+
+function stepLine(step: Step): string {
+  return `${step.name} ${step.outcome} ${step.times} by ${causeLine(step.caused_by)}`;
+}
+
 describe('the steps of an event', () => {
-  it('are one for each run of a task the input stepped, with its last outcome, in the order the tasks started', () => {
+  it('are every entry the input recorded, in order, each caused by the entry before it or by the input', () => {
     const document = workflow(`
 do:
   - outer:
@@ -60,12 +70,18 @@ do:
         - pause: { wait: PT1S }
 `);
     const steps = drivenRun(document).events.map(({ event }) =>
-      event.steps.map(({ reference, run, outcome }) => `${reference} ${run} ${outcome}`),
+      event.steps.filter((step) => isRecordedStep(step)).map((step) => stepLine(step)),
     );
 
     expect(steps).toEqual([
-      ['/do/0/outer 1 started', '/do/0/outer/do/0/inner 1 completed', '/do/0/outer/do/1/pause 1 waiting'],
-      ['/do/0/outer/do/1/pause 1 completed', '/do/0/outer 1 completed'],
+      [
+        'outer started 1 by input',
+        'inner started 1 by outer started',
+        'inner completed 1 by inner started',
+        'pause started 1 by inner completed',
+        'pause waiting 1 by pause started',
+      ],
+      ['pause completed 1 by input', 'outer completed 1 by pause completed'],
     ]);
   });
 });

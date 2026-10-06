@@ -21,6 +21,8 @@ export const testFunctions: CallFunctions = {
         : [rejection(pointer, 'notify takes with: { to }')],
   },
   describe: (name) => `the function ${name}`,
+  childOf: ({ function: name, reference, run, arguments: given }) =>
+    isObject(given) ? `${name} at ${reference} #${run}` : undefined,
   howAWorkflowReachesTheWorld: 'a workflow reaches the world only through the functions it is given',
   howAWorkflowStarts: 'start it through its runtime',
 };

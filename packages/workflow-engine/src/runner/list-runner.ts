@@ -2,6 +2,7 @@ import { valueAtPointer } from '../dsl/json.ts';
 import { caughtRaise, raised } from '../dsl/raised-error.ts';
 import { taskEntries, type TaskEntry } from '../dsl/tasks.ts';
 import type { ListCursor, TaskFrame } from '../machine/run-state.ts';
+import type { StepCause } from '../steps/step-entry.ts';
 import {
   raisedOf,
   type ListAdvance,
@@ -59,7 +60,13 @@ function afterTask(machine: Machine, place: Place, advance: TaskAdvance): ListAd
 function yielded(machine: Machine, position: Position, reference: string): ListAdvance {
   const label = `${reference} lets other workflows run`;
   const timer = machine.session.timers.arm({ purpose: 'yield', reference, milliseconds: 0, label });
-  return { kind: 'waiting', cursor: { ...position, current: { kind: 'yielding', timer } } };
+  const after = machine.session.cause();
+  return { kind: 'waiting', cursor: { ...position, current: { kind: 'yielding', timer, after } } };
+}
+
+function resumedAfterYield(machine: Machine, position: Position, after: StepCause): ListAdvance {
+  machine.session.causedBy(after);
+  return runFrom(machine, position, false);
 }
 
 function runFrom(machine: Machine, position: Position, mayYield: boolean): ListAdvance {
@@ -98,7 +105,9 @@ export function resumeList(machine: Machine, cursor: ListCursor, signal: Signal)
     if (current.kind === 'running') {
       return resumeRunning(machine, cursor, current.task, signal);
     }
-    return signal.kind === 'timer' && signal.timerId === current.timer ? runFrom(machine, position, false) : undefined;
+    return signal.kind === 'timer' && signal.timerId === current.timer
+      ? resumedAfterYield(machine, position, current.after)
+      : undefined;
   });
 }
 

@@ -63,7 +63,7 @@ describe('a fork whose branch fails', () => {
 
     expect(run.outcome).toMatchObject({ kind: 'raised', error: { title: 'The function notify failed' } });
     expect(outputKindsIn(lastEvents)).toEqual(['cancel_timer', 'cancel_timer', 'cancel_timer', 'settle']);
-    expect(stepsIn(lastEvents)).toContainEqual(cancelled);
+    expect(stepsIn(lastEvents)).toContainEqual(expect.objectContaining(cancelled));
   });
 
   it('cancels every branch when its own timeout fires in the middle of them', () => {

@@ -3,6 +3,7 @@ export {
   dispatchedThrough,
   outputsAbove,
   type DispatchWatermark,
+  type OutputOrigin,
   type PositionedOutput,
   type RunContext,
 } from './dispatch/dispatch-watermark.ts';
@@ -17,7 +18,7 @@ export {
 } from './dispatch/run-output.ts';
 export { changesTimers, nextDueAtOf, runDueOf } from './dispatch/run-due.ts';
 export { workflowMachine } from './decider/workflow-machine.ts';
-export type { CallFunctions } from './dsl/call-functions.ts';
+export type { CallFunctions, ChildCall } from './dsl/call-functions.ts';
 export { durationLimitRejections } from './dsl/duration-limits.ts';
 export { readDuration } from './dsl/durations.ts';
 export {
@@ -111,16 +112,27 @@ export {
 } from './machine/run-state.ts';
 export {
   RunEventSchema,
-  StepSchema,
   eventBytesOf,
   fitsInOneEvent,
   withHistoryBytes,
   type PositionedEvent,
   type RunEvent,
-  type Step,
 } from './run-log/run-event.ts';
+export {
+  StepSchema,
+  isRecordedStep,
+  keyOf,
+  type EarlierStep,
+  type Resumed,
+  type Step,
+  type StepCause,
+  type StepKey,
+  type StepOutcome,
+  type WaitsFor,
+} from './steps/step-entry.ts';
+export { stepEventIdOf } from './steps/step-ids.ts';
 export { UnreadableRun, evolveRun, loadedRunOf, stateInCurrentFormat, type LoadedRun } from './run-log/run-fold.ts';
-export type { RunStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
+export type { RecordCause, RecordLineage, RunStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
 export {
   SnapshotSchema,
   isSnapshotDue,

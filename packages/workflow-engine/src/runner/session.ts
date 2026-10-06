@@ -1,28 +1,23 @@
 import type { Place } from '../dsl/evaluation.ts';
 import { withReachableValuesOnly } from '../machine/held-values.ts';
 import type { RunState, TaskFrame, ValueId } from '../machine/run-state.ts';
+import { stepJournalOf, type StepJournal } from '../steps/step-journal.ts';
 import { countersOf, runCellOf, type Counters, type RunCell } from './run-cell.ts';
 import { descriptorsOf, type Descriptors, type MachineOptions } from './run-descriptors.ts';
 import { lifecycleOf, type Ending, type Lifecycle } from './run-ending.ts';
 import { inboxOf, type Inbox } from './run-inbox.ts';
-import {
-  journalOf,
-  meterOf,
-  valueTableOf,
-  type Journal,
-  type Meter,
-  type StepOutcome,
-  type ValueTable,
-} from './run-tables.ts';
+import { journalOf, meterOf, valueTableOf, type Journal, type Meter, type ValueTable } from './run-tables.ts';
 import { callTableOf, timerTableOf, type CallTable, type TimerTable } from './run-timers.ts';
 
 export interface SessionResult {
   readonly state: RunState;
   readonly outputs: ReturnType<Journal['outputs']>;
-  readonly steps: ReturnType<Journal['steps']>;
+  readonly steps: ReturnType<StepJournal['steps']>;
+  readonly resumed: ReturnType<StepJournal['resumed']>;
 }
 
-export interface Session extends ValueTable, Inbox, Counters, Descriptors, Lifecycle {
+export interface Session
+  extends ValueTable, Inbox, Counters, Descriptors, Lifecycle, Omit<StepJournal, 'steps' | 'resumed'> {
   readonly now: number;
   readonly options: MachineOptions;
   readonly meter: Meter;
@@ -31,7 +26,6 @@ export interface Session extends ValueTable, Inbox, Counters, Descriptors, Lifec
   readonly calls: CallTable;
   readonly context: () => ValueId;
   readonly replaceContext: (id: ValueId) => void;
-  readonly record: (reference: string, run: number, outcome: StepOutcome) => void;
   readonly root: () => TaskFrame | null;
   readonly setRoot: (root: TaskFrame | null) => void;
   readonly result: () => SessionResult;
@@ -56,6 +50,7 @@ function resultOf(cell: RunCell, values: ValueTable, ending: Ending, now: number
 export function sessionOf(state: RunState, now: number, options: MachineOptions): Session {
   const cell = runCellOf(state);
   const journal = journalOf();
+  const steps = stepJournalOf();
   const values = valueTableOf(state.machine);
   const descriptors = descriptorsOf(cell, values);
   const timers = timerTableOf(state, descriptors, now, journal);
@@ -79,13 +74,19 @@ export function sessionOf(state: RunState, now: number, options: MachineOptions)
     replaceContext: (context) => {
       cell.update({ context });
     },
-    record: (reference, run, outcome) => {
-      journal.record({ reference, run, outcome });
-    },
+    record: steps.record,
+    cause: steps.cause,
+    causedBy: steps.causedBy,
+    resumedFrom: steps.resumedFrom,
     root: () => cell.get().root,
     setRoot: (root) => {
       cell.update({ root });
     },
-    result: () => ({ state: resultOf(cell, values, ending, now), outputs: journal.outputs(), steps: journal.steps() }),
+    result: () => ({
+      state: resultOf(cell, values, ending, now),
+      outputs: journal.outputs(),
+      steps: steps.steps(),
+      resumed: steps.resumed(),
+    }),
   };
 }

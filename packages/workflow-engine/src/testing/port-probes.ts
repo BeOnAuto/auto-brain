@@ -1,7 +1,7 @@
 import type { CallResult } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { RunContext } from '../dispatch/dispatch-watermark.ts';
+import type { OutputOrigin, RunContext } from '../dispatch/dispatch-watermark.ts';
 import type { ArmTimer, StartCall } from '../dispatch/run-output.ts';
 import { callKeyText } from '../executor/call-key.ts';
 import type { Executor } from '../executor/executor.ts';
@@ -39,6 +39,8 @@ function timerOf({ run, now }: Pick<TimerSubject, 'run' | 'now'>, sequence: numb
   };
 }
 
+const armedBy: OutputOrigin = { version: 1, lastStep: null };
+
 function cancelOf({ executionId, timerId }: ArmTimer): {
   readonly kind: 'cancel_timer';
   readonly executionId: string;
@@ -60,10 +62,10 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
     run: (subject) =>
       Effect.gen(function* () {
         const timer = timerOf(subject, 1);
-        const first = yield* subject.timers.arm(timer, subject.run);
-        const again = yield* subject.timers.arm(timer, subject.run);
+        const first = yield* subject.timers.arm(timer, subject.run, armedBy);
+        const again = yield* subject.timers.arm(timer, subject.run, armedBy);
         const fired = yield* subject.settle();
-        const afterFiring = yield* subject.timers.arm(timer, subject.run);
+        const afterFiring = yield* subject.timers.arm(timer, subject.run, armedBy);
         const cancel = yield* subject.timers.cancel(cancelOf(timer), subject.run);
         return [first, again, firedOf(fired), afterFiring, cancel];
       }),
@@ -74,9 +76,9 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
     run: (subject) =>
       Effect.gen(function* () {
         const timer = timerOf(subject, 2);
-        const armed = yield* subject.timers.arm(timer, subject.run);
+        const armed = yield* subject.timers.arm(timer, subject.run, armedBy);
         const cancelled = yield* subject.timers.cancel(cancelOf(timer), subject.run);
-        const refused = yield* subject.timers.arm(timer, subject.run);
+        const refused = yield* subject.timers.arm(timer, subject.run, armedBy);
         return [armed, cancelled, refused, firedOf(yield* subject.settle())];
       }),
   },
@@ -87,7 +89,7 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
       Effect.gen(function* () {
         const timer = timerOf(subject, 3);
         const cancelled = yield* subject.timers.cancel(cancelOf(timer), subject.run);
-        const refused = yield* subject.timers.arm(timer, subject.run);
+        const refused = yield* subject.timers.arm(timer, subject.run, armedBy);
         return [cancelled, refused, firedOf(yield* subject.settle())];
       }),
   },
@@ -98,7 +100,7 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
       Effect.gen(function* () {
         const kept = timerOf(subject, 4);
         const lost = timerOf(subject, 5);
-        const armed = yield* subject.timers.arm(kept, subject.run);
+        const armed = yield* subject.timers.arm(kept, subject.run, armedBy);
         const swept = yield* subject.timers.sweep(subject.run, [kept, lost]);
         const fired = yield* subject.settle();
         const sweptAgain = yield* subject.timers.sweep(subject.run, [kept, lost]);
@@ -112,8 +114,8 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
       Effect.gen(function* () {
         const ours = timerOf(subject, 6);
         const theirs = timerOf({ run: subject.otherRun, now: subject.now }, 6);
-        const armed = yield* subject.timers.arm(ours, subject.run);
-        const armedToo = yield* subject.timers.arm(theirs, subject.otherRun);
+        const armed = yield* subject.timers.arm(ours, subject.run, armedBy);
+        const armedToo = yield* subject.timers.arm(theirs, subject.otherRun, armedBy);
         const cancelled = yield* subject.timers.cancel(cancelOf(ours), subject.run);
         return [armed, armedToo, cancelled, firedOf(yield* subject.settle())];
       }),

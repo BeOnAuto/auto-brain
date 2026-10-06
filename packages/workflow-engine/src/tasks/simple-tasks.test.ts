@@ -126,10 +126,11 @@ describe('a wait task', () => {
     expect(outcome).toEqual({ kind: 'completed', output: { waited: true } });
     expect(driver.clock.now() - ended.startedAt).toBe(3_600_000);
     expect(outputKindsIn(events)).toEqual(['arm_timer', 'arm_timer', 'cancel_timer', 'settle']);
-    expect(stepsIn(events).filter(({ reference }) => reference === '/do/0/pause')).toEqual([
-      { reference: '/do/0/pause', run: 1, outcome: 'waiting' },
-      { reference: '/do/0/pause', run: 1, outcome: 'completed' },
-    ]);
+    expect(
+      stepsIn(events)
+        .filter(({ reference }) => reference === '/do/0/pause')
+        .map((step) => step.outcome),
+    ).toEqual(['started', 'waiting', 'completed']);
   });
 });
 
