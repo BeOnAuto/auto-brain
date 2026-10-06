@@ -1,6 +1,13 @@
 import { Conflict, Unavailable } from '@beonauto/operations';
 import type { Finished } from '@beonauto/specs';
-import { lineOf, type PoolOutcome, type ProgramSpan, type Stopped } from '@beonauto/workflow-engine/dsl';
+import {
+  lineOf,
+  mostIssueBytes,
+  textWithin,
+  type PoolOutcome,
+  type ProgramSpan,
+  type Stopped,
+} from '@beonauto/workflow-engine/dsl';
 import { Effect, Result, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
@@ -47,7 +54,9 @@ function finishedWith(answered: Answered, facts: RunFacts): Ending {
   if (Result.isFailure(checked)) {
     const issues = checked.failure
       .slice(0, mostIssuesInADetail)
-      .map(({ pointer, detail }) => `${pointer === '' ? 'the output' : pointer}: ${detail}`);
+      .map(({ pointer, detail }) =>
+        textWithin(`${pointer === '' ? 'the output' : pointer}: ${detail}`, mostIssueBytes),
+      );
     return unworkable(`The program's output does not match the output schema: ${issues.join('; ')}`);
   }
   return Effect.succeed({ output: answered.output, record: recordOf(answered, facts) });

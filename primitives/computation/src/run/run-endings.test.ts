@@ -66,6 +66,24 @@ describe('a run whose program cannot work as written', { timeout: workerTestTime
   });
 });
 
+describe('the text of a long error', { timeout: workerTestTimeoutMs }, () => {
+  it('cuts the text of the error, and each issue of an output the schema refuses, at 1,024 bytes', async () => {
+    const longKey = 'language: jq\noutput: {schema: {type: object, additionalProperties: false}}';
+    const refused = await ended('{("k" * 500000): 1}', longKey);
+    const detailOf = Schema.decodeUnknownSync(Schema.Struct({ detail: Schema.String }));
+
+    expect(await ended('error("x" * 30000000)')).toEqual(
+      unworkable(`The program raised an error on line 4: ${'x'.repeat(1024)}…`),
+    );
+    expect(Exit.isFailure(refused)).toBe(true);
+    const detail = detailOf(Option.getOrThrow(Exit.findErrorOption(refused))).detail;
+
+    expect(detail.startsWith("The program's output does not match the output schema: /kkkk")).toBe(true);
+    expect(detail.endsWith('…')).toBe(true);
+    expect(detail.length).toBeLessThan(1200);
+  });
+});
+
 describe('a run that reaches a bound of its program', { timeout: workerTestTimeoutMs }, () => {
   it('ends in conflict when it does more than 64,000,000 units of work, with the units it spent', async () => {
     const hashing = '("a" * 4000000) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))';

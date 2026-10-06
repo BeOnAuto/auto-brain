@@ -88,6 +88,13 @@ describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, ()
     });
   });
 
+  it('cuts the text of an error the program raised at 1,024 bytes, so a long one never crosses whole', async () => {
+    expect(await poolOf().run(request('error("x" * 30000000)'))).toMatchObject({
+      ran: 'raised',
+      issue: { detail: `${'x'.repeat(1024)}…` },
+    });
+  });
+
   it('answers that an output is larger than it may give, without the output', async () => {
     const outcome = await poolOf().run(request('"x" * 100', null, { mostOutputBytes: 50 }));
 

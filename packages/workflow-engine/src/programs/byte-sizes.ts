@@ -12,6 +12,8 @@ const firstPrintable = ' ';
 
 const escapedBytes = 6;
 
+export const mostIssueBytes = 1024;
+
 function isLoneSurrogate(character: string): boolean {
   return character.length === 1 && character >= surrogates.first && character <= surrogates.last;
 }

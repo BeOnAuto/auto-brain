@@ -1,4 +1,5 @@
 export { isJson, jsonBytesOf, measureOf, mostValueDepth, type Json, type JsonObject } from './dsl/json.ts';
+export { mostIssueBytes, textWithin } from './programs/byte-sizes.ts';
 export {
   compileProgram,
   lineOf,

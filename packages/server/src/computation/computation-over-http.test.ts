@@ -146,6 +146,22 @@ describe('an output too large to record, over HTTP', { timeout: computationTestT
   });
 });
 
+describe('a long error, over HTTP', { timeout: computationTestTimeoutMs }, () => {
+  it('answers, records and lists the text of the error cut at 1,024 bytes', async () => {
+    await serving();
+    const shouting = ['---', 'language: jq', '---', 'error("x" * 30000000)'].join('\n');
+    await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'shouting', source: shouting } });
+    const detail = `The program raised an error on line 4: ${'x'.repeat(1024)}…`;
+
+    const executed = await executing('shouting', { input: null, execution_id: executionId });
+    const read = await server.call('GET', `${alpha}/executions/${executionId}`);
+
+    expect(executed).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'unworkable', detail } });
+    expect(read.body).toMatchObject({ rejection: { reason: 'conflict', kind: 'unworkable', detail } });
+    expect(JSON.stringify(read.body).length).toBeLessThan(2048);
+  });
+});
+
 describe(
   'the definitions and inputs of computation functions, over HTTP',
   { timeout: computationTestTimeoutMs },

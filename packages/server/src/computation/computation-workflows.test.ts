@@ -40,6 +40,29 @@ const summary = [
 
 const raising = ['---', 'language: jq', '---', 'error("the period has not started")'].join('\n');
 
+const shouting = ['---', 'language: jq', '---', 'error("x" * 30000000)'].join('\n');
+
+const catching = workflowSource(
+  'catching',
+  `do:
+  - compute:
+      try:
+        - shout:
+            call: execute_spec
+            with: { primitive: computation, name: shouting, input: '\${ . }' }
+      catch:
+        errors:
+          with: { status: 409 }
+        as: failure
+        do:
+          - caught:
+              set:
+                type: '\${ $failure.type }'
+                kind: '\${ $failure.kind }'
+                bytes: '\${ $failure.detail | utf8bytelength }'
+`,
+);
+
 function report(name: string, computation: string): string {
   return workflowSource(
     name,
@@ -118,6 +141,8 @@ async function serving(programPoolOf: ProgramPoolOf, ...replies: readonly Script
     ['computation', 'raising', raising],
     ['orchestration', 'report', report('report', 'pace')],
     ['orchestration', 'stuck', report('stuck', 'raising')],
+    ['computation', 'shouting', shouting],
+    ['orchestration', 'catching', catching],
   ] as const;
   await definitions.reduce(
     (created: Promise<unknown>, [primitive, name, source]) =>
@@ -208,6 +233,28 @@ async function settledOverMcp(session: McpSession, executionId: string): Promise
   const reading = await session.callTool('get_execution', { execution_id: executionId });
   return reading.structuredContent?.['status'] === 'started' ? settledOverMcp(session, executionId) : reading;
 }
+
+describe('a workflow whose computation function raises a long error', { timeout: workflowTestTimeoutMs }, () => {
+  it('catches it as the runtime error of status 409 the format documents, its text cut at 1,024 bytes', async () => {
+    const server = await serving(workerPool);
+
+    const settled = await settledRun(server, 'catching');
+    const caught = Schema.decodeUnknownSync(
+      Schema.Struct({
+        body: Schema.Struct({
+          status: Schema.Literal('succeeded'),
+          output: Schema.Struct({ type: Schema.String, kind: Schema.String, bytes: Schema.Number }),
+        }),
+      }),
+    )(settled).body.output;
+
+    expect(caught).toMatchObject({
+      type: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime',
+      kind: 'unworkable',
+    });
+    expect(caught.bytes).toBeLessThan(1100);
+  });
+});
 
 describe('the same workflow over MCP', { timeout: workflowTestTimeoutMs }, () => {
   it('runs as it does over HTTP', async () => {

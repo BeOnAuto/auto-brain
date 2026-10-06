@@ -1,9 +1,9 @@
 import { isJson } from '../dsl/json.ts';
-import { jsonBytesWithin } from '../programs/byte-sizes.ts';
+import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
 import { compileProgram } from '../programs/program-compiling.ts';
 import type { Dialect, Refusal } from '../programs/program-dialect.ts';
 import type { ProgramLimits, ProgramRun } from '../programs/program-running.ts';
-import { fieldOf, listOf, textOf } from '../programs/program-tree.ts';
+import { fieldOf, listOf, textOf, type ProgramIssue } from '../programs/program-tree.ts';
 import type { ProgramAnswerSchema } from './program-messages.ts';
 
 type ProgramAnswerData = typeof ProgramAnswerSchema.Encoded;
@@ -59,7 +59,14 @@ function requestOf(data: unknown): ProgramRequestData {
   };
 }
 
+function cut(issue: ProgramIssue): ProgramIssue {
+  return { ...issue, detail: textWithin(issue.detail, mostIssueBytes) };
+}
+
 function answerFrom(run: ProgramRun, mostOutputBytes: number): ProgramAnswerData {
+  if (run.ran === 'raised' || run.ran === 'exhausted') {
+    return { ...run, issue: cut(run.issue) };
+  }
   if (run.ran !== 'answered') {
     return run;
   }
@@ -72,7 +79,7 @@ function answerFrom(run: ProgramRun, mostOutputBytes: number): ProgramAnswerData
 function evaluated(request: ProgramRequestData, clock: () => number): ProgramAnswerData {
   const compiled = compileProgram(request.source, request.dialect);
   if ('issues' in compiled) {
-    return { ran: 'refused', issues: compiled.issues };
+    return { ran: 'refused', issues: compiled.issues.map((issue) => cut(issue)) };
   }
   const input: unknown = JSON.parse(request.input);
   if (!isJson(input)) {
