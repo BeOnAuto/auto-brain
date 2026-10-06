@@ -12,7 +12,7 @@ import {
   type WaitsFor,
 } from './step-entry.ts';
 
-export interface StepEntry {
+interface StepEntry {
   readonly reference: string;
   readonly run: number;
   readonly outcome: StepOutcome;

@@ -6,7 +6,7 @@ export const mostTitleBytes = 1024;
 
 const RunCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
 
-export const StepOutcomeSchema = Schema.Literals([
+const StepOutcomeSchema = Schema.Literals([
   'started',
   'skipped',
   'waiting',
@@ -18,11 +18,11 @@ export const StepOutcomeSchema = Schema.Literals([
 
 export type StepOutcome = typeof StepOutcomeSchema.Type;
 
-export const WaitsForSchema = Schema.Literals(['call', 'timer', 'event']);
+const WaitsForSchema = Schema.Literals(['call', 'timer', 'event']);
 
 export type WaitsFor = typeof WaitsForSchema.Type;
 
-export const StepKeySchema = Schema.Struct({
+const StepKeySchema = Schema.Struct({
   reference: Schema.String,
   run: RunCountSchema,
   outcome: StepOutcomeSchema,
