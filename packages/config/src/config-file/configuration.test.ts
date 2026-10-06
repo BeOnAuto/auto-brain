@@ -185,8 +185,8 @@ describe('a credential written in a URL or an argument', () => {
       '1:41 example_gateways[0].base_url',
     ],
     [
-      'in the query of a URL, under a name that holds a credential',
-      `example_gateways: [{ name: g, base_url: "https://a.example/v1?key=plain-text" }]\n`,
+      'as the user of a URL, in the shape of a key',
+      `example_gateways: [{ name: g, base_url: "https://${secret}@a.example/v1" }]\n`,
       '1:41 example_gateways[0].base_url',
     ],
     [
@@ -195,8 +195,8 @@ describe('a credential written in a URL or an argument', () => {
       '1:41 example_gateways[0].base_url',
     ],
     [
-      'after the = of an argument that names a credential',
-      `example_gateways: [{ name: g, args: ["--api-key=plain-text"] }]\n`,
+      'after the = of an argument, in the shape of a key',
+      `example_gateways: [{ name: g, args: ["--key=sk-live-x"] }]\n`,
       '1:38 example_gateways[0].args[0]',
     ],
   ])('is refused %s, without the value', (_, text, place) => {
@@ -205,12 +205,16 @@ describe('a credential written in a URL or an argument', () => {
     expect(message).toBe(`The configuration file auto-brain.yaml is invalid: auto-brain.yaml:${place}: ${writtenOut}`);
     expect(message).not.toContain('plain-text');
     expect(message).not.toContain(secret);
+    expect(message).not.toContain('sk-live-x');
   });
 
-  it('leaves alone a URL and an argument that hold no credential', () => {
+  it('judges the values of a URL and an argument, never the names they give them', () => {
     const plain = {
       link: 'https://a.example/v1?api-version=2026-01-01',
+      tokenType: 'https://a.example/v1?token_type=bearer',
       mode: '--mode=read',
+      tokenFile: '--token-file=/run/secrets/notes',
+      keyEnv: '--api-key-env=NOTES_API_KEY',
       bare: '=x',
       empty: '--key=',
     };

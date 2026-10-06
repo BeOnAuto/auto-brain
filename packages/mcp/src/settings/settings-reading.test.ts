@@ -225,7 +225,7 @@ describe('a credential written into the url or the args of a server', () => {
       environmentOf({
         graph: { ...graph, url: 'https://a.example/mcp?key=sk-live-x' },
         crm: { ...graph, url: 'https://user:sk-x@a.example/mcp' },
-        limitless: { ...limitless, args: ['--key=sk-x'] },
+        limitless: { ...limitless, args: ['--key=sk-live-x'] },
       }),
     );
 
@@ -235,6 +235,15 @@ describe('a credential written into the url or the args of a server', () => {
       `/limitless/args/0: ${credential}`,
     ]);
     expect(JSON.stringify(refusal)).not.toContain('sk-');
+  });
+
+  it('is judged by the value, never by the name it is given', () => {
+    const [notes, graphOfTokens] = serversOf({
+      notes: { ...limitless, args: ['--token-file=/run/secrets/notes', '--api-key-env=NOTES_API_KEY'] },
+      graph: { ...graph, url: 'https://graph.example.com/mcp?token_type=bearer' },
+    });
+
+    expect([notes?.name, graphOfTokens?.name]).toEqual(['notes', 'graph']);
   });
 });
 
