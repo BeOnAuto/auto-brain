@@ -106,10 +106,12 @@ describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
 describe('a fold that ran past its deadline', { timeout: viewTestTimeoutMs }, () => {
   it('is tried again at the next sweep, not the next page, while the other views of its brain go on', async () => {
     const views = await viewHarness(await onSQLite());
-    const slowOnce = 'if $event.data.output == "slow" then reduce range(3000000) as $i (.; . + 0) else . + 1 end';
+    const slowOnce = 'if $event.data.output == "slow" then reduce range(1000000000) as $i (.; . + 0) else . + 1 end';
     await views.saved('slow', detailsOf(slowOnce, succeeded, { initial: 0 }));
     await views.saved('quick', counting);
-    views.start({ folding: { ...foldingOf(), foldDeadlineMs: 1 }, sweepEveryMs: 10_000 });
+    const folding = foldingOf();
+    const limits = { ...folding.limits, mostWork: 10_000_000_000 };
+    views.start({ folding: { ...folding, limits, foldDeadlineMs: 500 }, sweepEveryMs: 10_000 });
     await Promise.all([views.until('slow', isLive), views.until('quick', isLive)]);
 
     await views.ran('inference/runs', 'slow');
