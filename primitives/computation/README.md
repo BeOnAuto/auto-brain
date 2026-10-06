@@ -54,7 +54,7 @@ The hosted runtime does not offer computation functions until its adapter bounds
 
 Under a load average of 55 on the same machine, the same script measured the slowest construct at 4,607 ms and the example at 42.3 ms, and the deadline of 10 seconds leaves room for a host that busy.
 
-Each run starts a worker of its own and ends it with the run, so nothing one run leaves in a worker reaches the next and a worker terminated at its deadline never has to be replaced; that costs 27.5 ms a run at the median, most of it the worker stripping the types of its modules as it loads them. If that time matters, a pool that keeps warm workers between runs is the next step.
+Each run starts a worker of its own and ends it with the run, so nothing one run leaves in a worker reaches the next and a worker terminated at its deadline never has to be replaced; that costs 27.5 ms a run at the median, most of it the worker stripping the types of its modules as it loads them. A run of a definition with an output schema costs more, roughly 120 to 160 ms a run on the same machine, because its worker also loads `effect` and the schema compiler to check the output (163.9 ms at the median of 30 under a load average of 130). If that time matters, a pool that keeps warm workers between runs is the next step: it would load the evaluator and the compiler once.
 
 ## Testing
 

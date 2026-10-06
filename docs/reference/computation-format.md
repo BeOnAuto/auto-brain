@@ -170,7 +170,7 @@ A run that succeeds records `language`, `work`, the units of work it spent, `dur
 
 Work is counted in units of about one character of data handled, so it does not depend on the machine, and the same program and input spend the same units on every run. The example above spends 1,939,824 units on 1,000 rows, 3,857,976 on 2,000 and 7,694,800 on 4,000. The largest input a run takes holds 3,911 such rows, 262,092 bytes, on which the example spends 7,533,024 units, so the bound on work stops a program whose work grows faster than its data, never the example.
 
-The duration is a safeguard for what work does not stop. Measured on Node 26.10.0 on an Apple M4 Max, the example over 3,911 rows took 4.0 ms at the median, every construct the work counts spent the 64,000,000 units of a run in at most 414 ms, and a run took about 28 ms more than its program, to start the program apart from the server and end it. A run that never answered was stopped 0.9 ms after a deadline of 500 ms.
+The duration is a safeguard for what work does not stop. Measured on Node 26.10.0 on an Apple M4 Max, the example over 3,911 rows took 4.0 ms at the median, every construct the work counts spent the 64,000,000 units of a run in at most 414 ms, and a run took about 28 ms more than its program, to start the program apart from the server and end it, or roughly 120 to 160 ms more when the function has an output schema, since the output is then checked where the program ran. Keeping what runs programs ready between runs, the next step, would save most of both. A run that never answered was stopped 0.9 ms after a deadline of 500 ms.
 
 ## In a workflow
 
