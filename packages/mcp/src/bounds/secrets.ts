@@ -11,10 +11,15 @@ const leastSecretCharacters = 8;
 
 const redactedMark = '[redacted]';
 
+function asInJson(secret: string): string {
+  return JSON.stringify(secret).slice(1, -1);
+}
+
 export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
   const known = new Set<string>();
   const add = (secret: string): void => {
     if (secret.length >= leastSecretCharacters) {
+      known.add(asInJson(secret));
       known.add(secret);
     }
   };

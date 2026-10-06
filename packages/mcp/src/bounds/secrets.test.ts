@@ -58,6 +58,15 @@ describe('the secrets of the servers', () => {
     );
   });
 
+  it('are scrubbed as they are written inside JSON too, where a quote, a backslash or a line break is escaped', () => {
+    const secrets = secretsOf([]);
+    const awkward = 'pa"ss\\word\nnext-line';
+    secrets.add(awkward);
+
+    expect(secrets.scrub(JSON.stringify({ said: `the key is ${awkward}` }))).toBe('{"said":"the key is [redacted]"}');
+    expect(secrets.scrub(`raw ${awkward}`)).toBe('raw [redacted]');
+  });
+
   it('take a token minted while the server runs, and leave out what is too short to be one', () => {
     const secrets = secretsOf([]);
     secrets.add('tiny');
