@@ -1,8 +1,8 @@
-import { BrainContext, CallLineage, Caller } from '@beonauto/operations';
+import { BrainContext, CallLineage, Caller, Conflict } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { ExecutionOutcome, ExecutionRequest } from '../execution/execution-commands.ts';
-import { claimOf } from '../execution/execution-decisions.ts';
+import { claimOf, runTaken } from '../execution/execution-decisions.ts';
 import { answerOf } from '../execution/execution-lookup.ts';
 import type { Primitive, PreparedDefinition, RunContext } from '../primitive/primitive.ts';
 import { toolCallJournal, type RunJournal } from '../tool-calls/tool-call-journal.ts';
@@ -79,16 +79,18 @@ export const executeRequest = Effect.fnUntraced(function* (
     : yield* runExecution(id, request, yield* preparedSpec(primitive, request.name));
 });
 
+function isTaken(error: unknown): error is Conflict {
+  return error instanceof Conflict && error.kind === runTaken.kind;
+}
+
 export const startVersionOnce = Effect.fnUntraced(function* (
   primitive: Primitive,
   request: ExecutionRequest & { readonly version: number },
   id: string,
 ) {
-  const recorded = yield* loadExecution(id);
-  if (recorded !== undefined) {
-    return yield* answerOf(id, recorded);
-  }
   const { version, ...asked } = request;
   const run = yield* preparedVersion(primitive, asked.name, version);
-  return yield* runExecution(id, asked, { ...run, createOnly: true });
+  return yield* runExecution(id, asked, { ...run, createOnly: true }).pipe(
+    Effect.catchIf(isTaken, () => Effect.flatMap(loadExecution(id), (recorded) => answerOf(id, recorded))),
+  );
 });

@@ -5,6 +5,7 @@ import { defineStartVersion } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { echo } from '../testing/echo.ts';
 import { firstMoment, harness, toBrain } from '../testing/harness.ts';
+import { probe } from '../testing/probe.ts';
 import { specOperationsFor } from '../testing/spec-operations.ts';
 
 const { createSpec, updateSpec, retireSpec, getExecution } = specOperationsFor([echo]);
@@ -87,6 +88,49 @@ describe('a start of a version once, under the id of a run', () => {
         detail: 'There is no version 3 of the echo definition greet in this brain',
       },
     ]);
+  });
+});
+
+async function probedOnce() {
+  const prober = probe();
+  const { createSpec: creating } = specOperationsFor([prober.primitive]);
+  const specs = harness();
+  await specs.call(creating, toAlpha(acmeAdmin, { primitive: 'probe', name: 'react', source: 'react' }));
+  const startingProbe = defineStartVersion([prober.primitive]);
+  const startOnce = () =>
+    specs.call(
+      startingProbe,
+      toAlpha(theBrain, { primitive: 'probe', name: 'react', version: 1, input: {}, execution_id: executionId }),
+    );
+  return { prober, startOnce };
+}
+
+describe('a start of a version once whose run ended without a result', () => {
+  it('runs again under the same id, so a start the brain could not take at first goes through later', async () => {
+    const { prober, startOnce } = await probedOnce();
+    prober.sufferOnNextRun('unavailable');
+
+    const first = await startOnce();
+    const again = await startOnce();
+
+    expect([first, again, prober.runs()]).toMatchObject([
+      { status: 'rejected', reason: 'unavailable' },
+      { status: 'succeeded', output: { status: 'succeeded' } },
+      2,
+    ]);
+  });
+});
+
+describe('a start of a version once while its run goes', () => {
+  it('answers the run as it stands and runs nothing', async () => {
+    const { prober, startOnce } = await probedOnce();
+    prober.sufferOnNextRun('stall');
+    void startOnce();
+    await prober.stalled;
+
+    const again = await startOnce();
+
+    expect([again, prober.runs()]).toMatchObject([{ status: 'succeeded', output: { status: 'started' } }, 1]);
   });
 });
 

@@ -41,6 +41,11 @@ const startedCallingTools = new Conflict({
 
 const runFinished = new Conflict({ detail: 'The run has finished, so it records no more tool calls' });
 
+export const runTaken = new Conflict({
+  detail: 'A run under this id is going or has ended with a result, so this start records nothing',
+  kind: 'taken',
+});
+
 function isSameRequest({ input, execution }: RecordedExecution, request: ExecutionRequest): boolean {
   return (
     execution.primitive === request.primitive && execution.name === request.name && Equal.equals(input, request.input)
@@ -93,9 +98,19 @@ function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
   };
 }
 
+function startsAgain(start: ExecutionStart, state: RecordedExecution): boolean {
+  return !isRunning(state) && !needsNoRun(state) && !calledTools(state) && isSameRequest(state, start);
+}
+
+function decideCreateOnly(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
+  return state === undefined || startsAgain(start, state)
+    ? Result.succeed([startedEvent(start)])
+    : Result.fail(runTaken);
+}
+
 function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
-  if (start.createOnly === true && state !== undefined) {
-    return nothingToRecord;
+  if (start.createOnly === true) {
+    return decideCreateOnly(start, state);
   }
   return Result.flatMap(claimOf(state, start), (claim): Decision => {
     if (claim === 'answer') {

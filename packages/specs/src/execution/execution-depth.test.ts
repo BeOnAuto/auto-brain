@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ExecutionCommand } from './execution-commands.ts';
 import { executionDecider } from './execution-decider.ts';
+import { runTaken } from './execution-decisions.ts';
 import type { ExecutionEvent } from './execution-events.ts';
 
 const start = { by: 'brain:alpha', at: '2026-10-01T09:00:00.000Z' };
@@ -58,7 +59,7 @@ describe('the reaction depth of a run', () => {
 });
 
 describe('a start that only creates', () => {
-  it('records nothing for a run that exists, however it ended, and starts one that does not', () => {
+  it('starts a run that does not exist, and again one that ended without a result, under the same request', () => {
     const failed: ExecutionEvent = {
       type: 'execution_failed',
       primitive: 'echo',
@@ -68,8 +69,42 @@ describe('a start that only creates', () => {
     };
 
     expect([
-      executionDecider.decide(starting({ createOnly: true }), stateAfter(startedDeep, failed)),
       executionDecider.decide(starting({ createOnly: true, depth: 2 }), executionDecider.initialState),
-    ]).toEqual([Result.succeed([]), Result.succeed([startedDeep])]);
+      executionDecider.decide(starting({ createOnly: true, depth: 2 }), stateAfter(startedDeep, failed)),
+    ]).toEqual([Result.succeed([startedDeep]), Result.succeed([startedDeep])]);
+  });
+
+  it('is refused as taken for a run that goes, that ended with a result, or that another request ended', () => {
+    const succeeded: ExecutionEvent = {
+      type: 'execution_succeeded',
+      primitive: 'echo',
+      name: 'greet',
+      spec_version: 1,
+      output: 'Hi',
+      record: {},
+      ...finish,
+    };
+    const failed: ExecutionEvent = {
+      type: 'execution_failed',
+      primitive: 'echo',
+      name: 'greet',
+      spec_version: 1,
+      ...finish,
+    };
+    const other: ExecutionCommand = {
+      type: 'start',
+      ...greeting,
+      input: { who: 'Grace' },
+      calls_tools: false,
+      spec_version: 1,
+      ...start,
+      createOnly: true,
+    };
+
+    expect([
+      executionDecider.decide(starting({ createOnly: true }), stateAfter(startedDeep)),
+      executionDecider.decide(starting({ createOnly: true }), stateAfter(startedDeep, succeeded)),
+      executionDecider.decide(other, stateAfter(startedDeep, failed)),
+    ]).toEqual([Result.fail(runTaken), Result.fail(runTaken), Result.fail(runTaken)]);
   });
 });
