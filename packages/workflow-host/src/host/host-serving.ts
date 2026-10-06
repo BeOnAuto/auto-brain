@@ -11,6 +11,7 @@ export interface ServingOptions extends EngineOptions {
 
 export interface Serving {
   readonly engine: HostEngine;
+  readonly stopReacting: () => Promise<void>;
   readonly stop: () => Promise<void>;
 }
 
@@ -42,6 +43,7 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
   );
   return {
     engine,
+    stopReacting: follower.stop,
     stop: async () => {
       await follower.stop();
       await loop.stop();

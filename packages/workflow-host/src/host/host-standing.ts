@@ -10,6 +10,7 @@ import { startServing, type Serving, type ServingOptions } from './host-serving.
 
 export interface Standing {
   readonly serving: () => HostEngine | undefined;
+  readonly stopReacting: () => Promise<void>;
   readonly stop: () => Promise<void>;
 }
 
@@ -24,6 +25,7 @@ export async function standingOn(
   const current: { serving: Serving | null } = { serving: null };
   const servedNoMore = Effect.promise(async () => {
     const { serving } = current;
+    await serving?.stopReacting();
     current.serving = null;
     await serving?.stop();
   });
@@ -43,10 +45,15 @@ export async function standingOn(
       Effect.andThen(servedNoMore, reports.note({ kind: 'standing_by', holder: elsewhere, until })),
     trouble: reports.trouble,
   });
+  const stopReacting = async (): Promise<void> => {
+    await keeper.stop();
+    await current.serving?.stopReacting();
+  };
   return {
     serving: () => current.serving?.engine,
+    stopReacting,
     stop: async () => {
-      await keeper.stop();
+      await stopReacting();
       await Effect.runPromise(servedNoMore);
       await Effect.runPromise(Effect.ignore(lease.released()));
     },

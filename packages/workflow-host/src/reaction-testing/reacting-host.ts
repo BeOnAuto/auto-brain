@@ -25,6 +25,7 @@ export interface ReactingOptions {
   readonly clock?: HostClock;
   readonly sweepEveryMs?: number;
   readonly failure?: FailingStart;
+  readonly start?: RecordedReactions['options']['start'];
 }
 
 export async function reactingHost(options: ReactingOptions = {}): Promise<ReactingHost> {
@@ -39,7 +40,7 @@ export async function reactingHost(options: ReactingOptions = {}): Promise<React
     reports: reports.reports,
     sweepEveryMs: options.sweepEveryMs ?? 20,
     mostCallsAtOnce: 4,
-    reactions: reactions.options,
+    reactions: { ...reactions.options, start: options.start ?? reactions.options.start },
     ...(options.clock === undefined ? {} : { clock: options.clock }),
   });
   onTestFinished(() => host.stop());
