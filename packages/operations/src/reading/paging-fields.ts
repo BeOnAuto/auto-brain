@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { isCalendarDay } from './calendar-days.ts';
 import { mostRecordsInAPage } from './page-bounds.ts';
 
 export const defaultPageLimit = 20;
@@ -9,7 +10,7 @@ const longestCursor = 512;
 const isoTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/u;
 
 function isTime(text: string): boolean {
-  return isoTime.test(text) && Number.isFinite(Date.parse(text));
+  return isoTime.test(text) && isCalendarDay(text.slice(0, 10)) && Number.isFinite(Date.parse(text));
 }
 
 export const PagingInputFields = {
