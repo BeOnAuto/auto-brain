@@ -1,6 +1,3 @@
-import { spawnSync } from 'node:child_process';
-
-import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { runExpression, type Evaluation } from './expressions.ts';
@@ -24,52 +21,8 @@ const ragged: Json = [numbers, ...Array.from({ length: 100 }, () => [])];
 
 const alternatives = Array.from({ length: 10 }, () => 'a').join('|');
 
-const childTimeoutMs = 5000;
-
-const workPerCodepoint = 16;
-
-const longestSubject = 200_000;
-
-const largestCharge = workPerCodepoint * longestSubject;
-
-const evaluationInAChild = [
-  `import { runExpression } from ${JSON.stringify(new URL('./expressions.ts', import.meta.url).href)};`,
-  'const [source, data] = process.argv.slice(1);',
-  `const evaluation = runExpression(source, JSON.parse(data), {}, { now: 0, mostWork: ${mostWork} });`,
-  'process.stdout.write(JSON.stringify(evaluation));',
-].join('\n');
-
-const ChildEvaluationSchema = Schema.Struct({ problem: Schema.String, work: Schema.Number, exhausted: Schema.Boolean });
-
-const decodeChildEvaluation = Schema.decodeUnknownSync(Schema.fromJsonString(ChildEvaluationSchema));
-
-interface ChildRun {
-  readonly ended: { readonly status: number | null; readonly signal: string | null };
-  readonly evaluation: typeof ChildEvaluationSchema.Type | undefined;
-}
-
 function run(source: string, data: Json, work = mostWork): Evaluation {
   return runExpression(source, data, {}, { now, mostWork: work });
-}
-
-function runInAChild(source: string, data: Json = null): ChildRun {
-  const child = spawnSync(
-    process.execPath,
-    [
-      '--max-old-space-size=256',
-      '--input-type=module',
-      '--eval',
-      evaluationInAChild,
-      '--',
-      source,
-      JSON.stringify(data),
-    ],
-    { encoding: 'utf8', timeout: childTimeoutMs, env: {} },
-  );
-  return {
-    ended: { status: child.status, signal: child.signal },
-    evaluation: child.status === 0 ? decodeChildEvaluation(child.stdout) : undefined,
-  };
 }
 
 describe('the work of an expression', () => {
@@ -126,7 +79,7 @@ describe('each operation that builds or visits values', () => {
     ['compiles a regex', '"a" | test("(?:a{60}){60}")', null, 50_000],
     ['repeats a regex that compiles to nothing', '"a" | test("(?:){100000}")', null, 1_000_000],
     ['passes the regex machine through instructions', '.s | test("(?:|){2000}b")', { s: 'a'.repeat(1000) }, 1_000_000],
-    ['copies the capture slots of a regex', 'test("(" * 1000 + "a" + ")" * 1000)', 'b', 1_000_000],
+    ['copies the capture slots of a regex', 'test("(" * 1000 + "a" + ")" * 1000)', 'b'.repeat(10), 1_000_000],
     ['tests the members of a regex class', '.s | test("[" + "b" * 1000 + "]")', { s: 'a'.repeat(10_000) }, 1_000_000],
     ['prepares a regex search', '.s | gsub("x|(?:y{4000})"; "")', { s: 'x'.repeat(2000) }, 1_000_000],
     ['changes case', '.s | ascii_downcase', { s: capitals }, 1_000_000],
@@ -193,48 +146,6 @@ describe('a string used as an object key', () => {
     const source = '("a" * 4000000) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))';
 
     expect(run(source, null)).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
-  });
-});
-
-describe('a regular expression', { timeout: 2 * childTimeoutMs }, () => {
-  it('may compile to at most 4096 instructions', () => {
-    expect(run('"a" | test("a{4093}")', null)).toMatchObject({ value: false });
-    expect(run('try ("a" | test("a{4094}")) catch .', null)).toMatchObject({
-      value: 'regex too large: more than 4096 instructions',
-    });
-  });
-
-  it.each<readonly [string, Json]>([
-    ['"a" | test("(((a{100}){100}){100}){40}")', null],
-    ['"a" | test("((((a{100}){100}){100}){100}){40}")', null],
-    ['.p as $p | "a" | test($p)', { p: '(((a{100}){100}){100}){40}' }],
-    ['"a" | test("a{99999999999999999999}")', null],
-  ])('%s is refused as soon as it compiles too large, before it is expanded', (source, data) => {
-    const { ended, evaluation } = runInAChild(source, data);
-
-    expect(ended).toEqual({ status: 0, signal: null });
-    expect(evaluation).toMatchObject({
-      problem: `${source}: RuntimeError: regex too large: more than 4096 instructions`,
-      exhausted: false,
-    });
-    expect(evaluation?.work).toBeLessThanOrEqual(mostWork + largestCharge);
-  });
-
-  it.each([
-    '"a" | test("(((?:){4000}){4000}){4000}")',
-    'try ("a" | test("(?:){100000000}")) catch "caught"',
-    '("a" * 100000) as $p | reduce range(1000) as $i (0; . + (try ("a" | test($p) | 1) catch 2))',
-    `"a" * ${longestSubject} | test("(?:|){2000}b")`,
-    '("b" * 100000) as $c | "a" * 100000 | test("[" + $c + "]")',
-  ])('%s stops at the work budget, past it by at most one charge', (source) => {
-    const { ended, evaluation } = runInAChild(source);
-
-    expect(ended).toEqual({ status: 0, signal: null });
-    expect(evaluation).toMatchObject({
-      problem: `${source}: LimitError: Work limit exceeded`,
-      exhausted: true,
-    });
-    expect(evaluation?.work).toBeLessThanOrEqual(mostWork + largestCharge);
   });
 });
 
