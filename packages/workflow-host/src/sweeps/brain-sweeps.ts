@@ -70,16 +70,13 @@ function pendingBrains() {
     failed: (brainKey: string) => {
       failed.add(brainKey);
     },
-    taken: (room: number): readonly SweptBrain[] => {
-      for (const brainKey of failed) {
-        pending.add(brainKey);
-      }
-      failed.clear();
-      const taken = [...pending].slice(0, room);
-      for (const brainKey of taken) {
+    chosen: (room: number): readonly SweptBrain[] =>
+      [...new Set([...pending, ...failed])].slice(0, room).map((brainKey) => ({ brainKey, known: undefined })),
+    taken: (chosen: readonly SweptBrain[]) => {
+      for (const { brainKey } of chosen) {
         pending.delete(brainKey);
+        failed.delete(brainKey);
       }
-      return taken.map((brainKey) => ({ brainKey, known: undefined }));
     },
     left: () => pending.size > 0,
   };
@@ -112,8 +109,10 @@ export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: F
       Effect.gen(function* () {
         const appended = yield* appendedSince(messagesReadInASweep);
         const waiting = (yield* brains.waitingForASweep(waitingInASweep)).map((known) => sweptOf(known));
-        const changed = addedTo(new Map(), [...waiting, ...pending.taken(brainsInASweep - waiting.length)]);
+        const chosen = pending.chosen(brainsInASweep - waiting.length);
+        const changed = addedTo(new Map(), [...waiting, ...chosen]);
         const round = yield* roundGoneOn(brains, state.round, brainsInASweep - changed.size);
+        pending.taken(chosen);
         state.round = round.after;
         return {
           registries: appended.streams.filter((stream) => isOrgRegistry(stream)),

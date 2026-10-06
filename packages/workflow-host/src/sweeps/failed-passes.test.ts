@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { appendSignalOf, type AppendedStreams } from '@beonauto/ledger';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -21,21 +23,52 @@ const noBrains: FollowedBrains = {
   following: () => Effect.succeed([]),
 };
 
-function appendedOnce(streams: readonly string[]) {
-  const reads = { count: 0 };
-  return {
-    readAppended: (): Promise<AppendedStreams> => {
-      reads.count += 1;
-      return Promise.resolve({
-        streams: reads.count === 2 ? streams : [],
-        through: [String(reads.count)],
-        more: false,
-      });
-    },
-  };
+interface Following {
+  readonly streams: readonly string[];
+  readonly sweepEveryMs: number;
+  readonly pass: (brainKey: string) => Effect.Effect<PassEnd>;
+  readonly upkeepFailing?: (sweep: number) => boolean;
 }
 
-function passesFailingFirstFor(failing: string, passed: (line: string) => void) {
+interface Followed {
+  readonly sweeps: () => number;
+  readonly troubles: () => readonly string[];
+}
+
+function followed({ streams, sweepEveryMs, pass, upkeepFailing = () => false }: Following): Followed {
+  const counts = { reads: 0, upkeeps: 0 };
+  const troubles: string[] = [];
+  const store = {
+    readAppended: (): Promise<AppendedStreams> => {
+      counts.reads += 1;
+      const appended = counts.reads === 2 ? streams : [];
+      return Promise.resolve({ streams: appended, through: [String(counts.reads)], more: false });
+    },
+  };
+  const upkeep = () =>
+    Effect.suspend(() => {
+      counts.upkeeps += 1;
+      return upkeepFailing(counts.upkeeps) ? Effect.die(new Error('The backlog could not be read')) : Effect.void;
+    });
+  const follower = startFollower({
+    pass,
+    discovery: { atStart: () => Effect.void, registriesAppended: () => Effect.void, brainSeen: () => Effect.void },
+    sweeps: brainSweepsOn(store, noBrains),
+    upkeep: { sweep: upkeep, fireSchedules: () => Effect.void, nextScheduleAt: () => Effect.succeed(null) },
+    appended: appendSignalOf(),
+    clock: systemClock,
+    pace: systemClock,
+    sweepEveryMs,
+    trouble: (what) =>
+      Effect.sync(() => {
+        troubles.push(what);
+      }),
+  });
+  onTestFinished(() => follower.stop());
+  return { sweeps: () => counts.reads - 1, troubles: () => troubles };
+}
+
+function passesFailingFirstFor(failing: string, passed: (brainKey: string) => void) {
   const failures = { left: 1 };
   return (brainKey: string) =>
     Effect.suspend(() => {
@@ -48,42 +81,66 @@ function passesFailingFirstFor(failing: string, passed: (line: string) => void) 
     });
 }
 
+function passedReaching(passes: readonly string[], count: number) {
+  return until(
+    () => Promise.resolve<readonly string[]>([...passes]),
+    (brains) => brains.length >= count,
+  );
+}
+
 describe('a sweep in which the pass over a brain fails', () => {
   it(
     'passes the brains after it in the same sweep, and the brain again at the next sweep',
     { timeout: 30_000 },
     async () => {
       const passes: string[] = [];
-      const troubles: string[] = [];
-      const follower = startFollower({
+      const watched = followed({
+        streams: [`${alpha}events/`, `${beta}events/`],
+        sweepEveryMs: 20,
         pass: passesFailingFirstFor(alpha, (brainKey) => {
           passes.push(brainKey);
         }),
-        discovery: { atStart: () => Effect.void, registriesAppended: () => Effect.void, brainSeen: () => Effect.void },
-        sweeps: brainSweepsOn(appendedOnce([`${alpha}events/`, `${beta}events/`]), noBrains),
-        upkeep: {
-          sweep: () => Effect.void,
-          fireSchedules: () => Effect.void,
-          nextScheduleAt: () => Effect.succeed(null),
-        },
-        appended: appendSignalOf(),
-        clock: systemClock,
-        pace: systemClock,
-        sweepEveryMs: 20,
-        trouble: (what) =>
-          Effect.sync(() => {
-            troubles.push(what);
-          }),
       });
-      onTestFinished(() => follower.stop());
 
-      const passed = await until(
-        () => Promise.resolve<readonly string[]>([...passes]),
-        (brains) => brains.length >= 2,
-      );
+      const passed = await passedReaching(passes, 2);
 
       expect(passed).toEqual([beta, alpha]);
-      expect(troubles).toEqual(['A pass over a brain failed; the next sweep passes the brain again']);
+      expect(watched.troubles()).toEqual(['A pass over a brain failed; the next sweep passes the brain again']);
     },
   );
+
+  it('passes the brain again when the next sweep fails before its passes', { timeout: 30_000 }, async () => {
+    const passes: string[] = [];
+    const watched = followed({
+      streams: [`${alpha}events/`],
+      sweepEveryMs: 20,
+      pass: passesFailingFirstFor(alpha, (brainKey) => {
+        passes.push(brainKey);
+      }),
+      upkeepFailing: (sweep) => sweep === 2,
+    });
+
+    const passed = await passedReaching(passes, 1);
+
+    expect(passed).toEqual([alpha]);
+    expect(watched.troubles()).toEqual([
+      'A pass over a brain failed; the next sweep passes the brain again',
+      'The follower of the brains failed; it tries again',
+    ]);
+  });
+});
+
+describe('a sweep in which more brains fail than it has room for', () => {
+  it('waits for the next interval rather than sweeping again at once', { timeout: 30_000 }, async () => {
+    const streams = Array.from({ length: 130 }, (_, index) => `brain/acme/b${index}/events/`);
+    const watched = followed({
+      streams,
+      sweepEveryMs: 1000,
+      pass: () => Effect.die(new Error('The ledger could not be read')),
+    });
+
+    await setTimeout(500);
+
+    expect(watched.sweeps()).toBeLessThanOrEqual(2);
+  });
 });

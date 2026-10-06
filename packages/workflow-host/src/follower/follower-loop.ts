@@ -80,8 +80,14 @@ function signalled(parts: FollowerParts, wakes: Wakes) {
 function swept(parts: FollowerParts, wakes: Wakes) {
   return Effect.gen(function* () {
     const sweep = yield* parts.sweeps.next();
-    yield* registriesRead(parts, sweep.registries);
-    yield* parts.upkeep.sweep();
+    const handedBack = Effect.sync(() => {
+      for (const { brainKey } of sweep.brains) {
+        parts.sweeps.passAgain(brainKey);
+      }
+    });
+    yield* Effect.andThen(registriesRead(parts, sweep.registries), parts.upkeep.sweep()).pipe(
+      Effect.catchCause((cause) => Effect.andThen(handedBack, Effect.failCause(cause))),
+    );
     yield* Effect.forEach(
       sweep.brains,
       ({ brainKey, known }) => passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),
