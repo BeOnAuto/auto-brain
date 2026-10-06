@@ -123,7 +123,7 @@ It returns 200 with the event's `id` and `time`, and `recorded_at`, when the bra
 { "id": "2026-09", "time": "2026-10-01T09:00:00.000Z", "recorded_at": "2026-10-01T09:00:00.000Z" }
 ```
 
-A brain holds one event for each `source` and `id`. Publishing the same event again records nothing and returns the first `id`, `time` and `recorded_at`, so a request can be retried with the same id; a retry that leaves out `time` is the same event. A different event with the same `source` and `id` returns `conflict`. Without an `id`, every request records a new event.
+A brain holds one event for each `source` and `id`. Publishing the same event again records nothing and returns the first `id`, `time` and `recorded_at`, so a request can be retried with the same id; a retry that leaves out `time` is the same event. Times are compared as instants, so `2026-10-01T10:59:00+02:00` is the same time as `2026-10-01T08:59:00Z`. A retry that gives a `time` to an event first published without one is the same event too, and returns the time the runtime filled in the first time, not the one the retry gave. A different event with the same `source` and `id` returns `conflict`. Without an `id`, every request records a new event.
 
 The event, with its id and time filled in, may take at most 240 KiB as JSON. The types `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `tool_call_started`, `tool_call_answered`, `spec_created`, `spec_updated` and `spec_retired`, and sources beginning `/executions/` or `/specs/`, name what the runtime records itself; an event that uses them returns `invalid_input` at `/event/type` or `/event/source`. `list_brain_events` shows each published event as an `event_published` event.
 

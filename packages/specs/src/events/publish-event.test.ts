@@ -108,6 +108,20 @@ describe('publishing an event again', () => {
     expect(await storedOn(specs, '/ledger/eu', 'm-2026-09')).toMatchObject({ version: 1 });
   });
 
+  it('answers the first record for its time spelled otherwise, and the filled time to a retry that gives one', async () => {
+    const specs = harness();
+    const { time: _time, ...withoutTime } = monthClosed;
+    await specs.call(publishEvent, publishing(monthClosed));
+    await specs.call(publishEvent, publishing({ ...withoutTime, id: 'm-2026-10' }));
+
+    expect(
+      await specs.call(publishEvent, publishing({ ...monthClosed, time: '2026-10-01t10:59:00+02:00' }), later),
+    ).toStrictEqual(recordedFirst);
+    expect(
+      await specs.call(publishEvent, publishing({ ...withoutTime, id: 'm-2026-10', time: later }), later),
+    ).toStrictEqual({ status: 'succeeded', output: { id: 'm-2026-10', time: firstMoment, recorded_at: firstMoment } });
+  });
+
   it('is rejected with conflict for a different event under the same source and id', async () => {
     const specs = harness();
     await specs.call(publishEvent, publishing(monthClosed));

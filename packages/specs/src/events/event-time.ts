@@ -1,11 +1,13 @@
 const rfc3339 =
-  /^(?<year>\d{4})-(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12]\d|3[01])[Tt](?<hour>[01]\d|2[0-3]):(?<minute>[0-5]\d):(?<second>[0-5]\d|60)(?:\.\d{1,9})?(?:[Zz]|(?<sign>[+-])(?<offsetHour>[01]\d|2[0-3]):(?<offsetMinute>[0-5]\d))$/u;
+  /^(?<year>\d{4})-(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12]\d|3[01])[Tt](?<hour>[01]\d|2[0-3]):(?<minute>[0-5]\d):(?<second>[0-5]\d|60)(?:\.(?<fraction>\d{1,9}))?(?:[Zz]|(?<sign>[+-])(?<offsetHour>[01]\d|2[0-3]):(?<offsetMinute>[0-5]\d))$/u;
 
 const minutesInADay = 1440;
 
 const lastMinuteOfADay = minutesInADay - 1;
 
 const leapSecond = 60;
+
+const nanosecondDigits = 9;
 
 interface TimeParts {
   readonly year: number;
@@ -14,6 +16,7 @@ interface TimeParts {
   readonly hour: number;
   readonly minute: number;
   readonly second: number;
+  readonly fraction: string;
   readonly offsetMinutes: number;
 }
 
@@ -31,6 +34,7 @@ function partsOf(written: string): TimeParts | undefined {
     hour: numberOf('hour'),
     minute: numberOf('minute'),
     second: numberOf('second'),
+    fraction: groups['fraction'] ?? '',
     offsetMinutes: groups['sign'] === '-' ? -offset : offset,
   };
 }
@@ -52,4 +56,18 @@ function leapSecondEndsADay(parts: TimeParts): boolean {
 export function isTime(written: string): boolean {
   const parts = partsOf(written);
   return parts !== undefined && dayExists(parts) && leapSecondEndsADay(parts);
+}
+
+function secondsSinceTheEpoch({ year, month, day, hour, minute, second, offsetMinutes }: TimeParts): number {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute - offsetMinutes);
+  return date.getTime() / 1000 + second;
+}
+
+export function instantOf(written: string): string {
+  const parts = partsOf(written);
+  return parts === undefined
+    ? written
+    : `${secondsSinceTheEpoch(parts)}.${parts.fraction.padEnd(nanosecondDigits, '0')}`;
 }

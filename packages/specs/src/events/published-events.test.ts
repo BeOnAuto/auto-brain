@@ -40,6 +40,10 @@ const anotherEvent = Result.fail(
   }),
 );
 
+function spelled(time: string) {
+  return decidedAfter({ ...first, event: { ...monthClosed, time }, ...again });
+}
+
 describe('the stream of a published event', () => {
   it('is named by a name-based UUID of its source and id, the same for the same pair', () => {
     const stream = publishedEventStreamOf('/ledger/eu', 'm-2026-09');
@@ -83,6 +87,13 @@ describe('publishing an event', () => {
     expect(decidedAfter({ event: later, filled: ['time'], ...again })).toStrictEqual(Result.succeed([]));
     expect(decidedAfter({ event: later, filled: [], ...again }, timeFilledFirst)).toStrictEqual(Result.succeed([]));
     expect(decidedAfter({ event: later, filled: [], ...again })).toStrictEqual(anotherEvent);
+  });
+
+  it('compares times as instants, so the same instant spelled otherwise is the same event', () => {
+    expect(
+      ['2026-10-01t08:59:00z', '2026-10-01T08:59:00.000Z', '2026-10-01T10:59:00+02:00'].map((time) => spelled(time)),
+    ).toStrictEqual([Result.succeed([]), Result.succeed([]), Result.succeed([])]);
+    expect(spelled('2026-10-01T08:59:00.001Z')).toStrictEqual(anotherEvent);
   });
 
   it('is refused for a different event under the same source and id', () => {
