@@ -1,13 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { makeOrchestration, makeWorkflowAdapter } from '../index.ts';
 import { orchestratedBrain, type OrchestratedBrain } from '../testing/orchestrated-brain.ts';
 
 let brain: OrchestratedBrain;
-
-it('retains the exported constructor as the same workflow implementation', () => {
-  expect(makeOrchestration).toBe(makeWorkflowAdapter);
-});
 
 const header = `document:
   dsl: '1.0.3'

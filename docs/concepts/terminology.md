@@ -1,6 +1,6 @@
 # Brain terminology
 
-This is the shared vocabulary for Auto's brain offering, its domain code and its documentation. It names the supported concepts and the capabilities being developed; [Functions and availability](functions.md#availability) records what the runtime currently implements.
+This is the shared vocabulary for Auto's brain offering, its documentation and the code. It names the supported concepts and the capabilities being developed; [Functions and availability](functions.md#availability) records what the runtime currently implements.
 
 The brain is the system. Workflows coordinate the work. Functions perform it. Assets support it. Runs are its executions.
 
@@ -10,16 +10,16 @@ A brain reasons, interacts, predicts, recalls, and computes. Workflows coordinat
 
 There are six capabilities: coordination, reasoning, interaction, prediction, recall and computation. Coordination is expressed through workflows. The other five capabilities have function types, grouped in this order:
 
-| Capability   | Resource someone defines | Category                | Canonical domain name           |
-| ------------ | ------------------------ | ----------------------- | ------------------------------- |
-| Coordination | Workflow                 | Workflows               | `WorkflowDefinition`            |
-| Reasoning    | Reasoning function       | Functions → Reasoning   | `ReasoningFunctionDefinition`   |
-| Interaction  | Interaction function     | Functions → Interaction | `InteractionFunctionDefinition` |
-| Prediction   | Prediction function      | Functions → Prediction  | `PredictionFunctionDefinition`  |
-| Recall       | Recall function          | Functions → Recall      | `RecallFunctionDefinition`      |
-| Computation  | Computation function     | Functions → Computation | `ComputationFunctionDefinition` |
+| Capability   | Resource someone defines | Category                |
+| ------------ | ------------------------ | ----------------------- |
+| Coordination | Workflow                 | Workflows               |
+| Reasoning    | Reasoning function       | Functions → Reasoning   |
+| Interaction  | Interaction function     | Functions → Interaction |
+| Prediction   | Prediction function      | Functions → Prediction  |
+| Recall       | Recall function          | Functions → Recall      |
+| Computation  | Computation function     | Functions → Computation |
 
-Use **brain functions** for the five function types and **Functions** within a brain's Studio context. The domain names for planned types apply when those implementations exist; a type name in this table does not mean the runtime implements it.
+Use **brain functions** for the five function types. A function type in this table does not mean the runtime implements it.
 
 Use these descriptions when choosing a function type:
 
@@ -79,52 +79,4 @@ A reasoning function has a prompt; the prompt is not the entire configured funct
 
 The prediction function, its predictive model and the prediction in a run result are also distinct. Labels such as **Build model**, **Evaluate model**, **Predict**, **Retrain model**, **No model**, **Building model** and **Ready** apply only when those lifecycle controls exist. Prediction is not implemented yet.
 
-Dream is an optional planned process using functions and history. It is not a sixth function type. Integrations, plugins, modules and GAS connectors retain their existing meanings.
-
-## Studio wording
-
-AUTO Studio is the operational interface; the agent is the primary interface for creating and using a brain. Within an existing brain context, group resources as follows when their management views exist:
-
-- Build: Workflows, then Functions grouped under Reasoning, Interaction, Prediction, Recall and Computation.
-- Library: Skills, Tools, Models and Sources.
-- Operate: Runs and History.
-
-Build, Library and Operate are navigation sections, not resources. Do not add empty management screens for planned capabilities. This runtime repository has no Studio application; its documentation navigation follows the learning path instead of reproducing the product sidebar.
-
-Use **New workflow**, **New function** and **Add step** for the corresponding actions. After selecting a function type, use **New reasoning function**, for example. Counts use the resource phrase: **1 reasoning function**, **2 reasoning functions**, **No reasoning functions yet.** Dependency views use **Uses** and **Used by**.
-
-Name example resources for their jobs, such as **Assess budget options**, **Request budget approval**, **Predict campaign signups**, **Retrieve previous budget decisions** and **Calculate remaining budget**. Keep user-authored names unchanged.
-
-## Code and compatibility
-
-Domain identifiers use the same nouns as the product. The canonical internal function kinds are `reason`, `interact`, `predict`, `recall` and `compute`. They describe function types; `workflow` is separate.
-
-The shared runtime adapter supports workflows, functions and extension adapters. Its compatibility name is `Primitive`. The shared stored-record types are `Definition` and `Run`.
-
-`BrainFunctionDefinition` covers the implemented function definitions, currently `ReasoningFunctionDefinition`. `WorkflowDefinition` identifies stored workflow definitions. `FunctionRun` and `WorkflowRun` distinguish their recorded runs. Type guards narrow decoded records using the existing `inference` and `orchestration` discriminators, preserving their fields and identities. They do not accept planned kinds or classify custom adapters as brain functions.
-
-Parsing a source document produces `ReasoningFunctionDefinitionDocument` or `WorkflowDefinitionDocument`. These hold configuration rather than the stored name, version and audit fields. The workflow document remains a `JsonObject` checked by the existing DSL parser; the alias does not introduce a stronger schema. `makeReasoningFunctionAdapter` and `makeWorkflowAdapter` construct runtime adapters for these types, not individual saved definitions.
-
-Keep these supported boundary names in requests and stored data:
-
-| Boundary                                                                               | Canonical meaning                            |
-| -------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `primitive: "inference"`                                                               | Reasoning function type                      |
-| `primitive: "orchestration"`                                                           | Workflow type                                |
-| `spec`, `specs`, `create_spec` and the other spec tools                                | Definition and definition operations         |
-| `execution`, `execution_id`, `/executions` and execution tools                         | Run, run id and run operations               |
-| `spec_version`                                                                         | The definition version referenced by the run |
-| `spec_*`, `execution_*` and `workflow_input_applied` events                            | Existing definition and run history          |
-| `@beonauto/inference`, `@beonauto/orchestration`, `@beonauto/specs` and `primitives/*` | Existing package and directory names         |
-
-The internal kinds do not introduce new accepted API values. Planned function kinds are not valid substitutes for the runtime's supported `primitive` values. Package names, exported compatibility aliases, environment settings, deployment identities and historical records remain stable.
-
-Keep **inference** for actual model execution or provider terms, **orchestration** for runtime coordination machinery, and **agent** for an actual actor, including external coding agents and tool-selecting behavior. Ordinary programming functions and cloud functions retain their names. Use **brain components** only as an umbrella phrase for workflows, functions and assets; it does not name a resource. **Faculties** is not part of the product taxonomy.
-
-## Positioning
-
-The proposed category for the brain-building offering is **business brain platforms**. The promise is **Make business expertise executable**. **Brain engineering** names the engineering discipline, **brain building** the services activity, and **Studio** the environment for visibility and management.
-
-A business brain platform lets teams turn their methods into persistent AI systems, combining reasoning, interaction, prediction, recall and computation through coordinated workflows. People currently carry the method between tools: what to look for, which analysis to run, what happened before and what should happen next. The aim is to make that method something the business can define, run, inspect and improve.
-
-This is positioning for the brain offering, not a claim that every planned capability exists or that Auto owns the category name. Product explanations and examples must keep implemented behavior, planned capabilities and customer evidence distinct.
+Dream is an optional planned process using functions and history. It is not a sixth function type.

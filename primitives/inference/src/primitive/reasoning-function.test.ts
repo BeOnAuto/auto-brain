@@ -3,7 +3,6 @@ import { Effect, Exit } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';
 
-import { makeInference } from '../index.ts';
 import { answers, scriptedLanguageModel, textResult } from '../testing/index.ts';
 import { execution, reasoningWith } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
@@ -13,12 +12,8 @@ import { makeReasoningFunctionAdapter } from './reasoning-function.ts';
 const { primitive, prepared } = reasoningWith();
 
 describe('the reasoning function implementation', () => {
-  it('uses Reasoning in display text while retaining the inference contract and Markdown format', () => {
+  it('is the inference primitive, titled Reasoning, whose definitions are Markdown', () => {
     expect(primitive).toMatchObject({ name: 'inference', title: 'Reasoning', mediaType: 'text/markdown' });
-  });
-
-  it('retains the exported constructor as the same implementation', () => {
-    expect(makeInference).toBe(makeReasoningFunctionAdapter);
   });
 
   it('calls a saved definition a reasoning function', () => {

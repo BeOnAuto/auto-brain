@@ -19,7 +19,7 @@ A guide can offer choices needed for its task, such as which Apollo connection p
 
 Use ordinary language and examples grounded in the product. Keep API names exact, avoid claims without evidence and centralize capability status on [Functions](../concepts/functions.md#availability). Repeat a status only where its absence would make the page misleading, such as an upcoming internal tool-access capability.
 
-Use [Brain terminology](../concepts/terminology.md) for resources, capabilities and domain names. A reasoning function has a prompt; workflows coordinate functions; runs execute definitions. Keep existing API fields and identifiers in code examples, and explain their canonical meaning beside them.
+Use [Brain terminology](../concepts/terminology.md) for resources, capabilities and domain names. A reasoning function has a prompt; workflows coordinate functions; runs execute definitions.
 
 ## What belongs here
 

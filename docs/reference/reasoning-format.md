@@ -1,7 +1,5 @@
 <div v-pre>
 
-<span id="reason-function-format"></span>
-
 # Reasoning function format
 
 The API stores a reasoning function as an `inference` spec. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.

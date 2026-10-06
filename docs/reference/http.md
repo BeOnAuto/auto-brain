@@ -2,7 +2,7 @@
 
 The HTTP API provides brain management, reasoning-function and workflow definitions, recorded runs, events for waiting workflows, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. A reasoning function uses the primitive identifier `inference` and a workflow uses `orchestration`; keep these names in requests.
+The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function and `orchestration` for a workflow.
 
 ## Requests and access
 
@@ -33,8 +33,6 @@ Retirement is permanent. Brain ids cannot be reused, and a retired brain cannot 
 `GET /v1/orgs/{org}/models` lists the models the server offers. It requires `org:read` and accepts an optional `provider` query parameter. A provider prefix contains 1 to 32 lowercase letters, digits or hyphens, starting with a letter.
 
 The JSON result contains `object: "list"`, `data`, `catalog_status` and `listed_at`. Entries are sorted by `id`, with each id appearing once. The [MCP model reference](mcp.md#model-information) describes the entry fields, aliases, wildcard patterns and incomplete results. The same output is returned over both interfaces.
-
-<span id="reason-functions"></span>
 
 ## Reasoning functions
 

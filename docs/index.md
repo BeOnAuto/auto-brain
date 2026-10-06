@@ -10,7 +10,7 @@ Auto stores business methods as reusable functions and workflows that an agent c
 
 Start with [Brains and methods](concepts/brains.md) to see how a business responsibility becomes a brain. [Functions and availability](concepts/functions.md) explains the types of work it can perform and their current status. [Workflows and runs](concepts/workflows.md) covers coordination, while [History and Dream](concepts/history-and-dream.md) explains recorded work and the proposed use of that history.
 
-[Brain terminology](concepts/terminology.md) defines the shared vocabulary for the product, documentation and domain code.
+[Brain terminology](concepts/terminology.md) defines the shared vocabulary for the product, the documentation and the code.
 
 ## Build something
 

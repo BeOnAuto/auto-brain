@@ -1,28 +1,24 @@
 # @beonauto/specs
 
-The definition and run operations of auto-brain: create, list, read, update, retire and run a brain's function and workflow definitions, then inspect their runs and history. They are defined on the application layer, [`@beonauto/operations`](../operations). The package name and the API's `spec` and `execution` identifiers remain compatible.
-
-<span id="primitives-specs-and-executions"></span>
+The definition and run operations of auto-brain: create, list, read, update, retire and run a brain's function and workflow definitions, then inspect their runs and history. They are defined on the application layer, [`@beonauto/operations`](../operations).
 
 ## Definitions, runs and runtime adapters
 
 `Definition` is a named, versioned definition stored in one brain. A reasoning function uses Markdown with YAML front matter; a workflow uses a YAML document. `ListedDefinition` is the same view without the source document. A `Run` executes a definition against particular inputs and records how it ended; `RunDetail` includes the detailed record.
 
-`BrainFunctionDefinition` covers the currently implemented `ReasoningFunctionDefinition`; `WorkflowDefinition` identifies a stored workflow. `FunctionRun` and `WorkflowRun` identify their runs. The guards `isBrainFunctionDefinition`, `isWorkflowDefinition`, `isFunctionRun` and `isWorkflowRun` narrow decoded records by their existing wire discriminators without copying or modifying them. Planned function kinds and custom adapters are not classified as implemented brain functions. The generic `Definition` and `Run` types still support extension adapters.
+`BrainFunctionDefinition` covers the currently implemented `ReasoningFunctionDefinition`; `WorkflowDefinition` identifies a stored workflow. `FunctionRun` and `WorkflowRun` identify their runs. The guards `isBrainFunctionDefinition`, `isWorkflowDefinition`, `isFunctionRun` and `isWorkflowRun` narrow decoded records by their `primitive` without copying or modifying them. Planned function kinds and custom adapters are not classified as implemented brain functions. The generic `Definition` and `Run` types still support extension adapters.
 
 These are stored records with names, versions and audit fields. The adapters' parsed source configurations use the separate names `ReasoningFunctionDefinitionDocument` and `WorkflowDefinitionDocument`.
 
 `Primitive` is the low-level adapter contract shared by functions, workflows and custom extension adapters. The server supplies these adapters explicitly. It is deliberately broader than a brain function: workflows coordinate functions rather than belonging to the five function types. The product taxonomy and supporting assets are defined in [Brain terminology](../../docs/concepts/terminology.md).
 
-The API and persistence fields retain `spec`, `primitive` and `execution`. In the wire-format and storage details below, a spec means a saved definition and an execution means its recorded run. `Spec`, `ListedSpec`, `Execution`, `ExecutionDetail`, `ExecutionContext`, `SpecSummary`, `PreparedSpec` and their previously exported schema names remain compatibility aliases. New domain code uses `Definition`, `ListedDefinition`, `Run`, `RunDetail`, `RunContext`, `DefinitionSummary` and `PreparedDefinition`.
-
-<span id="defining-a-primitive"></span>
+The API and the ledger call a saved definition a `spec`, its type a `primitive` and its recorded run an `execution`; the wire-format and storage details below use those words.
 
 ## Defining a runtime adapter
 
 `definePrimitive` turns a definition into a `Primitive`. The server passes its primitives, in an explicit list, to `makeSpecOperations`.
 
-This extension interface retains its existing name and accepts custom adapters. It is not the Studio function picker. Product categories use the shared `BrainFunctionKind` metadata: `functionKindOrder`, `functionCategoryLabels`, `functionResourceLabels` and `functionDescriptions`. `legacyFunctionKind` maps known function wire identifiers to those canonical internal kinds; it excludes workflows and does not make unknown or planned kinds valid API inputs.
+This extension interface accepts custom adapters. Product categories use the shared `BrainFunctionKind` metadata: `functionKindOrder`, `functionCategoryLabels`, `functionResourceLabels` and `functionDescriptions`.
 
 ```ts
 import { InvalidInput } from '@beonauto/operations';
@@ -113,8 +109,6 @@ A spec carries `primitive`, `name`, `version`, `status` (`active` or `retired`),
 
 The queries need `brain:read` and the commands `brain:write`. `execute_spec` is a command, because it records an execution, so a caller that may only read cannot execute a spec.
 
-<span id="executions"></span>
-
 ## Runs
 
 An execution carries `execution_id`, `primitive`, `name`, `spec_version`, `status`, `output` when it succeeded, `rejection` (`reason`, `detail`, `issues` for `invalid_input`, and for `unavailable` the `kind` and `because` the primitive gave) when the primitive rejected it, `started_at`, `started_by`, and `finished_at` once it ended. `get_execution` also shows the `record` the primitive gave of what it did: of the run that succeeded, or of the work it started that finishes later, kept when that work ends rejected or failed and dropped when a retry starts the execution again. `execute_spec` answers without the record, which can be large, since the output is what its caller asked for. Its status is `started` while it runs, while work it started finishes after the call returned, or when the process ended before it finished; then `succeeded`, `rejected` or `failed`.
@@ -130,8 +124,6 @@ The ledger's cloud store holds at most 2 MB in a row, so an execution records bo
 
 JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`, and in the description of `execute_spec`. `mostInputBytes` and `mostResultBytes` export them, so that a primitive can keep what it answers within them.
 
-<span id="execution-ids-and-retries"></span>
-
 ### Run ids and retries
 
 A caller may name an execution with `execution_id`, a UUID; otherwise the operation makes one, a version 7 UUID. Ids are kept in lowercase. An id belongs to one execution: one primitive, one spec and one input. A call with an id of another spec or another input meets `conflict`.
@@ -141,8 +133,6 @@ An execution has a **final result** once it succeeded, or once the primitive rej
 An execution that called tools is the exception, because a tool may have changed something: once its stream holds a tool call, a call with its id that would run it again is rejected with `conflict`, kind `tools_called`, and runs nothing, whether the execution failed, was rejected as `unavailable` or with a `conflict`, or stays `started` because the process ended; it is never recorded as finished for it, since that could mark a duplicate still running elsewhere as failed. So is a call with the id of a started execution whose spec calls tools before any call is recorded: the first attempt may still be in progress, about to call a tool, or may have stopped without recording how it ended, and running a second would let two runs call tools. The primitive tells from the parsed spec whether it calls tools (`callsTools`), and the start of a run records it on its `execution_started` as `calls_tools: true`; a start is refused while the attempt started last is running and either recorded that it calls tools or the spec calls them now, so a spec that loses its tools while a run of it is going cannot let a second run start under its id. A new run needs another id. An execution that called tools and succeeded, or whose input was rejected, is answered again as any other.
 
 So execution is **at least once**: the primitive may run more than once for one id, when a call is retried after the server stopped during a run, after `unavailable`, a `conflict` the primitive found, or a failure, or when two calls with the same id run at the same moment and the ledger lets both start. Each id has **exactly one recorded result**: the first final result recorded for it is never replaced, and every later call with the id answers it. A primitive that acts on the world, such as one that sends a message, must tolerate running twice for the same `execution.id`.
-
-<span id="executions-that-finish-later"></span>
 
 ### Runs that finish later
 
@@ -172,11 +162,9 @@ settle(execution, { status: 'failed' });
 
 The settlement is recorded as done by the caller who started the execution. A deferred execution settled as `unavailable` or `failed` has no final result, so a call with its id runs it again, as any other.
 
-<span id="reading-executions"></span>
-
 ## Reading runs
 
-`list_executions` lists the executions of a brain, newest first by the position of the first message of each execution stream, so an execution started again with the same id keeps the place of its first start, and two started in the same millisecond keep a fixed order. It reads the ledger's selection of the first and the latest message of every execution stream (`BrainReader.readRecorded({ kind: 'executions' }, page)`) and folds the two with the execution decider's `evolve`, so a `ListedRun` (`ListedExecution` for compatibility) is the run as `get_execution` shows it, without its `output`, its `record` and the `detail` and `issues` of a rejection: `execution_id`, `primitive`, `name`, `spec_version`, `status`, `started_at`, `started_by`, `finished_at`, and a `rejection` of `reason`, with the `kind` and `because` of `unavailable`. When the latest message is a start, the execution shows that start; when the execution was started again and has since finished, it shows its first start, since the selection holds no other, while `get_execution` shows the latest.
+`list_executions` lists the executions of a brain, newest first by the position of the first message of each execution stream, so an execution started again with the same id keeps the place of its first start, and two started in the same millisecond keep a fixed order. It reads the ledger's selection of the first and the latest message of every execution stream (`BrainReader.readRecorded({ kind: 'executions' }, page)`) and folds the two with the execution decider's `evolve`, so a `ListedRun` is the run as `get_execution` shows it, without its `output`, its `record` and the `detail` and `issues` of a rejection: `execution_id`, `primitive`, `name`, `spec_version`, `status`, `started_at`, `started_by`, `finished_at`, and a `rejection` of `reason`, with the `kind` and `because` of `unavailable`. When the latest message is a start, the execution shows that start; when the execution was started again and has since finished, it shows its first start, since the selection holds no other, while `get_execution` shows the latest.
 
 - `status` is answered by the ledger from the stored type of the latest message: `storedTypesByStatus` in `src/reading/execution-status.ts` is the one place that maps a status to the stored types it stands for, `started` to `execution_started` and `execution_deferred`.
 - `primitive` and `name` are applied after decoding the first message of each execution the page looked at, so a filter that matches rarely answers short or empty pages with `next_cursor`. A primitive the server does not offer lists the executions recorded under it, if any.

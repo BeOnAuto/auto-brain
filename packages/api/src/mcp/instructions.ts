@@ -28,7 +28,7 @@ const orientation: readonly Orientation[] = [
   {
     when: serves('create_spec'),
     text: [
-      'A brain uses named, versioned definitions, called specs in this API.',
+      'A spec is a named, versioned definition in a brain.',
       'The primitive field selects a definition type; each tool describes its supported document formats.',
     ].join(' '),
   },

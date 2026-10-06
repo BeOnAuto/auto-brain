@@ -30,8 +30,6 @@ Functions and workflows share the definition tools: those tools accept `inferenc
 
 ## Tools
 
-Product terminology uses reasoning functions, workflows and runs. Tool names retain the API's `spec` and `execution` identifiers.
-
 | Work                       | Tools                                                                                                    |
 | -------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Manage brains              | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
