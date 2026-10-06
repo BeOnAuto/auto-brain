@@ -30,8 +30,7 @@ describe('executing a workflow spec with an input a workflow may not hold', () =
     expect(await executing({ deep: nested(512) })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The input nests more than 512 levels deep',
-      issues: [{ detail: 'The input nests more than 512 levels deep', pointer: '/input' }],
+      issues: [{ detail: 'Expected an input that nests at most 512 levels deep', pointer: '/input' }],
     });
   });
 
