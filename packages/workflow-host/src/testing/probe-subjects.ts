@@ -1,4 +1,5 @@
 import type {
+  ListenerSubject,
   RecordStoreSubject,
   RunStoreSubject,
   TimerSubject,
@@ -8,6 +9,8 @@ import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { sqlWatermark } from '../dispatch/sql-watermark.ts';
+import { sqlListeners } from '../listeners/sql-listeners.ts';
+import { refusalsOn } from '../reactions/refusals.ts';
 import { ledgerRunStore } from '../runs/ledger-run-store.ts';
 import { ledgerRecordStore } from '../settlement/ledger-record-store.ts';
 import { sqlTimers } from '../timers/sql-timers.ts';
@@ -55,4 +58,13 @@ export function watermarkSubjectOn(database: HostDatabase): WatermarkSubject {
 
 export function runStoreSubjectOn(database: HostDatabase): RunStoreSubject {
   return { runStore: ledgerRunStore(database), executionId: runId };
+}
+
+export function listenerSubjectOn(database: HostDatabase): ListenerSubject {
+  const attributes = { spec: { name: 'await-approval', version: 1 }, caller: { id: 'acme-admin' } };
+  return {
+    listeners: sqlListeners(database, refusalsOn(database, Date.now)),
+    run: { executionId: runId, attributes },
+    otherRun: { executionId: otherRunId, attributes },
+  };
 }

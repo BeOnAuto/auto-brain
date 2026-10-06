@@ -1,5 +1,6 @@
 import {
   executorProbes,
+  listenerProbes,
   recordStoreProbes,
   runStoreProbes,
   timerProbes,
@@ -12,7 +13,13 @@ import { describe, expect, it } from 'vitest';
 import type { HostDatabase } from '../database/host-database.ts';
 import { executorSubjectOn } from './executor-subject.ts';
 import { openedOn, type SettingsOf } from './host-files.ts';
-import { recordStoreSubjectOn, runStoreSubjectOn, timerSubjectOn, watermarkSubjectOn } from './probe-subjects.ts';
+import {
+  listenerSubjectOn,
+  recordStoreSubjectOn,
+  runStoreSubjectOn,
+  timerSubjectOn,
+  watermarkSubjectOn,
+} from './probe-subjects.ts';
 
 interface ProbeCase {
   readonly title: string;
@@ -38,6 +45,7 @@ const ports: readonly Port[] = [
   { port: 'record store', cases: casesOf(recordStoreProbes, recordStoreSubjectOn) },
   { port: 'dispatch watermark', cases: casesOf(watermarkProbes, watermarkSubjectOn) },
   { port: 'run store', cases: casesOf(runStoreProbes, runStoreSubjectOn) },
+  { port: 'listeners', cases: casesOf(listenerProbes, listenerSubjectOn) },
 ];
 
 export function portSuite(settings: SettingsOf): void {

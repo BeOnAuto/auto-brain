@@ -13,7 +13,9 @@ export type HostNote =
       readonly attempts: number;
       readonly detail: string;
     }
-  | { readonly kind: 'settled_after_back_off'; readonly run: RunAddress; readonly attempts: number };
+  | { readonly kind: 'settled_after_back_off'; readonly run: RunAddress; readonly attempts: number }
+  | { readonly kind: 'offer_declined'; readonly run: RunAddress; readonly detail: string }
+  | { readonly kind: 'record_unreadable'; readonly brainKey: string; readonly recordId: string; readonly type: string };
 
 export interface UnsettledRun extends RunAddress {
   readonly receipt: TroublingReceipt;

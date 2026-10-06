@@ -8,7 +8,7 @@ import type { DatabaseSettings } from '../database/host-databases.ts';
 import type { HostNote } from '../host/host-reports.ts';
 import { openWorkflowHost, type WorkflowHost } from '../host/workflow-host.ts';
 import type { HostClock } from '../loop/host-clock.ts';
-import { recordingReports, recordingSettlements } from './recording-reports.ts';
+import { recordedReactions, recordingReports, recordingSettlements } from './recording-reports.ts';
 
 export interface HostedRuns {
   readonly host: WorkflowHost;
@@ -49,6 +49,7 @@ export async function hostedOn(settings: DatabaseSettings, options: HostedOption
     reports: recorded.reports,
     sweepEveryMs: options.sweepEveryMs ?? 50,
     mostCallsAtOnce: 4,
+    reactions: recordedReactions().options,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.holder === undefined ? {} : { holder: options.holder }),
   });

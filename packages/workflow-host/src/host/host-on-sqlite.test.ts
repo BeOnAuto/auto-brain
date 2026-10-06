@@ -5,6 +5,7 @@ import { onSQLite } from '../testing/host-files.ts';
 import { claimSuite, leaseSuite } from '../testing/lease-suite.ts';
 import { longRunSuite } from '../testing/long-run-suite.ts';
 import { portSuite } from '../testing/port-suite.ts';
+import { reactionSuite } from '../testing/reaction-suite.ts';
 import { runSuite } from '../testing/run-suite.ts';
 
 describe('the host on SQLite', () => {
@@ -22,6 +23,10 @@ describe('the host on SQLite', () => {
 
   describe('killed while it dispatches, then started again', () => {
     failureSuite(onSQLite);
+  });
+
+  describe('the reactions of its brains', () => {
+    reactionSuite(onSQLite);
   });
 
   describe('one of two hosts on one database', () => {

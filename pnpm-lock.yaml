@@ -531,6 +531,9 @@ importers:
 
   packages/workflow-host:
     dependencies:
+      '@beonauto/brains':
+        specifier: workspace:*
+        version: link:../brains
       '@beonauto/ledger':
         specifier: workspace:*
         version: link:../ledger
@@ -549,6 +552,9 @@ importers:
       '@event-driven-io/emmett-sqlite':
         specifier: 0.43.0-beta.50
         version: 0.43.0-beta.50(@aws-sdk/credential-providers@3.1144.0)(@types/pg@8.23.1)(commander@14.0.3)(pg@8.23.1)(sqlite3@6.0.1)(supports-color@8.1.1)(uuid@14.0.2)
+      croner:
+        specifier: 10.0.1
+        version: 10.0.1
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -3151,6 +3157,10 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  croner@10.0.1:
+    resolution: {integrity: sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g==}
+    engines: {node: '>=18.0'}
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -7218,6 +7228,8 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 7.0.2
+
+  croner@10.0.1: {}
 
   cross-spawn@7.0.6:
     dependencies:

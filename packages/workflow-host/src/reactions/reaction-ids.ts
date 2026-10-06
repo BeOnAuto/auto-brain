@@ -1,0 +1,7 @@
+import { uuidV5 } from '@beonauto/operations';
+
+const reactionStarts = '3c9e1f04-7b2a-5d68-8e41-0a6f5c2d9b73';
+
+export function reactionExecutionIdOf(workflow: string, version: number, cause: string): string {
+  return uuidV5(reactionStarts, JSON.stringify([workflow, version, cause]));
+}

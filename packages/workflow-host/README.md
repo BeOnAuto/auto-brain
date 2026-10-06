@@ -13,32 +13,37 @@ The workflow engine of [`@beonauto/workflow-engine`](../workflow-engine) on Node
 
 Both fail with the engine's `Conflict` when the run's log kept changing while an input was decided, with `HostElsewhere` while another host holds the database's workflows, and with `HostStopped` once the host is stopping. The caller gives the host:
 
-| Option                 | What it is                                                                                                                                                      |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `database`             | `{ store: 'sqlite', file }` or `{ store: 'postgresql', connectionString }`, the database the ledger is kept in                                                  |
-| `machine`              | the machine's options: the functions a workflow may call and the runtime its expressions see                                                                    |
-| `perform`              | `(call, run) => Effect<CallResult>`: what a call does; it never fails, a function that cannot answer answers `unreachable`                                      |
-| `settle`               | `SettleExecution` of `@beonauto/specs`: how a run's outcome is recorded on its execution                                                                        |
-| `reports`              | where the host tells the operator of a run it could not settle (`unsettled`), of a failure it retries (`trouble`), of a lost connection, and its notes (`note`) |
-| `sweepEveryMs`         | how often the loop sweeps, 1,000 in the server                                                                                                                  |
-| `mostCallsAtOnce`      | how many calls run at once                                                                                                                                      |
-| `clock`, `cacheBounds` | the clock, `Date.now` unless given, and the bounds of the engine's cache of loaded runs, `runCacheBounds` unless given                                          |
-| `holder`               | the id the host claims the database's workflows with, a random UUID unless given                                                                                |
+| Option                 | What it is                                                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database`             | `{ store: 'sqlite', file }` or `{ store: 'postgresql', connectionString }`, the database the ledger is kept in                                                                                                                                    |
+| `machine`              | the machine's options: the functions a workflow may call and the runtime its expressions see                                                                                                                                                      |
+| `perform`              | `(call, run) => Effect<CallResult>`: what a call does; it never fails, a function that cannot answer answers `unreachable`                                                                                                                        |
+| `settle`               | `SettleExecution` of `@beonauto/specs`: how a run's outcome is recorded on its execution                                                                                                                                                          |
+| `reports`              | where the host tells the operator of a run it could not settle (`unsettled`), of a failure it retries (`trouble`), of a lost connection, and its notes (`note`)                                                                                   |
+| `sweepEveryMs`         | how often the loop sweeps, 1,000 in the server                                                                                                                                                                                                    |
+| `mostCallsAtOnce`      | how many calls run at once                                                                                                                                                                                                                        |
+| `clock`, `cacheBounds` | the clock, `Date.now` unless given, and the bounds of the engine's cache of loaded runs, `runCacheBounds` unless given                                                                                                                            |
+| `holder`               | the id the host claims the database's workflows with, a random UUID unless given                                                                                                                                                                  |
+| `reactions`            | what the host needs to react to the records of the brains, below: the primitive whose specs are workflows, how a spec's source is read as its trigger, how a reaction starts a run, how an emitted event is recorded, and the signal of an append |
 
 ## Where a run is kept
 
 A run is addressed by its brain and its execution id, `{ org, brain, executionId }`, since an execution id is unique within a brain only. The engine knows a run by one opaque id, which the host makes `<org>/<brain>/<execution id>`; org ids hold no `/`, brain ids hold none, and execution ids are UUIDs, so the id splits back into its address.
 
-| What                          | Where                                                                                                                  |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| the run's log                 | the stream `brain/<org>/<brain>/runs/<execution id>` on the ledger                                                     |
-| the latest snapshot           | `workflow_snapshot_chunks`, in chunks of at most 1 MiB of UTF-8                                                        |
-| timers and their tombstones   | `workflow_timers`, keyed by run and timer id, with the version of the record that armed each                           |
-| calls, answers and tombstones | `workflow_calls`, keyed by the call key                                                                                |
-| the dispatch watermark        | `workflow_runs`, one row a run, with the version of the event that ended it and when a sweep last took it              |
-| due times                     | `workflow_due`, one row a run                                                                                          |
-| settle receipts               | `workflow_settlements`, one row a run, with the settlement recorded, or the attempts that failed and when the last was |
-| the claim on the workflows    | `workflow_leases`, the row `host`, with its holder and when it lapses                                                  |
+| What                          | Where                                                                                                                                                                                                                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the run's log                 | the stream `brain/<org>/<brain>/runs/<execution id>` on the ledger                                                                                                                                                                                                     |
+| the latest snapshot           | `workflow_snapshot_chunks`, in chunks of at most 1 MiB of UTF-8                                                                                                                                                                                                        |
+| timers and their tombstones   | `workflow_timers`, keyed by run and timer id, with the version of the record that armed each                                                                                                                                                                           |
+| calls, answers and tombstones | `workflow_calls`, keyed by the call key                                                                                                                                                                                                                                |
+| the dispatch watermark        | `workflow_runs`, one row a run, with the version of the event that ended it and when a sweep last took it                                                                                                                                                              |
+| due times                     | `workflow_due`, one row a run                                                                                                                                                                                                                                          |
+| settle receipts               | `workflow_settlements`, one row a run, with the settlement recorded, or the attempts that failed and when the last was                                                                                                                                                 |
+| the claim on the workflows    | `workflow_leases`, the row `host`, with its holder and when it lapses                                                                                                                                                                                                  |
+| the follower's place          | `workflow_followed_brains`, one row a brain: the cursor of the last record passed, the last delivery made of the next, and its failed sweeps; `workflow_followed_orgs`, how far each org's registry of brains was read; `workflow_followed_scans`, the scans done once |
+| listeners                     | `workflow_listeners`, keyed by run and listener, with the record that armed each and whether the follower passed it; `workflow_listener_types`, the event types each listens for                                                                                       |
+| triggers                      | `workflow_subscriptions`, one row a workflow of a brain that reacts: its version, its trigger, when it was activated, and, for a schedule, its next due time and the run of its last                                                                                   |
+| starts and refusals           | `workflow_reaction_rates`, the starts of the current minute of each workflow; `workflow_reaction_backlog`, the starts waiting for a later minute; `workflow_reaction_refusals`, the refusals of the current minute, counted                                            |
 
 The log is written with the ledger's own append, `eventAppenderOf` over the event store, with the lineage of each record (see [The lineage of a run's records](#the-lineage-of-a-runs-records)), and read with its stream read, `EventStore.read`, so the history of a run (`get_execution_history`, which reads `runs/<execution id>` beside `executions/<execution id>`) and the events of the brain find it, and the ledger's rule holds: the ledger writes no SQL of its own on its write path, and the host owns its tables.
 
@@ -82,6 +87,45 @@ The loop fires timers when they are due and sweeps every `sweepEveryMs`. After e
 
 The host runs workflows only while it holds the claim on its database, the row `host` of `workflow_leases`, which names its holder, an id the host makes when it opens, and when the claim lapses. The host claims it when it opens and renews it every sweep, and the claim lapses the longer of three sweeps and three seconds after it was last renewed (`leaseMsFor`), so a pause of the holder shorter than that, as for garbage collection, never lets another host take over while the holder's calls still run, even at the shortest sweep of 10 ms. On PostgreSQL the claim is taken, renewed and judged by the database's own clock, `now()`, read before each claim, so the hosts' clocks need not agree; on SQLite one process holds the file, and the host's clock serves. A host that finds another's claim live stands by: its starts and events fail with `HostElsewhere`, which the server answers as `unavailable` with that detail, it notes `standing_by` once, and it tries the claim again every sweep; once the claim lapsed, as when the host that held it died, or was let go of, as when that host stopped, it takes it, notes `took_over`, and runs the workflows from where the other left them. A host that cannot renew its claim for as long as a claim lasts stops running workflows and stands by, since another host may then hold the claim. The row is the same on SQLite and PostgreSQL, and a claim of each run, for several hosts sharing a database, can grow from it: a name per run beside `host`.
 
+## Reactions
+
+A workflow whose trigger is an event is started for every event of its brain that matches it, a workflow whose trigger is a schedule at the times it names, and a run that listens for an event of a type it names is offered every such event its brain records while the listen is open. The host does all three from one follower, a fiber of the loop that runs while the host holds the claim on its database.
+
+### The follower
+
+The follower keeps a place in every brain: at its start it reads the registries of brains of the orgs (`org/<org>/brains`) and follows each brain from its latest record the first time it sees the registry, after making the brain's triggers again from its specs; a brain created later is followed from its first record. A brain is passed when an append to one of its streams raises the ledger's signal (`streamAppends` of `@beonauto/ledger`, raised by the event store in this process), and every `sweepEveryMs` up to 128 brains are passed, those whose deliveries wait first and then those passed longest ago, so that a brain written by another process is caught up too.
+
+A pass reads the brain's records oldest first through the ledger's recorded read, 100 records a page and at most 10 pages, and keeps its place in `workflow_followed_brains` after each record whose deliveries are all made. While no workflow of the brain reacts to an event and no run of it listens, it reads the records without their data, the specs' records apart, so a quiet brain costs one read of identifiers a wake; it reads again with the data from the first record that changes that. A record of a run's log is passed only once the dispatch watermark of the run covers its version, so the listeners a record armed are kept by the time the follower reaches it, and passing that record marks them as passed: a listener takes only the events recorded after the record that armed it. A record the follower cannot read is noted (`record_unreadable`) and passed over.
+
+Each event, and each fact the brain records about a run or a spec (`brainFactOf` of `@beonauto/specs`), is handed to the consumers in turn. A consumer is the shape the loop knows:
+
+```ts
+interface Consumer {
+  readonly name: string;
+  readonly skippedAfterSweeps: number;
+  readonly batchOf: (followed: FollowedRecord, after: string | undefined, most: number) => Effect.Effect<Batch>;
+  readonly skipped: (followed: FollowedRecord, delivery: Delivery, detail: string) => Effect.Effect<void>;
+}
+```
+
+`batchOf` answers up to `most` deliveries after the key of the last one made, each with a key, the workflow it is for and the effect that makes it, the key of the last candidate it looked at and whether more are left; at most 100 deliveries of a record are made in a pass, and the next pass goes on from the last key. A delivery that fails holds the record and is tried again at every sweep, not at a signal; after `skippedAfterSweeps` failed sweeps the consumer's `skipped` says so and the follower goes on. The two consumers here are the offers to listeners and the starts of triggered workflows, and both skip after 20 sweeps.
+
+### Listeners and offers
+
+The engine's `arm_listener` output inserts the run's listener with its filters and the event types they name, at most 4,096 a brain: one more is refused and said, and its run takes only the events sent to it; `cancel_listener` deletes it. At the first start after the table was made, the host makes the listeners of the runs still going from their states. An event or fact is offered to every listener of its type that the follower passed, whose filters take it as far as the event alone can say, and whose run did not emit it, as an `event_offered` input keyed by the record's id; the run decides the rest, and an offer it declines because its filter failed is noted (`offer_declined`).
+
+### Starts
+
+A record of a spec of the primitive activates the version's trigger, read from the spec's source by `triggerOf`, when the version reacts, and deactivates the workflow at a version that does not or at its retirement; a version whose trigger cannot be read is deactivated. An event or fact that a workflow's trigger matches starts a run of the version through `start`, create-only, under an id made of the workflow, the version and the record's id in a namespace of its own, with the event as its input, a reaction depth one more than the record's and the record as its cause. It does not start a workflow for a fact about one of its own runs, about a run one of its runs began, or for an event one of its runs emitted. A record at a reaction depth past 8 starts nothing and is refused. A workflow is started 60 times a minute at most; further starts wait for a later minute, 1,000 at most, and one more is refused; a waiting start that fails is tried in each of 20 minutes and then dropped and said. A filter that fails on an event is said once a version.
+
+A schedule is due at the multiples of its period after its version was activated, or at the times its cron names in UTC. At a due time the host starts a run under an id of that time, with `{ schedule: { due } }` as input, unless the run of the time before still runs, when the time is skipped and said; after the server was down, only the latest due time runs and the ones missed are said. A start the brain refuses is said, and the schedule goes on.
+
+Every refusal is counted in `workflow_reaction_refusals` and recorded once its minute ended, as one `reaction_refused` record a workflow and minute, with the count and the last reason, on the stream `reactions/<workflow>` of the brain.
+
+### Emitting an event
+
+The engine's `emit_event` output is recorded through `emit` as an event published to the brain, emitted by the run and its workflow, one reaction depth deeper than the run, caused by the run's record and in the run's correlation; it is recorded once, however often the output is dispatched.
+
 ## Measurements
 
 `pnpm --filter @beonauto/workflow-host measure` (`measure.ts`, with its parts in `measure/`) measures on a temporary SQLite file and, when `LEDGER_MEASURE_POSTGRESQL_URL` names a server, on a database of its own there, which it drops afterwards:
@@ -111,6 +155,7 @@ The suites of `src/testing` run on SQLite in `src/host/host-on-sqlite.test.ts` a
 - a run that waits, calls a function, takes an event and ends, settling its execution once;
 - a long loop of 130 inputs, each of which records a value of 8,000 characters, so that its events reach 1 MiB and a snapshot is due at input 109, past half the loop, leaving a tail of 21 events; the run is loaded again from that snapshot and the events after it to the state its whole log folds to. It took 0.27 s on SQLite and 1.0 s on PostgreSQL under coverage, on the machine above. The engine's loop, whose inputs hold a number alone, needs 593 inputs for a snapshot and a tail, and 700 of them took 1.1 s on SQLite and 4.3 s on PostgreSQL, so the loop's inputs are large to keep the test within seconds on a runner ten times slower; the measurements above run the 3,000 inputs of the engine's loop;
 - a host killed through its process handle while it dispatches, once while a call runs and once while it records the run's settlement, then started again on the same database: the call starts again, and the run settles once (`host-process.ts` at the root of the package is the host the test starts);
+- the reactions of a brain: a workflow started by an event its trigger matches, a run that takes an event published to its brain, and a workflow started at the due time of its schedule;
 - two hosts on one database: the second stands by while the first holds the claim, refusing starts and performing no call, and once the first is killed through its process handle takes the workflows over after its claim lapsed, three seconds on, and finishes the run; a host that stops hands the claim over at the next sweep; a holder paused for a second through its process handle at the shortest sweep keeps its claim; and a host whose clock runs an hour ahead stands by on PostgreSQL, where the database's clock judges the claim, and takes the claim on SQLite, where each host's does.
 
 The tests that kill a host and start another on the same database wait for the dead host's claim to lapse, about three seconds each.
@@ -127,4 +172,4 @@ docker rm --force workflow-host-pg
 
 ## Source
 
-`src/database` opens the host's database on either store and holds its tables; `src/runs` the run's address and its store; `src/dispatch` the watermark and the serialiser; `src/timers` the timers; `src/calls` the executor; `src/settlement` the record store and its back-off; `src/lease` the claim on the database's workflows and its keeper; `src/loop` the clock and the loop; `src/host` the host itself; and `src/testing` what the tests share, the suites both stores run among it.
+`src/database` opens the host's database on either store and holds its tables; `src/runs` the run's address and its store; `src/dispatch` the watermark and the serialiser; `src/timers` the timers; `src/calls` the executor; `src/settlement` the record store and its back-off; `src/lease` the claim on the database's workflows and its keeper; `src/loop` the clock and the loop; `src/follower` the follower of the brains and its consumers' loop; `src/listeners` the listeners; `src/reactions` the triggers, the starts and the refusals; `src/schedules` the schedules; `src/emissions` the emitter; `src/reaction-testing` what the tests of reactions share; `src/host` the host itself; and `src/testing` what the tests share, the suites both stores run among it.

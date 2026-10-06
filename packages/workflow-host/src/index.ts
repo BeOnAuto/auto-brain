@@ -6,3 +6,15 @@ export { HostElsewhere, type DeliveryAnswer, type RunStart, type StartAnswer } f
 export { openWorkflowHost, type HostOptions, type WorkflowHost } from './host/workflow-host.ts';
 export type { HostClock } from './loop/host-clock.ts';
 export type { RunAddress } from './runs/run-address.ts';
+export {
+  StartRefused,
+  type ReactionOptions,
+  type ReactionStart,
+  type StartReaction,
+  type Trigger,
+} from './reactions/reaction-options.ts';
+export { ReactionRefusedSchema, type ReactionRefused } from './reactions/refusals.ts';
+export { cronRejectionOf } from './schedules/schedule-times.ts';
+export { mostListenersInABrain } from './listeners/sql-listeners.ts';
+export { mostReactionDepth } from './reactions/subscription-starts.ts';
+export { mostDeferredStarts, mostStartsAMinute } from './reactions/start-rates.ts';

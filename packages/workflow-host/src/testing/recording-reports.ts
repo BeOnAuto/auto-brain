@@ -1,8 +1,10 @@
 import { Conflict, type Lineage, type Settlement } from '@beonauto/operations';
-import type { SettleExecution } from '@beonauto/specs';
+import type { Emission, SettleExecution } from '@beonauto/specs';
 import { Effect } from 'effect';
 
 import type { HostNote, HostReports } from '../host/host-reports.ts';
+import { triggerOfSource } from '../reaction-testing/brain-writes.ts';
+import { StartRefused, type ReactionOptions, type ReactionStart, type Trigger } from '../reactions/reaction-options.ts';
 import { knownExecutions } from './known-executions.ts';
 
 export interface RecordingReports {
@@ -70,5 +72,42 @@ export function recordingSettlements(ledgerDown: () => boolean): RecordingSettle
     lineages: () => lineages,
     attempts: () => counts.attempts,
     know,
+  };
+}
+
+export interface RecordedReactions {
+  readonly options: ReactionOptions;
+  readonly starts: () => readonly ReactionStart[];
+  readonly emissions: () => readonly Emission[];
+}
+
+export interface ReactionBehaviour {
+  readonly triggerOf?: (source: string) => Trigger | undefined;
+  readonly refusesStarts?: () => boolean;
+}
+
+export function recordedReactions(behaviour: ReactionBehaviour = {}): RecordedReactions {
+  const starts: ReactionStart[] = [];
+  const emissions: Emission[] = [];
+  return {
+    options: {
+      primitive: 'orchestration',
+      triggerOf: behaviour.triggerOf ?? triggerOfSource,
+      start: (start) =>
+        Effect.suspend(() => {
+          if (behaviour.refusesStarts?.() === true) {
+            return Effect.fail(new StartRefused({ detail: 'The brain refused the start' }));
+          }
+          starts.push(start);
+          return Effect.void;
+        }),
+      emit: (_brain, emission) =>
+        Effect.sync(() => {
+          emissions.push(emission);
+          return 'recorded';
+        }),
+    },
+    starts: () => starts,
+    emissions: () => emissions,
   };
 }

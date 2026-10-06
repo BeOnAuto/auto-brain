@@ -8,6 +8,7 @@ import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import type { RunStart } from '../src/host/run-requests.ts';
 import { openWorkflowHost, type WorkflowHost } from '../src/host/workflow-host.ts';
 import type { HostClock } from '../src/loop/host-clock.ts';
+import { recordedReactions } from '../src/testing/recording-reports.ts';
 
 export interface MeasuredHost {
   readonly host: WorkflowHost;
@@ -55,6 +56,7 @@ export async function measuredHost(database: DatabaseSettings, clock?: HostClock
     },
     sweepEveryMs: 1000,
     mostCallsAtOnce: 32,
+    reactions: recordedReactions().options,
     ...(clock === undefined ? {} : { clock }),
   });
   const untilSettled = async (count: number): Promise<void> => {

@@ -2,6 +2,7 @@ import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { startLoop } from '../loop/host-loop.ts';
+import { startReacting } from '../reactions/host-reactions.ts';
 import { hostEngineOn, type EngineOptions, type HostEngine } from './host-engine.ts';
 
 export interface ServingOptions extends EngineOptions {
@@ -28,9 +29,21 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
     sweepEveryMs: options.sweepEveryMs,
   });
   alarm.armed = loop.armed;
+  const follower = startReacting(
+    {
+      database,
+      submitted: engine.submitted,
+      clock: options.clock,
+      sweepEveryMs: options.sweepEveryMs,
+      reports: options.reports,
+    },
+    options.reactions,
+    engine.reacting.refusals,
+  );
   return {
     engine,
     stop: async () => {
+      await follower.stop();
       await loop.stop();
       await Effect.runPromise(engine.executor.stop());
     },

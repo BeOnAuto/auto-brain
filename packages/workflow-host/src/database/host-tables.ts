@@ -6,6 +6,82 @@ export const armedByAdded = statement`ALTER TABLE workflow_timers ADD COLUMN arm
 
 export const armedByAddedWhenMissing = statement`ALTER TABLE workflow_timers ADD COLUMN IF NOT EXISTS armed_by BIGINT`;
 
+const followerTables: readonly Statement[] = [
+  statement`CREATE TABLE IF NOT EXISTS workflow_followed_brains (
+    brain_key TEXT NOT NULL PRIMARY KEY,
+    cursor TEXT,
+    delivered TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    waiting INTEGER NOT NULL DEFAULT 0,
+    checked BIGINT NOT NULL DEFAULT 0
+  )`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_followed_brains_by_check ON workflow_followed_brains (waiting, checked)`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_followed_orgs (
+    stream_id TEXT NOT NULL PRIMARY KEY,
+    position BIGINT NOT NULL
+  )`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_followed_scans (name TEXT NOT NULL PRIMARY KEY)`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_listeners (
+    run_id TEXT NOT NULL,
+    listener TEXT NOT NULL,
+    brain_key TEXT NOT NULL,
+    stream_id TEXT NOT NULL,
+    armed_by BIGINT NOT NULL,
+    filters TEXT NOT NULL,
+    workflow TEXT NOT NULL,
+    passed INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (run_id, listener)
+  )`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_listeners_by_stream ON workflow_listeners (stream_id, passed)`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_listeners_by_brain ON workflow_listeners (brain_key)`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_listener_types (
+    brain_key TEXT NOT NULL,
+    type TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    listener TEXT NOT NULL,
+    PRIMARY KEY (brain_key, type, run_id, listener)
+  )`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_subscriptions (
+    brain_key TEXT NOT NULL,
+    workflow TEXT NOT NULL,
+    version BIGINT NOT NULL,
+    kind TEXT NOT NULL,
+    rule TEXT NOT NULL,
+    activated_at BIGINT NOT NULL,
+    next_due BIGINT,
+    running TEXT,
+    PRIMARY KEY (brain_key, workflow)
+  )`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_subscriptions_due ON workflow_subscriptions (next_due)
+    WHERE next_due IS NOT NULL`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_reaction_rates (
+    brain_key TEXT NOT NULL,
+    workflow TEXT NOT NULL,
+    minute BIGINT NOT NULL,
+    starts INTEGER NOT NULL,
+    PRIMARY KEY (brain_key, workflow)
+  )`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_reaction_backlog (
+    brain_key TEXT NOT NULL,
+    workflow TEXT NOT NULL,
+    execution_id TEXT NOT NULL,
+    start TEXT NOT NULL,
+    due BIGINT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (brain_key, execution_id)
+  )`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_reaction_backlog_due ON workflow_reaction_backlog (due)`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_reaction_refusals (
+    brain_key TEXT NOT NULL,
+    workflow TEXT NOT NULL,
+    minute BIGINT NOT NULL,
+    count INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    recorded INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (brain_key, workflow)
+  )`,
+];
+
 export const hostTables: readonly Statement[] = [
   statement`CREATE TABLE IF NOT EXISTS workflow_runs (
     run_id TEXT NOT NULL PRIMARY KEY,
@@ -63,4 +139,5 @@ export const hostTables: readonly Statement[] = [
     holder TEXT NOT NULL,
     expires_at BIGINT NOT NULL
   )`,
+  ...followerTables,
 ];

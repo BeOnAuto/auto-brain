@@ -8,6 +8,7 @@ import type { SettingsOf } from '../testing/host-files.ts';
 import { claimSuite, leaseSuite } from '../testing/lease-suite.ts';
 import { longRunSuite } from '../testing/long-run-suite.ts';
 import { portSuite } from '../testing/port-suite.ts';
+import { reactionSuite } from '../testing/reaction-suite.ts';
 import { runSuite } from '../testing/run-suite.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -53,6 +54,10 @@ describe.skipIf(skipped)(`the host on PostgreSQL${notice}`, () => {
 
   describe('killed while it dispatches, then started again', () => {
     failureSuite(onPostgreSQL);
+  });
+
+  describe('the reactions of its brains', () => {
+    reactionSuite(onPostgreSQL);
   });
 
   describe('one of two hosts on one database', () => {

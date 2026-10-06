@@ -15,6 +15,8 @@ import { Effect } from 'effect';
 import { hostExecutor, type HostExecutor, type Perform } from '../calls/host-executor.ts';
 import type { HostDatabase } from '../database/host-database.ts';
 import type { HostClock } from '../loop/host-clock.ts';
+import type { ReactionOptions } from '../reactions/reaction-options.ts';
+import { reactionPortsOn, type ReactionPorts } from '../reactions/reaction-ports.ts';
 import { sqlTimers, type TimerTable } from '../timers/sql-timers.ts';
 import { hostPortsOn, type PortParts } from './host-ports.ts';
 
@@ -24,6 +26,7 @@ export interface EngineOptions extends Pick<PortParts, 'settle' | 'reports'> {
   readonly mostCallsAtOnce: number;
   readonly clock: HostClock;
   readonly cacheBounds?: RunCacheBounds;
+  readonly reactions: ReactionOptions;
 }
 
 export interface HostEngine {
@@ -31,6 +34,7 @@ export interface HostEngine {
   readonly runStore: RunStore;
   readonly timers: TimerTable;
   readonly executor: HostExecutor;
+  readonly reacting: ReactionPorts;
   readonly submitted: (input: RunInput) => Effect.Effect<Submission, Conflict>;
 }
 
@@ -51,13 +55,16 @@ export function hostEngineOn(
     trouble: reports.trouble,
     mostAtOnce: options.mostCallsAtOnce,
   });
+  const reacting = reactionPortsOn(database, options.reactions, clock.now);
   const ports = hostPortsOn(database, {
     settle: options.settle,
     reports,
     timers: timers.timers,
     executor: executor.executor,
+    listeners: reacting.listeners,
+    emitter: reacting.emitter,
     now: clock.now,
   });
   const engine = workflowEngineOf(ports, options.machine, runCacheOf(options.cacheBounds ?? runCacheBounds));
-  return { engine, runStore: ports.runStore, timers, executor, submitted };
+  return { engine, runStore: ports.runStore, timers, executor, reacting, submitted };
 }
