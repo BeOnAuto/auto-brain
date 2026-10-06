@@ -6,7 +6,7 @@ import { defineListBrainEvents } from '../feed/list-brain-events.ts';
 import { acmeAdmin } from './callers.ts';
 import { harness, toBrain } from './harness.ts';
 
-export const FactSchema = Schema.Struct({
+const FactSchema = Schema.Struct({
   type: Schema.Literals(['added', 'hidden', 'kept', 'moved']),
   text: Schema.String,
   at: Schema.String,
@@ -14,21 +14,16 @@ export const FactSchema = Schema.Struct({
 
 export type Fact = typeof FactSchema.Type;
 
-export const recorder: Decider<null, Fact, Fact> = {
+const recorder: Decider<null, Fact, Fact> = {
   initialState: null,
   evolve: (state) => state,
   decide: (fact) => Result.succeed([fact]),
   eventSchema: FactSchema,
 };
 
-export const decodeFact = Schema.decodeUnknownSync(FactSchema);
+const decodeFact = Schema.decodeUnknownSync(FactSchema);
 
-export function eventOf(
-  { id, cursor, causationId }: RecordedEvent,
-  type: string,
-  text: string,
-  at: string,
-): PublicEvent {
+function eventOf({ id, cursor, causationId }: RecordedEvent, type: string, text: string, at: string): PublicEvent {
   return { id, cursor, causation_id: causationId, at, type, summary: 'Something happened.', data: { text } };
 }
 
@@ -48,11 +43,11 @@ export function presenterOf(streamKind: string, publicNames: Readonly<Record<str
   };
 }
 
-export const notes = presenterOf('notes', { added: 'note_added', hidden: null, kept: 'note_kept' });
+const notes = presenterOf('notes', { added: 'note_added', hidden: null, kept: 'note_kept' });
 
-export const shelves = presenterOf('shelves', { added: 'shelf_filled' });
+const shelves = presenterOf('shelves', { added: 'shelf_filled' });
 
-export const steps: Presenter = {
+const steps: Presenter = {
   streamKind: 'runs',
   publicNames: { moved: ['run_moved', 'run_stepped'] },
   present: (recorded) => {
@@ -66,7 +61,7 @@ export const steps: Presenter = {
 
 export const listBrainEvents = defineListBrainEvents([notes, shelves, steps]);
 
-export const brains = memoryBrainRegistry(
+const brains = memoryBrainRegistry(
   [
     { org: 'acme', brain: 'alpha' },
     { org: 'globex', brain: 'gamma' },
@@ -76,7 +71,7 @@ export const brains = memoryBrainRegistry(
 
 export const toAlpha = toBrain('acme', 'alpha');
 
-export const TextsSchema = Schema.Struct({
+const TextsSchema = Schema.Struct({
   output: Schema.Struct({
     events: Schema.Array(Schema.Struct({ data: Schema.Struct({ text: Schema.String }) })),
     has_more: Schema.Boolean,
