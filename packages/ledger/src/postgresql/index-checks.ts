@@ -1,23 +1,10 @@
-import { Client } from 'pg';
-
 import { definitionStreamsStatement } from './postgresql-definition-streams.ts';
 
-const throughTheIndex = `Index Cond: ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text) = `;
-
-export async function definitionStreamsIndexed(database: string): Promise<boolean> {
-  const client = new Client({ connectionString: database });
-  await client.connect();
-  try {
-    await client.query('SET enable_seqscan = off');
-    const { rows } = await client.query<Readonly<Record<string, unknown>>>(`EXPLAIN ${definitionStreamsStatement}`, [
-      'recollection',
-      'emt:default',
-    ]);
-    return rows.some((row) => String(row['QUERY PLAN']).includes(throughTheIndex));
-  } finally {
-    await client.end();
-  }
-}
+export const definitionStreamsPlan = {
+  explained: `EXPLAIN ${definitionStreamsStatement}`,
+  values: ['recollection', 'emt:default'],
+  throughTheIndex: `Index Cond: ("substring"(stream_id, '^(?:[^/]*/){3}specs/([^/]+)$'::text) = `,
+};
 
 export const theBrainIndexes = [
   {

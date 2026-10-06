@@ -8,7 +8,7 @@ import { details, happenings } from '../testing/happenings.ts';
 import { ledgerBehaviour } from '../testing/ledger-behaviour.ts';
 import type { LedgerEntry } from '../testing/ledger-entry.ts';
 import { openLedgerWith, type OpenLedger } from '../testing/open-ledger.ts';
-import { definitionStreamsIndexed, theBrainIndexes } from './index-checks.ts';
+import { definitionStreamsPlan, theBrainIndexes } from './index-checks.ts';
 import { postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -19,6 +19,19 @@ async function queried(database: string, statement: string): Promise<readonly un
   try {
     const { rows } = await client.query<Readonly<Record<string, unknown>>>(statement);
     return rows;
+  } finally {
+    await client.end();
+  }
+}
+
+async function definitionStreamsIndexed(database: string): Promise<boolean> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  try {
+    await client.query('SET enable_seqscan = off');
+    const { explained, values, throughTheIndex } = definitionStreamsPlan;
+    const plan = await client.query<Readonly<Record<string, unknown>>>(explained, values);
+    return plan.rows.some((row) => String(row['QUERY PLAN']).includes(throughTheIndex));
   } finally {
     await client.end();
   }
