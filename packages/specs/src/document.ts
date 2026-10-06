@@ -16,5 +16,11 @@ export {
   type IssueBounds,
   type SchemaIssue,
 } from './document/json-bounds.ts';
-export { compileJsonSchema, jsonSchemaLimits, type CompiledSchema, type Validation } from './document/json-schema.ts';
+export {
+  boundedJsonSchema,
+  compileJsonSchema,
+  jsonSchemaLimits,
+  type CompiledSchema,
+  type Validation,
+} from './document/json-schema.ts';
 export { isKnownKeyword, shapeIssues } from './document/schema-shape.ts';

@@ -51,7 +51,7 @@ function rootIssue(detail: string): readonly Issue[] {
   return [{ pointer: '', detail }];
 }
 
-function boundedDocument(document: unknown): Result.Result<Schema.JsonObject, readonly Issue[]> {
+export function boundedJsonSchema(document: unknown): Result.Result<Schema.JsonObject, readonly Issue[]> {
   if (nestedDeeperThan(document, jsonSchemaLimits.nesting)) {
     return Result.fail(rootIssue(`A schema may nest at most ${jsonSchemaLimits.nesting} levels of objects and lists`));
   }
@@ -124,7 +124,7 @@ export function compileJsonSchema(
   document: unknown,
   validation: Validation,
 ): Result.Result<CompiledSchema, readonly Issue[]> {
-  return boundedDocument(document).pipe(
+  return boundedJsonSchema(document).pipe(
     Result.flatMap(wellFormedDocument),
     Result.flatMap((usable) =>
       Result.map(decoderOf(usable), (decode) => ({ document: usable, validate: validatorOf(decode, validation) })),

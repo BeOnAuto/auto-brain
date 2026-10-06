@@ -1,4 +1,5 @@
 import {
+  boundedJsonSchema,
   compileJsonSchema,
   jsonSchemaLimits,
   type CompiledSchema,
@@ -6,7 +7,7 @@ import {
 } from '@beonauto/specs/document';
 import { Result } from 'effect';
 
-import { portabilityOf, type PortabilityIssue } from './schema-portability.ts';
+import { portabilityOf, toolInputPortabilityOf, type PortabilityIssue } from './schema-portability.ts';
 
 export const schemaLimits = {
   ...jsonSchemaLimits,
@@ -23,6 +24,11 @@ export interface SchemaReport {
 
 export function compileAnswerSchema(document: unknown): Result.Result<AnswerSchema, readonly Issue[]> {
   return compileJsonSchema(document, { what: 'answer', nesting: schemaLimits.answerNesting });
+}
+
+export function notPortableAsToolInput(document: unknown): readonly PortabilityIssue[] {
+  const bounded = boundedJsonSchema(document);
+  return Result.isSuccess(bounded) ? toolInputPortabilityOf(bounded.success) : [];
 }
 
 export function checkAnswerSchema(document: unknown): SchemaReport {

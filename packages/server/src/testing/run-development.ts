@@ -15,14 +15,12 @@ const TestSetupSchema = Schema.Struct({
 
 const servers: RunningChild[] = [];
 
-function recordingPidsIn(pidsFile: string, serverEntry: string): StartChild {
+function recordingPidsIn(pidsFile: string): StartChild {
   return (command) => {
-    const child = startChild(command);
-    appendFileSync(pidsFile, `${JSON.stringify({ pid: child.pid })}\n`);
-    if (command.args.includes(serverEntry)) {
-      servers.push(child);
-    }
-    return child;
+    const server = startChild(command);
+    appendFileSync(pidsFile, `${JSON.stringify({ pid: server.pid })}\n`);
+    servers.push(server);
+    return server;
   };
 }
 
@@ -39,5 +37,5 @@ process.exitCode = await runDevelopment(process, {
   sourceDirectories: [setup.sourceDirectory],
   serverEntry: setup.serverEntry,
   configFile: setup.configFile,
-  startChild: recordingPidsIn(setup.pidsFile, setup.serverEntry),
+  startChild: recordingPidsIn(setup.pidsFile),
 });
