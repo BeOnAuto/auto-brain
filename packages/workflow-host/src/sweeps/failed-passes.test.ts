@@ -35,6 +35,7 @@ interface Followed {
   readonly sweeps: () => number;
   readonly upkeeps: () => number;
   readonly troubles: () => readonly string[];
+  readonly stop: () => Promise<void>;
 }
 
 function followed(following: Following): Followed {
@@ -68,7 +69,12 @@ function followed(following: Following): Followed {
       }),
   });
   onTestFinished(() => follower.stop());
-  return { sweeps: () => counts.reads - 1, upkeeps: () => counts.upkeeps, troubles: () => troubles };
+  return {
+    sweeps: () => counts.reads - 1,
+    upkeeps: () => counts.upkeeps,
+    troubles: () => troubles,
+    stop: follower.stop,
+  };
 }
 
 function passesFailingFirstFor(failing: string, passed: (brainKey: string) => void) {
@@ -202,11 +208,15 @@ describe('a sweep whose read of a registry of brains keeps failing', () => {
       () => Promise.resolve(watched.upkeeps()),
       (upkeeps) => upkeeps >= 3,
     );
+    await watched.stop();
 
     expect(passed).toEqual(['brain/acme/alpha/']);
-    expect(watched.upkeeps()).toBeGreaterThanOrEqual(3);
-    expect(new Set(watched.troubles())).toEqual(
-      new Set(['A registry of brains could not be read; the next sweep reads it again']),
+    expect(watched.upkeeps()).toBe(watched.sweeps());
+    expect(watched.troubles()).toEqual(
+      Array.from(
+        { length: watched.sweeps() },
+        () => 'A registry of brains could not be read; the next sweep reads it again',
+      ),
     );
   });
 });

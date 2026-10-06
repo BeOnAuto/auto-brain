@@ -102,7 +102,11 @@ function swept(parts: FollowerParts, wakes: Wakes) {
     yield* parts.upkeep.sweep().pipe(Effect.catchCause((cause) => Effect.andThen(handedBack, Effect.failCause(cause))));
     yield* Effect.forEach(
       sweep.brains,
-      ({ brainKey, known }) => passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),
+      ({ brainKey, known }) =>
+        Effect.andThen(
+          known === undefined ? parts.discovery.brainSeen(brainKey) : Effect.void,
+          passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),
+        ),
       { discard: true },
     );
     if (sweep.again) {
