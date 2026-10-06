@@ -51,7 +51,7 @@ function waitFor(retryAfterMs: number | null): string {
   return seconds === 1 ? 'in 1 second' : `in ${seconds} seconds`;
 }
 
-export function rejections(maxOutputTokens: number, tools: RunTools | undefined) {
+export function rejections(maxOutputTokens: number, tools?: RunTools) {
   const unavailable = (detail: string, advice = '') => unavailableAfter(tools, detail, advice);
   return {
     cancelled: () => Effect.interrupt,

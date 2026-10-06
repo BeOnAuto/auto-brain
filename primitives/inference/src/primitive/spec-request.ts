@@ -1,4 +1,5 @@
-import { runBoundMs, type RunTools } from '@beonauto/mcp';
+import type { RunTools } from '@beonauto/mcp';
+import { runBoundMs } from '@beonauto/mcp/policy';
 import type { ExecutionContext } from '@beonauto/specs';
 
 import type { ModelRequest, ModelTools } from '../model/model-request.ts';
@@ -24,7 +25,7 @@ export function requestFor(
   spec: InferenceSpec,
   { instructions, message }: RenderedPrompt,
   execution: ExecutionContext,
-  tools: RunTools | undefined,
+  tools?: RunTools,
 ): ModelRequest {
   const timeoutMs = timeoutFor(spec.settings.max_output_tokens);
   return {

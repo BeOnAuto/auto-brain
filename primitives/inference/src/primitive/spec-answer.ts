@@ -25,9 +25,16 @@ export function answerOf({
   prompt,
   execution,
 }: Answering): Effect.Effect<ModelResult, SpecRejection> {
-  return withTools(access, spec.tools, execution, (tools) =>
-    languageModel
-      .generate(requestFor(spec, prompt, execution, tools))
-      .pipe(Effect.catchTags(rejections(spec.settings.max_output_tokens, tools))),
+  const { max_output_tokens: maxOutputTokens } = spec.settings;
+  const admitted = languageModel
+    .admit(requestFor(spec, prompt, execution))
+    .pipe(Effect.catchTags(rejections(maxOutputTokens)));
+  return Effect.andThen(
+    admitted,
+    withTools(access, spec.tools, execution, (tools) =>
+      languageModel
+        .generate(requestFor(spec, prompt, execution, tools))
+        .pipe(Effect.catchTags(rejections(maxOutputTokens, tools))),
+    ),
   );
 }

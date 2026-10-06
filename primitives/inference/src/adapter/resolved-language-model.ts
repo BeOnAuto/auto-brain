@@ -17,8 +17,8 @@ export function resolvedLanguageModel(
   { reportProviderMessage, reportOperatorHint }: ModelAccessOptions,
 ): LanguageModel['Service'] {
   const showing = providersShowingMessages(settings);
-  return LanguageModel.of({
-    generate: generation(modelResolution(models, settings.aliases, status, settings.allowed), {
+  return LanguageModel.of(
+    generation(modelResolution(models, settings.aliases, status, settings.allowed), {
       configured: status.configured,
       showsProviderMessages: (provider) => showing.has(provider),
       scrub: secretScrubber(settings),
@@ -26,5 +26,5 @@ export function resolvedLanguageModel(
       reportHint: reportOperatorHint ?? (() => Effect.void),
       admitsOptions: gatewayOptionsCheck(settings.gateways),
     }),
-  });
+  );
 }

@@ -1,7 +1,9 @@
 import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
-import { Exit } from 'effect';
+import { Effect, Exit } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { makeInference } from '../primitive/inference-primitive.ts';
+import { accessFor } from '../testing/adapter-harness.ts';
 import { callingTools } from '../testing/calling-tools.ts';
 import { execution, inferenceWith, inferenceWithTools } from '../testing/inference-runs.ts';
 import { textResult } from '../testing/model-results.ts';
@@ -109,5 +111,23 @@ describe('a tool a reason function names that is not offered', () => {
     expect(await run.executing(naming('graph/search'))).toEqual(
       Exit.fail(expect.objectContaining({ kind: 'mcp_server_failed', because: 'unreachable' })),
     );
+  });
+});
+
+describe('a reason function with tools whose model is not offered', () => {
+  it('is rejected before its tools are opened, so it reaches no server and starts no process', async () => {
+    const fake = await graphServer();
+    const { languageModel } = await accessFor({ OPENAI_API_KEY: 'k' }, {});
+    const primitive = makeInference({
+      languageModel,
+      offered: { providers: ['openai'], aliases: [] },
+      tools: accessTo(fake),
+    });
+    const prepared = Effect.runSync(primitive.prepare(naming('graph/search')));
+
+    expect(await Effect.runPromiseExit(prepared.execute({}, execution))).toEqual(
+      Exit.fail(expect.objectContaining({ kind: 'model_not_offered', because: 'provider_not_configured' })),
+    );
+    expect(fake.seen()).toEqual([]);
   });
 });
