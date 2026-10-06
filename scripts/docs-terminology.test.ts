@@ -28,8 +28,11 @@ await test('terminology distinguishes current contracts and absent capabilities'
   assert.ok(terminology.includes('`primitive: "inference"`'));
   assert.ok(terminology.includes('`primitive: "orchestration"`'));
   assert.ok(terminology.includes('This runtime repository has no Studio application'));
+  assert.ok(terminology.includes('Self-hosted reasoning functions can use operator-configured MCP tools'));
   assert.ok(
-    terminology.includes('Skill references and internal tool access for reasoning functions are still planned'),
+    terminology.includes(
+      'Auto Cloud tool access, skill references and a separately managed tool library are still planned',
+    ),
   );
   assert.ok(terminology.includes('calling another workflow, or a subworkflow, is not supported yet'));
 });

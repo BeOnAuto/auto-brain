@@ -13,7 +13,9 @@ export {
   type PrimitiveDefinition,
   type PrimitiveRejection,
   type DefinitionSummary,
+  type ToolCallJournal,
 } from './primitive/primitive.ts';
+export type { ToolCallFact } from './execution/execution-commands.ts';
 export { defineRetireSpec } from './operations/retire-spec.ts';
 export { defineUpdateSpec } from './operations/update-spec.ts';
 export {

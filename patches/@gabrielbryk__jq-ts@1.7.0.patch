@@ -1,3 +1,845 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -81,7 +81,102 @@
+ const DEFAULT_LIMITS = {
+ 	maxSteps: 1e5,
+ 	maxDepth: 200,
+-	maxOutputs: 1e4
++	maxOutputs: 1e4,
++	maxWork: Infinity
++};
++const unspanned = {
++	start: 0,
++	end: 0
++};
++/** The work of visiting one value, array item or object entry, in units of one string character. */
++const ITEM_WORK = 16;
++/** The work of copying one object entry, which costs more than an array item. */
++const ENTRY_WORK = 32;
++/** The work of one evaluation step. */
++const STEP_WORK = 128;
++/** The work of one position of a regex search. The regex prices are measured, at about 3.75 ns a unit. */
++const REGEX_POSITION_WORK = 8;
++/** The work of stepping one thread of the regex machine at a position. */
++const REGEX_THREAD_WORK = 4;
++/** The work of passing one instruction while following a thread's jumps, splits and saves. */
++const REGEX_VISIT_WORK = 3;
++/** The capture slots the regex machine creates or copies for one unit of work. */
++const REGEX_SLOTS_PER_UNIT = 16;
++/** The members of a character class the regex machine tests for one unit of work. */
++const REGEX_MEMBERS_PER_UNIT = 2;
++/** The work per character of encoding with a format or changing case. */
++const CHARACTER_WORK = 16;
++/** The work per character of searching a string for another. */
++const SEARCH_WORK = 4;
++/** The most instructions a compiled regular expression may have. */
++const MAX_REGEX_INSTRUCTIONS = 4096;
++/** The work between two readings of the deadline's clock. */
++const CLOCK_READING_WORK = 4096;
++const knownSizes = /* @__PURE__ */ new WeakMap();
++/**
++* The work of visiting all of a value: one item per value, plus the length of every
++* string and object key. Shared values count each time they occur.
++*/
++const sizeOf = (value) => {
++	if (typeof value === "string") return value.length + ITEM_WORK;
++	if (value === null || typeof value !== "object") return ITEM_WORK;
++	const known = knownSizes.get(value);
++	if (known !== void 0) return known;
++	let size = ITEM_WORK;
++	if (Array.isArray(value)) for (const item of value) size += sizeOf(item);
++	else for (const key of Object.keys(value)) size += key.length + sizeOf(value[key]);
++	knownSizes.set(value, size);
++	return size;
++};
++/** The work of visiting a value's own level: a string's characters, an array's items, an object's keys. */
++const shallowSizeOf = (value) => {
++	if (typeof value === "string") return value.length + ITEM_WORK;
++	if (Array.isArray(value)) return (value.length + 1) * ITEM_WORK;
++	if (value !== null && typeof value === "object") return (Object.keys(value).length + 1) * ENTRY_WORK;
++	return ITEM_WORK;
++};
++let activeTracker;
++/** Charges work to the evaluation running now, if any. */
++const charge = (units, span = unspanned) => {
++	if (activeTracker !== void 0) activeTracker.charge(units, span);
++};
++/**
++* Finds where `pattern` occurs in `text`, in time linear in their lengths (Knuth-Morris-Pratt),
++* unlike the engine's own search, whose worst case grows with the product of the lengths.
++* Overlapping occurrences are found unless `disjoint` is set; `first` stops at the first one.
++*/
++const occurrencesOf = (text, pattern, { first = false, disjoint = false } = {}) => {
++	charge((text.length + pattern.length) * SEARCH_WORK + ITEM_WORK);
++	const found = [];
++	if (pattern.length === 0) return found;
++	const fallback = new Int32Array(pattern.length);
++	for (let i = 1, k = 0; i < pattern.length; i++) {
++		while (k > 0 && pattern.charCodeAt(i) !== pattern.charCodeAt(k)) k = fallback[k - 1];
++		if (pattern.charCodeAt(i) === pattern.charCodeAt(k)) k++;
++		fallback[i] = k;
++	}
++	for (let i = 0, k = 0; i < text.length; i++) {
++		while (k > 0 && text.charCodeAt(i) !== pattern.charCodeAt(k)) k = fallback[k - 1];
++		if (text.charCodeAt(i) === pattern.charCodeAt(k)) k++;
++		if (k === pattern.length) {
++			found.push(i - pattern.length + 1);
++			if (first) return found;
++			k = disjoint ? 0 : fallback[k - 1];
++		}
++	}
++	return found;
++};
++/** Splits `text` at each disjoint occurrence of `separator`, as `String.prototype.split` does. */
++const splitLinear = (text, separator) => {
++	if (separator.length === 0) return text.split(separator);
++	const parts = [];
++	let start = 0;
++	for (const at of occurrencesOf(text, separator, { disjoint: true })) {
++		parts.push(text.slice(start, at));
++		start = at + separator.length;
++	}
++	parts.push(text.slice(start));
++	return parts;
+ };
+ /**
+ * Resolves a partial limits configuration into a complete one with defaults.
+@@ -92,7 +187,8 @@
+ const resolveLimits = (config = {}) => ({
+ 	maxSteps: config.maxSteps ?? DEFAULT_LIMITS.maxSteps,
+ 	maxDepth: config.maxDepth ?? DEFAULT_LIMITS.maxDepth,
+-	maxOutputs: config.maxOutputs ?? DEFAULT_LIMITS.maxOutputs
++	maxOutputs: config.maxOutputs ?? DEFAULT_LIMITS.maxOutputs,
++	maxWork: config.maxWork ?? DEFAULT_LIMITS.maxWork
+ });
+ /**
+ * Tracks execution usage against defined limits.
+@@ -102,15 +198,21 @@
+ 	steps = 0;
+ 	depth = 0;
+ 	outputs = 0;
++	work = 0;
++	nextClockReading = 0;
++	/** The regexes compiled during this evaluation, by their flags and pattern. */
++	regexes = /* @__PURE__ */ new Map();
+ 	/**
+ 	* @param limits - Resolved execution limits.
+ 	* @param clock - The {@link Clock} supplying the instant for the `now` builtin.
+ 	*   Carried here only because the tracker is the value already threaded to
+ 	*   builtins; the time logic itself lives in {@link Clock}.
++	* @param deadline - The instant `at`, read on the caller's `clock`, at which the evaluation stops, if any.
+ 	*/
+-	constructor(limits, clock) {
++	constructor(limits, clock, deadline) {
+ 		this.limits = limits;
+ 		this.clock = clock;
++		this.deadline = deadline;
+ 	}
+ 	/**
+ 	* Records a single execution step (AST node visit).
+@@ -119,6 +221,7 @@
+ 	step(span) {
+ 		this.steps += 1;
+ 		if (this.steps > this.limits.maxSteps) throw new RuntimeError("Step limit exceeded", span);
++		this.charge(STEP_WORK, span);
+ 	}
+ 	/**
+ 	* Enters a new scope/stack frame, incrementing the depth counter.
+@@ -142,6 +245,22 @@
+ 		this.outputs += 1;
+ 		if (this.outputs > this.limits.maxOutputs) throw new RuntimeError("Output limit exceeded", span);
+ 	}
++	/**
++	* Records work proportional to the size of the values an operation builds or visits.
++	* Exceeding the limit throws an error that `try` does not catch, so the evaluation ends.
++	* Every {@link CLOCK_READING_WORK} units it reads the deadline's clock, and ends the evaluation
++	* the same way, with "Deadline exceeded", once the deadline has passed.
++	* @param units - The amount of work.
++	* @param span - The source span for error reporting.
++	*/
++	charge(units, span) {
++		this.work += units;
++		if (!(this.work <= this.limits.maxWork)) throw new BaseError("limit", "Work limit exceeded", span);
++		if (this.deadline !== void 0 && this.work >= this.nextClockReading) {
++			this.nextClockReading = this.work + CLOCK_READING_WORK;
++			if (!(this.deadline.clock() < this.deadline.at)) throw new BaseError("limit", "Deadline exceeded", span);
++		}
++	}
+ };
+ //#endregion
+ //#region src/value.ts
+@@ -163,6 +282,7 @@
+ * @returns `true` if the values are structurally equal, `false` otherwise.
+ */
+ const valueEquals = (a, b) => {
++	charge(shallowSizeOf(a) + shallowSizeOf(b));
+ 	if (Object.is(a, b)) return true;
+ 	if (typeof a !== typeof b) return false;
+ 	if (typeof a === "number" && typeof b === "number") return Object.is(a, b);
+@@ -344,6 +464,7 @@
+ function* indexObject(container, indexValues, node, tracker) {
+ 	for (const keyValue of indexValues) {
+ 		if (typeof keyValue !== "string") throw new RuntimeError(`Cannot index object with ${describeType(keyValue)}`, node.span);
++		tracker.charge(shallowSizeOf(keyValue), node.span);
+ 		yield emit$1(Object.prototype.hasOwnProperty.call(container, keyValue) ? container[keyValue] : null, node.span, tracker);
+ 	}
+ }
+@@ -408,7 +529,11 @@
+ 		if (typeof target !== "string" && !Array.isArray(target)) throw new RuntimeError("Slice expected string or array", node.span);
+ 		const starts = resolveSliceBounds(node.start, 0, "start", node, input, env, tracker, evaluate);
+ 		const ends = resolveSliceBounds(node.end, target.length, "end", node, input, env, tracker, evaluate);
+-		for (const s of starts) for (const e of ends) yield emit$1(target.slice(normalizeSliceStart(s), normalizeSliceEnd(e)), node.span, tracker);
++		for (const s of starts) for (const e of ends) {
++			const sliced = target.slice(normalizeSliceStart(s), normalizeSliceEnd(e));
++			tracker.charge(shallowSizeOf(sliced), node.span);
++			yield emit$1(sliced, node.span, tracker);
++		}
+ 	}
+ };
+ //#endregion
+@@ -431,6 +556,7 @@
+ 	const byKey = {};
+ 	for (const p of relevantPaths) {
+ 		const key = p[0];
++		charge(shallowSizeOf(key), span);
+ 		if (!byKey[key]) byKey[key] = [];
+ 		byKey[key].push(p.slice(1));
+ 	}
+@@ -463,6 +589,7 @@
+ /** Returns a copy of `root` with all of the given paths removed. */
+ const deletePaths = (root, paths, span) => {
+ 	if (paths.some((p) => p.length === 0)) return null;
++	charge(shallowSizeOf(root) + paths.length * ITEM_WORK, span);
+ 	if (isPlainObject(root)) return deleteFromObject(root, paths, span);
+ 	if (Array.isArray(root)) return deleteFromArray(root, paths, span);
+ 	return root;
+@@ -479,6 +606,7 @@
+ 	for (const part of path) {
+ 		if (curr === null) return void 0;
+ 		if (typeof part === "string" && isPlainObject(curr)) {
++			charge(shallowSizeOf(part), span);
+ 			if (!Object.prototype.hasOwnProperty.call(curr, part)) return void 0;
+ 			curr = objValue$1(curr, part);
+ 		} else if (typeof part === "number" && Array.isArray(curr)) {
+@@ -495,6 +623,7 @@
+ /** Applies a slice-assignment segment `{ start, end }`, replacing the range with the RHS array. */
+ const updateSliceSegment = (root, head, updateFn, span) => {
+ 	if (!Array.isArray(root)) throw new RuntimeError(`Cannot slice ${describeType(root)}`, span);
++	charge(shallowSizeOf(root), span);
+ 	const arr = [...root];
+ 	const start = head.start ?? 0;
+ 	const end = head.end ?? arr.length;
+@@ -506,6 +635,7 @@
+ //#endregion
+ //#region src/path/update.ts
+ const updateObjectSegment = (root, head, tail, updateFn, span, depth) => {
++	charge(shallowSizeOf(root) + shallowSizeOf(head), span);
+ 	let obj = {};
+ 	if (isPlainObject(root)) obj = { ...root };
+ 	else if (root === null) obj = {};
+@@ -516,6 +646,7 @@
+ 	return obj;
+ };
+ const updateArraySegment = (root, head, tail, updateFn, span, depth) => {
++	charge(shallowSizeOf(root) + Math.max(0, head) * ITEM_WORK, span);
+ 	let arr = [];
+ 	if (Array.isArray(root)) arr = [...root];
+ 	else if (root === null) arr = [];
+@@ -558,13 +689,17 @@
+ 	}
+ 	if (typeof val === "string" && /^-?\d+$/.test(val)) return parseInt(val, 10);
+ };
+-const stableStringify = (value) => {
++const stringifyStable = (value) => {
+ 	if (value === null) return "null";
+ 	if (typeof value === "boolean") return value ? "true" : "false";
+ 	if (typeof value === "number") return value.toString();
+ 	if (typeof value === "string") return JSON.stringify(value);
+-	if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+-	return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${stableStringify(objValue(value, k))}`).join(",")}}`;
++	if (Array.isArray(value)) return `[${value.map(stringifyStable).join(",")}]`;
++	return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${stringifyStable(objValue(value, k))}`).join(",")}}`;
++};
++const stableStringify = (value) => {
++	charge(sizeOf(value));
++	return stringifyStable(value);
+ };
+ //#endregion
+ //#region src/eval/ops/arithmetic.ts
+@@ -580,6 +715,7 @@
+ * @returns The combined value.
+ */
+ function add(left, right, span) {
++	charge(typeof left === "string" && typeof right === "string" ? shallowSizeOf(right) : shallowSizeOf(left) + shallowSizeOf(right), span);
+ 	if (left === null) return right;
+ 	if (right === null) return left;
+ 	if (typeof left === "number" && typeof right === "number") return left + right;
+@@ -592,6 +728,7 @@
+ 	throw new RuntimeError(`Cannot add ${describeType(left)} and ${describeType(right)}`, span);
+ }
+ function sub(left, right, span) {
++	charge(sizeOf(left) + sizeOf(right), span);
+ 	if (typeof left === "number" && typeof right === "number") return left - right;
+ 	if (Array.isArray(left) && Array.isArray(right)) {
+ 		const toRemove = new Set(right.map(stableStringify));
+@@ -600,6 +737,7 @@
+ 	throw new RuntimeError(`Cannot subtract ${describeType(right)} from ${describeType(left)}`, span);
+ }
+ function mul(left, right, span) {
++	charge(sizeOf(left) + sizeOf(right), span);
+ 	if (typeof left === "number" && typeof right === "number") return left * right;
+ 	if (typeof left === "string" && typeof right === "number") return repeatString(left, right);
+ 	if (typeof left === "number" && typeof right === "string") return repeatString(right, left);
+@@ -607,11 +745,15 @@
+ 	throw new RuntimeError(`Cannot multiply ${describeType(left)} by ${describeType(right)}`, span);
+ }
+ function div(left, right, span) {
++	charge(shallowSizeOf(left) + shallowSizeOf(right), span);
+ 	if (typeof left === "number" && typeof right === "number") {
+ 		if (right === 0) throw new RuntimeError("Division by zero", span);
+ 		return left / right;
+ 	}
+-	if (typeof left === "string" && typeof right === "string") return left.split(right);
++	if (typeof left === "string" && typeof right === "string") {
++		charge((Math.floor(left.length / Math.max(1, right.length)) + 1) * ITEM_WORK, span);
++		return splitLinear(left, right);
++	}
+ 	throw new RuntimeError(`Cannot divide ${describeType(left)} by ${describeType(right)}`, span);
+ }
+ function mod(left, right, span) {
+@@ -625,6 +767,7 @@
+ 	if (count <= 0) return null;
+ 	const n = Math.floor(count);
+ 	if (n <= 0) return null;
++	charge(str.length * n);
+ 	return str.repeat(n);
+ }
+ function mergeDeep(target, source) {
+@@ -999,6 +1142,7 @@
+ 	else if (entry.key.kind === "KeyString") keys = [entry.key.value];
+ 	else for (const k of evaluate(entry.key.expr, input, env, tracker)) {
+ 		if (typeof k !== "string") throw new RuntimeError("Object key must be a string", entry.key.span);
++		tracker.charge(shallowSizeOf(k), entry.key.span);
+ 		keys.push(k);
+ 	}
+ 	for (const key of keys) for (const val of evaluate(entry.value, input, env, tracker)) {
+@@ -1460,6 +1604,7 @@
+ 		yield* evaluate(node.str, input, env, tracker);
+ 		return;
+ 	}
++	tracker.charge(sizeOf(input) * CHARACTER_WORK, node.span);
+ 	yield emit$1(applyFormat(node.name, input, node.span), node.span, tracker);
+ }
+ //#endregion
+@@ -1551,6 +1696,7 @@
+ 		if (keyVal !== null && keyVal !== false) break;
+ 	}
+ 	const key = typeof keyVal === "string" ? keyVal : stableStringify(keyVal);
++	charge(shallowSizeOf(key), span);
+ 	let value = null;
+ 	for (const alias of ENTRY_VALUE_ALIASES) if (Object.prototype.hasOwnProperty.call(item, alias)) {
+ 		value = objValue(item, alias);
+@@ -1718,6 +1864,7 @@
+ 				if (typeof key === "string") keyStr = key;
+ 				else if (typeof key === "number") keyStr = key.toString();
+ 				else throw new RuntimeError(`has() key must be string or number for object input`, span);
++				tracker.charge(shallowSizeOf(keyStr), span);
+ 				yield emit(Object.prototype.hasOwnProperty.call(input, keyStr), span, tracker);
+ 			} else throw new RuntimeError(`has() expects an array or object input`, span);
+ 		}
+@@ -1825,6 +1972,7 @@
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+ 			if (typeof input !== "string") throw new RuntimeError("explode expects string", span);
++			tracker.charge(input.length * ITEM_WORK, span);
+ 			yield emit(Array.from(input).map((c) => c.codePointAt(0)), span, tracker);
+ 		}
+ 	},
+@@ -1875,7 +2023,8 @@
+ 	if (tracker && span) tracker.step(span);
+ 	if (a === b) return true;
+ 	if (typeof a !== typeof b) return false;
+-	if (typeof a === "string" && typeof b === "string") return a.includes(b);
++	charge(shallowSizeOf(a) + shallowSizeOf(b));
++	if (typeof a === "string" && typeof b === "string") return b.length === 0 || occurrencesOf(a, b, { first: true }).length > 0;
+ 	if (Array.isArray(a) && Array.isArray(b)) return b.every((bItem) => a.some((aItem) => checkContains(aItem, bItem, tracker, span)));
+ 	if (isPlainObject(a) && isPlainObject(b)) {
+ 		const keys = Object.keys(b);
+@@ -1914,8 +2063,10 @@
+ 	if (Array.isArray(input)) return arrayFindIndex(input, search, fromEnd);
+ 	if (typeof input === "string") {
+ 		if (typeof search !== "string") throw new RuntimeError(`${name} expects string search when input is string`, span);
+-		const idx = fromEnd ? input.lastIndexOf(search) : input.indexOf(search);
+-		return idx === -1 ? null : idx;
++		if (search.length === 0) return fromEnd ? input.length : 0;
++		const found = occurrencesOf(input, search, { first: !fromEnd });
++		if (found.length === 0) return null;
++		return fromEnd ? found[found.length - 1] : found[0];
+ 	}
+ 	if (input === null) return null;
+ 	throw new RuntimeError(`${name} expects string or array`, span);
+@@ -1937,19 +2088,7 @@
+ }];
+ //#endregion
+ //#region src/builtins/strings/indices.ts
+-const stringIndices = (input, search) => {
+-	const indices = [];
+-	if (search.length > 0) {
+-		let pos = 0;
+-		while (pos < input.length) {
+-			const idx = input.indexOf(search, pos);
+-			if (idx === -1) break;
+-			indices.push(idx);
+-			pos = idx + 1;
+-		}
+-	}
+-	return indices;
+-};
++const stringIndices = (input, search) => occurrencesOf(input, search);
+ const arrayIndices = (input, search) => {
+ 	const indices = [];
+ 	if (Array.isArray(search)) {
+@@ -1991,7 +2130,8 @@
+ 			const sepGen = evaluate(args[0], input, env, tracker);
+ 			for (const sep of sepGen) {
+ 				if (typeof sep !== "string") throw new RuntimeError("split separator must be a string", span);
+-				yield emit(input.split(sep), span, tracker);
++				tracker.charge((Math.floor(input.length / Math.max(1, sep.length)) + 1) * ITEM_WORK, span);
++				yield emit(splitLinear(input, sep), span, tracker);
+ 			}
+ 		}
+ 	},
+@@ -2007,6 +2147,7 @@
+ 				for (const item of input) if (item === null) parts.push("");
+ 				else if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") parts.push(String(item));
+ 				else throw new RuntimeError(`join cannot join ${describeType(item)}`, span);
++				tracker.charge(parts.reduce((length, part) => length + part.length, sep.length * Math.max(0, parts.length - 1)), span);
+ 				yield emit(parts.join(sep), span, tracker);
+ 			}
+ 		}
+@@ -2016,6 +2157,7 @@
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+ 			if (typeof input !== "string") throw new RuntimeError("ascii_downcase expects string", span);
++			tracker.charge(input.length * CHARACTER_WORK, span);
+ 			yield emit(input.replace(/[A-Z]/g, (char) => char.toLowerCase()), span, tracker);
+ 		}
+ 	},
+@@ -2024,6 +2166,7 @@
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+ 			if (typeof input !== "string") throw new RuntimeError("ascii_upcase expects string", span);
++			tracker.charge(input.length * CHARACTER_WORK, span);
+ 			yield emit(input.replace(/[a-z]/g, (char) => char.toUpperCase()), span, tracker);
+ 		}
+ 	}
+@@ -2133,8 +2276,11 @@
+ 				let res = [];
+ 				for (const item of arr) {
+ 					tracker.step(span);
+-					if (Array.isArray(item)) res = res.concat(flattenRec(item));
+-					else res.push(item);
++					if (Array.isArray(item)) {
++						const flat = flattenRec(item);
++						tracker.charge((res.length + flat.length + 1) * ITEM_WORK, span);
++						res = res.concat(flat);
++					} else res.push(item);
+ 				}
+ 				return res;
+ 			};
+@@ -2154,8 +2300,11 @@
+ 					let res = [];
+ 					for (const item of arr) {
+ 						tracker.step(span);
+-						if (Array.isArray(item)) res = res.concat(flattenDepth(item, d - 1));
+-						else res.push(item);
++						if (Array.isArray(item)) {
++							const flat = flattenDepth(item, d - 1);
++							tracker.charge((res.length + flat.length + 1) * ITEM_WORK, span);
++							res = res.concat(flat);
++						} else res.push(item);
+ 					}
+ 					return res;
+ 				};
+@@ -2178,6 +2327,7 @@
+ 				if (!Array.isArray(row)) throw new RuntimeError("transpose input must be array of arrays", span);
+ 				if (row.length > maxLen) maxLen = row.length;
+ 			}
++			tracker.charge((maxLen * arr.length + 1) * ITEM_WORK, span);
+ 			const result = [];
+ 			for (let j = 0; j < maxLen; j++) {
+ 				const newRow = [];
+@@ -3741,13 +3891,19 @@
+ //#region src/regex/compile.ts
+ var Compiler = class {
+ 	insts = [];
++	/** Adds instructions to the program, charging their work and refusing a program longer than the most it may have. */
++	push(...insts) {
++		charge(insts.length * ITEM_WORK);
++		if (this.insts.length + insts.length > MAX_REGEX_INSTRUCTIONS) throw new RegexError(`regex too large: more than ${MAX_REGEX_INSTRUCTIONS} instructions`);
++		this.insts.push(...insts);
++	}
+ 	build(node, groupCount, names) {
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 0
+ 		});
+ 		this.emit(node);
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 1
+ 		}, { op: "match" });
+@@ -3761,23 +3917,23 @@
+ 		switch (node.type) {
+ 			case "Empty": return;
+ 			case "Char":
+-				this.insts.push({
++				this.push({
+ 					op: "char",
+ 					cp: node.cp
+ 				});
+ 				return;
+ 			case "AnyChar":
+-				this.insts.push({ op: "any" });
++				this.push({ op: "any" });
+ 				return;
+ 			case "Class":
+-				this.insts.push({
++				this.push({
+ 					op: "class",
+ 					items: node.items,
+ 					negated: node.negated
+ 				});
+ 				return;
+ 			case "Anchor":
+-				this.insts.push({
++				this.push({
+ 					op: "assert",
+ 					kind: node.kind
+ 				});
+@@ -3801,12 +3957,12 @@
+ 			this.emit(node.node);
+ 			return;
+ 		}
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 2 * node.capture
+ 		});
+ 		this.emit(node.node);
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 2 * node.capture + 1
+ 		});
+@@ -3823,14 +3979,14 @@
+ 				x: 0,
+ 				y: 0
+ 			};
+-			this.insts.push(split);
++			this.push(split);
+ 			split.x = this.insts.length;
+ 			this.emit(options[i]);
+ 			const jmp = {
+ 				op: "jmp",
+ 				x: 0
+ 			};
+-			this.insts.push(jmp);
++			this.push(jmp);
+ 			jmps.push(jmp);
+ 			split.y = this.insts.length;
+ 		}
+@@ -3838,7 +3994,10 @@
+ 		for (const jmp of jmps) jmp.x = end;
+ 	}
+ 	emitRepeat(node, min, max, greedy) {
+-		for (let i = 0; i < min; i++) this.emit(node);
++		for (let i = 0; i < min; i++) {
++			charge(ITEM_WORK);
++			this.emit(node);
++		}
+ 		if (max === null) this.emitStar(node, greedy);
+ 		else this.emitBounded(node, max - min, greedy);
+ 	}
+@@ -3849,10 +4008,10 @@
+ 			x: 0,
+ 			y: 0
+ 		};
+-		this.insts.push(split);
++		this.push(split);
+ 		const bodyStart = this.insts.length;
+ 		this.emit(node);
+-		this.insts.push({
++		this.push({
+ 			op: "jmp",
+ 			x: splitIndex
+ 		});
+@@ -3867,7 +4026,7 @@
+ 				x: 0,
+ 				y: 0
+ 			};
+-			this.insts.push(split);
++			this.push(split);
+ 			const bodyStart = this.insts.length;
+ 			this.emit(node);
+ 			pending.push({
+@@ -4161,7 +4320,7 @@
+ 		cur.pos = start;
+ 		return null;
+ 	}
+-	if (!isPosixClass(name)) throw new RegexError(`unsupported regex feature: POSIX class [[:${name}:]]`);
++	if (!isPosixClass(name)) throw new RegexError(`unsupported regex feature: unknown POSIX class at position ${start}`);
+ 	return {
+ 		kind: "posix",
+ 		cls: name,
+@@ -4433,6 +4592,7 @@
+ 	names = [null];
+ 	constructor(pattern, extended) {
+ 		this.extended = extended;
++		charge(pattern.length * ITEM_WORK);
+ 		this.cur = new Cursor(Array.from(pattern, (ch) => ch.codePointAt(0)));
+ 	}
+ 	parse() {
+@@ -4637,7 +4797,9 @@
+ 	switch (inst.op) {
+ 		case "any": return flags.dotAll || cp !== NEWLINE;
+ 		case "char": return charEquals(cp, inst.cp, flags.ignoreCase);
+-		case "class": return classMatches(inst.items, inst.negated, cp, flags.ignoreCase);
++		case "class":
++			charge(Math.ceil(inst.items.length / REGEX_MEMBERS_PER_UNIT));
++			return classMatches(inst.items, inst.negated, cp, flags.ignoreCase);
+ 		default: return false;
+ 	}
+ };
+@@ -4686,6 +4848,7 @@
+ 		while (stack.length > 0) {
+ 			const top = stack.pop();
+ 			if (!list.mark(top.pc)) continue;
++			charge(REGEX_VISIT_WORK);
+ 			const inst = this.insts[top.pc];
+ 			if (inst.op === "jmp") stack.push({
+ 				pc: inst.x,
+@@ -4699,6 +4862,7 @@
+ 				saved: top.saved
+ 			});
+ 			else if (inst.op === "save") {
++				charge(Math.ceil(this.slotCount / REGEX_SLOTS_PER_UNIT));
+ 				const next = top.saved.slice();
+ 				next[inst.slot] = pos;
+ 				stack.push({
+@@ -4720,11 +4884,13 @@
+ 	*/
+ 	search(start) {
+ 		const n = this.cps.length;
++		charge(this.insts.length);
+ 		let clist = new ThreadList(this.insts.length);
+ 		let nlist = new ThreadList(this.insts.length);
+ 		let matched = null;
+ 		for (let pos = start; pos <= n; pos++) {
+ 			if (matched === null) this.addThread(clist, 0, pos, new Array(this.slotCount).fill(-1));
++			charge(REGEX_POSITION_WORK + clist.threads.length * REGEX_THREAD_WORK + Math.ceil(this.slotCount / REGEX_SLOTS_PER_UNIT));
+ 			const cp = this.cps[pos];
+ 			for (const thread of clist.threads) {
+ 				const inst = this.insts[thread.pc];
+@@ -4745,7 +4911,10 @@
+ };
+ //#endregion
+ //#region src/regex/index.ts
+-const toCodepoints$1 = (input) => Array.from(input, (ch) => ch.codePointAt(0));
++const toCodepoints$1 = (input) => {
++	charge(input.length * ITEM_WORK);
++	return Array.from(input, (ch) => ch.codePointAt(0));
++};
+ const buildMatch = (saved, program) => {
+ 	const index = saved[0];
+ 	const captures = [];
+@@ -4807,7 +4976,10 @@
+ //#endregion
+ //#region src/builtins/regex/core.ts
+ /** Splits a string into its Unicode codepoints (so offsets count codepoints). */
+-const toCodepoints = (input) => Array.from(input);
++const toCodepoints = (input) => {
++	charge(input.length * ITEM_WORK);
++	return Array.from(input);
++};
+ const sliceCp = (cps, start, length) => cps.slice(start, start + length).join("");
+ /** Validates that the subject of a regex builtin is a string. */
+ const requireStringInput = (input, span) => {
+@@ -4820,12 +4992,20 @@
+ 	if (typeof flags === "string") return flags;
+ 	throw new RuntimeError(`${describeType(flags)} is not a valid set of regex flags`, span);
+ };
+-/** Compiles a regex, surfacing engine errors as runtime errors. */
++/** Compiles a regex once in an evaluation, surfacing engine errors as runtime errors. */
+ const compile = (re, flags, span) => {
+ 	if (typeof re !== "string") throw new RuntimeError(`${describeType(re)} is not a string`, span);
++	const flagString = flagsToString(flags, span);
++	const key = `${flagString.length}:${flagString}${re}`;
++	charge(shallowSizeOf(key), span);
++	const known = activeTracker?.regexes.get(key);
++	if (known !== void 0) return known;
+ 	try {
+-		return compileRegex(re, flagsToString(flags, span));
++		const compiled = compileRegex(re, flagString);
++		activeTracker?.regexes.set(key, compiled);
++		return compiled;
+ 	} catch (err) {
++		if (err instanceof BaseError && err.kind === "limit") throw err;
+ 		throw new RuntimeError(err.message, span);
+ 	}
+ };
+@@ -5051,7 +5231,10 @@
+ //#region src/builtins/sql.ts
+ /** jq tostring semantics: strings pass through, everything else is JSON-encoded. */
+ const toKey = (value) => {
+-	if (typeof value === "string") return value;
++	if (typeof value === "string") {
++		charge(shallowSizeOf(value));
++		return value;
++	}
+ 	return stableStringify(value);
+ };
+ const sqlBuiltins = [
+@@ -5179,8 +5362,11 @@
+ 		name: "length",
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+-			if (typeof input === "string") yield emit(Array.from(input).length, span, tracker);
+-			else if (Array.isArray(input)) yield emit(input.length, span, tracker);
++			if (typeof input === "string") {
++				let codepoints = 0;
++				for (const _ of input) codepoints++;
++				yield emit(codepoints, span, tracker);
++			} else if (Array.isArray(input)) yield emit(input.length, span, tracker);
+ 			else if (input !== null && typeof input === "object") yield emit(Object.keys(input).length, span, tracker);
+ 			else if (typeof input === "number") yield emit(Math.abs(input), span, tracker);
+ 			else throw new RuntimeError(`Cannot take length of ${describeType(input)}`, span);
+@@ -5455,7 +5641,11 @@
+ 	if (!specs) throw new RuntimeError(`Unknown function: ${node.name}`, node.span);
+ 	const builtin = specs.find((s) => s.arity === node.args.length);
+ 	if (!builtin) throw new RuntimeError(`Function ${node.name} does not accept ${node.args.length} arguments`, node.span);
+-	yield* builtin.apply(input, node.args, env, tracker, evaluate, node.span);
++	tracker.charge(shallowSizeOf(input), node.span);
++	for (const output of builtin.apply(input, node.args, env, tracker, evaluate, node.span)) {
++		tracker.charge(shallowSizeOf(output), node.span);
++		yield output;
++	}
+ };
+ /**
+ * Defines a new function in the environment.
+@@ -5500,6 +5690,7 @@
+ const evalIterate = function* (node, input, env, tracker, evaluate) {
+ 	for (const container of evaluate(node.target, input, env, tracker)) {
+ 		if (container === null) continue;
++		tracker.charge(shallowSizeOf(container), node.span);
+ 		if (isValueArray(container)) {
+ 			for (const item of container) yield emit$1(item, node.span, tracker);
+ 			continue;
+@@ -5630,7 +5821,7 @@
+ * @returns An array of all values yielded by the filter.
+ */
+ const runAst = (ast, input, options = {}) => {
+-	const tracker = new LimitTracker(resolveLimits(options.limits), resolveClock(options.now));
++	const tracker = new LimitTracker(resolveLimits(options.limits), resolveClock(options.now), options.deadline);
+ 	const named = options.vars ?? {};
+ 	const globalVars = new Map(Object.entries(named));
+ 	globalVars.set("ARGS", {
+@@ -5641,7 +5832,14 @@
+ 		vars: globalVars,
+ 		funcs: /* @__PURE__ */ new Map()
+ 	}];
+-	return Array.from(evaluate(ast, input, env, tracker));
++	const enclosing = activeTracker;
++	activeTracker = tracker;
++	try {
++		return Array.from(evaluate(ast, input, env, tracker));
++	} finally {
++		activeTracker = enclosing;
++		if (options.usage) options.usage.work = tracker.work;
++	}
+ };
+ /**
+ * The core evaluation generator.
+diff --git a/dist/index.d.cts b/dist/index.d.cts
+--- a/dist/index.d.cts
++++ b/dist/index.d.cts
+@@ -445,6 +445,8 @@
+   maxDepth?: number;
+   /** Maximum number of values to yield from a single output emitter. Default: 10,000. */
+   maxOutputs?: number;
++  /** Maximum work, in units of one string character, of building and visiting values. Default: unlimited. */
++  maxWork?: number;
+ }
+ /**
+  * Fully resolved limits with defaults applied.
+@@ -453,6 +455,7 @@
+   maxSteps: number;
+   maxDepth: number;
+   maxOutputs: number;
++  maxWork: number;
+ }
+ /**
+  * Resolves a partial limits configuration into a complete one with defaults.
+@@ -471,13 +474,22 @@
+   private steps;
+   private depth;
+   private outputs;
++  /** The work recorded so far. */
++  work: number;
++  private nextClockReading;
++  private readonly deadline;
++  private readonly regexes;
+   /**
+    * @param limits - Resolved execution limits.
+    * @param clock - The {@link Clock} supplying the instant for the `now` builtin.
+    *   Carried here only because the tracker is the value already threaded to
+    *   builtins; the time logic itself lives in {@link Clock}.
++   * @param deadline - The instant `at`, read on the caller's `clock`, at which the evaluation stops, if any.
+    */
+-  constructor(limits: ResolvedLimits, clock: Clock);
++  constructor(limits: ResolvedLimits, clock: Clock, deadline?: {
++    at: number;
++    clock: () => number;
++  });
+   /**
+    * Records a single execution step (AST node visit).
+    * @param span - The source span for error reporting.
+@@ -497,6 +509,13 @@
+    * @param span - The source span for error reporting.
+    */
+   emit(span: Span): void;
++  /**
++   * Records work proportional to the size of the values an operation builds or visits.
++   * Every 4096 units it reads the deadline's clock, and ends the evaluation, with "Deadline exceeded", once the deadline has passed.
++   * @param units - The amount of work.
++   * @param span - The source span for error reporting.
++   */
++  charge(units: number, span: Span): void;
+ }
+ //#endregion
+ //#region src/eval/types.d.ts
+@@ -522,6 +541,18 @@
+    * …) are unaffected.
+    */
+   now?: Date | number;
++  /** Receives the work the evaluation did, whether it finished or failed. */
++  usage?: {
++    work: number;
++  };
++  /**
++   * Stops the evaluation with a limit error, "Deadline exceeded", that `try` does not catch, once `clock()` reads `at` or later.
++   * The clock is read at most once in 4096 units of work; jq-ts never reads a clock on its own.
++   */
++  deadline?: {
++    at: number;
++    clock: () => number;
++  };
+ }
+ //#endregion
+ //#region src/eval/dispatch.d.ts
 diff --git a/dist/index.d.mts b/dist/index.d.mts
 --- a/dist/index.d.mts
 +++ b/dist/index.d.mts
@@ -18,21 +860,37 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
  }
  /**
   * Resolves a partial limits configuration into a complete one with defaults.
-@@ -471,6 +474,8 @@
+@@ -471,13 +474,22 @@
    private steps;
    private depth;
    private outputs;
 +  /** The work recorded so far. */
 +  work: number;
++  private nextClockReading;
++  private readonly deadline;
++  private readonly regexes;
    /**
     * @param limits - Resolved execution limits.
     * @param clock - The {@link Clock} supplying the instant for the `now` builtin.
-@@ -497,6 +502,12 @@
+    *   Carried here only because the tracker is the value already threaded to
+    *   builtins; the time logic itself lives in {@link Clock}.
++   * @param deadline - The instant `at`, read on the caller's `clock`, at which the evaluation stops, if any.
+    */
+-  constructor(limits: ResolvedLimits, clock: Clock);
++  constructor(limits: ResolvedLimits, clock: Clock, deadline?: {
++    at: number;
++    clock: () => number;
++  });
+   /**
+    * Records a single execution step (AST node visit).
+    * @param span - The source span for error reporting.
+@@ -497,6 +509,13 @@
     * @param span - The source span for error reporting.
     */
    emit(span: Span): void;
 +  /**
 +   * Records work proportional to the size of the values an operation builds or visits.
++   * Every 4096 units it reads the deadline's clock, and ends the evaluation, with "Deadline exceeded", once the deadline has passed.
 +   * @param units - The amount of work.
 +   * @param span - The source span for error reporting.
 +   */
@@ -40,7 +898,7 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
  }
  //#endregion
  //#region src/eval/types.d.ts
-@@ -522,6 +533,10 @@
+@@ -522,6 +541,18 @@
     * …) are unaffected.
     */
    now?: Date | number;
@@ -48,13 +906,21 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
 +  usage?: {
 +    work: number;
 +  };
++  /**
++   * Stops the evaluation with a limit error, "Deadline exceeded", that `try` does not catch, once `clock()` reads `at` or later.
++   * The clock is read at most once in 4096 units of work; jq-ts never reads a clock on its own.
++   */
++  deadline?: {
++    at: number;
++    clock: () => number;
++  };
  }
  //#endregion
  //#region src/eval/dispatch.d.ts
 diff --git a/dist/index.mjs b/dist/index.mjs
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -80,9 +80,92 @@
+@@ -80,9 +80,104 @@
  const DEFAULT_LIMITS = {
  	maxSteps: 1e5,
  	maxDepth: 200,
@@ -72,12 +938,24 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +const ENTRY_WORK = 32;
 +/** The work of one evaluation step. */
 +const STEP_WORK = 128;
-+/** The work of one step of the regex machine for one thread or capture slot. */
-+const REGEX_WORK = 8;
++/** The work of one position of a regex search. The regex prices are measured, at about 3.75 ns a unit. */
++const REGEX_POSITION_WORK = 8;
++/** The work of stepping one thread of the regex machine at a position. */
++const REGEX_THREAD_WORK = 4;
++/** The work of passing one instruction while following a thread's jumps, splits and saves. */
++const REGEX_VISIT_WORK = 3;
++/** The capture slots the regex machine creates or copies for one unit of work. */
++const REGEX_SLOTS_PER_UNIT = 16;
++/** The members of a character class the regex machine tests for one unit of work. */
++const REGEX_MEMBERS_PER_UNIT = 2;
 +/** The work per character of encoding with a format or changing case. */
 +const CHARACTER_WORK = 16;
 +/** The work per character of searching a string for another. */
 +const SEARCH_WORK = 4;
++/** The most instructions a compiled regular expression may have. */
++const MAX_REGEX_INSTRUCTIONS = 4096;
++/** The work between two readings of the deadline's clock. */
++const CLOCK_READING_WORK = 4096;
 +const knownSizes = /* @__PURE__ */ new WeakMap();
  /**
 +* The work of visiting all of a value: one item per value, plus the length of every
@@ -148,7 +1026,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  * Resolves a partial limits configuration into a complete one with defaults.
  *
  * @param config - The user-provided configuration.
-@@ -91,7 +174,8 @@
+@@ -91,7 +186,8 @@
  const resolveLimits = (config = {}) => ({
  	maxSteps: config.maxSteps ?? DEFAULT_LIMITS.maxSteps,
  	maxDepth: config.maxDepth ?? DEFAULT_LIMITS.maxDepth,
@@ -158,15 +1036,30 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  });
  /**
  * Tracks execution usage against defined limits.
-@@ -101,6 +185,7 @@
+@@ -101,15 +197,21 @@
  	steps = 0;
  	depth = 0;
  	outputs = 0;
 +	work = 0;
++	nextClockReading = 0;
++	/** The regexes compiled during this evaluation, by their flags and pattern. */
++	regexes = /* @__PURE__ */ new Map();
  	/**
  	* @param limits - Resolved execution limits.
  	* @param clock - The {@link Clock} supplying the instant for the `now` builtin.
-@@ -118,6 +203,7 @@
+ 	*   Carried here only because the tracker is the value already threaded to
+ 	*   builtins; the time logic itself lives in {@link Clock}.
++	* @param deadline - The instant `at`, read on the caller's `clock`, at which the evaluation stops, if any.
+ 	*/
+-	constructor(limits, clock) {
++	constructor(limits, clock, deadline) {
+ 		this.limits = limits;
+ 		this.clock = clock;
++		this.deadline = deadline;
+ 	}
+ 	/**
+ 	* Records a single execution step (AST node visit).
+@@ -118,6 +220,7 @@
  	step(span) {
  		this.steps += 1;
  		if (this.steps > this.limits.maxSteps) throw new RuntimeError("Step limit exceeded", span);
@@ -174,32 +1067,46 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	}
  	/**
  	* Enters a new scope/stack frame, incrementing the depth counter.
-@@ -141,6 +227,16 @@
+@@ -141,6 +244,22 @@
  		this.outputs += 1;
  		if (this.outputs > this.limits.maxOutputs) throw new RuntimeError("Output limit exceeded", span);
  	}
 +	/**
 +	* Records work proportional to the size of the values an operation builds or visits.
 +	* Exceeding the limit throws an error that `try` does not catch, so the evaluation ends.
++	* Every {@link CLOCK_READING_WORK} units it reads the deadline's clock, and ends the evaluation
++	* the same way, with "Deadline exceeded", once the deadline has passed.
 +	* @param units - The amount of work.
 +	* @param span - The source span for error reporting.
 +	*/
 +	charge(units, span) {
 +		this.work += units;
 +		if (!(this.work <= this.limits.maxWork)) throw new BaseError("limit", "Work limit exceeded", span);
++		if (this.deadline !== void 0 && this.work >= this.nextClockReading) {
++			this.nextClockReading = this.work + CLOCK_READING_WORK;
++			if (!(this.deadline.clock() < this.deadline.at)) throw new BaseError("limit", "Deadline exceeded", span);
++		}
 +	}
  };
  //#endregion
  //#region src/value.ts
-@@ -162,6 +258,7 @@
+@@ -162,6 +281,7 @@
  * @returns `true` if the values are structurally equal, `false` otherwise.
  */
  const valueEquals = (a, b) => {
-+	charge(shallowSizeOf(a));
++	charge(shallowSizeOf(a) + shallowSizeOf(b));
  	if (Object.is(a, b)) return true;
  	if (typeof a !== typeof b) return false;
  	if (typeof a === "number" && typeof b === "number") return Object.is(a, b);
-@@ -407,7 +504,11 @@
+@@ -343,6 +463,7 @@
+ function* indexObject(container, indexValues, node, tracker) {
+ 	for (const keyValue of indexValues) {
+ 		if (typeof keyValue !== "string") throw new RuntimeError(`Cannot index object with ${describeType(keyValue)}`, node.span);
++		tracker.charge(shallowSizeOf(keyValue), node.span);
+ 		yield emit$1(Object.prototype.hasOwnProperty.call(container, keyValue) ? container[keyValue] : null, node.span, tracker);
+ 	}
+ }
+@@ -407,7 +528,11 @@
  		if (typeof target !== "string" && !Array.isArray(target)) throw new RuntimeError("Slice expected string or array", node.span);
  		const starts = resolveSliceBounds(node.start, 0, "start", node, input, env, tracker, evaluate);
  		const ends = resolveSliceBounds(node.end, target.length, "end", node, input, env, tracker, evaluate);
@@ -212,7 +1119,15 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	}
  };
  //#endregion
-@@ -462,6 +563,7 @@
+@@ -430,6 +555,7 @@
+ 	const byKey = {};
+ 	for (const p of relevantPaths) {
+ 		const key = p[0];
++		charge(shallowSizeOf(key), span);
+ 		if (!byKey[key]) byKey[key] = [];
+ 		byKey[key].push(p.slice(1));
+ 	}
+@@ -462,6 +588,7 @@
  /** Returns a copy of `root` with all of the given paths removed. */
  const deletePaths = (root, paths, span) => {
  	if (paths.some((p) => p.length === 0)) return null;
@@ -220,7 +1135,15 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (isPlainObject(root)) return deleteFromObject(root, paths, span);
  	if (Array.isArray(root)) return deleteFromArray(root, paths, span);
  	return root;
-@@ -494,6 +596,7 @@
+@@ -478,6 +605,7 @@
+ 	for (const part of path) {
+ 		if (curr === null) return void 0;
+ 		if (typeof part === "string" && isPlainObject(curr)) {
++			charge(shallowSizeOf(part), span);
+ 			if (!Object.prototype.hasOwnProperty.call(curr, part)) return void 0;
+ 			curr = objValue$1(curr, part);
+ 		} else if (typeof part === "number" && Array.isArray(curr)) {
+@@ -494,6 +622,7 @@
  /** Applies a slice-assignment segment `{ start, end }`, replacing the range with the RHS array. */
  const updateSliceSegment = (root, head, updateFn, span) => {
  	if (!Array.isArray(root)) throw new RuntimeError(`Cannot slice ${describeType(root)}`, span);
@@ -228,15 +1151,15 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	const arr = [...root];
  	const start = head.start ?? 0;
  	const end = head.end ?? arr.length;
-@@ -505,6 +608,7 @@
+@@ -505,6 +634,7 @@
  //#endregion
  //#region src/path/update.ts
  const updateObjectSegment = (root, head, tail, updateFn, span, depth) => {
-+	charge(shallowSizeOf(root), span);
++	charge(shallowSizeOf(root) + shallowSizeOf(head), span);
  	let obj = {};
  	if (isPlainObject(root)) obj = { ...root };
  	else if (root === null) obj = {};
-@@ -515,6 +619,7 @@
+@@ -515,6 +645,7 @@
  	return obj;
  };
  const updateArraySegment = (root, head, tail, updateFn, span, depth) => {
@@ -244,7 +1167,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	let arr = [];
  	if (Array.isArray(root)) arr = [...root];
  	else if (root === null) arr = [];
-@@ -557,13 +662,17 @@
+@@ -557,13 +688,17 @@
  	}
  	if (typeof val === "string" && /^-?\d+$/.test(val)) return parseInt(val, 10);
  };
@@ -265,7 +1188,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  };
  //#endregion
  //#region src/eval/ops/arithmetic.ts
-@@ -579,6 +688,7 @@
+@@ -579,6 +714,7 @@
  * @returns The combined value.
  */
  function add(left, right, span) {
@@ -273,7 +1196,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (left === null) return right;
  	if (right === null) return left;
  	if (typeof left === "number" && typeof right === "number") return left + right;
-@@ -591,6 +701,7 @@
+@@ -591,6 +727,7 @@
  	throw new RuntimeError(`Cannot add ${describeType(left)} and ${describeType(right)}`, span);
  }
  function sub(left, right, span) {
@@ -281,7 +1204,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (typeof left === "number" && typeof right === "number") return left - right;
  	if (Array.isArray(left) && Array.isArray(right)) {
  		const toRemove = new Set(right.map(stableStringify));
-@@ -599,6 +710,7 @@
+@@ -599,6 +736,7 @@
  	throw new RuntimeError(`Cannot subtract ${describeType(right)} from ${describeType(left)}`, span);
  }
  function mul(left, right, span) {
@@ -289,7 +1212,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (typeof left === "number" && typeof right === "number") return left * right;
  	if (typeof left === "string" && typeof right === "number") return repeatString(left, right);
  	if (typeof left === "number" && typeof right === "string") return repeatString(right, left);
-@@ -606,11 +718,15 @@
+@@ -606,11 +744,15 @@
  	throw new RuntimeError(`Cannot multiply ${describeType(left)} by ${describeType(right)}`, span);
  }
  function div(left, right, span) {
@@ -306,7 +1229,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	throw new RuntimeError(`Cannot divide ${describeType(left)} by ${describeType(right)}`, span);
  }
  function mod(left, right, span) {
-@@ -624,6 +740,7 @@
+@@ -624,6 +766,7 @@
  	if (count <= 0) return null;
  	const n = Math.floor(count);
  	if (n <= 0) return null;
@@ -314,15 +1237,39 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	return str.repeat(n);
  }
  function mergeDeep(target, source) {
-@@ -1459,6 +1576,7 @@
+@@ -998,6 +1141,7 @@
+ 	else if (entry.key.kind === "KeyString") keys = [entry.key.value];
+ 	else for (const k of evaluate(entry.key.expr, input, env, tracker)) {
+ 		if (typeof k !== "string") throw new RuntimeError("Object key must be a string", entry.key.span);
++		tracker.charge(shallowSizeOf(k), entry.key.span);
+ 		keys.push(k);
+ 	}
+ 	for (const key of keys) for (const val of evaluate(entry.value, input, env, tracker)) {
+@@ -1459,6 +1603,7 @@
  		yield* evaluate(node.str, input, env, tracker);
  		return;
  	}
-+	tracker.charge(shallowSizeOf(input) * CHARACTER_WORK, node.span);
++	tracker.charge(sizeOf(input) * CHARACTER_WORK, node.span);
  	yield emit$1(applyFormat(node.name, input, node.span), node.span, tracker);
  }
  //#endregion
-@@ -1824,6 +1942,7 @@
+@@ -1550,6 +1695,7 @@
+ 		if (keyVal !== null && keyVal !== false) break;
+ 	}
+ 	const key = typeof keyVal === "string" ? keyVal : stableStringify(keyVal);
++	charge(shallowSizeOf(key), span);
+ 	let value = null;
+ 	for (const alias of ENTRY_VALUE_ALIASES) if (Object.prototype.hasOwnProperty.call(item, alias)) {
+ 		value = objValue(item, alias);
+@@ -1717,6 +1863,7 @@
+ 				if (typeof key === "string") keyStr = key;
+ 				else if (typeof key === "number") keyStr = key.toString();
+ 				else throw new RuntimeError(`has() key must be string or number for object input`, span);
++				tracker.charge(shallowSizeOf(keyStr), span);
+ 				yield emit(Object.prototype.hasOwnProperty.call(input, keyStr), span, tracker);
+ 			} else throw new RuntimeError(`has() expects an array or object input`, span);
+ 		}
+@@ -1824,6 +1971,7 @@
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("explode expects string", span);
@@ -330,7 +1277,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			yield emit(Array.from(input).map((c) => c.codePointAt(0)), span, tracker);
  		}
  	},
-@@ -1874,7 +1993,8 @@
+@@ -1874,7 +2022,8 @@
  	if (tracker && span) tracker.step(span);
  	if (a === b) return true;
  	if (typeof a !== typeof b) return false;
@@ -340,7 +1287,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (Array.isArray(a) && Array.isArray(b)) return b.every((bItem) => a.some((aItem) => checkContains(aItem, bItem, tracker, span)));
  	if (isPlainObject(a) && isPlainObject(b)) {
  		const keys = Object.keys(b);
-@@ -1913,8 +2033,10 @@
+@@ -1913,8 +2062,10 @@
  	if (Array.isArray(input)) return arrayFindIndex(input, search, fromEnd);
  	if (typeof input === "string") {
  		if (typeof search !== "string") throw new RuntimeError(`${name} expects string search when input is string`, span);
@@ -353,7 +1300,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	}
  	if (input === null) return null;
  	throw new RuntimeError(`${name} expects string or array`, span);
-@@ -1936,19 +2058,7 @@
+@@ -1936,19 +2087,7 @@
  }];
  //#endregion
  //#region src/builtins/strings/indices.ts
@@ -374,7 +1321,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  const arrayIndices = (input, search) => {
  	const indices = [];
  	if (Array.isArray(search)) {
-@@ -1990,7 +2100,8 @@
+@@ -1990,7 +2129,8 @@
  			const sepGen = evaluate(args[0], input, env, tracker);
  			for (const sep of sepGen) {
  				if (typeof sep !== "string") throw new RuntimeError("split separator must be a string", span);
@@ -384,7 +1331,15 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			}
  		}
  	},
-@@ -2015,6 +2126,7 @@
+@@ -2006,6 +2146,7 @@
+ 				for (const item of input) if (item === null) parts.push("");
+ 				else if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") parts.push(String(item));
+ 				else throw new RuntimeError(`join cannot join ${describeType(item)}`, span);
++				tracker.charge(parts.reduce((length, part) => length + part.length, sep.length * Math.max(0, parts.length - 1)), span);
+ 				yield emit(parts.join(sep), span, tracker);
+ 			}
+ 		}
+@@ -2015,6 +2156,7 @@
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("ascii_downcase expects string", span);
@@ -392,7 +1347,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			yield emit(input.replace(/[A-Z]/g, (char) => char.toLowerCase()), span, tracker);
  		}
  	},
-@@ -2023,6 +2135,7 @@
+@@ -2023,6 +2165,7 @@
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("ascii_upcase expects string", span);
@@ -400,7 +1355,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			yield emit(input.replace(/[a-z]/g, (char) => char.toUpperCase()), span, tracker);
  		}
  	}
-@@ -2132,8 +2245,11 @@
+@@ -2132,8 +2275,11 @@
  				let res = [];
  				for (const item of arr) {
  					tracker.step(span);
@@ -414,7 +1369,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  				}
  				return res;
  			};
-@@ -2153,8 +2269,11 @@
+@@ -2153,8 +2299,11 @@
  					let res = [];
  					for (const item of arr) {
  						tracker.step(span);
@@ -428,7 +1383,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  					}
  					return res;
  				};
-@@ -2177,6 +2296,7 @@
+@@ -2177,6 +2326,7 @@
  				if (!Array.isArray(row)) throw new RuntimeError("transpose input must be array of arrays", span);
  				if (row.length > maxLen) maxLen = row.length;
  			}
@@ -436,15 +1391,181 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			const result = [];
  			for (let j = 0; j < maxLen; j++) {
  				const newRow = [];
-@@ -4724,6 +4844,7 @@
+@@ -3740,13 +3890,19 @@
+ //#region src/regex/compile.ts
+ var Compiler = class {
+ 	insts = [];
++	/** Adds instructions to the program, charging their work and refusing a program longer than the most it may have. */
++	push(...insts) {
++		charge(insts.length * ITEM_WORK);
++		if (this.insts.length + insts.length > MAX_REGEX_INSTRUCTIONS) throw new RegexError(`regex too large: more than ${MAX_REGEX_INSTRUCTIONS} instructions`);
++		this.insts.push(...insts);
++	}
+ 	build(node, groupCount, names) {
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 0
+ 		});
+ 		this.emit(node);
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 1
+ 		}, { op: "match" });
+@@ -3760,23 +3916,23 @@
+ 		switch (node.type) {
+ 			case "Empty": return;
+ 			case "Char":
+-				this.insts.push({
++				this.push({
+ 					op: "char",
+ 					cp: node.cp
+ 				});
+ 				return;
+ 			case "AnyChar":
+-				this.insts.push({ op: "any" });
++				this.push({ op: "any" });
+ 				return;
+ 			case "Class":
+-				this.insts.push({
++				this.push({
+ 					op: "class",
+ 					items: node.items,
+ 					negated: node.negated
+ 				});
+ 				return;
+ 			case "Anchor":
+-				this.insts.push({
++				this.push({
+ 					op: "assert",
+ 					kind: node.kind
+ 				});
+@@ -3800,12 +3956,12 @@
+ 			this.emit(node.node);
+ 			return;
+ 		}
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 2 * node.capture
+ 		});
+ 		this.emit(node.node);
+-		this.insts.push({
++		this.push({
+ 			op: "save",
+ 			slot: 2 * node.capture + 1
+ 		});
+@@ -3822,14 +3978,14 @@
+ 				x: 0,
+ 				y: 0
+ 			};
+-			this.insts.push(split);
++			this.push(split);
+ 			split.x = this.insts.length;
+ 			this.emit(options[i]);
+ 			const jmp = {
+ 				op: "jmp",
+ 				x: 0
+ 			};
+-			this.insts.push(jmp);
++			this.push(jmp);
+ 			jmps.push(jmp);
+ 			split.y = this.insts.length;
+ 		}
+@@ -3837,7 +3993,10 @@
+ 		for (const jmp of jmps) jmp.x = end;
+ 	}
+ 	emitRepeat(node, min, max, greedy) {
+-		for (let i = 0; i < min; i++) this.emit(node);
++		for (let i = 0; i < min; i++) {
++			charge(ITEM_WORK);
++			this.emit(node);
++		}
+ 		if (max === null) this.emitStar(node, greedy);
+ 		else this.emitBounded(node, max - min, greedy);
+ 	}
+@@ -3848,10 +4007,10 @@
+ 			x: 0,
+ 			y: 0
+ 		};
+-		this.insts.push(split);
++		this.push(split);
+ 		const bodyStart = this.insts.length;
+ 		this.emit(node);
+-		this.insts.push({
++		this.push({
+ 			op: "jmp",
+ 			x: splitIndex
+ 		});
+@@ -3866,7 +4025,7 @@
+ 				x: 0,
+ 				y: 0
+ 			};
+-			this.insts.push(split);
++			this.push(split);
+ 			const bodyStart = this.insts.length;
+ 			this.emit(node);
+ 			pending.push({
+@@ -4160,7 +4319,7 @@
+ 		cur.pos = start;
+ 		return null;
+ 	}
+-	if (!isPosixClass(name)) throw new RegexError(`unsupported regex feature: POSIX class [[:${name}:]]`);
++	if (!isPosixClass(name)) throw new RegexError(`unsupported regex feature: unknown POSIX class at position ${start}`);
+ 	return {
+ 		kind: "posix",
+ 		cls: name,
+@@ -4432,6 +4591,7 @@
+ 	names = [null];
+ 	constructor(pattern, extended) {
+ 		this.extended = extended;
++		charge(pattern.length * ITEM_WORK);
+ 		this.cur = new Cursor(Array.from(pattern, (ch) => ch.codePointAt(0)));
+ 	}
+ 	parse() {
+@@ -4636,7 +4796,9 @@
+ 	switch (inst.op) {
+ 		case "any": return flags.dotAll || cp !== NEWLINE;
+ 		case "char": return charEquals(cp, inst.cp, flags.ignoreCase);
+-		case "class": return classMatches(inst.items, inst.negated, cp, flags.ignoreCase);
++		case "class":
++			charge(Math.ceil(inst.items.length / REGEX_MEMBERS_PER_UNIT));
++			return classMatches(inst.items, inst.negated, cp, flags.ignoreCase);
+ 		default: return false;
+ 	}
+ };
+@@ -4685,6 +4847,7 @@
+ 		while (stack.length > 0) {
+ 			const top = stack.pop();
+ 			if (!list.mark(top.pc)) continue;
++			charge(REGEX_VISIT_WORK);
+ 			const inst = this.insts[top.pc];
+ 			if (inst.op === "jmp") stack.push({
+ 				pc: inst.x,
+@@ -4698,6 +4861,7 @@
+ 				saved: top.saved
+ 			});
+ 			else if (inst.op === "save") {
++				charge(Math.ceil(this.slotCount / REGEX_SLOTS_PER_UNIT));
+ 				const next = top.saved.slice();
+ 				next[inst.slot] = pos;
+ 				stack.push({
+@@ -4719,11 +4883,13 @@
+ 	*/
+ 	search(start) {
+ 		const n = this.cps.length;
++		charge(this.insts.length);
+ 		let clist = new ThreadList(this.insts.length);
+ 		let nlist = new ThreadList(this.insts.length);
  		let matched = null;
  		for (let pos = start; pos <= n; pos++) {
  			if (matched === null) this.addThread(clist, 0, pos, new Array(this.slotCount).fill(-1));
-+			charge((clist.threads.length + this.slotCount) * REGEX_WORK);
++			charge(REGEX_POSITION_WORK + clist.threads.length * REGEX_THREAD_WORK + Math.ceil(this.slotCount / REGEX_SLOTS_PER_UNIT));
  			const cp = this.cps[pos];
  			for (const thread of clist.threads) {
  				const inst = this.insts[thread.pc];
-@@ -4744,7 +4865,10 @@
+@@ -4744,7 +4910,10 @@
  };
  //#endregion
  //#region src/regex/index.ts
@@ -456,7 +1577,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  const buildMatch = (saved, program) => {
  	const index = saved[0];
  	const captures = [];
-@@ -4806,7 +4930,10 @@
+@@ -4806,7 +4975,10 @@
  //#endregion
  //#region src/builtins/regex/core.ts
  /** Splits a string into its Unicode codepoints (so offsets count codepoints). */
@@ -468,7 +1589,42 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  const sliceCp = (cps, start, length) => cps.slice(start, start + length).join("");
  /** Validates that the subject of a regex builtin is a string. */
  const requireStringInput = (input, span) => {
-@@ -5178,8 +5305,11 @@
+@@ -4819,12 +4991,20 @@
+ 	if (typeof flags === "string") return flags;
+ 	throw new RuntimeError(`${describeType(flags)} is not a valid set of regex flags`, span);
+ };
+-/** Compiles a regex, surfacing engine errors as runtime errors. */
++/** Compiles a regex once in an evaluation, surfacing engine errors as runtime errors. */
+ const compile = (re, flags, span) => {
+ 	if (typeof re !== "string") throw new RuntimeError(`${describeType(re)} is not a string`, span);
++	const flagString = flagsToString(flags, span);
++	const key = `${flagString.length}:${flagString}${re}`;
++	charge(shallowSizeOf(key), span);
++	const known = activeTracker?.regexes.get(key);
++	if (known !== void 0) return known;
+ 	try {
+-		return compileRegex(re, flagsToString(flags, span));
++		const compiled = compileRegex(re, flagString);
++		activeTracker?.regexes.set(key, compiled);
++		return compiled;
+ 	} catch (err) {
++		if (err instanceof BaseError && err.kind === "limit") throw err;
+ 		throw new RuntimeError(err.message, span);
+ 	}
+ };
+@@ -5050,7 +5230,10 @@
+ //#region src/builtins/sql.ts
+ /** jq tostring semantics: strings pass through, everything else is JSON-encoded. */
+ const toKey = (value) => {
+-	if (typeof value === "string") return value;
++	if (typeof value === "string") {
++		charge(shallowSizeOf(value));
++		return value;
++	}
+ 	return stableStringify(value);
+ };
+ const sqlBuiltins = [
+@@ -5178,8 +5361,11 @@
  		name: "length",
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
@@ -482,7 +1638,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			else if (input !== null && typeof input === "object") yield emit(Object.keys(input).length, span, tracker);
  			else if (typeof input === "number") yield emit(Math.abs(input), span, tracker);
  			else throw new RuntimeError(`Cannot take length of ${describeType(input)}`, span);
-@@ -5454,7 +5584,11 @@
+@@ -5454,7 +5640,11 @@
  	if (!specs) throw new RuntimeError(`Unknown function: ${node.name}`, node.span);
  	const builtin = specs.find((s) => s.arity === node.args.length);
  	if (!builtin) throw new RuntimeError(`Function ${node.name} does not accept ${node.args.length} arguments`, node.span);
@@ -495,7 +1651,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  };
  /**
  * Defines a new function in the environment.
-@@ -5499,6 +5633,7 @@
+@@ -5499,6 +5689,7 @@
  const evalIterate = function* (node, input, env, tracker, evaluate) {
  	for (const container of evaluate(node.target, input, env, tracker)) {
  		if (container === null) continue;
@@ -503,7 +1659,16 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		if (isValueArray(container)) {
  			for (const item of container) yield emit$1(item, node.span, tracker);
  			continue;
-@@ -5640,7 +5775,14 @@
+@@ -5629,7 +5820,7 @@
+ * @returns An array of all values yielded by the filter.
+ */
+ const runAst = (ast, input, options = {}) => {
+-	const tracker = new LimitTracker(resolveLimits(options.limits), resolveClock(options.now));
++	const tracker = new LimitTracker(resolveLimits(options.limits), resolveClock(options.now), options.deadline);
+ 	const named = options.vars ?? {};
+ 	const globalVars = new Map(Object.entries(named));
+ 	globalVars.set("ARGS", {
+@@ -5640,7 +5831,14 @@
  		vars: globalVars,
  		funcs: /* @__PURE__ */ new Map()
  	}];

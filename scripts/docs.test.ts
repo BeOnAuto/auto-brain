@@ -183,19 +183,6 @@ await test('the first-brain tutorial supplies inputs and observable checks for t
   assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
 });
 
-await test('docs distinguish available inbound MCP from upcoming internal tools', () => {
-  const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
-  const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
-  const readme = readFileSync(join(docs, '../README.md'), 'utf8');
-  assert.ok(mcp.includes('inbound interface'));
-  assert.ok(mcp.includes('shared catalog'));
-  assert.ok(mcp.includes('direct tool lists is coming soon'));
-  assert.ok(functions.includes('Those capabilities are not implemented'));
-  assert.ok(functions.includes('model gateways connect to language models'));
-  assert.ok(readme.includes('Coming soon: tool access inside reasoning functions'));
-  assert.ok(readme.includes('bounded tool-call loops'));
-});
-
 await test('the README starts with an actionable local quick start and keeps Cloud optional', () => {
   const readme = readFileSync(join(docs, '../README.md'), 'utf8');
   assert.ok(readme.indexOf('## Quick start') < readme.indexOf('## Documentation and help'));

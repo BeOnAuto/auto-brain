@@ -46,6 +46,7 @@ For this document, `create_spec` takes `primitive: "inference"`, a function `nam
 | `output.format`                                                              | `text` by default, or `json`                                           |
 | `output.schema`                                                              | Required for JSON output; disallowed for text output                   |
 | `provider_options`                                                           | Optional reviewed provider-specific settings                           |
+| `tools`                                                                      | Optional list of the tools of MCP servers the run may call             |
 
 Unknown fields are rejected. Creation and updates validate the document and report issues under `/source`, with line numbers and JSON pointers where available. Warnings can identify schema features a provider may not enforce while generating an answer; the runtime still validates the returned JSON.
 
@@ -53,9 +54,23 @@ Unknown fields are rejected. Creation and updates validate the document and repo
 
 The Liquid template reads supplied values through `input`. An optional `{% system %}` block provides system instructions. The document must also produce a message outside that block. A function document contains instructions, not model credentials.
 
-A current run makes a model invocation and records its output and usage. The document has no fields for a tool catalog, MCP gateway or direct tools. Internal tool access and bounded tool-call loops are [coming soon](../concepts/functions.md#tool-access-inside-a-reasoning-function). An external agent can pass evidence it collected through its own connections as input.
+A run invokes the model and records its output and usage. When the function names tools, the model can use them in a bounded loop before answering. An external agent can also pass evidence it collected through its own connections as input.
 
 Changing the document creates a version. A run uses the active latest version and records `spec_version`; the current API does not select an arbitrary historical version to execute. See the [HTTP reference](http.md) for input limits and retry behavior.
+
+## Tools
+
+`tools` lists the tools of the MCP servers configured for the brain that a run may call, each written `server/tool`, or `server/*` for every tool of a server that the operator allows:
+
+```yaml
+tools: [graph/search, graph/execute, notes/*]
+```
+
+The model receives those tools and can call them before it answers. A run makes at most 25 calls and receives at most 256 KiB of results; a call that would exceed a bound, sends more than 16 KiB of arguments or repeats an earlier call a third time is refused, and the model is told why. Once the calls end, the model answers from what it has, without the tools. Each call appears in the run's history, with the server and tool, the size of its arguments and result, and how it ended.
+
+A run whose function names a tool the brain's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. After a tool call, an `unavailable` ending has the kind `tools_unfinished`: a tool may already have changed an external system. The same execution id cannot run that work again and returns `tools_called`. A tool-using run still marked `started` also cannot restart under its id, even before its first recorded call. Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
+
+Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
 ## Provider options
 

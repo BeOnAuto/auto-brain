@@ -71,6 +71,24 @@ describe('canonical domain names at legacy boundaries', () => {
     expect(run).toEqual(savedRun);
     expect(Schema.encodeSync(RunSchema)(run)).toEqual(savedRun);
   });
+
+  it.each([
+    { reason: 'conflict', detail: 'A tool may have changed something.', kind: 'tools_called' },
+    {
+      reason: 'unavailable',
+      detail: 'The tool run did not finish.',
+      kind: 'tools_unfinished',
+      because: 'run_bound',
+    },
+  ])(
+    'retains tool retry safeguards in a recorded rejection: $kind',
+    (rejection: Readonly<{ reason: string; detail: string; kind: string; because?: string }>) => {
+      const recorded = { ...savedRun, status: 'rejected', rejection };
+      const run = Schema.decodeUnknownSync(RunSchema)(recorded);
+      expect(run).toEqual(recorded);
+      expect(Schema.encodeSync(ExecutionSchema)(run)).toEqual(recorded);
+    },
+  );
 });
 
 describe('scoped definitions and runs', () => {

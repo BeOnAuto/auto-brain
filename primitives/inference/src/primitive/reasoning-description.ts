@@ -13,7 +13,7 @@ const naming = [
 ].join(' ');
 
 const calls = [
-  'Calls a language model once per run, with a prompt rendered from the input,',
+  'Calls a language model with a prompt rendered from the input,',
   'and answers with the text of the model or with a JSON value that matches a schema.',
 ].join(' ');
 
@@ -81,6 +81,18 @@ const rules = [
   'The input of a run is a JSON object. Problems in a definition are reported with their line.',
 ].join(' ');
 
-export function reasoningDescriptionFor(offered: OfferedModels): string {
-  return `${naming} ${calls} ${offerOf(offered)} ${format}\n\n${reasoningExample}\n\n${rules}`;
+const toolRules = [
+  'tools: the tools of the MCP servers configured for its brain that it may call, each written server/tool,',
+  'or server/* for every tool of a server that its operator allows.',
+  'A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers;',
+  'each call is recorded on the run as it happens.',
+  'A run that called tools and did not succeed is not run again under its id.',
+  'A started run whose definition names tools is not run again under its id while it may still be in progress.',
+].join(' ');
+
+const noTools = 'No MCP server is configured on this server, so a reasoning function may not name tools yet.';
+
+export function reasoningDescriptionFor(offered: OfferedModels, toolsConfigured: boolean): string {
+  const tools = toolsConfigured ? toolRules : noTools;
+  return `${naming} ${calls} ${offerOf(offered)} ${format}\n\n${reasoningExample}\n\n${rules} ${tools}`;
 }

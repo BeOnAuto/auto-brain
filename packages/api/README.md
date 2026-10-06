@@ -23,15 +23,15 @@ A path with no route gets `404` `not_found`, and a method the path does not serv
 - **Body.** A body must be a JSON object sent as `application/json` in UTF-8, with no `Content-Encoding` other than `identity`, and no larger than 1 MiB. Otherwise it is `413` `content_too_large`, `415` `unsupported_media_type` or `400` `bad_request`.
 - **Answer.** A success is the operation's output as JSON with the operation's success status (`200`, or `201` where the operation says so) and `Cache-Control: no-store`.
 
-An outcome that is not a success becomes a problem document:
+An outcome that is not a success becomes a problem document. Its `type` is `https://on.auto/problems/<reason>` and its `title` the reason's, from the registry of problem types in `src/problem/problem.ts`, except for a kind that has a type of its own, `kindsWithTypes` of `@beonauto/operations`: a rejection of the kind `tools_unfinished` is `https://on.auto/problems/tools_unfinished`, titled `Tools unfinished`, with its reason `unavailable` and its status 503, and one of the kind `tools_called` is `https://on.auto/problems/tools_called`, titled `Tools called`, with its reason `conflict` and its status 409. The workflow engine raises the same types for them, never a communication or runtime error, and a workflow that ends with one is rejected with its reason and kind.
 
-| Outcome   | Status and reason                                                                                                                                   |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| rejected  | the status of the rejection's reason, such as `403` `forbidden`, `404` `not_found`, `409` `conflict` or `422` `invalid_input` with an `errors` list |
-| failed    | `500` `internal`, saying nothing about the cause; its `instance` is `urn:uuid:<id>`, the incident id under which the server logs the error          |
-| cancelled | `499` `client_closed_request` when the client went away, `503` `unavailable` when the server is stopping                                            |
+| Outcome   | Status and reason                                                                                                                                                                                                                      |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| rejected  | the status of the rejection's reason, such as `403` `forbidden`, `404` `not_found`, `409` `conflict` or `422` `invalid_input` with an `errors` list, and the rejection's `kind` and `because`, where it has them, as extension members |
+| failed    | `500` `internal`, saying nothing about the cause; its `instance` is `urn:uuid:<id>`, the incident id under which the server logs the error                                                                                             |
+| cancelled | `499` `client_closed_request` when the client went away, `503` `unavailable` when the server is stopping                                                                                                                               |
 
-A `403` `forbidden` also carries `WWW-Authenticate: Bearer error="insufficient_scope"`.
+A `403` `forbidden` also carries `WWW-Authenticate: Bearer error="insufficient_scope"`. A `503` `unavailable` carries `Retry-After: 5` when a retry of the same request may resolve it, so not for the kind `tools_unfinished`, a run that called tools and could not finish, which the same request answers with `tools_called`, nor for the kinds `tool_not_offered` and `model_not_offered`, which only a change of the function or the configuration resolves.
 
 ## Over MCP
 
@@ -140,6 +140,8 @@ The server serves `list_models`, an org query of [`@beonauto/inference`](../../p
 A `RegisterRoutes` function receives `routes.add`, to add a route, and `routes.onClose`, to add something to close when the API closes. `mcpRoutes` registers the closing of its three MCP handlers, which ends the calls they still serve. `ApiHandler.close` closes everything registered. The server calls it as it shuts down, after it has disposed of its runtime, so a call still running has already been answered as cancelled.
 
 ## Exports
+
+`makeAppRuntime(layer)` builds the runtime every call runs in. Its `run(effect, signal?)` answers the effect's value, or `cancelled` when the effect was interrupted, by the runtime's disposal or by the abort of the signal given, which interrupts it so its finalizers run; the server gives the signal of the call a workflow performs, so a call the workflow cancels stops the execution it started.
 
 `src/index.ts` is the entry point: `createApiHandler`, `makeAppRuntime`, `operationRoutes`, `mcpRoutes`, the instructions, and their types. `@beonauto/api/testing` exports what the server's tests share: real MCP clients of the current SDK, on either revision, and of the SDK's 1.x line, helpers that read a tool listing, among them `takingBrain`, which gives a brain endpoint's tool the `brain` argument it has on `/mcp`, and the `wait_forever` operation, which never finishes on its own.
 

@@ -1,4 +1,4 @@
-import type { CallerIdentity, Issue, RejectionReason } from '@beonauto/operations';
+import type { CallerIdentity, Issue, RejectionKind, RejectionReason, UnavailableBecause } from '@beonauto/operations';
 import type { Effect, Schema } from 'effect';
 
 export interface DefinitionRunRequest {
@@ -18,6 +18,8 @@ export type DefinitionRunResult =
       readonly reason: RejectionReason;
       readonly detail: string;
       readonly issues?: readonly Issue[];
+      readonly kind?: RejectionKind;
+      readonly because?: UnavailableBecause;
     }
   | { readonly status: 'failed'; readonly detail: string };
 

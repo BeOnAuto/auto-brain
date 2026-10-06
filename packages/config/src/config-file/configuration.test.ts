@@ -114,9 +114,30 @@ describe('a reference to an environment variable', () => {
   });
 });
 
-describe('a credential written in the file', () => {
-  const secret = 'sk-proj-0123456789abcdefghijklmnop';
+describe('a setting that keeps its references', () => {
+  const servers = 'example_servers:\n  graph:\n    headers: { authorization: "Bearer ${GRAPH_KEY}", x-price: "$$5" }\n';
 
+  it('is given as written, for its own reader to resolve, once every variable it names is set', () => {
+    const { environment } = configured(servers, { GRAPH_KEY: 'key-from-the-environment' });
+
+    expect(environment['EXAMPLE_SERVERS']).toBe(
+      JSON.stringify({ graph: { headers: { authorization: 'Bearer ${GRAPH_KEY}', 'x-price': '$$5' } } }),
+    );
+  });
+
+  it('stops the reading when a variable it names is not set, as any setting does', () => {
+    expect(problemsIn(servers)).toBe(
+      'The configuration file auto-brain.yaml is invalid: auto-brain.yaml:3:31 example_servers.graph.headers.authorization: Refers to the environment variable GRAPH_KEY, which is not set',
+    );
+  });
+});
+
+const secret = 'sk-proj-0123456789abcdefghijklmnop';
+
+const writtenOut =
+  'Looks like a credential, which this file never holds; write a reference to the environment variable that holds it instead, such as ${GATEWAY_API_KEY}';
+
+describe('a credential written in the file', () => {
   it.each([
     [
       'in a key that holds a credential',
@@ -153,6 +174,53 @@ describe('a credential written in the file', () => {
     expect(environment['EXAMPLE_GATEWAYS']).toBe(
       JSON.stringify([{ name: 'g', api_key: 'k', headers: { authorization: 'Bearer t' }, enabled: true }]),
     );
+  });
+});
+
+describe('a credential written in a URL or an argument', () => {
+  it.each([
+    [
+      'as the user and password of a URL',
+      `example_gateways: [{ name: g, base_url: "https://user:plain-text@a.example/v1" }]\n`,
+      '1:41 example_gateways[0].base_url',
+    ],
+    [
+      'as the user of a URL, in the shape of a key',
+      `example_gateways: [{ name: g, base_url: "https://${secret}@a.example/v1" }]\n`,
+      '1:41 example_gateways[0].base_url',
+    ],
+    [
+      'in the query of a URL, in the shape of a key',
+      `example_gateways: [{ name: g, base_url: "https://a.example/v1?q=${secret}" }]\n`,
+      '1:41 example_gateways[0].base_url',
+    ],
+    [
+      'after the = of an argument, in the shape of a key',
+      `example_gateways: [{ name: g, args: ["--key=sk-live-x"] }]\n`,
+      '1:38 example_gateways[0].args[0]',
+    ],
+  ])('is refused %s, without the value', (_, text, place) => {
+    const message = problemsIn(text);
+
+    expect(message).toBe(`The configuration file auto-brain.yaml is invalid: auto-brain.yaml:${place}: ${writtenOut}`);
+    expect(message).not.toContain('plain-text');
+    expect(message).not.toContain(secret);
+    expect(message).not.toContain('sk-live-x');
+  });
+
+  it('judges the values of a URL and an argument, never the names they give them', () => {
+    const plain = {
+      link: 'https://a.example/v1?api-version=2026-01-01',
+      tokenType: 'https://a.example/v1?token_type=bearer',
+      mode: '--mode=read',
+      tokenFile: '--token-file=/run/secrets/notes',
+      keyEnv: '--api-key-env=NOTES_API_KEY',
+      bare: '=x',
+      empty: '--key=',
+    };
+    const { environment } = configured(`example_servers: { graph: { headers: ${JSON.stringify(plain)} } }\n`);
+
+    expect(environment['EXAMPLE_SERVERS']).toBe(JSON.stringify({ graph: { headers: plain } }));
   });
 });
 
@@ -200,7 +268,7 @@ describe('a configuration file that is not one the server reads', () => {
         'auto-brain.yaml:1:19 example_origins[0]: Expected a string matching the RegExp ^https:\\/\\/; ' +
         'auto-brain.yaml:2:28 example_gateways[0].name: Expected string; ' +
         'auto-brain.yaml:2:39 example_gateways[0].colour: Expected no excess property; ' +
-        'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins',
+        'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
     );
   });
 });

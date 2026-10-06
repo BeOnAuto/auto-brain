@@ -82,6 +82,29 @@ const largestExecutionEvents: readonly ExecutionEvent[] = [
   },
   { type: 'execution_rejected', rejection: { reason: 'conflict', detail: awkward }, ...fact },
   { type: 'execution_failed', ...fact },
+  {
+    type: 'tool_call_started',
+    number: Number.MAX_SAFE_INTEGER,
+    call_id: awkward,
+    server: awkward,
+    tool: awkward,
+    arguments_bytes: Number.MAX_SAFE_INTEGER,
+    arguments_sha256: awkward,
+    arguments_json: awkward,
+    ...fact,
+  },
+  {
+    type: 'tool_call_answered',
+    number: Number.MAX_SAFE_INTEGER,
+    outcome: 'server_failure',
+    result_bytes: Number.MAX_SAFE_INTEGER,
+    result_sha256: awkward,
+    duration_ms: Number.MAX_SAFE_INTEGER,
+    jsonrpc_id: awkward,
+    server_request_id: awkward,
+    result_json: awkward,
+    ...fact,
+  },
 ];
 
 const largestContent = {

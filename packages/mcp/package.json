@@ -1,0 +1,28 @@
+{
+  "name": "@beonauto/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Elastic-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./policy": "./src/policy.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "lint": "oxlint -c ../../.oxlintrc.json",
+    "typecheck": "tsc",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@beonauto/config": "workspace:*",
+    "@beonauto/operations": "workspace:*",
+    "@modelcontextprotocol/client": "2.2.0",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/server": "2.2.0",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}

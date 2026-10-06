@@ -104,6 +104,7 @@ function defineOperation<
       targetsBrain,
       successStatus: definition.successStatus ?? 200,
       reachesOutside: definition.reachesOutside ?? false,
+      mayChangeOutside: definition.mayChangeOutside ?? false,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),

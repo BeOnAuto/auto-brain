@@ -1,6 +1,14 @@
-import { Data } from 'effect';
+import { Data, Schema } from 'effect';
 
-export type ConflictKind = 'taken' | 'retired' | 'concurrent_change' | 'unworkable';
+export const ConflictKindSchema = Schema.Literals([
+  'taken',
+  'retired',
+  'concurrent_change',
+  'unworkable',
+  'tools_called',
+]);
+
+export type ConflictKind = typeof ConflictKindSchema.Type;
 
 export class Conflict extends Data.TaggedError('conflict')<{
   readonly detail: string;

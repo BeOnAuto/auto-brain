@@ -136,6 +136,109 @@
         "description": "A model reference a spec may give, written provider/model, or provider/* for every model of a provider"
       },
       "description": "The only model references a spec may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it"
+    },
+    "mcp_servers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["http", "stdio"],
+            "description": "http for a remote server, given url; stdio for a process, given command. Taken from url or command when left out"
+          },
+          "url": {
+            "type": "string",
+            "description": "The http or https URL of a remote server, spoken to over Streamable HTTP"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Headers sent to a remote server with every request, their values treated as secrets: in the configuration file a credential is a reference such as ${GRAPH_API_KEY}"
+          },
+          "auth": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "description": "The issuer of the authorization server the credential was registered with, pinned: it is sent to no other. An https URL"
+              },
+              "client_id": {
+                "type": "string",
+                "description": "The client id registered with that authorization server"
+              },
+              "client_secret": {
+                "type": "string",
+                "description": "The client secret, as a reference such as ${GRAPH_CLIENT_SECRET}"
+              },
+              "private_key": {
+                "type": "string",
+                "description": "A private key in PEM that signs the client assertion, as a reference such as ${GRAPH_PRIVATE_KEY}"
+              },
+              "algorithm": {
+                "type": "string",
+                "description": "The signing algorithm of private_key, such as RS256 or ES256"
+              },
+              "scope": {
+                "type": "string",
+                "description": "The scopes to ask for, separated by spaces"
+              }
+            },
+            "required": ["issuer", "client_id"],
+            "additionalProperties": false,
+            "description": "OAuth client credentials, for a server whose authorization server issues tokens to clients: client_secret, or private_key with its algorithm"
+          },
+          "command": {
+            "type": "string",
+            "description": "The command of a stdio server: an installed, pinned program, never a package downloaded at start such as npx -y"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The arguments of the command of a stdio server"
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The whole environment of the process of a stdio server, which inherits nothing else, their values treated as secrets: in the configuration file a credential is a reference such as ${GRAPH_API_KEY}"
+          },
+          "org": {
+            "type": "string",
+            "description": "The org this server serves, required"
+          },
+          "brains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The brains of the org this server serves; every brain of the org when left out"
+          },
+          "record_content": {
+            "type": "boolean",
+            "description": "true to record the arguments and results of calls, cut to 4 KiB, on the run that made them, where anyone who may read the brain reads them. Default false"
+          },
+          "request_id": {
+            "type": "string",
+            "description": "The response header, or the key of the metadata of a result, in which the server carries its own id of a request, recorded with each call"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "The MCP servers whose tools a reasoning function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
+    },
+    "allowed_tools": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "A tool a reasoning function may name, written server/tool, or server/* for every tool of a server"
+      },
+      "description": "The only tools a reasoning function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it"
     }
   },
   "additionalProperties": false,

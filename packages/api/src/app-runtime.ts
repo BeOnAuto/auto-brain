@@ -2,7 +2,7 @@ import type { Cancelled } from '@beonauto/operations';
 import { Cause, Exit, ManagedRuntime, type Effect, type Layer } from 'effect';
 
 export interface AppRuntime<R> {
-  readonly run: <A>(effect: Effect.Effect<A, never, R>) => Promise<A | Cancelled>;
+  readonly run: <A>(effect: Effect.Effect<A, never, R>, signal?: AbortSignal) => Promise<A | Cancelled>;
   readonly dispose: () => Promise<void>;
 }
 
@@ -13,11 +13,11 @@ export async function makeAppRuntime<R, E>(layer: Layer.Layer<R, E>): Promise<Ap
   await runtime.context();
   let disposed = false;
   return {
-    run: async (effect) => {
+    run: async (effect, signal) => {
       if (disposed) {
         return cancelled;
       }
-      const exit = await runtime.runPromiseExit(effect);
+      const exit = await runtime.runPromiseExit(effect, { signal });
       if (Exit.isSuccess(exit)) {
         return exit.value;
       }

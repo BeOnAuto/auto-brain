@@ -1,4 +1,4 @@
-import type { Settlement } from '@beonauto/operations';
+import { isKindWithType, problemTypeOf, reasonOfKind, type Settlement } from '@beonauto/operations';
 
 import type { DslError } from '../machine/dsl-error.ts';
 import { mostOutputBytes } from '../machine/limits.ts';
@@ -50,13 +50,15 @@ export function raised(kind: ErrorKind, status: number, title: string, instance:
   return new RaisedError({ type: errorType(kind), status, title, instance });
 }
 
-export function errorAsJson({ type, status, instance, title, detail }: DslError): JsonObject {
+export function errorAsJson({ type, status, instance, title, detail, kind, because }: DslError): JsonObject {
   return {
     type,
     status,
     instance,
     ...(title === undefined ? {} : { title }),
     ...(detail === undefined ? {} : { detail }),
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
   };
 }
 
@@ -68,12 +70,16 @@ export function errorFromJson(definition: JsonObject, instance: string): DslErro
   }
   const title = textField(definition, 'title');
   const detail = textField(definition, 'detail');
+  const kind = textField(definition, 'kind');
+  const because = textField(definition, 'because');
   return {
     type,
     status,
     instance: textField(definition, 'instance') ?? instance,
     ...(title === undefined ? {} : { title }),
     ...(detail === undefined ? {} : { detail }),
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
   };
 }
 
@@ -83,8 +89,24 @@ export function describeError({ type, title, detail, instance }: DslError): stri
 
 const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
 
-export function rejectionReasonOf({ status }: DslError): 'invalid_input' | 'unavailable' {
+type SettledReason = Extract<Settlement, { readonly status: 'rejected' }>['reason'];
+
+export function rejectionReasonOf({ type, status, kind }: DslError): SettledReason {
+  if (isKindWithType(kind) && type === problemTypeOf(kind)) {
+    return reasonOfKind(kind);
+  }
   return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
+}
+
+function settledRejectionOf(error: DslError): Settlement {
+  const { kind, because } = error;
+  return {
+    status: 'rejected',
+    reason: rejectionReasonOf(error),
+    detail: describeError(error),
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
+  };
 }
 
 export type OutputOutcome =
@@ -100,13 +122,19 @@ export function settlementOf(outcome: SettledOutcome): Settlement {
   if (outcome.kind === 'completed') {
     return { status: 'succeeded', output: outcome.output };
   }
-  return outcome.kind === 'raised'
-    ? { status: 'rejected', reason: rejectionReasonOf(outcome.error), detail: describeError(outcome.error) }
-    : { status: 'failed' };
+  return outcome.kind === 'raised' ? settledRejectionOf(outcome.error) : { status: 'failed' };
+}
+
+interface RejectedCall {
+  readonly status: 'rejected';
+  readonly reason: string;
+  readonly detail: string;
+  readonly kind?: string;
+  readonly because?: string;
 }
 
 export type FailedCall =
-  | { readonly status: 'rejected'; readonly reason: string; readonly detail: string }
+  | RejectedCall
   | { readonly status: 'failed'; readonly detail: string }
   | { readonly status: 'unreachable'; readonly detail: string };
 
@@ -126,6 +154,10 @@ const rejections: Readonly<Record<string, Classification>> = {
   unavailable: ['communication', 503],
 };
 
+function kindAndBecauseOf({ kind, because }: RejectedCall): Pick<DslError, 'kind' | 'because'> {
+  return { ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
+}
+
 function capitalized(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
@@ -142,8 +174,9 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
   }
   const [kind, status]: Classification =
     result.status === 'rejected' ? (rejections[result.reason] ?? ['runtime', 500]) : ['runtime', 500];
+  const ownKind = result.status === 'rejected' ? result.kind : undefined;
   return {
-    type: errorType(kind),
+    type: isKindWithType(ownKind) ? problemTypeOf(ownKind) : errorType(kind),
     status,
     title:
       result.status === 'rejected'
@@ -151,5 +184,6 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
         : `${capitalized(call.label)} failed`,
     detail: result.detail,
     instance: call.reference,
+    ...(result.status === 'rejected' ? kindAndBecauseOf(result) : {}),
   };
 }

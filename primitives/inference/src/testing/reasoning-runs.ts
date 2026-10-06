@@ -1,5 +1,7 @@
+import type { ToolAccess } from '@beonauto/mcp';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import type { Executed, RunContext, PreparedDefinition, Primitive } from '@beonauto/specs';
+import { recordingJournal, type RecordingJournal } from '@beonauto/specs/testing';
 import { DateTime, Effect, type Exit, type Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 
@@ -17,6 +19,7 @@ export const execution: RunContext = {
   brain: 'alpha',
   caller: { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' },
   spec: { name: 'summary', version: 1 },
+  journal: recordingJournal(),
 };
 
 export type Execution = Exit.Exit<Executed, InvalidInput | Unavailable | Conflict>;
@@ -28,9 +31,21 @@ export interface ReasoningRun {
   readonly executing: (source: string, input?: Schema.Json) => Promise<Execution>;
 }
 
-export function reasoningWith(...replies: readonly ScriptedReply[]): ReasoningRun {
+export interface ToolRun extends ReasoningRun {
+  readonly journal: RecordingJournal;
+}
+
+function reasoningOf(
+  tools: ToolAccess | undefined,
+  replies: readonly ScriptedReply[],
+  context: RunContext,
+): ReasoningRun {
   const scripted = scriptedLanguageModel(...replies);
-  const primitive = makeReasoningFunctionAdapter({ languageModel: scripted.languageModel, offered: anthropicOnly });
+  const primitive = makeReasoningFunctionAdapter({
+    languageModel: scripted.languageModel,
+    offered: anthropicOnly,
+    ...(tools === undefined ? {} : { tools }),
+  });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(primitive.prepare(source));
   return {
     primitive,
@@ -39,9 +54,18 @@ export function reasoningWith(...replies: readonly ScriptedReply[]): ReasoningRu
     executing: (source, input = {}) =>
       Effect.runPromiseExit(
         TestClock.setTime(DateTime.toEpochMillis(DateTime.makeUnsafe(moment))).pipe(
-          Effect.andThen(prepared(source).execute(input, execution)),
+          Effect.andThen(prepared(source).execute(input, context)),
           Effect.provide(TestClock.layer()),
         ),
       ),
   };
+}
+
+export function reasoningWith(...replies: readonly ScriptedReply[]): ReasoningRun {
+  return reasoningOf(undefined, replies, execution);
+}
+
+export function reasoningWithTools(tools: ToolAccess, ...replies: readonly ScriptedReply[]): ToolRun {
+  const journal = recordingJournal();
+  return { ...reasoningOf(tools, replies, { ...execution, journal }), journal };
 }

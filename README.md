@@ -70,7 +70,7 @@ You can also host your own brain. See the [self-hosting guide](https://on.auto/d
 
 The source-available runtime is in early development and is not ready for production use; [availability](https://on.auto/docs/concepts/functions#availability) describes the current scope.
 
-Coming soon: tool access inside reasoning functions through a shared catalog and MCP gateway, with direct tool lists and bounded tool-call loops. Today, the external agent calls Auto over MCP and passes evidence into the function; the function does not inherit the agent's tools. See [Tool access](https://on.auto/docs/concepts/functions#tool-access-inside-a-reasoning-function).
+A self-hosted runtime can give reasoning functions tools from operator-configured MCP servers. The model calls them in a bounded loop, with each call recorded on the run. Auto Cloud does not offer this yet. An external agent that calls Auto over MCP can still pass evidence into the function; the function does not inherit the agent's tools. See [Tool access](https://on.auto/docs/concepts/functions#tool-access-inside-a-reasoning-function).
 
 For bugs and questions, [open an issue](https://github.com/BeOnAuto/auto-brain/issues/new/choose). Report vulnerabilities through [SECURITY.md](SECURITY.md).
 

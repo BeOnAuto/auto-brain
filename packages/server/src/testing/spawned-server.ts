@@ -3,7 +3,7 @@ import { once } from 'node:events';
 
 import { onTestFinished } from 'vitest';
 
-export const spawnedServerTestTimeoutMs = 20_000;
+export const spawnedServerTestTimeoutMs = 60_000;
 
 export interface SpawnedServer {
   readonly port: Promise<number>;

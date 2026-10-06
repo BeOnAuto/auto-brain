@@ -1,5 +1,6 @@
 import { type JsonObject, taskKinds } from '@beonauto/workflow-engine';
 import { buildGraph, Classes, SchemaValidationError, WorkflowValidationError } from '@openworkflowspec/sdk';
+import { Predicate } from 'effect';
 
 export interface Problem {
   readonly pointer: string;
@@ -37,9 +38,32 @@ export function dslProblems(
   }
 }
 
+const errorExtensions: ReadonlySet<string> = new Set(['kind', 'because']);
+
+function withoutExtensions(definition: unknown): unknown {
+  return Predicate.isObject(definition)
+    ? Object.fromEntries(
+        Object.entries(definition).filter(([key]: readonly [string, unknown]) => !errorExtensions.has(key)),
+      )
+    : definition;
+}
+
+function standardErrors(key: string, value: unknown): unknown {
+  if (key === 'raise' && Predicate.hasProperty(value, 'error') && Predicate.isObject(value.error)) {
+    return { ...value, error: withoutExtensions(value.error) };
+  }
+  if (key === 'use' && Predicate.hasProperty(value, 'errors') && Predicate.isObject(value.errors)) {
+    const errors = Object.entries(value.errors).map(
+      ([name, error]: readonly [string, unknown]): readonly [string, unknown] => [name, withoutExtensions(error)],
+    );
+    return { ...value, errors: Object.fromEntries<unknown>(errors) };
+  }
+  return value;
+}
+
 function deserialize(document: JsonObject): Deserialized {
   try {
-    return { workflow: Classes.Workflow.deserialize(JSON.stringify(document)) };
+    return { workflow: Classes.Workflow.deserialize(JSON.stringify(document, standardErrors)) };
   } catch (error) {
     if (error instanceof SchemaValidationError) {
       return { problems: schemaProblems(error.schemaErrors) };

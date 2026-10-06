@@ -6,6 +6,7 @@ import {
   ModelAliasesSchema,
   ModelGatewaysSchema,
 } from '@beonauto/inference';
+import { AllowedToolsSchema, McpServersSchema } from '@beonauto/mcp';
 import { Schema } from 'effect';
 
 import { Origin } from './origin.ts';
@@ -58,6 +59,23 @@ export const fileSettings: readonly FileSetting[] = [
     AllowedModelsSchema.annotate({
       description:
         'The only model references a spec may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it',
+    }),
+    asJson,
+  ),
+  fileSetting(
+    'MCP_SERVERS',
+    McpServersSchema.annotate({
+      description:
+        'The MCP servers whose tools a reasoning function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it',
+    }),
+    asJson,
+    { references: 'kept' },
+  ),
+  fileSetting(
+    'ALLOWED_TOOLS',
+    AllowedToolsSchema.annotate({
+      description:
+        'The only tools a reasoning function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it',
     }),
     asJson,
   ),

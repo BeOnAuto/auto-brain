@@ -148,3 +148,111 @@ describe('the presenter of an execution rejected for something it relies on', ()
     });
   });
 });
+
+const started = {
+  type: 'tool_call_started',
+  number: 3,
+  call_id: 'toolu_03',
+  server: 'graph',
+  tool: 'get_lifelogs',
+  arguments_bytes: 17,
+  arguments_sha256: 'a'.repeat(64),
+  ...fact,
+} as const;
+
+const answered = {
+  type: 'tool_call_answered',
+  number: 3,
+  outcome: 'result',
+  result_bytes: 42,
+  result_sha256: 'b'.repeat(64),
+  duration_ms: 120,
+  jsonrpc_id: 7,
+  ...fact,
+} as const;
+
+describe('the presenter of the start of a tool call', () => {
+  it('presents a call by its number, server, tool and the size and digest of its arguments', () => {
+    expect(presented(started)).toEqual({
+      ...shown,
+      type: 'tool_call_started',
+      summary: 'A run made tool call 3, to the get lifelogs tool of graph.',
+      data: {
+        execution_id: executionId,
+        by: 'acme-admin',
+        number: 3,
+        call_id: 'toolu_03',
+        server: 'graph',
+        tool: 'get_lifelogs',
+        arguments_bytes: 17,
+        arguments_sha256: 'a'.repeat(64),
+      },
+    });
+  });
+
+  it('keeps nothing of a name its server gave but letters and digits, so no slash or dot reaches the summary', () => {
+    expect(presented({ ...started, tool: 'files/read.v2', server: 'graph-eu' })).toMatchObject({
+      summary: 'A run made tool call 3, to the files read v2 tool of graph eu.',
+    });
+  });
+});
+
+describe('the presenter of the answer to a tool call', () => {
+  it.each([
+    ['result', 'Tool call 3 answered.'],
+    ['tool_error', 'Tool call 3 answered with an error.'],
+    ['server_failure', 'Tool call 3 failed at its server.'],
+    ['timed_out', 'Tool call 3 took too long, so it was given up.'],
+    ['cancelled', 'Tool call 3 was cancelled when the run ended.'],
+  ] as const)('presents an answer with the outcome %s in plain words', (outcome, summary) => {
+    expect(presented({ ...answered, outcome })).toMatchObject({ type: 'tool_call_answered', summary });
+  });
+
+  it('presents an answer with the size, digest and duration of its result and the ids that name it', () => {
+    expect(presented({ ...answered, server_request_id: 'req-9' })).toEqual({
+      ...shown,
+      type: 'tool_call_answered',
+      summary: 'Tool call 3 answered.',
+      data: {
+        execution_id: executionId,
+        by: 'acme-admin',
+        number: 3,
+        outcome: 'result',
+        result_bytes: 42,
+        result_sha256: 'b'.repeat(64),
+        duration_ms: 120,
+        jsonrpc_id: 7,
+        server_request_id: 'req-9',
+      },
+    });
+  });
+
+  it('presents an answer the server gave no content or id for', () => {
+    expect(
+      presented({
+        ...answered,
+        outcome: 'server_failure',
+        result_bytes: null,
+        result_sha256: null,
+        jsonrpc_id: 'j-1',
+        server_request_id: null,
+      }),
+    ).toMatchObject({
+      data: { result_bytes: null, result_sha256: null, jsonrpc_id: 'j-1', server_request_id: null },
+    });
+  });
+});
+
+describe('the presenter of the content of a tool call', () => {
+  it('shows recorded content cut to 2 KiB at a code point', () => {
+    const content = JSON.stringify({ text: '😀'.repeat(2000) });
+
+    expect([
+      presented({ ...started, arguments_json: content }),
+      presented({ ...answered, result_json: '{"rows":[]}' }),
+    ]).toMatchObject([
+      { data: { arguments_json: content.slice(0, 9 + 2 * 509) } },
+      { data: { result_json: '{"rows":[]}' } },
+    ]);
+  });
+});

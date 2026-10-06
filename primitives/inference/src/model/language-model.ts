@@ -7,6 +7,7 @@ import type { ModelResult } from './model-result.ts';
 export class LanguageModel extends Context.Service<
   LanguageModel,
   {
+    readonly admit: (request: ModelRequest) => Effect.Effect<void, ModelFailure>;
     readonly generate: (request: ModelRequest) => Effect.Effect<ModelResult, ModelFailure>;
   }
 >()('@beonauto/inference/LanguageModel') {}

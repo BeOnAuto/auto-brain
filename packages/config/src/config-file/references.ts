@@ -3,14 +3,21 @@ import type { Schema } from 'effect';
 import type { Environment } from '../server-config.ts';
 import { below, entriesOf, type FileProblem, type JsonEntry } from './file-problem.ts';
 
+export interface Reference {
+  readonly pointer: string;
+  readonly value: string | null;
+}
+
 export interface Substituted {
   readonly value: Schema.Json;
   readonly problems: readonly FileProblem[];
+  readonly references: readonly Reference[];
 }
 
 interface Resolution {
   readonly text: string;
   readonly problem: string | undefined;
+  readonly reference?: { readonly value: string | null };
 }
 
 interface EntrySubstitution {
@@ -59,11 +66,11 @@ function resolved(piece: string, environment: Environment): Resolution {
   const [, name = '', fallback] = reference;
   const value = environment[name];
   if (isSet(value)) {
-    return plain(value);
+    return { ...plain(value), reference: { value } };
   }
   return fallback === undefined
     ? failed(`Refers to the environment variable ${name}, which is not set`)
-    : plain(fallback);
+    : { ...plain(fallback), reference: { value: null } };
 }
 
 function substitutedText(textWithReferences: string, pointer: string, environment: Environment): Substituted {
@@ -71,6 +78,9 @@ function substitutedText(textWithReferences: string, pointer: string, environmen
   return {
     value: resolutions.map((resolution) => resolution.text).join(''),
     problems: resolutions.flatMap(({ problem }) => (problem === undefined ? [] : [{ pointer, detail: problem }])),
+    references: resolutions.flatMap(({ reference }) =>
+      reference === undefined ? [] : [{ pointer, value: reference.value }],
+    ),
   };
 }
 
@@ -94,10 +104,11 @@ export function substituted(value: Schema.Json, pointer: string, environment: En
   }));
   const entries = results.map(({ key, result }: EntrySubstitution): JsonEntry => [key, result.value]);
   const problems = results.flatMap(({ result }: EntrySubstitution) => result.problems);
+  const references = results.flatMap(({ result }: EntrySubstitution) => result.references);
   if (Array.isArray(value)) {
-    return { value: entries.map(([, item]) => item), problems };
+    return { value: entries.map(([, item]) => item), problems, references };
   }
   return typeof value === 'object' && value !== null
-    ? { value: Object.fromEntries(entries), problems }
-    : { value, problems };
+    ? { value: Object.fromEntries(entries), problems, references }
+    : { value, problems, references };
 }

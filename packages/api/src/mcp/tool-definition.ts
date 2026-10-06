@@ -14,10 +14,10 @@ export interface ToolDefinition {
 
 const brainArgumentNote = '`brain` is the id of the brain to act in.';
 
-function annotationsOf({ kind, route, reachesOutside }: Registration): ToolAnnotations {
+function annotationsOf({ kind, route, reachesOutside, mayChangeOutside }: Registration): ToolAnnotations {
   return {
     readOnlyHint: kind === 'query',
-    destructiveHint: false,
+    destructiveHint: mayChangeOutside,
     idempotentHint: route.method === 'GET' || route.method === 'PUT',
     openWorldHint: reachesOutside,
   };

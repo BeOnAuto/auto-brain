@@ -6,7 +6,7 @@ The Auto runtime exposes brain, reasoning-function and workflow operations throu
 
 This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reasoning function. Auto Cloud is coming soon; [request an invite](https://on.auto/request-invite) for hosted access.
 
-Internal tool access through a shared catalog, an outbound MCP gateway or direct tool lists is coming soon, together with bounded tool-call loops. None of those capabilities is enabled by adding an endpoint to an external assistant. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
+A reasoning function can also call tools itself, through MCP servers the operator of a self-hosted runtime configures. That outbound connection is set up on the server, never by adding an endpoint to an external assistant. While any MCP server is configured, `execute_spec` carries the destructive annotation, since a function's tools may change something. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
 ## Transport and authentication
 
@@ -58,7 +58,7 @@ The result has `object: "list"`, a `data` array, `catalog_status` and `listed_at
 
 `catalog_status: "partial"` means a provider's list is missing or stale. It does not mean the server has no models. The server caches provider lists for five minutes and retains a previous list when a refresh fails. `listed_at` identifies the oldest provider list in the response, or the response time when no provider was queried. Model access rules also apply when a function runs.
 
-This model catalog lists language models. The shared catalog for tools used inside reasoning functions is a separate, upcoming capability.
+This model catalog lists language models, not MCP tools. A self-hosted runtime lists configured servers' tools when a reasoning function needs them. A separately managed tool library is still planned.
 
 ## Successful results
 

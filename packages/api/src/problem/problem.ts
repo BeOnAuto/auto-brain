@@ -1,3 +1,12 @@
+import {
+  isKindWithType,
+  problemTypeOf,
+  type KindWithType,
+  type RejectionKind,
+  type UnavailableBecause,
+  type UnavailableKind,
+} from '@beonauto/operations';
+
 export type ProblemReason =
   | 'invalid_input'
   | 'forbidden'
@@ -26,9 +35,11 @@ export interface Problem {
   readonly reason: ProblemReason;
   readonly instance?: string;
   readonly errors?: readonly ProblemIssue[];
+  readonly kind?: RejectionKind;
+  readonly because?: UnavailableBecause;
 }
 
-export type OptionalProblemMembers = Pick<Problem, 'instance' | 'errors'>;
+export type OptionalProblemMembers = Pick<Problem, 'instance' | 'errors' | 'kind' | 'because'>;
 
 interface ProblemType {
   readonly status: number;
@@ -51,13 +62,37 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
   internal: { status: 500, title: 'Internal error' },
 };
 
+const kindProblemTypes: Readonly<Record<KindWithType, ProblemType>> = {
+  tools_unfinished: { status: 503, title: 'Tools unfinished' },
+  tools_called: { status: 409, title: 'Tools called' },
+};
+
+function problemTypeFor(
+  reason: ProblemReason,
+  kind: RejectionKind | undefined,
+): ProblemType & { readonly type: string } {
+  return isKindWithType(kind)
+    ? { type: problemTypeOf(kind), ...kindProblemTypes[kind] }
+    : { type: problemTypeOf(reason), ...problemTypes[reason] };
+}
+
 const problemMediaType = 'application/problem+json';
 
 const retryAfterSeconds = '5';
 
+const resolvedOnlyByChange: ReadonlySet<RejectionKind> = new Set<UnavailableKind>([
+  'tools_unfinished',
+  'tool_not_offered',
+  'model_not_offered',
+]);
+
+function isWorthRetrying({ reason, kind }: Problem): boolean {
+  return reason === 'unavailable' && (kind === undefined || !resolvedOnlyByChange.has(kind));
+}
+
 export function problemOf(reason: ProblemReason, detail: string, optional: OptionalProblemMembers = {}): Problem {
-  const { status, title } = problemTypes[reason];
-  return { type: `https://on.auto/problems/${reason}`, title, status, detail, reason, ...optional };
+  const { type, status, title } = problemTypeFor(reason, optional.kind);
+  return { type, title, status, detail, reason, ...optional };
 }
 
 export function internalErrorProblem(incident: string): Problem {
@@ -70,7 +105,7 @@ export function problemResponse(problem: Problem, headers: Readonly<Record<strin
     headers: {
       'content-type': problemMediaType,
       'cache-control': 'no-store',
-      ...(problem.reason === 'unavailable' ? { 'retry-after': retryAfterSeconds } : {}),
+      ...(isWorthRetrying(problem) ? { 'retry-after': retryAfterSeconds } : {}),
       ...headers,
     },
   });

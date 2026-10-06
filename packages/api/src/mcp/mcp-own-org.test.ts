@@ -18,7 +18,16 @@ import { listedTools, takingBrain, type ListedTool } from '../testing/tool-listi
 
 const orgTools = ['label_brain', 'list_labels'];
 
-const brainTools = ['add_note', 'check_lines', 'list_notes', 'get_note', 'latest_note', 'break_down', 'wait_forever'];
+const brainTools = [
+  'add_note',
+  'check_lines',
+  'list_notes',
+  'get_note',
+  'latest_note',
+  'break_down',
+  'wait_forever',
+  'send_notes',
+];
 
 let server: OperationServer;
 let listening: Listening;

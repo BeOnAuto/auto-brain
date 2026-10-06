@@ -31,7 +31,7 @@ Use these descriptions when choosing a function type:
 | Recall      | Retrieve or reconstruct relevant information from configured sources.           |
 | Computation | Run defined code or expressions to calculate or transform data.                 |
 
-These describe each type's intended responsibility. Skill references and internal tool access for reasoning functions are still planned. A reasoning function can interpret, generate, classify or judge; it is not restricted to a model's reasoning mode. Interaction covers people and machines. Prediction includes creating and using a predictive model. Recall can consult sources beyond event history. Computation executes specified logic and need not be mathematically pure.
+These describe each type's intended responsibility. Self-hosted reasoning functions can use operator-configured MCP tools in a bounded loop. Auto Cloud tool access, skill references and a separately managed tool library are still planned. A reasoning function can interpret, generate, classify or judge; it is not restricted to a model's reasoning mode. Interaction covers people and machines. Prediction includes creating and using a predictive model. Recall can consult sources beyond event history. Computation executes specified logic and need not be mathematically pure.
 
 Classify a function by its responsibility. Calling an API does not turn a recall function into an interaction function. Running code does not turn a prediction function into a computation function.
 

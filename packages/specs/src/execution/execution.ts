@@ -1,4 +1,4 @@
-import { UnavailableBecauseSchema, UnavailableKindSchema } from '@beonauto/operations';
+import { ConflictKindSchema, UnavailableBecauseSchema, UnavailableKindSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import type { BrainFunctionDefinition, WorkflowDefinition } from '../registry/spec.ts';
@@ -16,17 +16,27 @@ export const ExecutionRejectionSchema = Schema.Union([
     detail: Schema.String,
     kind: Schema.optionalKey(
       UnavailableKindSchema.annotate({
-        description: 'What the run could not use, when known: model_not_offered for a model this server does not offer',
+        description:
+          'What the run could not use, when known: model_not_offered for a model this server does not offer, tool_not_offered for a tool it does not offer, mcp_server_failed for a tool server that failed before any tool was called, and tools_unfinished for a run that called tools and could not finish, so that a tool may have changed something',
       }),
     ),
     because: Schema.optionalKey(
       UnavailableBecauseSchema.annotate({
         description:
-          'Why, with model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows',
+          'Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: mcp_server_not_configured, tool_not_allowed or tool_not_listed. With mcp_server_failed: failing, rate_limited or unreachable. With tools_unfinished: server_failed, model_unavailable, run_bound or no_answer',
       }),
     ),
   }),
-  Schema.Struct({ reason: Schema.Literal('conflict'), detail: Schema.String }),
+  Schema.Struct({
+    reason: Schema.Literal('conflict'),
+    detail: Schema.String,
+    kind: Schema.optionalKey(
+      ConflictKindSchema.annotate({
+        description:
+          'What clashed, when it is known: tools_called for a workflow whose step met a run of a function that may have called tools, which is not run again under its id',
+      }),
+    ),
+  }),
 ]).annotate({ description: 'Why the runtime adapter rejected the run' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;

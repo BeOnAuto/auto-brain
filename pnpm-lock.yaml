@@ -203,7 +203,7 @@ catalogs:
       version: 5.0.2
 
 patchedDependencies:
-  '@gabrielbryk/jq-ts@1.7.0': 6b0cd1e2b6d395b64b799bf623225c6e0852f20d90393219ac87ca8797a2ce56
+  '@gabrielbryk/jq-ts@1.7.0': aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa
 
 importers:
 
@@ -389,6 +389,31 @@ importers:
         specifier: 'catalog:'
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
+  packages/mcp:
+    dependencies:
+      '@beonauto/config':
+        specifier: workspace:*
+        version: link:../config
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../operations
+      '@modelcontextprotocol/client':
+        specifier: 2.2.0
+        version: 2.2.0
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+    devDependencies:
+      '@modelcontextprotocol/server':
+        specifier: 2.2.0
+        version: 2.2.0
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+
   packages/operations:
     dependencies:
       effect:
@@ -422,6 +447,9 @@ importers:
       '@beonauto/ledger':
         specifier: workspace:*
         version: link:../ledger
+      '@beonauto/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../operations
@@ -483,7 +511,7 @@ importers:
         version: link:../operations
       '@gabrielbryk/jq-ts':
         specifier: 1.7.0
-        version: 1.7.0(patch_hash=6b0cd1e2b6d395b64b799bf623225c6e0852f20d90393219ac87ca8797a2ce56)(typescript@7.0.2)
+        version: 1.7.0(patch_hash=aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa)(typescript@7.0.2)
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -567,6 +595,9 @@ importers:
       '@aws-sdk/credential-providers':
         specifier: 3.1144.0
         version: 3.1144.0
+      '@beonauto/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
@@ -5741,7 +5772,7 @@ snapshots:
       - snappy
       - socks
 
-  '@gabrielbryk/jq-ts@1.7.0(patch_hash=6b0cd1e2b6d395b64b799bf623225c6e0852f20d90393219ac87ca8797a2ce56)(typescript@7.0.2)':
+  '@gabrielbryk/jq-ts@1.7.0(patch_hash=aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa)(typescript@7.0.2)':
     dependencies:
       typescript: 7.0.2
 

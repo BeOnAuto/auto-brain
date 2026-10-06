@@ -29,7 +29,7 @@ const specTools = [
   'send_execution_event',
 ];
 
-const inferenceDescription = makeReasoningFunctionAdapter({
+const reasoningDescription = makeReasoningFunctionAdapter({
   languageModel: scriptedLanguageModel().languageModel,
   offered: { providers: [], aliases: [] },
 }).description;
@@ -104,7 +104,7 @@ describe('a reasoning function definition over MCP, on the endpoint of its brain
 describe('the spec tools an agent sees on the endpoint of a brain', () => {
   it('are the eleven operations inside a brain, and those that name a primitive describe the document format of inference', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
-    const describing = tools.filter(({ description }) => description?.includes(inferenceDescription) === true);
+    const describing = tools.filter(({ description }) => description?.includes(reasoningDescription) === true);
 
     expect(tools.map(({ name }) => name)).toEqual(specTools);
     expect(describing.map(({ name }) => name)).toEqual(specTools.slice(0, 6));

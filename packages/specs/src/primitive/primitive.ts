@@ -1,11 +1,17 @@
 import type { CallerIdentity, Conflict, InvalidInput, Noun, Unavailable } from '@beonauto/operations';
 import { Effect, type Schema } from 'effect';
 
+import type { ToolCallFact } from '../execution/execution-commands.ts';
+
 export interface DefinitionSummary {
   readonly description?: string;
   readonly inputSchema?: Schema.JsonObject;
   readonly outputSchema?: Schema.JsonObject;
   readonly warnings?: readonly string[];
+}
+
+export interface ToolCallJournal {
+  readonly record: (fact: ToolCallFact) => Effect.Effect<boolean>;
 }
 
 export interface RunContext {
@@ -14,6 +20,7 @@ export interface RunContext {
   readonly brain: string;
   readonly caller: CallerIdentity;
   readonly spec: { readonly name: string; readonly version: number };
+  readonly journal: ToolCallJournal;
 }
 
 export interface Finished {
@@ -51,12 +58,19 @@ export interface PrimitiveDefinition<Parsed> {
   readonly whenCancelled?: WhenCancelled;
   readonly longestExecutionMs?: number;
   readonly reachesOutside?: boolean;
+  readonly mayChangeOutside?: boolean;
+  readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
 }
 
 export interface PreparedDefinition {
   readonly summary: DefinitionSummary;
   readonly execute: (input: Schema.Json, execution: RunContext) => Effect.Effect<Executed, PrimitiveRejection>;
   readonly whenCancelled: WhenCancelled;
+  readonly callsTools: boolean;
+}
+
+function callsNoTools(): boolean {
+  return false;
 }
 
 export interface Primitive {
@@ -68,6 +82,7 @@ export interface Primitive {
   readonly mediaType: string;
   readonly longestExecutionMs: number;
   readonly reachesOutside: boolean;
+  readonly mayChangeOutside: boolean;
   readonly prepare: (source: string) => Effect.Effect<PreparedDefinition, InvalidInput>;
 }
 
@@ -79,7 +94,13 @@ export function isPrimitiveName(name: string): boolean {
 
 export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>): Primitive {
   const { name, title, description, noun, describeOutput, mediaType, parse, summarize, execute } = definition;
-  const { whenCancelled = 'stop', longestExecutionMs = defaultLongestExecutionMs, reachesOutside = false } = definition;
+  const {
+    whenCancelled = 'stop',
+    longestExecutionMs = defaultLongestExecutionMs,
+    reachesOutside = false,
+    mayChangeOutside = false,
+    callsTools = callsNoTools,
+  } = definition;
   if (!isPrimitiveName(name)) {
     throw new Error(`The primitive name ${name} is malformed`);
   }
@@ -92,12 +113,14 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
     mediaType,
     longestExecutionMs,
     reachesOutside,
+    mayChangeOutside,
     prepare: (source) =>
       parse(source).pipe(
         Effect.map((parsed) => ({
           summary: summarize(parsed),
           execute: (input, execution) => execute(parsed, input, execution),
           whenCancelled,
+          callsTools: callsTools(parsed),
         })),
       ),
   };

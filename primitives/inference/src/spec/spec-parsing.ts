@@ -6,7 +6,7 @@ import { splitDocument, type DocumentParts } from './document-split.ts';
 import { decodeSection, frontMatterIn, type ReadFrontMatter } from './front-matter-schema.ts';
 import type { ReasoningFunctionDefinitionDocument } from './reasoning-function-definition.ts';
 import { inputContractOf, outputContractOf } from './spec-schemas.ts';
-import { modelOf, providerOptionsOf, settingsOf } from './spec-settings.ts';
+import { modelOf, providerOptionsOf, settingsOf, toolsOf } from './spec-settings.ts';
 import { templateOf } from './spec-template.ts';
 import { variableIssues } from './template-checks.ts';
 
@@ -53,6 +53,10 @@ function specFrom({ root, lines, issues }: ReadFrontMatter, template: () => Chec
     () => decodeSection.provider_options(root['provider_options']),
     (options) => providerOptionsOf(options, lines),
   );
+  const tools = checkedSection(
+    () => decodeSection.tools(root['tools']),
+    (written) => toolsOf(written, lines),
+  );
   const found = [
     ...issues,
     ...issuesOf(
@@ -61,13 +65,14 @@ function specFrom({ root, lines, issues }: ReadFrontMatter, template: () => Chec
       () => input,
       () => output,
       () => providerOptions,
+      () => tools,
       () => template(),
     ),
     ...variablesOf(template, Result.isSuccess(input) ? input.success.schema?.document : undefined),
   ];
   return found.length > 0
     ? Result.fail(found)
-    : Result.all({ model, settings, input, output, template: template(), description, providerOptions });
+    : Result.all({ model, settings, input, output, template: template(), description, providerOptions, tools });
 }
 
 function specOf(parts: DocumentParts): Checked<ReasoningFunctionDefinitionDocument> {
@@ -85,6 +90,7 @@ function specOf(parts: DocumentParts): Checked<ReasoningFunctionDefinitionDocume
       input: spec.input,
       output: spec.output.output,
       ...(spec.providerOptions === undefined ? {} : { provider_options: spec.providerOptions }),
+      tools: spec.tools,
       template: spec.template,
       warnings: spec.output.warnings,
     }),

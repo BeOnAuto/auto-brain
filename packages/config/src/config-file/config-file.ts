@@ -80,7 +80,8 @@ function settingReading(fileSetting: FileSetting, raw: Schema.Json, environment:
   if (resolved.problems.length > 0) {
     return { written: [], problems: resolved.problems };
   }
-  return Result.match(fileSetting.written(resolved.value), {
+  const value = fileSetting.references === 'kept' ? raw : resolved.value;
+  return Result.match(fileSetting.written(value), {
     onSuccess: (text): SettingReading => ({ written: [[fileSetting.setting, text]], problems: [] }),
     onFailure: (problems): SettingReading => ({
       written: [],

@@ -55,7 +55,7 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
   return definePrimitive({
     name: 'inference',
     title: functionCategoryLabels.reason,
-    description: reasoningDescriptionFor(options.offered),
+    description: reasoningDescriptionFor(options.offered, options.tools?.configured === true),
     noun: { one: functionResourceLabels.reason.singular, other: functionResourceLabels.reason.plural },
     describeOutput: describeAnswer,
     mediaType: 'text/markdown',
@@ -64,5 +64,7 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
     execute: (spec, input, execution) => execute(spec, input, execution),
     longestExecutionMs: longestRequestMs,
     reachesOutside: true,
+    mayChangeOutside: options.tools?.configured === true,
+    callsTools: ({ tools }) => tools.length > 0,
   });
 }

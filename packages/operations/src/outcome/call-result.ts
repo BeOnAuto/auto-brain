@@ -4,7 +4,13 @@ export const invalidArguments = 'invalid_arguments';
 
 export const CallResultSchema = Schema.Union([
   Schema.Struct({ status: Schema.Literal('succeeded'), output: Schema.Json }),
-  Schema.Struct({ status: Schema.Literal('rejected'), reason: Schema.String, detail: Schema.String }),
+  Schema.Struct({
+    status: Schema.Literal('rejected'),
+    reason: Schema.String,
+    detail: Schema.String,
+    kind: Schema.optionalKey(Schema.String),
+    because: Schema.optionalKey(Schema.String),
+  }),
   Schema.Struct({ status: Schema.Literal('failed'), detail: Schema.String }),
   Schema.Struct({ status: Schema.Literal('unreachable'), detail: Schema.String }),
 ]);

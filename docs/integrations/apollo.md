@@ -44,6 +44,6 @@ If a required input is missing, compare the function's input contract with the m
 
 ## Tool access from inside the brain
 
-Coming soon. The planned shared tool catalog will allow reasoning functions to access authorized tools through a single MCP gateway, with direct tool lists as another option. Apollo GraphOS Agent Services is a possible choice for graph-based business tools; Auto does not require Apollo.
+A self-hosted runtime can give reasoning functions the tools of an MCP server its operator configures, and Apollo GraphOS Agent Services can be that server. The operator adds it as a remote server whose `Authorization` header carries an application API key, bound to your org and brain. A reasoning function that lists `graph/*` in its `tools` can then search for operations and run those the application's policies allow, and each call appears in the run's history. A field the policy denies comes back to the model as a tool error, which it can explain in its answer. Auto does not require Apollo.
 
-That internal connection is separate from the two external-agent connections used in this guide. Outbound MCP access and bounded tool-call loops are not implemented in the runtime yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
+That internal connection is separate from the two external-agent connections used in this guide, and Auto Cloud does not offer it yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).

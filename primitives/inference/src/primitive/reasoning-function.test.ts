@@ -45,6 +45,13 @@ describe('the reasoning function implementation', () => {
     expect(primitive.reachesOutside).toBe(true);
   });
 
+  it('says a reasoning function calls tools only when it names them, so a started run of it is never run again', () => {
+    expect(prepared(reasoningExample).callsTools).toBe(false);
+    expect(prepared(documentOf('model: openai/gpt-5\ntools:\n  - graph/search')).callsTools).toBe(true);
+  });
+});
+
+describe('the reasoning function document', () => {
   it('describes its document with an example that is a valid spec', () => {
     expect(primitive.description).toContain(reasoningExample);
     expect(prepared(reasoningExample).summary).toMatchObject({ description: 'Summarizes an account' });
@@ -109,7 +116,7 @@ describe('preparing a reasoning function definition that is not valid', () => {
             {
               pointer: '',
               detail:
-                'Line 3, /seed: seed is not a key of the front matter; it takes description, model, config, input, output, provider_options',
+                'Line 3, /seed: seed is not a key of the front matter; it takes description, model, config, input, output, provider_options, tools',
             },
           ],
         }),

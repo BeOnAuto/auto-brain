@@ -5,10 +5,15 @@ import type { DefinitionRunResult } from './function-run.ts';
 
 export function definitionRunResultOf(outcome: Outcome): DefinitionRunResult {
   if (outcome.status === 'rejected') {
-    const { reason, detail, issues } = outcome;
-    return issues === undefined
-      ? { status: 'rejected', reason, detail }
-      : { status: 'rejected', reason, detail, issues };
+    const { reason, detail, issues, kind, because } = outcome;
+    return {
+      status: 'rejected',
+      reason,
+      detail,
+      ...(issues === undefined ? {} : { issues }),
+      ...(kind === undefined ? {} : { kind }),
+      ...(because === undefined ? {} : { because }),
+    };
   }
   if (outcome.status === 'failed') {
     return { status: 'failed', detail: `The execution failed with incident ${outcome.incident}` };

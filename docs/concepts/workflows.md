@@ -28,7 +28,7 @@ Keep the saved work separate from what happens when it executes:
 
 Saving a workflow creates its definition at version 1, and each change to its document adds a version. A run uses the active latest version when it starts and keeps that version until it ends; the run records it as `spec_version`. A step that calls a function runs the function's active latest version at the time of the call.
 
-Each call to a function starts a run of that function, recorded under its own execution id. A retry is a new attempt at the step: it starts another run of the function, not a new function. When the runtime resumes a step after an interruption, the step keeps its execution id, so a function run that already has a final result is not run again.
+Each call to a function starts a run of that function, recorded under its own execution id. A retry is a new attempt at the step: it starts another run of the function, not a new function. When the runtime resumes a step after an interruption, the step keeps its execution id, so a function run that already has a final result is not run again. A reasoning function's run is not run again under its id either when it had recorded a tool call and did not succeed, or when its function names tools and the run had started without ending, since its tools may have changed something. The step then fails with an error of the type `https://on.auto/problems/tools_called`, which a retry of runtime or communication errors does not catch; a retry that catches every error, or names that type, calls the function again under a new execution id, and so calls its tools again. The run's history shows what the function called.
 
 ## Starting a run
 
@@ -54,7 +54,7 @@ A run ends in one of three states:
 | `rejected`  | A step raised an error that no step handled; the rejection gives the reason and the step |
 | `failed`    | The run broke down inside the runtime, produced too large an output, or ran too long     |
 
-A rejection's reason is `invalid_input` when the error says the input or the document led to it, and `unavailable` when trying again may succeed, as after a timeout. The [workflow format](../reference/workflow-format.md#how-a-run-ends) lists the exact rules.
+A rejection's reason is `invalid_input` when the error says the input or the document led to it, and `unavailable` when it was a timeout or a function that could not be reached, failed or was unavailable; a new run may then succeed. Two endings are different, because a reasoning function's tools may have changed something: `unavailable` of the kind `tools_unfinished`, when it called tools and could not finish, and `conflict` of the kind `tools_called`, when a step met a function run whose tools may already have been called. After either, check what the run's history shows the function called before starting a new run. The [workflow format](../reference/workflow-format.md#how-a-run-ends) lists the exact rules.
 
 ## Inspecting a run
 

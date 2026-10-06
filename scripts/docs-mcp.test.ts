@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { test } from 'node:test';
+
+const docs = resolve(import.meta.dirname, '../docs');
+
+await test('docs distinguish inbound MCP from the tools a reasoning function calls', () => {
+  const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
+  const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
+  const readme = readFileSync(join(docs, '../README.md'), 'utf8');
+  assert.ok(mcp.includes('inbound interface'));
+  assert.ok(mcp.includes('never by adding an endpoint to an external assistant'));
+  assert.ok(functions.includes('Auto Cloud does not offer it yet'));
+  assert.ok(functions.includes('model gateways connect to language models'));
+  assert.ok(readme.includes('Auto Cloud does not offer this yet'));
+  assert.ok(readme.includes('the function does not inherit the agent'));
+  assert.ok(readme.includes('reasoning functions tools from operator-configured MCP servers'));
+  assert.ok(functions.includes('Skill references and a separately managed tool library are still planned'));
+});
+
+await test('reasoning guides retain tool-use limits and side-effect-aware retries', () => {
+  const publicGuide = readFileSync(join(docs, 'reference/reasoning-format.md'), 'utf8');
+  const engineeringGuide = readFileSync(join(docs, 'engineering/reference/reasoning-format.md'), 'utf8');
+  for (const guide of [publicGuide, engineeringGuide]) {
+    assert.ok(guide.includes('tools_unfinished'));
+    assert.ok(guide.includes('tools_called'));
+    assert.ok(guide.includes('25'));
+    assert.ok(guide.includes('256 KiB'));
+    assert.ok(guide.includes('16 KiB'));
+  }
+  assert.ok(publicGuide.includes('Inspect its history and any external effects'));
+  assert.ok(publicGuide.includes('Retrying a successful run returns its recorded result'));
+  assert.ok(engineeringGuide.includes('the run is interrupted and recorded as `failed`'));
+  assert.equal(engineeringGuide.includes('interrupted and stays `started`'), false);
+});
+
+await test('MCP configuration documents recording and credential boundaries', () => {
+  const configuration = readFileSync(join(docs, 'engineering/self-host/configuration.md'), 'utf8');
+  const http = readFileSync(join(docs, 'reference/http.md'), 'utf8');
+  assert.ok(configuration.includes('Only `headers`, `env` and `auth` may hold a reference'));
+  assert.ok(configuration.includes('a value shorter than 8 characters is not'));
+  assert.ok(configuration.includes('anyone who may read the brain reads them'));
+  assert.ok(http.includes('`tool_call_started` and `tool_call_answered`'));
+  assert.ok(http.includes('Content is omitted unless the operator enables `record_content`'));
+  assert.ok(http.includes('absence of an answer does not prove it was cancelled before acting'));
+});
