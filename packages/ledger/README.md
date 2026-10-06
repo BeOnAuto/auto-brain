@@ -256,14 +256,23 @@ Every command is a decision appended under an expected version, so concurrent wr
 
 ## Portability
 
-The same ledger must also run on hosted SQLite databases that bind at most 100 parameters in one statement and offer no interactive transactions, so it follows these rules:
+The same ledger is meant to run on other stores, such as the hosted runtime's SQLite databases, which bind at most 100 parameters in one statement. What it asks of a store comes in two parts.
 
-- It uses the event store's own operations to read a stream, or its tail after a version, append with an expected version, migrate and close. Its SQL of its own is a read on each store, of what a brain recorded, with the indexes it creates when it opens, and the table of the outcomes of runs: its creation and fill when it opens, in one transaction, its read, and, on the write path, the inline projection that reads and upserts the row of a run inside the append's own transaction. It registers no consumers.
-- A command makes at most one append and relies on no transaction of its own; the projection relies on the append's, so a store that keeps the outcomes of runs must run the projection's read and upsert inside the append and fail the append when they fail. The hosted runtime's adapter is held to the same.
-- An append on SQLite carries at most eight events. Emmett binds ten parameters for each event it inserts, and such a database binds at most 100 in one statement.
-- Only the entries `src/sqlite3.ts` and `src/postgresql/postgresql-ledger.ts` know which driver is in use; the main entry loads neither `sqlite3` nor `pg`.
-- A SQLite database the ledger opens must provide what the reads use: `octet_length` (SQLite 3.43 and later), window functions (3.25 and later), the JSON functions, of which the reads use `json_each` and `json_group_array` (built in since 3.38), partial and expression indexes (3.8 and 3.9), the upsert of the outcomes of runs (3.24) and the `FILTER` of an aggregate (3.30). The hosted runtime's adapter is held to the same. An upsert of one row binds 12 parameters, and an upsert of the fill 96.
+What every store must provide, for the ledger to run at all:
+
+- The event store's own operations, to read a stream or its tail after a version, append with an expected version, migrate and close. A command makes at most one append and needs no transaction of its own.
+- The read of what a brain recorded, with the indexes the ledger creates when it opens; each statement binds at most 15 parameters, and none needs a transaction.
+- An append on SQLite carries at most eight events: Emmett binds ten parameters for each event it inserts, and such a database binds at most 100 in one statement.
+- A SQLite database must provide what the reads use: `octet_length` (SQLite 3.43 and later), window functions (3.25 and later), the JSON functions, of which the reads use `json_each` and `json_group_array` (built in since 3.38), and partial and expression indexes (3.8 and 3.9).
 - No adapter or application may nest a stream under `executions/` within a brain: the key of a stream's kind ends at the fourth `/`, so the list of runs would take any stream named `executions/<id>/…` for a run.
+- Only the entries `src/sqlite3.ts` and `src/postgresql/postgresql-ledger.ts` know which driver is in use; the main entry loads neither `sqlite3` nor `pg`.
+
+What a store must provide besides, to keep the outcomes of runs that a brain's analytics read:
+
+- Inline projections inside the append's own transaction: a read and an upsert of a run's row for each message of a run's event, which commit with the append and fail it when they fail. An upsert of one row binds 12 parameters, and SQLite must provide the upsert (3.24) and the `FILTER` of an aggregate (3.30).
+- A transaction for the fill when the table is created, in which the store's streams are read and the rows written, 8 to an upsert of 96 parameters on SQLite, so that an interrupted fill leaves nothing behind.
+
+A runtime whose store cannot provide both does not keep the table and does not offer the analytics of a brain until it can: it opens the ledger without the run outcome mapping, which neither creates nor writes the table, and leaves `get_brain_analytics` out of its catalog. That is the hosted runtime's case while its databases offer no interactive transactions: like tool access, which the hosted runtime does not offer yet, the analytics of a brain come there once its store provides what they need.
 
 ## Testing
 
