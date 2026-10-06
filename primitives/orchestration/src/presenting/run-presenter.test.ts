@@ -38,7 +38,7 @@ function eventOf(
   outputs: readonly RunOutput[] = [],
   patch: RunEvent['patch'] = [],
 ): RunEvent {
-  return { type: 'input_applied', format: 2, receipt, steps, patch, outputs };
+  return { type: 'input_applied', format: 3, receipt, steps, patch, outputs };
 }
 
 function recordOf(event: RunEvent): RecordedEvent {
@@ -118,6 +118,39 @@ describe('the words of an input a workflow took', () => {
   });
 });
 
+function rejectedWith(kind: string, because: string): InputReceipt {
+  return { kind: 'call_answered', key: callKeyText(callKey), at, status: 'rejected', rejection: { kind, because } };
+}
+
+describe('the words of a rejection of a function a workflow called', () => {
+  it('says why it did not succeed in plain words, after what happened', () => {
+    expect(
+      present(recordOf(eventOf(rejectedWith('tools_unfinished', 'server_failed'), stepsOf(1), [settled])))?.summary,
+    ).toBe(
+      'A function the workflow called did not succeed, and 1 step moved; the workflow ended. It called tools but could not finish, because a tool server kept failing.',
+    );
+  });
+
+  it.each([
+    [
+      rejectedWith('tool_not_offered', 'mcp_server_not_configured'),
+      'A function the workflow called did not succeed. This server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain.',
+    ],
+    [
+      rejectedWith('mcp_server_failed', 'rate_limited'),
+      'A function the workflow called did not succeed. A tool server it needs could not be used, because the tool server asked it to slow down for longer than a run waits.',
+    ],
+    [
+      rejectedWith('tools_called', 'no_answer'),
+      'A function the workflow called did not succeed. This run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something.',
+    ],
+    [rejectedWith('something_new', 'some_reason'), 'A function the workflow called did not succeed.'],
+  ])('says each kind and because it knows: %#', (receipt, summary) => {
+    expect(present(recordOf(eventOf(receipt)))?.summary).toBe(summary);
+    expect(internalTermsIn(summary)).toEqual([]);
+  });
+});
+
 describe('an answer or an event a workflow took, in the history of its run', () => {
   it('shows the status of an answer and the type of an event', () => {
     const answered = eventOf({ kind: 'call_answered', key: callKeyText(callKey), at, status: 'failed' });
@@ -126,6 +159,30 @@ describe('an answer or an event a workflow took, in the history of its run', () 
     expect([present(recordOf(answered))?.data, present(recordOf(received))?.data]).toMatchObject([
       { input: { kind: 'call_answered', key: callKeyText(callKey), status: 'failed' } },
       { input: { kind: 'event_received', key: 'e-1', event_type: 'com.acme.approved' } },
+    ]);
+  });
+});
+
+describe('a rejection of a function a workflow called, in the history of its run', () => {
+  it('shows the kind and because of the rejection, each cut at 256 bytes', () => {
+    const rejected = eventOf({
+      kind: 'call_answered',
+      key: callKeyText(callKey),
+      at,
+      status: 'rejected',
+      rejection: { kind: 'tools_unfinished', because: '😀'.repeat(100) },
+    });
+    const unnamed = eventOf({
+      kind: 'call_answered',
+      key: callKeyText(callKey),
+      at,
+      status: 'rejected',
+      rejection: {},
+    });
+
+    expect([present(recordOf(rejected))?.data, present(recordOf(unnamed))?.data]).toMatchObject([
+      { input: { status: 'rejected', rejection: { kind: 'tools_unfinished', because: '😀'.repeat(64) } } },
+      { input: { status: 'rejected', rejection: {} } },
     ]);
   });
 });

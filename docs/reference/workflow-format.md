@@ -173,7 +173,7 @@ A run of the function that does not succeed raises an error the workflow can cat
 | Failed                        | `runtime`       | 500    |
 | Could not be reached          | `communication` | 503    |
 
-The error's `title` names the definition and, for a rejection, its reason; its `detail` carries the detail the run gave.
+The error's `title` names the definition and, for a rejection, its reason; its `detail` carries the detail the run gave. A rejection that has a kind carries it as the error's `kind`, and its cause as `because`, as the [HTTP problem document](http.md#responses-and-errors) does: a reason function whose tools are not offered is `tool_not_offered`, one whose tool server cannot be used `mcp_server_failed`, and one that called tools and could not finish `tools_unfinished`, its tools having perhaps changed something. A `catch` reads them in the error it catches, so `when: '${ $error.kind == "tool_not_offered" }'` handles only that, and `${ $error.because }` names why.
 
 ### Waiting for events
 
@@ -191,7 +191,7 @@ An event sent before a `listen` task waits for it is kept, and the task takes th
 
 ### Errors, retries and timeouts
 
-An error has a `type` (a URI), an integer `status`, an `instance` naming the task that raised it as a JSON Pointer, and an optional `title` and `detail`. A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. Errors raised by the runtime have types under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
+An error has a `type` (a URI), an integer `status`, an `instance` naming the task that raised it as a JSON Pointer, and an optional `title` and `detail`; an error a function's rejection raised also has its `kind` and `because` when the rejection has them. A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. Errors raised by the runtime have types under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
 
 | Situation                                                                                        | Error type      | Status |
 | ------------------------------------------------------------------------------------------------ | --------------- | ------ |

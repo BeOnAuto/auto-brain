@@ -50,13 +50,15 @@ export function raised(kind: ErrorKind, status: number, title: string, instance:
   return new RaisedError({ type: errorType(kind), status, title, instance });
 }
 
-export function errorAsJson({ type, status, instance, title, detail }: DslError): JsonObject {
+export function errorAsJson({ type, status, instance, title, detail, kind, because }: DslError): JsonObject {
   return {
     type,
     status,
     instance,
     ...(title === undefined ? {} : { title }),
     ...(detail === undefined ? {} : { detail }),
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
   };
 }
 
@@ -105,8 +107,16 @@ export function settlementOf(outcome: SettledOutcome): Settlement {
     : { status: 'failed' };
 }
 
+interface RejectedCall {
+  readonly status: 'rejected';
+  readonly reason: string;
+  readonly detail: string;
+  readonly kind?: string;
+  readonly because?: string;
+}
+
 export type FailedCall =
-  | { readonly status: 'rejected'; readonly reason: string; readonly detail: string }
+  | RejectedCall
   | { readonly status: 'failed'; readonly detail: string }
   | { readonly status: 'unreachable'; readonly detail: string };
 
@@ -125,6 +135,10 @@ const rejections: Readonly<Record<string, Classification>> = {
   conflict: ['runtime', 409],
   unavailable: ['communication', 503],
 };
+
+function kindAndBecauseOf({ kind, because }: RejectedCall): Pick<DslError, 'kind' | 'because'> {
+  return { ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
+}
 
 function capitalized(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
@@ -151,5 +165,6 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
         : `${capitalized(call.label)} failed`,
     detail: result.detail,
     instance: call.reference,
+    ...(result.status === 'rejected' ? kindAndBecauseOf(result) : {}),
   };
 }

@@ -14,7 +14,13 @@ export interface SpecCall {
 
 export type SpecCallResult =
   | { readonly status: 'succeeded'; readonly output: Json }
-  | { readonly status: 'rejected'; readonly reason: string; readonly detail: string }
+  | {
+      readonly status: 'rejected';
+      readonly reason: string;
+      readonly detail: string;
+      readonly kind?: string;
+      readonly because?: string;
+    }
   | { readonly status: 'failed'; readonly detail: string };
 
 export type RunSettlement = Settlement;

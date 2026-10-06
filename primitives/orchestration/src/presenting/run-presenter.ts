@@ -33,9 +33,24 @@ export function cutAtCodePoint(text: string, mostBytes: number): string {
   return text;
 }
 
+type Rejection = NonNullable<Extract<InputReceipt, { readonly kind: 'call_answered' }>['rejection']>;
+
+function rejectionShown({ kind, because }: Rejection): Schema.JsonObject {
+  return {
+    ...(kind === undefined ? {} : { kind: cutAtCodePoint(kind, mostKeyBytes) }),
+    ...(because === undefined ? {} : { because: cutAtCodePoint(because, mostKeyBytes) }),
+  };
+}
+
 function inputShown(receipt: InputReceipt, executionId: string): Schema.JsonObject {
   if (receipt.kind === 'call_answered') {
-    return { kind: receipt.kind, key: cutAtCodePoint(receipt.key, mostKeyBytes), status: receipt.status };
+    const { rejection } = receipt;
+    return {
+      kind: receipt.kind,
+      key: cutAtCodePoint(receipt.key, mostKeyBytes),
+      status: receipt.status,
+      ...(rejection === undefined ? {} : { rejection: rejectionShown(rejection) }),
+    };
   }
   if (receipt.kind === 'event_received') {
     return {

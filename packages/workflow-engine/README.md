@@ -71,7 +71,7 @@ A run's stream is a state-transition log, not classic event sourcing. Each event
 Each event, `input_applied`, holds:
 
 - `format`: the state format its patch applies to.
-- `receipt`: the kind of the input, the key it is deduplicated by and its time; for an answer, the result's status, and for an external event, its type. The input's payload is not stored again: what it changed is in the patch.
+- `receipt`: the kind of the input, the key it is deduplicated by and its time; for an answer, the result's status, and for a rejection that names them, its `rejection`, the `kind` and `because` of the result, and for an external event, its type. The input's payload is not stored again: what it changed is in the patch.
 - `steps`: each run of a task the input stepped, once, as `{ reference, run, outcome }`, with the outcome it had when the input ended: `started`, `skipped`, `waiting`, `completed`, `raised`, `timed_out` or `cancelled`. A task that starts and finishes in one input records only how it finished, and the steps keep the order the tasks started in.
 - `patch`: the change to the state, as JSON Patch operations (RFC 6902 `add`, `replace` and `remove`) addressed by JSON Pointer. A list that grew is patched at the positions it had and appended to, with an `add` at `<list>/-` for each new item, so the ids a run received cost one operation each, not the whole list again; a list that lost items is replaced whole.
 - `outputs`: what the engine must do because of this input.
@@ -86,13 +86,15 @@ Compression is not part of the format. A run store may compress the events and s
 
 ## State formats
 
-Every event and every snapshot names its state format; `stateFormat` is 2. A change to the state's schema is a new format, and:
+Every event and every snapshot names its state format; `stateFormat` is 3. A change to the state's schema is a new format, and:
 
 - each event is folded under its own format, and a state that crosses to a newer format is read strictly under the old one and upcast by that format's upcaster (`OlderFormat.read`, `OlderFormat.upcast`) before the next event applies;
 - formats never go back within a stream, and a format newer than the code is refused, both when the run loads (`UnreadableRun`);
 - `packages/workflow-engine/corpus/format-<n>.json` holds a committed stream and snapshot of every format, which must load to the state it recorded (`src/run-log/corpus.test.ts`). A new format adds its corpus and keeps every older one loading.
 
 Format 2 came with the machine: a frame records when it started and the context it started with, since a task that waits evaluates its `output.as` and its listen filters later with the variables it started with; an armed timer records when it was armed, since a timeout names the milliseconds it allowed; a fork branch can yield before it starts, as a task in a list can; and a failed branch records the order it failed in, since a competing fork that loses every branch raises the first failure. A list always names what it waits for, the task it runs or the timer due at once it yields to, and a loop always holds the list of the iteration it is in, so neither is ever null: the machine only stores a list or a loop that waits. Format 1 is read strictly with its own frozen schema (`src/run-log/format-one.ts`) and upcast: frames start at the last input with the context then, timers were armed at the last input, and failures are ordered as their branches. A format-1 state with a list between its tasks has no format-2 form and does not load; no runtime ever wrote one, since format 1 had no machine.
+
+Format 3 came with the kind and because of a rejection: a call's result, `CallResultSchema` of `@beonauto/operations`, may name the `kind` and `because` of a rejection, and the error it raises, `DslError`, keeps them, so a failed branch, a `try` backing off and a run that ended raised hold them, and a `catch` reads them in its error. A state of format 2 is a state of format 3 as it is: format 2 is read strictly with its own frozen schema (`src/run-log/format-two.ts`), which refuses an error with either member, and passed on unchanged. Format 1 reads its errors and its outcome with format 2's frozen schemas, as it did.
 
 Patches are never rewritten: a patch applies only to the format it was written for. `evolve` applies a patch strictly, `add` to a member that exists or `replace` and `remove` of one that does not die with `PatchFailed`, and the result must decode as the state with no member the format does not describe (`onExcessProperty: 'error'`), so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
 

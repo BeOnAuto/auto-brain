@@ -17,6 +17,9 @@ export const InputReceiptSchema = Schema.Union([
     kind: Schema.Literal('call_answered'),
     ...keyed,
     status: Schema.Literals(['succeeded', 'rejected', 'failed', 'unreachable']),
+    rejection: Schema.optionalKey(
+      Schema.Struct({ kind: Schema.optionalKey(Schema.String), because: Schema.optionalKey(Schema.String) }),
+    ),
   }),
   Schema.Struct({ kind: Schema.Literal('event_received'), ...keyed, eventType: Schema.String }),
   Schema.Struct({ kind: Schema.Literal('cancel_requested'), ...keyed }),
@@ -33,12 +36,29 @@ export function inputTimeOf(state: RunState, input: RunInput): number {
   return armed === undefined ? at : Math.max(at, armed.dueAt);
 }
 
+type Answer = Extract<RunInput, { readonly kind: 'call_answered' }>['result'];
+
+function rejectionOf(result: Answer): Pick<Extract<InputReceipt, { readonly kind: 'call_answered' }>, 'rejection'> {
+  if (result.status !== 'rejected') {
+    return {};
+  }
+  const { kind, because } = result;
+  const rejection = { ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
+  return Object.keys(rejection).length === 0 ? {} : { rejection };
+}
+
 export function receiptOf(input: RunInput, at: number): InputReceipt {
   if (input.kind === 'timer_fired') {
     return { kind: input.kind, key: input.timerId, at };
   }
   if (input.kind === 'call_answered') {
-    return { kind: input.kind, key: callKeyText(input.key), at, status: input.result.status };
+    return {
+      kind: input.kind,
+      key: callKeyText(input.key),
+      at,
+      status: input.result.status,
+      ...rejectionOf(input.result),
+    };
   }
   if (input.kind === 'event_received') {
     return { kind: input.kind, key: input.event.id, at, eventType: input.event.type };

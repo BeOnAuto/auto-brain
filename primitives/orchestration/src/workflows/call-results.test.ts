@@ -50,6 +50,61 @@ describe('a rejected execution', () => {
   });
 });
 
+const branching = workflow(`
+do:
+  - lookup:
+      try:
+        - fetch:
+            call: execute_spec
+            with: { primitive: inference, name: lookup, input: {} }
+      catch:
+        when: '\${ $error.kind == "tool_not_offered" and $error.because == "tool_not_allowed" }'
+        do:
+          - report:
+              set: { offered: false }
+`);
+
+function rejectedAs(kind: string): () => SpecCallResult {
+  return () => ({ status: 'rejected', reason: 'unavailable', detail: 'No', kind, because: 'tool_not_allowed' });
+}
+
+describe('a rejected execution that names its kind and because', () => {
+  it('is an error the document can catch and branch on by its kind and because', async () => {
+    const rejected = {
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'A tool server kept failing, after the run called the search tool of graph',
+      kind: 'tools_unfinished',
+      because: 'server_failed',
+    } as const;
+
+    expect(await caughtFor(() => rejected)).toEqual({
+      kind: 'completed',
+      output: {
+        type: `${types}/communication`,
+        status: 503,
+        instance: '/do/0/lookup/try/0/fetch',
+        title: 'The inference spec lookup rejected the execution with unavailable',
+        detail: rejected.detail,
+        kind: 'tools_unfinished',
+        because: 'server_failed',
+      },
+    });
+  });
+
+  it('is caught by a condition on its kind, and passed on by one on another kind', async () => {
+    expect((await interpret(branching, { respond: rejectedAs('tool_not_offered') })).ending).toEqual({
+      kind: 'completed',
+      output: { offered: false },
+    });
+    expect((await interpret(branching, { respond: rejectedAs('mcp_server_failed') })).ending).toEqual({
+      kind: 'failed',
+      type: 'UncaughtError',
+      message: 'The inference spec lookup rejected the execution with unavailable: No (at /do/0/lookup/try/0/fetch)',
+    });
+  });
+});
+
 describe('a failed execution', () => {
   it('is a runtime error', async () => {
     expect(await caughtFor(() => ({ status: 'failed', detail: 'It failed with incident 7' }))).toEqual({

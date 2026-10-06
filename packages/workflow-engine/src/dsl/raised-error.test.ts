@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { callErrorOf, errorType, rejectionReasonOf } from './raised-error.ts';
+import { callErrorOf, errorAsJson, errorType, rejectionReasonOf } from './raised-error.ts';
 
 describe('the rejection of an uncaught error', () => {
   it.each([400, 401, 403, 404, 409, 422, 499])('is invalid_input for the client error %d, a final result', (status) => {
@@ -23,5 +23,28 @@ describe('the error of a call that did not succeed', () => {
       detail: 'short and stout',
       instance: '/do/0/ask',
     });
+  });
+
+  it('carries the kind and because of a rejection, which a document reads in the error it catches', () => {
+    const rejected = {
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'A tool server kept failing',
+      kind: 'tools_unfinished',
+      because: 'server_failed',
+    } as const;
+
+    expect(errorAsJson(callErrorOf(rejected, site))).toEqual({
+      type: errorType('communication'),
+      status: 503,
+      title: 'The function notify rejected the execution with unavailable',
+      detail: 'A tool server kept failing',
+      instance: '/do/0/ask',
+      kind: 'tools_unfinished',
+      because: 'server_failed',
+    });
+    expect(
+      callErrorOf({ status: 'rejected', reason: 'conflict', detail: 'Called', kind: 'tools_called' }, site),
+    ).not.toHaveProperty('because');
   });
 });

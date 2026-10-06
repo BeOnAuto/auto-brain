@@ -26,7 +26,14 @@ function rejectionDetail(
 
 function callResultOf(result: SpecExecutionResult): CallResult {
   if (result.status === 'rejected') {
-    return { status: 'rejected', reason: result.reason, detail: rejectionDetail(result.detail, result.issues ?? []) };
+    const { reason, detail, issues = [], kind, because } = result;
+    return {
+      status: 'rejected',
+      reason,
+      detail: rejectionDetail(detail, issues),
+      ...(kind === undefined ? {} : { kind }),
+      ...(because === undefined ? {} : { because }),
+    };
   }
   if (result.status === 'failed') {
     return result;

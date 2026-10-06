@@ -6,6 +6,8 @@ export const DslErrorSchema = Schema.Struct({
   instance: Schema.String,
   title: Schema.optionalKey(Schema.String),
   detail: Schema.optionalKey(Schema.String),
+  kind: Schema.optionalKey(Schema.String),
+  because: Schema.optionalKey(Schema.String),
 });
 
 export type DslError = typeof DslErrorSchema.Type;
