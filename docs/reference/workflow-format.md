@@ -195,7 +195,7 @@ An event sent before a `listen` task waits for it is kept, and the task takes th
 
 ### Errors, retries and timeouts
 
-An error has a `type` (a URI), an integer `status`, an `instance` naming the task that raised it as a JSON Pointer, and an optional `title` and `detail`; an error a function's rejection raised also has its `kind` and `because` when the rejection has them. A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. Errors raised by the runtime have types under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
+An error has a `type` (a URI), an integer `status`, an `instance` naming the task that raised it as a JSON Pointer, and an optional `title` and `detail`; an error a function's rejection raised also has its `kind` and `because` when the rejection has them. A `raise`, inline or under `use.errors`, may name a `kind` and a `because` too, so a `catch` can raise the error it caught again without losing them: `kind: '${ $error.kind }'`. A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. Errors raised by the runtime have types under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
 
 | Situation                                                                                        | Error type      | Status |
 | ------------------------------------------------------------------------------------------------ | --------------- | ------ |

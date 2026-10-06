@@ -70,12 +70,16 @@ export function errorFromJson(definition: JsonObject, instance: string): DslErro
   }
   const title = textField(definition, 'title');
   const detail = textField(definition, 'detail');
+  const kind = textField(definition, 'kind');
+  const because = textField(definition, 'because');
   return {
     type,
     status,
     instance: textField(definition, 'instance') ?? instance,
     ...(title === undefined ? {} : { title }),
     ...(detail === undefined ? {} : { detail }),
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
   };
 }
 
