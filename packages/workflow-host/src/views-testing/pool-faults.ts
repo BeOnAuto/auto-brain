@@ -1,8 +1,18 @@
 import type { FoldOutcome, ProgramPool } from '@beonauto/workflow-engine/dsl';
 
+import type { HostDatabase } from '../database/host-database.ts';
+
 export interface FaultyPool {
   readonly pool: ProgramPool;
   readonly folds: () => number;
+}
+
+export interface Held<Gated> {
+  readonly gated: Gated;
+  readonly waiting: () => number;
+  readonly most: () => number;
+  readonly total: () => number;
+  readonly open: () => void;
 }
 
 function firstFoldOf(pool: ProgramPool, first: () => Promise<FoldOutcome>): FaultyPool {
@@ -40,4 +50,48 @@ export function racingOnce(pool: ProgramPool, race: () => Promise<unknown>): Pro
       return outcome;
     },
   };
+}
+
+function held<Gated>(gate: (wait: () => Promise<void>) => Gated): Held<Gated> {
+  const opened = Promise.withResolvers<void>();
+  const counts = { waiting: 0, most: 0, total: 0 };
+  const wait = async (): Promise<void> => {
+    counts.total += 1;
+    counts.waiting += 1;
+    counts.most = Math.max(counts.most, counts.waiting);
+    await opened.promise;
+    counts.waiting -= 1;
+  };
+  return {
+    gated: gate(wait),
+    waiting: () => counts.waiting,
+    most: () => counts.most,
+    total: () => counts.total,
+    open: () => {
+      opened.resolve();
+    },
+  };
+}
+
+export function heldReads(database: HostDatabase): Held<HostDatabase> {
+  return held((wait) => ({
+    ...database,
+    store: {
+      ...database.store,
+      readRecorded: async (brainKey, selection, page) => {
+        await wait();
+        return database.store.readRecorded(brainKey, selection, page);
+      },
+    },
+  }));
+}
+
+export function heldFolds(pool: ProgramPool): Held<ProgramPool> {
+  return held((wait) => ({
+    ...pool,
+    fold: async (request, signal) => {
+      await wait();
+      return pool.fold(request, signal);
+    },
+  }));
 }

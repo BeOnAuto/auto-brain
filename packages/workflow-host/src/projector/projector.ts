@@ -113,6 +113,7 @@ function passPartsOf({ database, settings, reports }: ProjectorParts, schedule: 
       definitions: schedule.definitions,
     },
     note: reports.note,
+    resting: schedule.resting,
     firstSeen: firstSeenOf(mostRemembered),
     trouble: (what) => reports.trouble(what, Cause.fail(what)),
   };

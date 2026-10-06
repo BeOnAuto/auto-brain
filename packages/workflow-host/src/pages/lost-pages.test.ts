@@ -87,7 +87,7 @@ describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs 
       await views.ran('inference/runs', 1);
       views.start(quick);
 
-      const troubles = await eventually(views.reports.troubles, (reported) => reported.length > 1, 1000);
+      const troubles = await eventually(views.reports.troubles, (reported) => reported.length > 1, 3000);
       const kept = await views.viewOf('runs');
 
       expect(kept).toMatchObject({ phase: 'rebuilding', folded: 0 });
@@ -105,6 +105,26 @@ describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs 
     const kept = await views.until('runs', foldedAll(1));
 
     expect([kept.view, busy.folds(), views.reports.troubles()]).toEqual([1, 2, []]);
+  });
+});
+
+describe('a page of folds lost twice', { timeout: viewTestTimeoutMs }, () => {
+  it('counts a try and keeps the checkpoint when what it folds before the event breaks its worker too', async () => {
+    const atTheSecondRun =
+      'import { workerData } from "node:worker_threads"; const place = new Int32Array(workerData.progress.shared); Atomics.store(place, 0, 2); Atomics.store(place, 1, 0); throw new Error("broken on purpose");';
+    const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(atTheSecondRun) });
+    await views.saved('runs', counting);
+    await views.ranEach('inference/runs', [1, 2]);
+    views.start(quick);
+
+    const kept = await views.until('runs', isStalled);
+
+    expect(kept).toMatchObject({
+      view: 0,
+      folded: 0,
+      checkpoint: null,
+      stall: { kind: 'crash', message: 'The fold was stopped by its crash 2 times' },
+    });
   });
 });
 

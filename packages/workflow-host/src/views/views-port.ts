@@ -2,7 +2,7 @@ import { streamPrefixOfBrain, type BrainAddress } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';
-import { keptViewOf, viewRowOf, ViewRowSchema, type KeptView } from './view-rows.ts';
+import { keptViewOf, KeptRowSchema, viewRowOf, type KeptView } from './view-rows.ts';
 import { viewNamed } from './view-statements.ts';
 
 export interface ViewsPort {
@@ -13,8 +13,8 @@ export interface ViewsPort {
 export function viewsPortOn(database: HostDatabase): ViewsPort {
   return {
     viewOf: (brain, name) =>
-      Effect.orDie(rowsOf(ViewRowSchema, database.read(viewNamed(streamPrefixOfBrain(brain), name)))).pipe(
-        Effect.map(([row]) => (row === undefined ? undefined : keptViewOf(viewRowOf(row)))),
+      Effect.orDie(rowsOf(KeptRowSchema, database.read(viewNamed(streamPrefixOfBrain(brain), name)))).pipe(
+        Effect.map(([row]) => (row === undefined ? undefined : keptViewOf(viewRowOf(row), row.view))),
       ),
     newestRecordAt: (brain) =>
       Effect.promise(() =>

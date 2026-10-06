@@ -3,17 +3,23 @@ import { Effect, type Semaphore } from 'effect';
 import type { DatabaseFailed } from '../database/host-database.ts';
 import { readPage, typesToRead, type ReadPage } from '../pages/page-events.ts';
 import { foldedPage, type FoldedPageResult } from '../pages/page-folding.ts';
-import { hasChanged, rowAfter, type ViewChange } from '../pages/view-changes.ts';
+import { hasChanged, hasTriedAgain, rowAfter, type ViewChange } from '../pages/view-changes.ts';
 import { comparePoints, earliestOf } from '../views/view-points.ts';
 import type { ViewRow } from '../views/view-rows.ts';
 import { applied, type ChangeWriting, type Pass } from './change-writing.ts';
 import type { ProjectorSettings } from './projector-settings.ts';
 import { reconciled, type Reconciling } from './view-reconciling.ts';
 
+export interface Resting {
+  readonly isResting: (brain: string, name: string) => boolean;
+  readonly rest: (brain: string, name: string) => void;
+}
+
 export interface PassParts extends ChangeWriting {
   readonly settings: ProjectorSettings;
   readonly share: Semaphore.Semaphore;
   readonly reconciling: Reconciling;
+  readonly resting: Resting;
   readonly firstSeen: (record: string) => boolean;
   readonly trouble: (what: string) => Effect.Effect<void>;
 }
@@ -44,19 +50,26 @@ function readFor(parts: PassParts, brain: string, rows: readonly ViewRow[]): Eff
   ).pipe(Effect.tap((page) => noted(parts, brain, page)));
 }
 
-function troubled(parts: PassParts, result: FoldedPageResult): Effect.Effect<void> {
+function troubled(parts: PassParts, brain: string, result: FoldedPageResult): Effect.Effect<void> {
+  for (const change of result.changes.filter((each) => hasTriedAgain(each))) {
+    parts.resting.rest(brain, change.row.name);
+  }
   return result.trouble === undefined ? Effect.void : parts.trouble(result.trouble);
+}
+
+function isAwake(parts: PassParts, brain: string, { name }: ViewRow): boolean {
+  return !parts.resting.isResting(brain, name);
 }
 
 function sharedStep(parts: PassParts, brain: string, pass: Pass): Effect.Effect<Step, DatabaseFailed> {
   return Effect.gen(function* () {
-    const live = pass.rows.filter((row) => isLive(row));
+    const live = pass.rows.filter((row) => isLive(row) && isAwake(parts, brain, row));
     if (live.length === 0 || pass.pages === 0) {
       return { pass, done: true, again: false };
     }
     const page = yield* readFor(parts, brain, live);
     const result = yield* foldedPage(live, page, parts);
-    yield* troubled(parts, result);
+    yield* troubled(parts, brain, result);
     const after = yield* applied(parts, brain, { rows: pass.rows, pages: pass.pages - 1 }, result.changes);
     const rows = page.definitionsSeen ? yield* reconciled(parts.reconciling, brain) : after.rows;
     return {
@@ -82,21 +95,22 @@ function joining(change: ViewChange, rows: readonly ViewRow[], atTheEnd: boolean
 }
 
 function unchanged(row: ViewRow): ViewChange {
-  const { view, checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } = row;
-  return { row, next: { view, checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } };
+  const { checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } = row;
+  return { row, next: { checkpoint, checkpointAt, lastEvent, folded, overtimes, phase } };
 }
 
 function rebuildStep(parts: PassParts, brain: string, pass: Pass, row: ViewRow): Effect.Effect<Step, DatabaseFailed> {
   return Effect.gen(function* () {
     const page = yield* readFor(parts, brain, [row]);
     const result = yield* foldedPage([row], page, parts);
-    yield* troubled(parts, result);
+    yield* troubled(parts, brain, result);
     const change = result.changes[0] ?? unchanged(row);
     const settled = result.again ? change : joining(change, pass.rows, result.complete && page.atTheEnd);
     const moved = hasChanged(settled) ? [settled] : [];
     const after = yield* applied(parts, brain, { rows: pass.rows, pages: pass.pages - 1 }, moved);
     const now = after.rows.find(({ name }) => name === row.name);
-    return { pass: after, done: result.again || now?.phase !== 'rebuilding', again: result.again };
+    const goingOn = now?.phase === 'rebuilding' && isAwake(parts, brain, now);
+    return { pass: after, done: result.again || !goingOn, again: result.again };
   });
 }
 
@@ -110,7 +124,7 @@ function stepped(
 }
 
 function rebuilt(parts: PassParts, brain: string, start: Step): Effect.Effect<Step, DatabaseFailed> {
-  const rebuilding = start.pass.rows.filter(({ phase }) => phase === 'rebuilding');
+  const rebuilding = start.pass.rows.filter((row) => row.phase === 'rebuilding' && isAwake(parts, brain, row));
   return Effect.reduce(
     rebuilding,
     () => start,
@@ -126,6 +140,12 @@ function rebuilt(parts: PassParts, brain: string, start: Step): Effect.Effect<St
   );
 }
 
+function canBuild(parts: PassParts, brain: string, rows: readonly ViewRow[]): boolean {
+  const rebuilding = rows.filter(({ phase }) => phase === 'rebuilding');
+  const slotFree = rebuilding.length < parts.settings.rebuildsAtOnce && rows.some(({ phase }) => phase === 'waiting');
+  return slotFree || rebuilding.some((row) => isAwake(parts, brain, row));
+}
+
 export function brainPass(parts: PassParts, brain: string): Effect.Effect<boolean, DatabaseFailed> {
   return Effect.gen(function* () {
     const rows = yield* reconciled(parts.reconciling, brain);
@@ -133,7 +153,6 @@ export function brainPass(parts: PassParts, brain: string): Effect.Effect<boolea
       sharedStep(parts, brain, pass),
     );
     const done = yield* rebuilt(parts, brain, shared);
-    const building = done.pass.rows.some(({ phase }) => phase === 'rebuilding' || phase === 'waiting');
-    return !done.again && (done.pass.pages === 0 || building);
+    return !done.again && (done.pass.pages === 0 || canBuild(parts, brain, done.pass.rows));
   });
 }

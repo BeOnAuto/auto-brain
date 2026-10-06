@@ -47,7 +47,6 @@ export interface ViewRow {
   readonly saved: number;
   readonly details: ViewDetails;
   readonly phase: ViewPhase;
-  readonly view: Schema.Json;
   readonly checkpointText: string;
   readonly checkpoint: Point | undefined;
   readonly checkpointAt: string | null;
@@ -76,14 +75,13 @@ const StallCauseSchema = Schema.Literals([
 
 const Text = Schema.NullOr(Schema.String);
 
-export const ViewRowSchema = Schema.Struct({
+const rowFields = {
   brain: Schema.String,
   name: Schema.String,
   version: WholeNumber,
   saved: WholeNumber,
   details: Schema.fromJsonString(ViewDetailsSchema),
   phase: PhaseSchema,
-  view: Schema.fromJsonString(Schema.Json),
   checkpoint: Schema.String,
   checkpoint_at: Text,
   last_event_id: Text,
@@ -96,7 +94,13 @@ export const ViewRowSchema = Schema.Struct({
   stalled_kind: Schema.NullOr(StallCauseSchema),
   stalled_message: Text,
   stalled_line: Schema.NullOr(WholeNumber),
-});
+};
+
+export const ViewRowSchema = Schema.Struct(rowFields);
+
+export const KeptRowSchema = Schema.Struct({ ...rowFields, view: Schema.fromJsonString(Schema.Json) });
+
+export const FoldedViewSchema = Schema.Struct({ view: Schema.fromJsonString(Schema.Json) });
 
 type StoredRow = typeof ViewRowSchema.Type;
 
@@ -122,7 +126,6 @@ export function viewRowOf(row: StoredRow): ViewRow {
     saved: row.saved,
     details: row.details,
     phase: row.phase,
-    view: row.view,
     checkpointText: row.checkpoint,
     checkpoint: pointIn(row.checkpoint),
     checkpointAt: row.checkpoint_at,
@@ -133,12 +136,12 @@ export function viewRowOf(row: StoredRow): ViewRow {
   };
 }
 
-export function keptViewOf({ brain, checkpoint, ...row }: ViewRow): KeptView {
+export function keptViewOf({ brain, checkpoint, ...row }: ViewRow, view: Schema.Json): KeptView {
   return {
     name: row.name,
     version: row.version,
     phase: row.phase,
-    view: row.view,
+    view,
     checkpoint: checkpoint === undefined ? null : recordedCursorOf(brain, checkpoint),
     checkpointAt: row.checkpointAt,
     lastEvent: row.lastEvent,

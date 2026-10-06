@@ -1,10 +1,10 @@
 import type { StoredPlace } from '@beonauto/ledger';
-import type { FoldedView, FoldPlace, FoldStall } from '@beonauto/workflow-engine/dsl';
-import { Struct } from 'effect';
+import type { FoldedView, FoldStall } from '@beonauto/workflow-engine/dsl';
+import { Struct, type Schema } from 'effect';
 
 import { lineInFold } from '../views/view-details.ts';
 import { comparePoints, pointText, type Point } from '../views/view-points.ts';
-import type { StallCause, ViewRow, ViewStall } from '../views/view-rows.ts';
+import type { FoldedEvent, StallCause, ViewRow, ViewStall } from '../views/view-rows.ts';
 import type { FoldedRow } from '../views/view-statements.ts';
 import type { PageEvent, ReadPage } from './page-events.ts';
 
@@ -18,14 +18,16 @@ export interface Retries {
   readonly foldDeadlineMs: number;
 }
 
-interface PageEnd {
-  readonly through: number;
-  readonly early: boolean;
-}
-
 export interface FoldedPageOf {
   readonly page: ReadPage;
-  readonly end: PageEnd;
+  readonly early: boolean;
+  readonly retries: Retries;
+}
+
+export interface Try {
+  readonly page: ReadPage;
+  readonly at: number;
+  readonly kind: StallCause;
   readonly retries: Retries;
 }
 
@@ -34,8 +36,18 @@ interface Place {
   readonly at: string | null;
 }
 
+interface Advance {
+  readonly view?: Schema.Json;
+  readonly folded: number;
+  readonly lastEvent: FoldedEvent | null;
+}
+
+function placeOfRow(row: ViewRow): Place {
+  return { point: row.checkpoint, at: row.checkpointAt };
+}
+
 function laterOf(row: ViewRow, place: Place): Place {
-  return comparePoints(place.point, row.checkpoint) > 0 ? place : { point: row.checkpoint, at: row.checkpointAt };
+  return comparePoints(place.point, row.checkpoint) > 0 ? place : placeOfRow(row);
 }
 
 function placeOfEvent(event: PageEvent | undefined): Place {
@@ -55,27 +67,29 @@ function stalledEventOf(page: ReadPage, index: number): ViewStall['event'] {
   return { id: String(event?.id), type: String(event?.type), time: String(event?.time) };
 }
 
-function rowAt(row: ViewRow, place: Place): Omit<FoldedRow, 'overtimes' | 'phase'> {
-  return {
-    view: row.view,
-    checkpoint: place.point,
-    checkpointAt: place.at,
-    lastEvent: row.lastEvent,
-    folded: row.folded,
-  };
+function unmoved(row: ViewRow): Advance {
+  return { folded: row.folded, lastEvent: row.lastEvent };
 }
 
-interface Overtime {
-  readonly at: number;
-  readonly kind: StallCause;
-  readonly retries: Retries;
+function advanceOf(row: ViewRow, page: ReadPage, folded: FoldedView): Advance {
+  const last = page.events[folded.lastFolded];
+  return last === undefined
+    ? unmoved(row)
+    : {
+        view: folded.view,
+        folded: row.folded + folded.folded,
+        lastEvent: { id: last.event.id, time: last.event.time },
+      };
 }
 
-function overtimeOf(row: ViewRow, page: ReadPage, { at, kind, retries }: Overtime): FoldedRow {
-  const place = before(row, page, at);
+function nextAt(advance: Advance, place: Place): Omit<FoldedRow, 'overtimes' | 'phase'> {
+  return { ...advance, checkpoint: place.point, checkpointAt: place.at };
+}
+
+function triedAgain(row: ViewRow, advance: Advance, place: Place, { page, at, kind, retries }: Try): FoldedRow {
   const overtimes = row.overtimes + 1;
   if (overtimes < retries.overtimesBeforeStall) {
-    return { ...rowAt(row, place), overtimes, phase: row.phase };
+    return { ...nextAt(advance, place), overtimes, phase: row.phase };
   }
   const stopped = kind === 'time' ? `its deadline of ${retries.foldDeadlineMs} ms` : `its ${kind}`;
   const stall = {
@@ -84,47 +98,38 @@ function overtimeOf(row: ViewRow, page: ReadPage, { at, kind, retries }: Overtim
     message: `The fold was stopped by ${stopped} ${overtimes} times`,
     line: null,
   };
-  return { ...rowAt(row, place), overtimes, phase: 'stalled', stall };
+  return { ...nextAt(advance, place), overtimes, phase: 'stalled', stall };
 }
 
-function stalledOf(row: ViewRow, page: ReadPage, { at, kind, message, span }: FoldStall): FoldedRow {
+function stalledOf(row: ViewRow, advance: Advance, page: ReadPage, { at, kind, message, span }: FoldStall): FoldedRow {
   const line = span === null ? null : lineInFold(row.details, span.start);
   const stall = { event: stalledEventOf(page, at), kind, message, line };
-  return { ...rowAt(row, before(row, page, at)), overtimes: row.overtimes, phase: 'stalled', stall };
+  return { ...nextAt(advance, before(row, page, at)), overtimes: row.overtimes, phase: 'stalled', stall };
 }
 
-function advancedBy(row: ViewRow, page: ReadPage, folded: FoldedView): ViewRow {
-  const last = page.events[folded.lastFolded];
-  return {
-    ...row,
-    view: folded.view,
-    folded: row.folded + folded.folded,
-    lastEvent: last === undefined ? row.lastEvent : { id: last.event.id, time: last.event.time },
-  };
-}
-
-function endOf(row: ViewRow, { page, end }: FoldedPageOf): Place {
-  return laterOf(row, end.early ? placeOfEvent(page.events[end.through]) : placeOfStore(page.lastExamined));
+function endOf(row: ViewRow, folded: FoldedView, { page, early }: FoldedPageOf): Place {
+  return laterOf(row, early ? placeOfEvent(page.events[folded.through]) : placeOfStore(page.lastExamined));
 }
 
 export function viewChangeOf(row: ViewRow, folded: FoldedView, of: FoldedPageOf): ViewChange {
-  const advanced = advancedBy(row, of.page, folded);
+  const advance = advanceOf(row, of.page, folded);
   if (folded.stall !== undefined) {
-    return { row, next: stalledOf(advanced, of.page, folded.stall) };
+    return { row, next: stalledOf(row, advance, of.page, folded.stall) };
   }
   if (folded.overtime !== undefined) {
-    return { row, next: overtimeOf(advanced, of.page, { at: folded.overtime, kind: 'time', retries: of.retries }) };
+    const timedOut: Try = { page: of.page, at: folded.overtime, kind: 'time', retries: of.retries };
+    return { row, next: triedAgain(row, advance, before(row, of.page, folded.overtime), timedOut) };
   }
-  return { row, next: { ...rowAt(advanced, endOf(row, of)), overtimes: 0, phase: row.phase } };
+  return { row, next: { ...nextAt(advance, endOf(row, folded, of)), overtimes: 0, phase: row.phase } };
 }
 
-export function lostPageChanges(
-  rows: readonly ViewRow[],
-  page: ReadPage,
-  { progress, kind, retries }: { readonly progress: FoldPlace; readonly kind: StallCause; readonly retries: Retries },
-): readonly ViewChange[] {
-  const going = rows.slice(progress.view, progress.view + 1);
-  return going.map((row) => ({ row, next: overtimeOf(row, page, { at: progress.event, kind, retries }) }));
+export function lostTryOf(row: ViewRow, lost: Try): ViewChange {
+  return { row, next: triedAgain(row, unmoved(row), placeOfRow(row), lost) };
+}
+
+export function salvagedTryOf(row: ViewRow, folded: FoldedView, salvage: FoldedPageOf, lost: Try): ViewChange {
+  const advance = advanceOf(row, salvage.page, folded);
+  return { row, next: triedAgain(row, advance, endOf(row, folded, salvage), lost) };
 }
 
 export function hasChanged({ row, next }: ViewChange): boolean {
@@ -136,10 +141,13 @@ export function hasChanged({ row, next }: ViewChange): boolean {
   );
 }
 
+export function hasTriedAgain({ row, next }: ViewChange): boolean {
+  return next.overtimes > row.overtimes;
+}
+
 export function rowAfter({ row, next }: ViewChange): ViewRow {
   return {
     ...Struct.omit(row, ['stall']),
-    view: next.view,
     checkpoint: next.checkpoint,
     checkpointText: pointText(next.checkpoint),
     checkpointAt: next.checkpointAt,

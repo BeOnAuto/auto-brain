@@ -81,8 +81,8 @@ function checkpointTests(settingsOf: SettingsOf): void {
   it('folds the events of more than a page, every one once and in order', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('count', collecting);
-    const outputs = Array.from({ length: 230 }, (_, index) => index);
-    await views.ranEach('inference/count', outputs);
+    const outputs = Array.from({ length: 2300 }, (_, index) => index);
+    await views.ranInOneStream('inference/count', outputs);
     views.start();
 
     const kept = await views.until('count', foldedAll(outputs.length));

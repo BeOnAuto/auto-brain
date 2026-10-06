@@ -50,18 +50,18 @@ function slotTests(settingsOf: SettingsOf): void {
   it('rebuild beside a live one a page a wake, each in its slot, every event folded once', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('live', counting);
-    await views.ranEach(
+    await views.ranInOneStream(
       'inference/runs',
-      Array.from({ length: 150 }, (_, run) => run),
+      Array.from({ length: 1500 }, (_, run) => run),
     );
     views.start({ pagesPerWake: 2, rebuildsAtOnce: 2 });
     await views.until('live', isLive);
 
     await views.saved('second', counting);
     await views.saved('third', counting);
-    const kept = await Promise.all(['live', 'second', 'third'].map((name) => views.until(name, liveWith(150))));
+    const kept = await Promise.all(['live', 'second', 'third'].map((name) => views.until(name, liveWith(1500))));
 
-    expect(kept.map(({ view }) => view)).toEqual([150, 150, 150]);
+    expect(kept.map(({ view }) => view)).toEqual([1500, 1500, 1500]);
   });
 }
 

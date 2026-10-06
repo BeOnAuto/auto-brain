@@ -109,9 +109,11 @@ function conditionalWriteTests(settingsOf: SettingsOf): void {
     await views.saved('runs', counting);
     const [renewed] = await reconcile();
     const afterReset = await written(views, { ...row, checkpointText: '' }, { view: 99 });
+    const kept = await views.viewOf('runs');
 
     expect([first, stale, afterReset]).toEqual([1, 0, 0]);
-    expect(renewed).toMatchObject({ version: 2, view: 0, folded: 0, checkpointText: '' });
+    expect(renewed).toMatchObject({ version: 2, folded: 0, checkpointText: '' });
+    expect(kept).toMatchObject({ version: 2, view: 0 });
   });
 
   it('never makes a dropped row again by a write', async () => {

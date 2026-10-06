@@ -21,6 +21,7 @@ export interface BrainAppends {
   readonly retired: (name: string) => Promise<void>;
   readonly ran: Ran;
   readonly ranEach: (subject: string, outputs: readonly Schema.Json[]) => Promise<unknown>;
+  readonly ranInOneStream: (subject: string, outputs: readonly Schema.Json[]) => Promise<void>;
   readonly published: (event: Schema.JsonObject, brain?: Brain) => Promise<void>;
 }
 
@@ -76,6 +77,17 @@ export function brainAppends(store: EventStore, appends: AppendSignal): BrainApp
       await append(`${brainKeyOf(alpha)}specs/recollection`, [{ type: 'spec_retired', data: event }]);
     },
     ran,
+    ranInOneStream: async (subject, outputs) => {
+      const [primitive = '', name = ''] = subject.split('/');
+      const definition = { primitive, name, spec_version: 1, by: 'acme-admin', at: ranAt };
+      await append(
+        `${brainKeyOf(alpha)}executions/${randomUUID()}`,
+        outputs.map((output) => ({
+          type: 'execution_succeeded',
+          data: { type: 'execution_succeeded', ...definition, output, record: {} },
+        })),
+      );
+    },
     ranEach: (subject, outputs) =>
       outputs.reduce<Promise<unknown>>((before, output) => before.then(() => ran(subject, output)), Promise.resolve()),
     published: async (event, brain = alpha) => {

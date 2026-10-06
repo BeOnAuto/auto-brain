@@ -22,11 +22,11 @@ export interface ProjectorSettings {
   readonly appends?: AppendSignal;
 }
 
-export const recordsInAPage = 100;
+export const recordsInAPage = 1000;
 
 export const waitForAWorkerMs = 10_000;
 
-const marginOfAPageMs = 1000;
+const marginOfAPageMs = 5000;
 
 export function pageDeadlineMs({ foldDeadlineMs, pageBudgetMs }: FoldingSettings): number {
   return pageBudgetMs + foldDeadlineMs + marginOfAPageMs;

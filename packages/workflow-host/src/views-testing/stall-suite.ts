@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
 import {
+  breakingFoldWorker,
+  breaksTheWorker,
+  collecting,
   counting,
   detailsOf,
   foldedAll,
   foldingOf,
+  isLive,
   isStalled,
+  liveWith,
+  sleepsBeforeItIsFolded,
   succeeded,
   viewTestTimeoutMs,
 } from './view-documents.ts';
@@ -108,9 +114,47 @@ function afterTheStallTests(settingsOf: SettingsOf): void {
   });
 }
 
+function lostPageTests(settingsOf: SettingsOf): void {
+  it('keeps what it folded before the event its worker broke on, counting each try there, and then stalls', async () => {
+    const views = await viewHarness(await settingsOf(), { foldWorker: breakingFoldWorker });
+    await views.saved('outputs', collecting);
+    await views.ranEach('inference/runs', [1, 2, breaksTheWorker]);
+    views.start({ overtimesBeforeStall: 2, sweepEveryMs: 20 });
+
+    const kept = await views.until('outputs', isStalled);
+
+    expect(kept).toMatchObject({
+      view: [1, 2],
+      folded: 2,
+      stall: {
+        kind: 'crash',
+        message: 'The fold was stopped by its crash 2 times',
+        event: { type: 'execution_succeeded' },
+      },
+    });
+  });
+
+  it('never charges a view the time its neighbours took on the same event', async () => {
+    const views = await viewHarness(await settingsOf());
+    const names = ['first', 'second', 'third', 'fourth'];
+    await names.reduce<Promise<unknown>>(
+      (before, name) => before.then(() => views.saved(name, counting)),
+      Promise.resolve(),
+    );
+    views.start({ folding: { ...foldingOf(), foldDeadlineMs: 1000, pageBudgetMs: 1 }, overtimesBeforeStall: 1 });
+    await Promise.all(names.map((name) => views.until(name, isLive)));
+
+    await views.ran('inference/runs', sleepsBeforeItIsFolded);
+    const kept = await Promise.all(names.map((name) => views.until(name, liveWith(1))));
+
+    expect(kept.map(({ phase, view }) => [phase, view])).toEqual(names.map(() => ['live', 1]));
+  });
+}
+
 export function stallSuite(settingsOf: SettingsOf): void {
   describe('a view that stalls', { timeout: viewTestTimeoutMs }, () => {
     stoppingTests(settingsOf);
     afterTheStallTests(settingsOf);
+    lostPageTests(settingsOf);
   });
 }

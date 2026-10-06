@@ -80,8 +80,9 @@ export function reconciled(parts: Reconciling, brain: string): Effect.Effect<rea
   return Effect.gen(function* () {
     const definitions = yield* definitionsOf(parts, brain);
     const before = yield* rowsOfBrain(database, brain);
-    yield* Effect.forEach(changesOf(brain, before, definitions), database.write, { discard: true });
-    const rows = yield* rowsOfBrain(database, brain);
+    const changes = changesOf(brain, before, definitions);
+    yield* Effect.forEach(changes, database.write, { discard: true });
+    const rows = changes.length === 0 ? before : yield* rowsOfBrain(database, brain);
     const phased = phasesOf(rows, parts.rebuildsAtOnce);
     const moved = phased.filter((row, index) => row.phase !== rows[index]?.phase);
     yield* Effect.forEach(moved, (row) => database.write(phaseSet(row, row.phase)), { discard: true });
