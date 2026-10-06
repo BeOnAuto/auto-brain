@@ -268,7 +268,7 @@
                       },
                       "function": "execute_spec",
                       "arguments": 2,
-                      "label": "the inference spec summarize",
+                      "label": "the reasoning function summarize",
                       "deadline": "2"
                     }
                   }
@@ -280,7 +280,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3245
+          "value": 3249
         }
       ],
       "outputs": [
@@ -411,7 +411,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4795
+          "value": 4799
         }
       ],
       "outputs": [

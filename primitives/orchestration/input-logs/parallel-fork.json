@@ -354,7 +354,7 @@
                               },
                               "function": "execute_spec",
                               "arguments": 2,
-                              "label": "the inference spec left",
+                              "label": "the reasoning function left",
                               "deadline": "2"
                             }
                           }
@@ -379,7 +379,7 @@
                               },
                               "function": "execute_spec",
                               "arguments": 3,
-                              "label": "the inference spec right",
+                              "label": "the reasoning function right",
                               "deadline": "3"
                             }
                           }
@@ -395,7 +395,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5123
+          "value": 5131
         }
       ],
       "outputs": [
@@ -534,7 +534,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6463
+          "value": 6471
         }
       ],
       "outputs": [
@@ -630,7 +630,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 7901
+          "value": 7909
         }
       ],
       "outputs": [
