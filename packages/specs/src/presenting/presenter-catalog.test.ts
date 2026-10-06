@@ -134,7 +134,7 @@ const largestSpecEvents: readonly SpecEvent[] = [
   { type: 'spec_retired', name: 'n'.repeat(48), ...fact },
 ];
 
-const awkwardText = (most: number) => '\u0000'.repeat(most);
+const awkwardText = (most: number) => '"'.repeat(most);
 
 const largestEventPublished: EventPublished = {
   type: 'event_published',
@@ -162,11 +162,20 @@ const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 const utf8 = new TextEncoder();
 
 function recordOf(stream: string, type: string, data: unknown): RecordedEvent {
-  return { id: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ', stream, type, data, recordedAt: fact.at };
+  return {
+    id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
+    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    causationId: null,
+    correlationId: null,
+    stream,
+    type,
+    data,
+    recordedAt: fact.at,
+  };
 }
 
 function presentedSizeOf(record: RecordedEvent): readonly [bytes: number, conforms: boolean] {
-  const presented = present(record);
+  const [presented] = present(record);
   return [utf8.encode(JSON.stringify(presented?.data)).byteLength, Result.isSuccess(decodePublicEvent(presented))];
 }
 
@@ -178,7 +187,7 @@ describe('the presenters of the stream kinds of a brain', () => {
   it('hide a stream kind none of them presents', () => {
     const failed: ExecutionEvent = { type: 'execution_failed', ...ofTheLongestNames, by: 'acme-admin', at: fact.at };
 
-    expect(present(recordOf(`runs/${executionId}`, failed.type, encodeExecutionEvent(failed)))).toBeNull();
+    expect(present(recordOf(`runs/${executionId}`, failed.type, encodeExecutionEvent(failed)))).toEqual([]);
   });
 });
 

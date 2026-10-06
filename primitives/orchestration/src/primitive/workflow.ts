@@ -1,6 +1,5 @@
-import { asSentence, Conflict, InvalidInput, type Unavailable } from '@beonauto/operations';
+import { asSentence, Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import { definePrimitive, inWords, type RunContext, type FinishesLater, type Primitive } from '@beonauto/specs';
-import { measureOf, mostValueDepth } from '@beonauto/workflow-engine';
 import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect, Random, type Schema } from 'effect';
 
@@ -30,13 +29,6 @@ function describeResult(output: Schema.Json): string {
     : asSentence(`Its result: ${words}`);
 }
 
-function admittedInput(input: unknown): Effect.Effect<void, InvalidInput> {
-  const problem = `The input nests more than ${mostValueDepth} levels deep`;
-  return measureOf(input) === undefined
-    ? Effect.fail(new InvalidInput({ detail: problem, issues: [{ detail: problem, pointer: '' }] }))
-    : Effect.void;
-}
-
 function finishedLaterOr(answer: StartAnswer): Effect.Effect<FinishesLater, Conflict> {
   return answer === 'settled'
     ? Effect.fail(new Conflict({ detail: ranBefore, kind: 'unworkable' }))
@@ -47,11 +39,18 @@ function started(
   { runs, mostDurationMs, longestCallMs }: WorkflowAdapterDependencies,
   document: WorkflowDefinitionDocument,
   input: Schema.Json,
-  { id, org, brain, caller, spec }: RunContext,
+  { id, org, brain, caller, spec, lineage }: RunContext,
 ): Effect.Effect<FinishesLater, Conflict | Unavailable> {
   return Effect.gen(function* () {
     const seed = yield* Random.nextIntBetween(0, mostSeed);
-    const attributes: RunAttributes = { org, brain, execution_id: id, spec, caller };
+    const attributes: RunAttributes = {
+      org,
+      brain,
+      execution_id: id,
+      spec,
+      caller,
+      lineage: { start: lineage.startId, correlation: lineage.correlationId },
+    };
     const answer = yield* runs
       .start(
         { org, brain, executionId: id },
@@ -73,8 +72,7 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
     parse: (source: string): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> =>
       parseWorkflowDocument(source, dependencies.mostDurationMs),
     summarize: summaryOf,
-    execute: (document, input, execution) =>
-      admittedInput(input).pipe(Effect.andThen(started(dependencies, document, input, execution))),
+    execute: (document, input, execution) => started(dependencies, document, input, execution),
     whenCancelled: 'finish',
   });
 }

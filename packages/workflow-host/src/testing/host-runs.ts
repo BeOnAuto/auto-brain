@@ -1,4 +1,4 @@
-import type { CallResult, Settlement } from '@beonauto/operations';
+import type { CallResult, Lineage, Settlement } from '@beonauto/operations';
 import type { StartCall } from '@beonauto/workflow-engine';
 import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect } from 'effect';
@@ -14,6 +14,7 @@ export interface HostedRuns {
   readonly host: WorkflowHost;
   readonly calls: () => readonly StartCall[];
   readonly settlements: () => ReadonlyMap<string, Settlement>;
+  readonly settledWith: () => ReadonlyMap<string, Lineage | undefined>;
   readonly settleAttempts: () => number;
   readonly troubles: () => readonly string[];
   readonly notes: () => readonly HostNote[];
@@ -56,6 +57,7 @@ export async function hostedOn(settings: DatabaseSettings, options: HostedOption
     host,
     calls: () => performed,
     settlements: settling.settlements,
+    settledWith: settling.lineages,
     settleAttempts: settling.attempts,
     troubles: recorded.troubles,
     notes: recorded.notes,

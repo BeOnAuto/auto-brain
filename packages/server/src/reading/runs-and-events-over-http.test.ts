@@ -185,6 +185,8 @@ describe.each(stores)('the events of a brain over HTTP, on $store', ({ skipped, 
   });
 });
 
+const aMessageId: unknown = expect.stringMatching(/^[\da-f]{8}-[\da-f]{4}-5[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/u);
+
 const monthClosed = { id: 'm-1', source: '/ledger/eu', type: 'com.acme.ledger.month-closed', data: 'eu' };
 
 function publishing(event: object): Promise<TestResponse> {
@@ -209,7 +211,14 @@ describe.each(stores)('the events published to a brain over HTTP, on $store', ({
       { reason: 'invalid_input', errors: [{ pointer: '/event/type' }, { pointer: '/event/source' }] },
     ]);
     expect(feed.body).toMatchObject({
-      events: [{ type: 'event_published', data: { event_id: 'm-1', source: '/ledger/eu', data_bytes: 4 } }],
+      events: [
+        {
+          id: aMessageId,
+          causation_id: null,
+          type: 'event_published',
+          data: { event_id: 'm-1', source: '/ledger/eu', data_bytes: 4 },
+        },
+      ],
     });
     expect(eventsOf(feed.body).events.map(({ summary: words }) => words)).toEqual([
       'The event “com.acme.ledger.month-closed” was published to the brain.',

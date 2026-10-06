@@ -7,8 +7,8 @@ import {
 } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
 
-import type { RecordedPoint, RecordedStore, StoredPage, StoredPageRequest } from '../event-store.ts';
-import { cursorOf, pointOf } from './cursor.ts';
+import type { RecordedStore, StoredPage, StoredPageRequest } from '../event-store.ts';
+import { cursorOf, pointOf, type CursorPoint } from './cursor.ts';
 
 function storedRequestOf(
   { cursor, ...page }: RecordedPageRequest,
@@ -20,14 +20,18 @@ function storedRequestOf(
   }
   return Result.match(pointOf(cursor, brainKey, pointLength), {
     onFailure: (kind) => Effect.fail(new InvalidCursor({ kind })),
-    onSuccess: (after: RecordedPoint) => Effect.succeed({ ...page, after }),
+    onSuccess: ({ point, within }: CursorPoint) =>
+      Effect.succeed(within ? { ...page, at: point } : { ...page, after: point }),
   });
 }
 
 function recordedPageOf(brainKey: string): (stored: StoredPage) => RecordedPage {
   return ({ records, resumeAfter }) => ({
-    records: records.map(({ point, stream, type, data, recordedAt }) => ({
-      id: cursorOf(brainKey, point),
+    records: records.map(({ point, id, causationId, correlationId, stream, type, data, recordedAt }) => ({
+      id,
+      cursor: cursorOf(brainKey, point),
+      causationId,
+      correlationId,
       stream,
       type,
       data,

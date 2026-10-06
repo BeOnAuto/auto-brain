@@ -1,5 +1,11 @@
 import { statement, type Statement } from './statement.ts';
 
+export const timerColumnsOnSQLite = statement`SELECT name FROM pragma_table_info('workflow_timers')`;
+
+export const armedByAdded = statement`ALTER TABLE workflow_timers ADD COLUMN armed_by BIGINT`;
+
+export const armedByAddedWhenMissing = statement`ALTER TABLE workflow_timers ADD COLUMN IF NOT EXISTS armed_by BIGINT`;
+
 export const hostTables: readonly Statement[] = [
   statement`CREATE TABLE IF NOT EXISTS workflow_runs (
     run_id TEXT NOT NULL PRIMARY KEY,
@@ -24,6 +30,7 @@ export const hostTables: readonly Statement[] = [
     timer_id TEXT NOT NULL,
     state TEXT NOT NULL,
     due_at BIGINT,
+    armed_by BIGINT,
     PRIMARY KEY (run_id, timer_id)
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_timers_due ON workflow_timers (due_at) WHERE state = 'armed'`,

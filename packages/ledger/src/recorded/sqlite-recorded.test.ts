@@ -9,11 +9,12 @@ import { sqliteEventStore } from '../sqlite-event-store.ts';
 import { openLedger } from '../testing/open-ledger.ts';
 import { temporaryDatabase } from '../testing/temporary-database.ts';
 import type { IndexExecutor } from './missing-indexes.ts';
-import { createSQLiteBrainIndexes } from './sqlite-recorded.ts';
+import { createSQLiteBrainIndexes } from './sqlite-indexes.ts';
 
 const brainIndexes = [
   'ledger_first_messages_by_kind',
   'ledger_messages_by_brain',
+  'ledger_messages_by_brain_and_correlation',
   'ledger_messages_by_brain_and_time',
   'ledger_messages_by_stream',
 ];

@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   InvalidCursor,
+  cursorOfParts,
+  messageIdOf,
   type Decider,
   type RecordedPage,
   type RecordedPageRequest,
@@ -160,8 +162,15 @@ describe('the in-memory read from a cursor', () => {
     );
 
     const refusals = await run(
-      Effect.forEach([...records.map(({ id }) => id), 'WyJicmFpbiJd', 'not a cursor'], (cursor) =>
-        Effect.flip(reading(ledger, everything, { order: 'asc', limit: 1, cursor })),
+      Effect.forEach(
+        [
+          ...records.map(({ cursor }) => cursor),
+          'WyJicmFpbiJd',
+          'not a cursor',
+          cursorOfParts(['brain/acme/alpha/', '1', '2']),
+          cursorOfParts(['brain/acme/alpha/', '1', 2, 3]),
+        ],
+        (cursor) => Effect.flip(reading(ledger, everything, { order: 'asc', limit: 1, cursor })),
       ),
     );
 
@@ -169,6 +178,53 @@ describe('the in-memory read from a cursor', () => {
       new InvalidCursor({ kind: 'of_another_brain' }),
       new InvalidCursor({ kind: 'malformed' }),
       new InvalidCursor({ kind: 'malformed' }),
+      new InvalidCursor({ kind: 'malformed' }),
+      new InvalidCursor({ kind: 'malformed' }),
+    ]);
+  });
+});
+
+describe('the in-memory read from inside a record', () => {
+  it('reads on from inside a record, that record first, in either order', async () => {
+    const ledger = memoryLedger();
+    const pages = await run(
+      Effect.gen(function* () {
+        yield* aBrainWith(ledger);
+        const inside = cursorOfParts(['brain/acme/alpha/', '2', 1]);
+        return yield* Effect.all([
+          reading(ledger, everything, { order: 'asc', limit: 2, cursor: inside }),
+          reading(ledger, everything, { order: 'desc', limit: 2, cursor: inside }),
+        ]);
+      }),
+    );
+
+    expect(pages.map((page) => typesOf(page))).toEqual([
+      ['input_applied', 'execution_succeeded'],
+      ['input_applied', 'execution_started'],
+    ]);
+  });
+});
+
+describe('the in-memory lineage of what a brain recorded', () => {
+  it('names each message by its stream and position, with the cause and correlation it was written with', async () => {
+    const ledger = memoryLedger();
+    const lineage = { causationId: 'cause', correlationId: 'r1' };
+    const [correlated, page] = await run(
+      Effect.gen(function* () {
+        yield* aBrainWith(ledger);
+        yield* ledger.service.execute('brain/acme/alpha/runs/r1', happenings, [{ type: 'noted', note: '' }], lineage);
+        return yield* Effect.all([
+          reading(ledger, { kind: 'correlated', correlation: 'r1' }, { order: 'asc', limit: 10 }),
+          reading(ledger, everything, { order: 'asc', limit: 1 }),
+        ]);
+      }),
+    );
+
+    expect(correlated.records.map(({ id, stream, causationId }) => ({ id, stream, causationId }))).toEqual([
+      { id: messageIdOf('brain/acme/alpha/runs/r1', 2), stream: 'brain/acme/alpha/runs/r1', causationId: 'cause' },
+    ]);
+    expect(page.records.map(({ id, causationId, correlationId }) => ({ id, causationId, correlationId }))).toEqual([
+      { id: messageIdOf('brain/acme/alpha/executions/r1', 1), causationId: null, correlationId: null },
     ]);
   });
 });

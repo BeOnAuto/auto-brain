@@ -1,6 +1,15 @@
 import { Effect, Result, Schema } from 'effect';
 
-import { BrainReader, BrainWriter, Conflict, NotFound, defineCommand, defineQuery, type Decider } from '../index.ts';
+import {
+  BrainReader,
+  BrainWriter,
+  Conflict,
+  NotFound,
+  defineCommand,
+  defineQuery,
+  type Decider,
+  type RecordedSelection,
+} from '../index.ts';
 
 const NoteName = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]{0,31}$/u));
 
@@ -90,6 +99,13 @@ export const copyNote = defineCommand('brain', {
   }),
 });
 
+function selectionOf(execution: string | undefined, correlation: string | undefined): RecordedSelection {
+  if (execution !== undefined) {
+    return { kind: 'run', execution };
+  }
+  return correlation === undefined ? { kind: 'everything' } : { kind: 'correlated', correlation };
+}
+
 export const readNoteHistory = defineQuery('brain', {
   name: 'read_note_history',
   title: 'Read note history',
@@ -100,6 +116,7 @@ export const readNoteHistory = defineQuery('brain', {
     cursor: Schema.optionalKey(Schema.String),
     since: Schema.optionalKey(Schema.String),
     execution: Schema.optionalKey(Schema.String),
+    correlation: Schema.optionalKey(Schema.String),
   }),
   outputSchema: Schema.Struct({
     streams: Schema.Array(Schema.String),
@@ -107,11 +124,13 @@ export const readNoteHistory = defineQuery('brain', {
     next_cursor: Schema.NullOr(Schema.String),
   }),
   reasons: ['invalid_input'],
-  handle: Effect.fnUntraced(function* ({ limit, cursor, since, execution }) {
-    const { records, nextCursor } = yield* (yield* BrainReader).readRecorded(
-      execution === undefined ? { kind: 'everything' } : { kind: 'run', execution },
-      { order: 'asc', limit, ...(cursor === undefined ? {} : { cursor }), ...(since === undefined ? {} : { since }) },
-    );
+  handle: Effect.fnUntraced(function* ({ limit, cursor, since, execution, correlation }) {
+    const { records, nextCursor } = yield* (yield* BrainReader).readRecorded(selectionOf(execution, correlation), {
+      order: 'asc',
+      limit,
+      ...(cursor === undefined ? {} : { cursor }),
+      ...(since === undefined ? {} : { since }),
+    });
     return { streams: records.map(({ stream }) => stream), ids: records.map(({ id }) => id), next_cursor: nextCursor };
   }),
 });

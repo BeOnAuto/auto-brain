@@ -10,14 +10,16 @@ interface FeedRequest {
   readonly type?: string;
   readonly since?: string;
   readonly cursor?: string;
+  readonly execution_id?: string;
 }
 
 const eventNoun: Noun = { one: 'event', other: 'events' };
 
 const orderInWords: Readonly<Record<RecordedOrder, string>> = { asc: 'oldest first', desc: 'newest first' };
 
-function ofTheKind({ type }: FeedRequest): string {
-  return type === undefined ? '' : ' of the kind asked for';
+function ofTheKind({ type, execution_id: run }: FeedRequest): string {
+  const kind = type === undefined ? '' : ' of the kind asked for';
+  return run === undefined ? kind : `${kind} of the run asked for`;
 }
 
 function sinceTheTime({ since }: FeedRequest): string {
@@ -28,7 +30,7 @@ function nothingFound(request: FeedRequest): string {
   if (request.cursor !== undefined) {
     return `There is nothing more${ofTheKind(request)} to read in this brain${sinceTheTime(request)}.`;
   }
-  const filtered = request.type !== undefined || request.since !== undefined;
+  const filtered = request.type !== undefined || request.since !== undefined || request.execution_id !== undefined;
   return `Nothing${ofTheKind(request)} has happened in this brain${sinceTheTime(request)}${filtered ? '' : ' yet'}.`;
 }
 

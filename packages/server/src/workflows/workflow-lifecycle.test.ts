@@ -1,5 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
+import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { temporaryLedger } from '../testing/temporary-ledger.ts';
@@ -18,6 +19,16 @@ const approval = workflowSource(
 );
 
 const pausing = workflowSource('pausing', 'do:\n  - pause: { wait: PT1S }\n  - done: { set: { paused: true } }\n');
+
+const timing = workflowSource('timing', 'do:\n  - slow: { timeout: { after: PT1S }, wait: PT1H }\n');
+
+const inputsOf = Schema.decodeUnknownSync(
+  Schema.Struct({
+    events: Schema.Array(
+      Schema.Struct({ id: Schema.String, causation_id: Schema.NullOr(Schema.String), type: Schema.String }),
+    ),
+  }),
+);
 
 describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
   it('says how it runs workflows, and exits 0 at once on SIGTERM', async () => {
@@ -43,14 +54,16 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
 });
 
 describe('a server started again on the ledger of its workflows', { timeout: workflowTestTimeoutMs }, () => {
-  it('goes on with a run that waits for an event, and with one whose timer went off while it was stopped', async () => {
+  it('goes on with a run that waits for an event, and with ones whose timers went off while it was stopped, the fire of each caused by the record that armed it', async () => {
     const first = workflowProcess(ledger.fileName);
     const firstPort = await first.port;
     await requestTo(firstPort, 'POST', '', { brain: 'gamma', name: 'Gamma' });
     await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'approval', source: approval });
     await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'pausing', source: pausing });
+    await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'timing', source: timing });
     const waiting = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/approval/execute', { input: {} });
     const paused = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/pausing/execute', { input: {} });
+    const timed = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/timing/execute', { input: {} });
     first.signal('SIGTERM');
     await first.exited;
     await setTimeout(1500);
@@ -62,11 +75,19 @@ describe('a server started again on the ledger of its workflows', { timeout: wor
     });
     const approved = await settledOver(port, `/gamma/executions/${executionIdIn(waiting.body)}`);
     const pausedSettled = await settledOver(port, `/gamma/executions/${executionIdIn(paused.body)}`);
+    await settledOver(port, `/gamma/executions/${executionIdIn(timed.body)}`);
+    const timedHistory = await requestTo(
+      port,
+      'GET',
+      `/gamma/executions/${executionIdIn(timed.body)}/history?limit=100`,
+    );
     second.signal('SIGTERM');
+    const inputs = inputsOf(timedHistory.body).events.filter(({ type }) => type === 'workflow_input_applied');
 
     expect(sent.status).toBe(200);
     expect(approved).toMatchObject({ status: 'succeeded', output: { by: 'Ada' } });
     expect(pausedSettled).toMatchObject({ status: 'succeeded', output: { paused: true } });
+    expect(inputs.map(({ causation_id: causationId }) => causationId).at(-1)).toBe(inputs[0]?.id);
     expect(await second.exited).toBe(0);
   });
 });

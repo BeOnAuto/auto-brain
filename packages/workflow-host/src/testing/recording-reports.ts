@@ -1,4 +1,4 @@
-import { Conflict, type Settlement } from '@beonauto/operations';
+import { Conflict, type Lineage, type Settlement } from '@beonauto/operations';
 import type { SettleExecution } from '@beonauto/specs';
 import { Effect } from 'effect';
 
@@ -14,6 +14,7 @@ export interface RecordingReports {
 export interface RecordingSettlements {
   readonly settle: SettleExecution;
   readonly settlements: () => ReadonlyMap<string, Settlement>;
+  readonly lineages: () => ReadonlyMap<string, Lineage | undefined>;
   readonly attempts: () => number;
   readonly know: (executionId: string) => void;
 }
@@ -49,10 +50,11 @@ export function recordingReports(): RecordingReports {
 
 export function recordingSettlements(ledgerDown: () => boolean): RecordingSettlements {
   const settled = new Map<string, Settlement>();
+  const lineages = new Map<string, Lineage | undefined>();
   const counts = { attempts: 0 };
   const { settle, know } = knownExecutions();
   return {
-    settle: (address, settlement) =>
+    settle: (address, settlement, lineage) =>
       Effect.suspend(() => {
         counts.attempts += 1;
         return ledgerDown() ? Effect.fail(ledgerUnreachable) : settle(address, settlement);
@@ -60,10 +62,12 @@ export function recordingSettlements(ledgerDown: () => boolean): RecordingSettle
         Effect.tap(() =>
           Effect.sync(() => {
             settled.set(address.id, settlement);
+            lineages.set(address.id, lineage);
           }),
         ),
       ),
     settlements: () => settled,
+    lineages: () => lineages,
     attempts: () => counts.attempts,
     know,
   };

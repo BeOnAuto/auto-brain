@@ -50,7 +50,7 @@ function nestedExecutions(
   dispatcher: Dispatcher,
   executeSpec: BrainOperation,
 ): RunDefinition {
-  return ({ org, brain, caller, primitive, name, input, executionId }) =>
+  return ({ org, brain, caller, primitive, name, input, executionId, lineage }) =>
     inRuntime(
       runtime,
       dispatcher.dispatchToBrain(executeSpec.registration, {
@@ -59,15 +59,16 @@ function nestedExecutions(
         brain,
         input: { primitive, name, input, execution_id: executionId },
         encoding: 'json',
+        lineage,
       }),
     ).pipe(Effect.map(definitionRunResultOf));
 }
 
 function settlements(runtime: AppRuntime<DispatcherServices>): SettleExecution {
-  return (execution, settlement) =>
+  return (execution, settlement, lineage) =>
     inRuntime(
       runtime,
-      Effect.flatMap(Effect.service(Ledger), (ledger) => executionSettler(ledger)(execution, settlement)),
+      Effect.flatMap(Effect.service(Ledger), (ledger) => executionSettler(ledger)(execution, settlement, lineage)),
     );
 }
 

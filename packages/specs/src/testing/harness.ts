@@ -17,7 +17,7 @@ import {
 import { DateTime, Effect, Layer } from 'effect';
 import { TestClock } from 'effect/testing';
 
-import type { BrainOperation } from '../index.ts';
+import { runOutcomeMapping, type BrainOperation } from '../index.ts';
 
 export const firstMoment = '2026-10-01T09:00:00.000Z';
 
@@ -44,7 +44,7 @@ const knownBrains = [
 ];
 
 export function harness(): Harness {
-  const ledger = memoryLedger();
+  const ledger = memoryLedger(runOutcomeMapping);
   const recording = recordingReporter();
   const services = Layer.mergeAll(ledger.layer, memoryBrainRegistry(knownBrains), recording.layer, TestClock.layer());
   const dispatcher = makeDispatcher([]);

@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import type { BrainAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
 import { InvalidInput } from '../outcome/invalid-input.ts';
+import { isCalendarDay } from '../reading/calendar-days.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
 import type {
   InvalidCursorKind,
@@ -10,7 +11,15 @@ import type {
   RecordedPageRequest,
   RecordedSelection,
 } from '../reading/recorded-read.ts';
-import type { BrainRecordedReader, RecordedReader, StreamReader, StreamWriter } from './stream-ports.ts';
+import type { RunOutcomeWindow } from '../run-outcomes/run-outcomes.ts';
+import type {
+  BrainRecordedReader,
+  BrainRunOutcomesReader,
+  RecordedReader,
+  RunOutcomesReader,
+  StreamReader,
+  StreamWriter,
+} from './stream-ports.ts';
 
 const streamNameGrammar = /^[A-Za-z0-9_-]{1,64}(?:\/[A-Za-z0-9_-]{1,64})*$/u;
 
@@ -39,14 +48,19 @@ export function prefixedReader(ledger: StreamReader, prefix: string): StreamRead
 
 export function prefixedWriter(ledger: StreamWriter, prefix: string): StreamWriter {
   return {
-    execute: (stream, decider, command) =>
-      wellFormed(stream).pipe(Effect.flatMap((relative) => ledger.execute(`${prefix}${relative}`, decider, command))),
+    execute: (stream, decider, command, lineage) =>
+      wellFormed(stream).pipe(
+        Effect.flatMap((relative) => ledger.execute(`${prefix}${relative}`, decider, command, lineage)),
+      ),
   };
 }
 
 function wellFormedSelection(selection: RecordedSelection): Effect.Effect<RecordedSelection> {
-  return selection.kind === 'run'
-    ? wellFormed(`executions/${selection.execution}`).pipe(Effect.as(selection))
+  if (selection.kind === 'run') {
+    return wellFormed(`executions/${selection.execution}`).pipe(Effect.as(selection));
+  }
+  return selection.kind === 'correlated'
+    ? wellFormed(`executions/${selection.correlation}`).pipe(Effect.as(selection))
     : Effect.succeed(selection);
 }
 
@@ -62,11 +76,13 @@ function wellFormedPage(page: RecordedPageRequest): Effect.Effect<RecordedPageRe
 const refusedCursors: Readonly<Record<InvalidCursorKind, InvalidInput>> = {
   malformed: new InvalidInput({
     detail: 'The cursor is malformed',
-    issues: [{ detail: 'Expected a next_cursor or an id, as a read gives it', pointer: '/cursor' }],
+    issues: [{ detail: 'Expected a next_cursor or the cursor of an event, as a read gives it', pointer: '/cursor' }],
   }),
   of_another_brain: new InvalidInput({
     detail: 'The cursor was not given by a read of this brain',
-    issues: [{ detail: 'Expected a next_cursor or an id that a read of this brain gave', pointer: '/cursor' }],
+    issues: [
+      { detail: 'Expected a next_cursor or the cursor of an event that a read of this brain gave', pointer: '/cursor' },
+    ],
   }),
 };
 
@@ -88,5 +104,19 @@ export function brainBoundRecordedReader(ledger: RecordedReader, brain: BrainAdd
         Effect.map(relativeTo(streamPrefixOfBrain(brain))),
         Effect.mapError(({ kind }: { readonly kind: InvalidCursorKind }) => refusedCursors[kind]),
       ),
+  };
+}
+
+function wellFormedWindow(window: RunOutcomeWindow): Effect.Effect<RunOutcomeWindow> {
+  const { from, to } = window;
+  return isCalendarDay(from) && isCalendarDay(to) && from <= to
+    ? Effect.succeed(window)
+    : Effect.die(new RangeError(`The days from ${JSON.stringify(from)} to ${JSON.stringify(to)} are not a window`));
+}
+
+export function brainBoundRunOutcomesReader(ledger: RunOutcomesReader, brain: BrainAddress): BrainRunOutcomesReader {
+  return {
+    readRunOutcomes: (window, selection) =>
+      wellFormedWindow(window).pipe(Effect.flatMap((checked) => ledger.readRunOutcomes(brain, checked, selection))),
   };
 }

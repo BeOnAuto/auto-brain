@@ -1,15 +1,17 @@
 import { Schema } from 'effect';
 
+import { isCalendarDay } from './calendar-days.ts';
 import { mostRecordsInAPage } from './page-bounds.ts';
 
 export const defaultPageLimit = 20;
 
 const longestCursor = 512;
 
-const isoTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/u;
+const isoTime =
+  /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u;
 
 function isTime(text: string): boolean {
-  return isoTime.test(text) && Number.isFinite(Date.parse(text));
+  return isoTime.test(text) && isCalendarDay(text.slice(0, 10)) && Number.isFinite(Date.parse(text));
 }
 
 export const PagingInputFields = {
@@ -20,7 +22,7 @@ export const PagingInputFields = {
   ),
   cursor: Schema.optionalKey(
     Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(longestCursor)).annotate({
-      description: 'The next_cursor of the page before, or the id of an item, to read on after it',
+      description: 'The next_cursor of the page before, or the cursor of an item, to read on after it',
     }),
   ),
   order: Schema.optionalKey(

@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from 'effect';
+import { Effect, Option } from 'effect';
 
 import {
   InvalidCursor,
@@ -12,9 +12,13 @@ import {
   type RecordedReader,
   type RecordedSelection,
 } from '../index.ts';
+import { cursorOfParts, partsOfCursor, type CursorPart } from '../reading/cursor-parts.ts';
 
 export interface MemoryRecord {
   readonly position: number;
+  readonly id: string;
+  readonly causationId: string | null;
+  readonly correlationId: string | null;
   readonly stream: string;
   readonly streamPosition: number;
   readonly type: string;
@@ -30,15 +34,12 @@ interface ExaminedRun {
   readonly heads: readonly MemoryRecord[];
 }
 
-const CursorSchema = Schema.StringFromBase64Url.pipe(
-  Schema.decodeTo(
-    Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String.check(Schema.isPattern(/^[1-9]\d{0,14}$/u))])),
-  ),
-);
+interface Resumed {
+  readonly position: number;
+  readonly inclusive: boolean;
+}
 
-const decodeCursor = Schema.decodeUnknownOption(CursorSchema);
-
-const encodeCursor = Schema.encodeSync(CursorSchema);
+const positionPattern = /^[1-9]\d{0,14}$/u;
 
 const utf8 = new TextEncoder();
 
@@ -47,16 +48,28 @@ function brainKeyOf(stream: string): string | undefined {
   return segments.length > 3 ? `${segments.slice(0, 3).join('/')}/` : undefined;
 }
 
-function positionAfter({ cursor, order }: RecordedPageRequest, key: string): Effect.Effect<number, InvalidCursor> {
+function isPositionPart(part: CursorPart | undefined): part is string {
+  return typeof part === 'string' && positionPattern.test(part);
+}
+
+function resumedOf(key: string): (parts: readonly CursorPart[]) => Effect.Effect<Resumed, InvalidCursor> {
+  return ([cursorKey, at, within, ...rest]) => {
+    if (typeof cursorKey !== 'string' || !isPositionPart(at) || typeof within === 'string' || rest.length > 0) {
+      return Effect.fail(new InvalidCursor({ kind: 'malformed' }));
+    }
+    return cursorKey === key
+      ? Effect.succeed({ position: Number(at), inclusive: within !== undefined })
+      : Effect.fail(new InvalidCursor({ kind: 'of_another_brain' }));
+  };
+}
+
+function resumedFrom({ cursor, order }: RecordedPageRequest, key: string): Effect.Effect<Resumed, InvalidCursor> {
   if (cursor === undefined) {
-    return Effect.succeed(order === 'asc' ? 0 : Number.POSITIVE_INFINITY);
+    return Effect.succeed({ position: order === 'asc' ? 0 : Number.POSITIVE_INFINITY, inclusive: false });
   }
-  return Option.match(decodeCursor(cursor), {
+  return Option.match(partsOfCursor(cursor), {
     onNone: () => Effect.fail(new InvalidCursor({ kind: 'malformed' })),
-    onSome: ([cursorKey, position]) =>
-      cursorKey === key
-        ? Effect.succeed(Number(position))
-        : Effect.fail(new InvalidCursor({ kind: 'of_another_brain' })),
+    onSome: resumedOf(key),
   });
 }
 
@@ -72,7 +85,7 @@ function inSelection(key: string, selection: RecordedSelection): (record: Memory
   if (selection.kind === 'executions') {
     return ({ stream, streamPosition }) => streamPosition === 1 && stream.startsWith(`${key}executions/`);
   }
-  return () => true;
+  return selection.kind === 'correlated' ? ({ correlationId }) => correlationId === selection.correlation : () => true;
 }
 
 function byTimeThenPosition(left: MemoryRecord, right: MemoryRecord): number {
@@ -122,8 +135,20 @@ function examinedRuns(
   });
 }
 
-function recordedOf(key: string, { position, stream, type, data, recordedAt }: MemoryRecord): RecordedEvent {
-  return { id: encodeCursor([key, String(position)]), stream, type, data, recordedAt };
+function cursorAt(key: string, at: number): string {
+  return cursorOfParts([key, String(at)]);
+}
+
+function recordedOf(key: string, record: MemoryRecord): RecordedEvent {
+  const { id, causationId, correlationId, stream, type, data, recordedAt } = record;
+  return { id, cursor: cursorAt(key, record.position), causationId, correlationId, stream, type, data, recordedAt };
+}
+
+function beyond({ position, inclusive }: Resumed, order: RecordedPageRequest['order']): (at: number) => boolean {
+  if (order === 'asc') {
+    return (at) => (inclusive ? at >= position : at > position);
+  }
+  return (at) => (inclusive ? at <= position : at < position);
 }
 
 function pageOf(
@@ -131,22 +156,20 @@ function pageOf(
   key: string,
   selection: RecordedSelection,
   page: RecordedPageRequest,
-): (after: number) => RecordedPage {
-  return (after) => {
+): (resumed: Resumed) => RecordedPage {
+  return (resumed) => {
+    const isBeyond = beyond(resumed, page.order);
     const inBrain = log.filter(({ stream }) => brainKeyOf(stream) === key);
     const from = firstSince(inBrain, page.since) ?? Number.POSITIVE_INFINITY;
     const inOrder = page.order === 'asc' ? inBrain : inBrain.toReversed();
     const candidates = inOrder.filter(
-      (record) =>
-        inSelection(key, selection)(record) &&
-        record.position >= from &&
-        (page.order === 'asc' ? record.position > after : record.position < after),
+      (record) => inSelection(key, selection)(record) && record.position >= from && isBeyond(record.position),
     );
     const cap = page.types === undefined && selection.kind !== 'executions' ? page.limit : mostExaminedInAPage;
     const examined =
       selection.kind === 'executions' ? examinedRuns(log, candidates, page) : examinedRecords(candidates, page, cap);
     const { delivered, resumeAfter } = boundedPage(examined, page.limit, cap);
-    const nextCursor = resumeAfter === undefined ? null : encodeCursor([key, String(resumeAfter.position)]);
+    const nextCursor = resumeAfter === undefined ? null : cursorAt(key, resumeAfter.position);
     return {
       records: delivered.flatMap(({ heads }) => heads.map((head) => recordedOf(key, head))),
       hasMore: nextCursor !== null,
@@ -159,6 +182,6 @@ export function memoryRecordedReader(log: readonly MemoryRecord[]): RecordedRead
   return (brain: BrainAddress, selection, page) =>
     Effect.suspend(() => {
       const key = streamPrefixOfBrain(brain);
-      return positionAfter(page, key).pipe(Effect.map(pageOf(log, key, selection, page)));
+      return resumedFrom(page, key).pipe(Effect.map(pageOf(log, key, selection, page)));
     });
 }

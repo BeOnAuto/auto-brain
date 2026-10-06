@@ -338,4 +338,6 @@ A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "len
 | `duration_ms`                        | How long the call took                                                                                                |
 | `prompt`                             | The rendered `instructions` and `message`, and `truncated`                                                            |
 
+A run rejected after its model answered keeps a record too, of `usage` and `duration_ms` alone: when the answer does not match the schema or is cut off at `max_output_tokens`, when the model refused the content, when it kept calling tools in the step that withheld them, and when the answer leaves no room in the 1 MiB a run records. `get_execution` shows it, and the brain's analytics count its tokens. A rejection that comes before the model answers, or a call stopped by its deadline, by the bound of a run that calls tools or by failing tool servers, records none, since no usage is known then.
+
 The output and the record take at most 1 MiB together, the limit of the spec operations. When the prompt does not fit beside the answer, the record keeps the start of the instructions and of the message and sets `truncated: true`. The record holds no credential, and not the provider options, which the spec already holds.

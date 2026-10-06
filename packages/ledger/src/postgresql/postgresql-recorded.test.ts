@@ -28,7 +28,18 @@ const at = '2026-10-05T09:00:00.000Z';
 
 function examined(transaction: string, position: string, wanted: boolean, order: number) {
   const stream = `${alpha}notes`;
-  return { transaction, position, stream, type: 'noted', recorded: at, wanted, size: wanted ? 10 : 0, examined: order };
+  const lineage = { id: `message-${position}`, causation: null, correlation: 'r1' };
+  return {
+    transaction,
+    position,
+    stream,
+    type: 'noted',
+    recorded: at,
+    ...lineage,
+    wanted,
+    size: wanted ? 10 : 0,
+    examined: order,
+  };
 }
 
 function stored(transaction: string, position: string, detail: string) {
@@ -42,6 +53,9 @@ function run(transaction: string, position: string, latest: readonly [string, st
     latest_position: latest[1],
     latest_type: latest[2],
     latest_recorded: at,
+    latest_id: `message-${latest[1]}`,
+    latest_causation: `message-${position}`,
+    latest_correlation: 'r2',
   };
 }
 
@@ -50,6 +64,8 @@ const theHorizon = 'pg_snapshot_xip(pg_current_snapshot())';
 const brainKey = "substring(stream_id FROM '^(?:[^/]*/){3}')";
 
 const kindKey = "substring(stream_id FROM '^(?:[^/]*/){4}')";
+
+const correlation = "(message_metadata ->> 'correlationId')";
 
 describe('the read of what a brain recorded on PostgreSQL, oldest first', () => {
   it('walks the brain index in transaction id then position, behind the oldest write open in its database', async () => {
@@ -123,6 +139,32 @@ describe('a read of one run on PostgreSQL, newest first', () => {
   });
 });
 
+describe('a read on PostgreSQL by correlation, from inside a record', () => {
+  it('walks the brain and the correlation through their index, from that record on, in either order', async () => {
+    const { query, asked } = answering([examined('9', '10', true, 1)], [stored('9', '10', 'only')], [], []);
+    const store = postgresqlRecordedStore(query);
+
+    const page = await store.readRecorded(
+      alpha,
+      { kind: 'correlated', correlation: 'r1' },
+      { order: 'asc', limit: 5, at: ['9', '10'] },
+    );
+    await store.readRecorded(
+      alpha,
+      { kind: 'correlated', correlation: 'r1' },
+      { order: 'desc', limit: 5, at: ['9', '10'] },
+    );
+
+    expect(page.records.map(({ id, correlationId }) => [id, correlationId])).toEqual([['message-10', 'r1']]);
+    expect(asked[0]?.text).toContain('AND (transaction_id, global_position) >= ($2::xid8, $3::bigint)');
+    expect(asked[0]?.text).toContain(`WHERE ${brainKey} = ANY($5::text[]) AND ${correlation} = ANY($6::text[])`);
+    expect(asked[0]?.text).toContain(
+      `ORDER BY ${brainKey} ASC, ${correlation} ASC, transaction_id ASC, global_position ASC`,
+    );
+    expect(asked[2]?.text).toContain('AND (transaction_id, global_position) <= ($2::xid8, $3::bigint)');
+  });
+});
+
 describe('a read on PostgreSQL from a time', () => {
   it('answers nothing when nothing was recorded from the time asked', async () => {
     const { query, asked } = answering([]);
@@ -156,10 +198,10 @@ describe('a read of runs on PostgreSQL', () => {
       { order: 'desc', limit: 5 },
     );
 
-    expect(page.records.map(({ type, data }) => [type, data])).toEqual([
-      ['noted', { type: 'noted', detail: 'r2' }],
-      ['noted', { type: 'noted', detail: 'r1' }],
-      ['execution_succeeded', { type: 'noted', detail: 'r1 done' }],
+    expect(page.records.map(({ type, data, id, causationId }) => [type, data, id, causationId])).toEqual([
+      ['noted', { type: 'noted', detail: 'r2' }, 'message-4', null],
+      ['noted', { type: 'noted', detail: 'r1' }, 'message-2', null],
+      ['execution_succeeded', { type: 'noted', detail: 'r1 done' }, 'message-6', 'message-2'],
     ]);
     expect(asked[0]?.text).toContain(`WHERE ${kindKey} = ANY($2::text[]) AND stream_position = 1`);
     expect(asked[0]?.text).toContain(`ORDER BY ${kindKey} DESC, transaction_id DESC, global_position DESC`);
@@ -181,7 +223,7 @@ function executorFinding(names: readonly string[]): { readonly execute: IndexExe
 }
 
 describe("the brain's indexes on PostgreSQL", () => {
-  it('index the brain in order and by time, each stream in order and its messages by brain and kind, then analyse', async () => {
+  it('index the brain in order, by time and by correlation, each stream in order and its messages by brain and kind, then analyse', async () => {
     const { execute, commands } = executorFinding([]);
 
     await createPostgreSQLBrainIndexes({ execute });
@@ -191,6 +233,7 @@ describe("the brain's indexes on PostgreSQL", () => {
       "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_time ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), created, transaction_id, global_position)",
       'CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, transaction_id, global_position)',
       "CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){4}')), stream_position, transaction_id, global_position)",
+      "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), (message_metadata ->> 'correlationId'), transaction_id, global_position)",
       'ANALYZE emt_messages',
     ]);
   });
@@ -201,6 +244,7 @@ describe("the brain's indexes on PostgreSQL", () => {
       'ledger_messages_by_brain_and_time',
       'ledger_messages_by_stream',
       'ledger_first_messages_by_kind',
+      'ledger_messages_by_brain_and_correlation',
     ];
     const present = executorFinding(all);
     const oneMissing = executorFinding(all.filter((name) => name !== 'ledger_messages_by_stream'));

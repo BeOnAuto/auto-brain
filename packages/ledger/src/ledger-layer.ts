@@ -1,10 +1,10 @@
 import { Ledger } from '@beonauto/operations';
 import { Effect, Layer } from 'effect';
 
-import type { EventStore } from './event-store.ts';
+import type { LedgerStore } from './event-store.ts';
 import { makeLedger } from './ledger-service.ts';
 
-export function ledgerLayerOver(open: () => EventStore): Layer.Layer<Ledger> {
+export function ledgerLayerOver(open: () => LedgerStore): Layer.Layer<Ledger> {
   return Layer.effect(
     Ledger,
     Effect.gen(function* () {

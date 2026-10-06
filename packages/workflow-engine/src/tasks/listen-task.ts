@@ -55,7 +55,7 @@ function isSatisfied(invocation: Invocation, consumed: readonly ValueId[]): bool
   return field(to, 'all') === undefined ? consumed.length > 0 : consumed.length >= filtersOf(invocation, to).length;
 }
 
-function settled(invocation: Invocation, consumed: readonly ValueId[]): BodyAdvance {
+function settled(invocation: Invocation, consumed: readonly ValueId[], waited: number): BodyAdvance {
   const { session } = invocation.machine;
   if (isSatisfied(invocation, consumed)) {
     const { read } = listenOf(invocation);
@@ -67,12 +67,13 @@ function settled(invocation: Invocation, consumed: readonly ValueId[]): BodyAdva
     );
   }
   session.beforeWaiting();
-  session.record(invocation.entry.reference, invocation.frame.run, 'waiting');
-  return waitingOn({ kind: 'listen', consumed });
+  const { reference } = invocation.entry;
+  session.record({ reference, run: invocation.frame.run, outcome: 'waiting', waitsFor: 'event', times: waited + 1 });
+  return waitingOn({ kind: 'listen', consumed, waited: waited + 1 });
 }
 
 export function startListen(invocation: Invocation): BodyAdvance {
-  return settled(invocation, taken(invocation, []));
+  return settled(invocation, taken(invocation, []), 0);
 }
 
 export function resumeListen(invocation: Invocation, body: ListenBody, signal: Signal): BodyAdvance | undefined {
@@ -80,5 +81,10 @@ export function resumeListen(invocation: Invocation, body: ListenBody, signal: S
     return undefined;
   }
   const consumed = taken(invocation, body.consumed);
-  return consumed.length === body.consumed.length ? undefined : settled(invocation, consumed);
+  if (consumed.length === body.consumed.length) {
+    return undefined;
+  }
+  const { frame } = invocation;
+  invocation.machine.session.resumedFrom({ reference: frame.reference, run: frame.run, times: body.waited });
+  return settled(invocation, consumed, body.waited);
 }

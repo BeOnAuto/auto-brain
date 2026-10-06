@@ -3,7 +3,7 @@ import type { PublicEvent } from './public-event.ts';
 import type { RecordedEvent } from './recorded-read.ts';
 
 export interface Presentation {
-  readonly present: (recorded: RecordedEvent) => PublicEvent | null;
+  readonly present: (recorded: RecordedEvent) => readonly PublicEvent[];
   readonly publicTypes: readonly string[];
   readonly storedTypesOf: (publicType: string) => readonly string[];
 }
@@ -26,22 +26,32 @@ function requireOnePresenterPerKind(presenters: readonly Presenter[]): void {
   }
 }
 
-function presents({ publicNames }: Presenter, { type }: RecordedEvent): boolean {
-  return Object.hasOwn(publicNames, type) && typeof publicNames[type] === 'string';
+interface Presenting {
+  readonly presenter: Presenter;
+  readonly presented: ReadonlySet<string>;
+}
+
+function presentingOf(presenter: Presenter): Presenting {
+  const presented = Object.entries(presenter.publicNames)
+    .filter(([, names]: readonly [string, readonly string[]]) => names.length > 0)
+    .map(([stored]: readonly [string, readonly string[]]) => stored);
+  return { presenter, presented: new Set(presented) };
 }
 
 export function presentationOf(presenters: readonly Presenter[]): Presentation {
   requireOnePresenterPerKind(presenters);
-  const byKind = new Map(presenters.map((presenter) => [presenter.streamKind, presenter]));
+  const byKind = new Map(presenters.map((presenter) => [presenter.streamKind, presentingOf(presenter)]));
   const named = presenters
     .flatMap(({ publicNames }) => Object.entries(publicNames))
-    .flatMap(([stored, name]: readonly [string, string | null]): readonly PublicName[] =>
-      name === null ? [] : [{ stored, name }],
+    .flatMap(([stored, names]: readonly [string, readonly string[]]): readonly PublicName[] =>
+      names.map((name) => ({ stored, name })),
     );
   return {
     present: (recorded) => {
-      const presenter = byKind.get(streamKindOf(recorded.stream));
-      return presenter !== undefined && presents(presenter, recorded) ? presenter.present(recorded) : null;
+      const presenting = byKind.get(streamKindOf(recorded.stream));
+      return presenting !== undefined && presenting.presented.has(recorded.type)
+        ? presenting.presenter.present(recorded)
+        : [];
     },
     publicTypes: [...new Set(named.map(({ name }) => name))],
     storedTypesOf: (publicType) => [

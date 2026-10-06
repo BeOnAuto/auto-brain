@@ -1,6 +1,6 @@
 # HTTP API
 
-The HTTP API provides brain management, reasoning-function, computation-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reasoning-function, computation-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, and the brain's analytics. Requests use the API base URL and credentials supplied for the workspace.
 
 The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function, `computation` for a computation function and `orchestration` for a workflow.
 
@@ -77,13 +77,13 @@ The `source` is a [workflow document](workflow-format.md). Names, document size,
 
 A workflow runs once for each `execution_id`. Executing it again with the `execution_id` of a run that is going returns the run as it stands; with the `execution_id` of a run that ended without a final result, it returns `conflict`, so run the workflow again under a new `execution_id`.
 
-`send_execution_event` delivers an event to a run that is still `started`. It returns the `execution_id` and the delivered `event`, with an `id`, made by the runtime when you leave it out, and the `time` it was sent. An event may take at most 256 KiB as JSON; its `type` and `id` at most 256 characters, and its `source` and `subject` at most 1,024. A run takes an event with a given `id` once, so a request can be retried with the same id. The operation returns `not_found` when the brain has no running workflow with that execution id, including one that has ended, and `unavailable` when the run cannot take the event at that moment, as while the runtime is stopping; try again shortly.
+`send_execution_event` delivers an event to a run that is still `started`. It returns the `execution_id` and the delivered `event`, with an `id`, made by the runtime when you leave it out, and the `time` it was sent. An event may take at most 256 KiB as JSON; its `type` and `id` at most 256 characters, its `source`, a URI reference such as `/ledger/eu` as for a published event, and its `subject` at most 1,024, and its `data` may nest at most 510 levels deep, so that the run can hold the whole event in a list. A run takes an event with a given `id` once, so a request can be retried with the same id. The types and sources the runtime keeps for its own facts, listed under [Publishing events](#publishing-events), return `invalid_input` here too, and so does text that a published event may not hold: a control character, a lone surrogate or a noncharacter, or a `type`, `id` or `subject` without a character that is not a space. The operation returns `not_found` when the brain has no running workflow with that execution id, including one that has ended, and `unavailable` when the run cannot take the event at that moment, as while the runtime is stopping; try again shortly.
 
 ## Runs and results
 
 A run records its `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. Successful runs include `output`; rejected runs include a rejection. `get_execution` also returns the detailed `record`.
 
-Reasoning and computation functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
+Reasoning and computation functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, as deep as a workflow holds a value; a deeper one returns `invalid_input` at `/input`. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 
@@ -104,7 +104,7 @@ A run without a final result may be attempted again after an interruption or rec
 | `datacontenttype`, `dataschema` | No       | The media type of `data`, and the absolute URI of a schema it follows                                         |
 | `data`                          | No       | Any JSON value                                                                                                |
 
-`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. Any other attribute is an extension: its name is lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given.
+`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. `data` may nest at most 510 levels deep, so that a run can hold the event in a list, or it returns `invalid_input` at `/event/data`. Any other attribute is an extension, at most 32 of them: its name is 1 to 20 lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given. As CloudEvents requires, no text may hold a control character, a lone surrogate or a noncharacter, `id`, `type` and `subject` need a character that is not a space, `datacontenttype` is a media type such as `application/json`, and a `time` has a second of 60 only at the end of a day in UTC.
 
 ```http
 POST /v1/orgs/acme/brains/finance/events
@@ -127,41 +127,97 @@ It returns 200 with the event's `id` and `time`, and `recorded_at`, when the bra
 { "id": "2026-09", "time": "2026-10-01T09:00:00.000Z", "recorded_at": "2026-10-01T09:00:00.000Z" }
 ```
 
-A brain holds one event for each `source` and `id`. Publishing the same event again records nothing and returns the first `id`, `time` and `recorded_at`, so a request can be retried with the same id; a retry that leaves out `time` is the same event. A different event with the same `source` and `id` returns `conflict`. Without an `id`, every request records a new event.
+A brain holds one event for each `source` and `id`. Publishing the same event again records nothing and returns the first `id`, `time` and `recorded_at`, so a request can be retried with the same id; a retry that leaves out `time` is the same event. Times are compared as instants, so `2026-10-01T10:59:00+02:00` is the same time as `2026-10-01T08:59:00Z`. A leap second counts as the first second of the next day, so `2016-12-31T23:59:60Z` is the same time as `2017-01-01T00:00:00Z`. A retry that gives a `time` to an event first published without one is the same event too, and returns the time the runtime filled in the first time, not the one the retry gave. A different event with the same `source` and `id` returns `conflict`. Without an `id`, every request records a new event.
 
-The event, with its id and time filled in, may take at most 240 KiB as JSON. The types `execution_started`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `spec_created`, `spec_updated` and `spec_retired`, and sources beginning `/executions/` or `/specs/`, name the facts the runtime records itself; an event that uses them returns `invalid_input` at `/event/type` or `/event/source`. `list_brain_events` shows each published event as an `event_published` event.
+The event, with its id and time filled in, may take at most 240 KiB as JSON. The types `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `tool_call_started`, `tool_call_answered`, `spec_created`, `spec_updated`, `spec_retired`, `event_published`, `workflow_input_applied`, `step_started`, `step_waiting`, `step_finished`, `step_failed` and `step_skipped`, every type the brain's events show, and sources beginning `/executions/` or `/specs/`, name what the runtime records itself; an event that uses them returns `invalid_input` at `/event/type` or `/event/source`. `list_brain_events` shows each published event as an `event_published` event.
 
 ## Run history and brain events
 
 These routes are relative to `/v1/orgs/{org}/brains/{brain}` and need `brain:read`:
 
-| Operation               | Method and route                         | Input                                                        |
-| ----------------------- | ---------------------------------------- | ------------------------------------------------------------ |
-| `list_executions`       | `GET /executions`                        | Optional `primitive`, `name`, `status`, `limit` and `cursor` |
-| `get_execution_history` | `GET /executions/{execution_id}/history` | Execution id in path; optional `order`, `limit` and `cursor` |
-| `list_brain_events`     | `GET /events`                            | Optional `type`, `since`, `order`, `limit` and `cursor`      |
+| Operation               | Method and route                         | Input                                                                   |
+| ----------------------- | ---------------------------------------- | ----------------------------------------------------------------------- |
+| `list_executions`       | `GET /executions`                        | Optional `primitive`, `name`, `status`, `limit` and `cursor`            |
+| `get_execution_history` | `GET /executions/{execution_id}/history` | Execution id in path; optional `order`, `limit` and `cursor`            |
+| `list_brain_events`     | `GET /events`                            | Optional `type`, `since`, `execution_id`, `order`, `limit` and `cursor` |
 
 `list_executions` returns `executions`, newest first by when each run first started. A listed run has the fields `get_execution` returns, without `output`, `record` and the detail and issues of a rejection; a rejection shows its `reason`, with `kind` and `because` when the function gave them. `status` keeps the runs whose status is `started`, `succeeded`, `rejected` or `failed`, and `primitive` and `name` keep the runs of one definition.
 
-`get_execution_history` returns the `events` of one run, oldest first unless `order` is `desc`: the facts the runtime recorded about the run, each start and how it ended. Tool-using runs also record `tool_call_started` and `tool_call_answered`. A run that does not exist in the brain returns `not_found`. For a workflow, the history also holds one `workflow_input_applied` event for each input its run took. `list_brain_events` returns the `events` of the whole brain, newest first unless `order` is `asc`: definitions created, updated and retired, runs started and ended, tool calls, the inputs workflow runs took and the events published to the brain. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the brain recorded from that time on, in either order.
+`get_execution_history` returns the `events` of one run in the order the brain recorded them, oldest first unless `order` is `desc`, so each event comes after the event that caused it: the facts the runtime recorded about the run, each start and how it ended. Tool-using runs also record `tool_call_started` and `tool_call_answered`. A run that does not exist in the brain returns `not_found`. For a workflow, the history also holds one `workflow_input_applied` event for each input its run took, followed by one event for each step that input moved, named for how the step ended that input: `step_waiting`, `step_finished`, `step_failed`, `step_skipped`, or `step_started` for a step that runs others, such as a `do` or a `fork`, and was still running. A step that starts and finishes in one input shows only `step_finished`. `list_brain_events` returns the `events` of the whole brain, newest first unless `order` is `asc`: definitions created, updated and retired, runs started and ended, tool calls, the inputs workflow runs took and the events published to the brain. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the brain recorded from that time on, in either order; its date must exist in the calendar and its hour run from 00 to 23, so `T24:00:00Z` is refused. `execution_id` keeps what one run and every run it started recorded, such as the functions a workflow called: its whole tree. A run that another run started belongs to the tree of the run at its top, so its own id answers no events; read the tree from the id of the run you started.
 
 Tool-call events identify the server, tool, argument and result sizes and digests, and how each call ended. Content is omitted unless the operator enables `record_content`. Recorded content is scrubbed and bounded; the history API shows at most 2 KiB of each recorded argument or result. Anyone with read access to the brain can read that history. A started call without an answer may have had an external effect; absence of an answer does not prove it was cancelled before acting.
 
 Each event has these fields:
 
-| Field     | Contents                                                                                                                                                                                                  |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`      | The event's id, which also works as a `cursor` to read on after it                                                                                                                                        |
-| `at`      | When it happened, by its own clock, in ISO 8601 UTC                                                                                                                                                       |
-| `type`    | `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `workflow_input_applied`, `spec_created`, `spec_updated`, `spec_retired` or `event_published` |
-| `summary` | A sentence in plain language                                                                                                                                                                              |
-| `data`    | The facts of the event, at most 4 KiB as JSON                                                                                                                                                             |
+| Field          | Contents                                                                                                                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`           | The event's id, a UUID that stays the same on every read                                                                                                                                                                                                                                                                             |
+| `cursor`       | The place to read on from: pass it as `cursor` to read what follows the event                                                                                                                                                                                                                                                        |
+| `causation_id` | The `id` of the event that directly led to this one, or `null` when nothing recorded did, as for a run you started                                                                                                                                                                                                                   |
+| `at`           | When it happened, by its own clock, in ISO 8601 UTC                                                                                                                                                                                                                                                                                  |
+| `type`         | `execution_started`, `execution_deferred`, `execution_succeeded`, `execution_rejected`, `execution_failed`, `tool_call_started`, `tool_call_answered`, `workflow_input_applied`, `step_started`, `step_waiting`, `step_finished`, `step_failed`, `step_skipped`, `spec_created`, `spec_updated`, `spec_retired` or `event_published` |
+| `summary`      | A sentence in plain language                                                                                                                                                                                                                                                                                                         |
+| `data`         | The facts of the event, at most 4 KiB as JSON                                                                                                                                                                                                                                                                                        |
 
-In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count. A `workflow_input_applied` event shows the kind and key of the input, how many steps it moved and the first five, each with its task, run and outcome, the kind and because of a function's rejection that has them, in its words too, and the kinds of what the run did next; it never shows the run's data. An `event_published` event shows the published event's `event_id`, `event_type`, `source`, `subject` and `time`, the size of its data as `data_bytes`, and which attributes the runtime `filled` in.
+In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count. A `workflow_input_applied` event shows the kind and key of the input, how many steps it moved and the first five, each with its task, run and outcome, the kind and because of a function's rejection that has them, in its words too, and the kinds of what the run did next; it never shows the run's data. A step event shows the step's `name`, its `reference` in the document, its `run`, which counts each time the step starts, and `times`, which counts how often it moved that way in that run; `step_waiting` adds what it waits for, `call`, `timer` or `event`, and for a call the `execution_id` of the run it started, whose `execution_started` names that `step_waiting` as its cause; `step_failed` adds how it failed and its error's type and title. An `event_published` event shows the published event's `event_id`, `event_type`, `source`, `subject` and `time`, the size of its data as `data_bytes`, and which attributes the runtime `filled` in.
 
-Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: `primitive` and `name` apply to the runs a page looked at, records with no event type are left out, a page stops after loading 4 MiB of stored data, and with `status` or `type` after looking at 1,000 runs or records. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
+The causes link the events of a run into a graph. A run you start has no cause, and its first input is caused by its start. A step that starts in an input is caused by what came before it: the input for the first step, the step before it in its list, the `switch` that chose it, the `fork` it is a branch of, or the failed attempt a retry repeats. A step that goes on from an earlier input is caused by its own event before: the input that answers a call or delivers an event, and the step's `step_finished`, are both caused by its `step_waiting`. The run's end is caused by its last step event.
+
+Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out; it counts the events a page answers with, step events included, so a page can end between the step events of one input, and its `next_cursor` reads on from the next one. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: `primitive` and `name` apply to the runs a page looked at, records with no event type are left out, a page stops after loading 4 MiB of stored data, and with `status` or `type` after looking at 1,000 runs or records. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
 
 The brain's own creation, changes and retirement are not brain events; `get_brain` shows them. A retired brain stays readable: these reads work on it, while every change to it is refused with `conflict`.
+
+## Analytics
+
+This route is relative to `/v1/orgs/{org}/brains/{brain}` and needs `brain:read`:
+
+| Operation             | Method and route | Input                                                                |
+| --------------------- | ---------------- | -------------------------------------------------------------------- |
+| `get_brain_analytics` | `GET /analytics` | Optional `days`, or `from` and `to`; optional `primitive` and `name` |
+
+`get_brain_analytics` answers what the brain's runs did over a window of days in UTC. `days` is `7`, `14` or `30`, the last days ending today, and `7` when nothing is given. `from` and `to` name the first and the last day as `YYYY-MM-DD`, both included: at most 366 days, with `to` not before `from` and not after today. A day must exist in the calendar, so `2026-02-30` is refused rather than read as 2 March. `primitive` and `name` keep the runs of one definition, as they do for `list_executions`. `days` with `from` or `to`, `from` without `to`, any other `days` and any other parameter are refused with `invalid_input`, pointing at the parameter.
+
+```http
+GET /v1/orgs/acme/brains/sales/analytics?days=7&primitive=inference
+Authorization: Bearer <key>
+```
+
+```json
+{
+  "days": 7,
+  "runs": { "total": 12, "succeeded": 9, "failed": 1, "rejected": 2 },
+  "tokens": { "input": 18400, "output": 2950, "cached": 12000 },
+  "duration_ms": { "p50": 1840, "p95": 6210 },
+  "by_day": [
+    {
+      "day": "2026-09-30",
+      "runs": { "total": 0, "succeeded": 0, "failed": 0, "rejected": 0 },
+      "tokens": { "input": 0, "output": 0, "cached": 0 },
+      "duration_ms": null
+    }
+  ],
+  "by_function": [
+    {
+      "primitive": "inference",
+      "name": "triage",
+      "runs": 12
+    }
+  ]
+}
+```
+
+The example shortens `by_day`, which holds every day of the window, oldest first, days with no runs included. A run counts on the day it first started, also when it was started again later. It counts once it has ended: `succeeded`, `failed` or `rejected`; a run still going counts nowhere.
+
+| Field         | Contents                                                                                                                                                                                                                                       |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `days`        | How many days the window holds                                                                                                                                                                                                                 |
+| `runs`        | The runs that ended, by how they ended, and their `total`                                                                                                                                                                                      |
+| `tokens`      | The `input` and `output` tokens the models of reasoning functions used, a rejected run's included when its model answered before the rejection; `cached` is the part of `input` read from the provider's cache; `0` where nothing was recorded |
+| `duration_ms` | The median, `p50`, and the 95th percentile, `p95`, of how long the runs that succeeded or failed took, from their latest start to their end, in milliseconds; `null` when no run of the period has a duration                                  |
+| `by_day`      | The same `runs`, `tokens` and `duration_ms` for each `day`                                                                                                                                                                                     |
+| `by_function` | Each definition by `primitive` and `name`, with `runs`, how many of its runs ended; the most runs first, then by `primitive` and `name`                                                                                                        |
+
+A run started again under its `execution_id` counts once: its tokens add up over every attempt that ended, while its duration is that of its last attempt. A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order. Rejected runs count in `runs` and in `tokens`, never in `duration_ms`; workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended. The answer reads a table the runtime keeps as each run is recorded, so it is as current as the runs themselves. A brain that does not exist returns `not_found`; a retired brain answers like any other.
 
 ## Responses and errors
 

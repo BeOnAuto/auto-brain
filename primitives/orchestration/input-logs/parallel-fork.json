@@ -85,7 +85,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
@@ -95,19 +95,41 @@
         {
           "reference": "/do/0/both",
           "run": 1,
-          "outcome": "started"
+          "outcome": "started",
+          "name": "both",
+          "times": 1,
+          "caused_by": "input"
         },
         {
           "reference": "/do/0/both/fork/branches/0/left",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "waiting",
+          "name": "left",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/both",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "call"
         },
         {
           "reference": "/do/0/both/fork/branches/1/right",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "waiting",
+          "name": "right",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/both",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "call"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -395,7 +417,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5131
+          "value": 5431
         }
       ],
       "outputs": [
@@ -455,7 +477,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000306\",\"/do/0/both/fork/branches/0/left\",1]",
@@ -466,9 +488,22 @@
         {
           "reference": "/do/0/both/fork/branches/0/left",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "left",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/both/fork/branches/0/left",
+            "run": 1,
+            "outcome": "waiting",
+            "times": 1
+          }
         }
       ],
+      "resumed": {
+        "reference": "/do/0/both/fork/branches/0/left",
+        "run": 1,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -534,7 +569,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6471
+          "value": 6969
         }
       ],
       "outputs": [
@@ -547,7 +582,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000306\",\"/do/0/both/fork/branches/1/right\",1]",
@@ -558,14 +593,35 @@
         {
           "reference": "/do/0/both/fork/branches/1/right",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "right",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/both/fork/branches/1/right",
+            "run": 1,
+            "outcome": "waiting",
+            "times": 1
+          }
         },
         {
           "reference": "/do/0/both",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "both",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/both",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
         }
       ],
+      "resumed": {
+        "reference": "/do/0/both/fork/branches/1/right",
+        "run": 1,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -630,7 +686,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 7909
+          "value": 8709
         }
       ],
       "outputs": [

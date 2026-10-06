@@ -1,10 +1,11 @@
 import type { RunTools } from '@beonauto/mcp';
 import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
-import { Effect } from 'effect';
+import { Clock, Effect } from 'effect';
 
 import type { FailureIssue } from '../failure/failure-issue.ts';
-import type { FinishReason } from '../model/model-result.ts';
-import { stoppedEnding, unavailableAfter, type Stopped } from '../tools/tool-endings.ts';
+import type { FinishReason, TokenUsage } from '../model/model-result.ts';
+import { stoppedEnding, unavailableAfter, type Spent, type Stopped } from '../tools/tool-endings.ts';
+import { spendingRecord } from './execution-record.ts';
 
 export type SpecRejection = InvalidInput | Unavailable | Conflict;
 
@@ -17,10 +18,23 @@ interface RejectedSpec extends Detailed {
   readonly issues: readonly FailureIssue[];
 }
 
-interface InvalidAnswer extends Detailed {
+interface Answered extends Detailed {
+  readonly usage: TokenUsage | null;
+}
+
+interface InvalidAnswer extends Answered {
   readonly provider: string;
   readonly finish_reason: FinishReason;
   readonly issues: readonly FailureIssue[];
+}
+
+export type Spending = (usage: TokenUsage | null | undefined) => Effect.Effect<Spent>;
+
+export function spendingSince(started: number): Spending {
+  return (usage) =>
+    usage === null || usage === undefined
+      ? Effect.succeed({})
+      : Effect.map(Clock.currentTimeMillis, (now) => ({ record: spendingRecord(usage, now - started) }));
 }
 
 interface Limited extends Detailed {
@@ -51,8 +65,9 @@ function waitFor(retryAfterMs: number | null): string {
   return seconds === 1 ? 'in 1 second' : `in ${seconds} seconds`;
 }
 
-export function rejections(maxOutputTokens: number, tools?: RunTools) {
-  const unavailable = (detail: string, advice = '') => unavailableAfter(tools, detail, advice);
+export function rejections(maxOutputTokens: number, spending: Spending, tools?: RunTools) {
+  const unavailable = (detail: string, advice = '', spent: Spent = {}) =>
+    unavailableAfter(tools, detail, advice, spent);
   return {
     cancelled: () => Effect.interrupt,
     spec_invalid: ({ detail, provider_message, issues }: RejectedSpec) => {
@@ -61,26 +76,33 @@ export function rejections(maxOutputTokens: number, tools?: RunTools) {
         new Conflict({ detail: `${detail}${listed(issues)}; update the reasoning function definition${said}` }),
       );
     },
-    output_invalid: ({ detail, provider, finish_reason, issues }: InvalidAnswer) =>
-      finish_reason === 'length'
-        ? Effect.fail(
-            new Conflict({
-              detail: `${provider} stopped the answer at max_output_tokens (${maxOutputTokens}) before the JSON was complete; raise config.max_output_tokens in the reasoning function definition`,
-            }),
-          )
-        : unavailable(`${detail}${listed(issues)}`, '; try again'),
-    content_refused: ({ detail }: Detailed) =>
-      Effect.fail(
-        new InvalidInput({
-          detail,
-          issues: [{ pointer: '', detail: 'The model refused this input under its content policy' }],
-        }),
+    output_invalid: ({ detail, provider, finish_reason, issues, usage }: InvalidAnswer) =>
+      Effect.flatMap(spending(usage), (spent): Effect.Effect<never, Conflict | Unavailable> =>
+        finish_reason === 'length'
+          ? Effect.fail(
+              new Conflict({
+                detail: `${provider} stopped the answer at max_output_tokens (${maxOutputTokens}) before the JSON was complete; raise config.max_output_tokens in the reasoning function definition`,
+                ...spent,
+              }),
+            )
+          : unavailable(`${detail}${listed(issues)}`, '; try again', spent),
+      ),
+    content_refused: ({ detail, usage }: Answered) =>
+      Effect.flatMap(spending(usage), (spent) =>
+        Effect.fail(
+          new InvalidInput({
+            detail,
+            issues: [{ pointer: '', detail: 'The model refused this input under its content policy' }],
+            ...spent,
+          }),
+        ),
       ),
     rate_limited: ({ detail, retry_after_ms }: Limited) =>
       unavailable(detail, `; try again ${waitFor(retry_after_ms)}`),
     provider_unavailable: ({ detail }: Detailed) => unavailable(detail, '; try again later'),
     timed_out: ({ detail }: Detailed) => unavailable(detail, '; try again later'),
-    tools_stopped: (stopped: Stopped) => stoppedEnding(tools, stopped),
+    tools_stopped: (stopped: Stopped) =>
+      Effect.flatMap(spending(stopped.usage), (spent) => stoppedEnding(tools, stopped, spent)),
     provider_not_configured: (failure: UnconfiguredProvider) =>
       othersAreOffered(failure)
         ? Effect.fail(

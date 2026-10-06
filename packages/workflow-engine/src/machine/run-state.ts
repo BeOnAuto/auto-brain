@@ -2,6 +2,7 @@ import { Schema } from 'effect';
 
 import { CallKeySchema, type CallKey } from '../executor/call-key.ts';
 import { ReceivedEventSchema, type ReceivedEvent } from '../inbox/received-event.ts';
+import { StepCauseSchema, type StepCause } from '../steps/step-entry.ts';
 import { TimerPurposeSchema, type TimerPurpose } from '../timers/timer-id.ts';
 import { DslErrorSchema, type DslError } from './dsl-error.ts';
 import { InstantSchema } from './instant.ts';
@@ -18,7 +19,7 @@ export type Variables = Readonly<Record<string, ValueId>>;
 
 export type CursorCurrent =
   | { readonly kind: 'running'; readonly task: TaskFrame }
-  | { readonly kind: 'yielding'; readonly timer: string };
+  | { readonly kind: 'yielding'; readonly timer: string; readonly after: StepCause };
 
 export interface ListCursor {
   readonly pointer: string;
@@ -36,7 +37,7 @@ export type Branch =
 
 export type TryPhase =
   | { readonly kind: 'trying'; readonly list: ListCursor; readonly attemptLimit: string | null }
-  | { readonly kind: 'backing_off'; readonly timer: string; readonly error: DslError }
+  | { readonly kind: 'backing_off'; readonly timer: string; readonly error: DslError; readonly failed: StepCause }
   | { readonly kind: 'recovering'; readonly list: ListCursor };
 
 export type FrameBody =
@@ -59,7 +60,7 @@ export type FrameBody =
       readonly label: string;
       readonly deadline: string;
     }
-  | { readonly kind: 'listen'; readonly consumed: readonly ValueId[] };
+  | { readonly kind: 'listen'; readonly consumed: readonly ValueId[]; readonly waited: number };
 
 export interface TaskFrame {
   readonly reference: string;
@@ -140,7 +141,7 @@ const TaskFrameReference = Schema.suspend((): Schema.Codec<TaskFrame> => TaskFra
 
 const CursorCurrentSchema: Schema.Codec<CursorCurrent> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('running'), task: TaskFrameReference }),
-  Schema.Struct({ kind: Schema.Literal('yielding'), timer: Schema.String }),
+  Schema.Struct({ kind: Schema.Literal('yielding'), timer: Schema.String, after: StepCauseSchema }),
 ]);
 
 const ListCursorSchema: Schema.Codec<ListCursor> = Schema.Struct({
@@ -160,7 +161,12 @@ const BranchSchema: Schema.Codec<Branch> = Schema.Union([
 
 const TryPhaseSchema: Schema.Codec<TryPhase> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('trying'), list: ListCursorSchema, attemptLimit: Schema.NullOr(Schema.String) }),
-  Schema.Struct({ kind: Schema.Literal('backing_off'), timer: Schema.String, error: DslErrorSchema }),
+  Schema.Struct({
+    kind: Schema.Literal('backing_off'),
+    timer: Schema.String,
+    error: DslErrorSchema,
+    failed: StepCauseSchema,
+  }),
   Schema.Struct({ kind: Schema.Literal('recovering'), list: ListCursorSchema }),
 ]);
 
@@ -184,7 +190,7 @@ const FrameBodySchema: Schema.Codec<FrameBody> = Schema.Union([
     label: Schema.String,
     deadline: Schema.String,
   }),
-  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema) }),
+  Schema.Struct({ kind: Schema.Literal('listen'), consumed: Schema.Array(ValueIdSchema), waited: IntSchema }),
 ]);
 
 const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({

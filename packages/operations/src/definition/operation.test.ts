@@ -2,7 +2,7 @@ import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { BrainReader, BrainWriter, InvalidInput, NotFound, defineCommand, defineQuery } from '../index.ts';
-import { brainBoundRecordedReader } from '../ledger/bound-ports.ts';
+import { brainBoundRecordedReader, brainBoundRunOutcomesReader } from '../ledger/bound-ports.ts';
 import { labelBrain } from '../testing/brain-labels.ts';
 import { publishDraft } from '../testing/drafts.ts';
 import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
@@ -149,7 +149,8 @@ describe('a definition', () => {
 });
 
 function readerOf({ service }: MemoryLedger): BrainReader['Service'] {
-  return { ...service, ...brainBoundRecordedReader(service, { org: 'acme', brain: 'alpha' }) };
+  const alpha = { org: 'acme', brain: 'alpha' };
+  return { ...service, ...brainBoundRecordedReader(service, alpha), ...brainBoundRunOutcomesReader(service, alpha) };
 }
 
 describe('the typed call', () => {

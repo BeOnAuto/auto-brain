@@ -1,13 +1,13 @@
 import type { ToolAccess } from '@beonauto/mcp';
 import type { RunContext } from '@beonauto/specs';
-import { Effect } from 'effect';
+import { Clock, Effect } from 'effect';
 
 import type { LanguageModel } from '../model/language-model.ts';
 import type { ModelResult } from '../model/model-result.ts';
 import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-function-definition.ts';
 import type { RenderedPrompt } from '../template/compiled-template.ts';
 import { withTools } from '../tools/tool-opening.ts';
-import { rejections, type SpecRejection } from './model-rejection.ts';
+import { rejections, spendingSince, type SpecRejection } from './model-rejection.ts';
 import { requestFor } from './spec-request.ts';
 
 export interface Answering {
@@ -26,15 +26,19 @@ export function answerOf({
   execution,
 }: Answering): Effect.Effect<ModelResult, SpecRejection> {
   const { max_output_tokens: maxOutputTokens } = spec.settings;
-  const admitted = languageModel
-    .admit(requestFor(spec, prompt, execution))
-    .pipe(Effect.catchTags(rejections(maxOutputTokens)));
+  const admitted = Effect.flatMap(Clock.currentTimeMillis, (started) =>
+    languageModel
+      .admit(requestFor(spec, prompt, execution))
+      .pipe(Effect.catchTags(rejections(maxOutputTokens, spendingSince(started)))),
+  );
   return Effect.andThen(
     admitted,
     withTools(access, spec.tools, execution, (tools) =>
-      languageModel
-        .generate(requestFor(spec, prompt, execution, tools))
-        .pipe(Effect.catchTags(rejections(maxOutputTokens, tools))),
+      Effect.flatMap(Clock.currentTimeMillis, (started) =>
+        languageModel
+          .generate(requestFor(spec, prompt, execution, tools))
+          .pipe(Effect.catchTags(rejections(maxOutputTokens, spendingSince(started), tools))),
+      ),
     ),
   );
 }

@@ -7,6 +7,7 @@ const RunAttributesSchema = Schema.Struct({
   execution_id: Schema.String,
   spec: Schema.Struct({ name: Schema.String, version: Schema.Int }),
   caller: CallerIdentitySchema,
+  lineage: Schema.optionalKey(Schema.Struct({ start: Schema.String, correlation: Schema.String })),
 });
 
 export type RunAttributes = typeof RunAttributesSchema.Type;

@@ -6,9 +6,9 @@ import { probe } from '../testing/probe.ts';
 
 const operations = makeSpecOperations([echo, probe().primitive]).map(({ registration }) => registration);
 
-const readingExecutions = new Set(['get_execution', 'list_executions', 'get_execution_history']);
+const readingRuns = new Set(['get_execution', 'list_executions', 'get_execution_history', 'get_brain_analytics']);
 
-const takingAPrimitive = operations.filter(({ name }) => !readingExecutions.has(name));
+const takingAPrimitive = operations.filter(({ name }) => !readingRuns.has(name));
 
 describe('the description of every operation that takes a primitive', () => {
   it('lists the primitives by name and title, with the media type of their documents and their own description', () => {
@@ -69,7 +69,7 @@ describe('the JSON Schema of the input of the operations', () => {
       properties: {
         input: {
           description:
-            'The run input: any JSON value the definition takes, {} when left out, at most 262144 bytes as JSON in UTF-8',
+            'The run input: any JSON value the definition takes, {} when left out, at most 262144 bytes as JSON in UTF-8 and 512 levels deep',
         },
         execution_id: { type: 'string', format: 'uuid' },
       },

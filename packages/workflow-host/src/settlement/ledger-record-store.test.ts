@@ -8,6 +8,8 @@ import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runId } from '../testing/probe-subjects.ts';
 import { ledgerRecordStore } from './ledger-record-store.ts';
 
+const settledBy = { version: 2, lastStep: null };
+
 const run = { executionId: runId, attributes: {} };
 
 const succeeded: Settlement = { status: 'succeeded', output: 'done' };
@@ -23,7 +25,7 @@ describe('the record store of the host, failing', () => {
     });
 
     const failure = await Effect.runPromise(
-      Effect.flip(recordStore.settle({ executionId: runId, settlement: { status: 'failed' } }, run)),
+      Effect.flip(recordStore.settle({ executionId: runId, settlement: { status: 'failed' } }, run, settledBy)),
     );
 
     expect(failure.detail).toContain('The ledger broke down');
@@ -36,7 +38,7 @@ describe('the record store of the host, failing', () => {
 
     const failures = await Effect.runPromise(
       Effect.all([
-        Effect.flip(recordStore.settle({ executionId: runId, settlement: succeeded }, run)),
+        Effect.flip(recordStore.settle({ executionId: runId, settlement: succeeded }, run, settledBy)),
         Effect.flip(recordStore.noteDue({ executionId: runId, version: 1, nextDueAt: null }, run)),
       ]),
     );

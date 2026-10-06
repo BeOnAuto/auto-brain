@@ -205,8 +205,8 @@ jobs:
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
-          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 18
-          for tool in list_models list_executions get_execution_history list_brain_events publish_event send_execution_event; do
+          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 19
+          for tool in list_models list_executions get_execution_history get_brain_analytics list_brain_events publish_event send_execution_event; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
           call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_specs","arguments":{"brain":"smoke","primitive":"inference"}}}' > specs.txt
@@ -277,7 +277,7 @@ jobs:
             '["conflict","unworkable","The program raised an error on line 4: no rows"]'
           docker stop computation
           test "$(docker inspect computation --format '{{.State.ExitCode}}')" = 0
-      - name: Run workflows across a restart, and read the steps of a run
+      - name: Run workflows across a restart, and read the steps of a run and their causes
         timeout-minutes: 5
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
@@ -337,10 +337,43 @@ jobs:
           settled approved.json "$waiting"
           test "$(jq --compact-output '[.status, .output]' approved.json)" = '["succeeded",[{"approved":true}]]'
           test "$(call history.json "$brain/executions/$waiting/history")" = 200
-          test "$(jq --compact-output '[.events[] | select(.type == "workflow_input_applied")
-            | [.data.input.kind, .data.steps[0].task, .data.steps[0].outcome]]' history.json)" = \
-            '[["started","/do/0/decide","waiting"],["event_received","/do/0/decide","completed"]]'
+          jq --exit-status '(.events | INDEX(.id) as $by
+            | [.[] | [.type, (.data.name // .data.input.kind), $by[.causation_id // ""].type]] | sort) == [
+              ["execution_deferred", null, "execution_started"], ["execution_started", "approval", null],
+              ["execution_succeeded", null, "step_finished"], ["step_finished", "decide", "step_waiting"],
+              ["step_waiting", "decide", "workflow_input_applied"],
+              ["workflow_input_applied", "event_received", "step_waiting"],
+              ["workflow_input_applied", "started", "execution_started"]]' history.json
           stop_server workflows-second
+      - name: Read the analytics of a brain
+        timeout-minutes: 2
+        run: |
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker run --detach --name analytics --publish 8080:8080 --env API_KEYS --volume workflows:/data auto-brain:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
+            sleep 1
+          done
+          call() {
+            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+              --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
+          }
+          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
+          spec="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
+          test "$(call created.json --data "$spec" "$brain/specs/inference")" = 201
+          test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/specs/inference/hello/execute")" = 503
+          test "$(call analytics.json "$brain/analytics")" = 200
+          test "$(jq --compact-output '[.days, .runs.succeeded, .runs.rejected, .by_day[-1].day, .by_day[-1].runs.total]' \
+            analytics.json)" = "[7,2,1,\"$(date --utc +%F)\",3]"
+          test "$(jq --compact-output '[.by_function[] | [.primitive, .name, .runs]]' analytics.json)" = \
+            '[["inference","hello",1],["orchestration","approval",1],["orchestration","greet",1]]'
+          docker stop analytics
+          test "$(docker inspect analytics --format '{{.State.ExitCode}}')" = 0
 
   pull-request-title:
     name: Pull request title

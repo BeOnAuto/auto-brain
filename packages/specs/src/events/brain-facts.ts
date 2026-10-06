@@ -1,5 +1,5 @@
 import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
-import { Schema } from 'effect';
+import { Option, Schema } from 'effect';
 
 import {
   ExecutionEventSchema,
@@ -7,9 +7,10 @@ import {
   type ExecutionFinished,
   type ExecutionStarted,
 } from '../execution/execution-events.ts';
-import { jsonBytesOf } from '../execution/recorded-size.ts';
+import { jsonBytesOf, nestsWithin } from '../execution/recorded-size.ts';
 import { SpecEventSchema, type SpecEvent } from '../registry/spec-events.ts';
-import { mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
+import { mostEventDataDepth, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
+import { runSourcePrefix, specSourcePrefix } from './reserved-attributes.ts';
 
 type RunFact = ExecutionStarted | ExecutionFinished;
 
@@ -27,23 +28,9 @@ const runFactTypes: readonly RunFact['type'][] = [
   'execution_failed',
 ];
 
-const specFactTypes: readonly SpecEvent['type'][] = ['spec_created', 'spec_updated', 'spec_retired'];
+const decodeExecutionEvent = Schema.decodeUnknownOption(Schema.toCodecJson(ExecutionEventSchema));
 
-export const reservedEventTypes: ReadonlySet<string> = new Set([...runFactTypes, ...specFactTypes]);
-
-const runSource = '/executions/';
-
-const specSource = '/specs/';
-
-export const reservedSourcePrefixes: readonly string[] = [runSource, specSource];
-
-const decodeExecutionEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ExecutionEventSchema));
-
-const decodeSpecEvent = Schema.decodeUnknownSync(Schema.toCodecJson(SpecEventSchema));
-
-export function isReservedSource(source: string): boolean {
-  return reservedSourcePrefixes.some((prefix) => source.startsWith(prefix));
-}
+const decodeSpecEvent = Schema.decodeUnknownOption(Schema.toCodecJson(SpecEventSchema));
 
 function isRunFact(event: ExecutionEvent): event is RunFact {
   return runFactTypes.some((type) => type === event.type);
@@ -51,7 +38,7 @@ function isRunFact(event: ExecutionEvent): event is RunFact {
 
 function withOutput(fact: CloudEvent, data: RunData, output: Schema.Json): CloudEvent {
   const whole = { ...fact, data: { ...data, output } };
-  return jsonBytesOf(whole) <= mostPublishedEventBytes
+  return jsonBytesOf(whole) <= mostPublishedEventBytes && nestsWithin(whole.data, mostEventDataDepth)
     ? whole
     : { ...fact, data: { ...data, output_bytes: jsonBytesOf(output) } };
 }
@@ -62,7 +49,7 @@ function runFactOf(id: string, execution: string, event: RunFact): CloudEvent {
   const fact = {
     specversion: '1.0',
     id,
-    source: `${runSource}${execution}`,
+    source: `${runSourcePrefix}${execution}`,
     type: event.type,
     subject: `${primitive}/${name}`,
     time,
@@ -76,7 +63,7 @@ function specFactOf(id: string, primitive: string, event: SpecEvent): CloudEvent
   return {
     specversion: '1.0',
     id,
-    source: `${specSource}${primitive}/${name}`,
+    source: `${specSourcePrefix}${primitive}/${name}`,
     type: event.type,
     time,
     data: { primitive, name, ...(event.type === 'spec_retired' ? {} : { version: event.version }), caller },
@@ -87,11 +74,8 @@ export function brainFactOf({ id, stream, data }: RecordedEvent): CloudEvent | u
   const kind = streamKindOf(stream);
   const named = stream.slice(kind.length + 1);
   if (kind === 'specs') {
-    return specFactOf(id, named, decodeSpecEvent(data));
+    return Option.getOrUndefined(Option.map(decodeSpecEvent(data), (event) => specFactOf(id, named, event)));
   }
-  if (kind !== 'executions') {
-    return undefined;
-  }
-  const event = decodeExecutionEvent(data);
-  return isRunFact(event) ? runFactOf(id, named, event) : undefined;
+  const runFact = kind === 'executions' ? Option.filter(decodeExecutionEvent(data), isRunFact) : Option.none();
+  return Option.getOrUndefined(Option.map(runFact, (event) => runFactOf(id, named, event)));
 }

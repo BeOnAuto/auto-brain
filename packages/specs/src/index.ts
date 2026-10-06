@@ -6,6 +6,7 @@ export {
   definePrimitive,
   type Executed,
   type RunContext,
+  type RunLineage,
   type Finished,
   type FinishesLater,
   type PreparedDefinition,
@@ -39,11 +40,25 @@ export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
-export { brainFactOf, isReservedSource, reservedEventTypes, reservedSourcePrefixes } from './events/brain-facts.ts';
-export { CloudEventSchema, mostPublishedEventBytes, type CloudEvent } from './events/cloud-event.ts';
+export { brainFactOf } from './events/brain-facts.ts';
+export {
+  isReservedSource,
+  refusingTheBrainsOwnAttributes,
+  reservedEventTypes,
+  reservedSourcePrefixes,
+} from './events/reserved-attributes.ts';
+export {
+  CloudEventSchema,
+  EventSourceSchema,
+  mostEventDataDepth,
+  refusingBlankText,
+  refusingForbiddenCharacters,
+  mostPublishedEventBytes,
+  type CloudEvent,
+} from './events/cloud-event.ts';
 export { publishEvent } from './events/publish-event.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
-export { mostInputBytes, mostResultBytes } from './execution/recorded-size.ts';
+export { mostInputBytes, mostInputDepth, mostResultBytes } from './execution/recorded-size.ts';
 export {
   ListedDefinitionSchema,
   DefinitionSchema,
@@ -57,6 +72,8 @@ export {
   type Definition,
 } from './registry/spec.ts';
 export { makeSpecOperations, type BrainOperation } from './operations/spec-operations.ts';
+export { defineGetBrainAnalytics } from './analytics/get-brain-analytics.ts';
+export { runOutcomeMapping } from './analytics/run-outcome-mapping.ts';
 export {
   definitionResourceLabel,
   functionCategoryLabels,
