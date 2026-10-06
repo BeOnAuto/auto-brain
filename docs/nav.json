@@ -75,6 +75,10 @@
         "link": "/reference/computation-format"
       },
       {
+        "text": "Recall function format",
+        "link": "/reference/recall-format"
+      },
+      {
         "text": "Workflow format",
         "link": "/reference/workflow-format"
       },

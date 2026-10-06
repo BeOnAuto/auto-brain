@@ -13,12 +13,12 @@ The source-available runtime is in early development and is not ready for produc
 | Reasoning   | A reasoning function    | Available                          |
 | Interaction | An interaction function | Planned                            |
 | Prediction  | A prediction function   | Planned                            |
-| Recall      | A recall function       | Planned                            |
+| Recall      | A recall function       | Available in a self-hosted runtime |
 | Computation | A computation function  | Available in a self-hosted runtime |
 
 Workflows are available and coordinate the functions above. They are not another function type.
 
-Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`. A self-hosted runtime runs computation functions too, and its `create_spec` accepts the primitive `computation`; Auto Cloud does not offer them yet.
+Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`. A self-hosted runtime runs computation and recall functions too, and its `create_spec` accepts the primitives `computation` and `recollection`; Auto Cloud does not offer them yet.
 
 Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
 
@@ -49,6 +49,10 @@ Keep three objects distinct: the prediction function someone defines, the predic
 A recall function retrieves or reconstructs relevant information. Its sources can include recorded events, documents or other connected information. A projection derives a view from event history and is one way recall can work.
 
 Memory describes the broader retention and availability of information. Recall is the operation that obtains the relevant parts. The event ledger already stores events and run records; it is one possible source for recall.
+
+In the current runtime, a recall function keeps a view of the brain's own history. Its fold, a program in jq, folds each event its filters name into the view, such as every review a reasoning function wrote, and the runtime keeps the view as the brain records events. A run answers from the view as it stands, such as the last reviews of one campaign, within milliseconds, and says how far the view has read. A workflow can recall what the brain decided before and give it to a reasoning function as input, so the next review knows the last one. Recall over documents and other sources is not available yet.
+
+See [Recall function format](../reference/recall-format.md).
 
 ## Computation
 
