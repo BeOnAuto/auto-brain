@@ -13,6 +13,7 @@ const parts: StepParts = {
   applySpecRecord: () => Effect.void,
   unreadable: () => Effect.void,
   passedEarly: () => Effect.void,
+  registered: [],
 };
 
 const record: RecordedEvent = {
@@ -29,16 +30,23 @@ const record: RecordedEvent = {
 
 const fresh = { cursor: null, delivered: null, attempts: 0, waiting: false };
 
-function steppedPast(verdict: GateVerdict, withData: boolean) {
+function steppedPast(verdict: GateVerdict, wantsMore: boolean) {
   const gate = { verdictOn: () => Effect.succeed(verdict) };
-  return Effect.runPromise(stepOf(parts, { brainKey, gate, mode: 'signal', withData }, fresh, record));
+  const stepping = {
+    brainKey,
+    gate,
+    mode: 'signal' as const,
+    delivers: new Set<string>(),
+    wantsMore: () => Effect.succeed(wantsMore),
+  };
+  return Effect.runPromise(stepOf(parts, stepping, fresh, record));
 }
 
 describe('the step over the record of a run that passed listeners', () => {
-  it('ends a pass that read without data, so the next reads the events after it with their data', async () => {
+  it('ends a pass when its listeners want records it did not read the data of, so the next reads it', async () => {
     const passed = { cursor: 'cursor-1', delivered: null, attempts: 0, waiting: false };
 
-    expect([await steppedPast('listened', false), await steppedPast('listened', true)]).toEqual([
+    expect([await steppedPast('listened', true), await steppedPast('listened', false)]).toEqual([
       { progress: passed, end: 'more' },
       { progress: passed },
     ]);

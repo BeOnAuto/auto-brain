@@ -6,7 +6,7 @@ import type { HostDatabase } from '../database/host-database.ts';
 import {
   DeliveryFailed,
   deliverySweeps,
-  type Consumer,
+  type RecordConsumer,
   type Delivery,
   type FollowedRecord,
 } from '../follower/consumers.ts';
@@ -83,7 +83,7 @@ function offerOf(parts: OfferParts, row: MatchedListener, followed: FollowedReco
   };
 }
 
-export function listenerOffers(parts: OfferParts): Consumer {
+export function listenerOffers(parts: OfferParts): RecordConsumer {
   return {
     name: 'listener_offers',
     skippedAfterSweeps: deliverySweeps,

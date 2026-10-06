@@ -2,7 +2,7 @@ import { describeError, matchEvent } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { deliverySweeps, type Consumer, type Delivery, type FollowedRecord } from '../follower/consumers.ts';
+import { deliverySweeps, type RecordConsumer, type Delivery, type FollowedRecord } from '../follower/consumers.ts';
 import { reactionExecutionIdOf } from './reaction-ids.ts';
 import type { RefuseReaction } from './refusals.ts';
 import type { WorkflowOfRun } from './run-workflows.ts';
@@ -64,7 +64,7 @@ function startOf(parts: StartParts, subscription: EventSubscription, followed: F
   };
 }
 
-export function subscriptionStarts(parts: StartParts): Consumer {
+export function subscriptionStarts(parts: StartParts): RecordConsumer {
   const reported = new Set<string>();
   const reportedOnce = (brainKey: string, { workflow, version }: EventSubscription, error: string) => {
     const key = JSON.stringify([brainKey, workflow, version]);

@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
-import { DeliveryFailed, type Consumer, type Delivery } from './consumers.ts';
+import { DeliveryFailed, type RecordConsumer, type Delivery } from './consumers.ts';
 import { deliveredAll } from './delivery-loop.ts';
 import type { Progress } from './followed-brains.ts';
 
@@ -11,7 +11,7 @@ const followed = followedRecordOf(null);
 const fresh: Progress = { cursor: null, delivered: null, attempts: 0, waiting: false };
 
 interface Counted {
-  readonly consumer: Consumer;
+  readonly consumer: RecordConsumer;
   readonly delivered: () => readonly string[];
   readonly skipped: () => readonly string[];
 }

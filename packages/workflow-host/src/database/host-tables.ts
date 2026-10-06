@@ -58,6 +58,12 @@ const followerTables: readonly Statement[] = [
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_subscriptions_due ON workflow_subscriptions (next_due)
     WHERE next_due IS NOT NULL`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_subscription_types (
+    brain_key TEXT NOT NULL,
+    workflow TEXT NOT NULL,
+    type TEXT NOT NULL,
+    PRIMARY KEY (brain_key, workflow, type)
+  )`,
   statement`CREATE TABLE IF NOT EXISTS workflow_reaction_rates (
     brain_key TEXT NOT NULL,
     workflow TEXT NOT NULL,

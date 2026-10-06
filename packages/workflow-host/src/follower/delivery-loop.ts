@@ -1,6 +1,6 @@
 import { Effect, Result, Schema } from 'effect';
 
-import { deliveriesOfARecordInAPass, type Consumer, type Delivery, type FollowedRecord } from './consumers.ts';
+import { deliveriesOfARecordInAPass, type RecordConsumer, type Delivery, type FollowedRecord } from './consumers.ts';
 import type { Progress } from './followed-brains.ts';
 
 export type Mode = 'signal' | 'sweep';
@@ -17,7 +17,7 @@ interface Resumption {
 
 const MarkerSchema = Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String]));
 
-function resumptionOf(consumers: readonly Consumer[], delivered: string | null): Resumption {
+function resumptionOf(consumers: readonly RecordConsumer[], delivered: string | null): Resumption {
   if (delivered === null) {
     return { first: 0, after: undefined };
   }
@@ -42,7 +42,7 @@ interface Delivering {
 
 function deliveredOne(
   { followed, mode }: Delivering,
-  consumer: Consumer,
+  consumer: RecordConsumer,
   delivery: Delivery,
   progress: Progress,
 ): Effect.Effect<Delivered> {
@@ -62,7 +62,7 @@ function deliveredOne(
 
 function deliveredByConsumer(
   delivering: Delivering,
-  consumer: Consumer,
+  consumer: RecordConsumer,
   start: { readonly progress: Progress; readonly after: string | undefined; readonly budget: number },
 ): Effect.Effect<Delivered & { readonly budget: number }> {
   return Effect.gen(function* () {
@@ -95,7 +95,7 @@ interface DeliveredAll extends Delivered {
 }
 
 export function deliveredAll(
-  consumers: readonly Consumer[],
+  consumers: readonly RecordConsumer[],
   followed: FollowedRecord,
   progress: Progress,
   mode: Mode,

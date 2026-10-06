@@ -77,7 +77,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
     applySpecRecord: specRecordsOn(opened, triggerOfSource),
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
-    readsEveryRecord: false,
+    registered: [],
   });
   const sweeps = brainSweepsOn(opened.store, followed);
   await Effect.runPromise(sweeps.started());

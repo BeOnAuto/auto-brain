@@ -33,9 +33,9 @@ function countedRecords(pageAt: (read: number) => Effect.Effect<readonly Recorde
   const reads: boolean[] = [];
   return {
     records: {
-      after: (_brain, _cursor, withData) =>
+      after: (_brain, _cursor, delivers) =>
         Effect.suspend(() => {
-          reads.push(withData);
+          reads.push(delivers.size > 0);
           return Effect.map(pageAt(reads.length), (records) => ({ records, hasMore: true, nextCursor: null }));
         }),
     },
@@ -54,7 +54,7 @@ function listening(database: HostDatabase, armedBy: number) {
     brainKey,
     streamId: `${brainKey}runs/r-1`,
     armedBy,
-    filters: '[]',
+    filters: '[{"type":"com.acme.noted"}]',
     workflow: 'wait',
     passed: false,
   });
@@ -72,13 +72,13 @@ async function passing(counted: CountedRecords) {
     applySpecRecord: () => Effect.void,
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
-    readsEveryRecord: false,
+    registered: [],
   });
   return { database: opened, brains, pass };
 }
 
 describe('the data of the records a pass reads', () => {
-  it('is read again with it, after a glance without it, while a run of the brain listens for events', async () => {
+  it('is read again with it, after a glance without it, while a run of the brain listens for a type of event', async () => {
     const counted = endlessNotes();
     const { database, brains, pass } = await passing(counted);
     await Effect.runPromise(brains.follow(brainKey, null));

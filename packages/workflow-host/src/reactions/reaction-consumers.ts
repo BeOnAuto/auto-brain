@@ -1,4 +1,4 @@
-import type { Consumer } from '../follower/consumers.ts';
+import type { RecordConsumer } from '../follower/consumers.ts';
 import type { FollowerHost } from '../follower/follower-host.ts';
 import { addressOfRun } from '../runs/run-address.ts';
 import { listenerOffers } from './listener-offers.ts';
@@ -17,7 +17,7 @@ export function reactionConsumersOf(
   host: FollowerHost,
   { options, refusals }: ReactionUse,
   starting: Starting,
-): readonly Consumer[] {
+): readonly RecordConsumer[] {
   const { database, clock, reports } = host;
   const offers = listenerOffers({
     database,

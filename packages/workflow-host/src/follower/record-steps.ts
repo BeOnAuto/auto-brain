@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 
 import type { ApplySpecRecord } from '../reactions/spec-records.ts';
 import { relativeRecord } from './brain-records.ts';
-import type { Consumer, FollowedRecord } from './consumers.ts';
+import type { Consumer, FollowedRecord, RecordConsumer } from './consumers.ts';
 import { deliverySweeps } from './consumers.ts';
 import { deliveredAll, type Mode } from './delivery-loop.ts';
 import type { Progress } from './followed-brains.ts';
@@ -19,7 +19,8 @@ export interface Step {
 }
 
 export interface StepParts {
-  readonly consumers: readonly Consumer[];
+  readonly consumers: readonly RecordConsumer[];
+  readonly registered: readonly Consumer[];
   readonly primitive: string;
   readonly applySpecRecord: ApplySpecRecord;
   readonly unreadable: (brainKey: string, record: RecordedEvent) => Effect.Effect<void>;
@@ -30,7 +31,8 @@ export interface Stepping {
   readonly brainKey: string;
   readonly gate: RunGate;
   readonly mode: Mode;
-  readonly withData: boolean;
+  readonly delivers: ReadonlySet<string>;
+  readonly wantsMore: () => Effect.Effect<boolean>;
 }
 
 export function brainOfKey(brainKey: string): { readonly org: string; readonly brain: string } {
@@ -52,19 +54,19 @@ function followedOf(parts: StepParts, brainKey: string, record: RecordedEvent): 
 }
 
 function runRecordStep(parts: StepParts, stepping: Stepping, progress: Progress, record: RecordedEvent) {
-  const { gate, withData, mode, brainKey } = stepping;
+  const { gate, mode, brainKey } = stepping;
   const sweeps = mode === 'sweep' ? progress.attempts + 1 : progress.attempts;
   return Effect.flatMap(gate.verdictOn(record, mode === 'sweep' && sweeps >= deliverySweeps), (verdict) => {
     if (verdict === 'held') {
       return Effect.succeed<Step>({ progress: { ...progress, attempts: sweeps, waiting: true }, end: 'waiting' });
     }
-    const passed: Step =
-      verdict === 'passed' || withData
-        ? { progress: passedOver(record) }
-        : { progress: passedOver(record), end: 'more' };
-    return verdict === 'overdue'
-      ? Effect.as(parts.passedEarly(brainKey, record, sweeps), passed)
-      : Effect.succeed(passed);
+    const passed: Step = { progress: passedOver(record) };
+    if (verdict === 'passed') {
+      return Effect.succeed(passed);
+    }
+    const noted = verdict === 'overdue' ? parts.passedEarly(brainKey, record, sweeps) : Effect.void;
+    const ended = Effect.map(stepping.wantsMore(), (more): Step => (more ? { ...passed, end: 'more' } : passed));
+    return Effect.andThen(noted, ended);
   });
 }
 
@@ -74,7 +76,9 @@ function deliveredStep(parts: StepParts, stepping: Stepping, progress: Progress,
     if (followed === null) {
       return { progress: passedOver(record) };
     }
-    const { made, ...delivered } = yield* deliveredAll(parts.consumers, followed, progress, stepping.mode);
+    const wanting = parts.registered.filter(({ types }) => types.includes(followed.event.event.type));
+    const consumers = [...parts.consumers, ...wanting];
+    const { made, ...delivered } = yield* deliveredAll(consumers, followed, progress, stepping.mode);
     return delivered.end === undefined
       ? { progress: passedOver(record), delivered: made }
       : { ...delivered, delivered: made };
@@ -87,15 +91,19 @@ export function stepOf(
   progress: Progress,
   record: RecordedEvent,
 ): Effect.Effect<Step> {
-  const { brainKey, withData } = stepping;
+  const { brainKey, delivers } = stepping;
   if (streamKindOf(record.stream.slice(brainKey.length)) === 'runs') {
     return runRecordStep(parts, stepping, progress, record);
   }
+  const step: Effect.Effect<Step> = delivers.has(record.type)
+    ? deliveredStep(parts, stepping, progress, record)
+    : Effect.succeed({ progress: passedOver(record) });
   if (record.stream === `${brainKey}specs/${parts.primitive}`) {
-    const afterSpec: Effect.Effect<Step> = withData
-      ? deliveredStep(parts, stepping, progress, record)
-      : Effect.succeed({ progress: passedOver(record), end: 'more' });
-    return Effect.andThen(parts.applySpecRecord(brainKey, record.data), afterSpec);
+    const readAgain: Effect.Effect<Step> = Effect.succeed({ progress, end: 'more' });
+    return Effect.andThen(
+      parts.applySpecRecord(brainKey, record.data),
+      Effect.flatMap(stepping.wantsMore(), (more) => (more ? readAgain : step)),
+    );
   }
-  return withData ? deliveredStep(parts, stepping, progress, record) : Effect.succeed({ progress: passedOver(record) });
+  return step;
 }

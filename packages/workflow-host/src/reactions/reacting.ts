@@ -1,6 +1,6 @@
 import { Effect } from 'effect';
 
-import type { Consumer } from '../follower/consumers.ts';
+import type { RecordConsumer } from '../follower/consumers.ts';
 import type { FollowerHost } from '../follower/follower-host.ts';
 import type { Upkeep } from '../follower/follower-loop.ts';
 import { scheduleFiringOn } from '../schedules/schedule-firing.ts';
@@ -9,7 +9,7 @@ import { specRecordsOn, type ApplySpecRecord } from './spec-records.ts';
 import { startingOn } from './start-rates.ts';
 
 export interface Reacting {
-  readonly consumers: readonly Consumer[];
+  readonly consumers: readonly RecordConsumer[];
   readonly applySpecRecord: ApplySpecRecord;
   readonly upkeep: Upkeep;
 }

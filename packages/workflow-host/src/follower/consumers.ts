@@ -24,11 +24,15 @@ interface Batch {
   readonly more: boolean;
 }
 
-export interface Consumer {
+export interface RecordConsumer {
   readonly name: string;
   readonly skippedAfterSweeps: number;
   readonly batchOf: (followed: FollowedRecord, after: string | undefined, most: number) => Effect.Effect<Batch>;
   readonly skipped: (followed: FollowedRecord, delivery: Delivery, detail: string) => Effect.Effect<void>;
+}
+
+export interface Consumer extends RecordConsumer {
+  readonly types: readonly string[];
 }
 
 export const deliveriesOfARecordInAPass = 100;

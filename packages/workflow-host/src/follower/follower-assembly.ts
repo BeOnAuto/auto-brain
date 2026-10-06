@@ -13,7 +13,7 @@ export interface FollowerAssembly extends ReactionUse {
   readonly records: BrainRecords;
   readonly appended: FollowerParts['appended'];
   readonly pace: FollowerParts['pace'];
-  readonly consumers: PassParts['consumers'];
+  readonly consumers: PassParts['registered'];
 }
 
 export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Follower {
@@ -24,8 +24,8 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     database,
     records: assembly.records,
     brains,
-    consumers: [...reacting.consumers, ...assembly.consumers],
-    readsEveryRecord: assembly.consumers.length > 0,
+    consumers: reacting.consumers,
+    registered: assembly.consumers,
     primitive: assembly.options.primitive,
     applySpecRecord: reacting.applySpecRecord,
     unreadable: (brainKey, record) =>

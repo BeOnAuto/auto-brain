@@ -43,6 +43,25 @@ const EventSubscriptionRow = Schema.Struct({
   rule: Schema.fromJsonString(EventsTriggerSchema),
 });
 
+function typesKept(database: HostDatabase, brainKey: string, workflow: string, types: readonly string[]) {
+  return Effect.orDie(
+    Effect.andThen(
+      database.write(
+        statement`DELETE FROM workflow_subscription_types WHERE brain_key = ${brainKey} AND workflow = ${workflow}`,
+      ),
+      Effect.forEach(
+        [...new Set(types)],
+        (type) =>
+          database.write(
+            statement`INSERT INTO workflow_subscription_types (brain_key, workflow, type)
+              VALUES (${brainKey}, ${workflow}, ${type}) ON CONFLICT DO NOTHING`,
+          ),
+        { discard: true },
+      ),
+    ),
+  );
+}
+
 function firstDueOf(trigger: Trigger, activatedAt: number): number | null {
   return trigger.kind === 'events' ? null : nextAfter(trigger, activatedAt, activatedAt);
 }
@@ -50,7 +69,8 @@ function firstDueOf(trigger: Trigger, activatedAt: number): number | null {
 export function activated(database: HostDatabase, brainKey: string, activation: Activation, trigger: Trigger) {
   const activatedAt = Date.parse(activation.at);
   const rule = JSON.stringify(trigger);
-  return Effect.asVoid(
+  const types = trigger.kind === 'events' ? trigger.filters.map(({ type }) => type) : [];
+  const kept = Effect.asVoid(
     Effect.orDie(
       database.write(
         statement`INSERT INTO workflow_subscriptions (brain_key, workflow, version, kind, rule, activated_at, next_due, running)
@@ -62,6 +82,7 @@ export function activated(database: HostDatabase, brainKey: string, activation: 
       ),
     ),
   );
+  return Effect.andThen(kept, typesKept(database, brainKey, activation.name, types));
 }
 
 export function deactivated(database: HostDatabase, brainKey: string, workflow: string) {
@@ -71,7 +92,7 @@ export function deactivated(database: HostDatabase, brainKey: string, workflow: 
         statement`DELETE FROM workflow_subscriptions WHERE brain_key = ${brainKey} AND workflow = ${workflow}`,
       ),
     ),
-  );
+  ).pipe(Effect.andThen(typesKept(database, brainKey, workflow, [])));
 }
 
 export function eventSubscriptionsOf(
@@ -93,15 +114,16 @@ export function eventSubscriptionsOf(
   );
 }
 
-export function reactsInBrain(database: HostDatabase, brainKey: string): Effect.Effect<boolean> {
-  return Effect.map(
-    Effect.orDie(
+const TypeRow = Schema.Struct({ type: Schema.String });
+
+export function wantedTypesIn(database: HostDatabase, brainKey: string): Effect.Effect<readonly string[]> {
+  return Effect.orDie(
+    rowsOf(
+      TypeRow,
       database.read(
-        statement`SELECT 1 AS reacts FROM workflow_subscriptions WHERE brain_key = ${brainKey} AND kind = 'events'
-          UNION ALL SELECT 1 AS reacts FROM workflow_listeners WHERE brain_key = ${brainKey}
-          LIMIT 1`,
+        statement`SELECT type FROM workflow_subscription_types WHERE brain_key = ${brainKey}
+          UNION SELECT type FROM workflow_listener_types WHERE brain_key = ${brainKey}`,
       ),
     ),
-    (rows) => rows.length > 0,
-  );
+  ).pipe(Effect.map((rows) => rows.map(({ type }) => type)));
 }

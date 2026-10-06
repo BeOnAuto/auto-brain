@@ -37,6 +37,7 @@ describe('the host database on SQLite', () => {
         'workflow_runs',
         'workflow_settlements',
         'workflow_snapshot_chunks',
+        'workflow_subscription_types',
         'workflow_subscriptions',
         'workflow_timers',
       ].map((name) => ({ name })),
@@ -65,7 +66,7 @@ describe('the host database on SQLite, in memory or refusing', () => {
   it('opens a private database in memory', async () => {
     const database = await openedOn({ store: 'sqlite', file: ':memory:' });
 
-    expect(await Effect.runPromise(database.read(tablesOfTheHost))).toHaveLength(17);
+    expect(await Effect.runPromise(database.read(tablesOfTheHost))).toHaveLength(18);
   });
 
   it('fails a statement the database refuses with the error of the driver', async () => {
