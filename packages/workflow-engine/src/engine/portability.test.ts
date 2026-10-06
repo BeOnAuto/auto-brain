@@ -113,7 +113,11 @@ function caught(text: string, forbidden: readonly Forbidden[]): readonly string[
 
 const everySource = sourcesUnder('.');
 
-const machineAndRunLog = ['machine', 'runner', 'tasks', 'decider', 'run-log', 'dsl'].flatMap((folder) =>
+const nodeHosted = ['dsl.ts', 'program-pool/'];
+
+const portableSources = everySource.filter((file) => !nodeHosted.some((hosted) => file.startsWith(hosted)));
+
+const machineAndRunLog = ['machine', 'runner', 'tasks', 'decider', 'run-log', 'dsl', 'programs'].flatMap((folder) =>
   sourcesUnder(folder),
 );
 
@@ -153,10 +157,31 @@ describe('the testing entry', () => {
   });
 });
 
+describe('the entries of the engine', () => {
+  it('reach the worker pool only through the dsl subpath, so the main and testing entries stay portable', () => {
+    const dslEntry = reachableFrom('dsl.ts');
+
+    expect(dslEntry).toContain('program-pool/program-pool.ts');
+    expect(dslEntry).toContain('programs/program-compiling.ts');
+    for (const entry of ['index.ts', 'testing/index.ts']) {
+      expect(reachableFrom(entry).filter((file) => nodeHosted.some((hosted) => file.startsWith(hosted)))).toEqual([]);
+    }
+  });
+});
+
 describe('the engine core', () => {
   it('uses no Node-only API, no dynamic import, no code generation and no Temporal', () => {
-    expect(everySource.length).toBeGreaterThan(20);
-    expect(findingsIn(everySource, nodeOnly)).toEqual([]);
+    expect(portableSources.length).toBeGreaterThan(20);
+    expect(findingsIn(portableSources, nodeOnly)).toEqual([]);
+  });
+
+  it('leaves Node and its worker threads to the worker pool, which no code of the machine imports', () => {
+    expect(findingsIn(sourcesUnder('program-pool'), nodeOnly).toSorted()).toEqual([
+      'program-pool/pool-slots.ts: a host timer',
+      'program-pool/program-pool.ts: a host timer',
+      'program-pool/program-pool.ts: a node: module',
+      'program-pool/program-worker.ts: a node: module',
+    ]);
   });
 
   it('keeps no module-level cache that could grow with the history of a run: a collection built empty at module level is one; a constant collection of literals is not, nor a WeakMap, whose entries go with the values they describe', () => {

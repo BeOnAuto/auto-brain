@@ -203,7 +203,7 @@ catalogs:
       version: 5.0.2
 
 patchedDependencies:
-  '@gabrielbryk/jq-ts@1.7.0': aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa
+  '@gabrielbryk/jq-ts@1.7.0': 7e0039f54a7bfbae0c9bacb28ac3c41003710f8861384f440b851f6f2536bb57
 
 importers:
 
@@ -490,6 +490,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
     devDependencies:
       '@beonauto/brains':
         specifier: workspace:*
@@ -511,7 +514,7 @@ importers:
         version: link:../operations
       '@gabrielbryk/jq-ts':
         specifier: 1.7.0
-        version: 1.7.0(patch_hash=aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa)(typescript@7.0.2)
+        version: 1.7.0(patch_hash=7e0039f54a7bfbae0c9bacb28ac3c41003710f8861384f440b851f6f2536bb57)(typescript@7.0.2)
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -616,9 +619,6 @@ importers:
       liquidjs:
         specifier: 10.29.0
         version: 10.29.0
-      yaml:
-        specifier: 2.9.1
-        version: 2.9.1
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -5772,7 +5772,7 @@ snapshots:
       - snappy
       - socks
 
-  '@gabrielbryk/jq-ts@1.7.0(patch_hash=aa94867c12b4a398cc566155c92103ccf270b90287445417c6045d68b3e8fbfa)(typescript@7.0.2)':
+  '@gabrielbryk/jq-ts@1.7.0(patch_hash=7e0039f54a7bfbae0c9bacb28ac3c41003710f8861384f440b851f6f2536bb57)(typescript@7.0.2)':
     dependencies:
       typescript: 7.0.2
 

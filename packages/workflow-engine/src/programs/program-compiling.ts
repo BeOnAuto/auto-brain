@@ -1,0 +1,50 @@
+import { parse, runAst, validate } from '@gabrielbryk/jq-ts';
+
+import type { Json } from '../dsl/json.ts';
+import { dialectIssues, type Dialect } from './program-dialect.ts';
+import {
+  evalOptionsOf,
+  failureOf,
+  outcomeOf,
+  toValue,
+  type ProgramOptions,
+  type ProgramRun,
+} from './program-running.ts';
+import { issueOf, type ProgramIssue } from './program-tree.ts';
+
+export interface Program {
+  readonly run: (input: Json, options: ProgramOptions) => ProgramRun;
+}
+
+export type ProgramIssues = readonly [ProgramIssue, ...ProgramIssue[]];
+
+export type CompiledProgram = { readonly program: Program } | { readonly issues: ProgramIssues };
+
+export function compileProgram(source: string, dialect: Dialect): CompiledProgram {
+  try {
+    const tree = parse(source);
+    const [refused, ...more] = dialectIssues(tree, dialect);
+    if (refused !== undefined) {
+      return { issues: [refused, ...more] };
+    }
+    validate(tree);
+    return {
+      program: {
+        run: (input, options) => {
+          const usage = { work: 0 };
+          try {
+            return outcomeOf(runAst(tree, toValue(input), { ...evalOptionsOf(options), usage }), usage.work, options);
+          } catch (error) {
+            return failureOf(error, usage.work);
+          }
+        },
+      },
+    };
+  } catch (error) {
+    return { issues: [issueOf(error)] };
+  }
+}
+
+export function lineOf(source: string, offset: number): number {
+  return source.slice(0, offset).split('\n').length;
+}

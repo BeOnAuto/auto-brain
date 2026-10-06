@@ -1,13 +1,15 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
+index 6436192a5026180921d1fae160fe8bea2514abf7..f11634b548b0ca4dff263f8a42dc8bf209aeb92a 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
-@@ -81,7 +81,102 @@
+@@ -81,7 +81,123 @@ const resolveClock = (now) => new Clock(now === void 0 ? void 0 : now instanceof
  const DEFAULT_LIMITS = {
  	maxSteps: 1e5,
  	maxDepth: 200,
 -	maxOutputs: 1e4
 +	maxOutputs: 1e4,
-+	maxWork: Infinity
++	maxWork: Infinity,
++	maxValueDepth: Infinity
 +};
 +const unspanned = {
 +	start: 0,
@@ -60,6 +62,26 @@ diff --git a/dist/index.cjs b/dist/index.cjs
 +	if (value !== null && typeof value === "object") return (Object.keys(value).length + 1) * ENTRY_WORK;
 +	return ITEM_WORK;
 +};
++const knownDepths = /* @__PURE__ */ new WeakMap();
++/**
++* How deep a value nests: 0 for a scalar, one more than its deepest member for an array or an object.
++* It looks at most `room` levels down and answers Infinity for a value that nests deeper, so a value
++* of any depth is measured without deep recursion; the depths it finds are kept with the values.
++*/
++const depthWithin = (value, room) => {
++	if (value === null || typeof value !== "object") return 0;
++	const known = knownDepths.get(value);
++	if (known !== void 0) return known;
++	if (room === 0) return Infinity;
++	let deepest = 0;
++	for (const member of Array.isArray(value) ? value : Object.values(value)) {
++		const depth = depthWithin(member, room - 1);
++		if (depth === Infinity) return Infinity;
++		if (depth > deepest) deepest = depth;
++	}
++	knownDepths.set(value, deepest + 1);
++	return deepest + 1;
++};
 +let activeTracker;
 +/** Charges work to the evaluation running now, if any. */
 +const charge = (units, span = unspanned) => {
@@ -105,17 +127,18 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  };
  /**
  * Resolves a partial limits configuration into a complete one with defaults.
-@@ -92,7 +187,8 @@
+@@ -92,7 +208,9 @@ const DEFAULT_LIMITS = {
  const resolveLimits = (config = {}) => ({
  	maxSteps: config.maxSteps ?? DEFAULT_LIMITS.maxSteps,
  	maxDepth: config.maxDepth ?? DEFAULT_LIMITS.maxDepth,
 -	maxOutputs: config.maxOutputs ?? DEFAULT_LIMITS.maxOutputs
 +	maxOutputs: config.maxOutputs ?? DEFAULT_LIMITS.maxOutputs,
-+	maxWork: config.maxWork ?? DEFAULT_LIMITS.maxWork
++	maxWork: config.maxWork ?? DEFAULT_LIMITS.maxWork,
++	maxValueDepth: config.maxValueDepth ?? DEFAULT_LIMITS.maxValueDepth
  });
  /**
  * Tracks execution usage against defined limits.
-@@ -102,15 +198,21 @@
+@@ -102,15 +220,21 @@ var LimitTracker = class {
  	steps = 0;
  	depth = 0;
  	outputs = 0;
@@ -138,7 +161,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	}
  	/**
  	* Records a single execution step (AST node visit).
-@@ -119,6 +221,7 @@
+@@ -119,6 +243,7 @@ var LimitTracker = class {
  	step(span) {
  		this.steps += 1;
  		if (this.steps > this.limits.maxSteps) throw new RuntimeError("Step limit exceeded", span);
@@ -146,10 +169,38 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	}
  	/**
  	* Enters a new scope/stack frame, incrementing the depth counter.
-@@ -142,6 +245,22 @@
+@@ -135,12 +260,47 @@ var LimitTracker = class {
+ 		this.depth = Math.max(0, this.depth - 1);
+ 	}
+ 	/**
+-	* Records an output value being emitted.
++	* Records an output value being emitted, and admits the value.
+ 	* @param span - The source span for error reporting.
++	* @param value - The value emitted.
+ 	*/
+-	emit(span) {
++	emit(span, value) {
  		this.outputs += 1;
  		if (this.outputs > this.limits.maxOutputs) throw new RuntimeError("Output limit exceeded", span);
- 	}
++		this.admit(value, span);
++	}
++	/**
++	* Admits a value the evaluation built or passed on, unless it nests deeper than the most a value may.
++	* A value too deep throws an error that `try` does not catch, so the evaluation ends.
++	* @param value - The value.
++	* @param span - The source span for error reporting.
++	*/
++	admit(value, span) {
++		if (this.limits.maxValueDepth !== Infinity && depthWithin(value, this.limits.maxValueDepth) > this.limits.maxValueDepth) throw new BaseError("limit", "Value depth limit exceeded", span);
++	}
++	/**
++	* Admits a path of a given length to update, unless it reaches deeper than the most a value may nest.
++	* @param length - The length of the path.
++	* @param span - The source span for error reporting.
++	*/
++	admitPath(length, span) {
++		if (length > this.limits.maxValueDepth) throw new BaseError("limit", "Value depth limit exceeded", span);
++	}
 +	/**
 +	* Records work proportional to the size of the values an operation builds or visits.
 +	* Exceeding the limit throws an error that `try` does not catch, so the evaluation ends.
@@ -165,11 +216,10 @@ diff --git a/dist/index.cjs b/dist/index.cjs
 +			this.nextClockReading = this.work + CLOCK_READING_WORK;
 +			if (!(this.deadline.clock() < this.deadline.at)) throw new BaseError("limit", "Deadline exceeded", span);
 +		}
-+	}
+ 	}
  };
  //#endregion
- //#region src/value.ts
-@@ -163,6 +282,7 @@
+@@ -163,6 +323,7 @@ const isTruthy = (value) => !(value === false || value === null);
  * @returns `true` if the values are structurally equal, `false` otherwise.
  */
  const valueEquals = (a, b) => {
@@ -177,7 +227,16 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	if (Object.is(a, b)) return true;
  	if (typeof a !== typeof b) return false;
  	if (typeof a === "number" && typeof b === "number") return Object.is(a, b);
-@@ -344,6 +464,7 @@
+@@ -276,7 +437,7 @@ const describeType = (value) => {
+ * @returns The value itself.
+ */
+ const emit$1 = (value, span, tracker) => {
+-	tracker.emit(span);
++	tracker.emit(span, value);
+ 	return value;
+ };
+ /**
+@@ -344,6 +505,7 @@ function* indexArray(container, indexValues, node, tracker) {
  function* indexObject(container, indexValues, node, tracker) {
  	for (const keyValue of indexValues) {
  		if (typeof keyValue !== "string") throw new RuntimeError(`Cannot index object with ${describeType(keyValue)}`, node.span);
@@ -185,7 +244,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		yield emit$1(Object.prototype.hasOwnProperty.call(container, keyValue) ? container[keyValue] : null, node.span, tracker);
  	}
  }
-@@ -408,7 +529,11 @@
+@@ -408,7 +570,11 @@ const evalSlice = function* (node, input, env, tracker, evaluate) {
  		if (typeof target !== "string" && !Array.isArray(target)) throw new RuntimeError("Slice expected string or array", node.span);
  		const starts = resolveSliceBounds(node.start, 0, "start", node, input, env, tracker, evaluate);
  		const ends = resolveSliceBounds(node.end, target.length, "end", node, input, env, tracker, evaluate);
@@ -198,7 +257,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	}
  };
  //#endregion
-@@ -431,6 +556,7 @@
+@@ -431,6 +597,7 @@ const deleteFromObject = (root, paths, span) => {
  	const byKey = {};
  	for (const p of relevantPaths) {
  		const key = p[0];
@@ -206,7 +265,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		if (!byKey[key]) byKey[key] = [];
  		byKey[key].push(p.slice(1));
  	}
-@@ -463,6 +589,7 @@
+@@ -463,6 +630,7 @@ const deleteFromArray = (root, paths, span) => {
  /** Returns a copy of `root` with all of the given paths removed. */
  const deletePaths = (root, paths, span) => {
  	if (paths.some((p) => p.length === 0)) return null;
@@ -214,7 +273,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	if (isPlainObject(root)) return deleteFromObject(root, paths, span);
  	if (Array.isArray(root)) return deleteFromArray(root, paths, span);
  	return root;
-@@ -479,6 +606,7 @@
+@@ -479,6 +647,7 @@ const getPath = (root, path, span = DUMMY_SPAN) => {
  	for (const part of path) {
  		if (curr === null) return void 0;
  		if (typeof part === "string" && isPlainObject(curr)) {
@@ -222,7 +281,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			if (!Object.prototype.hasOwnProperty.call(curr, part)) return void 0;
  			curr = objValue$1(curr, part);
  		} else if (typeof part === "number" && Array.isArray(curr)) {
-@@ -495,6 +623,7 @@
+@@ -495,6 +664,7 @@ const getPath = (root, path, span = DUMMY_SPAN) => {
  /** Applies a slice-assignment segment `{ start, end }`, replacing the range with the RHS array. */
  const updateSliceSegment = (root, head, updateFn, span) => {
  	if (!Array.isArray(root)) throw new RuntimeError(`Cannot slice ${describeType(root)}`, span);
@@ -230,7 +289,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	const arr = [...root];
  	const start = head.start ?? 0;
  	const end = head.end ?? arr.length;
-@@ -506,6 +635,7 @@
+@@ -506,6 +676,7 @@ const updateSliceSegment = (root, head, updateFn, span) => {
  //#endregion
  //#region src/path/update.ts
  const updateObjectSegment = (root, head, tail, updateFn, span, depth) => {
@@ -238,7 +297,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	let obj = {};
  	if (isPlainObject(root)) obj = { ...root };
  	else if (root === null) obj = {};
-@@ -516,6 +646,7 @@
+@@ -516,6 +687,7 @@ const updateObjectSegment = (root, head, tail, updateFn, span, depth) => {
  	return obj;
  };
  const updateArraySegment = (root, head, tail, updateFn, span, depth) => {
@@ -246,7 +305,24 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	let arr = [];
  	if (Array.isArray(root)) arr = [...root];
  	else if (root === null) arr = [];
-@@ -558,13 +689,17 @@
+@@ -531,6 +703,7 @@ const updateArraySegment = (root, head, tail, updateFn, span, depth) => {
+ };
+ /** Returns a copy of `root` with the value at `path` transformed by `updateFn`. */
+ const updatePath = (root, path, updateFn, span, depth = 0) => {
++	if (depth === 0) activeTracker?.admitPath(path.length, span);
+ 	if (path.length === 0) return updateFn(root);
+ 	const [head, ...tail] = path;
+ 	if (typeof head === "string") return updateObjectSegment(root, head, tail, updateFn, span, depth);
+@@ -541,7 +714,7 @@ const updatePath = (root, path, updateFn, span, depth = 0) => {
+ //#endregion
+ //#region src/builtins/utils.ts
+ const emit = (value, span, tracker) => {
+-	tracker.emit(span);
++	tracker.emit(span, value);
+ 	return value;
+ };
+ /**
+@@ -558,13 +731,17 @@ const ensureIndex = (val) => {
  	}
  	if (typeof val === "string" && /^-?\d+$/.test(val)) return parseInt(val, 10);
  };
@@ -267,7 +343,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  };
  //#endregion
  //#region src/eval/ops/arithmetic.ts
-@@ -580,6 +715,7 @@
+@@ -580,6 +757,7 @@ const stableStringify = (value) => {
  * @returns The combined value.
  */
  function add(left, right, span) {
@@ -275,7 +351,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	if (left === null) return right;
  	if (right === null) return left;
  	if (typeof left === "number" && typeof right === "number") return left + right;
-@@ -592,6 +728,7 @@
+@@ -592,6 +770,7 @@ function add(left, right, span) {
  	throw new RuntimeError(`Cannot add ${describeType(left)} and ${describeType(right)}`, span);
  }
  function sub(left, right, span) {
@@ -283,7 +359,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	if (typeof left === "number" && typeof right === "number") return left - right;
  	if (Array.isArray(left) && Array.isArray(right)) {
  		const toRemove = new Set(right.map(stableStringify));
-@@ -600,6 +737,7 @@
+@@ -600,6 +779,7 @@ function sub(left, right, span) {
  	throw new RuntimeError(`Cannot subtract ${describeType(right)} from ${describeType(left)}`, span);
  }
  function mul(left, right, span) {
@@ -291,7 +367,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	if (typeof left === "number" && typeof right === "number") return left * right;
  	if (typeof left === "string" && typeof right === "number") return repeatString(left, right);
  	if (typeof left === "number" && typeof right === "string") return repeatString(right, left);
-@@ -607,11 +745,15 @@
+@@ -607,11 +787,15 @@ function mul(left, right, span) {
  	throw new RuntimeError(`Cannot multiply ${describeType(left)} by ${describeType(right)}`, span);
  }
  function div(left, right, span) {
@@ -308,7 +384,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	throw new RuntimeError(`Cannot divide ${describeType(left)} by ${describeType(right)}`, span);
  }
  function mod(left, right, span) {
-@@ -625,6 +767,7 @@
+@@ -625,6 +809,7 @@ function repeatString(str, count) {
  	if (count <= 0) return null;
  	const n = Math.floor(count);
  	if (n <= 0) return null;
@@ -316,7 +392,27 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	return str.repeat(n);
  }
  function mergeDeep(target, source) {
-@@ -999,6 +1142,7 @@
+@@ -971,6 +1156,7 @@ var BreakSignal = class BreakSignal extends Error {
+ const buildArray = function* (node, input, env, tracker, evaluate) {
+ 	const result = [];
+ 	for (const itemNode of node.items) for (const itemVal of evaluate(itemNode, input, env, tracker)) result.push(itemVal);
++	tracker.admit(result, node.span);
+ 	yield result;
+ };
+ /**
+@@ -986,7 +1172,10 @@ const buildArray = function* (node, input, env, tracker, evaluate) {
+ * @param evaluate - Recursive evaluator.
+ */
+ const buildObjects = function* (node, input, env, tracker, evaluate) {
+-	yield* fillObject(node.entries, 0, {}, input, env, tracker, evaluate);
++	for (const built of fillObject(node.entries, 0, {}, input, env, tracker, evaluate)) {
++		tracker.admit(built, node.span);
++		yield built;
++	}
+ };
+ function* fillObject(entries, index, current, input, env, tracker, evaluate) {
+ 	if (index >= entries.length) {
+@@ -999,6 +1188,7 @@ function* fillObject(entries, index, current, input, env, tracker, evaluate) {
  	else if (entry.key.kind === "KeyString") keys = [entry.key.value];
  	else for (const k of evaluate(entry.key.expr, input, env, tracker)) {
  		if (typeof k !== "string") throw new RuntimeError("Object key must be a string", entry.key.span);
@@ -324,7 +420,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		keys.push(k);
  	}
  	for (const key of keys) for (const val of evaluate(entry.value, input, env, tracker)) {
-@@ -1460,6 +1604,7 @@
+@@ -1460,6 +1650,7 @@ function* evalFormat(node, input, env, tracker, evaluate) {
  		yield* evaluate(node.str, input, env, tracker);
  		return;
  	}
@@ -332,7 +428,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	yield emit$1(applyFormat(node.name, input, node.span), node.span, tracker);
  }
  //#endregion
-@@ -1551,6 +1696,7 @@
+@@ -1551,6 +1742,7 @@ const decodeEntry = (item, span) => {
  		if (keyVal !== null && keyVal !== false) break;
  	}
  	const key = typeof keyVal === "string" ? keyVal : stableStringify(keyVal);
@@ -340,7 +436,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	let value = null;
  	for (const alias of ENTRY_VALUE_ALIASES) if (Object.prototype.hasOwnProperty.call(item, alias)) {
  		value = objValue(item, alias);
-@@ -1718,6 +1864,7 @@
+@@ -1718,6 +1910,7 @@ const keyBuiltins = [
  				if (typeof key === "string") keyStr = key;
  				else if (typeof key === "number") keyStr = key.toString();
  				else throw new RuntimeError(`has() key must be string or number for object input`, span);
@@ -348,7 +444,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  				yield emit(Object.prototype.hasOwnProperty.call(input, keyStr), span, tracker);
  			} else throw new RuntimeError(`has() expects an array or object input`, span);
  		}
-@@ -1825,6 +1972,7 @@
+@@ -1825,6 +2018,7 @@ const codecBuiltins = [
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("explode expects string", span);
@@ -356,7 +452,23 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			yield emit(Array.from(input).map((c) => c.codePointAt(0)), span, tracker);
  		}
  	},
-@@ -1875,7 +2023,8 @@
+@@ -1861,11 +2055,14 @@ const codecBuiltins = [
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+ 			if (typeof input !== "string") throw new RuntimeError("fromjson expects string", span);
++			tracker.charge(input.length * ITEM_WORK, span);
++			let parsed;
+ 			try {
+-				yield emit(JSON.parse(input), span, tracker);
++				parsed = JSON.parse(input);
+ 			} catch {
+ 				throw new RuntimeError("fromjson could not parse JSON", span);
+ 			}
++			yield emit(parsed, span, tracker);
+ 		}
+ 	}
+ ];
+@@ -1875,7 +2072,8 @@ const checkContains = (a, b, tracker, span) => {
  	if (tracker && span) tracker.step(span);
  	if (a === b) return true;
  	if (typeof a !== typeof b) return false;
@@ -366,7 +478,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	if (Array.isArray(a) && Array.isArray(b)) return b.every((bItem) => a.some((aItem) => checkContains(aItem, bItem, tracker, span)));
  	if (isPlainObject(a) && isPlainObject(b)) {
  		const keys = Object.keys(b);
-@@ -1914,8 +2063,10 @@
+@@ -1914,8 +2112,10 @@ const findOne = (name, input, search, fromEnd, span) => {
  	if (Array.isArray(input)) return arrayFindIndex(input, search, fromEnd);
  	if (typeof input === "string") {
  		if (typeof search !== "string") throw new RuntimeError(`${name} expects string search when input is string`, span);
@@ -379,7 +491,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	}
  	if (input === null) return null;
  	throw new RuntimeError(`${name} expects string or array`, span);
-@@ -1937,19 +2088,7 @@
+@@ -1937,19 +2137,7 @@ const indexOfBuiltins = [{
  }];
  //#endregion
  //#region src/builtins/strings/indices.ts
@@ -400,7 +512,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  const arrayIndices = (input, search) => {
  	const indices = [];
  	if (Array.isArray(search)) {
-@@ -1991,7 +2130,8 @@
+@@ -1991,7 +2179,8 @@ const transformBuiltins$1 = [
  			const sepGen = evaluate(args[0], input, env, tracker);
  			for (const sep of sepGen) {
  				if (typeof sep !== "string") throw new RuntimeError("split separator must be a string", span);
@@ -410,7 +522,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			}
  		}
  	},
-@@ -2007,6 +2147,7 @@
+@@ -2007,6 +2196,7 @@ const transformBuiltins$1 = [
  				for (const item of input) if (item === null) parts.push("");
  				else if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") parts.push(String(item));
  				else throw new RuntimeError(`join cannot join ${describeType(item)}`, span);
@@ -418,7 +530,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  				yield emit(parts.join(sep), span, tracker);
  			}
  		}
-@@ -2016,6 +2157,7 @@
+@@ -2016,6 +2206,7 @@ const transformBuiltins$1 = [
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("ascii_downcase expects string", span);
@@ -426,7 +538,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			yield emit(input.replace(/[A-Z]/g, (char) => char.toLowerCase()), span, tracker);
  		}
  	},
-@@ -2024,6 +2166,7 @@
+@@ -2024,6 +2215,7 @@ const transformBuiltins$1 = [
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("ascii_upcase expects string", span);
@@ -434,7 +546,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			yield emit(input.replace(/[a-z]/g, (char) => char.toUpperCase()), span, tracker);
  		}
  	}
-@@ -2133,8 +2276,11 @@
+@@ -2133,8 +2325,11 @@ const shapeBuiltins = [
  				let res = [];
  				for (const item of arr) {
  					tracker.step(span);
@@ -448,7 +560,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  				}
  				return res;
  			};
-@@ -2154,8 +2300,11 @@
+@@ -2154,8 +2349,11 @@ const shapeBuiltins = [
  					let res = [];
  					for (const item of arr) {
  						tracker.step(span);
@@ -462,7 +574,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  					}
  					return res;
  				};
-@@ -2178,6 +2327,7 @@
+@@ -2178,6 +2376,7 @@ const shapeBuiltins = [
  				if (!Array.isArray(row)) throw new RuntimeError("transpose input must be array of arrays", span);
  				if (row.length > maxLen) maxLen = row.length;
  			}
@@ -470,7 +582,163 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			const result = [];
  			for (let j = 0; j < maxLen; j++) {
  				const newRow = [];
-@@ -3741,13 +3891,19 @@
+@@ -3114,6 +3313,54 @@ const limitBuiltins = [
+ ];
+ //#endregion
+ //#region src/builtins/iterators/loops.ts
++/**
++* Walks a tree of values depth first, in the order a recursive walk takes, without recursion:
++* `visit` yields what a value gives and answers an iterator of the values under it, or nothing.
++* The iterators being walked wait on a stack of their own, and the evaluation depth an iterator
++* holds while it waits is set aside, so a walk of any length takes neither JavaScript stack nor depth.
++*/
++function* depthFirst(root, tracker, visit) {
++	const waiting = [{
++		values: [root][Symbol.iterator](),
++		held: 0
++	}];
++	try {
++		while (waiting.length > 0) {
++			const top = waiting[waiting.length - 1];
++			const base = tracker.depth;
++			tracker.depth = base + top.held;
++			let next;
++			try {
++				next = top.values.next();
++			} catch (err) {
++				waiting.pop();
++				tracker.depth = base;
++				throw err;
++			}
++			top.held = tracker.depth - base;
++			tracker.depth = base;
++			if (next.done) waiting.pop();
++			else {
++				const under = yield* visit(next.value);
++				if (under !== void 0) waiting.push({
++					values: under,
++					held: 0
++				});
++			}
++		}
++	} finally {
++		while (waiting.length > 0) {
++			const { values, held } = waiting.pop();
++			tracker.depth += held;
++			values.return?.();
++		}
++	}
++}
++/** Whether a condition gives a truthy value. */
++const holdsFor = (condExpr, curr, env, tracker, evaluate) => {
++	for (const c of evaluate(condExpr, curr, env, tracker)) if (isTruthy(c)) return true;
++	return false;
++};
+ const loopBuiltins = [
+ 	{
+ 		name: "while",
+@@ -3121,19 +3368,12 @@ const loopBuiltins = [
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+ 			const condExpr = args[0];
+ 			const updateExpr = args[1];
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				tracker.step(span);
+-				let condMatches = false;
+-				for (const c of evaluate(condExpr, curr, env, tracker)) if (isTruthy(c)) {
+-					condMatches = true;
+-					break;
+-				}
+-				if (condMatches) {
+-					yield emit(curr, span, tracker);
+-					for (const next of evaluate(updateExpr, curr, env, tracker)) yield* rec(next);
+-				}
+-			};
+-			yield* rec(input);
++				if (!holdsFor(condExpr, curr, env, tracker, evaluate)) return;
++				yield emit(curr, span, tracker);
++				return evaluate(updateExpr, curr, env, tracker);
++			});
+ 		}
+ 	},
+ 	{
+@@ -3142,17 +3382,11 @@ const loopBuiltins = [
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+ 			const condExpr = args[0];
+ 			const updateExpr = args[1];
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				tracker.step(span);
+-				let condMatches = false;
+-				for (const c of evaluate(condExpr, curr, env, tracker)) if (isTruthy(c)) {
+-					condMatches = true;
+-					break;
+-				}
+-				if (condMatches) yield emit(curr, span, tracker);
+-				else for (const next of evaluate(updateExpr, curr, env, tracker)) yield* rec(next);
+-			};
+-			yield* rec(input);
++				if (!holdsFor(condExpr, curr, env, tracker, evaluate)) return evaluate(updateExpr, curr, env, tracker);
++				yield emit(curr, span, tracker);
++			});
+ 		}
+ 	},
+ 	{
+@@ -3220,27 +3454,21 @@ const recurseBuiltins = [
+ 		name: "recurse",
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				yield emit(curr, span, tracker);
+-				if (Array.isArray(curr)) for (const item of curr) yield* rec(item);
+-				else if (curr !== null && typeof curr === "object") {
+-					const keys = Object.keys(curr).sort();
+-					for (const key of keys) yield* rec(curr[key]);
+-				}
+-			};
+-			yield* rec(input);
++				if (Array.isArray(curr)) return curr[Symbol.iterator]();
++				if (curr !== null && typeof curr === "object") return Object.keys(curr).sort().map((key) => curr[key])[Symbol.iterator]();
++			});
+ 		}
+ 	},
+ 	{
+ 		name: "recurse",
+ 		arity: 1,
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				yield emit(curr, span, tracker);
+-				const nexts = evaluate(args[0], curr, env, tracker);
+-				for (const next of nexts) yield* rec(next);
+-			};
+-			yield* rec(input);
++				return evaluate(args[0], curr, env, tracker);
++			});
+ 		}
+ 	},
+ 	{
+@@ -3249,15 +3477,14 @@ const recurseBuiltins = [
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+ 			const stepExpr = args[0];
+ 			const conditionExpr = args[1];
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				yield emit(curr, span, tracker);
+ 				for (const condition of evaluate(conditionExpr, curr, env, tracker)) {
+ 					if (!isTruthy(condition)) return;
+ 					break;
+ 				}
+-				for (const next of evaluate(stepExpr, curr, env, tracker)) yield* rec(next);
+-			};
+-			yield* rec(input);
++				return evaluate(stepExpr, curr, env, tracker);
++			});
+ 		}
+ 	}
+ ];
+@@ -3741,13 +3968,19 @@ function* resolveArgs(args, input, env, tracker, evaluate, span) {
  //#region src/regex/compile.ts
  var Compiler = class {
  	insts = [];
@@ -492,7 +760,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			op: "save",
  			slot: 1
  		}, { op: "match" });
-@@ -3761,23 +3917,23 @@
+@@ -3761,23 +3994,23 @@ var Compiler = class {
  		switch (node.type) {
  			case "Empty": return;
  			case "Char":
@@ -520,7 +788,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  					op: "assert",
  					kind: node.kind
  				});
-@@ -3801,12 +3957,12 @@
+@@ -3801,12 +4034,12 @@ var Compiler = class {
  			this.emit(node.node);
  			return;
  		}
@@ -535,7 +803,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			op: "save",
  			slot: 2 * node.capture + 1
  		});
-@@ -3823,14 +3979,14 @@
+@@ -3823,14 +4056,14 @@ var Compiler = class {
  				x: 0,
  				y: 0
  			};
@@ -552,7 +820,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			jmps.push(jmp);
  			split.y = this.insts.length;
  		}
-@@ -3838,7 +3994,10 @@
+@@ -3838,7 +4071,10 @@ var Compiler = class {
  		for (const jmp of jmps) jmp.x = end;
  	}
  	emitRepeat(node, min, max, greedy) {
@@ -564,7 +832,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		if (max === null) this.emitStar(node, greedy);
  		else this.emitBounded(node, max - min, greedy);
  	}
-@@ -3849,10 +4008,10 @@
+@@ -3849,10 +4085,10 @@ var Compiler = class {
  			x: 0,
  			y: 0
  		};
@@ -577,7 +845,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			op: "jmp",
  			x: splitIndex
  		});
-@@ -3867,7 +4026,7 @@
+@@ -3867,7 +4103,7 @@ var Compiler = class {
  				x: 0,
  				y: 0
  			};
@@ -586,7 +854,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			const bodyStart = this.insts.length;
  			this.emit(node);
  			pending.push({
-@@ -4161,7 +4320,7 @@
+@@ -4161,7 +4397,7 @@ const tryParsePosix = (cur) => {
  		cur.pos = start;
  		return null;
  	}
@@ -595,7 +863,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	return {
  		kind: "posix",
  		cls: name,
-@@ -4433,6 +4592,7 @@
+@@ -4433,6 +4669,7 @@ var Parser = class {
  	names = [null];
  	constructor(pattern, extended) {
  		this.extended = extended;
@@ -603,7 +871,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		this.cur = new Cursor(Array.from(pattern, (ch) => ch.codePointAt(0)));
  	}
  	parse() {
-@@ -4637,7 +4797,9 @@
+@@ -4637,7 +4874,9 @@ const instConsumes = (inst, cp, flags) => {
  	switch (inst.op) {
  		case "any": return flags.dotAll || cp !== NEWLINE;
  		case "char": return charEquals(cp, inst.cp, flags.ignoreCase);
@@ -614,7 +882,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		default: return false;
  	}
  };
-@@ -4686,6 +4848,7 @@
+@@ -4686,6 +4925,7 @@ var PikeVM = class {
  		while (stack.length > 0) {
  			const top = stack.pop();
  			if (!list.mark(top.pc)) continue;
@@ -622,7 +890,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			const inst = this.insts[top.pc];
  			if (inst.op === "jmp") stack.push({
  				pc: inst.x,
-@@ -4699,6 +4862,7 @@
+@@ -4699,6 +4939,7 @@ var PikeVM = class {
  				saved: top.saved
  			});
  			else if (inst.op === "save") {
@@ -630,7 +898,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  				const next = top.saved.slice();
  				next[inst.slot] = pos;
  				stack.push({
-@@ -4720,11 +4884,13 @@
+@@ -4720,11 +4961,13 @@ var PikeVM = class {
  	*/
  	search(start) {
  		const n = this.cps.length;
@@ -644,7 +912,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			const cp = this.cps[pos];
  			for (const thread of clist.threads) {
  				const inst = this.insts[thread.pc];
-@@ -4745,7 +4911,10 @@
+@@ -4745,7 +4988,10 @@ var PikeVM = class {
  };
  //#endregion
  //#region src/regex/index.ts
@@ -656,7 +924,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  const buildMatch = (saved, program) => {
  	const index = saved[0];
  	const captures = [];
-@@ -4807,7 +4976,10 @@
+@@ -4807,7 +5053,10 @@ const compileRegex = (pattern, flags = "") => {
  //#endregion
  //#region src/builtins/regex/core.ts
  /** Splits a string into its Unicode codepoints (so offsets count codepoints). */
@@ -668,7 +936,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  const sliceCp = (cps, start, length) => cps.slice(start, start + length).join("");
  /** Validates that the subject of a regex builtin is a string. */
  const requireStringInput = (input, span) => {
-@@ -4820,12 +4992,20 @@
+@@ -4820,12 +5069,20 @@ const flagsToString = (flags, span) => {
  	if (typeof flags === "string") return flags;
  	throw new RuntimeError(`${describeType(flags)} is not a valid set of regex flags`, span);
  };
@@ -691,7 +959,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		throw new RuntimeError(err.message, span);
  	}
  };
-@@ -5051,7 +5231,10 @@
+@@ -5051,7 +5308,10 @@ const registerBuiltins = (specs) => {
  //#region src/builtins/sql.ts
  /** jq tostring semantics: strings pass through, everything else is JSON-encoded. */
  const toKey = (value) => {
@@ -703,7 +971,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	return stableStringify(value);
  };
  const sqlBuiltins = [
-@@ -5179,8 +5362,11 @@
+@@ -5179,8 +5439,11 @@ const coerceBuiltins = [
  		name: "length",
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
@@ -717,7 +985,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  			else if (input !== null && typeof input === "object") yield emit(Object.keys(input).length, span, tracker);
  			else if (typeof input === "number") yield emit(Math.abs(input), span, tracker);
  			else throw new RuntimeError(`Cannot take length of ${describeType(input)}`, span);
-@@ -5455,7 +5641,11 @@
+@@ -5455,7 +5718,12 @@ const evalCall = function* (node, input, env, tracker, evaluate) {
  	if (!specs) throw new RuntimeError(`Unknown function: ${node.name}`, node.span);
  	const builtin = specs.find((s) => s.arity === node.args.length);
  	if (!builtin) throw new RuntimeError(`Function ${node.name} does not accept ${node.args.length} arguments`, node.span);
@@ -725,12 +993,13 @@ diff --git a/dist/index.cjs b/dist/index.cjs
 +	tracker.charge(shallowSizeOf(input), node.span);
 +	for (const output of builtin.apply(input, node.args, env, tracker, evaluate, node.span)) {
 +		tracker.charge(shallowSizeOf(output), node.span);
++		tracker.admit(output, node.span);
 +		yield output;
 +	}
  };
  /**
  * Defines a new function in the environment.
-@@ -5500,6 +5690,7 @@
+@@ -5500,6 +5768,7 @@ const evalDef = function* (node, input, env, tracker, evaluate) {
  const evalIterate = function* (node, input, env, tracker, evaluate) {
  	for (const container of evaluate(node.target, input, env, tracker)) {
  		if (container === null) continue;
@@ -738,8 +1007,12 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  		if (isValueArray(container)) {
  			for (const item of container) yield emit$1(item, node.span, tracker);
  			continue;
-@@ -5630,7 +5821,7 @@
- * @returns An array of all values yielded by the filter.
+@@ -5627,10 +5896,10 @@ const handlers$1 = {
+ * @param ast - The parsed AST.
+ * @param input - The initial input value (JSON).
+ * @param options - Execution options.
+-* @returns An array of all values yielded by the filter.
++* @returns An array of all values yielded by the filter, or of the first `options.stopAfter` of them.
  */
  const runAst = (ast, input, options = {}) => {
 -	const tracker = new LimitTracker(resolveLimits(options.limits), resolveClock(options.now));
@@ -747,7 +1020,7 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  	const named = options.vars ?? {};
  	const globalVars = new Map(Object.entries(named));
  	globalVars.set("ARGS", {
-@@ -5641,7 +5832,14 @@
+@@ -5641,7 +5910,19 @@ const runAst = (ast, input, options = {}) => {
  		vars: globalVars,
  		funcs: /* @__PURE__ */ new Map()
  	}];
@@ -755,7 +1028,12 @@ diff --git a/dist/index.cjs b/dist/index.cjs
 +	const enclosing = activeTracker;
 +	activeTracker = tracker;
 +	try {
-+		return Array.from(evaluate(ast, input, env, tracker));
++		const outputs = [];
++		for (const output of evaluate(ast, input, env, tracker)) {
++			outputs.push(output);
++			if (outputs.length === options.stopAfter) break;
++		}
++		return outputs;
 +	} finally {
 +		activeTracker = enclosing;
 +		if (options.usage) options.usage.work = tracker.work;
@@ -764,26 +1042,30 @@ diff --git a/dist/index.cjs b/dist/index.cjs
  /**
  * The core evaluation generator.
 diff --git a/dist/index.d.cts b/dist/index.d.cts
+index 1f5fd49fec0cbd6965ff93bba09adf59799c8965..e9b68b13faf905694278cef1d3d61619f2376fc9 100644
 --- a/dist/index.d.cts
 +++ b/dist/index.d.cts
-@@ -445,6 +445,8 @@
+@@ -445,6 +445,10 @@ interface LimitsConfig {
    maxDepth?: number;
    /** Maximum number of values to yield from a single output emitter. Default: 10,000. */
    maxOutputs?: number;
 +  /** Maximum work, in units of one string character, of building and visiting values. Default: unlimited. */
 +  maxWork?: number;
++  /** Maximum depth a value may nest, an array or object counting one more than its deepest member. Default: unlimited. */
++  maxValueDepth?: number;
  }
  /**
   * Fully resolved limits with defaults applied.
-@@ -453,6 +455,7 @@
+@@ -453,6 +457,8 @@ interface ResolvedLimits {
    maxSteps: number;
    maxDepth: number;
    maxOutputs: number;
 +  maxWork: number;
++  maxValueDepth: number;
  }
  /**
   * Resolves a partial limits configuration into a complete one with defaults.
-@@ -471,13 +474,22 @@
+@@ -471,13 +477,22 @@ declare class LimitTracker {
    private steps;
    private depth;
    private outputs;
@@ -807,10 +1089,30 @@ diff --git a/dist/index.d.cts b/dist/index.d.cts
    /**
     * Records a single execution step (AST node visit).
     * @param span - The source span for error reporting.
-@@ -497,6 +509,13 @@
-    * @param span - The source span for error reporting.
+@@ -493,10 +508,31 @@ declare class LimitTracker {
     */
-   emit(span: Span): void;
+   exit(): void;
+   /**
+-   * Records an output value being emitted.
++   * Records an output value being emitted, and admits the value.
+    * @param span - The source span for error reporting.
++   * @param value - The value emitted.
+    */
+-  emit(span: Span): void;
++  emit(span: Span, value?: Value): void;
++  /**
++   * Admits a value the evaluation built or passed on, unless it nests deeper than the most a value may.
++   * A value too deep throws an error that `try` does not catch, so the evaluation ends.
++   * @param value - The value.
++   * @param span - The source span for error reporting.
++   */
++  admit(value: Value, span: Span): void;
++  /**
++   * Admits a path of a given length to update, unless it reaches deeper than the most a value may nest.
++   * @param length - The length of the path.
++   * @param span - The source span for error reporting.
++   */
++  admitPath(length: number, span: Span): void;
 +  /**
 +   * Records work proportional to the size of the values an operation builds or visits.
 +   * Every 4096 units it reads the deadline's clock, and ends the evaluation, with "Deadline exceeded", once the deadline has passed.
@@ -821,7 +1123,7 @@ diff --git a/dist/index.d.cts b/dist/index.d.cts
  }
  //#endregion
  //#region src/eval/types.d.ts
-@@ -522,6 +541,18 @@
+@@ -522,6 +558,20 @@ interface EvalOptions {
     * …) are unaffected.
     */
    now?: Date | number;
@@ -837,30 +1139,53 @@ diff --git a/dist/index.d.cts b/dist/index.d.cts
 +    at: number;
 +    clock: () => number;
 +  };
++  /** Stops the evaluation once it has given this many outputs. Default: it gives them all. */
++  stopAfter?: number;
  }
  //#endregion
  //#region src/eval/dispatch.d.ts
+@@ -531,7 +581,7 @@ interface EvalOptions {
+  * @param ast - The parsed AST.
+  * @param input - The initial input value (JSON).
+  * @param options - Execution options.
+- * @returns An array of all values yielded by the filter.
++ * @returns An array of all values yielded by the filter, or of the first `options.stopAfter` of them.
+  */
+ declare const runAst: (ast: FilterNode, input: Value, options?: EvalOptions) => Value[];
+ //#endregion
+@@ -631,5 +681,5 @@ declare const compareWithJq: (source: string, input: Value, jq: JqRunner | Execu
+  */
+ declare const run: (source: string, input: Value, options?: EvalOptions) => Value[];
+ //#endregion
+-export { type CompareWithJqResult, type CompatibilityAnalysisResult, type CompatibilityCheckResult, type CompatibilityFinding, type CompatibilityFindingCategory, type CompatibilityFindingSeverity, type CompatibilityStage, type EvalOptions, type ExecutionResult, type JqRunner, LexError, LimitTracker, type LimitsConfig, ParseError, type ResolvedLimits, RuntimeError, ValidationError, type Value, analyzeCompatibility, checkCompatibility, compareWithJq, parse, resolveLimits, run, runAst, validate };
++export { type BindingPattern, type CompareWithJqResult, type CompatibilityAnalysisResult, type CompatibilityCheckResult, type CompatibilityFinding, type CompatibilityFindingCategory, type CompatibilityFindingSeverity, type CompatibilityStage, type EvalOptions, type ExecutionResult, type FilterNode, type JqRunner, LexError, LimitTracker, type LimitsConfig, ParseError, type ResolvedLimits, RuntimeError, type Span, ValidationError, type Value, analyzeCompatibility, checkCompatibility, compareWithJq, parse, resolveLimits, run, runAst, validate };
+ //# sourceMappingURL=index.d.cts.map
+\ No newline at end of file
 diff --git a/dist/index.d.mts b/dist/index.d.mts
+index 361a68e1c507c58d76c4973a275efc134ef96591..f14989bbff31cccadc96cb59756a3dcf594bc650 100644
 --- a/dist/index.d.mts
 +++ b/dist/index.d.mts
-@@ -445,6 +445,8 @@
+@@ -445,6 +445,10 @@ interface LimitsConfig {
    maxDepth?: number;
    /** Maximum number of values to yield from a single output emitter. Default: 10,000. */
    maxOutputs?: number;
 +  /** Maximum work, in units of one string character, of building and visiting values. Default: unlimited. */
 +  maxWork?: number;
++  /** Maximum depth a value may nest, an array or object counting one more than its deepest member. Default: unlimited. */
++  maxValueDepth?: number;
  }
  /**
   * Fully resolved limits with defaults applied.
-@@ -453,6 +455,7 @@
+@@ -453,6 +457,8 @@ interface ResolvedLimits {
    maxSteps: number;
    maxDepth: number;
    maxOutputs: number;
 +  maxWork: number;
++  maxValueDepth: number;
  }
  /**
   * Resolves a partial limits configuration into a complete one with defaults.
-@@ -471,13 +474,22 @@
+@@ -471,13 +477,22 @@ declare class LimitTracker {
    private steps;
    private depth;
    private outputs;
@@ -884,10 +1209,30 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
    /**
     * Records a single execution step (AST node visit).
     * @param span - The source span for error reporting.
-@@ -497,6 +509,13 @@
-    * @param span - The source span for error reporting.
+@@ -493,10 +508,31 @@ declare class LimitTracker {
     */
-   emit(span: Span): void;
+   exit(): void;
+   /**
+-   * Records an output value being emitted.
++   * Records an output value being emitted, and admits the value.
+    * @param span - The source span for error reporting.
++   * @param value - The value emitted.
+    */
+-  emit(span: Span): void;
++  emit(span: Span, value?: Value): void;
++  /**
++   * Admits a value the evaluation built or passed on, unless it nests deeper than the most a value may.
++   * A value too deep throws an error that `try` does not catch, so the evaluation ends.
++   * @param value - The value.
++   * @param span - The source span for error reporting.
++   */
++  admit(value: Value, span: Span): void;
++  /**
++   * Admits a path of a given length to update, unless it reaches deeper than the most a value may nest.
++   * @param length - The length of the path.
++   * @param span - The source span for error reporting.
++   */
++  admitPath(length: number, span: Span): void;
 +  /**
 +   * Records work proportional to the size of the values an operation builds or visits.
 +   * Every 4096 units it reads the deadline's clock, and ends the evaluation, with "Deadline exceeded", once the deadline has passed.
@@ -898,7 +1243,7 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
  }
  //#endregion
  //#region src/eval/types.d.ts
-@@ -522,6 +541,18 @@
+@@ -522,6 +558,20 @@ interface EvalOptions {
     * …) are unaffected.
     */
    now?: Date | number;
@@ -914,20 +1259,41 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
 +    at: number;
 +    clock: () => number;
 +  };
++  /** Stops the evaluation once it has given this many outputs. Default: it gives them all. */
++  stopAfter?: number;
  }
  //#endregion
  //#region src/eval/dispatch.d.ts
+@@ -531,7 +581,7 @@ interface EvalOptions {
+  * @param ast - The parsed AST.
+  * @param input - The initial input value (JSON).
+  * @param options - Execution options.
+- * @returns An array of all values yielded by the filter.
++ * @returns An array of all values yielded by the filter, or of the first `options.stopAfter` of them.
+  */
+ declare const runAst: (ast: FilterNode, input: Value, options?: EvalOptions) => Value[];
+ //#endregion
+@@ -631,5 +681,5 @@ declare const compareWithJq: (source: string, input: Value, jq: JqRunner | Execu
+  */
+ declare const run: (source: string, input: Value, options?: EvalOptions) => Value[];
+ //#endregion
+-export { type CompareWithJqResult, type CompatibilityAnalysisResult, type CompatibilityCheckResult, type CompatibilityFinding, type CompatibilityFindingCategory, type CompatibilityFindingSeverity, type CompatibilityStage, type EvalOptions, type ExecutionResult, type JqRunner, LexError, LimitTracker, type LimitsConfig, ParseError, type ResolvedLimits, RuntimeError, ValidationError, type Value, analyzeCompatibility, checkCompatibility, compareWithJq, parse, resolveLimits, run, runAst, validate };
++export { type BindingPattern, type CompareWithJqResult, type CompatibilityAnalysisResult, type CompatibilityCheckResult, type CompatibilityFinding, type CompatibilityFindingCategory, type CompatibilityFindingSeverity, type CompatibilityStage, type EvalOptions, type ExecutionResult, type FilterNode, type JqRunner, LexError, LimitTracker, type LimitsConfig, ParseError, type ResolvedLimits, RuntimeError, type Span, ValidationError, type Value, analyzeCompatibility, checkCompatibility, compareWithJq, parse, resolveLimits, run, runAst, validate };
+ //# sourceMappingURL=index.d.mts.map
+\ No newline at end of file
 diff --git a/dist/index.mjs b/dist/index.mjs
+index 7630127878548218ab4475a0893ed1f3a8485764..ebc5856b27356378fe72f4ee803c1d0be7cc5555 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -80,9 +80,104 @@
+@@ -80,7 +80,123 @@ const resolveClock = (now) => new Clock(now === void 0 ? void 0 : now instanceof
  const DEFAULT_LIMITS = {
  	maxSteps: 1e5,
  	maxDepth: 200,
 -	maxOutputs: 1e4
 +	maxOutputs: 1e4,
-+	maxWork: Infinity
- };
++	maxWork: Infinity,
++	maxValueDepth: Infinity
++};
 +const unspanned = {
 +	start: 0,
 +	end: 0
@@ -957,7 +1323,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +/** The work between two readings of the deadline's clock. */
 +const CLOCK_READING_WORK = 4096;
 +const knownSizes = /* @__PURE__ */ new WeakMap();
- /**
++/**
 +* The work of visiting all of a value: one item per value, plus the length of every
 +* string and object key. Shared values count each time they occur.
 +*/
@@ -978,6 +1344,26 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +	if (Array.isArray(value)) return (value.length + 1) * ITEM_WORK;
 +	if (value !== null && typeof value === "object") return (Object.keys(value).length + 1) * ENTRY_WORK;
 +	return ITEM_WORK;
++};
++const knownDepths = /* @__PURE__ */ new WeakMap();
++/**
++* How deep a value nests: 0 for a scalar, one more than its deepest member for an array or an object.
++* It looks at most `room` levels down and answers Infinity for a value that nests deeper, so a value
++* of any depth is measured without deep recursion; the depths it finds are kept with the values.
++*/
++const depthWithin = (value, room) => {
++	if (value === null || typeof value !== "object") return 0;
++	const known = knownDepths.get(value);
++	if (known !== void 0) return known;
++	if (room === 0) return Infinity;
++	let deepest = 0;
++	for (const member of Array.isArray(value) ? value : Object.values(value)) {
++		const depth = depthWithin(member, room - 1);
++		if (depth === Infinity) return Infinity;
++		if (depth > deepest) deepest = depth;
++	}
++	knownDepths.set(value, deepest + 1);
++	return deepest + 1;
 +};
 +let activeTracker;
 +/** Charges work to the evaluation running now, if any. */
@@ -1021,22 +1407,21 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +	}
 +	parts.push(text.slice(start));
 +	return parts;
-+};
-+/**
+ };
+ /**
  * Resolves a partial limits configuration into a complete one with defaults.
- *
- * @param config - The user-provided configuration.
-@@ -91,7 +186,8 @@
+@@ -91,7 +207,9 @@ const DEFAULT_LIMITS = {
  const resolveLimits = (config = {}) => ({
  	maxSteps: config.maxSteps ?? DEFAULT_LIMITS.maxSteps,
  	maxDepth: config.maxDepth ?? DEFAULT_LIMITS.maxDepth,
 -	maxOutputs: config.maxOutputs ?? DEFAULT_LIMITS.maxOutputs
 +	maxOutputs: config.maxOutputs ?? DEFAULT_LIMITS.maxOutputs,
-+	maxWork: config.maxWork ?? DEFAULT_LIMITS.maxWork
++	maxWork: config.maxWork ?? DEFAULT_LIMITS.maxWork,
++	maxValueDepth: config.maxValueDepth ?? DEFAULT_LIMITS.maxValueDepth
  });
  /**
  * Tracks execution usage against defined limits.
-@@ -101,15 +197,21 @@
+@@ -101,15 +219,21 @@ var LimitTracker = class {
  	steps = 0;
  	depth = 0;
  	outputs = 0;
@@ -1059,7 +1444,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	}
  	/**
  	* Records a single execution step (AST node visit).
-@@ -118,6 +220,7 @@
+@@ -118,6 +242,7 @@ var LimitTracker = class {
  	step(span) {
  		this.steps += 1;
  		if (this.steps > this.limits.maxSteps) throw new RuntimeError("Step limit exceeded", span);
@@ -1067,10 +1452,38 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	}
  	/**
  	* Enters a new scope/stack frame, incrementing the depth counter.
-@@ -141,6 +244,22 @@
+@@ -134,12 +259,47 @@ var LimitTracker = class {
+ 		this.depth = Math.max(0, this.depth - 1);
+ 	}
+ 	/**
+-	* Records an output value being emitted.
++	* Records an output value being emitted, and admits the value.
+ 	* @param span - The source span for error reporting.
++	* @param value - The value emitted.
+ 	*/
+-	emit(span) {
++	emit(span, value) {
  		this.outputs += 1;
  		if (this.outputs > this.limits.maxOutputs) throw new RuntimeError("Output limit exceeded", span);
- 	}
++		this.admit(value, span);
++	}
++	/**
++	* Admits a value the evaluation built or passed on, unless it nests deeper than the most a value may.
++	* A value too deep throws an error that `try` does not catch, so the evaluation ends.
++	* @param value - The value.
++	* @param span - The source span for error reporting.
++	*/
++	admit(value, span) {
++		if (this.limits.maxValueDepth !== Infinity && depthWithin(value, this.limits.maxValueDepth) > this.limits.maxValueDepth) throw new BaseError("limit", "Value depth limit exceeded", span);
++	}
++	/**
++	* Admits a path of a given length to update, unless it reaches deeper than the most a value may nest.
++	* @param length - The length of the path.
++	* @param span - The source span for error reporting.
++	*/
++	admitPath(length, span) {
++		if (length > this.limits.maxValueDepth) throw new BaseError("limit", "Value depth limit exceeded", span);
++	}
 +	/**
 +	* Records work proportional to the size of the values an operation builds or visits.
 +	* Exceeding the limit throws an error that `try` does not catch, so the evaluation ends.
@@ -1086,11 +1499,10 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +			this.nextClockReading = this.work + CLOCK_READING_WORK;
 +			if (!(this.deadline.clock() < this.deadline.at)) throw new BaseError("limit", "Deadline exceeded", span);
 +		}
-+	}
+ 	}
  };
  //#endregion
- //#region src/value.ts
-@@ -162,6 +281,7 @@
+@@ -162,6 +322,7 @@ const isTruthy = (value) => !(value === false || value === null);
  * @returns `true` if the values are structurally equal, `false` otherwise.
  */
  const valueEquals = (a, b) => {
@@ -1098,7 +1510,16 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (Object.is(a, b)) return true;
  	if (typeof a !== typeof b) return false;
  	if (typeof a === "number" && typeof b === "number") return Object.is(a, b);
-@@ -343,6 +463,7 @@
+@@ -275,7 +436,7 @@ const describeType = (value) => {
+ * @returns The value itself.
+ */
+ const emit$1 = (value, span, tracker) => {
+-	tracker.emit(span);
++	tracker.emit(span, value);
+ 	return value;
+ };
+ /**
+@@ -343,6 +504,7 @@ function* indexArray(container, indexValues, node, tracker) {
  function* indexObject(container, indexValues, node, tracker) {
  	for (const keyValue of indexValues) {
  		if (typeof keyValue !== "string") throw new RuntimeError(`Cannot index object with ${describeType(keyValue)}`, node.span);
@@ -1106,7 +1527,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		yield emit$1(Object.prototype.hasOwnProperty.call(container, keyValue) ? container[keyValue] : null, node.span, tracker);
  	}
  }
-@@ -407,7 +528,11 @@
+@@ -407,7 +569,11 @@ const evalSlice = function* (node, input, env, tracker, evaluate) {
  		if (typeof target !== "string" && !Array.isArray(target)) throw new RuntimeError("Slice expected string or array", node.span);
  		const starts = resolveSliceBounds(node.start, 0, "start", node, input, env, tracker, evaluate);
  		const ends = resolveSliceBounds(node.end, target.length, "end", node, input, env, tracker, evaluate);
@@ -1119,7 +1540,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	}
  };
  //#endregion
-@@ -430,6 +555,7 @@
+@@ -430,6 +596,7 @@ const deleteFromObject = (root, paths, span) => {
  	const byKey = {};
  	for (const p of relevantPaths) {
  		const key = p[0];
@@ -1127,7 +1548,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		if (!byKey[key]) byKey[key] = [];
  		byKey[key].push(p.slice(1));
  	}
-@@ -462,6 +588,7 @@
+@@ -462,6 +629,7 @@ const deleteFromArray = (root, paths, span) => {
  /** Returns a copy of `root` with all of the given paths removed. */
  const deletePaths = (root, paths, span) => {
  	if (paths.some((p) => p.length === 0)) return null;
@@ -1135,7 +1556,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (isPlainObject(root)) return deleteFromObject(root, paths, span);
  	if (Array.isArray(root)) return deleteFromArray(root, paths, span);
  	return root;
-@@ -478,6 +605,7 @@
+@@ -478,6 +646,7 @@ const getPath = (root, path, span = DUMMY_SPAN) => {
  	for (const part of path) {
  		if (curr === null) return void 0;
  		if (typeof part === "string" && isPlainObject(curr)) {
@@ -1143,7 +1564,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			if (!Object.prototype.hasOwnProperty.call(curr, part)) return void 0;
  			curr = objValue$1(curr, part);
  		} else if (typeof part === "number" && Array.isArray(curr)) {
-@@ -494,6 +622,7 @@
+@@ -494,6 +663,7 @@ const getPath = (root, path, span = DUMMY_SPAN) => {
  /** Applies a slice-assignment segment `{ start, end }`, replacing the range with the RHS array. */
  const updateSliceSegment = (root, head, updateFn, span) => {
  	if (!Array.isArray(root)) throw new RuntimeError(`Cannot slice ${describeType(root)}`, span);
@@ -1151,7 +1572,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	const arr = [...root];
  	const start = head.start ?? 0;
  	const end = head.end ?? arr.length;
-@@ -505,6 +634,7 @@
+@@ -505,6 +675,7 @@ const updateSliceSegment = (root, head, updateFn, span) => {
  //#endregion
  //#region src/path/update.ts
  const updateObjectSegment = (root, head, tail, updateFn, span, depth) => {
@@ -1159,7 +1580,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	let obj = {};
  	if (isPlainObject(root)) obj = { ...root };
  	else if (root === null) obj = {};
-@@ -515,6 +645,7 @@
+@@ -515,6 +686,7 @@ const updateObjectSegment = (root, head, tail, updateFn, span, depth) => {
  	return obj;
  };
  const updateArraySegment = (root, head, tail, updateFn, span, depth) => {
@@ -1167,7 +1588,24 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	let arr = [];
  	if (Array.isArray(root)) arr = [...root];
  	else if (root === null) arr = [];
-@@ -557,13 +688,17 @@
+@@ -530,6 +702,7 @@ const updateArraySegment = (root, head, tail, updateFn, span, depth) => {
+ };
+ /** Returns a copy of `root` with the value at `path` transformed by `updateFn`. */
+ const updatePath = (root, path, updateFn, span, depth = 0) => {
++	if (depth === 0) activeTracker?.admitPath(path.length, span);
+ 	if (path.length === 0) return updateFn(root);
+ 	const [head, ...tail] = path;
+ 	if (typeof head === "string") return updateObjectSegment(root, head, tail, updateFn, span, depth);
+@@ -540,7 +713,7 @@ const updatePath = (root, path, updateFn, span, depth = 0) => {
+ //#endregion
+ //#region src/builtins/utils.ts
+ const emit = (value, span, tracker) => {
+-	tracker.emit(span);
++	tracker.emit(span, value);
+ 	return value;
+ };
+ /**
+@@ -557,13 +730,17 @@ const ensureIndex = (val) => {
  	}
  	if (typeof val === "string" && /^-?\d+$/.test(val)) return parseInt(val, 10);
  };
@@ -1188,7 +1626,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  };
  //#endregion
  //#region src/eval/ops/arithmetic.ts
-@@ -579,6 +714,7 @@
+@@ -579,6 +756,7 @@ const stableStringify = (value) => {
  * @returns The combined value.
  */
  function add(left, right, span) {
@@ -1196,7 +1634,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (left === null) return right;
  	if (right === null) return left;
  	if (typeof left === "number" && typeof right === "number") return left + right;
-@@ -591,6 +727,7 @@
+@@ -591,6 +769,7 @@ function add(left, right, span) {
  	throw new RuntimeError(`Cannot add ${describeType(left)} and ${describeType(right)}`, span);
  }
  function sub(left, right, span) {
@@ -1204,7 +1642,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (typeof left === "number" && typeof right === "number") return left - right;
  	if (Array.isArray(left) && Array.isArray(right)) {
  		const toRemove = new Set(right.map(stableStringify));
-@@ -599,6 +736,7 @@
+@@ -599,6 +778,7 @@ function sub(left, right, span) {
  	throw new RuntimeError(`Cannot subtract ${describeType(right)} from ${describeType(left)}`, span);
  }
  function mul(left, right, span) {
@@ -1212,7 +1650,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (typeof left === "number" && typeof right === "number") return left * right;
  	if (typeof left === "string" && typeof right === "number") return repeatString(left, right);
  	if (typeof left === "number" && typeof right === "string") return repeatString(right, left);
-@@ -606,11 +744,15 @@
+@@ -606,11 +786,15 @@ function mul(left, right, span) {
  	throw new RuntimeError(`Cannot multiply ${describeType(left)} by ${describeType(right)}`, span);
  }
  function div(left, right, span) {
@@ -1229,7 +1667,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	throw new RuntimeError(`Cannot divide ${describeType(left)} by ${describeType(right)}`, span);
  }
  function mod(left, right, span) {
-@@ -624,6 +766,7 @@
+@@ -624,6 +808,7 @@ function repeatString(str, count) {
  	if (count <= 0) return null;
  	const n = Math.floor(count);
  	if (n <= 0) return null;
@@ -1237,7 +1675,27 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	return str.repeat(n);
  }
  function mergeDeep(target, source) {
-@@ -998,6 +1141,7 @@
+@@ -970,6 +1155,7 @@ var BreakSignal = class BreakSignal extends Error {
+ const buildArray = function* (node, input, env, tracker, evaluate) {
+ 	const result = [];
+ 	for (const itemNode of node.items) for (const itemVal of evaluate(itemNode, input, env, tracker)) result.push(itemVal);
++	tracker.admit(result, node.span);
+ 	yield result;
+ };
+ /**
+@@ -985,7 +1171,10 @@ const buildArray = function* (node, input, env, tracker, evaluate) {
+ * @param evaluate - Recursive evaluator.
+ */
+ const buildObjects = function* (node, input, env, tracker, evaluate) {
+-	yield* fillObject(node.entries, 0, {}, input, env, tracker, evaluate);
++	for (const built of fillObject(node.entries, 0, {}, input, env, tracker, evaluate)) {
++		tracker.admit(built, node.span);
++		yield built;
++	}
+ };
+ function* fillObject(entries, index, current, input, env, tracker, evaluate) {
+ 	if (index >= entries.length) {
+@@ -998,6 +1187,7 @@ function* fillObject(entries, index, current, input, env, tracker, evaluate) {
  	else if (entry.key.kind === "KeyString") keys = [entry.key.value];
  	else for (const k of evaluate(entry.key.expr, input, env, tracker)) {
  		if (typeof k !== "string") throw new RuntimeError("Object key must be a string", entry.key.span);
@@ -1245,7 +1703,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		keys.push(k);
  	}
  	for (const key of keys) for (const val of evaluate(entry.value, input, env, tracker)) {
-@@ -1459,6 +1603,7 @@
+@@ -1459,6 +1649,7 @@ function* evalFormat(node, input, env, tracker, evaluate) {
  		yield* evaluate(node.str, input, env, tracker);
  		return;
  	}
@@ -1253,7 +1711,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	yield emit$1(applyFormat(node.name, input, node.span), node.span, tracker);
  }
  //#endregion
-@@ -1550,6 +1695,7 @@
+@@ -1550,6 +1741,7 @@ const decodeEntry = (item, span) => {
  		if (keyVal !== null && keyVal !== false) break;
  	}
  	const key = typeof keyVal === "string" ? keyVal : stableStringify(keyVal);
@@ -1261,7 +1719,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	let value = null;
  	for (const alias of ENTRY_VALUE_ALIASES) if (Object.prototype.hasOwnProperty.call(item, alias)) {
  		value = objValue(item, alias);
-@@ -1717,6 +1863,7 @@
+@@ -1717,6 +1909,7 @@ const keyBuiltins = [
  				if (typeof key === "string") keyStr = key;
  				else if (typeof key === "number") keyStr = key.toString();
  				else throw new RuntimeError(`has() key must be string or number for object input`, span);
@@ -1269,7 +1727,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  				yield emit(Object.prototype.hasOwnProperty.call(input, keyStr), span, tracker);
  			} else throw new RuntimeError(`has() expects an array or object input`, span);
  		}
-@@ -1824,6 +1971,7 @@
+@@ -1824,6 +2017,7 @@ const codecBuiltins = [
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("explode expects string", span);
@@ -1277,7 +1735,23 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			yield emit(Array.from(input).map((c) => c.codePointAt(0)), span, tracker);
  		}
  	},
-@@ -1874,7 +2022,8 @@
+@@ -1860,11 +2054,14 @@ const codecBuiltins = [
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+ 			if (typeof input !== "string") throw new RuntimeError("fromjson expects string", span);
++			tracker.charge(input.length * ITEM_WORK, span);
++			let parsed;
+ 			try {
+-				yield emit(JSON.parse(input), span, tracker);
++				parsed = JSON.parse(input);
+ 			} catch {
+ 				throw new RuntimeError("fromjson could not parse JSON", span);
+ 			}
++			yield emit(parsed, span, tracker);
+ 		}
+ 	}
+ ];
+@@ -1874,7 +2071,8 @@ const checkContains = (a, b, tracker, span) => {
  	if (tracker && span) tracker.step(span);
  	if (a === b) return true;
  	if (typeof a !== typeof b) return false;
@@ -1287,7 +1761,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	if (Array.isArray(a) && Array.isArray(b)) return b.every((bItem) => a.some((aItem) => checkContains(aItem, bItem, tracker, span)));
  	if (isPlainObject(a) && isPlainObject(b)) {
  		const keys = Object.keys(b);
-@@ -1913,8 +2062,10 @@
+@@ -1913,8 +2111,10 @@ const findOne = (name, input, search, fromEnd, span) => {
  	if (Array.isArray(input)) return arrayFindIndex(input, search, fromEnd);
  	if (typeof input === "string") {
  		if (typeof search !== "string") throw new RuntimeError(`${name} expects string search when input is string`, span);
@@ -1300,7 +1774,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	}
  	if (input === null) return null;
  	throw new RuntimeError(`${name} expects string or array`, span);
-@@ -1936,19 +2087,7 @@
+@@ -1936,19 +2136,7 @@ const indexOfBuiltins = [{
  }];
  //#endregion
  //#region src/builtins/strings/indices.ts
@@ -1321,7 +1795,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  const arrayIndices = (input, search) => {
  	const indices = [];
  	if (Array.isArray(search)) {
-@@ -1990,7 +2129,8 @@
+@@ -1990,7 +2178,8 @@ const transformBuiltins$1 = [
  			const sepGen = evaluate(args[0], input, env, tracker);
  			for (const sep of sepGen) {
  				if (typeof sep !== "string") throw new RuntimeError("split separator must be a string", span);
@@ -1331,7 +1805,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			}
  		}
  	},
-@@ -2006,6 +2146,7 @@
+@@ -2006,6 +2195,7 @@ const transformBuiltins$1 = [
  				for (const item of input) if (item === null) parts.push("");
  				else if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") parts.push(String(item));
  				else throw new RuntimeError(`join cannot join ${describeType(item)}`, span);
@@ -1339,7 +1813,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  				yield emit(parts.join(sep), span, tracker);
  			}
  		}
-@@ -2015,6 +2156,7 @@
+@@ -2015,6 +2205,7 @@ const transformBuiltins$1 = [
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("ascii_downcase expects string", span);
@@ -1347,7 +1821,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			yield emit(input.replace(/[A-Z]/g, (char) => char.toLowerCase()), span, tracker);
  		}
  	},
-@@ -2023,6 +2165,7 @@
+@@ -2023,6 +2214,7 @@ const transformBuiltins$1 = [
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
  			if (typeof input !== "string") throw new RuntimeError("ascii_upcase expects string", span);
@@ -1355,7 +1829,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			yield emit(input.replace(/[a-z]/g, (char) => char.toUpperCase()), span, tracker);
  		}
  	}
-@@ -2132,8 +2275,11 @@
+@@ -2132,8 +2324,11 @@ const shapeBuiltins = [
  				let res = [];
  				for (const item of arr) {
  					tracker.step(span);
@@ -1369,7 +1843,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  				}
  				return res;
  			};
-@@ -2153,8 +2299,11 @@
+@@ -2153,8 +2348,11 @@ const shapeBuiltins = [
  					let res = [];
  					for (const item of arr) {
  						tracker.step(span);
@@ -1383,7 +1857,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  					}
  					return res;
  				};
-@@ -2177,6 +2326,7 @@
+@@ -2177,6 +2375,7 @@ const shapeBuiltins = [
  				if (!Array.isArray(row)) throw new RuntimeError("transpose input must be array of arrays", span);
  				if (row.length > maxLen) maxLen = row.length;
  			}
@@ -1391,7 +1865,163 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			const result = [];
  			for (let j = 0; j < maxLen; j++) {
  				const newRow = [];
-@@ -3740,13 +3890,19 @@
+@@ -3113,6 +3312,54 @@ const limitBuiltins = [
+ ];
+ //#endregion
+ //#region src/builtins/iterators/loops.ts
++/**
++* Walks a tree of values depth first, in the order a recursive walk takes, without recursion:
++* `visit` yields what a value gives and answers an iterator of the values under it, or nothing.
++* The iterators being walked wait on a stack of their own, and the evaluation depth an iterator
++* holds while it waits is set aside, so a walk of any length takes neither JavaScript stack nor depth.
++*/
++function* depthFirst(root, tracker, visit) {
++	const waiting = [{
++		values: [root][Symbol.iterator](),
++		held: 0
++	}];
++	try {
++		while (waiting.length > 0) {
++			const top = waiting[waiting.length - 1];
++			const base = tracker.depth;
++			tracker.depth = base + top.held;
++			let next;
++			try {
++				next = top.values.next();
++			} catch (err) {
++				waiting.pop();
++				tracker.depth = base;
++				throw err;
++			}
++			top.held = tracker.depth - base;
++			tracker.depth = base;
++			if (next.done) waiting.pop();
++			else {
++				const under = yield* visit(next.value);
++				if (under !== void 0) waiting.push({
++					values: under,
++					held: 0
++				});
++			}
++		}
++	} finally {
++		while (waiting.length > 0) {
++			const { values, held } = waiting.pop();
++			tracker.depth += held;
++			values.return?.();
++		}
++	}
++}
++/** Whether a condition gives a truthy value. */
++const holdsFor = (condExpr, curr, env, tracker, evaluate) => {
++	for (const c of evaluate(condExpr, curr, env, tracker)) if (isTruthy(c)) return true;
++	return false;
++};
+ const loopBuiltins = [
+ 	{
+ 		name: "while",
+@@ -3120,19 +3367,12 @@ const loopBuiltins = [
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+ 			const condExpr = args[0];
+ 			const updateExpr = args[1];
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				tracker.step(span);
+-				let condMatches = false;
+-				for (const c of evaluate(condExpr, curr, env, tracker)) if (isTruthy(c)) {
+-					condMatches = true;
+-					break;
+-				}
+-				if (condMatches) {
+-					yield emit(curr, span, tracker);
+-					for (const next of evaluate(updateExpr, curr, env, tracker)) yield* rec(next);
+-				}
+-			};
+-			yield* rec(input);
++				if (!holdsFor(condExpr, curr, env, tracker, evaluate)) return;
++				yield emit(curr, span, tracker);
++				return evaluate(updateExpr, curr, env, tracker);
++			});
+ 		}
+ 	},
+ 	{
+@@ -3141,17 +3381,11 @@ const loopBuiltins = [
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+ 			const condExpr = args[0];
+ 			const updateExpr = args[1];
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				tracker.step(span);
+-				let condMatches = false;
+-				for (const c of evaluate(condExpr, curr, env, tracker)) if (isTruthy(c)) {
+-					condMatches = true;
+-					break;
+-				}
+-				if (condMatches) yield emit(curr, span, tracker);
+-				else for (const next of evaluate(updateExpr, curr, env, tracker)) yield* rec(next);
+-			};
+-			yield* rec(input);
++				if (!holdsFor(condExpr, curr, env, tracker, evaluate)) return evaluate(updateExpr, curr, env, tracker);
++				yield emit(curr, span, tracker);
++			});
+ 		}
+ 	},
+ 	{
+@@ -3219,27 +3453,21 @@ const recurseBuiltins = [
+ 		name: "recurse",
+ 		arity: 0,
+ 		apply: function* (input, _args, _env, tracker, _eval, span) {
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				yield emit(curr, span, tracker);
+-				if (Array.isArray(curr)) for (const item of curr) yield* rec(item);
+-				else if (curr !== null && typeof curr === "object") {
+-					const keys = Object.keys(curr).sort();
+-					for (const key of keys) yield* rec(curr[key]);
+-				}
+-			};
+-			yield* rec(input);
++				if (Array.isArray(curr)) return curr[Symbol.iterator]();
++				if (curr !== null && typeof curr === "object") return Object.keys(curr).sort().map((key) => curr[key])[Symbol.iterator]();
++			});
+ 		}
+ 	},
+ 	{
+ 		name: "recurse",
+ 		arity: 1,
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				yield emit(curr, span, tracker);
+-				const nexts = evaluate(args[0], curr, env, tracker);
+-				for (const next of nexts) yield* rec(next);
+-			};
+-			yield* rec(input);
++				return evaluate(args[0], curr, env, tracker);
++			});
+ 		}
+ 	},
+ 	{
+@@ -3248,15 +3476,14 @@ const recurseBuiltins = [
+ 		apply: function* (input, args, env, tracker, evaluate, span) {
+ 			const stepExpr = args[0];
+ 			const conditionExpr = args[1];
+-			const rec = function* (curr) {
++			yield* depthFirst(input, tracker, function* (curr) {
+ 				yield emit(curr, span, tracker);
+ 				for (const condition of evaluate(conditionExpr, curr, env, tracker)) {
+ 					if (!isTruthy(condition)) return;
+ 					break;
+ 				}
+-				for (const next of evaluate(stepExpr, curr, env, tracker)) yield* rec(next);
+-			};
+-			yield* rec(input);
++				return evaluate(stepExpr, curr, env, tracker);
++			});
+ 		}
+ 	}
+ ];
+@@ -3740,13 +3967,19 @@ function* resolveArgs(args, input, env, tracker, evaluate, span) {
  //#region src/regex/compile.ts
  var Compiler = class {
  	insts = [];
@@ -1413,7 +2043,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			op: "save",
  			slot: 1
  		}, { op: "match" });
-@@ -3760,23 +3916,23 @@
+@@ -3760,23 +3993,23 @@ var Compiler = class {
  		switch (node.type) {
  			case "Empty": return;
  			case "Char":
@@ -1441,7 +2071,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  					op: "assert",
  					kind: node.kind
  				});
-@@ -3800,12 +3956,12 @@
+@@ -3800,12 +4033,12 @@ var Compiler = class {
  			this.emit(node.node);
  			return;
  		}
@@ -1456,7 +2086,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			op: "save",
  			slot: 2 * node.capture + 1
  		});
-@@ -3822,14 +3978,14 @@
+@@ -3822,14 +4055,14 @@ var Compiler = class {
  				x: 0,
  				y: 0
  			};
@@ -1473,7 +2103,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			jmps.push(jmp);
  			split.y = this.insts.length;
  		}
-@@ -3837,7 +3993,10 @@
+@@ -3837,7 +4070,10 @@ var Compiler = class {
  		for (const jmp of jmps) jmp.x = end;
  	}
  	emitRepeat(node, min, max, greedy) {
@@ -1485,7 +2115,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		if (max === null) this.emitStar(node, greedy);
  		else this.emitBounded(node, max - min, greedy);
  	}
-@@ -3848,10 +4007,10 @@
+@@ -3848,10 +4084,10 @@ var Compiler = class {
  			x: 0,
  			y: 0
  		};
@@ -1498,7 +2128,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			op: "jmp",
  			x: splitIndex
  		});
-@@ -3866,7 +4025,7 @@
+@@ -3866,7 +4102,7 @@ var Compiler = class {
  				x: 0,
  				y: 0
  			};
@@ -1507,7 +2137,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			const bodyStart = this.insts.length;
  			this.emit(node);
  			pending.push({
-@@ -4160,7 +4319,7 @@
+@@ -4160,7 +4396,7 @@ const tryParsePosix = (cur) => {
  		cur.pos = start;
  		return null;
  	}
@@ -1516,7 +2146,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	return {
  		kind: "posix",
  		cls: name,
-@@ -4432,6 +4591,7 @@
+@@ -4432,6 +4668,7 @@ var Parser = class {
  	names = [null];
  	constructor(pattern, extended) {
  		this.extended = extended;
@@ -1524,7 +2154,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		this.cur = new Cursor(Array.from(pattern, (ch) => ch.codePointAt(0)));
  	}
  	parse() {
-@@ -4636,7 +4796,9 @@
+@@ -4636,7 +4873,9 @@ const instConsumes = (inst, cp, flags) => {
  	switch (inst.op) {
  		case "any": return flags.dotAll || cp !== NEWLINE;
  		case "char": return charEquals(cp, inst.cp, flags.ignoreCase);
@@ -1535,7 +2165,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		default: return false;
  	}
  };
-@@ -4685,6 +4847,7 @@
+@@ -4685,6 +4924,7 @@ var PikeVM = class {
  		while (stack.length > 0) {
  			const top = stack.pop();
  			if (!list.mark(top.pc)) continue;
@@ -1543,7 +2173,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			const inst = this.insts[top.pc];
  			if (inst.op === "jmp") stack.push({
  				pc: inst.x,
-@@ -4698,6 +4861,7 @@
+@@ -4698,6 +4938,7 @@ var PikeVM = class {
  				saved: top.saved
  			});
  			else if (inst.op === "save") {
@@ -1551,7 +2181,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  				const next = top.saved.slice();
  				next[inst.slot] = pos;
  				stack.push({
-@@ -4719,11 +4883,13 @@
+@@ -4719,11 +4960,13 @@ var PikeVM = class {
  	*/
  	search(start) {
  		const n = this.cps.length;
@@ -1565,7 +2195,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			const cp = this.cps[pos];
  			for (const thread of clist.threads) {
  				const inst = this.insts[thread.pc];
-@@ -4744,7 +4910,10 @@
+@@ -4744,7 +4987,10 @@ var PikeVM = class {
  };
  //#endregion
  //#region src/regex/index.ts
@@ -1577,7 +2207,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  const buildMatch = (saved, program) => {
  	const index = saved[0];
  	const captures = [];
-@@ -4806,7 +4975,10 @@
+@@ -4806,7 +5052,10 @@ const compileRegex = (pattern, flags = "") => {
  //#endregion
  //#region src/builtins/regex/core.ts
  /** Splits a string into its Unicode codepoints (so offsets count codepoints). */
@@ -1589,7 +2219,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  const sliceCp = (cps, start, length) => cps.slice(start, start + length).join("");
  /** Validates that the subject of a regex builtin is a string. */
  const requireStringInput = (input, span) => {
-@@ -4819,12 +4991,20 @@
+@@ -4819,12 +5068,20 @@ const flagsToString = (flags, span) => {
  	if (typeof flags === "string") return flags;
  	throw new RuntimeError(`${describeType(flags)} is not a valid set of regex flags`, span);
  };
@@ -1612,7 +2242,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		throw new RuntimeError(err.message, span);
  	}
  };
-@@ -5050,7 +5230,10 @@
+@@ -5050,7 +5307,10 @@ const registerBuiltins = (specs) => {
  //#region src/builtins/sql.ts
  /** jq tostring semantics: strings pass through, everything else is JSON-encoded. */
  const toKey = (value) => {
@@ -1624,7 +2254,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	return stableStringify(value);
  };
  const sqlBuiltins = [
-@@ -5178,8 +5361,11 @@
+@@ -5178,8 +5438,11 @@ const coerceBuiltins = [
  		name: "length",
  		arity: 0,
  		apply: function* (input, _args, _env, tracker, _eval, span) {
@@ -1638,7 +2268,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			else if (input !== null && typeof input === "object") yield emit(Object.keys(input).length, span, tracker);
  			else if (typeof input === "number") yield emit(Math.abs(input), span, tracker);
  			else throw new RuntimeError(`Cannot take length of ${describeType(input)}`, span);
-@@ -5454,7 +5640,11 @@
+@@ -5454,7 +5717,12 @@ const evalCall = function* (node, input, env, tracker, evaluate) {
  	if (!specs) throw new RuntimeError(`Unknown function: ${node.name}`, node.span);
  	const builtin = specs.find((s) => s.arity === node.args.length);
  	if (!builtin) throw new RuntimeError(`Function ${node.name} does not accept ${node.args.length} arguments`, node.span);
@@ -1646,12 +2276,13 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +	tracker.charge(shallowSizeOf(input), node.span);
 +	for (const output of builtin.apply(input, node.args, env, tracker, evaluate, node.span)) {
 +		tracker.charge(shallowSizeOf(output), node.span);
++		tracker.admit(output, node.span);
 +		yield output;
 +	}
  };
  /**
  * Defines a new function in the environment.
-@@ -5499,6 +5689,7 @@
+@@ -5499,6 +5767,7 @@ const evalDef = function* (node, input, env, tracker, evaluate) {
  const evalIterate = function* (node, input, env, tracker, evaluate) {
  	for (const container of evaluate(node.target, input, env, tracker)) {
  		if (container === null) continue;
@@ -1659,8 +2290,12 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  		if (isValueArray(container)) {
  			for (const item of container) yield emit$1(item, node.span, tracker);
  			continue;
-@@ -5629,7 +5820,7 @@
- * @returns An array of all values yielded by the filter.
+@@ -5626,10 +5895,10 @@ const handlers$1 = {
+ * @param ast - The parsed AST.
+ * @param input - The initial input value (JSON).
+ * @param options - Execution options.
+-* @returns An array of all values yielded by the filter.
++* @returns An array of all values yielded by the filter, or of the first `options.stopAfter` of them.
  */
  const runAst = (ast, input, options = {}) => {
 -	const tracker = new LimitTracker(resolveLimits(options.limits), resolveClock(options.now));
@@ -1668,7 +2303,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  	const named = options.vars ?? {};
  	const globalVars = new Map(Object.entries(named));
  	globalVars.set("ARGS", {
-@@ -5640,7 +5831,14 @@
+@@ -5640,7 +5909,19 @@ const runAst = (ast, input, options = {}) => {
  		vars: globalVars,
  		funcs: /* @__PURE__ */ new Map()
  	}];
@@ -1676,7 +2311,12 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +	const enclosing = activeTracker;
 +	activeTracker = tracker;
 +	try {
-+		return Array.from(evaluate(ast, input, env, tracker));
++		const outputs = [];
++		for (const output of evaluate(ast, input, env, tracker)) {
++			outputs.push(output);
++			if (outputs.length === options.stopAfter) break;
++		}
++		return outputs;
 +	} finally {
 +		activeTracker = enclosing;
 +		if (options.usage) options.usage.work = tracker.work;

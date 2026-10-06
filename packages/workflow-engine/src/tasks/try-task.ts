@@ -1,10 +1,10 @@
-import type { Variables } from '../dsl/expressions.ts';
 import { field, objectField, textField, type JsonObject } from '../dsl/json.ts';
 import { errorAsJson } from '../dsl/raised-error.ts';
 import { attemptDuration, retryDelay, retryPolicyOf, type RetryContext, type RetryState } from '../dsl/retry-policy.ts';
 import { catches, timedOut } from '../dsl/task-outcomes.ts';
 import type { DslError } from '../machine/dsl-error.ts';
 import type { FrameBody } from '../machine/run-state.ts';
+import type { Variables } from '../programs/program-running.ts';
 import {
   doneOf,
   listBodyOf,
