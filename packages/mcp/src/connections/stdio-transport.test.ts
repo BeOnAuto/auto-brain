@@ -5,9 +5,10 @@ import { secretsOf } from '../bounds/secrets.ts';
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
 import { fakeStdioServerPath, stdioTestTimeoutMs } from '../testing/index.ts';
 import type { CallSettled, McpConnection } from './mcp-connection.ts';
+import { observations } from './observed-requests.ts';
 import { failureOf } from './server-failures.ts';
 import { serverLink } from './server-links.ts';
-import { outputNoLongerReported } from './stdio-transport.ts';
+import { outputNoLongerReported, StdioProcessTransport } from './stdio-transport.ts';
 
 const coverage = process.env['NODE_V8_COVERAGE'];
 
@@ -143,20 +144,6 @@ describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
     expect(lines.filter((line) => line === notJsonRpc)).toHaveLength(20_000);
   });
 
-  it('drains a large batch of notifications interleaved with invalid messages', async () => {
-    const notification = JSON.stringify({
-      jsonrpc: '2.0',
-      method: 'notifications/progress',
-      params: { progressToken: 'unused', progress: 1 },
-    });
-    const { link, lines } = linked(stdioSettings(['--stdout', `${notification}\n{}\n`, '--repeat-stdout', '20000']));
-
-    expect(await called(await link.take(), 'search', { query: 'acme' })).toMatchObject({
-      result: { content: [{ text: 'Found 2 rows for acme.' }] },
-    });
-    expect(lines.filter((line) => line === notJsonRpc)).toHaveLength(20_000);
-  });
-
   it('closes a process that writes more than its output may take at once', async () => {
     const { link } = linked(stdioSettings([]));
     const connection = await link.take();
@@ -179,6 +166,47 @@ describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
     await link.stop();
 
     expect(failureOfCall(settled)).toMatchObject({ kind: 'closed' });
+  });
+});
+
+describe('draining the stdio transport', { timeout: stdioTestTimeoutMs }, () => {
+  it('drains a large batch of notifications interleaved with invalid messages', async () => {
+    const notification = { jsonrpc: '2.0', method: 'notice' };
+    const batch = JSON.stringify(`${JSON.stringify(notification)}\n{}\n`);
+    const output: string[] = [];
+    const transport = new StdioProcessTransport(
+      { command: process.execPath, args: ['--eval', `process.stdout.write(${batch}.repeat(20000))`], env: {} },
+      observations(null),
+      {
+        scrub: String,
+        report: (line) => {
+          output.push(line);
+        },
+      },
+    );
+    const closed = Promise.withResolvers<void>();
+    let received = 0;
+    let rejected = 0;
+    let last: unknown;
+    Object.assign(transport, {
+      onmessage: (message: unknown) => {
+        received += 1;
+        last = message;
+      },
+      onerror: () => {
+        rejected += 1;
+      },
+      onclose: closed.resolve,
+    } satisfies Pick<StdioProcessTransport, 'onmessage' | 'onerror' | 'onclose'>);
+    closing.push(() => transport.close());
+
+    await transport.start();
+    await closed.promise;
+
+    expect(received).toBe(20_000);
+    expect(rejected).toBe(20_000);
+    expect(last).toEqual(notification);
+    expect(output).toEqual([]);
   });
 });
 
