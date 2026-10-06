@@ -67,19 +67,19 @@ The MCP client has no logging option. The errors it meets, such as a line from a
 
 `toolBounds` holds them; `timing` replaces the three durations in tests.
 
-| Bound                                       | Value                      |
-| ------------------------------------------- | -------------------------- |
-| Tool calls in one run                       | 25                         |
-| Tool results sent to the model in one run   | 256 KiB                    |
-| One result, as the model sees it            | 64 KiB, cut with a note    |
-| One call's arguments                        | 16 KiB                     |
-| The same tool with the same arguments       | twice                      |
-| Server failures in one run                  | 5                          |
-| The longest wait a 429 may ask              | 10 s                       |
-| One call                                    | 30 s                       |
-| Opening a connection, or starting a process | 10 s                       |
-| A whole run (`runBoundMs`)                  | 10 min, or one step longer |
-| A tool's description, and recorded content  | 4 KiB each                 |
+| Bound                                                                   | Value                      |
+| ----------------------------------------------------------------------- | -------------------------- |
+| Tool calls in one run                                                   | 25                         |
+| Tool results sent to the model in one run                               | 256 KiB                    |
+| One result, as the model sees it                                        | 64 KiB, cut with a note    |
+| One call's arguments                                                    | 16 KiB                     |
+| The same tool with the same arguments                                   | twice                      |
+| Server failures in one run                                              | 5                          |
+| The longest wait a 429 may ask                                          | 10 s                       |
+| One call                                                                | 30 s                       |
+| Opening a connection, or starting a process, and then listing its tools | 10 s each                  |
+| A whole run (`runBoundMs`)                                              | 10 min, or one step longer |
+| A tool's description, and recorded content                              | 4 KiB each                 |
 
 ## What is recorded
 

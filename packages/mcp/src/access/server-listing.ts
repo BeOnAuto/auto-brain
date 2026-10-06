@@ -30,7 +30,7 @@ async function connectedTo(
   try {
     const connection = await link.take();
     const slot = serverSlot(link, connection);
-    const tools = await connection.listTools(timing.callMs).catch(async (error: unknown) => {
+    const tools = await connection.listTools(timing.openMs).catch(async (error: unknown) => {
       await slot.release();
       throw error;
     });
