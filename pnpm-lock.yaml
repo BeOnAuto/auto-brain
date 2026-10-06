@@ -203,7 +203,7 @@ catalogs:
       version: 5.0.2
 
 patchedDependencies:
-  '@gabrielbryk/jq-ts@1.7.0': 7e0039f54a7bfbae0c9bacb28ac3c41003710f8861384f440b851f6f2536bb57
+  '@gabrielbryk/jq-ts@1.7.0': aed38f75b523e5aae6e97fc1ff79bc15df5b118e9b1c4b2bd4bfcea51e4d32d8
 
 importers:
 
@@ -435,6 +435,9 @@ importers:
       '@beonauto/brains':
         specifier: workspace:*
         version: link:../brains
+      '@beonauto/computation':
+        specifier: workspace:*
+        version: link:../../primitives/computation
       '@beonauto/config':
         specifier: workspace:*
         version: link:../config
@@ -514,7 +517,7 @@ importers:
         version: link:../operations
       '@gabrielbryk/jq-ts':
         specifier: 1.7.0
-        version: 1.7.0(patch_hash=7e0039f54a7bfbae0c9bacb28ac3c41003710f8861384f440b851f6f2536bb57)(typescript@7.0.2)
+        version: 1.7.0(patch_hash=aed38f75b523e5aae6e97fc1ff79bc15df5b118e9b1c4b2bd4bfcea51e4d32d8)(typescript@7.0.2)
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -571,6 +574,28 @@ importers:
       yaml:
         specifier: 2.9.1
         version: 2.9.1
+
+  primitives/computation:
+    dependencies:
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../../packages/operations
+      '@beonauto/specs':
+        specifier: workspace:*
+        version: link:../../packages/specs
+      '@beonauto/workflow-engine':
+        specifier: workspace:*
+        version: link:../../packages/workflow-engine
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
   primitives/inference:
     dependencies:
@@ -5772,7 +5797,7 @@ snapshots:
       - snappy
       - socks
 
-  '@gabrielbryk/jq-ts@1.7.0(patch_hash=7e0039f54a7bfbae0c9bacb28ac3c41003710f8861384f440b851f6f2536bb57)(typescript@7.0.2)':
+  '@gabrielbryk/jq-ts@1.7.0(patch_hash=aed38f75b523e5aae6e97fc1ff79bc15df5b118e9b1c4b2bd4bfcea51e4d32d8)(typescript@7.0.2)':
     dependencies:
       typescript: 7.0.2
 

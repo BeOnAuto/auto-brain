@@ -34,6 +34,7 @@ type Ending =
 export type PoolOutcome = Ending & { readonly milliseconds: number };
 
 export interface ProgramPool {
+  readonly workers: number;
   readonly run: (request: ProgramRequest, signal?: Readonly<AbortSignal>) => Promise<PoolOutcome>;
   readonly close: () => Promise<void>;
 }
@@ -159,6 +160,7 @@ export function programPool(settings: PoolSettings): ProgramPool {
     return ending;
   };
   return {
+    workers: settings.workers,
     run: async (request, signal) => {
       const started = performance.now();
       const ending = await admittedRun(slots, evaluate, { request, until: started + request.deadlineMs, signal });

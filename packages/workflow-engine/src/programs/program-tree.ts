@@ -42,7 +42,7 @@ export function issueOf(error: unknown): ProgramIssue {
   return { detail: textOf(error, 'message'), span: spanOf(error), error: textOf(error, 'name') };
 }
 
-export function nodesIn(value: unknown): readonly unknown[] {
+function nodesIn(value: unknown): readonly unknown[] {
   if (Array.isArray(value)) {
     return value.flatMap((item: unknown) => nodesIn(item));
   }

@@ -78,6 +78,15 @@ describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }
       issue: { detail: 'Max depth exceeded', error: 'RuntimeError' },
     });
   });
+});
+
+describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, () => {
+  it('refuses a program that nests more than 128 levels as the main thread does, whatever the stack', async () => {
+    expect(await poolOf().run(request(`${'1+'.repeat(5000)}1`))).toMatchObject({
+      ran: 'refused',
+      issues: [{ detail: 'The program nests more than 128 levels deep' }],
+    });
+  });
 
   it('answers the size of an output larger than it may give, without the output', async () => {
     expect(await poolOf().run(request('"x" * 100', null, { mostOutputBytes: 50 }))).toMatchObject({

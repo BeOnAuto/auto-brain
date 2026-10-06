@@ -1,5 +1,5 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
-index 6436192a5026180921d1fae160fe8bea2514abf7..f11634b548b0ca4dff263f8a42dc8bf209aeb92a 100644
+index 6436192a5026180921d1fae160fe8bea2514abf7..a30cf1834fab33f8e468d988dcb3a63e06f7d7d6 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
 @@ -81,7 +81,123 @@ const resolveClock = (now) => new Clock(now === void 0 ? void 0 : now instanceof
@@ -1041,8 +1041,126 @@ index 6436192a5026180921d1fae160fe8bea2514abf7..f11634b548b0ca4dff263f8a42dc8bf2
  };
  /**
  * The core evaluation generator.
+@@ -6048,6 +6329,8 @@ const lex = (text) => {
+ */
+ var ParserState = class {
+ 	current = 0;
++	depth = 0;
++	maxDepth = Infinity;
+ 	parseDef;
+ 	parsePipe;
+ 	parseComma;
+@@ -6098,6 +6381,19 @@ var ParserState = class {
+ 	error(token, message) {
+ 		return new ParseError(message, token.span);
+ 	}
++	/**
++	* Parses what is nested one level deeper than where the parser is, refusing to nest deeper
++	* than `maxDepth`, so that how deep a program may nest does not depend on the stack of the host.
++	*/
++	nested(parseNested) {
++		this.depth += 1;
++		try {
++			if (this.depth > this.maxDepth) throw this.error(this.peek(), `The program nests more than ${this.maxDepth} levels deep`);
++			return parseNested();
++		} finally {
++			this.depth -= 1;
++		}
++	}
+ };
+ const spanBetween = (a, b) => ({
+ 	start: Math.min(a.start, b.start),
+@@ -6440,7 +6736,7 @@ function parseBindingPattern(p) {
+ 		const items = [];
+ 		if (!p.match("RBracket")) {
+ 			do
+-				items.push(parseBindingPattern(p));
++				items.push(p.nested(() => parseBindingPattern(p)));
+ 			while (p.match("Comma"));
+ 			p.consume("RBracket", "Expected \"]\" after array binding pattern");
+ 		}
+@@ -6493,7 +6789,7 @@ function parseObjectBindingPatternEntry(p) {
+ 		keySpan = token.span;
+ 	} else throw p.error(p.peek(), "Expected identifier, string, or variable shorthand in object binding pattern");
+ 	p.consume("Colon", "Expected \":\" after object binding pattern key");
+-	const pattern = parseBindingPattern(p);
++	const pattern = p.nested(() => parseBindingPattern(p));
+ 	return {
+ 		key,
+ 		pattern,
+@@ -6699,7 +6995,7 @@ function parseMul(p) {
+ function parseUnary(p) {
+ 	if (p.match("Minus")) {
+ 		const op = p.previous();
+-		const expr = parseUnary(p);
++		const expr = p.nested(() => parseUnary(p));
+ 		return {
+ 			kind: "Unary",
+ 			op: "Neg",
+@@ -6726,7 +7022,7 @@ function parseAssignment(p) {
+ 	const op = ASSIGN_OPS[p.peek().kind];
+ 	if (op !== void 0) {
+ 		p.advance();
+-		const right = parseAssignment(p);
++		const right = p.nested(() => parseAssignment(p));
+ 		return {
+ 			kind: "Assignment",
+ 			op,
+@@ -6785,7 +7081,7 @@ function parseBinding(p, allowComma = true) {
+ 		const start = p.previous();
+ 		const varToken = p.consume("Variable", "Expected variable name after \"label\"");
+ 		p.consume("Pipe", "Expected \"|\" after label");
+-		const body = parseBinding(p, allowComma);
++		const body = p.nested(() => parseBinding(p, allowComma));
+ 		return {
+ 			kind: "Label",
+ 			label: String(varToken.value),
+@@ -6797,7 +7093,7 @@ function parseBinding(p, allowComma = true) {
+ 	while (p.match("As")) {
+ 		const pattern = parseBindingPattern(p);
+ 		p.consume("Pipe", "Expected \"|\" after binding pattern");
+-		const body = parseBinding(p, allowComma);
++		const body = p.nested(() => parseBinding(p, allowComma));
+ 		expr = {
+ 			kind: "As",
+ 			bind: expr,
+@@ -6856,9 +7152,9 @@ function parseDef(p, allowComma = true) {
+ 			p.consume("RParen", "Expected \")\" after arguments");
+ 		}
+ 		p.consume("Colon", "Expected \":\" after function signature");
+-		const body = parseDef(p, true);
++		const body = p.nested(() => parseDef(p, true));
+ 		p.consume("Semicolon", "Expected \";\" after function body");
+-		const next = parseDef(p, allowComma);
++		const next = p.nested(() => parseDef(p, allowComma));
+ 		return {
+ 			kind: "Def",
+ 			name,
+@@ -6878,14 +7174,16 @@ function parseDef(p, allowComma = true) {
+ * @param source - The input jq query string.
+ * @returns The root {@link FilterNode} of the AST.
+ * @throws {LexError} If the source contains invalid characters.
+-* @throws {ParseError} If the syntax is invalid.
++* @param options - `maxDepth`, the most levels the program may nest, unbounded unless given.
++* @throws {ParseError} If the syntax is invalid, or nests deeper than `maxDepth`.
+ */
+-const parse = (source) => {
++const parse = (source, options = {}) => {
+ 	const state = new ParserState(lex(source));
+-	state.parseDef = parseDef;
+-	state.parsePipe = parsePipe;
+-	state.parseComma = parseComma;
+-	state.parseBracketSuffix = parseBracketSuffix;
++	state.maxDepth = options.maxDepth ?? Infinity;
++	state.parseDef = (p, allowComma) => p.nested(() => parseDef(p, allowComma));
++	state.parsePipe = (p, allowComma) => p.nested(() => parsePipe(p, allowComma));
++	state.parseComma = (p, allowComma) => p.nested(() => parseComma(p, allowComma));
++	state.parseBracketSuffix = (p, expr) => p.nested(() => parseBracketSuffix(p, expr));
+ 	return parseFilter(state);
+ };
+ //#endregion
 diff --git a/dist/index.d.cts b/dist/index.d.cts
-index 1f5fd49fec0cbd6965ff93bba09adf59799c8965..e9b68b13faf905694278cef1d3d61619f2376fc9 100644
+index 1f5fd49fec0cbd6965ff93bba09adf59799c8965..56e9e11a50bb18f825372786d266b4754005aae2 100644
 --- a/dist/index.d.cts
 +++ b/dist/index.d.cts
 @@ -445,6 +445,10 @@ interface LimitsConfig {
@@ -1153,7 +1271,18 @@ index 1f5fd49fec0cbd6965ff93bba09adf59799c8965..e9b68b13faf905694278cef1d3d61619
   */
  declare const runAst: (ast: FilterNode, input: Value, options?: EvalOptions) => Value[];
  //#endregion
-@@ -631,5 +681,5 @@ declare const compareWithJq: (source: string, input: Value, jq: JqRunner | Execu
+@@ -544,7 +594,9 @@ declare const runAst: (ast: FilterNode, input: Value, options?: EvalOptions) =>
+  * @throws {LexError} If the source contains invalid characters.
+  * @throws {ParseError} If the syntax is invalid.
+  */
+-declare const parse: (source: string) => FilterNode;
++declare const parse: (source: string, options?: {
++  maxDepth?: number;
++}) => FilterNode;
+ //#endregion
+ //#region src/validate.d.ts
+ /**
+@@ -631,5 +683,5 @@ declare const compareWithJq: (source: string, input: Value, jq: JqRunner | Execu
   */
  declare const run: (source: string, input: Value, options?: EvalOptions) => Value[];
  //#endregion
@@ -1162,7 +1291,7 @@ index 1f5fd49fec0cbd6965ff93bba09adf59799c8965..e9b68b13faf905694278cef1d3d61619
  //# sourceMappingURL=index.d.cts.map
 \ No newline at end of file
 diff --git a/dist/index.d.mts b/dist/index.d.mts
-index 361a68e1c507c58d76c4973a275efc134ef96591..f14989bbff31cccadc96cb59756a3dcf594bc650 100644
+index 361a68e1c507c58d76c4973a275efc134ef96591..73635ab05ff307f65e7d3f8184b7487bda97aabb 100644
 --- a/dist/index.d.mts
 +++ b/dist/index.d.mts
 @@ -445,6 +445,10 @@ interface LimitsConfig {
@@ -1273,7 +1402,18 @@ index 361a68e1c507c58d76c4973a275efc134ef96591..f14989bbff31cccadc96cb59756a3dcf
   */
  declare const runAst: (ast: FilterNode, input: Value, options?: EvalOptions) => Value[];
  //#endregion
-@@ -631,5 +681,5 @@ declare const compareWithJq: (source: string, input: Value, jq: JqRunner | Execu
+@@ -544,7 +594,9 @@ declare const runAst: (ast: FilterNode, input: Value, options?: EvalOptions) =>
+  * @throws {LexError} If the source contains invalid characters.
+  * @throws {ParseError} If the syntax is invalid.
+  */
+-declare const parse: (source: string) => FilterNode;
++declare const parse: (source: string, options?: {
++  maxDepth?: number;
++}) => FilterNode;
+ //#endregion
+ //#region src/validate.d.ts
+ /**
+@@ -631,5 +683,5 @@ declare const compareWithJq: (source: string, input: Value, jq: JqRunner | Execu
   */
  declare const run: (source: string, input: Value, options?: EvalOptions) => Value[];
  //#endregion
@@ -1282,7 +1422,7 @@ index 361a68e1c507c58d76c4973a275efc134ef96591..f14989bbff31cccadc96cb59756a3dcf
  //# sourceMappingURL=index.d.mts.map
 \ No newline at end of file
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 7630127878548218ab4475a0893ed1f3a8485764..ebc5856b27356378fe72f4ee803c1d0be7cc5555 100644
+index 7630127878548218ab4475a0893ed1f3a8485764..7694fdd037508870adcfbbad6575400bab733acc 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -80,7 +80,123 @@ const resolveClock = (now) => new Clock(now === void 0 ? void 0 : now instanceof
@@ -2324,3 +2464,121 @@ index 7630127878548218ab4475a0893ed1f3a8485764..ebc5856b27356378fe72f4ee803c1d0b
  };
  /**
  * The core evaluation generator.
+@@ -6047,6 +6328,8 @@ const lex = (text) => {
+ */
+ var ParserState = class {
+ 	current = 0;
++	depth = 0;
++	maxDepth = Infinity;
+ 	parseDef;
+ 	parsePipe;
+ 	parseComma;
+@@ -6097,6 +6380,19 @@ var ParserState = class {
+ 	error(token, message) {
+ 		return new ParseError(message, token.span);
+ 	}
++	/**
++	* Parses what is nested one level deeper than where the parser is, refusing to nest deeper
++	* than `maxDepth`, so that how deep a program may nest does not depend on the stack of the host.
++	*/
++	nested(parseNested) {
++		this.depth += 1;
++		try {
++			if (this.depth > this.maxDepth) throw this.error(this.peek(), `The program nests more than ${this.maxDepth} levels deep`);
++			return parseNested();
++		} finally {
++			this.depth -= 1;
++		}
++	}
+ };
+ const spanBetween = (a, b) => ({
+ 	start: Math.min(a.start, b.start),
+@@ -6439,7 +6735,7 @@ function parseBindingPattern(p) {
+ 		const items = [];
+ 		if (!p.match("RBracket")) {
+ 			do
+-				items.push(parseBindingPattern(p));
++				items.push(p.nested(() => parseBindingPattern(p)));
+ 			while (p.match("Comma"));
+ 			p.consume("RBracket", "Expected \"]\" after array binding pattern");
+ 		}
+@@ -6492,7 +6788,7 @@ function parseObjectBindingPatternEntry(p) {
+ 		keySpan = token.span;
+ 	} else throw p.error(p.peek(), "Expected identifier, string, or variable shorthand in object binding pattern");
+ 	p.consume("Colon", "Expected \":\" after object binding pattern key");
+-	const pattern = parseBindingPattern(p);
++	const pattern = p.nested(() => parseBindingPattern(p));
+ 	return {
+ 		key,
+ 		pattern,
+@@ -6698,7 +6994,7 @@ function parseMul(p) {
+ function parseUnary(p) {
+ 	if (p.match("Minus")) {
+ 		const op = p.previous();
+-		const expr = parseUnary(p);
++		const expr = p.nested(() => parseUnary(p));
+ 		return {
+ 			kind: "Unary",
+ 			op: "Neg",
+@@ -6725,7 +7021,7 @@ function parseAssignment(p) {
+ 	const op = ASSIGN_OPS[p.peek().kind];
+ 	if (op !== void 0) {
+ 		p.advance();
+-		const right = parseAssignment(p);
++		const right = p.nested(() => parseAssignment(p));
+ 		return {
+ 			kind: "Assignment",
+ 			op,
+@@ -6784,7 +7080,7 @@ function parseBinding(p, allowComma = true) {
+ 		const start = p.previous();
+ 		const varToken = p.consume("Variable", "Expected variable name after \"label\"");
+ 		p.consume("Pipe", "Expected \"|\" after label");
+-		const body = parseBinding(p, allowComma);
++		const body = p.nested(() => parseBinding(p, allowComma));
+ 		return {
+ 			kind: "Label",
+ 			label: String(varToken.value),
+@@ -6796,7 +7092,7 @@ function parseBinding(p, allowComma = true) {
+ 	while (p.match("As")) {
+ 		const pattern = parseBindingPattern(p);
+ 		p.consume("Pipe", "Expected \"|\" after binding pattern");
+-		const body = parseBinding(p, allowComma);
++		const body = p.nested(() => parseBinding(p, allowComma));
+ 		expr = {
+ 			kind: "As",
+ 			bind: expr,
+@@ -6855,9 +7151,9 @@ function parseDef(p, allowComma = true) {
+ 			p.consume("RParen", "Expected \")\" after arguments");
+ 		}
+ 		p.consume("Colon", "Expected \":\" after function signature");
+-		const body = parseDef(p, true);
++		const body = p.nested(() => parseDef(p, true));
+ 		p.consume("Semicolon", "Expected \";\" after function body");
+-		const next = parseDef(p, allowComma);
++		const next = p.nested(() => parseDef(p, allowComma));
+ 		return {
+ 			kind: "Def",
+ 			name,
+@@ -6877,14 +7173,16 @@ function parseDef(p, allowComma = true) {
+ * @param source - The input jq query string.
+ * @returns The root {@link FilterNode} of the AST.
+ * @throws {LexError} If the source contains invalid characters.
+-* @throws {ParseError} If the syntax is invalid.
++* @param options - `maxDepth`, the most levels the program may nest, unbounded unless given.
++* @throws {ParseError} If the syntax is invalid, or nests deeper than `maxDepth`.
+ */
+-const parse = (source) => {
++const parse = (source, options = {}) => {
+ 	const state = new ParserState(lex(source));
+-	state.parseDef = parseDef;
+-	state.parsePipe = parsePipe;
+-	state.parseComma = parseComma;
+-	state.parseBracketSuffix = parseBracketSuffix;
++	state.maxDepth = options.maxDepth ?? Infinity;
++	state.parseDef = (p, allowComma) => p.nested(() => parseDef(p, allowComma));
++	state.parsePipe = (p, allowComma) => p.nested(() => parsePipe(p, allowComma));
++	state.parseComma = (p, allowComma) => p.nested(() => parseComma(p, allowComma));
++	state.parseBracketSuffix = (p, expr) => p.nested(() => parseBracketSuffix(p, expr));
+ 	return parseFilter(state);
+ };
+ //#endregion

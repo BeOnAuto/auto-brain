@@ -1,7 +1,8 @@
-export { isJson, measureOf, mostValueDepth, type Json, type JsonObject } from './dsl/json.ts';
+export { isJson, jsonBytesOf, measureOf, mostValueDepth, type Json, type JsonObject } from './dsl/json.ts';
 export {
   compileProgram,
   lineOf,
+  mostSyntaxDepth,
   type CompiledProgram,
   type Program,
   type ProgramIssues,

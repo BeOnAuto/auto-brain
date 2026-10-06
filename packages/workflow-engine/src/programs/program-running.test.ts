@@ -45,6 +45,31 @@ describe('compiling a program', () => {
     });
   });
 
+  it('refuses a program that nests more than 128 levels, the same on any stack, before anything walks it', () => {
+    const tooDeep = { detail: 'The program nests more than 128 levels deep' };
+
+    expect(compileProgram(`${'1+'.repeat(5000)}1`, { refused: [] })).toMatchObject({ issues: [tooDeep] });
+    expect(compileProgram(`${'('.repeat(5000)}1${')'.repeat(5000)}`, { refused: [] })).toMatchObject({
+      issues: [{ ...tooDeep, error: 'ParseError' }],
+    });
+    expect(compileProgram(`${'['.repeat(127)}1${']'.repeat(127)}`, { refused: [] })).toHaveProperty('program');
+    expect(compileProgram(`${'['.repeat(128)}1${']'.repeat(128)}`, { refused: [] })).toMatchObject({
+      issues: [tooDeep],
+    });
+  });
+
+  it.each([
+    ['definitions', `${'def f: 1; '.repeat(200)}1`],
+    ['bindings', `${'. as $v | '.repeat(200)}1`],
+    ['negations', `${'-'.repeat(200)}1`],
+    ['assignments', `${'.a = '.repeat(200)}1`],
+    ['patterns', `. as ${'['.repeat(200)}$v${']'.repeat(200)} | 1`],
+  ])('counts a chain of %s as nesting', (_chain, source) => {
+    expect(compileProgram(source, { refused: [] })).toMatchObject({
+      issues: [{ detail: 'The program nests more than 128 levels deep', error: 'ParseError' }],
+    });
+  });
+
   it('finds the line of a place in the program', () => {
     expect(lineOf('.a\n| .b\n| error("x")', 10)).toBe(3);
     expect(lineOf('.a', 0)).toBe(1);

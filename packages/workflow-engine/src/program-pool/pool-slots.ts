@@ -1,4 +1,4 @@
-export type Admission = 'admitted' | 'busy' | 'cancelled' | 'closing';
+type Admission = 'admitted' | 'busy' | 'cancelled' | 'closing';
 
 export interface PoolSlots {
   readonly admit: (until: number, signal?: Readonly<AbortSignal>) => Promise<Admission>;
