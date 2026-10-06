@@ -1,5 +1,6 @@
 import {
   BrainIdSchema,
+  ConflictKindSchema,
   NotFound,
   OrgIdSchema,
   streamPrefixOfBrain,
@@ -7,7 +8,7 @@ import {
   type Settlement as RunSettlement,
   type StreamWriter,
 } from '@beonauto/operations';
-import { DateTime, Effect, Schema } from 'effect';
+import { DateTime, Effect, Option, Schema } from 'effect';
 
 import type { ExecutionResult } from './execution-commands.ts';
 import { executionDecider, executionStreamOf } from './execution-decider.ts';
@@ -38,6 +39,24 @@ const decodeSuccess = Schema.decodeUnknownEffect(Schema.Struct({ output: Schema.
 
 const failure: ExecutionResult = { type: 'execution_failed' };
 
+const decodeConflictKind = Schema.decodeUnknownOption(ConflictKindSchema);
+
+type Rejected = Extract<Settlement, { readonly status: 'rejected' }>;
+
+function rejectionOf({ reason, detail, kind }: Rejected): ExecutionResult {
+  if (reason === 'conflict') {
+    const known = Option.getOrUndefined(decodeConflictKind(kind));
+    return {
+      type: 'execution_rejected',
+      rejection: known === undefined ? { reason, detail } : { reason, detail, kind: known },
+    };
+  }
+  return {
+    type: 'execution_rejected',
+    rejection: reason === 'invalid_input' ? { reason, detail, issues: [] } : { reason, detail },
+  };
+}
+
 function streamOf(address: ExecutionAddress): Effect.Effect<string, NotFound> {
   return isWellFormed(address)
     ? Effect.succeed(`${streamPrefixOfBrain(address)}${executionStreamOf(address.id.toLowerCase())}`)
@@ -53,11 +72,7 @@ function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {
     );
   }
   if (settlement.status === 'rejected') {
-    const { reason, detail } = settlement;
-    return Effect.succeed({
-      type: 'execution_rejected',
-      rejection: reason === 'invalid_input' ? { reason, detail, issues: [] } : { reason, detail },
-    });
+    return Effect.succeed(rejectionOf(settlement));
   }
   return Effect.succeed(failure);
 }

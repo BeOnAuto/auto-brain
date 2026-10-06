@@ -1,17 +1,19 @@
-import type { RejectionKind } from './rejection.ts';
-
 const problemTypes = 'https://on.auto/problems/';
 
-export const kindsWithTypes = ['tools_unfinished'] as const satisfies readonly RejectionKind[];
+const reasonsOfKinds = { tools_unfinished: 'unavailable', tools_called: 'conflict' } as const;
 
-export type KindWithType = (typeof kindsWithTypes)[number];
+export type KindWithType = keyof typeof reasonsOfKinds;
 
-const typedKinds: ReadonlySet<string> = new Set(kindsWithTypes);
+export const kindsWithTypes: readonly KindWithType[] = ['tools_unfinished', 'tools_called'];
 
 export function problemTypeOf(name: string): string {
   return `${problemTypes}${name}`;
 }
 
 export function isKindWithType(kind?: string): kind is KindWithType {
-  return kind !== undefined && typedKinds.has(kind);
+  return kind !== undefined && Object.hasOwn(reasonsOfKinds, kind);
+}
+
+export function reasonOfKind(kind: KindWithType): (typeof reasonsOfKinds)[KindWithType] {
+  return reasonsOfKinds[kind];
 }

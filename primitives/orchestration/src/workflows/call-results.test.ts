@@ -138,6 +138,41 @@ describe('a run of a function that called tools and could not finish', () => {
   });
 });
 
+const retryingRuntime = workflow(`
+do:
+  - lookup:
+      try:
+        - fetch:
+            call: execute_spec
+            with: { primitive: inference, name: lookup, input: {} }
+      catch:
+        errors:
+          with: { type: https://open-workflow-specification.org/spec/1.0.0/errors/runtime }
+        retry: { delay: PT1S, limit: { attempt: { count: 3 } } }
+`);
+
+describe('a step that meets a run whose tools may have been called', () => {
+  it('is not retried by a retry of runtime errors, and ends the run as a conflict of tools called', async () => {
+    const calls: string[] = [];
+    const { ending, settlement } = await interpret(retryingRuntime, {
+      respond: ({ run }) => {
+        calls.push(`run ${run}`);
+        return { status: 'rejected', reason: 'conflict', detail: 'It may have called tools', kind: 'tools_called' };
+      },
+    });
+
+    expect(calls).toEqual(['run 1']);
+    expect(ending).toMatchObject({ kind: 'failed', type: 'UncaughtError' });
+    expect(settlement).toEqual({
+      status: 'rejected',
+      reason: 'conflict',
+      detail:
+        'The inference spec lookup rejected the execution with conflict: It may have called tools (at /do/0/lookup/try/0/fetch)',
+      kind: 'tools_called',
+    });
+  });
+});
+
 describe('a failed execution', () => {
   it('is a runtime error', async () => {
     expect(await caughtFor(() => ({ status: 'failed', detail: 'It failed with incident 7' }))).toEqual({

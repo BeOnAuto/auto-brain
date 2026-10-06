@@ -153,7 +153,13 @@ describe('running again a run that called tools, over HTTP', () => {
     expect(first.headers.get('retry-after')).toBeNull();
     expect(again).toMatchObject({
       status: 409,
-      body: { reason: 'conflict', detail: calledTools, kind: 'tools_called' },
+      body: {
+        type: 'https://on.auto/problems/tools_called',
+        title: 'Tools called',
+        reason: 'conflict',
+        detail: calledTools,
+        kind: 'tools_called',
+      },
     });
     expect(fake.received()).toHaveLength(1);
     expect(server.modelCalls()).toBe(1);

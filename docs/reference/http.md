@@ -144,6 +144,7 @@ A problem document's `type` is a URI that names its kind of problem:
 | `https://on.auto/problems/not_found`              | 404    | Something the request names does not exist                                                               |
 | `https://on.auto/problems/method_not_allowed`     | 405    | The path does not take that method                                                                       |
 | `https://on.auto/problems/conflict`               | 409    | The request clashes with what is there                                                                   |
+| `https://on.auto/problems/tools_called`           | 409    | A run that may have called tools is not run again under its id; its `reason` is `conflict`               |
 | `https://on.auto/problems/content_too_large`      | 413    | The body is larger than 1 MiB                                                                            |
 | `https://on.auto/problems/unsupported_media_type` | 415    | The body is not sent as `application/json` in UTF-8                                                      |
 | `https://on.auto/problems/invalid_input`          | 422    | The input does not fit, with the `errors` that point at it                                               |

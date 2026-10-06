@@ -16,7 +16,13 @@ export { Caller, CallerIdentitySchema, type CallerIdentity } from './caller/call
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
 export { Conflict, ConflictKindSchema, type ConflictKind } from './outcome/conflict.ts';
-export { isKindWithType, kindsWithTypes, problemTypeOf, type KindWithType } from './outcome/problem-types.ts';
+export {
+  isKindWithType,
+  kindsWithTypes,
+  problemTypeOf,
+  reasonOfKind,
+  type KindWithType,
+} from './outcome/problem-types.ts';
 export type { Decider, StreamState, TypedEvent } from './ledger/decider.ts';
 export type { DispatcherServices } from './dispatch/dispatcher-services.ts';
 export { makeDispatcher, type Dispatcher, type PipelineStep } from './dispatch/dispatcher.ts';

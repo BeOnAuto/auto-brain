@@ -141,3 +141,26 @@ describe('a settlement whose output is too large or is not JSON', () => {
     expect(await reading()).toMatchObject({ output: { status: 'failed' } });
   });
 });
+
+describe('settling a deferred execution as a conflict', () => {
+  it('records a conflict of tools called with its kind', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+    const detail = 'A step met a run that may have called tools';
+
+    expect(await settling({ status: 'rejected', reason: 'conflict', detail, kind: 'tools_called' })).toMatchObject(
+      Result.succeed({ status: 'rejected', rejection: { reason: 'conflict', detail, kind: 'tools_called' } }),
+    );
+  });
+
+  it('records a conflict of a kind it does not know without one', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+
+    expect(
+      await settling({ status: 'rejected', reason: 'conflict', detail: 'Clashed', kind: 'something_new' }),
+    ).toStrictEqual(
+      Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'conflict', detail: 'Clashed' } }),
+    );
+  });
+});

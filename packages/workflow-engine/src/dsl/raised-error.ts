@@ -1,4 +1,4 @@
-import { isKindWithType, problemTypeOf, type Settlement } from '@beonauto/operations';
+import { isKindWithType, problemTypeOf, reasonOfKind, type Settlement } from '@beonauto/operations';
 
 import type { DslError } from '../machine/dsl-error.ts';
 import { mostOutputBytes } from '../machine/limits.ts';
@@ -85,8 +85,24 @@ export function describeError({ type, title, detail, instance }: DslError): stri
 
 const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
 
-export function rejectionReasonOf({ status }: DslError): 'invalid_input' | 'unavailable' {
+type SettledReason = Extract<Settlement, { readonly status: 'rejected' }>['reason'];
+
+export function rejectionReasonOf({ type, status, kind }: DslError): SettledReason {
+  if (isKindWithType(kind) && type === problemTypeOf(kind)) {
+    return reasonOfKind(kind);
+  }
   return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
+}
+
+function settledRejectionOf(error: DslError): Settlement {
+  const { kind, because } = error;
+  return {
+    status: 'rejected',
+    reason: rejectionReasonOf(error),
+    detail: describeError(error),
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
+  };
 }
 
 export type OutputOutcome =
@@ -102,9 +118,7 @@ export function settlementOf(outcome: SettledOutcome): Settlement {
   if (outcome.kind === 'completed') {
     return { status: 'succeeded', output: outcome.output };
   }
-  return outcome.kind === 'raised'
-    ? { status: 'rejected', reason: rejectionReasonOf(outcome.error), detail: describeError(outcome.error) }
-    : { status: 'failed' };
+  return outcome.kind === 'raised' ? settledRejectionOf(outcome.error) : { status: 'failed' };
 }
 
 interface RejectedCall {

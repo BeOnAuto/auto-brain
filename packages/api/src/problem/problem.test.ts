@@ -39,6 +39,14 @@ describe('problemOf', () => {
       kind: 'tools_unfinished',
       because: 'server_failed',
     });
+    expect(problemOf('conflict', 'Called before', { kind: 'tools_called' })).toEqual({
+      type: 'https://on.auto/problems/tools_called',
+      title: 'Tools called',
+      status: 409,
+      detail: 'Called before',
+      reason: 'conflict',
+      kind: 'tools_called',
+    });
     expect(problemOf('unavailable', 'Not offered', { kind: 'tool_not_offered' })).toMatchObject({
       type: 'https://on.auto/problems/unavailable',
       title: 'Unavailable',

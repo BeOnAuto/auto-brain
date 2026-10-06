@@ -1,4 +1,4 @@
-import { UnavailableBecauseSchema, UnavailableKindSchema } from '@beonauto/operations';
+import { ConflictKindSchema, UnavailableBecauseSchema, UnavailableKindSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import { mostResultBytes } from './recorded-size.ts';
@@ -26,7 +26,16 @@ export const ExecutionRejectionSchema = Schema.Union([
       }),
     ),
   }),
-  Schema.Struct({ reason: Schema.Literal('conflict'), detail: Schema.String }),
+  Schema.Struct({
+    reason: Schema.Literal('conflict'),
+    detail: Schema.String,
+    kind: Schema.optionalKey(
+      ConflictKindSchema.annotate({
+        description:
+          'What clashed, when it is known: tools_called for a workflow whose step met a run of a function that may have called tools, which is not run again under its id',
+      }),
+    ),
+  }),
 ]).annotate({ description: 'Why the primitive rejected the execution' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;
