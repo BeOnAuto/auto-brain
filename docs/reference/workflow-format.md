@@ -147,7 +147,7 @@ schedule:
 
 `cron` has the five fields minute, hour, day of month, month and day of week, read in UTC; when both day of month and day of week are restricted, a day that matches either is due. `every` is a [duration](#durations) of at least a minute, counted from when the version was saved.
 
-A trigger applies from the moment its version is saved: nothing recorded before is matched. Saving a version without a schedule, or retiring the workflow, stops it, and a new version replaces the trigger of the one before. A run a trigger starts uses the version that declared the trigger, and its `execution_id` is derived from the workflow, that version, and the event or the due time, so an event or a time starts it once.
+A trigger applies from the moment its version is saved: nothing recorded before is matched. The saving itself is the first thing it can match, so a trigger that names `spec_created` also starts on the fact of its own workflow's definition being saved, which a `data` filter on the definition's name, such as `data: '${ .name != "close-month" }'`, leaves out. Saving a version without a schedule, or retiring the workflow, stops it, and a new version replaces the trigger of the one before. A run a trigger starts uses the version that declared the trigger, and its `execution_id` is derived from the workflow, that version, and the event or the due time, so an event or a time starts it once.
 
 A run a trigger starts acts as the brain itself: its `started_by` is `brain:` and the brain's name, and each step acts with read and write access to that brain and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
 
