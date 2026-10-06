@@ -81,10 +81,10 @@ function evaluationOf(source: string, run: ProgramRun): Evaluation {
   if (run.ran === 'answered') {
     return { value: run.value, work: run.work };
   }
-  if (run.ran === 'exhausted') {
+  if (run.ran === 'exhausted' && run.limit !== 'stack') {
     return { problem: problemOf(source, run.issue), work: run.work, exhausted: true, limit: run.limit };
   }
-  if (run.ran === 'raised') {
+  if (run.ran === 'raised' || run.ran === 'exhausted') {
     return { problem: problemOf(source, run.issue), work: run.work, exhausted: false };
   }
   return {

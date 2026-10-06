@@ -224,18 +224,6 @@ describe('a loop', () => {
   });
 });
 
-describe("an error that is not the program's own", () => {
-  it('is answered as raised, at no place in the program', () => {
-    const cyclic: Json[] = [];
-    cyclic.push(cyclic);
-
-    expect(run('.', cyclic)).toMatchObject({
-      ran: 'raised',
-      issue: { error: 'RangeError', span: { start: 0, end: 0 } },
-    });
-  });
-});
-
 describe('what a program sees', () => {
   it('is its input, the variables and the time it is given', () => {
     const input = { a: [1, 2] };

@@ -28,7 +28,7 @@ export interface ProgramOptions {
   readonly deadline?: Deadline;
 }
 
-export type Limit = 'work' | 'deadline' | 'value depth';
+export type Limit = 'work' | 'deadline' | 'value depth' | 'stack';
 
 export type ProgramRun =
   | { readonly ran: 'answered'; readonly value: Json; readonly work: number }
@@ -83,6 +83,9 @@ export function evalOptionsOf({ limits, outputs, variables = {}, now, deadline }
 
 export function failureOf(error: unknown, work: number): ProgramRun {
   const issue = issueOf(error);
+  if (error instanceof RangeError) {
+    return { ran: 'exhausted', limit: 'stack', issue, work };
+  }
   if (textOf(error, 'name') !== 'LimitError') {
     return { ran: 'raised', issue, work };
   }

@@ -80,6 +80,24 @@ describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }
   });
 });
 
+describe('a program that would depend on the stack of its worker', { timeout: poolTestTimeoutMs }, () => {
+  it('refuses a regular expression whose groups nest past 128 the same way in a worker, and ends a stack overflow as a limit', async () => {
+    const pool = poolOf({ heapMegabytes: 256 });
+    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
+    const recursion = 'def g: if . == 0 then 0 else (. - 1 | g) end; try (1000000 | g) catch "caught"';
+    const unbounded = { ...liftedLimits(64_000_000), mostDepth: Number.POSITIVE_INFINITY };
+
+    expect(await pool.run(request(`try (${nested}) catch .`))).toMatchObject({
+      ran: 'answered',
+      output: 'regex too large: groups nested more than 128 deep',
+    });
+    expect(await pool.run(request(recursion, null, { limits: unbounded }))).toMatchObject({
+      ran: 'exhausted',
+      limit: 'stack',
+    });
+  });
+});
+
 describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, () => {
   it('refuses a program that nests more than 128 levels as the main thread does, whatever the stack', async () => {
     expect(await poolOf().run(request(`${'1+'.repeat(5000)}1`))).toMatchObject({

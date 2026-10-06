@@ -94,6 +94,18 @@ describe('a failing expression', () => {
     expect(runExpression('reduce range(511) as $i (0; [.]) | length', null, {}, budget)).toMatchObject({ value: 1 });
   });
 
+  it('gives a problem for a regular expression whose groups nest past 128, which try catches, on any stack', () => {
+    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
+
+    expect(runExpression(nested, null, {}, budget)).toMatchObject({
+      problem: `${nested}: RuntimeError: regex too large: groups nested more than 128 deep`,
+      exhausted: false,
+    });
+    expect(runExpression(`try (${nested}) catch .`, null, {}, budget)).toMatchObject({
+      value: 'regex too large: groups nested more than 128 deep',
+    });
+  });
+
   it('gives a problem when it does not parse, and the same problem when run', () => {
     expect(checkExpression('.a +')).toBe('.a +: ParseError: Unexpected token');
     expect(runExpression('.a +', null, {}, budget)).toMatchObject({ problem: '.a +: ParseError: Unexpected token' });

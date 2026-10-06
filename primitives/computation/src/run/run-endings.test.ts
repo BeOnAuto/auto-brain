@@ -122,6 +122,38 @@ describe('a run that reaches a bound of its program', { timeout: workerTestTimeo
   });
 });
 
+describe('a run that would depend on the stack of its host', { timeout: workerTestTimeoutMs }, () => {
+  it('refuses a regular expression whose groups nest past 128 as the program raising, which try catches the same on every host', async () => {
+    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
+
+    expect(await ended(nested)).toEqual(
+      unworkable('The program raised an error on line 4: regex too large: groups nested more than 128 deep'),
+    );
+    expect(await ended(`try (${nested}) catch .`)).toMatchObject(
+      Exit.succeed({ output: 'regex too large: groups nested more than 128 deep' }),
+    );
+  });
+
+  it('ends in conflict when the stack of its worker overflows, an error the program cannot catch', async () => {
+    const overflowing = scriptedPool(
+      [
+        {
+          ran: 'exhausted',
+          limit: 'stack',
+          issue: { detail: 'Maximum call stack size exceeded', span: { start: 0, end: 0 }, error: 'RangeError' },
+          work: 10,
+          milliseconds: 5,
+        },
+      ],
+      poolOf(),
+    );
+
+    expect(await computationWith(overflowing).executing(programDocument('.'), null)).toEqual(
+      unworkable('The program went deeper than the 64 MiB stack of a run allows'),
+    );
+  });
+});
+
 describe('a run of the server that cannot finish', { timeout: workerTestTimeoutMs }, () => {
   it('is unavailable when it runs past its deadline', async () => {
     const slow = computationWith(poolOf(), 50);

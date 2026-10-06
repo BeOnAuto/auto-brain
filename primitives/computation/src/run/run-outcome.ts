@@ -7,6 +7,7 @@ import {
   type PoolOutcome,
   type ProgramSpan,
   type Stopped,
+  workerStackMegabytes,
 } from '@beonauto/workflow-engine/dsl';
 import { Effect, Result, type Schema } from 'effect';
 
@@ -77,6 +78,9 @@ function exhaustedWith({ limit, issue, work }: Exhausted, facts: RunFacts): Endi
   const line = lineAt(facts.document, issue.span);
   if (limit === 'deadline') {
     return Effect.fail(new Unavailable({ detail: stoppedBecause.deadline(facts) }));
+  }
+  if (limit === 'stack') {
+    return unworkable(`The program went deeper than the ${workerStackMegabytes} MiB stack of a run allows`);
   }
   return limit === 'work'
     ? unworkable(
