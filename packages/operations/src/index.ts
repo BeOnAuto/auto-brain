@@ -105,7 +105,7 @@ export {
   type RunOutcomeStatus,
   type RunOutcomeWindow,
   type RunStream,
-} from './ledger/run-outcomes.ts';
+} from './run-outcomes/run-outcomes.ts';
 export {
   Unavailable,
   UnavailableBecauseSchema,

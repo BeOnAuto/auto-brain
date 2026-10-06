@@ -8,7 +8,7 @@ import {
   type RunOutcomeSelection,
   type RunOutcomeWindow,
 } from '../index.ts';
-import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
+import { memoryLedger, type MemoryLedger } from '../testing/memory-ledger.ts';
 import { runFacts, runTallies, type RunFact } from './run-tallies.ts';
 
 const alpha = { org: 'acme', brain: 'alpha' };

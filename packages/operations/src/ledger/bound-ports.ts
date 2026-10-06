@@ -11,7 +11,7 @@ import type {
   RecordedPageRequest,
   RecordedSelection,
 } from '../reading/recorded-read.ts';
-import type { RunOutcomeWindow } from './run-outcomes.ts';
+import type { RunOutcomeWindow } from '../run-outcomes/run-outcomes.ts';
 import type {
   BrainRecordedReader,
   BrainRunOutcomesReader,

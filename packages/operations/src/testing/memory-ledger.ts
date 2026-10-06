@@ -9,8 +9,8 @@ import {
   type StreamState,
   type TypedEvent,
 } from '../index.ts';
+import { memoryRunOutcomes } from '../run-outcomes/memory-run-outcomes.ts';
 import { memoryRecordedReader, type MemoryRecord } from './memory-recorded.ts';
-import { memoryRunOutcomes } from './memory-run-outcomes.ts';
 
 export interface MemoryLedger {
   readonly service: Ledger['Service'];

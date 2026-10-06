@@ -2,11 +2,11 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { streamPrefixOfBrain, streamPrefixOfOrg, type RunOutcomeWindow } from '../index.ts';
+import { readRunTallies, runFacts, runTallies, type RunFact } from '../run-outcomes/run-tallies.ts';
 import { getBrainLabel, labelBrain, listBrainLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader, globexAdmin } from '../testing/callers.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
 import { addNote, listNotes, readNoteHistory } from '../testing/notes.ts';
-import { readRunTallies, runFacts, runTallies, type RunFact } from '../testing/run-tallies.ts';
 import { putOnShelf, readShelf } from '../testing/shelves.ts';
 
 describe('the ports bound to a call', () => {
