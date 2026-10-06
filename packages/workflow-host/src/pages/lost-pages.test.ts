@@ -1,0 +1,131 @@
+import { setTimeout } from 'node:timers/promises';
+
+import { liftedLimits } from '@beonauto/workflow-engine/dsl';
+import { describe, expect, it } from 'vitest';
+
+import { eventually } from '../testing/eventually.ts';
+import { onSQLite } from '../testing/host-files.ts';
+import { busyOnce } from '../views-testing/pool-faults.ts';
+import {
+  collecting,
+  counting,
+  foldedAll,
+  foldingOf,
+  isStalled,
+  viewTestTimeoutMs,
+} from '../views-testing/view-documents.ts';
+import { viewHarness } from '../views-testing/view-harness.ts';
+import type { StallCause } from '../views/view-rows.ts';
+
+function workerOf(source: string): URL {
+  return new URL(`data:text/javascript,${encodeURIComponent(source)}`);
+}
+
+const marking =
+  'import { parentPort, workerData } from "node:worker_threads"; const place = new Int32Array(workerData.progress.shared); Atomics.store(place, 0, 0); Atomics.store(place, 1, 0);';
+
+const quick = {
+  folding: { ...foldingOf(), foldDeadlineMs: 1, pageBudgetMs: 1 },
+  overtimesBeforeStall: 2,
+  sweepEveryMs: 20,
+};
+
+const workersThatStop: readonly (readonly [string, string, StallCause, string])[] = [
+  [
+    'stops at its deadline',
+    `${marking} while (true) {}`,
+    'time',
+    'The fold was stopped by its deadline of 1 ms 2 times',
+  ],
+  [
+    'runs out of memory',
+    `${marking} const kept = []; while (true) { kept.push(new Array(100000).fill(kept.length)); }`,
+    'memory',
+    'The fold was stopped by its memory 2 times',
+  ],
+  ['crashes', `${marking} throw new Error("broken on purpose");`, 'crash', 'The fold was stopped by its crash 2 times'],
+];
+
+const workersThatNameNoFold: readonly (readonly [string, string, string])[] = [
+  [
+    'crashes before it names a fold',
+    'throw new Error("before any fold");',
+    'A page of folds crashed before it named a fold: The worker failed: before any fold',
+  ],
+  [
+    'is stopped by its deadline before it names a fold',
+    'while (true) {}',
+    'A page of folds was stopped by its deadline before it named a fold',
+  ],
+  [
+    'answers what the projector cannot read',
+    'import { parentPort } from "node:worker_threads"; parentPort.postMessage({ ran: "unreadable" });',
+    'A worker answered a page of folds with something it could not read',
+  ],
+];
+
+describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs }, () => {
+  it.each(workersThatStop)(
+    'counts against the fold that was going when it %s, and stalls it after its tries',
+    async (_way, source, kind, message) => {
+      const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(source), heapMegabytes: 16 });
+      await views.saved('runs', counting);
+      await views.ran('inference/runs', 1);
+      views.start(quick);
+
+      const kept = await views.until('runs', isStalled);
+
+      expect(kept).toMatchObject({ view: 0, folded: 0, stall: { kind, message, line: null } });
+    },
+  );
+
+  it.each(workersThatNameNoFold)(
+    'is reported and tried again, counting against no fold, when its worker %s',
+    async (_way, source, trouble) => {
+      const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(source) });
+      await views.saved('runs', counting);
+      await views.ran('inference/runs', 1);
+      views.start(quick);
+
+      const troubles = await eventually(views.reports.troubles, (reported) => reported.length > 1, 1000);
+      const kept = await views.viewOf('runs');
+
+      expect(kept).toMatchObject({ phase: 'rebuilding', folded: 0 });
+      expect(troubles.slice(0, 2)).toEqual([trouble, trouble]);
+    },
+  );
+
+  it('is tried again, with nothing reported, when the pool has no worker free for it', async () => {
+    const views = await viewHarness(await onSQLite());
+    await views.saved('runs', counting);
+    await views.ran('inference/runs', 1);
+    const busy = busyOnce(views.pool);
+    views.start({ pool: busy.pool });
+
+    const kept = await views.until('runs', foldedAll(1));
+
+    expect([kept.view, busy.folds(), views.reports.troubles()]).toEqual([1, 2, []]);
+  });
+});
+
+describe('a projector stopped while it folds', { timeout: viewTestTimeoutMs }, () => {
+  it('repeats the page when it starts again, and writes each fold once', async () => {
+    const settings = await onSQLite();
+    const slow = { ...collecting, fold: 'reduce range(200000) as $i (0; . + 1) as $n | . + [$event.data.output]' };
+    const lifted = { folding: { ...foldingOf(), limits: liftedLimits(400_000_000) } };
+    const first = await viewHarness(settings);
+    await first.saved('outputs', slow);
+    await first.ranEach('inference/runs', [1, 2, 3]);
+    const stopping = first.start(lifted);
+    await setTimeout(150);
+    await stopping.stop();
+    const interrupted = await first.viewOf('outputs');
+
+    const second = await viewHarness(settings);
+    second.start(lifted);
+    const kept = await second.until('outputs', foldedAll(3));
+
+    expect(interrupted?.folded).toBeLessThan(3);
+    expect(kept.view).toEqual([1, 2, 3]);
+  });
+});
