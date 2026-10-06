@@ -127,7 +127,7 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const schemas = tools.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
 
-    expect(schemas).toHaveLength(22);
+    expect(schemas).toHaveLength(24);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });
