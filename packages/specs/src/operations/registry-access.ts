@@ -23,7 +23,7 @@ export function loadRegistry(primitive: string): Effect.Effect<SpecRegistry, nev
   );
 }
 
-export function recordedVersionOf(
+function recordedVersionOf(
   primitive: string,
   name: string,
   version: number,

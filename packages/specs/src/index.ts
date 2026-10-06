@@ -67,6 +67,8 @@ export {
 } from './events/event-emitter.ts';
 export { publishedEventOf, type EventPublished } from './events/published-events.ts';
 export { mostReactingDefinitions } from './registry/registry-decisions.ts';
+export { specChangeOf, type SpecChange } from './registry/spec-changes.ts';
+export { runStartedOf, type RunStarted } from './execution/run-starts.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
 export { mostInputBytes, mostInputDepth, mostResultBytes } from './execution/recorded-size.ts';
 export {
