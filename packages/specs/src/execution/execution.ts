@@ -68,7 +68,7 @@ export type FunctionRun = Run & Pick<BrainFunctionDefinition, 'primitive'>;
 export type WorkflowRun = Run & Pick<WorkflowDefinition, 'primitive'>;
 
 export function isFunctionRun(run: Run): run is FunctionRun {
-  return run.primitive === 'inference';
+  return run.primitive === 'inference' || run.primitive === 'computation';
 }
 
 export function isWorkflowRun(run: Run): run is WorkflowRun {

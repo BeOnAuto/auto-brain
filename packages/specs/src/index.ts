@@ -47,6 +47,7 @@ export {
   isBrainFunctionDefinition,
   isWorkflowDefinition,
   type BrainFunctionDefinition,
+  type ComputationFunctionDefinition,
   type ReasoningFunctionDefinition,
   type WorkflowDefinition,
   type ListedDefinition,

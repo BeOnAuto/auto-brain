@@ -26,9 +26,12 @@ export const functionDescriptions = {
 
 export const functionKindOrder: readonly BrainFunctionKind[] = ['reason', 'interact', 'predict', 'recall', 'compute'];
 
+const resourceLabels: ReadonlyMap<string, string> = new Map([
+  ['inference', functionResourceLabels.reason.singular],
+  ['computation', functionResourceLabels.compute.singular],
+  ['orchestration', 'workflow'],
+]);
+
 export function definitionResourceLabel(primitive: string): string {
-  if (primitive === 'inference') {
-    return 'reasoning function';
-  }
-  return primitive === 'orchestration' ? 'workflow' : `${primitive} definition`;
+  return resourceLabels.get(primitive) ?? `${primitive} definition`;
 }
