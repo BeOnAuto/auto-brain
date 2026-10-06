@@ -8,12 +8,36 @@ import type { ComputationFunctionDefinitionDocument } from './computation-docume
 import { parseComputationDocument } from './document-parsing.ts';
 import { computationDialect } from './program-dialect.ts';
 
-const labelled: ReadonlyMap<string, string> = new Map([
-  ['label', '(label $out | 1, break $out)'],
-  ['break', '(label $out | 1, break $out)'],
-]);
+const readsOutside =
+  'reads something other than the input, so the same input would not give the same output; pass it in';
 
-const refusals = computationDialect.refused.map(({ name, why }) => [name, why, labelled.get(name) ?? name] as const);
+const hostTimeZone = "reads the server's time zone, so it is not the same everywhere; use the UTC date functions";
+
+const writesOutside = 'writes outside the program; a computation function answers only with its output';
+
+const wrongAnswers = 'gives wrong answers in this dialect of jq; use reduce, foreach, limit or first instead';
+
+const labelled = '(label $out | 1, break $out)';
+
+const refusals: readonly (readonly [string, string, string])[] = [
+  ['now', 'reads the clock, so the same input would not give the same output; pass the time in the input', 'now'],
+  ['env', readsOutside, 'env'],
+  ['$ENV', readsOutside, '$ENV'],
+  ['input', readsOutside, 'input'],
+  ['inputs', readsOutside, 'inputs'],
+  ['input_filename', readsOutside, 'input_filename'],
+  ['input_line_number', readsOutside, 'input_line_number'],
+  ['$__loc__', readsOutside, '$__loc__'],
+  ['builtins', readsOutside, 'builtins'],
+  ['localtime', hostTimeZone, 'localtime'],
+  ['strflocaltime', hostTimeZone, 'strflocaltime("%H")'],
+  ['debug', writesOutside, 'debug'],
+  ['stderr', writesOutside, 'stderr'],
+  ['halt', writesOutside, 'halt'],
+  ['halt_error', writesOutside, 'halt_error'],
+  ['label', wrongAnswers, labelled],
+  ['break', wrongAnswers, labelled],
+];
 
 function parsed(source: string): ComputationFunctionDefinitionDocument {
   return Result.getOrThrow(parseComputationDocument(source));
@@ -130,6 +154,12 @@ describe('the program of a computation function definition', () => {
 
   it.each(refusals)('refuses %s at save, with its line', (name, why, program) => {
     expect(issuesIn(programDocument(`.\n| ${program}`))).toContain(`Line 5: ${name} ${why}`);
+  });
+
+  it('refuses exactly the names the design of computation functions lists, and no other', () => {
+    expect(computationDialect.refused.map(({ name }) => name).toSorted()).toEqual(
+      refusals.map(([name]) => name).toSorted(),
+    );
   });
 
   it('nests at most 128 levels, refused at save the same on any host', () => {
