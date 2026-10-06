@@ -44,7 +44,7 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
 
 export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(brainTypes));
 
-export const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix, callerSourcePrefix];
+const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix, callerSourcePrefix];
 
 const reservedTypesInWords = [...reservedEventTypes].join(', ');
 
