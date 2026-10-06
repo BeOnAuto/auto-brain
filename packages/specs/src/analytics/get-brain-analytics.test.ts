@@ -79,9 +79,9 @@ async function aBrainWithRuns(): Promise<Harness> {
 
 const toAlpha = toBrain('acme', 'alpha');
 
-function quietDay(date: string) {
+function quietDay(day: string) {
   const runs = { total: 0, succeeded: 0, failed: 0, rejected: 0 };
-  return { date, runs, tokens: { input: 0, output: 0, cached: 0 }, duration_ms: null };
+  return { day, runs, tokens: { input: 0, output: 0, cached: 0 }, duration_ms: null };
 }
 
 const schemaRefusals: readonly (readonly [Readonly<Record<string, unknown>>, string])[] = [
@@ -106,23 +106,23 @@ describe('get_brain_analytics', () => {
         tokens: { input: 1210, output: 302, cached: 1000 },
         duration_ms: { p50: 1000, p95: 2000 },
         by_day: [
-          ...['2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'].map((date) => quietDay(date)),
+          ...['2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'].map((day) => quietDay(day)),
           {
-            date: '2026-10-05',
+            day: '2026-10-05',
             runs: { total: 2, succeeded: 1, failed: 0, rejected: 1 },
             tokens: { input: 1210, output: 302, cached: 1000 },
             duration_ms: { p50: 1000, p95: 1000 },
           },
           {
-            date: '2026-10-06',
+            day: '2026-10-06',
             runs: { total: 1, succeeded: 1, failed: 0, rejected: 0 },
             tokens: { input: 0, output: 0, cached: 0 },
             duration_ms: { p50: 2000, p95: 2000 },
           },
         ],
         by_function: [
-          { primitive: 'inference', name: 'triage', runs: { total: 2, succeeded: 1, failed: 0, rejected: 1 } },
-          { primitive: 'orchestration', name: 'approval', runs: { total: 1, succeeded: 1, failed: 0, rejected: 0 } },
+          { primitive: 'inference', name: 'triage', runs: 2 },
+          { primitive: 'orchestration', name: 'approval', runs: 1 },
         ],
       },
     });
@@ -144,9 +144,9 @@ describe('get_brain_analytics, asked for some days or some runs', () => {
 
     expect(answers).toMatchObject([
       { output: { days: 30, runs: { total: 4 }, duration_ms: { p50: 1000, p95: 2000 } } },
-      { output: { days: 1, runs: { total: 1 }, by_day: [{ date: '2026-10-06' }] } },
+      { output: { days: 1, runs: { total: 1 }, by_day: [{ day: '2026-10-06' }] } },
       { output: { runs: { total: 1 }, by_function: [{ primitive: 'orchestration', name: 'approval' }] } },
-      { output: { runs: { total: 3 }, by_function: [{ name: 'triage', runs: { total: 3 } }] } },
+      { output: { runs: { total: 3 }, by_function: [{ name: 'triage', runs: 3 }] } },
       { output: { days: 14, runs: { total: 1 }, by_function: [{ name: 'approval' }] } },
     ]);
   });

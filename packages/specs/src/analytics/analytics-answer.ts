@@ -32,7 +32,7 @@ const DurationSchema = Schema.NullOr(
 });
 
 const DaySchema = Schema.Struct({
-  date: Schema.String.annotate({ description: 'The day in UTC, as YYYY-MM-DD' }),
+  day: Schema.String.annotate({ description: 'The day in UTC, as YYYY-MM-DD' }),
   runs: RunsSchema,
   tokens: TokensSchema,
   duration_ms: DurationSchema,
@@ -41,7 +41,7 @@ const DaySchema = Schema.Struct({
 const FunctionSchema = Schema.Struct({
   primitive: Schema.String.annotate({ description: 'The API type identifier of the definition' }),
   name: Schema.String.annotate({ description: 'The definition name' }),
-  runs: RunsSchema,
+  runs: Count.annotate({ description: 'How many of its runs ended' }),
 });
 
 export const BrainAnalyticsSchema = Schema.Struct({
@@ -85,8 +85,8 @@ function inCodePointOrder(left: string, right: string): number {
 type FunctionRuns = BrainAnalytics['by_function'][number];
 
 function mostRunsFirst(left: FunctionRuns, right: FunctionRuns): number {
-  if (left.runs.total !== right.runs.total) {
-    return right.runs.total - left.runs.total;
+  if (left.runs !== right.runs) {
+    return right.runs - left.runs;
   }
   return left.primitive === right.primitive
     ? inCodePointOrder(left.name, right.name)
@@ -119,27 +119,25 @@ type Summary = Pick<BrainAnalytics, 'runs' | 'tokens' | 'duration_ms'>;
 function summaryOf(groups: readonly RunOutcomeGroup[]): Summary {
   const ended = groups.filter(({ status }) => status !== 'started');
   return {
-    runs: runsOf(ended),
+    runs: runsOf(groups),
     tokens: tokensOf(ended),
     duration_ms: durationOf(ended.flatMap(({ durations }) => durations)),
   };
 }
 
-function dayIn(byDay: ReadonlyMap<string, readonly RunOutcomeGroup[]>, date: string): BrainAnalytics['by_day'][number] {
-  const { runs, tokens, duration_ms } = summaryOf(byDay.get(date) ?? []);
-  return { date, runs, tokens, duration_ms };
+function dayIn(byDay: ReadonlyMap<string, readonly RunOutcomeGroup[]>, day: string): BrainAnalytics['by_day'][number] {
+  const { runs, tokens, duration_ms } = summaryOf(byDay.get(day) ?? []);
+  return { day, runs, tokens, duration_ms };
 }
 
 function byFunction(groups: readonly RunOutcomeGroup[]): BrainAnalytics['by_function'] {
   const functions = new Map<string, FunctionRuns>();
   for (const group of groups) {
     const key = JSON.stringify([group.primitive, group.name]);
-    const runs = addedRuns(functions.get(key)?.runs ?? noRuns, group);
-    functions.set(key, { primitive: group.primitive, name: group.name, runs });
+    const ended = group.status === 'started' ? 0 : group.runs;
+    functions.set(key, { primitive: group.primitive, name: group.name, runs: (functions.get(key)?.runs ?? 0) + ended });
   }
-  return [...functions.values()]
-    .filter(({ runs }) => runs.total > 0)
-    .toSorted((left, right) => mostRunsFirst(left, right));
+  return [...functions.values()].filter(({ runs }) => runs > 0).toSorted((left, right) => mostRunsFirst(left, right));
 }
 
 export function analyticsOf(window: AnalyticsWindow, groups: readonly RunOutcomeGroup[]): BrainAnalytics {
@@ -147,7 +145,7 @@ export function analyticsOf(window: AnalyticsWindow, groups: readonly RunOutcome
   return {
     days: window.days,
     ...summaryOf(groups),
-    by_day: daysOf(window).map((date) => dayIn(byDay, date)),
+    by_day: daysOf(window).map((day) => dayIn(byDay, day)),
     by_function: byFunction(groups),
   };
 }

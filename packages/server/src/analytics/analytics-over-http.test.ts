@@ -121,10 +121,10 @@ describe.each(stores)('the analytics of a brain over HTTP and MCP, on $store', (
           days: 7,
           runs: { total: 3, succeeded: 1, failed: 0, rejected: 2 },
           tokens: { input: 1500, output: 100, cached: 1000 },
-          by_function: [{ primitive: 'inference', name: 'summary', runs: { total: 3, succeeded: 1, rejected: 2 } }],
+          by_function: [{ primitive: 'inference', name: 'summary', runs: 3 }],
         },
       });
-      expect(read.body).toMatchObject({ by_day: { 6: { date: today, runs: { total: 3 } } } });
+      expect(read.body).toMatchObject({ by_day: { 6: { day: today, runs: { total: 3 } } } });
       expect(durationOf(read.body).p50).toBeLessThanOrEqual(durationOf(read.body).p95);
       expect(filtered).toMatchObject({ status: 200, body: { days: 14, runs: { total: 3 } } });
       expect(overMcp.structuredContent).toEqual(read.body);

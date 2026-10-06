@@ -182,7 +182,7 @@ Authorization: Bearer <key>
   "duration_ms": { "p50": 1840, "p95": 6210 },
   "by_day": [
     {
-      "date": "2026-09-30",
+      "day": "2026-09-30",
       "runs": { "total": 0, "succeeded": 0, "failed": 0, "rejected": 0 },
       "tokens": { "input": 0, "output": 0, "cached": 0 },
       "duration_ms": null
@@ -192,7 +192,7 @@ Authorization: Bearer <key>
     {
       "primitive": "inference",
       "name": "triage",
-      "runs": { "total": 12, "succeeded": 9, "failed": 1, "rejected": 2 }
+      "runs": 12
     }
   ]
 }
@@ -206,8 +206,8 @@ The example shortens `by_day`, which holds every day of the window, oldest first
 | `runs`        | The runs that ended, by how they ended, and their `total`                                                                                                                                                                                      |
 | `tokens`      | The `input` and `output` tokens the models of reasoning functions used, a rejected run's included when its model answered before the rejection; `cached` is the part of `input` read from the provider's cache; `0` where nothing was recorded |
 | `duration_ms` | The median, `p50`, and the 95th percentile, `p95`, of how long the runs that succeeded or failed took, from their latest start to their end, in milliseconds; `null` when no run of the period has a duration                                  |
-| `by_day`      | The same `runs`, `tokens` and `duration_ms` for each `date`                                                                                                                                                                                    |
-| `by_function` | The `runs` of each definition, by `primitive` and `name`, the most runs first, then by `primitive` and `name`                                                                                                                                  |
+| `by_day`      | The same `runs`, `tokens` and `duration_ms` for each `day`                                                                                                                                                                                     |
+| `by_function` | Each definition by `primitive` and `name`, with `runs`, how many of its runs ended; the most runs first, then by `primitive` and `name`                                                                                                        |
 
 A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order. Rejected runs count in `runs` and in `tokens`, never in `duration_ms`; workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended. The answer reads a table the runtime keeps as each run is recorded, so it is as current as the runs themselves. A brain that does not exist returns `not_found`; a retired brain answers like any other.
 

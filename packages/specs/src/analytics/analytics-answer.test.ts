@@ -67,23 +67,23 @@ describe('the analytics of a brain', () => {
       tokens: { input: 110, output: 42, cached: 60 },
       duration_ms: { p50: 200, p95: 5000 },
       by_day: [
-        { date: '2026-09-30', runs: noRuns, tokens: noTokens, duration_ms: null },
+        { day: '2026-09-30', runs: noRuns, tokens: noTokens, duration_ms: null },
         {
-          date: '2026-10-01',
+          day: '2026-10-01',
           runs: { total: 3, succeeded: 2, failed: 0, rejected: 1 },
           tokens: { input: 110, output: 42, cached: 60 },
           duration_ms: { p50: 100, p95: 300 },
         },
         {
-          date: '2026-10-02',
+          day: '2026-10-02',
           runs: { total: 2, succeeded: 1, failed: 1, rejected: 0 },
           tokens: noTokens,
           duration_ms: { p50: 200, p95: 5000 },
         },
       ],
       by_function: [
-        { primitive: 'inference', name: 'triage', runs: { total: 4, succeeded: 2, failed: 1, rejected: 1 } },
-        { primitive: 'orchestration', name: 'approval', runs: { total: 1, succeeded: 1, failed: 0, rejected: 0 } },
+        { primitive: 'inference', name: 'triage', runs: 4 },
+        { primitive: 'orchestration', name: 'approval', runs: 1 },
       ],
     });
   });

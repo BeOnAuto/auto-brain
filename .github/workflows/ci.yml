@@ -331,10 +331,10 @@ jobs:
           test "$(call created.json --data "$spec" "$brain/specs/inference")" = 201
           test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/specs/inference/hello/execute")" = 503
           test "$(call analytics.json "$brain/analytics")" = 200
-          test "$(jq --compact-output '[.days, .runs.succeeded, .runs.rejected, .by_day[-1].date]' analytics.json)" = \
-            "[7,2,1,\"$(date --utc +%F)\"]"
-          test "$(jq --compact-output '[.by_function[] | [.primitive, .name, .runs.succeeded, .runs.rejected]]' \
-            analytics.json)" = '[["inference","hello",0,1],["orchestration","approval",1,0],["orchestration","greet",1,0]]'
+          test "$(jq --compact-output '[.days, .runs.succeeded, .runs.rejected, .by_day[-1].day, .by_day[-1].runs.total]' \
+            analytics.json)" = "[7,2,1,\"$(date --utc +%F)\",3]"
+          test "$(jq --compact-output '[.by_function[] | [.primitive, .name, .runs]]' analytics.json)" = \
+            '[["inference","hello",1],["orchestration","approval",1],["orchestration","greet",1]]'
           docker stop analytics
           test "$(docker inspect analytics --format '{{.State.ExitCode}}')" = 0
 
