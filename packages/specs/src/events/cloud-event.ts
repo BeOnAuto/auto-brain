@@ -132,15 +132,17 @@ const TimeField = Schema.String.check(
 
 const unique = 'The id of the event, unique among the events of its source';
 
-const contextFields = {
-  source: Schema.String.check(
-    Schema.isMaxLength(mostTextLength),
-    Schema.makeFilter((source: string) => uriReference.test(source), {
-      expected: 'a URI reference that is not empty, such as /ledger/eu or https://acme.example/ledger',
-    }),
-  ).annotate({
-    description: `Where the event comes from, a URI reference such as /ledger/eu, 1 to ${mostTextLength} characters`,
+export const EventSourceSchema = Schema.String.check(
+  Schema.isMaxLength(mostTextLength),
+  Schema.makeFilter((source: string) => uriReference.test(source), {
+    expected: 'a URI reference that is not empty, such as /ledger/eu or https://acme.example/ledger',
   }),
+).annotate({
+  description: `Where the event comes from, a URI reference such as /ledger/eu, 1 to ${mostTextLength} characters`,
+});
+
+const contextFields = {
+  source: EventSourceSchema,
   type: wordedText(mostTypeLength, 'What happened, such as com.acme.ledger.month-closed'),
   subject: Schema.optionalKey(wordedText(mostTextLength, 'What the event is about, within its source')),
   datacontenttype: Schema.optionalKey(

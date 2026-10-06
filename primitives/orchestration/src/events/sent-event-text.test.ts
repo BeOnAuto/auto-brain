@@ -45,6 +45,21 @@ describe('the text of an event sent to a run', () => {
     ]);
   });
 
+  it('comes from a source that is a URI reference, as an event published to the brain', async () => {
+    const refused = await Promise.all(
+      ['', 'the ledger', 'ledger%2'].map(async (source) => pointersOf(await sending({ type: 'com.acme.x', source }))),
+    );
+
+    expect(refused).toEqual([['/event/source'], ['/event/source'], ['/event/source']]);
+    expect(
+      await Promise.all(
+        ['/ledger/eu', 'https://acme.example/ledger?region=eu', 'urn:acme:ledger'].map((source) =>
+          sending({ type: 'com.acme.x', source }),
+        ),
+      ),
+    ).toMatchObject([{ reason: 'not_found' }, { reason: 'not_found' }, { reason: 'not_found' }]);
+  });
+
   it('takes text in any script, emoji included', async () => {
     expect(await sending({ type: 'com.acme.grüße', subject: '😀 a reply' })).toMatchObject({
       status: 'rejected',

@@ -48,6 +48,7 @@ export {
 } from './events/reserved-attributes.ts';
 export {
   CloudEventSchema,
+  EventSourceSchema,
   mostEventDataDepth,
   refusingBlankText,
   refusingForbiddenCharacters,

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
 import {
+  EventSourceSchema,
   getExecution,
   isWorkflowRun,
   refusingBlankText,
@@ -54,7 +55,7 @@ function wordedText(most: number, description: string) {
 
 const EventFields = {
   type: wordedText(mostNameLength, 'What happened, such as com.acme.approval.decided'),
-  source: Schema.optionalKey(text(mostTextLength, 'Where the event comes from')),
+  source: Schema.optionalKey(EventSourceSchema),
   subject: Schema.optionalKey(wordedText(mostTextLength, 'What the event is about')),
   data: Schema.optionalKey(
     Schema.Json.annotate({
@@ -96,8 +97,8 @@ const description = [
   'Sends an event to an existing workflow run, for its listen steps, and returns the event',
   'with its id and the time it was sent.',
   '`execution_id` names the workflow run that is still started. This resumes waiting work; it does not start a new run.',
-  `\`event\` has a \`type\` and an optional \`id\` (each at most ${mostNameLength} characters), \`source\` and`,
-  `\`subject\` (each at most ${mostTextLength} characters; no text may hold a control character, a lone surrogate or a`,
+  `\`event\` has a \`type\` and an optional \`id\` (each at most ${mostNameLength} characters), \`source\`, a URI reference`,
+  `such as /ledger/eu, and \`subject\` (each at most ${mostTextLength} characters; no text may hold a control character, a lone surrogate or a`,
   'noncharacter, and type, id and subject need a character that is not a space) and `data` (any JSON value that nests at most',
   `${mostDataDepth} levels deep); the whole event takes at most ${mostEventBytes} bytes as JSON.`,
   'A listen task consumes an event whose attributes match its filter; an event no task consumes yet waits',
