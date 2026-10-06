@@ -1,6 +1,7 @@
 import { Schema } from 'effect';
 
 import { mostInputDepth, nestsWithin } from '../execution/recorded-size.ts';
+import { isTime } from './event-time.ts';
 
 export const mostPublishedEventBytes = 245_760;
 
@@ -15,6 +16,10 @@ const mostTextLength = 1024;
 const leastExtensionInteger = -2_147_483_648;
 
 const mostExtensionInteger = 2_147_483_647;
+
+const mostExtensionNameLength = 20;
+
+const mostExtensions = 32;
 
 const contextAttributes: ReadonlySet<string> = new Set([
   'specversion',
@@ -34,20 +39,29 @@ const uriReference = new RegExp(String.raw`^${uriCharacters}+$`, 'u');
 
 const absoluteUri = new RegExp(String.raw`^[A-Za-z][A-Za-z0-9+.\-]*:${uriCharacters}*$`, 'u');
 
-const rfc3339 =
-  /^(?<year>\d{4})-(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12]\d|3[01])[Tt](?:[01]\d|2[0-3]):[0-5]\d:(?:[0-5]\d|60)(?:\.\d{1,9})?(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u;
+const mediaTypeToken = "[!#$%&'*+.^_`|~0-9A-Za-z-]+";
 
-const extensionName = /^[a-z0-9]+$/u;
+const quotedParameter = String.raw`"(?:[\t !#-\[\]-~]|\\[\t -~])*"`;
 
-function dayExists(year: number, month: number, day: number): boolean {
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
-  return date.getUTCDate() === day;
+const mediaType = new RegExp(
+  String.raw`^${mediaTypeToken}/${mediaTypeToken}(?:[ \t]*;[ \t]*${mediaTypeToken}=(?:${mediaTypeToken}|${quotedParameter}))*$`,
+  'u',
+);
+
+const extensionName = new RegExp(`^[a-z0-9]{1,${mostExtensionNameLength}}$`, 'u');
+
+const forbiddenCharacter = /[\p{Cc}\p{Cs}\p{Noncharacter_Code_Point}]/u;
+
+const notASpace = /\S/u;
+
+const forbiddenInWords = 'control characters, unpaired surrogates or noncharacters';
+
+function isAllowedText(text: string): boolean {
+  return !forbiddenCharacter.test(text);
 }
 
-function isTime(written: string): boolean {
-  const parts = rfc3339.exec(written)?.groups;
-  return parts !== undefined && dayExists(Number(parts['year']), Number(parts['month']), Number(parts['day']));
+function isWorded(text: string): boolean {
+  return text === '' || notASpace.test(text);
 }
 
 function isExtensionInteger(value: unknown): boolean {
@@ -60,31 +74,56 @@ function isExtensionInteger(value: unknown): boolean {
 }
 
 function isExtensionValue(value: unknown): boolean {
-  return typeof value === 'string' || typeof value === 'boolean' || isExtensionInteger(value);
+  return (typeof value === 'string' && isAllowedText(value)) || typeof value === 'boolean' || isExtensionInteger(value);
+}
+
+function extensionIssue([name, value]: readonly [string, unknown]) {
+  if (!extensionName.test(name)) {
+    return [
+      {
+        path: [name],
+        issue: `Expected the name of an extension attribute: 1 to ${mostExtensionNameLength} lowercase letters and digits`,
+      },
+    ];
+  }
+  return isExtensionValue(value)
+    ? []
+    : [
+        {
+          path: [name],
+          issue: `Expected text without ${forbiddenInWords}, a boolean, or an integer from -2147483648 to 2147483647`,
+        },
+      ];
 }
 
 function extensionIssues(event: { readonly [attribute: string]: unknown }) {
-  return Object.entries(event).flatMap(([name, value]: readonly [string, unknown]) => {
-    if (contextAttributes.has(name)) {
-      return [];
-    }
-    if (!extensionName.test(name)) {
-      return [{ path: [name], issue: 'Expected the name of an extension attribute: lowercase letters and digits' }];
-    }
-    return isExtensionValue(value)
-      ? []
-      : [{ path: [name], issue: 'Expected text, a boolean, or an integer from -2147483648 to 2147483647' }];
-  });
+  const extensions = Object.entries(event).filter(([name]: readonly [string, unknown]) => !contextAttributes.has(name));
+  const tooMany =
+    extensions.length > mostExtensions
+      ? [{ path: [], issue: `Expected at most ${mostExtensions} extension attributes, not ${extensions.length}` }]
+      : [];
+  return [...tooMany, ...extensions.flatMap((extension: readonly [string, unknown]) => extensionIssue(extension))];
 }
 
+const allowedCharacters = Schema.makeFilter(isAllowedText, { expected: `text without ${forbiddenInWords}` });
+
+const worded = Schema.makeFilter(isWorded, { expected: 'text with a character that is not a space' });
+
 function boundedText(most: number, description: string) {
-  return Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(most)).annotate({
+  return Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(most), allowedCharacters).annotate({
     description: `${description}, 1 to ${most} characters`,
   });
 }
 
+function wordedText(most: number, description: string) {
+  return boundedText(most, description).check(worded);
+}
+
 const TimeField = Schema.String.check(
-  Schema.makeFilter(isTime, { expected: 'a time in RFC 3339, such as 2026-10-05T09:00:00Z' }),
+  Schema.makeFilter(isTime, {
+    expected:
+      'a time in RFC 3339 on a day that exists, such as 2026-10-05T09:00:00Z, its second 60 only at the end of a day',
+  }),
 ).annotate({ description: 'When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z' });
 
 const unique = 'The id of the event, unique among the events of its source';
@@ -98,9 +137,15 @@ const contextFields = {
   ).annotate({
     description: `Where the event comes from, a URI reference such as /ledger/eu, 1 to ${mostTextLength} characters`,
   }),
-  type: boundedText(mostTypeLength, 'What happened, such as com.acme.ledger.month-closed'),
-  subject: Schema.optionalKey(boundedText(mostTextLength, 'What the event is about, within its source')),
-  datacontenttype: Schema.optionalKey(boundedText(mostTypeLength, 'The media type of data, such as application/json')),
+  type: wordedText(mostTypeLength, 'What happened, such as com.acme.ledger.month-closed'),
+  subject: Schema.optionalKey(wordedText(mostTextLength, 'What the event is about, within its source')),
+  datacontenttype: Schema.optionalKey(
+    boundedText(mostTypeLength, 'The media type of data, such as application/json').check(
+      Schema.makeFilter((type: string) => mediaType.test(type), {
+        expected: 'a media type, such as application/json or text/plain; charset=utf-8',
+      }),
+    ),
+  ),
   dataschema: Schema.optionalKey(
     boundedText(mostTextLength, 'The schema data follows, an absolute URI').check(
       Schema.makeFilter((schema: string) => absoluteUri.test(schema), { expected: 'an absolute URI' }),
@@ -121,8 +166,7 @@ const extensionsCheck = Schema.makeFilter(extensionIssues);
 
 const ExtensionsSchema = Schema.Record(Schema.String, Schema.Json);
 
-const extensionsInWords =
-  'Any other attribute is an extension: its name lowercase letters and digits, its value text, a boolean, or an integer from -2147483648 to 2147483647, kept as given.';
+const extensionsInWords = `Any other attribute is an extension, at most ${mostExtensions} of them: its name 1 to ${mostExtensionNameLength} lowercase letters and digits, its value text, a boolean, or an integer from -2147483648 to 2147483647, kept as given. No text may hold ${forbiddenInWords}.`;
 
 export const EventToPublishSchema = Schema.StructWithRest(
   Schema.Struct({
@@ -131,7 +175,7 @@ export const EventToPublishSchema = Schema.StructWithRest(
         description: 'The version of CloudEvents the event follows; 1.0 when left out',
       }),
     ),
-    id: Schema.optionalKey(boundedText(mostIdLength, `${unique}; made when left out`)),
+    id: Schema.optionalKey(wordedText(mostIdLength, `${unique}; made when left out`)),
     ...contextFields,
     time: Schema.optionalKey(
       TimeField.annotate({
@@ -150,7 +194,7 @@ export type EventToPublish = typeof EventToPublishSchema.Type;
 export const CloudEventSchema = Schema.StructWithRest(
   Schema.Struct({
     specversion: Schema.Literal('1.0'),
-    id: boundedText(mostIdLength, unique),
+    id: wordedText(mostIdLength, unique),
     ...contextFields,
     time: TimeField,
   }),

@@ -100,7 +100,7 @@ A run without a final result may be attempted again after an interruption or rec
 | `datacontenttype`, `dataschema` | No       | The media type of `data`, and the absolute URI of a schema it follows                                         |
 | `data`                          | No       | Any JSON value                                                                                                |
 
-`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. `data` may nest at most 510 levels deep, so that a run can hold the event in a list, or it returns `invalid_input` at `/event/data`. Any other attribute is an extension: its name is lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given.
+`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. `data` may nest at most 510 levels deep, so that a run can hold the event in a list, or it returns `invalid_input` at `/event/data`. Any other attribute is an extension, at most 32 of them: its name is 1 to 20 lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given. As CloudEvents requires, no text may hold a control character, a lone surrogate or a noncharacter, `id`, `type` and `subject` need a character that is not a space, `datacontenttype` is a media type such as `application/json`, and a `time` has a second of 60 only at the end of a day in UTC.
 
 ```http
 POST /v1/orgs/acme/brains/finance/events
