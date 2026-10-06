@@ -53,9 +53,10 @@ function aLedgerWithOneRun(tables: readonly string[]): Answers {
     if (statement.includes('pg_class')) {
       return tables.map((name) => ({ name }));
     }
-    return statement.includes('FROM emt_streams')
-      ? [{ stream: 'brain/acme/alpha/executions/r1', size: 120 }]
-      : [{ stream: 'brain/acme/alpha/executions/r1', type: 'run_began', data: { json: JSON.stringify(began) } }];
+    if (statement.includes('FROM emt_streams')) {
+      return statement.includes('s.stream_id > ""') ? [{ stream: 'brain/acme/alpha/executions/r1', size: 120 }] : [];
+    }
+    return [{ stream: 'brain/acme/alpha/executions/r1', type: 'run_began', data: { json: JSON.stringify(began) } }];
   };
 }
 

@@ -156,11 +156,11 @@ function aFillOfLargeRecords(entry: LedgerEntry): void {
     it('reads them at most 16 MiB at a time, and keeps every run', { timeout: 60_000 }, async () => {
       const database = await entry.aDatabase();
       const writing = await aLedger(entry, database);
-      const note = 'x'.repeat(1.5 * mebibyte);
+      const notes = [1, 1, 1, 6, 6, 6].map((mebibytes) => 'x'.repeat(mebibytes * mebibyte));
       await Effect.runPromise(
         Effect.forEach(
-          Array.from({ length: 12 }, (_, index) => index),
-          (index) =>
+          notes,
+          (note, index) =>
             Effect.promise(() =>
               noting(writing, `brain/acme/alpha/executions/large-${index}`, began('large'), largeEnd(index, note)),
             ),
@@ -170,7 +170,7 @@ function aFillOfLargeRecords(entry: LedgerEntry): void {
 
       const filled = await aLedger(entry, database, runTallies);
 
-      expect(runsOf(await reading(filled))).toEqual(['2026-10-01 large succeeded 12']);
+      expect(runsOf(await reading(filled))).toEqual(['2026-10-01 large succeeded 6']);
     });
   });
 }
