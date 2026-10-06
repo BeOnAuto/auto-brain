@@ -1,12 +1,12 @@
 import { capitalized, explanationOf, type ExplainedRejection, type PlainLanguage } from '@beonauto/operations';
 
-import type { Execution } from '../execution/execution.ts';
+import type { Run } from '../execution/execution.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { specWordsFor } from './spec-words.ts';
 
 export type RunMoment = 'just started' | 'looked up';
 
-type DescribedExecution = Pick<Execution, 'primitive' | 'name' | 'status' | 'output' | 'rejection'>;
+type DescribedExecution = Pick<Run, 'primitive' | 'name' | 'status' | 'output' | 'rejection'>;
 
 interface RunContext {
   readonly named: string;
@@ -41,9 +41,7 @@ function rejectionWords({ named }: RunContext, { rejection }: DescribedExecution
   return `The run of ${named} did not go through: ${why}. ${remedy}`;
 }
 
-const wordsByStatus: Readonly<
-  Record<Execution['status'], (context: RunContext, execution: DescribedExecution) => string>
-> = {
+const wordsByStatus: Readonly<Record<Run['status'], (context: RunContext, execution: DescribedExecution) => string>> = {
   started: ({ named, moment }) =>
     moment === 'just started'
       ? `${capitalized(named)} has started and is still running. It carries on by itself, and how it ends can be looked up later.`

@@ -3,7 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import { Effect, Option, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 
@@ -11,7 +11,7 @@ const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
 
 const statusOf = Schema.decodeUnknownOption(Schema.Struct({ status: Schema.String }));
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
@@ -36,7 +36,7 @@ async function untilTheModelIsCalled(attempts: number): Promise<void> {
 
 describe('an execution whose client goes away while the model answers', () => {
   it('is recorded failed, never left started with nothing running', async () => {
-    server = await servingInference([() => Effect.never]);
+    server = await servingReasoning([() => Effect.never]);
     await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
     await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
 

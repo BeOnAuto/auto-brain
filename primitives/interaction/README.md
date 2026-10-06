@@ -1,1 +1,5 @@
-This allows input and output to and from humans and machines, so if the brain needs to talk to a human or machine, it can call out, and if a human/machine need to call and talk to the brain, they can do so through this primitive.
+# Interaction functions
+
+An interaction function exchanges input or output with people or systems. Examples include requesting approval, sending a notification, receiving structured input and exchanging information with another machine. Human approval is one pattern within Interaction.
+
+Planned; this directory contains a design note, not an implemented runtime adapter. See [Functions and availability](../../docs/concepts/functions.md#availability) and [Brain terminology](../../docs/concepts/terminology.md).

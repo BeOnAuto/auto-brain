@@ -17,8 +17,8 @@ import {
 } from '@beonauto/specs';
 import { Effect, Layer } from 'effect';
 
-import type { ExecuteSpec } from '../calls/spec-execution.ts';
-import { specExecutionResultOf } from '../calls/spec-results.ts';
+import { definitionRunResultOf } from '../calls/function-results.ts';
+import type { RunDefinition } from '../calls/function-run.ts';
 import { acmeCaller } from './workflows.ts';
 
 interface BrainOperation {
@@ -35,7 +35,7 @@ export interface Brain {
     operation: BrainOperation,
     input: object,
   ) => Promise<Settled>;
-  readonly executeNested: ExecuteSpec;
+  readonly executeNested: RunDefinition;
   readonly settle: SettleExecution;
 }
 
@@ -71,7 +71,7 @@ export function brainOn(ledger: MemoryLedger, primitives: readonly Primitive[]):
     },
     executeNested: ({ caller, primitive, name, input, executionId }) =>
       dispatch(executeSpec, { primitive, name, input, execution_id: executionId }, caller).pipe(
-        Effect.map(specExecutionResultOf),
+        Effect.map(definitionRunResultOf),
       ),
     settle: executionSettler(ledger.service),
   };

@@ -2,7 +2,7 @@ import type { AppRuntime } from '@beonauto/api';
 import { brainOperations, ledgerBrainRegistry } from '@beonauto/brains';
 import {
   defineListModels,
-  makeInference,
+  makeReasoningFunctionAdapter,
   makeModelAccess,
   type ModelAccess,
   type ModelSettings,
@@ -23,19 +23,19 @@ export function applicationLayer(ledger: Layer.Layer<Ledger>): Layer.Layer<Dispa
   return Layer.mergeAll(ledger, ledgerBrainRegistry.pipe(Layer.provide(ledger)), loggingIncidentReporter);
 }
 
-interface ServedInference {
-  readonly primitive: ReturnType<typeof makeInference>;
+interface ServedReasoning {
+  readonly primitive: ReturnType<typeof makeReasoningFunctionAdapter>;
   readonly listModels: ReturnType<typeof defineListModels>;
 }
 
-async function inferenceServedBy(
+async function reasoningServedBy(
   runtime: AppRuntime<DispatcherServices>,
   models: ModelSettings,
   modelAccessOf: ModelAccessOf,
-): Promise<ServedInference> {
+): Promise<ServedReasoning> {
   const { languageModel, status, offered, catalog } = await Effect.runPromise(modelAccessOf(models));
   await runtime.run(logModelProviders(status));
-  return { primitive: makeInference({ languageModel, offered }), listModels: defineListModels(catalog) };
+  return { primitive: makeReasoningFunctionAdapter({ languageModel, offered }), listModels: defineListModels(catalog) };
 }
 
 export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions<DispatcherServices> {
@@ -44,7 +44,7 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
     runtimeLayer: ({ ledger }) => applicationLayer(ledgerLayerOf(ledger)),
     serve: async (runtime, { ledger, models, workflows }) => {
       await runtime.run(logLedger(ledger));
-      const { primitive, listModels } = await inferenceServedBy(runtime, models, modelAccessOf);
+      const { primitive, listModels } = await reasoningServedBy(runtime, models, modelAccessOf);
       return serveWorkflows(runtime, {
         ledger,
         workflows,

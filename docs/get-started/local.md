@@ -10,18 +10,29 @@ Run Auto Brain on your computer and use your agent to create a reusable function
 Our hosted option is currently invite-only. [Request an invitation](https://on.auto/request-invite).
 :::
 
-This setup is for macOS or Linux. You need [Git](https://git-scm.com/downloads), [pnpm](https://pnpm.io/installation), and an agent such as Claude Code or Codex on the same computer. The Claude Desktop instructions below are for macOS. To run a reason function, Auto also needs access to a model provider. Your agent's subscription does not supply the server's model credentials.
+This setup is for macOS or Linux. You need [Git](https://git-scm.com/downloads), [pnpm](https://pnpm.io/installation), and an agent such as Claude Code or Codex on the same computer. The Claude Desktop instructions below are for macOS. To run a reasoning function, Auto also needs access to a model provider. Your agent's subscription does not supply the server's model credentials.
 
 ## 1. Install Auto Brain
 
-In a terminal:
+Copy the Agent prompt into a coding agent with terminal access, or use the Manual tab to install it yourself.
 
-```bash
+::: code-group
+
+```text [Agent]
+Install https://github.com/BeOnAuto/auto-brain using its setup guide.
+Ask before installing prerequisites; keep existing files and .env.
+Use pinned versions. Never print secrets or ask for API keys in chat.
+Help configure my model provider, then show how to start the server.
+```
+
+```bash [Manual]
 git clone https://github.com/BeOnAuto/auto-brain.git
 cd auto-brain
 pnpm install
 cp .env.example .env
 ```
+
+:::
 
 pnpm uses the Node and pnpm versions pinned by the repository, downloading them when needed. If you are returning to an existing checkout, keep your existing `.env` file.
 
@@ -53,7 +64,7 @@ curl http://localhost:8080/health
 
 You should see `{"status":"ok"}`. The MCP endpoint is `http://localhost:8080/mcp`.
 
-This local mode needs no authentication header and trusts callers on your computer. Do not expose it through a tunnel or public proxy. The lean server supports the reason-function example below. Workflows are coming soon.
+This local mode needs no authentication header and trusts callers on your computer. Do not expose it through a tunnel or public proxy. The lean server supports the reasoning-function example below. Workflows are coming soon.
 
 ## 4. Connect your agent {#connect-your-agent}
 
@@ -110,7 +121,7 @@ Ask your connected agent:
 Use the auto-brain connection to list my brains and available models.
 Help me choose a concrete model or alias my configured provider supports.
 Create a brain named Quickstart with id quickstart, or reuse it if it exists.
-In that brain, prepare a reason function called check-brief. It accepts a
+In that brain, prepare a reasoning function called check-brief. It accepts a
 brief as text and checks for an audience, a budget and a measurable goal.
 Show me the definition before saving it; do not overwrite an existing one.
 ```
@@ -129,7 +140,7 @@ For a second run and a comparison of the results, continue with [Build your firs
 
 If the health check fails, check the server terminal for startup errors and confirm that port 8080 is free. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.
 
-If a reason function reports `provider_not_configured`, check the uncommented setting in `.env` and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
+If a reasoning function reports `provider_not_configured`, check the uncommented setting in `.env` and restart Auto. If model discovery is incomplete, use a concrete model reference supported by your configured provider. Do not paste keys into a prompt to fix a connection.
 
 Definitions and run history are saved in the local ledger at `packages/server/.data/ledger.db`. Stop the server with Ctrl+C and restart it with `pnpm dev` when you return. Keep the ledger file if you want to retain your work.
 

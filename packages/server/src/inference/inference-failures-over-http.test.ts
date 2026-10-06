@@ -11,7 +11,7 @@ import {
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const verdict = [
   '---',
@@ -63,10 +63,10 @@ function neverCalled(): ModelFailure {
   return new ProviderUnavailable({ detail: 'never called', provider: 'openai', status: null });
 }
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 async function failingWith(failure: () => ModelFailure, input: object) {
-  server = await servingInference([() => Effect.fail(failure())]);
+  server = await servingReasoning([() => Effect.fail(failure())]);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'verdict', source: verdict } });
   return server.call('POST', `${alpha}/specs/inference/verdict/execute`, {

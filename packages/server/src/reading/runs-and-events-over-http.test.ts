@@ -8,7 +8,7 @@ import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import type { TestResponse } from '../testing/http-client.ts';
-import { alpha, servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -74,7 +74,7 @@ const ExecutionsSchema = Schema.Struct({
 
 const executionsOf = Schema.decodeUnknownSync(ExecutionsSchema);
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
@@ -100,7 +100,7 @@ function holding(count: number): (response: TestResponse) => boolean {
 }
 
 async function brainWithTwoRuns(environment: Readonly<Record<string, string>>): Promise<void> {
-  server = await servingInference([answers(textResult('Profits\u0000rose.'))], environment);
+  server = await servingReasoning([answers(textResult('Profits\u0000rose.'))], environment);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
   await server.call('POST', `${alpha}/specs/inference/summary/execute`, {
@@ -179,7 +179,9 @@ describe.each(stores)('the events of a brain over HTTP, on $store', ({ skipped, 
       'spec_created',
     ]);
     expect(feed.events.flatMap(({ summary: words }) => internalTermsIn(words))).toEqual([]);
-    expect(created.events.map(({ summary: words }) => words)).toEqual(['The reason function “summary” was created.']);
+    expect(created.events.map(({ summary: words }) => words)).toEqual([
+      'The reasoning function “summary” was created.',
+    ]);
   });
 });
 
@@ -231,7 +233,7 @@ describe.skipIf(postgresql === '')(
   () => {
     it('is an empty page oldest first, not not_found, and the events once the append commits', async () => {
       const environment = await onADatabaseOfItsOwn();
-      server = await servingInference([answers(textResult('Profits rose.'))], environment);
+      server = await servingReasoning([answers(textResult('Profits rose.'))], environment);
       await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
       await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
       const open = await anAppendLeftOpen(String(environment['DATABASE_URL']));

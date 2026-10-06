@@ -1,14 +1,14 @@
 import { InvalidInput } from '@beonauto/operations';
 import { Effect, Predicate, Result, type Schema } from 'effect';
 
-import type { InputContract } from '../spec/inference-spec.ts';
+import type { InputContract } from '../spec/reasoning-function-definition.ts';
 
 function isJsonObject(value: Schema.Json): value is Schema.JsonObject {
   return Predicate.isObject(value) && !Array.isArray(value);
 }
 
 const notAnObject = new InvalidInput({
-  detail: 'The input of an inference spec is a JSON object',
+  detail: 'The input of a reasoning function definition is a JSON object',
   issues: [{ pointer: '', detail: 'Expected a JSON object' }],
 });
 

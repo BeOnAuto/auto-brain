@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const summary = [
   '---',
@@ -12,10 +12,10 @@ const summary = [
   '{% system %}Be brief.{% endsystem %}Summarize: {{ input.text }}',
 ].join('\n');
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 beforeEach(async () => {
-  server = await servingInference([]);
+  server = await servingReasoning([]);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
 });
 
@@ -27,7 +27,7 @@ function creating(name: string, source: string) {
   return server.call('POST', `${alpha}/specs/inference`, { body: { name, source } });
 }
 
-describe('the inference specs of a brain over HTTP', () => {
+describe('the reasoning function definitions of a brain over HTTP', () => {
   it('creates a spec with 201, with what the primitive says about it', async () => {
     expect(await creating('summary', summary)).toMatchObject({
       status: 201,
@@ -45,7 +45,7 @@ describe('the inference specs of a brain over HTTP', () => {
   });
 });
 
-describe('the life of an inference spec over HTTP', () => {
+describe('the life of a reasoning function definition over HTTP', () => {
   it('lists, reads, updates and retires a spec', async () => {
     await creating('summary', summary);
     const listed = await server.call('GET', `${alpha}/specs/inference`);
@@ -145,7 +145,7 @@ const invalidDocuments: readonly (readonly [string, string, string])[] = [
   ],
 ];
 
-describe('an inference spec document that is not valid', () => {
+describe('a reasoning function definition document that is not valid', () => {
   it.each(invalidDocuments)('is rejected with 422, %s, with the line under /source', async (_case, source, detail) => {
     expect(await creating('broken', source)).toMatchObject({
       status: 422,

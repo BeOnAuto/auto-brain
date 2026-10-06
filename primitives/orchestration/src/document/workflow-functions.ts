@@ -42,8 +42,8 @@ function specDescribed(name: string, arguments_: Json): string {
 export const workflowFunctions: CallFunctions = {
   argumentChecks: { [executeSpecFunction]: executeSpecRejections },
   describe: specDescribed,
-  howAWorkflowReachesTheWorld: 'a workflow reaches the world only through the specs of its brain',
-  howAWorkflowStarts: 'execute the spec to run it',
+  howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its brain functions',
+  howAWorkflowStarts: 'run the workflow with execute_spec',
 };
 
 export const workflowPolicy = policyOf(workflowFunctions);

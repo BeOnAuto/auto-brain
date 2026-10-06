@@ -192,7 +192,7 @@ await test('docs distinguish available inbound MCP from upcoming internal tools'
   assert.ok(mcp.includes('direct tool lists is coming soon'));
   assert.ok(functions.includes('Those capabilities are not implemented'));
   assert.ok(functions.includes('model gateways connect to language models'));
-  assert.ok(readme.includes('Coming soon: tool access inside reason functions'));
+  assert.ok(readme.includes('Coming soon: tool access inside reasoning functions'));
   assert.ok(readme.includes('bounded tool-call loops'));
 });
 
@@ -282,7 +282,7 @@ await test('public workflows are available, and link their format and tutorial w
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const tutorial = readFileSync(join(docs, 'tutorials/first-workflow.md'), 'utf8');
   assert.doesNotMatch(workflows, /coming soon/iu);
-  assert.match(functions, /^\| Workflows +\| A workflow +\| Available +\|$/mu);
+  assert.ok(functions.includes('Workflows are available and coordinate the functions above'));
   for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /workflow service/iu);
   assert.doesNotMatch(workflows, /```(?:yaml|sh|bash|json)/u);
   assert.ok(markdownDestinations(workflows).includes('../reference/workflow-format.md'));

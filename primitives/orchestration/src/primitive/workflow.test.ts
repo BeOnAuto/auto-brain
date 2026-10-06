@@ -1,8 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { makeOrchestration, makeWorkflowAdapter } from '../index.ts';
 import { orchestratedBrain, type OrchestratedBrain } from '../testing/orchestrated-brain.ts';
 
 let brain: OrchestratedBrain;
+
+it('retains the exported constructor as the same workflow implementation', () => {
+  expect(makeOrchestration).toBe(makeWorkflowAdapter);
+});
 
 const header = `document:
   dsl: '1.0.3'
@@ -108,7 +113,7 @@ describe('creating a workflow spec the runtime does not run', () => {
       issues: [
         {
           detail:
-            'Line 7, column 20: at /do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through the specs of its brain; call execute_spec',
+            'Line 7, column 20: at /do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through its brain functions; call execute_spec',
           pointer: '/source',
         },
       ],

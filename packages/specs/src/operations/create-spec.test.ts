@@ -26,7 +26,7 @@ describe('create_spec', () => {
     expect(createSpec.registration).toMatchObject({
       scope: 'brain',
       kind: 'command',
-      title: 'Create spec',
+      title: 'Create definition',
       route: { method: 'POST', path: '/specs/{primitive}' },
       pathParameters: ['primitive'],
       successStatus: 201,
@@ -176,14 +176,14 @@ describe('create_spec rejecting with conflict', () => {
     expect(await creatingGreet()).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The brain already has the echo spec greet',
+      detail: 'The brain already has the echo definition greet',
       kind: 'taken',
     });
     await call(retireSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'greet' }));
     expect(await creatingGreet()).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The echo spec greet was retired, and a spec name is never reused',
+      detail: 'The echo definition greet was retired, and a definition name is never reused',
       kind: 'taken',
     });
     expect(

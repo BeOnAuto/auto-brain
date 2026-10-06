@@ -24,7 +24,13 @@ export { RateLimited } from './failure/rate-limited.ts';
 export { SpecInvalid } from './failure/spec-invalid.ts';
 export { TimedOut } from './failure/timed-out.ts';
 export { LanguageModel } from './model/language-model.ts';
-export { makeInference, type InferenceOptions } from './primitive/inference-primitive.ts';
+export {
+  makeReasoningFunctionAdapter,
+  makeReasoningFunctionAdapter as makeInference,
+  type ReasoningFunctionAdapterOptions,
+  type ReasoningFunctionAdapterOptions as InferenceOptions,
+} from './primitive/reasoning-function.ts';
+export type { ReasoningFunctionDefinitionDocument } from './spec/reasoning-function-definition.ts';
 export { parseModelReference, type ModelReference } from './model/model-reference.ts';
 export type {
   ContentPart,

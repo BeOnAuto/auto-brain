@@ -2,9 +2,9 @@ import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { answers, jsonResult, textResult } from '../testing/index.ts';
-import { inferenceWith } from '../testing/inference-runs.ts';
+import { reasoningWith } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
-import { inferenceExample } from './inference-description.ts';
+import { reasoningExample } from './reasoning-description.ts';
 
 const summarizing = documentOf(
   [
@@ -60,9 +60,9 @@ const answeredRecord = {
   },
 };
 
-describe('executing an inference spec', () => {
+describe('executing a reasoning function definition', () => {
   it('sends the rendered instructions and message with the settings, the provider options and a timeout', async () => {
-    const { executing, requests } = inferenceWith(answers(answered));
+    const { executing, requests } = reasoningWith(answers(answered));
     await executing(summarizing, { text: 'the quarter' });
 
     expect(requests()).toEqual([
@@ -85,7 +85,7 @@ describe('executing an inference spec', () => {
   });
 
   it('answers with the text and records what happened', async () => {
-    const { executing } = inferenceWith(answers(answered));
+    const { executing } = reasoningWith(answers(answered));
 
     expect(await executing(summarizing, { text: 'the quarter', tone: 'warm' })).toEqual(
       Exit.succeed({ output: 'A short summary.', record: answeredRecord }),
@@ -95,9 +95,9 @@ describe('executing an inference spec', () => {
 
 describe('the output of an execution', () => {
   it('is the JSON value for a JSON spec, which sends its schema', async () => {
-    const { executing, requests } = inferenceWith(answers(jsonResult({ summary: 'Globex grew.' })));
+    const { executing, requests } = reasoningWith(answers(jsonResult({ summary: 'Globex grew.' })));
 
-    expect(await executing(inferenceExample, { account: 'Globex' })).toMatchObject(
+    expect(await executing(reasoningExample, { account: 'Globex' })).toMatchObject(
       Exit.succeed({ output: { summary: 'Globex grew.' }, record: { output_format: 'json' } }),
     );
     expect(requests()[0]).toMatchObject({
@@ -109,13 +109,13 @@ describe('the output of an execution', () => {
 
   it('is a JSON value that is not an object when the schema allows it', async () => {
     const source = documentOf('model: openai/gpt-5\noutput:\n  format: json\n  schema: {type: [string, "null"]}');
-    const { executing } = inferenceWith(answers(jsonResult(null)));
+    const { executing } = reasoningWith(answers(jsonResult(null)));
 
     expect(await executing(source, { text: 'x' })).toMatchObject(Exit.succeed({ output: null }));
   });
 
   it('is a text answer cut off at the token limit, with why it stopped in the record', async () => {
-    const { executing } = inferenceWith(answers(textResult('A summary that stops', { finish_reason: 'length' })));
+    const { executing } = reasoningWith(answers(textResult('A summary that stops', { finish_reason: 'length' })));
 
     expect(await executing(documentOf('model: openai/gpt-5'), { text: 'x' })).toMatchObject(
       Exit.succeed({ output: 'A summary that stops', record: { finish_reason: 'length' } }),
@@ -123,7 +123,7 @@ describe('the output of an execution', () => {
   });
 
   it('records no instructions when the template has no system block', async () => {
-    const { executing } = inferenceWith(answers(textResult('Hi')));
+    const { executing } = reasoningWith(answers(textResult('Hi')));
 
     expect(await executing(documentOf('model: openai/gpt-5'), { text: 'x' })).toMatchObject(
       Exit.succeed({ record: { prompt: { message: 'Summarize x', truncated: false } } }),

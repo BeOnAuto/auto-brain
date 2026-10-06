@@ -39,7 +39,7 @@ const complete = documentOf(
   '{% system %}You write for {{ input.tone }} readers. Today is {{ today }}.{% endsystem %}\nSummarize {{ input.account }}.',
 );
 
-describe('a complete inference spec document', () => {
+describe('a complete reasoning function definition', () => {
   it('parses into the model, the settings, the input, the output, the provider options and the template', () => {
     const spec = parsed(complete);
 
@@ -82,7 +82,7 @@ describe('a complete inference spec document', () => {
   });
 });
 
-describe('the smallest inference spec document', () => {
+describe('the smallest reasoning function definition', () => {
   it('names a model and writes a message', () => {
     expect(parsed('---\nmodel: openai/gpt-5\n---\nSay hello.')).toMatchObject({
       model: 'openai/gpt-5',

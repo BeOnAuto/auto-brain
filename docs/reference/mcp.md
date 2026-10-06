@@ -1,12 +1,12 @@
 # MCP reference
 
-The Auto runtime exposes brain, reason-function and workflow operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For Claude Code, Claude Desktop and Codex connection setup, see the [local quick start](../get-started/local.md); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
+The Auto runtime exposes brain, reasoning-function and workflow operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For Claude Code, Claude Desktop and Codex connection setup, see the [local quick start](../get-started/local.md); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
 
 ## Connection direction
 
-This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reason function. Auto Cloud is coming soon; [request an invite](https://on.auto/request-invite) for hosted access.
+This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reasoning function. Auto Cloud is coming soon; [request an invite](https://on.auto/request-invite) for hosted access.
 
-Internal tool access through a shared catalog, an outbound MCP gateway or direct tool lists is coming soon, together with bounded tool-call loops. None of those capabilities is enabled by adding an endpoint to an external assistant. See [Tool access inside a reason function](../concepts/functions.md#tool-access-inside-a-reason-function).
+Internal tool access through a shared catalog, an outbound MCP gateway or direct tool lists is coming soon, together with bounded tool-call loops. None of those capabilities is enabled by adding an endpoint to an external assistant. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
 ## Transport and authentication
 
@@ -20,31 +20,31 @@ Authorization uses the same organization, brain and operation permissions as the
 
 ## Endpoint scope
 
-| Path                             | Scope                                                                                                |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `/mcp`                           | Brain management, model discovery and function operations; function tools require a `brain` argument |
-| `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                               |
-| `/orgs/{org}/brains/{brain}/mcp` | Function operations for one brain, without a `brain` argument                                        |
+| Path                             | Scope                                                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/mcp`                           | Brain management, model discovery, function and workflow operations; operations within a brain require a `brain` argument |
+| `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                                                    |
+| `/orgs/{org}/brains/{brain}/mcp` | Function and workflow operations for one brain, without a `brain` argument                                                |
 
-Workflow operations are function operations: `send_execution_event` is listed with them, and the definition tools accept `orchestration` as well as `inference`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
+Functions and workflows share the definition tools: those tools accept `inference` for reasoning functions and `orchestration` for workflows. Workflow operations also include `send_execution_event`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
 
 ## Tools
 
-Product terminology uses reason functions, workflows and runs. Tool names retain the API's `spec` and `execution` identifiers.
+Product terminology uses reasoning functions, workflows and runs. Tool names retain the API's `spec` and `execution` identifiers.
 
-| Work                      | Tools                                                                                                    |
-| ------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Manage brains             | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
-| List available models     | `list_models`, with an optional `provider` filter                                                        |
-| Manage reason functions   | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
-| Manage workflows          | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
-| Run and inspect           | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
-| Answer a waiting workflow | `send_execution_event`                                                                                   |
-| Follow a brain            | `list_brain_events`                                                                                      |
+| Work                       | Tools                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Manage brains              | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
+| List available models      | `list_models`, with an optional `provider` filter                                                        |
+| Manage reasoning functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
+| Manage workflows           | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
+| Run and inspect            | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
+| Answer a waiting workflow  | `send_execution_event`                                                                                   |
+| Follow a brain             | `list_brain_events`                                                                                      |
 
-Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function tools are available at `/mcp` and the brain endpoint.
+Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function and workflow tools are available at `/mcp` and the brain endpoint.
 
-Definition operations identify the function by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. See [HTTP operations](http.md) for field limits and retry behavior.
+Definition operations identify a function or workflow by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. See [HTTP operations](http.md) for field limits and retry behavior.
 
 `list_executions` lists a brain's runs newest first, with optional `primitive`, `name` and `status` filters. `get_execution_history` reads what was recorded about one run, and `list_brain_events` follows everything that happened in a brain, with optional `type` and `since` filters; both take `order`. Their events carry `id`, `at`, `type`, a plain-language `summary` and `data` of at most 4 KiB. All three page with `limit` and `cursor` and answer `has_more` and `next_cursor`; a page may be short or empty while `has_more` is `true`. They work on a retired brain. See [Run history and brain events](http.md#run-history-and-brain-events) for the fields and limits.
 
@@ -54,11 +54,11 @@ Retirement is permanent. A retired name cannot be reused, and retired definition
 
 `list_models` lists the model references the server offers, including configured aliases. It requires `org:read`. Its optional `provider` input selects one provider prefix, such as `anthropic`, or a configured gateway name. It is not available on a brain-scoped endpoint.
 
-The result has `object: "list"`, a `data` array, `catalog_status` and `listed_at`. Each entry contains `id`, `object: "model"`, `created` and `owned_by`. Use a concrete `id` as the reason function's `model`. Optional fields include `name`, `context_window`, `max_tokens`, `resolved_to` for aliases, and `pattern: true` for wildcard entries. A wildcard describes a supported prefix; it is not a model to run.
+The result has `object: "list"`, a `data` array, `catalog_status` and `listed_at`. Each entry contains `id`, `object: "model"`, `created` and `owned_by`. Use a concrete `id` as the reasoning function's `model`. Optional fields include `name`, `context_window`, `max_tokens`, `resolved_to` for aliases, and `pattern: true` for wildcard entries. A wildcard describes a supported prefix; it is not a model to run.
 
 `catalog_status: "partial"` means a provider's list is missing or stale. It does not mean the server has no models. The server caches provider lists for five minutes and retains a previous list when a refresh fails. `listed_at` identifies the oldest provider list in the response, or the response time when no provider was queried. Model access rules also apply when a function runs.
 
-This model catalog lists language models. The shared catalog for tools used inside reason functions is a separate, upcoming capability.
+This model catalog lists language models. The shared catalog for tools used inside reasoning functions is a separate, upcoming capability.
 
 ## Successful results
 

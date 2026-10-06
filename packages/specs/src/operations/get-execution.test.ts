@@ -24,7 +24,7 @@ describe('get_execution', () => {
     expect(getExecution.registration).toMatchObject({
       scope: 'brain',
       kind: 'query',
-      title: 'Get execution',
+      title: 'Get run',
       route: { method: 'GET', path: '/executions/{execution_id}' },
       pathParameters: ['execution_id'],
       successStatus: 200,

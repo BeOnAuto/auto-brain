@@ -5,8 +5,8 @@ import { Effect, Option } from 'effect';
 
 import { isArgumentsProblem, specArgumentsOf } from '../document/spec-arguments.ts';
 import { attributesOfRun } from '../runs/run-attributes.ts';
+import type { RunDefinition, DefinitionRunResult } from './function-run.ts';
 import { nestedExecutionId } from './nested-execution-id.ts';
-import type { ExecuteSpec, SpecExecutionResult } from './spec-execution.ts';
 
 const mostSpecOutputBytes = 1_048_576;
 
@@ -24,7 +24,7 @@ function rejectionDetail(
     : `${detail} (${issues.map((issue) => `${issue.pointer}: ${issue.detail}`).join('; ')})`;
 }
 
-function callResultOf(result: SpecExecutionResult): CallResult {
+function callResultOf(result: DefinitionRunResult): CallResult {
   if (result.status === 'rejected') {
     return { status: 'rejected', reason: result.reason, detail: rejectionDetail(result.detail, result.issues ?? []) };
   }
@@ -40,7 +40,7 @@ function callResultOf(result: SpecExecutionResult): CallResult {
     : result;
 }
 
-export function specCalls(executeSpec: ExecuteSpec): Perform {
+export function definitionCalls(executeSpec: RunDefinition): Perform {
   return (call, run) =>
     Option.match(attributesOfRun(run.attributes), {
       onNone: () => Effect.succeed(noCaller),

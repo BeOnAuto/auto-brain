@@ -1,14 +1,14 @@
 import { Result } from 'effect';
 
 import { issueText } from '../spec/document-issue.ts';
-import type { InferenceSpec } from '../spec/inference-spec.ts';
+import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-function-definition.ts';
 import { parseSpecDocument } from '../spec/spec-parsing.ts';
 
 export function documentOf(frontMatter: string, body = 'Summarize {{ input.text }}'): string {
   return `---\n${frontMatter}\n---\n${body}`;
 }
 
-export function parsed(source: string): InferenceSpec {
+export function parsed(source: string): ReasoningFunctionDefinitionDocument {
   return Result.getOrThrow(parseSpecDocument(source));
 }
 

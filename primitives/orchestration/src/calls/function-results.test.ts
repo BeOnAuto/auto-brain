@@ -1,34 +1,38 @@
 import { describe, expect, it } from 'vitest';
 
-import { specExecutionResultOf } from './spec-results.ts';
+import { specExecutionResultOf } from '../index.ts';
+import { definitionRunResultOf } from './function-results.ts';
 
 describe('the result of executing a spec through the operations', () => {
+  it('retains the exported result adapter as the same implementation', () => {
+    expect(specExecutionResultOf).toBe(definitionRunResultOf);
+  });
   it('is the output of the execution that succeeded', () => {
-    expect(specExecutionResultOf({ status: 'succeeded', output: { status: 'succeeded', output: { a: 1 } } })).toEqual({
+    expect(definitionRunResultOf({ status: 'succeeded', output: { status: 'succeeded', output: { a: 1 } } })).toEqual({
       status: 'succeeded',
       output: { a: 1 },
     });
-    expect(specExecutionResultOf({ status: 'succeeded', output: { status: 'succeeded' } })).toEqual({
+    expect(definitionRunResultOf({ status: 'succeeded', output: { status: 'succeeded' } })).toEqual({
       status: 'succeeded',
       output: null,
     });
   });
 
   it('is a failure for an execution that finishes later, which a workflow cannot wait for yet', () => {
-    expect(specExecutionResultOf({ status: 'succeeded', output: { status: 'started' } })).toEqual({
+    expect(definitionRunResultOf({ status: 'succeeded', output: { status: 'started' } })).toEqual({
       status: 'failed',
       detail: 'The execution finishes later, and a workflow cannot wait for it in this version',
     });
   });
 
   it('is the rejection, with its issues when it has some', () => {
-    expect(specExecutionResultOf({ status: 'rejected', reason: 'forbidden', detail: 'No' })).toEqual({
+    expect(definitionRunResultOf({ status: 'rejected', reason: 'forbidden', detail: 'No' })).toEqual({
       status: 'rejected',
       reason: 'forbidden',
       detail: 'No',
     });
     expect(
-      specExecutionResultOf({
+      definitionRunResultOf({
         status: 'rejected',
         reason: 'invalid_input',
         detail: 'Wrong',
@@ -43,7 +47,7 @@ describe('the result of executing a spec through the operations', () => {
   });
 
   it('is a failure that names the incident of a call that failed', () => {
-    expect(specExecutionResultOf({ status: 'failed', incident: 'inc-1' })).toEqual({
+    expect(definitionRunResultOf({ status: 'failed', incident: 'inc-1' })).toEqual({
       status: 'failed',
       detail: 'The execution failed with incident inc-1',
     });

@@ -2,7 +2,7 @@ import { Conflict, InvalidInput, NotFound, Unavailable } from '@beonauto/operati
 import { Effect } from 'effect';
 
 import type { ExecutionState, RecordedExecution } from './execution-state.ts';
-import type { Execution, ExecutionDetail, ExecutionRejection } from './execution.ts';
+import type { Run, RunDetail, ExecutionRejection } from './execution.ts';
 
 function recorded(id: string, state: ExecutionState): Effect.Effect<RecordedExecution, NotFound> {
   return state === undefined
@@ -10,15 +10,15 @@ function recorded(id: string, state: ExecutionState): Effect.Effect<RecordedExec
     : Effect.succeed(state);
 }
 
-export function executionOf(id: string, state: ExecutionState): Effect.Effect<Execution, NotFound> {
+export function executionOf(id: string, state: ExecutionState): Effect.Effect<Run, NotFound> {
   return recorded(id, state).pipe(Effect.map(({ execution }) => ({ execution_id: id, ...execution })));
 }
 
-function detailOf(id: string, { execution, record }: RecordedExecution): ExecutionDetail {
+function detailOf(id: string, { execution, record }: RecordedExecution): RunDetail {
   return record === undefined ? { execution_id: id, ...execution } : { execution_id: id, ...execution, record };
 }
 
-export function executionDetailOf(id: string, state: ExecutionState): Effect.Effect<ExecutionDetail, NotFound> {
+export function executionDetailOf(id: string, state: ExecutionState): Effect.Effect<RunDetail, NotFound> {
   return recorded(id, state).pipe(Effect.map((execution) => detailOf(id, execution)));
 }
 
@@ -39,10 +39,10 @@ function replayed(rejection: ExecutionRejection): ReplayedRejection {
   return new Conflict({ detail: rejection.detail, kind: 'unworkable' });
 }
 
-function answerWith(execution: Execution): Effect.Effect<Execution, ReplayedRejection> {
+function answerWith(execution: Run): Effect.Effect<Run, ReplayedRejection> {
   return execution.rejection === undefined ? Effect.succeed(execution) : Effect.fail(replayed(execution.rejection));
 }
 
-export function answerOf(id: string, state: ExecutionState): Effect.Effect<Execution, NotFound | ReplayedRejection> {
+export function answerOf(id: string, state: ExecutionState): Effect.Effect<Run, NotFound | ReplayedRejection> {
   return executionOf(id, state).pipe(Effect.flatMap(answerWith));
 }

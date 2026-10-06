@@ -5,7 +5,7 @@ import { checkAnswerSchema, compileAnswerSchema } from '../schema/answer-schema.
 import type { SchemaIssue } from '../schema/json-bounds.ts';
 import { issueAt, issueText, type DocumentIssue, type SourceLines } from './document-issue.ts';
 import type { InputSection, OutputSection } from './front-matter-schema.ts';
-import type { InputContract } from './inference-spec.ts';
+import type { InputContract } from './reasoning-function-definition.ts';
 
 export interface OutputContract {
   readonly output: OutputRequest;

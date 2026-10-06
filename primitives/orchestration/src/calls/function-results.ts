@@ -1,9 +1,9 @@
 import type { Outcome } from '@beonauto/operations';
 import { field, textField } from '@beonauto/workflow-engine';
 
-import type { SpecExecutionResult } from './spec-execution.ts';
+import type { DefinitionRunResult } from './function-run.ts';
 
-export function specExecutionResultOf(outcome: Outcome): SpecExecutionResult {
+export function definitionRunResultOf(outcome: Outcome): DefinitionRunResult {
   if (outcome.status === 'rejected') {
     const { reason, detail, issues } = outcome;
     return issues === undefined

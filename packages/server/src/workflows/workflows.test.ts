@@ -1,4 +1,4 @@
-import { makeInference } from '@beonauto/inference';
+import { makeReasoningFunctionAdapter } from '@beonauto/inference';
 import { scriptedLanguageModel } from '@beonauto/inference/testing';
 import { describe, expect, it } from 'vitest';
 
@@ -6,7 +6,7 @@ import { longestCallOf } from './workflows.ts';
 
 describe('the longest a nested execution of a workflow may run', () => {
   it('is as long as its primitive states, 1660 s for inference, and a minute more', () => {
-    const inference = makeInference({
+    const inference = makeReasoningFunctionAdapter({
       languageModel: scriptedLanguageModel().languageModel,
       offered: { providers: [], aliases: [] },
     });

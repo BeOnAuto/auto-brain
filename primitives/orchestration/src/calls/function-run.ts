@@ -1,7 +1,7 @@
 import type { CallerIdentity, Issue, RejectionReason } from '@beonauto/operations';
 import type { Effect, Schema } from 'effect';
 
-export interface SpecExecution {
+export interface DefinitionRunRequest {
   readonly org: string;
   readonly brain: string;
   readonly caller: CallerIdentity;
@@ -11,7 +11,7 @@ export interface SpecExecution {
   readonly executionId: string;
 }
 
-export type SpecExecutionResult =
+export type DefinitionRunResult =
   | { readonly status: 'succeeded'; readonly output: Schema.Json }
   | {
       readonly status: 'rejected';
@@ -21,4 +21,4 @@ export type SpecExecutionResult =
     }
   | { readonly status: 'failed'; readonly detail: string };
 
-export type ExecuteSpec = (execution: SpecExecution) => Effect.Effect<SpecExecutionResult>;
+export type RunDefinition = (execution: DefinitionRunRequest) => Effect.Effect<DefinitionRunResult>;

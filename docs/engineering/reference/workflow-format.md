@@ -62,8 +62,8 @@ A run decides each input as a pure function of the input and its state: it reads
 
 Every server runs workflows (`packages/server/src/workflows/workflows.ts`). The pieces it puts together:
 
-- `openWorkflowHost(options)` of `@beonauto/workflow-host`, opened on the ledger's own database, with `orchestrationMachine`, the calls of `specCalls`, which execute a spec through the server's dispatcher as the caller who started the run (`specExecutionResultOf` turns its outcome into a result), `executionSettler` over the server's ledger, and reports to the server's log.
-- `makeOrchestration({ runs, mostDurationMs, longestCallMs })`, the primitive for `makeSpecOperations`, and `defineSendExecutionEvent(runs)`, the brain operation `send_execution_event`.
+- `openWorkflowHost(options)` of `@beonauto/workflow-host`, opened on the ledger's own database, with `orchestrationMachine`, the calls of `definitionCalls`, which run a definition through the server's dispatcher as the caller who started the run (`definitionRunResultOf` turns its outcome into a result), `executionSettler` over the server's ledger, and reports to the server's log. This callback also supports extension adapters outside the five brain function types.
+- `makeWorkflowAdapter({ runs, mostDurationMs, longestCallMs })`, the workflow runtime adapter for `makeSpecOperations`, and `defineSendExecutionEvent(runs)`, the brain operation `send_execution_event`.
 - `runPresenter`, given with the presenters of the primitives, so a workflow's history and the brain's events show each input its run took.
 
 The host runs in the server's process: it fires timers when they are due, sweeps every `ORCHESTRATION_SWEEP_INTERVAL`, and runs at most `ORCHESTRATION_NESTED_EXECUTIONS` calls at once. When the server stops, the host lets the starts and events it took and the decision in progress finish, then cuts off the calls in flight, which start again when the server next starts, lets go of its claim on the workflows, and closes its database. [Workflow operations](../self-host/workflows.md) describes it for an operator.
@@ -107,4 +107,4 @@ Measured once with the arm64 image and no memory limit, the server took about 18
 
 ## Not in this version
 
-The public reference lists what a document may not use. The implementation also has no operation that cancels a run, and runs the workflows of a database in one server at a time. A function is added by adding its name and the checks of its arguments to the functions the machine is given (`src/document/workflow-functions.ts`), and what a call of it does to the calls the host performs (`src/calls/spec-calls.ts`).
+The public reference lists what a document may not use. The implementation also has no operation that cancels a run, and runs the workflows of a database in one server at a time. The only supported DSL call is `execute_spec`. Adding another DSL call would require its name and argument checks in `src/document/workflow-functions.ts`, and an implementation in `src/calls/function-calls.ts`. This is the workflow engine's call interface, separate from defining a reusable brain function.

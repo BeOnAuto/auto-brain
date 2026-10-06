@@ -1,8 +1,10 @@
 <div v-pre>
 
-# Reason function format
+<span id="reason-function-format"></span>
 
-The API stores a reason function as an `inference` spec. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
+# Reasoning function format
+
+The API stores a reasoning function as an `inference` spec. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
 
 ## A function document
 
@@ -51,7 +53,7 @@ Unknown fields are rejected. Creation and updates validate the document and repo
 
 The Liquid template reads supplied values through `input`. An optional `{% system %}` block provides system instructions. The document must also produce a message outside that block. A function document contains instructions, not model credentials.
 
-A current run makes a model invocation and records its output and usage. The document has no fields for a tool catalog, MCP gateway or direct tools. Internal tool access and bounded tool-call loops are [coming soon](../concepts/functions.md#tool-access-inside-a-reason-function). An external agent can pass evidence it collected through its own connections as input.
+A current run makes a model invocation and records its output and usage. The document has no fields for a tool catalog, MCP gateway or direct tools. Internal tool access and bounded tool-call loops are [coming soon](../concepts/functions.md#tool-access-inside-a-reasoning-function). An external agent can pass evidence it collected through its own connections as input.
 
 Changing the document creates a version. A run uses the active latest version and records `spec_version`; the current API does not select an arbitrary historical version to execute. See the [HTTP reference](http.md) for input limits and retry behavior.
 

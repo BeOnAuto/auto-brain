@@ -15,7 +15,7 @@ import {
   TimedOut,
   type ModelFailure,
 } from '../index.ts';
-import { inferenceWith, type Execution } from '../testing/inference-runs.ts';
+import { reasoningWith, type Execution } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
 
 const jsonSpec = documentOf(
@@ -23,7 +23,7 @@ const jsonSpec = documentOf(
 );
 
 function failingWith(failure: () => ModelFailure): Promise<Execution> {
-  return inferenceWith(() => Effect.fail(failure())).executing(jsonSpec, { text: 'x' });
+  return reasoningWith(() => Effect.fail(failure())).executing(jsonSpec, { text: 'x' });
 }
 
 describe('a provider that rejects the spec', () => {

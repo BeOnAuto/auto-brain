@@ -1,6 +1,6 @@
-import type { Execution } from '../execution/execution.ts';
+import type { Run } from '../execution/execution.ts';
 
-export type ExecutionStatus = Execution['status'];
+export type ExecutionStatus = Run['status'];
 
 export const storedTypesByStatus: Readonly<Record<ExecutionStatus, readonly string[]>> = {
   started: ['execution_started', 'execution_deferred'],

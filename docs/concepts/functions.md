@@ -2,7 +2,7 @@
 
 A brain reasons, interacts, predicts, recalls and computes. Workflows coordinate those functions around the way your business works.
 
-A function defines a reusable operation, including its inputs, outputs and behavior. A workflow coordinates uses of those functions. The same function can be called directly by an agent or used as a step in more than one workflow.
+A brain function defines a reusable operation, including its inputs, outputs and behavior. A workflow coordinates uses of those functions. The same function can be called directly by an agent or used as a step in more than one workflow. Coordination and the five function types make six capabilities; workflows are separate from the function categories.
 
 ## Availability
 
@@ -10,12 +10,13 @@ The source-available runtime is in early development and is not ready for produc
 
 | Group       | What someone defines    | Current runtime |
 | ----------- | ----------------------- | --------------- |
-| Reasoning   | A reason function       | Available       |
+| Reasoning   | A reasoning function    | Available       |
 | Interaction | An interaction function | Planned         |
 | Prediction  | A prediction function   | Planned         |
 | Recall      | A recall function       | Planned         |
 | Computation | A computation function  | Planned         |
-| Workflows   | A workflow              | Available       |
+
+Workflows are available and coordinate the functions above. They are not another function type.
 
 Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`.
 
@@ -23,13 +24,13 @@ Dream is coming soon. It is an optional process using history and functions, not
 
 ## Reasoning
 
-A reason function configures language-model work such as interpreting information, generating a response or evaluating options. Its prompt supplies instructions and input framing.
+A reasoning function configures language-model work such as interpreting information, generating a response or evaluating options. Its prompt supplies instructions and input framing.
 
-For example, a reason function can review a campaign brief against your team's criteria. Each run supplies a brief to the saved prompt, invokes the model and records the output and usage. The [first-brain tutorial](../tutorials/first-brain.md) builds that example.
+For example, a reasoning function can review a campaign brief against your team's criteria. Each run supplies a brief to the saved prompt, invokes the model and records the output and usage. The [first-brain tutorial](../tutorials/first-brain.md) builds that example.
 
-An external agent can call a reason function through Auto's MCP interface. Tools called from inside the reason function are a separate capability, described below.
+An external agent can call a reasoning function through Auto's MCP interface. Tools called from inside the reasoning function are a separate capability, described below.
 
-See [Reason function format](../reference/reasoning-format.md).
+See [Reasoning function format](../reference/reasoning-format.md).
 
 ## Interaction
 
@@ -51,7 +52,7 @@ Memory describes the broader retention and availability of information. Recall i
 
 ## Computation
 
-A computation function executes specified logic with defined inputs and outputs. It can implement a calculation, transformation or other deterministic operation. AI-assisted authoring can help write that logic; once defined, the operation executes the specified code or expression.
+A computation function executes specified code or expressions with defined inputs and outputs, such as a calculation or data transformation. It need not be mathematically pure. AI-assisted authoring can help write the logic; once defined, the operation executes that specified logic.
 
 ## Supporting assets
 
@@ -59,23 +60,25 @@ Prompts, skills, tools, models and sources support functions. They are not addit
 
 A skill is reusable task guidance and associated resources. A tool is a calling interface: a function exposed as a tool retains its function type. Tools can also represent operations outside the brain. A language model and a predictive model serve different purposes, so qualify the word model when that distinction matters.
 
-## Tool access inside a reason function
+<span id="tool-access-inside-a-reason-function"></span>
 
-Coming soon. The planned shared tool catalog will let a reason function use authorized business operations. The preferred connection is a single MCP tool gateway, with direct tool lists as another option. Apollo GraphOS Agent Services is one possible gateway for graph-based tools; Apollo is optional.
+## Tool access inside a reasoning function
+
+Coming soon. The planned shared tool catalog will let a reasoning function use authorized business operations. The preferred connection is a single MCP tool gateway, with direct tool lists as another option. Apollo GraphOS Agent Services is one possible gateway for graph-based tools; Apollo is optional.
 
 This needs outbound MCP connections, tool definitions and dispatch, and a bounded loop in which the model can request a tool, receive its result and continue. Those capabilities are not implemented in the current runtime. Provider settings called model gateways connect to language models; they do not provide an MCP tool gateway.
 
-Today, the external agent can collect evidence through its own connections and pass it into a reason function. Connecting that agent to Auto does not give the function access to the agent's tools, credentials or accounts. See the [MCP reference](../reference/mcp.md) for the available inbound connection.
+Today, the external agent can collect evidence through its own connections and pass it into a reasoning function. Connecting that agent to Auto does not give the function access to the agent's tools, credentials or accounts. See the [MCP reference](../reference/mcp.md) for the available inbound connection.
 
 ## API compatibility
 
 Use product terminology when explaining the work, while keeping current wire identifiers intact:
 
-| Product term    | Current API and implementation term |
-| --------------- | ----------------------------------- |
-| Reason function | `inference` spec                    |
-| Workflow        | `orchestration` spec                |
-| Definition      | `spec`                              |
-| Run             | `execution`                         |
+| Product term       | Legacy API term      |
+| ------------------ | -------------------- |
+| Reasoning function | `inference` spec     |
+| Workflow           | `orchestration` spec |
+| Definition         | `spec`               |
+| Run                | `execution`          |
 
-For example, creating a reason function uses `create_spec` with `primitive: "inference"`, and creating a workflow uses `primitive: "orchestration"`. Renaming product categories does not rewrite event history or introduce new routes. Planned function types are not accepted API identifiers yet. [Workflow format](../reference/workflow-format.md) describes the workflow document.
+For example, creating a reasoning function uses `create_spec` with `primitive: "inference"`, and creating a workflow uses `primitive: "orchestration"`. Renaming product categories does not rewrite event history or introduce new routes. Planned function types are not accepted API identifiers yet. [Workflow format](../reference/workflow-format.md) describes the workflow document.

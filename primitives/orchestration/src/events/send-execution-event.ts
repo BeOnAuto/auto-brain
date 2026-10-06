@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
-import { getExecution } from '@beonauto/specs';
+import { getExecution, isWorkflowRun } from '@beonauto/specs';
 import {
   jsonBytesOf,
   mostReceivedEventBytes,
@@ -20,12 +20,12 @@ const mostNameLength = 256;
 
 const mostTextLength = 1024;
 
-const noRunningWorkflow = 'The brain has no running workflow execution with that id';
+const noRunningWorkflow = 'The brain has no active workflow run with that id';
 
 const notNow = 'The workflow cannot take the event now; try again shortly';
 
 const ExecutionIdField = Schema.String.annotate({
-  description: 'The id of the execution of a workflow spec, a UUID in any case, kept in lowercase',
+  description: 'The id of the workflow run, a UUID in any case, kept in lowercase',
 })
   .check(Schema.isUUID())
   .pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toLowerCase()));
@@ -70,11 +70,11 @@ const DeliveredEventSchema = Schema.Struct({
 export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {
   return defineCommand('brain', {
     name: 'send_execution_event',
-    title: 'Send execution event',
+    title: 'Send event to workflow run',
     description: [
-      'Sends an event to the running workflow of an execution, for its listen tasks, and returns the event',
+      'Sends an event to an existing workflow run, for its listen steps, and returns the event',
       'with its id and the time it was sent.',
-      '`execution_id` names an execution of an orchestration spec that is still started.',
+      '`execution_id` names the workflow run that is still started. This resumes waiting work; it does not start a new run.',
       `\`event\` has a \`type\` and an optional \`id\` (each at most ${mostNameLength} characters), \`source\` and`,
       `\`subject\` (each at most ${mostTextLength} characters) and \`data\` (any JSON value); the whole event takes at`,
       `most ${mostEventBytes} bytes as JSON.`,
@@ -83,20 +83,20 @@ export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {
       'retried safely with the same id.',
       `A workflow holds at most ${mostWaitingEvents} events it has not consumed (${mostWaitingEventBytes} bytes), and takes`,
       `at most ${mostReceivedEvents} events (${mostReceivedEventBytes} bytes as JSON) over its life; one more fails it, and`,
-      'its execution settles rejected.',
-      'Rejected with not_found when the brain has no running workflow execution with that id,',
+      'its run settles rejected.',
+      'Rejected with not_found when the brain has no active workflow run with that id,',
       'and with unavailable when the workflow cannot take the event at that moment, in which case try again.',
     ].join(' '),
     route: { method: 'POST', path: '/executions/{execution_id}/events' },
     inputSchema: Schema.Struct({ execution_id: ExecutionIdField, event: EventSchema }),
     outputSchema: Schema.Struct({
-      execution_id: Schema.String.annotate({ description: 'The id of the execution' }),
+      execution_id: Schema.String.annotate({ description: 'The id of the workflow run' }),
       event: DeliveredEventSchema,
     }),
     reasons: ['not_found', 'unavailable'],
     handle: Effect.fnUntraced(function* ({ execution_id: executionId, event }) {
       const execution = yield* getExecution.call({ execution_id: executionId });
-      if (execution.primitive !== 'orchestration' || execution.status !== 'started') {
+      if (!isWorkflowRun(execution) || execution.status !== 'started') {
         return yield* new NotFound({ detail: noRunningWorkflow });
       }
       const { org, brain } = yield* BrainContext;

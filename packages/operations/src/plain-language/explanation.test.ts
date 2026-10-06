@@ -97,9 +97,9 @@ describe('unsuccessfulWords', () => {
 
   it('gives the reference of an unexpected failure, and says it was not the person’s doing', () => {
     expect(
-      unsuccessfulWords('run the reason function “summary”', 'command', { status: 'failed', incident: 'abc' }),
+      unsuccessfulWords('run the reasoning function “summary”', 'command', { status: 'failed', incident: 'abc' }),
     ).toBe(
-      'Could not run the reason function “summary”: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: abc.',
+      'Could not run the reasoning function “summary”: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: abc.',
     );
   });
 

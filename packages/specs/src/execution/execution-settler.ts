@@ -12,7 +12,7 @@ import { DateTime, Effect, Schema } from 'effect';
 import type { ExecutionResult } from './execution-commands.ts';
 import { executionDecider, executionStreamOf } from './execution-decider.ts';
 import { executionOf } from './execution-lookup.ts';
-import type { Execution } from './execution.ts';
+import type { Run } from './execution.ts';
 import { withinResultLimit } from './recorded-size.ts';
 
 export interface ExecutionAddress {
@@ -28,7 +28,7 @@ export type Settlement =
 export type SettleExecution = (
   execution: ExecutionAddress,
   settlement: Settlement,
-) => Effect.Effect<Execution, NotFound | Conflict>;
+) => Effect.Effect<Run, NotFound | Conflict>;
 
 const isWellFormed = Schema.is(
   Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),

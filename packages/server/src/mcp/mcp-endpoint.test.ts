@@ -11,7 +11,7 @@ import { answers, textResult } from '@beonauto/inference/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
 
@@ -38,7 +38,7 @@ const summary = [
   '{% system %}Be brief.{% endsystem %}Summarize: {{ input.text }}',
 ].join('\n');
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
@@ -61,7 +61,7 @@ const brainArgumentIn = Schema.decodeUnknownSync(
 
 describe('the brain argument of the spec tools on /mcp', () => {
   it('is required in every one of them, as a string with the brain id pattern', async () => {
-    server = await servingInference([]);
+    server = await servingReasoning([]);
 
     const spec = (await listingOn('/mcp')).filter(({ name }) => specTools.includes(name));
     const brainArguments = spec.map(({ inputSchema }) => {
@@ -78,7 +78,7 @@ describe('the brain argument of the spec tools on /mcp', () => {
 
 describe('the tools of /mcp', () => {
   it('are the brain tools, list_models and the spec tools, the spec tools taking a brain, with self-contained schemas', async () => {
-    server = await servingInference([]);
+    server = await servingReasoning([]);
     await server.call('POST', '/v1/orgs/local/brains', { body: { brain: 'alpha', name: 'Alpha' } });
 
     const [own, org, brain] = [
@@ -95,7 +95,7 @@ describe('the tools of /mcp', () => {
   });
 
   it('carry instructions about brains, specs, executions and the events a workflow waits for', async () => {
-    server = await servingInference([]);
+    server = await servingReasoning([]);
 
     const instructions = await onMcp('/mcp', (session) => Promise.resolve(session.instructions));
 
@@ -103,12 +103,12 @@ describe('the tools of /mcp', () => {
       [
         'This server runs the business brains of your org.',
         'Start with list_brains to see them, or create_brain to make one.',
-        'A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do.',
-        "The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written.",
+        'A brain uses named, versioned definitions, called specs in this API.',
+        'The primitive field selects a definition type; each tool describes its supported document formats.',
         'list_models lists the models this server can call.',
-        'execute_spec runs a spec and records the run as an execution.',
+        'execute_spec runs a definition and records its run; execution_id identifies it.',
         'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
-        'A workflow waiting for an event receives it through send_execution_event.',
+        'Workflows coordinate the work. A waiting workflow run receives input through send_execution_event.',
         "Every tool that works inside a brain takes the brain's id as brain.",
         'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
       ].join(' '),
@@ -122,15 +122,15 @@ function reachingOutside(tools: readonly ListedTool[]): readonly string[] {
 
 describe('the open-world hint of the tools of /mcp', () => {
   it('is set for list_models and execute_spec, which reach model providers, and for no other tool', async () => {
-    server = await servingInference([]);
+    server = await servingReasoning([]);
 
     expect(reachingOutside(await listingOn('/mcp'))).toEqual(['list_models', 'execute_spec']);
   });
 });
 
 describe('one connection to /mcp', () => {
-  it('creates a brain, then creates, executes and reads back an inference spec in it', async () => {
-    server = await servingInference([answers(textResult('Profits rose.'))]);
+  it('creates a brain, then creates, executes and reads back a reasoning function definition in it', async () => {
+    server = await servingReasoning([answers(textResult('Profits rose.'))]);
 
     const outcome = await onMcp('/mcp', async (session) => {
       const brain = await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' });
@@ -168,7 +168,7 @@ describe('one connection to /mcp', () => {
 
 describe('a spec tool on /mcp', () => {
   it('answers a call without a brain, and with an unknown brain, as isError', async () => {
-    server = await servingInference([]);
+    server = await servingReasoning([]);
 
     const outcome = await onMcp('/mcp', async (session) => ({
       without: await session.callTool('list_specs', { primitive: 'inference' }),
@@ -188,7 +188,7 @@ describe('a spec tool on /mcp', () => {
 
 describe('/mcp in local mode', () => {
   it('acts in the org local, whose brains the HTTP API lists', async () => {
-    server = await servingInference([]);
+    server = await servingReasoning([]);
 
     await onMcp('/mcp', (session) => session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }));
     const listed = await server.call('GET', '/v1/orgs/local/brains');

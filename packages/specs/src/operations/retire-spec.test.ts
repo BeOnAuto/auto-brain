@@ -41,7 +41,7 @@ describe('retire_spec', () => {
     expect(retireSpec.registration).toMatchObject({
       scope: 'brain',
       kind: 'command',
-      title: 'Retire spec',
+      title: 'Retire definition',
       route: { method: 'POST', path: '/specs/{primitive}/{name}/retire' },
       pathParameters: ['primitive', 'name'],
       successStatus: 200,
@@ -72,7 +72,7 @@ describe('retire_spec', () => {
     expect(await call(executeSpec, retiringPlain)).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The probe spec plain is retired and can no longer be executed',
+      detail: 'The probe definition plain is retired and can no longer be run',
       kind: 'retired',
     });
   });
@@ -85,7 +85,7 @@ describe('retire_spec rejecting', () => {
     expect(await call(retireSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no echo spec plain in this brain',
+      detail: 'There is no echo definition plain in this brain',
     });
     expect(await call(retireSpec, toAlpha(acmeAdmin, { primitive: 'reason', name: 'plain' }))).toEqual({
       status: 'rejected',

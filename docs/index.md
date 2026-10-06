@@ -1,14 +1,16 @@
 ---
-description: Understand business brains, build a first reason function, and find guides and API reference.
+description: Understand business brains, build a first reasoning function, and find guides and API reference.
 ---
 
 # Auto documentation
 
-Auto stores business methods as reusable functions that an agent can run. A brain holds those definitions and their recorded runs. Your agent is the interface for creating and using them; the management interface provides operational visibility and controls.
+Auto stores business methods as reusable functions and workflows that an agent can run. A brain holds those definitions and their recorded runs. Your agent is the primary interface for creating and using them; AUTO Studio is the management interface for operational visibility and controls.
 
 ## Understand the model
 
 Start with [Brains and methods](concepts/brains.md) to see how a business responsibility becomes a brain. [Functions and availability](concepts/functions.md) explains the types of work it can perform and their current status. [Workflows and runs](concepts/workflows.md) covers coordination, while [History and Dream](concepts/history-and-dream.md) explains recorded work and the proposed use of that history.
+
+[Brain terminology](concepts/terminology.md) defines the shared vocabulary for the product, documentation and domain code.
 
 ## Build something
 
@@ -20,7 +22,7 @@ To bring graph data into an existing function, follow [Use Auto with Apollo](int
 
 ## Look up a detail
 
-The references cover [MCP tools and results](reference/mcp.md), the [reason function document format](reference/reasoning-format.md), and [HTTP operations](reference/http.md).
+The references cover [MCP tools and results](reference/mcp.md), the [reasoning function document format](reference/reasoning-format.md), and [HTTP operations](reference/http.md).
 
 [Self-hosting](self-host.md) explains deployment responsibilities and support for teams operating their own runtime.
 

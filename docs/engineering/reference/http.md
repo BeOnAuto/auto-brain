@@ -43,7 +43,7 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 | `get_execution`        | `GET /executions/{execution_id}`         | Execution id in path                           |
 | `send_execution_event` | `POST /executions/{execution_id}/events` | `event`, for a workflow's run                  |
 
-Supported primitive identifiers are `inference` and `orchestration`. A reason function uses the [Markdown prompt format](reasoning-format.md). A workflow uses the [YAML workflow format](../../reference/workflow-format.md), which [workflow execution](workflow-format.md) runs.
+Supported primitive identifiers are `inference` and `orchestration`. A reasoning function uses the [Markdown prompt format](reasoning-format.md). A workflow uses the [YAML workflow format](../../reference/workflow-format.md), which [workflow execution](workflow-format.md) runs.
 
 Names contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Source documents may be at most 65,536 UTF-8 bytes. A name is unique within its primitive and brain and cannot be reused after retirement.
 
@@ -55,7 +55,7 @@ Queries need `brain:read`; commands, including execution and events, need `brain
 
 A run includes `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. It includes an `output` when successful or a rejection when rejected. Reading a run with `get_execution` also returns its detailed `record`.
 
-Reason functions normally complete within the execute request. Workflows return `started` while work continues. Poll `get_execution` until the status becomes `succeeded`, `rejected` or `failed`. An approval event should be sent to the waiting run; it does not create another run.
+Reasoning functions normally complete within the execute request. Workflows return `started` while work continues. Poll `get_execution` until the status becomes `succeeded`, `rejected` or `failed`. An approval event should be sent to the waiting run; it does not create another run.
 
 Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. The runtime applies these limits independently of the request-body limit.
 

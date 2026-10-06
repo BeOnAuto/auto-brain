@@ -4,7 +4,7 @@ import type { ScriptedReply } from '@beonauto/inference/testing';
 import { Option, Schema } from 'effect';
 
 import type { RequestOptions, TestResponse } from './http-client.ts';
-import { servingInference, type InferenceServer } from './inference-server.ts';
+import { servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 
 export const workflowTestTimeoutMs = 60_000;
 
@@ -17,8 +17,8 @@ const executionOf = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schem
 export function servingWorkflows(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
-): Promise<InferenceServer> {
-  return servingInference(replies, environment);
+): Promise<ReasoningServer> {
+  return servingReasoning(replies, environment);
 }
 
 export function workflowSource(name: string, steps: string): string {
@@ -34,7 +34,7 @@ export function isStarted(body: unknown): boolean {
 }
 
 export async function settledExecution(
-  server: InferenceServer,
+  server: ReasoningServer,
   path: string,
   options: RequestOptions = {},
 ): Promise<TestResponse> {

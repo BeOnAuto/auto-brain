@@ -2,7 +2,7 @@ import { InvalidInput } from '@beonauto/operations';
 import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { inferenceWith } from '../testing/inference-runs.ts';
+import { reasoningWith } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
 
 const model = 'model: openai/gpt-5';
@@ -13,7 +13,7 @@ function rejected(detail: string, issue: string, pointer = '') {
 
 describe('a prompt that cannot be rendered from the input', () => {
   it('names the field the template reads and the input does not have', async () => {
-    const { executing, requests } = inferenceWith();
+    const { executing, requests } = reasoningWith();
 
     expect(await executing(documentOf(model, 'Dear {{ input.customer["first/name"] }},'), { customer: {} })).toEqual(
       rejected(
@@ -26,7 +26,7 @@ describe('a prompt that cannot be rendered from the input', () => {
   });
 
   it('points at the input as a whole when the missing name is not a field of it', async () => {
-    const { executing } = inferenceWith();
+    const { executing } = reasoningWith();
 
     expect(
       await executing(documentOf(model, '{% for item in input.items %}{{ item.name }}{% endfor %}'), { items: [{}] }),
@@ -41,7 +41,7 @@ describe('a prompt that cannot be rendered from the input', () => {
 
 describe('a prompt the input makes unusable', () => {
   it('is rejected when a filter rejects a value of the input', async () => {
-    const { executing } = inferenceWith();
+    const { executing } = reasoningWith();
 
     expect(await executing(documentOf(model, 'Revenue: {{ input.revenue | money }}'), { revenue: 'lots' })).toEqual(
       rejected(
@@ -52,7 +52,7 @@ describe('a prompt the input makes unusable', () => {
   });
 
   it('is rejected when it would be longer than a prompt may be', async () => {
-    const { executing } = inferenceWith();
+    const { executing } = reasoningWith();
 
     expect(
       await executing(documentOf(model, '{% for i in (1..3) %}{{ input.text }}{% endfor %}'), {
@@ -67,7 +67,7 @@ describe('a prompt the input makes unusable', () => {
   });
 
   it('is rejected when the render takes more than it may', async () => {
-    const { executing } = inferenceWith();
+    const { executing } = reasoningWith();
 
     expect(
       await executing(documentOf(model, 'Count {% for i in (1..input.count) %}{% endfor %}'), { count: 6_000_000 }),
@@ -82,7 +82,7 @@ describe('a prompt the input makes unusable', () => {
 
 describe('a prompt without a message', () => {
   it('is rejected when the message it renders is empty', async () => {
-    const { executing } = inferenceWith();
+    const { executing } = reasoningWith();
 
     expect(await executing(documentOf(model, '{{ input.text }}'), { text: '  ' })).toEqual(
       rejected(

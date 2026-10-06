@@ -25,7 +25,7 @@ describe('get_spec', () => {
     expect(getSpec.registration).toMatchObject({
       scope: 'brain',
       kind: 'query',
-      title: 'Get spec',
+      title: 'Get definition',
       route: { method: 'GET', path: '/specs/{primitive}/{name}' },
       pathParameters: ['primitive', 'name'],
       successStatus: 200,
@@ -63,7 +63,7 @@ describe('get_spec rejecting', () => {
     expect(await call(getSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no echo spec plain in this brain',
+      detail: 'There is no echo definition plain in this brain',
     });
     expect(await call(getSpec, toAlpha(acmeAdmin, { primitive: 'reason', name: 'plain' }))).toEqual({
       status: 'rejected',

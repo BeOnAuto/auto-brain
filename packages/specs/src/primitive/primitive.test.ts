@@ -2,7 +2,7 @@ import { InvalidInput } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { defineExecuteSpec, definePrimitive, type ExecutionContext, type PrimitiveDefinition } from '../index.ts';
+import { defineExecuteSpec, definePrimitive, type RunContext, type PrimitiveDefinition } from '../index.ts';
 
 const parseWords = (source: string) =>
   source.trim() === ''
@@ -24,7 +24,7 @@ const words: PrimitiveDefinition<{ readonly words: readonly string[] }> = {
     Effect.succeed({ output: { words: parsed.words, input }, record: { execution: execution.id } }),
 };
 
-const execution: ExecutionContext = {
+const execution: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
   brain: 'alpha',

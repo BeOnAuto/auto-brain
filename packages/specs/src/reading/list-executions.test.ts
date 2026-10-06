@@ -139,7 +139,7 @@ describe('list_executions', () => {
     expect(listExecutions.registration).toMatchObject({
       scope: 'brain',
       kind: 'query',
-      title: 'List executions',
+      title: 'List runs',
       route: { method: 'GET', path: '/executions' },
       reasons: ['invalid_input'],
     });
@@ -148,7 +148,7 @@ describe('list_executions', () => {
         primitive: {
           type: 'string',
           enum: ['echo', 'probe'],
-          description: 'Only the executions of the specs of this primitive: echo, probe',
+          description: 'Only runs of definitions with this API type identifier: echo, probe',
         },
       },
     });

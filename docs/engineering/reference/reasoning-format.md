@@ -1,12 +1,14 @@
 <div v-pre>
 
-# Reason function format
+<span id="reason-function-format"></span>
 
-The current runtime stores reason functions as `inference` specs. Keep that identifier in API calls, MCP arguments and workflow definitions. Each current run performs one model invocation; tool use, skill references and additional context from other functions are planned.
+# Reasoning function format
+
+The current runtime stores reasoning functions as `inference` specs. Keep that identifier in API calls, MCP arguments and workflow definitions. Each current run performs one model invocation; tool use, skill references and additional context from other functions are planned.
 
 ## The spec document format
 
-An inference spec is one Markdown document (`text/markdown`): YAML front matter between two lines of three dashes, then a Liquid template. The front matter uses Dotprompt's key names; the format is this package's own, and this package parses it.
+A reasoning function definition is one Markdown document (`text/markdown`): YAML front matter between two lines of three dashes, then a Liquid template. The front matter uses Dotprompt's key names; the format is this package's own, and this package parses it.
 
 ```markdown
 ---

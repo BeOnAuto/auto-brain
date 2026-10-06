@@ -50,14 +50,17 @@ describe('creating a spec', () => {
 
   it('is rejected while an active spec holds the name', () => {
     expect(decided(creatingGreet, greetCreated)).toEqual(
-      Result.fail(new Conflict({ detail: 'The brain already has the echo spec greet', kind: 'taken' })),
+      Result.fail(new Conflict({ detail: 'The brain already has the echo definition greet', kind: 'taken' })),
     );
   });
 
   it('is rejected for the name of a retired spec, because a name is never reused', () => {
     expect(decided(creatingGreet, greetCreated, greetRetired)).toEqual(
       Result.fail(
-        new Conflict({ detail: 'The echo spec greet was retired, and a spec name is never reused', kind: 'taken' }),
+        new Conflict({
+          detail: 'The echo definition greet was retired, and a definition name is never reused',
+          kind: 'taken',
+        }),
       ),
     );
   });
@@ -77,13 +80,15 @@ describe('updating a spec', () => {
 
   it('is rejected for a spec the brain does not have', () => {
     expect(decided(updatingGreet(howdy))).toEqual(
-      Result.fail(new NotFound({ detail: 'There is no echo spec greet in this brain' })),
+      Result.fail(new NotFound({ detail: 'There is no echo definition greet in this brain' })),
     );
   });
 
   it('is rejected for a retired spec', () => {
     expect(decided(updatingGreet(howdy), greetCreated, greetRetired)).toEqual(
-      Result.fail(new Conflict({ detail: 'The echo spec greet is retired and can no longer change', kind: 'retired' })),
+      Result.fail(
+        new Conflict({ detail: 'The echo definition greet is retired and can no longer change', kind: 'retired' }),
+      ),
     );
   });
 });
@@ -99,7 +104,7 @@ describe('retiring a spec', () => {
 
   it('is rejected for a spec the brain does not have', () => {
     expect(decided(retiringGreet)).toEqual(
-      Result.fail(new NotFound({ detail: 'There is no echo spec greet in this brain' })),
+      Result.fail(new NotFound({ detail: 'There is no echo definition greet in this brain' })),
     );
   });
 });

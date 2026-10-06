@@ -30,7 +30,7 @@ describe('update_spec', () => {
     expect(updateSpec.registration).toMatchObject({
       scope: 'brain',
       kind: 'command',
-      title: 'Update spec',
+      title: 'Update definition',
       route: { method: 'PUT', path: '/specs/{primitive}/{name}' },
       pathParameters: ['primitive', 'name'],
       successStatus: 200,
@@ -98,12 +98,12 @@ describe('update_spec rejecting', () => {
     expect(await call(updateSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'wave', source: hello }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no echo spec wave in this brain',
+      detail: 'There is no echo definition wave in this brain',
     });
     expect(await call(updateSpec, updatingGreet('{"greeting": "Howdy"}'))).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The echo spec greet is retired and can no longer change',
+      detail: 'The echo definition greet is retired and can no longer change',
       kind: 'retired',
     });
     expect(await call(updateSpec, toAlpha(acmeAdmin, { primitive: 'reason', name: 'greet', source: hello }))).toEqual({

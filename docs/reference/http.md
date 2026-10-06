@@ -1,8 +1,8 @@
 # HTTP API
 
-The HTTP API provides brain management, reason-function and workflow definitions, recorded runs, events for waiting workflows, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reasoning-function and workflow definitions, recorded runs, events for waiting workflows, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. A reason function uses the primitive identifier `inference` and a workflow uses `orchestration`; keep these names in requests.
+The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. A reasoning function uses the primitive identifier `inference` and a workflow uses `orchestration`; keep these names in requests.
 
 ## Requests and access
 
@@ -34,7 +34,9 @@ Retirement is permanent. Brain ids cannot be reused, and a retired brain cannot 
 
 The JSON result contains `object: "list"`, `data`, `catalog_status` and `listed_at`. Entries are sorted by `id`, with each id appearing once. The [MCP model reference](mcp.md#model-information) describes the entry fields, aliases, wildcard patterns and incomplete results. The same output is returned over both interfaces.
 
-## Reason functions
+<span id="reason-functions"></span>
+
+## Reasoning functions
 
 These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 
@@ -48,7 +50,7 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 | `execute_spec`  | `POST /specs/inference/{name}/execute` | Optional `input`, optional UUID `execution_id` |
 | `get_execution` | `GET /executions/{execution_id}`       | Execution id in path                           |
 
-The `source` is a [reason function document](reasoning-format.md). Names follow the same 3 to 48 character rule as brain ids. Source documents may be at most 65,536 UTF-8 bytes. A name is unique within its primitive and brain and cannot be reused after retirement.
+The `source` is a [reasoning function document](reasoning-format.md). Names follow the same 3 to 48 character rule as brain ids. Source documents may be at most 65,536 UTF-8 bytes. A name is unique within its primitive and brain and cannot be reused after retirement.
 
 Changing a document creates a version. Updating it with identical source records no change. A run uses the active latest version. Retired definitions can be read but cannot be edited or run.
 
@@ -67,7 +69,7 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 | `get_execution`        | `GET /executions/{execution_id}`           | Execution id in path                                                   |
 | `send_execution_event` | `POST /executions/{execution_id}/events`   | `event` with `type`, and optional `id`, `source`, `subject` and `data` |
 
-The `source` is a [workflow document](workflow-format.md). Names, document size, versions and retirement follow the rules for reason functions above. A saved workflow has the `media_type` `application/yaml`, and its `description`, `input_schema` and `output_schema` come from the document.
+The `source` is a [workflow document](workflow-format.md). Names, document size, versions and retirement follow the rules for reasoning functions above. A saved workflow has the `media_type` `application/yaml`, and its `description`, `input_schema` and `output_schema` come from the document.
 
 `execute_spec` returns 200 as soon as the run begins, with its `execution_id` and `status: started`. Read the run with `get_execution` until its status is `succeeded`, `rejected` or `failed`, and its steps with `get_execution_history`, which holds one `workflow_input_applied` event for each input the run took (see [Run history and brain events](#run-history-and-brain-events)). While the runtime is stopping, `execute_spec` returns `unavailable`; try again shortly.
 
@@ -79,7 +81,7 @@ A workflow runs once for each `execution_id`. Executing it again with the `execu
 
 A run records its `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. Successful runs include `output`; rejected runs include a rejection. `get_execution` also returns the detailed `record`.
 
-Reason functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
+Reasoning functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 

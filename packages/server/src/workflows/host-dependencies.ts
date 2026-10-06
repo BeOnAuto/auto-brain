@@ -1,6 +1,11 @@
 import type { AppRuntime } from '@beonauto/api';
 import { Ledger, type Dispatcher, type DispatcherServices } from '@beonauto/operations';
-import { orchestrationMachine, specCalls, specExecutionResultOf, type ExecuteSpec } from '@beonauto/orchestration';
+import {
+  orchestrationMachine,
+  definitionCalls,
+  definitionRunResultOf,
+  type RunDefinition,
+} from '@beonauto/orchestration';
 import {
   defineExecuteSpec,
   executionSettler,
@@ -44,7 +49,7 @@ function nestedExecutions(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
   executeSpec: BrainOperation,
-): ExecuteSpec {
+): RunDefinition {
   return ({ org, brain, caller, primitive, name, input, executionId }) =>
     inRuntime(
       runtime,
@@ -55,7 +60,7 @@ function nestedExecutions(
         input: { primitive, name, input, execution_id: executionId },
         encoding: 'json',
       }),
-    ).pipe(Effect.map(specExecutionResultOf));
+    ).pipe(Effect.map(definitionRunResultOf));
 }
 
 function settlements(runtime: AppRuntime<DispatcherServices>): SettleExecution {
@@ -92,7 +97,7 @@ export async function openedHost(
   const host = await openWorkflowHost({
     database: hostDatabaseOf(ledger),
     machine: orchestrationMachine,
-    perform: specCalls(nestedExecutions(runtime, dispatcher, defineExecuteSpec(primitives))),
+    perform: definitionCalls(nestedExecutions(runtime, dispatcher, defineExecuteSpec(primitives))),
     settle: settlements(runtime),
     reports: hostReports(runtime),
     sweepEveryMs: workflows.sweepEveryMs,

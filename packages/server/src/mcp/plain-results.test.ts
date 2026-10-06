@@ -13,7 +13,7 @@ import { answers, textResult, type ScriptedReply } from '@beonauto/inference/tes
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
 
 type Called = readonly (readonly [string, ToolResult])[];
@@ -88,7 +88,7 @@ const unofferedProvider = new ProviderNotConfigured({
   missing: ['ANTHROPIC_API_KEY'],
 });
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
@@ -251,7 +251,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
 
   it('say plainly that a connection is not allowed to do what it asked', async () => {
     const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' });
-    server = await servingInference([], { API_KEYS: JSON.stringify([reader.entry]) });
+    server = await servingReasoning([], { API_KEYS: JSON.stringify([reader.entry]) });
 
     const refused = await onMcp((session) => session.callTool('create_brain', { brain: 'sales', name: 'Sales' }), {
       authorization: `Bearer ${reader.key}`,
@@ -263,26 +263,26 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
   });
 });
 
-describe('the plain words for a reason function whose prompt names a model the server does not offer', () => {
+describe('the plain words for a reasoning function whose prompt names a model the server does not offer', () => {
   it('say that its provider is not set up while others are, and that it can be switched to a model the server lists', async () => {
-    server = await servingInference([() => Effect.fail(unofferedProvider)]);
+    server = await servingReasoning([() => Effect.fail(unofferedProvider)]);
 
     const unoffered = await executedOnce();
 
     expect(plainTextIn(unoffered)).toBe(
-      `Could not run the reason function “summary”: this server does not offer the model named, because its provider is not set up on this server, though others are. ${switchable}`,
+      `Could not run the reasoning function “summary”: this server does not offer the model named, because its provider is not set up on this server, though others are. ${switchable}`,
     );
     expect(internalTermsIn(plainTextIn(unoffered))).toEqual([]);
     expect(technicalTextIn(unoffered)).toContain('Configured providers: openai, gateway');
   });
 
   it('say that it is outside the models whoever runs the server allows, and that it can be switched', async () => {
-    server = await servingInference([() => Effect.fail(disallowedModel)]);
+    server = await servingReasoning([() => Effect.fail(disallowedModel)]);
 
     const disallowed = await executedOnce();
 
     expect(plainTextIn(disallowed)).toBe(
-      `Could not run the reason function “summary”: this server does not offer the model named, because it is not among the models whoever runs the server allows. ${switchable}`,
+      `Could not run the reasoning function “summary”: this server does not offer the model named, because it is not among the models whoever runs the server allows. ${switchable}`,
     );
     expect(internalTermsIn(plainTextIn(disallowed))).toEqual([]);
     expect(technicalTextIn(disallowed)).toContain('is not one of the models this server offers');

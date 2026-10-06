@@ -1,6 +1,6 @@
 # @beonauto/orchestration
 
-The orchestration primitive: a spec of it is a workflow, a YAML document in the Open Workflow Specification DSL, and an execution of it is a run of the workflow machine of [`@beonauto/workflow-engine`](../../packages/workflow-engine), hosted in Node by [`@beonauto/workflow-host`](../../packages/workflow-host). The runtime identifier remains `orchestration`; in words a user reads, a spec is a workflow and an execution a run.
+The workflow adapter parses a `WorkflowDefinitionDocument` from YAML in the Open Workflow Specification DSL. This document type is an alias for `JsonObject`; the parser applies the existing DSL checks. It is separate from the named, versioned definition stored in the registry. The adapter runs the workflow machine of [`@beonauto/workflow-engine`](../../packages/workflow-engine), hosted in Node by [`@beonauto/workflow-host`](../../packages/workflow-host). Workflows coordinate functions and control steps; they are not another function type. The API identifier and package name remain `orchestration` for compatibility.
 
 Public documentation explains [workflows and their availability](../../docs/concepts/workflows.md) and [the workflow format](../../docs/reference/workflow-format.md), published at [on.auto/docs](https://on.auto/docs/). The repository-only [workflow execution reference](../../docs/engineering/reference/workflow-format.md) and [workflow operations guide](../../docs/engineering/self-host/workflows.md) hold the implementation details, and [decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) why workflows run on an engine on the ledger.
 
@@ -8,12 +8,12 @@ Public documentation explains [workflows and their availability](../../docs/conc
 
 `src/index.ts` exports:
 
-- `makeOrchestration({ runs, mostDurationMs, longestCallMs })`: the primitive. `runs` is the host that starts runs; `mostDurationMs` is the most a run may last, which `create_spec` checks every duration of a document against and a run is stopped at exactly; `longestCallMs` the most a call of a run may take before its `call_deadline` timer fails the task.
+- `makeWorkflowAdapter({ runs, mostDurationMs, longestCallMs })`: the workflow adapter, with `WorkflowAdapterDependencies` as its options type. `runs` is the host that starts runs; `mostDurationMs` is the most a run may last, which `create_spec` checks every duration of a document against and a run is stopped at exactly; `longestCallMs` the most a call of a run may take before its `call_deadline` timer fails the task. `makeOrchestration` and `OrchestrationDependencies` remain exported aliases for existing consumers.
 - `defineSendExecutionEvent(runs)`: `send_execution_event`, which gives a running workflow an event.
 - `orchestrationMachine`: the machine's options, the functions a workflow may call (`execute_spec`) and the runtime its expressions see as `$runtime`.
-- `specCalls(executeSpec)`: what a call of a workflow does, for the host to perform.
+- `definitionCalls(runDefinition)`: calls a saved definition from a workflow. This adapter accepts reasoning functions and custom definition types; it does not classify every extension as a brain function. `specCalls` remains an exported alias.
 - `runPresenter`: the presenter of the run log, for the history of a run and the events of a brain.
-- `specExecutionResultOf` and the types of `ExecuteSpec`, for the server, which executes a spec a workflow calls through its operations.
+- `definitionRunResultOf`, `RunDefinition`, `DefinitionRunRequest` and `DefinitionRunResult`, for the server, which runs a definition called by a workflow through its operations. `specExecutionResultOf`, `ExecuteSpec`, `SpecExecution` and `SpecExecutionResult` remain exported aliases.
 
 ## A run of a workflow
 

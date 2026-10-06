@@ -1,18 +1,28 @@
 # @beonauto/specs
 
-The spec operations of auto-brain: create, list, read, update, retire and execute the specs of every primitive in a brain, list the executions and read each one and its history. They are defined on the application layer, [`@beonauto/operations`](../operations).
+The definition and run operations of auto-brain: create, list, read, update, retire and run a brain's function and workflow definitions, then inspect their runs and history. They are defined on the application layer, [`@beonauto/operations`](../operations). The package name and the API's `spec` and `execution` identifiers remain compatible.
 
-## Primitives, specs and executions
+<span id="primitives-specs-and-executions"></span>
 
-A **primitive** is a kind of capability a brain has, such as inference or orchestration. Every brain has the primitives the server is given.
+## Definitions, runs and runtime adapters
 
-A **spec** is one named, versioned definition of something a primitive can execute, written as a text document in the primitive's own format: for inference, Markdown with YAML front matter; for orchestration, a YAML workflow. A spec belongs to one primitive in one brain.
+`Definition` is a named, versioned definition stored in one brain. A reasoning function uses Markdown with YAML front matter; a workflow uses a YAML document. `ListedDefinition` is the same view without the source document. A `Run` executes a definition against particular inputs and records how it ended; `RunDetail` includes the detailed record.
 
-An **execution** is one run of a spec with an input, recorded with how it ended.
+`BrainFunctionDefinition` covers the currently implemented `ReasoningFunctionDefinition`; `WorkflowDefinition` identifies a stored workflow. `FunctionRun` and `WorkflowRun` identify their runs. The guards `isBrainFunctionDefinition`, `isWorkflowDefinition`, `isFunctionRun` and `isWorkflowRun` narrow decoded records by their existing wire discriminators without copying or modifying them. Planned function kinds and custom adapters are not classified as implemented brain functions. The generic `Definition` and `Run` types still support extension adapters.
 
-## Defining a primitive
+These are stored records with names, versions and audit fields. The adapters' parsed source configurations use the separate names `ReasoningFunctionDefinitionDocument` and `WorkflowDefinitionDocument`.
+
+`Primitive` is the low-level adapter contract shared by functions, workflows and custom extension adapters. The server supplies these adapters explicitly. It is deliberately broader than a brain function: workflows coordinate functions rather than belonging to the five function types. The product taxonomy and supporting assets are defined in [Brain terminology](../../docs/concepts/terminology.md).
+
+The API and persistence fields retain `spec`, `primitive` and `execution`. In the wire-format and storage details below, a spec means a saved definition and an execution means its recorded run. `Spec`, `ListedSpec`, `Execution`, `ExecutionDetail`, `ExecutionContext`, `SpecSummary`, `PreparedSpec` and their previously exported schema names remain compatibility aliases. New domain code uses `Definition`, `ListedDefinition`, `Run`, `RunDetail`, `RunContext`, `DefinitionSummary` and `PreparedDefinition`.
+
+<span id="defining-a-primitive"></span>
+
+## Defining a runtime adapter
 
 `definePrimitive` turns a definition into a `Primitive`. The server passes its primitives, in an explicit list, to `makeSpecOperations`.
+
+This extension interface retains its existing name and accepts custom adapters. It is not the Studio function picker. Product categories use the shared `BrainFunctionKind` metadata: `functionKindOrder`, `functionCategoryLabels`, `functionResourceLabels` and `functionDescriptions`. `legacyFunctionKind` maps known function wire identifiers to those canonical internal kinds; it excludes workflows and does not make unknown or planned kinds valid API inputs.
 
 ```ts
 import { InvalidInput } from '@beonauto/operations';
@@ -89,7 +99,7 @@ A call cancelled while `execute` runs, because its client went away or the serve
 | `list_executions`       | query   | `GET /executions`                        | `primitive`, `name`, `status`, `limit`, `cursor`, all optional                        | `{ executions, has_more, next_cursor }`, newest first | `invalid_input`                                         |
 | `get_execution_history` | query   | `GET /executions/{execution_id}/history` | `execution_id`, `order` (default `asc`), `limit`, `cursor`                            | `{ events, has_more, next_cursor }`                   | `not_found`, `invalid_input`                            |
 
-A spec carries `primitive`, `name`, `version`, `status` (`active` or `retired`), `media_type`, the `description`, `input_schema`, `output_schema` and `warnings` its primitive gives when it gives them, `created_at`, `created_by`, `updated_at`, `retired_at` on a retired spec, and its document as `source`. A listed spec is the same without `source`. Times are ISO 8601 UTC strings read from Effect's `Clock`. `SpecSchema`, `ListedSpecSchema`, `ExecutionSchema` and `ExecutionDetailSchema` are the schemas.
+A spec carries `primitive`, `name`, `version`, `status` (`active` or `retired`), `media_type`, the `description`, `input_schema`, `output_schema` and `warnings` its primitive gives when it gives them, `created_at`, `created_by`, `updated_at`, `retired_at` on a retired spec, and its document as `source`. A listed spec is the same without `source`. Times are ISO 8601 UTC strings read from Effect's `Clock`. `DefinitionSchema`, `ListedDefinitionSchema`, `RunSchema` and `RunDetailSchema` are the schemas.
 
 - `primitive` is the name of a primitive. The published JSON Schema of the field is a plain `{ "type": "string", "enum": [...], "description": ... }` of the known names. Decoding accepts any well-formed name, so a name the server does not know is `not_found` on every operation, and a malformed one `invalid_input`. Effect would publish the names under `allOf`, because it inlines no `enum` from a check, so each operation replaces that one property of its input's JSON Schema.
 - `name` is 3 to 48 lowercase letters, digits and hyphens, starting with a letter: unique among the specs of the primitive in the brain, and never reused.
@@ -144,7 +154,7 @@ settle(execution, { status: 'rejected', reason: 'unavailable', detail: 'The work
 settle(execution, { status: 'failed' });
 ```
 
-`executionSettler(ledger)` takes the unbound `Ledger` and gives a `SettleExecution`. It is not an operation and no transport reaches it: the server's composition root, the only code that holds the `Ledger`, makes it and hands it to the primitives that finish later when it makes them. Each call to `settle` names the execution by `org`, `brain` and `id` (the `ExecutionContext` a primitive got carries all three), and binds the ledger to that org and brain alone, through `streamPrefixOfBrain`, after checking the ids are well formed, so it reaches nothing but that brain's `executions/{id}` stream. It records through the same stream and decider as `execute_spec`:
+`executionSettler(ledger)` takes the unbound `Ledger` and gives a `SettleExecution`. It is not an operation and no transport reaches it: the server's composition root, the only code that holds the `Ledger`, makes it and hands it to the primitives that finish later when it makes them. Each call to `settle` names the execution by `org`, `brain` and `id` (the `RunContext` a primitive got carries all three), and binds the ledger to that org and brain alone, through `streamPrefixOfBrain`, after checking the ids are well formed, so it reaches nothing but that brain's `executions/{id}` stream. It records through the same stream and decider as `execute_spec`:
 
 - a deferred execution that has not been settled is settled: `succeeded` with its output and record, `rejected` with `invalid_input` (no issues) or `unavailable`, or `failed`;
 - settling it again with the same result records nothing and answers the execution;
@@ -156,7 +166,7 @@ The settlement is recorded as done by the caller who started the execution. A de
 
 ## Reading executions
 
-`list_executions` lists the executions of a brain, newest first by the position of the first message of each execution stream, so an execution started again with the same id keeps the place of its first start, and two started in the same millisecond keep a fixed order. It reads the ledger's selection of the first and the latest message of every execution stream (`BrainReader.readRecorded({ kind: 'executions' }, page)`) and folds the two with the execution decider's `evolve`, so a `ListedExecution` is the execution as `get_execution` shows it, without its `output`, its `record` and the `detail` and `issues` of a rejection: `execution_id`, `primitive`, `name`, `spec_version`, `status`, `started_at`, `started_by`, `finished_at`, and a `rejection` of `reason`, with the `kind` and `because` of `unavailable`. When the latest message is a start, the execution shows that start; when the execution was started again and has since finished, it shows its first start, since the selection holds no other, while `get_execution` shows the latest.
+`list_executions` lists the executions of a brain, newest first by the position of the first message of each execution stream, so an execution started again with the same id keeps the place of its first start, and two started in the same millisecond keep a fixed order. It reads the ledger's selection of the first and the latest message of every execution stream (`BrainReader.readRecorded({ kind: 'executions' }, page)`) and folds the two with the execution decider's `evolve`, so a `ListedRun` (`ListedExecution` for compatibility) is the run as `get_execution` shows it, without its `output`, its `record` and the `detail` and `issues` of a rejection: `execution_id`, `primitive`, `name`, `spec_version`, `status`, `started_at`, `started_by`, `finished_at`, and a `rejection` of `reason`, with the `kind` and `because` of `unavailable`. When the latest message is a start, the execution shows that start; when the execution was started again and has since finished, it shows its first start, since the selection holds no other, while `get_execution` shows the latest.
 
 - `status` is answered by the ledger from the stored type of the latest message: `storedTypesByStatus` in `src/reading/execution-status.ts` is the one place that maps a status to the stored types it stands for, `started` to `execution_started` and `execution_deferred`.
 - `primitive` and `name` are applied after decoding the first message of each execution the page looked at, so a filter that matches rarely answers short or empty pages with `next_cursor`. A primitive the server does not offer lists the executions recorded under it, if any.

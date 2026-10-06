@@ -5,7 +5,7 @@ import { specStanding, specWordsFor, whatItDoes } from '../plain-language/spec-w
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { findSpec } from '../registry/registry-lookup.ts';
-import { SpecSchema } from '../registry/spec.ts';
+import { DefinitionSchema } from '../registry/spec.ts';
 import { loadRegistry } from './registry-access.ts';
 import { SpecNameField } from './spec-fields.ts';
 import { specOf } from './spec-views.ts';
@@ -16,15 +16,15 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
   return known.publish(
     defineQuery('brain', {
       name: 'get_spec',
-      title: 'Get spec',
+      title: 'Get definition',
       description: known.describe([
-        'Reads one spec of the brain with its document and returns it, active or retired.',
-        '`primitive` names the primitive and `name` the spec.',
-        'Rejected with not_found when there is no such primitive, or no spec of that name for it in the brain.',
+        'Reads one function or workflow definition with its document and returns it, active or retired.',
+        '`primitive` selects the API type identifier and `name` the definition.',
+        'Rejected with not_found when that type is unavailable, or no definition of that type and name exists in the brain.',
       ]),
       route: { method: 'GET', path: '/specs/{primitive}/{name}' },
       inputSchema: Schema.Struct({ primitive: known.field, name: SpecNameField }),
-      outputSchema: SpecSchema,
+      outputSchema: DefinitionSchema,
       reasons: ['not_found'],
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name }) {
         const primitive = yield* known.primitiveNamed(primitiveName);

@@ -1,11 +1,12 @@
 import { Conflict, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
+import { definitionResourceLabel } from '../primitive/function-terminology.ts';
 import { specNotFound } from './registry-lookup.ts';
 import type { CommandMetadata, SpecCommand, SpecCreation, SpecRetirement, SpecUpdate } from './spec-commands.ts';
 import type { SpecEvent } from './spec-events.ts';
 import type { SpecRegistry } from './spec-registry.ts';
-import type { StoredSpec } from './spec.ts';
+import type { StoredDefinition } from './spec.ts';
 
 type Decision = Result.Result<readonly SpecEvent[], Rejection<'not_found' | 'conflict'>>;
 
@@ -15,12 +16,12 @@ function recording(event: SpecEvent): Decision {
   return Result.succeed([event]);
 }
 
-function takenBy(primitive: string, { name, status }: StoredSpec): Conflict {
+function takenBy(primitive: string, { name, status }: StoredDefinition): Conflict {
   return new Conflict({
     detail:
       status === 'active'
-        ? `The brain already has the ${primitive} spec ${name}`
-        : `The ${primitive} spec ${name} was retired, and a spec name is never reused`,
+        ? `The brain already has the ${definitionResourceLabel(primitive)} ${name}`
+        : `The ${definitionResourceLabel(primitive)} ${name} was retired, and a definition name is never reused`,
     kind: 'taken',
   });
 }
@@ -47,7 +48,10 @@ function decideUpdate(
   }
   if (existing.status === 'retired') {
     return Result.fail(
-      new Conflict({ detail: `The ${primitive} spec ${name} is retired and can no longer change`, kind: 'retired' }),
+      new Conflict({
+        detail: `The ${definitionResourceLabel(primitive)} ${name} is retired and can no longer change`,
+        kind: 'retired',
+      }),
     );
   }
   return existing.source === content.source

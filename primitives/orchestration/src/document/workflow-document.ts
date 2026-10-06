@@ -14,6 +14,8 @@ import { workflowPolicy } from './workflow-functions.ts';
 
 const thirtyDays = 2_592_000_000;
 
+export type WorkflowDefinitionDocument = JsonObject;
+
 const workflowYaml: YamlKind = {
   noun: 'a workflow document',
   mapping: 'A workflow document is a YAML mapping, with document and do at its top',
@@ -29,7 +31,7 @@ interface LocatedIssue {
 export function parseWorkflowDocument(
   source: string,
   mostDuration = thirtyDays,
-): Effect.Effect<JsonObject, InvalidInput> {
+): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> {
   return Effect.suspend(() => {
     const reading = readYaml(source, workflowYaml);
     if ('problems' in reading) {

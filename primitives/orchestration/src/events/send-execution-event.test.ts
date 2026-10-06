@@ -96,7 +96,7 @@ describe('send_execution_event to no running workflow', () => {
     expect(await brain.call(sendEvent, { execution_id: idOf(4), event: { type: 'x' } })).toMatchObject(notFound);
     expect(await brain.call(sendEvent, { execution_id: greeted, event: { type: 'x' } })).toMatchObject({
       ...notFound,
-      detail: 'The brain has no running workflow execution with that id',
+      detail: 'The brain has no active workflow run with that id',
     });
   });
 
@@ -110,7 +110,7 @@ describe('send_execution_event to no running workflow', () => {
       expect(await brain.call(answering, { execution_id: executionId, event: { type: 'x' } })).toEqual({
         status: 'rejected',
         reason: 'not_found',
-        detail: 'The brain has no running workflow execution with that id',
+        detail: 'The brain has no active workflow run with that id',
       });
     },
   );

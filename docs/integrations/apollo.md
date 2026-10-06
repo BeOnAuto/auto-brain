@@ -1,10 +1,10 @@
 # Use Auto with Apollo
 
-Use this guide to pass graph data into an existing Auto reason function. Your external agent connects to Auto and Apollo separately, retrieves authorized evidence, and supplies it as input to the function.
+Use this guide to pass graph data into an existing Auto reasoning function. Your external agent connects to Auto and Apollo separately, retrieves authorized evidence, and supplies it as input to the function.
 
 ## Before you start
 
-You need an agent connected to Auto, a saved reason function, and permission to read the relevant data through your graph. If you have not created a function yet, follow [Build your first brain](../tutorials/first-brain.md).
+You need an agent connected to Auto, a saved reasoning function, and permission to read the relevant data through your graph. If you have not created a function yet, follow [Build your first brain](../tutorials/first-brain.md).
 
 Decide which data the review needs and confirm that it may be sent to Auto and the function's model provider. Function inputs and results become part of the recorded run.
 
@@ -18,7 +18,7 @@ Keep credentials in connection settings, outside function prompts and inputs. Th
 
 ## 2. Check the function's inputs
 
-Ask the agent to read the saved reason function and show its required inputs. Then identify an approved graph query that supplies the relevant evidence.
+Ask the agent to read the saved reasoning function and show its required inputs. Then identify an approved graph query that supplies the relevant evidence.
 
 For a budget-review function, this might be the campaign's spend to date and agreed budget. The actual query and field names depend on your graph. Have the agent inspect the available tools and schema rather than invent a query from this example.
 
@@ -44,6 +44,6 @@ If a required input is missing, compare the function's input contract with the m
 
 ## Tool access from inside the brain
 
-Coming soon. The planned shared tool catalog will allow reason functions to access authorized tools through a single MCP gateway, with direct tool lists as another option. Apollo GraphOS Agent Services is a possible choice for graph-based business tools; Auto does not require Apollo.
+Coming soon. The planned shared tool catalog will allow reasoning functions to access authorized tools through a single MCP gateway, with direct tool lists as another option. Apollo GraphOS Agent Services is a possible choice for graph-based business tools; Auto does not require Apollo.
 
-That internal connection is separate from the two external-agent connections used in this guide. Outbound MCP access and bounded tool-call loops are not implemented in the runtime yet. See [Tool access inside a reason function](../concepts/functions.md#tool-access-inside-a-reason-function).
+That internal connection is separate from the two external-agent connections used in this guide. Outbound MCP access and bounded tool-call loops are not implemented in the runtime yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).

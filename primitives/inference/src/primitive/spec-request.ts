@@ -1,7 +1,7 @@
-import type { ExecutionContext } from '@beonauto/specs';
+import type { RunContext } from '@beonauto/specs';
 
 import type { ModelRequest } from '../model/model-request.ts';
-import type { InferenceSpec } from '../spec/inference-spec.ts';
+import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-function-definition.ts';
 import { mostOutputTokens } from '../spec/spec-settings.ts';
 import type { RenderedPrompt } from '../template/compiled-template.ts';
 
@@ -16,9 +16,9 @@ function timeoutFor(maxOutputTokens: number): number {
 export const longestRequestMs = timeoutFor(mostOutputTokens);
 
 export function requestFor(
-  spec: InferenceSpec,
+  spec: ReasoningFunctionDefinitionDocument,
   { instructions, message }: RenderedPrompt,
-  execution: ExecutionContext,
+  execution: RunContext,
 ): ModelRequest {
   return {
     model: spec.model,

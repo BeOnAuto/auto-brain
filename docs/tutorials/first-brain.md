@@ -1,6 +1,6 @@
 # Build your first brain
 
-Create a brain that reviews campaign briefs against a small set of rules. You will save the review as a reason function, run it on an incomplete brief, then change the brief and compare the recorded results.
+Create a brain that reviews campaign briefs against a small set of rules. You will save the review as a reasoning function, run it on an incomplete brief, then change the brief and compare the recorded results.
 
 The campaign and figures below are sample data. This exercise makes no changes to advertising accounts or campaign budgets.
 
@@ -24,7 +24,7 @@ The agent should confirm `campaign-review-tutorial`. If it reports a permissions
 
 Give the agent your confirmed model reference, then send this instruction:
 
-> In `campaign-review-tutorial`, prepare a reason function named `review-campaign-brief`. It accepts one required text input, `brief`, and returns a text review. Include the complete brief in its prompt. Use the model reference I supplied.
+> In `campaign-review-tutorial`, prepare a reasoning function named `review-campaign-brief`. It accepts one required text input, `brief`, and returns a text review. Include the complete brief in its prompt. Use the model reference I supplied.
 >
 > Check these four criteria:
 >
@@ -39,7 +39,7 @@ Give the agent your confirmed model reference, then send this instruction:
 
 Review the proposal. It should use the four criteria above, require `brief`, and produce a text answer. Approve saving it once it matches. If a previous exercise left a different definition under the same name, ask the agent to show the proposed changes and approve them before updating it.
 
-Ask the agent to read back the saved definition. You should see the name `review-campaign-brief` and a version. The MCP tool may call it an `inference` spec; that is the API name for a reason function.
+Ask the agent to read back the saved definition. You should see the name `review-campaign-brief` and a version. The MCP tool may call it an `inference` spec; that is the API name for a reasoning function.
 
 ## 3. Run an incomplete brief
 

@@ -6,7 +6,7 @@ The API stores a workflow as an `orchestration` spec. Its source document is YAM
 
 ## A workflow document
 
-This workflow reviews a campaign brief with the `review-campaign-brief` reason function from [Build your first brain](../tutorials/first-brain.md). It retries the review when the model is unavailable, then waits up to a week for an approval decision:
+This workflow reviews a campaign brief with the `review-campaign-brief` reasoning function from [Build your first brain](../tutorials/first-brain.md). It retries the review when the model is unavailable, then waits up to a week for an approval decision:
 
 ```yaml
 document:
@@ -109,7 +109,7 @@ For this document, `create_spec` takes `primitive: "orchestration"`, a workflow 
 | `timeout`                                   | Optional limit for the whole run: `after` with a duration, or the name of a timeout in `use.timeouts` |
 | `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks refer to by name                        |
 
-The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails: a reason function, for example, rejects input that does not match its own schema. Schemas must be written inline under `document`, as JSON Schema.
+The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails: a reasoning function, for example, rejects input that does not match its own schema. Schemas must be written inline under `document`, as JSON Schema.
 
 `document.version` is part of the document you write. The definition's `version` counts saved changes: it is 1 when the workflow is created and increases each time `update_spec` changes the document.
 
@@ -157,7 +157,7 @@ A `switch` tests its cases in order and follows the `then` of the first case who
 
 ### Calling a function
 
-`call: execute_spec` runs the active latest version of another definition in the same brain: `with.primitive` names its type, such as `inference`, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reason function answered.
+`call: execute_spec` runs the active latest version of another definition in the same brain: `with.primitive` names its type, such as `inference`, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered.
 
 Each time the task runs, including on a retry, it starts a separate run of the function, recorded under its own `execution_id`. That run acts for the caller who started the workflow, with the permissions that caller had when the workflow started. A workflow cannot execute another workflow, and `execute_spec` takes no arguments other than `primitive`, `name` and `input`.
 

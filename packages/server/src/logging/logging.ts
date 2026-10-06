@@ -151,7 +151,7 @@ function providerAnnotations({ configured, unconfigured }: ProviderStatus): read
 
 function providersSummary({ configured }: ProviderStatus): Effect.Effect<void> {
   return configured.length === 0
-    ? Effect.logWarning(`No model provider is configured, so inference specs cannot run; ${howToConfigureAModel}`)
+    ? Effect.logWarning(`No model provider is configured, so reasoning functions cannot run; ${howToConfigureAModel}`)
     : Effect.logInfo(`Model providers configured: ${configured.join(', ')}`);
 }
 

@@ -209,6 +209,9 @@ importers:
 
   .:
     devDependencies:
+      '@beonauto/specs':
+        specifier: workspace:*
+        version: link:packages/specs
       '@commitlint/cli':
         specifier: 21.2.3
         version: 21.2.3(@types/node@26.6.3)(conventional-commits-parser@7.1.2)(typescript@7.0.2)

@@ -2,11 +2,11 @@
 
 The contract of the workflow machine that runs on the ledger: the DSL it runs, the state it keeps, the inputs it takes and the ports to the adapters that store, time and execute for it. The machine's state is shaped by the workflow DSL, so this package is the workflow machine's contract, not a generic runtime. It knows workflows, their DSL and an executor that performs calls. It does not know brains, prompts, models, specs or primitives: the functions a workflow may call come from the caller, and whatever an adapter needs to know about a run, such as who started it, it passes as opaque `attributes` and gets back with every output.
 
-The same code runs in Node, where one server keeps every run in one SQLite file, and in Auto's cloud hosting, the hosted runtime, where each run is an isolate of its own. The decision record states what the hosted runtime allows: a single-threaded isolate per run, woken by alarms that fire at least once and are dropped after a bounded number of failed retries, with about 128 MB of memory and bounded CPU per wake-up, no long-lived process and no code generation, and its own SQLite with rows of at most 2 MB; the shared database has no interactive transactions. The machine decides each input (below). In Node, [`@beonauto/workflow-host`](../workflow-host) hosts it over the ledger, and the orchestration primitive runs every workflow on it; the hosted runtime's adapters are the next step. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
+The same code runs in Node, where one server keeps every run in one SQLite file, and in Auto's cloud hosting, the hosted runtime, where each run is an isolate of its own. The decision record states what the hosted runtime allows: a single-threaded isolate per run, woken by alarms that fire at least once and are dropped after a bounded number of failed retries, with about 128 MB of memory and bounded CPU per wake-up, no long-lived process and no code generation, and its own SQLite with rows of at most 2 MB; the shared database has no interactive transactions. The machine decides each input (below). In Node, [`@beonauto/workflow-host`](../workflow-host) hosts it over the ledger, and the workflow adapter runs every workflow on it; the hosted runtime's adapters are the next step. [The decision record](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why.
 
 ## Entries
 
-- `@beonauto/workflow-engine`: the contract, the machine, `workflowMachine(options)`, the engine an adapter builds over its ports, `workflowEngineOf(ports, options, cache)`, and what the orchestration primitive reads a document with: JSON helpers, the policy, its checks and the limits of a document, from `src/index.ts`.
+- `@beonauto/workflow-engine`: the contract, the machine, `workflowMachine(options)`, the engine an adapter builds over its ports, `workflowEngineOf(ports, options, cache)`, and what the workflow adapter reads a document with: JSON helpers, the policy, its checks and the limits of a document, from `src/index.ts`.
 - `@beonauto/workflow-engine/testing`: the memory adapter of `src/memory` and its virtual clock, a driver over it, and the probes of the ports' contract that every adapter runs (`src/testing/index.ts`). Neither the entry nor anything it imports takes a Node module or the YAML parser, so a hosted adapter can run the probes (`src/engine/portability.test.ts`).
 
 ## How a run moves
@@ -46,7 +46,7 @@ The settlement and call-result vocabulary lives once, in `@beonauto/operations` 
 
 ## The DSL
 
-`policyOf(functions)` gives the policy a document is checked against. The caller gives the functions a workflow may call, each with the checks of its arguments, a description of a call for the messages it raises, and the words that explain where a workflow reaches the world and how it starts; the orchestration primitive gives `execute_spec` (`primitives/orchestration/src/document/workflow-functions.ts`). The DSL itself names no function.
+`policyOf(functions)` gives the policy a document is checked against. The caller gives the functions a workflow may call, each with the checks of its arguments, a description of a call for the messages it raises, and the words that explain where a workflow reaches the world and how it starts; the workflow adapter gives `execute_spec` (`primitives/orchestration/src/document/workflow-functions.ts`). The DSL itself names no function.
 
 Compiled expressions are kept in one cache for the process, of at most 262,144 characters of expression source, letting go of the expression used longest ago: a compiled expression measured 22 to 34 bytes of heap per character of source, so the cache holds at most about 9 MiB, and compiling one again took 10 to 150 µs.
 
@@ -234,7 +234,7 @@ Each sentence is something a reviewer can check against the code or a test. **[e
 - `started` arms the run's deadline, due when the run has run the most it may, `mostDurationMs`; its fire ends the run `overran`. A call arms its `call_deadline` and keeps its id. A cancel, an end or a timeout cancels what the frames under it wait for, and a task that raises before it waits disarms its own timeout.
 - An event leaves out a timer or a call that the same input opened and closed (invariant 26), and its other outputs keep the order the session emitted them in.
 - A run ends with its outcome, settled once in its last event. An input that would pass a bound (inputs, history, held data, the size of one event) ends the run, raised, in a small event of its own.
-- The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The orchestration primitive runs its tests of how a workflow runs through this driver (`primitives/orchestration/src/workflows`), and replays its 15 recorded input logs through the machine (`primitives/orchestration/input-logs/`).
+- The machine's tests run it through the memory driver of `src/testing`; each piece of the design has one that fails without it. The workflow adapter runs its tests of how a workflow runs through this driver (`primitives/orchestration/src/workflows`), and replays its 15 recorded input logs through the machine (`primitives/orchestration/input-logs/`).
 
 ## The cache of loaded runs
 
@@ -243,7 +243,7 @@ Each engine keeps the runs it loaded between their inputs (`src/cache/run-cache.
 - An append that fails, a conflict or an outcome the store never told, lets go of the kept run, so the retry after a conflict, and the next input after a lost answer, load the run from the store (`src/cache/kept-runs.test.ts`).
 - A kept run counts the bytes of the events since the snapshot the store holds, and a saved snapshot lets go of it, so the next load reads the snapshot's bytes as the store keeps them and each snapshot is written when it is due (`src/cache/cached-snapshots.test.ts`).
 - The cache keeps at most 1,024 runs and 64 MiB of the data they hold (`heldBytes` and the bytes of the events waiting in their inboxes), letting go of the run used longest ago (`runCacheBounds`); a run that alone holds more is not kept. An adapter can give its engine a cache of other bounds.
-- The machine never writes to a state in place: the memory driver keeps every run frozen to its leaves, so every test that drives a run, the orchestration primitive's on the machine and its recorded input logs among them, decides each input on a frozen state, where a write throws (`src/testing/frozen-runs.ts`, `src/cache/kept-runs.test.ts`).
+- The machine never writes to a state in place: the memory driver keeps every run frozen to its leaves, so every test that drives a run, the workflow adapter's on the machine and its recorded input logs among them, decides each input on a frozen state, where a write throws (`src/testing/frozen-runs.ts`, `src/cache/kept-runs.test.ts`).
 
 ## Measurements
 

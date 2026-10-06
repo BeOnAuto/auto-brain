@@ -1,9 +1,9 @@
 import { danglingReferencesIn, listedTools, problemIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
-import { makeInference } from '@beonauto/inference';
+import { makeReasoningFunctionAdapter } from '@beonauto/inference';
 import { answers, scriptedLanguageModel, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const summary = [
   '---',
@@ -29,7 +29,7 @@ const specTools = [
   'send_execution_event',
 ];
 
-const inferenceDescription = makeInference({
+const inferenceDescription = makeReasoningFunctionAdapter({
   languageModel: scriptedLanguageModel().languageModel,
   offered: { providers: [], aliases: [] },
 }).description;
@@ -40,21 +40,21 @@ const withAnthropicThroughGateway = {
   MODEL_ALIASES: JSON.stringify({ 'anthropic/*': 'gateway/anthropic/*' }),
 };
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
 });
 
 async function onAlpha<T>(replies: readonly ScriptedReply[], use: (session: McpSession) => Promise<T>): Promise<T> {
-  server = await servingInference(replies);
+  server = await servingReasoning(replies);
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
     session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
   );
   return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
 }
 
-describe('an inference spec over MCP, on the endpoint of its brain', () => {
+describe('a reasoning function definition over MCP, on the endpoint of its brain', () => {
   it('is created, executed and read back with its execution', async () => {
     const { created, executed, execution } = await onAlpha([answers(textResult('Profits rose.'))], async (session) => {
       const creating = await session.callTool('create_spec', {
@@ -111,14 +111,14 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
   });
 
   it('tell an agent which providers and named models the server calls, before it writes a spec', async () => {
-    server = await servingInference([], withAnthropicThroughGateway);
+    server = await servingReasoning([], withAnthropicThroughGateway);
     const tools = await withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, (session) =>
       session.listTools(),
     );
     const createSpec = listedTools(tools).find(({ name }) => name === 'create_spec');
 
     expect(createSpec?.description).toContain(
-      'This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>. Its operator also named these models, which a spec may give as its model: anthropic/*. In a name that ends in *, the * stands for any model id, so a spec may give anthropic/<model id>.',
+      'This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>. Its operator also named these models, which a reasoning function may give as its model: anthropic/*. In a name that ends in *, the * stands for any model id, so a reasoning function may give anthropic/<model id>.',
     );
   });
 

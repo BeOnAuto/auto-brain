@@ -3,7 +3,7 @@ import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { answers, textResult } from '../testing/index.ts';
-import { inferenceWith } from '../testing/inference-runs.ts';
+import { reasoningWith } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
 
 const withSchema = documentOf(
@@ -22,12 +22,12 @@ const withSchema = documentOf(
 
 describe('the input of an execution', () => {
   it('is a JSON object', async () => {
-    const { executing, requests } = inferenceWith();
+    const { executing, requests } = reasoningWith();
 
     expect(await executing(withSchema, ['text'])).toEqual(
       Exit.fail(
         new InvalidInput({
-          detail: 'The input of an inference spec is a JSON object',
+          detail: 'The input of a reasoning function definition is a JSON object',
           issues: [{ pointer: '', detail: 'Expected a JSON object' }],
         }),
       ),
@@ -36,7 +36,7 @@ describe('the input of an execution', () => {
   });
 
   it('takes the defaults of the spec for the fields it leaves out', async () => {
-    const { executing, requests } = inferenceWith(answers(textResult('Done')));
+    const { executing, requests } = reasoningWith(answers(textResult('Done')));
     await executing(withSchema, { text: 'the report' });
 
     expect(requests()[0]?.messages).toEqual([
@@ -45,14 +45,14 @@ describe('the input of an execution', () => {
   });
 
   it('overrides the defaults with its own fields', async () => {
-    const { executing, requests } = inferenceWith(answers(textResult('Done')));
+    const { executing, requests } = reasoningWith(answers(textResult('Done')));
     await executing(withSchema, { text: 'the report', words: 10 });
 
     expect(requests()[0]?.messages).toMatchObject([{ content: [{ text: 'Summarize the report in 10 words.' }] }]);
   });
 
   it('must match the input schema, with pointers to its fields', async () => {
-    const { executing, requests } = inferenceWith();
+    const { executing, requests } = reasoningWith();
 
     expect(await executing(withSchema, { words: 0, colour: 'red' })).toEqual(
       Exit.fail(

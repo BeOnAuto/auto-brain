@@ -1,16 +1,16 @@
 # Workflows and runs
 
-A workflow is a saved definition that coordinates a brain's functions through steps. It can run reason functions in order, choose a path from their results, loop over items, run branches in parallel, wait for an event or a timer, retry a step that failed and give up after a time limit. A run keeps its place across a restart of the runtime: it goes on from where it was, waiting or working. Every runtime offers workflows; [Functions and availability](functions.md#availability) shows how to see them on your connection.
+A workflow is a saved definition that coordinates a brain's functions through steps. It can run reasoning functions in order, choose a path from their results, loop over items, run branches in parallel, wait for an event or a timer, retry a step that failed and give up after a time limit. A run keeps its place across a restart of the runtime: it goes on from where it was, waiting or working. Every runtime offers workflows; [Functions and availability](functions.md#availability) shows how to see them on your connection.
 
 [Workflow format](../reference/workflow-format.md) describes the document, and the [HTTP](../reference/http.md#workflows) and [MCP](../reference/mcp.md) references list the operations.
 
 ## Coordinate reusable work
 
-A function defines a reusable operation; a step is where a workflow uses it. A reason function such as `review-campaign-brief` can be called directly by an agent and used as a step in more than one workflow. Other steps decide what happens next, wait, repeat work or handle errors without calling a function.
+A function defines a reusable operation; a step is where a workflow uses it. A reasoning function such as `review-campaign-brief` can be called directly by an agent and used as a step in more than one workflow. Other steps decide what happens next, wait, repeat work or handle errors without calling a function.
 
-In the current runtime, the functions a workflow calls are reason functions in the same brain. A workflow reaches outside the brain only through those functions: it makes no network calls of its own. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
+In the current runtime, the functions a workflow calls are reasoning functions in the same brain. A workflow reaches outside the brain only through those functions: it makes no network calls of its own. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
 
-A budget-review workflow could assess the options with a reason function, then wait for a person's approval. The evidence arrives as the run's input or with an event, and the approval is an event sent to the waiting run. [Build your first workflow](../tutorials/first-workflow.md) builds a small version: it reviews a campaign brief, waits for the revised brief, and reviews that.
+A budget-review workflow could assess the options with a reasoning function, then wait for a person's approval. The evidence arrives as the run's input or with an event, and the approval is an event sent to the waiting run. [Build your first workflow](../tutorials/first-workflow.md) builds a small version: it reviews a campaign brief, waits for the revised brief, and reviews that.
 
 ## Definitions, versions and runs
 
@@ -23,6 +23,7 @@ Keep the saved work separate from what happens when it executes:
 | Run        | One execution against particular inputs              |
 | Result     | The output of that run                               |
 | Step       | One task of a workflow, such as a call to a function |
+| Step run   | Execution of a particular step within a workflow run |
 | Attempt    | One try at a step's work; a retry is another attempt |
 
 Saving a workflow creates its definition at version 1, and each change to its document adds a version. A run uses the active latest version when it starts and keeps that version until it ends; the run records it as `spec_version`. A step that calls a function runs the function's active latest version at the time of the call.
@@ -63,4 +64,6 @@ A rejection's reason is `invalid_input` when the error says the input or the doc
 
 ## Planned
 
-Starting workflows on a schedule or in response to an event is planned. Today a run starts only when a caller executes the workflow.
+Schedule triggers and event triggers are planned. A schedule trigger will hold its timing rule and timezone; an event trigger will hold its event type and matching conditions. Today a run starts only when a caller executes the workflow. Timers and event waits inside a run are control steps, not triggers for new runs.
+
+A workflow cannot currently call another workflow. The name for that use, when supported, is a workflow step or subworkflow.

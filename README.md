@@ -2,7 +2,7 @@
 
 The source-available runtime for business brains, built and used through your agent.
 
-Save the way your team reviews a campaign brief as a reason function. An agent supplies a brief, runs the review and reads the recorded result. The definition stays in the brain, ready for the next brief or another authorized colleague.
+Save the way your team reviews a campaign brief as a reasoning function. An agent supplies a brief, runs the review and reads the recorded result. The definition stays in the brain, ready for the next brief or another authorized colleague.
 
 [![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml) [![License: ELv2](https://img.shields.io/badge/license-ELv2-blue?style=flat-square)](LICENSING.md)
 
@@ -39,14 +39,14 @@ Or for Codex:
 codex mcp add auto-brain --url http://localhost:8080/mcp
 ```
 
-Start a new agent session after adding the connection. [Quick start: connect your agent](https://on.auto/docs/get-started/local) includes Claude Desktop setup and troubleshooting. Local mode needs no authentication header; do not expose it through a tunnel or public proxy. The lean server supports reason functions. Workflows are coming soon.
+Start a new agent session after adding the connection. [Quick start: connect your agent](https://on.auto/docs/get-started/local) includes Claude Desktop setup and troubleshooting. Local mode needs no authentication header; do not expose it through a tunnel or public proxy. The server supports reasoning functions and workflows.
 
 Paste this into your connected agent:
 
 ```text
 Create a brain named Quickstart with id quickstart, or reuse it if it exists.
 List the available models and ask me to choose a concrete model or alias.
-In that brain, create a reason function called check-brief. It accepts a brief
+In that brain, create a reasoning function called check-brief. It accepts a brief
 as text and checks for an audience, a budget and a measurable goal.
 If the function already exists, show it to me before making changes.
 Run the saved function on: "Promote our reporting tool to finance teams
@@ -70,7 +70,7 @@ You can also host your own brain. See the [self-hosting guide](https://on.auto/d
 
 The source-available runtime is in early development and is not ready for production use; [availability](https://on.auto/docs/concepts/functions#availability) describes the current scope.
 
-Coming soon: tool access inside reason functions through a shared catalog and MCP gateway, with direct tool lists and bounded tool-call loops. Today, the external agent calls Auto over MCP and passes evidence into the function; the function does not inherit the agent's tools. See [Tool access](https://on.auto/docs/concepts/functions#tool-access-inside-a-reason-function).
+Coming soon: tool access inside reasoning functions through a shared catalog and MCP gateway, with direct tool lists and bounded tool-call loops. Today, the external agent calls Auto over MCP and passes evidence into the function; the function does not inherit the agent's tools. See [Tool access](https://on.auto/docs/concepts/functions#tool-access-inside-a-reasoning-function).
 
 For bugs and questions, [open an issue](https://github.com/BeOnAuto/auto-brain/issues/new/choose). Report vulnerabilities through [SECURITY.md](SECURITY.md).
 
