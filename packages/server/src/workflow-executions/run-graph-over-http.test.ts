@@ -174,14 +174,14 @@ describe('the pages of a workflow run, over HTTP', { timeout: workflowTestTimeou
     expect(after[0]?.type).toBe('step_finished');
   });
 
-  it('pages the history by events, ends inside an input, and reads on from there with nothing lost or repeated', async () => {
+  it('pages the history by events in the order recorded, ends inside an input, and reads on with nothing lost or repeated', async () => {
     const executionId = await reviewed();
     const whole = await everyEvent(`${alpha}/executions/${executionId}/history?limit=100`);
     const byTwo = await everyEvent(`${alpha}/executions/${executionId}/history?limit=2`);
     const newestFirst = await everyEvent(`${alpha}/executions/${executionId}/history?order=desc&limit=3`);
 
-    expect(byTwo.map(({ id }) => id).toSorted()).toEqual(whole.map(({ id }) => id).toSorted());
-    expect(newestFirst.map(({ id }) => id).toSorted()).toEqual(whole.map(({ id }) => id).toSorted());
+    expect(byTwo.map(({ id }) => id)).toEqual(whole.map(({ id }) => id));
+    expect(newestFirst.map(({ id }) => id)).toEqual(whole.map(({ id }) => id).toReversed());
     expect(new Set(byTwo.map(({ id }) => id)).size).toBe(whole.length);
   });
 });
