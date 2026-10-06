@@ -46,23 +46,10 @@
         {
           "reference": "/do/0/clock",
           "run": 1,
-          "outcome": "started",
-          "name": "clock",
-          "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/clock",
-          "run": 1,
           "outcome": "completed",
           "name": "clock",
           "times": 1,
-          "caused_by": {
-            "reference": "/do/0/clock",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
+          "caused_by": "input"
         }
       ],
       "resumed": null,
@@ -181,7 +168,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1965
+          "value": 1806
         }
       ],
       "outputs": [

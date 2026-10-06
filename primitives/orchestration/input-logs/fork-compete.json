@@ -71,7 +71,7 @@
         {
           "reference": "/do/0/race",
           "run": 1,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "race",
           "times": 1,
           "caused_by": "input"
@@ -79,103 +79,37 @@
         {
           "reference": "/do/0/race/fork/branches/0/slow",
           "run": 1,
-          "outcome": "started",
+          "outcome": "cancelled",
           "name": "slow",
           "times": 1,
           "caused_by": {
             "reference": "/do/0/race",
             "run": 1,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           }
         },
         {
           "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
           "run": 1,
-          "outcome": "started",
+          "outcome": "cancelled",
           "name": "pause",
           "times": 1,
           "caused_by": {
             "reference": "/do/0/race/fork/branches/0/slow",
             "run": 1,
-            "outcome": "started",
+            "outcome": "cancelled",
             "times": 1
           }
         },
         {
-          "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
-          "run": 1,
-          "outcome": "waiting",
-          "name": "pause",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          },
-          "waits_for": "timer"
-        },
-        {
           "reference": "/do/0/race/fork/branches/1/quick",
           "run": 1,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "quick",
           "times": 1,
           "caused_by": {
             "reference": "/do/0/race",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/race/fork/branches/1/quick",
-          "run": 1,
-          "outcome": "completed",
-          "name": "quick",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/race/fork/branches/1/quick",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/race/fork/branches/0/slow/do/0/pause",
-          "run": 1,
-          "outcome": "cancelled",
-          "name": "pause",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/race/fork/branches/1/quick",
-            "run": 1,
-            "outcome": "completed",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/race/fork/branches/0/slow",
-          "run": 1,
-          "outcome": "cancelled",
-          "name": "slow",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/race/fork/branches/1/quick",
-            "run": 1,
-            "outcome": "completed",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/race",
-          "run": 1,
-          "outcome": "completed",
-          "name": "race",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/race/fork/branches/1/quick",
             "run": 1,
             "outcome": "completed",
             "times": 1
@@ -336,7 +270,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3529
+          "value": 2499
         }
       ],
       "outputs": [

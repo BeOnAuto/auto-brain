@@ -62,36 +62,10 @@
         {
           "reference": "/do/0/first",
           "run": 1,
-          "outcome": "started",
-          "name": "first",
-          "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/first",
-          "run": 1,
           "outcome": "completed",
           "name": "first",
           "times": 1,
-          "caused_by": {
-            "reference": "/do/0/first",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/1/pause",
-          "run": 1,
-          "outcome": "started",
-          "name": "pause",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/first",
-            "run": 1,
-            "outcome": "completed",
-            "times": 1
-          }
+          "caused_by": "input"
         },
         {
           "reference": "/do/1/pause",
@@ -100,9 +74,9 @@
           "name": "pause",
           "times": 1,
           "caused_by": {
-            "reference": "/do/1/pause",
+            "reference": "/do/0/first",
             "run": 1,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           },
           "waits_for": "timer"
@@ -292,7 +266,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3037
+          "value": 2719
         }
       ],
       "outputs": [
@@ -329,18 +303,10 @@
           "outcome": "completed",
           "name": "pause",
           "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/2/last",
-          "run": 1,
-          "outcome": "started",
-          "name": "last",
-          "times": 1,
           "caused_by": {
             "reference": "/do/1/pause",
             "run": 1,
-            "outcome": "completed",
+            "outcome": "waiting",
             "times": 1
           }
         },
@@ -351,9 +317,9 @@
           "name": "last",
           "times": 1,
           "caused_by": {
-            "reference": "/do/2/last",
+            "reference": "/do/1/pause",
             "run": 1,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           }
         }
@@ -429,7 +395,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4577
+          "value": 4161
         }
       ],
       "outputs": [

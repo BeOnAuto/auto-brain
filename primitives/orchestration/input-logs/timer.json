@@ -52,23 +52,10 @@
         {
           "reference": "/do/0/pause",
           "run": 1,
-          "outcome": "started",
-          "name": "pause",
-          "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/pause",
-          "run": 1,
           "outcome": "waiting",
           "name": "pause",
           "times": 1,
-          "caused_by": {
-            "reference": "/do/0/pause",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          },
+          "caused_by": "input",
           "waits_for": "timer"
         }
       ],
@@ -231,7 +218,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2513
+          "value": 2354
         }
       ],
       "outputs": [
@@ -268,7 +255,12 @@
           "outcome": "completed",
           "name": "pause",
           "times": 1,
-          "caused_by": "input"
+          "caused_by": {
+            "reference": "/do/0/pause",
+            "run": 1,
+            "outcome": "waiting",
+            "times": 1
+          }
         }
       ],
       "resumed": {
@@ -323,7 +315,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3505
+          "value": 3404
         }
       ],
       "outputs": [

@@ -65,36 +65,10 @@
         {
           "reference": "/do/0/count",
           "run": 1,
-          "outcome": "started",
-          "name": "count",
-          "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/count",
-          "run": 1,
           "outcome": "completed",
           "name": "count",
           "times": 1,
-          "caused_by": {
-            "reference": "/do/0/count",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/1/again",
-          "run": 1,
-          "outcome": "started",
-          "name": "again",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/count",
-            "run": 1,
-            "outcome": "completed",
-            "times": 1
-          }
+          "caused_by": "input"
         },
         {
           "reference": "/do/1/again",
@@ -103,9 +77,9 @@
           "name": "again",
           "times": 1,
           "caused_by": {
-            "reference": "/do/1/again",
+            "reference": "/do/0/count",
             "run": 1,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           },
           "waits_for": "timer"
@@ -292,7 +266,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3028
+          "value": 2710
         }
       ],
       "outputs": [
@@ -329,18 +303,10 @@
           "outcome": "completed",
           "name": "again",
           "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/count",
-          "run": 2,
-          "outcome": "started",
-          "name": "count",
-          "times": 1,
           "caused_by": {
             "reference": "/do/1/again",
             "run": 1,
-            "outcome": "completed",
+            "outcome": "waiting",
             "times": 1
           }
         },
@@ -351,21 +317,8 @@
           "name": "count",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/count",
-            "run": 2,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/1/again",
-          "run": 2,
-          "outcome": "started",
-          "name": "again",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/count",
-            "run": 2,
+            "reference": "/do/1/again",
+            "run": 1,
             "outcome": "completed",
             "times": 1
           }
@@ -377,9 +330,9 @@
           "name": "again",
           "times": 1,
           "caused_by": {
-            "reference": "/do/1/again",
+            "reference": "/do/0/count",
             "run": 2,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           },
           "waits_for": "timer"
@@ -482,7 +435,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5284
+          "value": 4706
         }
       ],
       "outputs": [
@@ -511,18 +464,10 @@
           "outcome": "completed",
           "name": "again",
           "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/count",
-          "run": 3,
-          "outcome": "started",
-          "name": "count",
-          "times": 1,
           "caused_by": {
             "reference": "/do/1/again",
             "run": 2,
-            "outcome": "completed",
+            "outcome": "waiting",
             "times": 1
           }
         },
@@ -533,21 +478,8 @@
           "name": "count",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/count",
-            "run": 3,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/1/again",
-          "run": 3,
-          "outcome": "started",
-          "name": "again",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/count",
-            "run": 3,
+            "reference": "/do/1/again",
+            "run": 2,
             "outcome": "completed",
             "times": 1
           }
@@ -559,9 +491,9 @@
           "name": "again",
           "times": 1,
           "caused_by": {
-            "reference": "/do/1/again",
+            "reference": "/do/0/count",
             "run": 3,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           }
         }
@@ -642,7 +574,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 7171
+          "value": 6333
         }
       ],
       "outputs": [

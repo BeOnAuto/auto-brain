@@ -75,23 +75,10 @@
         {
           "reference": "/do/0/summarize",
           "run": 1,
-          "outcome": "started",
-          "name": "summarize",
-          "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/summarize",
-          "run": 1,
           "outcome": "waiting",
           "name": "summarize",
           "times": 1,
-          "caused_by": {
-            "reference": "/do/0/summarize",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          },
+          "caused_by": "input",
           "waits_for": "call"
         }
       ],
@@ -298,7 +285,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3503
+          "value": 3332
         }
       ],
       "outputs": [
@@ -353,18 +340,10 @@
           "outcome": "completed",
           "name": "summarize",
           "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/1/answer",
-          "run": 1,
-          "outcome": "started",
-          "name": "answer",
-          "times": 1,
           "caused_by": {
             "reference": "/do/0/summarize",
             "run": 1,
-            "outcome": "completed",
+            "outcome": "waiting",
             "times": 1
           }
         },
@@ -375,9 +354,9 @@
           "name": "answer",
           "times": 1,
           "caused_by": {
-            "reference": "/do/1/answer",
+            "reference": "/do/0/summarize",
             "run": 1,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           }
         }
@@ -458,7 +437,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5434
+          "value": 5163
         }
       ],
       "outputs": [

@@ -56,21 +56,15 @@ const completed: Step = { ...ask, outcome: 'completed', caused_by: 'input' };
 
 const next = { reference: '/do/1/next', run: 1, name: 'next', times: 1 };
 
-const started: Step = {
-  ...next,
-  outcome: 'started',
-  caused_by: { reference: '/do/0/ask', run: 1, outcome: 'completed', times: 1 },
-};
-
 const waiting: Step = {
   ...next,
   outcome: 'waiting',
   waits_for: 'call',
   child: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
-  caused_by: { reference: '/do/1/next', run: 1, outcome: 'started', times: 1 },
+  caused_by: { reference: '/do/0/ask', run: 1, outcome: 'completed', times: 1 },
 };
 
-const asked: readonly Step[] = [completed, started, waiting];
+const asked: readonly Step[] = [completed, waiting];
 
 function idOf(step: Step): string {
   return stepEventIdOf(executionId, {
@@ -92,18 +86,9 @@ const presentedSteps = [
     data: { name: 'ask', reference: '/do/0/ask', run: 1, times: 1 },
   },
   {
-    id: idOf(started),
+    id: idOf(waiting),
     cursor: cursorWithin(cursor, 2),
     causation_id: idOf(completed),
-    at: '2026-10-05T09:00:00.000Z',
-    type: 'step_started',
-    summary: 'The step “next” started.',
-    data: { name: 'next', reference: '/do/1/next', run: 1, times: 1 },
-  },
-  {
-    id: idOf(waiting),
-    cursor: cursorWithin(cursor, 3),
-    causation_id: idOf(started),
     at: '2026-10-05T09:00:00.000Z',
     type: 'step_waiting',
     summary: 'The step “next” waits for a function it called.',

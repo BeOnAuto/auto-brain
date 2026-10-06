@@ -69,47 +69,21 @@
         {
           "reference": "/do/0/decide",
           "run": 1,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "decide",
           "times": 1,
           "caused_by": "input"
         },
         {
-          "reference": "/do/0/decide",
-          "run": 1,
-          "outcome": "completed",
-          "name": "decide",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/decide",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
           "reference": "/do/2/small",
           "run": 1,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "small",
           "times": 1,
           "caused_by": {
             "reference": "/do/0/decide",
             "run": 1,
             "outcome": "completed",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/2/small",
-          "run": 1,
-          "outcome": "completed",
-          "name": "small",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/2/small",
-            "run": 1,
-            "outcome": "started",
             "times": 1
           }
         }
@@ -256,7 +230,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2246
+          "value": 1925
         }
       ],
       "outputs": [

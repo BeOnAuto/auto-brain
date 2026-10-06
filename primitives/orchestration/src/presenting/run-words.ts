@@ -52,10 +52,10 @@ function why(receipt: InputReceipt): string {
   return said === '' ? '' : ` ${asSentence(capitalized(said))}`;
 }
 
-export function summaryOf({ receipt, outputs }: RunEvent, moved: number): string {
-  const steps = moved === 0 ? '' : `, and ${counted(moved, step)} moved`;
+export function summaryOf({ receipt, steps, outputs }: RunEvent): string {
+  const moved = steps.length === 0 ? '' : `, and ${counted(steps.length, step)} moved`;
   const ended = outputs.some(({ kind }) => kind === 'settle') ? '; the workflow ended' : '';
-  return `${happened(receipt)}${steps}${ended}.${why(receipt)}`;
+  return `${happened(receipt)}${moved}${ended}.${why(receipt)}`;
 }
 
 const notLettersOrDigits = /[^\p{L}\p{N}]+/gu;

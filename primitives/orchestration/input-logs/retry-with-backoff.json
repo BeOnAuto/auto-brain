@@ -141,24 +141,11 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 1,
-          "outcome": "started",
-          "name": "fetch",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/guarded/try/0/fetch",
-          "run": 1,
           "outcome": "waiting",
           "name": "fetch",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/guarded/try/0/fetch",
+            "reference": "/do/0/guarded",
             "run": 1,
             "outcome": "started",
             "times": 1
@@ -418,7 +405,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4229
+          "value": 4042
         }
       ],
       "outputs": [
@@ -473,7 +460,12 @@
           "outcome": "raised",
           "name": "fetch",
           "times": 1,
-          "caused_by": "input",
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 1,
+            "outcome": "waiting",
+            "times": 1
+          },
           "error": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "title": "The reasoning function flaky rejected the execution with unavailable"
@@ -570,7 +562,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6505
+          "value": 6390
         }
       ],
       "outputs": [
@@ -601,26 +593,13 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 2,
-          "outcome": "started",
+          "outcome": "waiting",
           "name": "fetch",
           "times": 1,
           "caused_by": {
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 1,
             "outcome": "raised",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/guarded/try/0/fetch",
-          "run": 2,
-          "outcome": "waiting",
-          "name": "fetch",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded/try/0/fetch",
-            "run": 2,
-            "outcome": "started",
             "times": 1
           },
           "waits_for": "call"
@@ -760,7 +739,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 9493
+          "value": 9191
         }
       ],
       "outputs": [
@@ -807,7 +786,12 @@
           "outcome": "raised",
           "name": "fetch",
           "times": 1,
-          "caused_by": "input",
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 2,
+            "outcome": "waiting",
+            "times": 1
+          },
           "error": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "title": "The reasoning function flaky rejected the execution with unavailable"
@@ -904,7 +888,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 11770
+          "value": 11540
         }
       ],
       "outputs": [
@@ -935,26 +919,13 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 3,
-          "outcome": "started",
+          "outcome": "waiting",
           "name": "fetch",
           "times": 1,
           "caused_by": {
             "reference": "/do/0/guarded/try/0/fetch",
             "run": 2,
             "outcome": "raised",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/guarded/try/0/fetch",
-          "run": 3,
-          "outcome": "waiting",
-          "name": "fetch",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded/try/0/fetch",
-            "run": 3,
-            "outcome": "started",
             "times": 1
           },
           "waits_for": "call"
@@ -1094,7 +1065,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 14759
+          "value": 14342
         }
       ],
       "outputs": [
@@ -1141,7 +1112,12 @@
           "outcome": "completed",
           "name": "fetch",
           "times": 1,
-          "caused_by": "input"
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 3,
+            "outcome": "waiting",
+            "times": 1
+          }
         },
         {
           "reference": "/do/0/guarded",
@@ -1150,9 +1126,9 @@
           "name": "guarded",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/guarded/try/0/fetch",
-            "run": 3,
-            "outcome": "completed",
+            "reference": "/do/0/guarded",
+            "run": 1,
+            "outcome": "started",
             "times": 1
           }
         }
@@ -1222,7 +1198,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 16351
+          "value": 15992
         }
       ],
       "outputs": [

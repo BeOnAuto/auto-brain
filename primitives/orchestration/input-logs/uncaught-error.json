@@ -48,23 +48,10 @@
         {
           "reference": "/do/0/reject",
           "run": 1,
-          "outcome": "started",
-          "name": "reject",
-          "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/reject",
-          "run": 1,
           "outcome": "raised",
           "name": "reject",
           "times": 1,
-          "caused_by": {
-            "reference": "/do/0/reject",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          },
+          "caused_by": "input",
           "error": {
             "type": "https://example.com/no",
             "title": "No"
@@ -190,7 +177,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1925
+          "value": 1763
         }
       ],
       "outputs": [

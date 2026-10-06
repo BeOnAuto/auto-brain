@@ -83,24 +83,11 @@
         {
           "reference": "/do/0/guarded/try/0/slow",
           "run": 1,
-          "outcome": "started",
-          "name": "slow",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/guarded/try/0/slow",
-          "run": 1,
           "outcome": "waiting",
           "name": "slow",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/guarded/try/0/slow",
+            "reference": "/do/0/guarded",
             "run": 1,
             "outcome": "started",
             "times": 1
@@ -333,7 +320,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3616
+          "value": 3432
         }
       ],
       "outputs": [
@@ -378,7 +365,12 @@
           "outcome": "timed_out",
           "name": "slow",
           "times": 1,
-          "caused_by": "input",
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/slow",
+            "run": 1,
+            "outcome": "waiting",
+            "times": 1
+          },
           "error": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/timeout",
             "title": "The task did not finish within 300 ms"
@@ -387,7 +379,7 @@
         {
           "reference": "/do/0/guarded/catch/do/0/late",
           "run": 1,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "late",
           "times": 1,
           "caused_by": {
@@ -398,28 +390,15 @@
           }
         },
         {
-          "reference": "/do/0/guarded/catch/do/0/late",
-          "run": 1,
-          "outcome": "completed",
-          "name": "late",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded/catch/do/0/late",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
           "reference": "/do/0/guarded",
           "run": 1,
           "outcome": "completed",
           "name": "guarded",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/guarded/catch/do/0/late",
+            "reference": "/do/0/guarded",
             "run": 1,
-            "outcome": "completed",
+            "outcome": "started",
             "times": 1
           }
         }
@@ -491,7 +470,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5607
+          "value": 5282
         }
       ],
       "outputs": [

@@ -69,23 +69,10 @@
         {
           "reference": "/do/0/guarded",
           "run": 1,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "guarded",
           "times": 1,
           "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/guarded/try/0/fail",
-          "run": 1,
-          "outcome": "started",
-          "name": "fail",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
         },
         {
           "reference": "/do/0/guarded/try/0/fail",
@@ -94,9 +81,9 @@
           "name": "fail",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/guarded/try/0/fail",
+            "reference": "/do/0/guarded",
             "run": 1,
-            "outcome": "started",
+            "outcome": "completed",
             "times": 1
           },
           "error": {
@@ -106,39 +93,13 @@
         {
           "reference": "/do/0/guarded/catch/do/0/recover",
           "run": 1,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "recover",
           "times": 1,
           "caused_by": {
             "reference": "/do/0/guarded/try/0/fail",
             "run": 1,
             "outcome": "raised",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/guarded/catch/do/0/recover",
-          "run": 1,
-          "outcome": "completed",
-          "name": "recover",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded/catch/do/0/recover",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/guarded",
-          "run": 1,
-          "outcome": "completed",
-          "name": "guarded",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/guarded/catch/do/0/recover",
-            "run": 1,
-            "outcome": "completed",
             "times": 1
           }
         }
@@ -290,7 +251,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2867
+          "value": 2296
         }
       ],
       "outputs": [

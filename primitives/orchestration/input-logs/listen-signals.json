@@ -70,23 +70,10 @@
         {
           "reference": "/do/0/await",
           "run": 1,
-          "outcome": "started",
-          "name": "await",
-          "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/await",
-          "run": 1,
           "outcome": "waiting",
           "name": "await",
           "times": 1,
-          "caused_by": {
-            "reference": "/do/0/await",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          },
+          "caused_by": "input",
           "waits_for": "event"
         }
       ],
@@ -244,7 +231,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2252
+          "value": 2093
         }
       ],
       "outputs": [
@@ -310,7 +297,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2855
+          "value": 2696
         }
       ],
       "outputs": []
@@ -331,7 +318,12 @@
           "outcome": "completed",
           "name": "await",
           "times": 1,
-          "caused_by": "input"
+          "caused_by": {
+            "reference": "/do/0/await",
+            "run": 1,
+            "outcome": "waiting",
+            "times": 1
+          }
         }
       ],
       "resumed": {
@@ -405,7 +397,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4085
+          "value": 3984
         }
       ],
       "outputs": [

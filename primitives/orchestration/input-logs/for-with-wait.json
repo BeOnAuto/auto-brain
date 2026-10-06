@@ -80,24 +80,11 @@
         {
           "reference": "/do/0/each/do/0/pause",
           "run": 1,
-          "outcome": "started",
-          "name": "pause",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/each",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/each/do/0/pause",
-          "run": 1,
           "outcome": "waiting",
           "name": "pause",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/each/do/0/pause",
+            "reference": "/do/0/each",
             "run": 1,
             "outcome": "started",
             "times": 1
@@ -338,7 +325,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3415
+          "value": 3236
         }
       ],
       "outputs": [
@@ -375,18 +362,10 @@
           "outcome": "completed",
           "name": "pause",
           "times": 1,
-          "caused_by": "input"
-        },
-        {
-          "reference": "/do/0/each/do/1/add",
-          "run": 1,
-          "outcome": "started",
-          "name": "add",
-          "times": 1,
           "caused_by": {
             "reference": "/do/0/each/do/0/pause",
             "run": 1,
-            "outcome": "completed",
+            "outcome": "waiting",
             "times": 1
           }
         },
@@ -397,20 +376,7 @@
           "name": "add",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/each/do/1/add",
-            "run": 1,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
-          "reference": "/do/0/each/do/0/pause",
-          "run": 2,
-          "outcome": "started",
-          "name": "pause",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/each/do/1/add",
+            "reference": "/do/0/each/do/0/pause",
             "run": 1,
             "outcome": "completed",
             "times": 1
@@ -423,9 +389,9 @@
           "name": "pause",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/each/do/0/pause",
-            "run": 2,
-            "outcome": "started",
+            "reference": "/do/0/each/do/1/add",
+            "run": 1,
+            "outcome": "completed",
             "times": 1
           },
           "waits_for": "timer"
@@ -583,7 +549,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6763
+          "value": 6300
         }
       ],
       "outputs": [
@@ -612,12 +578,17 @@
           "outcome": "completed",
           "name": "pause",
           "times": 1,
-          "caused_by": "input"
+          "caused_by": {
+            "reference": "/do/0/each/do/0/pause",
+            "run": 2,
+            "outcome": "waiting",
+            "times": 1
+          }
         },
         {
           "reference": "/do/0/each/do/1/add",
           "run": 2,
-          "outcome": "started",
+          "outcome": "completed",
           "name": "add",
           "times": 1,
           "caused_by": {
@@ -628,28 +599,15 @@
           }
         },
         {
-          "reference": "/do/0/each/do/1/add",
-          "run": 2,
-          "outcome": "completed",
-          "name": "add",
-          "times": 1,
-          "caused_by": {
-            "reference": "/do/0/each/do/1/add",
-            "run": 2,
-            "outcome": "started",
-            "times": 1
-          }
-        },
-        {
           "reference": "/do/0/each",
           "run": 1,
           "outcome": "completed",
           "name": "each",
           "times": 1,
           "caused_by": {
-            "reference": "/do/0/each/do/1/add",
-            "run": 2,
-            "outcome": "completed",
+            "reference": "/do/0/each",
+            "run": 1,
+            "outcome": "started",
             "times": 1
           }
         }
@@ -737,7 +695,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8640
+          "value": 8061
         }
       ],
       "outputs": [
