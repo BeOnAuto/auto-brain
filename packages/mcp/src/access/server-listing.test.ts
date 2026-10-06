@@ -37,6 +37,7 @@ async function silentOnListing(): Promise<LoopbackServer> {
     forwarding = false;
     await Promise.allSettled(forwards);
     await Promise.all([proxy.close(), fake.close()]);
+    expect([...proxy.failures(), ...fake.failures()]).toEqual([]);
   });
   return proxy;
 }
