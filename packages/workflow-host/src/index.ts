@@ -13,7 +13,6 @@ export {
   type StartReaction,
   type Trigger,
 } from './reactions/reaction-options.ts';
-export { ReactionRefusedSchema, type ReactionRefused } from './reactions/refusals.ts';
 export { StartRejected } from './reactions/start-rejected.ts';
 export { cronRejectionOf } from './schedules/schedule-times.ts';
 export { mostListenersInABrain } from './listeners/sql-listeners.ts';

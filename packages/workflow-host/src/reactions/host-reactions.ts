@@ -4,6 +4,7 @@ import { brainRecordsOf } from '../follower/brain-records.ts';
 import { followerOn } from '../follower/follower-assembly.ts';
 import type { FollowerHost } from '../follower/follower-host.ts';
 import type { Follower } from '../follower/follower-loop.ts';
+import { systemClock } from '../loop/host-clock.ts';
 import type { ReactionOptions } from './reaction-options.ts';
 import type { Refusals } from './refusals.ts';
 
@@ -13,5 +14,6 @@ export function startReacting(host: FollowerHost, options: ReactionOptions, refu
     refusals,
     records: brainRecordsOf(host.database.store),
     appended: options.appended ?? streamAppends,
+    pace: systemClock,
   });
 }

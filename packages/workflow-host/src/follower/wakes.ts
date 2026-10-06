@@ -19,7 +19,7 @@ export function wakesOf(sweepEveryMs: number): Wakes {
   return {
     woken: (stream) => {
       const brainKey = brainKeyOfStream(stream);
-      if (brainKey !== undefined) {
+      if (brainKey !== undefined && !stream.startsWith(`${brainKey}runs/`)) {
         brains.add(brainKey);
       }
       state.orgs ||= isOrgRegistry(stream);

@@ -2,6 +2,7 @@ import { appendSignalOf } from '@beonauto/ledger';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { systemClock } from '../loop/host-clock.ts';
 import { until } from '../reaction-testing/until.ts';
 import { startFollower } from './follower-loop.ts';
 import type { PassEnd } from './record-steps.ts';
@@ -47,7 +48,8 @@ function followerWith(passEnds: readonly (PassEnd | 'fails')[]): Watched {
       nextScheduleAt: () => Effect.succeed(null),
     },
     appended,
-    clock: { now: Date.now, sleep: (milliseconds) => Effect.sleep(milliseconds) },
+    clock: systemClock,
+    pace: systemClock,
     sweepEveryMs: anHour,
     trouble: (what) => logged(what),
   });
@@ -73,10 +75,11 @@ describe('the follower of the brains', () => {
     expect(log).toEqual(['start', 'orgs', 'sweep', 'orgs']);
   });
 
-  it('passes a brain it was signalled for, and again without a signal while the pass says there is more', async () => {
+  it('passes a brain an event was appended to, not one a run appended to, and again while the pass says there is more', async () => {
     const watched = followerWith(['more', 'more', 'caught_up']);
     await logReaching(watched, 3);
 
+    watched.raise('brain/acme/beta/runs/r-1');
     watched.raise('brain/acme/alpha/events/e1');
     watched.raise('workflow/elsewhere');
     const log = await logReaching(watched, 6);

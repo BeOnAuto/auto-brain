@@ -41,6 +41,10 @@ function countedRecords(pageAt: (read: number) => Effect.Effect<readonly Recorde
   };
 }
 
+function undispatchedRun(): CountedRecords {
+  return countedRecords(() => Effect.succeed([recordAt('runs/r-1', 1), recordAt('notes/n2', 2)]));
+}
+
 function endlessNotes(): CountedRecords {
   return countedRecords((read) => Effect.succeed([recordAt(`notes/n${read}`, read)]));
 }
@@ -93,6 +97,22 @@ describe('a pass over the records of a brain', () => {
       'more',
       Array.from({ length: 10 }, () => false),
       { brainKey, cursor: 'cursor-10', delivered: null, attempts: 0, waiting: true },
+    ]);
+  });
+});
+
+describe('a pass that meets a record of a run', () => {
+  it('stops before it while the outputs of the record are not dispatched, and waits', async () => {
+    const counted = undispatchedRun();
+    const { brains, pass } = await passing(counted);
+    await Effect.runPromise(brains.follow(brainKey, null));
+
+    const end = await Effect.runPromise(pass(brainKey, 'signal'));
+    const followed = await Effect.runPromise(brains.load(brainKey));
+
+    expect([end, followed]).toEqual([
+      'waiting',
+      { brainKey, cursor: null, delivered: null, attempts: 0, waiting: true },
     ]);
   });
 });

@@ -2,6 +2,7 @@ import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openHostDatabase } from '../src/database/host-databases.ts';
+import { brainCreated, eventTrigger, specRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { ledgerRunStore } from '../src/runs/ledger-run-store.ts';
 import { runIdOf } from '../src/runs/run-address.ts';
 import { header, measuredHost, runAt, startOf } from './measured-host.ts';
@@ -39,7 +40,25 @@ async function latenessOf(database: DatabaseSettings, runs: number): Promise<rea
   return late;
 }
 
-export async function timerLatenessOn(database: DatabaseSettings, timers: number): Promise<Lateness> {
+async function reactingWorkflows(database: DatabaseSettings, count: number): Promise<void> {
+  const opened = await openHostDatabase(database, Function.constVoid);
+  await brainCreated(opened.store, 'alpha');
+  await Array.from({ length: count }, (_, index) => index).reduce<Promise<void>>(
+    (before, index) =>
+      before.then(() =>
+        specRecorded(opened.store, {
+          name: `w${index}`,
+          version: 1,
+          trigger: eventTrigger({ type: `com.measure.t${index}` }),
+        }),
+      ),
+    Promise.resolve(),
+  );
+  await opened.close();
+}
+
+export async function timerLatenessOn(database: DatabaseSettings, timers: number, reacting = 0): Promise<Lateness> {
+  await reactingWorkflows(database, reacting);
   const measured = await measuredHost(database);
   await Effect.runPromise(
     Effect.forEach(

@@ -10,7 +10,7 @@ export interface Progress {
   readonly waiting: boolean;
 }
 
-interface FollowedBrain extends Progress {
+export interface FollowedBrain extends Progress {
   readonly brainKey: string;
 }
 
@@ -18,7 +18,7 @@ export interface FollowedBrains {
   readonly follow: (brainKey: string, cursor: string | null) => Effect.Effect<void>;
   readonly load: (brainKey: string) => Effect.Effect<FollowedBrain | undefined>;
   readonly save: (brainKey: string, progress: Progress) => Effect.Effect<void>;
-  readonly dueForASweep: (limit: number) => Effect.Effect<readonly string[]>;
+  readonly dueForASweep: (limit: number) => Effect.Effect<readonly FollowedBrain[]>;
 }
 
 const BrainRow = Schema.Struct({
@@ -29,7 +29,15 @@ const BrainRow = Schema.Struct({
   waiting: WholeNumber,
 });
 
-const KeyRow = Schema.Struct({ brain_key: Schema.String });
+function followedOf(row: typeof BrainRow.Type): FollowedBrain {
+  return {
+    brainKey: row.brain_key,
+    cursor: row.cursor,
+    delivered: row.delivered,
+    attempts: row.attempts,
+    waiting: row.waiting === 1,
+  };
+}
 
 function loaded(database: HostDatabase, brainKey: string): Effect.Effect<FollowedBrain | undefined> {
   return Effect.orDie(
@@ -40,19 +48,7 @@ function loaded(database: HostDatabase, brainKey: string): Effect.Effect<Followe
           WHERE brain_key = ${brainKey}`,
       ),
     ),
-  ).pipe(
-    Effect.map(([row]) =>
-      row === undefined
-        ? undefined
-        : {
-            brainKey: row.brain_key,
-            cursor: row.cursor,
-            delivered: row.delivered,
-            attempts: row.attempts,
-            waiting: row.waiting === 1,
-          },
-    ),
-  );
+  ).pipe(Effect.map(([row]) => (row === undefined ? undefined : followedOf(row))));
 }
 
 export function followedBrainsOn(database: HostDatabase): FollowedBrains {
@@ -80,16 +76,16 @@ export function followedBrainsOn(database: HostDatabase): FollowedBrains {
     dueForASweep: (limit) =>
       Effect.orDie(
         rowsOf(
-          KeyRow,
+          BrainRow,
           database.write(
             statement`UPDATE workflow_followed_brains
               SET checked = (SELECT COALESCE(MAX(checked), 0) + 1 FROM workflow_followed_brains)
               WHERE brain_key IN (
                 SELECT brain_key FROM workflow_followed_brains ORDER BY waiting DESC, checked, brain_key LIMIT ${limit}
               )
-              RETURNING brain_key`,
+              RETURNING brain_key, cursor, delivered, attempts, waiting`,
           ),
         ),
-      ).pipe(Effect.map((rows) => rows.map(({ brain_key: brainKey }) => brainKey))),
+      ).pipe(Effect.map((rows) => rows.map((row) => followedOf(row)))),
   };
 }

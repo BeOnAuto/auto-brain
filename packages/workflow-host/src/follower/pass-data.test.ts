@@ -3,7 +3,6 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { statement } from '../database/statement.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { passOf, type PassParts } from './brain-pass.ts';
@@ -61,19 +60,8 @@ function listening(database: HostDatabase, armedBy: number) {
   });
 }
 
-function armedWhileRead(database: HostDatabase): CountedRecords {
-  const armed = Effect.andThen(
-    database.write(
-      statement`INSERT INTO workflow_runs (run_id, stream_id, dispatched_through)
-        VALUES (${'acme/alpha/r-1'}, ${`${brainKey}runs/r-1`}, 1)`,
-    ),
-    listening(database, 1),
-  );
-  return countedRecords(() => Effect.as(Effect.orDie(armed), [recordAt('runs/r-1', 1), recordAt('notes/n2', 2)]));
-}
-
-async function passing(counted: CountedRecords, database?: HostDatabase) {
-  const opened = database ?? (await openedOn(await onSQLite()));
+async function passing(counted: CountedRecords) {
+  const opened = await openedOn(await onSQLite());
   const brains = followedBrainsOn(opened);
   const pass = passOf({
     database: opened,
@@ -88,7 +76,7 @@ async function passing(counted: CountedRecords, database?: HostDatabase) {
 }
 
 describe('the data of the records a pass reads', () => {
-  it('is read while a run of the brain listens for events', async () => {
+  it('is read again with it, after a glance without it, while a run of the brain listens for events', async () => {
     const counted = endlessNotes();
     const { database, brains, pass } = await passing(counted);
     await Effect.runPromise(brains.follow(brainKey, null));
@@ -96,18 +84,6 @@ describe('the data of the records a pass reads', () => {
 
     await Effect.runPromise(pass(brainKey, 'signal'));
 
-    expect(counted.reads()[0]).toBe(true);
-  });
-
-  it('is read again from the record of a run that armed a listener while the pass read without it', async () => {
-    const database = await openedOn(await onSQLite());
-    const counted = armedWhileRead(database);
-    const { brains, pass } = await passing(counted, database);
-    await Effect.runPromise(brains.follow(brainKey, null));
-
-    const end = await Effect.runPromise(pass(brainKey, 'signal'));
-    const followed = await Effect.runPromise(brains.load(brainKey));
-
-    expect([end, counted.reads(), followed?.cursor]).toEqual(['more', [false], 'cursor-1']);
+    expect(counted.reads().slice(0, 2)).toEqual([false, true]);
   });
 });

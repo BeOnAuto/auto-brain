@@ -7,12 +7,13 @@ import { passOf } from './brain-pass.ts';
 import type { BrainRecords } from './brain-records.ts';
 import { followedBrainsOn } from './followed-brains.ts';
 import type { FollowerHost } from './follower-host.ts';
-import { startFollower, type Follower } from './follower-loop.ts';
+import { startFollower, type Follower, type FollowerParts } from './follower-loop.ts';
 import { brainOfKey } from './record-steps.ts';
 
 export interface FollowerAssembly extends ReactionUse {
   readonly records: BrainRecords;
   readonly appended: AppendSignal;
+  readonly pace: FollowerParts['pace'];
 }
 
 export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Follower {
@@ -43,6 +44,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     upkeep: reacting.upkeep,
     appended: assembly.appended,
     clock,
+    pace: assembly.pace,
     sweepEveryMs: host.sweepEveryMs,
     trouble: reports.trouble,
   });

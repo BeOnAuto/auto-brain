@@ -1,19 +1,9 @@
 import { eventAppenderOf } from '@beonauto/ledger';
+import { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from '@beonauto/specs';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-
-export const ReactionRefusedSchema = Schema.Struct({
-  type: Schema.Literal('reaction_refused'),
-  workflow: Schema.String,
-  count: Schema.Int,
-  reason: Schema.String,
-  minute: Schema.String,
-  at: Schema.String,
-});
-
-export type ReactionRefused = typeof ReactionRefusedSchema.Type;
 
 export interface RefuseReaction {
   readonly refuse: (brainKey: string, workflow: string, reason: string) => Effect.Effect<void>;
@@ -41,7 +31,7 @@ function minuteOf(at: number): number {
 }
 
 export function reactionsStreamOf(brainKey: string, workflow: string): string {
-  return `${brainKey}reactions/${workflow}`;
+  return `${brainKey}${reactionsStreamKind}/${workflow}`;
 }
 
 function recorded(database: HostDatabase, row: Row, at: number): Effect.Effect<void> {
