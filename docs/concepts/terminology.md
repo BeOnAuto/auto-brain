@@ -1,6 +1,6 @@
 # Brain terminology
 
-This is the shared vocabulary for Auto's brain offering, its domain code and its documentation. It names the supported concepts and the capabilities being developed; [Functions and availability](functions.md#availability) records what the runtime currently implements.
+This is the shared vocabulary for Auto's brain offering, its documentation and the code. It names the supported concepts and the capabilities being developed; [Functions and availability](functions.md#availability) records what the runtime currently implements.
 
 The brain is the system. Workflows coordinate the work. Functions perform it. Assets support it. Runs are its executions.
 

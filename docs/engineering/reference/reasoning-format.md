@@ -2,7 +2,7 @@
 
 # Reasoning function format
 
-The current runtime stores reasoning functions as `inference` specs. Keep that identifier in API calls, MCP arguments and workflow definitions. A run performs one model invocation, or, when the function names [`tools`](#tools), a loop of them with the tools of the brain's MCP servers. Skill references are still planned; the `tools` field does not load skills or inherit an external agent's context.
+A reasoning function is a spec whose `primitive` field is `inference`, in API calls, MCP arguments and workflow definitions alike. A run performs one model invocation, or, when the function names [`tools`](#tools), a loop of them with the tools of the brain's MCP servers. Skill references are still planned; the `tools` field does not load skills or inherit an external agent's context.
 
 ## Reasoning function document format
 

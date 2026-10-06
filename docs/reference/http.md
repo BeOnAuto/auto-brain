@@ -2,7 +2,7 @@
 
 The HTTP API provides brain management, reasoning-function and workflow definitions, recorded runs, events for waiting workflows, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. A reasoning function uses the primitive identifier `inference` and a workflow uses `orchestration`; keep these names in requests.
+The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function and `orchestration` for a workflow.
 
 ## Requests and access
 
