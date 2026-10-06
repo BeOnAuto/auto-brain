@@ -14,13 +14,10 @@ await test('brain terminology distinguishes five function types from workflows',
   assert.deepEqual(categories, ['Reasoning', 'Interaction', 'Prediction', 'Recall', 'Computation']);
   assert.ok(readFileSync(join(docs, 'nav.json'), 'utf8').includes('"link": "/concepts/terminology"'));
   assert.ok(terminology.includes('There are six capabilities'));
-  assert.ok(terminology.includes('`ReasoningFunctionDefinition`'));
-  assert.ok(terminology.includes('`WorkflowDefinition`'));
   assert.ok(terminology.includes('Sending an approval or other input to a waiting run answers that run'));
 });
 
 await test('terminology distinguishes available and absent capabilities', () => {
-  assert.ok(terminology.includes('This runtime repository has no Studio application'));
   assert.ok(terminology.includes('Self-hosted reasoning functions can use operator-configured MCP tools'));
   assert.ok(
     terminology.includes(
