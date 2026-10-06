@@ -61,16 +61,16 @@ describe('a catalog of the spec operations', () => {
     ]);
   });
 
-  it('describes a spec and an execution once each, as shared definitions', () => {
+  it('describes a definition and a run once each, as shared definitions', () => {
     expect(catalog.operations.map(({ output }) => Object.keys(output.definitions))).toEqual([
-      ['Spec'],
-      ['ListedSpec'],
-      ['Spec'],
-      ['Spec'],
-      ['Spec'],
-      ['Execution'],
-      ['ExecutionDetail'],
-      ['ListedExecution'],
+      ['Definition'],
+      ['ListedDefinition'],
+      ['Definition'],
+      ['Definition'],
+      ['Definition'],
+      ['Run'],
+      ['RunDetail'],
+      ['ListedRun'],
       ['PublicEvent'],
     ]);
   });

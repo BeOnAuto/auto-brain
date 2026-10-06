@@ -59,7 +59,7 @@ export const RunSchema = Schema.Struct({
   started_at: Schema.String.annotate({ description: 'When the run started, in ISO 8601 UTC' }),
   started_by: Schema.String.annotate({ description: 'The id of the caller who started the run' }),
   finished_at: Schema.optionalKey(Schema.String.annotate({ description: 'When the run finished, in ISO 8601 UTC' })),
-}).annotate({ identifier: 'Execution', description: 'One run of a definition with an input, and how it ended' });
+}).annotate({ identifier: 'Run', description: 'One run of a definition with an input, and how it ended' });
 
 export type Run = typeof RunSchema.Type;
 
@@ -86,7 +86,7 @@ export const RunDetailSchema = Schema.Struct({
     }),
   ),
 }).annotate({
-  identifier: 'ExecutionDetail',
+  identifier: 'RunDetail',
   description: 'One run of a definition with an input, how it ended, and what its runtime adapter recorded',
 });
 
