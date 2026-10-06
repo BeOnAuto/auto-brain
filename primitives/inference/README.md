@@ -1,6 +1,6 @@
 # @beonauto/inference
 
-The implementation of reasoning functions. It parses each source document into a `ReasoningFunctionDefinitionDocument`, including model settings and the compiled prompt template. The named, versioned `ReasoningFunctionDefinition` is stored separately by `@beonauto/specs`. The API identifier and package name remain `inference` for compatibility.
+The implementation of reasoning functions. It parses each source document into a `ReasoningFunctionDefinitionDocument`, including model settings and the compiled prompt template. The named, versioned `ReasoningFunctionDefinition` is stored separately by `@beonauto/specs`. Its API identifier and package name are `inference`.
 
 User documentation starts with [Reasoning function format](../../docs/reference/reasoning-format.md), published at [on.auto/docs](https://on.auto/docs/). The repository-only [complete format](../../docs/engineering/reference/reasoning-format.md) and [Model providers and gateways](../../docs/engineering/self-host/models.md) retain contributor details. Update the relevant files alongside behavior changes.
 
@@ -55,7 +55,7 @@ A run that calls tools costs more: every step resends the conversation so far, s
 
 ## Testing
 
-`makeReasoningFunctionAdapter({ languageModel, offered, clock, tools })` makes the runtime adapter for `makeSpecOperations`; the server gives it the language model and offered-model configuration from `makeModelAccess`, plus its `ToolAccess`, and a test the scripted model below. `ReasoningFunctionAdapterOptions` names its options. `clock` is optional: without it, `today` and `now` come from Effect's `Clock`. The exports `makeInference` and `InferenceOptions` remain aliases for existing consumers.
+`makeReasoningFunctionAdapter({ languageModel, offered, clock, tools })` makes the runtime adapter for `makeSpecOperations`; the server gives it the language model and offered-model configuration from `makeModelAccess`, plus its `ToolAccess`, and a test the scripted model below. `ReasoningFunctionAdapterOptions` names its options. `clock` is optional: without it, `today` and `now` come from Effect's `Clock`.
 
 `@beonauto/inference/testing` exports a fake for the tests of other packages. `callingTools(calls, then)` scripts a model that calls tools before its reply, as the adapter does, with a signal that aborts when the call is interrupted. `scriptedLanguageModel(...replies)` answers with its replies in order, admits and rejects an invalid request as the real one does, records every request (`requests()`), and provides itself as a `layer`. A reply is a function of the request; `answers(textResult('Hello'))` and `answers(jsonResult({ verdict: 'approve' }))` build the usual ones, and `() => Effect.fail(new RateLimited({ ... }))` scripts a failure.
 

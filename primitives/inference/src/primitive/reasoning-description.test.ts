@@ -6,7 +6,7 @@ const calls =
   'Calls a language model with a prompt rendered from the input, and answers with the text of the model or with a JSON value that matches a schema.';
 
 describe('the reasoning function description on a server', () => {
-  it('describes reasoning functions and preserves the name their tools take', () => {
+  it('describes reasoning functions and names the primitive their tools take', () => {
     expect(reasoningDescriptionFor({ providers: ['anthropic'], aliases: [] }, false)).toMatch(
       /^A reasoning function uses a language model and a prompt to turn an input into an answer. Use reasoning function in conversation. The tools identify this function type with `primitive: inference`. Calls a language model/u,
     );

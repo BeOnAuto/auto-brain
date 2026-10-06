@@ -1,3 +1,4 @@
+import { definitionResourceLabel } from '@beonauto/specs';
 import {
   type CallFunctions,
   field,
@@ -36,7 +37,7 @@ function executeSpecRejections(arguments_: Json | undefined, pointer: string): r
 function specDescribed(name: string, arguments_: Json): string {
   const primitive = isObject(arguments_) ? textField(arguments_, 'primitive') : undefined;
   const spec = isObject(arguments_) ? textField(arguments_, 'name') : undefined;
-  return primitive === undefined || spec === undefined ? name : `the ${primitive} spec ${spec}`;
+  return primitive === undefined || spec === undefined ? name : `the ${definitionResourceLabel(primitive)} ${spec}`;
 }
 
 export const workflowFunctions: CallFunctions = {
