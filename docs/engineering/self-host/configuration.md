@@ -66,22 +66,24 @@ mcp_servers:
 allowed_tools: [graph/search, graph/execute, notes/*]
 ```
 
-| Field            | For     | What it holds                                                                                                                                |
-| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`           | both    | `http` or `stdio`; taken from `url` or `command` when left out                                                                               |
-| `url`            | `http`  | The server, spoken to over Streamable HTTP                                                                                                   |
-| `headers`        | `http`  | Headers sent with every request, each a secret                                                                                               |
-| `auth`           | `http`  | OAuth client credentials instead of a header: `issuer`, `client_id`, `client_secret` or `private_key` with `algorithm`, and `scope`          |
-| `command`        | `stdio` | An installed, pinned command, started when a run first needs it and stopped with the server                                                  |
-| `args`           | `stdio` | Its arguments                                                                                                                                |
-| `env`            | `stdio` | Its whole environment, each value a secret. It inherits nothing else from the server, so give `PATH` or an absolute command                  |
-| `org`            | both    | The org whose functions may use the server; required                                                                                         |
-| `brains`         | both    | The brains of that org that may use it; every brain of the org when left out                                                                 |
-| `record_content` | both    | `true` to record the arguments and results of calls, cut to 4 KiB, in the history of the run, where anyone who may read the brain reads them |
-| `request_id`     | both    | The response header, or the key of a result's metadata, in which the server returns its own id of a request, recorded with each call         |
+| Field            | For     | What it holds                                                                                                                                                       |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`           | both    | `http` or `stdio`; taken from `url` or `command` when left out                                                                                                      |
+| `url`            | `http`  | The server, spoken to over Streamable HTTP                                                                                                                          |
+| `headers`        | `http`  | Headers sent with every request; the values of their references are secrets                                                                                         |
+| `auth`           | `http`  | OAuth client credentials instead of a header: `issuer`, `client_id`, `client_secret` or `private_key` with `algorithm`, and `scope`                                 |
+| `command`        | `stdio` | An installed, pinned command, started when a run first needs it and stopped with the server                                                                         |
+| `args`           | `stdio` | Its arguments                                                                                                                                                       |
+| `env`            | `stdio` | Its whole environment; the values of its references are secrets. It inherits nothing else from the server, so give `PATH` or an absolute command                    |
+| `org`            | both    | The org whose functions may use the server; required                                                                                                                |
+| `brains`         | both    | The brains of that org that may use it; every brain of the org when left out                                                                                        |
+| `record_content` | both    | `true` to record the arguments and results of calls, scrubbed and cut to 4 KiB as stored, in the history of the run, where anyone who may read the brain reads them |
+| `request_id`     | both    | The response header, or the key of a result's metadata, in which the server returns its own id of a request, recorded with each call                                |
+
+A secret is a value a `${NAME}` reference takes from the environment, a credential of an `auth` block, or a token minted from one, and nothing else: a header such as `X-Region: production-eu` is not, so it is never scrubbed. Only `headers`, `env` and `auth` may hold a reference; one in `url`, `command` or `args` stops the server at start, since an argument shows in the machine's list of processes and a URL is not a header.
 
 Write a `command` as an installed program, never as a package downloaded at start such as `npx -y`, which would run whatever that package is the day the process starts. A process runs under the server's user. With an `auth` block, the server mints tokens from the client credentials, once for every run that needs one, and renews them before they expire; it sends the credentials only to an authorization server whose metadata names the `issuer`.
 
 `allowed_tools` narrows what a function may name, as `allowed_models` narrows the models: each entry is `server/tool`, or `server/*` for every tool of a server, and a server's own policy remains the hard boundary. Every tool is allowed when it is left out.
 
-The server checks both at start and stops, naming the setting and the place but never a value, at an entry with neither `url` nor `command` or with both, a name that is not 1 to 32 lowercase letters, digits and hyphens starting with a letter, the name of a model provider or gateway, a missing `org`, a credential written out instead of referenced, an `Authorization` header beside an `auth` block, an `issuer` that is neither https nor on a loopback address, and an `allowed_tools` entry that names no configured server. It does not connect to a server or start a process until a run needs one. The servers' messages, a process's output on stderr and every failed call go to the server's log, scrubbed of the entry's secrets.
+The server checks both at start and stops, naming the setting and the place but never a value, at an entry with neither `url` nor `command` or with both, a name that is not 1 to 32 lowercase letters, digits and hyphens starting with a letter, the name of a model provider or gateway, a missing `org`, a credential written out instead of referenced, a reference in `url`, `command` or `args`, an `Authorization` header beside an `auth` block, an `issuer` that is neither https nor on a loopback address, and an `allowed_tools` entry that names no configured server. It does not connect to a server or start a process until a run needs one. The servers' messages, a process's output on stderr and every failed call go to the server's log, scrubbed of the entry's secrets.
