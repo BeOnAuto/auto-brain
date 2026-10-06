@@ -47,6 +47,32 @@ describe('the input of an execution', () => {
   });
 });
 
+function nested(levels: number, innermost: unknown = 1): unknown {
+  return levels === 0 ? innermost : nested(levels - 1, levels % 2 === 0 ? [innermost] : { inner: innermost });
+}
+
+describe('the nesting of the input of an execution', () => {
+  it('may go 512 levels deep, as deep as a workflow holds a value', async () => {
+    const { executing } = await withPlain();
+
+    expect(await executing(nested(512))).toMatchObject({ status: 'succeeded' });
+  });
+
+  it('is rejected deeper than that, before anything is recorded, however deep it goes', async () => {
+    const { executing, ledger } = await withPlain();
+    const tooDeep = {
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'The input does not match the input schema',
+      issues: [{ detail: 'Expected an input that nests at most 512 levels deep', pointer: '/input' }],
+    };
+
+    expect(await executing(nested(513))).toEqual(tooDeep);
+    expect(await executing(nested(3000))).toEqual(tooDeep);
+    expect(ledger.streamNames()).toEqual(['brain/acme/alpha/specs/probe']);
+  });
+});
+
 describe('the output and the record of an execution', () => {
   it('may take 1048576 bytes together as JSON in UTF-8', async () => {
     const { executing } = await withPlain();

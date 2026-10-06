@@ -6,6 +6,15 @@ export const mostInputBytes = 262_144;
 
 export const mostResultBytes = 1_048_576;
 
+export const mostInputDepth = 512;
+
+export function nestsWithin(value: Schema.Json, levels: number): boolean {
+  if (typeof value !== 'object' || value === null) {
+    return true;
+  }
+  return levels > 0 && Object.values(value).every((item: Schema.Json) => nestsWithin(item, levels - 1));
+}
+
 export function jsonBytesOf(value: Schema.Json): number {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
 }

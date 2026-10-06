@@ -1,5 +1,7 @@
+import { mostEventDataDepth, mostInputDepth } from '@beonauto/specs';
+import { mostValueDepth } from '@beonauto/workflow-engine';
 import { HostElsewhere, HostStopped } from '@beonauto/workflow-host';
-import { Effect } from 'effect';
+import { Effect, type Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { orchestratedBrain, type OrchestratedBrain } from '../testing/orchestrated-brain.ts';
@@ -22,10 +24,17 @@ do:
             with: { type: com.acme.approval.decided }
 `;
 
+const envelope = approval.replace('name: approval', 'name: envelope').concat('        read: envelope\n');
+
+function nested(levels: number): Schema.Json {
+  return levels === 0 ? 'yes' : [nested(levels - 1)];
+}
+
 beforeAll(async () => {
   brain = await orchestratedBrain();
   sendEvent = defineSendExecutionEvent(brain.host);
   await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'approval', source: approval });
+  await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'envelope', source: envelope });
   await brain.call(brain.createSpec, { primitive: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
 });
 
@@ -176,6 +185,37 @@ describe('an event that does not fit', () => {
       reason: 'invalid_input',
       issues: [expect.objectContaining({ pointer: '/event' })],
     });
+  });
+});
+
+describe('the data of an event', () => {
+  it('may nest as deep as a workflow holds the whole event in a list, which it takes', async () => {
+    const executionId = idOf(20);
+    await brain.call(brain.executeSpec, { primitive: 'orchestration', name: 'envelope', execution_id: executionId });
+
+    const sent = await brain.call(sendEvent, {
+      execution_id: executionId,
+      event: { type: 'com.acme.approval.decided', data: nested(510) },
+    });
+
+    expect(sent).toMatchObject({ status: 'succeeded' });
+    expect(await brain.settled(executionId)).toMatchObject({ output: { status: 'succeeded' } });
+  });
+
+  it('is rejected as invalid input deeper than that, as the data of an event published to the brain', async () => {
+    expect(
+      await brain.call(sendEvent, { execution_id: idOf(21), event: { type: 'x', data: nested(511) } }),
+    ).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+      issues: [
+        {
+          detail: 'Expected data that nests at most 510 levels deep, so that the workflow can hold the event in a list',
+          pointer: '/event/data',
+        },
+      ],
+    });
+    expect([mostInputDepth, mostEventDataDepth]).toEqual([mostValueDepth, mostValueDepth - 2]);
   });
 });
 

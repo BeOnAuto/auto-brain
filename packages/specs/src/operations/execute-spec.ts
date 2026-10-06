@@ -2,7 +2,7 @@ import { defineCommand } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { RunSchema } from '../execution/execution.ts';
-import { mostInputBytes, mostResultBytes } from '../execution/recorded-size.ts';
+import { mostInputBytes, mostInputDepth, mostResultBytes } from '../execution/recorded-size.ts';
 import { runPlainLanguage } from '../plain-language/run-words.ts';
 import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
@@ -16,7 +16,8 @@ const description = [
   'the run then answers with status started, and get_execution shows it started until that work ends it.',
   '`primitive` selects the API type identifier and `name` the definition.',
   '`input` is the JSON value the definition takes, {} when left out; get_spec shows its input_schema when it has one.',
-  `The input may take at most ${mostInputBytes} bytes as JSON in UTF-8, or the call is rejected with`,
+  `The input may take at most ${mostInputBytes} bytes as JSON in UTF-8 and nest at most ${mostInputDepth} levels deep,`,
+  'or the call is rejected with',
   'invalid_input at /input before anything is recorded.',
   `The output and the run record may take at most ${mostResultBytes} bytes together;`,
   'an answer larger than that fails the run.',

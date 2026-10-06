@@ -7,9 +7,9 @@ import {
   type ExecutionFinished,
   type ExecutionStarted,
 } from '../execution/execution-events.ts';
-import { jsonBytesOf } from '../execution/recorded-size.ts';
+import { jsonBytesOf, nestsWithin } from '../execution/recorded-size.ts';
 import { SpecEventSchema, type SpecEvent } from '../registry/spec-events.ts';
-import { mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
+import { mostEventDataDepth, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
 
 type RunFact = ExecutionStarted | ExecutionFinished;
 
@@ -51,7 +51,7 @@ function isRunFact(event: ExecutionEvent): event is RunFact {
 
 function withOutput(fact: CloudEvent, data: RunData, output: Schema.Json): CloudEvent {
   const whole = { ...fact, data: { ...data, output } };
-  return jsonBytesOf(whole) <= mostPublishedEventBytes
+  return jsonBytesOf(whole) <= mostPublishedEventBytes && nestsWithin(whole.data, mostEventDataDepth)
     ? whole
     : { ...fact, data: { ...data, output_bytes: jsonBytesOf(output) } };
 }

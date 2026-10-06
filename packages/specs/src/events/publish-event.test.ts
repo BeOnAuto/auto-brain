@@ -37,6 +37,10 @@ const PublishedSchema = Schema.Struct({ output: Schema.Struct({ id: Schema.Strin
 
 const idOf = (outcome: unknown) => Schema.decodeUnknownSync(PublishedSchema)(outcome).output.id;
 
+function deep(levels: number): Schema.Json {
+  return levels === 0 ? 'eu' : [deep(levels - 1)];
+}
+
 function publishing(event: object) {
   return toAlpha(acmeAdmin, { event });
 }
@@ -159,6 +163,28 @@ describe('an event past its bound', () => {
           pointer: '/event',
         },
       ],
+    });
+  });
+});
+
+describe('an event whose data nests too deep', () => {
+  it('is rejected when its data nests deeper than a run can hold, before anything is recorded', async () => {
+    const specs = harness();
+
+    expect(await specs.call(publishEvent, publishing({ ...monthClosed, data: deep(511) }))).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'The input does not match the input schema',
+      issues: [
+        {
+          detail: 'Expected data that nests at most 510 levels deep, so that a run can hold the event in a list',
+          pointer: '/event/data',
+        },
+      ],
+    });
+    expect(specs.ledger.streamNames()).toEqual([]);
+    expect(await specs.call(publishEvent, publishing({ ...monthClosed, data: deep(510) }))).toMatchObject({
+      status: 'succeeded',
     });
   });
 

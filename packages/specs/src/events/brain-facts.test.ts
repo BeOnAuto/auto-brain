@@ -84,6 +84,10 @@ describe('the facts of a run as events', () => {
   });
 });
 
+function deep(levels: number): Schema.Json {
+  return levels === 0 ? 'rose' : { profits: deep(levels - 1) };
+}
+
 describe('the output a success carries as an event', () => {
   it('is its size when it is too large for an event, which get_execution reads whole', () => {
     const output = { summary: 'x'.repeat(mostPublishedEventBytes) };
@@ -95,6 +99,15 @@ describe('the output a success carries as an event', () => {
       type: 'execution_succeeded',
       data: { ...ofTheRun, output_bytes: jsonBytesOf(output) },
     });
+  });
+
+  it('is its size when it nests too deep for a run to hold the event in a list', () => {
+    expect(
+      brainFactOf(ofRun({ type: 'execution_succeeded', output: deep(509), record: {}, ...ofSummary, ...fact })),
+    ).toHaveProperty('data.output', deep(509));
+    expect(
+      brainFactOf(ofRun({ type: 'execution_succeeded', output: deep(510), record: {}, ...ofSummary, ...fact })),
+    ).toHaveProperty('data.output_bytes', jsonBytesOf(deep(510)));
   });
 
   it('is the output at the bound of an event, and its size one byte past it', () => {

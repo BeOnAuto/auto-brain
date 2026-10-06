@@ -11,6 +11,10 @@ const decodeStored = Schema.decodeUnknownResult(Schema.toCodecJson(CloudEventSch
 
 const monthClosed = { source: '/ledger/eu', type: 'com.acme.ledger.month-closed' };
 
+function nested(levels: number): Schema.Json {
+  return levels === 0 ? 'eu' : [nested(levels - 1)];
+}
+
 function refusals(input: unknown): readonly string[] {
   const decoded = decodeToPublish(input);
   return Result.isSuccess(decoded)
@@ -70,6 +74,12 @@ describe('an event the brain does not take', () => {
     expect(refusals({ ...monthClosed, dataschema: '/schemas/month-closed' })).toEqual(['/dataschema']);
     expect(refusals({ ...monthClosed, id: 'i'.repeat(257), type: 't'.repeat(257) })).toEqual(['/id', '/type']);
     expect(refusals({ ...monthClosed, subject: 's'.repeat(1025) })).toEqual(['/subject']);
+  });
+
+  it('takes data that nests 510 levels deep, so that a run can hold the event in a list, and refuses data deeper', () => {
+    expect(refusals({ ...monthClosed, data: nested(510) })).toEqual([]);
+    expect(refusals({ ...monthClosed, data: nested(511) })).toEqual(['/data']);
+    expect(refusals({ ...monthClosed, data: nested(3000) })).toEqual(['/data']);
   });
 
   it('is refused for an extension that is not named in lowercase letters and digits, or whose value is no text, boolean or integer', () => {

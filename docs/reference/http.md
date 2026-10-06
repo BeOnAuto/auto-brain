@@ -73,13 +73,13 @@ The `source` is a [workflow document](workflow-format.md). Names, document size,
 
 A workflow runs once for each `execution_id`. Executing it again with the `execution_id` of a run that is going returns the run as it stands; with the `execution_id` of a run that ended without a final result, it returns `conflict`, so run the workflow again under a new `execution_id`.
 
-`send_execution_event` delivers an event to a run that is still `started`. It returns the `execution_id` and the delivered `event`, with an `id`, made by the runtime when you leave it out, and the `time` it was sent. An event may take at most 256 KiB as JSON; its `type` and `id` at most 256 characters, and its `source` and `subject` at most 1,024. A run takes an event with a given `id` once, so a request can be retried with the same id. The operation returns `not_found` when the brain has no running workflow with that execution id, including one that has ended, and `unavailable` when the run cannot take the event at that moment, as while the runtime is stopping; try again shortly.
+`send_execution_event` delivers an event to a run that is still `started`. It returns the `execution_id` and the delivered `event`, with an `id`, made by the runtime when you leave it out, and the `time` it was sent. An event may take at most 256 KiB as JSON; its `type` and `id` at most 256 characters, its `source` and `subject` at most 1,024, and its `data` may nest at most 510 levels deep, so that the run can hold the whole event in a list. A run takes an event with a given `id` once, so a request can be retried with the same id. The operation returns `not_found` when the brain has no running workflow with that execution id, including one that has ended, and `unavailable` when the run cannot take the event at that moment, as while the runtime is stopping; try again shortly.
 
 ## Runs and results
 
 A run records its `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. Successful runs include `output`; rejected runs include a rejection. `get_execution` also returns the detailed `record`.
 
-Reasoning functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
+Reasoning functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, as deep as a workflow holds a value; a deeper one returns `invalid_input` at `/input`. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 
@@ -100,7 +100,7 @@ A run without a final result may be attempted again after an interruption or rec
 | `datacontenttype`, `dataschema` | No       | The media type of `data`, and the absolute URI of a schema it follows                                         |
 | `data`                          | No       | Any JSON value                                                                                                |
 
-`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. Any other attribute is an extension: its name is lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given.
+`id` and `type` take at most 256 characters, and `source` and `subject` at most 1,024. `data` may nest at most 510 levels deep, so that a run can hold the event in a list, or it returns `invalid_input` at `/event/data`. Any other attribute is an extension: its name is lowercase letters and digits, its value text, a boolean or an integer, and it is kept as given.
 
 ```http
 POST /v1/orgs/acme/brains/finance/events

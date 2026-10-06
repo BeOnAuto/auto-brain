@@ -1,6 +1,10 @@
 import { Schema } from 'effect';
 
+import { mostInputDepth, nestsWithin } from '../execution/recorded-size.ts';
+
 export const mostPublishedEventBytes = 245_760;
+
+export const mostEventDataDepth = mostInputDepth - 2;
 
 const mostIdLength = 256;
 
@@ -102,7 +106,15 @@ const contextFields = {
       Schema.makeFilter((schema: string) => absoluteUri.test(schema), { expected: 'an absolute URI' }),
     ),
   ),
-  data: Schema.optionalKey(Schema.Json.annotate({ description: 'What the event carries, any JSON value' })),
+  data: Schema.optionalKey(
+    Schema.Json.annotate({
+      description: `What the event carries, any JSON value that nests at most ${mostEventDataDepth} levels deep`,
+    }).check(
+      Schema.makeFilter((data: Schema.Json) => nestsWithin(data, mostEventDataDepth), {
+        expected: `data that nests at most ${mostEventDataDepth} levels deep, so that a run can hold the event in a list`,
+      }),
+    ),
+  ),
 };
 
 const extensionsCheck = Schema.makeFilter(extensionIssues);

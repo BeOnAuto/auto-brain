@@ -57,7 +57,7 @@ A run includes `execution_id`, `primitive`, `name`, `spec_version`, `status`, ti
 
 Reasoning functions normally complete within the execute request. Workflows return `started` while work continues. Poll `get_execution` until the status becomes `succeeded`, `rejected` or `failed`. An approval event should be sent to the waiting run; it does not create another run.
 
-Inputs may be at most 256 KiB as encoded JSON. Output and record together may be at most 1 MiB. The runtime applies these limits independently of the request-body limit.
+Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, which `invalid_input` at `/input` refuses before anything is recorded; the data of an event sent to a run or published to a brain may nest at most 510, so that a run can hold the event in a list. Output and record together may be at most 1 MiB. The runtime applies these limits independently of the request-body limit.
 
 ## Published events
 

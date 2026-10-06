@@ -1,6 +1,5 @@
-import { asSentence, Conflict, InvalidInput, type Unavailable } from '@beonauto/operations';
+import { asSentence, Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import { definePrimitive, inWords, type RunContext, type FinishesLater, type Primitive } from '@beonauto/specs';
-import { measureOf, mostValueDepth } from '@beonauto/workflow-engine';
 import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect, Random, type Schema } from 'effect';
 
@@ -28,13 +27,6 @@ function describeResult(output: Schema.Json): string {
   return words === undefined
     ? 'Its result is too long to repeat here; the whole of it is in the details below.'
     : asSentence(`Its result: ${words}`);
-}
-
-function admittedInput(input: unknown): Effect.Effect<void, InvalidInput> {
-  const problem = `The input nests more than ${mostValueDepth} levels deep`;
-  return measureOf(input) === undefined
-    ? Effect.fail(new InvalidInput({ detail: problem, issues: [{ detail: problem, pointer: '' }] }))
-    : Effect.void;
 }
 
 function finishedLaterOr(answer: StartAnswer): Effect.Effect<FinishesLater, Conflict> {
@@ -73,8 +65,7 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
     parse: (source: string): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> =>
       parseWorkflowDocument(source, dependencies.mostDurationMs),
     summarize: summaryOf,
-    execute: (document, input, execution) =>
-      admittedInput(input).pipe(Effect.andThen(started(dependencies, document, input, execution))),
+    execute: (document, input, execution) => started(dependencies, document, input, execution),
     whenCancelled: 'finish',
   });
 }

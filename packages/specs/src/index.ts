@@ -40,10 +40,15 @@ export { defineListExecutions } from './reading/list-executions.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
 export { brainFactOf, isReservedSource, reservedEventTypes, reservedSourcePrefixes } from './events/brain-facts.ts';
-export { CloudEventSchema, mostPublishedEventBytes, type CloudEvent } from './events/cloud-event.ts';
+export {
+  CloudEventSchema,
+  mostEventDataDepth,
+  mostPublishedEventBytes,
+  type CloudEvent,
+} from './events/cloud-event.ts';
 export { publishEvent } from './events/publish-event.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
-export { mostInputBytes, mostResultBytes } from './execution/recorded-size.ts';
+export { mostInputBytes, mostInputDepth, mostResultBytes } from './execution/recorded-size.ts';
 export {
   ListedDefinitionSchema,
   DefinitionSchema,
