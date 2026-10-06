@@ -97,7 +97,11 @@ function endlessNotes(): CountedRecords {
   return countedRecords((read) => Effect.succeed([recordAt(`notes/n${read}`, read)]));
 }
 
-async function passing(counted: CountedRecords, consumers: readonly Consumer[] = []) {
+async function passing(
+  counted: CountedRecords,
+  consumers: readonly Consumer[] = [],
+  passedEarly: PassParts['passedEarly'] = () => Effect.void,
+) {
   const opened = await openedOn(await onSQLite());
   const brains = followedBrainsOn(opened);
   const pass = passOf({
@@ -108,6 +112,7 @@ async function passing(counted: CountedRecords, consumers: readonly Consumer[] =
     primitive: 'orchestration',
     applySpecRecord: () => Effect.void,
     unreadable: () => Effect.void,
+    passedEarly,
   });
   return { database: opened, brains, pass };
 }
@@ -174,6 +179,25 @@ describe('a pass that delivers records and then fails', () => {
     const followed = await Effect.runPromise(brains.load(brainKey));
 
     expect([Exit.isFailure(exit), delivered, followed?.cursor]).toEqual([true, ['record-1', 'record-2'], 'cursor-2']);
+  });
+});
+
+describe('a pass that meets a record of a run held at every sweep', () => {
+  it('passes it at the twentieth sweep, and says so', async () => {
+    const early: string[] = [];
+    const { brains, pass } = await passing(undispatchedRun(), [], (key, record, sweeps) =>
+      Effect.sync(() => {
+        early.push(`${key} ${record.id} ${sweeps}`);
+      }),
+    );
+    await Effect.runPromise(brains.follow(brainKey, null));
+
+    const ends = await Effect.runPromise(Effect.forEach(Array.from({ length: 20 }), () => pass(brainKey, 'sweep')));
+    const followed = await Effect.runPromise(brains.load(brainKey));
+
+    expect(ends).toEqual([...Array.from({ length: 19 }, () => 'waiting'), 'more']);
+    expect(early).toEqual([`${brainKey} record-1 20`]);
+    expect(followed).toEqual({ brainKey, cursor: 'cursor-1', delivered: null, attempts: 0, waiting: false });
   });
 });
 

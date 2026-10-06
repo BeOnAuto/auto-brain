@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsOf } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { eventTrigger, published, runRecorded, specRecorded } from '../reaction-testing/brain-writes.ts';
+import {
+  alpha,
+  eventTrigger,
+  published,
+  recorded,
+  runRecorded,
+  specRecorded,
+} from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 
@@ -106,4 +113,38 @@ describe('a chain of reactions', () => {
       },
     ]);
   });
+});
+
+describe('a brain whose run log holds a record its dispatch never covers', () => {
+  it(
+    'passes the record at the twentieth sweep, says so, and goes on to the events after it',
+    { timeout: 30_000 },
+    async () => {
+      const reacting = await reactingHost({ sweepEveryMs: 10 });
+      const { store } = reacting.database;
+      await specRecorded(store, { name: 'close', version: 1, trigger: eventTrigger({ type: 'com.acme.closed' }) });
+      await recorded(store, `${alpha}runs/r-stuck`, {
+        type: 'input_applied',
+        input: {},
+        at: '2026-10-01T09:00:00.000Z',
+      });
+      await published(store, { id: 'closed', type: 'com.acme.closed' });
+
+      const starts = await until(
+        () => Promise.resolve(reacting.reactions.starts()),
+        (found) => found.length > 0,
+        2000,
+      );
+
+      expect(starts.map(({ workflow }) => workflow)).toEqual(['close']);
+      expect(reacting.notes()).toMatchObject([
+        {
+          kind: 'run_record_passed',
+          run: { org: 'acme', brain: 'alpha', executionId: 'r-stuck' },
+          version: 1,
+          sweeps: 20,
+        },
+      ]);
+    },
+  );
 });

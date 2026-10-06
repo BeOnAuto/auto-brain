@@ -42,7 +42,10 @@ export function insertedListener(database: HostDatabase, row: ListenerRow) {
     const { runId, listener, brainKey, streamId, armedBy, filters, workflow, passed } = row;
     yield* database.write(
       statement`INSERT INTO workflow_listeners (run_id, listener, brain_key, stream_id, armed_by, filters, workflow, passed)
-        VALUES (${runId}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${passed ? 1 : 0})
+        VALUES (${runId}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow},
+          CASE WHEN ${passed ? 1 : 0} = 1 OR EXISTS (
+            SELECT 1 FROM workflow_passed_runs WHERE run_id = ${runId} AND passed_through >= ${armedBy}
+          ) THEN 1 ELSE 0 END)
         ON CONFLICT (run_id, listener) DO NOTHING`,
     );
     yield* Effect.forEach(
@@ -95,6 +98,17 @@ export function pendingArmings(database: HostDatabase, streamId: string): Effect
       ),
     ),
     (rows) => rows.map(({ armed_by: armedBy }) => armedBy),
+  );
+}
+
+export function runPassedThrough(database: HostDatabase, runId: string, version: number) {
+  return Effect.asVoid(
+    Effect.orDie(
+      database.write(
+        statement`INSERT INTO workflow_passed_runs (run_id, passed_through) VALUES (${runId}, ${version})
+          ON CONFLICT (run_id) DO UPDATE SET passed_through = excluded.passed_through`,
+      ),
+    ),
   );
 }
 

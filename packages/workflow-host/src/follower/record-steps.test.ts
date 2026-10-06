@@ -12,6 +12,7 @@ const parts: StepParts = {
   primitive: 'orchestration',
   applySpecRecord: () => Effect.void,
   unreadable: () => Effect.void,
+  passedEarly: () => Effect.void,
 };
 
 const record: RecordedEvent = {

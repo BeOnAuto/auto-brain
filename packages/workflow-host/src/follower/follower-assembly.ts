@@ -29,6 +29,13 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     applySpecRecord: reacting.applySpecRecord,
     unreadable: (brainKey, record) =>
       reports.note({ kind: 'record_unreadable', ...brainOfKey(brainKey), recordId: record.id, type: record.type }),
+    passedEarly: (brainKey, { stream, version }, sweeps) =>
+      reports.note({
+        kind: 'run_record_passed',
+        run: { ...brainOfKey(brainKey), executionId: stream.slice(stream.lastIndexOf('/') + 1) },
+        version,
+        sweeps,
+      }),
   });
   const discovery = brainDiscoveryOn({
     database,

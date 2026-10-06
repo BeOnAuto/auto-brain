@@ -39,9 +39,20 @@ function recordUnreadable({ org, brain, recordId, type }: NoteOf<'record_unreada
   ).pipe(Effect.annotateLogs({ org, brain, record_id: recordId, type }));
 }
 
-function logRunNote(note: NoteOf<'settle_backing_off' | 'settled_after_back_off' | 'offer_declined'>) {
+function runRecordPassed({ run, version, sweeps }: NoteOf<'run_record_passed'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    `A record of a run's log was passed before the run's outputs were dispatched, after ${sweeps} sweeps held it; a listener it armed takes events once it is kept, and none recorded before`,
+  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, version }));
+}
+
+function logRunNote(
+  note: NoteOf<'settle_backing_off' | 'settled_after_back_off' | 'offer_declined' | 'run_record_passed'>,
+) {
   if (note.kind === 'offer_declined') {
     return offerDeclined(note);
+  }
+  if (note.kind === 'run_record_passed') {
+    return runRecordPassed(note);
   }
   return note.kind === 'settle_backing_off' ? backingOff(note) : settledAfterBackingOff(note);
 }

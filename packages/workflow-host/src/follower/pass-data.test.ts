@@ -71,6 +71,7 @@ async function passing(counted: CountedRecords) {
     primitive: 'orchestration',
     applySpecRecord: () => Effect.void,
     unreadable: () => Effect.void,
+    passedEarly: () => Effect.void,
   });
   return { database: opened, brains, pass };
 }

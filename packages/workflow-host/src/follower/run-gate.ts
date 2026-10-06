@@ -3,12 +3,12 @@ import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { sqlWatermark } from '../dispatch/sql-watermark.ts';
-import { passedListeners, pendingArmings } from '../listeners/listener-rows.ts';
+import { passedListeners, pendingArmings, runPassedThrough } from '../listeners/listener-rows.ts';
 
-export type GateVerdict = 'held' | 'passed' | 'listened';
+export type GateVerdict = 'held' | 'passed' | 'listened' | 'overdue';
 
 export interface RunGate {
-  readonly verdictOn: (record: RecordedEvent) => Effect.Effect<GateVerdict>;
+  readonly verdictOn: (record: RecordedEvent, overdue: boolean) => Effect.Effect<GateVerdict>;
 }
 
 interface Known {
@@ -33,19 +33,26 @@ export function runGateOf(database: HostDatabase, brainKey: string): RunGate {
         );
   };
   return {
-    verdictOn: (record) =>
+    verdictOn: (record, overdue) =>
       Effect.gen(function* () {
         const runId = `${org}/${brain}/${record.stream.slice(record.stream.lastIndexOf('/') + 1)}`;
         const { through, pending } = yield* knownOf(runId, record);
-        if (through < record.version) {
+        const behind = through < record.version;
+        if (behind && !overdue) {
           return 'held';
         }
-        if (!pending.some((armedBy) => armedBy <= record.version)) {
-          return 'passed';
+        if (behind) {
+          yield* runPassedThrough(database, runId, record.version);
         }
-        known.set(runId, { through, pending: pending.filter((armedBy) => armedBy > record.version) });
-        yield* passedListeners(database, record.stream, record.version);
-        return 'listened';
+        const armed = pending.some((armedBy) => armedBy <= record.version);
+        if (armed) {
+          known.set(runId, { through, pending: pending.filter((armedBy) => armedBy > record.version) });
+          yield* passedListeners(database, record.stream, record.version);
+        }
+        if (behind) {
+          return 'overdue';
+        }
+        return armed ? 'listened' : 'passed';
       }),
   };
 }

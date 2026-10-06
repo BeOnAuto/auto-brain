@@ -48,6 +48,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
     primitive: 'orchestration',
     applySpecRecord: specRecordsOn(opened, triggerOfSource),
     unreadable: () => Effect.void,
+    passedEarly: () => Effect.void,
   });
   const sweep = async (): Promise<number> => {
     const began = performance.now();

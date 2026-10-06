@@ -47,6 +47,19 @@ describe('the notes of the workflow host', () => {
   });
 });
 
+describe('the note of a record of a run passed before its outputs were dispatched', () => {
+  it('warns that a listener the record armed takes no event recorded before it is kept', async () => {
+    const [line] = await linesLoggedBy(logHostNote({ kind: 'run_record_passed', run, version: 4, sweeps: 20 }));
+
+    expect(line).toContain(
+      '"message":"A record of a run\'s log was passed before the run\'s outputs were dispatched, after 20 sweeps held it; a listener it armed takes events once it is kept, and none recorded before","level":"WARN"',
+    );
+    expect(line).toContain(
+      '"annotations":{"org":"acme","brain":"alpha","execution_id":"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a","version":4}',
+    );
+  });
+});
+
 describe('the notes of the reactions of the workflow host', () => {
   it('warn of an event a waiting run did not take because its filter failed, and of a record the triggers could not read', async () => {
     const lines = [

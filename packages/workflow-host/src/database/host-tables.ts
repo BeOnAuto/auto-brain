@@ -21,6 +21,10 @@ const followerTables: readonly Statement[] = [
     position BIGINT NOT NULL
   )`,
   statement`CREATE TABLE IF NOT EXISTS workflow_followed_scans (name TEXT NOT NULL PRIMARY KEY)`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_passed_runs (
+    run_id TEXT NOT NULL PRIMARY KEY,
+    passed_through BIGINT NOT NULL
+  )`,
   statement`CREATE TABLE IF NOT EXISTS workflow_listeners (
     run_id TEXT NOT NULL,
     listener TEXT NOT NULL,

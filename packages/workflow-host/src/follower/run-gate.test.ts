@@ -57,13 +57,13 @@ describe('the gate the records of a run pass through to the follower', () => {
     const database = await openedOn(await onSQLite());
     const gate = runGateOf(database, brainKey);
     await dispatchedThrough(database, 0);
-    const held = await Effect.runPromise(gate.verdictOn(runRecord(1)));
+    const held = await Effect.runPromise(gate.verdictOn(runRecord(1), false));
     await dispatchedThrough(database, 2);
     await armedAt(database, 'first', 1);
     await armedAt(database, 'second', 3);
 
     const verdicts = await Effect.runPromise(
-      Effect.forEach([1, 2, 3], (version) => gate.verdictOn(runRecord(version))),
+      Effect.forEach([1, 2, 3], (version) => gate.verdictOn(runRecord(version), false)),
     );
     const listeners = await Effect.runPromise(
       rowsOf(PassedRow, database.read(statement`SELECT listener, passed FROM workflow_listeners ORDER BY listener`)),
@@ -73,6 +73,27 @@ describe('the gate the records of a run pass through to the follower', () => {
     expect(listeners).toEqual([
       { listener: 'first', passed: 1 },
       { listener: 'second', passed: 0 },
+    ]);
+  });
+
+  it('passes a record held too long, and the listeners it armed, even those kept after it passed', async () => {
+    const database = await openedOn(await onSQLite());
+    const gate = runGateOf(database, brainKey);
+    await dispatchedThrough(database, 0);
+    await armedAt(database, 'before', 2);
+
+    const verdict = await Effect.runPromise(gate.verdictOn(runRecord(2), true));
+    await armedAt(database, 'after', 2);
+    await armedAt(database, 'later', 3);
+    const listeners = await Effect.runPromise(
+      rowsOf(PassedRow, database.read(statement`SELECT listener, passed FROM workflow_listeners ORDER BY listener`)),
+    );
+
+    expect(verdict).toBe('overdue');
+    expect(listeners).toEqual([
+      { listener: 'after', passed: 1 },
+      { listener: 'before', passed: 1 },
+      { listener: 'later', passed: 0 },
     ]);
   });
 });

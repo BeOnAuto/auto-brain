@@ -15,6 +15,7 @@ export type HostNote =
     }
   | { readonly kind: 'settled_after_back_off'; readonly run: RunAddress; readonly attempts: number }
   | { readonly kind: 'offer_declined'; readonly run: RunAddress; readonly detail: string }
+  | { readonly kind: 'run_record_passed'; readonly run: RunAddress; readonly version: number; readonly sweeps: number }
   | {
       readonly kind: 'record_unreadable';
       readonly org: string;
