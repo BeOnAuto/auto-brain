@@ -121,7 +121,12 @@ export const EventToPublishSchema = Schema.StructWithRest(
     ),
     id: Schema.optionalKey(boundedText(mostIdLength, `${unique}; made when left out`)),
     ...contextFields,
-    time: Schema.optionalKey(TimeField),
+    time: Schema.optionalKey(
+      TimeField.annotate({
+        description:
+          'When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z; when the brain records it, if left out',
+      }),
+    ),
   }),
   [ExtensionsSchema],
 )
