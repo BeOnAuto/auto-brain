@@ -199,21 +199,21 @@ Measured on 2026-10-06 on an Apple M4 Max, with Node 26.10, the ledger on SQLite
 
 | Store      | Runs in the window | The read    | The aggregate over the records | Open and fill |
 | ---------- | ------------------ | ----------- | ------------------------------ | ------------- |
-| SQLite     | 10,000             | 5.85 (6.05) | 1,502 (1,517)                  | 0.65 s        |
-| PostgreSQL | 10,000             | 7.06 (7.74) | 107 (107)                      | 3.44 s        |
-| SQLite     | 100,000            | 107 (110)   | 17,315 (22,397)                | 6.64 s        |
-| PostgreSQL | 100,000            | 66.5 (68.0) | 887 (902)                      | 33.8 s        |
+| SQLite     | 10,000             | 8.35 (19.7) | 1,613 (2,322)                  | 2.77 s        |
+| PostgreSQL | 10,000             | 6.28 (6.69) | 117 (118)                      | 4.31 s        |
+| SQLite     | 100,000            | 107 (111)   | 13,850 (13,974)                | 7.59 s        |
+| PostgreSQL | 100,000            | 58.7 (62.6) | 888 (895)                      | 42.7 s        |
 
-The read grows with the runs of the window, since it reads one row of the table for each, and crosses the bar of 50 ms a page that [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) set at about 49,000 runs in a window on SQLite and 75,000 on PostgreSQL, by the line between the two sizes. A rollup per day is the next step for a window that holds more than about 50,000 runs, as that of a brain that runs that often in 30 days, or a longer window. The aggregate over the records costs 13 to 260 times the read, since it parses every record.
+The read grows with the runs of the window, since it reads one row of the table for each, and crosses the bar of 50 ms a page that [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) set at about 48,000 runs in a window on SQLite and 85,000 on PostgreSQL, by the line between the two sizes. A rollup per day is the next step for a window that holds more than about 50,000 runs, as that of a brain that runs that often in 30 days, or a longer window. The aggregate over the records costs 15 to 190 times the read, since it parses every record.
 
 **The append.** 1,000 runs each append their start and then their finish, with a record of 2 KiB, one append at a time, to a ledger opened without the projection and to one opened with it. Times are the median and the 95th percentile of the 2,000 appends, in milliseconds:
 
 | Store      | Without the projection | With it     |
 | ---------- | ---------------------- | ----------- |
-| SQLite     | 0.27 (0.39)            | 0.35 (0.42) |
-| PostgreSQL | 1.38 (1.74)            | 1.86 (2.28) |
+| SQLite     | 0.27 (0.41)            | 0.35 (0.41) |
+| PostgreSQL | 1.34 (1.65)            | 1.81 (2.25) |
 
-**The fill.** The ledger of [Measurement](#measurement), 1,197,287 messages of which about 800,000 run streams, written without the table and opened with the mapping: the open that fills the table took 5.80 s on SQLite and 24.9 s on PostgreSQL, against 0.01 s and 0.02 s for an open that finds it. That is the start of the first server of this version on such a ledger; on PostgreSQL a second server started meanwhile waits 10 s for the migration lock and stops. Read one stream at a time, as a first version of the fill did, the fill of 11,000 runs with records of 64 KiB took 1.39 s on SQLite and 13.4 s on PostgreSQL, measured on Node 22.23; 100 streams to a statement, it takes 0.65 s and 3.44 s.
+**The fill.** The ledger of [Measurement](#measurement), 1,197,287 messages of which about 800,000 run streams, written without the table and opened with the mapping: the open that fills the table took 6.69 s on SQLite and 29.3 s on PostgreSQL, against 0.01 s and 0.02 s for an open that finds it. That is the start of the first server of this version on such a ledger; on PostgreSQL a second server started meanwhile waits 10 s for the migration lock and stops. Every number of this section was measured on Node 26.10 with the fill as it is, its batches bound by 100 streams and 16 MiB of records; the size of each stream, which the bound needs, is read with the listing of the streams, and on PostgreSQL that reads each record a second time.
 
 ## Creating the layer
 
