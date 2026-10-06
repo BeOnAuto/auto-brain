@@ -6,7 +6,7 @@ import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { findSpec } from '../registry/registry-lookup.ts';
 import { DefinitionSchema } from '../registry/spec.ts';
-import { loadRegistry } from './registry-access.ts';
+import { loadRegistry, reactingSince } from './registry-access.ts';
 import { SpecNameField } from './spec-fields.ts';
 import { specOf } from './spec-views.ts';
 
@@ -29,7 +29,10 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
         const registry = yield* loadRegistry(primitive.name);
-        return specOf(primitive, yield* findSpec(registry, primitive.name, name));
+        const spec = yield* findSpec(registry, primitive.name, name);
+        return spec.reacts === true && spec.status === 'active'
+          ? { ...specOf(primitive, spec), reacts_since: yield* reactingSince(primitive.name, spec) }
+          : specOf(primitive, spec);
       }),
       plainLanguage: {
         task: `look up a ${words.kinds}`,

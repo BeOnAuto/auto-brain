@@ -2,6 +2,7 @@ export { defineCreateSpec } from './operations/create-spec.ts';
 export { defineExecuteSpec } from './operations/execute-spec.ts';
 export { defineGetSpec } from './operations/get-spec.ts';
 export { defineListSpecs } from './operations/list-specs.ts';
+export { defineStartVersion } from './operations/start-version.ts';
 export {
   definePrimitive,
   type Executed,
@@ -57,6 +58,15 @@ export {
   type CloudEvent,
 } from './events/cloud-event.ts';
 export { publishEvent } from './events/publish-event.ts';
+export {
+  emittedEventOf,
+  eventEmitter,
+  type EmitEvent,
+  type EmitOutcome,
+  type Emission,
+} from './events/event-emitter.ts';
+export { publishedEventOf, type EventPublished } from './events/published-events.ts';
+export { mostReactingDefinitions } from './registry/registry-decisions.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
 export { mostInputBytes, mostInputDepth, mostResultBytes } from './execution/recorded-size.ts';
 export {

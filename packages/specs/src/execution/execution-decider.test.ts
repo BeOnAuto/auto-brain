@@ -160,6 +160,7 @@ describe('an execution', () => {
       finishesLater: false,
       callsTools: false,
       toolCalls: 0,
+      depth: 0,
       result: { type: 'execution_rejected', rejection: { reason: 'unavailable', detail: 'The model is busy' } },
     });
     expect(stateAfter(started, unavailable, { ...started, spec_version: 2 }, succeeded)).toStrictEqual({
@@ -177,6 +178,7 @@ describe('an execution', () => {
       finishesLater: false,
       callsTools: false,
       toolCalls: 0,
+      depth: 0,
       record: { model: 'x' },
       result: { type: 'execution_succeeded', output: 'Hello Ada', record: { model: 'x' } },
     });

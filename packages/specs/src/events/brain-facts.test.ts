@@ -60,7 +60,7 @@ const aboutTheRun = {
   time: fact.at,
 };
 
-const ofTheRun = { primitive: 'inference', name: 'summary', version: 3, caller: 'acme-admin' };
+const ofTheRun = { primitive: 'inference', name: 'summary', version: 3, caller: 'acme-admin', depth: 0 };
 
 describe('the facts of a run as events', () => {
   it('are its start and its endings, about the run, from the record and its time, naming what ran', () => {

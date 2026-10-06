@@ -6,6 +6,8 @@ const fact = { by: Schema.String, at: Schema.String };
 
 const ofTheDefinition = { primitive: Schema.String, name: Schema.String, spec_version: Schema.Int };
 
+const ofTheChain = { depth: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))) };
+
 const ExecutionStartedSchema = Schema.Struct({
   type: Schema.Literal('execution_started'),
   primitive: Schema.String,
@@ -13,6 +15,7 @@ const ExecutionStartedSchema = Schema.Struct({
   spec_version: Schema.Int,
   input: Schema.Json,
   calls_tools: Schema.optionalKey(Schema.Literal(true)),
+  ...ofTheChain,
   ...fact,
 });
 
@@ -27,6 +30,7 @@ const ExecutionSucceededSchema = Schema.Struct({
   output: Schema.Json,
   record: Schema.JsonObject,
   ...ofTheDefinition,
+  ...ofTheChain,
   ...fact,
 });
 
@@ -35,12 +39,14 @@ const ExecutionRejectedSchema = Schema.Struct({
   rejection: ExecutionRejectionSchema,
   record: Schema.optionalKey(Schema.JsonObject),
   ...ofTheDefinition,
+  ...ofTheChain,
   ...fact,
 });
 
 const ExecutionFailedSchema = Schema.Struct({
   type: Schema.Literal('execution_failed'),
   ...ofTheDefinition,
+  ...ofTheChain,
   ...fact,
 });
 

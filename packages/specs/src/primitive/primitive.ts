@@ -8,6 +8,7 @@ export interface DefinitionSummary {
   readonly inputSchema?: Schema.JsonObject;
   readonly outputSchema?: Schema.JsonObject;
   readonly warnings?: readonly string[];
+  readonly reacts?: boolean;
 }
 
 export interface ToolCallJournal {
@@ -27,6 +28,7 @@ export interface RunContext {
   readonly spec: { readonly name: string; readonly version: number };
   readonly journal: ToolCallJournal;
   readonly lineage: RunLineage;
+  readonly depth: number;
 }
 
 export interface Finished {

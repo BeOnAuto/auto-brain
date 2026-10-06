@@ -6,6 +6,7 @@ const SpecContentSchema = Schema.Struct({
   input_schema: Schema.optionalKey(Schema.JsonObject),
   output_schema: Schema.optionalKey(Schema.JsonObject),
   warnings: Schema.optionalKey(Schema.Array(Schema.String)),
+  reacts: Schema.optionalKey(Schema.Literal(true)),
 });
 
 export type SpecContent = typeof SpecContentSchema.Type;

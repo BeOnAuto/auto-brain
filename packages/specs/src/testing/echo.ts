@@ -9,6 +9,7 @@ const decodeDocument = Schema.decodeUnknownEffect(
       greeting: Schema.String,
       description: Schema.optionalKey(Schema.String),
       warnings: Schema.optionalKey(Schema.Array(Schema.String)),
+      reacts: Schema.optionalKey(Schema.Boolean),
     }),
   ),
   { onExcessProperty: 'error', errors: 'all' },
@@ -38,7 +39,7 @@ export const echo = definePrimitive({
   description: [
     'Answers every execution with the greeting its spec declares and the input it was given.',
     'A spec document of echo is a JSON object with a string `greeting`, an optional string `description`',
-    'and optional `warnings`, a list of strings the spec is accepted with,',
+    'optional `warnings`, a list of strings the spec is accepted with, and an optional boolean `reacts`,',
     'for example {"greeting": "Hello", "description": "Greets the caller"}.',
     'The input of an execution must be a JSON object.',
   ].join(' '),
@@ -46,9 +47,10 @@ export const echo = definePrimitive({
   describeOutput: () => 'It answered with its greeting.',
   mediaType: 'application/json',
   parse: parseDocument,
-  summarize: ({ greeting, description, warnings }) => ({
+  summarize: ({ greeting, description, warnings, reacts }) => ({
     ...(description === undefined ? {} : { description }),
     ...(warnings === undefined ? {} : { warnings }),
+    ...(reacts === undefined ? {} : { reacts }),
     inputSchema: { type: 'object' },
     outputSchema: {
       type: 'object',

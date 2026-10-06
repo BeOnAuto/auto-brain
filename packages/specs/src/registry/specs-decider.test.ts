@@ -158,3 +158,47 @@ describe('the specs of a primitive', () => {
     expect(before.get('greet')?.status).toBe('active');
   });
 });
+
+const reacting: SpecContent = { source: '{"greeting": "Hello", "reacts": true}', reacts: true };
+
+function reactingSpecs(count: number): readonly SpecEvent[] {
+  return Array.from({ length: count }, (_, index) => ({
+    type: 'spec_created',
+    name: `reacting-${index}`,
+    version: 1,
+    content: reacting,
+    ...creation,
+  }));
+}
+
+const beyondTheBound = new Conflict({
+  detail:
+    'The brain already has 1024 echo definitions that start on their own, the most a brain holds; retire one, or save this one without its schedule',
+});
+
+describe('the definitions of a brain that start on their own', () => {
+  it('are 1,024 at most: one more is refused, created or made so by an update', () => {
+    const full = reactingSpecs(1024);
+
+    expect([
+      decided({ ...creatingGreet, content: reacting }, ...full),
+      decided(updatingGreet(reacting), greetCreated, ...full),
+      decided({ ...creatingGreet, content: hello }, ...full),
+    ]).toEqual([Result.fail(beyondTheBound), Result.fail(beyondTheBound), Result.succeed([greetCreated])]);
+  });
+
+  it('are counted after a version replaces another, and without the retired ones', () => {
+    const almost = reactingSpecs(1023);
+    const retired: SpecEvent = { type: 'spec_retired', name: 'reacting-0', ...change };
+    const reactingGreet: SpecEvent = { ...greetCreated, content: reacting };
+
+    expect([
+      Result.isSuccess(
+        decided(updatingGreet({ ...reacting, source: '{"greeting": "Hi", "reacts": true}' }), reactingGreet, ...almost),
+      ),
+      Result.isSuccess(
+        decided({ ...creatingGreet, name: 'other', content: reacting }, ...reactingSpecs(1024), retired),
+      ),
+    ]).toEqual([true, true]);
+  });
+});
