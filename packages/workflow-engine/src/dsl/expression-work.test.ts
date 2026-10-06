@@ -43,7 +43,11 @@ describe('the work of an expression', () => {
     (source) => {
       const evaluation = run(source, null);
 
-      expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+      expect(evaluation).toMatchObject({
+        problem: `${source}: LimitError: Work limit exceeded`,
+        exhausted: true,
+        limit: 'work',
+      });
       expect(evaluation.work).toBeGreaterThan(mostWork);
     },
   );
@@ -56,6 +60,7 @@ describe('the work of an expression', () => {
     expect(run('reduce range(40) as $i (0; [., .])', null)).toMatchObject({
       problem: 'reduce range(40) as $i (0; [., .]): Work limit exceeded',
       exhausted: true,
+      limit: 'work',
     });
     expect(run('reduce range(40) as $i (0; [., .]) | tojson', null)).toMatchObject({ exhausted: true });
   });
@@ -212,7 +217,7 @@ describe('comparing a short string with a long one', { timeout: 2 * childTimeout
 });
 
 describe('the deadline of an expression', () => {
-  it('stops an expression that runs past it, with the error the work budget stops it with', () => {
+  it('stops an expression that runs past it, as exhausted as the work budget would, with its own error', () => {
     const source = '("a" * 64000000) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))';
     const deadline = { milliseconds: 200, clock: () => performance.now() };
     const started = performance.now();
@@ -220,7 +225,11 @@ describe('the deadline of an expression', () => {
     const evaluation = runExpression(source, null, {}, { now, mostWork: Number.MAX_SAFE_INTEGER, deadline });
     const elapsed = performance.now() - started;
 
-    expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+    expect(evaluation).toMatchObject({
+      problem: `${source}: LimitError: Deadline exceeded`,
+      exhausted: true,
+      limit: 'deadline',
+    });
     expect(elapsed).toBeGreaterThanOrEqual(200);
   });
 
@@ -245,7 +254,8 @@ describe('the deadline of an expression', () => {
 
     expect(evaluation).toMatchObject({ value: 5000 });
     expect(stopped).toMatchObject({
-      problem: '[range(5000)] | length: LimitError: Work limit exceeded',
+      problem: '[range(5000)] | length: LimitError: Deadline exceeded',
+      limit: 'deadline',
       exhausted: true,
     });
     expect(readings).toHaveLength(11);

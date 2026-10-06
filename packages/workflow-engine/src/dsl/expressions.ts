@@ -16,9 +16,12 @@ export interface Budget {
   readonly deadline?: Deadline;
 }
 
+export type Limit = 'work' | 'deadline';
+
 export type Evaluation =
   | { readonly value: Json; readonly work: number }
-  | { readonly problem: string; readonly work: number; readonly exhausted: boolean };
+  | { readonly problem: string; readonly work: number; readonly exhausted: false }
+  | { readonly problem: string; readonly work: number; readonly exhausted: true; readonly limit: Limit };
 
 type Compiled = { readonly program: ReturnType<typeof parse> } | { readonly problem: string };
 
@@ -29,6 +32,8 @@ const enclosedExpression = /^\s*\$\{(?<body>[\s\S]*)\}\s*$/u;
 const limits = { maxSteps: 200_000, maxDepth: 200, maxOutputs: 10_000 };
 
 const longestProblem = 1000;
+
+const deadlineExceeded = 'Deadline exceeded';
 
 export const mostCompiledCharacters = 262_144;
 
@@ -65,11 +70,7 @@ export function runExpression(source: string, data: Json, variables: Variables, 
     });
     return resultOf(source, first, usage.work, budget.mostWork);
   } catch (error) {
-    return {
-      problem: shortened(`${source}: ${String(error)}`),
-      work: usage.work,
-      exhausted: isExhaustion(error),
-    };
+    return failureOf(shortened(`${source}: ${String(error)}`), usage.work, error);
   }
 }
 
@@ -79,14 +80,17 @@ function deadlineOf(deadline: Deadline | undefined): Pick<EvalOptions, 'deadline
     : { deadline: { at: deadline.clock() + deadline.milliseconds, clock: deadline.clock } };
 }
 
-function isExhaustion(error: unknown): boolean {
-  return error instanceof Error && error.name === 'LimitError';
+function failureOf(problem: string, work: number, error: unknown): Evaluation {
+  if (!(error instanceof Error) || error.name !== 'LimitError') {
+    return { problem, work, exhausted: false };
+  }
+  return { problem, work, exhausted: true, limit: error.message === deadlineExceeded ? 'deadline' : 'work' };
 }
 
 function resultOf(source: string, value: unknown, work: number, mostWork: number): Evaluation {
   const measure = measureOf(value);
   if (work > mostWork || (measure !== undefined && measure.work > mostWork)) {
-    return { problem: shortened(`${source}: Work limit exceeded`), work, exhausted: true };
+    return { problem: shortened(`${source}: Work limit exceeded`), work, exhausted: true, limit: 'work' };
   }
   return measure !== undefined && isJson(value)
     ? { value, work }

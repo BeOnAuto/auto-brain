@@ -48,7 +48,7 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
    emit(span: Span): void;
 +  /**
 +   * Records work proportional to the size of the values an operation builds or visits.
-+   * Every 4096 units it reads the deadline's clock, and ends the evaluation once the deadline has passed.
++   * Every 4096 units it reads the deadline's clock, and ends the evaluation, with "Deadline exceeded", once the deadline has passed.
 +   * @param units - The amount of work.
 +   * @param span - The source span for error reporting.
 +   */
@@ -65,7 +65,7 @@ diff --git a/dist/index.d.mts b/dist/index.d.mts
 +    work: number;
 +  };
 +  /**
-+   * Stops the evaluation, with the error the work limit stops it with, once `clock()` reads `at` or later.
++   * Stops the evaluation with a limit error, "Deadline exceeded", that `try` does not catch, once `clock()` reads `at` or later.
 +   * The clock is read at most once in 4096 units of work; jq-ts never reads a clock on its own.
 +   */
 +  deadline?: {
@@ -233,7 +233,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +	* Records work proportional to the size of the values an operation builds or visits.
 +	* Exceeding the limit throws an error that `try` does not catch, so the evaluation ends.
 +	* Every {@link CLOCK_READING_WORK} units it reads the deadline's clock, and ends the evaluation
-+	* the same way once the deadline has passed.
++	* the same way, with "Deadline exceeded", once the deadline has passed.
 +	* @param units - The amount of work.
 +	* @param span - The source span for error reporting.
 +	*/
@@ -242,7 +242,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 +		if (!(this.work <= this.limits.maxWork)) throw new BaseError("limit", "Work limit exceeded", span);
 +		if (this.deadline !== void 0 && this.work >= this.nextClockReading) {
 +			this.nextClockReading = this.work + CLOCK_READING_WORK;
-+			if (!(this.deadline.clock() < this.deadline.at)) throw new BaseError("limit", "Work limit exceeded", span);
++			if (!(this.deadline.clock() < this.deadline.at)) throw new BaseError("limit", "Deadline exceeded", span);
 +		}
 +	}
  };
