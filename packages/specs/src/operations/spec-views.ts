@@ -9,7 +9,7 @@ import { rejectionOfSource } from './issue-pointers.ts';
 export const byName = Order.mapInput(Order.String, ({ name }: StoredDefinition) => name);
 
 export function specOf({ name, mediaType }: Primitive, stored: StoredDefinition): Definition {
-  return { primitive: name, media_type: mediaType, ...stored };
+  return { primitive: name, media_type: mediaType, ...Struct.omit(stored, ['details']) };
 }
 
 export function listedSpecOf(primitive: Primitive, stored: StoredDefinition): ListedDefinition {
@@ -18,7 +18,7 @@ export function listedSpecOf(primitive: Primitive, stored: StoredDefinition): Li
 
 function contentFrom(
   source: string,
-  { description, inputSchema, outputSchema, warnings = [] }: DefinitionSummary,
+  { description, inputSchema, outputSchema, warnings = [], details }: DefinitionSummary,
 ): SpecContent {
   return {
     source,
@@ -26,6 +26,7 @@ function contentFrom(
     ...(inputSchema === undefined ? {} : { input_schema: inputSchema }),
     ...(outputSchema === undefined ? {} : { output_schema: outputSchema }),
     ...(warnings.length === 0 ? {} : { warnings }),
+    ...(details === undefined ? {} : { details }),
   };
 }
 

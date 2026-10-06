@@ -35,7 +35,7 @@ export function defineUpdateSpec(primitives: readonly Primitive[]) {
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name, source }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
         const content = yield* contentOf(primitive, source);
-        return specOf(primitive, yield* recordInRegistry(primitive.name, { type: 'update', name, content }));
+        return specOf(primitive, yield* recordInRegistry(primitive, { type: 'update', name, content }));
       }),
       plainLanguage: {
         task: `update a ${words.kinds}`,

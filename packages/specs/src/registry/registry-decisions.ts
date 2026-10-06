@@ -1,4 +1,4 @@
-import { Conflict, type Rejection } from '@beonauto/operations';
+import { Conflict, plainNumber, type Rejection } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import { definitionResourceLabel } from '../primitive/function-terminology.ts';
@@ -26,22 +26,43 @@ function takenBy(primitive: string, { name, status }: StoredDefinition): Conflic
   });
 }
 
+export interface RegistryRules {
+  readonly primitive: string;
+  readonly mostActive: number;
+}
+
+function activeIn(registry: SpecRegistry): number {
+  return [...registry.values()].filter(({ status }) => status === 'active').length;
+}
+
+function tooMany({ primitive, mostActive }: RegistryRules, active: number, saving: string): Conflict {
+  const label = definitionResourceLabel(primitive);
+  return new Conflict({
+    detail: `The brain keeps ${plainNumber(active)} active ${label}s, and a brain may keep at most ${plainNumber(mostActive)}; retire one before ${saving}`,
+  });
+}
+
 function decideCreation(
-  primitive: string,
+  rules: RegistryRules,
   { name, content, by, at }: SpecCreation & CommandMetadata,
   registry: SpecRegistry,
 ): Decision {
   const existing = registry.get(name);
-  return existing === undefined
+  if (existing !== undefined) {
+    return Result.fail(takenBy(rules.primitive, existing));
+  }
+  const active = activeIn(registry);
+  return active < rules.mostActive
     ? recording({ type: 'spec_created', name, version: 1, content, by, at })
-    : Result.fail(takenBy(primitive, existing));
+    : Result.fail(tooMany(rules, active, 'creating another'));
 }
 
 function decideUpdate(
-  primitive: string,
+  rules: RegistryRules,
   { name, content, by, at }: SpecUpdate & CommandMetadata,
   registry: SpecRegistry,
 ): Decision {
+  const { primitive } = rules;
   const existing = registry.get(name);
   if (existing === undefined) {
     return Result.fail(specNotFound(primitive, name));
@@ -54,8 +75,12 @@ function decideUpdate(
       }),
     );
   }
-  return existing.source === content.source
-    ? nothingToRecord
+  if (existing.source === content.source) {
+    return nothingToRecord;
+  }
+  const active = activeIn(registry);
+  return active > rules.mostActive
+    ? Result.fail(tooMany(rules, active, 'saving another version'))
     : recording({ type: 'spec_updated', name, version: existing.version + 1, content, by, at });
 }
 
@@ -71,12 +96,12 @@ function decideRetirement(
   return existing.status === 'retired' ? nothingToRecord : recording({ type: 'spec_retired', name, by, at });
 }
 
-export function decideOnSpecs(primitive: string, command: SpecCommand, registry: SpecRegistry): Decision {
+export function decideOnSpecs(rules: RegistryRules, command: SpecCommand, registry: SpecRegistry): Decision {
   if (command.type === 'create') {
-    return decideCreation(primitive, command, registry);
+    return decideCreation(rules, command, registry);
   }
   if (command.type === 'update') {
-    return decideUpdate(primitive, command, registry);
+    return decideUpdate(rules, command, registry);
   }
-  return decideRetirement(primitive, command, registry);
+  return decideRetirement(rules.primitive, command, registry);
 }

@@ -7,11 +7,12 @@ import { evolveRegistry, initialRegistry, type SpecRegistry } from './spec-regis
 
 export function specsDecider(
   primitive: string,
+  mostActive = Number.POSITIVE_INFINITY,
 ): Decider<SpecRegistry, SpecCommand, SpecEvent, 'not_found' | 'conflict'> {
   return {
     initialState: initialRegistry,
     evolve: evolveRegistry,
-    decide: (command, registry) => decideOnSpecs(primitive, command, registry),
+    decide: (command, registry) => decideOnSpecs({ primitive, mostActive }, command, registry),
     eventSchema: SpecEventSchema,
   };
 }
