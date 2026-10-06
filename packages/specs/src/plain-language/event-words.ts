@@ -40,8 +40,14 @@ const answers: Readonly<Record<ToolCallAnswered['outcome'], string>> = {
   cancelled: 'was cancelled when the run ended',
 };
 
+const notLettersOrDigits = /[^A-Za-z0-9]+/gu;
+
+function nameInWords(name: string): string {
+  return wordsOf(name.replaceAll(notLettersOrDigits, ' '));
+}
+
 export function toolCalled(number: number, server: string, tool: string): string {
-  return `A run made tool call ${plainNumber(number)}, to the ${wordsOf(tool)} tool of ${wordsOf(server)}.`;
+  return `A run made tool call ${plainNumber(number)}, to the ${nameInWords(tool)} tool of ${nameInWords(server)}.`;
 }
 
 export function toolAnswered(number: number, outcome: ToolCallAnswered['outcome']): string {

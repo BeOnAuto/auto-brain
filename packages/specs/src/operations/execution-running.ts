@@ -18,7 +18,12 @@ const runExecution = Effect.fnUntraced(function* (primitive: Primitive, id: stri
   const execution = { id, org, brain, caller, spec: { name: spec.name, version: spec.version }, journal };
   const recorded = yield* Effect.uninterruptibleMask((restore) =>
     Effect.gen(function* () {
-      yield* recordExecution(id, { type: 'start', ...request, spec_version: spec.version });
+      yield* recordExecution(id, {
+        type: 'start',
+        ...request,
+        spec_version: spec.version,
+        calls_tools: prepared.callsTools,
+      });
       const executing = prepared.execute(request.input, execution);
       const result = yield* attempt(prepared.whenCancelled === 'finish' ? executing : restore(executing)).pipe(
         Effect.onError(() => Effect.ignore(recordExecution(id, { type: 'finish', result: failedAttempt }))),

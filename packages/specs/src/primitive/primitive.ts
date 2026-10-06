@@ -59,12 +59,18 @@ export interface PrimitiveDefinition<Parsed> {
   readonly longestExecutionMs?: number;
   readonly reachesOutside?: boolean;
   readonly mayChangeOutside?: boolean;
+  readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
 }
 
 export interface PreparedSpec {
   readonly summary: SpecSummary;
   readonly execute: (input: Schema.Json, execution: ExecutionContext) => Effect.Effect<Executed, PrimitiveRejection>;
   readonly whenCancelled: WhenCancelled;
+  readonly callsTools: boolean;
+}
+
+function callsNoTools(): boolean {
+  return false;
 }
 
 export interface Primitive {
@@ -93,6 +99,7 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
     longestExecutionMs = defaultLongestExecutionMs,
     reachesOutside = false,
     mayChangeOutside = false,
+    callsTools = callsNoTools,
   } = definition;
   if (!isPrimitiveName(name)) {
     throw new Error(`The primitive name ${name} is malformed`);
@@ -113,6 +120,7 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
           summary: summarize(parsed),
           execute: (input, execution) => execute(parsed, input, execution),
           whenCancelled,
+          callsTools: callsTools(parsed),
         })),
       ),
   };

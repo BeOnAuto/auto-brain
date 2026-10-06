@@ -91,6 +91,7 @@ export function toolUser(): ToolUser {
       }),
     reachesOutside: true,
     mayChangeOutside: true,
+    callsTools: () => true,
   });
   return {
     primitive,

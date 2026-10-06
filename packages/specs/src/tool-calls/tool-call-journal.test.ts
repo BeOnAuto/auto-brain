@@ -117,7 +117,7 @@ describe('a run that called tools', () => {
   it('left started by a server that died stays started, is listed as running, and is not run again', async () => {
     const { call, executing, getExecution, listExecutions, recordedDirectly } = await brainWithToolUser();
     await recordedDirectly(
-      { type: 'start', primitive: 'tool-user', name: 'caller', input: {}, spec_version: 1, ...at },
+      { type: 'start', primitive: 'tool-user', name: 'caller', input: {}, spec_version: 1, calls_tools: true, ...at },
       { type: 'tool_call', fact: startOfCall(1), ...at },
     );
 
@@ -128,5 +128,22 @@ describe('a run that called tools', () => {
     expect(await call(listExecutions, toAlpha(acmeAdmin, { status: 'started' }))).toMatchObject({
       output: { executions: [{ execution_id: executionId, status: 'started' }] },
     });
+  });
+});
+
+describe('a run of a spec that calls tools, still in progress', () => {
+  it('is not run again under its id while an earlier call still runs it, before any tool was called', async () => {
+    const { callCancelledWhen, executeSpec, executing, history, user } = await brainWithToolUser();
+    const first = toAlpha(acmeAdmin, {
+      primitive: 'tool-user',
+      name: 'caller',
+      input: { calls: 0, ending: 'stall' },
+      execution_id: executionId,
+    });
+    const retried = user.stalled.then(() => executing({ calls: 0, ending: 'stall' }));
+
+    expect(await callCancelledWhen(retried, executeSpec, first)).toEqual({ status: 'cancelled' });
+    expect(await retried).toMatchObject({ status: 'rejected', reason: 'conflict', kind: 'tools_called' });
+    expect(await history()).toEqual(['execution_started', 'execution_failed']);
   });
 });

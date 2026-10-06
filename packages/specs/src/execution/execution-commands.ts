@@ -11,6 +11,7 @@ export interface ExecutionRequest {
 export interface ExecutionStart extends ExecutionRequest {
   readonly type: 'start';
   readonly spec_version: number;
+  readonly calls_tools: boolean;
 }
 
 type WithoutFact<Event> = Event extends ExecutionFinished | ExecutionDeferred | ToolCallEvent

@@ -32,6 +32,12 @@ const toolsWereCalled = new Conflict({
   kind: 'tools_called',
 });
 
+const startedCallingTools = new Conflict({
+  detail:
+    'The execution has started and its spec calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another execution id, and read with get_execution_history what it has called so far',
+  kind: 'tools_called',
+});
+
 const runFinished = new Conflict({ detail: 'The execution has finished, so it records no more tool calls' });
 
 function isSameRequest({ input, execution }: RecordedExecution, request: ExecutionRequest): boolean {
@@ -63,11 +69,20 @@ export function claimOf(state: ExecutionState, request: ExecutionRequest): Resul
   return claimOfRecorded(state);
 }
 
+function startedCallingToolsBefore(start: ExecutionStart, state: ExecutionState): boolean {
+  return start.calls_tools && state !== undefined && isRunning(state);
+}
+
 function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
   const { primitive, name, input, spec_version, by, at } = start;
-  return Result.map(claimOf(state, start), (claim): readonly ExecutionEvent[] =>
-    claim === 'run' ? [{ type: 'execution_started', primitive, name, spec_version, input, by, at }] : [],
-  );
+  return Result.flatMap(claimOf(state, start), (claim): Decision => {
+    if (claim === 'answer') {
+      return nothingToRecord;
+    }
+    return startedCallingToolsBefore(start, state)
+      ? Result.fail(startedCallingTools)
+      : Result.succeed([{ type: 'execution_started', primitive, name, spec_version, input, by, at }]);
+  });
 }
 
 function decideFinish({ result, by, at }: ExecutionFinish & CommandMetadata, state: ExecutionState): Decision {
