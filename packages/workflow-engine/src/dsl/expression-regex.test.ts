@@ -14,6 +14,8 @@ const longestSubject = 200_000;
 
 const largestCharge = workPerCodepoint * longestSubject;
 
+const workOfARefusal = 200_000;
+
 function run(source: string, data: Json, work = mostWork): Evaluation {
   return runExpression(source, data, {}, { now, mostWork: work });
 }
@@ -40,7 +42,7 @@ describe('a regular expression', { timeout: 2 * childTimeoutMs }, () => {
       problem: `${source}: RuntimeError: regex too large: more than 4096 instructions`,
       exhausted: false,
     });
-    expect(evaluation.work).toBeLessThanOrEqual(mostWork + largestCharge);
+    expect(evaluation.work).toBeLessThan(workOfARefusal);
   });
 
   it.each([
