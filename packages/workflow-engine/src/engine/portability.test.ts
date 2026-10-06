@@ -72,6 +72,18 @@ function findingsIn(files: readonly string[], forbidden: readonly Forbidden[]): 
   });
 }
 
+const expressionCall = /(?<!function )\brunExpression\(([^()]*)\)/gu;
+
+function expressionCallsIn(text: string): readonly string[] {
+  return [...text.matchAll(expressionCall)].map(([, call = '']: readonly string[]) => call);
+}
+
+function expressionCallsUnder(files: readonly string[]): readonly string[] {
+  return files.flatMap((file) =>
+    expressionCallsIn(readFileSync(join(source, file), 'utf8')).map((call) => `${file}: ${call}`),
+  );
+}
+
 function localTimeBuiltinsIn(text: string): readonly string[] {
   return (text.match(localTimeBuiltins) ?? []).map((call: string) =>
     call.slice('Builtin("'.length, call.indexOf('",')),
@@ -140,6 +152,12 @@ describe('the machine, its runner, its tasks and its decider, the run log and th
     expect(machineAndRunLog.length).toBeGreaterThan(50);
     expect(findingsIn(machineAndRunLog, impure)).toEqual([]);
   });
+
+  it('evaluate expressions with work as their only budget, so no deadline makes them read a clock', () => {
+    expect(expressionCallsUnder(everySource)).toEqual([
+      'dsl/evaluation.ts: source, data, variables, { now: place.now, mostWork }',
+    ]);
+  });
 });
 
 describe('the jq library the machine runs expressions with', () => {
@@ -176,5 +194,10 @@ describe('the checks of purity', () => {
     expect(
       caught("const kinds = new Set(['a', 'b']);\nconst sizes = new WeakMap<object, number>();", growingCache),
     ).toEqual([]);
+    expect(
+      expressionCallsIn(
+        'function runExpression(source: string) {}\nrunExpression(source, data, {}, { now, mostWork, deadline: { milliseconds: 5, clock } });',
+      ),
+    ).toEqual(['source, data, {}, { now, mostWork, deadline: { milliseconds: 5, clock } }']);
   });
 });
