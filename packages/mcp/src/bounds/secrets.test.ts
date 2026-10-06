@@ -67,6 +67,17 @@ describe('the secrets of the servers', () => {
     expect(secrets.scrub(`raw ${awkward}`)).toBe('raw [redacted]');
   });
 
+  it('are scrubbed when JSON holds them twice encoded, as the text content of a tool that is itself JSON does', () => {
+    const secrets = secretsOf([]);
+    const awkward = 'pa"ss\\word\nnext-line';
+    secrets.add(awkward);
+    const result = { content: [{ type: 'text', text: JSON.stringify({ key: awkward }) }] };
+
+    expect(secrets.scrub(JSON.stringify(result))).toBe(
+      JSON.stringify({ content: [{ type: 'text', text: '{"key":"[redacted]"}' }] }),
+    );
+  });
+
   it('take a token minted while the server runs, and leave out what is too short to be one', () => {
     const secrets = secretsOf([]);
     secrets.add('tiny');

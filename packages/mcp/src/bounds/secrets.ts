@@ -19,6 +19,7 @@ export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
   const known = new Set<string>();
   const add = (secret: string): void => {
     if (secret.length >= leastSecretCharacters) {
+      known.add(asInJson(asInJson(secret)));
       known.add(asInJson(secret));
       known.add(secret);
     }
