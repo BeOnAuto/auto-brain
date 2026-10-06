@@ -25,8 +25,6 @@ type Answered = Extract<PoolOutcome, { readonly ran: 'answered' }>;
 
 type Exhausted = Extract<PoolOutcome, { readonly ran: 'exhausted' }>;
 
-const recursionTooDeep = 'Max depth exceeded';
-
 function unworkable(detail: string): Ending {
   return Effect.fail(new Conflict({ detail, kind: 'unworkable' }));
 }
@@ -65,6 +63,11 @@ function exhaustedWith({ limit, issue, work }: Exhausted, facts: RunFacts): Endi
   if (limit === 'deadline') {
     return Effect.fail(new Unavailable({ detail: stoppedBecause.deadline(facts) }));
   }
+  if (limit === 'depth') {
+    return unworkable(
+      `The program recursed deeper than the ${computationBounds.mostEvaluationDepth} levels of evaluation a run may nest, on line ${line}`,
+    );
+  }
   if (limit === 'stack') {
     return unworkable(`The program went deeper than the ${workerStackMegabytes} MiB stack of a run allows`);
   }
@@ -78,12 +81,7 @@ function exhaustedWith({ limit, issue, work }: Exhausted, facts: RunFacts): Endi
 }
 
 function raisedWith(detail: string, span: ProgramSpan, { document }: RunFacts): Ending {
-  const line = lineAt(document, span);
-  return detail === recursionTooDeep
-    ? unworkable(
-        `The program recursed deeper than the ${computationBounds.mostEvaluationDepth} levels of evaluation a run may nest, on line ${line}`,
-      )
-    : unworkable(`The program raised an error on line ${line}: ${detail}`);
+  return unworkable(`The program raised an error on line ${lineAt(document, span)}: ${detail}`);
 }
 
 type Unworkable = Extract<

@@ -78,7 +78,8 @@ describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }
     expect(await pool.run(request(recursion, 500))).toMatchObject({ ran: 'answered', output: 0 });
     expect(await pool.run(request(recursion, 1500))).toMatchObject({ ran: 'answered', output: 0 });
     expect(await pool.run(request(recursion, 3000))).toMatchObject({
-      ran: 'raised',
+      ran: 'exhausted',
+      limit: 'depth',
       issue: { detail: 'Max depth exceeded', error: 'RuntimeError' },
     });
   });

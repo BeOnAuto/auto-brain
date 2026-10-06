@@ -1,7 +1,7 @@
 import type { EvalOptions, Value } from '@gabrielbryk/jq-ts';
 
 import { isJson, isList, isObject, measureOf, type Json, type JsonEntry } from '../dsl/json.ts';
-import { issueOf, textOf, type ProgramIssue } from './program-tree.ts';
+import { fieldOf, issueOf, textOf, type ProgramIssue } from './program-tree.ts';
 
 export type Variables = Readonly<Record<string, Json>>;
 
@@ -28,7 +28,7 @@ export interface ProgramOptions {
   readonly deadline?: Deadline;
 }
 
-export type Limit = 'work' | 'deadline' | 'value depth' | 'stack';
+export type Limit = 'work' | 'deadline' | 'value depth' | 'depth' | 'stack';
 
 export type ProgramRun =
   | { readonly ran: 'answered'; readonly value: Json; readonly work: number }
@@ -85,6 +85,9 @@ export function failureOf(error: unknown, work: number): ProgramRun {
   const issue = issueOf(error);
   if (error instanceof RangeError) {
     return { ran: 'exhausted', limit: 'stack', issue, work };
+  }
+  if (fieldOf(error, 'limit') === 'depth') {
+    return { ran: 'exhausted', limit: 'depth', issue, work };
   }
   if (textOf(error, 'name') !== 'LimitError') {
     return { ran: 'raised', issue, work };

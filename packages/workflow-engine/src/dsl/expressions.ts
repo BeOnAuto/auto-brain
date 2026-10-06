@@ -32,6 +32,8 @@ const workflowLimits: Omit<ProgramLimits, 'mostWork'> = {
   mostValueDepth: Number.POSITIVE_INFINITY,
 };
 
+const raisedLimits: ReadonlySet<Limit> = new Set(['depth', 'stack']);
+
 const enclosedExpression = /^\s*\$\{(?<body>[\s\S]*)\}\s*$/u;
 
 const longestProblem = 1000;
@@ -81,7 +83,7 @@ function evaluationOf(source: string, run: ProgramRun): Evaluation {
   if (run.ran === 'answered') {
     return { value: run.value, work: run.work };
   }
-  if (run.ran === 'exhausted' && run.limit !== 'stack') {
+  if (run.ran === 'exhausted' && !raisedLimits.has(run.limit)) {
     return { problem: problemOf(source, run.issue), work: run.work, exhausted: true, limit: run.limit };
   }
   if (run.ran === 'raised' || run.ran === 'exhausted') {

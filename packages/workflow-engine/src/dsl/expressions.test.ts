@@ -94,18 +94,6 @@ describe('a failing expression', () => {
     expect(runExpression('reduce range(511) as $i (0; [.]) | length', null, {}, budget)).toMatchObject({ value: 1 });
   });
 
-  it('gives a problem for a regular expression whose groups nest past 128, which try catches, on any stack', () => {
-    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
-
-    expect(runExpression(nested, null, {}, budget)).toMatchObject({
-      problem: `${nested}: RuntimeError: regex too large: groups nested more than 128 deep`,
-      exhausted: false,
-    });
-    expect(runExpression(`try (${nested}) catch .`, null, {}, budget)).toMatchObject({
-      value: 'regex too large: groups nested more than 128 deep',
-    });
-  });
-
   it('gives a problem when it does not parse, and the same problem when run', () => {
     expect(checkExpression('.a +')).toBe('.a +: ParseError: Unexpected token');
     expect(runExpression('.a +', null, {}, budget)).toMatchObject({ problem: '.a +: ParseError: Unexpected token' });
@@ -120,6 +108,27 @@ describe('a failing expression', () => {
 
     expect(runExpression('error("x" * 5000)', null, {}, budget)).toMatchObject({
       problem: `${problem.slice(0, 1000)}…`,
+    });
+  });
+});
+
+describe('an expression that would depend on the stack', () => {
+  it('gives a problem, as it always did, when it recurses past its depth', () => {
+    expect(runExpression('def f: f; f', null, {}, budget)).toMatchObject({
+      problem: 'def f: f; f: RuntimeError: Max depth exceeded',
+      exhausted: false,
+    });
+  });
+
+  it('gives a problem for a regular expression whose groups nest past 128, which try catches, on any stack', () => {
+    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
+
+    expect(runExpression(nested, null, {}, budget)).toMatchObject({
+      problem: `${nested}: RuntimeError: regex too large: groups nested more than 128 deep`,
+      exhausted: false,
+    });
+    expect(runExpression(`try (${nested}) catch .`, null, {}, budget)).toMatchObject({
+      value: 'regex too large: groups nested more than 128 deep',
     });
   });
 });

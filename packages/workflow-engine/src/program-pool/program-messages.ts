@@ -18,7 +18,7 @@ export const ProgramAnswerSchema = Schema.Union([
   Schema.Struct({ ran: Schema.Literal('raised'), issue: IssueSchema, work: Schema.Number }),
   Schema.Struct({
     ran: Schema.Literal('exhausted'),
-    limit: Schema.Literals(['work', 'deadline', 'value depth', 'stack']),
+    limit: Schema.Literals(['work', 'deadline', 'value depth', 'depth', 'stack']),
     issue: IssueSchema,
     work: Schema.Number,
   }),

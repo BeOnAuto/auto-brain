@@ -156,9 +156,27 @@ describe('the limits of a run', () => {
 
     expect(run(recursion, 30)).toMatchObject({ ran: 'answered', value: 30 });
     expect(run(recursion, 100, { ...exactlyOne, limits: { ...lifted, mostDepth: 100 } })).toMatchObject({
+      ran: 'exhausted',
+      limit: 'depth',
+      issue: { detail: 'Max depth exceeded' },
+    });
+  });
+});
+
+describe('the depth of a run', () => {
+  it("tells the bound of its depth from a program's own error of the same words", () => {
+    expect(run('error("Max depth exceeded")')).toMatchObject({
       ran: 'raised',
       issue: { detail: 'Max depth exceeded' },
     });
+    const shallow = { ...exactlyOne, limits: { ...lifted, mostDepth: 100 } };
+
+    expect(run('def f: if . == 0 then 0 else (. - 1 | f) + 1 end; try (200 | f) catch .', null, shallow)).toMatchObject(
+      {
+        ran: 'answered',
+        value: 'Max depth exceeded',
+      },
+    );
   });
 });
 

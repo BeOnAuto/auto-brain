@@ -1,5 +1,5 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
-index 6436192a5026180921d1fae160fe8bea2514abf7..eb740dcb57e746724ea8156c745d265e39bcb41e 100644
+index 6436192a5026180921d1fae160fe8bea2514abf7..ea7afec9032ea1f2d84948d741849915fcc685ab 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
 @@ -81,7 +81,125 @@ const resolveClock = (now) => new Clock(now === void 0 ? void 0 : now instanceof
@@ -171,6 +171,15 @@ index 6436192a5026180921d1fae160fe8bea2514abf7..eb740dcb57e746724ea8156c745d265e
  	}
  	/**
  	* Enters a new scope/stack frame, incrementing the depth counter.
+@@ -126,7 +253,7 @@ var LimitTracker = class {
+ 	*/
+ 	enter(span) {
+ 		this.depth += 1;
+-		if (this.depth > this.limits.maxDepth) throw new RuntimeError("Max depth exceeded", span);
++		if (this.depth > this.limits.maxDepth) throw Object.assign(new RuntimeError("Max depth exceeded", span), { limit: "depth" });
+ 	}
+ 	/**
+ 	* Exits the current scope, decrementing the depth counter.
 @@ -135,12 +262,47 @@ var LimitTracker = class {
  		this.depth = Math.max(0, this.depth - 1);
  	}
@@ -1443,7 +1452,7 @@ index 361a68e1c507c58d76c4973a275efc134ef96591..73635ab05ff307f65e7d3f8184b7487b
  //# sourceMappingURL=index.d.mts.map
 \ No newline at end of file
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 7630127878548218ab4475a0893ed1f3a8485764..2dd865698aa7c9a06d348e72a476eaff50f1f143 100644
+index 7630127878548218ab4475a0893ed1f3a8485764..daa13fc92d324884f914a2a49aa6e2e1842c82df 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -80,7 +80,125 @@ const resolveClock = (now) => new Clock(now === void 0 ? void 0 : now instanceof
@@ -1615,6 +1624,15 @@ index 7630127878548218ab4475a0893ed1f3a8485764..2dd865698aa7c9a06d348e72a476eaff
  	}
  	/**
  	* Enters a new scope/stack frame, incrementing the depth counter.
+@@ -125,7 +252,7 @@ var LimitTracker = class {
+ 	*/
+ 	enter(span) {
+ 		this.depth += 1;
+-		if (this.depth > this.limits.maxDepth) throw new RuntimeError("Max depth exceeded", span);
++		if (this.depth > this.limits.maxDepth) throw Object.assign(new RuntimeError("Max depth exceeded", span), { limit: "depth" });
+ 	}
+ 	/**
+ 	* Exits the current scope, decrementing the depth counter.
 @@ -134,12 +261,47 @@ var LimitTracker = class {
  		this.depth = Math.max(0, this.depth - 1);
  	}

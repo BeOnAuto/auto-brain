@@ -119,6 +119,9 @@ describe('a run that reaches a bound of its program', { timeout: workerTestTimeo
     expect(await run.executing(programDocument(recursion), 3000)).toEqual(
       unworkable('The program recursed deeper than the 10000 levels of evaluation a run may nest, on line 4'),
     );
+    expect(await run.executing(programDocument('error("Max depth exceeded")'), null)).toEqual(
+      unworkable('The program raised an error on line 4: Max depth exceeded'),
+    );
   });
 });
 
