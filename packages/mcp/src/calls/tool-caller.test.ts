@@ -1,8 +1,17 @@
 import { setTimeout } from 'node:timers/promises';
 
+import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { controlledSignals, openFakeToolRun } from '../testing/index.ts';
+import type { RecordedCall } from '../calls/recorded-calls.ts';
+import {
+  controlledSignals,
+  fakeApiKey,
+  openFakeToolRun,
+  reportingAccess,
+  serveFakeMcp,
+  toolRun,
+} from '../testing/index.ts';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -84,5 +93,44 @@ describe('a run that ends while it calls', () => {
     expect(await replied).toMatchObject({ isError: true });
     expect(journal.facts().at(-1)).toMatchObject({ outcome: 'cancelled' });
     expect(fake.received()).toEqual([]);
+  });
+});
+
+async function runCancelledOnRecording() {
+  const fake = await serveFakeMcp({ bearer: fakeApiKey });
+  closing.push(fake.close);
+  const { access } = reportingAccess(
+    { graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' } },
+    { environment: { GRAPH_API_KEY: fakeApiKey } },
+  );
+  closing.push(access.close);
+  const signals = controlledSignals();
+  const facts: RecordedCall[] = [];
+  const journal = {
+    record: (fact: RecordedCall) =>
+      Effect.sync(() => {
+        facts.push(fact);
+        signals.cancel();
+        return true;
+      }),
+  };
+  const tools = await Effect.runPromise(access.open(toolRun(journal), [{ server: 'graph', tool: 'search' }]));
+  closing.push(tools.close);
+  return { fake, signals, facts, search: tools.offered[0] };
+}
+
+describe('a run cancelled between recording the start of a call and sending it', () => {
+  it('records the call started and never answered, and its server sees no call', async () => {
+    const { fake, signals, facts, search } = await runCancelledOnRecording();
+
+    const replied = await search?.call({ callId: 'call-1', input: { query: 'late' } }, signals);
+
+    expect(replied).toEqual({
+      text: 'The MCP server graph failed: The call was cancelled because the run ended',
+      isError: true,
+    });
+    expect(facts.map(({ type }) => type)).toEqual(['tool_call_started']);
+    expect(fake.received()).toEqual([]);
+    expect(fake.seen().map(({ rpc }) => rpc)).not.toContain('tools/call');
   });
 });
