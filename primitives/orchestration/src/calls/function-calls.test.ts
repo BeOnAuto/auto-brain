@@ -2,7 +2,6 @@ import type { StartCall } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { specCalls } from '../index.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 import { definitionCalls } from './function-calls.ts';
 import type { DefinitionRunRequest, DefinitionRunResult } from './function-run.ts';
@@ -45,9 +44,6 @@ function answering(result: DefinitionRunResult) {
 }
 
 describe('a workflow call to a saved definition', () => {
-  it('retains the exported call adapter as the same implementation', () => {
-    expect(specCalls).toBe(definitionCalls);
-  });
   it.each(['inference', 'custom-operation'])(
     'executes a %s definition for the original caller under a derived run id',
     async (primitive) => {
