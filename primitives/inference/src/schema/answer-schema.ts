@@ -132,6 +132,11 @@ export function compileAnswerSchema(document: unknown): Result.Result<AnswerSche
   );
 }
 
+export function notPortableIn(document: unknown): readonly PortabilityIssue[] {
+  const bounded = boundedDocument(document);
+  return Result.isSuccess(bounded) ? portabilityOf(bounded.success).not_portable : [];
+}
+
 export function checkAnswerSchema(document: unknown): SchemaReport {
   const compiled = compileAnswerSchema(document);
   if (Result.isFailure(compiled)) {
