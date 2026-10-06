@@ -1,40 +1,51 @@
-import type { InvalidCursorKind } from '@beonauto/operations';
-import { Option, Result, Schema } from 'effect';
+import { cursorOfParts, partsOfCursor, type CursorPart, type InvalidCursorKind } from '@beonauto/operations';
+import { Option, Result } from 'effect';
 
 import type { RecordedPoint } from '../event-store.ts';
 
+export interface CursorPoint {
+  readonly point: RecordedPoint;
+  readonly within: boolean;
+}
+
 const largestPosition = 2n ** 63n - 1n;
-
-const CursorSchema = Schema.StringFromBase64Url.pipe(
-  Schema.decodeTo(Schema.fromJsonString(Schema.Array(Schema.String))),
-);
-
-const decodeCursor = Schema.decodeUnknownOption(CursorSchema);
-
-const encodeCursor = Schema.encodeSync(CursorSchema);
 
 const decimal = /^(?:0|[1-9]\d{0,18})$/u;
 
-function isPosition(part: string): boolean {
-  return decimal.test(part) && BigInt(part) <= largestPosition;
+function isPosition(part: CursorPart): part is string {
+  return typeof part === 'string' && decimal.test(part) && BigInt(part) <= largestPosition;
+}
+
+function isIndex(part: CursorPart | undefined): boolean {
+  return part === undefined || (typeof part === 'number' && part >= 0);
 }
 
 export function cursorOf(brainKey: string, point: RecordedPoint): string {
-  return encodeCursor([brainKey, ...point]);
+  return cursorOfParts([brainKey, ...point]);
+}
+
+function pointOfParts(
+  [key, ...rest]: readonly CursorPart[],
+  brainKey: string,
+  pointLength: number,
+): Result.Result<CursorPoint, InvalidCursorKind> {
+  const parts = rest.slice(0, pointLength);
+  const [index, ...beyond] = rest.slice(pointLength);
+  const point = parts.filter((part) => isPosition(part));
+  const wellFormed = typeof key === 'string' && point.length === pointLength && isIndex(index) && beyond.length === 0;
+  if (!wellFormed) {
+    return Result.fail('malformed');
+  }
+  return key === brainKey ? Result.succeed({ point, within: index !== undefined }) : Result.fail('of_another_brain');
 }
 
 export function pointOf(
   cursor: string,
   brainKey: string,
   pointLength: number,
-): Result.Result<RecordedPoint, InvalidCursorKind> {
-  return Option.match(decodeCursor(cursor), {
+): Result.Result<CursorPoint, InvalidCursorKind> {
+  return Option.match(partsOfCursor(cursor), {
     onNone: () => Result.fail('malformed'),
-    onSome: ([key, ...point]) => {
-      if (point.length !== pointLength || !point.every((part) => isPosition(part))) {
-        return Result.fail('malformed');
-      }
-      return key === brainKey ? Result.succeed(point) : Result.fail('of_another_brain');
-    },
+    onSome: (parts) => pointOfParts(parts, brainKey, pointLength),
   });
 }

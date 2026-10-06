@@ -1,7 +1,9 @@
+import { messageIdOf } from '@beonauto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { eventAppenderOf } from '../event-appender.ts';
+import type { RecordedStream } from '../event-store.ts';
 import { VersionConflict } from '../version-conflict.ts';
 import { journal } from './journal.ts';
 import { aLedger, aStore, tallies, type LedgerEntry } from './ledger-entry.ts';
@@ -16,6 +18,11 @@ function numbered(from: number, count: number) {
 
 const three = [{ type: 'counted' as const, by: 3 }];
 
+async function eventsOf(reading: Promise<RecordedStream>): Promise<Omit<RecordedStream, 'lineages'>> {
+  const { version, events } = await reading;
+  return { version, events };
+}
+
 function readingAfterAVersion(entry: LedgerEntry): void {
   describe('reading a stream after a version', () => {
     it('gives the events after that version, and the version of the whole stream', async () => {
@@ -23,16 +30,35 @@ function readingAfterAVersion(entry: LedgerEntry): void {
       await store.append(run, numbered(1, 3), 0);
       await store.append(run, numbered(4, 2), 3);
 
-      expect(await store.read(run, 3)).toEqual({ version: 5, events: [{ n: 4 }, { n: 5 }] });
-      expect(await store.read(run)).toEqual({ version: 5, events: [1, 2, 3, 4, 5].map((n) => ({ n })) });
+      expect(await eventsOf(store.read(run, 3))).toEqual({ version: 5, events: [{ n: 4 }, { n: 5 }] });
+      expect(await eventsOf(store.read(run))).toEqual({ version: 5, events: [1, 2, 3, 4, 5].map((n) => ({ n })) });
     });
 
     it('gives no events and the version it was asked after when nothing follows it', async () => {
       const store = await aStore(entry);
       await store.append(run, numbered(1, 3), 0);
 
-      expect(await store.read(run, 3)).toEqual({ version: 3, events: [] });
-      expect(await store.read('run/nobody-wrote', 0)).toEqual({ version: 0, events: [] });
+      expect(await eventsOf(store.read(run, 3))).toEqual({ version: 3, events: [] });
+      expect(await eventsOf(store.read('run/nobody-wrote', 0))).toEqual({ version: 0, events: [] });
+    });
+  });
+}
+
+function theLineageOfEachMessage(entry: LedgerEntry): void {
+  describe('the lineage of each message', () => {
+    it('names it by its stream and position, and keeps the cause and correlation it was appended with', async () => {
+      const store = await aStore(entry);
+      await store.append(run, numbered(1, 2), 0);
+      await eventAppenderOf(store, tally.eventSchema)(run, three, 2, {
+        causationId: 'cause',
+        correlationId: 'root',
+      }).pipe(Effect.runPromise);
+
+      expect((await store.read(run)).lineages).toEqual([
+        { id: messageIdOf(run, 1), causationId: null, correlationId: null },
+        { id: messageIdOf(run, 2), causationId: null, correlationId: null },
+        { id: messageIdOf(run, 3), causationId: 'cause', correlationId: 'root' },
+      ]);
     });
   });
 }
@@ -45,20 +71,20 @@ function appendingWithAnExpectedVersion(entry: LedgerEntry): void {
         const store = await aStore(entry);
         await store.append(run, numbered(1, 2), 0);
 
-        expect(await outcomeOf(eventAppenderOf(store)(run, tally.eventSchema, three, expected))).toEqual(
+        expect(await outcomeOf(eventAppenderOf(store, tally.eventSchema)(run, three, expected))).toEqual(
           Result.fail(new VersionConflict()),
         );
-        expect(await store.read(run)).toEqual({ version: 2, events: [{ n: 1 }, { n: 2 }] });
+        expect(await eventsOf(store.read(run))).toEqual({ version: 2, events: [{ n: 1 }, { n: 2 }] });
       },
     );
 
     it('meets a version conflict when it expects a version of a stream nobody wrote', async () => {
       const store = await aStore(entry);
 
-      expect(await outcomeOf(eventAppenderOf(store)(run, tally.eventSchema, three, 1))).toEqual(
+      expect(await outcomeOf(eventAppenderOf(store, tally.eventSchema)(run, three, 1))).toEqual(
         Result.fail(new VersionConflict()),
       );
-      expect(await store.read(run)).toEqual({ version: 0, events: [] });
+      expect(await eventsOf(store.read(run))).toEqual({ version: 0, events: [] });
     });
 
     it('keeps the same event appended twice as two events', async () => {
@@ -66,7 +92,7 @@ function appendingWithAnExpectedVersion(entry: LedgerEntry): void {
       await store.append(run, numbered(1, 1), 0);
       await store.append(run, numbered(1, 1), 1);
 
-      expect(await store.read(run)).toEqual({ version: 2, events: [{ n: 1 }, { n: 1 }] });
+      expect(await eventsOf(store.read(run))).toEqual({ version: 2, events: [{ n: 1 }, { n: 1 }] });
     });
   });
 }
@@ -120,6 +146,7 @@ function whoseDatabaseIsGone(entry: LedgerEntry): void {
 
 export function storeBehaviour(entry: LedgerEntry): void {
   readingAfterAVersion(entry);
+  theLineageOfEachMessage(entry);
   appendingWithAnExpectedVersion(entry);
   closedAndOpenedAgain(entry);
   whoseDatabaseIsGone(entry);

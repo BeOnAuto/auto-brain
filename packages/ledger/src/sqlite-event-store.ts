@@ -1,7 +1,6 @@
-import type { Ledger, RunOutcomeMapping } from '@beonauto/operations';
+import type { RunOutcomeMapping } from '@beonauto/operations';
 import { dumbo } from '@event-driven-io/dumbo';
 import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
-import type { Layer } from 'effect';
 
 import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
 import type { LedgerStore } from './event-store.ts';
@@ -12,7 +11,8 @@ import {
   sqliteRunOutcomeProjections,
   sqliteRunOutcomesReader,
 } from './outcomes/sqlite-run-outcomes.ts';
-import { createSQLiteBrainIndexes, sqliteRecordedStore } from './recorded/sqlite-recorded.ts';
+import { createSQLiteBrainIndexes } from './recorded/sqlite-indexes.ts';
+import { sqliteRecordedStore } from './recorded/sqlite-recorded.ts';
 
 type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
 
@@ -52,6 +52,6 @@ export function sqliteEventStore<Driver extends AnyDriver>(
 export function sqliteLedgerLayer<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
   runOutcomes?: RunOutcomeMapping,
-): Layer.Layer<Ledger> {
+) {
   return ledgerLayerOver(() => sqliteEventStore(optionsOf, runOutcomes));
 }

@@ -1,4 +1,4 @@
-import type { BrainRequest } from '@beonauto/operations';
+import type { BrainRequest, Lineage } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { executionSettler, type ExecutionAddress, type Settlement } from '../index.ts';
@@ -35,8 +35,8 @@ export async function withHandOn() {
     executingCancelledOnceStarted: (input: unknown) =>
       specs.callCancelledWhen(relayer.started, operations.executeSpec, handingOn(input)),
     reading: () => specs.call(operations.getExecution, toAlpha(acmeAdmin, { execution_id: relayedId })),
-    settling: (settlement: Settlement, address: ExecutionAddress = relayed) =>
-      specs.run(Effect.result(settle(address, settlement)), settledAt),
+    settling: (settlement: Settlement, address: ExecutionAddress = relayed, lineage?: Lineage) =>
+      specs.run(Effect.result(settle(address, settlement, lineage)), settledAt),
     breakingDown: (settlement: Settlement) =>
       specs.run(
         Effect.catchDefect(Effect.result(settle(relayed, settlement)), (defect) => Effect.succeed(defect)),

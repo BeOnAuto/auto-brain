@@ -33,7 +33,25 @@ describe('the host database on SQLite', () => {
     );
     expect(ledger).toEqual([{ streams: 1 }]);
   });
+});
 
+describe('the host database on SQLite, made before a column was added', () => {
+  it('adds the column of the record that armed a timer to a timers table made before it, once', async () => {
+    const file = aSQLiteFile();
+    const first = await openedOn({ store: 'sqlite', file });
+    await Effect.runPromise(first.write(statement`ALTER TABLE workflow_timers DROP COLUMN armed_by`));
+    await openedOn({ store: 'sqlite', file });
+    const third = await openedOn({ store: 'sqlite', file });
+
+    expect(
+      await Effect.runPromise(
+        third.read(statement`SELECT name FROM pragma_table_info('workflow_timers') WHERE name = 'armed_by'`),
+      ),
+    ).toEqual([{ name: 'armed_by' }]);
+  });
+});
+
+describe('the host database on SQLite, in memory or refusing', () => {
   it('opens a private database in memory', async () => {
     const database = await openedOn({ store: 'sqlite', file: ':memory:' });
 

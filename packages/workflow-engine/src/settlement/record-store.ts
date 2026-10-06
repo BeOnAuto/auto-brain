@@ -1,7 +1,7 @@
 import type { Settlement } from '@beonauto/operations';
 import type { Effect } from 'effect';
 
-import type { DispatchFailed, RunContext } from '../dispatch/dispatch-watermark.ts';
+import type { DispatchFailed, OutputOrigin, RunContext } from '../dispatch/dispatch-watermark.ts';
 
 export type SettleReceipt = 'recorded' | 'already_recorded' | 'settled_otherwise' | 'unknown_execution';
 
@@ -19,7 +19,11 @@ export interface RunDue {
 }
 
 export interface RecordStore {
-  readonly settle: (request: SettleRequest, run: RunContext) => Effect.Effect<SettleReceipt, DispatchFailed>;
+  readonly settle: (
+    request: SettleRequest,
+    run: RunContext,
+    origin: OutputOrigin,
+  ) => Effect.Effect<SettleReceipt, DispatchFailed>;
   readonly noteDue: (due: RunDue, run: RunContext) => Effect.Effect<void, DispatchFailed>;
   readonly dueRuns: (before: number) => Effect.Effect<readonly string[]>;
 }

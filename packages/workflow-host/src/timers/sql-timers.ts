@@ -2,6 +2,7 @@ import {
   DispatchFailed,
   type ArmReceipt,
   type ArmTimer,
+  type OutputOrigin,
   type TimerCancelReceipt,
   type Timers,
 } from '@beonauto/workflow-engine';
@@ -31,6 +32,8 @@ const DueRow = Schema.Struct({ run_id: Schema.String, timer_id: Schema.String })
 
 const NextRow = Schema.Struct({ due: Schema.NullOr(WholeNumber) });
 
+const ArmedByRows = Schema.Struct({ armed_by: Schema.NullOr(WholeNumber) });
+
 const armReceipts: Readonly<Record<TimerState, ArmReceipt>> = {
   armed: 'already_armed',
   fired: 'already_armed',
@@ -51,14 +54,28 @@ function changed(rows: Effect.Effect<readonly unknown[], DatabaseFailed>): Effec
   return Effect.map(rows, (found) => found.length > 0);
 }
 
-function inserted(database: HostDatabase, runId: string, timer: ArmTimer): Effect.Effect<boolean, DatabaseFailed> {
+function inserted(
+  database: HostDatabase,
+  runId: string,
+  timer: ArmTimer,
+  armedBy: number | null,
+): Effect.Effect<boolean, DatabaseFailed> {
   return changed(
     database.write(
-      statement`INSERT INTO workflow_timers (run_id, timer_id, state, due_at)
-        VALUES (${runId}, ${timer.timerId}, 'armed', ${timer.dueAt})
+      statement`INSERT INTO workflow_timers (run_id, timer_id, state, due_at, armed_by)
+        VALUES (${runId}, ${timer.timerId}, 'armed', ${timer.dueAt}, ${armedBy})
         ON CONFLICT (run_id, timer_id) DO NOTHING RETURNING state`,
     ),
   );
+}
+
+export function armedByOf(database: HostDatabase, runId: string, timerId: string): Effect.Effect<number | null> {
+  return Effect.orDie(
+    rowsOf(
+      ArmedByRows,
+      database.read(statement`SELECT armed_by FROM workflow_timers WHERE run_id = ${runId} AND timer_id = ${timerId}`),
+    ),
+  ).pipe(Effect.map((rows) => rows[0]?.armed_by ?? null));
 }
 
 function stateOf(database: HostDatabase, runId: string, timerId: string): Effect.Effect<TimerState, DatabaseFailed> {
@@ -94,8 +111,8 @@ function cancelledFor(
 }
 
 function timerPort(database: HostDatabase, armed: (dueAt: number) => void): Timers {
-  const armedFor = (runId: string, timer: ArmTimer): Effect.Effect<boolean, DatabaseFailed> =>
-    Effect.tap(inserted(database, runId, timer), (fresh) =>
+  const armedFor = (runId: string, timer: ArmTimer, armedBy: number | null): Effect.Effect<boolean, DatabaseFailed> =>
+    Effect.tap(inserted(database, runId, timer, armedBy), (fresh) =>
       Effect.sync(() => {
         if (fresh) {
           armed(timer.dueAt);
@@ -103,9 +120,9 @@ function timerPort(database: HostDatabase, armed: (dueAt: number) => void): Time
       }),
     );
   return {
-    arm: (timer, run) =>
+    arm: (timer, run, origin: OutputOrigin) =>
       Effect.gen(function* () {
-        if (yield* armedFor(run.executionId, timer)) {
+        if (yield* armedFor(run.executionId, timer, origin.version)) {
           return 'armed';
         }
         return armReceipts[yield* stateOf(database, run.executionId, timer.timerId)];
@@ -113,7 +130,7 @@ function timerPort(database: HostDatabase, armed: (dueAt: number) => void): Time
     cancel: (timer, run) =>
       cancelledFor(database, run.executionId, timer.timerId).pipe(Effect.mapError(failedTo('cancel_timer'))),
     sweep: (run, timers) =>
-      Effect.forEach(timers, (timer) => armedFor(run.executionId, timer)).pipe(
+      Effect.forEach(timers, (timer) => armedFor(run.executionId, timer, null)).pipe(
         Effect.map((armedAgain: readonly boolean[]) => armedAgain.filter(Boolean).length),
         Effect.mapError(failedTo('arm_timer')),
       ),

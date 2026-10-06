@@ -5,7 +5,8 @@ export type RecordedOrder = 'asc' | 'desc';
 export type RecordedSelection =
   | { readonly kind: 'everything' }
   | { readonly kind: 'executions' }
-  | { readonly kind: 'run'; readonly execution: string };
+  | { readonly kind: 'run'; readonly execution: string }
+  | { readonly kind: 'correlated'; readonly correlation: string };
 
 export interface RecordedPageRequest {
   readonly cursor?: string;
@@ -17,6 +18,9 @@ export interface RecordedPageRequest {
 
 export interface RecordedEvent {
   readonly id: string;
+  readonly cursor: string;
+  readonly causationId: string | null;
+  readonly correlationId: string | null;
   readonly stream: string;
   readonly type: string;
   readonly data: unknown;

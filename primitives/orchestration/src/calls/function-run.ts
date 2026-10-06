@@ -1,4 +1,11 @@
-import type { CallerIdentity, Issue, RejectionKind, RejectionReason, UnavailableBecause } from '@beonauto/operations';
+import type {
+  CallerIdentity,
+  Issue,
+  Lineage,
+  RejectionKind,
+  RejectionReason,
+  UnavailableBecause,
+} from '@beonauto/operations';
 import type { Effect, Schema } from 'effect';
 
 export interface DefinitionRunRequest {
@@ -9,6 +16,7 @@ export interface DefinitionRunRequest {
   readonly name: string;
   readonly input: Schema.Json;
   readonly executionId: string;
+  readonly lineage: Lineage;
 }
 
 export type DefinitionRunResult =

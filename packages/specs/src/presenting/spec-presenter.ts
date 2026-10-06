@@ -39,7 +39,7 @@ export function specPresenter(words: SpecWords): Presenter {
   return eventPresenter<SpecEvent['type'], SpecEvent>({
     streamKind: 'specs',
     eventSchema: SpecEventSchema,
-    publicNames: { spec_created: 'spec_created', spec_updated: 'spec_updated', spec_retired: 'spec_retired' },
+    publicNames: { spec_created: ['spec_created'], spec_updated: ['spec_updated'], spec_retired: ['spec_retired'] },
     account: (event, primitive) => accountOf(words, event, primitive),
   });
 }

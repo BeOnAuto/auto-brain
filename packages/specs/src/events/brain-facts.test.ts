@@ -27,6 +27,9 @@ const isCloudEvent = Schema.is(CloudEventSchema);
 function ofRun(event: ExecutionEvent): RecordedEvent {
   return {
     id: recordId,
+    cursor: recordId,
+    causationId: null,
+    correlationId: null,
     stream: executionStreamOf(executionId),
     type: event.type,
     data: encodeExecutionEvent(event),
@@ -37,6 +40,9 @@ function ofRun(event: ExecutionEvent): RecordedEvent {
 function ofSpecs(event: SpecEvent): RecordedEvent {
   return {
     id: recordId,
+    cursor: recordId,
+    causationId: null,
+    correlationId: null,
     stream: specsStreamOf('inference'),
     type: event.type,
     data: encodeSpecEvent(event),
@@ -179,7 +185,7 @@ describe('the facts of a definition as events', () => {
 
 describe('the records that are no facts of the brain', () => {
   it('are the records it cannot read as what their stream holds, which it answers with none, never a failure', () => {
-    const about = { id: recordId, recordedAt: fact.at };
+    const about = { id: recordId, cursor: recordId, causationId: null, correlationId: null, recordedAt: fact.at };
     const unreadable: readonly RecordedEvent[] = [
       {
         ...about,
@@ -198,6 +204,9 @@ describe('the records that are no facts of the brain', () => {
     expect(
       brainFactOf({
         id: recordId,
+        cursor: recordId,
+        causationId: null,
+        correlationId: null,
         stream: `runs/${executionId}`,
         type: 'input_applied',
         data: {},
@@ -205,7 +214,16 @@ describe('the records that are no facts of the brain', () => {
       }),
     ).toBeUndefined();
     expect(
-      brainFactOf({ id: recordId, stream: 'events/0199a3c4', type: 'event_published', data: {}, recordedAt: fact.at }),
+      brainFactOf({
+        id: recordId,
+        cursor: recordId,
+        causationId: null,
+        correlationId: null,
+        stream: 'events/0199a3c4',
+        type: 'event_published',
+        data: {},
+        recordedAt: fact.at,
+      }),
     ).toBeUndefined();
   });
 });

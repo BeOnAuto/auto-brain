@@ -55,7 +55,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000310",
@@ -65,14 +65,27 @@
         {
           "reference": "/do/0/count",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "count",
+          "times": 1,
+          "caused_by": "input"
         },
         {
           "reference": "/do/1/again",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "waiting",
+          "name": "again",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/count",
+            "run": 1,
+            "outcome": "completed",
+            "times": 1
+          },
+          "waits_for": "timer"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -253,7 +266,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2525
+          "value": 2710
         }
       ],
       "outputs": [
@@ -277,7 +290,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "timer_fired",
         "key": "2",
@@ -287,19 +300,49 @@
         {
           "reference": "/do/1/again",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "again",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/1/again",
+            "run": 1,
+            "outcome": "waiting",
+            "times": 1
+          }
         },
         {
           "reference": "/do/0/count",
           "run": 2,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "count",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/1/again",
+            "run": 1,
+            "outcome": "completed",
+            "times": 1
+          }
         },
         {
           "reference": "/do/1/again",
           "run": 2,
-          "outcome": "waiting"
+          "outcome": "waiting",
+          "name": "again",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/count",
+            "run": 2,
+            "outcome": "completed",
+            "times": 1
+          },
+          "waits_for": "timer"
         }
       ],
+      "resumed": {
+        "reference": "/do/1/again",
+        "run": 1,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -392,7 +435,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4132
+          "value": 4706
         }
       ],
       "outputs": [
@@ -408,7 +451,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "timer_fired",
         "key": "3",
@@ -418,19 +461,48 @@
         {
           "reference": "/do/1/again",
           "run": 2,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "again",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/1/again",
+            "run": 2,
+            "outcome": "waiting",
+            "times": 1
+          }
         },
         {
           "reference": "/do/0/count",
           "run": 3,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "count",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/1/again",
+            "run": 2,
+            "outcome": "completed",
+            "times": 1
+          }
         },
         {
           "reference": "/do/1/again",
           "run": 3,
-          "outcome": "skipped"
+          "outcome": "skipped",
+          "name": "again",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/count",
+            "run": 3,
+            "outcome": "completed",
+            "times": 1
+          }
         }
       ],
+      "resumed": {
+        "reference": "/do/1/again",
+        "run": 2,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -502,7 +574,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5390
+          "value": 6333
         }
       ],
       "outputs": [

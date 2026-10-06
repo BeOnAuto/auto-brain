@@ -38,7 +38,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
@@ -48,9 +48,17 @@
         {
           "reference": "/do/0/reject",
           "run": 1,
-          "outcome": "raised"
+          "outcome": "raised",
+          "name": "reject",
+          "times": 1,
+          "caused_by": "input",
+          "error": {
+            "type": "https://example.com/no",
+            "title": "No"
+          }
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -169,7 +177,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1647
+          "value": 1763
         }
       ],
       "outputs": [

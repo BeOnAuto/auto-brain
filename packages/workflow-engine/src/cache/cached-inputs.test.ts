@@ -10,6 +10,14 @@ import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
 import { armedTimerIds, drivenExecutionId, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
+const elsewhere = { cause: { kind: 'none' as const }, attributes: {} };
+
+function appendedElsewhere(driver: MemoryDriver, events: readonly RunEvent[]): void {
+  Effect.runSync(
+    Effect.forEach(events, (event) => driver.ports.runStore.append(drivenExecutionId, event, 1, elsewhere)),
+  );
+}
+
 function ticking(times: number): ReturnType<typeof workflow> {
   return workflow(`
 do:
@@ -64,7 +72,7 @@ describe('an input to a run the engine keeps', () => {
     const driver = startedTicking(3);
     const cancel: RunInput = { kind: 'cancel_requested', executionId: drivenExecutionId, at: driver.clock.now() };
     const written = decidedElsewhere(driver, cancel);
-    Effect.runSync(Effect.forEach(written, (event) => driver.ports.runStore.append(drivenExecutionId, event, 1)));
+    appendedElsewhere(driver, written);
 
     const answer = driver.submit({ ...cancel, at: cancel.at + 1 });
 
@@ -76,7 +84,7 @@ describe('an input to a run the engine keeps', () => {
     const driver = startedTicking(3);
     const firstTick = armedTick(driver);
     const written = decidedElsewhere(driver, fired(firstTick, driver.clock.now() + 1000));
-    Effect.runSync(Effect.forEach(written, (event) => driver.ports.runStore.append(drivenExecutionId, event, 1)));
+    appendedElsewhere(driver, written);
     const secondTick = armedTick(driver);
 
     const answer = driver.submit(fired(secondTick, driver.clock.now() + 2000));

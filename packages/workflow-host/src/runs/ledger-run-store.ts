@@ -5,6 +5,7 @@ import { Effect } from 'effect';
 import type { HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { streamOfRun } from './run-address.ts';
+import { lineageOfRecord } from './run-lineage.ts';
 import { latestSnapshotOf, savedSnapshot } from './snapshot-chunks.ts';
 
 const codec = eventCodecOf(RunEventSchema);
@@ -33,7 +34,7 @@ function endedAt(database: HostDatabase, runId: string, version: number): Effect
 }
 
 export function ledgerRunStore(database: HostDatabase): RunStore {
-  const append = eventAppenderOf(database.store);
+  const append = eventAppenderOf(database.store, RunEventSchema);
   const streamAfter = (runId: string, version: number) =>
     Effect.promise(() => database.store.read(streamOfRun(runId), version));
   const eventsAfter = (runId: string, version: number): Effect.Effect<readonly PositionedEvent[]> =>
@@ -48,12 +49,12 @@ export function ledgerRunStore(database: HostDatabase): RunStore {
         const tail = yield* eventsAfter(runId, snapshot?.snapshot.version ?? 0);
         return { snapshot, tail };
       }),
-    append: (runId, event, expectedVersion) =>
+    append: (runId, event, expectedVersion, lineage) =>
       Effect.gen(function* () {
         if (expectedVersion === 0) {
           yield* knownRun(database, runId);
         }
-        yield* append(streamOfRun(runId), RunEventSchema, [event], expectedVersion);
+        yield* append(streamOfRun(runId), [event], expectedVersion, yield* lineageOfRecord(database, runId, lineage));
         if (endsTheRun(event)) {
           yield* endedAt(database, runId, expectedVersion + 1);
         }

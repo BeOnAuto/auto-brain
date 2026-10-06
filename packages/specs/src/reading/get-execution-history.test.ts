@@ -34,10 +34,20 @@ const decodeRunLogEvent = Schema.decodeUnknownSync(RunLogEventSchema);
 
 const runLogPresenter: Presenter = {
   streamKind: 'runs',
-  publicNames: { input_applied: 'input_applied', state_patched: null },
-  present: ({ id, data }) => {
+  publicNames: { input_applied: ['input_applied'], state_patched: [] },
+  present: ({ id, cursor, causationId, data }) => {
     const { key, at } = decodeRunLogEvent(data);
-    return { id, at, type: 'input_applied', summary: 'An input was applied.', data: { key } };
+    return [
+      {
+        id,
+        cursor,
+        causation_id: causationId,
+        at,
+        type: 'input_applied',
+        summary: 'An input was applied.',
+        data: { key },
+      },
+    ];
   },
 };
 
@@ -175,6 +185,14 @@ function keysAndTypesIn(outcome: unknown): readonly string[] {
   return keysAndTypesOf(outcome).output.events.map(({ type, data }) => data.key ?? type);
 }
 
+const cursorsOf = Schema.decodeUnknownSync(
+  Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ cursor: Schema.String })) }) }),
+);
+
+function cursorsIn(outcome: unknown): readonly string[] {
+  return cursorsOf(outcome).output.events.map(({ cursor }) => cursor);
+}
+
 const withRunLog = [...makeSpecPresenters([echo]), runLogPresenter];
 
 async function everyKeyAndType(
@@ -188,22 +206,25 @@ async function everyKeyAndType(
 }
 
 describe('the history of a run with a log of its own', () => {
-  it('merges both streams by the time of each event, then by stream, hiding what its presenter hides', async () => {
+  it('follows the order the brain recorded both streams in, whatever the time of each event', async () => {
     const { reading } = await runWithLog(withRunLog);
+    const recorded = ['execution_started', 'execution_succeeded', 'early', 'same', 'late'];
 
-    expect(keysAndTypesIn(await reading({}))).toEqual([
-      'early',
-      'execution_started',
-      'execution_succeeded',
-      'same',
-      'late',
-    ]);
-    expect(keysAndTypesIn(await reading({ order: 'desc' }))).toEqual([
-      'late',
-      'same',
-      'execution_succeeded',
-      'execution_started',
-      'early',
+    expect(keysAndTypesIn(await reading({}))).toEqual(recorded);
+    expect(keysAndTypesIn(await reading({ order: 'desc' }))).toEqual(recorded.toReversed());
+  });
+
+  it('reads on from the cursor of each event to the events after it, in either order', async () => {
+    const { reading } = await runWithLog(withRunLog);
+    const after = async (order: string) => {
+      const cursors = cursorsIn(await reading({ order }));
+      return Promise.all(cursors.map(async (cursor) => keysAndTypesIn(await reading({ order, cursor }))));
+    };
+    const recorded = ['execution_started', 'execution_succeeded', 'early', 'same', 'late'];
+
+    expect([await after('asc'), await after('desc')]).toEqual([
+      recorded.map((_, index) => recorded.slice(index + 1)),
+      recorded.toReversed().map((_, index) => recorded.toReversed().slice(index + 1)),
     ]);
   });
 
@@ -222,14 +243,6 @@ describe('the history of a run with a log of its own', () => {
   });
 });
 
-const idsOf = Schema.decodeUnknownSync(
-  Schema.Struct({ output: Schema.Struct({ events: Schema.Array(Schema.Struct({ id: Schema.String })) }) }),
-);
-
-function idsIn(outcome: unknown): readonly string[] {
-  return idsOf(outcome).output.events.map(({ id }) => id);
-}
-
 const emptyAndEnded = { status: 'succeeded', output: { events: [], has_more: false, next_cursor: null } };
 
 describe('get_execution_history rejecting', () => {
@@ -241,7 +254,7 @@ describe('get_execution_history rejecting', () => {
       reason: 'not_found',
       detail: `There is no run ${executionId} in this brain`,
     };
-    const [firstOfAnother] = idsIn(await reading({ execution_id: otherId }));
+    const [firstOfAnother] = cursorsIn(await reading({ execution_id: otherId }));
 
     expect(await reading({})).toEqual(notFound);
     expect(await reading({ cursor: String(firstOfAnother) })).toEqual(notFound);
@@ -263,7 +276,7 @@ describe('the end of the history of a run', () => {
   it('is an empty page without a cursor', async () => {
     const { executing, reading } = await brainWithRun();
     await executing(executionId, '2026-10-01T09:00:10.000Z');
-    const [, last] = idsIn(await reading({}));
+    const [, last] = cursorsIn(await reading({}));
 
     expect(await reading({ cursor: String(last) })).toEqual(emptyAndEnded);
   });
