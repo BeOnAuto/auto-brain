@@ -9,12 +9,12 @@ import { ledgerLayer } from '../src/sqlite3.ts';
 import { temporaryDatabase } from '../src/testing/temporary-database.ts';
 import { firstDay, lastDay, type OutcomeRow } from './outcomes-dataset.ts';
 
-export interface Place {
+interface Place {
   readonly location: string;
   readonly drop: () => Promise<void>;
 }
 
-export type RowsOf = (index: number) => readonly OutcomeRow[];
+type RowsOf = (index: number) => readonly OutcomeRow[];
 
 export interface Bench {
   readonly store: string;

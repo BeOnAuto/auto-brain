@@ -27,7 +27,7 @@ async function keptAfter(
   }
 }
 
-export function runOutcomeProjection(keeping: RunOutcomeKeeping): InlineProjection {
+function runOutcomeProjection(keeping: RunOutcomeKeeping): InlineProjection {
   return {
     types: keeping.mapping.types,
     handle: (messages, execute) =>

@@ -8,7 +8,7 @@ export interface OutcomeRow {
   readonly created: string;
 }
 
-export const daysInTheWindow = 30;
+const daysInTheWindow = 30;
 
 export const firstDay = '2026-09-07';
 

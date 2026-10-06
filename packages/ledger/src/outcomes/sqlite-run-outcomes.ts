@@ -23,7 +23,7 @@ const GroupRows = Schema.Array(
   Schema.Struct({ ...groupFields, durations: Schema.fromJsonString(Schema.Array(Schema.Number)) }),
 );
 
-export const sqliteRunOutcomeStatements: RunOutcomeStatements = {
+const sqliteRunOutcomeStatements: RunOutcomeStatements = {
   tableVersions: () => SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'run_outcomes_*'`,
   create: () => [
     SQL`CREATE TABLE IF NOT EXISTS ${table} (

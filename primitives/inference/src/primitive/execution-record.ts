@@ -51,7 +51,7 @@ function prefixWithin(text: string, bytes: number): string {
   return text.slice(0, kept);
 }
 
-export function usageRecord({ input, output, total }: TokenUsage): Schema.JsonObject {
+function usageRecord({ input, output, total }: TokenUsage): Schema.JsonObject {
   return {
     input: {
       total: input.total,
