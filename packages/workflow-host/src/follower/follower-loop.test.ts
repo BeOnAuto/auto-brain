@@ -1,5 +1,5 @@
 import { appendSignalOf } from '@beonauto/ledger';
-import { Effect } from 'effect';
+import { Effect, Function } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { systemClock } from '../loop/host-clock.ts';
@@ -23,6 +23,7 @@ interface Following {
   readonly sweepEveryMs?: number;
   readonly startsFailing?: number;
   readonly schedulesFailing?: number;
+  readonly sweepsFailing?: number;
 }
 
 function failingFirst<A>(times: number, read: Effect.Effect<A>): () => Effect.Effect<A> {
@@ -65,7 +66,11 @@ function followerWith(following: Following = {}): Watched {
       registriesAppended: (registries) => logged(`registries ${registries.join(' ')}`),
       brainSeen: () => Effect.void,
     },
-    sweeps: { started: () => logged('anchored'), next: () => Effect.sync(sweep) },
+    sweeps: {
+      started: () => logged('anchored'),
+      next: failingFirst(following.sweepsFailing ?? 0, Effect.sync(sweep)),
+      passAgain: Function.constVoid,
+    },
     upkeep: {
       sweep: () => logged('sweep'),
       fireSchedules: () => Effect.void,
@@ -153,6 +158,19 @@ describe('the follower of the brains, when a read fails', () => {
     ]);
   });
 
+  it('says a sweep that failed is trouble, and sweeps again at the next interval', async () => {
+    const watched = followerWith({ sweepEveryMs: 20, sweepsFailing: 1 });
+
+    const log = await logReaching(watched, 4);
+
+    expect(log.slice(0, 4)).toEqual([
+      'anchored',
+      'start',
+      'The follower of the brains failed; it tries again',
+      'sweep',
+    ]);
+  });
+
   it('says a pass that fails is trouble, and passes again at the next signal', async () => {
     const watched = followerWith({ passEnds: ['fails'] });
     await logReaching(watched, 3);
@@ -163,7 +181,7 @@ describe('the follower of the brains, when a read fails', () => {
     const log = await logReaching(watched, 5);
 
     expect(log.slice(3)).toEqual([
-      'The follower of the brains failed; it tries again',
+      'A pass over a brain failed; the next sweep passes the brain again',
       'pass brain/acme/alpha/ signal',
     ]);
   });

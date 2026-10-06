@@ -39,12 +39,22 @@ interface Passing {
 }
 
 function passedOnce(parts: FollowerParts, wakes: Wakes, { brainKey, mode, known }: Passing) {
-  return Effect.tap(parts.pass(brainKey, mode, known), (end) =>
-    Effect.sync(() => {
-      if (end === 'more') {
-        wakes.brainAgain(brainKey);
-      }
-    }),
+  return parts.pass(brainKey, mode, known).pipe(
+    Effect.tap((end) =>
+      Effect.sync(() => {
+        if (end === 'more') {
+          wakes.brainAgain(brainKey);
+        }
+      }),
+    ),
+    Effect.catchCause((cause) =>
+      Effect.andThen(
+        parts.trouble('A pass over a brain failed; the next sweep passes the brain again', cause),
+        Effect.sync(() => {
+          parts.sweeps.passAgain(brainKey);
+        }),
+      ),
+    ),
   );
 }
 
