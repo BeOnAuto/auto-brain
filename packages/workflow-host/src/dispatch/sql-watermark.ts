@@ -3,6 +3,7 @@ import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
+import { runCaughtUp } from '../listeners/listener-rows.ts';
 import { streamOfRun } from '../runs/run-address.ts';
 
 const WatermarkRow = Schema.Struct({ dispatched_through: WholeNumber });
@@ -26,7 +27,7 @@ export function sqlWatermark(database: HostDatabase): DispatchWatermark {
             ON CONFLICT (run_id) DO UPDATE SET dispatched_through = excluded.dispatched_through
             WHERE workflow_runs.dispatched_through < excluded.dispatched_through`,
         ),
-      ),
+      ).pipe(Effect.andThen(runCaughtUp(database, runId, through))),
     behindRuns: (limit) =>
       Effect.orDie(
         rowsOf(

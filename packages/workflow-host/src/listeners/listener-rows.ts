@@ -112,6 +112,22 @@ export function runPassedThrough(database: HostDatabase, runId: string, version:
   );
 }
 
+export function runCaughtUp(database: HostDatabase, runId: string, through: number) {
+  return Effect.asVoid(
+    Effect.orDie(
+      database.write(
+        statement`DELETE FROM workflow_passed_runs WHERE run_id = ${runId} AND passed_through <= ${through}`,
+      ),
+    ),
+  );
+}
+
+export function runForgotten(database: HostDatabase, runId: string) {
+  return Effect.asVoid(
+    Effect.orDie(database.write(statement`DELETE FROM workflow_passed_runs WHERE run_id = ${runId}`)),
+  );
+}
+
 export function passedListeners(database: HostDatabase, streamId: string, version: number) {
   return Effect.asVoid(
     Effect.orDie(

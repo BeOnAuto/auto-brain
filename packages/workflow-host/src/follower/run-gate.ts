@@ -41,11 +41,11 @@ export function runGateOf(database: HostDatabase, brainKey: string): RunGate {
         if (behind && !overdue) {
           return 'held';
         }
+        const armed = pending.some((armedBy) => armedBy <= record.version);
         if (behind) {
           yield* runPassedThrough(database, runId, record.version);
         }
-        const armed = pending.some((armedBy) => armedBy <= record.version);
-        if (armed) {
+        if (behind || armed) {
           known.set(runId, { through, pending: pending.filter((armedBy) => armedBy > record.version) });
           yield* passedListeners(database, record.stream, record.version);
         }

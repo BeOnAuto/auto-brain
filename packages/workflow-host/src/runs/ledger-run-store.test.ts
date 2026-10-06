@@ -24,6 +24,24 @@ function ledgerOn(fileName: string): Promise<Ledger['Service']> {
   return runtime.runPromise(Ledger);
 }
 
+describe('the run store of the host, ending a run', () => {
+  it('forgets how far the follower passed the log of the run ahead of its dispatch', async () => {
+    const file = aSQLiteFile();
+    const database = await openedOn({ store: 'sqlite', file });
+    await Effect.runPromise(
+      database.write(
+        statement`INSERT INTO workflow_passed_runs (run_id, passed_through) VALUES (${runIdOf(run)}, ${1000})`,
+      ),
+    );
+    const hosted = await hostedOn({ store: 'sqlite', file });
+
+    await Effect.runPromise(hosted.host.start(run, startOf(workflow('do:\n  - done: { set: { done: true } }'))));
+    const left = await Effect.runPromise(database.read(statement`SELECT run_id FROM workflow_passed_runs`));
+
+    expect([(await Effect.runPromise(hosted.host.stateOf(run))).status, left]).toEqual(['ended', []]);
+  });
+});
+
 describe('the run store of the host, keeping a run', () => {
   it('keeps the log of a run on the ledger, under the brain, where the history of the run reads it', async () => {
     const file = aSQLiteFile();
