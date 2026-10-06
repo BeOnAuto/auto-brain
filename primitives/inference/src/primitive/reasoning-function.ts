@@ -7,10 +7,10 @@ import {
   type DefinitionSummary,
   type Primitive,
 } from '@beonauto/specs';
+import { issueText } from '@beonauto/specs/document';
 import { Effect, Result, type Schema } from 'effect';
 
 import type { OfferedModels } from '../model/offered-models.ts';
-import { issueText } from '../spec/document-issue.ts';
 import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-function-definition.ts';
 import { parseSpecDocument } from '../spec/spec-parsing.ts';
 import { reasoningDescriptionFor } from './reasoning-description.ts';

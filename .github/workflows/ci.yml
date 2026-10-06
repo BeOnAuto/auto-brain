@@ -244,6 +244,39 @@ jobs:
             'anthropic is not configured. No model provider is configured'
           docker stop inference
           test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
+      - name: Run a computation function
+        run: |
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker run --detach --name computation --publish 8080:8080 --env API_KEYS auto-brain:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
+            sleep 1
+          done
+          call() {
+            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+              --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
+          }
+          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          total="$(printf '%s\n' '---' 'language: jq' 'input:' '  schema: {type: object, required: [rows]}' '---' \
+            '{ total_cents: (.rows | map(.cost_cents) | add), rows: (.rows | length) }')"
+          raising="$(printf '%s\n' '---' 'language: jq' '---' 'error("no rows")')"
+          test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
+          for name in total raising; do
+            spec="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
+            test "$(call created.json --data "$spec" "$brain/specs/computation")" = 201
+          done
+          test "$(call totalled.json --data '{"input":{"rows":[{"cost_cents":1050},{"cost_cents":2075}]}}' \
+            "$brain/specs/computation/total/execute")" = 200
+          test "$(jq --compact-output '[.status, .output]' totalled.json)" = '["succeeded",{"total_cents":3125,"rows":2}]'
+          test "$(call raised.json --data '{"input":{}}' "$brain/specs/computation/raising/execute")" = 409
+          test "$(jq --compact-output '[.reason, .kind, .detail]' raised.json)" = \
+            '["conflict","unworkable","The program raised an error on line 4: no rows"]'
+          docker stop computation
+          test "$(docker inspect computation --format '{{.State.ExitCode}}')" = 0
       - name: Run workflows across a restart, and read the steps of a run and their causes
         timeout-minutes: 5
         run: |

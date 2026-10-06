@@ -23,7 +23,7 @@ const description = [
   'a run started again with the same id keeps the place of its first start.',
   'Each is the run as get_execution shows it, without its output, its record and the detail and issues of a rejection:',
   'its id, definition type, name and version, status, who started it and when, when it finished,',
-  'and the reason of a rejection with, for unavailable, its kind.',
+  'and the reason of a rejection with, for unavailable and conflict, its kind.',
   '`status` keeps runs in that status; `primitive` and `name` keep those of that API type identifier and definition name.',
   `\`limit\`, 1 to ${mostRecordsInAPage} and ${defaultPageLimit} when left out, is the most runs a page answers with.`,
   `A page also stops after loading 4 MiB of stored data, and after looking at ${mostExaminedInAPage} runs for a \`status\`;`,

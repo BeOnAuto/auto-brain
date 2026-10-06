@@ -3,6 +3,7 @@ import { scriptedLanguageModel, type ScriptedReply } from '@beonauto/inference/t
 import { Effect } from 'effect';
 
 import { compositionRootWith } from '../composition/composition-root.ts';
+import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';
 import { startServer } from '../lifecycle/lifecycle.ts';
 import { request, type RequestOptions, type TestResponse } from './http-client.ts';
 import { temporaryLedger } from './temporary-ledger.ts';
@@ -27,16 +28,19 @@ export async function servingReasoning(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
   fetch: Fetch = noNetwork,
+  programPoolOf: ProgramPoolOf = workerPool,
 ): Promise<ReasoningServer> {
   const ledger = temporaryLedger();
   const scripted = scriptedLanguageModel(...replies);
   const server = await startServer(
     { HOST: '127.0.0.1', PORT: '0', LEDGER_FILE: ledger.fileName, ...environment },
-    compositionRootWith((settings) =>
-      Effect.map(makeModelAccess(settings, { fetch }), (access) => ({
-        ...access,
-        languageModel: scripted.languageModel,
-      })),
+    compositionRootWith(
+      (settings) =>
+        Effect.map(makeModelAccess(settings, { fetch }), (access) => ({
+          ...access,
+          languageModel: scripted.languageModel,
+        })),
+      programPoolOf,
     ),
   );
   return {

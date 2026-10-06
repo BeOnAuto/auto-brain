@@ -1,6 +1,7 @@
 import { mostExpressionWork, mostWorkPerInput } from '../machine/limits.ts';
+import type { Variables } from '../programs/program-running.ts';
 import { readDuration } from './durations.ts';
-import { enclosedBody, expressionSource, runExpression, type Variables } from './expressions.ts';
+import { enclosedBody, expressionSource, runExpression } from './expressions.ts';
 import {
   entriesOf,
   isList,

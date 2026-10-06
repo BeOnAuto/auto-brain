@@ -14,18 +14,20 @@ const functionRun: Run = {
   finished_at: '2026-09-02T00:01:00.000Z',
 };
 
+const computationRun: Run = { ...functionRun, primitive: 'computation', output: { total_spend_cents: 17_628 } };
+
 const workflowRun: Run = { ...functionRun, primitive: 'orchestration' };
 
 describe('a run', () => {
-  it('is a function run when it ran a reasoning function, and a workflow run when it ran a workflow', () => {
-    const runs = [functionRun, workflowRun];
+  it('is a function run when it ran a reasoning or a computation function, and a workflow run when it ran a workflow', () => {
+    const runs = [functionRun, computationRun, workflowRun];
 
     const functionRuns = runs.filter((run) => isFunctionRun(run));
     const workflowRuns = runs.filter((run) => isWorkflowRun(run));
 
     expectTypeOf(functionRuns).toEqualTypeOf<FunctionRun[]>();
     expectTypeOf(workflowRuns).toEqualTypeOf<WorkflowRun[]>();
-    expect([functionRuns, workflowRuns]).toEqual([[functionRun], [workflowRun]]);
+    expect([functionRuns, workflowRuns]).toEqual([[functionRun, computationRun], [workflowRun]]);
   });
 
   it.each(['echo', 'reason', 'workflow', 'interaction', 'prediction', 'recall', 'compute'])(

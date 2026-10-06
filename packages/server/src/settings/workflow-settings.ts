@@ -52,7 +52,7 @@ function millisecondsOf(text: string): number {
   return { milliseconds: Number.NaN, ...readDuration(text.trim()) }.milliseconds;
 }
 
-function countOf(text: string): number {
+export function countOf(text: string): number {
   return wholeNumber.test(text.trim()) ? Number(text.trim()) : Number.NaN;
 }
 

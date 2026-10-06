@@ -36,7 +36,7 @@ function replayed(rejection: ExecutionRejection): ReplayedRejection {
       ...(because === undefined ? {} : { because }),
     });
   }
-  return new Conflict({ detail: rejection.detail, kind: 'unworkable' });
+  return new Conflict({ detail: rejection.detail, kind: rejection.kind ?? 'unworkable' });
 }
 
 function answerWith(execution: Run): Effect.Effect<Run, ReplayedRejection> {

@@ -1,8 +1,8 @@
 # HTTP API
 
-The HTTP API provides brain management, reasoning-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, and the brain's analytics. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reasoning-function, computation-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, and the brain's analytics. Requests use the API base URL and credentials supplied for the workspace.
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function and `orchestration` for a workflow.
+The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function, `computation` for a computation function and `orchestration` for a workflow.
 
 ## Requests and access
 
@@ -52,6 +52,10 @@ The `source` is a [reasoning function document](reasoning-format.md). Names foll
 
 Changing a document creates a version. Updating it with identical source records no change. A run uses the active latest version. Retired definitions can be read but cannot be edited or run.
 
+## Computation functions
+
+A self-hosted runtime offers computation functions under the same operations, with `computation` in place of `inference` in each route, such as `POST /specs/computation` and `POST /specs/computation/{name}/execute`. The `source` is a [computation function document](computation-format.md), and names, document size, versions and retirement follow the rules for reasoning functions above. A run completes within the execute request. A program that cannot give its output for the input, because it raised an error, gave no output or more than one, or did more work or nested deeper than a run may, answers `conflict` with the kind `unworkable`; the same input gives the same answer again, so change the definition or the input rather than retrying.
+
 ## Workflows
 
 These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
@@ -79,7 +83,7 @@ A workflow runs once for each `execution_id`. Executing it again with the `execu
 
 A run records its `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. Successful runs include `output`; rejected runs include a rejection. `get_execution` also returns the detailed `record`.
 
-Reasoning functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, as deep as a workflow holds a value; a deeper one returns `invalid_input` at `/input`. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
+Reasoning and computation functions normally complete within the execute request. A workflow run answers `started` and continues after the request; while it is in progress, its `record` is empty. [Workflows and runs](../concepts/workflows.md) explains how a run waits and ends. Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, as deep as a workflow holds a value; a deeper one returns `invalid_input` at `/input`. Output and record together may be at most 1 MiB. These limits apply independently of the request-body limit.
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 

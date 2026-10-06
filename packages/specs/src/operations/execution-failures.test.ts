@@ -100,6 +100,24 @@ describe('an execution of a spec the primitive cannot run as written', () => {
   });
 });
 
+describe('an execution whose primitive finds, by running it, that its definition is unworkable', () => {
+  it('is rejected with conflict of that kind, which is recorded and answered again', async () => {
+    const { call, executing, getExecution, prober } = await withPlain();
+    prober.sufferOnNextRun('unworkable');
+    const rejection = {
+      reason: 'conflict',
+      detail: 'The program of the probe raised an error on line 2: stop',
+      kind: 'unworkable',
+    };
+
+    expect(await executing({})).toEqual({ status: 'rejected', ...rejection });
+    expect(await call(getExecution, readingTheExecution)).toStrictEqual({
+      status: 'succeeded',
+      output: { ...failedExecution, status: 'rejected', rejection },
+    });
+  });
+});
+
 describe('an execution whose primitive breaks down', () => {
   it('fails with an incident that holds the defect, and is recorded as failed', async () => {
     const { call, executing, getExecution, prober, reported } = await withPlain();

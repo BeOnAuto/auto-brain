@@ -8,7 +8,7 @@
 - `packages/api`: the API (`@beonauto/api`), a Hono app that answers every request, with problem documents, the `Origin` and `Host` checks, authentication and the operation routes
 - `packages/identity`: API keys, the local-mode rule and the key command (`@beonauto/identity`)
 - `packages/*`: the server's libraries (`@beonauto/*`), including the ledger
-- `primitives/*`: runtime adapters and planned capabilities. `inference` implements reasoning functions and `orchestration` implements workflows. Interaction, prediction, computation, recall (in `recollection`) and Dream currently have design notes only.
+- `primitives/*`: runtime adapters and planned capabilities. `inference` implements reasoning functions, `orchestration` implements workflows and `computation` implements computation functions. Interaction, prediction, recall (in `recollection`) and Dream currently have design notes only.
 - `TODO.md`: setup work that is still outstanding
 
 Use the vocabulary in [Brain terminology](docs/concepts/terminology.md) in product text and domain code. A brain reasons, interacts, predicts, recalls and computes. Workflows coordinate those functions. The five function categories are Reasoning, Interaction, Prediction, Recall and Computation, in that order; coordination is a capability, not a sixth function type. A reasoning function has a prompt. A workflow or function definition is reusable; a run executes it against particular inputs.

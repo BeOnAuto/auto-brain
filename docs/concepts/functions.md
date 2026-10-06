@@ -8,17 +8,17 @@ A brain function defines a reusable operation, including its inputs, outputs and
 
 The source-available runtime is in early development and is not ready for production use. This table distinguishes available behavior from the capabilities being developed.
 
-| Group       | What someone defines    | Current runtime |
-| ----------- | ----------------------- | --------------- |
-| Reasoning   | A reasoning function    | Available       |
-| Interaction | An interaction function | Planned         |
-| Prediction  | A prediction function   | Planned         |
-| Recall      | A recall function       | Planned         |
-| Computation | A computation function  | Planned         |
+| Group       | What someone defines    | Current runtime                    |
+| ----------- | ----------------------- | ---------------------------------- |
+| Reasoning   | A reasoning function    | Available                          |
+| Interaction | An interaction function | Planned                            |
+| Prediction  | A prediction function   | Planned                            |
+| Recall      | A recall function       | Planned                            |
+| Computation | A computation function  | Available in a self-hosted runtime |
 
 Workflows are available and coordinate the functions above. They are not another function type.
 
-Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`.
+Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`. A self-hosted runtime runs computation functions too, and its `create_spec` accepts the primitive `computation`; Auto Cloud does not offer them yet.
 
 Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
 
@@ -53,6 +53,10 @@ Memory describes the broader retention and availability of information. Recall i
 ## Computation
 
 A computation function executes specified code or expressions with defined inputs and outputs, such as a calculation or data transformation. It need not be mathematically pure. AI-assisted authoring can help write the logic; once defined, the operation executes that specified logic.
+
+In the current runtime, a computation function is a program in jq with schemas for its input and output. A run applies the program to its input and answers with exactly one output, the same output for the same input every time, within bounds on its work, memory and time. It reaches nothing outside the brain. Use it for the arithmetic a language model should not do: a workflow can read figures through a reasoning function's tools, compute totals, paces and projections exactly with a computation function, and have another reasoning function write about them.
+
+See [Computation function format](../reference/computation-format.md).
 
 ## Supporting assets
 
