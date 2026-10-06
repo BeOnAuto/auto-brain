@@ -23,6 +23,12 @@ const measuring = {
   onFailure: () => Number.POSITIVE_INFINITY,
 };
 
+const usage = {
+  input: { total: 20, uncached: 20, cache_read: 0, cache_write: 0 },
+  output: { total: 64_000, text: 64_000, reasoning: null },
+  total: 64_020,
+};
+
 describe('the record of an execution', () => {
   it('keeps the whole prompt when it fits with the answer', async () => {
     const { executing } = reasoningWith(answers(textResult('Short')));
@@ -57,13 +63,14 @@ describe('the record of an execution', () => {
   });
 
   it('cannot hold an answer that leaves no room for the prompt: the spec must ask for less', async () => {
-    const { executing } = reasoningWith(answers(textResult('a'.repeat(oneMebibyte))));
+    const { executing } = reasoningWith(answers(textResult('a'.repeat(oneMebibyte), { usage, duration_ms: 1500 })));
 
     expect(await executing(withoutInstructions, { text: 'Go' })).toEqual(
       Exit.fail(
         new Conflict({
           detail:
             'The answer takes more than a run can record (1048576 bytes with its record); lower config.max_output_tokens in the reasoning function definition',
+          record: { usage, duration_ms: 1500 },
         }),
       ),
     );

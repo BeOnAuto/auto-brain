@@ -79,7 +79,8 @@ const onPostgreSQL: LedgerEntry = {
   closedWhileWriting: 'Cannot use a pool after calling end on the pool',
   aDatabase,
   untilReadable,
-  ledgerOn: (connectionString) => postgresqlLedgerLayer({ connectionString }),
+  ledgerOn: (connectionString, runOutcomes) =>
+    postgresqlLedgerLayer({ connectionString, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
   storeOn: (connectionString) =>
     postgresqlEventStore({
       connectionString,
@@ -87,6 +88,9 @@ const onPostgreSQL: LedgerEntry = {
         lostConnections.push(error);
       },
     }),
+  queried,
+  outcomeTables:
+    "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_outcomes_[0-9]+$' ORDER BY relname",
 };
 
 const skipped = server === '';
@@ -116,10 +120,7 @@ async function anAppendLeftOpen(database: string, stream: string, type: string, 
   return client;
 }
 
-interface OpenWrite {
-  readonly client: Client;
-  readonly id: string;
-}
+type OpenWrite = { readonly client: Client; readonly id: string };
 
 async function aWriteLeftOpenElsewhere(): Promise<OpenWrite> {
   const client = new Client({ connectionString: server });
@@ -147,10 +148,9 @@ function notingOfRoot(ledger: OpenLedger['ledger'], type: string, detail: string
   return Effect.runPromise(ledger.execute(root, happenings, [{ type, detail }], ofTheRoot));
 }
 
-async function aLedgerOnItsOwnDatabase(): Promise<{
-  readonly database: string;
-  readonly ledger: OpenLedger['ledger'];
-}> {
+type OwnLedger = { readonly database: string; readonly ledger: OpenLedger['ledger'] };
+
+async function aLedgerOnItsOwnDatabase(): Promise<OwnLedger> {
   const database = await aDatabase();
   const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
   onTestFinished(dispose);

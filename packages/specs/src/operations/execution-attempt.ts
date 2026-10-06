@@ -2,6 +2,7 @@ import type { UnavailableBecause, UnavailableKind } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
+import type { ExecutionRejection } from '../execution/execution.ts';
 import { withinResultLimit } from '../execution/recorded-size.ts';
 import type { Executed, PrimitiveRejection } from '../primitive/primitive.ts';
 import { issuesUnder, type Rejection } from './issue-pointers.ts';
@@ -33,33 +34,49 @@ function outcomeOf(executed: Executed): Effect.Effect<ExecutionOutcome> {
   return decodeExecuted(executed).pipe(Effect.orDie, Effect.flatMap(recordedOutcome));
 }
 
-function rejectedForInput({ detail, issues }: Rejection): Effect.Effect<ExecutionResult> {
-  return Effect.succeed({
-    type: 'execution_rejected',
-    rejection: { reason: 'invalid_input', detail, issues: issuesUnder('input', issues) },
-  });
+const decodeRecord = Schema.decodeUnknownEffect(Schema.JsonObject);
+
+interface Recorded {
+  readonly record?: Schema.JsonObject;
 }
 
-interface Unavailability {
+function rejectedWith(rejection: ExecutionRejection, { record }: Recorded): Effect.Effect<ExecutionResult> {
+  if (record === undefined) {
+    return Effect.succeed({ type: 'execution_rejected', rejection });
+  }
+  return decodeRecord(record).pipe(
+    Effect.orDie,
+    Effect.tap((checked) => withinResultLimit(checked)),
+    Effect.map((checked): ExecutionResult => ({ type: 'execution_rejected', rejection, record: checked })),
+  );
+}
+
+function rejectedForInput(rejection: Rejection & Recorded): Effect.Effect<ExecutionResult> {
+  const { detail, issues } = rejection;
+  return rejectedWith({ reason: 'invalid_input', detail, issues: issuesUnder('input', issues) }, rejection);
+}
+
+interface Unavailability extends Recorded {
   readonly detail: string;
   readonly kind?: UnavailableKind;
   readonly because?: UnavailableBecause;
 }
 
-function rejectedAsUnavailable({ detail, kind, because }: Unavailability): Effect.Effect<ExecutionResult> {
-  return Effect.succeed({
-    type: 'execution_rejected',
-    rejection: {
+function rejectedAsUnavailable(rejection: Unavailability): Effect.Effect<ExecutionResult> {
+  const { detail, kind, because } = rejection;
+  return rejectedWith(
+    {
       reason: 'unavailable',
       detail,
       ...(kind === undefined ? {} : { kind }),
       ...(because === undefined ? {} : { because }),
     },
-  });
+    rejection,
+  );
 }
 
-function rejectedAsConflict({ detail }: { readonly detail: string }): Effect.Effect<ExecutionResult> {
-  return Effect.succeed({ type: 'execution_rejected', rejection: { reason: 'conflict', detail } });
+function rejectedAsConflict(rejection: Recorded & { readonly detail: string }): Effect.Effect<ExecutionResult> {
+  return rejectedWith({ reason: 'conflict', detail: rejection.detail }, rejection);
 }
 
 export function attempt(executing: Effect.Effect<Executed, PrimitiveRejection>): Effect.Effect<ExecutionOutcome> {

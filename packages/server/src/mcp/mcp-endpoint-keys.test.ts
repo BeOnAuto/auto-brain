@@ -101,7 +101,7 @@ describe('a read-only key on /mcp', () => {
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the eighteen tools and reads a brain of its org', async () => {
+  it('lists the nineteen tools and reads a brain of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
@@ -112,7 +112,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
       kind,
     );
 
-    expect(outcome.tools).toBe(18);
+    expect(outcome.tools).toBe(19);
     expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha' });
   });
 });

@@ -10,8 +10,9 @@ import {
 import { Effect, Result } from 'effect';
 
 import { eventAppenderOf } from './event-appender.ts';
-import type { EventStore } from './event-store.ts';
+import type { LedgerStore } from './event-store.ts';
 import { foldEvents } from './fold-events.ts';
+import { runOutcomesReaderOf } from './outcomes/run-outcomes-reader.ts';
 import { recordedReaderOf } from './recorded/recorded-reader.ts';
 import { streamReaderOf } from './stream-reader.ts';
 import { retriedOnVersionConflict, type VersionConflict } from './version-conflict.ts';
@@ -67,7 +68,7 @@ export function decisionLoop<
     retriedOnVersionConflict(attempt(stream, command)).pipe(Effect.flatMap(Effect.fromResult));
 }
 
-export function makeLedger(store: EventStore): Ledger['Service'] {
+export function makeLedger(store: LedgerStore): Ledger['Service'] {
   const load = streamReaderOf(store);
 
   return Ledger.of({
@@ -80,5 +81,6 @@ export function makeLedger(store: EventStore): Ledger['Service'] {
         decider,
       )(stream, command).pipe(Effect.map(({ state, version }) => ({ state, version }))),
     readRecorded: recordedReaderOf(store),
+    readRunOutcomes: runOutcomesReaderOf(store),
   });
 }

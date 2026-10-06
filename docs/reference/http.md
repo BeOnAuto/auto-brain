@@ -1,6 +1,6 @@
 # HTTP API
 
-The HTTP API provides brain management, reasoning-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, and the history of a run and of a brain. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reasoning-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, and the brain's analytics. Requests use the API base URL and credentials supplied for the workspace.
 
 The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function and `orchestration` for a workflow.
 
@@ -139,7 +139,7 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}` and need `brain:rea
 
 `list_executions` returns `executions`, newest first by when each run first started. A listed run has the fields `get_execution` returns, without `output`, `record` and the detail and issues of a rejection; a rejection shows its `reason`, with `kind` and `because` when the function gave them. `status` keeps the runs whose status is `started`, `succeeded`, `rejected` or `failed`, and `primitive` and `name` keep the runs of one definition.
 
-`get_execution_history` returns the `events` of one run in the order the brain recorded them, oldest first unless `order` is `desc`, so each event comes after the event that caused it: the facts the runtime recorded about the run, each start and how it ended. Tool-using runs also record `tool_call_started` and `tool_call_answered`. A run that does not exist in the brain returns `not_found`. For a workflow, the history also holds one `workflow_input_applied` event for each input its run took, followed by one event for each step that input moved, named for how the step ended that input: `step_waiting`, `step_finished`, `step_failed`, `step_skipped`, or `step_started` for a step that runs others, such as a `do` or a `fork`, and was still running. A step that starts and finishes in one input shows only `step_finished`. `list_brain_events` returns the `events` of the whole brain, newest first unless `order` is `asc`: definitions created, updated and retired, runs started and ended, tool calls, the inputs workflow runs took and the events published to the brain. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the brain recorded from that time on, in either order. `execution_id` keeps what one run and every run it started recorded, such as the functions a workflow called: its whole tree. A run that another run started belongs to the tree of the run at its top, so its own id answers no events; read the tree from the id of the run you started.
+`get_execution_history` returns the `events` of one run in the order the brain recorded them, oldest first unless `order` is `desc`, so each event comes after the event that caused it: the facts the runtime recorded about the run, each start and how it ended. Tool-using runs also record `tool_call_started` and `tool_call_answered`. A run that does not exist in the brain returns `not_found`. For a workflow, the history also holds one `workflow_input_applied` event for each input its run took, followed by one event for each step that input moved, named for how the step ended that input: `step_waiting`, `step_finished`, `step_failed`, `step_skipped`, or `step_started` for a step that runs others, such as a `do` or a `fork`, and was still running. A step that starts and finishes in one input shows only `step_finished`. `list_brain_events` returns the `events` of the whole brain, newest first unless `order` is `asc`: definitions created, updated and retired, runs started and ended, tool calls, the inputs workflow runs took and the events published to the brain. `type` keeps one event type. `since`, an ISO 8601 time with its offset such as `2026-10-05T09:00:00Z`, keeps what the brain recorded from that time on, in either order; its date must exist in the calendar and its hour run from 00 to 23, so `T24:00:00Z` is refused. `execution_id` keeps what one run and every run it started recorded, such as the functions a workflow called: its whole tree. A run that another run started belongs to the tree of the run at its top, so its own id answers no events; read the tree from the id of the run you started.
 
 Tool-call events identify the server, tool, argument and result sizes and digests, and how each call ended. Content is omitted unless the operator enables `record_content`. Recorded content is scrubbed and bounded; the history API shows at most 2 KiB of each recorded argument or result. Anyone with read access to the brain can read that history. A started call without an answer may have had an external effect; absence of an answer does not prove it was cancelled before acting.
 
@@ -162,6 +162,58 @@ The causes link the events of a run into a graph. A run you start has no cause, 
 Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out; it counts the events a page answers with, step events included, so a page can end between the step events of one input, and its `next_cursor` reads on from the next one. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: `primitive` and `name` apply to the runs a page looked at, records with no event type are left out, a page stops after loading 4 MiB of stored data, and with `status` or `type` after looking at 1,000 runs or records. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
 
 The brain's own creation, changes and retirement are not brain events; `get_brain` shows them. A retired brain stays readable: these reads work on it, while every change to it is refused with `conflict`.
+
+## Analytics
+
+This route is relative to `/v1/orgs/{org}/brains/{brain}` and needs `brain:read`:
+
+| Operation             | Method and route | Input                                                                |
+| --------------------- | ---------------- | -------------------------------------------------------------------- |
+| `get_brain_analytics` | `GET /analytics` | Optional `days`, or `from` and `to`; optional `primitive` and `name` |
+
+`get_brain_analytics` answers what the brain's runs did over a window of days in UTC. `days` is `7`, `14` or `30`, the last days ending today, and `7` when nothing is given. `from` and `to` name the first and the last day as `YYYY-MM-DD`, both included: at most 366 days, with `to` not before `from` and not after today. A day must exist in the calendar, so `2026-02-30` is refused rather than read as 2 March. `primitive` and `name` keep the runs of one definition, as they do for `list_executions`. `days` with `from` or `to`, `from` without `to`, any other `days` and any other parameter are refused with `invalid_input`, pointing at the parameter.
+
+```http
+GET /v1/orgs/acme/brains/sales/analytics?days=7&primitive=inference
+Authorization: Bearer <key>
+```
+
+```json
+{
+  "days": 7,
+  "runs": { "total": 12, "succeeded": 9, "failed": 1, "rejected": 2 },
+  "tokens": { "input": 18400, "output": 2950, "cached": 12000 },
+  "duration_ms": { "p50": 1840, "p95": 6210 },
+  "by_day": [
+    {
+      "day": "2026-09-30",
+      "runs": { "total": 0, "succeeded": 0, "failed": 0, "rejected": 0 },
+      "tokens": { "input": 0, "output": 0, "cached": 0 },
+      "duration_ms": null
+    }
+  ],
+  "by_function": [
+    {
+      "primitive": "inference",
+      "name": "triage",
+      "runs": 12
+    }
+  ]
+}
+```
+
+The example shortens `by_day`, which holds every day of the window, oldest first, days with no runs included. A run counts on the day it first started, also when it was started again later. It counts once it has ended: `succeeded`, `failed` or `rejected`; a run still going counts nowhere.
+
+| Field         | Contents                                                                                                                                                                                                                                       |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `days`        | How many days the window holds                                                                                                                                                                                                                 |
+| `runs`        | The runs that ended, by how they ended, and their `total`                                                                                                                                                                                      |
+| `tokens`      | The `input` and `output` tokens the models of reasoning functions used, a rejected run's included when its model answered before the rejection; `cached` is the part of `input` read from the provider's cache; `0` where nothing was recorded |
+| `duration_ms` | The median, `p50`, and the 95th percentile, `p95`, of how long the runs that succeeded or failed took, from their latest start to their end, in milliseconds; `null` when no run of the period has a duration                                  |
+| `by_day`      | The same `runs`, `tokens` and `duration_ms` for each `day`                                                                                                                                                                                     |
+| `by_function` | Each definition by `primitive` and `name`, with `runs`, how many of its runs ended; the most runs first, then by `primitive` and `name`                                                                                                        |
+
+A run started again under its `execution_id` counts once: its tokens add up over every attempt that ended, while its duration is that of its last attempt. A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order. Rejected runs count in `runs` and in `tokens`, never in `duration_ms`; workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended. The answer reads a table the runtime keeps as each run is recorded, so it is as current as the runs themselves. A brain that does not exist returns `not_found`; a retired brain answers like any other.
 
 ## Responses and errors
 
