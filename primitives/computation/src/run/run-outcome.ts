@@ -16,6 +16,7 @@ export interface RunFacts {
   readonly document: ComputationFunctionDefinitionDocument;
   readonly inputBytes: number;
   readonly workers: number;
+  readonly heapMegabytes: number;
   readonly deadlineMs: number;
 }
 
@@ -50,8 +51,8 @@ function finishedWith(answered: Answered, facts: RunFacts): Ending {
 const stoppedBecause: Readonly<Record<Stopped, (facts: RunFacts) => string>> = {
   deadline: ({ deadlineMs }) =>
     `The run took longer than the ${deadlineMs} ms a computation function may run, and was stopped`,
-  memory: () =>
-    `The run took more than the ${computationBounds.heapMegabytes} MiB of memory a computation function may use, and was stopped`,
+  memory: ({ heapMegabytes }) =>
+    `The run took more than the ${heapMegabytes} MiB of memory a computation function may use, and was stopped`,
   busy: ({ workers, deadlineMs }) =>
     `No worker was free to run it within ${deadlineMs} ms; this server runs ${workers} computation functions at once`,
   cancelled: () => 'The run was stopped before it ended',

@@ -44,7 +44,13 @@ export function computationRun({ pool, deadlineMs }: ComputationRunOptions): Com
           ),
         ).pipe(
           Effect.flatMap((outcome) =>
-            endingOf(outcome, { document, inputBytes: jsonBytesOf(admitted), workers: pool.workers, deadlineMs }),
+            endingOf(outcome, {
+              document,
+              inputBytes: jsonBytesOf(admitted),
+              workers: pool.workers,
+              heapMegabytes: pool.heapMegabytes,
+              deadlineMs,
+            }),
           ),
         ),
       ),

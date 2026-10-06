@@ -12,6 +12,7 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
     requests,
     pool: {
       workers: pool.workers,
+      heapMegabytes: pool.heapMegabytes,
       close: pool.close,
       run: (request, signal) => {
         requests.push(request);

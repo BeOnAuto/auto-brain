@@ -4,6 +4,7 @@ export function scriptedPool(script: readonly PoolOutcome[], otherwise: ProgramP
   const remaining = [...script];
   return {
     workers: otherwise.workers,
+    heapMegabytes: otherwise.heapMegabytes,
     run: (request, signal) => {
       const [next] = remaining.splice(0, 1);
       return next === undefined ? otherwise.run(request, signal) : Promise.resolve(next);

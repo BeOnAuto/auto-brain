@@ -176,7 +176,7 @@ describe('a run of the server that cannot finish', { timeout: workerTestTimeoutM
     expect(await small.executing(programDocument('[range(1000000) | {a: .}] | length'), null)).toEqual(
       Exit.fail(
         new Unavailable({
-          detail: 'The run took more than the 256 MiB of memory a computation function may use, and was stopped',
+          detail: 'The run took more than the 16 MiB of memory a computation function may use, and was stopped',
         }),
       ),
     );
