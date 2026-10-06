@@ -1,21 +1,22 @@
 import { runStreamOf } from '@beonauto/operations';
 
 import type { StatementExecutor } from '../event-store.ts';
-import { inTurn } from './inline-projection.ts';
+import { inTurn, type StoredMessage } from './inline-projection.ts';
 import { replayedRow, type RunOutcomeKeeping } from './run-outcome-projection.ts';
 import {
   messagesIn,
   namesIn,
-  rowWrite,
+  rowsWrite,
   runOutcomesTable,
   runOutcomesVersion,
   streamsIn,
   tableDrop,
+  type KeptRow,
 } from './run-outcome-statements.ts';
 
 export type InTransaction = (work: (execute: StatementExecutor) => Promise<void>) => Promise<void>;
 
-const runStreamsInABatch = 1000;
+const runStreamsInABatch = 100;
 
 const versionedTable = /^run_outcomes_(?<version>\d+)$/u;
 
@@ -24,22 +25,41 @@ function isEarlierVersion(name: string): boolean {
   return version !== undefined && Number(version) < runOutcomesVersion;
 }
 
-async function replayed(keeping: RunOutcomeKeeping, execute: StatementExecutor, stream: string): Promise<void> {
-  const run = runStreamOf(stream);
-  if (run === undefined) {
-    return;
-  }
-  const row = replayedRow(keeping, await messagesIn(execute, keeping.statements.messagesOf(stream)));
-  if (row !== undefined) {
-    await execute.command(rowWrite(run, row));
-  }
+function chunksOf<Item>(items: readonly Item[], size: number): readonly (readonly Item[])[] {
+  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+    items.slice(index * size, (index + 1) * size),
+  );
+}
+
+function replayedRows(
+  keeping: RunOutcomeKeeping,
+  streams: readonly string[],
+  messages: readonly StoredMessage[],
+): readonly KeptRow[] {
+  const byStream = Map.groupBy(messages, ({ stream }) => stream);
+  return streams.flatMap((stream) => {
+    const run = runStreamOf(stream);
+    const row = run === undefined ? undefined : replayedRow(keeping, byStream.get(stream) ?? []);
+    return run === undefined || row === undefined ? [] : [{ run, row }];
+  });
+}
+
+async function batchFilledAfter(
+  keeping: RunOutcomeKeeping,
+  execute: StatementExecutor,
+  after: string,
+): Promise<string | undefined> {
+  const { statements, mapping } = keeping;
+  const streams = await streamsIn(execute, statements.runStreamsAfter(after, runStreamsInABatch));
+  const messages = streams.length === 0 ? [] : await messagesIn(execute, statements.messagesOf(streams, mapping.types));
+  const kept = replayedRows(keeping, streams, messages);
+  await inTurn(chunksOf(kept, statements.rowsInAWrite), (rows) => execute.command(rowsWrite(rows)));
+  return streams.length === runStreamsInABatch ? streams.at(-1) : undefined;
 }
 
 async function filledAfter(keeping: RunOutcomeKeeping, execute: StatementExecutor, after: string): Promise<void> {
-  const streams = await streamsIn(execute, keeping.statements.runStreamsAfter(after, runStreamsInABatch));
-  await inTurn(streams, (stream) => replayed(keeping, execute, stream));
-  const last = streams.at(-1);
-  if (last !== undefined && streams.length === runStreamsInABatch) {
+  const last = await batchFilledAfter(keeping, execute, after);
+  if (last !== undefined) {
     await filledAfter(keeping, execute, last);
   }
 }

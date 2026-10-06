@@ -8,7 +8,7 @@ import {
   type InlineRegistration,
   type StoredMessage,
 } from './inline-projection.ts';
-import { rowIn, rowWrite, type RunOutcomeStatements } from './run-outcome-statements.ts';
+import { rowIn, rowsWrite, type RunOutcomeStatements } from './run-outcome-statements.ts';
 
 export interface RunOutcomeKeeping {
   readonly statements: RunOutcomeStatements;
@@ -23,7 +23,7 @@ async function keptAfter(
 ): Promise<void> {
   const row = mapping.rowAfter(await rowIn(execute, statements, run), event);
   if (row !== undefined) {
-    await execute.command(rowWrite(run, row));
+    await execute.command(rowsWrite([{ run, row }]));
   }
 }
 
@@ -42,11 +42,11 @@ export function runOutcomeProjection(keeping: RunOutcomeKeeping): InlineProjecti
 
 export function replayedRow(
   { statements, mapping }: RunOutcomeKeeping,
-  messages: readonly { readonly type: string; readonly data: unknown }[],
+  messages: readonly { readonly data: unknown }[],
 ): RunOutcome | undefined {
   let row: RunOutcome | undefined;
-  for (const { type, data } of messages) {
-    row = mapping.types.includes(type) ? (mapping.rowAfter(row, statements.filledData(data)) ?? row) : row;
+  for (const { data } of messages) {
+    row = mapping.rowAfter(row, statements.filledData(data)) ?? row;
   }
   return row;
 }

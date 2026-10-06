@@ -8,6 +8,7 @@ This package is the event store behind the `Ledger` port of `@beonauto/operation
 
 - **Streams of events.** The application layer names each stream, for example `org/acme/brains` or `brain/acme/sales/specs/inference`. Names are opaque: the ledger never changes their case, trims them or normalises their Unicode, so two names that differ in any character are two streams.
 - **One version per stream.** A stream's version is the number of events in it, and 0 when nobody has written it.
+- **The outcomes of runs.** One row per run in the table `run_outcomes_1`, kept inside the append of each of the run's events, which a brain's analytics read (see [The outcomes of runs](#the-outcomes-of-runs)).
 - **Events as Emmett stores them.** Each event becomes `{ type, data }`. `type` is the event's own `type`. `data` is the whole event encoded with `Schema.toCodecJson(decider.eventSchema)`, which must give a JSON object. Loading decodes `data` with the same codec, so an event comes back exactly as it was decided, dates and big integers included. A stored event that no longer decodes is a defect.
 
 ## How a command runs
@@ -24,7 +25,7 @@ This package is the event store behind the `Ledger` port of `@beonauto/operation
 
 Code that keeps its own streams, such as `@beonauto/workflow-engine`, uses the same pieces as the ledger itself rather than a copy of them:
 
-- `sqliteEventStore(optionsOf)` opens the event store on any of Emmett's SQLite drivers, without the layer, and `postgresqlEventStore({ connectionString, reportLostConnection })` from `@beonauto/ledger/postgresql` opens it on PostgreSQL. Both are one adapter over an Emmett event store, `emmettEventStore`, given how each keeps an event's data and how many events it takes in one append, beside the store's own read of what a brain recorded, `EventStore.readRecorded` (see [Reading what a brain recorded](#reading-what-a-brain-recorded)).
+- `sqliteEventStore(optionsOf, runOutcomes?)` opens the event store on any of Emmett's SQLite drivers, without the layer, and `postgresqlEventStore({ connectionString, reportLostConnection, runOutcomes? })` from `@beonauto/ledger/postgresql` opens it on PostgreSQL; given a run outcome mapping, the store keeps the outcomes of runs. Both are one adapter over an Emmett event store, `emmettEventStore`, given how each keeps an event's data and how many events it takes in one append, beside the store's own read of what a brain recorded, `EventStore.readRecorded` (see [Reading what a brain recorded](#reading-what-a-brain-recorded)).
 - `EventStore.read(stream, after)` gives the events after version `after` and the version of the whole stream, so a reader that holds a snapshot at version `after` reads only the tail. Emmett answers a read past the end of a stream with version 0; `read` answers with `after` instead.
 - `EventStore.mostEventsInOneAppend` is the most events the store takes in one append.
 - `eventAppenderOf(store)` encodes and appends events with an expected version, at most `store.mostEventsInOneAppend` in one append, and fails with `VersionConflict` when another writer appended first.
@@ -149,6 +150,71 @@ Each page was read through `Ledger.readRecorded`, 20 records or runs to a page u
 
 Every page, unfiltered or filtered by status, answered within 12 ms at the median and 13 ms at the slowest, under the bar of 50 ms this ledger set itself for staying without a read model ([decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md)). The slowest pages are those that load a run of 1.25 MiB; a page of runs filtered by status examines up to 1,000 runs, which SQLite does all at once and PostgreSQL only until the page is full.
 
+## The outcomes of runs
+
+`Ledger.readRunOutcomes(brain, window, selection)`, the read the `Ledger` port of `@beonauto/operations` describes, is answered from a table the ledger keeps inside the appends of the run streams, one row per run. What a row holds comes from the run outcome mapping the ledger is opened with, which the package that owns the run events, `@beonauto/specs`, supplies at composition: `ledgerLayer({ fileName, runOutcomes })` and `postgresqlLedgerLayer({ connectionString, runOutcomes })`. The ledger knows the streams of runs, named `<brain key>executions/<id>` (see [The brain key](#the-brain-key)), and nothing of their events.
+
+### Inline projections
+
+An inline projection of Emmett 0.43.0-beta.50 handles the messages of an append inside the append's own transaction: on SQLite in the `onBeforeCommit` of the append, on PostgreSQL inside the transaction of `appendToStream`. It is handed the messages of the types it names, in their stored form, with their stream's name and position, and a projection that throws fails the append, which keeps nothing, the rows the projection changed included; a failed append runs no projection. On PostgreSQL Emmett skips a projection that has a name when it cannot take its advisory lock or its status is not active, so the ledger's projection has none and always runs. On both stores a unique-constraint error inside a projection would surface as a version conflict, retried three times and then `conflict` `concurrent_change`; the table has no constraint but its key and is written with an upsert, so it never raises one.
+
+`src/outcomes/inline-projection.ts` is the facility: an `InlineProjection` names its stored types and handles the messages of an append, each `{ stream, type, data }`, with the executor of the append's transaction. The ledger registers one, over the run streams: for each of their messages it reads the run's row if there is one, decodes the message's data as the store's reads decode it, the JSON object as written on SQLite and the `{"json": …}` wrapper read back on PostgreSQL, gives both to the mapping, and writes the row it answers with an upsert keyed by the run, or nothing when it answers `undefined`. That is one read and one write in the append for each message of a run's event, and nothing for the messages of any other stream or type. The mapping must never throw.
+
+A store opened without a mapping neither creates the table nor writes it, so every writer of a run stream must write through a store that carries the projection. Today that is the server's ledger, through which the workflow host settles runs too; the workflow host's own stores write only the logs of runs.
+
+### The table
+
+| Column                                                          | What it holds                                                                          |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `brain_key`, `run_id`                                           | The brain key of the run's stream and its id, the table's only key                     |
+| `started_day`, `started_at`, `last_started_at`                  | The day and time of the run's first start, and the time of its latest                  |
+| `primitive`, `name`, `status`                                   | The run's definition and how it stands: `started`, `succeeded`, `failed` or `rejected` |
+| `duration_ms`, `input_tokens`, `output_tokens`, `cached_tokens` | Its duration and the tokens it used, each null when unknown                            |
+
+The table is `run_outcomes_1`, with the index `run_outcomes_1_by_brain_and_day` on `(brain_key, started_day)`. Days and times are text, `YYYY-MM-DD` and ISO 8601, so that the two stores compare them alike; the numbers are `INTEGER` on SQLite and `bigint` on PostgreSQL. The columns are the ledger's; their meaning is the mapping's, which `@beonauto/specs` documents.
+
+### Creating and filling it
+
+When the ledger opens with a mapping, it looks the table up by name in the catalog, as it does its indexes, and does nothing more when it finds it. When it does not, it creates the table and its index, fills it by replaying every run stream of the store, drops the tables of earlier versions, `run_outcomes_0` and below, and analyses the new one, all in one transaction, so that a fill that is interrupted, by a mapping that throws or a process that stops, leaves nothing behind and is done again at the next open. On SQLite this runs after Emmett's migration and the indexes, on the same connections; on PostgreSQL in `onAfterSchemaCreated`, inside the migration's transaction and under its advisory lock, so that servers that start together fill the table once. Emmett's migrator waits 10 s for that lock, so a server that starts while another fills a large ledger stops at start, and is started again once the first is ready.
+
+No index lists the run streams across brains, so the fill scans the store's streams, `emt_streams`, for the names of run streams, 100 at a time in the order of their names. For each 100 it reads, in one statement, their messages of the mapping's types in their order, decodes each as the store's reads do, folds the messages of each stream through the mapping, and writes the rows in upserts of 8 on SQLite, within the 100 parameters of a hosted SQLite, and of 500 on PostgreSQL. A change to what the table keeps is a new version, `run_outcomes_2`, which the next server fills this way and whose fill drops `run_outcomes_1`. Servers of different versions do not share a database at once.
+
+### Reading it
+
+The read answers, in one statement over the index, the rows of the brain whose `started_day` lies in the window, with the selection's `primitive` and `name`, grouped by day, primitive, name and status: each group with its count, its token sums, `coalesce(sum(…), 0)`, and the durations that are not null as a JSON array, `json_group_array(duration_ms) FILTER (WHERE duration_ms IS NOT NULL)` on SQLite and `json_agg` with the same filter on PostgreSQL. The brain key is matched with `=`, and the statement binds five parameters at most.
+
+### Measurement of the outcomes
+
+`measure-outcomes.ts` at the root of this package records these numbers again, writing the data of `measure/outcomes-dataset.ts` and, for the fill, `measure/dataset.ts`:
+
+```bash
+LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/ledger measure:outcomes
+```
+
+`LEDGER_MEASURE_OUTCOME_RUNS` sets the sizes, `10000,100000` when left out, and `LEDGER_MEASURE_FILL_TICKS` the ticks of the ledger the fill replays, 100,000 when left out.
+
+Measured on 2026-10-06 on an Apple M4 Max, with Node 26.10, the ledger on SQLite 3.52.0 through `sqlite3` 6.0.1 on a file, and PostgreSQL 18.6 in a local container with its default settings, as [Measurement](#measurement) was; the data is written with SQL, on SQLite through `node:sqlite` (SQLite 3.53.4), and the aggregate over the records below runs there too.
+
+**The read.** A brain holds N runs over 30 days, each a start and a finish: one in 20 rejected with a record of its usage, one in 33 failed, the others succeeded with a record of 64 KiB that holds their usage, spread over 20 functions; another brain holds N/10 more. The ledger opens on that data, so it fills the table, and `Ledger.readRunOutcomes` reads the 30 days of the first brain, three times to warm and then 20 times. The alternative the read replaces, an SQL aggregate at request time over the stored records, the first message of each run and its latest, read out of their JSON, is timed once to warm and then three times. Times are the median and the slowest, in milliseconds.
+
+| Store      | Runs in the window | The read    | The aggregate over the records | Open and fill |
+| ---------- | ------------------ | ----------- | ------------------------------ | ------------- |
+| SQLite     | 10,000             | 5.85 (6.05) | 1,502 (1,517)                  | 0.65 s        |
+| PostgreSQL | 10,000             | 7.06 (7.74) | 107 (107)                      | 3.44 s        |
+| SQLite     | 100,000            | 107 (110)   | 17,315 (22,397)                | 6.64 s        |
+| PostgreSQL | 100,000            | 66.5 (68.0) | 887 (902)                      | 33.8 s        |
+
+The read grows with the runs of the window, since it reads one row of the table for each, and crosses the bar of 50 ms a page that [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) set at about 49,000 runs in a window on SQLite and 75,000 on PostgreSQL, by the line between the two sizes. A rollup per day is the next step for a window that holds more than about 50,000 runs, as that of a brain that runs that often in 30 days, or a longer window. The aggregate over the records costs 13 to 260 times the read, since it parses every record.
+
+**The append.** 1,000 runs each append their start and then their finish, with a record of 2 KiB, one append at a time, to a ledger opened without the projection and to one opened with it. Times are the median and the 95th percentile of the 2,000 appends, in milliseconds:
+
+| Store      | Without the projection | With it     |
+| ---------- | ---------------------- | ----------- |
+| SQLite     | 0.27 (0.39)            | 0.35 (0.42) |
+| PostgreSQL | 1.38 (1.74)            | 1.86 (2.28) |
+
+**The fill.** The ledger of [Measurement](#measurement), 1,197,287 messages of which about 800,000 run streams, written without the table and opened with the mapping: the open that fills the table took 5.80 s on SQLite and 24.9 s on PostgreSQL, against 0.01 s and 0.02 s for an open that finds it. That is the start of the first server of this version on such a ledger; on PostgreSQL a second server started meanwhile waits 10 s for the migration lock and stops. Read one stream at a time, as a first version of the fill did, the fill of 11,000 runs with records of 64 KiB took 1.39 s on SQLite and 13.4 s on PostgreSQL, measured on Node 22.23; 100 streams to a statement, it takes 0.65 s and 3.44 s.
+
 ## Creating the layer
 
 Each database has an entry of its own, so that code which never uses a database does not load its driver.
@@ -159,7 +225,7 @@ import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 const layer = ledgerLayer({ fileName: '/data/ledger.db' });
 ```
 
-Building the layer creates the directory of the database file if it is missing, then opens the database and migrates its tables before the ledger is ready; a directory that cannot be created or a database that cannot be opened is a defect at that point. Disposing the runtime closes every connection. `fileName: ':memory:'` gives a private in-memory database.
+`runOutcomes`, optional on both layers, is the run outcome mapping the ledger keeps the outcomes of runs with (see [The outcomes of runs](#the-outcomes-of-runs)); the server gives the one of `@beonauto/specs`. Building the layer creates the directory of the database file if it is missing, then opens the database and migrates its tables before the ledger is ready; a directory that cannot be created or a database that cannot be opened is a defect at that point. Disposing the runtime closes every connection. `fileName: ':memory:'` gives a private in-memory database.
 
 Each SQLite connection may cache up to 8 MiB of pages and maps none of the file into memory, where the driver's defaults allow about 1 GB of cache and 256 MiB of mapped file per connection. Every connection, the tests' temporary files included, runs in WAL mode with `synchronous=NORMAL`, the defaults of Emmett's connection layer, dumbo: a committed append survives a crash of the process, and only the latest commits can be lost if the machine loses power, since in that mode SQLite syncs the file at each checkpoint rather than at each commit. Measured on 2026-10-05 on an Apple M4 Max through `sqlite3` 6.0.1, an append of one event of 1.8 KB to a temporary file took 0.20 to 0.23 ms at the median with either setting, since macOS syncs only to the drive's cache; with `fullfsync` on, so that each sync reaches the drive as on a disk that honours syncs, it took 5.9 ms with `FULL` and 0.20 to 0.24 ms with `NORMAL`, whose syncs at checkpoints showed as 5.2 ms at p99.
 
@@ -192,16 +258,16 @@ Every command is a decision appended under an expected version, so concurrent wr
 
 The same ledger must also run on hosted SQLite databases that bind at most 100 parameters in one statement and offer no interactive transactions, so it follows these rules:
 
-- It uses the event store's own operations to read a stream, or its tail after a version, append with an expected version, migrate and close. Its one SQL of its own is a read on each store, of what a brain recorded, with the indexes it creates when it opens. Nothing on the write path is its own SQL: it registers no projections or consumers, and an append is Emmett's alone.
-- It does not rely on transactions or rollback: each command makes at most one append.
+- It uses the event store's own operations to read a stream, or its tail after a version, append with an expected version, migrate and close. Its SQL of its own is a read on each store, of what a brain recorded, with the indexes it creates when it opens, and the table of the outcomes of runs: its creation and fill when it opens, in one transaction, its read, and, on the write path, the inline projection that reads and upserts the row of a run inside the append's own transaction. It registers no consumers.
+- A command makes at most one append and relies on no transaction of its own; the projection relies on the append's, so a store that keeps the outcomes of runs must run the projection's read and upsert inside the append and fail the append when they fail. The hosted runtime's adapter is held to the same.
 - An append on SQLite carries at most eight events. Emmett binds ten parameters for each event it inserts, and such a database binds at most 100 in one statement.
 - Only the entries `src/sqlite3.ts` and `src/postgresql/postgresql-ledger.ts` know which driver is in use; the main entry loads neither `sqlite3` nor `pg`.
-- A SQLite database the ledger opens must provide what the read uses: `octet_length` (SQLite 3.43 and later), window functions (3.25 and later), the JSON functions, of which the read uses `json_each` (built in since 3.38), and partial and expression indexes (3.8 and 3.9). The hosted runtime's adapter is held to the same.
+- A SQLite database the ledger opens must provide what the reads use: `octet_length` (SQLite 3.43 and later), window functions (3.25 and later), the JSON functions, of which the reads use `json_each` and `json_group_array` (built in since 3.38), partial and expression indexes (3.8 and 3.9), the upsert of the outcomes of runs (3.24) and the `FILTER` of an aggregate (3.30). The hosted runtime's adapter is held to the same. An upsert of one row binds 12 parameters, and an upsert of the fill 96.
 - No adapter or application may nest a stream under `executions/` within a brain: the key of a stream's kind ends at the fourth `/`, so the list of runs would take any stream named `executions/<id>/…` for a run.
 
 ## Testing
 
-The ledger's behaviour is one suite, in `src/testing/ledger-behaviour.ts`, that `src/ledger.test.ts` runs on SQLite and `src/postgresql/ledger-on-postgresql.test.ts` runs on PostgreSQL. Its part on reading what a brain recorded, `src/testing/recorded-behaviour.ts` and `src/testing/runs-behaviour.ts`, also runs on the in-memory ledger of `@beonauto/operations`, in `src/recorded/recorded-in-memory.test.ts`, so the three agree. A read behind an append whose transaction is still open, the same read newest first, a list of runs oldest first behind such an append, a write open in another database that hides nothing, and a start that finds the indexes while an append is open are tested on PostgreSQL alone, since SQLite serialises appends. Before each read of what a brain recorded, the PostgreSQL entry of the suite waits until no committed message of its own database lies behind the horizon, polling every 20 ms for at most 10 s and failing the test past that; the tests that wait have a timeout of 30 s, above vitest's 5 s. The SQLite entry and the in-memory ledger do not wait. `src/testing` holds 15 files, the most a folder holds, so the next helper of the tests opens a folder of its own.
+The ledger's behaviour is one suite, in `src/testing/ledger-behaviour.ts`, that `src/ledger.test.ts` runs on SQLite and `src/postgresql/ledger-on-postgresql.test.ts` runs on PostgreSQL. Its part on the outcomes of runs, `src/outcomes/run-outcomes-behaviour.ts`, also runs on the in-memory ledger, in `src/outcomes/run-outcomes-in-memory.test.ts`, with the `runTallies` mapping of `@beonauto/operations/testing`; `src/outcomes/run-outcome-table-behaviour.ts` holds what only a store does: an append whose projection throws, of which nothing is kept, a ledger opened without the projection, a table filled at open, an interrupted fill done again, and a table found and not filled again. That ledgers that start together fill the table once is tested on PostgreSQL alone, in `src/outcomes/run-outcomes-on-postgresql.test.ts`. The server tests the mapping of `@beonauto/specs` on both stores, through the ledger it composes. Its part on reading what a brain recorded, `src/testing/recorded-behaviour.ts` and `src/testing/runs-behaviour.ts`, also runs on the in-memory ledger of `@beonauto/operations`, in `src/recorded/recorded-in-memory.test.ts`, so the three agree. A read behind an append whose transaction is still open, the same read newest first, a list of runs oldest first behind such an append, a write open in another database that hides nothing, and a start that finds the indexes while an append is open are tested on PostgreSQL alone, since SQLite serialises appends. Before each read of what a brain recorded, the PostgreSQL entry of the suite waits until no committed message of its own database lies behind the horizon, polling every 20 ms for at most 10 s and failing the test past that; the tests that wait have a timeout of 30 s, above vitest's 5 s. The SQLite entry and the in-memory ledger do not wait. `src/testing` holds 15 files, the most a folder holds, so the next helper of the tests opens a folder of its own.
 
 ```bash
 docker run --detach --name ledger-pg-test --publish 127.0.0.1:19632:5432 --env POSTGRES_PASSWORD=ledger-test postgres:18.6-alpine

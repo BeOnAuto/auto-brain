@@ -55,10 +55,13 @@ const postgresqlRunOutcomeStatements: RunOutcomeStatements = {
         AND partition = ${defaultPartition} AND is_archived = FALSE
       ORDER BY stream_id
       LIMIT ${count}`,
-  messagesOf: (stream) =>
-    SQL`SELECT message_type AS type, message_data AS data FROM emt_messages
-      WHERE stream_id = ${stream} AND partition = ${defaultPartition} AND is_archived = FALSE
-      ORDER BY stream_position`,
+  messagesOf: (streams, types) =>
+    SQL`SELECT stream_id AS stream, message_type AS type, message_data AS data FROM emt_messages
+      WHERE stream_id IN (SELECT jsonb_array_elements_text(${JSON.stringify(streams)}::jsonb))
+        AND message_type IN (SELECT jsonb_array_elements_text(${JSON.stringify(types)}::jsonb))
+        AND partition = ${defaultPartition} AND is_archived = FALSE
+      ORDER BY stream_id, stream_position`,
+  rowsInAWrite: 500,
   filledData: storedData,
   appendedData: storedData,
   rowOf: ({ brainKey, runId }) =>

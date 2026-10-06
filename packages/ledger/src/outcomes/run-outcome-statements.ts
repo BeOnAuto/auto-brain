@@ -14,7 +14,8 @@ export interface RunOutcomeStatements {
   readonly tableVersions: () => SQL;
   readonly create: () => readonly SQL[];
   readonly runStreamsAfter: (after: string, count: number) => SQL;
-  readonly messagesOf: (stream: string) => SQL;
+  readonly messagesOf: (streams: readonly string[], types: readonly string[]) => SQL;
+  readonly rowsInAWrite: number;
   readonly filledData: (column: unknown) => unknown;
   readonly appendedData: (stored: unknown) => unknown;
   readonly rowOf: (run: RunStream) => SQL;
@@ -42,7 +43,7 @@ const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
 const StreamRows = Schema.Array(Schema.Struct({ stream: Schema.String }));
 
-const MessageRows = Schema.Array(Schema.Struct({ type: Schema.String, data: Schema.Unknown }));
+const MessageRows = Schema.Array(Schema.Struct({ stream: Schema.String, type: Schema.String, data: Schema.Unknown }));
 
 function outcomeOf(row: typeof RowSchema.Type): RunOutcome {
   return {
@@ -66,11 +67,25 @@ export async function rowIn(execute: StatementExecutor, statements: RunOutcomeSt
     .at(0);
 }
 
-export function rowWrite({ brainKey, runId }: RunStream, row: RunOutcome): SQL {
+export interface KeptRow {
+  readonly run: RunStream;
+  readonly row: RunOutcome;
+}
+
+function valuesOf({ run, row }: KeptRow): SQL {
+  return SQL`(${run.brainKey}, ${run.runId}, ${row.startedDay}, ${row.startedAt}, ${row.lastStartedAt},
+    ${row.primitive}, ${row.name}, ${row.status}, ${row.durationMs}, ${row.inputTokens}, ${row.outputTokens},
+    ${row.cachedTokens})`;
+}
+
+export function rowsWrite(kept: readonly KeptRow[]): SQL {
+  const values = SQL.merge(
+    kept.map((each) => valuesOf(each)),
+    ', ',
+  );
   return SQL`INSERT INTO ${table} (brain_key, run_id, started_day, started_at, last_started_at, primitive, name,
       status, duration_ms, input_tokens, output_tokens, cached_tokens)
-    VALUES (${brainKey}, ${runId}, ${row.startedDay}, ${row.startedAt}, ${row.lastStartedAt}, ${row.primitive},
-      ${row.name}, ${row.status}, ${row.durationMs}, ${row.inputTokens}, ${row.outputTokens}, ${row.cachedTokens})
+    VALUES ${values}
     ON CONFLICT (brain_key, run_id) DO UPDATE SET started_day = excluded.started_day,
       started_at = excluded.started_at, last_started_at = excluded.last_started_at, primitive = excluded.primitive,
       name = excluded.name, status = excluded.status, duration_ms = excluded.duration_ms,

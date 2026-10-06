@@ -55,7 +55,7 @@ function aLedgerWithOneRun(tables: readonly string[]): Answers {
     }
     return statement.includes('FROM emt_streams')
       ? [{ stream: 'brain/acme/alpha/executions/r1' }]
-      : [{ type: 'run_began', data: { json: JSON.stringify(began) } }];
+      : [{ stream: 'brain/acme/alpha/executions/r1', type: 'run_began', data: { json: JSON.stringify(began) } }];
   };
 }
 

@@ -86,6 +86,7 @@ function aNewTableVersion(entry: LedgerEntry): void {
         await fourRuns(writing);
         await noting(writing, 'brain/acme/alpha/executions/r6', ended('failed', 1), { type: 'run_noted' });
         await noting(writing, 'brain/acme/alpha/executions/r7/nested', began('triage'));
+        await noting(writing, 'brain/acme/alpha/executions/r8', { type: 'run_noted' });
         await manyRuns(entry, database, 1000);
         await entry.queried(database, 'CREATE TABLE run_outcomes_0 (brain_key text)');
 
