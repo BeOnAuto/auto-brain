@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 
 import { Schema, SchemaTransformation } from 'effect';
 
-import { jsonBytesOf, mostInputBytes } from '../execution/recorded-size.ts';
+import { jsonBytesOf, mostInputBytes, mostInputDepth, nestsWithin } from '../execution/recorded-size.ts';
 
 const mostSourceBytes = 65_536;
 
@@ -34,9 +34,12 @@ function fitsInInputLimit(input: Schema.Json): boolean {
 }
 
 export const InputField = Schema.Json.annotate({
-  description: `The run input: any JSON value the definition takes, {} when left out, at most ${mostInputBytes} bytes as JSON in UTF-8`,
+  description: `The run input: any JSON value the definition takes, {} when left out, at most ${mostInputBytes} bytes as JSON in UTF-8 and ${mostInputDepth} levels deep`,
 }).check(
   Schema.makeFilter(fitsInInputLimit, { expected: `an input of at most ${mostInputBytes} bytes as JSON in UTF-8` }),
+  Schema.makeFilter((input: Schema.Json) => nestsWithin(input, mostInputDepth), {
+    expected: `an input that nests at most ${mostInputDepth} levels deep`,
+  }),
 );
 
 export const IncludeRetiredField = Schema.Boolean.annotate({

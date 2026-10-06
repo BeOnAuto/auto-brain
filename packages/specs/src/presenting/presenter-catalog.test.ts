@@ -134,7 +134,7 @@ const largestSpecEvents: readonly SpecEvent[] = [
   { type: 'spec_retired', name: 'n'.repeat(48), ...fact },
 ];
 
-const awkwardText = (most: number) => '\u0000'.repeat(most);
+const awkwardText = (most: number) => '"'.repeat(most);
 
 const largestEventPublished: EventPublished = {
   type: 'event_published',
