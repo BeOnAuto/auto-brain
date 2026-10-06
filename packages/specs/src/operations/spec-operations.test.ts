@@ -11,7 +11,7 @@ const operations = makeSpecOperations([echo, probe().primitive]);
 const catalog = makeCatalog(operations);
 
 describe('the spec operations', () => {
-  it('make one catalog of nine brain operations', () => {
+  it('make one catalog of ten brain operations', () => {
     expect(catalog.operationsIn('brain').map(({ name, title }) => `${name}: ${title}`)).toEqual([
       'create_spec: Create definition',
       'list_specs: List definitions',
@@ -22,11 +22,12 @@ describe('the spec operations', () => {
       'get_execution: Get run',
       'list_executions: List runs',
       'get_execution_history: Get run history',
+      'get_brain_analytics: Get brain analytics',
     ]);
     expect(catalog.operationsIn('org')).toEqual([]);
   });
 
-  it('answer at nine routes relative to the brain', () => {
+  it('answer at ten routes relative to the brain', () => {
     expect(catalog.operations.map(({ route }) => `${route.method} ${route.path}`)).toEqual([
       'POST /specs/{primitive}',
       'GET /specs/{primitive}',
@@ -37,6 +38,7 @@ describe('the spec operations', () => {
       'GET /executions/{execution_id}',
       'GET /executions',
       'GET /executions/{execution_id}/history',
+      'GET /analytics',
     ]);
   });
 });
@@ -58,6 +60,7 @@ describe('a catalog of the spec operations', () => {
       'get_execution',
       'list_executions',
       'get_execution_history',
+      'get_brain_analytics',
     ]);
   });
 
@@ -72,6 +75,7 @@ describe('a catalog of the spec operations', () => {
       ['RunDetail'],
       ['ListedRun'],
       ['PublicEvent'],
+      ['BrainAnalytics'],
     ]);
   });
 });

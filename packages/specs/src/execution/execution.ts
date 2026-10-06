@@ -82,7 +82,7 @@ export const RunDetailSchema = Schema.Struct({
   record: Schema.optionalKey(
     Schema.JsonObject.annotate({
       description:
-        'What the runtime adapter recorded: of the run that succeeded, or of the work it started that finishes later',
+        'What the runtime adapter recorded: of the run that succeeded, of what a rejected run did before it was rejected, such as the tokens a model call used, or of the work it started that finishes later',
     }),
   ),
 }).annotate({

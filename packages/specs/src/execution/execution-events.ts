@@ -30,6 +30,7 @@ const ExecutionSucceededSchema = Schema.Struct({
 const ExecutionRejectedSchema = Schema.Struct({
   type: Schema.Literal('execution_rejected'),
   rejection: ExecutionRejectionSchema,
+  record: Schema.optionalKey(Schema.JsonObject),
   ...fact,
 });
 

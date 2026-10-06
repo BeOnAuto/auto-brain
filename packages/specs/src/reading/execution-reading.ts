@@ -1,5 +1,6 @@
 import type { Presenter } from '@beonauto/operations';
 
+import { defineGetBrainAnalytics } from '../analytics/get-brain-analytics.ts';
 import { makeSpecPresenters } from '../presenting/spec-presenters.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { defineGetExecutionHistory } from './get-execution-history.ts';
@@ -9,5 +10,5 @@ export function executionReadings(
   primitives: readonly Primitive[],
   presenters: readonly Presenter[] = makeSpecPresenters(primitives),
 ) {
-  return [defineListExecutions(primitives), defineGetExecutionHistory(presenters)];
+  return [defineListExecutions(primitives), defineGetExecutionHistory(presenters), defineGetBrainAnalytics(primitives)];
 }
