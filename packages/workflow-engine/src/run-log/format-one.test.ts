@@ -99,12 +99,15 @@ describe('a state of format 1', () => {
       },
     });
   });
+});
 
+describe('the inbox of a state of format 1', () => {
   it('keeps of its inbox what format 2 holds, and no longer the overflow no runtime wrote', () => {
     expect(stateInCurrentFormat(1, stateOfFormatOne).inbox).toEqual({
       waiting: [],
       waitingBytes: 0,
       receivedIds: [],
+      offeredIds: [],
       received: 0,
       receivedBytes: 0,
     });

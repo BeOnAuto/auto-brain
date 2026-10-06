@@ -53,10 +53,7 @@ function walkedRejectionsOf(document: JsonObject, functions: CallFunctions): rea
     retries: objectField(use, 'retries') ?? {},
     timeouts: objectField(use, 'timeouts') ?? {},
   };
-  const schedule =
-    field(document, 'schedule') === undefined
-      ? []
-      : [forbidden('/schedule', `schedules are not supported in this version: ${functions.howAWorkflowStarts}`)];
+  const schedule = scheduleRejectionsOf(field(document, 'schedule'), functions);
   return versionRejections(document).concat(
     componentRejections(use, components, functions),
     schedule,
@@ -64,6 +61,15 @@ function walkedRejectionsOf(document: JsonObject, functions: CallFunctions): rea
     timeoutRejections(field(document, 'timeout'), '/timeout', components),
     taskListRejections(field(document, 'do'), '/do', components, functions),
   );
+}
+
+function scheduleRejectionsOf(schedule: Json | undefined, functions: CallFunctions): readonly Rejection[] {
+  if (schedule === undefined) {
+    return [];
+  }
+  return functions.scheduleRejections === undefined
+    ? [forbidden('/schedule', `schedules are not supported in this version: ${functions.howAWorkflowStarts}`)]
+    : functions.scheduleRejections(schedule, '/schedule');
 }
 
 function versionRejections(document: JsonObject): readonly Rejection[] {

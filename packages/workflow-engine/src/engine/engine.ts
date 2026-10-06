@@ -2,13 +2,13 @@ import { Effect } from 'effect';
 
 import { runCacheOf, type RunCache } from '../cache/run-cache.ts';
 import { workflowMachine } from '../decider/workflow-machine.ts';
-import { loadedRunOf } from '../run-log/run-fold.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
+import type { EnginePorts } from './engine-ports.ts';
 import { dispatchRun } from './output-dispatch.ts';
 import { runLoopOf } from './run-loop.ts';
-import { armedTimersOf, snapshotIfDue } from './run-upkeep.ts';
-import { submissionOf } from './submission.ts';
-import type { EnginePorts, Wake, WorkflowEngine } from './workflow-engine.ts';
+import { armedTimersOf, loadedFrom, snapshotIfDue } from './run-upkeep.ts';
+import { submissionWithDeclined } from './submission.ts';
+import type { Wake, WorkflowEngine } from './workflow-engine.ts';
 
 const mostBehindRunsInOneSweep = 1024;
 
@@ -26,8 +26,7 @@ export function workflowEngineOf(
   cache: RunCache = runCacheOf(),
 ): WorkflowEngine {
   const loop = runLoopOf(ports.runStore, workflowMachine(options), cache);
-  const loaded = (executionId: string): Effect.Effect<ReturnType<typeof loadedRunOf>> =>
-    Effect.map(ports.runStore.load(executionId), (stored) => loadedRunOf(stored));
+  const loaded = (executionId: string) => loadedFrom(ports, executionId);
   const wake = (executionId: string): Effect.Effect<Wake> =>
     ports.serialiser.serialise(
       executionId,
@@ -57,7 +56,7 @@ export function workflowEngineOf(
               version: decision.version,
             });
           }
-          return submissionOf(decision, input);
+          return submissionWithDeclined(decision, input, options);
         }),
       ),
     wake,

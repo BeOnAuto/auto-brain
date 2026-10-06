@@ -32,11 +32,10 @@ const mostForkBranches = 32;
 
 const outboundCalls = new Set(['http', 'grpc', 'openapi', 'asyncapi', 'a2a', 'mcp']);
 
-const rejectionsByKind: Readonly<Record<Exclude<TaskKind, 'call'>, OwnRejections>> = {
+const rejectionsByKind: Readonly<Record<Exclude<TaskKind, 'call' | 'emit'>, OwnRejections>> = {
   run: (_task, reference) => [
     forbidden(`${reference}/run`, 'run tasks (shell, script, container, workflow) are not allowed'),
   ],
-  emit: (_task, reference) => [forbidden(`${reference}/emit`, 'emit is not supported in this version')],
   listen: (task, reference) => listenRejections(task, reference),
   raise: (task, reference, components) => raiseRejections(task, reference, components),
   wait: (task, reference) => durationRejections(field(task, 'wait'), `${reference}/wait`),
@@ -61,9 +60,32 @@ export function ownRejections(
   if (kind === undefined) {
     return [rejection(reference, 'The task has no type this runtime knows')];
   }
-  return kind === 'call'
-    ? callRejections(task, reference, functions)
+  if (kind === 'call') {
+    return callRejections(task, reference, functions);
+  }
+  return kind === 'emit'
+    ? emitRejections(task, reference, functions)
     : rejectionsByKind[kind](task, reference, components);
+}
+
+const emittedEventIdRefused =
+  'An emitted event takes no id: the runtime gives it one of its own, so that a run that resumes emits it once';
+
+function emitRejections(task: JsonObject, reference: string, functions: CallFunctions): readonly Rejection[] {
+  const attributes = objectField(objectField(objectField(task, 'emit') ?? {}, 'event') ?? {}, 'with');
+  if (attributes === undefined) {
+    return [rejection(`${reference}/emit`, 'emit takes event.with, a mapping of the attributes of the event to emit')];
+  }
+  const pointer = `${reference}/emit/event/with`;
+  const missing = ['type', 'source']
+    .filter((name) => field(attributes, name) === undefined)
+    .map((name) => rejection(pointerTo(pointer, name), `The event to emit needs a ${name}`));
+  const id = field(attributes, 'id') === undefined ? [] : [rejection(pointerTo(pointer, 'id'), emittedEventIdRefused)];
+  return missing.concat(
+    id,
+    templateRejections(attributes, pointer),
+    functions.emitRejections?.(attributes, pointer) ?? [],
+  );
 }
 
 export function commonRejections({ task, reference }: TaskEntry, components: Components): readonly Rejection[] {
@@ -75,13 +97,18 @@ export function commonRejections({ task, reference }: TaskEntry, components: Com
   );
 }
 
-export function eventFiltersOf(to: JsonObject, pointer: string): readonly Located[] {
+export type LocatedFilter = readonly [Json, string];
+
+export function eventFiltersOf(to: JsonObject, pointer: string): readonly LocatedFilter[] {
   const one = field(to, 'one');
   if (one !== undefined) {
     return [[one, `${pointer}/one`]];
   }
   const strategy = field(to, 'all') === undefined ? 'any' : 'all';
-  return (listField(to, strategy) ?? []).map((filter, index): Located => [filter, `${pointer}/${strategy}/${index}`]);
+  return (listField(to, strategy) ?? []).map((filter, index): LocatedFilter => [
+    filter,
+    `${pointer}/${strategy}/${index}`,
+  ]);
 }
 
 function dataRejections(task: JsonObject, reference: string, part: string, transform: string): readonly Rejection[] {

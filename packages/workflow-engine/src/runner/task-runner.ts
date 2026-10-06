@@ -147,7 +147,7 @@ export function resumeTask(machine: Machine, frame: TaskFrame, signal: Signal): 
   const { session } = machine;
   session.continues(frame);
   if (signal.kind === 'timer' && signal.timerId === frame.timeout) {
-    cancelBody(machine, frame.body);
+    cancelBody(machine, frame);
     const { error } = timedOut(signal.timer.dueAt - signal.timer.armedAt, frame.reference);
     session.record({ reference: frame.reference, run: frame.run, outcome: 'timed_out', error });
     return raisedOf(error);
@@ -164,6 +164,10 @@ export function resumeTask(machine: Machine, frame: TaskFrame, signal: Signal): 
 export function cancelTask(machine: Machine, frame: TaskFrame): void {
   machine.session.continues(frame);
   machine.session.timers.disarm(frame.timeout);
-  cancelBody(machine, frame.body);
+  cancelBody(machine, frame);
   machine.session.record({ reference: frame.reference, run: frame.run, outcome: 'cancelled' });
+}
+
+export function invocationAt(machine: Machine, frame: TaskFrame): Invocation {
+  return invocationOf(machine, frame, entryAt(machine.session.document(), frame.reference));
 }

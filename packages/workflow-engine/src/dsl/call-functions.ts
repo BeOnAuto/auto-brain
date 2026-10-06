@@ -17,6 +17,9 @@ export interface CallFunctions {
   readonly argumentChecks: Readonly<Record<string, ArgumentRejections>>;
   readonly describe: CallDescription;
   readonly childOf?: (call: ChildCall) => string | undefined;
+  readonly emitRejections?: (attributes: JsonObject, pointer: string) => readonly Rejection[];
+  readonly emitRefusal?: (event: JsonObject) => string | undefined;
+  readonly scheduleRejections?: (schedule: Json, pointer: string) => readonly Rejection[];
   readonly howAWorkflowReachesTheWorld: string;
   readonly howAWorkflowStarts: string;
 }

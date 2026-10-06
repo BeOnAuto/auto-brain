@@ -1,10 +1,11 @@
 import type { TaskKind } from '../dsl/tasks.ts';
-import type { FrameBody } from '../machine/run-state.ts';
+import type { FrameBody, TaskFrame } from '../machine/run-state.ts';
 import { listBodyOf, type BodyAdvance, type Invocation, type Machine, type Signal } from '../runner/advance.ts';
 import { cancelCall, resumeCall, startCall } from './call-task.ts';
+import { startEmit } from './emit-task.ts';
 import { cancelFor, resumeFor, startFor } from './for-task.ts';
 import { cancelFork, resumeFork, startFork } from './fork-task.ts';
-import { resumeListen, startListen } from './listen-task.ts';
+import { cancelListen, resumeListen, startListen } from './listen-task.ts';
 import { cancelWait, resumeWait, startRaise, startRejected, startSet, startSwitch, startWait } from './simple-tasks.ts';
 import { cancelTry, resumeTry, startTry } from './try-task.ts';
 
@@ -29,7 +30,7 @@ function resumeDo({ machine }: Invocation, body: ListBody, signal: Signal): Body
 const starters: Readonly<Record<TaskKind, (invocation: Invocation) => BodyAdvance>> = {
   call: startCall,
   do: startDo,
-  emit: startRejected,
+  emit: startEmit,
   for: startFor,
   fork: startFork,
   listen: startListen,
@@ -64,7 +65,8 @@ export function resumeBody(invocation: Invocation, body: FrameBody, signal: Sign
   return body.kind === 'call' ? resumeCall(invocation, body, signal) : resumeListen(invocation, body, signal);
 }
 
-export function cancelBody(machine: Machine, body: FrameBody): void {
+export function cancelBody(machine: Machine, frame: Pick<TaskFrame, 'reference' | 'run' | 'body'>): void {
+  const { body } = frame;
   if (body.kind === 'list') {
     machine.runner.cancelList(machine, body.list);
   } else if (body.kind === 'for') {
@@ -77,5 +79,7 @@ export function cancelBody(machine: Machine, body: FrameBody): void {
     cancelWait(machine, body);
   } else if (body.kind === 'call') {
     cancelCall(machine, body);
+  } else {
+    cancelListen(machine, frame);
   }
 }

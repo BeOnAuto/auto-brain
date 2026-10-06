@@ -48,7 +48,9 @@ function bodyReach(body: FrameBody): Reach {
   if (body.kind === 'call') {
     return { values: [body.arguments], frames: 0 };
   }
-  return body.kind === 'listen' ? { values: body.consumed, frames: 0 } : nothing;
+  return body.kind === 'listen'
+    ? { values: body.consumed.filter((consumed): consumed is ValueId => consumed !== null), frames: 0 }
+    : nothing;
 }
 
 function frameReach(frame: TaskFrame): Reach {

@@ -1,5 +1,6 @@
-import type { EnginePorts } from '../engine/workflow-engine.ts';
+import type { EnginePorts } from '../engine/engine-ports.ts';
 import { memoryExecutor, type MemoryExecutor, type Responder } from './memory-executor.ts';
+import { memoryEmitter, memoryListeners, type MemoryEmitter, type MemoryListeners } from './memory-reactions.ts';
 import {
   memoryRecordStore,
   memoryReporter,
@@ -15,6 +16,8 @@ export interface MemoryPorts extends EnginePorts {
   readonly runStore: MemoryRunStore;
   readonly timers: MemoryTimers;
   readonly executor: MemoryExecutor;
+  readonly listeners: MemoryListeners;
+  readonly emitter: MemoryEmitter;
   readonly recordStore: MemoryRecordStore;
   readonly reporter: MemoryReporter;
   readonly faults: Faults;
@@ -28,6 +31,8 @@ export function memoryPorts(clock: VirtualClock, submit: Submit, responder: Resp
     watermark: memoryWatermark(runStore),
     timers: memoryTimers(clock, submit, faults),
     executor: memoryExecutor(clock, submit, responder, faults),
+    listeners: memoryListeners(faults),
+    emitter: memoryEmitter(faults),
     recordStore: memoryRecordStore(faults),
     reporter: memoryReporter(),
     serialiser: { serialise: (_executionId, work) => work },

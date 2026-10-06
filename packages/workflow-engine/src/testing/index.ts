@@ -11,6 +11,19 @@ export {
 } from '../memory/memory-records.ts';
 export { faultsOf, memoryTimers, type Dispatched, type Faults, type MemoryTimers } from '../memory/memory-timers.ts';
 export { executorProbes, timerProbes, type ExecutorSubject, type Probe, type TimerSubject } from './port-probes.ts';
+export {
+  emitterProbes,
+  listenerProbes,
+  type EmitterSubject,
+  type ListenerSubject,
+} from '../reactions/reaction-probes.ts';
+export {
+  memoryEmitter,
+  memoryListeners,
+  type ArmedListener,
+  type MemoryEmitter,
+  type MemoryListeners,
+} from '../memory/memory-reactions.ts';
 export { memoryRunStore, type MemoryRunStore } from '../memory/run-store.ts';
 export { runWatchOf, type RunWatch } from './run-watch.ts';
 export {

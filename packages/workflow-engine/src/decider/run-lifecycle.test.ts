@@ -70,7 +70,7 @@ describe('a run that is cancelled or refused', () => {
   });
 
   it('refuses a document this runtime does not run before it runs any task', () => {
-    const run = drivenRun(workflow('do:\n  - shout: { emit: { event: { with: { type: x } } } }'));
+    const run = drivenRun(workflow('do:\n  - shout: { run: { shell: { command: ls } } }'));
 
     expect(run.outcome).toMatchObject({
       kind: 'raised',

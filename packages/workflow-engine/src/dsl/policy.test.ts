@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { testFunctions } from '../testing/driver-inputs.ts';
 import { header, workflow, yamlObject } from '../testing/workflows.ts';
+import { field, isObject, type Json } from './json.ts';
+import type { Rejection } from './policy-checks.ts';
 import { policyOf } from './policy.ts';
 
 const rejectionsOf = policyOf(testFunctions);
@@ -96,6 +98,12 @@ do: []
   });
 });
 
+function refusingAfter(schedule: Json, pointer: string): readonly Rejection[] {
+  return isObject(schedule) && field(schedule, 'after') !== undefined
+    ? [{ pointer: `${pointer}/after`, detail: 'after is refused', forbidden: true }]
+    : [];
+}
+
 describe('the data of a document', () => {
   it('has no schedule and well-formed transforms and timeout', () => {
     expect(
@@ -109,6 +117,15 @@ timeout: missing
 do: []
 `),
     ).toEqual(['/schedule', '/input/from', '/output/as/total', '/timeout']);
+  });
+
+  it('has its schedule checked by the functions it is given, when they check one', () => {
+    const checking = policyOf({ ...testFunctions, scheduleRejections: refusingAfter });
+
+    expect([
+      checking(workflow('schedule: { every: PT1H }\ndo: []')),
+      checking(workflow('schedule: { after: PT1H }\ndo: []')),
+    ]).toEqual([[], [{ pointer: '/schedule/after', detail: 'after is refused', forbidden: true }]]);
   });
 
   it('checks an inline workflow timeout', () => {

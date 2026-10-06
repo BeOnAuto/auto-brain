@@ -1,4 +1,4 @@
-import type { Json } from '../dsl/json.ts';
+import type { Json, JsonObject } from '../dsl/json.ts';
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
 import type { ArmedTimer, RunState } from '../machine/run-state.ts';
 import type { TimerPurpose } from '../timers/timer-id.ts';
@@ -37,6 +37,13 @@ export interface CallTable {
   readonly cancelCall: (call: OpenCall) => void;
   readonly cancelAll: () => void;
   readonly calls: () => RunState['calls'];
+}
+
+export interface ListenerTable {
+  readonly arm: (key: CallKey, filters: readonly JsonObject[]) => void;
+  readonly cancel: (key: CallKey) => void;
+  readonly cancelAll: () => void;
+  readonly listeners: () => RunState['listeners'];
 }
 
 export function timerTableOf(
@@ -117,5 +124,32 @@ export function callTableOf(
       }
     },
     calls: () => calls,
+  };
+}
+
+export function listenerTableOf(state: RunState, journal: Journal): ListenerTable {
+  const armed: Record<string, CallKey> = { ...state.listeners };
+  const cancel = (key: CallKey): void => {
+    const text = callKeyText(key);
+    if (Object.hasOwn(armed, text)) {
+      delete armed[text];
+      journal.emit({ kind: 'cancel_listener', key });
+    }
+  };
+  return {
+    arm: (key, filters) => {
+      const text = callKeyText(key);
+      if (!Object.hasOwn(armed, text)) {
+        armed[text] = key;
+        journal.emit({ kind: 'arm_listener', key, filters: [...filters] });
+      }
+    },
+    cancel,
+    cancelAll: () => {
+      for (const key of Object.values(armed)) {
+        cancel(key);
+      }
+    },
+    listeners: () => armed,
   };
 }

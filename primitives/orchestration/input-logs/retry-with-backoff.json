@@ -123,7 +123,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
@@ -446,7 +446,7 @@
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",1]",
@@ -583,7 +583,7 @@
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "timer_fired",
         "key": "3",
@@ -772,7 +772,7 @@
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",2]",
@@ -909,7 +909,7 @@
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "timer_fired",
         "key": "5",
@@ -1098,7 +1098,7 @@
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",3]",

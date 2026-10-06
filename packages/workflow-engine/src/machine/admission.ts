@@ -13,6 +13,9 @@ export type StaleReason =
   | 'timer_not_armed'
   | 'call_not_open'
   | 'event_received_before'
+  | 'offer_taken_before'
+  | 'listener_not_open'
+  | 'offer_declined'
   | 'cancel_requested_before';
 
 export type SubmissionOutcome = 'applied' | 'stale' | 'not_started';
@@ -42,6 +45,16 @@ function startedReason(
   return 'started_before';
 }
 
+function offerReason(
+  state: RunState,
+  input: Extract<RunInput, { readonly kind: 'event_offered' }>,
+): StaleReason | undefined {
+  if (state.inbox.offeredIds.includes(input.key)) {
+    return 'offer_taken_before';
+  }
+  return Object.hasOwn(state.listeners, callKeyText(input.listener)) ? undefined : 'listener_not_open';
+}
+
 function spentReason(state: RunState, input: Exclude<RunInput, { readonly kind: 'started' }>): StaleReason | undefined {
   if (input.kind === 'timer_fired') {
     return Object.hasOwn(state.timers.armed, input.timerId) ? undefined : 'timer_not_armed';
@@ -51,6 +64,9 @@ function spentReason(state: RunState, input: Exclude<RunInput, { readonly kind: 
   }
   if (input.kind === 'event_received') {
     return state.inbox.receivedIds.includes(input.event.id) ? 'event_received_before' : undefined;
+  }
+  if (input.kind === 'event_offered') {
+    return offerReason(state, input);
   }
   return state.cancelRequested ? 'cancel_requested_before' : undefined;
 }

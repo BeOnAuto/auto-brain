@@ -65,7 +65,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000311",
@@ -352,7 +352,7 @@
     },
     {
       "type": "input_applied",
-      "format": 4,
+      "format": 5,
       "receipt": {
         "kind": "timer_fired",
         "key": "2",

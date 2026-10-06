@@ -35,6 +35,23 @@ const CancelCallSchema = Schema.Struct({
   key: CallKeySchema,
 });
 
+const ArmListenerSchema = Schema.Struct({
+  kind: Schema.Literal('arm_listener'),
+  key: CallKeySchema,
+  filters: Schema.Array(Schema.JsonObject),
+});
+
+const CancelListenerSchema = Schema.Struct({
+  kind: Schema.Literal('cancel_listener'),
+  key: CallKeySchema,
+});
+
+const EmitEventSchema = Schema.Struct({
+  kind: Schema.Literal('emit_event'),
+  key: CallKeySchema,
+  event: Schema.JsonObject,
+});
+
 const SettleSchema = Schema.Struct({
   kind: Schema.Literal('settle'),
   executionId: ExecutionIdSchema,
@@ -46,6 +63,9 @@ export const RunOutputSchema = Schema.Union([
   CancelTimerSchema,
   StartCallSchema,
   CancelCallSchema,
+  ArmListenerSchema,
+  CancelListenerSchema,
+  EmitEventSchema,
   SettleSchema,
 ]);
 
@@ -56,6 +76,12 @@ export type CancelTimer = typeof CancelTimerSchema.Type;
 export type StartCall = typeof StartCallSchema.Type;
 
 export type CancelCall = typeof CancelCallSchema.Type;
+
+export type ArmListener = typeof ArmListenerSchema.Type;
+
+export type CancelListener = typeof CancelListenerSchema.Type;
+
+export type EmitEvent = typeof EmitEventSchema.Type;
 
 export type Settle = typeof SettleSchema.Type;
 

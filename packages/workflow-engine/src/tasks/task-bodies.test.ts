@@ -19,9 +19,13 @@ function outcomeWithUncheckedTask(odd: JsonObject): RunOutcome | null {
 }
 
 describe('the body of a task in a stored run whose document was never checked', () => {
-  it.each(['emit: 3', 'run: 3'])('refuses %s', (task) => {
-    expect(titleOf(outcomeWithUncheckedTask(yamlObject(task)))).toBe(
-      'emit and run tasks are not allowed by this runtime',
+  it('refuses run: 3', () => {
+    expect(titleOf(outcomeWithUncheckedTask(yamlObject('run: 3')))).toBe('run tasks are not allowed by this runtime');
+  });
+
+  it('refuses emit: 3, which names no attributes of an event', () => {
+    expect(titleOf(outcomeWithUncheckedTask(yamlObject('emit: 3')))).toBe(
+      'emit takes event.with, a mapping of the attributes of the event',
     );
   });
 

@@ -4,6 +4,7 @@ import { Schema } from 'effect';
 import { CallKeySchema } from '../executor/call-key.ts';
 import { ReceivedEventSchema } from '../inbox/received-event.ts';
 import { InstantSchema } from './instant.ts';
+import { mostEventIdLength } from './limits.ts';
 
 const ExecutionIdSchema = Schema.NonEmptyString;
 
@@ -47,6 +48,17 @@ const EventReceivedSchema = Schema.Struct({
   event: ReceivedEventSchema,
 });
 
+const OfferKeySchema = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(mostEventIdLength));
+
+const EventOfferedSchema = Schema.Struct({
+  kind: Schema.Literal('event_offered'),
+  executionId: ExecutionIdSchema,
+  at: InstantSchema,
+  key: OfferKeySchema,
+  listener: CallKeySchema,
+  event: ReceivedEventSchema,
+});
+
 const CancelRequestedSchema = Schema.Struct({
   kind: Schema.Literal('cancel_requested'),
   executionId: ExecutionIdSchema,
@@ -58,6 +70,7 @@ export const RunInputSchema = Schema.Union([
   TimerFiredSchema,
   CallAnsweredSchema,
   EventReceivedSchema,
+  EventOfferedSchema,
   CancelRequestedSchema,
 ]);
 
@@ -70,6 +83,8 @@ export type TimerFired = typeof TimerFiredSchema.Type;
 export type CallAnswered = typeof CallAnsweredSchema.Type;
 
 export type EventReceived = typeof EventReceivedSchema.Type;
+
+export type EventOffered = typeof EventOfferedSchema.Type;
 
 export type CancelRequested = typeof CancelRequestedSchema.Type;
 

@@ -29,3 +29,9 @@ export const mostWaitingEventBytes = 1_048_576;
 export const mostReceivedEvents = 1024;
 
 export const mostReceivedEventBytes = 4_194_304;
+
+export const mostEmittedEvents = 1024;
+
+export const mostEmittedEventBytes = 4_194_304;
+
+export const mostEmittedEventSize = 245_760;

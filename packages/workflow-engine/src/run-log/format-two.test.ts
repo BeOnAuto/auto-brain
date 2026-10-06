@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { snapshotOf, stateFormats, stateInCurrentFormat } from '../index.ts';
-import { runningState } from '../testing/runs.ts';
+import { beforeFormatFive, runningState } from '../testing/runs.ts';
 
 const toJson = Schema.decodeUnknownSync(Schema.Json);
 
@@ -10,7 +10,7 @@ const [, formatTwo] = stateFormats.older;
 
 const failedBranch = { type: 'runtime', status: 500, instance: '/do/1/fork/branches/2' };
 
-const stateOfFormatTwo = snapshotOf(runningState, 1).state;
+const stateOfFormatTwo = beforeFormatFive(snapshotOf(runningState, 1).state);
 
 function withBranchError(error: Readonly<Record<string, unknown>>): Schema.Json {
   return toJson(

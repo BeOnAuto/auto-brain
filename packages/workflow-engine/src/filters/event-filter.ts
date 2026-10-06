@@ -120,6 +120,26 @@ export function literalFilterOf(filter: Json | undefined, pointer: string): Lite
   };
 }
 
+export function brainWideFilterOf(filter: Json | undefined): JsonObject | undefined {
+  const attributes = isObject(filter) ? objectField(filter, 'with') : undefined;
+  const type = attributes === undefined ? undefined : field(attributes, 'type');
+  return typeof type === 'string' && type !== '' && enclosedBody(type) === undefined ? attributes : undefined;
+}
+
+export function listenerFilterOf(attributes: JsonObject, reference: string): LiteralFilter | undefined {
+  const type = field(attributes, 'type');
+  if (typeof type !== 'string' || brainWideFilterOf({ with: attributes }) === undefined) {
+    return undefined;
+  }
+  const tested = entriesOf(attributes).filter(([, expected]: JsonEntry) => !needsVariables(expected));
+  return {
+    reference,
+    type,
+    attributes: Object.fromEntries(tested),
+    dataNeedsVariables: tested.length < entriesOf(attributes).length,
+  };
+}
+
 export function matchEvent(filter: LiteralFilter, event: JsonObject, now: number): FilterVerdict {
   const place: Place = { reference: filter.reference, now, meter: meterOf(), mostDuration: noDurations };
   return caughtRaise<FilterVerdict>(

@@ -5,7 +5,7 @@ import type { RunOutcome, ValueId } from '../machine/run-state.ts';
 import type { RunCell } from './run-cell.ts';
 import type { Inbox } from './run-inbox.ts';
 import type { Journal } from './run-tables.ts';
-import type { CallTable, TimerTable } from './run-timers.ts';
+import type { CallTable, ListenerTable, TimerTable } from './run-timers.ts';
 
 interface RunStart {
   readonly executionId: string;
@@ -25,6 +25,7 @@ export interface Lifecycle {
 export interface Ending {
   readonly timers: TimerTable;
   readonly calls: CallTable;
+  readonly listeners: ListenerTable;
   readonly inbox: Inbox;
   readonly journal: Journal;
 }
@@ -51,6 +52,7 @@ export function lifecycleOf(cell: RunCell, ending: Ending, now: number): Lifecyc
     },
     end: (outcome) => {
       ending.calls.cancelAll();
+      ending.listeners.cancelAll();
       ending.timers.disarmAll();
       ending.inbox.clear();
       const { state } = cell.get();
