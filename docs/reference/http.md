@@ -34,8 +34,6 @@ Retirement is permanent. Brain ids cannot be reused, and a retired brain cannot 
 
 The JSON result contains `object: "list"`, `data`, `catalog_status` and `listed_at`. Entries are sorted by `id`, with each id appearing once. The [MCP model reference](mcp.md#model-information) describes the entry fields, aliases, wildcard patterns and incomplete results. The same output is returned over both interfaces.
 
-<span id="reason-functions"></span>
-
 ## Reasoning functions
 
 These routes are relative to `/v1/orgs/{org}/brains/{brain}`:

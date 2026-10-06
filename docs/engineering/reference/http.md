@@ -1,6 +1,6 @@
 # HTTP API
 
-The runtime exposes the same operations through HTTP and [MCP](mcp.md). Product terminology uses functions, workflows and runs. The API keeps `spec`, `inference`, `orchestration` and `execution` for compatibility.
+The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls a definition a `spec` and its run an `execution`.
 
 Use an API key as `Authorization: Bearer <key>`, except in loopback-only local mode. See [Authentication and security](../self-host/security.md). For executable examples, follow the [HTTP walkthrough](http-tutorial.md).
 

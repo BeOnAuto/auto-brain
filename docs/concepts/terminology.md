@@ -95,32 +95,6 @@ Use **New workflow**, **New function** and **Add step** for the corresponding ac
 
 Name example resources for their jobs, such as **Assess budget options**, **Request budget approval**, **Predict campaign signups**, **Retrieve previous budget decisions** and **Calculate remaining budget**. Keep user-authored names unchanged.
 
-## Code and compatibility
-
-Domain identifiers use the same nouns as the product. The canonical internal function kinds are `reason`, `interact`, `predict`, `recall` and `compute`. They describe function types; `workflow` is separate.
-
-The shared runtime adapter supports workflows, functions and extension adapters. Its compatibility name is `Primitive`. The shared stored-record types are `Definition` and `Run`.
-
-`BrainFunctionDefinition` covers the implemented function definitions, currently `ReasoningFunctionDefinition`. `WorkflowDefinition` identifies stored workflow definitions. `FunctionRun` and `WorkflowRun` distinguish their recorded runs. Type guards narrow decoded records using the existing `inference` and `orchestration` discriminators, preserving their fields and identities. They do not accept planned kinds or classify custom adapters as brain functions.
-
-Parsing a source document produces `ReasoningFunctionDefinitionDocument` or `WorkflowDefinitionDocument`. These hold configuration rather than the stored name, version and audit fields. The workflow document remains a `JsonObject` checked by the existing DSL parser; the alias does not introduce a stronger schema. `makeReasoningFunctionAdapter` and `makeWorkflowAdapter` construct runtime adapters for these types, not individual saved definitions.
-
-Keep these supported boundary names in requests and stored data:
-
-| Boundary                                                                               | Canonical meaning                            |
-| -------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `primitive: "inference"`                                                               | Reasoning function type                      |
-| `primitive: "orchestration"`                                                           | Workflow type                                |
-| `spec`, `specs`, `create_spec` and the other spec tools                                | Definition and definition operations         |
-| `execution`, `execution_id`, `/executions` and execution tools                         | Run, run id and run operations               |
-| `spec_version`                                                                         | The definition version referenced by the run |
-| `spec_*`, `execution_*` and `workflow_input_applied` events                            | Existing definition and run history          |
-| `@beonauto/inference`, `@beonauto/orchestration`, `@beonauto/specs` and `primitives/*` | Existing package and directory names         |
-
-The internal kinds do not introduce new accepted API values. Planned function kinds are not valid substitutes for the runtime's supported `primitive` values. Package names, exported compatibility aliases, environment settings, deployment identities and historical records remain stable.
-
-Keep **inference** for actual model execution or provider terms, **orchestration** for runtime coordination machinery, and **agent** for an actual actor, including external coding agents and tool-selecting behavior. Ordinary programming functions and cloud functions retain their names. Use **brain components** only as an umbrella phrase for workflows, functions and assets; it does not name a resource. **Faculties** is not part of the product taxonomy.
-
 ## Positioning
 
 The proposed category for the brain-building offering is **business brain platforms**. The promise is **Make business expertise executable**. **Brain engineering** names the engineering discipline, **brain building** the services activity, and **Studio** the environment for visibility and management.
