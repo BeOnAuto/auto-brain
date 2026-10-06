@@ -252,7 +252,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  * @returns `true` if the values are structurally equal, `false` otherwise.
  */
  const valueEquals = (a, b) => {
-+	charge(shallowSizeOf(a));
++	charge(shallowSizeOf(a) + shallowSizeOf(b));
  	if (Object.is(a, b)) return true;
  	if (typeof a !== typeof b) return false;
  	if (typeof a === "number" && typeof b === "number") return Object.is(a, b);

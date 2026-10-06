@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { childTimeoutMs, evaluateInAChild, stoppedEvaluationOf } from '../testing/expressions-in-a-child.ts';
 import { runExpression, type Evaluation } from './expressions.ts';
 import type { Json } from './json.ts';
 
@@ -20,6 +21,12 @@ const singles: Json = Array.from({ length: 2000 }, (_, index) => [index]);
 const ragged: Json = [numbers, ...Array.from({ length: 100 }, () => [])];
 
 const alternatives = Array.from({ length: 10 }, () => 'a').join('|');
+
+const ropeLength = 4_000_000;
+
+const workPerValue = 16;
+
+const comparisonCharge = 2 * workPerValue + 'a'.length + ropeLength + 'x'.length;
 
 function run(source: string, data: Json, work = mostWork): Evaluation {
   return runExpression(source, data, {}, { now, mostWork: work });
@@ -146,6 +153,33 @@ describe('a string used as an object key', () => {
     const source = '("a" * 4000000) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))';
 
     expect(run(source, null)).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+  });
+});
+
+describe('comparing a short string with a long one', { timeout: 2 * childTimeoutMs }, () => {
+  it.each<readonly [string, string]>([
+    ['for equality', '"a" == ($s + "x") | 1'],
+    ['for order', '"a" < ($s + "x") | 1'],
+    ['in sort', '["a", $s + "x"] | sort | 1'],
+    ['in sort, the other way round', '[$s + "x", "a"] | sort | 1'],
+    ['in unique', '["a", $s + "x"] | unique | 1'],
+    ['in group_by', '["a", $s + "x"] | group_by(.) | 1'],
+    ['in min', '["a", $s + "x"] | min | 1'],
+    ['in max', '["a", $s + "x"] | max | 1'],
+  ])('charges both strings %s', (_comparison, use) => {
+    expect(run(`("a" * 1000000) as $s | ${use}`, null, 1_500_000)).toMatchObject({ exhausted: true });
+  });
+
+  it.each([
+    `("a" * ${ropeLength}) as $s | reduce range(1000) as $i (0; . + (if "a" < ($s + "x") then 1 else 0 end))`,
+    `("a" * ${ropeLength}) as $s | reduce range(1000) as $i (0; . + ([$s + "x", "a"] | sort | length))`,
+  ])('%s stops at the work budget, past it by at most one charge', (source) => {
+    const { ended, output } = evaluateInAChild(source, null, mostWork);
+
+    expect(ended).toEqual({ status: 0, signal: null });
+    const evaluation = stoppedEvaluationOf(output);
+    expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+    expect(evaluation.work).toBeLessThanOrEqual(mostWork + comparisonCharge);
   });
 });
 
