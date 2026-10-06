@@ -12,11 +12,14 @@ import {
   streamsIn,
   tableDrop,
   type KeptRow,
+  type SizedStream,
 } from './run-outcome-statements.ts';
 
 export type InTransaction = (work: (execute: StatementExecutor) => Promise<void>) => Promise<void>;
 
 const runStreamsInABatch = 100;
+
+const mostBytesInABatch = 16 * 1024 * 1024;
 
 const versionedTable = /^run_outcomes_(?<version>\d+)$/u;
 
@@ -44,17 +47,31 @@ function replayedRows(
   });
 }
 
+function withinBytes(listed: readonly SizedStream[]): readonly string[] {
+  const taken: string[] = [];
+  let loaded = 0;
+  for (const { stream, size } of listed) {
+    if (taken.length > 0 && loaded + size > mostBytesInABatch) {
+      return taken;
+    }
+    taken.push(stream);
+    loaded += size;
+  }
+  return taken;
+}
+
 async function batchFilledAfter(
   keeping: RunOutcomeKeeping,
   execute: StatementExecutor,
   after: string,
 ): Promise<string | undefined> {
   const { statements, mapping } = keeping;
-  const streams = await streamsIn(execute, statements.runStreamsAfter(after, runStreamsInABatch));
+  const listed = await streamsIn(execute, statements.runStreamsAfter(after, runStreamsInABatch, mapping.types));
+  const streams = withinBytes(listed);
   const messages = streams.length === 0 ? [] : await messagesIn(execute, statements.messagesOf(streams, mapping.types));
   const kept = replayedRows(keeping, streams, messages);
   await inTurn(chunksOf(kept, statements.rowsInAWrite), (rows) => execute.command(rowsWrite(rows)));
-  return streams.length === runStreamsInABatch ? streams.at(-1) : undefined;
+  return streams.length < listed.length || listed.length === runStreamsInABatch ? streams.at(-1) : undefined;
 }
 
 async function filledAfter(keeping: RunOutcomeKeeping, execute: StatementExecutor, after: string): Promise<void> {

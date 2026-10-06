@@ -9,6 +9,7 @@ const EndedSchema = Schema.Struct({
   status: Schema.Literals(['succeeded', 'failed', 'rejected']),
   ms: Schema.NullOr(Schema.Int),
   tokens: Schema.NullOr(Schema.Int),
+  note: Schema.optionalKey(Schema.String),
 });
 
 const RunFactSchema = Schema.Union([BeganSchema, EndedSchema, Schema.Struct({ type: Schema.Literal('run_noted') })]);

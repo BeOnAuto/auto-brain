@@ -13,7 +13,7 @@ export const runOutcomesIndex = `${runOutcomesTable}_by_brain_and_day`;
 export interface RunOutcomeStatements {
   readonly tableVersions: () => SQL;
   readonly create: () => readonly SQL[];
-  readonly runStreamsAfter: (after: string, count: number) => SQL;
+  readonly runStreamsAfter: (after: string, count: number, types: readonly string[]) => SQL;
   readonly messagesOf: (streams: readonly string[], types: readonly string[]) => SQL;
   readonly rowsInAWrite: number;
   readonly filledData: (column: unknown) => unknown;
@@ -41,7 +41,7 @@ const decodeRows = Schema.decodeUnknownSync(Schema.Array(RowSchema));
 
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
-const StreamRows = Schema.Array(Schema.Struct({ stream: Schema.String }));
+const StreamRows = Schema.Array(Schema.Struct({ stream: Schema.String, size: Schema.Number }));
 
 const MessageRows = Schema.Array(Schema.Struct({ stream: Schema.String, type: Schema.String, data: Schema.Unknown }));
 
@@ -102,9 +102,14 @@ export async function namesIn(execute: StatementExecutor, query: SQL): Promise<r
   return Schema.decodeUnknownSync(NameRows)(rows).map(({ name }) => name);
 }
 
-export async function streamsIn(execute: StatementExecutor, query: SQL): Promise<readonly string[]> {
+export interface SizedStream {
+  readonly stream: string;
+  readonly size: number;
+}
+
+export async function streamsIn(execute: StatementExecutor, query: SQL): Promise<readonly SizedStream[]> {
   const { rows } = await execute.query(query);
-  return Schema.decodeUnknownSync(StreamRows)(rows).map(({ stream }) => stream);
+  return Schema.decodeUnknownSync(StreamRows)(rows);
 }
 
 export async function messagesIn(execute: StatementExecutor, query: SQL) {

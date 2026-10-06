@@ -1,5 +1,5 @@
 import type { RunOutcomeMapping } from '@beonauto/operations';
-import { runFacts, runTallies } from '@beonauto/operations/testing';
+import { runFacts, runTallies, type RunFact } from '@beonauto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -143,9 +143,40 @@ function aFillInterruptedOrDone(entry: LedgerEntry): void {
   });
 }
 
+const mebibyte = 1024 * 1024;
+
+function largeEnd(ms: number, note: string): RunFact {
+  return { type: 'run_ended', status: 'succeeded', ms, tokens: null, note };
+}
+
+function aFillOfLargeRecords(entry: LedgerEntry): void {
+  describe('a fill of run streams whose records are large', () => {
+    it('reads them at most 16 MiB at a time, and keeps every run', { timeout: 60_000 }, async () => {
+      const database = await entry.aDatabase();
+      const writing = await aLedger(entry, database);
+      const note = 'x'.repeat(1.5 * mebibyte);
+      await Effect.runPromise(
+        Effect.forEach(
+          Array.from({ length: 12 }, (_, index) => index),
+          (index) =>
+            Effect.promise(() =>
+              noting(writing, `brain/acme/alpha/executions/large-${index}`, began('large'), largeEnd(index, note)),
+            ),
+          { concurrency: 4, discard: true },
+        ),
+      );
+
+      const filled = await aLedger(entry, database, runTallies);
+
+      expect(runsOf(await reading(filled))).toEqual(['2026-10-01 large succeeded 12']);
+    });
+  });
+}
+
 export function runOutcomeTableBehaviour(entry: LedgerEntry): void {
   aProjectionThatBreaksDown(entry);
   aStoreWithoutTheProjection(entry);
   aNewTableVersion(entry);
   aFillInterruptedOrDone(entry);
+  aFillOfLargeRecords(entry);
 }
