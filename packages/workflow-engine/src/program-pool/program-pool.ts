@@ -13,6 +13,7 @@ export interface PoolSettings {
   readonly workers: number;
   readonly heapMegabytes: number;
   readonly worker?: Readonly<URL>;
+  readonly environment?: Readonly<Record<string, string>>;
 }
 
 export interface ProgramRequest {
@@ -125,7 +126,7 @@ function watchUntil(until: number, closing: () => boolean, signal: Readonly<Abor
   };
 }
 
-function workerOptions(request: ProgramRequest, until: number, heapMegabytes: number): WorkerOptions {
+function workerOptions(request: ProgramRequest, until: number, settings: PoolSettings): WorkerOptions {
   const { source, input, dialect, limits, mostOutputBytes, context = null } = request;
   return {
     workerData: {
@@ -137,7 +138,8 @@ function workerOptions(request: ProgramRequest, until: number, heapMegabytes: nu
       context,
       deadlineAt: performance.timeOrigin + until,
     },
-    resourceLimits: { maxOldGenerationSizeMb: heapMegabytes, stackSizeMb: workerStackMegabytes },
+    resourceLimits: { maxOldGenerationSizeMb: settings.heapMegabytes, stackSizeMb: workerStackMegabytes },
+    env: { ...settings.environment },
   };
 }
 
@@ -159,7 +161,7 @@ export function programPool(settings: PoolSettings): ProgramPool {
   const state = { closing: false };
   const evaluate: Evaluate = async ({ request, until, signal }) => {
     const module = new URL((settings.worker ?? request.worker ?? programWorker).href);
-    const worker = new Worker(module, workerOptions(request, until, settings.heapMegabytes));
+    const worker = new Worker(module, workerOptions(request, until, settings));
     const stop = (): Promise<number> => worker.terminate();
     stops.add(stop);
     const watch = watchUntil(until, () => state.closing, signal);

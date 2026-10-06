@@ -20,8 +20,12 @@ function workerOf(source: string): URL {
 
 const blocking = workerOf('while (true) {}');
 
+const coverage = process.env['NODE_V8_COVERAGE'];
+
+const measured = coverage === undefined ? {} : { NODE_V8_COVERAGE: coverage };
+
 function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
-  const pool = programPool({ workers: 4, heapMegabytes: 64, ...settings });
+  const pool = programPool({ workers: 4, heapMegabytes: 64, environment: measured, ...settings });
   pools.push(pool);
   return pool;
 }
@@ -199,6 +203,27 @@ describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
     });
     expect(await pool.run(request('.', null, { worker: echoing }))).toMatchObject({ output: { context: null } });
     expect(await pool.run(request('[.]', 1))).toMatchObject({ ran: 'answered', output: [1] });
+  });
+});
+
+describe('the environment of a worker', { timeout: poolTestTimeoutMs }, () => {
+  it('is empty unless the pool is given one, so no setting of the server, such as a key, reaches a program or its worker', async () => {
+    const reading = workerOf(
+      [
+        "import { parentPort } from 'node:worker_threads';",
+        'const output = JSON.stringify(Object.keys(process.env));',
+        "parentPort.postMessage({ ran: 'answered', output, bytes: output.length, work: 0 });",
+      ].join('\n'),
+    );
+
+    expect(Object.keys(process.env).length).toBeGreaterThan(1);
+    const unset = programPool({ workers: 1, heapMegabytes: 64, worker: reading });
+    pools.push(unset);
+
+    expect(await unset.run(request('.'))).toMatchObject({ ran: 'answered', output: [] });
+    expect(await poolOf({ worker: reading, environment: { ONLY: 'this' } }).run(request('.'))).toMatchObject({
+      output: ['ONLY'],
+    });
   });
 });
 
