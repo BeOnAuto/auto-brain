@@ -42,7 +42,24 @@ const blockComments = /\/\*[\s\S]*?\*\//gu;
 
 const localTimeBuiltins = /Builtin\("\w+", false\)/gu;
 
-const jq = readFileSync(fileURLToPath(import.meta.resolve('@gabrielbryk/jq-ts')), 'utf8').replaceAll(blockComments, '');
+const jqForImport = fileURLToPath(import.meta.resolve('@gabrielbryk/jq-ts'));
+
+const jq = readFileSync(jqForImport, 'utf8').replaceAll(blockComments, '');
+
+const jqForRequire = readFileSync(join(dirname(jqForImport), 'index.cjs'), 'utf8');
+
+const patchOfJq = readFileSync(
+  fileURLToPath(new URL('../../../../patches/@gabrielbryk__jq-ts@1.7.0.patch', import.meta.url)),
+  'utf8',
+);
+
+function linesThePatchAddsTo(file: string): readonly string[] {
+  const section = patchOfJq.split('diff --git ').find((part) => part.startsWith(`a/dist/${file} `)) ?? '';
+  return section
+    .split('\n')
+    .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+    .map((line) => line.slice(1));
+}
 
 const growingCache: readonly Forbidden[] = [
   {
@@ -70,6 +87,18 @@ function findingsIn(files: readonly string[], forbidden: readonly Forbidden[]): 
       .filter(({ pattern }: Forbidden) => pattern.test(text))
       .map(({ what }: Forbidden) => `${file}: ${what}`);
   });
+}
+
+const expressionCall = /(?<!function )\brunExpression\(([^()]*)\)/gu;
+
+function expressionCallsIn(text: string): readonly string[] {
+  return [...text.matchAll(expressionCall)].map(([, call = '']: readonly string[]) => call);
+}
+
+function expressionCallsUnder(files: readonly string[]): readonly string[] {
+  return files.flatMap((file) =>
+    expressionCallsIn(readFileSync(join(source, file), 'utf8')).map((call) => `${file}: ${call}`),
+  );
 }
 
 function localTimeBuiltinsIn(text: string): readonly string[] {
@@ -140,12 +169,25 @@ describe('the machine, its runner, its tasks and its decider, the run log and th
     expect(machineAndRunLog.length).toBeGreaterThan(50);
     expect(findingsIn(machineAndRunLog, impure)).toEqual([]);
   });
+
+  it('evaluate expressions with work as their only budget, so no deadline makes them read a clock', () => {
+    expect(expressionCallsUnder(everySource)).toEqual([
+      'dsl/evaluation.ts: source, data, variables, { now: place.now, mostWork }',
+    ]);
+  });
 });
 
 describe('the jq library the machine runs expressions with', () => {
   it('uses no Node-only API, no code generation and no host timer, and reads no clock or random source', () => {
     expect(jq.length).toBeGreaterThan(100_000);
     expect(caught(jq, [...nodeOnly, ...clockOrRandom])).toEqual([]);
+  });
+
+  it('is patched the same in the build require() loads as in the one import loads', () => {
+    const added = linesThePatchAddsTo('index.mjs');
+
+    expect(added.length).toBeGreaterThan(200);
+    expect(added.filter((line) => !jqForRequire.includes(line))).toEqual([]);
   });
 
   it('reaches the host time zone only through localtime and strflocaltime, which the DSL refuses', () => {
@@ -176,5 +218,10 @@ describe('the checks of purity', () => {
     expect(
       caught("const kinds = new Set(['a', 'b']);\nconst sizes = new WeakMap<object, number>();", growingCache),
     ).toEqual([]);
+    expect(
+      expressionCallsIn(
+        'function runExpression(source: string) {}\nrunExpression(source, data, {}, { now, mostWork, deadline: { milliseconds: 5, clock } });',
+      ),
+    ).toEqual(['source, data, {}, { now, mostWork, deadline: { milliseconds: 5, clock } }']);
   });
 });

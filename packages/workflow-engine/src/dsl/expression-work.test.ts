@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  childHeapMegabytes,
+  childTimeoutMs,
+  evaluateInAChild,
+  evaluateInAChildWithin,
+  stoppedEvaluationOf,
+} from '../testing/expressions-in-a-child.ts';
 import { runExpression, type Evaluation } from './expressions.ts';
 import type { Json } from './json.ts';
 
@@ -21,6 +28,16 @@ const ragged: Json = [numbers, ...Array.from({ length: 100 }, () => [])];
 
 const alternatives = Array.from({ length: 10 }, () => 'a').join('|');
 
+const ropeLength = 4_000_000;
+
+const keyLength = 64_000_000;
+
+const deadlineMs = 200;
+
+const workPerValue = 16;
+
+const comparisonCharge = 2 * workPerValue + 'a'.length + ropeLength + 'x'.length;
+
 function run(source: string, data: Json, work = mostWork): Evaluation {
   return runExpression(source, data, {}, { now, mostWork: work });
 }
@@ -31,7 +48,11 @@ describe('the work of an expression', () => {
     (source) => {
       const evaluation = run(source, null);
 
-      expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+      expect(evaluation).toMatchObject({
+        problem: `${source}: LimitError: Work limit exceeded`,
+        exhausted: true,
+        limit: 'work',
+      });
       expect(evaluation.work).toBeGreaterThan(mostWork);
     },
   );
@@ -44,6 +65,7 @@ describe('the work of an expression', () => {
     expect(run('reduce range(40) as $i (0; [., .])', null)).toMatchObject({
       problem: 'reduce range(40) as $i (0; [., .]): Work limit exceeded',
       exhausted: true,
+      limit: 'work',
     });
     expect(run('reduce range(40) as $i (0; [., .]) | tojson', null)).toMatchObject({ exhausted: true });
   });
@@ -75,6 +97,13 @@ describe('each operation that builds or visits values', () => {
     ['searches a string', '.s | contains("y")', { s: text }, 500_000],
     ['runs the regex machine', '.s | test("(' + alternatives + ')*b")', { s: 'a'.repeat(5000) }, 500_000],
     ['reads codepoints for a regex', '.s | test("x")', { s: text }, 1_000_000],
+    ['reads the codepoints of a regex', '.s as $p | "x" | test($p)', { s: text }, 1_000_000],
+    ['compiles a regex', '"a" | test("(?:a{60}){60}")', null, 50_000],
+    ['repeats a regex that compiles to nothing', '"a" | test("(?:){100000}")', null, 1_000_000],
+    ['passes the regex machine through instructions', '.s | test("(?:|){2000}b")', { s: 'a'.repeat(1000) }, 1_000_000],
+    ['copies the capture slots of a regex', 'test("(" * 1000 + "a" + ")" * 1000)', 'b'.repeat(10), 1_000_000],
+    ['tests the members of a regex class', '.s | test("[" + "b" * 1000 + "]")', { s: 'a'.repeat(10_000) }, 1_000_000],
+    ['prepares a regex search', '.s | gsub("x|(?:y{4000})"; "")', { s: 'x'.repeat(2000) }, 1_000_000],
     ['changes case', '.s | ascii_downcase', { s: capitals }, 1_000_000],
     ['changes case upward', '.s | ascii_upcase', { s: text }, 1_000_000],
     ['reads codepoints for a substitution', '.s | sub("x"; "z")', { s: text }, 1_000_000],
@@ -117,5 +146,124 @@ describe('an operation that allocates in proportion to its output', () => {
     ['divides', '.s / "x"', 3_400_561],
   ])('charges what it %s before it allocates it', (_operation, source, work) => {
     expect(run(source, { s: text }, 1_000_000)).toMatchObject({ exhausted: true, work });
+  });
+
+  it.each<readonly [string, string, number]>([
+    ['joins', '.a | join(",")', 1_000_740],
+    ['formats as CSV', '.a | @csv', 16_002_048],
+    ['formats as TSV', '.a | @tsv', 16_002_048],
+    ['formats for the shell', '.a | @sh', 16_002_048],
+  ])('charges the strings it %s before it builds them', (_operation, source, work) => {
+    expect(run(source, { a: [text, text, text, text, text] }, 1_000_000)).toMatchObject({ exhausted: true, work });
+  });
+
+  it.each(['join("")', '@csv', '@tsv', '@sh'])(
+    '%s of a hundred long strings stops before it builds them',
+    { timeout: 2 * childTimeoutMs },
+    (build) => {
+      const source = `("ā" * ${ropeLength}) as $s | [range(100) | $s] | ${build}`;
+      const { ended, output } = evaluateInAChild(source, null, mostWork);
+
+      expect(ended).toEqual({ status: 0, signal: null });
+      const evaluation = stoppedEvaluationOf(output);
+      expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+      expect(evaluation.peakMegabytes).toBeLessThan(childHeapMegabytes);
+    },
+  );
+});
+
+describe('a string used as an object key', () => {
+  it.each<readonly [string, string]>([
+    ['indexes an object', '{} | .[$s + "x"]'],
+    ['checks for a key', '{} | has($s + "x")'],
+    ['builds an object', '{($s + "x"): 1} | length'],
+    ['reads a path', '{} | getpath([$s + "x"])'],
+    ['sets a path', '{} | setpath([$s + "x"]; 1) | length'],
+    ['assigns to a key', '{} | .[$s + "x"] = 1 | length'],
+    ['deletes a key', '{} | del(.[$s + "x"])'],
+    ['makes an object of entries', '[{key: ($s + "x"), value: 1}] | from_entries | length'],
+    ['indexes values by a key', '[$s + "x"] | INDEX(.) | length'],
+  ])('is charged by its length when the expression %s', (_operation, use) => {
+    expect(run(`.s as $s | ${use}`, { s: text }, 150_000)).toMatchObject({ exhausted: true });
+  });
+
+  it('stops a loop that hashes a long key, where the engine charged next to nothing for it', () => {
+    const source = '("a" * 4000000) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))';
+
+    expect(run(source, null)).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+  });
+});
+
+describe('comparing a short string with a long one', { timeout: 2 * childTimeoutMs }, () => {
+  it.each<readonly [string, string]>([
+    ['for equality', '"a" == ($s + "x") | 1'],
+    ['for order', '"a" < ($s + "x") | 1'],
+    ['in sort', '["a", $s + "x"] | sort | 1'],
+    ['in sort, the other way round', '[$s + "x", "a"] | sort | 1'],
+    ['in unique', '["a", $s + "x"] | unique | 1'],
+    ['in group_by', '["a", $s + "x"] | group_by(.) | 1'],
+    ['in min', '["a", $s + "x"] | min | 1'],
+    ['in max', '["a", $s + "x"] | max | 1'],
+  ])('charges both strings %s', (_comparison, use) => {
+    expect(run(`("a" * 1000000) as $s | ${use}`, null, 1_500_000)).toMatchObject({ exhausted: true });
+  });
+
+  it.each([
+    `("a" * ${ropeLength}) as $s | reduce range(1000) as $i (0; . + (if "a" < ($s + "x") then 1 else 0 end))`,
+    `("a" * ${ropeLength}) as $s | reduce range(1000) as $i (0; . + ([$s + "x", "a"] | sort | length))`,
+  ])('%s stops at the work budget, past it by at most one charge', (source) => {
+    const { ended, output } = evaluateInAChild(source, null, mostWork);
+
+    expect(ended).toEqual({ status: 0, signal: null });
+    const evaluation = stoppedEvaluationOf(output);
+    expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+    expect(evaluation.work).toBeLessThanOrEqual(mostWork + comparisonCharge);
+  });
+});
+
+describe('the deadline of an expression', { timeout: 2 * childTimeoutMs }, () => {
+  it('stops an expression that runs past it, as exhausted as the work budget would, with its own error', () => {
+    const source = `("a" * ${keyLength}) as $s | {} as $o | reduce range(1000) as $i (0; . + ($o[$s + "x"] // 1))`;
+
+    const { ended, output } = evaluateInAChildWithin(source, Number.MAX_SAFE_INTEGER, deadlineMs);
+
+    expect(ended).toEqual({ status: 0, signal: null });
+    const evaluation = stoppedEvaluationOf(output);
+    expect(evaluation).toMatchObject({
+      problem: `${source}: LimitError: Deadline exceeded`,
+      exhausted: true,
+      limit: 'deadline',
+    });
+    expect(evaluation.elapsed).toBeGreaterThanOrEqual(deadlineMs);
+  });
+
+  it('is read on the clock it is given, at most once in 4096 units of work', () => {
+    const readings: number[] = [];
+    const clock = (): number => {
+      readings.push(readings.length);
+      return readings.length;
+    };
+
+    const evaluation = run('[range(5000)] | length', null);
+    const stopped = runExpression(
+      '[range(5000)] | length',
+      null,
+      {},
+      {
+        now,
+        mostWork,
+        deadline: { milliseconds: 10, clock },
+      },
+    );
+
+    expect(evaluation).toMatchObject({ value: 5000 });
+    expect(stopped).toMatchObject({
+      problem: '[range(5000)] | length: LimitError: Deadline exceeded',
+      limit: 'deadline',
+      exhausted: true,
+    });
+    expect(readings).toHaveLength(11);
+    expect(stopped.work).toBeGreaterThanOrEqual(9 * 4096);
+    expect(stopped.work).toBeLessThan(evaluation.work);
   });
 });
