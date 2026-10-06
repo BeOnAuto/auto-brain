@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { childTimeoutMs, evaluateInAChild, stoppedEvaluationOf } from '../testing/expressions-in-a-child.ts';
+import {
+  childHeapMegabytes,
+  childTimeoutMs,
+  evaluateInAChild,
+  stoppedEvaluationOf,
+} from '../testing/expressions-in-a-child.ts';
 import { runExpression, type Evaluation } from './expressions.ts';
 import type { Json } from './json.ts';
 
@@ -132,6 +137,29 @@ describe('an operation that allocates in proportion to its output', () => {
   ])('charges what it %s before it allocates it', (_operation, source, work) => {
     expect(run(source, { s: text }, 1_000_000)).toMatchObject({ exhausted: true, work });
   });
+
+  it.each<readonly [string, string, number]>([
+    ['joins', '.a | join(",")', 1_000_740],
+    ['formats as CSV', '.a | @csv', 16_002_048],
+    ['formats as TSV', '.a | @tsv', 16_002_048],
+    ['formats for the shell', '.a | @sh', 16_002_048],
+  ])('charges the strings it %s before it builds them', (_operation, source, work) => {
+    expect(run(source, { a: [text, text, text, text, text] }, 1_000_000)).toMatchObject({ exhausted: true, work });
+  });
+
+  it.each(['join("")', '@csv', '@tsv', '@sh'])(
+    '%s of a hundred long strings stops before it builds them',
+    { timeout: 2 * childTimeoutMs },
+    (build) => {
+      const source = `("ā" * ${ropeLength}) as $s | [range(100) | $s] | ${build}`;
+      const { ended, output } = evaluateInAChild(source, null, mostWork);
+
+      expect(ended).toEqual({ status: 0, signal: null });
+      const evaluation = stoppedEvaluationOf(output);
+      expect(evaluation).toMatchObject({ problem: `${source}: LimitError: Work limit exceeded`, exhausted: true });
+      expect(evaluation.peakMegabytes).toBeLessThan(childHeapMegabytes);
+    },
+  );
 });
 
 describe('a string used as an object key', () => {

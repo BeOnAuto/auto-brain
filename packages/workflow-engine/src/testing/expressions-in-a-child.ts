@@ -16,19 +16,21 @@ export interface ChildEvaluation {
 
 export const childTimeoutMs = 5000;
 
-const childHeapMegabytes = 256;
+export const childHeapMegabytes = 256;
 
 const evaluating = [
   `import { runExpression } from ${JSON.stringify(new URL('../dsl/expressions.ts', import.meta.url).href)};`,
   'const [source, data, mostWork] = process.argv.slice(1);',
   'const evaluation = runExpression(source, JSON.parse(data), {}, { now: 0, mostWork: Number(mostWork) });',
-  'process.stdout.write(JSON.stringify(evaluation));',
+  'const peakMegabytes = process.resourceUsage().maxRSS / 1024;',
+  'process.stdout.write(JSON.stringify({ ...evaluation, peakMegabytes }));',
 ].join('\n');
 
 const StoppedEvaluationSchema = Schema.Struct({
   problem: Schema.String,
   work: Schema.Number,
   exhausted: Schema.Boolean,
+  peakMegabytes: Schema.Number,
 });
 
 export const stoppedEvaluationOf = Schema.decodeUnknownSync(Schema.fromJsonString(StoppedEvaluationSchema));
