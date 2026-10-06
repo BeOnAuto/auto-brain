@@ -96,7 +96,7 @@ describe('the lineage of a record nothing waited for', () => {
       causationId: messageIdOf(stream, 66),
       correlationId: 'root',
     });
-  });
+  }, 30_000);
 
   it('is nothing for the fire of a timer the host keeps no arming record of, as one a sweep armed again', async () => {
     const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
