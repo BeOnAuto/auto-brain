@@ -139,6 +139,14 @@ describe('a page of folds', () => {
 });
 
 describe('the events a page of folds folds', () => {
+  it('never matches an event that lacks an attribute its filter names', () => {
+    const filters = [{ type: 'execution_started', source: '/executions/run' }];
+
+    expect(foldPage(pageOf([viewOf('. + 1', { view: 0, filters })]), stillClock()).views[0]).toMatchObject({
+      folded: 0,
+    });
+  });
+
   it('never matches a filter that names no type', () => {
     const folded = foldPage(
       pageOf([viewOf('. + 1', { view: 0, filters: [{ subject: 'inference/review-brief' }] })]),

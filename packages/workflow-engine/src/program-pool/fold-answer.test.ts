@@ -16,7 +16,7 @@ function passing(): undefined {
 const page = {
   events: [{ type: 'noted', data: 2 }],
   views: [{ fold: '. + $event.data', filters: [{ type: 'noted' }], view: 1, events: [0] }],
-  dialect: { refused: [], variables: ['event'] },
+  dialect: { refused: [{ name: 'now', why: 'reads the clock' }], variables: ['event'] },
   variable: 'event',
   limits: liftedLimits(16_000_000),
   foldDeadlineMs: 10_000,
@@ -35,7 +35,33 @@ describe('the answer of a worker that folds a page', () => {
   });
 
   it('answers that it could not read a page that is not one', () => {
-    expect(foldAnswerOf({ events: 'not JSON' }, clock)).toEqual({ ran: 'unreadable' });
+    const data = foldPageData(page);
+    const [view] = data.views;
+
+    expect([
+      foldAnswerOf({ events: 'not JSON' }, clock),
+      foldAnswerOf({ ...data, events: '[1]' }, clock),
+      foldAnswerOf({ ...data, views: [{ ...view, view: 'not JSON' }] }, clock),
+      foldAnswerOf({ ...data, views: [{ ...view, filters: [1] }] }, clock),
+    ]).toEqual([{ ran: 'unreadable' }, { ran: 'unreadable' }, { ran: 'unreadable' }, { ran: 'unreadable' }]);
+  });
+
+  it('reads a dialect that binds no variable, and a budget it is not given as none', () => {
+    const { pageBudgetMs: _budget, ...data } = foldPageData({ ...page, dialect: { refused: [] } });
+
+    expect(foldAnswerOf(data, clock)).toMatchObject({
+      early: false,
+      views: [{ view: '3', folded: 1 }],
+    });
+  });
+
+  it('reads the indexes of the events a view considers, passing over what is not one', () => {
+    const data = foldPageData(page);
+    const [view] = data.views;
+
+    expect(foldAnswerOf({ ...data, views: [{ ...view, events: [0, 'zero'] }] }, clock)).toMatchObject({
+      views: [{ view: '3', folded: 1 }],
+    });
   });
 });
 

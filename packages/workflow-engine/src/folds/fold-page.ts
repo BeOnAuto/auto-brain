@@ -1,10 +1,10 @@
 import type { Json, JsonObject } from '../dsl/json.ts';
-import { literalFilterOf, matchEvent, type LiteralFilter } from '../filters/event-filter.ts';
 import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
 import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
 import type { ProgramLimits, ProgramRun } from '../programs/program-running.ts';
 import type { ProgramSpan } from '../programs/program-tree.ts';
+import { hasTheAttributes } from './fold-filters.ts';
 
 export type StallKind = 'raised' | 'none' | 'several' | 'work' | 'depth' | 'unfit' | 'size' | 'schema' | 'refused';
 
@@ -59,7 +59,7 @@ export interface FoldHost {
 
 interface Prepared {
   readonly compiled: CompiledProgram;
-  readonly filters: readonly LiteralFilter[];
+  readonly filters: readonly JsonObject[];
   readonly check: ViewCheck | undefined;
   readonly considered: ReadonlySet<number>;
 }
@@ -77,18 +77,11 @@ function stalled(kind: StallKind, message: string, span: ProgramSpan | null = an
   return { stall: { kind, message: textWithin(message, mostIssueBytes), span } };
 }
 
-function filtersOf(attributes: readonly JsonObject[]): readonly LiteralFilter[] {
-  return attributes.flatMap((filter, index) => {
-    const reading = literalFilterOf({ with: filter }, `/filters/${index}`);
-    return 'filter' in reading ? [reading.filter] : [];
-  });
-}
-
 function foldingOf({ fold, filters, view, schema, events }: FoldingView, dialect: Dialect, host: FoldHost): Folding {
   return {
     prepared: {
       compiled: compileProgram(fold, dialect),
-      filters: filtersOf(filters),
+      filters,
       check: schema === undefined ? undefined : host.checkOf(schema),
       considered: new Set(events),
     },
@@ -97,7 +90,7 @@ function foldingOf({ fold, filters, view, schema, events }: FoldingView, dialect
 }
 
 function matches({ filters }: Prepared, event: JsonObject): boolean {
-  return filters.some((filter) => matchEvent(filter, event, 0) === true);
+  return filters.some((filter) => hasTheAttributes(filter, event));
 }
 
 function answeredStep(value: Json, { check }: Prepared, page: FoldPage): Step {
