@@ -339,9 +339,8 @@ jobs:
           test "$(call history.json "$brain/executions/$waiting/history")" = 200
           jq --exit-status '(.events | INDEX(.id) as $by
             | [.[] | [.type, (.data.name // .data.input.kind), $by[.causation_id // ""].type]] | sort) == [
-              ["execution_deferred", null, "execution_started"], ["execution_started", "approval", null],
-              ["execution_succeeded", null, "step_finished"], ["step_finished", "decide", "step_waiting"],
-              ["step_waiting", "decide", "workflow_input_applied"],
+              ["execution_started", "approval", null], ["execution_succeeded", null, "step_finished"],
+              ["step_finished", "decide", "step_waiting"], ["step_waiting", "decide", "workflow_input_applied"],
               ["workflow_input_applied", "event_received", "step_waiting"],
               ["workflow_input_applied", "started", "execution_started"]]' history.json
           stop_server workflows-second

@@ -90,7 +90,6 @@ const historyOf = Schema.decodeUnknownSync(
 );
 
 const typesOfTheDeclinedReview = [
-  'execution_deferred',
   'execution_started',
   'execution_succeeded',
   ...Array.from({ length: 3 }, () => 'step_finished'),

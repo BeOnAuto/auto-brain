@@ -134,7 +134,7 @@ describe('the history of a run', () => {
     });
   });
 
-  it('reads a run that finished later, newest first, from a query string with its id in any case', async () => {
+  it('reads a run that finished later, newest first, from a query string with its id in any case, without its deferral', async () => {
     const { call, executing, getExecutionHistory, settling } = await withHandOn();
     await executing();
     await settling({ status: 'succeeded', output: 'done', record: {} });
@@ -144,8 +144,8 @@ describe('the history of a run', () => {
       asQueryString(toAlpha(acmeAdmin, { execution_id: relayedId.toUpperCase(), order: 'desc' })),
     );
 
-    expect(typesIn(read)).toEqual(['execution_succeeded', 'execution_deferred', 'execution_started']);
-    expect(read).toMatchObject({ output: { events: [{ at: settledAt }, {}, {}] } });
+    expect(typesIn(read)).toEqual(['execution_succeeded', 'execution_started']);
+    expect(read).toMatchObject({ output: { events: [{ at: settledAt }, {}] } });
   });
 });
 
