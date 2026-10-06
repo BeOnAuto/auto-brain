@@ -22,6 +22,8 @@ export interface ProgramRequest {
   readonly limits: ProgramLimits;
   readonly deadlineMs: number;
   readonly mostOutputBytes: number;
+  readonly worker?: Readonly<URL>;
+  readonly context?: Json;
 }
 
 export type Stopped = 'deadline' | 'memory' | 'busy' | 'cancelled' | 'closing';
@@ -124,8 +126,17 @@ function watchUntil(until: number, closing: () => boolean, signal: Readonly<Abor
 }
 
 function workerOptions(request: ProgramRequest, until: number, heapMegabytes: number): WorkerOptions {
+  const { source, input, dialect, limits, mostOutputBytes, context = null } = request;
   return {
-    workerData: { ...request, input: JSON.stringify(request.input), deadlineAt: performance.timeOrigin + until },
+    workerData: {
+      source,
+      input: JSON.stringify(input),
+      dialect,
+      limits,
+      mostOutputBytes,
+      context,
+      deadlineAt: performance.timeOrigin + until,
+    },
     resourceLimits: { maxOldGenerationSizeMb: heapMegabytes, stackSizeMb: workerStackMegabytes },
   };
 }
@@ -146,8 +157,8 @@ export function programPool(settings: PoolSettings): ProgramPool {
   const slots = poolSlots(settings.workers);
   const stops = new Set<() => Promise<number>>();
   const state = { closing: false };
-  const module = new URL((settings.worker ?? programWorker).href);
   const evaluate: Evaluate = async ({ request, until, signal }) => {
+    const module = new URL((settings.worker ?? request.worker ?? programWorker).href);
     const worker = new Worker(module, workerOptions(request, until, settings.heapMegabytes));
     const stop = (): Promise<number> => worker.terminate();
     stops.add(stop);

@@ -1,4 +1,4 @@
-import { isJson } from '../dsl/json.ts';
+import { isJson, type Json } from '../dsl/json.ts';
 import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
 import { compileProgram } from '../programs/program-compiling.ts';
 import type { Dialect, Refusal } from '../programs/program-dialect.ts';
@@ -63,7 +63,18 @@ function cut(issue: ProgramIssue): ProgramIssue {
   return { ...issue, detail: textWithin(issue.detail, mostIssueBytes) };
 }
 
-function answerFrom(run: ProgramRun, mostOutputBytes: number): ProgramAnswerData {
+export type OutputCheck = (output: Json) => readonly string[];
+
+const unchecked: OutputCheck = () => [];
+
+function checkedAnswer(value: Json, bytes: number, work: number, check: OutputCheck): ProgramAnswerData {
+  const issues = check(value);
+  return issues.length === 0
+    ? { ran: 'answered', output: JSON.stringify(value), bytes, work }
+    : { ran: 'mismatched', issues: issues.map((issue) => textWithin(issue, mostIssueBytes)), work };
+}
+
+function answerFrom(run: ProgramRun, mostOutputBytes: number, check: OutputCheck): ProgramAnswerData {
   if (run.ran === 'raised' || run.ran === 'exhausted') {
     return { ...run, issue: cut(run.issue) };
   }
@@ -73,10 +84,10 @@ function answerFrom(run: ProgramRun, mostOutputBytes: number): ProgramAnswerData
   const bytes = jsonBytesWithin(run.value, mostOutputBytes);
   return bytes > mostOutputBytes
     ? { ran: 'oversized', work: run.work }
-    : { ran: 'answered', output: JSON.stringify(run.value), bytes, work: run.work };
+    : checkedAnswer(run.value, bytes, run.work, check);
 }
 
-function evaluated(request: ProgramRequestData, clock: () => number): ProgramAnswerData {
+function evaluated(request: ProgramRequestData, clock: () => number, check: OutputCheck): ProgramAnswerData {
   const compiled = compileProgram(request.source, request.dialect);
   if ('issues' in compiled) {
     return { ran: 'refused', issues: compiled.issues.map((issue) => cut(issue)) };
@@ -90,9 +101,9 @@ function evaluated(request: ProgramRequestData, clock: () => number): ProgramAns
     outputs: 'exactly one',
     deadline: { milliseconds: request.deadlineAt - clock(), clock },
   });
-  return answerFrom(run, request.mostOutputBytes);
+  return answerFrom(run, request.mostOutputBytes, check);
 }
 
-export function answerOf(data: unknown, clock: () => number): ProgramAnswerData {
-  return evaluated(requestOf(data), clock);
+export function answerOf(data: unknown, clock: () => number, check: OutputCheck = unchecked): ProgramAnswerData {
+  return evaluated(requestOf(data), clock, check);
 }

@@ -16,12 +16,13 @@ The program is compiled with the evaluator of [`@beonauto/workflow-engine/dsl`](
 
 1. refuses an input nested deeper than 512 levels, and one its input schema refuses, as `invalid_input` with the schema's pointers;
 2. asks the pool to run the program on the input with `computationLimits`, `liftedLimits` of the engine with the work bound, in `exactly one` mode, with the deadline counted from the start of the run and an output of at most `mostOutputBytes`, 1 MiB less 256 bytes for the record;
-3. turns the outcome into the run's ending (`src/run/run-outcome.ts`):
+3. for a definition with an output schema, names its own worker module, `src/run/output-worker.ts`, and the schema as the request's context, so the worker that runs the program also checks the output against the schema, under the run's deadline, and the thread that serves requests never waits on the check: a 1 MiB output against a recursive schema had taken 1,038 ms there;
+4. turns the outcome into the run's ending (`src/run/run-outcome.ts`):
 
 | Outcome of the pool                                                           | Ending                                                                                                                                                           |
 | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| answered, and the output schema accepts it                                    | succeeded, with the output and the record `{ language, work, duration_ms, input_bytes, output_bytes }`                                                           |
-| answered, and the output schema refuses it                                    | `conflict`, kind `unworkable`, with the first three issues, each cut at 1,024 bytes                                                                              |
+| answered, the output schema, if any, accepting it                             | succeeded, with the output and the record `{ language, work, duration_ms, input_bytes, output_bytes }`                                                           |
+| mismatched: its worker found the output does not match the output schema      | `conflict`, kind `unworkable`, with the first three issues, each cut at 1,024 bytes                                                                              |
 | raised                                                                        | `conflict`, `unworkable`: `The program raised an error on line N: <its error>`, its text cut at 1,024 bytes, or for `Max depth exceeded` the depth of evaluation |
 | exhausted by work or by the depth of a value                                  | `conflict`, `unworkable`, with the bound, the line and, for work, the units spent                                                                                |
 | no output or more than one, an output that is not JSON, or one over its bytes | `conflict`, `unworkable`                                                                                                                                         |

@@ -2,14 +2,12 @@ import { Conflict, Unavailable } from '@beonauto/operations';
 import type { Finished } from '@beonauto/specs';
 import {
   lineOf,
-  mostIssueBytes,
-  textWithin,
   type PoolOutcome,
   type ProgramSpan,
   type Stopped,
   workerStackMegabytes,
 } from '@beonauto/workflow-engine/dsl';
-import { Effect, Result, type Schema } from 'effect';
+import { Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
 import { computationBounds, mostOutputBytes } from './run-bounds.ts';
@@ -26,8 +24,6 @@ type Ending = Effect.Effect<Finished, Conflict | Unavailable>;
 type Answered = Extract<PoolOutcome, { readonly ran: 'answered' }>;
 
 type Exhausted = Extract<PoolOutcome, { readonly ran: 'exhausted' }>;
-
-const mostIssuesInADetail = 3;
 
 const recursionTooDeep = 'Max depth exceeded';
 
@@ -50,16 +46,6 @@ function recordOf(answered: Answered, { inputBytes }: RunFacts): Schema.JsonObje
 }
 
 function finishedWith(answered: Answered, facts: RunFacts): Ending {
-  const { schema } = facts.document.output;
-  const checked = schema === undefined ? Result.succeed(answered.output) : schema.validate(answered.output);
-  if (Result.isFailure(checked)) {
-    const issues = checked.failure
-      .slice(0, mostIssuesInADetail)
-      .map(({ pointer, detail }) =>
-        textWithin(`${pointer === '' ? 'the output' : pointer}: ${detail}`, mostIssueBytes),
-      );
-    return unworkable(`The program's output does not match the output schema: ${issues.join('; ')}`);
-  }
   return Effect.succeed({ output: answered.output, record: recordOf(answered, facts) });
 }
 
@@ -100,11 +86,17 @@ function raisedWith(detail: string, span: ProgramSpan, { document }: RunFacts): 
     : unworkable(`The program raised an error on line ${line}: ${detail}`);
 }
 
-type Unworkable = Extract<PoolOutcome, { readonly ran: 'oversized' | 'unanswered' | 'unfit' | 'refused' }>;
+type Unworkable = Extract<
+  PoolOutcome,
+  { readonly ran: 'oversized' | 'mismatched' | 'unanswered' | 'unfit' | 'refused' }
+>;
 
 function unworkableWith(outcome: Unworkable): Ending {
   if (outcome.ran === 'refused') {
     return Effect.die(new Error('The worker refused a program the definition was accepted with'));
+  }
+  if (outcome.ran === 'mismatched') {
+    return unworkable(`The program's output does not match the output schema: ${outcome.issues.join('; ')}`);
   }
   if (outcome.ran === 'oversized') {
     return unworkable(`The program's output takes more than the ${mostOutputBytes} bytes as JSON a run can record`);

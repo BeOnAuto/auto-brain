@@ -181,6 +181,27 @@ describe('the workers of a pool', { timeout: poolTestTimeoutMs }, () => {
   });
 });
 
+describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
+  it("answers that request, with the context the request gives, while other requests keep the pool's worker", async () => {
+    const echoing = workerOf(
+      [
+        "import { parentPort, workerData } from 'node:worker_threads';",
+        "const output = JSON.stringify({ context: workerData.context, worker: 'named' });",
+        "parentPort.postMessage({ ran: 'answered', output, bytes: output.length, work: 0 });",
+      ].join('\n'),
+    );
+    const pool = poolOf();
+    const context = { schema: { type: 'string' } };
+
+    expect(await pool.run(request('.', null, { worker: echoing, context }))).toMatchObject({
+      ran: 'answered',
+      output: { context, worker: 'named' },
+    });
+    expect(await pool.run(request('.', null, { worker: echoing }))).toMatchObject({ output: { context: null } });
+    expect(await pool.run(request('[.]', 1))).toMatchObject({ ran: 'answered', output: [1] });
+  });
+});
+
 describe('a worker that breaks', { timeout: poolTestTimeoutMs }, () => {
   it.each([
     ['throws', 'throw new Error("broken on purpose")', 'The worker failed: broken on purpose'],

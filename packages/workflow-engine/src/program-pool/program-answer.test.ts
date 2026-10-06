@@ -40,3 +40,22 @@ describe('the answer of a worker', () => {
     });
   });
 });
+
+function accepting(): readonly string[] {
+  return [];
+}
+
+function refusing(output: unknown): readonly string[] {
+  return [`/0: ${'x'.repeat(2000)}`, `got ${JSON.stringify(output)}`];
+}
+
+describe('the answer of a worker that checks the output', () => {
+  it('answers the output when the check finds nothing, and the issues it finds, each cut at 1,024 bytes, when it does', () => {
+    expect(answerOf(request, clock, accepting)).toMatchObject({ ran: 'answered', output: '[2,3]' });
+    expect(answerOf(request, clock, refusing)).toEqual({
+      ran: 'mismatched',
+      issues: [`/0: ${'x'.repeat(1020)}…`, 'got [2,3]'],
+      work: 1392,
+    });
+  });
+});
