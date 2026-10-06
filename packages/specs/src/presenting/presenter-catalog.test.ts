@@ -74,7 +74,6 @@ const largestExecutionEvents: readonly ExecutionEvent[] = [
     input: { text: 'x'.repeat(mostInputBytes - 16) },
     ...fact,
   },
-  { type: 'execution_deferred', record: largestJson, ...fact },
   { type: 'execution_succeeded', output: largestJson, record: largestJson, ...ofTheLongestNames, ...fact },
   {
     type: 'execution_rejected',
