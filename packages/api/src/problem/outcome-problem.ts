@@ -8,8 +8,12 @@ const serverStopping = problemOf('unavailable', 'The server is stopping');
 
 const clientClosed = problemOf('client_closed_request', 'The client closed the request before it was answered');
 
-function optionalMembersOf({ issues }: Rejected): OptionalProblemMembers {
-  return issues === undefined ? {} : { errors: issues };
+function optionalMembersOf({ issues, kind, because }: Rejected): OptionalProblemMembers {
+  return {
+    ...(issues === undefined ? {} : { errors: issues }),
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
+  };
 }
 
 export function problemOfOutcome(outcome: Unsuccessful, clientClosedRequest: boolean): Problem {

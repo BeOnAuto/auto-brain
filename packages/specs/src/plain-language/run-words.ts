@@ -26,8 +26,11 @@ function describedOutput(primitive: Primitive | undefined, { output }: Described
 }
 
 export function explainedRejectionOf(rejection: DescribedExecution['rejection']): ExplainedRejection {
-  if (rejection === undefined || rejection.reason === 'conflict') {
+  if (rejection === undefined) {
     return { reason: 'conflict', kind: 'unworkable' };
+  }
+  if (rejection.reason === 'conflict') {
+    return { reason: 'conflict', kind: rejection.kind ?? 'unworkable' };
   }
   if (rejection.reason !== 'unavailable' || rejection.kind === undefined) {
     return { reason: rejection.reason };

@@ -140,3 +140,23 @@ describe('the answer of a spec a workflow called', () => {
     });
   });
 });
+
+describe('a call whose spec is rejected with a kind and because', () => {
+  it('carries the kind and because of a rejection', async () => {
+    const { perform } = answering({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'No tool server of that name',
+      kind: 'tool_not_offered',
+      because: 'mcp_server_not_configured',
+    });
+
+    expect(await Effect.runPromise(perform(classify, run))).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'No tool server of that name',
+      kind: 'tool_not_offered',
+      because: 'mcp_server_not_configured',
+    });
+  });
+});

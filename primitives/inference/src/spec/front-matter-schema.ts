@@ -46,6 +46,7 @@ const FrontMatterSchema = Schema.Struct({
   input: Schema.optionalKey(InputSectionSchema),
   output: Schema.optionalKey(OutputSectionSchema),
   provider_options: Schema.optionalKey(ProviderOptionsSchema),
+  tools: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 
 export type ConfigSection = typeof ConfigSchema.Type | undefined;
@@ -61,6 +62,7 @@ export const decodeSection = {
   input: Schema.decodeUnknownOption(Schema.UndefinedOr(InputSectionSchema)),
   output: Schema.decodeUnknownOption(Schema.UndefinedOr(OutputSectionSchema)),
   provider_options: Schema.decodeUnknownOption(Schema.UndefinedOr(ProviderOptionsSchema)),
+  tools: Schema.decodeUnknownOption(Schema.UndefinedOr(Schema.Array(Schema.String))),
 };
 
 export interface ReadFrontMatter {

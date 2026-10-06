@@ -163,17 +163,21 @@ Each time the task runs, including on a retry, it starts a separate run of the f
 
 A run of the function that does not succeed raises an error the workflow can catch:
 
-| The function's run            | Error type      | Status |
-| ----------------------------- | --------------- | ------ |
-| Rejected with `invalid_input` | `validation`    | 400    |
-| Rejected with `forbidden`     | `authorization` | 403    |
-| Rejected with `not_found`     | `configuration` | 404    |
-| Rejected with `conflict`      | `runtime`       | 409    |
-| Rejected with `unavailable`   | `communication` | 503    |
-| Failed                        | `runtime`       | 500    |
-| Could not be reached          | `communication` | 503    |
+| The function's run                                         | Error type                                  | Status |
+| ---------------------------------------------------------- | ------------------------------------------- | ------ |
+| Rejected with `invalid_input`                              | `validation`                                | 400    |
+| Rejected with `forbidden`                                  | `authorization`                             | 403    |
+| Rejected with `not_found`                                  | `configuration`                             | 404    |
+| Rejected with `conflict`                                   | `runtime`                                   | 409    |
+| Rejected with `conflict` of the kind `tools_called`        | `https://on.auto/problems/tools_called`     | 409    |
+| Rejected with `unavailable`                                | `communication`                             | 503    |
+| Rejected with `unavailable` of the kind `tools_unfinished` | `https://on.auto/problems/tools_unfinished` | 503    |
+| Failed                                                     | `runtime`                                   | 500    |
+| Could not be reached                                       | `communication`                             | 503    |
 
-The error's `title` names the definition and, for a rejection, its reason; its `detail` carries the detail the run gave.
+The short types are under `https://open-workflow-specification.org/spec/1.0.0/errors/`. A reason function that called tools and could not finish has a type of its own, the [problem type](http.md#responses-and-errors) `https://on.auto/problems/tools_unfinished`, never `communication`: its tools may have changed something, so a `catch` that retries communication errors does not run them again under a new id. So does a step that meets a run of a function whose tools may have been called before, as when the server restarted during the step and performs it again: it raises `https://on.auto/problems/tools_called`, never `runtime`, and a workflow that ends with it is rejected as a `conflict` of that kind, which says to check the run's history and start a new run. A workflow that wants another run names one of those types in its `catch` and starts one knowingly.
+
+The error's `title` names the definition and, for a rejection, its reason; its `detail` carries the detail the run gave. A rejection that has a kind carries it as the error's `kind`, and its cause as `because`, as the [HTTP problem document](http.md#responses-and-errors) does: a reason function whose tools are not offered is `tool_not_offered`, one whose tool server cannot be used `mcp_server_failed`, and one that called tools and could not finish `tools_unfinished`, its tools having perhaps changed something. A `catch` reads them in the error it catches, so `when: '${ $error.kind == "tool_not_offered" }'` handles only that, and `${ $error.because }` names why.
 
 ### Waiting for events
 
@@ -191,7 +195,7 @@ An event sent before a `listen` task waits for it is kept, and the task takes th
 
 ### Errors, retries and timeouts
 
-An error has a `type` (a URI), an integer `status`, an `instance` naming the task that raised it as a JSON Pointer, and an optional `title` and `detail`. A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. Errors raised by the runtime have types under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
+An error has a `type` (a URI), an integer `status`, an `instance` naming the task that raised it as a JSON Pointer, and an optional `title` and `detail`; an error a function's rejection raised also has its `kind` and `because` when the rejection has them. A `raise`, inline or under `use.errors`, may name a `kind` and a `because` too, so a `catch` can raise the error it caught again without losing them: `kind: '${ $error.kind }'`. A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. Errors raised by the runtime have types under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
 
 | Situation                                                                                        | Error type      | Status |
 | ------------------------------------------------------------------------------------------------ | --------------- | ------ |
@@ -217,7 +221,7 @@ A retry policy is written inline or named from `use.retries`:
 | `limit.duration`           | No retry starts once this much time has passed since the first attempt                                                  |
 | `when`, `exceptWhen`       | Retry only when, or except when, the condition holds                                                                    |
 
-The `patient` policy in the example retries at most three times, after 5, 10 and 20 seconds. A `timeout` on a task cancels the task when its duration passes and raises a `timeout` error at that task. A `timeout` on the document does the same for the whole run.
+The `patient` policy in the example retries at most three times, after 5, 10 and 20 seconds. A `timeout` on a task cancels the task when its duration passes and raises a `timeout` error at that task. A call it cancels stops the function's run at once: a reason function's tool calls still in flight are cancelled at their tool servers, and its run ends `failed`, its history showing each of those calls started and never answered. Once it has ended, that run is not run again under its id if it had recorded a tool call, since its tools may have changed something; a run that recorded none may be run again under its id, even of a function that names tools. The error is still a plain `timeout`, which says nothing of the tools: a `retry` that matches timeouts calls the function again, under a new id, and so calls its tools again. To keep them from being called again, leave timeouts out of such a retry, as with `exceptWhen: '${ $error.status == 408 }'`, and check the run's history before starting another. A `timeout` on the document does the same for the whole run.
 
 ### Loops and parallel branches
 

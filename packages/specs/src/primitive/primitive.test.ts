@@ -3,6 +3,8 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineExecuteSpec, definePrimitive, type ExecutionContext, type PrimitiveDefinition } from '../index.ts';
+import { recordingJournal } from '../testing/recording-journal.ts';
+import { answerOfCall, startOfCall } from '../testing/tool-user.ts';
 
 const parseWords = (source: string) =>
   source.trim() === ''
@@ -30,6 +32,7 @@ const execution: ExecutionContext = {
   brain: 'alpha',
   caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:write'], brains: '*' },
   spec: { name: 'count', version: 3 },
+  journal: recordingJournal(),
 };
 
 describe('a primitive', () => {
@@ -84,5 +87,29 @@ describe('the reach of a primitive', () => {
       defineExecuteSpec([local]).registration.reachesOutside,
       defineExecuteSpec([local, outside]).registration.reachesOutside,
     ]).toEqual([false, true]);
+  });
+});
+
+describe('the change a primitive may make outside the server', () => {
+  it('is none unless it says so, and execute_spec may change the outside when one of its primitives may', () => {
+    const local = definePrimitive(words);
+    const acting = definePrimitive({ ...words, name: 'acting', reachesOutside: true, mayChangeOutside: true });
+
+    expect([local.mayChangeOutside, acting.mayChangeOutside]).toEqual([false, true]);
+    expect([
+      defineExecuteSpec([local]).registration.mayChangeOutside,
+      defineExecuteSpec([local, acting]).registration.mayChangeOutside,
+    ]).toEqual([false, true]);
+  });
+});
+
+describe('a journal that records in memory, for tests', () => {
+  it('keeps what it records and refuses what it is told to', async () => {
+    const journal = recordingJournal(({ type }) => type === 'tool_call_answered');
+
+    expect(await Effect.runPromise(journal.record(startOfCall(1)))).toBe(true);
+    expect(await Effect.runPromise(journal.record(answerOfCall(1)))).toBe(false);
+    expect(journal.recorded()).toEqual([startOfCall(1)]);
+    expect(await Effect.runPromise(recordingJournal().record(answerOfCall(2)))).toBe(true);
   });
 });

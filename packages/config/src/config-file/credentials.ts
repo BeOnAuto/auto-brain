@@ -20,6 +20,7 @@ const credentialPairs = /(?:^|-)(?:api|access|private|secret)-key(?:-|$)/u;
 const credentialShapes: readonly RegExp[] = [
   /^(?:basic|bearer|digest|token)\s+\S/iu,
   /^sk-[\w-]{16,}/u,
+  /^[rs]k[-_](?:live|test)[-_]\w/u,
   /^AKIA[0-9A-Z]{16}$/u,
   /^AIza[\w-]{35}$/u,
   /^gh[opsu]_\w{20,}/u,
@@ -46,8 +47,29 @@ function looksLikeCredential(text: string): boolean {
   return credentialShapes.some((shape: Readonly<RegExp>) => shape.test(literal));
 }
 
+function urlHoldsCredential(text: string): boolean {
+  const url = URL.parse(literalTextOf(text).trim());
+  if (url === null) {
+    return false;
+  }
+  return (
+    url.password !== '' ||
+    looksLikeCredential(url.username) ||
+    [...url.searchParams.values()].some((value) => looksLikeCredential(value))
+  );
+}
+
+function assignsCredential(text: string): boolean {
+  const equals = text.indexOf('=');
+  return equals >= 0 && looksLikeCredential(text.slice(equals + 1));
+}
+
 function textProblems(name: string, text: string, pointer: string): readonly FileProblem[] {
-  const refused = (namesCredential(name) && !holdsReference(text)) || looksLikeCredential(text);
+  const refused =
+    (namesCredential(name) && !holdsReference(text)) ||
+    looksLikeCredential(text) ||
+    urlHoldsCredential(text) ||
+    assignsCredential(text);
   return refused ? [{ pointer, detail: advice }] : [];
 }
 

@@ -199,7 +199,7 @@ const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
   body: FrameBodySchema,
 });
 
-export const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
+const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('completed'), output: Schema.Json }),
   Schema.Struct({ kind: Schema.Literal('raised'), error: DslErrorSchema }),
   Schema.Struct({ kind: Schema.Literal('cancelled') }),

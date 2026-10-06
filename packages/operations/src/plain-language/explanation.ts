@@ -6,6 +6,7 @@ import type { UnavailableBecause } from '../outcome/unavailable.ts';
 export interface Explanation {
   readonly why: string;
   readonly remedy: string;
+  readonly mayHaveChanged?: true;
 }
 
 export type ExplainedRejection = Pick<Rejected, 'reason' | 'kind' | 'because'>;
@@ -43,29 +44,63 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   },
   concurrent_change: { why: 'something else changed it at the same moment', remedy: 'Trying again should work.' },
   unworkable: { why: 'it cannot work as it is written', remedy: correctable },
+  tools_called: {
+    why: 'this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something',
+    remedy:
+      'So it was not run again: start a new run instead, after checking what its history shows it has called so far.',
+    mayHaveChanged: true,
+  },
   model_not_offered: {
     why: 'this server does not offer the model named',
     remedy:
       'This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.',
+  },
+  tool_not_offered: {
+    why: 'this server does not offer a tool it names',
+    remedy:
+      'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, so once it names only those, it can be tried again.',
+  },
+  mcp_server_failed: {
+    why: 'a tool server it needs could not be used',
+    remedy:
+      'Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.',
+  },
+  tools_unfinished: {
+    why: 'it called tools but could not finish',
+    remedy:
+      'What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
+    mayHaveChanged: true,
   },
 };
 
 const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
   provider_not_configured: 'because its provider is not set up on this server, though others are',
   model_not_allowed: 'because it is not among the models whoever runs the server allows',
+  mcp_server_not_configured: 'because whoever runs the server has not set up a tool server of that name for this brain',
+  tool_not_allowed: 'because it is not among the tools whoever runs the server allows',
+  tool_not_listed: 'because the tool server it names does not have that tool',
+  failing: 'because the tool server kept failing',
+  rate_limited: 'because the tool server asked it to slow down for longer than a run waits',
+  unreachable: 'because the tool server could not be reached in time',
+  server_failed: 'because a tool server kept failing',
+  model_unavailable: 'because the model stopped answering',
+  run_bound: 'because it ran out of time',
+  no_answer: 'because the model kept calling tools instead of answering',
 };
 
 export function explanationOf({ reason, kind, because }: ExplainedRejection): Explanation {
   if (kind === undefined) {
     return explanationByReason[reason];
   }
-  const { why, remedy } = explanationByKind[kind];
-  return because === undefined ? { why, remedy } : { why: `${why}, ${explanationByBecause[because]}`, remedy };
+  const explanation = explanationByKind[kind];
+  return because === undefined
+    ? explanation
+    : { ...explanation, why: `${explanation.why}, ${explanationByBecause[because]}` };
 }
 
 function rejectionWords(attempt: string, operationKind: OperationKind, rejection: Rejected): string {
-  const { why, remedy } = explanationOf(rejection);
-  const unchanged = operationKind === 'command' ? ' Nothing was changed.' : '';
+  const { why, remedy, mayHaveChanged } = explanationOf(rejection);
+  const unchanged = operationKind === 'command' && mayHaveChanged === undefined ? ' Nothing was changed.' : '';
   return `Could not ${attempt}: ${why}.${unchanged} ${remedy}`;
 }
 

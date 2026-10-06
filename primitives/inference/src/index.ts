@@ -23,6 +23,7 @@ export { ProviderUnavailable } from './failure/provider-unavailable.ts';
 export { RateLimited } from './failure/rate-limited.ts';
 export { SpecInvalid } from './failure/spec-invalid.ts';
 export { TimedOut } from './failure/timed-out.ts';
+export { ToolsStopped, type ToolsStoppedBecause } from './failure/tools-stopped.ts';
 export { LanguageModel } from './model/language-model.ts';
 export { makeInference, type InferenceOptions } from './primitive/inference-primitive.ts';
 export { parseModelReference, type ModelReference } from './model/model-reference.ts';
@@ -32,12 +33,17 @@ export type {
   JsonOutput,
   ModelMessage,
   ModelRequest,
+  ModelTool,
+  ModelTools,
   OutputRequest,
   ProviderOptions,
   ReasoningEffort,
   RetryOwner,
   TextOutput,
   TextPart,
+  ToolCallRequest,
+  ToolCallSignals,
+  ToolReply,
 } from './model/model-request.ts';
 export type {
   FinishReason,

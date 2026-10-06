@@ -39,3 +39,26 @@ describe('makeAppRuntime', () => {
     ).rejects.toThrow('no ledger');
   });
 });
+
+describe('an effect run with a signal', () => {
+  it('cancels an effect in flight when its signal aborts, interrupting it so its finalizers run', async () => {
+    const runtime = await makeAppRuntime(Layer.empty);
+    const aborting = new AbortController();
+    const finalized: string[] = [];
+    const inFlight = runtime.run(
+      Effect.never.pipe(
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            finalized.push('interrupted');
+          }),
+        ),
+      ),
+      aborting.signal,
+    );
+
+    aborting.abort();
+
+    expect(await inFlight).toEqual({ status: 'cancelled' });
+    expect(finalized).toEqual(['interrupted']);
+  });
+});

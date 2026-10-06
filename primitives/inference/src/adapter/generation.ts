@@ -25,14 +25,24 @@ function reportsOf(
   );
 }
 
-export function generation(
-  resolve: ModelResolution,
-  policy: CallPolicy,
-): (request: ModelRequest) => Effect.Effect<ModelResult, ModelFailure> {
+export interface Generation {
+  readonly admit: (request: ModelRequest) => Effect.Effect<void, ModelFailure>;
+  readonly generate: (request: ModelRequest) => Effect.Effect<ModelResult, ModelFailure>;
+}
+
+function admission(resolve: ModelResolution, policy: CallPolicy) {
   return Effect.fnUntraced(function* (request: ModelRequest) {
     yield* checkedRequest(request);
     const target = yield* Effect.fromResult(resolve(request.model));
     yield* Effect.fromResult(policy.admitsOptions(target.provider, request.provider_options));
+    return target;
+  });
+}
+
+export function generation(resolve: ModelResolution, policy: CallPolicy): Generation {
+  const admitted = admission(resolve, policy);
+  const generate = Effect.fnUntraced(function* (request: ModelRequest) {
+    const target = yield* admitted(request);
     const started = yield* Clock.currentTimeMillis;
     const call = yield* Effect.promise((interruption: Readonly<AbortSignal>) =>
       settledCall(target, request, interruption, policy),
@@ -47,4 +57,5 @@ export function generation(
     const failure = settled.failure;
     return yield* failure instanceof UnclassifiedModelError ? Effect.die(failure) : Effect.fail(failure);
   });
+  return { admit: (request) => Effect.asVoid(admitted(request)), generate };
 }

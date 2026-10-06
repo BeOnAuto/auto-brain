@@ -49,3 +49,23 @@ describe('the result of executing a spec through the operations', () => {
     });
   });
 });
+
+describe('the rejection of executing a spec that names its kind and because', () => {
+  it('is the rejection with its kind and because, which a workflow reads in the error it catches', () => {
+    expect(
+      specExecutionResultOf({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail: 'A tool server kept failing',
+        kind: 'tools_unfinished',
+        because: 'server_failed',
+      }),
+    ).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'A tool server kept failing',
+      kind: 'tools_unfinished',
+      because: 'server_failed',
+    });
+  });
+});

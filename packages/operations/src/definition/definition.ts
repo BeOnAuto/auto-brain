@@ -45,6 +45,7 @@ export interface Definition<
   readonly route: Route<K, P>;
   readonly successStatus?: SuccessStatusByKind[K];
   readonly reachesOutside?: boolean;
+  readonly mayChangeOutside?: boolean;
   readonly inputSchema: In;
   readonly outputSchema: Out;
   readonly reasons: readonly R[];

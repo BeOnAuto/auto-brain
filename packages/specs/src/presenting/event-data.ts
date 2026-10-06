@@ -12,6 +12,12 @@ export const mostCallerBytes = 256;
 
 export const mostDescriptionCharacters = 300;
 
+export const mostNameBytes = 256;
+
+export const mostDigestBytes = 128;
+
+export const mostContentBytes = 2048;
+
 export interface ShownIssue {
   readonly detail: string;
   readonly pointer: string;

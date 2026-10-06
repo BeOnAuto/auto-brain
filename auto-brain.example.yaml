@@ -36,6 +36,30 @@ model_aliases:
 #   - anthropic/*
 #   - gateway/anthropic/claude-haiku-4-5
 
+# The MCP servers whose tools a reason function may name in its tools key,
+# each bound to an org and, optionally, to some of its brains. A remote server
+# has a url; a process has a command, installed and pinned, which inherits
+# nothing from the server's environment but its env.
+# mcp_servers:
+#   graph:
+#     url: https://gateway.example.com/mcp
+#     headers:
+#       Authorization: Bearer ${GRAPH_API_KEY}
+#     org: acme
+#     brains: [sales]
+#   notes:
+#     command: /usr/local/bin/notes-mcp-server
+#     args: [--read-only]
+#     env:
+#       NOTES_API_KEY: ${NOTES_API_KEY}
+#     org: acme
+
+# The only tools a reason function may name, each server/tool or server/*;
+# every tool when left out.
+# allowed_tools:
+#   - graph/search
+#   - notes/*
+
 # The origins a page in a browser may call the API from.
 allowed_origins:
   - http://localhost:5173

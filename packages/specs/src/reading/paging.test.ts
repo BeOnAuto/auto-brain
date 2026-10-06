@@ -115,6 +115,7 @@ describe('the bounds of a page of runs', () => {
         primitive: 'echo',
         name: 'greet',
         spec_version: 1,
+        calls_tools: false,
         input: {},
         by: 'acme-admin',
         at: '2026-10-01T09:00:00.000Z',

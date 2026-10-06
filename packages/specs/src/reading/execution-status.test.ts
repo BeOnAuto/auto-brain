@@ -22,6 +22,26 @@ const latestOfEveryType: Readonly<Record<ExecutionEvent['type'], ExecutionEvent>
   execution_succeeded: { type: 'execution_succeeded', output: null, record: {}, ...fact },
   execution_rejected: { type: 'execution_rejected', rejection: { reason: 'conflict', detail: 'x' }, ...fact },
   execution_failed: { type: 'execution_failed', ...fact },
+  tool_call_started: {
+    type: 'tool_call_started',
+    number: 1,
+    call_id: 'toolu_01',
+    server: 'graph',
+    tool: 'search',
+    arguments_bytes: 2,
+    arguments_sha256: 'a'.repeat(64),
+    ...fact,
+  },
+  tool_call_answered: {
+    type: 'tool_call_answered',
+    number: 1,
+    outcome: 'result',
+    result_bytes: 2,
+    result_sha256: 'b'.repeat(64),
+    duration_ms: 5,
+    jsonrpc_id: 1,
+    ...fact,
+  },
 };
 
 const statusByStoredType = Object.entries(storedTypesByStatus).flatMap(

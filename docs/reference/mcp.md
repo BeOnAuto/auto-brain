@@ -6,7 +6,7 @@ The Auto runtime exposes brain, reason-function and workflow operations through 
 
 This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reason function. Auto Cloud is coming soon; [request an invite](https://on.auto/request-invite) for hosted access.
 
-Internal tool access through a shared catalog, an outbound MCP gateway or direct tool lists is coming soon, together with bounded tool-call loops. None of those capabilities is enabled by adding an endpoint to an external assistant. See [Tool access inside a reason function](../concepts/functions.md#tool-access-inside-a-reason-function).
+A reason function can also call tools itself, through MCP servers the operator of a self-hosted runtime configures. That outbound connection is set up on the server, never by adding an endpoint to an external assistant. While any MCP server is configured, `execute_spec` carries the destructive annotation, since a function's tools may change something. See [Tool access inside a reason function](../concepts/functions.md#tool-access-inside-a-reason-function).
 
 ## Transport and authentication
 

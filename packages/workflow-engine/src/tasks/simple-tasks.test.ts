@@ -132,3 +132,25 @@ describe('a wait task', () => {
     ]);
   });
 });
+
+describe('a raise task that names a kind and a because', () => {
+  it('raises the kind and because it defines, as an error it caught carried them', () => {
+    const document = workflow(`
+do:
+  - again:
+      raise:
+        error: { type: https://example.com/unfinished, status: 503, kind: tools_unfinished, because: '\${ .why }' }
+`);
+
+    expect(drivenRun(document, { input: { why: 'run_bound' } }).outcome).toEqual({
+      kind: 'raised',
+      error: {
+        type: 'https://example.com/unfinished',
+        status: 503,
+        instance: '/do/0/again',
+        kind: 'tools_unfinished',
+        because: 'run_bound',
+      },
+    });
+  });
+});

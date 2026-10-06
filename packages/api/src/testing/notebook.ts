@@ -7,6 +7,8 @@ import {
   NotFound,
   OrgReader,
   OrgWriter,
+  Unavailable,
+  UnavailableKindSchema,
   defineCommand,
   defineQuery,
   quoted,
@@ -211,6 +213,26 @@ const checkLines = defineCommand('brain', {
   plainLanguage: plainly('check the lines'),
 });
 
+const becauseOfKind = {
+  model_not_offered: 'model_not_allowed',
+  tool_not_offered: 'tool_not_listed',
+  mcp_server_failed: 'unreachable',
+  tools_unfinished: 'model_unavailable',
+} as const;
+
+const sendNotes = defineCommand('brain', {
+  name: 'send_notes',
+  title: 'Send notes',
+  description: 'Sends the notes nowhere, and says why it could not, by the kind it is given.',
+  route: { method: 'POST', path: '/notes/sending' },
+  inputSchema: Schema.Struct({ kind: UnavailableKindSchema }),
+  outputSchema: Nothing,
+  reasons: ['unavailable'],
+  handle: ({ kind }) =>
+    Effect.fail(new Unavailable({ detail: 'The notes could not be sent', kind, because: becauseOfKind[kind] })),
+  plainLanguage: plainly('send the notes'),
+});
+
 export const notebookOperations = [
   addNote,
   checkLines,
@@ -221,4 +243,5 @@ export const notebookOperations = [
   waitForever,
   labelBrain,
   listLabels,
+  sendNotes,
 ];

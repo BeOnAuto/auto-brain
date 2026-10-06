@@ -83,7 +83,7 @@ Reason functions normally complete within the execute request. A workflow run an
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`. Once a run succeeds or rejects invalid input, another request with the same id and input returns the recorded final result. A request with the id of a workflow run still in progress returns that run as it stands, without starting another.
 
-A run without a final result may be attempted again after an interruption or recoverable failure, except a workflow run, which runs once for its execution id. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
+A run without a final result may be attempted again after an interruption or recoverable failure, with two exceptions. A workflow run runs once for its execution id. A reason function that calls tools is never run again under its id once one of its tools may have been called: when an earlier attempt called a tool and did not succeed, or when the function names tools and an earlier attempt has started and not ended, since it may still be running. The answer is `conflict` with the kind `tools_called`; check what the run's history shows it called, then start a new run under a new id. A retry can use the latest definition version, which the new attempt records. Do not assume that an external effect happened only once because the runtime records one final result.
 
 ## Run history and brain events
 
@@ -109,7 +109,7 @@ Each event has these fields:
 | `summary` | A sentence in plain language                                                                                                                                                           |
 | `data`    | The facts of the event, at most 4 KiB as JSON                                                                                                                                          |
 
-In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count. A `workflow_input_applied` event shows the kind and key of the input, how many steps it moved and the first five, each with its task, run and outcome, and the kinds of what the run did next; it never shows the run's data.
+In `data`, inputs, outputs, records, documents and schemas appear as their sizes in bytes. `get_execution` returns a run's output and record, and `get_spec` a definition's document and schemas; the API does not return a run's original input. A rejection shows its reason, its detail shortened to fit, and for invalid input the number of issues and the first five. A definition's description shows its first 300 characters, and its warnings as a count. A `workflow_input_applied` event shows the kind and key of the input, how many steps it moved and the first five, each with its task, run and outcome, the kind and because of a function's rejection that has them, in its words too, and the kinds of what the run did next; it never shows the run's data.
 
 Every page carries `has_more` and `next_cursor`. Pass `next_cursor` as `cursor` to read the next page, until `next_cursor` is `null`. `limit` is 1 to 100, and 20 when left out. A page can hold fewer items than `limit`, or none, while `has_more` is `true`: `primitive` and `name` apply to the runs a page looked at, records with no event type are left out, a page stops after loading 4 MiB of stored data, and with `status` or `type` after looking at 1,000 runs or records. Cursors are opaque; a cursor this brain did not give returns `invalid_input` at `/cursor`.
 
@@ -119,7 +119,7 @@ The brain's own creation, changes and retirement are not brain events; `get_brai
 
 Successful responses contain JSON with `Cache-Control: no-store`. Create operations return 201; other successful operations generally return 200.
 
-API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`. Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers.
+API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`. Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers. A rejection that has a `kind` carries it, and an `unavailable` one its `because`: `tools_unfinished` means a run called tools and could not finish, so its tools may have changed something, and a request with the same execution id answers `conflict` with the kind `tools_called`. `Retry-After` comes only with an `unavailable` answer that a retry of the same request may resolve, never with `tools_unfinished`, `tool_not_offered` or `model_not_offered`.
 
 | Status | Common reason                              |
 | ------ | ------------------------------------------ |
@@ -132,6 +132,26 @@ API errors use RFC 9457 problem documents with `Content-Type: application/proble
 | 422    | `invalid_input`                            |
 | 500    | `internal`                                 |
 | 503    | `unavailable`                              |
+
+A problem document's `type` is a URI that names its kind of problem:
+
+| Type                                              | Status | Means                                                                                                    |
+| ------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- |
+| `https://on.auto/problems/bad_request`            | 400    | The request is malformed, such as a field given twice or a body that is not a JSON object                |
+| `https://on.auto/problems/unauthenticated`        | 401    | Credentials are missing or invalid                                                                       |
+| `https://on.auto/problems/forbidden`              | 403    | The credentials may not do that                                                                          |
+| `https://on.auto/problems/origin_not_allowed`     | 403    | A browser sent the request from an origin the server does not allow                                      |
+| `https://on.auto/problems/not_found`              | 404    | Something the request names does not exist                                                               |
+| `https://on.auto/problems/method_not_allowed`     | 405    | The path does not take that method                                                                       |
+| `https://on.auto/problems/conflict`               | 409    | The request clashes with what is there                                                                   |
+| `https://on.auto/problems/tools_called`           | 409    | A run that may have called tools is not run again under its id; its `reason` is `conflict`               |
+| `https://on.auto/problems/content_too_large`      | 413    | The body is larger than 1 MiB                                                                            |
+| `https://on.auto/problems/unsupported_media_type` | 415    | The body is not sent as `application/json` in UTF-8                                                      |
+| `https://on.auto/problems/invalid_input`          | 422    | The input does not fit, with the `errors` that point at it                                               |
+| `https://on.auto/problems/client_closed_request`  | 499    | The client went away before the answer                                                                   |
+| `https://on.auto/problems/internal`               | 500    | Something went wrong inside the server                                                                   |
+| `https://on.auto/problems/unavailable`            | 503    | Something the server relies on cannot serve now                                                          |
+| `https://on.auto/problems/tools_unfinished`       | 503    | A run called tools and could not finish; its `reason` is `unavailable`, and it is never retried as it is |
 
 A 500 response contains an incident reference. Its `instance` and the `x-request-id` response header identify the server log entry. Include that reference when reporting a problem, without sharing credentials or confidential input. Malformed HTTP can return a bare status before the API handles it.
 

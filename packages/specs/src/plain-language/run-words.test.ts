@@ -96,6 +96,11 @@ const rejections: ReadonlyArray<readonly [string, Readonly<Record<string, unknow
     { reason: 'conflict', detail: 'x' },
     'it cannot work as it is written. This can be corrected and tried again; the details below say what to change.',
   ],
+  [
+    'a step that met a run whose tools may have been called',
+    { reason: 'conflict', detail: 'x', kind: 'tools_called' },
+    'this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something. So it was not run again: start a new run instead, after checking what its history shows it has called so far.',
+  ],
 ];
 
 describe('the plain language of get_execution', () => {

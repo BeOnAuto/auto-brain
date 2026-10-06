@@ -13,6 +13,7 @@ COPY packages/brains/package.json packages/brains/
 COPY packages/config/package.json packages/config/
 COPY packages/identity/package.json packages/identity/
 COPY packages/ledger/package.json packages/ledger/
+COPY packages/mcp/package.json packages/mcp/
 COPY packages/operations/package.json packages/operations/
 COPY packages/specs/package.json packages/specs/
 COPY packages/workflow-engine/package.json packages/workflow-engine/
@@ -42,6 +43,7 @@ COPY packages/brains/src packages/brains/src
 COPY packages/config/src packages/config/src
 COPY packages/identity/src packages/identity/src
 COPY packages/ledger/src packages/ledger/src
+COPY packages/mcp/src packages/mcp/src
 COPY packages/operations/src packages/operations/src
 COPY packages/server/src packages/server/src
 COPY packages/specs/src packages/specs/src

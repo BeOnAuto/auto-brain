@@ -39,7 +39,7 @@ function settling(result: ExecutionResult): ExecutionCommand {
   return { type: 'settle', result, at: later };
 }
 
-const starting: ExecutionCommand = { type: 'start', ...greeting, spec_version: 1, ...start };
+const starting: ExecutionCommand = { type: 'start', ...greeting, spec_version: 1, calls_tools: false, ...start };
 
 describe('deferring an execution', () => {
   it('records what the primitive started for a started execution', () => {

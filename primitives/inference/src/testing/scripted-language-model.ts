@@ -28,6 +28,7 @@ export function answers(result: ModelResult): ScriptedReply {
 export function scriptedLanguageModel(...replies: readonly ScriptedReply[]): ScriptedLanguageModel {
   const received: ModelRequest[] = [];
   const languageModel = LanguageModel.of({
+    admit: checkedRequest,
     generate: (request) =>
       Effect.suspend(() => {
         received.push(request);

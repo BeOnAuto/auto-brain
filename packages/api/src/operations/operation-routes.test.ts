@@ -168,7 +168,32 @@ describe('a call that cannot run', () => {
     });
     expect(answer.headers.get('retry-after')).toBe('5');
   });
+});
 
+describe('an ending that names its kind', () => {
+  it('answers an ending with its kind and because, and asks for a retry only when a retry may resolve it', async () => {
+    const { handler } = await operationServer();
+    const sending = (kind: string) =>
+      call(handler, `${notes}/sending`, { method: 'POST', headers: jsonAsAdmin, body: JSON.stringify({ kind }) });
+
+    const unfinished = await sending('tools_unfinished');
+    const failing = await sending('mcp_server_failed');
+
+    expect(unfinished).toMatchObject({
+      status: 503,
+      body: {
+        reason: 'unavailable',
+        detail: 'The notes could not be sent',
+        kind: 'tools_unfinished',
+        because: 'model_unavailable',
+      },
+    });
+    expect(failing).toMatchObject({ status: 503, body: { kind: 'mcp_server_failed', because: 'unreachable' } });
+    expect([unfinished.headers.get('retry-after'), failing.headers.get('retry-after')]).toEqual([null, '5']);
+  });
+});
+
+describe('a call the client leaves', () => {
   it('is cancelled when the client goes away, and reports no incident', async () => {
     const { handler, incidents } = await operationServer();
     const client = new AbortController();

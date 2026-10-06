@@ -33,7 +33,16 @@ function alphaEndpoint(): McpConnection {
   };
 }
 
-const brainTools = ['add_note', 'check_lines', 'list_notes', 'get_note', 'latest_note', 'break_down', 'wait_forever'];
+const brainTools = [
+  'add_note',
+  'check_lines',
+  'list_notes',
+  'get_note',
+  'latest_note',
+  'break_down',
+  'wait_forever',
+  'send_notes',
+];
 
 const internalProblem = {
   type: 'https://on.auto/problems/internal',

@@ -29,7 +29,7 @@ export function generatedText(text: string): GenerateResult {
 export function mockGeneration(model: () => MockLanguageModelV4, reportHint: ReportOperatorHint = () => Effect.void) {
   installSdkGlobals();
   const status = { configured: ['mock'], unconfigured: [] };
-  const generate = generation(modelResolution(new Map([['mock', model]]), new Map(), status, null), {
+  const { generate } = generation(modelResolution(new Map([['mock', model]]), new Map(), status, null), {
     configured: ['mock'],
     showsProviderMessages: () => true,
     scrub: (text) => text,

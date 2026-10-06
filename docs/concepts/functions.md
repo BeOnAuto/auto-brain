@@ -27,7 +27,7 @@ A reason function configures language-model work such as interpreting informatio
 
 For example, a reason function can review a campaign brief against your team's criteria. Each run supplies a brief to the saved prompt, invokes the model and records the output and usage. The [first-brain tutorial](../tutorials/first-brain.md) builds that example.
 
-An external agent can call a reason function through Auto's MCP interface. Tools called from inside the reason function are a separate capability, described below.
+An external agent can call a reason function through Auto's MCP interface. Tools the function itself calls are a separate capability, described below.
 
 See [Reason function format](../reference/reasoning-format.md).
 
@@ -61,11 +61,13 @@ A skill is reusable task guidance and associated resources. A tool is a calling 
 
 ## Tool access inside a reason function
 
-Coming soon. The planned shared tool catalog will let a reason function use authorized business operations. The preferred connection is a single MCP tool gateway, with direct tool lists as another option. Apollo GraphOS Agent Services is one possible gateway for graph-based tools; Apollo is optional.
+A reason function can call the tools of MCP servers that the runtime's operator configures. The operator binds each server to an org, and optionally to some of its brains, and can narrow which of its tools functions may name. A function lists the tools it may use, such as `graph/search`, or `graph/*` for every tool of a server that the operator allows. During a run, the model can request one of those tools, receive its result and continue before it answers, within bounds on the number of calls, the size of their results and the time the run takes. Each call appears in the run's history as it happens.
 
-This needs outbound MCP connections, tool definitions and dispatch, and a bounded loop in which the model can request a tool, receive its result and continue. Those capabilities are not implemented in the current runtime. Provider settings called model gateways connect to language models; they do not provide an MCP tool gateway.
+A tool may change something outside the brain. A run that called tools and did not succeed is therefore not run again under the same execution id; start a new run once you have checked what its history shows it called. When any MCP server is configured, an agent connected to Auto sees `execute_spec` marked as possibly destructive, so it can ask before running a function.
 
-Today, the external agent can collect evidence through its own connections and pass it into a reason function. Connecting that agent to Auto does not give the function access to the agent's tools, credentials or accounts. See the [MCP reference](../reference/mcp.md) for the available inbound connection.
+One of those servers can be an agent services gateway, which fronts the systems an organization connected and applies its own policies to the application whose key the runtime uses. Provider settings called model gateways connect to language models; they do not provide MCP tools.
+
+Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. Connecting an external agent to Auto does not give the function access to that agent's tools, credentials or accounts: the agent can still collect evidence through its own connections and pass it in as input. See the [Reason function format](../reference/reasoning-format.md#tools) and, for the inbound connection, the [MCP reference](../reference/mcp.md).
 
 ## API compatibility
 

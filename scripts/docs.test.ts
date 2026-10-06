@@ -183,17 +183,16 @@ await test('the first-brain tutorial supplies inputs and observable checks for t
   assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
 });
 
-await test('docs distinguish available inbound MCP from upcoming internal tools', () => {
+await test('docs distinguish inbound MCP from the tools a reason function calls', () => {
   const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const readme = readFileSync(join(docs, '../README.md'), 'utf8');
   assert.ok(mcp.includes('inbound interface'));
-  assert.ok(mcp.includes('shared catalog'));
-  assert.ok(mcp.includes('direct tool lists is coming soon'));
-  assert.ok(functions.includes('Those capabilities are not implemented'));
+  assert.ok(mcp.includes('never by adding an endpoint to an external assistant'));
+  assert.ok(functions.includes('Auto Cloud does not offer it yet'));
   assert.ok(functions.includes('model gateways connect to language models'));
-  assert.ok(readme.includes('Coming soon: tool access inside reason functions'));
-  assert.ok(readme.includes('bounded tool-call loops'));
+  assert.ok(readme.includes('Auto Cloud does not offer this yet'));
+  assert.ok(readme.includes('the function does not inherit the agent'));
 });
 
 await test('the README starts with an actionable local quick start and keeps Cloud optional', () => {

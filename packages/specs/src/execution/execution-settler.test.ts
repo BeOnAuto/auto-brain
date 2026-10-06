@@ -141,3 +141,93 @@ describe('a settlement whose output is too large or is not JSON', () => {
     expect(await reading()).toMatchObject({ output: { status: 'failed' } });
   });
 });
+
+describe('settling a deferred execution as unavailable', () => {
+  it('records the kind and because the run ended with, and leaves out those it does not know', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+    const detail = 'A step called tools and could not finish';
+
+    expect(
+      await settling({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail,
+        kind: 'tools_unfinished',
+        because: 'run_bound',
+      }),
+    ).toMatchObject(
+      Result.succeed({
+        status: 'rejected',
+        rejection: { reason: 'unavailable', detail, kind: 'tools_unfinished', because: 'run_bound' },
+      }),
+    );
+  });
+});
+
+describe('settling a deferred execution as a conflict', () => {
+  it('records a conflict of tools called with its kind', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+    const detail = 'A step met a run that may have called tools';
+
+    expect(await settling({ status: 'rejected', reason: 'conflict', detail, kind: 'tools_called' })).toMatchObject(
+      Result.succeed({ status: 'rejected', rejection: { reason: 'conflict', detail, kind: 'tools_called' } }),
+    );
+  });
+
+  it('records a conflict of a kind it does not know without one', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+
+    expect(
+      await settling({ status: 'rejected', reason: 'conflict', detail: 'Clashed', kind: 'something_new' }),
+    ).toStrictEqual(
+      Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'conflict', detail: 'Clashed' } }),
+    );
+  });
+});
+
+describe('settling a deferred execution as unavailable of another kind', () => {
+  it('keeps no other kind of a step, whose words would speak for the step and not for the whole workflow', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+
+    expect(
+      await settling({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail: 'A tool server could not be used',
+        kind: 'mcp_server_failed',
+        because: 'unreachable',
+      }),
+    ).toStrictEqual(
+      Result.succeed({
+        ...settled,
+        status: 'rejected',
+        rejection: { reason: 'unavailable', detail: 'A tool server could not be used' },
+      }),
+    );
+  });
+
+  it('keeps no because it does not know', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+
+    expect(
+      await settling({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail: 'No',
+        kind: 'tools_unfinished',
+        because: 'odder',
+      }),
+    ).toStrictEqual(
+      Result.succeed({
+        ...settled,
+        status: 'rejected',
+        rejection: { reason: 'unavailable', detail: 'No', kind: 'tools_unfinished' },
+      }),
+    );
+  });
+});
