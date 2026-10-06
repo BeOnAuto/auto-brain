@@ -5,7 +5,7 @@ import type { Secrets } from '../bounds/secrets.ts';
 import type { McpServerSettings } from '../settings/mcp-settings.ts';
 import { openHttp, systemTimer, type Timer } from './http-connection.ts';
 import { ignored } from './ignored.ts';
-import type { McpConnection } from './mcp-connection.ts';
+import { boundedReport, errorsNoLongerReported, type McpConnection, type OutputReport } from './mcp-connection.ts';
 import { openStdio } from './stdio-connection.ts';
 import { tokenSource } from './token-source.ts';
 
@@ -27,17 +27,14 @@ export interface LinkOptions {
 }
 
 function opener(settings: McpServerSettings, options: LinkOptions): () => Promise<McpConnection> {
+  const output: OutputReport = {
+    scrub: options.secrets.scrub,
+    report: (line) => {
+      options.reportOutput(settings.name, line);
+    },
+  };
   if (settings.type === 'stdio') {
-    return () =>
-      openStdio(settings, {
-        timeoutMs: options.timing.openMs,
-        output: {
-          scrub: options.secrets.scrub,
-          report: (line) => {
-            options.reportOutput(settings.name, line);
-          },
-        },
-      });
+    return () => openStdio(settings, { timeoutMs: options.timing.openMs, output });
   }
   const authProvider =
     settings.auth === null
@@ -49,16 +46,13 @@ function opener(settings: McpServerSettings, options: LinkOptions): () => Promis
           minted: options.secrets.add,
         });
   const { openMs, longestRetryWaitMs } = options.timing;
-  const reportError = (message: string): void => {
-    options.reportOutput(settings.name, options.secrets.scrub(message));
-  };
   return () =>
     openHttp(settings, {
       fetch: options.fetch,
       authProvider,
       timeoutMs: openMs,
       longestRetryWaitMs,
-      reportError,
+      reportError: boundedReport(output, errorsNoLongerReported),
       timer: options.timer ?? systemTimer,
     });
 }

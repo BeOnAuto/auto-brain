@@ -4,11 +4,11 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { secretsOf } from '../bounds/secrets.ts';
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
 import { fakeStdioServerPath, stdioTestTimeoutMs } from '../testing/index.ts';
-import type { CallSettled, McpConnection } from './mcp-connection.ts';
+import { errorsNoLongerReported, type CallSettled, type McpConnection } from './mcp-connection.ts';
 import { observations } from './observed-requests.ts';
 import { failureOf } from './server-failures.ts';
 import { serverLink } from './server-links.ts';
-import { errorsNoLongerReported, outputNoLongerReported, StdioProcessTransport } from './stdio-transport.ts';
+import { outputNoLongerReported, StdioProcessTransport } from './stdio-transport.ts';
 
 const coverage = process.env['NODE_V8_COVERAGE'];
 

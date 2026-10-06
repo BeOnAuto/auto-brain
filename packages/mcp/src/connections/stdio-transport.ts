@@ -5,6 +5,7 @@ import { setTimeout } from 'node:timers/promises';
 import { ReadBuffer, type JSONRPCMessage, type Transport } from '@modelcontextprotocol/client';
 
 import { ignored } from './ignored.ts';
+import { boundedReport, type OutputReport } from './mcp-connection.ts';
 import type { Observations, SendOptions } from './observed-requests.ts';
 
 export interface StdioParameters {
@@ -13,35 +14,11 @@ export interface StdioParameters {
   readonly env: Readonly<Record<string, string>>;
 }
 
-export interface OutputReport {
-  readonly scrub: (text: string) => string;
-  readonly report: (line: string) => void;
-}
-
-const mostReportedLines = 100;
-
-const mostReportedCharacters = 2000;
-
 const mostPendingCharacters = 65_536;
 
 const patienceMs = 2000;
 
 export const outputNoLongerReported = 'The MCP server wrote more to stderr than is reported; the rest is not shown';
-
-export const errorsNoLongerReported = 'The MCP server caused more errors than are reported; the rest is not shown';
-
-export function boundedReport({ scrub, report }: OutputReport, noLongerReported: string): (line: string) => void {
-  let reported = 0;
-  return (line) => {
-    reported += 1;
-    if (reported <= mostReportedLines) {
-      report(scrub(line).slice(0, mostReportedCharacters));
-    }
-    if (reported === mostReportedLines + 1) {
-      report(noLongerReported);
-    }
-  };
-}
 
 function lineReporter(output: OutputReport): (chunk: string) => void {
   const reportLine = boundedReport(output, outputNoLongerReported);

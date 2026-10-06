@@ -1,8 +1,15 @@
 import { Redacted } from 'effect';
 
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
-import { connectionOver, openingClient, type McpConnection } from './mcp-connection.ts';
-import { boundedReport, errorsNoLongerReported, StdioProcessTransport, type OutputReport } from './stdio-transport.ts';
+import {
+  boundedReport,
+  connectionOver,
+  errorsNoLongerReported,
+  openingClient,
+  type McpConnection,
+  type OutputReport,
+} from './mcp-connection.ts';
+import { StdioProcessTransport } from './stdio-transport.ts';
 
 export interface StdioOpening {
   readonly timeoutMs: number;

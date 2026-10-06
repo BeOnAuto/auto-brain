@@ -28,6 +28,7 @@ export interface FakeMcpServer {
   readonly endedSessions: () => number;
   readonly tokenRequests: () => number;
   readonly answerNextWith: (status: number, times?: number, headers?: Readonly<Record<string, string>>) => void;
+  readonly answerNextCallAfterNoise: (messages: number) => void;
   readonly forgetSessions: () => void;
   readonly revokeTokens: () => void;
   readonly removeTool: (name: string) => void;
@@ -40,10 +41,36 @@ interface Programmed {
   readonly headers: Readonly<Record<string, string>>;
 }
 
+interface NextAnswers {
+  readonly programmed: () => Programmed | undefined;
+  readonly noise: () => number;
+  readonly answerWith: FakeMcpServer['answerNextWith'];
+  readonly answerAfterNoise: FakeMcpServer['answerNextCallAfterNoise'];
+}
+
+function nextAnswers(): NextAnswers {
+  const programmed: Programmed[] = [];
+  let noise = 0;
+  return {
+    programmed: () => programmed.shift(),
+    noise: () => {
+      const messages = noise;
+      noise = 0;
+      return messages;
+    },
+    answerWith: (status, times = 1, headers = {}) => {
+      programmed.push(...Array.from({ length: times }, () => ({ status, headers })));
+    },
+    answerAfterNoise: (messages) => {
+      noise = messages;
+    },
+  };
+}
+
 interface Endpoint {
   readonly sessions: FakeSessions;
   readonly see: (seen: SeenRequest) => void;
-  readonly programmed: () => Programmed | undefined;
+  readonly next: NextAnswers;
   readonly requestIdHeader: string | undefined;
 }
 
@@ -78,21 +105,33 @@ function routed(sessions: FakeSessions, request: Readonly<Request>): Promise<Res
   return id === null ? sessions.opened(request) : (sessions.answered(id, request) ?? Promise.resolve(forgotten()));
 }
 
-function mcpEndpoint({ sessions, see, programmed, requestIdHeader }: Endpoint): FetchHandler {
+async function afterNoise(response: Readonly<Response>, messages: number): Promise<Response> {
+  if (messages === 0) {
+    return response;
+  }
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  const noise = 'event: message\ndata: not JSON-RPC\n\n'.repeat(messages);
+  return new Response(`${noise}${await response.text()}`, { status: response.status, headers });
+}
+
+function mcpEndpoint({ sessions, see, next, requestIdHeader }: Endpoint): FetchHandler {
   let answered = 0;
   return async (request) => {
+    const rpc = await rpcOf(request);
     see({
       method: request.method,
-      rpc: await rpcOf(request),
+      rpc,
       session: request.headers.get('mcp-session-id'),
       authorization: request.headers.get('authorization'),
     });
-    const next = programmed();
-    if (next !== undefined) {
-      return new Response(JSON.stringify({ error: `answered ${next.status}` }), next);
+    const programmed = next.programmed();
+    if (programmed !== undefined) {
+      return new Response(JSON.stringify({ error: `answered ${programmed.status}` }), programmed);
     }
     answered += 1;
-    return withRequestId(await routed(sessions, request), requestIdHeader, `request-${answered}`);
+    const response = withRequestId(await routed(sessions, request), requestIdHeader, `request-${answered}`);
+    return rpc === 'tools/call' ? afterNoise(response, next.noise()) : response;
   };
 }
 
@@ -136,7 +175,7 @@ function guarded(
 
 export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMcpServer> {
   const seen: SeenRequest[] = [];
-  const programmed: Programmed[] = [];
+  const next = nextAnswers();
   const received: ReceivedCall[] = [];
   const removed = new Set<string>();
   const authorizations: FakeAuthorization[] = [];
@@ -149,7 +188,7 @@ export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
     see: (request) => {
       seen.push(request);
     },
-    programmed: () => programmed.shift(),
+    next,
     requestIdHeader: options.requestIdHeader,
   });
   const listening = await serveOnLoopback((origin) =>
@@ -165,9 +204,8 @@ export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
     openSessions: sessions.open,
     endedSessions: sessions.ended,
     tokenRequests: () => authorizations.reduce((total, authorization) => total + authorization.tokenRequests(), 0),
-    answerNextWith: (status, times = 1, headers = {}) => {
-      programmed.push(...Array.from({ length: times }, () => ({ status, headers })));
-    },
+    answerNextWith: next.answerWith,
+    answerNextCallAfterNoise: next.answerAfterNoise,
     forgetSessions: sessions.forget,
     revokeTokens: () => {
       for (const authorization of authorizations) {
