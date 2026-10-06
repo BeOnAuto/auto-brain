@@ -19,7 +19,7 @@ export const ListedRunSchema = Schema.Struct({
   ...Struct.omit(RunSchema.fields, ['output', 'rejection']),
   rejection: Schema.optionalKey(ListedRejectionSchema),
 }).annotate({
-  identifier: 'ListedExecution',
+  identifier: 'ListedRun',
   description: 'One run of a definition and how it ended, without its output, its record and the detail of a rejection',
 });
 

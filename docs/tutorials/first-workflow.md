@@ -20,8 +20,6 @@ The agent should report `send_execution_event` among the tools, and `inference` 
 
 If neither `send_execution_event` nor `create_spec` is listed, the connection uses an organization endpoint, which offers brain management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the brain's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
 
-<span id="_2-confirm-the-reason-function"></span>
-
 ## 2. Confirm the reasoning function
 
 Ask:
