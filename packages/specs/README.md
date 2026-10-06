@@ -205,6 +205,8 @@ Each execution is a stream of its own, named `executions/{execution_id}` relativ
 - `execution_failed`
 - `tool_call_started` and `tool_call_answered`, for each tool call it makes, described under [Tool calls](#tool-calls)
 
+Each of the three endings also carries the `primitive`, the spec `name` and the `spec_version` of the attempt it ends, which the decider takes from the run's latest start, so an ending says what ran without a read of the start.
+
 There is no read model: each call folds the streams it needs. Pure deciders hold the rules: one per primitive's specs, and one for executions. The handlers pass them who and when in each command.
 
 ## Tool calls

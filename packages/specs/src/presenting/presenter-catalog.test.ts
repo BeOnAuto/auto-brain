@@ -54,6 +54,8 @@ const awkward = '\u0000'.repeat(64 * 1024);
 
 const fact = { by: awkward, at: '2026-10-01T09:00:00.000Z' };
 
+const ofTheLongestNames = { primitive: longestPrimitive, name: 'n'.repeat(48), spec_version: Number.MAX_SAFE_INTEGER };
+
 const largestJson = { text: 'x'.repeat(mostResultBytes - 16) };
 
 const manyIssues = Array.from({ length: 100 }, () => ({ detail: awkward, pointer: awkward }));
@@ -68,8 +70,13 @@ const largestExecutionEvents: readonly ExecutionEvent[] = [
     ...fact,
   },
   { type: 'execution_deferred', record: largestJson, ...fact },
-  { type: 'execution_succeeded', output: largestJson, record: largestJson, ...fact },
-  { type: 'execution_rejected', rejection: { reason: 'invalid_input', detail: awkward, issues: manyIssues }, ...fact },
+  { type: 'execution_succeeded', output: largestJson, record: largestJson, ...ofTheLongestNames, ...fact },
+  {
+    type: 'execution_rejected',
+    rejection: { reason: 'invalid_input', detail: awkward, issues: manyIssues },
+    ...ofTheLongestNames,
+    ...fact,
+  },
   {
     type: 'execution_rejected',
     rejection: {
@@ -78,10 +85,11 @@ const largestExecutionEvents: readonly ExecutionEvent[] = [
       kind: 'model_not_offered',
       because: 'provider_not_configured',
     },
+    ...ofTheLongestNames,
     ...fact,
   },
-  { type: 'execution_rejected', rejection: { reason: 'conflict', detail: awkward }, ...fact },
-  { type: 'execution_failed', ...fact },
+  { type: 'execution_rejected', rejection: { reason: 'conflict', detail: awkward }, ...ofTheLongestNames, ...fact },
+  { type: 'execution_failed', ...ofTheLongestNames, ...fact },
   {
     type: 'tool_call_started',
     number: Number.MAX_SAFE_INTEGER,
@@ -144,7 +152,7 @@ describe('the presenters of the stream kinds of a brain', () => {
   });
 
   it('hide a stream kind none of them presents', () => {
-    const failed: ExecutionEvent = { type: 'execution_failed', by: 'acme-admin', at: fact.at };
+    const failed: ExecutionEvent = { type: 'execution_failed', ...ofTheLongestNames, by: 'acme-admin', at: fact.at };
 
     expect(present(recordOf(`runs/${executionId}`, failed.type, encodeExecutionEvent(failed)))).toBeNull();
   });

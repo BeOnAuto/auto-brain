@@ -16,12 +16,19 @@ const start: ExecutionEvent = {
   ...fact,
 };
 
+const ofGreet = { primitive: 'echo', name: 'greet', spec_version: 1 };
+
 const latestOfEveryType: Readonly<Record<ExecutionEvent['type'], ExecutionEvent>> = {
   execution_started: start,
   execution_deferred: { type: 'execution_deferred', record: {}, ...fact },
-  execution_succeeded: { type: 'execution_succeeded', output: null, record: {}, ...fact },
-  execution_rejected: { type: 'execution_rejected', rejection: { reason: 'conflict', detail: 'x' }, ...fact },
-  execution_failed: { type: 'execution_failed', ...fact },
+  execution_succeeded: { type: 'execution_succeeded', output: null, record: {}, ...ofGreet, ...fact },
+  execution_rejected: {
+    type: 'execution_rejected',
+    rejection: { reason: 'conflict', detail: 'x' },
+    ...ofGreet,
+    ...fact,
+  },
+  execution_failed: { type: 'execution_failed', ...ofGreet, ...fact },
   tool_call_started: {
     type: 'tool_call_started',
     number: 1,
