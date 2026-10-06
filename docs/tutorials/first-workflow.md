@@ -144,24 +144,21 @@ Then read how the run got there:
 
 > Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the steps that moved and how each ended.
 
-The tool's summary reads: Found 16 events in the history of the run, oldest first.
+The tool's summary reads: Found 13 events in the history of the run, oldest first.
 
-The sixteen events, with the steps each input moved:
+The thirteen events, with the steps each input moved:
 
 | Type                     | Summary                                                                        | Steps that moved                                                          |
 | ------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
 | `execution_started`      | A run of the workflow “review-brief-revision” started.                         |                                                                           |
 | `workflow_input_applied` | The workflow started, and 1 step moved.                                        | `/do/0/review-first-brief` waiting                                        |
-| `step_started`           | The step “review first brief” started.                                         |                                                                           |
 | `step_waiting`           | The step “review first brief” waits for a function it called.                  |                                                                           |
 | `execution_deferred`     | A run carries on by itself, and finishes later.                                |                                                                           |
 | `workflow_input_applied` | A function the workflow called answered, and 2 steps moved.                    | `/do/0/review-first-brief` completed; `/do/1/wait-for-revision` waiting   |
 | `step_finished`          | The step “review first brief” finished.                                        |                                                                           |
-| `step_started`           | The step “wait for revision” started.                                          |                                                                           |
 | `step_waiting`           | The step “wait for revision” waits for an event.                               |                                                                           |
 | `workflow_input_applied` | The workflow received an event, and 2 steps moved.                             | `/do/1/wait-for-revision` completed; `/do/2/review-revised-brief` waiting |
 | `step_finished`          | The step “wait for revision” finished.                                         |                                                                           |
-| `step_started`           | The step “review revised brief” started.                                       |                                                                           |
 | `step_waiting`           | The step “review revised brief” waits for a function it called.                |                                                                           |
 | `workflow_input_applied` | A function the workflow called answered, and 1 step moved; the workflow ended. | `/do/2/review-revised-brief` completed                                    |
 | `step_finished`          | The step “review revised brief” finished.                                      |                                                                           |
