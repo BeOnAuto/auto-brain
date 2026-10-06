@@ -8,13 +8,11 @@ import {
   eventsPageOf,
   mostRecordsInAPage,
   presentationOf,
-  type PagedEvent,
   type Presentation,
   type Presenter,
   type RecordedEvent,
-  type RecordedOrder,
 } from '@beonauto/operations';
-import { Effect, Order, Schema } from 'effect';
+import { Effect, Schema } from 'effect';
 
 import { executionOf } from '../execution/execution-lookup.ts';
 import { loadExecution } from '../operations/execution-access.ts';
@@ -43,7 +41,7 @@ const description = [
   'with the arguments and the result cut to 2 KiB only when the operator records their content;',
   'get_execution reads the output and the record.',
   'A run started again with the same id shows each attempt.',
-  'Within a page, events are ordered by when each happened.',
+  'Events follow the order the brain recorded them in, so each comes after the event that caused it.',
   `\`limit\`, 1 to ${mostRecordsInAPage} and ${defaultPageLimit} when left out, is the most events a page answers with,`,
   'step events included, so a page may end inside the events of one input;',
   'a page also stops after loading 4 MiB of stored data, so it may hold fewer events than `limit`.',
@@ -65,16 +63,6 @@ const ExecutionHistoryInput = Schema.Struct({
 
 const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...PagingOutputFields });
 
-const byOwnTimeThenStream = Order.combine(
-  Order.mapInput(Order.Number, ({ event }: PagedEvent) => Date.parse(event.at)),
-  Order.mapInput(Order.String, ({ stream }: PagedEvent) => stream),
-);
-
-const inOrder: Readonly<Record<RecordedOrder, Order.Order<PagedEvent>>> = {
-  asc: byOwnTimeThenStream,
-  desc: Order.flip(byOwnTimeThenStream),
-};
-
 function requireExecution(id: string, records: readonly RecordedEvent[]) {
   return records.length > 0 ? Effect.void : loadExecution(id).pipe(Effect.flatMap((state) => executionOf(id, state)));
 }
@@ -91,7 +79,7 @@ function historyReader(presentation: Presentation) {
     yield* requireExecution(id, page.records);
     const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, paging);
     return {
-      events: events.toSorted(inOrder[order]).map(({ event }) => event),
+      events: events.map(({ event }) => event),
       has_more: hasMore,
       next_cursor: nextCursor,
     };

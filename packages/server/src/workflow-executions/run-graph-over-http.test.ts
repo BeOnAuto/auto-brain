@@ -147,17 +147,6 @@ describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeout
     expect(ofChild).toEqual([]);
   });
 
-  it('pages the history by events, ends inside an input, and reads on from there with nothing lost or repeated', async () => {
-    const executionId = await reviewed();
-    const whole = await everyEvent(`${alpha}/executions/${executionId}/history?limit=100`);
-    const byTwo = await everyEvent(`${alpha}/executions/${executionId}/history?limit=2`);
-    const newestFirst = await everyEvent(`${alpha}/executions/${executionId}/history?order=desc&limit=3`);
-
-    expect(byTwo.map(({ id }) => id).toSorted()).toEqual(whole.map(({ id }) => id).toSorted());
-    expect(newestFirst.map(({ id }) => id).toSorted()).toEqual(whole.map(({ id }) => id).toSorted());
-    expect(new Set(byTwo.map(({ id }) => id)).size).toBe(whole.length);
-  });
-
   it('is never given by the input of execute_spec, which refuses a lineage', async () => {
     await reviewed();
 
@@ -169,5 +158,30 @@ describe('the tree of a workflow run, over HTTP', { timeout: workflowTestTimeout
       status: 422,
       body: { reason: 'invalid_input', errors: [{ detail: 'Expected no excess property', pointer: '/lineage' }] },
     });
+  });
+});
+
+describe('the pages of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+  it('reads on from the cursor of an input in either order, the steps of that input first oldest first', async () => {
+    const executionId = await reviewed();
+    const tree = await everyEvent(`${alpha}/events?execution_id=${executionId}&order=asc&limit=100`);
+    const at = tree.findLastIndex(({ type }) => type === 'workflow_input_applied');
+    const input = tree[at];
+    const after = await everyEvent(`${alpha}/events?execution_id=${executionId}&order=asc&limit=100`, input?.cursor);
+    const before = await everyEvent(`${alpha}/events?execution_id=${executionId}&order=desc&limit=100`, input?.cursor);
+
+    expect([after, before]).toEqual([tree.slice(at + 1), tree.slice(0, at).toReversed()]);
+    expect(after[0]?.type).toBe('step_finished');
+  });
+
+  it('pages the history by events in the order recorded, ends inside an input, and reads on with nothing lost or repeated', async () => {
+    const executionId = await reviewed();
+    const whole = await everyEvent(`${alpha}/executions/${executionId}/history?limit=100`);
+    const byTwo = await everyEvent(`${alpha}/executions/${executionId}/history?limit=2`);
+    const newestFirst = await everyEvent(`${alpha}/executions/${executionId}/history?order=desc&limit=3`);
+
+    expect(byTwo.map(({ id }) => id)).toEqual(whole.map(({ id }) => id));
+    expect(newestFirst.map(({ id }) => id)).toEqual(whole.map(({ id }) => id).toReversed());
+    expect(new Set(byTwo.map(({ id }) => id)).size).toBe(whole.length);
   });
 });

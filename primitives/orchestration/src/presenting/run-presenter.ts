@@ -1,4 +1,4 @@
-import type { Presenter } from '@beonauto/operations';
+import { cursorWithin, type Presenter } from '@beonauto/operations';
 import {
   RunEventSchema,
   type EarlierStep,
@@ -73,7 +73,7 @@ export const runPresenter: Presenter = {
     const executionId = recorded.stream.slice(runsKind.length + 1);
     const record = {
       id: recorded.id,
-      cursor: recorded.cursor,
+      cursor: cursorWithin(recorded.cursor, 0),
       causation_id: recorded.causationId,
       at: new Date(event.receipt.at).toISOString(),
       type: 'workflow_input_applied',

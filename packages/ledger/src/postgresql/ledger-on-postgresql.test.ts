@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { setTimeout as pause } from 'node:timers/promises';
 
 import { Effect } from 'effect';
 import { Client } from 'pg';
@@ -33,6 +32,12 @@ async function aDatabase(): Promise<string> {
   const database = new URL(server);
   database.pathname = `/${name}`;
   return database.href;
+}
+
+function pause(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
 }
 
 const longestWaitBehindTheHorizon = 10_000;
@@ -115,10 +120,7 @@ async function anAppendLeftOpen(database: string, stream: string, type: string, 
   return client;
 }
 
-interface OpenWrite {
-  readonly client: Client;
-  readonly id: string;
-}
+type OpenWrite = { readonly client: Client; readonly id: string };
 
 async function aWriteLeftOpenElsewhere(): Promise<OpenWrite> {
   const client = new Client({ connectionString: server });
@@ -146,10 +148,9 @@ function notingOfRoot(ledger: OpenLedger['ledger'], type: string, detail: string
   return Effect.runPromise(ledger.execute(root, happenings, [{ type, detail }], ofTheRoot));
 }
 
-async function aLedgerOnItsOwnDatabase(): Promise<{
-  readonly database: string;
-  readonly ledger: OpenLedger['ledger'];
-}> {
+type OwnLedger = { readonly database: string; readonly ledger: OpenLedger['ledger'] };
+
+async function aLedgerOnItsOwnDatabase(): Promise<OwnLedger> {
   const database = await aDatabase();
   const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
   onTestFinished(dispose);

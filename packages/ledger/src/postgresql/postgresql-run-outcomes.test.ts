@@ -4,12 +4,12 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { describe, expect, it } from 'vitest';
 
 import type { StatementExecutor } from '../event-store.ts';
+import type { Query } from './postgresql-recorded.ts';
 import {
   afterTheSchemaWithin,
   postgresqlRunOutcomeProjections,
   postgresqlRunOutcomesReader,
 } from './postgresql-run-outcomes.ts';
-import type { Query } from './recorded-parts.ts';
 
 interface Recording {
   readonly execute: StatementExecutor;

@@ -4,7 +4,16 @@ import type { Ledger } from '@beonauto/operations';
 import { Effect, type Layer } from 'effect';
 import { Client } from 'pg';
 
-import { executions, longRun, tick, timeOf } from './measure/dataset.ts';
+import {
+  executions,
+  longRun,
+  longRunId,
+  othersInPostgreSQL,
+  othersInSQLite,
+  runIdOf,
+  tick,
+  timeOf,
+} from './measure/dataset.ts';
 import { postgresqlLedgerLayer } from './src/postgresql/postgresql-ledger.ts';
 import { cursorOf } from './src/recorded/cursor.ts';
 import { ledgerLayer } from './src/sqlite3.ts';
@@ -55,6 +64,25 @@ function casesOf(selection: Selection, pages: readonly (readonly [string, Page])
   return pages.map(([label, onePage]) => [label, selection, onePage]);
 }
 
+function treeCases(middleOfTheLongRun: string): readonly Case[] {
+  return [
+    ...casesOf({ kind: 'correlated', correlation: runIdOf(50_000) }, [
+      ['The tree of a run of 21 messages, oldest first', aPage('asc', 20)],
+      ['The tree of a run of 21 messages, newest first', aPage('desc', 20)],
+    ]),
+    ...casesOf({ kind: 'correlated', correlation: longRunId }, [
+      [
+        'The tree of a run of 100,001 messages, from its middle, oldest first',
+        aPage('asc', 20, { cursor: middleOfTheLongRun }),
+      ],
+      [
+        'The tree of a run of 100,001 messages, from its middle, newest first',
+        aPage('desc', 20, { cursor: middleOfTheLongRun }),
+      ],
+    ]),
+  ];
+}
+
 function cases(pointOf: (stream: string, at: number) => Point): readonly Case[] {
   const cursor = cursorOf(brainKey, pointOf(executions(50_000), 1));
   const middleOfTheLongRun = cursorOf(brainKey, pointOf(longRun, 50_000));
@@ -84,6 +112,7 @@ function cases(pointOf: (stream: string, at: number) => Point): readonly Case[] 
       ['A run of 100,001 messages, from its middle, oldest first', aPage('asc', 20, { cursor: middleOfTheLongRun })],
       ['A run of 100,001 messages, from its middle, newest first', aPage('desc', 20, { cursor: middleOfTheLongRun })],
     ]),
+    ...treeCases(middleOfTheLongRun),
     ...casesOf({ kind: 'executions' }, [
       ['Runs, first page, newest first', aPage('desc', 20)],
       ['Runs, first page, oldest first', aPage('asc', 20)],
@@ -109,19 +138,17 @@ const quietCases: readonly Case[] = [
     { kind: 'run', execution: 'long-running' },
     aPage('desc', 20),
   ],
+  [
+    `The tree of a run of 21 messages, oldest first, ${behindOthers}`,
+    { kind: 'correlated', correlation: runIdOf(50_000) },
+    aPage('asc', 20),
+  ],
+  [
+    `The tree of a run of 21 messages, newest first, ${behindOthers}`,
+    { kind: 'correlated', correlation: runIdOf(50_000) },
+    aPage('desc', 20),
+  ],
 ];
-
-const othersInSQLite = `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 1000000)
-  INSERT INTO emt_messages (stream_id, stream_position, partition, message_data, message_metadata,
-    message_schema_version, message_type, message_id)
-  SELECT 'brain/o3/other-' || (i % 50) || '/executions/' || i, 1, 'emt:default', '{"type":"execution_started"}', '{}',
-    '1', 'execution_started', 'later-' || i FROM n`;
-
-const othersInPostgreSQL = `INSERT INTO emt_messages (stream_id, stream_position, message_data, message_metadata,
-    message_schema_version, message_type, message_id, transaction_id)
-  SELECT 'brain/o3/other-' || (i % 50) || '/executions/' || i, 1, jsonb_build_object('json', '{"type":"execution_started"}'),
-    '{}', '1', 'execution_started', 'later-' || i, pg_current_xact_id()
-  FROM generate_series(1, 1000000) AS i`;
 
 async function timed<A>(attempt: () => Promise<A>): Promise<{ readonly took: number; readonly answer: A }> {
   const started = performance.now();
@@ -170,12 +197,20 @@ async function measureSQLite(): Promise<void> {
   database.exec(indexes.map((index) => `DROP INDEX ${index};`).join(' '));
   const insert = database.prepare(`INSERT INTO emt_messages (stream_id, stream_position, partition, message_kind,
     message_data, message_metadata, message_schema_version, message_type, message_id, is_archived, created)
-    VALUES (?, ?, 'emt:default', 'E', ?, '{}', '1', ?, ?, 0, ?)`);
+    VALUES (?, ?, 'emt:default', 'E', ?, ?, '1', ?, ?, 0, ?)`);
   database.exec('BEGIN');
   for (let t = 0; t < runs; t += 1) {
     const created = timeOf(t).slice(0, 19).replace('T', ' ');
     for (const [index, message] of tick(t).entries()) {
-      insert.run(message.stream, message.position, message.data, message.type, `m${t}-${index}`, created);
+      insert.run(
+        message.stream,
+        message.position,
+        message.data,
+        message.metadata,
+        message.type,
+        `m${t}-${index}`,
+        created,
+      );
     }
   }
   database.exec('COMMIT');
@@ -207,10 +242,10 @@ async function filledWithPostgreSQL(client: Readonly<Pick<Client, 'query'>>): Pr
           client.query(
             `INSERT INTO emt_messages (stream_id, stream_position, partition, message_kind, message_data,
               message_metadata, message_schema_version, message_type, message_id, is_archived, transaction_id, created)
-            SELECT r.stream, r.position, 'emt:default', 'E', jsonb_build_object('json', r.data), '{}', '1', r.type,
-              'm' || $2 || '-' || r.n, false, pg_current_xact_id(), $3::timestamptz
-            FROM ROWS FROM (jsonb_to_recordset($1::jsonb) AS (stream text, position int, type text, data text))
-              WITH ORDINALITY AS r(stream, position, type, data, n)
+            SELECT r.stream, r.position, 'emt:default', 'E', jsonb_build_object('json', r.data), r.metadata::jsonb, '1',
+              r.type, 'm' || $2 || '-' || r.n, false, pg_current_xact_id(), $3::timestamptz
+            FROM ROWS FROM (jsonb_to_recordset($1::jsonb) AS (stream text, position int, type text, data text, metadata text))
+              WITH ORDINALITY AS r(stream, position, type, data, metadata, n)
             ORDER BY r.n`,
             [JSON.stringify(tick(t)), t, timeOf(t)],
           ),
