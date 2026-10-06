@@ -4,7 +4,7 @@ import { Schema } from 'effect';
 
 import type { Json } from '../dsl/json.ts';
 
-export interface ChildEnding {
+interface ChildEnding {
   readonly status: number | null;
   readonly signal: string | null;
 }
