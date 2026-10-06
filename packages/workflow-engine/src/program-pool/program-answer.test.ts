@@ -32,6 +32,13 @@ describe('the answer of a worker', () => {
     });
   });
 
+  it('binds the variables it is given, and reads variables that are not an object as too deep to take', () => {
+    const bound = { ...request, source: '[.[] | . + $n]', dialect: { refused: [], variables: ['n'] } };
+
+    expect(answerOf({ ...bound, variables: '{"n": 10}' }, clock)).toMatchObject({ ran: 'answered', output: '[11,12]' });
+    expect(answerOf({ ...bound, variables: '[1]' }, clock)).toMatchObject({ ran: 'exhausted', limit: 'value depth' });
+  });
+
   it('reads what it is not given as nothing', () => {
     expect(answerOf({}, clock)).toMatchObject({ ran: 'refused', issues: [{ error: 'ParseError' }] });
     expect(answerOf({ source: '.', input: '1', limits: {} }, clock)).toMatchObject({

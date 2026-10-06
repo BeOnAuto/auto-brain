@@ -8,6 +8,7 @@ export function scriptedPool(script: readonly PoolOutcome[], otherwise: ProgramP
       const [next] = remaining.splice(0, 1);
       return next === undefined ? otherwise.run(request, signal) : Promise.resolve(next);
     },
+    fold: otherwise.fold,
     close: otherwise.close,
   };
 }
