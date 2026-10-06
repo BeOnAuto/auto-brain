@@ -1,6 +1,6 @@
 import type { Environment } from '@beonauto/config';
 
-import { startReaperOf, type ChildCommand, type RunningChild, type Written } from './children.ts';
+import type { ChildCommand, RunningChild, Written } from './children.ts';
 import type { DevelopmentRun, DevelopmentSetup } from './development-run.ts';
 import { readyNotice } from './ready-notice.ts';
 import { runnerLogFor } from './runner-log.ts';
@@ -25,12 +25,18 @@ interface Serving {
   readonly output: Written;
 }
 
+const stopWithRunner = new URL('stop-with-runner.ts', import.meta.url).href;
+
 function serverCommand(run: DevelopmentRun, output: Written): ChildCommand {
   return {
     command: run.execPath,
-    args: [...presentEnvFiles(run.setup).map((envFile) => `--env-file=${envFile}`), run.setup.serverEntry],
+    args: [
+      `--import=${stopWithRunner}`,
+      ...presentEnvFiles(run.setup).map((envFile) => `--env-file=${envFile}`),
+      run.setup.serverEntry,
+    ],
     environment: { ...run.environment, ...rootConfigFile(run) },
-    stdin: 'ignore',
+    stdin: 'pipe',
     stdout: output,
     stderr: 'inherit',
   };
@@ -84,7 +90,6 @@ function announcingReadiness(host: DevelopmentProcess, run: DevelopmentRun): Wri
 
 export async function runDevelopment(host: DevelopmentProcess, setup: DevelopmentSetup): Promise<number> {
   const stopRequested = stopRequestedThrough(host).then((): 'stop' => 'stop');
-  const reapers: RunningChild[] = [];
   const settings = settingsOf(host.env, setup);
   const run: DevelopmentRun = {
     setup,
@@ -93,13 +98,7 @@ export async function runDevelopment(host: DevelopmentProcess, setup: Developmen
     settings,
     log: runnerLogFor(settings),
     stopRequested,
-    start: (command) => {
-      const child = setup.startChild(command);
-      const reaper = startReaperOf(child, setup.startChild, host.env);
-      reapers.push(reaper);
-      void child.ended.then(() => reaper.signal('SIGKILL'));
-      return child;
-    },
+    start: setup.startChild,
   };
   const changes = watchSources(
     sourcesOf(setup.sourceDirectories, [...setup.envFiles, watchedConfigFile(settings, setup)]),
@@ -107,6 +106,5 @@ export async function runDevelopment(host: DevelopmentProcess, setup: Developmen
   const output = announcingReadiness(host, run);
   const exitCode = await served(run, { changes, output, server: run.start(serverCommand(run, output)) });
   changes.close();
-  await stopped('SIGKILL', reapers);
   return exitCode;
 }
