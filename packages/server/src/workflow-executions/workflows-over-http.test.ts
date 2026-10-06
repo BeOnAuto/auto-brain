@@ -89,6 +89,17 @@ const historyOf = Schema.decodeUnknownSync(
   }),
 );
 
+const typesOfTheDeclinedReview = [
+  'execution_deferred',
+  'execution_started',
+  'execution_succeeded',
+  ...Array.from({ length: 3 }, () => 'step_finished'),
+  ...Array.from({ length: 3 }, () => 'step_started'),
+  'step_waiting',
+  'workflow_input_applied',
+  'workflow_input_applied',
+];
+
 let server: ReasoningServer;
 
 afterEach(async () => {
@@ -195,13 +206,7 @@ describe('the history of a workflow run, over HTTP', { timeout: workflowTestTime
     const { events } = historyOf(history.body);
     const callKey = JSON.stringify([`acme/alpha/${executionId}`, '/do/0/judge', 1]);
 
-    expect(events.map(({ type }) => type).toSorted()).toEqual([
-      'execution_deferred',
-      'execution_started',
-      'execution_succeeded',
-      'workflow_input_applied',
-      'workflow_input_applied',
-    ]);
+    expect(events.map(({ type }) => type).toSorted()).toEqual(typesOfTheDeclinedReview);
     expect(events.filter(({ type }) => type === 'workflow_input_applied')).toEqual([
       {
         type: 'workflow_input_applied',
