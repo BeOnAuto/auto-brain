@@ -89,6 +89,7 @@ const schemaRefusals: readonly (readonly [Readonly<Record<string, unknown>>, str
   [{ days: '7' }, '/days'],
   [{ from: '2026-02-30', to: '2026-03-01' }, '/from'],
   [{ from: '2026-10-01', to: '2026-10-6' }, '/to'],
+  [{ from: '2026-10-01T24:00:00Z', to: '2026-10-02' }, '/from'],
   [{ since: '2026-10-01T00:00:00Z' }, '/since'],
 ];
 

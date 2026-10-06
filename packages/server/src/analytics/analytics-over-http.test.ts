@@ -159,14 +159,16 @@ describe('the analytics of a brain over HTTP, asked for what they cannot answer'
       ].map((query) => server.call('GET', `${alpha}/analytics?${query}`)),
     );
     const since = await server.call('GET', `${alpha}/events?since=2026-02-30T00:00:00Z`);
+    const midnight = await server.call('GET', `${alpha}/events?since=2026-10-05T24:00:00Z`);
 
-    expect([...refusals, since].map(({ status, body }) => [status, body])).toMatchObject([
+    expect([...refusals, since, midnight].map(({ status, body }) => [status, body])).toMatchObject([
       [422, { reason: 'invalid_input', errors: [{ pointer: '/days' }] }],
       [422, { reason: 'invalid_input', errors: [{ pointer: '/days' }] }],
       [422, { reason: 'invalid_input', errors: [{ pointer: '/from' }] }],
       [422, { reason: 'invalid_input', errors: [{ pointer: '/to' }] }],
       [422, { reason: 'invalid_input', errors: [{ pointer: '/to' }] }],
       [422, { reason: 'invalid_input', errors: [{ pointer: '/limit' }] }],
+      [422, { reason: 'invalid_input', errors: [{ pointer: '/since' }] }],
       [422, { reason: 'invalid_input', errors: [{ pointer: '/since' }] }],
     ]);
   });
