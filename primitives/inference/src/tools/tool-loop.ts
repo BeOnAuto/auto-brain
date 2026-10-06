@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 import type { FinishReason, ModelMessage, Tool } from 'ai';
 import { Result } from 'effect';
 
@@ -47,7 +49,7 @@ export function toolLoop(tools: ModelTools | undefined, cancelled: Readonly<Abor
         return {};
       }
       state.final = true;
-      return { activeTools: [], messages: finalStepMessages(messages) };
+      return { activeTools: [], messages: finalStepMessages(messages, randomBytes(16).toString('hex')) };
     },
     stopWhen,
     unanswered,
