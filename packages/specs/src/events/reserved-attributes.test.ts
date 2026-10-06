@@ -20,12 +20,15 @@ function refusals(event: unknown): readonly string[] {
 }
 
 describe('the types and sources of what the brain records itself', () => {
-  it('are reserved for the brain', () => {
+  it('are reserved for the brain: every type its runs and its definitions record', () => {
     expect([...reservedEventTypes]).toEqual([
       'execution_started',
+      'execution_deferred',
       'execution_succeeded',
       'execution_rejected',
       'execution_failed',
+      'tool_call_started',
+      'tool_call_answered',
       'spec_created',
       'spec_updated',
       'spec_retired',
@@ -39,10 +42,14 @@ describe('the types and sources of what the brain records itself', () => {
 
   it('are refused in an event from outside, each where it is given', () => {
     expect(refusals({ type: 'execution_succeeded', source: '/executions/0199a3c4' })).toEqual([
-      '/type: Expected a type of your own, not one the brain records itself: execution_started, execution_succeeded, execution_rejected, execution_failed, spec_created, spec_updated, spec_retired',
+      '/type: Expected a type of your own, not one the brain records itself: execution_started, execution_deferred, execution_succeeded, execution_rejected, execution_failed, tool_call_started, tool_call_answered, spec_created, spec_updated, spec_retired',
       '/source: Expected a source of your own, not one under /executions/ or /specs/, which the brain records itself',
     ]);
-    expect(refusals({ type: 'spec_created' })).toHaveLength(1);
+    expect(
+      ['execution_deferred', 'tool_call_started', 'tool_call_answered', 'spec_created'].map(
+        (type) => refusals({ type }).length,
+      ),
+    ).toEqual([1, 1, 1, 1]);
     expect(refusals({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu' })).toEqual([]);
   });
 });

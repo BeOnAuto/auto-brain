@@ -1,18 +1,26 @@
 import { Schema } from 'effect';
 
+import type { ExecutionEvent } from '../execution/execution-events.ts';
+import type { SpecEvent } from '../registry/spec-events.ts';
+
 export const runSourcePrefix = '/executions/';
 
 export const specSourcePrefix = '/specs/';
 
-export const reservedEventTypes: ReadonlySet<string> = new Set([
-  'execution_started',
-  'execution_succeeded',
-  'execution_rejected',
-  'execution_failed',
-  'spec_created',
-  'spec_updated',
-  'spec_retired',
-]);
+const recordedTypes: Readonly<Record<ExecutionEvent['type'] | SpecEvent['type'], true>> = {
+  execution_started: true,
+  execution_deferred: true,
+  execution_succeeded: true,
+  execution_rejected: true,
+  execution_failed: true,
+  tool_call_started: true,
+  tool_call_answered: true,
+  spec_created: true,
+  spec_updated: true,
+  spec_retired: true,
+};
+
+export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(recordedTypes));
 
 export const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix];
 
