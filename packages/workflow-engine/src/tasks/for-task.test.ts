@@ -117,6 +117,8 @@ do:
     const run = drivenRun(document);
 
     expect(run.outcome).toMatchObject({ kind: 'raised', error: { status: 408, instance: '/do/0/each' } });
-    expect(stepsIn(run.events)).toContainEqual({ reference: '/do/0/each/do/0/pause', run: 1, outcome: 'cancelled' });
+    expect(stepsIn(run.events)).toContainEqual(
+      expect.objectContaining({ reference: '/do/0/each/do/0/pause', run: 1, outcome: 'cancelled' }),
+    );
   });
 });

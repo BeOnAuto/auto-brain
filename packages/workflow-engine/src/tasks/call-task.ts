@@ -39,7 +39,21 @@ export function startCall(invocation: Invocation): BodyAdvance {
   session.beforeWaiting();
   const key = { executionId: session.executionId(), reference: entry.reference, run: frame.run };
   const deadline = session.calls.startCall({ key, function: name, arguments: given });
-  session.record(entry.reference, frame.run, 'waiting');
+  const { reference } = entry;
+  const child = session.options.functions.childOf?.({
+    function: name,
+    reference,
+    run: frame.run,
+    arguments: given,
+    attributes: session.attributes(),
+  });
+  session.record({
+    reference,
+    run: frame.run,
+    outcome: 'waiting',
+    waitsFor: 'call',
+    ...(child === undefined ? {} : { child }),
+  });
   const label = session.options.functions.describe(name, given);
   return waitingOn({ kind: 'call', key, function: name, arguments: session.hold(given), label, deadline });
 }
@@ -61,13 +75,20 @@ function unreachable({ machine }: Invocation, body: CallBody, milliseconds: numb
   return raisedOf(errorOf({ status: 'unreachable', detail: `No answer came within ${milliseconds} ms` }, body));
 }
 
+function resumed({ machine }: Invocation, { key }: CallBody): void {
+  machine.session.resumedFrom({ reference: key.reference, run: key.run, times: 1 });
+}
+
 export function resumeCall(invocation: Invocation, body: CallBody, signal: Signal): BodyAdvance | undefined {
-  if (signal.kind === 'answer') {
-    return signal.key === callKeyText(body.key) ? answered(invocation, body, signal.result) : undefined;
+  if (signal.kind === 'answer' && signal.key === callKeyText(body.key)) {
+    resumed(invocation, body);
+    return answered(invocation, body, signal.result);
   }
-  return signal.kind === 'timer' && signal.timerId === body.deadline
-    ? unreachable(invocation, body, signal.timer.dueAt - signal.timer.armedAt)
-    : undefined;
+  if (signal.kind === 'timer' && signal.timerId === body.deadline) {
+    resumed(invocation, body);
+    return unreachable(invocation, body, signal.timer.dueAt - signal.timer.armedAt);
+  }
+  return undefined;
 }
 
 export function cancelCall(machine: Machine, body: CallBody): void {

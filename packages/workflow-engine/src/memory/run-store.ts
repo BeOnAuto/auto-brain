@@ -2,13 +2,14 @@ import { VersionConflict } from '@beonauto/ledger';
 import { Effect, Result, Schema } from 'effect';
 
 import { RunEventSchema, type PositionedEvent, type RunEvent } from '../run-log/run-event.ts';
-import type { RunStore, StoredSnapshot } from '../run-log/run-store.ts';
+import type { RecordLineage, RunStore, StoredSnapshot } from '../run-log/run-store.ts';
 import { snapshotChunks, snapshotFromChunks, type Snapshot } from '../run-log/snapshot.ts';
 
 type AppendFault = 'conflict' | 'unknown_outcome';
 
 export interface MemoryRunStore extends RunStore {
   readonly events: (executionId: string) => readonly PositionedEvent[];
+  readonly lineages: (executionId: string) => readonly RecordLineage[];
   readonly snapshotOf: (executionId: string) => StoredSnapshot | null;
   readonly versions: () => ReadonlyMap<string, number>;
   readonly loads: (executionId: string) => number;
@@ -26,19 +27,23 @@ const utf8 = new TextEncoder();
 
 interface Streams {
   readonly eventsOf: (executionId: string) => readonly PositionedEvent[];
-  readonly push: (executionId: string, event: RunEvent) => void;
+  readonly lineagesOf: (executionId: string) => readonly RecordLineage[];
+  readonly push: (executionId: string, event: RunEvent, lineage: RecordLineage) => void;
   readonly versions: () => ReadonlyMap<string, number>;
 }
 
 function streamsOf(): Streams {
   const streams = new Map<string, PositionedEvent[]>();
+  const lineages = new Map<string, RecordLineage[]>();
   const eventsOf = (executionId: string): readonly PositionedEvent[] => streams.get(executionId) ?? [];
   return {
     eventsOf,
-    push: (executionId, event) => {
+    lineagesOf: (executionId) => lineages.get(executionId) ?? [],
+    push: (executionId, event, lineage) => {
       const stream = streams.get(executionId) ?? [];
       streams.set(executionId, stream);
       stream.push({ version: stream.length + 1, event: decodeEvent(encodeEvent(event)) });
+      lineages.set(executionId, [...(lineages.get(executionId) ?? []), lineage]);
     },
     versions: () =>
       new Map(
@@ -87,6 +92,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
     executionId: string,
     event: RunEvent,
     expectedVersion: number,
+    lineage: RecordLineage,
   ): Effect.Effect<void, VersionConflict> => {
     const { fault } = pending;
     pending.conflicts -= 1;
@@ -94,7 +100,7 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
     if (fault === 'conflict' || pending.conflicts >= 0 || streams.eventsOf(executionId).length !== expectedVersion) {
       return Effect.fail(new VersionConflict());
     }
-    streams.push(executionId, event);
+    streams.push(executionId, event, lineage);
     return fault === 'unknown_outcome' ? Effect.die(unknownOutcome) : Effect.void;
   };
   return {
@@ -104,14 +110,15 @@ export function memoryRunStore(conflicts = 0): MemoryRunStore {
         const snapshot = snapshots.snapshotOf(executionId);
         return { snapshot, tail: streams.eventsOf(executionId).slice(snapshot?.snapshot.version ?? 0) };
       }),
-    append: (executionId, event, expectedVersion) =>
-      Effect.suspend(() => appended(executionId, event, expectedVersion)),
+    append: (executionId, event, expectedVersion, lineage) =>
+      Effect.suspend(() => appended(executionId, event, expectedVersion, lineage)),
     eventsAfter: (executionId, version) => Effect.sync(() => streams.eventsOf(executionId).slice(version)),
     saveSnapshot: (snapshot) =>
       Effect.sync(() => {
         snapshots.save(snapshot);
       }),
     events: (executionId) => streams.eventsOf(executionId).slice(),
+    lineages: streams.lineagesOf,
     snapshotOf: snapshots.snapshotOf,
     versions: streams.versions,
     loads: (executionId) => loads.get(executionId) ?? 0,

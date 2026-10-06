@@ -2,6 +2,7 @@ import { InvalidCursor, type RecordedEvent, type RecordedOrder, type RecordedSel
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { lineageBehaviour } from '../lineage/lineage-behaviour.ts';
 import {
   alpha,
   details,
@@ -71,7 +72,7 @@ function pagesWhileAppending(aLedger: LedgerMaker): void {
 
       const read = await everyPage(ledger, 'asc', appendingUpTo(ledger, 8));
       await happen(ledger, inAlpha('notes-9'), noted('noted', 9));
-      const after = await reading(ledger, everything, { order: 'asc', limit: 2, cursor: String(read.at(-1)?.id) });
+      const after = await reading(ledger, everything, { order: 'asc', limit: 2, cursor: String(read.at(-1)?.cursor) });
 
       expect([detailsOf(read), details(after), after.nextCursor]).toEqual([[1, 2, 3, 4, 5, 6, 7, 8], [9], null]);
     });
@@ -151,7 +152,7 @@ function aFilterOfTypes(aLedger: LedgerMaker): void {
 
         const kept = { order: 'asc', limit: 2, types: ['kept'] } as const;
         const first = await reading(ledger, everything, kept);
-        const empty = await reading(ledger, everything, { ...kept, cursor: String(first.records[0]?.id) });
+        const empty = await reading(ledger, everything, { ...kept, cursor: String(first.records[0]?.cursor) });
         const rest = await reading(ledger, everything, { ...kept, cursor: String(empty.nextCursor) });
 
         expect([details(first), first.hasMore, details(empty), empty.hasMore, details(rest), rest.nextCursor]).toEqual([
@@ -169,13 +170,13 @@ function aFilterOfTypes(aLedger: LedgerMaker): void {
 
 function cursorsOfARead(aLedger: LedgerMaker): void {
   describe('the cursor of a read', () => {
-    it('is the id of each record, which reads on after it', async () => {
+    it('is the cursor of each record, which reads on after it', async () => {
       const ledger = await aLedger();
       await happen(ledger, inAlpha('notes'), noted('noted', 1), noted('noted', 2), noted('noted', 3));
       const { records } = await reading(ledger, everything, { order: 'asc', limit: 10 });
 
       const after = await Promise.all(
-        records.map(({ id }) => reading(ledger, everything, { order: 'asc', limit: 10, cursor: id })),
+        records.map(({ cursor }) => reading(ledger, everything, { order: 'asc', limit: 10, cursor })),
       );
 
       expect(after.map((page) => details(page))).toEqual([[2, 3], [3], []]);
@@ -185,7 +186,7 @@ function cursorsOfARead(aLedger: LedgerMaker): void {
       const ledger = await aLedger();
       await happen(ledger, 'brain/acme/beta/notes', noted('noted', 1));
       const beta = await reading(ledger, everything, { order: 'asc', limit: 1 }, { org: 'acme', brain: 'beta' });
-      const cursors = [...beta.records.map(({ id }) => id), 'not a cursor', 'WyJicmFpbi9hY21lL2FscGhhLyJd'];
+      const cursors = [...beta.records.map(({ cursor }) => cursor), 'not a cursor', 'WyJicmFpbi9hY21lL2FscGhhLyJd'];
 
       const refusals = await Promise.all(
         cursors.map((cursor) =>
@@ -247,4 +248,5 @@ export function recordedBehaviour(aLedger: LedgerMaker): void {
   cursorsOfARead(aLedger);
   theTimeAPageStartsFrom(aLedger);
   runsBehaviour(aLedger);
+  lineageBehaviour(aLedger);
 }

@@ -1,16 +1,27 @@
 import { Effect, Result } from 'effect';
 
-import { dispatchedThrough, type DispatchFailed, type RunContext } from '../dispatch/dispatch-watermark.ts';
+import {
+  dispatchedThrough,
+  type DispatchFailed,
+  type OutputOrigin,
+  type RunContext,
+} from '../dispatch/dispatch-watermark.ts';
 import { changesTimers, runDueOf } from '../dispatch/run-due.ts';
 import type { RunOutput } from '../dispatch/run-output.ts';
 import type { RunState } from '../machine/run-state.ts';
-import type { PositionedEvent } from '../run-log/run-event.ts';
+import type { PositionedEvent, RunEvent } from '../run-log/run-event.ts';
 import { isTroubling } from '../settlement/record-store.ts';
+import { isRecordedStep, keyOf } from '../steps/step-entry.ts';
 import type { EnginePorts, Wake } from './workflow-engine.ts';
 
-function performed(ports: EnginePorts, run: RunContext, output: RunOutput): Effect.Effect<unknown, DispatchFailed> {
+function performed(
+  ports: EnginePorts,
+  run: RunContext,
+  output: RunOutput,
+  origin: OutputOrigin,
+): Effect.Effect<unknown, DispatchFailed> {
   if (output.kind === 'arm_timer') {
-    return ports.timers.arm(output, run);
+    return ports.timers.arm(output, run, origin);
   }
   if (output.kind === 'cancel_timer') {
     return ports.timers.cancel(output, run);
@@ -22,8 +33,13 @@ function performed(ports: EnginePorts, run: RunContext, output: RunOutput): Effe
     return ports.executor.cancel(output, run);
   }
   return ports.recordStore
-    .settle({ executionId: output.executionId, settlement: output.settlement }, run)
+    .settle({ executionId: output.executionId, settlement: output.settlement }, run, origin)
     .pipe(Effect.tap((receipt) => (isTroubling(receipt) ? ports.reporter.unsettled({ run, receipt }) : Effect.void)));
+}
+
+function originOf(version: number, { steps }: RunEvent): OutputOrigin {
+  const last = steps.at(-1);
+  return { version, lastStep: last !== undefined && isRecordedStep(last) ? keyOf(last) : null };
 }
 
 function firstFailureIn(
@@ -33,8 +49,9 @@ function firstFailureIn(
 ): Effect.Effect<number | null> {
   return Effect.gen(function* () {
     for (const { version, event } of events) {
+      const origin = originOf(version, event);
       for (const output of event.outputs) {
-        const done = yield* Effect.result(performed(ports, run, output));
+        const done = yield* Effect.result(performed(ports, run, output, origin));
         if (Result.isFailure(done)) {
           return version;
         }

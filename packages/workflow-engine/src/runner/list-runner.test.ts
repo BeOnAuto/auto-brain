@@ -43,11 +43,9 @@ do:
     });
 
     expect(run.outcome).toEqual({ kind: 'completed', output: ['won'] });
-    expect(stepsIn(run.events)).toContainEqual({
-      reference: '/do/0/race/fork/branches/1/counting',
-      run: 1,
-      outcome: 'cancelled',
-    });
+    expect(stepsIn(run.events)).toContainEqual(
+      expect.objectContaining({ reference: '/do/0/race/fork/branches/1/counting', run: 1, outcome: 'cancelled' }),
+    );
   });
 });
 

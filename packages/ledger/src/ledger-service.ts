@@ -19,10 +19,11 @@ import { retriedOnVersionConflict, type VersionConflict } from './version-confli
 
 export type StreamLoad<Loaded> = (stream: string) => Effect.Effect<Loaded>;
 
-export type StreamAppend<Event> = (
+export type StreamAppend<Event, Loaded = unknown> = (
   stream: string,
   events: readonly Event[],
   expectedVersion: number,
+  loaded: Loaded,
 ) => Effect.Effect<void, VersionConflict>;
 
 export interface Decided<Loaded, State, Event> extends StreamState<State> {
@@ -43,7 +44,7 @@ export function decisionLoop<
   R extends DeclarableReason,
 >(
   load: StreamLoad<Loaded>,
-  append: StreamAppend<Event>,
+  append: StreamAppend<Event, Loaded>,
   decider: Decider<State, Command, Event, R>,
 ): DecisionLoop<Loaded, State, Command, Event, R> {
   const attempt = (
@@ -54,7 +55,7 @@ export function decisionLoop<
       const loaded = yield* load(stream);
       const decided = decider.decide(command, loaded.state);
       if (Result.isSuccess(decided) && decided.success.length > 0) {
-        yield* append(stream, decided.success, loaded.version);
+        yield* append(stream, decided.success, loaded.version, loaded);
       }
       return Result.map(decided, (events: readonly Event[]) => ({
         loaded,
@@ -69,14 +70,14 @@ export function decisionLoop<
 
 export function makeLedger(store: LedgerStore): Ledger['Service'] {
   const load = streamReaderOf(store);
-  const append = eventAppenderOf(store);
 
   return Ledger.of({
     load,
-    execute: (stream, decider, command) =>
+    execute: (stream, decider, command, lineage) =>
       decisionLoop(
         (named: string) => load(named, decider),
-        (named, events, expectedVersion) => append(named, decider.eventSchema, events, expectedVersion),
+        (named, events, expectedVersion) =>
+          eventAppenderOf(store, decider.eventSchema)(named, events, expectedVersion, lineage),
         decider,
       )(stream, command).pipe(Effect.map(({ state, version }) => ({ state, version }))),
     readRecorded: recordedReaderOf(store),

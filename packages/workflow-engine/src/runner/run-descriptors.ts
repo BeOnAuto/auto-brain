@@ -13,6 +13,7 @@ export interface MachineOptions {
 
 export interface Descriptors {
   readonly executionId: () => string;
+  readonly attributes: () => JsonObject;
   readonly document: () => JsonObject;
   readonly limits: () => RunLimits;
   readonly components: () => Components;
@@ -26,6 +27,7 @@ function documentOf(cell: RunCell): JsonObject {
 export function descriptorsOf(cell: RunCell, values: ValueTable): Descriptors {
   return {
     executionId: () => cell.get().state.executionId,
+    attributes: () => cell.get().state.attributes,
     document: () => documentOf(cell),
     limits: () => cell.get().state.limits,
     components: () => {

@@ -126,7 +126,8 @@ const rejected: Readonly<Record<string, Rejection>> = {
     source: [...callingOther('defineCommand', post, 'BrainWriter'), ...callerOfOther('defineQuery', get)],
   },
   'command-asks-ledger.ts': {
-    because: "Type 'Ledger' is not assignable to type 'BrainContext | BrainReader | BrainWriter | Caller'",
+    because:
+      "Type 'Ledger' is not assignable to type 'BrainContext | BrainReader | BrainWriter | CallLineage | Caller'",
     source: defined('defineCommand', 'brain', [post, ...emptyInputAndOutput, asking('Ledger')]),
   },
   'command-asks-brain-registry.ts': {
