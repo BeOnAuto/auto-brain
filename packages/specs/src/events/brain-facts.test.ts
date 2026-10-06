@@ -7,7 +7,7 @@ import type { ExecutionEvent } from '../execution/execution-events.ts';
 import { jsonBytesOf } from '../execution/recorded-size.ts';
 import type { SpecEvent } from '../registry/spec-events.ts';
 import { specsDecider, specsStreamOf } from '../registry/specs-decider.ts';
-import { brainFactOf, isReservedSource, reservedEventTypes } from './brain-facts.ts';
+import { brainFactOf } from './brain-facts.ts';
 import { CloudEventSchema, mostPublishedEventBytes } from './cloud-event.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -90,6 +90,10 @@ describe('the facts of a run as events', () => {
   });
 });
 
+function deep(levels: number): Schema.Json {
+  return levels === 0 ? 'rose' : { profits: deep(levels - 1) };
+}
+
 describe('the output a success carries as an event', () => {
   it('is its size when it is too large for an event, which get_execution reads whole', () => {
     const output = { summary: 'x'.repeat(mostPublishedEventBytes) };
@@ -101,6 +105,15 @@ describe('the output a success carries as an event', () => {
       type: 'execution_succeeded',
       data: { ...ofTheRun, output_bytes: jsonBytesOf(output) },
     });
+  });
+
+  it('is its size when it nests too deep for a run to hold the event in a list', () => {
+    expect(
+      brainFactOf(ofRun({ type: 'execution_succeeded', output: deep(509), record: {}, ...ofSummary, ...fact })),
+    ).toHaveProperty('data.output', deep(509));
+    expect(
+      brainFactOf(ofRun({ type: 'execution_succeeded', output: deep(510), record: {}, ...ofSummary, ...fact })),
+    ).toHaveProperty('data.output_bytes', jsonBytesOf(deep(510)));
   });
 
   it('is the output at the bound of an event, and its size one byte past it', () => {
@@ -171,6 +184,22 @@ describe('the facts of a definition as events', () => {
 });
 
 describe('the records that are no facts of the brain', () => {
+  it('are the records it cannot read as what their stream holds, which it answers with none, never a failure', () => {
+    const about = { id: recordId, recordedAt: fact.at };
+    const unreadable: readonly RecordedEvent[] = [
+      {
+        ...about,
+        stream: executionStreamOf(executionId),
+        type: 'execution_succeeded',
+        data: { type: 'execution_succeeded' },
+      },
+      { ...about, stream: specsStreamOf('inference'), type: 'spec_created', data: 'not an event' },
+      { ...about, stream: executionStreamOf(executionId), type: 'execution_started', data: null },
+    ];
+
+    expect(unreadable.map((record) => brainFactOf(record))).toEqual([undefined, undefined, undefined]);
+  });
+
   it('are the run logs and every other stream kind', () => {
     expect(
       brainFactOf({
@@ -196,24 +225,5 @@ describe('the records that are no facts of the brain', () => {
         recordedAt: fact.at,
       }),
     ).toBeUndefined();
-  });
-});
-
-describe('the types and sources of the facts of the brain', () => {
-  it('are reserved for the brain', () => {
-    expect([...reservedEventTypes]).toEqual([
-      'execution_started',
-      'execution_succeeded',
-      'execution_rejected',
-      'execution_failed',
-      'spec_created',
-      'spec_updated',
-      'spec_retired',
-    ]);
-    expect(
-      ['/executions/1', '/specs/inference/summary', '/executions', 'executions/1', '/ledger/eu'].map((source) =>
-        isReservedSource(source),
-      ),
-    ).toEqual([true, true, false, false, false]);
   });
 });

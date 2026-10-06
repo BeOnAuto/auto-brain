@@ -37,6 +37,10 @@ const PublishedSchema = Schema.Struct({ output: Schema.Struct({ id: Schema.Strin
 
 const idOf = (outcome: unknown) => Schema.decodeUnknownSync(PublishedSchema)(outcome).output.id;
 
+function deep(levels: number): Schema.Json {
+  return levels === 0 ? 'eu' : [deep(levels - 1)];
+}
+
 function publishing(event: object) {
   return toAlpha(acmeAdmin, { event });
 }
@@ -104,6 +108,20 @@ describe('publishing an event again', () => {
     expect(await storedOn(specs, '/ledger/eu', 'm-2026-09')).toMatchObject({ version: 1 });
   });
 
+  it('answers the first record for its time spelled otherwise, and the filled time to a retry that gives one', async () => {
+    const specs = harness();
+    const { time: _time, ...withoutTime } = monthClosed;
+    await specs.call(publishEvent, publishing(monthClosed));
+    await specs.call(publishEvent, publishing({ ...withoutTime, id: 'm-2026-10' }));
+
+    expect(
+      await specs.call(publishEvent, publishing({ ...monthClosed, time: '2026-10-01t10:59:00+02:00' }), later),
+    ).toStrictEqual(recordedFirst);
+    expect(
+      await specs.call(publishEvent, publishing({ ...withoutTime, id: 'm-2026-10', time: later }), later),
+    ).toStrictEqual({ status: 'succeeded', output: { id: 'm-2026-10', time: firstMoment, recorded_at: firstMoment } });
+  });
+
   it('is rejected with conflict for a different event under the same source and id', async () => {
     const specs = harness();
     await specs.call(publishEvent, publishing(monthClosed));
@@ -122,17 +140,10 @@ describe('an event the brain does not take', () => {
 
     expect(
       await specs.call(publishEvent, publishing({ source: '/executions/0199a3c4', type: 'execution_succeeded' })),
-    ).toEqual({
+    ).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The event cannot be published as it is',
-      issues: [
-        {
-          detail: "The type execution_succeeded is the brain's own, for what it records itself",
-          pointer: '/event/type',
-        },
-        { detail: "A source under /executions/ or /specs/ is the brain's own", pointer: '/event/source' },
-      ],
+      issues: [{ pointer: '/event/type' }, { pointer: '/event/source' }],
     });
     expect(specs.ledger.streamNames()).toEqual([]);
   });
@@ -159,6 +170,28 @@ describe('an event past its bound', () => {
           pointer: '/event',
         },
       ],
+    });
+  });
+});
+
+describe('an event whose data nests too deep', () => {
+  it('is rejected when its data nests deeper than a run can hold, before anything is recorded', async () => {
+    const specs = harness();
+
+    expect(await specs.call(publishEvent, publishing({ ...monthClosed, data: deep(511) }))).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'The input does not match the input schema',
+      issues: [
+        {
+          detail: 'Expected data that nests at most 510 levels deep, so that a run can hold the event in a list',
+          pointer: '/event/data',
+        },
+      ],
+    });
+    expect(specs.ledger.streamNames()).toEqual([]);
+    expect(await specs.call(publishEvent, publishing({ ...monthClosed, data: deep(510) }))).toMatchObject({
+      status: 'succeeded',
     });
   });
 

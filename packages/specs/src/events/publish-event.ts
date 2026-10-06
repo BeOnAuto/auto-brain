@@ -3,7 +3,6 @@ import { Effect, Schema } from 'effect';
 
 import { jsonBytesOf } from '../execution/recorded-size.ts';
 import { commandMetadata } from '../operations/command-metadata.ts';
-import { isReservedSource, reservedEventTypes, reservedSourcePrefixes } from './brain-facts.ts';
 import { EventToPublishSchema, mostPublishedEventBytes, type CloudEvent, type EventToPublish } from './cloud-event.ts';
 import {
   publishedEventDecider,
@@ -11,6 +10,7 @@ import {
   recordedPublication,
   type FilledAttribute,
 } from './published-events.ts';
+import { refusingTheBrainsOwnAttributes, reservedEventTypes, reservedSourcePrefixes } from './reserved-attributes.ts';
 
 interface Publication {
   readonly event: CloudEvent;
@@ -32,22 +32,14 @@ function publicationOf(event: EventToPublish, at: string): Publication {
 
 function refusalsOf(event: CloudEvent): readonly Issue[] {
   const bytes = jsonBytesOf(event);
-  return [
-    ...(reservedEventTypes.has(event.type)
-      ? [{ detail: `The type ${event.type} is the brain's own, for what it records itself`, pointer: '/event/type' }]
-      : []),
-    ...(isReservedSource(event.source)
-      ? [{ detail: `A source under ${reservedSourcesInWords} is the brain's own`, pointer: '/event/source' }]
-      : []),
-    ...(bytes > mostPublishedEventBytes
-      ? [
-          {
-            detail: `Expected an event of at most ${mostPublishedEventBytes} bytes as JSON in UTF-8 with its id and time, not ${bytes}`,
-            pointer: '/event',
-          },
-        ]
-      : []),
-  ];
+  return bytes > mostPublishedEventBytes
+    ? [
+        {
+          detail: `Expected an event of at most ${mostPublishedEventBytes} bytes as JSON in UTF-8 with its id and time, not ${bytes}`,
+          pointer: '/event',
+        },
+      ]
+    : [];
 }
 
 const PublishedSchema = Schema.Struct({
@@ -77,7 +69,7 @@ export const publishEvent = defineCommand('brain', {
     'Rejected with invalid_input for an event that breaks these rules.',
   ].join(' '),
   route: { method: 'POST', path: '/events' },
-  inputSchema: Schema.Struct({ event: EventToPublishSchema }),
+  inputSchema: Schema.Struct({ event: EventToPublishSchema.check(refusingTheBrainsOwnAttributes) }),
   outputSchema: PublishedSchema,
   reasons: ['invalid_input', 'conflict'],
   handle: Effect.fnUntraced(function* ({ event }) {
