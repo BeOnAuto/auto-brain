@@ -1,5 +1,4 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { builtinModules } from 'node:module';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,21 +13,43 @@ interface Forbidden {
 
 const source = fileURLToPath(new URL('..', import.meta.url));
 
-const bareBuiltins = builtinModules.filter((name) => !name.startsWith('_')).join('|');
+const importedEverywhere: ReadonlySet<string> = new Set(['effect', '@beonauto/operations', '@beonauto/ledger']);
 
-const nodeOnly: readonly Forbidden[] = [
-  { what: 'a node: module', pattern: /from ['"]node:/u },
-  { what: 'a Node module by its bare name', pattern: new RegExp(`from ['"](?:${bareBuiltins})(?:/[^'"]*)?['"]`, 'u') },
+const importedInTheDsl: ReadonlySet<string> = new Set(['@gabrielbryk/jq-ts']);
+
+const importSpecifier = /^\s*(?:import|export)\s(?:[^;'"]*?\bfrom\s*)?['"]([^'"]+)['"]/gmu;
+
+function specifiersIn(text: string): readonly string[] {
+  return [...text.matchAll(importSpecifier)].map(([, specifier = '']: readonly string[]) => specifier);
+}
+
+function isOwnFile(file: string, specifier: string): boolean {
+  return /^\.{1,2}\//u.test(specifier) && !normalize(join(dirname(file), specifier)).startsWith('..');
+}
+
+function isAllowedImport(file: string, specifier: string): boolean {
+  return (
+    isOwnFile(file, specifier) ||
+    importedEverywhere.has(specifier) ||
+    (file.startsWith('dsl/') && importedInTheDsl.has(specifier))
+  );
+}
+
+function importsOutsideTheAllowList(file: string, text: string): readonly string[] {
+  return specifiersIn(text)
+    .filter((specifier) => !isAllowedImport(file, specifier))
+    .map((specifier) => `${file}: ${specifier}`);
+}
+
+const hostOnly: readonly Forbidden[] = [
   { what: 'a dynamic import', pattern: /\bimport\(/u },
   { what: 'a Node global', pattern: /\b(?:process|Buffer|require|setImmediate|__dirname)\b/u },
   { what: 'code generation', pattern: /\beval\(|new Function\(/u },
   { what: 'a host timer', pattern: /\bset(?:Timeout|Interval)\(/u },
-  { what: 'Temporal', pattern: /@temporalio\//u },
-  { what: 'the Temporal global', pattern: /\bTemporal\./u },
 ];
 
 const clockOrRandom: readonly Forbidden[] = [
-  { what: 'the clock', pattern: /\bDate\.now\(|\bperformance\.now\(/u },
+  { what: 'the clock', pattern: /\bDate\.now\(|\bperformance\.now\(|\bTemporal\.Now\b/u },
   { what: 'a random source', pattern: /\bMath\.random\(|\bcrypto\.getRandomValues\(|\brandomUUID\(/u },
 ];
 
@@ -154,9 +175,15 @@ describe('the testing entry', () => {
 });
 
 describe('the engine core', () => {
-  it('uses no Node-only API, no dynamic import, no code generation and no Temporal', () => {
+  it('imports only effect, the workspace packages it builds on and its own files, and the jq library in the DSL alone', () => {
     expect(everySource.length).toBeGreaterThan(20);
-    expect(findingsIn(everySource, nodeOnly)).toEqual([]);
+    expect(
+      everySource.flatMap((file) => importsOutsideTheAllowList(file, readFileSync(join(source, file), 'utf8'))),
+    ).toEqual([]);
+  });
+
+  it('uses no Node global, no dynamic import, no code generation and no host timer', () => {
+    expect(findingsIn(everySource, hostOnly)).toEqual([]);
   });
 
   it('keeps no module-level cache that could grow with the history of a run: a collection built empty at module level is one; a constant collection of literals is not, nor a WeakMap, whose entries go with the values they describe', () => {
@@ -178,9 +205,10 @@ describe('the machine, its runner, its tasks and its decider, the run log and th
 });
 
 describe('the jq library the machine runs expressions with', () => {
-  it('uses no Node-only API, no code generation and no host timer, and reads no clock or random source', () => {
+  it('imports nothing, uses no Node-only API, no code generation and no host timer, and reads no clock or random source', () => {
     expect(jq.length).toBeGreaterThan(100_000);
-    expect(caught(jq, [...nodeOnly, ...clockOrRandom])).toEqual([]);
+    expect(specifiersIn(jq)).toEqual([]);
+    expect(caught(jq, [...hostOnly, ...clockOrRandom])).toEqual([]);
   });
 
   it('is patched the same in the build require() loads as in the one import loads', () => {
@@ -202,16 +230,30 @@ describe('the jq library the machine runs expressions with', () => {
 describe('the checks of purity', () => {
   it('catch what they are there to catch', () => {
     expect(
-      caught(
-        "import { x } from 'fs';\nconst y = await import('./z.ts');\nsetTimeout(f, 1);\nTemporal.Now.instant();",
-        nodeOnly,
+      importsOutsideTheAllowList(
+        'machine/m.ts',
+        "import { x } from 'fs';\nimport { y } from 'node:fs';\nimport type { W } from '@temporalio/workflow';\nimport { compile } from '@gabrielbryk/jq-ts';\nimport { Effect } from 'effect';\nimport { z } from '../dsl/z.ts';\nimport { w } from '../../../ledger/src/w.ts';\nimport 'yaml';",
       ),
-    ).toEqual(['a Node module by its bare name', 'a dynamic import', 'a host timer', 'the Temporal global']);
+    ).toEqual([
+      'machine/m.ts: fs',
+      'machine/m.ts: node:fs',
+      'machine/m.ts: @temporalio/workflow',
+      'machine/m.ts: @gabrielbryk/jq-ts',
+      'machine/m.ts: ../../../ledger/src/w.ts',
+      'machine/m.ts: yaml',
+    ]);
+    expect(importsOutsideTheAllowList('dsl/d.ts', "import { compile } from '@gabrielbryk/jq-ts';")).toEqual([]);
+    expect(caught("const y = await import('./z.ts');\nsetTimeout(f, 1);\nprocess.exit(1);", hostOnly)).toEqual([
+      'a dynamic import',
+      'a Node global',
+      'a host timer',
+    ]);
     expect(caught('const t = Date.now();\nconst r = Math.random();\nIntl.DateTimeFormat();', impure)).toEqual([
       'the clock',
       'a random source',
       'the host locale or time zone',
     ]);
+    expect(caught('const now = Temporal.Now.instant();', clockOrRandom)).toEqual(['the clock']);
     expect(
       caught('const seen = new Map<string, number>();\nlet count = 0;\nconst all: string[] = [];', growingCache),
     ).toEqual(['a module-level collection', 'a module-level variable', 'a module-level list']);

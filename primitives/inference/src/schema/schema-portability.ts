@@ -87,26 +87,35 @@ function requiredKeyIssues({ schema, path }: SchemaNode): readonly PortabilityIs
       );
 }
 
-function boundIssues({ schema, path }: SchemaNode): readonly PortabilityIssue[] {
-  return boundKeywords
-    .filter((keyword) => schema[keyword] !== undefined)
-    .flatMap((keyword) =>
-      portabilityIssue(
-        [...path, keyword],
-        `${keyword} is not enforced while Anthropic models write the answer; an answer outside it fails as output_invalid`,
-        anthropicModels,
-      ),
-    );
+interface Written {
+  readonly unenforcedBound: (keyword: string) => string;
+  readonly unenforcedOneOf: string;
 }
 
-function oneOfIssues({ schema, path }: SchemaNode): readonly PortabilityIssue[] {
+const answers: Written = {
+  unenforcedBound: (keyword) =>
+    `${keyword} is not enforced while Anthropic models write the answer; an answer outside it fails as output_invalid`,
+  unenforcedOneOf:
+    'oneOf is sent to Anthropic models as anyOf; an answer matching more than one branch fails as output_invalid',
+};
+
+const toolArguments: Written = {
+  unenforcedBound: (keyword) =>
+    `${keyword} is not enforced while Anthropic models write a tool's arguments; arguments outside it reach the tool, which may refuse them`,
+  unenforcedOneOf:
+    "oneOf is not enforced while Anthropic models write a tool's arguments; arguments matching more than one branch reach the tool, which may refuse them",
+};
+
+function boundIssues({ schema, path }: SchemaNode, written: Written): readonly PortabilityIssue[] {
+  return boundKeywords
+    .filter((keyword) => schema[keyword] !== undefined)
+    .flatMap((keyword) => portabilityIssue([...path, keyword], written.unenforcedBound(keyword), anthropicModels));
+}
+
+function oneOfIssues({ schema, path }: SchemaNode, written: Written): readonly PortabilityIssue[] {
   return schema['oneOf'] === undefined
     ? []
-    : portabilityIssue(
-        [...path, 'oneOf'],
-        'oneOf is sent to Anthropic models as anyOf; an answer matching more than one branch fails as output_invalid',
-        anthropicModels,
-      );
+    : portabilityIssue([...path, 'oneOf'], written.unenforcedOneOf, anthropicModels);
 }
 
 function formatIssues({ schema, path }: SchemaNode): readonly PortabilityIssue[] {
@@ -130,12 +139,35 @@ function uncheckedIssues({ schema, path }: SchemaNode): readonly SchemaIssue[] {
   return [...unknown, ...format];
 }
 
-const nodeRules = [closedObjectIssues, requiredKeyIssues, boundIssues, oneOfIssues, formatIssues];
+type NodeRule = (node: SchemaNode, written: Written) => readonly PortabilityIssue[];
+
+const answerRules: readonly NodeRule[] = [
+  closedObjectIssues,
+  requiredKeyIssues,
+  boundIssues,
+  oneOfIssues,
+  formatIssues,
+];
+
+const toolArgumentRules: readonly NodeRule[] = [boundIssues, oneOfIssues, formatIssues];
+
+function notPortable(
+  root: Schema.JsonObject,
+  nodes: readonly SchemaNode[],
+  rules: readonly NodeRule[],
+  written: Written,
+): readonly PortabilityIssue[] {
+  return [...rootIssues(root), ...nodes.flatMap((node) => rules.flatMap((rule) => rule(node, written)))];
+}
 
 export function portabilityOf(root: Schema.JsonObject): Portability {
   const nodes = schemaNodes(root);
   return {
-    not_portable: [...rootIssues(root), ...nodes.flatMap((node) => nodeRules.flatMap((rule) => rule(node)))],
+    not_portable: notPortable(root, nodes, answerRules, answers),
     unchecked: nodes.flatMap((node) => uncheckedIssues(node)),
   };
+}
+
+export function toolInputPortabilityOf(root: Schema.JsonObject): readonly PortabilityIssue[] {
+  return notPortable(root, schemaNodes(root), toolArgumentRules, toolArguments);
 }

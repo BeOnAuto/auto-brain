@@ -18,7 +18,7 @@ const oldestWriteOfThisDatabase = `(
   )
 )`;
 
-export const belowTheHorizon = `transaction_id < ${oldestWriteOfThisDatabase}`;
+const belowTheHorizon = `transaction_id < ${oldestWriteOfThisDatabase}`;
 
 export const PointFields = { transaction: Schema.String, position: Schema.String };
 

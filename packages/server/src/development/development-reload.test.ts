@@ -30,7 +30,7 @@ describe('saving a file under pnpm dev', { timeout: developmentTestTimeoutMs }, 
       allStopped: true,
       said: [`${join(development.files.sourceDirectory, 'saved.ts')} changed, so the server restarts`],
     });
-    expect(pidsOf(development)).toHaveLength(4);
+    expect(pidsOf(development)).toHaveLength(2);
   });
 });
 
