@@ -8,6 +8,7 @@ export interface RecordedExecution {
   readonly input: Schema.Json;
   readonly execution: ExecutionRecord;
   readonly finishesLater: boolean;
+  readonly callsTools: boolean;
   readonly toolCalls: number;
   readonly record?: Schema.JsonObject;
   readonly result?: ExecutionResult;
@@ -16,13 +17,14 @@ export interface RecordedExecution {
 export type ExecutionState = RecordedExecution | undefined;
 
 function startedExecution(
-  { primitive, name, spec_version, input, by, at }: ExecutionStarted,
+  { primitive, name, spec_version, input, calls_tools, by, at }: ExecutionStarted,
   earlier: ExecutionState,
 ): RecordedExecution {
   return {
     input,
     execution: { primitive, name, spec_version, status: 'started', started_at: at, started_by: by },
     finishesLater: false,
+    callsTools: calls_tools === true,
     toolCalls: earlier?.toolCalls ?? 0,
   };
 }

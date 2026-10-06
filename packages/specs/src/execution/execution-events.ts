@@ -10,6 +10,7 @@ const ExecutionStartedSchema = Schema.Struct({
   name: Schema.String,
   spec_version: Schema.Int,
   input: Schema.Json,
+  calls_tools: Schema.optionalKey(Schema.Literal(true)),
   ...fact,
 });
 

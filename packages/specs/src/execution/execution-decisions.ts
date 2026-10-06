@@ -70,18 +70,31 @@ export function claimOf(state: ExecutionState, request: ExecutionRequest): Resul
 }
 
 function startedCallingToolsBefore(start: ExecutionStart, state: ExecutionState): boolean {
-  return start.calls_tools && state !== undefined && isRunning(state);
+  return state !== undefined && isRunning(state) && (state.callsTools || start.calls_tools);
+}
+
+function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
+  const { primitive, name, input, spec_version, calls_tools, by, at } = start;
+  return {
+    type: 'execution_started',
+    primitive,
+    name,
+    spec_version,
+    input,
+    ...(calls_tools ? { calls_tools } : {}),
+    by,
+    at,
+  };
 }
 
 function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
-  const { primitive, name, input, spec_version, by, at } = start;
   return Result.flatMap(claimOf(state, start), (claim): Decision => {
     if (claim === 'answer') {
       return nothingToRecord;
     }
     return startedCallingToolsBefore(start, state)
       ? Result.fail(startedCallingTools)
-      : Result.succeed([{ type: 'execution_started', primitive, name, spec_version, input, by, at }]);
+      : Result.succeed([startedEvent(start)]);
   });
 }
 

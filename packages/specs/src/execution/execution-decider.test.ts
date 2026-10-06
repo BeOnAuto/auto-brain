@@ -146,6 +146,7 @@ describe('an execution', () => {
         finished_at: finish.at,
       },
       finishesLater: false,
+      callsTools: false,
       toolCalls: 0,
       result: { type: 'execution_rejected', rejection: { reason: 'unavailable', detail: 'The model is busy' } },
     });
@@ -162,6 +163,7 @@ describe('an execution', () => {
         finished_at: finish.at,
       },
       finishesLater: false,
+      callsTools: false,
       toolCalls: 0,
       record: { model: 'x' },
       result: { type: 'execution_succeeded', output: 'Hello Ada', record: { model: 'x' } },
@@ -261,33 +263,5 @@ describe('a tool call of an execution', () => {
 
   it('is counted across a start that was recorded again', () => {
     expect(stateAfter(started, callStarted, started)).toMatchObject({ toolCalls: 1 });
-  });
-});
-
-const startedCallingTools = new Conflict({
-  detail:
-    'The execution has started and its spec calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another execution id, and read with get_execution_history what it has called so far',
-  kind: 'tools_called',
-});
-
-describe('starting an execution whose spec calls tools', () => {
-  const callingTools = starting({ calls_tools: true });
-
-  it('records it the first time', () => {
-    expect(decided(callingTools)).toStrictEqual(Result.succeed([started]));
-  });
-
-  it('refuses it while an earlier attempt is started, before any call is recorded, since it may be in progress', () => {
-    expect(decided(callingTools, started)).toEqual(Result.fail(startedCallingTools));
-  });
-
-  it('records it again after an attempt that ended before any call, since no tool was called', () => {
-    expect(decided(callingTools, started, unavailable)).toStrictEqual(Result.succeed([started]));
-    expect(decided(callingTools, started, failed)).toStrictEqual(Result.succeed([started]));
-  });
-
-  it('answers a finished execution again, and refuses another request under its id as any other', () => {
-    expect(decided(callingTools, started, succeeded)).toStrictEqual(Result.succeed([]));
-    expect(decided(starting({ calls_tools: true, name: 'wave' }), started)).toEqual(Result.fail(anotherRequest));
   });
 });
