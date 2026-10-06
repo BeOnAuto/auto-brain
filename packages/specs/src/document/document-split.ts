@@ -11,19 +11,20 @@ export interface DocumentParts {
 
 const delimiter = /^---[ \t]*$/u;
 
-const byteOrderMark = '\uFEFF';
+const byteOrderMark = '﻿';
 
 function issue(detail: string): readonly DocumentIssue[] {
   return [{ line: 1, pointer: '', detail }];
 }
 
-export function splitDocument(source: string): Result.Result<DocumentParts, readonly DocumentIssue[]> {
+export function splitDocument(
+  source: string,
+  definition: string,
+): Result.Result<DocumentParts, readonly DocumentIssue[]> {
   const lines = (source.startsWith(byteOrderMark) ? source.slice(1) : source).split(/\r?\n/u);
   if (!delimiter.test(String(lines[0]))) {
     return Result.fail(
-      issue(
-        'A reasoning function definition starts with a line of three dashes (---) that opens its front matter of YAML',
-      ),
+      issue(`${definition} starts with a line of three dashes (---) that opens its front matter of YAML`),
     );
   }
   const closing = lines.findIndex((line, index) => index > 0 && delimiter.test(line));

@@ -1,8 +1,12 @@
 import { Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { compileAnswerSchema, schemaLimits, type AnswerSchema } from './answer-schema.ts';
 import type { SchemaIssue } from './json-bounds.ts';
+import { compileJsonSchema, jsonSchemaLimits, type CompiledSchema } from './json-schema.ts';
+
+const answerNesting = 128;
+
+const asAnAnswer = { what: 'answer', nesting: answerNesting };
 
 const verdict = {
   type: 'object',
@@ -26,11 +30,11 @@ const tree = {
   $ref: '#/$defs/node',
 };
 
-function compiled(document: unknown): AnswerSchema {
-  return Result.getOrThrow(compileAnswerSchema(document));
+function compiled(document: unknown): CompiledSchema {
+  return Result.getOrThrow(compileJsonSchema(document, asAnAnswer));
 }
 
-function answerIssues(schema: AnswerSchema, answer: unknown): readonly SchemaIssue[] {
+function answerIssues(schema: CompiledSchema, answer: unknown): readonly SchemaIssue[] {
   return Result.match(schema.validate(answer), { onSuccess: () => [], onFailure: (issues) => issues });
 }
 
@@ -124,7 +128,7 @@ describe('an answer that does not match the schema', () => {
     const many = Object.fromEntries(Array.from({ length: 150 }, (_, index) => [`p${index}`, { type: 'string' }]));
     const issues = answerIssues(compiled({ properties: many, required: Object.keys(many) }), {});
 
-    expect(schemaLimits.issues).toBe(20);
+    expect(jsonSchemaLimits.issues).toBe(20);
     expect(issues).toHaveLength(21);
     expect(issues.at(-1)).toEqual({ pointer: '', detail: '130 more issues are not shown' });
   });
@@ -143,17 +147,15 @@ describe('an answer that cannot be checked', () => {
   it('is rejected when it is nested deeper than the limit', () => {
     const anything = compiled({});
 
-    expect(answerIssues(anything, nestedObjects(schemaLimits.answerNesting + 1))).toEqual([
-      { pointer: '', detail: `The answer nests more than ${schemaLimits.answerNesting} levels` },
+    expect(answerIssues(anything, nestedObjects(answerNesting + 1))).toEqual([
+      { pointer: '', detail: `The answer nests more than ${answerNesting} levels` },
     ]);
-    expect(anything.validate(nestedObjects(schemaLimits.answerNesting))).toEqual(
-      Result.succeed(nestedObjects(schemaLimits.answerNesting)),
-    );
+    expect(anything.validate(nestedObjects(answerNesting))).toEqual(Result.succeed(nestedObjects(answerNesting)));
   });
 
   it('is rejected, without overflowing the stack, when a recursive schema meets a deep answer', () => {
     expect(answerIssues(compiled(tree), nestedChildren(100_000))).toEqual([
-      { pointer: '', detail: `The answer nests more than ${schemaLimits.answerNesting} levels` },
+      { pointer: '', detail: `The answer nests more than ${answerNesting} levels` },
     ]);
   });
 

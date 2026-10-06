@@ -1,9 +1,14 @@
+import {
+  reportedIssues,
+  splitDocument,
+  type DocumentIssue,
+  type DocumentParts,
+  type ReadFrontMatter,
+} from '@beonauto/specs/document';
 import { Option, Result, type Schema } from 'effect';
 
 import type { CompiledTemplate } from '../template/compiled-template.ts';
-import { reportedIssues, type DocumentIssue } from './document-issue.ts';
-import { splitDocument, type DocumentParts } from './document-split.ts';
-import { decodeSection, frontMatterIn, type ReadFrontMatter } from './front-matter-schema.ts';
+import { decodeSection, frontMatterIn } from './front-matter-schema.ts';
 import type { ReasoningFunctionDefinitionDocument } from './reasoning-function-definition.ts';
 import { inputContractOf, outputContractOf } from './spec-schemas.ts';
 import { modelOf, providerOptionsOf, settingsOf, toolsOf } from './spec-settings.ts';
@@ -98,5 +103,8 @@ function specOf(parts: DocumentParts): Checked<ReasoningFunctionDefinitionDocume
 }
 
 export function parseSpecDocument(source: string): Checked<ReasoningFunctionDefinitionDocument> {
-  return Result.mapError(Result.flatMap(splitDocument(source), specOf), reportedIssues);
+  return Result.mapError(
+    Result.flatMap(splitDocument(source, 'A reasoning function definition'), specOf),
+    reportedIssues,
+  );
 }

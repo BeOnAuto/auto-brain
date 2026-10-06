@@ -1,8 +1,7 @@
+import { isKnownKeyword, pointerOf, type SchemaIssue } from '@beonauto/specs/document';
 import type { Schema } from 'effect';
 
-import { pointerOf, type SchemaIssue } from './json-bounds.ts';
 import { schemaNodes, type Path, type SchemaNode } from './schema-nodes.ts';
-import { isKnownKeyword } from './schema-shape.ts';
 
 export interface PortabilityIssue extends SchemaIssue {
   readonly providers: readonly string[];

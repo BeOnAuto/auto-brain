@@ -1,9 +1,8 @@
+import { issueAt, issueText, type DocumentIssue, type SchemaIssue, type SourceLines } from '@beonauto/specs/document';
 import { Result, type Schema } from 'effect';
 
 import type { OutputRequest } from '../model/model-request.ts';
 import { checkAnswerSchema, compileAnswerSchema } from '../schema/answer-schema.ts';
-import type { SchemaIssue } from '../schema/json-bounds.ts';
-import { issueAt, issueText, type DocumentIssue, type SourceLines } from './document-issue.ts';
 import type { InputSection, OutputSection } from './front-matter-schema.ts';
 import type { InputContract } from './reasoning-function-definition.ts';
 

@@ -68,7 +68,7 @@ export {
   type AnswerSchema,
   type SchemaReport,
 } from './schema/answer-schema.ts';
-export type { SchemaIssue } from './schema/json-bounds.ts';
+export type { SchemaIssue } from '@beonauto/specs/document';
 export type { PortabilityIssue } from './schema/schema-portability.ts';
 export { ModelAliasesSchema } from './settings/alias-settings.ts';
 export { AllowedModelsSchema, DeclaredModelsSchema } from './settings/catalog-settings.ts';

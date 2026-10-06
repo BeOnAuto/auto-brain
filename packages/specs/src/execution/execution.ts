@@ -33,7 +33,7 @@ export const ExecutionRejectionSchema = Schema.Union([
     kind: Schema.optionalKey(
       ConflictKindSchema.annotate({
         description:
-          'What clashed, when it is known: tools_called for a workflow whose step met a run of a function that may have called tools, which is not run again under its id',
+          'What clashed, when it is known: unworkable for a definition that cannot run as written, such as a computation function whose program raised an error, gave no output or more than one, or did more work than a run may do, which only changing the definition puts right; tools_called for a workflow whose step met a run of a function that may have called tools, which is not run again under its id',
       }),
     ),
   }),

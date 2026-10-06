@@ -110,6 +110,23 @@ describe('the presenter of a rejected execution', () => {
   });
 });
 
+describe('the presenter of an execution rejected for a conflict', () => {
+  it('shows the kind of the conflict, when it was given', () => {
+    const conflict = { reason: 'conflict', detail: 'The program raised an error on line 2: stop' } as const;
+
+    expect([
+      presented({ type: 'execution_rejected', rejection: { ...conflict, kind: 'unworkable' }, ...fact }),
+      presented({ type: 'execution_rejected', rejection: conflict, ...fact }),
+    ]).toMatchObject([
+      {
+        summary: 'A run did not go through: it cannot work as it is written.',
+        data: { execution_id: executionId, by: 'acme-admin', ...conflict, kind: 'unworkable' },
+      },
+      { data: { execution_id: executionId, by: 'acme-admin', ...conflict } },
+    ]);
+  });
+});
+
 describe('the presenter of an execution rejected for something it relies on', () => {
   it('shows the kind and the reason of something unavailable, when it was given', () => {
     const unavailable = { reason: 'unavailable', detail: 'No model' } as const;
