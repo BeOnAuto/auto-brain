@@ -130,7 +130,7 @@ describe('a wait task', () => {
       stepsIn(events)
         .filter(({ reference }) => reference === '/do/0/pause')
         .map((step) => step.outcome),
-    ).toEqual(['started', 'waiting', 'completed']);
+    ).toEqual(['waiting', 'completed']);
   });
 });
 

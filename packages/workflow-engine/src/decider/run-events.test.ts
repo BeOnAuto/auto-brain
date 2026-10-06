@@ -61,7 +61,7 @@ function stepLine(step: Step): string {
 }
 
 describe('the steps of an event', () => {
-  it('are every entry the input recorded, in order, each caused by the entry before it or by the input', () => {
+  it('are one entry for each step the input moved, with how it ended the input, in the order the steps started', () => {
     const document = workflow(`
 do:
   - outer:
@@ -74,14 +74,8 @@ do:
     );
 
     expect(steps).toEqual([
-      [
-        'outer started 1 by input',
-        'inner started 1 by outer started',
-        'inner completed 1 by inner started',
-        'pause started 1 by inner completed',
-        'pause waiting 1 by pause started',
-      ],
-      ['pause completed 1 by input', 'outer completed 1 by pause completed'],
+      ['outer started 1 by input', 'inner completed 1 by outer started', 'pause waiting 1 by inner completed'],
+      ['pause completed 1 by pause waiting', 'outer completed 1 by outer started'],
     ]);
   });
 });

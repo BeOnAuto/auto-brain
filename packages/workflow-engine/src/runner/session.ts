@@ -75,6 +75,7 @@ export function sessionOf(state: RunState, now: number, options: MachineOptions)
       cell.update({ context });
     },
     record: steps.record,
+    continues: steps.continues,
     cause: steps.cause,
     causedBy: steps.causedBy,
     resumedFrom: steps.resumedFrom,

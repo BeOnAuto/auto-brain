@@ -53,16 +53,14 @@ function failingFirst({ key }: StartCall) {
 }
 
 describe('the cause of each step', () => {
-  it('is the step before it in a sequence, and its own start for its outcome', () => {
+  it('is the step before it in a sequence, and the input for the first, one entry holding how each step ended', () => {
     expect(stepsOf('do:\n  - a: { set: { a: 1 } }\n  - b: { set: { b: 2 } }')).toEqual([
-      ['a#1 started 1 <- input', 'a#1 completed 1 <- a#1 started 1', 'b#1 started 1 <- a#1 completed 1'].concat(
-        'b#1 completed 1 <- b#1 started 1',
-      ),
+      ['a#1 completed 1 <- input', 'b#1 completed 1 <- a#1 completed 1'],
     ]);
   });
 });
 
-describe('the cause of a step that a switch or a fork moved', () => {
+describe('the cause of a step that a switch moved', () => {
   it('is the switch for the branch it takes, after a then jump, and the step that skipped for the next', () => {
     const steps = stepsOf(
       `
@@ -79,18 +77,28 @@ do:
     );
 
     expect(steps).toEqual([
-      [
-        'pick#1 started 1 <- input',
-        'pick#1 completed 1 <- pick#1 started 1',
-        'big#1 started 1 <- pick#1 completed 1',
-        'big#1 skipped 1 <- big#1 started 1',
-        'last#1 started 1 <- big#1 skipped 1',
-        'last#1 completed 1 <- last#1 started 1',
-      ],
+      ['pick#1 completed 1 <- input', 'big#1 skipped 1 <- pick#1 completed 1', 'last#1 completed 1 <- big#1 skipped 1'],
+    ]);
+  });
+});
+
+describe('the cause of a step that a fork moved', () => {
+  it('is the fork as it ended the input for each branch, when the fork ends in the input it starts', () => {
+    const steps = stepsOf(`
+do:
+  - both:
+      fork:
+        branches:
+          - x: { set: { x: 1 } }
+          - y: { set: { y: 2 } }
+`);
+
+    expect(steps).toEqual([
+      ['both#1 completed 1 <- input', 'x#1 completed 1 <- both#1 completed 1', 'y#1 completed 1 <- both#1 completed 1'],
     ]);
   });
 
-  it('is the fork for each of its branches, and the branch that ended last for the fork', () => {
+  it('is the fork for each of its branches, and its own start for how it ends in a later input', () => {
     const steps = stepsOf(`
 do:
   - both:
@@ -101,20 +109,14 @@ do:
 `);
 
     expect(steps).toEqual([
-      [
-        'both#1 started 1 <- input',
-        'x#1 started 1 <- both#1 started 1',
-        'x#1 completed 1 <- x#1 started 1',
-        'y#1 started 1 <- both#1 started 1',
-        'y#1 waiting 1 <- y#1 started 1',
-      ],
-      ['y#1 completed 1 <- input', 'both#1 completed 1 <- y#1 completed 1'],
+      ['both#1 started 1 <- input', 'x#1 completed 1 <- both#1 started 1', 'y#1 waiting 1 <- both#1 started 1'],
+      ['y#1 completed 1 <- y#1 waiting 1', 'both#1 completed 1 <- both#1 started 1'],
     ]);
   });
 });
 
 describe('the cause of a step across inputs', () => {
-  it('is the failed attempt for the attempt that retries it after its back-off, and the input for an answer', () => {
+  it('is the failed attempt for the attempt that retries it, and the waiting entry for how a step that waited ends', () => {
     const steps = stepsOf(
       `
 do:
@@ -128,14 +130,14 @@ do:
     );
 
     expect(steps).toEqual([
-      ['guarded#1 started 1 <- input', 'ask#1 started 1 <- guarded#1 started 1', 'ask#1 waiting 1 <- ask#1 started 1'],
-      ['ask#1 raised 1 <- input'],
-      ['ask#2 started 1 <- ask#1 raised 1', 'ask#2 waiting 1 <- ask#2 started 1'],
-      ['ask#2 completed 1 <- input', 'guarded#1 completed 1 <- ask#2 completed 1'],
+      ['guarded#1 started 1 <- input', 'ask#1 waiting 1 <- guarded#1 started 1'],
+      ['ask#1 raised 1 <- ask#1 waiting 1'],
+      ['ask#2 waiting 1 <- ask#1 raised 1'],
+      ['ask#2 completed 1 <- ask#2 waiting 1', 'guarded#1 completed 1 <- guarded#1 started 1'],
     ]);
   });
 
-  it('counts each wait of a listen for all of several events, and is the input for each', () => {
+  it('counts each wait of a listen for all of several events, each caused by the wait before it', () => {
     const steps = stepsOf(
       'do:\n  - both: { listen: { to: { all: [{ with: { type: a } }, { with: { type: b } }] } } }',
       {
@@ -151,9 +153,9 @@ do:
     );
 
     expect(steps).toEqual([
-      ['both#1 started 1 <- input', 'both#1 waiting 1 <- both#1 started 1'],
-      ['both#1 waiting 2 <- input'],
-      ['both#1 completed 1 <- input'],
+      ['both#1 waiting 1 <- input'],
+      ['both#1 waiting 2 <- both#1 waiting 1'],
+      ['both#1 completed 1 <- both#1 waiting 2'],
     ]);
   });
 });
@@ -173,7 +175,7 @@ describe('the cause of a step after a yield, a timeout or a cancel', () => {
     });
   });
 
-  it('is the input for a step that timed out, with its error, and a cancel records no step', () => {
+  it('is the waiting entry for a step that timed out, with its error, and a cancel records no step', () => {
     const run = drivenRun(workflow('do:\n  - slow: { timeout: { after: PT1S }, wait: PT1H }'));
     const cancelled = drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
       meanwhile: (driver, executionId) => {
@@ -185,7 +187,7 @@ describe('the cause of a step after a yield, a timeout or a cancel', () => {
       expect.objectContaining({ outcome: 'waiting' }),
       expect.objectContaining({
         outcome: 'timed_out',
-        caused_by: 'input',
+        caused_by: { reference: '/do/0/slow', run: 1, outcome: 'waiting', times: 1 },
         error: {
           type: 'https://open-workflow-specification.org/spec/1.0.0/errors/timeout',
           title: 'The task did not finish within 1000 ms',
@@ -206,9 +208,9 @@ describe('the child of a call', () => {
     expect(waitsOf(run)).toEqual(['call', 'call']);
   });
 
-  it('is not named when its arguments are too large to call it, which raises after it starts', () => {
+  it('is not named when its arguments are too large to call it, which raises in the input it starts', () => {
     const run = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: \'${ "x" * 300000 }\' } }'));
 
-    expect(run.events[0]?.event.steps.map(({ outcome }) => outcome)).toEqual(['started', 'raised']);
+    expect(run.events[0]?.event.steps.map(({ outcome }) => outcome)).toEqual(['raised']);
   });
 });

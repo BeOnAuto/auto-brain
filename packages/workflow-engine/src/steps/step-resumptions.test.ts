@@ -123,7 +123,7 @@ describe('the name and the error of a step', () => {
         `do:\n  - ${name}: { raise: { error: { type: https://example.com/no, status: 400, title: '${title}' } } }`,
       ),
     );
-    const raised = run.events.flatMap(({ event }) => event.steps.filter((step) => isRecordedStep(step))).at(1);
+    const raised = run.events.flatMap(({ event }) => event.steps.filter((step) => isRecordedStep(step))).at(0);
 
     expect(raised).toMatchObject({
       name: 'n'.repeat(mostNameBytes - 1),
