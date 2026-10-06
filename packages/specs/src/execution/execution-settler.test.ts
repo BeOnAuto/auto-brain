@@ -163,17 +163,6 @@ describe('settling a deferred execution as unavailable', () => {
       }),
     );
   });
-
-  it('keeps no kind or because it does not know', async () => {
-    const { executing, settling } = await withHandOn();
-    await executing();
-
-    expect(
-      await settling({ status: 'rejected', reason: 'unavailable', detail: 'No', kind: 'odd', because: 'odder' }),
-    ).toStrictEqual(
-      Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'unavailable', detail: 'No' } }),
-    );
-  });
 });
 
 describe('settling a deferred execution as a conflict', () => {
@@ -195,6 +184,50 @@ describe('settling a deferred execution as a conflict', () => {
       await settling({ status: 'rejected', reason: 'conflict', detail: 'Clashed', kind: 'something_new' }),
     ).toStrictEqual(
       Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'conflict', detail: 'Clashed' } }),
+    );
+  });
+});
+
+describe('settling a deferred execution as unavailable of another kind', () => {
+  it('keeps no other kind of a step, whose words would speak for the step and not for the whole workflow', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+
+    expect(
+      await settling({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail: 'A tool server could not be used',
+        kind: 'mcp_server_failed',
+        because: 'unreachable',
+      }),
+    ).toStrictEqual(
+      Result.succeed({
+        ...settled,
+        status: 'rejected',
+        rejection: { reason: 'unavailable', detail: 'A tool server could not be used' },
+      }),
+    );
+  });
+
+  it('keeps no because it does not know', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+
+    expect(
+      await settling({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail: 'No',
+        kind: 'tools_unfinished',
+        because: 'odder',
+      }),
+    ).toStrictEqual(
+      Result.succeed({
+        ...settled,
+        status: 'rejected',
+        rejection: { reason: 'unavailable', detail: 'No', kind: 'tools_unfinished' },
+      }),
     );
   });
 });

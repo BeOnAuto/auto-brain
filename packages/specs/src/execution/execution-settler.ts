@@ -1,9 +1,7 @@
 import {
   BrainIdSchema,
-  ConflictKindSchema,
   NotFound,
   UnavailableBecauseSchema,
-  UnavailableKindSchema,
   OrgIdSchema,
   streamPrefixOfBrain,
   type Conflict,
@@ -41,34 +39,34 @@ const decodeSuccess = Schema.decodeUnknownEffect(Schema.Struct({ output: Schema.
 
 const failure: ExecutionResult = { type: 'execution_failed' };
 
-const decodeConflictKind = Schema.decodeUnknownOption(ConflictKindSchema);
-
-const decodeUnavailableKind = Schema.decodeUnknownOption(UnavailableKindSchema);
-
 const decodeBecause = Schema.decodeUnknownOption(UnavailableBecauseSchema);
 
 type Rejected = Extract<Settlement, { readonly status: 'rejected' }>;
 
+function unfinishedRejection(detail: string, because: string | undefined): ExecutionResult {
+  const known = Option.getOrUndefined(decodeBecause(because));
+  return {
+    type: 'execution_rejected',
+    rejection: {
+      reason: 'unavailable',
+      detail,
+      kind: 'tools_unfinished',
+      ...(known === undefined ? {} : { because: known }),
+    },
+  };
+}
+
 function rejectionOf({ reason, detail, kind, because }: Rejected): ExecutionResult {
   if (reason === 'conflict') {
-    const conflictKind = Option.getOrUndefined(decodeConflictKind(kind));
     return {
       type: 'execution_rejected',
-      rejection: { reason, detail, ...(conflictKind === undefined ? {} : { kind: conflictKind }) },
+      rejection: { reason, detail, ...(kind === 'tools_called' ? { kind } : {}) },
     };
   }
   if (reason === 'unavailable') {
-    const unavailableKind = Option.getOrUndefined(decodeUnavailableKind(kind));
-    const knownBecause = Option.getOrUndefined(decodeBecause(because));
-    return {
-      type: 'execution_rejected',
-      rejection: {
-        reason,
-        detail,
-        ...(unavailableKind === undefined ? {} : { kind: unavailableKind }),
-        ...(knownBecause === undefined ? {} : { because: knownBecause }),
-      },
-    };
+    return kind === 'tools_unfinished'
+      ? unfinishedRejection(detail, because)
+      : { type: 'execution_rejected', rejection: { reason, detail } };
   }
   return { type: 'execution_rejected', rejection: { reason, detail, issues: [] } };
 }

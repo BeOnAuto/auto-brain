@@ -62,11 +62,17 @@ afterEach(async () => {
 async function serving(...replies: readonly ScriptedReply[]): Promise<InferenceServer> {
   const fake: FakeMcpServer = await serveFakeMcp({ bearer: apiKey });
   closing.push(fake.close);
+  const gone = await serveFakeMcp();
+  await gone.close();
   const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' } };
   const server = await servingWorkflows(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
-    MCP_SERVERS: JSON.stringify({ graph: { ...graph, org: 'acme' }, crm: { ...graph, org: 'globex' } }),
+    MCP_SERVERS: JSON.stringify({
+      graph: { ...graph, org: 'acme' },
+      crm: { ...graph, org: 'globex' },
+      down: { url: gone.url, org: 'acme' },
+    }),
   });
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
@@ -79,8 +85,14 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<InferenceS
   await server.call('POST', `${alpha}/specs/orchestration`, {
     body: { name: 'reporting', source: workflowCalling('reporting', 'crm', true) },
   });
+  await server.call('POST', `${alpha}/specs/inference`, {
+    body: { name: 'down', source: reasonFunction('down/search') },
+  });
   await server.call('POST', `${alpha}/specs/orchestration`, {
     body: { name: 'careless', source: workflowCalling('careless', 'graph', false) },
+  });
+  await server.call('POST', `${alpha}/specs/orchestration`, {
+    body: { name: 'stranded', source: workflowCalling('stranded', 'down', false) },
   });
   return server;
 }
@@ -90,8 +102,10 @@ async function settledRun(server: InferenceServer, name: string) {
   const executionId = executionIdIn(started.body);
   const settled = await settledExecution(server, `${alpha}/executions/${executionId}`);
   const history = await server.call('GET', `${alpha}/executions/${executionId}/history`);
-  const answers = decodeHistory(history.body).events.filter(({ summary }) => summary.startsWith('A function'));
-  return { settled, answers };
+  const { events } = decodeHistory(history.body);
+  const answers = events.filter(({ summary }) => summary.startsWith('A function'));
+  const ending = events.find(({ type }) => type === 'execution_rejected')?.summary;
+  return { settled, answers, ending };
 }
 
 describe(
@@ -138,6 +152,23 @@ describe(
           data: { input: { rejection: { kind: 'tools_unfinished', because: 'model_unavailable' } } },
         },
       ]);
+    });
+  },
+);
+
+describe(
+  'a workflow whose step met a tool server that could not be used, over HTTP',
+  { timeout: workflowTestTimeoutMs },
+  () => {
+    it('ends as plain unavailable when a step met a tool server that could not be used, saying nothing of what was called', async () => {
+      const server = await serving();
+
+      const { settled, ending } = await settledRun(server, 'stranded');
+
+      expect(settled).toMatchObject({ body: { status: 'rejected', rejection: { reason: 'unavailable' } } });
+      expect(settled.body).not.toHaveProperty('rejection.kind');
+      expect(ending).toBe('A run did not go through: something the server relies on is not available right now.');
+      expect(server.modelCalls()).toBe(0);
     });
   },
 );
