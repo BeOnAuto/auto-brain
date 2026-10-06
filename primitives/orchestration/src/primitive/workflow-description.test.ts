@@ -16,7 +16,7 @@ function triagedAs(urgency: string): (call: SpecCall) => SpecCallResult {
 }
 
 describe('the opening of the workflow description', () => {
-  it('describes the workflow and preserves the name its tools take', () => {
+  it('describes the workflow and names the primitive its tools take', () => {
     expect(workflowDescription).toMatch(
       /^A workflow coordinates the brain's functions, running them in order, deciding what happens next and waiting for input. Use workflow in conversation. The tools identify workflows with `primitive: orchestration`. Runs deterministic steps/u,
     );

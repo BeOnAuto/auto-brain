@@ -35,7 +35,7 @@ function requireDistinctNames(names: readonly string[]): void {
 
 function guideTo(primitives: readonly Primitive[]): string {
   return [
-    'This brain supports these definition types, selected by the legacy `primitive` field:',
+    'This brain supports these definition types, selected by the `primitive` field:',
     ...primitives.map(
       ({ name, title, description, mediaType }) =>
         `- \`${name}\` (${title}), whose definition documents are ${mediaType}: ${description}`,

@@ -36,14 +36,14 @@ const listedDefinitionFields = {
 };
 
 export const ListedDefinitionSchema = Schema.Struct(listedDefinitionFields).annotate({
-  identifier: 'ListedSpec',
+  identifier: 'ListedDefinition',
   description: 'A saved definition, without its document',
 });
 
 export const DefinitionSchema = Schema.Struct({
   ...listedDefinitionFields,
   source: Schema.String.annotate({ description: 'The definition document' }),
-}).annotate({ identifier: 'Spec', description: 'A saved definition, with its document' });
+}).annotate({ identifier: 'Definition', description: 'A saved definition, with its document' });
 
 export type Definition = typeof DefinitionSchema.Type;
 

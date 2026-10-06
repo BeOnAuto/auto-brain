@@ -34,13 +34,13 @@ describe('the functions a workflow calls', () => {
 });
 
 describe('a call of execute_spec', () => {
-  it('preserves labels embedded in historical run-state patches and their byte accounting', () => {
+  it('is described by the definition it runs, or by its name when that cannot be read', () => {
     expect([
       workflowFunctions.describe('execute_spec', { primitive: 'inference', name: 'summarize' }),
       workflowFunctions.describe('execute_spec', { primitive: 'echo', name: 'greet' }),
       workflowFunctions.describe('execute_spec', { name: 'summarize' }),
       workflowFunctions.describe('execute_spec', 'summarize'),
-    ]).toEqual(['the inference spec summarize', 'the echo spec greet', 'execute_spec', 'execute_spec']);
+    ]).toEqual(['the reasoning function summarize', 'the echo definition greet', 'execute_spec', 'execute_spec']);
   });
 });
 
