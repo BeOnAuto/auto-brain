@@ -94,7 +94,6 @@ const typesOfTheDeclinedReview = [
   'execution_started',
   'execution_succeeded',
   ...Array.from({ length: 3 }, () => 'step_finished'),
-  ...Array.from({ length: 3 }, () => 'step_started'),
   'step_waiting',
   'workflow_input_applied',
   'workflow_input_applied',

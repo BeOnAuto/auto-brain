@@ -107,25 +107,24 @@ describe('the graph of a workflow run, over HTTP', { timeout: workflowTestTimeou
       started.causation_id,
       named(events, 'execution_deferred').causation_id,
       first?.causation_id,
-      named(events, 'step_started', 'judge').causation_id,
       named(events, 'step_waiting', 'judge').causation_id,
       second?.causation_id,
       named(events, 'step_finished', 'judge').causation_id,
-      named(events, 'step_started', 'route').causation_id,
-      named(events, 'step_started', 'decline').causation_id,
+      named(events, 'step_finished', 'route').causation_id,
+      named(events, 'step_finished', 'decline').causation_id,
       named(events, 'execution_succeeded').causation_id,
     ]).toEqual([
       null,
       started.id,
       started.id,
       first?.id,
-      named(events, 'step_started', 'judge').id,
       named(events, 'step_waiting', 'judge').id,
-      second?.id,
+      named(events, 'step_waiting', 'judge').id,
       named(events, 'step_finished', 'judge').id,
       named(events, 'step_finished', 'route').id,
       named(events, 'step_finished', 'decline').id,
     ]);
+    expect(events.filter(({ type }) => type === 'step_started')).toEqual([]);
     expect(events.flatMap(({ summary }) => internalTermsIn(summary))).toEqual([]);
   });
 });
