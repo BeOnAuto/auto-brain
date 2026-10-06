@@ -126,7 +126,7 @@ function listenRejections(task: JsonObject, reference: string): readonly Rejecti
   );
 }
 
-function eventFilterRejections(filter: Json | undefined, pointer: string): readonly Rejection[] {
+export function eventFilterRejections(filter: Json | undefined, pointer: string): readonly Rejection[] {
   if (!isObject(filter)) {
     return [];
   }

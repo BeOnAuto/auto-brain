@@ -5,6 +5,7 @@ import type {
   CommandMetadata,
   ExecutionCommand,
   ExecutionFinish,
+  ExecutionOutcome,
   ExecutionRequest,
   ExecutionSettlement,
   ExecutionStart,
@@ -98,8 +99,22 @@ function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionSt
   });
 }
 
+function recordedOutcome(
+  result: ExecutionOutcome,
+  { execution }: RecordedExecution,
+  metadata: CommandMetadata,
+): ExecutionEvent {
+  if (result.type === 'execution_deferred') {
+    return { ...result, ...metadata };
+  }
+  const { primitive, name, spec_version } = execution;
+  return { ...result, primitive, name, spec_version, ...metadata };
+}
+
 function decideFinish({ result, by, at }: ExecutionFinish & CommandMetadata, state: ExecutionState): Decision {
-  return state === undefined || needsNoRun(state) ? nothingToRecord : Result.succeed([{ ...result, by, at }]);
+  return state === undefined || needsNoRun(state)
+    ? nothingToRecord
+    : Result.succeed([recordedOutcome(result, state, { by, at })]);
 }
 
 function decideToolCall({ fact, by, at }: ExecutionToolCall & CommandMetadata, state: ExecutionState): Decision {
@@ -125,7 +140,7 @@ function decideSettlement({ result, at }: ExecutionSettlement, state: ExecutionS
     return nothingToRecord;
   }
   return awaitsSettlement(state)
-    ? Result.succeed([{ ...result, by: state.execution.started_by, at }])
+    ? Result.succeed([recordedOutcome(result, state, { by: state.execution.started_by, at })])
     : Result.fail(unsettleable(state));
 }
 

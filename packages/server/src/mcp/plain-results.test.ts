@@ -142,6 +142,10 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     ['get_execution', await session.callTool('get_execution', inSales({ execution_id: executionId }))],
     ['list_executions', await session.callTool('list_executions', inSales({}))],
     ['get_execution_history', await session.callTool('get_execution_history', inSales({ execution_id: executionId }))],
+    [
+      'publish_event',
+      await session.callTool('publish_event', inSales({ event: { source: '/crm', type: 'com.acme.deal.won' } })),
+    ],
     ['list_brain_events', await session.callTool('list_brain_events', inSales({ limit: 3 }))],
     ['list_brain_events', await session.callTool('list_brain_events', { brain: 'old-sales' })],
   ];

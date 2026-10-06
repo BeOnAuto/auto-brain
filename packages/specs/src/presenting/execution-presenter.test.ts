@@ -14,6 +14,8 @@ const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const fact = { by: 'acme-admin', at: '2026-10-01T09:00:01.000Z' };
 
+const ofGreet = { primitive: 'echo', name: 'greet', spec_version: 2 };
+
 function recorded(event: ExecutionEvent): RecordedEvent {
   return {
     id: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
@@ -61,7 +63,7 @@ describe('the presenter of the end of an execution', () => {
   it('presents work that finishes later, and a success, with the sizes of what they recorded', () => {
     expect([
       presented({ type: 'execution_deferred', record: { run: 'r-1' }, ...fact }),
-      presented({ type: 'execution_succeeded', output: 'Hello', record: {}, ...fact }),
+      presented({ type: 'execution_succeeded', output: 'Hello', record: {}, ...ofGreet, ...fact }),
     ]).toEqual([
       {
         ...shown,
@@ -79,7 +81,7 @@ describe('the presenter of the end of an execution', () => {
   });
 
   it('presents a failure without blame', () => {
-    expect(presented({ type: 'execution_failed', ...fact })).toEqual({
+    expect(presented({ type: 'execution_failed', ...ofGreet, ...fact })).toEqual({
       ...shown,
       type: 'execution_failed',
       summary: 'A run broke down because of a problem inside the server.',
@@ -93,7 +95,12 @@ describe('the presenter of a rejected execution', () => {
     const issues = Array.from({ length: 6 }, (_, index) => ({ detail: `Issue ${index}`, pointer: `/field${index}` }));
 
     expect(
-      presented({ type: 'execution_rejected', rejection: { reason: 'invalid_input', detail: 'Bad', issues }, ...fact }),
+      presented({
+        type: 'execution_rejected',
+        rejection: { reason: 'invalid_input', detail: 'Bad', issues },
+        ...ofGreet,
+        ...fact,
+      }),
     ).toEqual({
       ...shown,
       type: 'execution_rejected',
@@ -118,9 +125,10 @@ describe('the presenter of an execution rejected for something it relies on', ()
       presented({
         type: 'execution_rejected',
         rejection: { ...unavailable, kind: 'model_not_offered', because: 'model_not_allowed' },
+        ...ofGreet,
         ...fact,
       }),
-      presented({ type: 'execution_rejected', rejection: unavailable, ...fact }),
+      presented({ type: 'execution_rejected', rejection: unavailable, ...ofGreet, ...fact }),
     ]).toMatchObject([
       {
         summary:
@@ -138,6 +146,7 @@ describe('the presenter of an execution rejected for something it relies on', ()
     const conflict = presented({
       type: 'execution_rejected',
       rejection: { reason: 'conflict', detail: '😀'.repeat(1000) },
+      ...ofGreet,
       by: 'c'.repeat(300),
       at: fact.at,
     });

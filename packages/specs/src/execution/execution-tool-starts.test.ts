@@ -14,15 +14,24 @@ const greeting = { primitive: 'echo', name: 'greet', input: { who: 'Ada', tags: 
 
 const started: ExecutionEvent = { type: 'execution_started', ...greeting, spec_version: 1, ...start };
 
-const succeeded: ExecutionEvent = { type: 'execution_succeeded', output: 'Hello Ada', record: {}, ...finish };
+const ofGreet = { primitive: 'echo', name: 'greet', spec_version: 1 };
+
+const succeeded: ExecutionEvent = {
+  type: 'execution_succeeded',
+  output: 'Hello Ada',
+  record: {},
+  ...ofGreet,
+  ...finish,
+};
 
 const unavailable: ExecutionEvent = {
   type: 'execution_rejected',
   rejection: { reason: 'unavailable', detail: 'The model is busy' },
+  ...ofGreet,
   ...finish,
 };
 
-const failed: ExecutionEvent = { type: 'execution_failed', ...finish };
+const failed: ExecutionEvent = { type: 'execution_failed', ...ofGreet, ...finish };
 
 const anotherRequest = new Conflict({
   detail: 'The run id belongs to a run of another definition or with another input',
