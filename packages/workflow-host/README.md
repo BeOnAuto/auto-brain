@@ -132,7 +132,8 @@ The engine's `emit_event` output is recorded through `emit` as an event publishe
 
 - timer lateness: 1,000 runs, each waiting two seconds, started one after another; the lateness of a timer is the time of its `timer_fired` input, the start of the tick that fired it, less the time it was due, read from each run's log;
 - inputs a second: the long-run loop of the engine's `src/engine/long-run.test.ts`, 3,000 inputs, through the host on a clock that skips to the next due time, and 100 such runs of 100 inputs side by side;
-- recovery after a restart: a run holding a value of 1,100,000 bytes, which makes a snapshot of 1.05 MiB, and 50 events after it; the time the host took to open again, then the first input of that run, which loads the snapshot and the events after it, and the next.
+- recovery after a restart: a run holding a value of 1,100,000 bytes, which makes a snapshot of 1.05 MiB, and 50 events after it; the time the host took to open again, then the first input of that run, which loads the snapshot and the events after it, and the next;
+- the follower (`measure/reactions.ts`, `measure/sweeps.ts`): timer lateness as above in a brain that the follower follows, once with no triggers and once with 1,000 workflows with event triggers; reaction latency, 100 workflows with event triggers and 1,000 events published one after another, each matching one of them, from the end of each event's append to the start of its run, with the append signal and with the follower woken only by its sweep, every second; and a pass over each of 1,000 followed brains, 10 of them with an event trigger, first reading one new record in each and then with nothing new, as one sweep hands each brain to its pass.
 
 Measured on 2026-10-05 on an Apple M4 Max with Node 26.10.0, SQLite 3.52.0 through `sqlite3` 6.0.1, and PostgreSQL 18.6 in a local container with its default settings, three times for the timers, whose lateness varies from one measurement to the next, and once for the rest:
 
@@ -146,6 +147,19 @@ Measured on 2026-10-05 on an Apple M4 Max with Node 26.10.0, SQLite 3.52.0 throu
 | the next input, the run kept                                        | 0.6 ms                                                | 2.8 ms                                            |
 
 One run's inputs are taken one at a time, each a few round trips to the database: on PostgreSQL that bounds one run to about 180 inputs a second, while runs side by side share the database's time. The spike's timers fired 3.7 ms late at p99 when idle (`spikes/node/results/timers-precision.json`); the host's, armed by the runs it decides, fired 2 to 5 ms late at p99 on SQLite and 5 ms on PostgreSQL in the three measurements here, and 9 ms on PostgreSQL in a reviewer's measurement, so allow for up to 10 ms at p99.
+
+The follower was measured on 2026-10-06, on the same machine and versions, while the machine also ran other work, so the figures of the host itself moved by as much as twice from one run to the next; `main` measured the same way just after gave timer lateness at p99 of 165 ms on SQLite and 1,664 ms on PostgreSQL, and 149 and 46 inputs a second for the long-run loop, against 95 ms, 406 ms, 112 and 28 for this host in the run before it, and two runs of each, one after the other, of 1,000 inputs on PostgreSQL gave this host 69 and 31 inputs a second and `main` 60 and 34:
+
+| What                                                                     | SQLite                                         | PostgreSQL                                         |
+| ------------------------------------------------------------------------ | ---------------------------------------------- | -------------------------------------------------- |
+| timer lateness, the brain followed, no triggers                          | 1 ms at the median, 95 ms at p99, 187 at most  | 6 ms at the median, 406 ms at p99, 706 at most     |
+| timer lateness, 1,000 workflows with event triggers in the brain         | 1 ms at the median, 166 ms at p99, 244 at most | 5 ms at the median, 1,976 ms at p99, 2,607 at most |
+| reaction latency, 1,000 events and 100 workflows, with the append signal | 456 ms at the median, 514 ms at p99            | 145 ms at the median, 233 ms at p99                |
+| reaction latency, woken by the sweep alone                               | 448 ms at the median, 498 ms at p99            | 485 ms at the median, 643 ms at p99                |
+| a pass over each of 1,000 brains, one new record in each                 | 226 ms                                         | 6.4 s                                              |
+| a pass over each of 1,000 brains, nothing new                            | 99 ms                                          | 7.6 s                                              |
+
+Reaction latency here is the lag of a follower that keeps pace with events published back to back, each delivery a few round trips to the database: on SQLite the follower processes them about as fast as they are published, so the signal shortens nothing; on PostgreSQL it does. A pass over a brain with nothing new is one read of the brain's records without their data, after the sweep's own read of the brains it hands out, so on PostgreSQL, where that read costs several milliseconds, a sweep of 128 brains takes about a second of the database's time.
 
 ## Testing
 
