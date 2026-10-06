@@ -42,6 +42,13 @@ export { SplitDecision, runLoopOf, type RunDecision } from './engine/run-loop.ts
 export { submissionOf } from './engine/submission.ts';
 export type { EnginePorts, Submission, SweepReport, Wake, WorkflowEngine } from './engine/workflow-engine.ts';
 export { CallKeySchema, callKeyText, type CallKey } from './executor/call-key.ts';
+export {
+  literalFilterOf,
+  matchEvent,
+  type FilterVerdict,
+  type LiteralFilter,
+  type LiteralFilterReading,
+} from './filters/event-filter.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
 export { ReceivedEventSchema, type ReceivedEvent } from './inbox/received-event.ts';
 export {

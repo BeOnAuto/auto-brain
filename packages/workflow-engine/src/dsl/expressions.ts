@@ -27,6 +27,12 @@ type Compiled = { readonly program: ReturnType<typeof parse> } | { readonly prob
 
 const hostDependentBuiltins: ReadonlySet<string> = new Set(['localtime', 'strflocaltime']);
 
+const scopesOfBindings: ReadonlyMap<unknown, readonly string[]> = new Map([
+  ['As', ['body']],
+  ['Reduce', ['update']],
+  ['Foreach', ['update', 'extract']],
+]);
+
 const enclosedExpression = /^\s*\$\{(?<body>[\s\S]*)\}\s*$/u;
 
 const limits = { maxSteps: 200_000, maxDepth: 200, maxOutputs: 10_000 };
@@ -52,6 +58,11 @@ export function expressionSource(text: string): string {
 export function checkExpression(source: string): string | undefined {
   const program = compile(source);
   return 'problem' in program ? program.problem : undefined;
+}
+
+export function freeVariablesOf(source: string): readonly string[] {
+  const program = compile(source);
+  return 'problem' in program ? [] : [...new Set(variablesReadIn(program.program, new Set()))];
 }
 
 export function runExpression(source: string, data: Json, variables: Variables, budget: Budget): Evaluation {
@@ -119,7 +130,7 @@ function freshlyCompiled(source: string): Compiled {
   try {
     const program = parse(source);
     validate(program);
-    const hostDependent = callsIn(program).find((name) => hostDependentBuiltins.has(name));
+    const hostDependent = namesOfKindIn(program, 'Call').find((name) => hostDependentBuiltins.has(name));
     return hostDependent === undefined
       ? { program }
       : {
@@ -130,16 +141,35 @@ function freshlyCompiled(source: string): Compiled {
   }
 }
 
-function callsIn(node: unknown): readonly string[] {
+function namesOfKindIn(node: unknown, kind: string): readonly string[] {
   if (Array.isArray(node)) {
-    return node.flatMap((child: unknown) => callsIn(child));
+    return node.flatMap((child: unknown) => namesOfKindIn(child, kind));
   }
   if (typeof node !== 'object' || node === null) {
     return [];
   }
-  const own: unknown = Reflect.get(node, 'kind') === 'Call' ? Reflect.get(node, 'name') : undefined;
-  const nested = Object.values(node).flatMap((child: unknown) => callsIn(child));
+  const own: unknown = Reflect.get(node, 'kind') === kind ? Reflect.get(node, 'name') : undefined;
+  const nested = Object.values(node).flatMap((child: unknown) => namesOfKindIn(child, kind));
   return typeof own === 'string' ? [own, ...nested] : nested;
+}
+
+function variablesReadIn(node: unknown, bound: ReadonlySet<string>): readonly string[] {
+  if (Array.isArray(node)) {
+    return node.flatMap((child: unknown) => variablesReadIn(child, bound));
+  }
+  if (typeof node !== 'object' || node === null) {
+    return [];
+  }
+  const kind: unknown = Reflect.get(node, 'kind');
+  const name: unknown = Reflect.get(node, 'name');
+  if (kind === 'Var' && typeof name === 'string') {
+    return bound.has(name) ? [] : [name];
+  }
+  const scoped = scopesOfBindings.get(kind) ?? [];
+  const inner = new Set([...bound, ...namesOfKindIn(Reflect.get(node, 'pattern'), 'VariablePattern')]);
+  return Object.entries(node).flatMap(([key, child]: readonly [string, unknown]) =>
+    variablesReadIn(child, scoped.includes(key) ? inner : bound),
+  );
 }
 
 function toValue(json: Json): Value {
