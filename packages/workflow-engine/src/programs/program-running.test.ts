@@ -17,7 +17,7 @@ const workflowLike: ProgramLimits = {
   mostSteps: 200_000,
   mostDepth: 200,
   mostOutputs: 10_000,
-  mostValueDepth: Number.POSITIVE_INFINITY,
+  mostValueDepth: 512,
 };
 
 const exactlyOne: ProgramOptions = { limits: lifted, outputs: 'exactly one' };
@@ -193,9 +193,11 @@ describe('the depth of a value', () => {
   });
 
   it('is not bounded below 512 levels, nor when the run lifts it', () => {
+    const unbounded = { ...lifted, mostValueDepth: Number.POSITIVE_INFINITY };
+
     expect(run('reduce range(511) as $i (null; [.]) | length')).toMatchObject({ ran: 'answered', value: 1 });
     expect(
-      run('reduce range(600) as $i (null; [.]) | length', null, { limits: workflowLike, outputs: 'first' }),
+      run('reduce range(600) as $i (null; [.]) | length', null, { limits: unbounded, outputs: 'exactly one' }),
     ).toMatchObject({ ran: 'answered', value: 1 });
   });
 });
