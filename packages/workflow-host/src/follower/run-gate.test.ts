@@ -29,22 +29,24 @@ function listenersOf(database: HostDatabase) {
   );
 }
 
-function armingWhilePassing(database: HostDatabase): HostDatabase {
-  const armed = { once: false };
+function beforePassing(database: HostDatabase, between: Effect.Effect<unknown>): HostDatabase {
+  const done = { once: false };
   return {
     ...database,
     write: (written) =>
       Effect.suspend(() => {
-        const passing = !armed.once && written.strings.join('').includes('INSERT INTO workflow_passed_runs');
-        armed.once ||= passing;
-        return passing
-          ? Effect.andThen(
-              Effect.promise(() => armedAt(database, 'between', 2)),
-              database.write(written),
-            )
-          : database.write(written);
+        const passing = !done.once && written.strings.join('').includes('INSERT INTO workflow_passed_runs');
+        done.once ||= passing;
+        return passing ? Effect.andThen(between, database.write(written)) : database.write(written);
       }),
   };
+}
+
+function armingWhilePassing(database: HostDatabase): HostDatabase {
+  return beforePassing(
+    database,
+    Effect.promise(() => armedAt(database, 'between', 2)),
+  );
 }
 
 function runRecord(version: number): RecordedEvent {
@@ -160,5 +162,28 @@ describe('the gate passing a record of a run held too long', () => {
       [{ run_id: 'acme/alpha/r-1', passed_through: 2 }],
     ]);
     expect(await passedRuns(database)).toEqual([]);
+  });
+});
+
+describe('the gate noting how far it passed a run', () => {
+  it('notes nothing of a run whose dispatch reached the record, or that ended, after the gate read its watermark', async () => {
+    const reached = await openedOn(await onSQLite());
+    const ended = await openedOn(await onSQLite());
+    const caughtUp = sqlWatermark(reached).advance('acme/alpha/r-1', 2);
+    const finished = ended.write(
+      statement`UPDATE workflow_runs SET ended_at = ${2} WHERE run_id = ${'acme/alpha/r-1'}`,
+    );
+    await dispatchedThrough(reached, 0);
+    await dispatchedThrough(ended, 0);
+
+    const verdicts = await Effect.runPromise(
+      Effect.all([
+        runGateOf(beforePassing(reached, caughtUp), brainKey).verdictOn(runRecord(2), true),
+        runGateOf(beforePassing(ended, Effect.orDie(finished)), brainKey).verdictOn(runRecord(2), true),
+      ]),
+    );
+
+    expect(verdicts).toEqual(['overdue', 'overdue']);
+    expect([await passedRuns(reached), await passedRuns(ended)]).toEqual([[], []]);
   });
 });

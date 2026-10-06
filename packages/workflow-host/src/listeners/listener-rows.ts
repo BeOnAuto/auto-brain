@@ -42,11 +42,16 @@ export function insertedListener(database: HostDatabase, row: ListenerRow) {
     const { runId, listener, brainKey, streamId, armedBy, filters, workflow, passed } = row;
     yield* database.write(
       statement`INSERT INTO workflow_listeners (run_id, listener, brain_key, stream_id, armed_by, filters, workflow, passed)
-        VALUES (${runId}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow},
-          CASE WHEN ${passed ? 1 : 0} = 1 OR EXISTS (
-            SELECT 1 FROM workflow_passed_runs WHERE run_id = ${runId} AND passed_through >= ${armedBy}
-          ) THEN 1 ELSE 0 END)
+        VALUES (${runId}, ${listener}, ${brainKey}, ${streamId}, ${armedBy}, ${filters}, ${workflow}, ${passed ? 1 : 0})
         ON CONFLICT (run_id, listener) DO NOTHING`,
+    );
+    yield* database.write(
+      statement`UPDATE workflow_listeners SET passed = 1
+        WHERE run_id = ${runId} AND listener = ${listener} AND passed = 0 AND EXISTS (
+          SELECT 1 FROM workflow_passed_runs
+          WHERE workflow_passed_runs.run_id = workflow_listeners.run_id
+            AND workflow_passed_runs.passed_through >= workflow_listeners.armed_by
+        )`,
     );
     yield* Effect.forEach(
       typesOf(filters),
@@ -104,10 +109,28 @@ export function pendingArmings(database: HostDatabase, streamId: string): Effect
 export function runPassedThrough(database: HostDatabase, runId: string, version: number) {
   return Effect.asVoid(
     Effect.orDie(
-      database.write(
-        statement`INSERT INTO workflow_passed_runs (run_id, passed_through) VALUES (${runId}, ${version})
+      database
+        .write(
+          statement`INSERT INTO workflow_passed_runs (run_id, passed_through)
+          SELECT ${runId}, CAST(${version} AS BIGINT)
+          WHERE NOT EXISTS (
+            SELECT 1 FROM workflow_runs
+            WHERE run_id = ${runId} AND (ended_at IS NOT NULL OR dispatched_through >= ${version})
+          )
           ON CONFLICT (run_id) DO UPDATE SET passed_through = excluded.passed_through`,
-      ),
+        )
+        .pipe(
+          Effect.andThen(
+            database.write(
+              statement`DELETE FROM workflow_passed_runs WHERE run_id = ${runId} AND EXISTS (
+              SELECT 1 FROM workflow_runs
+              WHERE workflow_runs.run_id = workflow_passed_runs.run_id
+                AND (workflow_runs.ended_at IS NOT NULL
+                  OR workflow_runs.dispatched_through >= workflow_passed_runs.passed_through)
+            )`,
+            ),
+          ),
+        ),
     ),
   );
 }
