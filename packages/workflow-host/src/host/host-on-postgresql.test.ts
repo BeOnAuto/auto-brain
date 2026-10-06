@@ -3,12 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { describe, onTestFinished } from 'vitest';
 
+import { reactionSuite } from '../reaction-testing/reaction-suite.ts';
 import { failureSuite } from '../testing/failure-suite.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { claimSuite, leaseSuite } from '../testing/lease-suite.ts';
 import { longRunSuite } from '../testing/long-run-suite.ts';
 import { portSuite } from '../testing/port-suite.ts';
-import { reactionSuite } from '../testing/reaction-suite.ts';
 import { runSuite } from '../testing/run-suite.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';

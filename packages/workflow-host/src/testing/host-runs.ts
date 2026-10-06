@@ -6,9 +6,9 @@ import { onTestFinished } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
 import type { HostNote } from '../host/host-reports.ts';
-import { openWorkflowHost, type WorkflowHost } from '../host/workflow-host.ts';
-import type { HostClock } from '../loop/host-clock.ts';
-import { recordedReactions, recordingReports, recordingSettlements } from './recording-reports.ts';
+import { openWorkflowHost, type HostOptions, type WorkflowHost } from '../host/workflow-host.ts';
+import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
+import { recordingReports, recordingSettlements } from './recording-reports.ts';
 
 export interface HostedRuns {
   readonly host: WorkflowHost;
@@ -23,7 +23,7 @@ export interface HostedRuns {
 
 export interface HostedOptions {
   readonly answer?: (call: StartCall) => Effect.Effect<CallResult>;
-  readonly clock?: HostClock;
+  readonly clock?: NonNullable<HostOptions['clock']>;
   readonly sweepEveryMs?: number;
   readonly ledgerDown?: () => boolean;
   readonly holder?: string;

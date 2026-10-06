@@ -20,9 +20,9 @@ describe('a record of a brain the follower cannot read', () => {
     );
 
     expect(reacting.notes()).toMatchObject([
-      { kind: 'record_unreadable', brainKey: alpha, type: 'event_published' },
-      { kind: 'record_unreadable', brainKey: alpha, type: 'execution_started' },
-      { kind: 'record_unreadable', brainKey: alpha, type: 'spec_created' },
+      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'event_published' },
+      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'execution_started' },
+      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'spec_created' },
     ]);
   });
 });

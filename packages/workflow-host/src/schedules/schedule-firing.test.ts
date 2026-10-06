@@ -6,6 +6,7 @@ import { statement } from '../database/statement.ts';
 import { at, specRecorded } from '../reaction-testing/brain-writes.ts';
 import { movedClock, type MovedClock } from '../reaction-testing/moved-clock.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
+import { refusedWhile, type FailingStart } from '../reaction-testing/recorded-reactions.ts';
 import { until } from '../reaction-testing/until.ts';
 import { reactionExecutionIdOf } from '../reactions/reaction-ids.ts';
 
@@ -24,9 +25,9 @@ function isoAt(minutes: number): string {
   return new Date(activatedAt + minutes * aMinute).toISOString();
 }
 
-async function ticking(refusesStarts = () => false): Promise<Ticking> {
+async function ticking(failure?: FailingStart): Promise<Ticking> {
   const clock = movedClock(activatedAt + 1000);
-  const reacting = await reactingHost({ clock, refusesStarts });
+  const reacting = await reactingHost({ clock, ...(failure === undefined ? {} : { failure }) });
   await specRecorded(reacting.database.store, {
     name: 'tick',
     version: 1,
@@ -107,7 +108,7 @@ describe('the due times of a schedule', () => {
 describe('a due time of a schedule', () => {
   it('whose run the brain refuses is said, and the schedule goes on', async () => {
     const refusing = { now: true };
-    const { reacting, clock } = await ticking(() => refusing.now);
+    const { reacting, clock } = await ticking(refusedWhile(refusing));
     clock.moveTo(activatedAt + aMinute);
     const refusals = await refusalsOf(reacting);
     refusing.now = false;

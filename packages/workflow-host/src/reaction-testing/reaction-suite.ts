@@ -1,13 +1,13 @@
 import { Effect } from 'effect';
 import { expect, it } from 'vitest';
 
-import { at, eventTrigger, published, specRecorded } from '../reaction-testing/brain-writes.ts';
-import { movedClock } from '../reaction-testing/moved-clock.ts';
-import { reactingHost } from '../reaction-testing/reacting-host.ts';
-import { until } from '../reaction-testing/until.ts';
 import type { Trigger } from '../reactions/reaction-options.ts';
-import { runAt, startOf, workflow } from './host-documents.ts';
-import type { SettingsOf } from './host-files.ts';
+import { runAt, startOf, workflow } from '../testing/host-documents.ts';
+import type { SettingsOf } from '../testing/host-files.ts';
+import { at, eventTrigger, published, specRecorded } from './brain-writes.ts';
+import { movedClock } from './moved-clock.ts';
+import { reactingHost } from './reacting-host.ts';
+import { until } from './until.ts';
 
 const aWhile = 30_000;
 

@@ -8,6 +8,7 @@ import type { BrainRecords } from './brain-records.ts';
 import { followedBrainsOn } from './followed-brains.ts';
 import type { FollowerHost } from './follower-host.ts';
 import { startFollower, type Follower } from './follower-loop.ts';
+import { brainOfKey } from './record-steps.ts';
 
 export interface FollowerAssembly extends ReactionUse {
   readonly records: BrainRecords;
@@ -26,7 +27,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     primitive: assembly.options.primitive,
     applySpecRecord: reacting.applySpecRecord,
     unreadable: (brainKey, record) =>
-      reports.note({ kind: 'record_unreadable', brainKey, recordId: record.id, type: record.type }),
+      reports.note({ kind: 'record_unreadable', ...brainOfKey(brainKey), recordId: record.id, type: record.type }),
   });
   const discovery = brainDiscoveryOn({
     database,

@@ -8,6 +8,7 @@ import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { StartRefused, type ReactionStart } from './reaction-options.ts';
 import { refusalsOn } from './refusals.ts';
 import { mostDeferredStarts, mostStartsAMinute, startingOn } from './start-rates.ts';
+import { StartRejected } from './start-rejected.ts';
 
 const brainKey = 'brain/acme/alpha/';
 
@@ -171,6 +172,39 @@ describe('a start the brain refuses', () => {
     expect([left, events]).toMatchObject([
       0,
       [{ type: 'reaction_refused', reason: 'The workflow could not be started for what it reacts to: refused' }],
+    ]);
+  });
+});
+
+describe('a start the brain rejects for good', () => {
+  it('is said and not tried again, whether it starts at once or waited for a later minute', async () => {
+    const time = { now: minute + 1000 };
+    const database = await openedOn(await onSQLite());
+    const refusals = refusalsOn(database, () => time.now);
+    const rejecting = startingOn(
+      database,
+      () => Effect.fail(new StartRejected({ detail: 'The input is not what the workflow takes' })),
+      refusals,
+      () => time.now,
+    );
+
+    await startsOf(rejecting, mostStartsAMinute + 1);
+    time.now = minute + aMinute;
+    await Effect.runPromise(rejecting.startDeferred());
+    const left = await deferredCount(database);
+    time.now = minute + 2 * aMinute;
+    await Effect.runPromise(refusals.flush());
+    const { events } = await database.store.read(`${brainKey}reactions/close`);
+
+    expect([left, events]).toMatchObject([
+      0,
+      [
+        {
+          count: mostStartsAMinute,
+          reason: 'The workflow could not be started for what it reacts to: The input is not what the workflow takes',
+        },
+        { count: 1 },
+      ],
     ]);
   });
 });

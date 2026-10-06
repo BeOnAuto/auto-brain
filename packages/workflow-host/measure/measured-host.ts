@@ -8,7 +8,7 @@ import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import type { RunStart } from '../src/host/run-requests.ts';
 import { openWorkflowHost, type WorkflowHost } from '../src/host/workflow-host.ts';
 import type { HostClock } from '../src/loop/host-clock.ts';
-import { recordedReactions } from '../src/testing/recording-reports.ts';
+import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
 
 export interface MeasuredHost {
   readonly host: WorkflowHost;

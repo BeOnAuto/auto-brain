@@ -12,6 +12,8 @@ export const mostDeferredStarts = 1000;
 
 const aMinute = 60_000;
 
+const unstarted = 'The workflow could not be started for what it reacts to: ';
+
 export interface Starting {
   readonly start: (brainKey: string, start: ReactionStart) => Effect.Effect<void, DeliveryFailed>;
   readonly startDeferred: () => Effect.Effect<number>;
@@ -75,8 +77,15 @@ function deferredOf(database: HostDatabase, brainKey: string, workflow: string) 
   ).pipe(Effect.map((rows) => rows.reduce((sum, { deferred }) => sum + deferred, 0)));
 }
 
-function started({ startReaction }: StartingParts, start: ReactionStart): Effect.Effect<void, DeliveryFailed> {
+function started(
+  { startReaction, refusals }: StartingParts,
+  brainKey: string,
+  start: ReactionStart,
+): Effect.Effect<void, DeliveryFailed> {
   return startReaction(start).pipe(
+    Effect.catchTag('start_rejected', ({ detail }: Readonly<{ detail: string }>) =>
+      refusals.refuse(brainKey, start.workflow, `${unstarted}${detail}`),
+    ),
     Effect.mapError(({ detail }: Readonly<{ detail: string }>) => new DeliveryFailed({ detail })),
   );
 }
@@ -128,11 +137,7 @@ function failedWhenDue(parts: StartingParts, deferred: Deferred, minute: number,
   return attempts < deliverySweeps
     ? deferredAgain(parts, deferred, minute, attempts)
     : Effect.andThen(
-        parts.refusals.refuse(
-          deferred.brain_key,
-          deferred.start.workflow,
-          `The workflow could not be started for what it reacts to: ${detail}`,
-        ),
+        parts.refusals.refuse(deferred.brain_key, deferred.start.workflow, `${unstarted}${detail}`),
         withoutDeferred(parts.database, deferred),
       );
 }
@@ -141,7 +146,7 @@ function startedWhenDue(parts: StartingParts, deferred: Deferred, minute: number
   const { brain_key: brainKey, start } = deferred;
   return Effect.flatMap(admitted(parts.database, brainKey, start.workflow, minute), (admits) =>
     admits
-      ? started(parts, start).pipe(
+      ? started(parts, brainKey, start).pipe(
           Effect.andThen(withoutDeferred(parts.database, deferred)),
           Effect.catch(({ detail }: Readonly<{ detail: string }>) => failedWhenDue(parts, deferred, minute, detail)),
         )
@@ -160,7 +165,7 @@ export function startingOn(
     start: (brainKey, start) => {
       const minute = minuteOf(now());
       return Effect.flatMap(admitted(database, brainKey, start.workflow, minute), (admits) =>
-        admits ? started(parts, start) : deferredStart(parts, brainKey, start, minute),
+        admits ? started(parts, brainKey, start) : deferredStart(parts, brainKey, start, minute),
       );
     },
     startDeferred: () =>

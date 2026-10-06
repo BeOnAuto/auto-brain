@@ -3,6 +3,8 @@ import type { EmitEvent } from '@beonauto/specs';
 import type { LiteralFilter } from '@beonauto/workflow-engine';
 import { Data, type Effect, type Schema } from 'effect';
 
+import type { StartRejected } from './start-rejected.ts';
+
 export type Trigger =
   | { readonly kind: 'events'; readonly filters: readonly LiteralFilter[] }
   | { readonly kind: 'cron'; readonly expression: string }
@@ -21,7 +23,7 @@ export interface ReactionStart {
 
 export class StartRefused extends Data.TaggedError('start_refused')<{ readonly detail: string }> {}
 
-export type StartReaction = (start: ReactionStart) => Effect.Effect<void, StartRefused>;
+export type StartReaction = (start: ReactionStart) => Effect.Effect<void, StartRefused | StartRejected>;
 
 export interface ReactionOptions {
   readonly primitive: string;

@@ -6,6 +6,7 @@ import { rowsOf } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { alpha, at, eventTrigger, published, specRecorded, specRetired } from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
+import { refusedWhile, rejectedFor } from '../reaction-testing/recorded-reactions.ts';
 import { until } from '../reaction-testing/until.ts';
 import { reactionExecutionIdOf } from '../reactions/reaction-ids.ts';
 
@@ -123,7 +124,7 @@ describe('the follower of a brain', () => {
 describe('a start the brain keeps refusing', () => {
   it('holds the follower of the brain for 20 sweeps, then is skipped and said, and the follower goes on', async () => {
     const refusing = { now: true };
-    const reacting = await reactingHost({ refusesStarts: () => refusing.now });
+    const reacting = await reactingHost({ failure: refusedWhile(refusing) });
     const { store } = reacting.database;
     await specRecorded(store, { name: 'close', version: 1, trigger: closed });
     await published(store, { id: 'e1', type: 'com.acme.closed' });
@@ -142,6 +143,28 @@ describe('a start the brain keeps refusing', () => {
     expect([refusals, starts.map(({ cause }) => cause)]).toEqual([
       [{ reason: 'The workflow could not be started for what it reacts to: The brain refused the start' }],
       [messageIdOf(`${alpha}events/e2`, 1)],
+    ]);
+  });
+});
+
+describe('a start the brain rejects for good', () => {
+  it('is said at once and not tried again, and the follower goes on', async () => {
+    const reacting = await reactingHost({
+      failure: rejectedFor('close', 'The input is not what the workflow takes'),
+    });
+    const { store } = reacting.database;
+    await specRecorded(store, { name: 'close', version: 1, trigger: closed });
+    await published(store, { id: 'e1', type: 'com.acme.closed' });
+    await specRecorded(store, { name: 'watch', version: 1, trigger: sentinel });
+
+    await sentinelPassed(reacting, 's1');
+    const refusals = await Effect.runPromise(
+      rowsOf(RefusalRow, reacting.database.read(statement`SELECT reason FROM workflow_reaction_refusals`)),
+    );
+
+    expect([refusals, startedWorkflows(reacting)]).toEqual([
+      [{ reason: 'The workflow could not be started for what it reacts to: The input is not what the workflow takes' }],
+      ['watch'],
     ]);
   });
 });

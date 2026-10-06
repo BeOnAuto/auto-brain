@@ -7,13 +7,10 @@ import type { DatabaseSettings } from '../database/host-databases.ts';
 import { openWorkflowHost, type WorkflowHost } from '../host/workflow-host.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import {
-  recordedReactions,
-  recordingReports,
-  recordingSettlements,
-  type RecordedReactions,
-  type RecordingReports,
-} from '../testing/recording-reports.ts';
+import { recordingReports, recordingSettlements, type RecordingReports } from '../testing/recording-reports.ts';
+import { recordedReactions, type FailingStart, type RecordedReactions } from './recorded-reactions.ts';
+
+const startsEveryTime: FailingStart = () => null;
 
 export interface ReactingHost {
   readonly host: WorkflowHost;
@@ -27,13 +24,13 @@ export interface ReactingOptions {
   readonly settings?: DatabaseSettings;
   readonly clock?: HostClock;
   readonly sweepEveryMs?: number;
-  readonly refusesStarts?: () => boolean;
+  readonly failure?: FailingStart;
 }
 
 export async function reactingHost(options: ReactingOptions = {}): Promise<ReactingHost> {
   const settings = options.settings ?? { store: 'sqlite', file: aSQLiteFile() };
   const reports = recordingReports();
-  const reactions = recordedReactions({ refusesStarts: options.refusesStarts ?? (() => false) });
+  const reactions = recordedReactions({ failure: options.failure ?? startsEveryTime });
   const host = await openWorkflowHost({
     database: settings,
     machine: testMachine,
