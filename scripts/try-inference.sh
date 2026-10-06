@@ -21,7 +21,7 @@ call() {
 }
 
 brains="$base_url/v1/orgs/$org/brains"
-call --data "{\"brain\": \"$brain\", \"name\": \"Trying inference\"}" "$brains" > /dev/null
+call --data "{\"brain\": \"$brain\", \"name\": \"Trying reasoning functions\"}" "$brains" > /dev/null
 source="$(printf '%s\n' '---' "model: $model" 'config: {max_output_tokens: 200}' '---' \
   '{% system %}Answer in one sentence.{% endsystem %}Greet {{ input.name }} and name today, {{ today }}.')"
 call --data "$(jq --null-input --arg source "$source" '{name: "greeting", source: $source}')" \
