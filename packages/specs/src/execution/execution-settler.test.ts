@@ -142,6 +142,40 @@ describe('a settlement whose output is too large or is not JSON', () => {
   });
 });
 
+describe('settling a deferred execution as unavailable', () => {
+  it('records the kind and because the run ended with, and leaves out those it does not know', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+    const detail = 'A step called tools and could not finish';
+
+    expect(
+      await settling({
+        status: 'rejected',
+        reason: 'unavailable',
+        detail,
+        kind: 'tools_unfinished',
+        because: 'run_bound',
+      }),
+    ).toMatchObject(
+      Result.succeed({
+        status: 'rejected',
+        rejection: { reason: 'unavailable', detail, kind: 'tools_unfinished', because: 'run_bound' },
+      }),
+    );
+  });
+
+  it('keeps no kind or because it does not know', async () => {
+    const { executing, settling } = await withHandOn();
+    await executing();
+
+    expect(
+      await settling({ status: 'rejected', reason: 'unavailable', detail: 'No', kind: 'odd', because: 'odder' }),
+    ).toStrictEqual(
+      Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'unavailable', detail: 'No' } }),
+    );
+  });
+});
+
 describe('settling a deferred execution as a conflict', () => {
   it('records a conflict of tools called with its kind', async () => {
     const { executing, settling } = await withHandOn();

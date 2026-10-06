@@ -126,7 +126,12 @@ describe(
 
       const { settled, answers } = await settledRun(server, 'careless');
 
-      expect(settled).toMatchObject({ body: { status: 'rejected', rejection: { reason: 'unavailable' } } });
+      expect(settled).toMatchObject({
+        body: {
+          status: 'rejected',
+          rejection: { reason: 'unavailable', kind: 'tools_unfinished', because: 'model_unavailable' },
+        },
+      });
       expect(answers).toMatchObject([
         {
           summary: unfinishedWords,

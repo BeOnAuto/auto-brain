@@ -2,6 +2,8 @@ import {
   BrainIdSchema,
   ConflictKindSchema,
   NotFound,
+  UnavailableBecauseSchema,
+  UnavailableKindSchema,
   OrgIdSchema,
   streamPrefixOfBrain,
   type Conflict,
@@ -41,20 +43,34 @@ const failure: ExecutionResult = { type: 'execution_failed' };
 
 const decodeConflictKind = Schema.decodeUnknownOption(ConflictKindSchema);
 
+const decodeUnavailableKind = Schema.decodeUnknownOption(UnavailableKindSchema);
+
+const decodeBecause = Schema.decodeUnknownOption(UnavailableBecauseSchema);
+
 type Rejected = Extract<Settlement, { readonly status: 'rejected' }>;
 
-function rejectionOf({ reason, detail, kind }: Rejected): ExecutionResult {
+function rejectionOf({ reason, detail, kind, because }: Rejected): ExecutionResult {
   if (reason === 'conflict') {
-    const known = Option.getOrUndefined(decodeConflictKind(kind));
+    const conflictKind = Option.getOrUndefined(decodeConflictKind(kind));
     return {
       type: 'execution_rejected',
-      rejection: known === undefined ? { reason, detail } : { reason, detail, kind: known },
+      rejection: { reason, detail, ...(conflictKind === undefined ? {} : { kind: conflictKind }) },
     };
   }
-  return {
-    type: 'execution_rejected',
-    rejection: reason === 'invalid_input' ? { reason, detail, issues: [] } : { reason, detail },
-  };
+  if (reason === 'unavailable') {
+    const unavailableKind = Option.getOrUndefined(decodeUnavailableKind(kind));
+    const knownBecause = Option.getOrUndefined(decodeBecause(because));
+    return {
+      type: 'execution_rejected',
+      rejection: {
+        reason,
+        detail,
+        ...(unavailableKind === undefined ? {} : { kind: unavailableKind }),
+        ...(knownBecause === undefined ? {} : { because: knownBecause }),
+      },
+    };
+  }
+  return { type: 'execution_rejected', rejection: { reason, detail, issues: [] } };
 }
 
 function streamOf(address: ExecutionAddress): Effect.Effect<string, NotFound> {
