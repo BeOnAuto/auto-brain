@@ -38,10 +38,6 @@ export { defineGetExecution, getExecution } from './operations/get-execution.ts'
 export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
-export {
-  ListedRunSchema as ListedExecutionSchema,
-  type ListedRun as ListedExecution,
-} from './reading/listed-execution.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
 export { mostInputBytes, mostResultBytes } from './execution/recorded-size.ts';
@@ -66,20 +62,3 @@ export {
   legacyFunctionKind,
   type BrainFunctionKind,
 } from './primitive/function-terminology.ts';
-export {
-  type RunContext as ExecutionContext,
-  type PreparedDefinition as PreparedSpec,
-  type DefinitionSummary as SpecSummary,
-} from './primitive/primitive.ts';
-export {
-  RunDetailSchema as ExecutionDetailSchema,
-  RunSchema as ExecutionSchema,
-  type Run as Execution,
-  type RunDetail as ExecutionDetail,
-} from './execution/execution.ts';
-export {
-  ListedDefinitionSchema as ListedSpecSchema,
-  DefinitionSchema as SpecSchema,
-  type ListedDefinition as ListedSpec,
-  type Definition as Spec,
-} from './registry/spec.ts';
