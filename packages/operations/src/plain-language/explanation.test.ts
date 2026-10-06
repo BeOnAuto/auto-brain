@@ -31,12 +31,10 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
   ['retired', 'it has been retired', 'What is retired stays retired; a new one can be made under another name.'],
   ['concurrent_change', 'something else changed it at the same moment', 'Trying again should work.'],
   ['unworkable', 'it cannot work as it is written', correctable],
-  [
-    'tools_called',
-    'an earlier attempt of this run called tools and did not succeed, and those tools may have changed something',
-    'Start a new run instead; the history of this one shows what it called.',
-  ],
 ];
+
+const calledToolsWords =
+  'Could not run the reason function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something. So it was not run again: start a new run instead, after checking what its history shows it has called so far.';
 
 const toolsNamed =
   'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, so once it names only those, it can be tried again.';
@@ -161,6 +159,15 @@ describe('explanationOf', () => {
     );
   });
 
+  it('explains a run refused under its id, whose tools may have changed something', () => {
+    expect(explanationOf({ reason: 'conflict', kind: 'tools_called' })).toEqual({
+      why: 'this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something',
+      remedy:
+        'So it was not run again: start a new run instead, after checking what its history shows it has called so far.',
+      mayHaveChanged: true,
+    });
+  });
+
   it('explains a conflict that does not say its kind', () => {
     expect(explanationOf({ reason: 'conflict' })).toEqual({
       why: 'it clashes with something already there',
@@ -207,5 +214,17 @@ describe('unsuccessfulWords', () => {
     expect(unsuccessfulWords('do it', kind, { status: 'cancelled' })).toBe(
       `Could not do it: the server stopped before it finished. ${next}`,
     );
+  });
+});
+
+describe('unsuccessfulWords for a run refused under its id', () => {
+  it('does not say that nothing changed, since the tools of the run may have changed something', () => {
+    expect(
+      unsuccessfulWords(
+        'run the reason function “summary”',
+        'command',
+        rejected('conflict', 'x', undefined, 'tools_called'),
+      ),
+    ).toBe(calledToolsWords);
   });
 });

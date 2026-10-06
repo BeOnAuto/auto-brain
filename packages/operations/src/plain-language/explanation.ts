@@ -45,8 +45,10 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   concurrent_change: { why: 'something else changed it at the same moment', remedy: 'Trying again should work.' },
   unworkable: { why: 'it cannot work as it is written', remedy: correctable },
   tools_called: {
-    why: 'an earlier attempt of this run called tools and did not succeed, and those tools may have changed something',
-    remedy: 'Start a new run instead; the history of this one shows what it called.',
+    why: 'this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something',
+    remedy:
+      'So it was not run again: start a new run instead, after checking what its history shows it has called so far.',
+    mayHaveChanged: true,
   },
   model_not_offered: {
     why: 'this server does not offer the model named',
