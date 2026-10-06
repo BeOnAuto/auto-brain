@@ -31,9 +31,7 @@ import {
 
 export type { Query } from './recorded-parts.ts';
 
-const ExaminedRecordRows = Schema.Array(
-  Schema.Struct({ ...HeadFields, wanted: Schema.Boolean, size: Schema.Int, examined: Schema.Int }),
-);
+const ExaminedRecordRows = Schema.Array(Schema.Struct({ ...HeadFields, wanted: Schema.Boolean, examined: Schema.Int }));
 
 const PointRows = Schema.Array(Schema.Struct(PointFields));
 
@@ -61,8 +59,8 @@ function recordsWhere(keys: readonly Keyed[], records: RecordsScope): string {
   const matched = keys.map(({ key, value }) => matchedThroughItsIndex(records.bind, key, value)).join(' AND ');
   const ordered = keys.map(({ key }) => `${key} ${direction(records.scope)}`).join(', ');
   return `SELECT transaction_id, global_position, transaction_id::text AS transaction, global_position::text AS position,
-      stream_id AS stream, message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns},
-      ${records.wanted} AS wanted, message_data
+      stream_id AS stream, stream_position::int AS version, message_type AS type, ${timeOf('created')} AS recorded,
+      ${lineageColumns}, ${records.wanted} AS wanted, message_data
     FROM emt_messages
     WHERE ${matched} AND partition = ${records.partition}
       AND is_archived = FALSE${horizonOf(records.scope)}${records.bounded}
@@ -96,7 +94,7 @@ function examineRecords(query: Query): RecordedStatements['examineRecords'] {
       limit: bind(scope.examineAtMost + 1),
     };
     const rows = await query(
-      `SELECT transaction, position, stream, type, recorded, id, causation, correlation, wanted,
+      `SELECT transaction, position, stream, version, type, recorded, id, causation, correlation, wanted,
           examined::int AS examined,
           CASE WHEN wanted THEN octet_length(message_data ->> 'json') ELSE 0 END AS size
         FROM (

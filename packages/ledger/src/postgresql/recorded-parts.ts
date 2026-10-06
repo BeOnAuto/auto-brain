@@ -32,8 +32,10 @@ export const HeadFields = {
   ...PointFields,
   ...LineageFields,
   stream: Schema.String,
+  version: Schema.Int,
   type: Schema.String,
   recorded: Schema.String,
+  size: Schema.Int,
 };
 
 export const lineageColumns = `message_id AS id, message_metadata ->> 'causationId' AS causation,
@@ -97,22 +99,26 @@ interface HeadRow {
   readonly transaction: string;
   readonly position: string;
   readonly stream: string;
+  readonly version: number;
   readonly type: string;
   readonly recorded: string;
   readonly id: string;
   readonly causation: string | null;
   readonly correlation: string | null;
+  readonly size: number;
 }
 
 export function headOf({
   transaction,
   position,
   stream,
+  version,
   type,
   recorded,
   id,
   causation,
   correlation,
+  size,
 }: HeadRow): RecordHead {
   return {
     point: [transaction, position],
@@ -120,7 +126,9 @@ export function headOf({
     causationId: causation,
     correlationId: correlation,
     stream,
+    version,
     type,
     recordedAt: recorded,
+    size,
   };
 }

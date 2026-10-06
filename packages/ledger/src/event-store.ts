@@ -33,11 +33,13 @@ export interface StoredPageRequest {
   readonly limit: number;
   readonly since?: string;
   readonly types?: readonly string[];
+  readonly dataOf?: readonly string[];
 }
 
 interface StoredRecord extends MessageLineage {
   readonly point: RecordedPoint;
   readonly stream: string;
+  readonly version: number;
   readonly type: string;
   readonly data: unknown;
   readonly recordedAt: string;

@@ -11,8 +11,10 @@ import type { MessageLineage, RecordedPoint, RecordedStore, StoredPage, StoredPa
 export interface RecordHead extends MessageLineage {
   readonly point: RecordedPoint;
   readonly stream: string;
+  readonly version: number;
   readonly type: string;
   readonly recordedAt: string;
+  readonly size: number;
 }
 
 export interface ExaminedItem extends Examined {
@@ -84,23 +86,38 @@ function examine(
   return statements.examineRecords(selectedOf(scope.brainKey, selection), scope);
 }
 
+type Loads = (head: RecordHead) => boolean;
+
+function loadsOf(dataOf: readonly string[] | undefined): Loads {
+  return dataOf === undefined ? () => true : ({ type }) => dataOf.includes(type);
+}
+
+function sizedBy(loads: Loads, dataOf: readonly string[] | undefined, item: ExaminedItem): ExaminedItem {
+  return dataOf === undefined || !item.wanted
+    ? item
+    : { ...item, size: item.heads.filter((head) => loads(head)).reduce((sum, { size }) => sum + size, 0) };
+}
+
 async function pageWithin(
   statements: RecordedStatements,
   selection: RecordedSelection,
-  limit: number,
+  page: Pick<StoredPageRequest, 'limit' | 'dataOf'>,
   scope: ExaminationScope,
 ): Promise<StoredPage> {
-  const examined = await examine(statements, selection, scope);
-  const { delivered, resumeAfter } = boundedPage(examined, limit, scope.examineAtMost);
+  const loads = loadsOf(page.dataOf);
+  const examined = (await examine(statements, selection, scope)).map((item) => sizedBy(loads, page.dataOf, item));
+  const { delivered, resumeAfter } = boundedPage(examined, page.limit, scope.examineAtMost);
   const heads = delivered.flatMap((item) => item.heads);
+  const loaded = heads.filter((head) => loads(head));
   const data =
-    heads.length === 0 ? new Map<string, unknown>() : await statements.dataAt(heads.map(({ point }) => point));
-  const records = heads.map(({ point, id, causationId, correlationId, stream, type, recordedAt }) => ({
+    loaded.length === 0 ? new Map<string, unknown>() : await statements.dataAt(loaded.map(({ point }) => point));
+  const records = heads.map(({ point, id, causationId, correlationId, stream, version, type, recordedAt }) => ({
     point,
     id,
     causationId,
     correlationId,
     stream,
+    version,
     type,
     recordedAt,
     data: data.get(pointKey(point)),
@@ -112,9 +129,9 @@ export function recordedReadingOver(statements: RecordedStatements): RecordedSto
   return async (brainKey, selection, page) => {
     const scope = scopeOf(brainKey, page);
     if (page.since === undefined) {
-      return pageWithin(statements, selection, page.limit, scope);
+      return pageWithin(statements, selection, page, scope);
     }
     const from = await statements.firstPointSince(brainKey, page.since);
-    return from === undefined ? { records: [] } : pageWithin(statements, selection, page.limit, { ...scope, from });
+    return from === undefined ? { records: [] } : pageWithin(statements, selection, page, { ...scope, from });
   };
 }
