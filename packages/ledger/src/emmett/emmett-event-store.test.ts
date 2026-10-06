@@ -43,8 +43,8 @@ describe('an event store over an Emmett event store', () => {
     await store.migrate();
     await store.append(run, firstThree, 0);
 
-    expect(await store.read(run, 1)).toEqual({ version: 3, events: [{ n: 2 }, { n: 3 }] });
-    expect(await store.read(run, 3)).toEqual({ version: 3, events: [] });
+    expect(await store.read(run, 1)).toMatchObject({ version: 3, events: [{ n: 2 }, { n: 3 }] });
+    expect(await store.read(run, 3)).toEqual({ version: 3, events: [], lineages: [] });
   });
 });
 
@@ -56,7 +56,7 @@ describe('an append to an event store over an Emmett event store', () => {
       await store.migrate();
       await store.append(run, firstThree, 0);
 
-      expect(await outcomeOf(eventAppenderOf(store)(run, tally.eventSchema, counted(1), expected))).toEqual(
+      expect(await outcomeOf(eventAppenderOf(store, tally.eventSchema)(run, counted(1), expected))).toEqual(
         Result.fail(new VersionConflict()),
       );
       expect((await store.read(run)).version).toBe(3);
@@ -66,12 +66,12 @@ describe('an append to an event store over an Emmett event store', () => {
   it('takes in one append as many events as it is told, and a decision of more is a defect', async () => {
     const store = emmettEventStore(anEmmettStore(), { data: dataAsWritten, mostEventsInOneAppend: 3 });
     await store.migrate();
-    const append = eventAppenderOf(store);
+    const append = eventAppenderOf(store, tally.eventSchema);
 
-    await expect(outcomeOf(append(run, tally.eventSchema, counted(4), 0))).rejects.toThrow(
+    await expect(outcomeOf(append(run, counted(4), 0))).rejects.toThrow(
       `A decision on ${run} gave 4 events, more than 3`,
     );
-    expect(await outcomeOf(append(run, tally.eventSchema, counted(3), 0))).toMatchObject({ _tag: 'Success' });
+    expect(await outcomeOf(append(run, counted(3), 0))).toMatchObject({ _tag: 'Success' });
   });
 
   it('closes the store under it', async () => {

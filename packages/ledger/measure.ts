@@ -40,6 +40,7 @@ const indexes = [
   'ledger_messages_by_brain_and_time',
   'ledger_messages_by_stream',
   'ledger_first_messages_by_kind',
+  'ledger_messages_by_brain_and_correlation',
 ];
 
 function write(line: string): void {

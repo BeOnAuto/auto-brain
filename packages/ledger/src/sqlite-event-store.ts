@@ -6,7 +6,8 @@ import type { Layer } from 'effect';
 import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
 import type { EventStore } from './event-store.ts';
 import { ledgerLayerOver } from './ledger-layer.ts';
-import { createSQLiteBrainIndexes, sqliteRecordedStore } from './recorded/sqlite-recorded.ts';
+import { createSQLiteBrainIndexes } from './recorded/sqlite-indexes.ts';
+import { sqliteRecordedStore } from './recorded/sqlite-recorded.ts';
 
 type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
 
