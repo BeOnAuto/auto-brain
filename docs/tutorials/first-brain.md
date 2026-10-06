@@ -6,11 +6,11 @@ The campaign and figures below are sample data. This exercise makes no changes t
 
 ## Before you start
 
-You need an Auto Cloud account and an agent connected to Auto through MCP. Follow [Connect your agent](https://on.auto/docs/get-started/cloud) first.
+Start Auto Brain locally and connect Claude Code, Claude Desktop or Codex through MCP. Follow the [local quick start](../get-started/local.md) first, and leave the server running throughout this tutorial. You do not need an Auto Cloud account.
 
-Your connection must allow you to create a brain, create a function and run it. You also need a model reference that your workspace can use. Ask your agent to call `list_models` and show you the available models, then choose a concrete model or alias id from the result.
+The local server allows you to create a brain, create a function and run it. You also need a model reference that your configured provider can use. Ask your agent to call `list_models` and show you the available models, then choose a concrete model or alias id from the result. The server needs its own model provider credentials; your agent's subscription does not supply them.
 
-If the result contains only wildcard patterns, or the listing is incomplete, use a concrete reference confirmed by your workspace administrator. Do not use a wildcard such as `provider/*` as the model. Model discovery requires `org:read` and is available through the `/mcp` or organization endpoint; a connection limited to one brain needs a supplied model reference. See [Model information](../reference/mcp.md#model-information).
+If the result contains only wildcard patterns, or the listing is incomplete, use a concrete reference supported by your provider. Do not use a wildcard such as `provider/*` as the model. On an authenticated deployment, model discovery requires `org:read` and is available through the `/mcp` or organization endpoint; a connection limited to one brain needs a supplied model reference. See [Model information](../reference/mcp.md#model-information).
 
 ## 1. Create a practice brain
 
@@ -18,7 +18,7 @@ Ask your connected agent:
 
 > Create a brain named Campaign review tutorial with the id `campaign-review-tutorial`. If that id already exists, show it to me and use it for this exercise. Do not change or retire any existing brains. Confirm the brain id before continuing.
 
-The agent should confirm `campaign-review-tutorial`. If it reports a permissions error, have the workspace administrator grant the required access before continuing.
+The agent should confirm `campaign-review-tutorial`. If it reports a permissions error, check that it is using your local Auto connection. For an authenticated deployment, ask the operator to check your key's access.
 
 ## 2. Define the review
 

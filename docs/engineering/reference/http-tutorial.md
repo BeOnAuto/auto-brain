@@ -42,7 +42,7 @@ curl http://localhost:8080/v1/orgs/local/brains/sales/executions/0199a3c4-7d2e-7
 
 A document with a problem is rejected with every problem and its line. An input that does not match the schema is rejected before any model is called. A provider that is not configured answers `503`; its missing settings are reported to the operator, not exposed to the caller. [Reason function format](reasoning-format.md) describes the document and recorded result. [HTTP API](http.md) describes the operations. An assistant does the same over [MCP](mcp.md), where tool descriptions explain the supported definition formats.
 
-A workflow spec runs steps that execute other specs, branch, wait and listen for events, durably, on the Temporal that `pnpm dev` runs. Write `welcome.yaml`, a workflow that executes the greeting above, then waits for the customer's reply:
+A workflow spec runs steps that execute other specs, branch, wait and listen for events, durably, in the server itself, which keeps its runs in the ledger. Write `welcome.yaml`, a workflow that executes the greeting above, then waits for the customer's reply:
 
 ```yaml
 document:
@@ -85,4 +85,4 @@ curl --request POST http://localhost:8080/v1/orgs/local/brains/sales/executions/
 curl http://localhost:8080/v1/orgs/local/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b
 ```
 
-Executing answers `started` at once; the execution reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting has its own recorded run under an id derived from the workflow's run, made by the caller who started the workflow. [Workflow format](workflow-format.md) describes the supported steps.
+Executing answers `started` at once; the execution reads `started` until the workflow ends, and then `succeeded` with `{"greeting": ..., "reply": "Thank you!"}`. The greeting has its own recorded run under an id derived from the workflow's run, made by the caller who started the workflow. The public [workflow format](../../reference/workflow-format.md) describes the supported steps, and the repository-only [workflow execution notes](workflow-format.md) how they run.

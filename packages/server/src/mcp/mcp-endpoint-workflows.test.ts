@@ -70,7 +70,7 @@ async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
   return settled(session, executionId);
 }
 
-describe('/mcp on a server that offers workflows', { timeout: workflowTestTimeoutMs }, () => {
+describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
   it('lists seventeen tools, and its instructions say how a workflow gets an event', async () => {
     server = await servingWorkflows([]);
 

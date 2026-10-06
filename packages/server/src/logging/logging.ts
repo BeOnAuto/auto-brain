@@ -170,12 +170,6 @@ export function logModelProviders(status: ProviderStatus): Effect.Effect<void> {
   );
 }
 
-export interface WorkflowsAddress {
-  readonly address: string;
-  readonly namespace: string;
-  readonly taskQueue: string;
-}
-
 export interface UnsettledReport {
   readonly org: string;
   readonly brain: string;
@@ -183,29 +177,33 @@ export interface UnsettledReport {
   readonly reason: string;
 }
 
-export const logWorkflowsNotOffered = Effect.logInfo('Workflows are not offered because TEMPORAL_ADDRESS is unset');
+export interface WorkflowsReport {
+  readonly mostDurationMs: number;
+  readonly mostCallsAtOnce: number;
+  readonly sweepEveryMs: number;
+}
 
-export function logWorkflowsOffered({ address, namespace, taskQueue }: WorkflowsAddress): Effect.Effect<void> {
+const mostReportedCharacters = 2000;
+
+const hour = 3_600_000;
+
+const day = 24 * hour;
+
+function spanOf(milliseconds: number): string {
+  const [amount, unit] = milliseconds >= day ? [milliseconds / day, 'day'] : [milliseconds / hour, 'hour'];
+  const rounded = Math.round(amount * 100) / 100;
+  return `${rounded} ${unit}${rounded === 1 ? '' : 's'}`;
+}
+
+export function logWorkflows({ mostDurationMs, mostCallsAtOnce, sweepEveryMs }: WorkflowsReport): Effect.Effect<void> {
   return Effect.logInfo(
-    `Workflows are offered with Temporal at ${address}, namespace ${namespace}, task queue ${taskQueue}`,
-  ).pipe(Effect.annotateLogs({ temporal_address: address, namespace, task_queue: taskQueue }));
-}
-
-export const logWorkerStarted = Effect.logInfo('The workflow worker started');
-
-function inSeconds(ms: number): string {
-  return `${(ms / 1000).toFixed(1)} s`;
-}
-
-export function logWorkerNotStarted(detail: string, retryMs: number): Effect.Effect<void> {
-  return Effect.logWarning(`The workflow worker could not start; it tries again in ${inSeconds(retryMs)}`).pipe(
-    Effect.annotateLogs({ error: detail, retry_ms: retryMs }),
-  );
-}
-
-export function logWorkerStopped(detail: string, retryMs: number): Effect.Effect<void> {
-  return Effect.logError(`The workflow worker stopped on its own; it starts again in ${inSeconds(retryMs)}`).pipe(
-    Effect.annotateLogs({ error: detail, retry_ms: retryMs }),
+    `Workflows run in this server: a run lasts at most ${spanOf(mostDurationMs)}, at most ${mostCallsAtOnce} of their calls run at once, and the runs are swept every ${sweepEveryMs} ms`,
+  ).pipe(
+    Effect.annotateLogs({
+      most_duration_ms: mostDurationMs,
+      most_calls_at_once: mostCallsAtOnce,
+      sweep_every_ms: sweepEveryMs,
+    }),
   );
 }
 
@@ -215,19 +213,16 @@ export function logUnsettled({ org, brain, executionId, reason }: UnsettledRepor
   );
 }
 
-export interface TemporalReport {
-  readonly level: string;
-  readonly message: string;
-  readonly context: Readonly<Record<string, string | number | boolean>>;
+export function logWorkflowTrouble(what: string, cause: Cause.Cause<unknown>): Effect.Effect<void> {
+  return Effect.logWarning(what).pipe(
+    Effect.annotateLogs({ error: Cause.pretty(cause).slice(0, mostReportedCharacters) }),
+  );
 }
 
-const temporalLevels: Readonly<Record<string, (message: string) => Effect.Effect<void>>> = {
-  ERROR: Effect.logError,
-  INFO: Effect.logInfo,
-};
-
-export function logTemporal({ level, message, context }: TemporalReport): Effect.Effect<void> {
-  return (temporalLevels[level] ?? Effect.logWarning)(message).pipe(Effect.annotateLogs(context));
+export function logLostWorkflowConnection(error: Readonly<Error>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'A connection of the workflows to their PostgreSQL database was lost; they open another when they need one',
+  ).pipe(Effect.annotateLogs({ error: error.message }));
 }
 
 export function logProviderMessage({

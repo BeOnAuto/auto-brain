@@ -44,11 +44,6 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Cache the pinned Temporal CLI the tests and pnpm dev download
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: /tmp/temporal-v1.9.1
-          key: temporal-cli-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('primitives/orchestration/src/testing/temporal-cli.ts') }}
       - name: Format, lint, type-check, test with 100% coverage, knip, sherif
         run: pnpm check
         env:
@@ -210,8 +205,8 @@ jobs:
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
-          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 16
-          for tool in list_models list_executions get_execution_history list_brain_events; do
+          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 17
+          for tool in list_models list_executions get_execution_history list_brain_events send_execution_event; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
           call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_specs","arguments":{"brain":"smoke","primitive":"inference"}}}' > specs.txt
@@ -249,31 +244,29 @@ jobs:
             'anthropic is not configured. No model provider is configured'
           docker stop inference
           test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
-      - name: Run workflows on a Temporal dev server
-        timeout-minutes: 10
+      - name: Run workflows across a restart, and read the steps of a run
+        timeout-minutes: 5
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker network create workflows
-          docker run --detach --name temporal --network workflows \
-            temporalio/temporal:1.9.1@sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e \
-            server start-dev --ip 0.0.0.0 --headless
-          docker run --detach --name workflows --network workflows --publish 8080:8080 --env API_KEYS \
-            --env TEMPORAL_ADDRESS=temporal:7233 auto-brain:ci
-          ready=false
-          for attempt in $(seq 1 60); do
-            if timeout 10 docker exec temporal temporal operator cluster health > /dev/null 2>&1 \
-              && curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null \
-              && docker logs workflows 2>&1 | grep --quiet '"message":"The workflow worker started"'; then
-              ready=true
-              break
-            fi
-            sleep 1
-          done
-          test "$ready" = true
+          wait_for_health() {
+            for attempt in $(seq 1 30); do
+              curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && return 0
+              sleep 1
+            done
+            return 1
+          }
+          start_server() {
+            docker run --detach --name "$1" --publish 8080:8080 --env API_KEYS --volume workflows:/data auto-brain:ci
+            wait_for_health
+          }
+          stop_server() {
+            docker stop "$1"
+            test "$(docker inspect "$1" --format '{{.State.ExitCode}}')" = 0
+          }
           call() {
             curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
@@ -291,6 +284,9 @@ jobs:
             "  - greet: { set: { greeting: '\${ \"Hello, \" + .name }' } }")"
           approval="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: approval, version: '1.0.0' }" 'do:' \
             '  - decide: { listen: { to: { one: { with: { type: com.example.approval.decided } } } } }')"
+          docker volume create workflows
+          start_server workflows-first
+          test "$(docker logs workflows-first 2>&1 | grep --count '"message":"Workflows run in this server: ')" = 1
           test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
           for name in greet approval; do
             spec="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
@@ -301,13 +297,17 @@ jobs:
           test "$(jq --compact-output '[.status, .output]' greeted.json)" = '["succeeded",{"greeting":"Hello, CI"}]'
           test "$(call waiting.json --data '{}' "$brain/specs/orchestration/approval/execute")" = 200
           waiting="$(jq --raw-output .execution_id waiting.json)"
+          stop_server workflows-first
+          start_server workflows-second
           test "$(call sent.json --data '{"event":{"type":"com.example.approval.decided","data":{"approved":true}}}' \
             "$brain/executions/$waiting/events")" = 200
           settled approved.json "$waiting"
           test "$(jq --compact-output '[.status, .output]' approved.json)" = '["succeeded",[{"approved":true}]]'
-          docker stop workflows
-          test "$(docker inspect workflows --format '{{.State.ExitCode}}')" = 0
-          docker stop temporal
+          test "$(call history.json "$brain/executions/$waiting/history")" = 200
+          test "$(jq --compact-output '[.events[] | select(.type == "workflow_input_applied")
+            | [.data.input.kind, .data.steps[0].task, .data.steps[0].outcome]]' history.json)" = \
+            '[["started","/do/0/decide","waiting"],["event_received","/do/0/decide","completed"]]'
+          stop_server workflows-second
 
   pull-request-title:
     name: Pull request title

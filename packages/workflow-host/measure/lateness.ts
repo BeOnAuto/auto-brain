@@ -1,0 +1,55 @@
+import { Effect, Function } from 'effect';
+
+import type { DatabaseSettings } from '../src/database/host-databases.ts';
+import { openHostDatabase } from '../src/database/host-databases.ts';
+import { ledgerRunStore } from '../src/runs/ledger-run-store.ts';
+import { runIdOf } from '../src/runs/run-address.ts';
+import { header, measuredHost, runAt, startOf } from './measured-host.ts';
+
+export interface Lateness {
+  readonly timers: number;
+  readonly p50: number;
+  readonly p99: number;
+  readonly most: number;
+}
+
+const pausing = { document: header, do: [{ pause: { wait: 'PT2S' } }] };
+
+function percentile(sorted: readonly number[], fraction: number): number {
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))] ?? 0;
+}
+
+async function latenessOf(database: DatabaseSettings, runs: number): Promise<readonly number[]> {
+  const opened = await openHostDatabase(database, Function.constVoid);
+  const runStore = ledgerRunStore(opened);
+  const late = await Effect.runPromise(
+    Effect.forEach(
+      Array.from({ length: runs }, (_, index) => runAt(index)),
+      (run) =>
+        Effect.map(runStore.eventsAfter(runIdOf(run), 0), ([started, fired]) => {
+          const armed = started?.event.outputs.find(
+            (output) => output.kind === 'arm_timer' && output.purpose === 'wait',
+          );
+          const dueAt = armed?.kind === 'arm_timer' ? armed.dueAt : Number.NaN;
+          return (fired?.event.receipt.at ?? Number.NaN) - dueAt;
+        }),
+    ),
+  );
+  await opened.close();
+  return late;
+}
+
+export async function timerLatenessOn(database: DatabaseSettings, timers: number): Promise<Lateness> {
+  const measured = await measuredHost(database);
+  await Effect.runPromise(
+    Effect.forEach(
+      Array.from({ length: timers }, (_, index) => runAt(index)),
+      (run) => measured.host.start(run, startOf(pausing)),
+      { discard: true },
+    ),
+  );
+  await measured.untilSettled(timers);
+  await measured.host.stop();
+  const late = (await latenessOf(database, timers)).toSorted((first, second) => first - second);
+  return { timers, p50: percentile(late, 0.5), p99: percentile(late, 0.99), most: late.at(-1) ?? 0 };
+}

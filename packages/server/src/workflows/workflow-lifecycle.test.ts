@@ -1,22 +1,9 @@
-import { randomUUID } from 'node:crypto';
-import { once } from 'node:events';
+import { setTimeout } from 'node:timers/promises';
 
-import { connectOrchestration, installTemporalRuntime, type TemporalLogEntry } from '@beonauto/orchestration';
-import { temporalCli } from '@beonauto/orchestration/testing/temporal-cli';
-import { TestWorkflowEnvironment } from '@temporalio/testing';
-import { Effect, Exit, Scope } from 'effect';
-import { afterAll, describe, expect, inject, it, onTestFinished } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { temporaryLedger } from '../testing/temporary-ledger.ts';
-import {
-  acceptedOnceUp,
-  freePort,
-  logLinesOf,
-  requestTo,
-  settledOver,
-  untilLogged,
-  workflowProcess,
-} from '../testing/workflow-process.ts';
+import { logLinesOf, requestTo, settledOver, workflowProcess } from '../testing/workflow-process.ts';
 import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
 
 const ledger = temporaryLedger();
@@ -25,25 +12,17 @@ afterAll(() => {
   ledger.remove();
 });
 
-const workerStarted = (message: string): boolean => message === 'The workflow worker started';
+const approval = workflowSource(
+  'approval',
+  "do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.approved } } } }, output: { as: '${ .[0] }' } }\n",
+);
 
-async function stoppedWithin(milliseconds: number, stop: () => Promise<void>): Promise<void> {
-  await Promise.race([stop(), once(AbortSignal.timeout(milliseconds), 'abort')]);
-}
-
-const unsettled = 'An execution stays started because settling it failed';
-
-const greeting = workflowSource('greeting', 'do:\n  - greet: { set: { greeting: \'${ "Hello, " + .name }\' } }\n');
-
-const temporalLogsOfThisProcess: TemporalLogEntry[] = [];
+const pausing = workflowSource('pausing', 'do:\n  - pause: { wait: PT1S }\n  - done: { set: { paused: true } }\n');
 
 describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
-  it('says where it offers workflows, starts the worker, and exits 0 on SIGTERM', async () => {
-    const taskQueue = `server-${randomUUID()}`;
-    const address = inject('temporalAddress');
-    const child = workflowProcess(ledger.fileName, address, taskQueue);
+  it('says how it runs workflows, and exits 0 at once on SIGTERM', async () => {
+    const child = workflowProcess(ledger.fileName);
     const port = await child.port;
-    await untilLogged(child, workerStarted);
 
     const stopping = performance.now();
     child.signal('SIGTERM');
@@ -57,94 +36,37 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
     expect(child.output().stdout).toBe(`auto-brain listening on port ${port}\n`);
     expect(startUpLines.slice(1)).toEqual([
       `INFO The ledger is kept in the file ${ledger.fileName}`,
-      `INFO Workflows are offered with Temporal at ${address}, namespace default, task queue ${taskQueue}`,
-      'INFO The workflow worker started',
+      'INFO Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',
     ]);
     expect(startUpLines[0]).toMatch(/^WARN Local mode is on: /u);
   });
 });
 
-describe('a server whose Temporal starts after it', { timeout: 120_000 }, () => {
-  it('serves brains, answers executions unavailable within the deadline, and runs workflows once Temporal is up', async () => {
-    const temporalPort = await freePort();
-    const child = workflowProcess(ledger.fileName, `127.0.0.1:${temporalPort}`, `server-${randomUUID()}`);
-    const port = await child.port;
-    await untilLogged(child, (message) => message.startsWith('The workflow worker could not start; it tries again in'));
-    const created = await requestTo(port, 'POST', '', { brain: 'beta', name: 'Beta' });
-    await requestTo(port, 'POST', '/beta/specs/orchestration', { name: 'greeting', source: greeting });
-    const before = performance.now();
-    const whileDown = await requestTo(port, 'POST', '/beta/specs/orchestration/greeting/execute', { input: {} });
-    const waited = performance.now() - before;
+describe('a server started again on the ledger of its workflows', { timeout: workflowTestTimeoutMs }, () => {
+  it('goes on with a run that waits for an event, and with one whose timer went off while it was stopped', async () => {
+    const first = workflowProcess(ledger.fileName);
+    const firstPort = await first.port;
+    await requestTo(firstPort, 'POST', '', { brain: 'gamma', name: 'Gamma' });
+    await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'approval', source: approval });
+    await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'pausing', source: pausing });
+    const waiting = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/approval/execute', { input: {} });
+    const paused = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/pausing/execute', { input: {} });
+    first.signal('SIGTERM');
+    await first.exited;
+    await setTimeout(1500);
 
-    installTemporalRuntime((entry) => {
-      temporalLogsOfThisProcess.push(entry);
+    const second = workflowProcess(ledger.fileName);
+    const port = await second.port;
+    const sent = await requestTo(port, 'POST', `/gamma/executions/${executionIdIn(waiting.body)}/events`, {
+      event: { type: 'com.acme.approved', data: { by: 'Ada' } },
     });
-    const temporal = await TestWorkflowEnvironment.createLocal({
-      server: {
-        executable: temporalCli,
-        ip: '127.0.0.1',
-        port: temporalPort,
-        log: { format: 'pretty', level: 'error' },
-      },
-    });
-    onTestFinished(() => stoppedWithin(10_000, () => temporal.teardown()), 20_000);
-    await untilLogged(child, workerStarted);
-    const started = await acceptedOnceUp(port, '/beta/specs/orchestration/greeting/execute', {
-      input: { name: 'Ada' },
-    });
-    const settled = await settledOver(port, `/beta/executions/${executionIdIn(started.body)}`);
-    child.signal('SIGTERM');
-    const exitCode = await child.exited;
+    const approved = await settledOver(port, `/gamma/executions/${executionIdIn(waiting.body)}`);
+    const pausedSettled = await settledOver(port, `/gamma/executions/${executionIdIn(paused.body)}`);
+    second.signal('SIGTERM');
 
-    expect(created.status).toBe(201);
-    expect(whileDown).toMatchObject({ status: 503, body: { reason: 'unavailable' } });
-    expect(waited).toBeLessThan(11_000);
-    expect(settled).toMatchObject({ status: 'succeeded', output: { greeting: 'Hello, Ada' } });
-    expect(exitCode).toBe(0);
-  });
-});
-
-describe('an execution a workflow cannot settle', { timeout: workflowTestTimeoutMs }, () => {
-  it('is logged as an error with its org, brain, id and the reason, and nothing of its input or output', async () => {
-    const taskQueue = `server-${randomUUID()}`;
-    const address = inject('temporalAddress');
-    const child = workflowProcess(ledger.fileName, address, taskQueue);
-    await child.port;
-    await untilLogged(child, workerStarted);
-    const executionId = randomUUID();
-    const scope = Effect.runSync(Scope.make());
-    const client = await Effect.runPromise(
-      connectOrchestration({
-        address,
-        namespace: 'default',
-        taskQueue,
-        tls: false,
-        mostDuration: 7_200_000,
-        nestedExecutions: 32,
-      }).pipe(Scope.provide(scope)),
-    );
-    await Effect.runPromise(
-      client.start({
-        document: {
-          document: { dsl: '1.0.3', namespace: 'acme', name: 'ghost', version: '1.0.0' },
-          do: [{ done: { set: { secret: 'output-secret' } } }],
-        },
-        input: { secret: 'input-secret' },
-        execution: { id: executionId, org: 'acme', brain: 'alpha', spec: { name: 'ghost', version: 1 } },
-        caller: { id: 'local', org: 'acme', permissions: ['brain:read', 'brain:write'], brains: '*' },
-      }),
-    );
-    await untilLogged(child, (message) => message === unsettled);
-    await Effect.runPromise(Scope.close(scope, Exit.void));
-    child.signal('SIGTERM');
-    await child.exited;
-    const reported = logLinesOf(child).filter(({ message }) => message === unsettled);
-
-    expect(reported.map(({ level, annotations }) => ({ level, fields: Object.keys(annotations) }))).toEqual([
-      { level: 'ERROR', fields: ['org', 'brain', 'execution_id', 'reason'] },
-    ]);
-    expect(reported[0]?.annotations).toMatchObject({ org: 'acme', brain: 'alpha', execution_id: executionId });
-    expect(String(reported[0]?.annotations['reason'])).toMatch(/^The ledger has no such execution/u);
-    expect(child.output().stderr).not.toContain('secret');
+    expect(sent.status).toBe(200);
+    expect(approved).toMatchObject({ status: 'succeeded', output: { by: 'Ada' } });
+    expect(pausedSettled).toMatchObject({ status: 'succeeded', output: { paused: true } });
+    expect(await second.exited).toBe(0);
   });
 });

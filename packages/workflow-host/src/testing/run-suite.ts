@@ -1,0 +1,38 @@
+import { Effect } from 'effect';
+import { expect, it } from 'vitest';
+
+import { eventually } from './eventually.ts';
+import { runAt, startOf, workflow } from './host-documents.ts';
+import type { SettingsOf } from './host-files.ts';
+import { hostedOn } from './host-runs.ts';
+
+const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+const approval = workflow(`
+do:
+  - pause: { wait: PT0.05S }
+  - notify: { call: notify, with: { to: ada } }
+  - approval: { listen: { to: { one: { with: { type: com.acme.approved } } } } }
+`);
+
+const approved = { id: 'approved-1', type: 'com.acme.approved', data: { by: 'grace' } };
+
+export function runSuite(settings: SettingsOf): void {
+  it('waits, calls a function, takes an event and ends, settling its execution once', async () => {
+    const hosted = await hostedOn(await settings());
+    hosted.know(executionId);
+    const run = runAt(executionId);
+
+    const started = await Effect.runPromise(hosted.host.start(run, startOf(approval)));
+    await eventually(hosted.calls, (calls) => calls.length > 0);
+    const delivered = await Effect.runPromise(hosted.host.deliver(run, approved));
+    const settlements = await eventually(hosted.settlements, (settled) => settled.size > 0);
+    const again = await Effect.runPromise(hosted.host.deliver(run, { ...approved, id: 'approved-2' }));
+    const startedAgain = await Effect.runPromise(hosted.host.start(run, startOf(approval)));
+
+    expect([started, delivered, again, startedAgain]).toEqual(['started', 'delivered', 'ended', 'settled']);
+    expect(hosted.calls()).toEqual([expect.objectContaining({ function: 'notify', arguments: { to: 'ada' } })]);
+    expect([...settlements]).toEqual([[executionId, { status: 'succeeded', output: [{ by: 'grace' }], record: {} }]]);
+    expect(hosted.troubles()).toEqual([]);
+  });
+}

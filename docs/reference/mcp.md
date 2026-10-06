@@ -1,16 +1,18 @@
 # MCP reference
 
-The Auto runtime exposes brain and reason-function operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For connection setup, see [Connect your agent](https://on.auto/docs/get-started/cloud); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
+The Auto runtime exposes brain, reason-function and workflow operations through Model Context Protocol (MCP). This reference describes endpoint scope, tool names and result formats. For Claude Code, Claude Desktop and Codex connection setup, see the [local quick start](../get-started/local.md); for a worked example, follow [Build your first brain](../tutorials/first-brain.md).
 
 ## Connection direction
 
-This is an inbound interface: an external assistant connects to Auto Cloud or a self-hosted runtime and calls its operations. It does not configure tools inside a reason function.
+This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reason function. Auto Cloud is coming soon; [request an invite](https://on.auto/request-invite) for hosted access.
 
 Internal tool access through a shared catalog, an outbound MCP gateway or direct tool lists is coming soon, together with bounded tool-call loops. None of those capabilities is enabled by adding an endpoint to an external assistant. See [Tool access inside a reason function](../concepts/functions.md#tool-access-inside-a-reason-function).
 
 ## Transport and authentication
 
-Endpoints use streamable HTTP without sessions. Clients supply the endpoint and authentication details issued for their workspace. Credentials belong in the connection configuration, outside prompts and function documents.
+Endpoints use streamable HTTP without sessions. The local quick start uses `http://localhost:8080/mcp` without an authentication header. Local mode trusts requests on your computer; do not expose it through a tunnel or public proxy.
+
+An authenticated deployment supplies its own endpoint and API key. Credentials belong in the connection configuration, outside prompts and function documents.
 
 The runtime supports protocol revision `2026-07-28` and the compatible revisions `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` and `2024-10-07`. An MCP client handles protocol negotiation.
 
@@ -24,23 +26,25 @@ Authorization uses the same organization, brain and operation permissions as the
 | `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                               |
 | `/orgs/{org}/brains/{brain}/mcp` | Function operations for one brain, without a `brain` argument                                        |
 
-On `/mcp`, the API key determines the org; tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions.
+Workflow operations are function operations: `send_execution_event` is listed with them, and the definition tools accept `orchestration` as well as `inference`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
 
 ## Tools
 
-Product terminology uses reason functions and runs. Tool names retain the API's `spec` and `execution` identifiers.
+Product terminology uses reason functions, workflows and runs. Tool names retain the API's `spec` and `execution` identifiers.
 
-| Work                    | Tools                                                                                                |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| Manage brains           | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                           |
-| List available models   | `list_models`, with an optional `provider` filter                                                    |
-| Manage reason functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"` |
-| Run and inspect         | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                          |
-| Follow a brain          | `list_brain_events`                                                                                  |
+| Work                      | Tools                                                                                                    |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Manage brains             | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
+| List available models     | `list_models`, with an optional `provider` filter                                                        |
+| Manage reason functions   | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
+| Manage workflows          | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
+| Run and inspect           | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
+| Answer a waiting workflow | `send_execution_event`                                                                                   |
+| Follow a brain            | `list_brain_events`                                                                                      |
 
 Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function tools are available at `/mcp` and the brain endpoint.
 
-Definition operations identify the function by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. See [HTTP operations](http.md) for field limits and retry behavior.
+Definition operations identify the function by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. See [HTTP operations](http.md) for field limits and retry behavior.
 
 `list_executions` lists a brain's runs newest first, with optional `primitive`, `name` and `status` filters. `get_execution_history` reads what was recorded about one run, and `list_brain_events` follows everything that happened in a brain, with optional `type` and `since` filters; both take `order`. Their events carry `id`, `at`, `type`, a plain-language `summary` and `data` of at most 4 KiB. All three page with `limit` and `cursor` and answer `has_more` and `next_cursor`; a page may be short or empty while `has_more` is `true`. They work on a retired brain. See [Run history and brain events](http.md#run-history-and-brain-events) for the fields and limits.
 
@@ -69,6 +73,17 @@ A successful tool result contains the operation output in `structuredContent`:
 Consumers should read `structuredContent`. The first text block is not JSON.
 
 A run result includes its execution id, definition version, status and output when successful. Reading it through `get_execution` also returns the detailed record. A returned review recommending changes can still belong to a succeeded run: the operation completed and produced that recommendation.
+
+For a workflow, the summaries read like these, recorded from the [first-workflow tutorial](../tutorials/first-workflow.md):
+
+```text
+execute_spec: The workflow “review-brief-revision” has started and is still running. It carries on by itself, and how it ends can be looked up later.
+get_execution: The workflow “review-brief-revision” is still running; how it ends can be looked up again later.
+send_execution_event: Delivered the event “com.example.brief.revised” to the running workflow. The workflow uses it as soon as it is waiting for it.
+get_execution: The run of the workflow “review-brief-revision” finished. Its result is too long to repeat here; the whole of it is in the details below.
+```
+
+A workflow run is `started` when `execute_spec` returns. Read it again with `get_execution` until its status is `succeeded`, `rejected` or `failed`; the summary repeats a short result in words and points to `structuredContent` for a long one.
 
 ## Errors
 

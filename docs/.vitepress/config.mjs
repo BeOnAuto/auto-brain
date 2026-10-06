@@ -12,7 +12,7 @@ export default defineConfig({
   head: [['meta', { name: 'robots', content: 'noindex' }]],
   themeConfig: {
     nav: [
-      { text: 'Start with Auto Cloud', link: 'https://on.auto/docs/get-started/cloud' },
+      { text: 'Quick start', link: '/get-started/local' },
       { text: 'Runtime docs', link: '/' },
       { text: 'Auto', link: 'https://on.auto/' },
     ],

@@ -1,13 +1,10 @@
 import type { CallResult } from '@beonauto/operations';
-import type { CallKey, RunOutcome, RunOutput } from '@beonauto/workflow-engine';
-import type { Json } from '@beonauto/workflow-engine/dsl/json';
+import type { CallKey, Json, RunOutput } from '@beonauto/workflow-engine';
 import type { Dispatched } from '@beonauto/workflow-engine/testing';
 
 import { failureChain, isArgumentsProblem, specArgumentsOf } from '../document/spec-arguments.ts';
-import type { SpecCall, SpecCallResult } from '../interpreter/host.ts';
-import { endingOf, type WorkflowEnding } from '../interpreter/settlement.ts';
-import type { WorkflowRun } from '../interpreter/workflow-run.ts';
-import type { Command } from './fake-host.ts';
+import type { Command } from './machine-host.ts';
+import type { SpecCall, SpecCallResult, WorkflowRun } from './run-terms.ts';
 
 export type SpecResponder = (call: SpecCall) => SpecCallResult | Promise<SpecCallResult>;
 
@@ -80,8 +77,4 @@ function commandOf(run: WorkflowRun, labels: Map<string, string>, { at, output }
 export function commandsOf(run: WorkflowRun, dispatched: readonly Dispatched[]): readonly Command[] {
   const labels = new Map<string, string>();
   return dispatched.flatMap((entry) => commandOf(run, labels, entry));
-}
-
-export function endingOfRun(outcome: RunOutcome): WorkflowEnding {
-  return endingOf(outcome.kind === 'cancelled' ? { kind: 'cancelled', cause: undefined } : outcome);
 }

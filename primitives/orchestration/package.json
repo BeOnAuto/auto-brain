@@ -5,36 +5,25 @@
   "license": "Elastic-2.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./settings": "./src/settings.ts",
-    "./temporal-test-server": "./temporal-test-server.ts",
-    "./testing/activity-caller": "./src/testing/activity-caller.ts",
-    "./testing/temporal-cli": "./src/testing/temporal-cli.ts",
-    "./testing/without-swc": "./src/testing/without-swc.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "lint": "oxlint -c ../../.oxlintrc.json",
     "typecheck": "tsc",
-    "test": "vitest run --coverage",
-    "workflow-bundle": "node build-workflow-bundle.ts",
-    "workflow-bundle:check": "node check-workflow-bundle.ts"
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@beonauto/config": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/specs": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
+    "@beonauto/workflow-host": "workspace:*",
     "@openworkflowspec/sdk": "1.0.3-alpha8",
-    "@temporalio/activity": "1.24.0",
-    "@temporalio/client": "1.24.0",
-    "@temporalio/common": "1.24.0",
-    "@temporalio/worker": "1.24.0",
-    "@temporalio/workflow": "1.24.0",
     "effect": "catalog:",
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@temporalio/testing": "1.24.0",
+    "@beonauto/api": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"
   }

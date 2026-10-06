@@ -16,8 +16,7 @@ In text a user reads, a primitive is a brain function and an execution a run: a 
 ## Commands
 
 ```bash
-pnpm dev               # Temporal's dev server, then the server, restarted on every save
-pnpm dev:lean          # the server alone, restarted on every save, without workflows
+pnpm dev               # the server, which runs workflows itself, restarted on every save
 pnpm --filter @beonauto/server container:build   # build the image locally
 pnpm test:watch        # every package's tests in one Vitest watch process
 pnpm typecheck:watch   # TypeScript 7 over the whole repo

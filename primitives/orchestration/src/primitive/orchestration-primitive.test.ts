@@ -39,14 +39,14 @@ do:
 `;
 
 beforeAll(async () => {
-  brain = await orchestratedBrain('primitive-end-to-end');
+  brain = await orchestratedBrain();
   await brain.call(brain.createSpec, { primitive: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
   await brain.call(brain.createSpec, { primitive: 'orchestration', name: 'greeting-flow', source: greetingFlow });
-}, 60_000);
+});
 
 afterAll(async () => {
   await brain.close();
-}, 60_000);
+});
 
 function creating(name: string, source: string) {
   return brain.call(brain.createSpec, { primitive: 'orchestration', name, source });
