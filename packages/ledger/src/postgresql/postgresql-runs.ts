@@ -14,6 +14,8 @@ import {
   matchedThroughItsIndex,
   ofTypes,
   orderedThroughItsIndex,
+  sizedTypesOf,
+  sizeOf,
   timeOf,
   type Bind,
   type Query,
@@ -79,6 +81,7 @@ export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
   return async (scope) => {
     const { values, bind } = binding();
     const wanted = ofTypes(bind, 'latest.message_type', scope.types);
+    const sized = { wanted, types: sizedTypesOf(bind, scope) };
     const partition = bind(defaultPartition);
     const rows = await query(
       `SELECT f.transaction, f.position, f.stream, f.version, f.type, f.recorded, f.id, f.causation, f.correlation,
@@ -88,8 +91,8 @@ export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
           latest.message_type AS latest_type, ${timeOf('latest.created')} AS latest_recorded,
           latest.message_id AS latest_id, latest.message_metadata ->> 'causationId' AS latest_causation,
           latest.message_metadata ->> 'correlationId' AS latest_correlation, ${wanted} AS wanted,
-          CASE WHEN ${wanted} THEN octet_length(f.message_data ->> 'json') ELSE 0 END AS size,
-          CASE WHEN ${wanted} AND latest.stream_position <> 1 THEN octet_length(latest.message_data ->> 'json')
+          ${sizeOf(sized, scope, 'f', 'f.type')} AS size,
+          CASE WHEN latest.stream_position <> 1 THEN ${sizeOf(sized, scope, 'latest', 'latest.message_type')}
           ELSE 0 END AS latest_size
         FROM (${firstMessagesOfRuns(bind, partition, scope)}) AS f
         CROSS JOIN LATERAL (

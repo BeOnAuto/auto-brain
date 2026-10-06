@@ -113,6 +113,15 @@ function ofTypes(column: string, types: readonly string[] | undefined): SQL {
     : SQL`${SQL.plain(column)} IN (SELECT value FROM json_each(${JSON.stringify(types)}))`;
 }
 
+function sizeOf({ sized }: ExaminationScope, wanted: SQL, type: string, size: string): SQL {
+  if (sized === undefined) {
+    return SQL`CASE WHEN ${wanted} THEN ${SQL.plain(size)} ELSE 0 END`;
+  }
+  return sized.length === 0
+    ? SQL`0`
+    : SQL`CASE WHEN ${wanted} AND ${ofTypes(type, sized)} THEN ${SQL.plain(size)} ELSE 0 END`;
+}
+
 function recordsWhere(where: SQL, scope: ExaminationScope): SQL {
   return SQL`SELECT global_position AS position, stream_id AS stream, stream_position AS version,
       message_type AS type, created AS recorded,
@@ -147,7 +156,7 @@ function examineRecords(execute: SQLExecutor): RecordedStatements['examineRecord
   return async (selected, scope) => {
     const { rows } = await execute.query(
       SQL`SELECT position, stream, version, type, recorded, id, causation, correlation, wanted,
-          CASE WHEN wanted THEN size ELSE 0 END AS size, examined
+          ${sizeOf(scope, SQL`wanted`, 'type', 'size')} AS size, examined
         FROM (
           SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined
           FROM (${recordsIn(selected, scope)}) AS scanned
@@ -196,7 +205,7 @@ function examinedRunOf(row: typeof ExaminedRunRow.Type): ExaminedItem {
   return {
     examined: row.examined,
     wanted,
-    size: wanted ? row.size + (alone ? 0 : row.latest_size) : 0,
+    size: row.size + (alone ? 0 : row.latest_size),
     point: first.point,
     heads: alone ? [first] : [first, latest],
   };
@@ -207,9 +216,10 @@ function examineRuns(execute: SQLExecutor): RecordedStatements['examineRuns'] {
     const wanted = ofTypes('latest.message_type', scope.types);
     const { rows } = await execute.query(
       SQL`SELECT f.position, f.stream, f.version, f.type, f.recorded, f.id, f.causation, f.correlation, f.examined,
-          f.size, latest.global_position AS latest_position, latest.stream_position AS latest_version,
-          latest.message_type AS latest_type,
-          latest.created AS latest_recorded, octet_length(latest.message_data) AS latest_size,
+          ${sizeOf(scope, wanted, 'f.type', 'f.size')} AS size,
+          latest.global_position AS latest_position, latest.stream_position AS latest_version,
+          latest.message_type AS latest_type, latest.created AS latest_recorded,
+          ${sizeOf(scope, wanted, 'latest.message_type', 'octet_length(latest.message_data)')} AS latest_size,
           latest.message_id AS latest_id, json_extract(latest.message_metadata, '$.causationId') AS latest_causation,
           json_extract(latest.message_metadata, '$.correlationId') AS latest_correlation, ${wanted} AS wanted
         FROM (${firstMessagesOfRuns(scope)}) AS f

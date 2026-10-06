@@ -92,14 +92,28 @@ A cursor is the base64url encoding, without padding, of a JSON array: the brain 
 
 ### The version of a record, and a read of heads
 
-Each record carries `version`, its position within its stream, read from Emmett's `stream_position`. A page given `dataOf` loads the data of the records of those types alone: every statement still measures the size of each record it examines, the bound of 4 MiB counts the sizes of the records it loads, and the statement that loads data asks only for their positions, so a page of heads, `dataOf: []`, examines up to its limit and loads nothing (`src/heads/heads-behaviour.ts`, on both stores and the in-memory ledger).
+Each record carries `version`, its position within its stream, read from Emmett's `stream_position`. A page given `dataOf` loads the data of the records of those types alone and measures the size of those alone: a statement measures a record it examines only when the page wants the record and loads its type, the bound of 4 MiB counts the sizes of the records it loads, and the statement that loads data asks only for their positions, so a page of heads, `dataOf: []`, measures nothing, examines up to its limit and loads nothing (`src/heads/heads-behaviour.ts`, on both stores and the in-memory ledger).
+
+On PostgreSQL a size is `octet_length(message_data ->> 'json')`, which takes the data out of its TOAST table and decompresses it, so measuring a record costs about what loading it costs. `measure-heads.ts` measures the statement that examines a page with `EXPLAIN (ANALYZE, BUFFERS)`, over 20 records of 1,400,000 bytes of text that does not compress in one brain, 20 reads after 3 to warm:
+
+```bash
+LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/ledger measure:heads
+```
+
+| The page                                                          | Measuring every record it examines | Measuring the records it loads |
+| ----------------------------------------------------------------- | ---------------------------------- | ------------------------------ |
+| a page of heads, `dataOf: []`                                     | 3,598 buffers, 29.6 ms             | 1 buffer, 0.40 ms              |
+| the workflow host's follower, which loads the data of specs alone | 3,598 buffers, 30.4 ms             | 1 buffer, 0.20 ms              |
+| every record with its data                                        | 3,598 buffers, 28.1 ms             | 3,598 buffers, 17.8 ms         |
+
+The times are medians, measured on 2026-10-06 on the machine and with the PostgreSQL of [Measurement](#measurement), while the machine ran other work at a load average of about 105, so they are higher than an idle machine gives and vary from one run to the next; the buffers, the pages of 8 KiB the statement touched, do not depend on the load. On SQLite `octet_length(message_data)` reads the length alone, as [The bounds of a page](#the-bounds-of-a-page) says, and the statement measures the same records.
 
 ### The bounds of a page
 
 A page examines records in order and ends at the first of its bounds, with `nextCursor`:
 
 - `limit`, 1 to 100 records answered: without a filter of types, the page examines that many; with one, it examines up to 1,000 records, or 1,000 runs for a list of runs filtered by the type of their latest message, and answers those of its types, possibly none.
-- 4 MiB of data loaded, counted from the length of each record's stored JSON before any is loaded: `octet_length(message_data)` on SQLite, which reads the length alone, and `octet_length(message_data ->> 'json')` on PostgreSQL, the text inside the wrapper, so no SQL parses an event's own JSON. The first record a page wants is always loaded, so a record larger than the bound ends a page of its own.
+- 4 MiB of data loaded, counted from the length of the stored JSON of each record the page loads, before any is loaded: `octet_length(message_data)` on SQLite, which reads the length alone, and `octet_length(message_data ->> 'json')` on PostgreSQL, the text inside the wrapper, so no SQL parses an event's own JSON. The first record a page wants is always loaded, so a record larger than the bound ends a page of its own.
 
 A page takes at most three statements: when `since` is given, one that finds where the page starts; one that examines the page without loading data; and one that loads the data of the records it delivers, by position. Every statement binds at most 15 parameters, far below the 100 a hosted SQLite takes; SQLite takes each list, of stored types or positions, as one JSON parameter through `json_each`. None needs a transaction.
 

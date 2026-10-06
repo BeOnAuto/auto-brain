@@ -104,6 +104,32 @@ describe('the read of what a brain recorded on PostgreSQL, oldest first', () => 
   });
 });
 
+describe('the size a read on PostgreSQL measures', () => {
+  it('measures the records of the types whose data the page loads, and none for a page of heads', async () => {
+    const { query, asked } = answering([], [], [], []);
+    const store = postgresqlRecordedStore(query);
+
+    await store.readRecorded(alpha, { kind: 'everything' }, { order: 'asc', limit: 5, dataOf: ['noted'] });
+    await store.readRecorded(alpha, { kind: 'everything' }, { order: 'asc', limit: 5, dataOf: [] });
+    await store.readRecorded(alpha, { kind: 'executions' }, { order: 'desc', limit: 5, dataOf: ['noted'] });
+    await store.readRecorded(alpha, { kind: 'executions' }, { order: 'desc', limit: 5, dataOf: [] });
+
+    expect(asked[0]?.text).toContain(
+      "CASE WHEN wanted AND type = ANY($3::text[]) THEN octet_length(numbered.message_data ->> 'json') ELSE 0 END AS size",
+    );
+    expect(asked[0]?.values[2]).toEqual(['noted']);
+    expect(asked[1]?.text).toContain('examined::int AS examined, 0 AS size');
+    expect(asked[1]?.text).not.toContain('octet_length');
+    expect(asked[2]?.text).toContain(
+      "CASE WHEN TRUE AND f.type = ANY($1::text[]) THEN octet_length(f.message_data ->> 'json') ELSE 0 END AS size",
+    );
+    expect(asked[2]?.text).toContain(
+      "THEN CASE WHEN TRUE AND latest.message_type = ANY($1::text[]) THEN octet_length(latest.message_data ->> 'json')",
+    );
+    expect(asked[3]?.text).not.toContain('octet_length');
+  });
+});
+
 describe('a read of one run on PostgreSQL, newest first', () => {
   it('walks each of its two streams by their index and merges them, after a cursor and from a time, with no horizon', async () => {
     const { query, asked } = answering(

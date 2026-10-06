@@ -28,6 +28,7 @@ export interface ExaminationScope {
   readonly examineAtMost: number;
   readonly answerAtMost: number;
   readonly types?: readonly string[];
+  readonly sized?: readonly string[];
   readonly after?: RecordedPoint;
   readonly at?: RecordedPoint;
   readonly from?: RecordedPoint;
@@ -49,7 +50,7 @@ export function pointKey(point: RecordedPoint): string {
   return point.join(':');
 }
 
-function scopeOf(brainKey: string, { order, limit, types, after, at }: StoredPageRequest): ExaminationScope {
+function scopeOf(brainKey: string, { order, limit, types, dataOf, after, at }: StoredPageRequest): ExaminationScope {
   const filtering = types !== undefined;
   return {
     brainKey,
@@ -57,6 +58,7 @@ function scopeOf(brainKey: string, { order, limit, types, after, at }: StoredPag
     examineAtMost: filtering ? mostExaminedInAPage : limit,
     answerAtMost: filtering ? limit + 2 : limit + 1,
     ...(types === undefined ? {} : { types }),
+    ...(dataOf === undefined ? {} : { sized: dataOf }),
     ...(after === undefined ? {} : { after }),
     ...(at === undefined ? {} : { at }),
   };

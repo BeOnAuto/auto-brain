@@ -95,6 +95,24 @@ export function ofTypes(bind: Bind, column: string, types: readonly string[] | u
   return types === undefined ? 'TRUE' : `${column} = ANY(${bind(types)}::text[])`;
 }
 
+interface Sized {
+  readonly wanted: string;
+  readonly types: string | undefined;
+}
+
+export function sizedTypesOf(bind: Bind, { sized }: ExaminationScope): string | undefined {
+  return sized === undefined || sized.length === 0 ? undefined : bind(sized);
+}
+
+export function sizeOf({ wanted, types }: Sized, { sized }: ExaminationScope, message: string, type: string): string {
+  if (sized === undefined) {
+    return `CASE WHEN ${wanted} THEN octet_length(${message}.message_data ->> 'json') ELSE 0 END`;
+  }
+  return types === undefined
+    ? '0'
+    : `CASE WHEN ${wanted} AND ${type} = ANY(${types}::text[]) THEN octet_length(${message}.message_data ->> 'json') ELSE 0 END`;
+}
+
 interface HeadRow {
   readonly transaction: string;
   readonly position: string;

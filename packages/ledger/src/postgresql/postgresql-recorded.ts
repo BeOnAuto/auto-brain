@@ -24,6 +24,8 @@ import {
   matchedThroughItsIndex,
   ofTypes,
   PointFields,
+  sizedTypesOf,
+  sizeOf,
   timeOf,
   type Bind,
   type Query,
@@ -93,10 +95,10 @@ function examineRecords(query: Query): RecordedStatements['examineRecords'] {
       bounded: bounds(bind, scope),
       limit: bind(scope.examineAtMost + 1),
     };
+    const size = sizeOf({ wanted: 'wanted', types: sizedTypesOf(bind, scope) }, scope, 'numbered', 'type');
     const rows = await query(
       `SELECT transaction, position, stream, version, type, recorded, id, causation, correlation, wanted,
-          examined::int AS examined,
-          CASE WHEN wanted THEN octet_length(message_data ->> 'json') ELSE 0 END AS size
+          examined::int AS examined, ${size} AS size
         FROM (
           SELECT scanned.*, row_number() OVER (ORDER BY ${inOrder(records, 'scanned.')}) AS examined
           FROM (${recordsIn(selected, records)}) AS scanned
