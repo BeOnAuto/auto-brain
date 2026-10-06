@@ -1,6 +1,6 @@
 # @beonauto/specs
 
-The definition and run operations of auto-brain: create, list, read, update, retire and run a brain's function and workflow definitions, then inspect their runs and history. They are defined on the application layer, [`@beonauto/operations`](../operations).
+The definition and run operations of auto-brain: create, list, read, update, retire and run a brain's function and workflow definitions, then inspect their runs and history, and publish events to a brain. They are defined on the application layer, [`@beonauto/operations`](../operations).
 
 ## Definitions, runs and runtime adapters
 
@@ -172,7 +172,7 @@ The settlement is recorded as done by the caller who started the execution. A de
 
 `get_execution_history` reads the two streams of one execution through the ledger's run selection, `executions/{execution_id}` and, for a workflow's run log, `runs/{execution_id}`, one page at a time, oldest first unless `order` is `desc`. Each record is shown through the presenter of its stream kind, as none, one or more events, and hidden when its kind has none; the server gives the presenter of the run log, `runPresenter` of `@beonauto/orchestration`, so a workflow's history shows a `workflow_input_applied` event for each input its run took, followed by an event for each step entry of that input. `limit` counts the events a page answers with, step events included, through `eventsPageOf` of `@beonauto/operations`, so a page may end inside the events of one record, with a `next_cursor` that reads on from the next of them. Within a page the events are merged by their own time, then by stream, then by their order in the stream; across pages they follow the ledger's order. An execution the brain does not have is `not_found`. A page that holds a record proves the execution exists; an empty page decides it as `get_execution` does, by loading the execution's stream through `BrainReader`, and never by a read of the ledger's order, which on PostgreSQL stays behind the oldest write still open in the ledger's database when it reads oldest first. So the first page of an execution whose records are still behind that horizon is empty, with `has_more` false and `next_cursor` null, and a reader reads it again.
 
-Each event is a `PublicEvent`, `{ id, cursor, causation_id, at, type, summary, data }`: `id` is the id of the message the event presents, `cursor` the record's cursor, `causation_id` the id of the message that caused it, or null, `at` the event's own time, `type` a public name, `summary` plain words with no ids, and `data` at most 4 KiB as JSON. `makeSpecPresenters(primitives)` gives the presenters of the two stream kinds this package owns, which the server also passes to the feed of the brain, `list_brain_events` of `@beonauto/brains`:
+Each event is a `PublicEvent`, `{ id, cursor, causation_id, at, type, summary, data }`: `id` is the id of the message the event presents, `cursor` the record's cursor, `causation_id` the id of the message that caused it, or null, `at` the event's own time, `type` a public name, `summary` plain words with no ids, and `data` at most 4 KiB as JSON. `makeSpecPresenters(primitives)` gives the presenters of the three stream kinds this package owns, which the server also passes to the feed of the brain, `list_brain_events` of `@beonauto/brains`:
 
 | Stream kind  | Stored type and public name    | `data`                                                                                                                                                                                        |
 | ------------ | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -185,6 +185,7 @@ Each event is a `PublicEvent`, `{ id, cursor, causation_id, at, type, summary, d
 | `executions` | `tool_call_answered`           | `execution_id`, `by`, `number`, `outcome`, `result_bytes`, `result_sha256`, `duration_ms`, `jsonrpc_id`, `server_request_id` when recorded, and `result_json` cut at 2048 bytes when recorded |
 | `specs`      | `spec_created`, `spec_updated` | `primitive`, `name`, `by`, `version`, `source_bytes`, the first 300 characters of `description`, `input_schema_bytes`, `output_schema_bytes`, `warning_count`                                 |
 | `specs`      | `spec_retired`                 | `primitive`, `name`, `by`                                                                                                                                                                     |
+| `events`     | `event_published`              | `event_id` and `event_type` cut at 256 bytes, `source` and `subject` cut at 1024, `time`, `data_bytes` when it has data, the attributes the brain `filled`, `by`                              |
 
 Sizes are of the value as JSON in UTF-8, the document's of its own text. A cut is made at a code point, measured as JSON so that escapes count, and `by` is cut at 256 bytes; an issue's `detail` at 256 bytes and its `pointer` at 128; a tool call's `call_id`, `server`, `tool` and `server_request_id` at 256 bytes, its digests and a `jsonrpc_id` that is text at 128. The latest message of a running execution may be a tool event, which `list_executions` shows as `started`. A test over the event schemas of both deciders holds every stored type to a decision of its presenter, and the largest record each type can hold to 4 KiB of `data`.
 
@@ -205,6 +206,8 @@ Each execution is a stream of its own, named `executions/{execution_id}` relativ
 - `execution_failed`
 - `tool_call_started` and `tool_call_answered`, for each tool call it makes, described under [Tool calls](#tool-calls)
 
+Each of the three endings also carries the `primitive`, the spec `name` and the `spec_version` of the attempt it ends, which the decider takes from the run's latest start, so an ending says what ran without a read of the start.
+
 ### The lineage of a run
 
 Every event of an execution is written with its cause and its correlation (see the ledger port of `@beonauto/operations`). The correlation of a run that no other run started is its own execution id; a run started by another run, as a workflow starts the function it calls, is given a lineage with its request, which the start path takes from `CallLineage` and passes to `execute`, and every event of the run takes the correlation of that lineage. The `execute_spec` input never carries one: its decoding refuses a field it does not know. The causes:
@@ -219,6 +222,29 @@ Every event of an execution is written with its cause and its correlation (see t
 | a settlement         | the cause the settler is given: for a workflow, the last step event of the record that ended its run       |
 
 There is no read model: each call folds the streams it needs. Pure deciders hold the rules: one per primitive's specs, and one for executions. The handlers pass them who and when in each command.
+
+## Events of a brain
+
+A brain takes events from outside and records facts of its own, both in the shape of [CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md). `CloudEventSchema` is an event as the brain keeps it: `specversion` `1.0`, `id`, `source`, a URI reference that is not empty, `type` and `time` in RFC 3339, and optionally `subject`, `datacontenttype`, `dataschema`, an absolute URI, and `data`, any JSON value. Any other attribute is an extension, named in lowercase letters and digits, whose value is text, a boolean or an integer from -2147483648 to 2147483647, kept as given. `id` and `type` take at most 256 characters, `source`, `subject` and `dataschema` at most 1,024, and a time at most nine digits of a fraction of a second.
+
+### Publishing an event
+
+`publishEvent` is `publish_event`, a brain command at `POST /events` under `brain:write`, which the server serves beside the operations of `makeSpecOperations`. Its input is `event`, a CloudEvent whose `specversion`, `id` and `time` may be left out, and it answers `{ id, time, recorded_at }`.
+
+- The brain fills in what is left out: `specversion` 1.0, an `id`, a version 7 UUID, and as `time` the moment it records the event. With them, the event takes at most 245,760 bytes (240 KiB) as JSON in UTF-8, `mostPublishedEventBytes`, so that it fits a run's input of 256 KiB inside an array; a larger one is `invalid_input` at `/event`.
+- The types of the brain's own facts, `reservedEventTypes`, and sources under `/executions/` and `/specs/`, `reservedSourcePrefixes` and `isReservedSource`, are the brain's own: an event that uses them is `invalid_input` at `/event/type` or `/event/source`.
+- Each event is a stream of its own, `events/<uuid>`, the uuid a name-based UUID, version 5, of its `source` and `id` in a namespace of its own. The publish records `event_published`, with the event, the attributes the brain `filled`, who published it and when, on that stream while it is empty. Publishing it again with the same source and id records nothing and answers the first record's `id`, `time` and `recorded_at`, and a different event under the same source and id is `conflict`. The two are compared on what both callers gave: an attribute the brain filled in for either of them, such as a `time` left out on a retry, is left out of the comparison. A publish without an `id` gets a new one, so it is always a new event.
+
+### The brain's own facts as events
+
+`brainFactOf(record)` turns a record the brain stored into a CloudEvent, or `undefined` for a record that is no fact. It takes the record as `BrainReader.readRecorded` gives it, its stream named relative to the brain, and builds the event from the stored event, never from its presentation:
+
+| Record                                                                               | `source`                    | `subject`            | `data`                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | --------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `execution_started`, `execution_succeeded`, `execution_rejected`, `execution_failed` | `/executions/<id>`          | `<primitive>/<name>` | `primitive`, `name`, `version`, `caller`, and for a success its `output` when the whole event takes at most 240 KiB, and its `output_bytes` otherwise |
+| `spec_created`, `spec_updated`, `spec_retired`                                       | `/specs/<primitive>/<name>` | none                 | `primitive`, `name`, `version` but on a retirement, `caller`                                                                                          |
+
+The event's `type` is the stored type, its `id` the record's id and its `time` the time the stored event holds. Deferrals, tool calls, the run logs of workflows and every other stream kind yield no event. A finish names what ran because the decider records the definition on it (see [Storage](#storage)).
 
 ## Tool calls
 
@@ -235,4 +261,4 @@ The journal is built with the rest of the context in one place, so executions st
 
 ## Source
 
-`src/index.ts` is the only entry point, and `src/testing/index.ts` the entry point of the test support. `src/primitive` holds the definition of a primitive and the list of known primitives. `src/registry` holds the specs of a primitive in a brain: a spec, the events and commands of its stream, and the decider and its rules. `src/execution` holds an execution: its events, commands, state, decider and rules, its size limits, and `executionSettler`. `src/operations` holds the seven operations that change and read specs and executions, and how they load and record them. `src/reading` holds `list_executions` and `get_execution_history`, and `src/presenting` the presenters of the two stream kinds. `src/tool-calls` holds the journal of an execution's tool calls. `src/testing` holds what the tests share. `operations` depends on the others, `reading` on `presenting` and on the fields of `operations`, and `registry` and `execution` on nothing in this package.
+`src/index.ts` is the only entry point, and `src/testing/index.ts` the entry point of the test support. `src/primitive` holds the definition of a primitive and the list of known primitives. `src/registry` holds the specs of a primitive in a brain: a spec, the events and commands of its stream, and the decider and its rules. `src/execution` holds an execution: its events, commands, state, decider and rules, its size limits, and `executionSettler`. `src/operations` holds the seven operations that change and read specs and executions, and how they load and record them. `src/reading` holds `list_executions` and `get_execution_history`, and `src/presenting` the presenters of the three stream kinds. `src/events` holds the events of a brain: the shape of a CloudEvent, `publish_event` and the stream of a published event, and the brain's own facts as events. `src/tool-calls` holds the journal of an execution's tool calls. `src/testing` holds what the tests share. `operations` depends on the others but `events`, `reading` on `presenting` and on the fields of `operations`, `events` on `execution`, `registry` and the command metadata of `operations`, `presenting` on `events`, and `registry` and `execution` on nothing in this package.

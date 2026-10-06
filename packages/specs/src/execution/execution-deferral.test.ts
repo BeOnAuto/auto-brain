@@ -14,6 +14,8 @@ const greeting = { primitive: 'relay', name: 'hand-on', input: { who: 'Ada' } };
 
 const started: ExecutionEvent = { type: 'execution_started', ...greeting, spec_version: 1, ...start };
 
+const ofHandOn = { primitive: 'relay', name: 'hand-on', spec_version: 1 };
+
 const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'r-1' }, ...start };
 
 const success: ExecutionResult = { type: 'execution_succeeded', output: 'done', record: { steps: 3 } };
@@ -65,16 +67,18 @@ describe('deferring an execution', () => {
 describe('settling an execution', () => {
   it('records the result of a deferred execution, by whoever started it', () => {
     expect(decided(settling(success), started, deferred)).toStrictEqual(
-      Result.succeed([{ ...success, by: start.by, at: later }]),
+      Result.succeed([{ ...success, ...ofHandOn, by: start.by, at: later }]),
     );
   });
 
   it('records nothing when it already ended with the same result', () => {
-    expect(decided(settling(success), started, deferred, { ...success, ...start })).toStrictEqual(Result.succeed([]));
+    expect(decided(settling(success), started, deferred, { ...success, ...ofHandOn, ...start })).toStrictEqual(
+      Result.succeed([]),
+    );
   });
 
   it('is rejected for an execution that ended with another result', () => {
-    expect(decided(settling(unavailability), started, deferred, { ...success, ...start })).toEqual(
+    expect(decided(settling(unavailability), started, deferred, { ...success, ...ofHandOn, ...start })).toEqual(
       Result.fail(new Conflict({ detail: 'The run already ended with another result' })),
     );
   });
@@ -91,19 +95,21 @@ describe('settling an execution', () => {
   });
 
   it('keeps the record of what was started until a call with its id starts it again', () => {
-    const unavailable: ExecutionEvent = { ...unavailability, ...start };
+    const unavailable: ExecutionEvent = { ...unavailability, ...ofHandOn, ...start };
 
     expect(stateAfter(started, deferred)).toMatchObject({ record: { run: 'r-1' } });
-    expect(stateAfter(started, deferred, { ...success, ...start })).toMatchObject({ record: { steps: 3 } });
+    expect(stateAfter(started, deferred, { ...success, ...ofHandOn, ...start })).toMatchObject({
+      record: { steps: 3 },
+    });
     expect(stateAfter(started, deferred, unavailable)).toMatchObject({ record: { run: 'r-1' } });
     expect(stateAfter(started, deferred, unavailable, started)).not.toHaveProperty('record');
   });
 
   it('as unavailable lets a call with its id start it again', () => {
-    expect(decided(starting, started, deferred, { ...unavailability, ...start })).toStrictEqual(
+    expect(decided(starting, started, deferred, { ...unavailability, ...ofHandOn, ...start })).toStrictEqual(
       Result.succeed([started]),
     );
-    expect(stateAfter(started, deferred, { ...unavailability, ...start }, started)).toMatchObject({
+    expect(stateAfter(started, deferred, { ...unavailability, ...ofHandOn, ...start }, started)).toMatchObject({
       finishesLater: false,
     });
   });

@@ -21,7 +21,8 @@ function descriptionFor(publicTypes: readonly string[]): string {
   return [
     'Follows what happened in the brain, one page at a time, newest first, or oldest first when `order` is asc:',
     'what its specs and executions recorded, such as specs created, updated and retired, and executions started and how they ended,',
-    'with the steps of each workflow run.',
+    'with the steps of each workflow run,',
+    'and the events published to it with publish_event, each with its type, source and time and the size of its data.',
     'Each event carries its `id`, which stays the same on every read, its `cursor`, the place to read on from,',
     'its `causation_id`, the id of the event that directly led to it or null,',
     '`at`, when it happened by its own clock, its `type`, a `summary` in plain words, and its `data`, at most 4 KiB as JSON.',
