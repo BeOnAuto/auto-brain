@@ -6,7 +6,6 @@ import {
   functionDescriptions,
   functionKindOrder,
   functionResourceLabels,
-  legacyFunctionKind,
 } from '../index.ts';
 
 describe('brain function terminology', () => {
@@ -39,13 +38,6 @@ describe('brain function terminology', () => {
       'Retrieve or reconstruct relevant information from configured sources.',
       'Run defined code or expressions to calculate or transform data.',
     ]);
-  });
-
-  it('maps only an implemented legacy function kind without accepting new wire values', () => {
-    expect(legacyFunctionKind('inference')).toBe('reason');
-    for (const value of ['orchestration', 'agent', 'Inference', 'reason', 'interaction', 'recollection', 'dream', '']) {
-      expect(legacyFunctionKind(value)).toBeUndefined();
-    }
   });
 
   it('labels known resources without reclassifying custom runtime adapters as functions', () => {

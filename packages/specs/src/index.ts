@@ -59,6 +59,5 @@ export {
   functionDescriptions,
   functionKindOrder,
   functionResourceLabels,
-  legacyFunctionKind,
   type BrainFunctionKind,
 } from './primitive/function-terminology.ts';
