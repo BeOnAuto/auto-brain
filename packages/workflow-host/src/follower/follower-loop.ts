@@ -87,13 +87,41 @@ function tickOf(parts: FollowerParts, wakes: Wakes) {
   }).pipe(Effect.catchCause((cause) => parts.trouble('The follower of the brains failed; it tries again', cause)));
 }
 
-function waitOf({ clock, pace, upkeep }: FollowerParts, wakes: Wakes) {
+function startedOf({ discovery, trouble, pace, sweepEveryMs }: FollowerParts): Effect.Effect<void> {
+  const started: Effect.Effect<void> = discovery
+    .atStart()
+    .pipe(
+      Effect.catchCause((cause) =>
+        trouble(
+          'The follower of the brains could not find the brains at its start; it tries again at the next sweep',
+          cause,
+        ).pipe(Effect.andThen(pace.sleep(sweepEveryMs)), Effect.andThen(Effect.suspend(() => started))),
+      ),
+    );
+  return started;
+}
+
+function nextScheduleOf({ upkeep, trouble }: FollowerParts): Effect.Effect<number | null> {
+  return upkeep
+    .nextScheduleAt()
+    .pipe(
+      Effect.catchCause((cause) =>
+        Effect.as(
+          trouble('The next due time of the schedules could not be read; the follower waits for the next sweep', cause),
+          null,
+        ),
+      ),
+    );
+}
+
+function waitOf(parts: FollowerParts, wakes: Wakes) {
+  const { clock, pace } = parts;
   return Effect.gen(function* () {
     const signal = wakes.nextSignal();
     if (wakes.anyWoken()) {
       return;
     }
-    const schedule = (yield* upkeep.nextScheduleAt()) ?? Number.POSITIVE_INFINITY;
+    const schedule = (yield* nextScheduleOf(parts)) ?? Number.POSITIVE_INFINITY;
     const delay = Math.min(wakes.nextSweepAt() - pace.now(), schedule - clock.now());
     yield* Effect.raceFirst(
       pace.sleep(Math.max(0, delay)),
@@ -108,7 +136,7 @@ export function startFollower(parts: FollowerParts): Follower {
   const tick = tickOf(parts, wakes);
   const wait = waitOf(parts, wakes);
   const fiber = Effect.runFork(
-    Effect.andThen(parts.discovery.atStart(), Effect.forever(Effect.andThen(Effect.uninterruptible(tick), wait))),
+    Effect.andThen(startedOf(parts), Effect.forever(Effect.andThen(Effect.uninterruptible(tick), wait))),
   );
   return {
     stop: async () => {

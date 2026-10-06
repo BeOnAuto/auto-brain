@@ -4,7 +4,7 @@ import type { WorkflowHost } from '../host/workflow-host.ts';
 import type { ReactionStart, StartReaction } from '../reactions/reaction-options.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 
-export type StartExit = Exit.Exit<unknown, unknown>;
+type StartExit = Exit.Exit<unknown, unknown>;
 
 export interface HeldStart {
   readonly start: StartReaction;

@@ -14,7 +14,24 @@ interface Watched {
   readonly log: () => readonly string[];
 }
 
-function followerWith(passEnds: readonly (PassEnd | 'fails')[]): Watched {
+interface Failing {
+  readonly sweepEveryMs: number;
+  readonly atStart: number;
+  readonly nextScheduleAt: number;
+}
+
+const neverFailing: Failing = { sweepEveryMs: anHour, atStart: 0, nextScheduleAt: 0 };
+
+function failingFirst<A>(times: number, read: Effect.Effect<A>): () => Effect.Effect<A> {
+  const failures = { left: times };
+  return () =>
+    Effect.suspend(() => {
+      failures.left -= 1;
+      return failures.left < 0 ? read : Effect.die(new Error('The database is down'));
+    });
+}
+
+function followerWith(passEnds: readonly (PassEnd | 'fails')[], failing: Failing = neverFailing): Watched {
   const log: string[] = [];
   const logged = (line: string) =>
     Effect.sync(() => {
@@ -32,7 +49,7 @@ function followerWith(passEnds: readonly (PassEnd | 'fails')[]): Watched {
           : Effect.as(logged(`pass ${brainKey} ${mode}`), end);
       }),
     discovery: {
-      atStart: () => logged('start'),
+      atStart: failingFirst(failing.atStart, logged('start')),
       orgsChanged: () => logged('orgs'),
       brainSeen: () => Effect.void,
     },
@@ -45,12 +62,12 @@ function followerWith(passEnds: readonly (PassEnd | 'fails')[]): Watched {
     upkeep: {
       sweep: () => logged('sweep'),
       fireSchedules: () => Effect.void,
-      nextScheduleAt: () => Effect.succeed(null),
+      nextScheduleAt: failingFirst(failing.nextScheduleAt, Effect.succeed(null)),
     },
     appended,
     clock: systemClock,
     pace: systemClock,
-    sweepEveryMs: anHour,
+    sweepEveryMs: failing.sweepEveryMs,
     trouble: (what) => logged(what),
   });
   onTestFinished(() => follower.stop());
@@ -88,6 +105,23 @@ describe('the follower of the brains', () => {
       'pass brain/acme/alpha/ signal',
       'pass brain/acme/alpha/ signal',
       'pass brain/acme/alpha/ signal',
+    ]);
+  });
+});
+
+describe('the follower of the brains, when a read fails', () => {
+  it('says a read that failed at its start or while it waits is trouble, and reads again at the next sweep', async () => {
+    const watched = followerWith([], { sweepEveryMs: 20, atStart: 1, nextScheduleAt: 1 });
+
+    const log = await logReaching(watched, 6);
+
+    expect(log.slice(0, 6)).toEqual([
+      'The follower of the brains could not find the brains at its start; it tries again at the next sweep',
+      'start',
+      'orgs',
+      'sweep',
+      'The next due time of the schedules could not be read; the follower waits for the next sweep',
+      'orgs',
     ]);
   });
 
