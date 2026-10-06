@@ -379,6 +379,9 @@ importers:
         specifier: 6.0.1
         version: 6.0.1
     devDependencies:
+      '@beonauto/specs':
+        specifier: workspace:*
+        version: link:../specs
       '@types/pg':
         specifier: 8.23.1
         version: 8.23.1

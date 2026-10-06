@@ -185,7 +185,7 @@ describe('the facts of a definition as events', () => {
 
 describe('the records that are no facts of the brain', () => {
   it('are the records it cannot read as what their stream holds, which it answers with none, never a failure', () => {
-    const about = { id: recordId, recordedAt: fact.at };
+    const about = { id: recordId, cursor: recordId, causationId: null, correlationId: null, recordedAt: fact.at };
     const unreadable: readonly RecordedEvent[] = [
       {
         ...about,

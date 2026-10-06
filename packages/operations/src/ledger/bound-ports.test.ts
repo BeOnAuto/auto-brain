@@ -1,7 +1,8 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { streamPrefixOfBrain, streamPrefixOfOrg } from '../index.ts';
+import { streamPrefixOfBrain, streamPrefixOfOrg, type RunOutcomeWindow } from '../index.ts';
+import { readRunTallies, runFacts, runTallies, type RunFact } from '../run-outcomes/run-tallies.ts';
 import { getBrainLabel, labelBrain, listBrainLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader, globexAdmin } from '../testing/callers.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
@@ -223,6 +224,39 @@ describe('a page the read bound to a call cannot hold', () => {
 
     expect(
       await run(dispatcher.dispatchToBrain(readNoteHistory.registration, toAlpha(acmeAdmin, input))),
+    ).toMatchObject({ status: 'failed' });
+    expect(reported().map(({ original }) => String(original))).toEqual([defect]);
+  });
+});
+
+const unreadableWindows: readonly (readonly [RunOutcomeWindow, string])[] = [
+  [{ from: '2026-10-02', to: '2026-10-01' }, 'RangeError: The days from "2026-10-02" to "2026-10-01" are not a window'],
+  [{ from: '2026-02-30', to: '2026-03-01' }, 'RangeError: The days from "2026-02-30" to "2026-03-01" are not a window'],
+  [{ from: '2026-10-01', to: 'today' }, 'RangeError: The days from "2026-10-01" to "today" are not a window'],
+];
+
+describe('the read of the outcomes of runs, bound to a call', () => {
+  it('reads only the brain of the call', async () => {
+    const { dispatcher, ledger, run } = harness({ runOutcomes: runTallies });
+    const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
+    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/executions/r1', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('brain/globex/gamma/executions/r2', runFacts, [began]));
+    const window = { from: '2026-10-01', to: '2026-10-01' };
+
+    const read = await run(dispatcher.dispatchToBrain(readRunTallies.registration, toAlpha(acmeAdmin, window)));
+    const named = await run(
+      dispatcher.dispatchToBrain(readRunTallies.registration, toAlpha(acmeAdmin, { ...window, name: 'draft' })),
+    );
+
+    expect(read).toMatchObject({ status: 'succeeded', output: { groups: [{ name: 'triage', runs: 1 }] } });
+    expect(named).toEqual({ status: 'succeeded', output: { groups: [] } });
+  });
+
+  it.each(unreadableWindows)('fails the call for a window it cannot read, %j', async (window, defect) => {
+    const { dispatcher, reported, run } = harness({ runOutcomes: runTallies });
+
+    expect(
+      await run(dispatcher.dispatchToBrain(readRunTallies.registration, toAlpha(acmeAdmin, window))),
     ).toMatchObject({ status: 'failed' });
     expect(reported().map(({ original }) => String(original))).toEqual([defect]);
   });

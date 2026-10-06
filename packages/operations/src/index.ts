@@ -10,6 +10,7 @@ export {
   type Examined,
 } from './reading/page-bounds.ts';
 export { BrainReader } from './ledger/brain-reader.ts';
+export { isCalendarDay } from './reading/calendar-days.ts';
 export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
 export { CallLineage, type GivenLineage } from './caller/call-lineage.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
@@ -90,7 +91,25 @@ export type { Method, Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';
 export { SettlementSchema, type Settlement } from './outcome/settlement.ts';
-export type { BrainRecordedReader, RecordedReader, StreamReader, StreamWriter } from './ledger/stream-ports.ts';
+export type {
+  BrainRecordedReader,
+  BrainRunOutcomesReader,
+  RecordedReader,
+  RunOutcomesReader,
+  StreamReader,
+  StreamWriter,
+} from './ledger/stream-ports.ts';
+export {
+  RunOutcomeStatusSchema,
+  runStreamOf,
+  type RunOutcome,
+  type RunOutcomeGroup,
+  type RunOutcomeMapping,
+  type RunOutcomeSelection,
+  type RunOutcomeStatus,
+  type RunOutcomeWindow,
+  type RunStream,
+} from './run-outcomes/run-outcomes.ts';
 export {
   Unavailable,
   UnavailableBecauseSchema,

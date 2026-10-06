@@ -13,6 +13,8 @@ import {
 } from './recorded-statements.ts';
 import { brainKeyOfStream, correlationOfMessage, kindKeyOfStream } from './sqlite-indexes.ts';
 
+export { createSQLiteBrainIndexes } from './sqlite-indexes.ts';
+
 const defaultPartition = 'emt:default';
 
 const Lineage = {
