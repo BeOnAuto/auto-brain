@@ -46,6 +46,7 @@ function telling(failingOn = '', rowsOf = (text: string): readonly unknown[] => 
       read: () => Promise.resolve({ version: 0, events: [], lineages: [] }),
       append: () => Promise.resolve(),
       readRecorded: () => Promise.resolve({ records: [] }),
+      readAppended: () => Promise.resolve({ streams: [], through: ['0', '0'], more: false }),
       migrate: () => saying('store migrated'),
       close: () => saying('store closed'),
     },

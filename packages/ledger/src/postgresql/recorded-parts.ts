@@ -9,7 +9,7 @@ export type Bind = (value: unknown) => string;
 
 export const defaultPartition = 'emt:default';
 
-const oldestWriteOfThisDatabase = `(
+export const oldestWriteOfThisDatabase = `(
   SELECT coalesce(min(running.xid), pg_snapshot_xmax(pg_current_snapshot()))
   FROM pg_snapshot_xip(pg_current_snapshot()) AS running(xid)
   WHERE running.xid::text::bigint % 4294967296 NOT IN (

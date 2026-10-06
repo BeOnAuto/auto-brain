@@ -63,6 +63,12 @@ export interface StreamStore {
   readonly close: () => Promise<void>;
 }
 
+export interface AppendedStreams {
+  readonly streams: readonly string[];
+  readonly through: RecordedPoint;
+  readonly more: boolean;
+}
+
 export interface RecordedStore {
   readonly pointLength: number;
   readonly readRecorded: (
@@ -70,6 +76,7 @@ export interface RecordedStore {
     selection: RecordedSelection,
     page: StoredPageRequest,
   ) => Promise<StoredPage>;
+  readonly readAppended: (after: RecordedPoint | undefined, most: number) => Promise<AppendedStreams>;
 }
 
 export interface EventStore extends StreamStore, RecordedStore {}

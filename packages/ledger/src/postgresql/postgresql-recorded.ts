@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { postgresqlAppended } from '../appended/postgresql-appended.ts';
 import type { RecordedStore } from '../event-store.ts';
 import {
   pointKey,
@@ -156,6 +157,7 @@ function dataAt(query: Query): RecordedStatements['dataAt'] {
 export function postgresqlRecordedStore(query: Query): RecordedStore {
   return {
     pointLength: 2,
+    readAppended: postgresqlAppended(query),
     readRecorded: recordedReadingOver({
       firstPointSince: firstPointSince(query),
       examineRecords: examineRecords(query),

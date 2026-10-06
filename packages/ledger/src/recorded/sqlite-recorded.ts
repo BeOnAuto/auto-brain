@@ -1,6 +1,7 @@
 import { SQL, type SQLExecutor } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
+import { sqliteAppended } from '../appended/sqlite-appended.ts';
 import type { RecordedPoint, RecordedStore } from '../event-store.ts';
 import {
   pointKey,
@@ -268,6 +269,7 @@ function dataAt(execute: SQLExecutor): RecordedStatements['dataAt'] {
 export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore {
   return {
     pointLength: 1,
+    readAppended: sqliteAppended(execute),
     readRecorded: recordedReadingOver({
       firstPointSince: firstPointSince(execute),
       examineRecords: examineRecords(execute),
