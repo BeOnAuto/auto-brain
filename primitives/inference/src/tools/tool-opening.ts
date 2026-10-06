@@ -1,11 +1,5 @@
-import {
-  writtenOf,
-  type NotOfferedBecause,
-  type RunTools,
-  type ServerFailedBecause,
-  type ToolAccess,
-  type ToolReference,
-} from '@beonauto/mcp';
+import type { NotOfferedBecause, RunTools, ServerFailedBecause, ToolAccess } from '@beonauto/mcp';
+import { writtenOf, type ToolReference } from '@beonauto/mcp/policy';
 import { Unavailable } from '@beonauto/operations';
 import type { ExecutionContext } from '@beonauto/specs';
 import { Effect } from 'effect';

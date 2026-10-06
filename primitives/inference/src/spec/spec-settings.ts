@@ -1,4 +1,4 @@
-import { toolReferenceOf, toolReferenceShape, type ToolReference } from '@beonauto/mcp';
+import { toolReferenceOf, toolReferenceShape, type ToolReference } from '@beonauto/mcp/policy';
 import { JsonPointer, Option, Result, type Schema } from 'effect';
 
 import { parseModelReference } from '../model/model-reference.ts';
