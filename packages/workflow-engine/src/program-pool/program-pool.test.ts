@@ -88,11 +88,22 @@ describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, ()
     });
   });
 
-  it('answers the size of an output larger than it may give, without the output', async () => {
-    expect(await poolOf().run(request('"x" * 100', null, { mostOutputBytes: 50 }))).toMatchObject({
+  it('answers that an output is larger than it may give, without the output', async () => {
+    const outcome = await poolOf().run(request('"x" * 100', null, { mostOutputBytes: 50 }));
+
+    expect(outcome).toMatchObject({ ran: 'oversized' });
+    expect(outcome).not.toHaveProperty('output');
+  });
+
+  it('measures an output before it writes it, so an output that would take 240 MB as JSON is refused and the worker lives', async () => {
+    const pool = poolOf({ heapMegabytes: 256 });
+
+    expect(
+      await pool.run(request('("\\u0001Ā" * 15000000) | [., .]', null, { mostOutputBytes: 1_048_320 })),
+    ).toMatchObject({
       ran: 'oversized',
-      bytes: 102,
     });
+    expect(await pool.run(request('[.[] | . + 1]', [1, 2]))).toMatchObject({ ran: 'answered', output: [2, 3] });
   });
 
   it('answers that the input nests too deep', async () => {

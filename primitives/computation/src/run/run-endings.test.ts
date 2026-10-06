@@ -52,8 +52,17 @@ describe('a run whose program cannot work as written', { timeout: workerTestTime
 
   it('ends in conflict when its output takes more than a run can record', async () => {
     expect(await ended('"x" * 1100000')).toEqual(
-      unworkable("The program's output takes 1100002 bytes as JSON, more than the 1048320 a run can record"),
+      unworkable("The program's output takes more than the 1048320 bytes as JSON a run can record"),
     );
+  });
+
+  it('measures an output before writing it, so one that would take 240 MB as JSON ends in conflict and the pool runs on', async () => {
+    const run = computationWith();
+
+    expect(await run.executing(programDocument('("\\u0001Ā" * 15000000) | [., .]'), null)).toEqual(
+      unworkable("The program's output takes more than the 1048320 bytes as JSON a run can record"),
+    );
+    expect(await run.executing(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
   });
 });
 

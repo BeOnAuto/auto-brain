@@ -94,9 +94,7 @@ function unworkableWith(outcome: Unworkable): Ending {
     return Effect.die(new Error('The worker refused a program the definition was accepted with'));
   }
   if (outcome.ran === 'oversized') {
-    return unworkable(
-      `The program's output takes ${outcome.bytes} bytes as JSON, more than the ${mostOutputBytes} a run can record`,
-    );
+    return unworkable(`The program's output takes more than the ${mostOutputBytes} bytes as JSON a run can record`);
   }
   if (outcome.ran === 'unfit') {
     return unworkable('The program gave a number JSON cannot carry, such as nan or infinite');

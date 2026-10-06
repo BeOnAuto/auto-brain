@@ -13,7 +13,7 @@ export const ProgramAnswerSchema = Schema.Union([
     bytes: Schema.Number,
     work: Schema.Number,
   }),
-  Schema.Struct({ ran: Schema.Literal('oversized'), bytes: Schema.Number, work: Schema.Number }),
+  Schema.Struct({ ran: Schema.Literal('oversized'), work: Schema.Number }),
   Schema.Struct({ ran: Schema.Literal('raised'), issue: IssueSchema, work: Schema.Number }),
   Schema.Struct({
     ran: Schema.Literal('exhausted'),

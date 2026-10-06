@@ -128,6 +128,24 @@ describe(
   },
 );
 
+describe('an output too large to record, over HTTP', { timeout: computationTestTimeoutMs }, () => {
+  it('ends in conflict for an output that would take 240 MB as JSON, measured before it is written, and the server answers on', async () => {
+    await serving();
+    const doubled = ['---', 'language: jq', '---', '("\\u0001Ā" * 15000000) | [., .]'].join('\n');
+    await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'doubled', source: doubled } });
+
+    expect(await executing('doubled', { input: null })).toMatchObject({
+      status: 409,
+      body: {
+        reason: 'conflict',
+        kind: 'unworkable',
+        detail: "The program's output takes more than the 1048320 bytes as JSON a run can record",
+      },
+    });
+    expect(await executing('pace', { input: campaignRows(2) })).toMatchObject({ status: 200 });
+  });
+});
+
 describe(
   'the definitions and inputs of computation functions, over HTTP',
   { timeout: computationTestTimeoutMs },

@@ -1,4 +1,5 @@
 import { isJson } from '../dsl/json.ts';
+import { jsonBytesWithin } from '../programs/byte-sizes.ts';
 import { compileProgram } from '../programs/program-compiling.ts';
 import type { Dialect, Refusal } from '../programs/program-dialect.ts';
 import type { ProgramLimits, ProgramRun } from '../programs/program-running.ts';
@@ -15,8 +16,6 @@ interface ProgramRequestData {
   readonly deadlineAt: number;
   readonly mostOutputBytes: number;
 }
-
-const utf8 = new TextEncoder();
 
 const tooDeep: ProgramAnswerData = {
   ran: 'exhausted',
@@ -64,11 +63,10 @@ function answerFrom(run: ProgramRun, mostOutputBytes: number): ProgramAnswerData
   if (run.ran !== 'answered') {
     return run;
   }
-  const output = JSON.stringify(run.value);
-  const bytes = utf8.encode(output).byteLength;
+  const bytes = jsonBytesWithin(run.value, mostOutputBytes);
   return bytes > mostOutputBytes
-    ? { ran: 'oversized', bytes, work: run.work }
-    : { ran: 'answered', output, bytes, work: run.work };
+    ? { ran: 'oversized', work: run.work }
+    : { ran: 'answered', output: JSON.stringify(run.value), bytes, work: run.work };
 }
 
 function evaluated(request: ProgramRequestData, clock: () => number): ProgramAnswerData {
