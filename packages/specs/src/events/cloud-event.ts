@@ -105,18 +105,22 @@ function extensionIssues(event: { readonly [attribute: string]: unknown }) {
   return [...tooMany, ...extensions.flatMap((extension: readonly [string, unknown]) => extensionIssue(extension))];
 }
 
-const allowedCharacters = Schema.makeFilter(isAllowedText, { expected: `text without ${forbiddenInWords}` });
+export const refusingForbiddenCharacters = Schema.makeFilter(isAllowedText, {
+  expected: `text without ${forbiddenInWords}`,
+});
 
-const worded = Schema.makeFilter(isWorded, { expected: 'text with a character that is not a space' });
+export const refusingBlankText = Schema.makeFilter(isWorded, {
+  expected: 'text with a character that is not a space',
+});
 
 function boundedText(most: number, description: string) {
-  return Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(most), allowedCharacters).annotate({
+  return Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(most), refusingForbiddenCharacters).annotate({
     description: `${description}, 1 to ${most} characters`,
   });
 }
 
 function wordedText(most: number, description: string) {
-  return boundedText(most, description).check(worded);
+  return boundedText(most, description).check(refusingBlankText);
 }
 
 const TimeField = Schema.String.check(

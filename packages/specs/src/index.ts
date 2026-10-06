@@ -49,6 +49,8 @@ export {
 export {
   CloudEventSchema,
   mostEventDataDepth,
+  refusingBlankText,
+  refusingForbiddenCharacters,
   mostPublishedEventBytes,
   type CloudEvent,
 } from './events/cloud-event.ts';
