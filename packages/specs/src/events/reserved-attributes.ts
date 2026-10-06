@@ -2,12 +2,17 @@ import { Schema } from 'effect';
 
 import type { ExecutionEvent } from '../execution/execution-events.ts';
 import type { SpecEvent } from '../registry/spec-events.ts';
+import type { EventPublished } from './published-events.ts';
 
 export const runSourcePrefix = '/executions/';
 
 export const specSourcePrefix = '/specs/';
 
-const recordedTypes: Readonly<Record<ExecutionEvent['type'] | SpecEvent['type'], true>> = {
+type WorkflowInputApplied = 'workflow_input_applied';
+
+type FeedType = ExecutionEvent['type'] | SpecEvent['type'] | EventPublished['type'] | WorkflowInputApplied;
+
+const brainTypes: Readonly<Record<FeedType, true>> = {
   execution_started: true,
   execution_deferred: true,
   execution_succeeded: true,
@@ -18,9 +23,11 @@ const recordedTypes: Readonly<Record<ExecutionEvent['type'] | SpecEvent['type'],
   spec_created: true,
   spec_updated: true,
   spec_retired: true,
+  event_published: true,
+  workflow_input_applied: true,
 };
 
-export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(recordedTypes));
+export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(brainTypes));
 
 export const reservedSourcePrefixes: readonly string[] = [runSourcePrefix, specSourcePrefix];
 

@@ -1,6 +1,8 @@
 import { Result, Schema, SchemaIssue } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { makeSpecPresenters } from '../index.ts';
+import { echo } from '../testing/echo.ts';
 import { isReservedSource, refusingTheBrainsOwnAttributes, reservedEventTypes } from './reserved-attributes.ts';
 
 const EventSchema = Schema.Struct({
@@ -20,7 +22,7 @@ function refusals(event: unknown): readonly string[] {
 }
 
 describe('the types and sources of what the brain records itself', () => {
-  it('are reserved for the brain: every type its runs and its definitions record', () => {
+  it('are reserved for the brain: every type its runs and definitions record, and every type its feed shows', () => {
     expect([...reservedEventTypes]).toEqual([
       'execution_started',
       'execution_deferred',
@@ -32,7 +34,11 @@ describe('the types and sources of what the brain records itself', () => {
       'spec_created',
       'spec_updated',
       'spec_retired',
+      'event_published',
+      'workflow_input_applied',
     ]);
+    const shown = makeSpecPresenters([echo]).flatMap(({ publicNames }) => Object.values(publicNames));
+    expect(shown.map((name) => reservedEventTypes.has(String(name)))).toEqual(shown.map(() => true));
     expect(
       ['/executions/1', '/specs/inference/summary', '/executions', 'executions/1', '/ledger/eu'].map((source) =>
         isReservedSource(source),
@@ -42,11 +48,11 @@ describe('the types and sources of what the brain records itself', () => {
 
   it('are refused in an event from outside, each where it is given', () => {
     expect(refusals({ type: 'execution_succeeded', source: '/executions/0199a3c4' })).toEqual([
-      '/type: Expected a type of your own, not one the brain records itself: execution_started, execution_deferred, execution_succeeded, execution_rejected, execution_failed, tool_call_started, tool_call_answered, spec_created, spec_updated, spec_retired',
+      '/type: Expected a type of your own, not one the brain records itself: execution_started, execution_deferred, execution_succeeded, execution_rejected, execution_failed, tool_call_started, tool_call_answered, spec_created, spec_updated, spec_retired, event_published, workflow_input_applied',
       '/source: Expected a source of your own, not one under /executions/ or /specs/, which the brain records itself',
     ]);
     expect(
-      ['execution_deferred', 'tool_call_started', 'tool_call_answered', 'spec_created'].map(
+      ['execution_deferred', 'tool_call_started', 'event_published', 'workflow_input_applied'].map(
         (type) => refusals({ type }).length,
       ),
     ).toEqual([1, 1, 1, 1]);

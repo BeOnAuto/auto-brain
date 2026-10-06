@@ -1,5 +1,6 @@
 import { internalTermsIn } from '@beonauto/api/testing';
 import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@beonauto/operations';
+import { reservedEventTypes } from '@beonauto/specs';
 import {
   RunEventSchema,
   callKeyText,
@@ -212,6 +213,10 @@ describe('the largest input a workflow can take', () => {
 describe('the presenter of the runs of workflows', () => {
   it('decides on every stored type of the log of a run', () => {
     expect(Object.keys(runPresenter.publicNames)).toEqual([RunEventSchema.fields.type.literal]);
+  });
+
+  it('shows them under names no event from outside may take', () => {
+    expect(Object.values(runPresenter.publicNames).map((name) => reservedEventTypes.has(String(name)))).toEqual([true]);
   });
 
   it('cuts a text at a code point, counting its bytes as JSON', () => {
