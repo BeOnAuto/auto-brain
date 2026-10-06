@@ -62,6 +62,19 @@ function registriesRead(parts: FollowerParts, registries: readonly string[]): Ef
   return registries.length === 0 ? Effect.void : parts.discovery.registriesAppended(registries);
 }
 
+function registryRead(parts: FollowerParts, registry: string): Effect.Effect<void> {
+  return parts.discovery.registriesAppended([registry]).pipe(
+    Effect.andThen(
+      Effect.sync(() => {
+        parts.sweeps.registriesRead([registry]);
+      }),
+    ),
+    Effect.catchCause((cause) =>
+      parts.trouble('A registry of brains could not be read; the next sweep reads it again', cause),
+    ),
+  );
+}
+
 function signalled(parts: FollowerParts, wakes: Wakes) {
   return Effect.gen(function* () {
     yield* registriesRead(parts, wakes.registriesWoken());
@@ -85,13 +98,8 @@ function swept(parts: FollowerParts, wakes: Wakes) {
         parts.sweeps.passAgain(brainKey);
       }
     });
-    const registriesTaken = Effect.sync(() => {
-      parts.sweeps.registriesRead(sweep.registries);
-    });
-    yield* Effect.andThen(
-      Effect.andThen(registriesRead(parts, sweep.registries), registriesTaken),
-      parts.upkeep.sweep(),
-    ).pipe(Effect.catchCause((cause) => Effect.andThen(handedBack, Effect.failCause(cause))));
+    yield* Effect.forEach(sweep.registries, (registry) => registryRead(parts, registry), { discard: true });
+    yield* parts.upkeep.sweep().pipe(Effect.catchCause((cause) => Effect.andThen(handedBack, Effect.failCause(cause))));
     yield* Effect.forEach(
       sweep.brains,
       ({ brainKey, known }) => passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),
