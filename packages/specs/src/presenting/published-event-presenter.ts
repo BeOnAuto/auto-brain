@@ -26,6 +26,6 @@ function accountOf({ event, filled, by }: EventPublished): Account {
 export const publishedEventPresenter: Presenter = eventPresenter<EventPublished['type'], EventPublished>({
   streamKind: 'events',
   eventSchema: EventPublishedSchema,
-  publicNames: { event_published: 'event_published' },
+  publicNames: { event_published: ['event_published'] },
   account: accountOf,
 });

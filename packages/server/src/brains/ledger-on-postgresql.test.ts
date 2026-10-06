@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { campaignPace, campaignRows } from '@beonauto/computation/testing';
 import { answers, textResult } from '@beonauto/inference/testing';
+import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
@@ -39,6 +41,22 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
 }
 
 const brain = '/v1/orgs/acme/brains/alpha';
+
+const computedRun = Schema.decodeUnknownSync(
+  Schema.Struct({ status: Schema.String, output: Schema.Json, record: Schema.Struct({ work: Schema.Number }) }),
+);
+
+async function computedOn(environment: Readonly<Record<string, string>>) {
+  const computing = await servingReasoning([], environment);
+  await computing.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
+  await computing.call('POST', `${brain}/specs/computation`, { body: { name: 'pace', source: campaignPace } });
+  await computing.call('POST', `${brain}/specs/computation/pace/execute`, {
+    body: { input: campaignRows(500), execution_id: executionId },
+  });
+  const run = computedRun((await computing.call('GET', `${brain}/executions/${executionId}`)).body);
+  await computing.stop();
+  return run;
+}
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -96,6 +114,20 @@ describe.skipIf(skipped)(
       );
       expect(child.output().stderr).not.toContain(String(environment['DATABASE_URL']));
       expect(child.output().stderr).not.toContain(`:${password}@`);
+    });
+  },
+);
+
+describe.skipIf(skipped)(
+  `Computation functions of a server that keeps its ledger in PostgreSQL${notice}`,
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('runs a computation function to the same output, after the same work, as a server on SQLite', async () => {
+      const onPostgresql = await computedOn(await onADatabaseOfItsOwn());
+      const onSqlite = await computedOn({ LOCAL_MODE: 'true' });
+
+      expect(onPostgresql).toEqual(onSqlite);
+      expect(onPostgresql.status).toBe('succeeded');
     });
   },
 );

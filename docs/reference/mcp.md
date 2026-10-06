@@ -26,27 +26,28 @@ Authorization uses the same organization, brain and operation permissions as the
 | `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                                                    |
 | `/orgs/{org}/brains/{brain}/mcp` | Function and workflow operations for one brain, without a `brain` argument                                                |
 
-Functions and workflows share the definition tools: those tools accept `inference` for reasoning functions and `orchestration` for workflows. Workflow operations also include `send_execution_event`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
+Functions and workflows share the definition tools: those tools accept `inference` for reasoning functions, `computation` for computation functions in a self-hosted runtime, and `orchestration` for workflows. Workflow operations also include `send_execution_event`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
 
 ## Tools
 
-| Work                       | Tools                                                                                                    |
-| -------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Manage brains              | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
-| List available models      | `list_models`, with an optional `provider` filter                                                        |
-| Manage reasoning functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
-| Manage workflows           | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
-| Run and inspect            | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
-| Answer a waiting workflow  | `send_execution_event`                                                                                   |
-| Publish an event           | `publish_event`                                                                                          |
-| Follow a brain             | `list_brain_events`                                                                                      |
-| Read a brain's analytics   | `get_brain_analytics`                                                                                    |
+| Work                         | Tools                                                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Manage brains                | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
+| List available models        | `list_models`, with an optional `provider` filter                                                        |
+| Manage reasoning functions   | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
+| Manage computation functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "computation"`   |
+| Manage workflows             | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
+| Run and inspect              | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
+| Answer a waiting workflow    | `send_execution_event`                                                                                   |
+| Publish an event             | `publish_event`                                                                                          |
+| Follow a brain               | `list_brain_events`                                                                                      |
+| Read a brain's analytics     | `get_brain_analytics`                                                                                    |
 
 Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function, workflow and brain event tools are available at `/mcp` and the brain endpoint.
 
 Definition operations identify a function or workflow by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. Publishing an event to a brain requires an `event` with a `source` and a `type`; [Publishing events](http.md#publishing-events) lists its attributes and limits and what publishing it again returns. See [HTTP operations](http.md) for field limits and retry behavior.
 
-`list_executions` lists a brain's runs newest first, with optional `primitive`, `name` and `status` filters. `get_execution_history` reads what was recorded about one run, and `list_brain_events` follows everything that happened in a brain, with optional `type` and `since` filters; both take `order`. Their events carry `id`, `at`, `type`, a plain-language `summary` and `data` of at most 4 KiB. All three page with `limit` and `cursor` and answer `has_more` and `next_cursor`; a page may be short or empty while `has_more` is `true`. They work on a retired brain. See [Run history and brain events](http.md#run-history-and-brain-events) for the fields and limits.
+`list_executions` lists a brain's runs newest first, with optional `primitive`, `name` and `status` filters. `get_execution_history` reads what was recorded about one run, and `list_brain_events` follows everything that happened in a brain, with optional `type`, `since` and `execution_id` filters, the last keeping the whole tree of one run; both take `order`. Their events carry `id`, `cursor`, `causation_id`, the `id` of the event that led to it, `at`, `type`, a plain-language `summary` and `data` of at most 4 KiB; a workflow run also shows one event for each step that moved. All three page with `limit` and `cursor` and answer `has_more` and `next_cursor`; a page may be short or empty while `has_more` is `true`. They work on a retired brain. See [Run history and brain events](http.md#run-history-and-brain-events) for the fields and limits.
 
 `get_brain_analytics` counts the runs of a brain that ended over the last 7, 14 or 30 days, with `days`, or between two days, with `from` and `to`: by how they ended, the tokens their models used, and the median and 95th percentile of how long they took, for the whole window and for each `day` of `by_day`, and in `by_function` the number of runs of each definition. It takes the optional `primitive` and `name` filters of `list_executions`. See [Analytics](http.md#analytics) for the window and how each number is counted.
 

@@ -3,9 +3,6 @@ import { jsonBytesOf, type Json } from '../dsl/json.ts';
 import { heldIn } from '../machine/held-values.ts';
 import { mostExpressionWork, mostTasksPerInput, mostWorkPerInput } from '../machine/limits.ts';
 import type { HeldValue, MachineState, ValueId } from '../machine/run-state.ts';
-import type { Step } from '../run-log/run-event.ts';
-
-export type StepOutcome = Step['outcome'];
 
 export interface Meter {
   readonly allowance: () => number;
@@ -16,9 +13,7 @@ export interface Meter {
 
 export interface Journal {
   readonly emit: (output: RunOutput) => void;
-  readonly record: (step: Step) => void;
   readonly outputs: () => readonly RunOutput[];
-  readonly steps: () => readonly Step[];
 }
 
 export interface ValueTable {
@@ -44,20 +39,11 @@ export function meterOf(): Meter {
 
 export function journalOf(): Journal {
   const outputs: RunOutput[] = [];
-  const steps: Step[] = [];
-  const positions = new Map<string, number>();
   return {
     emit: (output) => {
       outputs.push(output);
     },
-    record: (step) => {
-      const key = JSON.stringify([step.reference, step.run]);
-      const position = positions.get(key) ?? steps.length;
-      positions.set(key, position);
-      steps[position] = step;
-    },
     outputs: () => outputs,
-    steps: () => steps,
   };
 }
 

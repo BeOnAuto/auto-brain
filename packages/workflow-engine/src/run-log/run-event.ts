@@ -3,25 +3,19 @@ import { Schema } from 'effect';
 import { RunOutputSchema } from '../dispatch/run-output.ts';
 import { InputReceiptSchema } from '../machine/input-receipt.ts';
 import { mostEventBytes } from '../machine/limits.ts';
+import { EarlierStepSchema, ResumedSchema, StepSchema } from '../steps/step-entry.ts';
 import { StateFormatSchema } from './state-format.ts';
 import { PatchOperationSchema } from './state-patch.ts';
-
-export const StepSchema = Schema.Struct({
-  reference: Schema.String,
-  run: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-  outcome: Schema.Literals(['started', 'skipped', 'waiting', 'completed', 'raised', 'timed_out', 'cancelled']),
-});
 
 export const RunEventSchema = Schema.Struct({
   type: Schema.Literal('input_applied'),
   format: StateFormatSchema,
   receipt: InputReceiptSchema,
-  steps: Schema.Array(StepSchema),
+  steps: Schema.Array(Schema.Union([StepSchema, EarlierStepSchema])),
+  resumed: Schema.optionalKey(Schema.NullOr(ResumedSchema)),
   patch: Schema.Array(PatchOperationSchema),
   outputs: Schema.Array(RunOutputSchema),
 });
-
-export type Step = typeof StepSchema.Type;
 
 export type RunEvent = typeof RunEventSchema.Type;
 

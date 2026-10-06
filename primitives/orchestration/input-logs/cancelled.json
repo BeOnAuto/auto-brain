@@ -37,7 +37,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
@@ -47,9 +47,14 @@
         {
           "reference": "/do/0/pause",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "waiting",
+          "name": "pause",
+          "times": 1,
+          "caused_by": "input",
+          "waits_for": "timer"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -204,7 +209,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2245
+          "value": 2325
         }
       ],
       "outputs": [
@@ -228,13 +233,14 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "cancel_requested",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
         "at": 1790845200010
       },
       "steps": [],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -284,7 +290,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3213
+          "value": 3308
         }
       ],
       "outputs": [

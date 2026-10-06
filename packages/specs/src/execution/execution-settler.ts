@@ -5,6 +5,7 @@ import {
   OrgIdSchema,
   streamPrefixOfBrain,
   type Conflict,
+  type Lineage,
   type Settlement as RunSettlement,
   type StreamWriter,
 } from '@beonauto/operations';
@@ -29,6 +30,7 @@ export type Settlement =
 export type SettleExecution = (
   execution: ExecutionAddress,
   settlement: Settlement,
+  lineage?: Lineage,
 ) => Effect.Effect<Run, NotFound | Conflict>;
 
 const isWellFormed = Schema.is(
@@ -92,15 +94,17 @@ function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {
 }
 
 export function executionSettler(ledger: StreamWriter): SettleExecution {
-  const settle = Effect.fnUntraced(function* (stream: string, result: ExecutionResult) {
+  const settle = Effect.fnUntraced(function* (stream: string, result: ExecutionResult, lineage?: Lineage) {
     const at = DateTime.formatIso(yield* DateTime.now);
-    return yield* ledger.execute(stream, executionDecider, { type: 'settle', result, at });
+    return yield* ledger.execute(stream, executionDecider, { type: 'settle', result, at }, lineage);
   });
-  return (execution, settlement) =>
+  return (execution, settlement, lineage) =>
     Effect.gen(function* () {
       const stream = yield* streamOf(execution);
-      const result = yield* resultOf(settlement).pipe(Effect.tapDefect(() => Effect.ignore(settle(stream, failure))));
-      const { state } = yield* settle(stream, result);
+      const result = yield* resultOf(settlement).pipe(
+        Effect.tapDefect(() => Effect.ignore(settle(stream, failure, lineage))),
+      );
+      const { state } = yield* settle(stream, result, lineage);
       return yield* executionOf(execution.id.toLowerCase(), state);
     });
 }

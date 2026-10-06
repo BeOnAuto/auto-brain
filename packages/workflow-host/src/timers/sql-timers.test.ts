@@ -5,9 +5,11 @@ import { describe, expect, it } from 'vitest';
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runId, startedAt } from '../testing/probe-subjects.ts';
-import { sqlTimers } from './sql-timers.ts';
+import { armedByOf, sqlTimers } from './sql-timers.ts';
 
 const run = { executionId: runId, attributes: {} };
+
+const armedBy = { version: 3, lastStep: null };
 
 function timerDue(timerId: string, dueAt: number): ArmTimer {
   return { kind: 'arm_timer', executionId: runId, timerId, dueAt, purpose: 'wait' };
@@ -21,16 +23,31 @@ describe('the timers of the host', () => {
     });
 
     const none = await Effect.runPromise(table.nextDueAt());
-    await Effect.runPromise(table.timers.arm(timerDue('1', startedAt + 2000), run));
-    await Effect.runPromise(table.timers.arm(timerDue('2', startedAt + 1000), run));
+    await Effect.runPromise(table.timers.arm(timerDue('1', startedAt + 2000), run, armedBy));
+    await Effect.runPromise(table.timers.arm(timerDue('2', startedAt + 1000), run, armedBy));
     const next = await Effect.runPromise(table.nextDueAt());
 
     expect([none, next, armed]).toEqual([null, startedAt + 1000, [startedAt + 2000, startedAt + 1000]]);
   });
+});
+
+describe('the timers of the host, once armed', () => {
+  it('keep the version of the record that armed each timer, and none for a timer a sweep armed again', async () => {
+    const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
+    const table = sqlTimers(database, Function.constVoid);
+    await Effect.runPromise(table.timers.arm(timerDue('1', startedAt), run, armedBy));
+    await Effect.runPromise(table.timers.sweep(run, [timerDue('2', startedAt)]));
+
+    expect(
+      await Effect.runPromise(
+        Effect.all([armedByOf(database, runId, '1'), armedByOf(database, runId, '2'), armedByOf(database, runId, '3')]),
+      ),
+    ).toEqual([3, null, null]);
+  });
 
   it('put off a timer that could not fire, so it is due again later', async () => {
     const table = sqlTimers(await openedOn({ store: 'sqlite', file: aSQLiteFile() }), Function.constVoid);
-    await Effect.runPromise(table.timers.arm(timerDue('1', startedAt), run));
+    await Effect.runPromise(table.timers.arm(timerDue('1', startedAt), run, armedBy));
 
     await Effect.runPromise(table.postponed({ runId, timerId: '1' }, startedAt + 50));
 
@@ -45,7 +62,7 @@ describe('the timers of the host', () => {
 
     const failures = await Effect.runPromise(
       Effect.all([
-        Effect.flip(timers.arm(timerDue('1', startedAt), run)),
+        Effect.flip(timers.arm(timerDue('1', startedAt), run, armedBy)),
         Effect.flip(timers.cancel({ kind: 'cancel_timer', executionId: runId, timerId: '1' }, run)),
         Effect.flip(timers.sweep(run, [timerDue('1', startedAt)])),
       ]),

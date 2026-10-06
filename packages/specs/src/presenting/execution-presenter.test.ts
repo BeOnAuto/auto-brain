@@ -18,7 +18,10 @@ const ofGreet = { primitive: 'echo', name: 'greet', spec_version: 2 };
 
 function recorded(event: ExecutionEvent): RecordedEvent {
   return {
-    id: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
+    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    causationId: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
+    correlationId: executionId,
     stream: `executions/${executionId}`,
     type: event.type,
     data: encode(event),
@@ -27,10 +30,15 @@ function recorded(event: ExecutionEvent): RecordedEvent {
 }
 
 function presented(event: ExecutionEvent) {
-  return present(recorded(event));
+  return present(recorded(event)).at(0);
 }
 
-const shown = { id: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ', at: '2026-10-01T09:00:01.000Z' };
+const shown = {
+  id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
+  cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+  causation_id: '1c2d3e4f-5a6b-5c7d-8e9f-a0b1c2d3e4f5',
+  at: '2026-10-01T09:00:01.000Z',
+};
 
 describe('the presenter of the events of an execution', () => {
   it('presents a start with the spec that ran and the size of its input, at the time of the start', () => {
@@ -114,6 +122,23 @@ describe('the presenter of a rejected execution', () => {
         issues: issues.slice(0, 5),
       },
     });
+  });
+});
+
+describe('the presenter of an execution rejected for a conflict', () => {
+  it('shows the kind of the conflict, when it was given', () => {
+    const conflict = { reason: 'conflict', detail: 'The program raised an error on line 2: stop' } as const;
+
+    expect([
+      presented({ type: 'execution_rejected', rejection: { ...conflict, kind: 'unworkable' }, ...ofGreet, ...fact }),
+      presented({ type: 'execution_rejected', rejection: conflict, ...ofGreet, ...fact }),
+    ]).toMatchObject([
+      {
+        summary: 'A run did not go through: it cannot work as it is written.',
+        data: { execution_id: executionId, by: 'acme-admin', ...conflict, kind: 'unworkable' },
+      },
+      { data: { execution_id: executionId, by: 'acme-admin', ...conflict } },
+    ]);
   });
 });
 

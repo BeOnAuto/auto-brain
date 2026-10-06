@@ -157,7 +157,7 @@ A `switch` tests its cases in order and follows the `then` of the first case who
 
 ### Calling a function
 
-`call: execute_spec` runs the active latest version of another definition in the same brain: `with.primitive` names its type, such as `inference`, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered.
+`call: execute_spec` runs the active latest version of another definition in the same brain: `with.primitive` names its type, `inference` for a reasoning function or `computation` for a [computation function](computation-format.md), and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered, or the value a computation function's program gave.
 
 Each time the task runs, including on a retry, it starts a separate run of the function, recorded under its own `execution_id`. That run acts for the caller who started the workflow, with the permissions that caller had when the workflow started. A workflow cannot execute another workflow, and `execute_spec` takes no arguments other than `primitive`, `name` and `input`.
 
@@ -176,6 +176,8 @@ A run of the function that does not succeed raises an error the workflow can cat
 | Could not be reached                                       | `communication`                             | 503    |
 
 The short types are under `https://open-workflow-specification.org/spec/1.0.0/errors/`. A reasoning function that called tools and could not finish has a type of its own, the [problem type](http.md#responses-and-errors) `https://on.auto/problems/tools_unfinished`, never `communication`: its tools may have changed something, so a `catch` that retries communication errors does not run them again under a new id. So does a step that meets a run of a function whose tools may have been called before, as when the server restarted during the step and performs it again: it raises `https://on.auto/problems/tools_called`, never `runtime`, and a workflow that ends with it is rejected as a `conflict` of that kind, which says to check the run's history and start a new run. A workflow that wants another run names one of those types in its `catch` and starts one knowingly.
+
+A computation function's run that is rejected with `conflict` has the kind `unworkable`: its program raised an error, gave no output or more than one, or did more work or nested deeper than a run may. The same input gives the same result every time, so a retry policy should not match it: retry on status 503, which a run that was `unavailable` raises, and leave 409 out. [Computation function format](computation-format.md#in-a-workflow) has a workflow that does so.
 
 The error's `title` names the definition and, for a rejection, its reason; its `detail` carries the detail the run gave. A rejection that has a kind carries it as the error's `kind`, and its cause as `because`, as the [HTTP problem document](http.md#responses-and-errors) does: a reasoning function whose tools are not offered is `tool_not_offered`, one whose tool server cannot be used `mcp_server_failed`, and one that called tools and could not finish `tools_unfinished`, its tools having perhaps changed something. A `catch` reads them in the error it catches, so `when: '${ $error.kind == "tool_not_offered" }'` handles only that, and `${ $error.because }` names why.
 
@@ -282,6 +284,8 @@ Expressions are [jq](https://jqlang.org). A string enclosed in `${ }` is an expr
 
 An expression may do a bounded amount of work, about one pass over a few megabytes of data. One that does more fails its task with a `runtime` error that the workflow's `try` can catch and jq's `try` cannot.
 
+An expression may nest at most 128 levels: each expression inside another counts one, and so does each link of a chain of pipes, of operators such as `+`, `and` or `//`, of definitions or of bindings, so `. | . | .` nests three. A deeper one is refused when the document is saved, with an issue at the expression that ends `The program nests more than 128 levels deep`.
+
 Quote an expression that contains `: ` or that sits inside a `{ }` mapping, as the examples do; otherwise YAML reads its colon or braces and the document is refused.
 
 ### Durations
@@ -311,6 +315,7 @@ These are refused when a document is saved:
 | A `then` naming no task in the same list, or a jump from a fork branch                  | Flow must stay within the list                                  |
 | A name in `raise.error`, `retry` or `timeout` missing from `use`                        | The reference must exist                                        |
 | `localtime`, `strflocaltime`, and expressions that do not parse                         | Expressions must be valid and deterministic                     |
+| An expression that nests more than 128 levels                                           | See [Expressions](#expressions)                                 |
 | Durations in years or months, or longer than a run may last                             | See [Durations](#durations) and [Limits](#limits)               |
 
 ## How a run ends
@@ -330,6 +335,7 @@ A timeout that is not caught therefore rejects the run as `unavailable`, and a c
 | Source document              | 65,536 bytes in UTF-8                                                                                   |
 | Nested task lists            | 64 levels                                                                                               |
 | Nested values                | 512 levels                                                                                              |
+| Nesting of an expression     | 128 levels, refused when the document is saved                                                          |
 | Branches of a fork           | 32                                                                                                      |
 | Duration of a run            | 30 days, unless the deployment sets between 2 hours and 365 days; a run still going at that limit fails |
 | Input of a run               | 256 KiB as JSON                                                                                         |

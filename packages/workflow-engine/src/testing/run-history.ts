@@ -3,8 +3,9 @@ import type { Json, JsonObject } from '../dsl/json.ts';
 import type { RunLimits } from '../machine/run-input.ts';
 import { newRun, type ArmedTimer, type RunOutcome, type RunState } from '../machine/run-state.ts';
 import type { Responder } from '../memory/memory-executor.ts';
-import type { PositionedEvent, Step } from '../run-log/run-event.ts';
+import type { PositionedEvent } from '../run-log/run-event.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
+import type { EarlierStep, Step } from '../steps/step-entry.ts';
 import type { TimerPurpose } from '../timers/timer-id.ts';
 import { memoryDriver, type MemoryDriver } from './memory-driver.ts';
 
@@ -67,11 +68,14 @@ export function outputKindsIn(events: readonly PositionedEvent[]): readonly RunO
   return outputsIn(events).map(({ kind }) => kind);
 }
 
-export function stepsIn(events: readonly PositionedEvent[]): readonly Step[] {
+export function stepsIn(events: readonly PositionedEvent[]): readonly (Step | EarlierStep)[] {
   return events.flatMap(({ event }) => event.steps);
 }
 
-export function stepsWith(events: readonly PositionedEvent[], outcome: Step['outcome']): readonly Step[] {
+export function stepsWith(
+  events: readonly PositionedEvent[],
+  outcome: Step['outcome'],
+): readonly (Step | EarlierStep)[] {
   return stepsIn(events).filter((step) => step.outcome === outcome);
 }
 

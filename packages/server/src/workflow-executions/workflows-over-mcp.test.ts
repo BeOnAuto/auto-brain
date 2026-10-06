@@ -89,11 +89,11 @@ function primitivesOfCreateSpec(listing: unknown): readonly string[] {
 }
 
 describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists eight tools on the endpoint of a brain, and both primitives in the spec tools', async () => {
+  it('lists eight tools on the endpoint of a brain, and every primitive in the spec tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
     expect(toolNamesIn(listing)).toEqual(brainTools);
-    expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'orchestration']);
+    expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'computation', 'orchestration']);
   });
 
   it('executes a workflow that calls a reasoning function definition and waits for an event the tools send', async () => {
@@ -116,5 +116,64 @@ describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
     expect(started.structuredContent).toMatchObject({ primitive: 'orchestration', status: 'started' });
     expect(sent.structuredContent).toMatchObject({ event: { type: 'com.acme.approval.decided', data: 'yes' } });
     expect(execution.structuredContent).toMatchObject({ status: 'succeeded', output: { decided: 'yes' } });
+  });
+});
+
+const EventsSchema = Schema.Struct({
+  events: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      causation_id: Schema.NullOr(Schema.String),
+      type: Schema.String,
+      data: Schema.Struct({ name: Schema.optionalKey(Schema.String), execution_id: Schema.optionalKey(Schema.String) }),
+    }),
+  ),
+});
+
+const eventsOf = Schema.decodeUnknownSync(EventsSchema);
+
+type Event = (typeof EventsSchema.Type)['events'][number];
+
+function stepOf(events: readonly Event[], type: string, name: string): Event | undefined {
+  return events.find((event) => event.type === type && event.data.name === name);
+}
+
+function startOf(events: readonly Event[], executionId: string | undefined): Event | undefined {
+  return events.find(({ type, data }) => type === 'execution_started' && data.execution_id === executionId);
+}
+
+function causesNamedNowhereIn(events: readonly Event[]): readonly string[] {
+  const ids = new Set(events.map(({ id }) => id));
+  return events.flatMap(({ causation_id: cause }) => (cause === null || ids.has(cause) ? [] : [cause]));
+}
+
+describe('the graph of a workflow run over MCP', { timeout: workflowTestTimeoutMs }, () => {
+  it('reads the steps of a run with their causes, and the whole tree of the run in the feed of its brain', async () => {
+    const { history, tree } = await onAlpha([answers(jsonResult({ approve: true }))], async (session) => {
+      await session.callTool('create_spec', { primitive: 'inference', name: 'verdict', source: verdict });
+      await session.callTool('create_spec', { primitive: 'orchestration', name: 'approval', source: approval });
+      const starting = await session.callTool('execute_spec', {
+        primitive: 'orchestration',
+        name: 'approval',
+        input: { expense: 'a taxi' },
+      });
+      const executionId = String(starting.structuredContent?.['execution_id']);
+      await session.callTool('send_execution_event', {
+        execution_id: executionId,
+        event: { type: 'com.acme.approval.decided', data: 'yes' },
+      });
+      await settled(session, executionId);
+      return {
+        history: await session.callTool('get_execution_history', { execution_id: executionId, limit: 100 }),
+        tree: await session.callTool('list_brain_events', { execution_id: executionId, order: 'asc', limit: 100 }),
+      };
+    });
+    const { events } = eventsOf(history.structuredContent);
+    const waiting = stepOf(events, 'step_waiting', 'judge');
+    const childStarted = startOf(eventsOf(tree.structuredContent).events, waiting?.data.execution_id);
+
+    expect(events.filter(({ type }) => type.startsWith('step_')).length).toBeGreaterThan(0);
+    expect(causesNamedNowhereIn(events)).toEqual([]);
+    expect(childStarted?.causation_id).toBe(waiting?.id);
   });
 });

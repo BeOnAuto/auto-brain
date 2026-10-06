@@ -77,11 +77,14 @@ export function allTaskEntries(list: Json | undefined, pointer: string): readonl
   );
 }
 
-export function entryAt(document: JsonObject, reference: string): TaskEntry {
-  const task = valueAtPointer(document, reference);
-  const name = reference
+export function taskNameOf(reference: string): string {
+  return reference
     .slice(reference.lastIndexOf('/') + 1)
     .replaceAll('~1', '/')
     .replaceAll('~0', '~');
-  return { name, task: isObject(task) ? task : {}, reference };
+}
+
+export function entryAt(document: JsonObject, reference: string): TaskEntry {
+  const task = valueAtPointer(document, reference);
+  return { name: taskNameOf(reference), task: isObject(task) ? task : {}, reference };
 }

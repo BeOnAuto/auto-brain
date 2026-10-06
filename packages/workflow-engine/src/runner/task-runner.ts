@@ -1,10 +1,10 @@
 import { admitted, holds, transform } from '../dsl/evaluation.ts';
-import type { Variables } from '../dsl/expressions.ts';
 import { field, objectField, textField, type Json } from '../dsl/json.ts';
 import { caughtRaise, raised } from '../dsl/raised-error.ts';
 import { timedOut, timeoutMilliseconds } from '../dsl/task-outcomes.ts';
 import { entryAt, typeOf, type TaskEntry } from '../dsl/tasks.ts';
 import type { TaskFrame, ValueId, Variables as Scope } from '../machine/run-state.ts';
+import type { Variables } from '../programs/program-running.ts';
 import { cancelBody, resumeBody, startBody } from '../tasks/task-bodies.ts';
 import {
   raisedOf,
@@ -20,7 +20,7 @@ import { descriptorOf, taskVariablesOf, withInput } from './task-variables.ts';
 function caught(machine: Machine, frame: FramePrefix, attempt: () => TaskAdvance): TaskAdvance {
   return caughtRaise(attempt, (error) => {
     machine.session.timers.disarm(frame.timeout);
-    machine.session.record(frame.reference, frame.run, 'raised');
+    machine.session.record({ reference: frame.reference, run: frame.run, outcome: 'raised', error });
     return raisedOf(error);
   });
 }
@@ -69,7 +69,7 @@ function finished(invocation: Invocation, output: ValueId, flow: string | null):
   );
   exported(invocation, shaped, variables);
   session.timers.disarm(frame.timeout);
-  session.record(entry.reference, frame.run, 'completed');
+  session.record({ reference: entry.reference, run: frame.run, outcome: 'completed' });
   return {
     kind: 'done',
     output: shaped === value ? output : session.hold(shaped),
@@ -84,7 +84,7 @@ function settled(invocation: Invocation, advance: BodyAdvance): TaskAdvance {
   }
   if (advance.kind === 'raised') {
     machine.session.timers.disarm(frame.timeout);
-    machine.session.record(frame.reference, frame.run, 'raised');
+    machine.session.record({ reference: frame.reference, run: frame.run, outcome: 'raised', error: advance.error });
     return advance;
   }
   return finished(invocation, advance.output, advance.flow);
@@ -96,7 +96,7 @@ function performed(machine: Machine, entry: TaskEntry, frame: FramePrefix): Task
   const place = session.placeAt(entry.reference);
   const rawValue = session.valueOf(frame.rawInput);
   if (!holds(field(entry.task, 'if'), rawValue, variables, place)) {
-    session.record(entry.reference, frame.run, 'skipped');
+    session.record({ reference: entry.reference, run: frame.run, outcome: 'skipped' });
     return { kind: 'done', output: frame.rawInput, flow: 'continue' };
   }
   const milliseconds = timeoutMilliseconds(field(entry.task, 'timeout'), session.components().timeouts, {
@@ -136,7 +136,7 @@ export function startTask(machine: Machine, entry: TaskEntry, rawInput: ValueId,
     variables: scope,
     timeout: null,
   };
-  session.record(entry.reference, run, 'started');
+  session.record({ reference: entry.reference, run, outcome: 'started' });
   return caught(machine, frame, () => {
     session.step(entry.reference);
     return performed(machine, entry, frame);
@@ -145,10 +145,12 @@ export function startTask(machine: Machine, entry: TaskEntry, rawInput: ValueId,
 
 export function resumeTask(machine: Machine, frame: TaskFrame, signal: Signal): TaskAdvance | undefined {
   const { session } = machine;
+  session.continues(frame);
   if (signal.kind === 'timer' && signal.timerId === frame.timeout) {
     cancelBody(machine, frame.body);
-    session.record(frame.reference, frame.run, 'timed_out');
-    return raisedOf(timedOut(signal.timer.dueAt - signal.timer.armedAt, frame.reference).error);
+    const { error } = timedOut(signal.timer.dueAt - signal.timer.armedAt, frame.reference);
+    session.record({ reference: frame.reference, run: frame.run, outcome: 'timed_out', error });
+    return raisedOf(error);
   }
   const entry = entryAt(session.document(), frame.reference);
   const resumed = caught(machine, frame, () => {
@@ -160,7 +162,8 @@ export function resumeTask(machine: Machine, frame: TaskFrame, signal: Signal): 
 }
 
 export function cancelTask(machine: Machine, frame: TaskFrame): void {
+  machine.session.continues(frame);
   machine.session.timers.disarm(frame.timeout);
   cancelBody(machine, frame.body);
-  machine.session.record(frame.reference, frame.run, 'cancelled');
+  machine.session.record({ reference: frame.reference, run: frame.run, outcome: 'cancelled' });
 }

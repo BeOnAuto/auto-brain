@@ -1,6 +1,6 @@
+import { issueText } from '@beonauto/specs/document';
 import { Result } from 'effect';
 
-import { issueText } from '../spec/document-issue.ts';
 import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-function-definition.ts';
 import { parseSpecDocument } from '../spec/spec-parsing.ts';
 

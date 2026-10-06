@@ -71,6 +71,10 @@
         "link": "/reference/reasoning-format"
       },
       {
+        "text": "Computation function format",
+        "link": "/reference/computation-format"
+      },
+      {
         "text": "Workflow format",
         "link": "/reference/workflow-format"
       },

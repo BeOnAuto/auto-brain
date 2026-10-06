@@ -3,8 +3,11 @@ import { Clock, Effect, Layer, Result, Schema } from 'effect';
 import {
   Conflict,
   Ledger,
+  messageIdOf,
+  noLineage,
   type Decider,
   type DeclarableReason,
+  type Lineage,
   type RunOutcomeMapping,
   type StreamState,
   type TypedEvent,
@@ -16,6 +19,13 @@ export interface MemoryLedger {
   readonly service: Ledger['Service'];
   readonly layer: Layer.Layer<Ledger>;
   readonly streamNames: () => readonly string[];
+}
+
+interface Appended {
+  readonly stream: string;
+  readonly events: readonly TypedEvent[];
+  readonly encoded: readonly unknown[];
+  readonly lineage: Lineage;
 }
 
 function folded<State, Command, Event extends TypedEvent, R extends DeclarableReason>(
@@ -36,12 +46,14 @@ export function memoryLedger(runOutcomes?: RunOutcomeMapping): MemoryLedger {
   const log: MemoryRecord[] = [];
   const outcomes = memoryRunOutcomes(runOutcomes);
   const storedIn = (stream: string): readonly unknown[] => streams.get(stream) ?? [];
-  const record = (stream: string, events: readonly TypedEvent[], encoded: readonly unknown[], at: number): void => {
+  const record = ({ stream, events, encoded, lineage }: Appended, at: number): void => {
     const version = storedIn(stream).length;
     outcomes.project(stream, events, encoded);
     log.push(
       ...events.map(({ type }, index) => ({
         position: log.length + index + 1,
+        id: messageIdOf(stream, version + index + 1),
+        ...lineage,
         stream,
         streamPosition: version + index + 1,
         type,
@@ -53,7 +65,7 @@ export function memoryLedger(runOutcomes?: RunOutcomeMapping): MemoryLedger {
   };
   const service = Ledger.of({
     load: (stream, decider) => Effect.suspend(() => folded(decider, storedIn(stream))),
-    execute: (stream, decider, command) =>
+    execute: (stream, decider, command, lineage = noLineage) =>
       Effect.gen(function* () {
         const { state, version } = yield* folded(decider, storedIn(stream));
         yield* Effect.yieldNow;
@@ -68,7 +80,7 @@ export function memoryLedger(runOutcomes?: RunOutcomeMapping): MemoryLedger {
         }
         const encodeEvent = Schema.encodeUnknownEffect(Schema.toCodecJson(decider.eventSchema));
         const encoded = yield* Effect.forEach(decided.success, (event) => Effect.orDie(encodeEvent(event)));
-        record(stream, decided.success, encoded, yield* Clock.currentTimeMillis);
+        record({ stream, events: decided.success, encoded, lineage }, yield* Clock.currentTimeMillis);
         return {
           state: decided.success.reduce((evolved, event) => decider.evolve(evolved, event), state),
           version: version + decided.success.length,

@@ -1,4 +1,4 @@
-import type { SchemaIssue } from '../schema/json-bounds.ts';
+import type { SchemaIssue } from '@beonauto/specs/document';
 
 export class AnswerMismatch extends Error {
   readonly issues: readonly SchemaIssue[];

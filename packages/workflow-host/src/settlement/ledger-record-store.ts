@@ -1,4 +1,4 @@
-import { NotFound, SettlementSchema, type Settlement } from '@beonauto/operations';
+import { NotFound, SettlementSchema, type Lineage, type Settlement } from '@beonauto/operations';
 import type { SettleExecution, Settlement as RecordedSettlement } from '@beonauto/specs';
 import { DispatchFailed, type RecordStore, type SettleReceipt } from '@beonauto/workflow-engine';
 import { Cause, Effect, Equal, Option, Predicate, Schema } from 'effect';
@@ -7,6 +7,7 @@ import { rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../
 import { statement } from '../database/statement.ts';
 import type { HostNote } from '../host/host-reports.ts';
 import { addressOfRun } from '../runs/run-address.ts';
+import { lineageOfSettlement } from '../runs/run-lineage.ts';
 import { attempted, isBackingOff, settleAttemptsBeforeBackingOff, settleBackOffMs } from './settle-attempts.ts';
 
 export interface RecordStoreParts {
@@ -38,6 +39,7 @@ interface Settling {
   readonly parts: RecordStoreParts;
   readonly runId: string;
   readonly settlement: Settlement;
+  readonly lineage: Lineage;
 }
 
 function recordedSettlementOf(settlement: Settlement): RecordedSettlement {
@@ -87,7 +89,8 @@ function succeeded({ database, parts, runId, settlement }: Settling, attemptsBef
 
 function settledFor(settling: Settling, attemptsBefore: number): Receipt {
   const { org, brain, executionId } = addressOfRun(settling.runId);
-  return settling.parts.settle({ org, brain, id: executionId }, recordedSettlementOf(settling.settlement)).pipe(
+  const execution = { org, brain, id: executionId };
+  return settling.parts.settle(execution, recordedSettlementOf(settling.settlement), settling.lineage).pipe(
     Effect.matchCauseEffect({
       onSuccess: () => succeeded(settling, attemptsBefore),
       onFailure: (cause: Cause.Cause<unknown>) =>
@@ -129,8 +132,10 @@ function settledOnce(settling: Settling): Receipt {
 
 export function ledgerRecordStore(database: HostDatabase, parts: RecordStoreParts): RecordStore {
   return {
-    settle: ({ executionId: runId, settlement }) =>
-      settledOnce({ database, parts, runId, settlement }).pipe(Effect.mapError(asDispatchFailure)),
+    settle: ({ executionId: runId, settlement }, run, origin) =>
+      settledOnce({ database, parts, runId, settlement, lineage: lineageOfSettlement(run, origin) }).pipe(
+        Effect.mapError(asDispatchFailure),
+      ),
     noteDue: ({ executionId: runId, version, nextDueAt }) =>
       Effect.asVoid(
         database.write(

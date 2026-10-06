@@ -6,6 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./document": "./src/document.ts",
+    "./json-schema": "./src/json-schema.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {
@@ -15,7 +17,8 @@
   },
   "dependencies": {
     "@beonauto/operations": "workspace:*",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@beonauto/brains": "workspace:*",

@@ -6,8 +6,9 @@ import {
   capitalized,
   counted,
   explanationOf,
+  quoted,
 } from '@beonauto/operations';
-import type { InputReceipt, RunEvent } from '@beonauto/workflow-engine';
+import type { InputReceipt, RunEvent, Step } from '@beonauto/workflow-engine';
 import { Option, Schema } from 'effect';
 
 const step = { one: 'step', other: 'steps' };
@@ -55,4 +56,31 @@ export function summaryOf({ receipt, steps, outputs }: RunEvent): string {
   const moved = steps.length === 0 ? '' : `, and ${counted(steps.length, step)} moved`;
   const ended = outputs.some(({ kind }) => kind === 'settle') ? '; the workflow ended' : '';
   return `${happened(receipt)}${moved}${ended}.${why(receipt)}`;
+}
+
+const notLettersOrDigits = /[^\p{L}\p{N}]+/gu;
+
+const waits: Readonly<Record<NonNullable<Step['waits_for']>, string>> = {
+  call: 'waits for a function it called',
+  timer: 'waits for its time',
+  event: 'waits for an event',
+};
+
+const outcomes: Readonly<Record<Exclude<Step['outcome'], 'waiting'>, string>> = {
+  started: 'started',
+  skipped: 'was skipped',
+  completed: 'finished',
+  raised: 'failed',
+  timed_out: 'took too long, so it was stopped',
+  cancelled: 'was cancelled',
+};
+
+function movedInWords({ outcome, waits_for: waitsFor }: Step): string {
+  return outcome === 'waiting' ? waits[waitsFor ?? 'event'] : outcomes[outcome];
+}
+
+export function stepSummaryOf(entry: Step): string {
+  const name = entry.name.replaceAll(notLettersOrDigits, ' ').trim();
+  const which = name === '' ? 'A step' : `The step ${quoted(name)}`;
+  return `${which} ${movedInWords(entry)}.`;
 }

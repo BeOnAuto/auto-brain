@@ -1,9 +1,9 @@
+import type { SchemaIssue } from '@beonauto/specs/document';
 import { TypeValidationError, type FinishReason as SdkFinishReason } from 'ai';
 
 import { ContentRefused } from '../failure/content-refused.ts';
 import type { ModelFailure } from '../failure/model-failure.ts';
 import { OutputInvalid } from '../failure/output-invalid.ts';
-import type { SchemaIssue } from '../schema/json-bounds.ts';
 import { finishReasonOf, tokenUsage, type SdkUsage } from './answer-mapping.ts';
 import { AnswerMismatch } from './answer-mismatch.ts';
 

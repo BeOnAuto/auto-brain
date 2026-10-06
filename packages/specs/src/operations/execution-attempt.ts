@@ -1,4 +1,4 @@
-import type { UnavailableBecause, UnavailableKind } from '@beonauto/operations';
+import type { ConflictKind, UnavailableBecause, UnavailableKind } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
@@ -75,8 +75,14 @@ function rejectedAsUnavailable(rejection: Unavailability): Effect.Effect<Executi
   );
 }
 
-function rejectedAsConflict(rejection: Recorded & { readonly detail: string }): Effect.Effect<ExecutionResult> {
-  return rejectedWith({ reason: 'conflict', detail: rejection.detail }, rejection);
+interface Clash extends Recorded {
+  readonly detail: string;
+  readonly kind?: ConflictKind;
+}
+
+function rejectedAsConflict(rejection: Clash): Effect.Effect<ExecutionResult> {
+  const { detail, kind } = rejection;
+  return rejectedWith({ reason: 'conflict', detail, ...(kind === undefined ? {} : { kind }) }, rejection);
 }
 
 export function attempt(executing: Effect.Effect<Executed, PrimitiveRejection>): Effect.Effect<ExecutionOutcome> {

@@ -41,7 +41,8 @@ function rejectionShown(rejection: ExecutionRejection) {
     return { reason: rejection.reason, detail, ...issuesShown(rejection.issues) };
   }
   if (rejection.reason === 'conflict') {
-    return { reason: rejection.reason, detail };
+    const { reason, kind } = rejection;
+    return { reason, detail, ...(kind === undefined ? {} : { kind }) };
   }
   const { reason, kind, because } = rejection;
   return { reason, detail, ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
@@ -128,13 +129,13 @@ export function executionPresenter(words: SpecWords): Presenter {
     streamKind: 'executions',
     eventSchema: ExecutionEventSchema,
     publicNames: {
-      execution_started: 'execution_started',
-      execution_deferred: 'execution_deferred',
-      execution_succeeded: 'execution_succeeded',
-      execution_rejected: 'execution_rejected',
-      execution_failed: 'execution_failed',
-      tool_call_started: 'tool_call_started',
-      tool_call_answered: 'tool_call_answered',
+      execution_started: ['execution_started'],
+      execution_deferred: ['execution_deferred'],
+      execution_succeeded: ['execution_succeeded'],
+      execution_rejected: ['execution_rejected'],
+      execution_failed: ['execution_failed'],
+      tool_call_started: ['tool_call_started'],
+      tool_call_answered: ['tool_call_answered'],
     },
     account: (event, executionId) => accountOf(words, event, executionId),
   });

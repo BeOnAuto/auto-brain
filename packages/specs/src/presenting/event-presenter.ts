@@ -14,7 +14,7 @@ export interface Account {
 export interface EventPresenting<Type extends string, Event extends Fact<Type>> {
   readonly streamKind: string;
   readonly eventSchema: Schema.ConstraintCodec<Event, unknown>;
-  readonly publicNames: Readonly<Record<Type, string>>;
+  readonly publicNames: Readonly<Record<Type, readonly [string]>>;
   readonly account: (event: Event, subject: string) => Account;
 }
 
@@ -29,9 +29,12 @@ export function eventPresenter<Type extends string, Event extends Fact<Type>>({
   return {
     streamKind,
     publicNames,
-    present: ({ id, stream, data }) => {
+    present: ({ id, cursor, causationId, stream, data }) => {
       const event = decode(data);
-      return { id, at: event.at, type: publicNames[event.type], ...account(event, stream.slice(subjectStart)) };
+      const [type] = publicNames[event.type];
+      return [
+        { id, cursor, causation_id: causationId, at: event.at, type, ...account(event, stream.slice(subjectStart)) },
+      ];
     },
   };
 }

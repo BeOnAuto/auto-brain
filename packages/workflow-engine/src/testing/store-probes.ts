@@ -1,10 +1,10 @@
 import type { Settlement } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { DispatchWatermark, RunContext } from '../dispatch/dispatch-watermark.ts';
+import type { DispatchWatermark, OutputOrigin, RunContext } from '../dispatch/dispatch-watermark.ts';
 import { newRun, type RunState } from '../machine/run-state.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
-import type { RunStore, StoredRun } from '../run-log/run-store.ts';
+import type { RecordLineage, RunStore, StoredRun } from '../run-log/run-store.ts';
 import { snapshotOf } from '../run-log/snapshot.ts';
 import type { RecordStore } from '../settlement/record-store.ts';
 import type { Probe } from './port-probes.ts';
@@ -29,8 +29,10 @@ export interface WatermarkSubject {
 
 const succeeded: Settlement = { status: 'succeeded', output: 'done' };
 
+const settledBy: OutputOrigin = { version: 2, lastStep: null };
+
 function settled(subject: RecordStoreSubject, executionId: string, settlement: Settlement) {
-  return subject.recordStore.settle({ executionId, settlement }, { ...subject.run, executionId });
+  return subject.recordStore.settle({ executionId, settlement }, { ...subject.run, executionId }, settledBy);
 }
 
 export const recordStoreProbes: readonly Probe<RecordStoreSubject>[] = [
@@ -85,12 +87,14 @@ const firstTwo = exampleStream.slice(0, 2);
 
 const first = exampleStream.slice(0, 1);
 
+const appendedBy: RecordLineage = { cause: { kind: 'none' }, attributes: {} };
+
 function appendedTo(
   runStore: RunStore,
   executionId: string,
   events: typeof exampleStream,
 ): Effect.Effect<void, unknown> {
-  return Effect.forEach(events, ({ version, event }) => runStore.append(executionId, event, version - 1), {
+  return Effect.forEach(events, ({ version, event }) => runStore.append(executionId, event, version - 1, appendedBy), {
     discard: true,
   });
 }
@@ -183,10 +187,10 @@ export const runStoreProbes: readonly Probe<RunStoreSubject>[] = [
     run: ({ runStore, executionId }) =>
       Effect.gen(function* () {
         const appended = yield* Effect.forEach(firstTwo, ({ version, event }) =>
-          Effect.as(runStore.append(executionId, event, version - 1), 'appended'),
+          Effect.as(runStore.append(executionId, event, version - 1, appendedBy), 'appended'),
         );
         const conflicts = yield* Effect.forEach(first, ({ event }) =>
-          Effect.as(Effect.flip(runStore.append(executionId, event, 0)), 'conflict'),
+          Effect.as(Effect.flip(runStore.append(executionId, event, 0, appendedBy)), 'conflict'),
         );
         const loaded = yield* runStore.load(executionId);
         const after = yield* runStore.eventsAfter(executionId, 1);

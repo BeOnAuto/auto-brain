@@ -8,9 +8,15 @@ export const runSourcePrefix = '/executions/';
 
 export const specSourcePrefix = '/specs/';
 
-type WorkflowInputApplied = 'workflow_input_applied';
+type WorkflowEventType =
+  | 'workflow_input_applied'
+  | 'step_started'
+  | 'step_waiting'
+  | 'step_finished'
+  | 'step_failed'
+  | 'step_skipped';
 
-type FeedType = ExecutionEvent['type'] | SpecEvent['type'] | EventPublished['type'] | WorkflowInputApplied;
+type FeedType = ExecutionEvent['type'] | SpecEvent['type'] | EventPublished['type'] | WorkflowEventType;
 
 const brainTypes: Readonly<Record<FeedType, true>> = {
   execution_started: true,
@@ -25,6 +31,11 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   spec_retired: true,
   event_published: true,
   workflow_input_applied: true,
+  step_started: true,
+  step_waiting: true,
+  step_finished: true,
+  step_failed: true,
+  step_skipped: true,
 };
 
 export const reservedEventTypes: ReadonlySet<string> = new Set(Object.keys(brainTypes));

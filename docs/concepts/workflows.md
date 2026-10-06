@@ -8,7 +8,7 @@ A workflow is a saved definition that coordinates a brain's functions through st
 
 A function defines a reusable operation; a step is where a workflow uses it. A reasoning function such as `review-campaign-brief` can be called directly by an agent and used as a step in more than one workflow. Other steps decide what happens next, wait, repeat work or handle errors without calling a function.
 
-In the current runtime, the functions a workflow calls are reasoning functions in the same brain. A workflow reaches outside the brain only through those functions: it makes no network calls of its own. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
+In the current runtime, the functions a workflow calls are reasoning functions in the same brain and, in a self-hosted runtime, computation functions. A workflow reaches outside the brain only through those functions: it makes no network calls of its own, and a computation function reaches nothing outside either. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
 
 A budget-review workflow could assess the options with a reasoning function, then wait for a person's approval. The evidence arrives as the run's input or with an event, and the approval is an event sent to the waiting run. [Build your first workflow](../tutorials/first-workflow.md) builds a small version: it reviews a campaign brief, waits for the revised brief, and reviews that.
 
@@ -60,7 +60,7 @@ A rejection's reason is `invalid_input` when the error says the input or the doc
 
 `get_execution` reads a run by its execution id. For a workflow it returns the workflow's name, the version that ran, who started it and when, its status and, once it ends, when it finished and its output or rejection.
 
-`get_execution_history` reads what happened in the run, oldest first: its start, its end and, for each input the run took (its start, a function's answer, a timer or an event), a `workflow_input_applied` event. That event names the input and lists the steps it moved, each with how it ended, such as `waiting` or `completed`, so the latest one shows what the run is waiting for. It shows neither the data the run holds nor the events' data. Each function run a step started is recorded in the brain under its own execution id, which `list_executions` lists.
+`get_execution_history` reads what happened in the run, oldest first: its start, its end and, for each input the run took (its start, a function's answer, a timer or an event), a `workflow_input_applied` event. That event names the input and lists the steps it moved, each with how it ended, such as `waiting` or `completed`, so the latest one shows what the run is waiting for; an event for each step follows it, named for how the step ended that input, such as `step_waiting` or `step_finished`. Every event names the event that led to it, so the history draws as a graph: the branch a `switch` took, the branches of a `fork`, a retry and a wait. A step that calls a function shows the execution id of the function's run on its `step_waiting` event, and `list_brain_events` with the workflow's `execution_id` reads the workflow and every function run it started together. It shows neither the data the run holds nor the events' data. Each function run a step started is recorded in the brain under its own execution id, which `list_executions` lists.
 
 ## Planned
 

@@ -1,13 +1,16 @@
 import { Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { compileAnswerSchema, schemaLimits } from './answer-schema.ts';
+import { compileJsonSchema, jsonSchemaLimits } from './json-schema.ts';
+import { isKnownKeyword } from './schema-shape.ts';
+
+const asAnAnswer = { what: 'answer', nesting: 128 };
 
 const unsafePattern = 'Regular expressions are not accepted, because a hostile pattern can stall validation';
 const typeNames = 'Expected one of null, boolean, object, array, number, string, integer, or a non-empty list of them';
 
 function issuesOf(document: unknown): unknown {
-  return Result.match(compileAnswerSchema(document), { onSuccess: () => [], onFailure: (issues) => issues });
+  return Result.match(compileJsonSchema(document, asAnAnswer), { onSuccess: () => [], onFailure: (issues) => issues });
 }
 
 function values(count: number): readonly string[] {
@@ -85,13 +88,13 @@ describe('a hostile schema', () => {
 
   it('may not nest deeper than the limit, and is rejected without overflowing the stack', () => {
     expect(issuesOf(nestedSchemas(5000))).toEqual([
-      { pointer: '', detail: `A schema may nest at most ${schemaLimits.nesting} levels of objects and lists` },
+      { pointer: '', detail: `A schema may nest at most ${jsonSchemaLimits.nesting} levels of objects and lists` },
     ]);
   });
 
   it('may not be larger than the limit', () => {
-    expect(issuesOf({ type: 'string', description: 'x'.repeat(schemaLimits.bytes) })).toEqual([
-      { pointer: '', detail: `A schema may take at most ${schemaLimits.bytes} bytes as JSON` },
+    expect(issuesOf({ type: 'string', description: 'x'.repeat(jsonSchemaLimits.bytes) })).toEqual([
+      { pointer: '', detail: `A schema may take at most ${jsonSchemaLimits.bytes} bytes as JSON` },
     ]);
   });
 
@@ -151,7 +154,7 @@ describe('a schema whose definitions refer to each other', () => {
         },
       },
     };
-    const validate = Result.getOrThrow(compileAnswerSchema(tree)).validate;
+    const validate = Result.getOrThrow(compileJsonSchema(tree, asAnAnswer)).validate;
 
     expect(validate({ root: { children: [{ children: [] }] } })).toEqual(
       Result.succeed({ root: { children: [{ children: [] }] } }),
@@ -159,7 +162,7 @@ describe('a schema whose definitions refer to each other', () => {
   });
 
   it('may chain definitions as long as the size limit allows, and is validated', () => {
-    const validate = Result.getOrThrow(compileAnswerSchema(referenceChain(1700))).validate;
+    const validate = Result.getOrThrow(compileJsonSchema(referenceChain(1700), asAnAnswer)).validate;
 
     expect(validate({ x: 'text' })).toEqual(Result.succeed({ x: 'text' }));
     expect(validate({ x: 1 })).toEqual(Result.fail([{ pointer: '/x', detail: 'Expected a0' }]));
@@ -214,5 +217,13 @@ describe('a schema with annotations and boolean subschemas', () => {
 
     expect(issuesOf(accepted)).toEqual([]);
     expect(issuesOf({ not: {} })).toEqual([]);
+    expect(issuesOf({ type: 'string', 'x-extension': true })).toEqual([]);
+  });
+});
+
+describe('the keywords of a schema', () => {
+  it('are known when they are checked or refused, and unknown otherwise', () => {
+    expect(['type', 'properties', 'pattern', 'if', '$anchor'].every((keyword) => isKnownKeyword(keyword))).toBe(true);
+    expect(isKnownKeyword('x-extension')).toBe(false);
   });
 });

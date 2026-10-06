@@ -15,8 +15,9 @@ const hanging = new Promise<Response>(() => {});
 
 async function silentOnListing(): Promise<LoopbackServer> {
   const fake = await serveFakeMcp();
-  closing.push(fake.close);
-  const server = await serveOnLoopback(() => async (request) => {
+  const forwards: Promise<Response>[] = [];
+  let forwarding = true;
+  const proxy = await serveOnLoopback(() => async (request) => {
     const body = await request.text();
     if (body.includes('"tools/list"')) {
       return hanging;
@@ -25,10 +26,20 @@ async function silentOnListing(): Promise<LoopbackServer> {
     if (method === 'GET') {
       return new Response(null, { status: 405 });
     }
-    return fetch(fake.url, method === 'POST' ? { method, headers, body } : { method, headers });
+    if (!forwarding) {
+      return new Response(null, { status: 503 });
+    }
+    const forward = fetch(fake.url, method === 'POST' ? { method, headers, body } : { method, headers });
+    forwards.push(forward);
+    return forward;
   });
-  closing.push(server.close);
-  return server;
+  closing.push(async () => {
+    forwarding = false;
+    await Promise.allSettled(forwards);
+    await Promise.all([proxy.close(), fake.close()]);
+    expect([...proxy.failures(), ...fake.failures()]).toEqual([]);
+  });
+  return proxy;
 }
 
 describe('listing the tools of a server as a run opens them', () => {
