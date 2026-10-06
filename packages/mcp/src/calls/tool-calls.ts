@@ -4,10 +4,9 @@ import { metaValueOf, type ToolResult } from '../bounds/result-text.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { Observed } from '../connections/observed-requests.ts';
 import { failureOf, type FailureKind } from '../connections/server-failures.ts';
+import { executionIdKey } from './execution-key.ts';
 import type { CallOutcome } from './recorded-calls.ts';
 import type { ServerSlot } from './server-slot.ts';
-
-export const executionIdKey = 'com.beonauto/execution_id';
 
 export interface Forwarding {
   readonly slot: ServerSlot;

@@ -4,7 +4,7 @@ How a brain reaches the outside world: the MCP servers the operator configures, 
 
 ## Entry points
 
-- `@beonauto/mcp`: the settings, `makeToolAccess` and everything it needs, the MCP client and `node:child_process` included.
+- `@beonauto/mcp`: the settings and `makeToolAccess`. The access loads the MCP client, its OAuth providers and `node:child_process` (`src/access/linked-access.ts`) through a dynamic import when a run first opens its tools, so a server that never runs a function with tools never loads them: the server's start loaded 55 files and 0.94 MiB more with them (measured 2026-10-06 with a module load hook, 1,241 files against main's 1,186), and loads 15 files and 32 KiB of this package without them.
 - `@beonauto/mcp/policy`: the pure helpers a caller needs without connecting to anything (`toolReferenceOf`, `toolReferenceShape`, `writtenOf` and `runBoundMs`). It loads no transport code, so the inference primitive, which parses a reason function's `tools` and bounds its run, does not load the MCP client wherever it is bundled; it takes `ToolAccess` as a type only.
 - `@beonauto/mcp/testing`: the fake server and the helpers of the tests (see Testing).
 
