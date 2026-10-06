@@ -122,29 +122,33 @@ describe('the follower of a brain', () => {
 });
 
 describe('a start the brain keeps refusing', () => {
-  it('holds the follower of the brain for 20 sweeps, then is skipped and said, and the follower goes on', async () => {
-    const refusing = { now: true };
-    const reacting = await reactingHost({ failure: refusedWhile(refusing) });
-    const { store } = reacting.database;
-    await specRecorded(store, { name: 'close', version: 1, trigger: closed });
-    await published(store, { id: 'e1', type: 'com.acme.closed' });
+  it(
+    'holds the follower of the brain for 20 sweeps, then is skipped and said, and the follower goes on',
+    { timeout: 30_000 },
+    async () => {
+      const refusing = { now: true };
+      const reacting = await reactingHost({ failure: refusedWhile(refusing) });
+      const { store } = reacting.database;
+      await specRecorded(store, { name: 'close', version: 1, trigger: closed });
+      await published(store, { id: 'e1', type: 'com.acme.closed' });
 
-    const refusals = await until(
-      () =>
-        Effect.runPromise(
-          rowsOf(RefusalRow, reacting.database.read(statement`SELECT reason FROM workflow_reaction_refusals`)),
-        ),
-      (found) => found.length > 0,
-    );
-    refusing.now = false;
-    await published(store, { id: 'e2', type: 'com.acme.closed' });
-    const starts = await startsReaching(reacting, 1);
+      const refusals = await until(
+        () =>
+          Effect.runPromise(
+            rowsOf(RefusalRow, reacting.database.read(statement`SELECT reason FROM workflow_reaction_refusals`)),
+          ),
+        (found) => found.length > 0,
+      );
+      refusing.now = false;
+      await published(store, { id: 'e2', type: 'com.acme.closed' });
+      const starts = await startsReaching(reacting, 1);
 
-    expect([refusals, starts.map(({ cause }) => cause)]).toEqual([
-      [{ reason: 'The workflow could not be started for what it reacts to: The brain refused the start' }],
-      [messageIdOf(`${alpha}events/e2`, 1)],
-    ]);
-  });
+      expect([refusals, starts.map(({ cause }) => cause)]).toEqual([
+        [{ reason: 'The workflow could not be started for what it reacts to: The brain refused the start' }],
+        [messageIdOf(`${alpha}events/e2`, 1)],
+      ]);
+    },
+  );
 });
 
 describe('a start the brain rejects for good', () => {

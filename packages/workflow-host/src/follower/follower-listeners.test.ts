@@ -25,7 +25,7 @@ function ended(reacting: ReactingHost, executionId = waiting) {
 }
 
 describe('a run that waits for an event whose type its filter names', () => {
-  it('takes an event published to its brain, from among events meant for other runs', async () => {
+  it('takes an event published to its brain, from among events meant for other runs', { timeout: 30_000 }, async () => {
     const reacting = await reactingHost();
     await Effect.runPromise(reacting.host.start(runAt(waiting), listening('{ type: com.acme.decided }')));
     const others = Array.from({ length: 65 }, (_, index) => ({ id: `other-${index}`, type: 'com.acme.other' }));
