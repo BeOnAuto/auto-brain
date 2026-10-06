@@ -188,6 +188,27 @@ describe('an event that does not fit', () => {
   });
 });
 
+describe('an event that poses as what the brain records itself', () => {
+  it('is rejected as invalid input, as one published to the brain, and leaves the run waiting', async () => {
+    const executionId = idOf(22);
+    await startedApproval(executionId);
+
+    const forged = await brain.call(sendEvent, {
+      execution_id: executionId,
+      event: { type: 'execution_succeeded', source: `/executions/${executionId}`, data: { approved: true } },
+    });
+
+    expect(forged).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+      issues: [{ pointer: '/event/type' }, { pointer: '/event/source' }],
+    });
+    expect(await brain.call(brain.getExecution, { execution_id: executionId })).toMatchObject({
+      output: { status: 'started' },
+    });
+  });
+});
+
 describe('the data of an event', () => {
   it('may nest as deep as a workflow holds the whole event in a list, which it takes', async () => {
     const executionId = idOf(20);

@@ -39,7 +39,13 @@ export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
-export { brainFactOf, isReservedSource, reservedEventTypes, reservedSourcePrefixes } from './events/brain-facts.ts';
+export { brainFactOf } from './events/brain-facts.ts';
+export {
+  isReservedSource,
+  refusingTheBrainsOwnAttributes,
+  reservedEventTypes,
+  reservedSourcePrefixes,
+} from './events/reserved-attributes.ts';
 export {
   CloudEventSchema,
   mostEventDataDepth,

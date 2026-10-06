@@ -10,6 +10,7 @@ import {
 import { jsonBytesOf, nestsWithin } from '../execution/recorded-size.ts';
 import { SpecEventSchema, type SpecEvent } from '../registry/spec-events.ts';
 import { mostEventDataDepth, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
+import { runSourcePrefix, specSourcePrefix } from './reserved-attributes.ts';
 
 type RunFact = ExecutionStarted | ExecutionFinished;
 
@@ -27,23 +28,9 @@ const runFactTypes: readonly RunFact['type'][] = [
   'execution_failed',
 ];
 
-const specFactTypes: readonly SpecEvent['type'][] = ['spec_created', 'spec_updated', 'spec_retired'];
-
-export const reservedEventTypes: ReadonlySet<string> = new Set([...runFactTypes, ...specFactTypes]);
-
-const runSource = '/executions/';
-
-const specSource = '/specs/';
-
-export const reservedSourcePrefixes: readonly string[] = [runSource, specSource];
-
 const decodeExecutionEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ExecutionEventSchema));
 
 const decodeSpecEvent = Schema.decodeUnknownSync(Schema.toCodecJson(SpecEventSchema));
-
-export function isReservedSource(source: string): boolean {
-  return reservedSourcePrefixes.some((prefix) => source.startsWith(prefix));
-}
 
 function isRunFact(event: ExecutionEvent): event is RunFact {
   return runFactTypes.some((type) => type === event.type);
@@ -62,7 +49,7 @@ function runFactOf(id: string, execution: string, event: RunFact): CloudEvent {
   const fact = {
     specversion: '1.0',
     id,
-    source: `${runSource}${execution}`,
+    source: `${runSourcePrefix}${execution}`,
     type: event.type,
     subject: `${primitive}/${name}`,
     time,
@@ -76,7 +63,7 @@ function specFactOf(id: string, primitive: string, event: SpecEvent): CloudEvent
   return {
     specversion: '1.0',
     id,
-    source: `${specSource}${primitive}/${name}`,
+    source: `${specSourcePrefix}${primitive}/${name}`,
     type: event.type,
     time,
     data: { primitive, name, ...(event.type === 'spec_retired' ? {} : { version: event.version }), caller },

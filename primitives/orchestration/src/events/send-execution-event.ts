@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
 import { BrainContext, defineCommand, NotFound, quoted } from '@beonauto/operations';
-import { getExecution, isWorkflowRun } from '@beonauto/specs';
+import {
+  getExecution,
+  isWorkflowRun,
+  refusingTheBrainsOwnAttributes,
+  reservedEventTypes,
+  reservedSourcePrefixes,
+} from '@beonauto/specs';
 import {
   jsonBytesOf,
   measureOf,
@@ -68,6 +74,7 @@ const EventSchema = Schema.Struct({
     Schema.makeFilter((event: Schema.Json) => jsonBytesOf(event) <= mostEventBytes, {
       expected: `an event of at most ${mostEventBytes} bytes as JSON in UTF-8`,
     }),
+    refusingTheBrainsOwnAttributes,
   )
   .annotate({
     description: `An event for a workflow to listen to, after the CloudEvents attributes, at most ${mostEventBytes} bytes as JSON in UTF-8`,
@@ -79,26 +86,30 @@ const DeliveredEventSchema = Schema.Struct({
   time: Schema.String.annotate({ description: 'When the event was sent, in ISO 8601 UTC' }),
 }).annotate({ identifier: 'DeliveredEvent', description: 'The event as the workflow received it' });
 
+const description = [
+  'Sends an event to an existing workflow run, for its listen steps, and returns the event',
+  'with its id and the time it was sent.',
+  '`execution_id` names the workflow run that is still started. This resumes waiting work; it does not start a new run.',
+  `\`event\` has a \`type\` and an optional \`id\` (each at most ${mostNameLength} characters), \`source\` and`,
+  `\`subject\` (each at most ${mostTextLength} characters) and \`data\` (any JSON value that nests at most`,
+  `${mostDataDepth} levels deep); the whole event takes at most ${mostEventBytes} bytes as JSON.`,
+  'A listen task consumes an event whose attributes match its filter; an event no task consumes yet waits',
+  'in the workflow, and an event with an id the workflow already received is ignored, so a call can be',
+  'retried safely with the same id.',
+  `The types ${[...reservedEventTypes].join(', ')} and sources under ${reservedSourcePrefixes.join(' or ')}`,
+  "are the brain's own, for what it records itself, and are refused with invalid_input.",
+  `A workflow holds at most ${mostWaitingEvents} events it has not consumed (${mostWaitingEventBytes} bytes), and takes`,
+  `at most ${mostReceivedEvents} events (${mostReceivedEventBytes} bytes as JSON) over its life; one more fails it, and`,
+  'its run settles rejected.',
+  'Rejected with not_found when the brain has no active workflow run with that id,',
+  'and with unavailable when the workflow cannot take the event at that moment, in which case try again.',
+].join(' ');
+
 export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {
   return defineCommand('brain', {
     name: 'send_execution_event',
     title: 'Send event to workflow run',
-    description: [
-      'Sends an event to an existing workflow run, for its listen steps, and returns the event',
-      'with its id and the time it was sent.',
-      '`execution_id` names the workflow run that is still started. This resumes waiting work; it does not start a new run.',
-      `\`event\` has a \`type\` and an optional \`id\` (each at most ${mostNameLength} characters), \`source\` and`,
-      `\`subject\` (each at most ${mostTextLength} characters) and \`data\` (any JSON value that nests at most`,
-      `${mostDataDepth} levels deep); the whole event takes at most ${mostEventBytes} bytes as JSON.`,
-      'A listen task consumes an event whose attributes match its filter; an event no task consumes yet waits',
-      'in the workflow, and an event with an id the workflow already received is ignored, so a call can be',
-      'retried safely with the same id.',
-      `A workflow holds at most ${mostWaitingEvents} events it has not consumed (${mostWaitingEventBytes} bytes), and takes`,
-      `at most ${mostReceivedEvents} events (${mostReceivedEventBytes} bytes as JSON) over its life; one more fails it, and`,
-      'its run settles rejected.',
-      'Rejected with not_found when the brain has no active workflow run with that id,',
-      'and with unavailable when the workflow cannot take the event at that moment, in which case try again.',
-    ].join(' '),
+    description,
     route: { method: 'POST', path: '/executions/{execution_id}/events' },
     inputSchema: Schema.Struct({ execution_id: ExecutionIdField, event: EventSchema }),
     outputSchema: Schema.Struct({

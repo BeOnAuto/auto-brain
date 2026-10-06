@@ -7,7 +7,7 @@ import type { ExecutionEvent } from '../execution/execution-events.ts';
 import { jsonBytesOf } from '../execution/recorded-size.ts';
 import type { SpecEvent } from '../registry/spec-events.ts';
 import { specsDecider, specsStreamOf } from '../registry/specs-decider.ts';
-import { brainFactOf, isReservedSource, reservedEventTypes } from './brain-facts.ts';
+import { brainFactOf } from './brain-facts.ts';
 import { CloudEventSchema, mostPublishedEventBytes } from './cloud-event.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -191,24 +191,5 @@ describe('the records that are no facts of the brain', () => {
     expect(
       brainFactOf({ id: recordId, stream: 'events/0199a3c4', type: 'event_published', data: {}, recordedAt: fact.at }),
     ).toBeUndefined();
-  });
-});
-
-describe('the types and sources of the facts of the brain', () => {
-  it('are reserved for the brain', () => {
-    expect([...reservedEventTypes]).toEqual([
-      'execution_started',
-      'execution_succeeded',
-      'execution_rejected',
-      'execution_failed',
-      'spec_created',
-      'spec_updated',
-      'spec_retired',
-    ]);
-    expect(
-      ['/executions/1', '/specs/inference/summary', '/executions', 'executions/1', '/ledger/eu'].map((source) =>
-        isReservedSource(source),
-      ),
-    ).toEqual([true, true, false, false, false]);
   });
 });

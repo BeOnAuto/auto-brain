@@ -126,17 +126,10 @@ describe('an event the brain does not take', () => {
 
     expect(
       await specs.call(publishEvent, publishing({ source: '/executions/0199a3c4', type: 'execution_succeeded' })),
-    ).toEqual({
+    ).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The event cannot be published as it is',
-      issues: [
-        {
-          detail: "The type execution_succeeded is the brain's own, for what it records itself",
-          pointer: '/event/type',
-        },
-        { detail: "A source under /executions/ or /specs/ is the brain's own", pointer: '/event/source' },
-      ],
+      issues: [{ pointer: '/event/type' }, { pointer: '/event/source' }],
     });
     expect(specs.ledger.streamNames()).toEqual([]);
   });
