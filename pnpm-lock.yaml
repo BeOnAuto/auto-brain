@@ -203,7 +203,7 @@ catalogs:
       version: 5.0.2
 
 patchedDependencies:
-  '@gabrielbryk/jq-ts@1.7.0': 156fa8c6868dd9acfa13157a05168e5b92c64a6f899f1a95a6df6baac32f3455
+  '@gabrielbryk/jq-ts@1.7.0': 6426557a3ea232e96e27a177bceb4dad8fbbdbf9381a8d2c3c38b71382e523d2
 
 importers:
 
@@ -477,7 +477,7 @@ importers:
         version: link:../operations
       '@gabrielbryk/jq-ts':
         specifier: 1.7.0
-        version: 1.7.0(patch_hash=156fa8c6868dd9acfa13157a05168e5b92c64a6f899f1a95a6df6baac32f3455)(typescript@7.0.2)
+        version: 1.7.0(patch_hash=6426557a3ea232e96e27a177bceb4dad8fbbdbf9381a8d2c3c38b71382e523d2)(typescript@7.0.2)
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -6215,7 +6215,7 @@ snapshots:
       - snappy
       - socks
 
-  '@gabrielbryk/jq-ts@1.7.0(patch_hash=156fa8c6868dd9acfa13157a05168e5b92c64a6f899f1a95a6df6baac32f3455)(typescript@7.0.2)':
+  '@gabrielbryk/jq-ts@1.7.0(patch_hash=6426557a3ea232e96e27a177bceb4dad8fbbdbf9381a8d2c3c38b71382e523d2)(typescript@7.0.2)':
     dependencies:
       typescript: 7.0.2
 

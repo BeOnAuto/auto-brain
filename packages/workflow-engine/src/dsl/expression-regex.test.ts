@@ -28,6 +28,12 @@ describe('a regular expression', { timeout: 2 * childTimeoutMs }, () => {
     });
   });
 
+  it('names where an unknown POSIX class is, not the name the pattern, perhaps from input, gives it', () => {
+    expect(run('try ("a" | test("[[:" + "x" * 1000 + ":]]")) catch .', null)).toMatchObject({
+      value: 'unsupported regex feature: unknown POSIX class at position 1',
+    });
+  });
+
   it.each<readonly [string, Json]>([
     ['"a" | test("(((a{100}){100}){100}){40}")', null],
     ['"a" | test("((((a{100}){100}){100}){100}){40}")', null],

@@ -665,6 +665,15 @@ diff --git a/dist/index.mjs b/dist/index.mjs
  			const bodyStart = this.insts.length;
  			this.emit(node);
  			pending.push({
+@@ -4160,7 +4319,7 @@
+ 		cur.pos = start;
+ 		return null;
+ 	}
+-	if (!isPosixClass(name)) throw new RegexError(`unsupported regex feature: POSIX class [[:${name}:]]`);
++	if (!isPosixClass(name)) throw new RegexError(`unsupported regex feature: unknown POSIX class at position ${start}`);
+ 	return {
+ 		kind: "posix",
+ 		cls: name,
 @@ -4432,6 +4591,7 @@
  	names = [null];
  	constructor(pattern, extended) {
