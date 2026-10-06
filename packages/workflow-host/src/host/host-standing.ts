@@ -45,15 +45,13 @@ export async function standingOn(
       Effect.andThen(servedNoMore, reports.note({ kind: 'standing_by', holder: elsewhere, until })),
     trouble: reports.trouble,
   });
-  const stopReacting = async (): Promise<void> => {
-    await keeper.stop();
-    await current.serving?.stopReacting();
-  };
   return {
     serving: () => current.serving?.engine,
-    stopReacting,
+    stopReacting: async () => {
+      await current.serving?.stopReacting();
+    },
     stop: async () => {
-      await stopReacting();
+      await keeper.stop();
       await Effect.runPromise(servedNoMore);
       await Effect.runPromise(Effect.ignore(lease.released()));
     },
