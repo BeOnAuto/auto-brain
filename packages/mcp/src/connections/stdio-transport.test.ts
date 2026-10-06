@@ -8,7 +8,7 @@ import type { CallSettled, McpConnection } from './mcp-connection.ts';
 import { observations } from './observed-requests.ts';
 import { failureOf } from './server-failures.ts';
 import { serverLink } from './server-links.ts';
-import { outputNoLongerReported, StdioProcessTransport } from './stdio-transport.ts';
+import { errorsNoLongerReported, outputNoLongerReported, StdioProcessTransport } from './stdio-transport.ts';
 
 const coverage = process.env['NODE_V8_COVERAGE'];
 
@@ -78,6 +78,10 @@ const operatingSystemPrefix = '__CF_';
 
 const notJsonRpc = 'limitless: The MCP server wrote a message that is not JSON-RPC';
 
+const errorsDropped = `limitless: ${errorsNoLongerReported}`;
+
+const clientErrors: ReadonlySet<string> = new Set([notJsonRpc, errorsDropped]);
+
 const called = (connection: McpConnection, tool: string, input: Readonly<Record<string, unknown>> = {}) =>
   connection.call({ tool, input, meta: {}, signal: new AbortController().signal, timeoutMs: patientMs });
 
@@ -135,13 +139,16 @@ describe('one stdio server that the tests of a link share', { timeout: stdioTest
 });
 
 describe('what a stdio server writes', { timeout: stdioTestTimeoutMs }, () => {
-  it('passes over a large batch of non-RPC messages without exhausting the call stack', async () => {
+  it('passes over a large batch of non-RPC messages without exhausting the call stack, and reports only the first 100', async () => {
     const { link, lines } = linked(stdioSettings(['--stdout', '{}\n'.repeat(20_000)]));
 
     expect(await called(await link.take(), 'search', { query: 'acme' })).toMatchObject({
       result: { content: [{ text: 'Found 2 rows for acme.' }] },
     });
-    expect(lines.filter((line) => line === notJsonRpc)).toHaveLength(20_000);
+    expect(lines.filter((line) => clientErrors.has(line))).toEqual([
+      ...Array.from({ length: 100 }, () => notJsonRpc),
+      errorsDropped,
+    ]);
   });
 
   it('closes a process that writes more than its output may take at once', async () => {

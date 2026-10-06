@@ -28,20 +28,29 @@ const patienceMs = 2000;
 
 export const outputNoLongerReported = 'The MCP server wrote more to stderr than is reported; the rest is not shown';
 
-function lineReporter({ scrub, report }: OutputReport): (chunk: string) => void {
-  let pending = '';
+export const errorsNoLongerReported = 'The MCP server caused more errors than are reported; the rest is not shown';
+
+export function boundedReport({ scrub, report }: OutputReport, noLongerReported: string): (line: string) => void {
   let reported = 0;
+  return (line) => {
+    reported += 1;
+    if (reported <= mostReportedLines) {
+      report(scrub(line).slice(0, mostReportedCharacters));
+    }
+    if (reported === mostReportedLines + 1) {
+      report(noLongerReported);
+    }
+  };
+}
+
+function lineReporter(output: OutputReport): (chunk: string) => void {
+  const reportLine = boundedReport(output, outputNoLongerReported);
+  let pending = '';
   return (chunk) => {
     const lines = `${pending}${chunk}`.split('\n');
     pending = lines.splice(-1).join('').slice(0, mostPendingCharacters);
     for (const line of lines.filter((each) => each.trim() !== '')) {
-      reported += 1;
-      if (reported <= mostReportedLines) {
-        report(scrub(line).slice(0, mostReportedCharacters));
-      }
-      if (reported === mostReportedLines + 1) {
-        report(outputNoLongerReported);
-      }
+      reportLine(line);
     }
   };
 }

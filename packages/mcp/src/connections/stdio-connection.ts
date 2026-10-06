@@ -2,17 +2,11 @@ import { Redacted } from 'effect';
 
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
 import { connectionOver, openingClient, type McpConnection } from './mcp-connection.ts';
-import { StdioProcessTransport, type OutputReport } from './stdio-transport.ts';
+import { boundedReport, errorsNoLongerReported, StdioProcessTransport, type OutputReport } from './stdio-transport.ts';
 
 export interface StdioOpening {
   readonly timeoutMs: number;
   readonly output: OutputReport;
-}
-
-function errorReport({ scrub, report }: OutputReport): (message: string) => void {
-  return (message) => {
-    report(scrub(message));
-  };
 }
 
 function environmentOf({ env }: StdioServerSettings): Readonly<Record<string, string>> {
@@ -22,7 +16,7 @@ function environmentOf({ env }: StdioServerSettings): Readonly<Record<string, st
 }
 
 export async function openStdio(settings: StdioServerSettings, opening: StdioOpening): Promise<McpConnection> {
-  const opened = openingClient(settings.request_id, errorReport(opening.output));
+  const opened = openingClient(settings.request_id, boundedReport(opening.output, errorsNoLongerReported));
   const transport = new StdioProcessTransport(
     { command: settings.command, args: settings.args, env: environmentOf(settings) },
     opened.observations,
