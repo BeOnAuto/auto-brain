@@ -5,11 +5,13 @@ import type { Ledger, RunOutcomeMapping } from '@beonauto/operations';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
 import type { Layer } from 'effect';
 
+import type { AppendSignal } from './appends/append-signal.ts';
 import { sqliteLedgerLayer } from './sqlite-event-store.ts';
 
 export interface LedgerOptions {
   readonly fileName: string;
   readonly runOutcomes?: RunOutcomeMapping;
+  readonly appends?: AppendSignal;
 }
 
 const pageCacheOfEightMebibytes = -8192;
@@ -24,9 +26,12 @@ function prepareDirectoryOf(fileName: string): void {
   }
 }
 
-export function ledgerLayer({ fileName, runOutcomes }: LedgerOptions): Layer.Layer<Ledger> {
-  return sqliteLedgerLayer(() => {
-    prepareDirectoryOf(fileName);
-    return { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
-  }, runOutcomes);
+export function ledgerLayer({ fileName, runOutcomes, appends }: LedgerOptions): Layer.Layer<Ledger> {
+  return sqliteLedgerLayer(
+    () => {
+      prepareDirectoryOf(fileName);
+      return { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
+    },
+    { runOutcomes, appends },
+  );
 }

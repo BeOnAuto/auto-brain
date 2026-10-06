@@ -1,7 +1,13 @@
 import type { AppRuntime } from '@beonauto/api';
 import type { Dispatcher, DispatcherServices } from '@beonauto/operations';
 import type { BrainOperation, Primitive } from '@beonauto/specs';
-import { openWorkflowHost, type DatabaseSettings, type WorkflowHost } from '@beonauto/workflow-host';
+import {
+  openWorkflowHost,
+  type DatabaseSettings,
+  type ProjectorSettings,
+  type WorkflowHost,
+  type WorkflowStore,
+} from '@beonauto/workflow-host';
 import { Redacted } from 'effect';
 
 import { logWorkflows } from '../logging/logging.ts';
@@ -14,6 +20,8 @@ export interface HostParts {
   readonly ledger: LedgerSettings;
   readonly workflows: WorkflowSettings;
   readonly primitives: readonly Primitive[];
+  readonly store: WorkflowStore;
+  readonly views: ProjectorSettings;
 }
 
 export function hostDatabaseOf(ledger: LedgerSettings): DatabaseSettings {
@@ -25,11 +33,12 @@ export function hostDatabaseOf(ledger: LedgerSettings): DatabaseSettings {
 export async function openedHost(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
-  { ledger, workflows, primitives }: HostParts,
+  { workflows, primitives, store, views }: HostParts,
   startVersion: BrainOperation,
 ): Promise<WorkflowHost> {
   const host = await openWorkflowHost({
-    database: hostDatabaseOf(ledger),
+    database: store,
+    views,
     ...hostWorkOf(runtime, dispatcher, { primitives, startVersion }),
     reports: hostReports(runtime),
     sweepEveryMs: workflows.sweepEveryMs,

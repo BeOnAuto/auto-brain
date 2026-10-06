@@ -10,6 +10,7 @@ import {
 import { jsonBytesOf, nestsWithin } from '../execution/recorded-size.ts';
 import { SpecEventSchema, type SpecEvent } from '../registry/spec-events.ts';
 import { mostEventDataDepth, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
+import { EventPublishedSchema } from './published-events.ts';
 import { runSourcePrefix, specSourcePrefix } from './reserved-attributes.ts';
 
 type RunFact = ExecutionStarted | ExecutionFinished;
@@ -32,6 +33,10 @@ const runFactTypes: readonly RunFact['type'][] = [
 const decodeExecutionEvent = Schema.decodeUnknownOption(Schema.toCodecJson(ExecutionEventSchema));
 
 const decodeSpecEvent = Schema.decodeUnknownOption(Schema.toCodecJson(SpecEventSchema));
+
+const decodePublished = Schema.decodeUnknownOption(Schema.toCodecJson(EventPublishedSchema));
+
+const publishedEventsKind = 'events';
 
 function isRunFact(event: ExecutionEvent): event is RunFact {
   return runFactTypes.some((type) => type === event.type);
@@ -71,7 +76,7 @@ function specFactOf(id: string, primitive: string, event: SpecEvent): CloudEvent
   };
 }
 
-export function brainFactOf({ id, stream, data }: RecordedEvent): CloudEvent | undefined {
+function factOf({ id, stream, data }: RecordedEvent): CloudEvent | undefined {
   const kind = streamKindOf(stream);
   const named = stream.slice(kind.length + 1);
   if (kind === 'specs') {
@@ -79,4 +84,23 @@ export function brainFactOf({ id, stream, data }: RecordedEvent): CloudEvent | u
   }
   const runFact = kind === 'executions' ? Option.filter(decodeExecutionEvent(data), isRunFact) : Option.none();
   return Option.getOrUndefined(Option.map(runFact, (event) => runFactOf(id, named, event)));
+}
+
+function lineageOf({ causationId, correlationId }: RecordedEvent): Readonly<Record<string, string>> {
+  return {
+    ...(causationId === null ? {} : { causationid: causationId }),
+    ...(correlationId === null ? {} : { correlationid: correlationId }),
+  };
+}
+
+export function brainFactOf(record: RecordedEvent): CloudEvent | undefined {
+  const fact = factOf(record);
+  return fact === undefined ? undefined : { ...fact, ...lineageOf(record) };
+}
+
+export function brainEventOf(record: RecordedEvent): CloudEvent | undefined {
+  if (streamKindOf(record.stream) !== publishedEventsKind || record.type !== 'event_published') {
+    return brainFactOf(record);
+  }
+  return Option.getOrUndefined(Option.map(decodePublished(record.data), ({ event }) => event));
 }

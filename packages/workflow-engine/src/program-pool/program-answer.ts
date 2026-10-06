@@ -1,4 +1,4 @@
-import { isJson, type Json } from '../dsl/json.ts';
+import { isJson, isObject, type Json } from '../dsl/json.ts';
 import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
 import { compileProgram } from '../programs/program-compiling.ts';
 import type { Dialect, Refusal } from '../programs/program-dialect.ts';
@@ -11,6 +11,7 @@ type ProgramAnswerData = typeof ProgramAnswerSchema.Encoded;
 interface ProgramRequestData {
   readonly source: string;
   readonly input: string;
+  readonly variables: string;
   readonly dialect: Dialect;
   readonly limits: ProgramLimits;
   readonly deadlineAt: number;
@@ -52,6 +53,7 @@ function requestOf(data: unknown): ProgramRequestData {
   return {
     source: textOf(data, 'source'),
     input: textOf(data, 'input'),
+    variables: textOf(data, 'variables'),
     dialect: dialectOf(fieldOf(data, 'dialect')),
     limits: limitsOf(fieldOf(data, 'limits')),
     deadlineAt: numberOf(data, 'deadlineAt'),
@@ -105,12 +107,14 @@ function evaluated(request: ProgramRequestData, clock: () => number, check: Outp
     return { ran: 'refused', issues: compiled.issues.map((issue) => cut(issue)) };
   }
   const input: unknown = JSON.parse(request.input);
-  if (!isJson(input)) {
+  const variables: unknown = JSON.parse(request.variables === '' ? '{}' : request.variables);
+  if (!isJson(input) || !isJson(variables) || !isObject(variables)) {
     return tooDeep;
   }
   const run = compiled.program.run(input, {
     limits: request.limits,
     outputs: 'exactly one',
+    variables,
     deadline: { milliseconds: request.deadlineAt - clock(), clock },
   });
   return answerFrom(run, request.mostOutputBytes, check);

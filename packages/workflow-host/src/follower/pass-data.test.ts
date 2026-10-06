@@ -36,7 +36,12 @@ function countedRecords(pageAt: (read: number) => Effect.Effect<readonly Recorde
       after: (_brain, _cursor, delivers) =>
         Effect.suspend(() => {
           reads.push(delivers.size > 0);
-          return Effect.map(pageAt(reads.length), (records) => ({ records, hasMore: true, nextCursor: null }));
+          return Effect.map(pageAt(reads.length), (records) => ({
+            records,
+            hasMore: true,
+            nextCursor: null,
+            lastExamined: null,
+          }));
         }),
     },
     reads: () => reads,

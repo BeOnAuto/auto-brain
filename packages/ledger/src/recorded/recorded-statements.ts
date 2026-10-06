@@ -6,7 +6,14 @@ import {
   type RecordedSelection,
 } from '@beonauto/operations';
 
-import type { MessageLineage, RecordedPoint, RecordedStore, StoredPage, StoredPageRequest } from '../event-store.ts';
+import type {
+  MessageLineage,
+  RecordedPoint,
+  RecordedStore,
+  StoredPage,
+  StoredPageRequest,
+  StoredPlace,
+} from '../event-store.ts';
 
 export interface RecordHead extends MessageLineage {
   readonly point: RecordedPoint;
@@ -19,7 +26,7 @@ export interface RecordHead extends MessageLineage {
 
 export interface ExaminedItem extends Examined {
   readonly point: RecordedPoint;
-  readonly heads: readonly RecordHead[];
+  readonly heads: readonly [RecordHead, ...RecordHead[]];
 }
 
 export interface ExaminationScope {
@@ -100,6 +107,10 @@ function sizedBy(loads: Loads, dataOf: readonly string[] | undefined, item: Exam
     : { ...item, size: item.heads.filter((head) => loads(head)).reduce((sum, { size }) => sum + size, 0) };
 }
 
+function placeOf({ point, heads: [first] }: ExaminedItem): StoredPlace {
+  return { point, recordedAt: first.recordedAt };
+}
+
 async function pageWithin(
   statements: RecordedStatements,
   selection: RecordedSelection,
@@ -108,7 +119,7 @@ async function pageWithin(
 ): Promise<StoredPage> {
   const loads = loadsOf(page.dataOf);
   const examined = (await examine(statements, selection, scope)).map((item) => sizedBy(loads, page.dataOf, item));
-  const { delivered, resumeAfter } = boundedPage(examined, page.limit, scope.examineAtMost);
+  const { delivered, resumeAfter, lastExamined } = boundedPage(examined, page.limit, scope.examineAtMost);
   const heads = delivered.flatMap((item) => item.heads);
   const loaded = heads.filter((head) => loads(head));
   const data =
@@ -124,7 +135,11 @@ async function pageWithin(
     recordedAt,
     data: data.get(pointKey(point)),
   }));
-  return resumeAfter === undefined ? { records } : { records, resumeAfter: resumeAfter.point };
+  return {
+    records,
+    ...(resumeAfter === undefined ? {} : { resumeAfter: resumeAfter.point }),
+    ...(lastExamined === undefined ? {} : { lastExamined: placeOf(lastExamined) }),
+  };
 }
 
 export function recordedReadingOver(statements: RecordedStatements): RecordedStore['readRecorded'] {

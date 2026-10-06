@@ -373,6 +373,40 @@ jobs:
             '[["inference","hello",1],["orchestration","approval",1],["orchestration","greet",1]]'
           docker stop analytics
           test "$(docker inspect analytics --format '{{.State.ExitCode}}')" = 0
+      - name: Recall what the smoke workflows answered
+        timeout-minutes: 2
+        run: |
+          issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
+          key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          export API_KEYS
+          docker run --detach --name recall --publish 8080:8080 --env API_KEYS --volume workflows:/data auto-brain:ci
+          for attempt in $(seq 1 30); do
+            curl --silent --fail --max-time 5 http://127.0.0.1:8080/health > /dev/null && break
+            sleep 1
+          done
+          call() {
+            curl --silent --max-time 30 --output "$1" --write-out '%{http_code}' \
+              --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
+          }
+          brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
+          source="$(printf '%s\n' '---' 'language: jq' 'source:' '  events:' '    - type: execution_succeeded' \
+            '      subject: orchestration/greet' 'view:' '  initial: []' '---' '. + [$event.data.output.greeting? // "none"]')"
+          spec="$(jq --null-input --arg source "$source" '{name: "greetings", source: $source}')"
+          test "$(call created.json --data "$spec" "$brain/specs/recollection")" = 201
+          for attempt in $(seq 1 30); do
+            test "$(call standing.json "$brain/specs/recollection/greetings")" = 200
+            test "$(jq --compact-output '[.standing.state, .standing.folded]' standing.json)" = '["live",1]' && break
+            sleep 1
+          done
+          test "$(jq --compact-output '[.standing.state, .standing.folded]' standing.json)" = '["live",1]'
+          test "$(call recalled.json --data '{}' "$brain/specs/recollection/greetings/execute")" = 200
+          test "$(jq --compact-output '[.status, .output]' recalled.json)" = '["succeeded",["Hello, CI"]]'
+          test "$(call run.json "$brain/executions/$(jq --raw-output .execution_id recalled.json)")" = 200
+          test "$(jq --compact-output '[.record.view.version, .record.view.folded]' run.json)" = '[1,1]'
+          docker stop recall
+          test "$(docker inspect recall --format '{{.State.ExitCode}}')" = 0
 
       - name: Start workflows by an event and by a schedule
         timeout-minutes: 5

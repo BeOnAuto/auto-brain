@@ -22,7 +22,14 @@ export type HostNote =
       readonly brain: string;
       readonly recordId: string;
       readonly type: string;
-    };
+    }
+  | {
+      readonly kind: 'record_passed_over';
+      readonly brain: string;
+      readonly record: string;
+      readonly reason: 'unreadable';
+    }
+  | { readonly kind: 'view_stalled'; readonly brain: string; readonly name: string; readonly version: number };
 
 export interface UnsettledRun extends RunAddress {
   readonly receipt: TroublingReceipt;

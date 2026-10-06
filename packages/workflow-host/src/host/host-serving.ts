@@ -3,12 +3,15 @@ import { Effect, Function } from 'effect';
 import type { HostDatabase } from '../database/host-database.ts';
 import type { Consumer } from '../follower/consumers.ts';
 import { startLoop } from '../loop/host-loop.ts';
+import type { ProjectorSettings } from '../projector/projector-settings.ts';
+import { startProjector } from '../projector/projector.ts';
 import { startReacting } from '../reactions/host-reactions.ts';
 import { hostEngineOn, type EngineOptions, type HostEngine } from './host-engine.ts';
 
 export interface ServingOptions extends EngineOptions {
   readonly sweepEveryMs: number;
   readonly consumers?: readonly Consumer[];
+  readonly views?: ProjectorSettings;
 }
 
 export interface Serving {
@@ -44,12 +47,24 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
     engine.reacting.refusals,
     options.consumers ?? [],
   );
+  const { views } = options;
+  const projector =
+    views === undefined
+      ? undefined
+      : startProjector({
+          database,
+          settings: views,
+          reports: options.reports,
+          clock: options.clock,
+          sweepEveryMs: options.sweepEveryMs,
+        });
   return {
     engine,
     stopReacting: follower.stop,
     stop: async () => {
       await follower.stop();
       await loop.stop();
+      await projector?.stop();
       await Effect.runPromise(engine.executor.stop());
     },
   };

@@ -3,7 +3,7 @@ import type { Event, EventStore as EmmettEventStore } from '@event-driven-io/emm
 import type { Schema } from 'effect';
 
 import type { MessageLineage, StreamStore } from '../event-store.ts';
-import { streamAppends, type AppendSignal } from '../signal/append-signal.ts';
+import { streamAppends, type StreamSignal } from '../signal/append-signal.ts';
 
 export interface EmmettStore extends Pick<EmmettEventStore, 'readStream' | 'appendToStream'> {
   readonly schema: { readonly migrate: () => Promise<unknown> };
@@ -18,7 +18,7 @@ export interface StoredData<Stored extends Record<string, unknown>> {
 export interface EmmettEventStoreOptions<Stored extends Record<string, unknown>> {
   readonly data: StoredData<Stored>;
   readonly mostEventsInOneAppend: number;
-  readonly appended?: AppendSignal;
+  readonly appended?: StreamSignal;
 }
 
 export const dataAsWritten: StoredData<Schema.JsonObject> = {

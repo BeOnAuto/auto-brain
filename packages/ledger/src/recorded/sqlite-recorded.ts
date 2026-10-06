@@ -2,7 +2,8 @@ import { SQL, type SQLExecutor } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
 import { sqliteAppended } from '../appended/sqlite-appended.ts';
-import type { RecordedPoint, RecordedStore } from '../event-store.ts';
+import { sqliteDefinitionStreams } from '../definitions/sqlite-definition-streams.ts';
+import type { DefinitionStreamsStore, RecordedPoint, RecordedStore } from '../event-store.ts';
 import {
   pointKey,
   recordedReadingOver,
@@ -159,10 +160,11 @@ function examineRecords(execute: SQLExecutor): RecordedStatements['examineRecord
       SQL`SELECT position, stream, version, type, recorded, id, causation, correlation, wanted,
           ${sizeOf(scope, SQL`wanted`, 'type', 'size')} AS size, examined
         FROM (
-          SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined
+          SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined,
+            count(*) OVER () AS scanned_count
           FROM (${recordsIn(selected, scope)}) AS scanned
         )
-        WHERE wanted OR examined >= ${scope.examineAtMost}
+        WHERE wanted OR examined >= ${scope.examineAtMost} OR examined = scanned_count
         ORDER BY examined
         LIMIT ${scope.answerAtMost}`,
     );
@@ -174,7 +176,8 @@ function examineRecords(execute: SQLExecutor): RecordedStatements['examineRecord
 }
 
 function firstMessagesOfRuns(scope: ExaminationScope): SQL {
-  return SQL`SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined
+  return SQL`SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined,
+      count(*) OVER () AS scanned_count
     FROM (
       SELECT global_position AS position, stream_id AS stream, stream_position AS version,
         message_type AS type, created AS recorded,
@@ -230,7 +233,7 @@ function examineRuns(execute: SQLExecutor): RecordedStatements['examineRuns'] {
             SELECT max(m.stream_position) FROM emt_messages AS m
             WHERE m.stream_id = f.stream AND m.partition = ${defaultPartition} AND m.is_archived = FALSE
           )
-        WHERE ${wanted} OR f.examined >= ${scope.examineAtMost}
+        WHERE ${wanted} OR f.examined >= ${scope.examineAtMost} OR f.examined = f.scanned_count
         ORDER BY f.examined
         LIMIT ${scope.answerAtMost}`,
     );
@@ -266,8 +269,9 @@ function dataAt(execute: SQLExecutor): RecordedStatements['dataAt'] {
   };
 }
 
-export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore {
+export function sqliteRecordedStore(execute: SQLExecutor): RecordedStore & DefinitionStreamsStore {
   return {
+    ...sqliteDefinitionStreams(execute),
     pointLength: 1,
     readAppended: sqliteAppended(execute),
     readRecorded: recordedReadingOver({

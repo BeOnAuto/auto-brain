@@ -4,13 +4,13 @@ import { Effect, Result } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { dataAsWritten, emmettEventStore } from '../emmett/emmett-event-store.ts';
-import { appendSignalOf, brainKeyOfStream, eventAppenderOf, streamAppends, VersionConflict } from '../index.ts';
+import { eventAppenderOf, streamAppends, streamSignalOf, VersionConflict } from '../index.ts';
 import { ledgerLayer } from '../sqlite3.ts';
 import { happenings, noted } from '../testing/happenings.ts';
 import { openLedgerWith, outcomeOf } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 
-async function aStoreSignalling(appended: ReturnType<typeof appendSignalOf>) {
+async function aStoreSignalling(appended: ReturnType<typeof streamSignalOf>) {
   const emmett = getSQLiteEventStore({
     driver: sqlite3EventStoreDriver,
     fileName: ':memory:',
@@ -26,7 +26,7 @@ const one = [{ type: 'noted', data: { n: 1 } }];
 
 describe('the signal an append raises', () => {
   it('names every stream appended to, after the append', async () => {
-    const signal = appendSignalOf();
+    const signal = streamSignalOf();
     const heard: string[] = [];
     signal.listen((brainKey) => {
       heard.push(brainKey);
@@ -41,7 +41,7 @@ describe('the signal an append raises', () => {
   });
 
   it('is not raised by an append that met a version conflict, nor heard once a listener has stopped', async () => {
-    const signal = appendSignalOf();
+    const signal = streamSignalOf();
     const heard: string[] = [];
     const stop = signal.listen((brainKey) => {
       heard.push(brainKey);
@@ -70,15 +70,5 @@ describe('the signal an append raises', () => {
     await Effect.runPromise(ledger.execute('brain/acme/gamma/notes', happenings, [noted('noted')]));
 
     expect(heard).toContain('brain/acme/gamma/notes');
-  });
-});
-
-describe('the brain key of a stream', () => {
-  it('is its name through the third slash, for a stream of a brain alone', () => {
-    expect(
-      ['brain/acme/alpha/specs/inference', 'brain/acme/alpha', 'org/acme/brains', 'brains/acme/alpha/x'].map((stream) =>
-        brainKeyOfStream(stream),
-      ),
-    ).toEqual(['brain/acme/alpha/', undefined, undefined, undefined]);
   });
 });

@@ -47,6 +47,29 @@ describe('the notes of the workflow host', () => {
   });
 });
 
+describe('the notes of the views the workflow host keeps', () => {
+  it('warn of a recorded event no recall function can fold, and of a view that stopped, naming the brain', async () => {
+    const lines = [
+      ...(await linesLoggedBy(
+        logHostNote({ kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: 'r-1', reason: 'unreadable' }),
+      )),
+      ...(await linesLoggedBy(
+        logHostNote({ kind: 'view_stalled', brain: 'brain/acme/alpha/', name: 'reviews', version: 2 }),
+      )),
+    ];
+
+    expect(lines).toEqual([
+      expect.stringContaining(
+        '"message":"A recorded event of a brain could not be read as an event, so no recall function folds it","level":"WARN"',
+      ),
+      expect.stringContaining(
+        '"message":"The view of a recall function stopped at an event its fold could not take; saving a corrected version rebuilds it","level":"WARN"',
+      ),
+    ]);
+    expect(lines[1]).toContain('"annotations":{"brain":"brain/acme/alpha/","recall_function":"reviews","version":2}');
+  });
+});
+
 describe('the note of a record of a run passed before its outputs were dispatched', () => {
   it('warns that a listener the record armed takes no event recorded before it is kept', async () => {
     const [line] = await linesLoggedBy(logHostNote({ kind: 'run_record_passed', run, version: 4, sweeps: 20 }));

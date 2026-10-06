@@ -6,6 +6,7 @@ import {
   mostExaminedInAPage,
   streamPrefixOfBrain,
   type BrainAddress,
+  type ExaminedPlace,
   type RecordedEvent,
   type RecordedPage,
   type RecordedPageRequest,
@@ -31,7 +32,7 @@ interface ExaminedRun {
   readonly wanted: boolean;
   readonly size: number;
   readonly position: number;
-  readonly heads: readonly MemoryRecord[];
+  readonly heads: readonly [MemoryRecord, ...MemoryRecord[]];
 }
 
 interface Resumed {
@@ -136,7 +137,7 @@ function examinedRuns(
 ): readonly ExaminedRun[] {
   return candidates.slice(0, mostExaminedInAPage + 1).map((first, index) => {
     const latest = log.reduce((last, record) => (record.stream === first.stream ? record : last), first);
-    const heads = latest === first ? [first] : [first, latest];
+    const heads: ExaminedRun['heads'] = latest === first ? [first] : [first, latest];
     const wanted = page.types === undefined || page.types.includes(latest.type);
     const size = heads.reduce((total, head) => total + loadedSizeOf(page, head), 0);
     return { examined: index + 1, wanted, size: wanted ? size : 0, position: first.position, heads };
@@ -160,6 +161,10 @@ function recordedOf(key: string, page: RecordedPageRequest, record: MemoryRecord
     data: loads(page, record) ? data : undefined,
     recordedAt,
   };
+}
+
+function examinedPlaceOf(key: string, { position, heads: [first] }: ExaminedRun): ExaminedPlace {
+  return { cursor: cursorAt(key, position), recordedAt: first.recordedAt };
 }
 
 function beyond({ position, inclusive }: Resumed, order: RecordedPageRequest['order']): (at: number) => boolean {
@@ -186,12 +191,13 @@ function pageOf(
     const cap = page.types === undefined && selection.kind !== 'executions' ? page.limit : mostExaminedInAPage;
     const examined =
       selection.kind === 'executions' ? examinedRuns(log, candidates, page) : examinedRecords(candidates, page, cap);
-    const { delivered, resumeAfter } = boundedPage(examined, page.limit, cap);
+    const { delivered, resumeAfter, lastExamined } = boundedPage(examined, page.limit, cap);
     const nextCursor = resumeAfter === undefined ? null : cursorAt(key, resumeAfter.position);
     return {
       records: delivered.flatMap(({ heads }) => heads.map((head) => recordedOf(key, page, head))),
       hasMore: nextCursor !== null,
       nextCursor,
+      lastExamined: lastExamined === undefined ? null : examinedPlaceOf(key, lastExamined),
     };
   };
 }

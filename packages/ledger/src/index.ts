@@ -1,14 +1,25 @@
+export {
+  appendSignal,
+  brainKeyOfStream,
+  signalledOn,
+  type AppendListener,
+  type AppendSignal,
+} from './appends/append-signal.ts';
 export { eventAppenderOf, type EventAppender } from './event-appender.ts';
 export { eventCodecOf, type EventCodec } from './event-codec.ts';
-export type { AppendedStreams, EncodedEvent, EventStore, RecordedStream } from './event-store.ts';
+export type {
+  AppendedStreams,
+  DefinitionStream,
+  EncodedEvent,
+  EventStore,
+  RecordedPoint,
+  RecordedStream,
+  StoredPage,
+  StoredPlace,
+} from './event-store.ts';
+export { cursorOf as recordedCursorOf } from './recorded/cursor.ts';
 export { decisionLoop, type Decided, type DecisionLoop, type StreamAppend, type StreamLoad } from './ledger-service.ts';
 export { sqliteEventStore, sqliteLedgerLayer, type SQLiteStoreOptions } from './sqlite-event-store.ts';
 export { recordedReaderOf } from './recorded/recorded-reader.ts';
 export { retriedOnVersionConflict, VersionConflict } from './version-conflict.ts';
-export {
-  appendSignalOf,
-  brainKeyOfStream,
-  streamAppends,
-  type AppendSignal,
-  type StreamAppended,
-} from './signal/append-signal.ts';
+export { streamAppends, streamSignalOf, type StreamAppended, type StreamSignal } from './signal/append-signal.ts';

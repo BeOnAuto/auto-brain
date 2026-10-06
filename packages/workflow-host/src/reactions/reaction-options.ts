@@ -1,4 +1,4 @@
-import type { AppendSignal } from '@beonauto/ledger';
+import type { StreamSignal } from '@beonauto/ledger';
 import type { EmitEvent } from '@beonauto/specs';
 import type { LiteralFilter } from '@beonauto/workflow-engine';
 import { Data, type Effect, type Schema } from 'effect';
@@ -30,5 +30,5 @@ export interface ReactionOptions {
   readonly triggerOf: (source: string) => Trigger | undefined;
   readonly start: StartReaction;
   readonly emit: EmitEvent;
-  readonly appended?: AppendSignal;
+  readonly appended?: StreamSignal;
 }

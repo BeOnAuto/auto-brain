@@ -12,6 +12,7 @@ import type { IndexExecutor } from './missing-indexes.ts';
 import { createSQLiteBrainIndexes } from './sqlite-indexes.ts';
 
 const brainIndexes = [
+  'ledger_definition_streams',
   'ledger_first_messages_by_kind',
   'ledger_messages_by_brain',
   'ledger_messages_by_brain_and_correlation',

@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { appendSignalOf, type AppendedStreams } from '@beonauto/ledger';
+import { streamSignalOf, type AppendedStreams } from '@beonauto/ledger';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
@@ -55,7 +55,7 @@ function followed({ streams, sweepEveryMs, pass, upkeepFailing = () => false }: 
     discovery: { atStart: () => Effect.void, registriesAppended: () => Effect.void, brainSeen: () => Effect.void },
     sweeps: brainSweepsOn(store, noBrains),
     upkeep: { sweep: upkeep, fireSchedules: () => Effect.void, nextScheduleAt: () => Effect.succeed(null) },
-    appended: appendSignalOf(),
+    appended: streamSignalOf(),
     clock: systemClock,
     pace: systemClock,
     sweepEveryMs,

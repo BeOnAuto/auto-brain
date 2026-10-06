@@ -4,7 +4,6 @@ import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import type { DatabaseSettings } from '../database/host-databases.ts';
 import type { HostNote } from '../host/host-reports.ts';
 import { openWorkflowHost, type HostOptions, type WorkflowHost } from '../host/workflow-host.ts';
 import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
@@ -27,13 +26,14 @@ export interface HostedOptions {
   readonly sweepEveryMs?: number;
   readonly ledgerDown?: () => boolean;
   readonly holder?: string;
+  readonly views?: HostOptions['views'];
 }
 
 const answeredWithNull = (): Effect.Effect<CallResult> => Effect.succeed({ status: 'succeeded', output: null });
 
 const ledgerUp = (): boolean => false;
 
-export async function hostedOn(settings: DatabaseSettings, options: HostedOptions = {}): Promise<HostedRuns> {
+export async function hostedOn(settings: HostOptions['database'], options: HostedOptions = {}): Promise<HostedRuns> {
   const performed: StartCall[] = [];
   const recorded = recordingReports();
   const settling = recordingSettlements(options.ledgerDown ?? ledgerUp);
@@ -52,6 +52,7 @@ export async function hostedOn(settings: DatabaseSettings, options: HostedOption
     reactions: recordedReactions().options,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.holder === undefined ? {} : { holder: options.holder }),
+    ...(options.views === undefined ? {} : { views: options.views }),
   });
   onTestFinished(() => host.stop());
   return {

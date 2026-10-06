@@ -1,20 +1,11 @@
 export type StreamAppended = (stream: string) => void;
 
-export interface AppendSignal {
+export interface StreamSignal {
   readonly raise: (stream: string) => void;
   readonly listen: (listener: StreamAppended) => () => void;
 }
 
-const segmentsOfABrainKey = 3;
-
-export function brainKeyOfStream(stream: string): string | undefined {
-  const segments = stream.split('/');
-  return segments[0] === 'brain' && segments.length > segmentsOfABrainKey
-    ? `${segments.slice(0, segmentsOfABrainKey).join('/')}/`
-    : undefined;
-}
-
-export function appendSignalOf(): AppendSignal {
+export function streamSignalOf(): StreamSignal {
   const listeners = new Set<StreamAppended>();
   return {
     raise: (stream) => {
@@ -34,4 +25,4 @@ export function appendSignalOf(): AppendSignal {
   };
 }
 
-export const streamAppends: AppendSignal = appendSignalOf();
+export const streamAppends: StreamSignal = streamSignalOf();

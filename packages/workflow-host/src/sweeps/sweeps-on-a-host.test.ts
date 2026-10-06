@@ -1,4 +1,4 @@
-import { appendSignalOf } from '@beonauto/ledger';
+import { streamSignalOf } from '@beonauto/ledger';
 import { describe, expect, it } from 'vitest';
 
 import { brainCreated, eventTrigger, published, specRecorded } from '../reaction-testing/brain-writes.ts';
@@ -27,7 +27,7 @@ describe('the brains another process writes to, which raises no signal here', ()
       const { store } = await openedOn(settings);
       await brainCreated(store, 'alpha');
       await specRecorded(store, { name: 'close', version: 1, trigger: closed });
-      const reacting = await reactingHost({ settings, appended: appendSignalOf(), sweepEveryMs: 20 });
+      const reacting = await reactingHost({ settings, appended: streamSignalOf(), sweepEveryMs: 20 });
 
       await published(store, { id: 'after', type: 'com.acme.closed' });
       const starts = await startsReaching(reacting, 1);
@@ -40,7 +40,7 @@ describe('the brains another process writes to, which raises no signal here', ()
     'follows a brain its org creates from its first record, read from the registry the sweep names',
     { timeout: 30_000 },
     async () => {
-      const reacting = await reactingHost({ appended: appendSignalOf(), sweepEveryMs: 20 });
+      const reacting = await reactingHost({ appended: streamSignalOf(), sweepEveryMs: 20 });
       const { store } = reacting.database;
 
       await brainCreated(store, 'beta');

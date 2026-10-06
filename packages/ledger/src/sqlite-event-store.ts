@@ -4,7 +4,7 @@ import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
 
 import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
 import type { LedgerStore } from './event-store.ts';
-import { ledgerLayerOver } from './ledger-layer.ts';
+import { ledgerLayerOver, type StoreLayerOptions } from './ledger-layer.ts';
 import { keptOutcomesOnly } from './outcomes/run-outcomes-reader.ts';
 import {
   prepareSQLiteRunOutcomes,
@@ -51,7 +51,7 @@ export function sqliteEventStore<Driver extends AnyDriver>(
 
 export function sqliteLedgerLayer<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
-  runOutcomes?: RunOutcomeMapping,
+  { runOutcomes, appends }: StoreLayerOptions = {},
 ) {
-  return ledgerLayerOver(() => sqliteEventStore(optionsOf, runOutcomes));
+  return ledgerLayerOver(() => sqliteEventStore(optionsOf, runOutcomes), appends);
 }

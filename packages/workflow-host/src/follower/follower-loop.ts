@@ -1,4 +1,4 @@
-import type { AppendSignal } from '@beonauto/ledger';
+import type { StreamSignal } from '@beonauto/ledger';
 import { Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';
@@ -21,7 +21,7 @@ export interface FollowerParts {
   readonly discovery: Discovery;
   readonly sweeps: BrainSweeps;
   readonly upkeep: Upkeep;
-  readonly appended: AppendSignal;
+  readonly appended: StreamSignal;
   readonly clock: HostClock;
   readonly pace: HostClock;
   readonly sweepEveryMs: number;

@@ -1,4 +1,4 @@
-import { appendSignalOf } from '@beonauto/ledger';
+import { streamSignalOf } from '@beonauto/ledger';
 import { Effect, Function } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
@@ -50,7 +50,7 @@ function followerWith(following: Following = {}): Watched {
     Effect.sync(() => {
       log.push(line);
     });
-  const appended = appendSignalOf();
+  const appended = streamSignalOf();
   const passEnd = inTurn<PassEnd | 'fails'>(following.passEnds ?? [], 'caught_up');
   const sweep = inTurn(following.sweeps ?? [], nothingToSweep);
   const follower = startFollower({

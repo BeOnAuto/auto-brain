@@ -32,7 +32,7 @@ export function defineRetireSpec(primitives: readonly Primitive[]) {
       reasons: ['not_found', 'conflict'],
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
-        return specOf(primitive, yield* recordInRegistry(primitive.name, { type: 'retire', name }));
+        return specOf(primitive, yield* recordInRegistry(primitive, { type: 'retire', name }));
       }),
       plainLanguage: {
         task: `retire a ${words.kinds}`,

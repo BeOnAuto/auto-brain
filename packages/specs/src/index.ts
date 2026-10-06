@@ -15,6 +15,8 @@ export {
   type PrimitiveDefinition,
   type PrimitiveRejection,
   type DefinitionSummary,
+  type Standing,
+  type StandingRequest,
   type ToolCallJournal,
 } from './primitive/primitive.ts';
 export type { ToolCallFact } from './execution/execution-commands.ts';
@@ -41,7 +43,9 @@ export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
-export { brainFactOf } from './events/brain-facts.ts';
+export { brainEventOf, brainFactOf } from './events/brain-facts.ts';
+export { SpecEventSchema, type SpecEvent } from './registry/spec-events.ts';
+export { specsStreamOf } from './registry/specs-decider.ts';
 export {
   callerSourcePrefix,
   isReservedSource,
@@ -81,6 +85,7 @@ export {
   isWorkflowDefinition,
   type BrainFunctionDefinition,
   type ComputationFunctionDefinition,
+  type RecallFunctionDefinition,
   type ReasoningFunctionDefinition,
   type WorkflowDefinition,
   type ListedDefinition,

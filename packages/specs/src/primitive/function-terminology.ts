@@ -29,6 +29,7 @@ export const functionKindOrder: readonly BrainFunctionKind[] = ['reason', 'inter
 const resourceLabels: ReadonlyMap<string, string> = new Map([
   ['inference', functionResourceLabels.reason.singular],
   ['computation', functionResourceLabels.compute.singular],
+  ['recollection', functionResourceLabels.recall.singular],
   ['orchestration', 'workflow'],
 ]);
 

@@ -50,9 +50,12 @@ export function versionOf(primitive: string, name: string, version: number) {
   return Effect.map(recordedVersionOf(primitive, name, version), ({ source }) => ({ name, version, source }));
 }
 
-export const recordInRegistry = Effect.fnUntraced(function* (primitive: string, data: SpecCommandData) {
+export const recordInRegistry = Effect.fnUntraced(function* (
+  { name: primitive, mostActive }: { readonly name: string; readonly mostActive: number },
+  data: SpecCommandData,
+) {
   const metadata = yield* commandMetadata;
-  const { state } = yield* (yield* BrainWriter).execute(specsStreamOf(primitive), specsDecider(primitive), {
+  const { state } = yield* (yield* BrainWriter).execute(specsStreamOf(primitive), specsDecider(primitive, mostActive), {
     ...data,
     ...metadata,
   });

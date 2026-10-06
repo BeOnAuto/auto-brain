@@ -9,7 +9,18 @@ export interface DefinitionSummary {
   readonly outputSchema?: Schema.JsonObject;
   readonly warnings?: readonly string[];
   readonly reacts?: boolean;
+  readonly details?: Schema.JsonObject;
 }
+
+export interface StandingRequest {
+  readonly org: string;
+  readonly brain: string;
+  readonly name: string;
+  readonly version: number;
+  readonly status: 'active' | 'retired';
+}
+
+export type Standing = (request: StandingRequest) => Effect.Effect<Schema.JsonObject | undefined>;
 
 export interface ToolCallJournal {
   readonly record: (fact: ToolCallFact) => Effect.Effect<boolean>;
@@ -68,6 +79,8 @@ export interface PrimitiveDefinition<Parsed> {
   readonly reachesOutside?: boolean;
   readonly mayChangeOutside?: boolean;
   readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
+  readonly mostActive?: number;
+  readonly standing?: Standing;
 }
 
 export interface PreparedDefinition {
@@ -81,6 +94,10 @@ function callsNoTools(): boolean {
   return false;
 }
 
+function standsAsSaved(): Effect.Effect<Schema.JsonObject | undefined> {
+  return Effect.undefined;
+}
+
 export interface Primitive {
   readonly name: string;
   readonly title: string;
@@ -91,6 +108,8 @@ export interface Primitive {
   readonly longestExecutionMs: number;
   readonly reachesOutside: boolean;
   readonly mayChangeOutside: boolean;
+  readonly mostActive: number;
+  readonly standing: Standing;
   readonly prepare: (source: string) => Effect.Effect<PreparedDefinition, InvalidInput>;
 }
 
@@ -108,6 +127,8 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
     reachesOutside = false,
     mayChangeOutside = false,
     callsTools = callsNoTools,
+    mostActive = Number.POSITIVE_INFINITY,
+    standing = standsAsSaved,
   } = definition;
   if (!isPrimitiveName(name)) {
     throw new Error(`The primitive name ${name} is malformed`);
@@ -122,6 +143,8 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
     longestExecutionMs,
     reachesOutside,
     mayChangeOutside,
+    mostActive,
+    standing,
     prepare: (source) =>
       parse(source).pipe(
         Effect.map((parsed) => ({

@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { appendSignalOf } from '@beonauto/ledger';
+import { streamSignalOf } from '@beonauto/ledger';
 import { messageIdOf } from '@beonauto/operations';
 import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
@@ -85,7 +85,7 @@ export async function reactionLatencyOn(database: DatabaseSettings, measured: La
         Effect.sync(() => {
           startedAt.set(start.cause ?? '', Date.now());
         }),
-      ...(measured.signalled ? {} : { appended: appendSignalOf() }),
+      ...(measured.signalled ? {} : { appended: streamSignalOf() }),
     },
   });
   await Array.from({ length: measured.workflows }, (_, index) => index).reduce<Promise<void>>(

@@ -252,7 +252,7 @@ function executorFinding(names: readonly string[]): { readonly execute: IndexExe
 }
 
 describe("the brain's indexes on PostgreSQL", () => {
-  it('index the brain in order, by time and by correlation, each stream in order and its messages by brain and kind, then analyse', async () => {
+  it('index the brain in order, by time and by correlation, each stream in order, its messages by brain and kind and its definition streams by type, then analyse', async () => {
     const { execute, commands } = executorFinding([]);
 
     await createPostgreSQLBrainIndexes({ execute });
@@ -263,7 +263,8 @@ describe("the brain's indexes on PostgreSQL", () => {
       'CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, transaction_id, global_position)',
       "CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){4}')), stream_position, transaction_id, global_position)",
       "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), (message_metadata ->> 'correlationId'), transaction_id, global_position)",
-      'ANALYZE emt_messages',
+      "CREATE INDEX IF NOT EXISTS ledger_definition_streams ON emt_streams ((substring(stream_id FROM '^(?:[^/]*/){3}specs/([^/]+)$'))) WHERE (substring(stream_id FROM '^(?:[^/]*/){3}specs/([^/]+)$')) IS NOT NULL",
+      'ANALYZE emt_messages, emt_streams',
     ]);
   });
 
@@ -274,6 +275,7 @@ describe("the brain's indexes on PostgreSQL", () => {
       'ledger_messages_by_stream',
       'ledger_first_messages_by_kind',
       'ledger_messages_by_brain_and_correlation',
+      'ledger_definition_streams',
     ];
     const present = executorFinding(all);
     const oneMissing = executorFinding(all.filter((name) => name !== 'ledger_messages_by_stream'));
@@ -285,7 +287,7 @@ describe("the brain's indexes on PostgreSQL", () => {
       [],
       [
         'CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, transaction_id, global_position)',
-        'ANALYZE emt_messages',
+        'ANALYZE emt_messages, emt_streams',
       ],
     ]);
   });

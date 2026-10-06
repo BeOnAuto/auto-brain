@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import { postgresqlAppended } from '../appended/postgresql-appended.ts';
-import type { RecordedStore } from '../event-store.ts';
+import type { DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
 import {
   pointKey,
   recordedReadingOver,
@@ -12,6 +12,7 @@ import {
 } from '../recorded/recorded-statements.ts';
 import { brainKeyOfStream, correlationOfMessage } from './brain-indexes.ts';
 import { dataAsJsonText } from './json-text.ts';
+import { postgresqlDefinitionStreams } from './postgresql-definition-streams.ts';
 import { examineRuns } from './postgresql-runs.ts';
 import {
   binding,
@@ -101,10 +102,11 @@ function examineRecords(query: Query): RecordedStatements['examineRecords'] {
       `SELECT transaction, position, stream, version, type, recorded, id, causation, correlation, wanted,
           examined::int AS examined, ${size} AS size
         FROM (
-          SELECT scanned.*, row_number() OVER (ORDER BY ${inOrder(records, 'scanned.')}) AS examined
+          SELECT scanned.*, row_number() OVER (ORDER BY ${inOrder(records, 'scanned.')}) AS examined,
+            count(*) OVER () AS scanned_count
           FROM (${recordsIn(selected, records)}) AS scanned
         ) AS numbered
-        WHERE wanted OR examined >= ${bind(scope.examineAtMost)}
+        WHERE wanted OR examined >= ${bind(scope.examineAtMost)} OR examined = scanned_count
         ORDER BY ${inOrder(records)}
         LIMIT ${bind(scope.answerAtMost)}`,
       values,
@@ -154,8 +156,9 @@ function dataAt(query: Query): RecordedStatements['dataAt'] {
   };
 }
 
-export function postgresqlRecordedStore(query: Query): RecordedStore {
+export function postgresqlRecordedStore(query: Query): RecordedStore & DefinitionStreamsStore {
   return {
+    ...postgresqlDefinitionStreams(query),
     pointLength: 2,
     readAppended: postgresqlAppended(query),
     readRecorded: recordedReadingOver({

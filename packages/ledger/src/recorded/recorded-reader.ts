@@ -26,7 +26,7 @@ function storedRequestOf(
 }
 
 function recordedPageOf(brainKey: string): (stored: StoredPage) => RecordedPage {
-  return ({ records, resumeAfter }) => ({
+  return ({ records, resumeAfter, lastExamined }) => ({
     records: records.map(({ point, id, causationId, correlationId, stream, version, type, data, recordedAt }) => ({
       id,
       cursor: cursorOf(brainKey, point),
@@ -40,6 +40,10 @@ function recordedPageOf(brainKey: string): (stored: StoredPage) => RecordedPage 
     })),
     hasMore: resumeAfter !== undefined,
     nextCursor: resumeAfter === undefined ? null : cursorOf(brainKey, resumeAfter),
+    lastExamined:
+      lastExamined === undefined
+        ? null
+        : { cursor: cursorOf(brainKey, lastExamined.point), recordedAt: lastExamined.recordedAt },
   });
 }
 

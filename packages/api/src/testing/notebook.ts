@@ -214,10 +214,11 @@ const checkLines = defineCommand('brain', {
 });
 
 const becauseOfKind = {
-  model_not_offered: 'model_not_allowed',
-  tool_not_offered: 'tool_not_listed',
-  mcp_server_failed: 'unreachable',
-  tools_unfinished: 'model_unavailable',
+  model_not_offered: { because: 'model_not_allowed' },
+  tool_not_offered: { because: 'tool_not_listed' },
+  mcp_server_failed: { because: 'unreachable' },
+  tools_unfinished: { because: 'model_unavailable' },
+  rebuilding: {},
 } as const;
 
 const sendNotes = defineCommand('brain', {
@@ -229,7 +230,7 @@ const sendNotes = defineCommand('brain', {
   outputSchema: Nothing,
   reasons: ['unavailable'],
   handle: ({ kind }) =>
-    Effect.fail(new Unavailable({ detail: 'The notes could not be sent', kind, because: becauseOfKind[kind] })),
+    Effect.fail(new Unavailable({ detail: 'The notes could not be sent', kind, ...becauseOfKind[kind] })),
   plainLanguage: plainly('send the notes'),
 });
 

@@ -462,6 +462,9 @@ importers:
       '@beonauto/orchestration':
         specifier: workspace:*
         version: link:../../primitives/orchestration
+      '@beonauto/recollection':
+        specifier: workspace:*
+        version: link:../../primitives/recollection
       '@beonauto/specs':
         specifier: workspace:*
         version: link:../specs
@@ -701,6 +704,31 @@ importers:
       '@beonauto/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.2(vitest@5.0.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+
+  primitives/recollection:
+    dependencies:
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../../packages/operations
+      '@beonauto/specs':
+        specifier: workspace:*
+        version: link:../../packages/specs
+      '@beonauto/workflow-engine':
+        specifier: workspace:*
+        version: link:../../packages/workflow-engine
+      '@beonauto/workflow-host':
+        specifier: workspace:*
+        version: link:../../packages/workflow-host
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+    devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.2(vitest@5.0.2)

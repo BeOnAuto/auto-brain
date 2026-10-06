@@ -27,6 +27,18 @@ function settledAfterBackingOff({ run, attempts }: NoteOf<'settled_after_back_of
   );
 }
 
+function passedOver({ brain, record }: NoteOf<'record_passed_over'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'A recorded event of a brain could not be read as an event, so no recall function folds it',
+  ).pipe(Effect.annotateLogs({ brain, record }));
+}
+
+function viewStalled({ brain, name, version }: NoteOf<'view_stalled'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'The view of a recall function stopped at an event its fold could not take; saving a corrected version rebuilds it',
+  ).pipe(Effect.annotateLogs({ brain, recall_function: name, version }));
+}
+
 function offerDeclined({ run, detail }: NoteOf<'offer_declined'>): Effect.Effect<void> {
   return Effect.logWarning(
     'A run waiting for an event of its brain did not take one, since its filter failed on the event',
@@ -45,24 +57,23 @@ function runRecordPassed({ run, version, sweeps }: NoteOf<'run_record_passed'>):
   ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, version }));
 }
 
-function logRunNote(
-  note: NoteOf<'settle_backing_off' | 'settled_after_back_off' | 'offer_declined' | 'run_record_passed'>,
-) {
-  if (note.kind === 'offer_declined') {
-    return offerDeclined(note);
-  }
-  if (note.kind === 'run_record_passed') {
-    return runRecordPassed(note);
-  }
-  return note.kind === 'settle_backing_off' ? backingOff(note) : settledAfterBackingOff(note);
+const loggers: { readonly [Kind in HostNote['kind']]: (note: NoteOf<Kind>) => Effect.Effect<void> } = {
+  standing_by: standingBy,
+  took_over: tookOver,
+  settle_backing_off: backingOff,
+  settled_after_back_off: settledAfterBackingOff,
+  record_passed_over: passedOver,
+  view_stalled: viewStalled,
+  offer_declined: offerDeclined,
+  record_unreadable: recordUnreadable,
+  run_record_passed: runRecordPassed,
+};
+
+function loggedBy<Kind extends HostNote['kind']>(note: NoteOf<Kind>): Effect.Effect<void> {
+  const logger: (note: NoteOf<Kind>) => Effect.Effect<void> = loggers[note.kind];
+  return logger(note);
 }
 
 export function logHostNote(note: HostNote): Effect.Effect<void> {
-  if (note.kind === 'standing_by') {
-    return standingBy(note);
-  }
-  if (note.kind === 'took_over') {
-    return tookOver(note);
-  }
-  return note.kind === 'record_unreadable' ? recordUnreadable(note) : logRunNote(note);
+  return loggedBy(note);
 }

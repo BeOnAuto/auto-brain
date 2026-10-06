@@ -65,6 +65,7 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
 const kindProblemTypes: Readonly<Record<KindWithType, ProblemType>> = {
   tools_unfinished: { status: 503, title: 'Tools unfinished' },
   tools_called: { status: 409, title: 'Tools called' },
+  rebuilding: { status: 503, title: 'Rebuilding' },
 };
 
 function problemTypeFor(

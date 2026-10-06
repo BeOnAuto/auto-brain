@@ -41,7 +41,7 @@ const presentation = presentationOf([
 ]);
 
 function pageOf(records: readonly RecordedEvent[], nextCursor: string | null = null): RecordedPage {
-  return { records, hasMore: nextCursor !== null, nextCursor };
+  return { records, hasMore: nextCursor !== null, nextCursor, lastExamined: null };
 }
 
 function idsOf({ events }: EventsPage): readonly string[] {

@@ -10,7 +10,9 @@ Recorded history needs persistent storage and tested backups. Teams operating th
 
 Recall retrieves or reconstructs relevant information. A projection derives a view or state from recorded events. The ledger is one possible source for a recall function, alongside other connected information.
 
-Standalone recall definitions are planned. Today you can read a brain's recorded history in three ways, over HTTP and MCP:
+A self-hosted runtime runs recall functions over a brain's own history. A recall function names the events it takes, such as every run of one reasoning function that succeeded, and a fold that folds each into a view; the runtime keeps the view as the brain records events, builds it again from the whole history when a new version is saved, and a run answers from it, saying how far it has read. A run never waits for the view to catch up, so it may not yet show an event recorded a moment ago. See [Recall function format](../reference/recall-format.md).
+
+You can also read a brain's recorded history in three ways, over HTTP and MCP:
 
 - `list_executions` lists the runs of a brain, newest first, and can keep only the runs of one function or in one status.
 - `get_execution_history` reads the history of one run: each start, what the run did, such as the tool calls of a reasoning function or the inputs and steps of a workflow, and how it ended, each with when it happened and a plain-language summary.

@@ -37,7 +37,7 @@ export function defineCreateSpec(primitives: readonly Primitive[]) {
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name, source }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
         const content = yield* contentOf(primitive, source);
-        return specOf(primitive, yield* recordInRegistry(primitive.name, { type: 'create', name, content }));
+        return specOf(primitive, yield* recordInRegistry(primitive, { type: 'create', name, content }));
       }),
       plainLanguage: {
         task: `create a new ${words.kinds}`,

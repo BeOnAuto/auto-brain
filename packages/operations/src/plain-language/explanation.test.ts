@@ -31,6 +31,11 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
   ['retired', 'it has been retired', 'What is retired stays retired; a new one can be made under another name.'],
   ['concurrent_change', 'something else changed it at the same moment', 'Trying again should work.'],
   ['unworkable', 'it cannot work as it is written', correctable],
+  [
+    'stalled',
+    'what it keeps of the brain’s history stopped at a recorded event it could not take in',
+    'It answers again once a corrected version is saved, which builds it anew from the history; the details below say which event stopped it and why.',
+  ],
 ];
 
 const calledToolsWords =
@@ -107,6 +112,15 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
     toolsMayHaveWritten,
   ],
 ];
+
+describe('the explanation of a view still being built', () => {
+  it('says that trying again later should work, and that nothing needs to change', () => {
+    expect(explanationOf({ reason: 'unavailable', kind: 'rebuilding' })).toEqual({
+      why: 'what it keeps of the brain’s history is still being built from that history',
+      remedy: 'Nothing needs to change: trying again in a little while should work.',
+    });
+  });
+});
 
 const switchable =
   'This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.';
