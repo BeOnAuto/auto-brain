@@ -15,7 +15,7 @@ describe('the functions a workflow calls', () => {
   - log: { call: log, with: {} }
 `),
     ).toEqual([
-      '/do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through the specs of its brain; call execute_spec',
+      '/do/0/fetch/call: call: http is not allowed: a workflow reaches the world only through its brain functions; call execute_spec',
       '/do/1/log/call: call: log names no function; the one function is execute_spec',
     ]);
   });
@@ -28,18 +28,19 @@ describe('the functions a workflow calls', () => {
     ).toEqual([
       'catalogs are not supported in this version: a workflow calls only execute_spec',
       'reusable functions are not supported in this version: call execute_spec directly',
-      'schedules are not supported in this version: execute the spec to run it',
+      'schedules are not supported in this version: run the workflow with execute_spec',
     ]);
   });
 });
 
 describe('a call of execute_spec', () => {
-  it('is described by the primitive and the spec it executes, or by its name when they cannot be read', () => {
+  it('preserves labels embedded in historical run-state patches and their byte accounting', () => {
     expect([
       workflowFunctions.describe('execute_spec', { primitive: 'inference', name: 'summarize' }),
+      workflowFunctions.describe('execute_spec', { primitive: 'echo', name: 'greet' }),
       workflowFunctions.describe('execute_spec', { name: 'summarize' }),
       workflowFunctions.describe('execute_spec', 'summarize'),
-    ]).toEqual(['the inference spec summarize', 'execute_spec', 'execute_spec']);
+    ]).toEqual(['the inference spec summarize', 'the echo spec greet', 'execute_spec', 'execute_spec']);
   });
 });
 

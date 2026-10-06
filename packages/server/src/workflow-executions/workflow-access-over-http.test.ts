@@ -4,7 +4,7 @@ import { allPermissions } from '@beonauto/operations';
 import { Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { alpha, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
@@ -54,7 +54,7 @@ const decided = { type: 'com.acme.approval.decided', data: { approved: true } };
 
 const sentEventOf = Schema.decodeUnknownSync(Schema.Struct({ event: Schema.Record(Schema.String, Schema.Unknown) }));
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 beforeEach(async () => {
   server = await servingWorkflows([answers(jsonResult({ approve: true }))], {

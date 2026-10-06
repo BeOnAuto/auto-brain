@@ -146,7 +146,7 @@ describe(
     timeout: developmentTestTimeoutMs,
   },
   () => {
-    it('creates a brain, stores a reason function that classifies tickets, runs it, reads its record and runs a new version', async () => {
+    it('creates a brain, stores a reasoning function that classifies tickets, runs it, reads its record and runs a new version', async () => {
       const steps = await onPnpmDev(async (session) => ({
         brain: structured(await session.callTool('create_brain', { brain, name: 'Support' })),
         stored: await stored(session, 'inference', 'classify-ticket', classifyingPrompt('Answer as JSON.')),

@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { parseWorkflowDocument } from '../document/workflow-document.ts';
 import type { SpecCall, SpecCallResult } from '../testing/run-terms.ts';
 import { interpret, yamlObject } from '../testing/workflows.ts';
-import { orchestrationDescription, orchestrationExample } from './orchestration-description.ts';
+import { workflowDescription, workflowExample } from './workflow-description.ts';
 
-const example = yamlObject(orchestrationExample);
+const example = yamlObject(workflowExample);
 
 function triagedAs(urgency: string): (call: SpecCall) => SpecCallResult {
   return ({ name }) =>
@@ -15,18 +15,18 @@ function triagedAs(urgency: string): (call: SpecCall) => SpecCallResult {
       : { status: 'succeeded', output: 'Refund failed twice; the customer is waiting.' };
 }
 
-describe('the opening of the description of orchestration', () => {
-  it('says that a spec of orchestration is a workflow, and which name the tools take', () => {
-    expect(orchestrationDescription).toMatch(
-      /^A spec of the orchestration primitive is a workflow: it coordinates the brain's other functions, running them in order, deciding what happens next and waiting for input. In conversation, call it a workflow; the primitive's name, `orchestration`, is what the tools take. Runs a workflow:/u,
+describe('the opening of the workflow description', () => {
+  it('describes the workflow and preserves the name its tools take', () => {
+    expect(workflowDescription).toMatch(
+      /^A workflow coordinates the brain's functions, running them in order, deciding what happens next and waiting for input. Use workflow in conversation. The tools identify workflows with `primitive: orchestration`. Runs deterministic steps/u,
     );
   });
 });
 
-describe('the example in the description of orchestration', () => {
+describe('the example in the workflow description', () => {
   it('is in the description, and stores as a valid spec document', async () => {
-    expect(orchestrationDescription).toContain(orchestrationExample);
-    await expect(Effect.runPromise(parseWorkflowDocument(orchestrationExample))).resolves.toEqual(example);
+    expect(workflowDescription).toContain(workflowExample);
+    await expect(Effect.runPromise(parseWorkflowDocument(workflowExample))).resolves.toEqual(example);
   });
 
   it('drafts a note for an urgent ticket and hands on what the approval event carried', async () => {

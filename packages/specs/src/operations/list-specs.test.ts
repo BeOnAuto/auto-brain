@@ -49,7 +49,7 @@ describe('list_specs', () => {
     expect(listSpecs.registration).toMatchObject({
       scope: 'brain',
       kind: 'query',
-      title: 'List specs',
+      title: 'List definitions',
       route: { method: 'GET', path: '/specs/{primitive}' },
       pathParameters: ['primitive'],
       successStatus: 200,

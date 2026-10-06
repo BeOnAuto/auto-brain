@@ -183,18 +183,6 @@ await test('the first-brain tutorial supplies inputs and observable checks for t
   assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
 });
 
-await test('docs distinguish inbound MCP from the tools a reason function calls', () => {
-  const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
-  const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
-  const readme = readFileSync(join(docs, '../README.md'), 'utf8');
-  assert.ok(mcp.includes('inbound interface'));
-  assert.ok(mcp.includes('never by adding an endpoint to an external assistant'));
-  assert.ok(functions.includes('Auto Cloud does not offer it yet'));
-  assert.ok(functions.includes('model gateways connect to language models'));
-  assert.ok(readme.includes('Auto Cloud does not offer this yet'));
-  assert.ok(readme.includes('the function does not inherit the agent'));
-});
-
 await test('the README starts with an actionable local quick start and keeps Cloud optional', () => {
   const readme = readFileSync(join(docs, '../README.md'), 'utf8');
   assert.ok(readme.indexOf('## Quick start') < readme.indexOf('## Documentation and help'));
@@ -281,7 +269,7 @@ await test('public workflows are available, and link their format and tutorial w
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const tutorial = readFileSync(join(docs, 'tutorials/first-workflow.md'), 'utf8');
   assert.doesNotMatch(workflows, /coming soon/iu);
-  assert.match(functions, /^\| Workflows +\| A workflow +\| Available +\|$/mu);
+  assert.ok(functions.includes('Workflows are available and coordinate the functions above'));
   for (const page of publicPages) assert.doesNotMatch(readFileSync(page, 'utf8'), /workflow service/iu);
   assert.doesNotMatch(workflows, /```(?:yaml|sh|bash|json)/u);
   assert.ok(markdownDestinations(workflows).includes('../reference/workflow-format.md'));

@@ -11,7 +11,7 @@ import { allPermissions } from '@beonauto/operations';
 import { Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const listResultOf = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ result: Schema.Unknown })));
 
@@ -30,10 +30,10 @@ const globexAdmin = createApiKey({ id: 'globex-admin', org: 'globex', permission
 
 const apiKeys = JSON.stringify([acmeAdmin.entry, acmeReader.entry, acmeAlpha.entry, globexAdmin.entry]);
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 beforeEach(async () => {
-  server = await servingInference([], { API_KEYS: apiKeys });
+  server = await servingReasoning([], { API_KEYS: apiKeys });
   await server.call('POST', '/v1/orgs/acme/brains', { key: acmeAdmin.key, body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', '/v1/orgs/acme/brains', { key: acmeAdmin.key, body: { brain: 'beta', name: 'Beta' } });
 });

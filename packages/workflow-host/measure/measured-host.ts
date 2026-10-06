@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { Execution, SettleExecution } from '@beonauto/specs';
+import type { Run, SettleExecution } from '@beonauto/specs';
 import { defaultLimits, defaultSeed, testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function, type Schema } from 'effect';
 
@@ -15,7 +15,7 @@ export interface MeasuredHost {
   readonly untilSettled: (count: number) => Promise<void>;
 }
 
-const execution: Execution = {
+const execution: Run = {
   execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   primitive: 'orchestration',
   name: 'measured',

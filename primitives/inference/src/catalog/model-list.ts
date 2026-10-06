@@ -5,7 +5,7 @@ const Count = Schema.Int.check(Schema.isGreaterThan(0));
 const ModelEntrySchema = Schema.Struct({
   id: Schema.String.annotate({
     description:
-      'The model as a spec names it, provider/model id, such as anthropic/claude-sonnet-4-5; an alias as its operator wrote it',
+      'The model as a reasoning function names it, provider/model id, such as anthropic/claude-sonnet-4-5; an alias as its operator wrote it',
   }),
   object: Schema.Literal('model'),
   created: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).annotate({

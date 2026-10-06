@@ -58,7 +58,7 @@ function finishing(result: ExecutionResult): ExecutionCommand {
 }
 
 const anotherRequest = new Conflict({
-  detail: 'The execution id belongs to an execution of another spec or with another input',
+  detail: 'The run id belongs to a run of another definition or with another input',
 });
 
 describe('starting an execution', () => {
@@ -221,11 +221,11 @@ const callAnswered: ExecutionEvent = { ...answered, ...during };
 
 const toolsWereCalled = new Conflict({
   detail:
-    'The execution called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another execution id, and read with get_execution_history what it called',
+    'The run called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another run id, and read with get_execution_history what it called',
   kind: 'tools_called',
 });
 
-const noMoreCalls = new Conflict({ detail: 'The execution has finished, so it records no more tool calls' });
+const noMoreCalls = new Conflict({ detail: 'The run has finished, so it records no more tool calls' });
 
 describe('a tool call of an execution', () => {
   it('is recorded while the execution runs, with who and when', () => {

@@ -73,8 +73,8 @@ describe('the MCP servers of the server', () => {
 
     expect(error).toBe(
       'mcp_settings_invalid: The MCP server settings are invalid. ' +
-        'MCP_SERVERS: /house: The name of a model provider or gateway, which a reason function could not tell apart from it; ' +
-        'MCP_SERVERS: /anthropic: The name of a model provider or gateway, which a reason function could not tell apart from it',
+        'MCP_SERVERS: /house: The name of a model provider or gateway, which a reasoning function could not tell apart from it; ' +
+        'MCP_SERVERS: /anthropic: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
     );
     expect(error).not.toContain(apiKey);
   });

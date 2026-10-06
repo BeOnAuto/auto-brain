@@ -1,13 +1,7 @@
 import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
 import { Effect, Predicate, type Schema } from 'effect';
 
-import {
-  definePrimitive,
-  type Executed,
-  type ExecutionContext,
-  type Primitive,
-  type PrimitiveRejection,
-} from '../index.ts';
+import { definePrimitive, type Executed, type RunContext, type Primitive, type PrimitiveRejection } from '../index.ts';
 
 type Mishap = 'stall' | 'unavailable' | 'unoffered' | 'conflict' | 'breakdown';
 
@@ -43,11 +37,7 @@ const mishaps: Readonly<Record<Mishap, Effect.Effect<never, Unavailable | Confli
   breakdown: Effect.die(new Error('The probe broke down')),
 };
 
-function answerTo(
-  input: Schema.Json,
-  execution: ExecutionContext,
-  runs: number,
-): Effect.Effect<Executed, InvalidInput> {
+function answerTo(input: Schema.Json, execution: RunContext, runs: number): Effect.Effect<Executed, InvalidInput> {
   if (Predicate.hasProperty(input, 'reject')) {
     return Effect.fail(
       new InvalidInput({

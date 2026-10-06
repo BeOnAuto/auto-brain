@@ -2,10 +2,11 @@ import type { StartCall } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { specCalls } from '../index.ts';
 import { acmeCaller } from '../testing/workflows.ts';
+import { definitionCalls } from './function-calls.ts';
+import type { DefinitionRunRequest, DefinitionRunResult } from './function-run.ts';
 import { nestedExecutionId } from './nested-execution-id.ts';
-import { specCalls } from './spec-calls.ts';
-import type { SpecExecution, SpecExecutionResult } from './spec-execution.ts';
 
 const workflowExecution = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -32,9 +33,9 @@ function callWith(arguments_: StartCall['arguments']): StartCall {
 
 const classify = callWith({ primitive: 'inference', name: 'classify', input: { ticket: 7 } });
 
-function answering(result: SpecExecutionResult) {
-  const asked: SpecExecution[] = [];
-  const perform = specCalls((execution) =>
+function answering(result: DefinitionRunResult) {
+  const asked: DefinitionRunRequest[] = [];
+  const perform = definitionCalls((execution) =>
     Effect.sync(() => {
       asked.push(execution);
       return result;
@@ -43,27 +44,37 @@ function answering(result: SpecExecutionResult) {
   return { perform, asked };
 }
 
-describe('a call of a workflow to a spec of its brain', () => {
-  it('executes the spec for the caller who started the run, under an id derived from the run, the task and its run', async () => {
-    const { perform, asked } = answering({ status: 'succeeded', output: { urgency: 'high' } });
-
-    const result = await Effect.runPromise(perform(classify, run));
-
-    expect(result).toEqual({ status: 'succeeded', output: { urgency: 'high' } });
-    expect(asked).toEqual([
-      {
-        org: 'acme',
-        brain: 'alpha',
-        caller: acmeCaller,
-        primitive: 'inference',
-        name: 'classify',
-        input: { ticket: 7 },
-        executionId: nestedExecutionId(workflowExecution, '/do/0/classify', 1),
-      },
-    ]);
+describe('a workflow call to a saved definition', () => {
+  it('retains the exported call adapter as the same implementation', () => {
+    expect(specCalls).toBe(definitionCalls);
   });
+  it.each(['inference', 'custom-operation'])(
+    'executes a %s definition for the original caller under a derived run id',
+    async (primitive) => {
+      const { perform, asked } = answering({ status: 'succeeded', output: { urgency: 'high' } });
 
-  it('is rejected as invalid arguments, executing nothing, when they do not name a spec it may execute', async () => {
+      const result = await Effect.runPromise(
+        perform(callWith({ primitive, name: 'classify', input: { ticket: 7 } }), run),
+      );
+
+      expect(result).toEqual({ status: 'succeeded', output: { urgency: 'high' } });
+      expect(asked).toEqual([
+        {
+          org: 'acme',
+          brain: 'alpha',
+          caller: acmeCaller,
+          primitive,
+          name: 'classify',
+          input: { ticket: 7 },
+          executionId: nestedExecutionId(workflowExecution, '/do/0/classify', 1),
+        },
+      ]);
+    },
+  );
+});
+
+describe('a workflow call with invalid arguments', () => {
+  it('executes nothing when they do not name a definition it may execute', async () => {
     const { perform, asked } = answering({ status: 'succeeded', output: null });
 
     const results = await Effect.runPromise(
@@ -95,7 +106,7 @@ describe('a call of a workflow whose run names no caller', () => {
 
     expect(await Effect.runPromise(perform(classify, { ...run, attributes: {} }))).toEqual({
       status: 'failed',
-      detail: 'The run names no brain and no caller to execute a spec for',
+      detail: 'The run names no brain and no caller to run a definition for',
     });
   });
 });
@@ -126,7 +137,7 @@ describe('the answer of a spec a workflow called', () => {
     });
     expect(await Effect.runPromise(large.perform(classify, run))).toEqual({
       status: 'failed',
-      detail: 'The spec answered with 1048578 bytes as JSON, more than the 1048576 a workflow takes',
+      detail: 'The run returned 1048578 bytes as JSON, more than the 1048576 a workflow takes',
     });
   });
 

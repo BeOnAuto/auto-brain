@@ -35,15 +35,15 @@ function requireDistinctNames(names: readonly string[]): void {
 
 function guideTo(primitives: readonly Primitive[]): string {
   return [
-    'Every brain has these primitives, each named by the `primitive` field:',
+    'This brain supports these definition types, selected by the legacy `primitive` field:',
     ...primitives.map(
       ({ name, title, description, mediaType }) =>
-        `- \`${name}\` (${title}), whose spec documents are ${mediaType}: ${description}`,
+        `- \`${name}\` (${title}), whose definition documents are ${mediaType}: ${description}`,
     ),
   ].join('\n');
 }
 
-const primitiveMeaning = 'The name of the primitive the spec belongs to';
+const primitiveMeaning = 'The API type identifier of the function or workflow definition';
 
 function withPrimitiveField(
   { schema, definitions }: JsonSchemaDocument,

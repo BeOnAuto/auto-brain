@@ -95,7 +95,7 @@ export function finishedWith(output: Schema.Json, answered: Answered): Effect.Ef
   return room < leastPromptBytes
     ? Effect.fail(
         new Conflict({
-          detail: `The answer takes more than an execution can record (${mostResultBytes} bytes with its record); lower config.max_output_tokens in the spec`,
+          detail: `The answer takes more than a run can record (${mostResultBytes} bytes with its record); lower config.max_output_tokens in the reasoning function definition`,
         }),
       )
     : Effect.succeed({ output, record: { ...fields, prompt: promptWithin(answered.prompt, room) } });

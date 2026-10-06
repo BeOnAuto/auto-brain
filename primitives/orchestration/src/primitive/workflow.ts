@@ -1,23 +1,23 @@
 import { asSentence, Conflict, InvalidInput, type Unavailable } from '@beonauto/operations';
-import { definePrimitive, inWords, type ExecutionContext, type FinishesLater, type Primitive } from '@beonauto/specs';
-import { measureOf, mostValueDepth, type JsonObject } from '@beonauto/workflow-engine';
+import { definePrimitive, inWords, type RunContext, type FinishesLater, type Primitive } from '@beonauto/specs';
+import { measureOf, mostValueDepth } from '@beonauto/workflow-engine';
 import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect, Random, type Schema } from 'effect';
 
-import { parseWorkflowDocument } from '../document/workflow-document.ts';
+import { parseWorkflowDocument, type WorkflowDefinitionDocument } from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
 import { unavailableUnless } from '../runs/host-refusals.ts';
 import type { RunAttributes } from '../runs/run-attributes.ts';
-import { orchestrationDescription } from './orchestration-description.ts';
+import { workflowDescription } from './workflow-description.ts';
 
-export interface OrchestrationDependencies {
+export interface WorkflowAdapterDependencies {
   readonly runs: Pick<WorkflowHost, 'start'>;
   readonly mostDurationMs: number;
   readonly longestCallMs: number;
 }
 
 const ranBefore =
-  'This execution id already ran its workflow, which ended; a workflow runs once for an execution id, so execute it with a new execution id to run it again';
+  'This run ID already ran its workflow, which ended; a workflow runs once for a run ID, so use a new run ID to run it again';
 
 const notNow = 'The workflow cannot start now; try again shortly';
 
@@ -44,10 +44,10 @@ function finishedLaterOr(answer: StartAnswer): Effect.Effect<FinishesLater, Conf
 }
 
 function started(
-  { runs, mostDurationMs, longestCallMs }: OrchestrationDependencies,
-  document: JsonObject,
+  { runs, mostDurationMs, longestCallMs }: WorkflowAdapterDependencies,
+  document: WorkflowDefinitionDocument,
   input: Schema.Json,
-  { id, org, brain, caller, spec }: ExecutionContext,
+  { id, org, brain, caller, spec }: RunContext,
 ): Effect.Effect<FinishesLater, Conflict | Unavailable> {
   return Effect.gen(function* () {
     const seed = yield* Random.nextIntBetween(0, mostSeed);
@@ -62,15 +62,15 @@ function started(
   });
 }
 
-export function makeOrchestration(dependencies: OrchestrationDependencies): Primitive {
+export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): Primitive {
   return definePrimitive({
     name: 'orchestration',
-    title: 'Orchestration',
-    description: orchestrationDescription,
+    title: 'Workflow',
+    description: workflowDescription,
     noun: { one: 'workflow', other: 'workflows' },
     describeOutput: describeResult,
     mediaType: 'application/yaml',
-    parse: (source: string): Effect.Effect<JsonObject, InvalidInput> =>
+    parse: (source: string): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> =>
       parseWorkflowDocument(source, dependencies.mostDurationMs),
     summarize: summaryOf,
     execute: (document, input, execution) =>

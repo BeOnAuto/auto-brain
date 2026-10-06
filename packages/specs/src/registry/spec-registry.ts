@@ -1,26 +1,26 @@
 import type { SpecCreated, SpecEvent, SpecRetired, SpecUpdated } from './spec-events.ts';
-import type { StoredSpec } from './spec.ts';
+import type { StoredDefinition } from './spec.ts';
 
-export type SpecRegistry = ReadonlyMap<string, StoredSpec>;
+export type SpecRegistry = ReadonlyMap<string, StoredDefinition>;
 
 export const initialRegistry: SpecRegistry = new Map();
 
-function createdSpec({ name, version, content, by, at }: SpecCreated): StoredSpec {
+function createdSpec({ name, version, content, by, at }: SpecCreated): StoredDefinition {
   return { name, version, status: 'active', ...content, created_at: at, created_by: by, updated_at: at };
 }
 
 function updatedSpec(
-  { name, status, created_at, created_by }: StoredSpec,
+  { name, status, created_at, created_by }: StoredDefinition,
   { version, content, at }: SpecUpdated,
-): StoredSpec {
+): StoredDefinition {
   return { name, version, status, ...content, created_at, created_by, updated_at: at };
 }
 
-function retiredSpec(spec: StoredSpec, { at }: SpecRetired): StoredSpec {
+function retiredSpec(spec: StoredDefinition, { at }: SpecRetired): StoredDefinition {
   return { ...spec, status: 'retired', updated_at: at, retired_at: at };
 }
 
-function withSpec(registry: SpecRegistry, spec: StoredSpec): SpecRegistry {
+function withSpec(registry: SpecRegistry, spec: StoredDefinition): SpecRegistry {
   return new Map(registry).set(spec.name, spec);
 }
 

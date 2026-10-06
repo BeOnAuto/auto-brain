@@ -1,7 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
 import {
   defineListModels,
-  makeInference,
+  makeReasoningFunctionAdapter,
   makeModelAccess,
   type ModelAccess,
   type ModelSettings,
@@ -16,8 +16,8 @@ import type { Settings } from '../settings/settings.ts';
 
 export type ModelAccessOf = (settings: ModelSettings) => Effect.Effect<ModelAccess>;
 
-export interface ServedInference {
-  readonly primitive: ReturnType<typeof makeInference>;
+export interface ServedReasoning {
+  readonly primitive: ReturnType<typeof makeReasoningFunctionAdapter>;
   readonly listModels: ReturnType<typeof defineListModels>;
   readonly withToolsClosed: (served: Served) => Served;
 }
@@ -43,16 +43,16 @@ function closing(tools: ToolAccess): (served: Served) => Served {
   });
 }
 
-export async function inferenceServedBy(
+export async function reasoningServedBy(
   runtime: AppRuntime<DispatcherServices>,
   settings: Pick<Settings, 'models' | 'mcp'>,
   modelAccessOf: ModelAccessOf,
-): Promise<ServedInference> {
+): Promise<ServedReasoning> {
   const tools = toolAccessOf(runtime, settings);
   const { languageModel, status, offered, catalog } = await Effect.runPromise(modelAccessOf(settings.models));
   await runtime.run(logModelProviders(status));
   return {
-    primitive: makeInference({ languageModel, offered, tools }),
+    primitive: makeReasoningFunctionAdapter({ languageModel, offered, tools }),
     listModels: defineListModels(catalog),
     withToolsClosed: closing(tools),
   };

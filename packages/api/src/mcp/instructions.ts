@@ -28,8 +28,8 @@ const orientation: readonly Orientation[] = [
   {
     when: serves('create_spec'),
     text: [
-      'A brain works through specs: named, versioned documents, each written for one primitive, a kind of work the brain can do.',
-      "The spec tools take the primitive by name, and their descriptions explain how each primitive's document is written.",
+      'A brain uses named, versioned definitions, called specs in this API.',
+      'The primitive field selects a definition type; each tool describes its supported document formats.',
     ].join(' '),
   },
   {
@@ -39,13 +39,13 @@ const orientation: readonly Orientation[] = [
   {
     when: serves('execute_spec', 'get_execution'),
     text: [
-      'execute_spec runs a spec and records the run as an execution.',
+      'execute_spec runs a definition and records its run; execution_id identifies it.',
       'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
     ].join(' '),
   },
   {
     when: serves('send_execution_event'),
-    text: 'A workflow waiting for an event receives it through send_execution_event.',
+    text: 'Workflows coordinate the work. A waiting workflow run receives input through send_execution_event.',
   },
   {
     when: ({ brainTools }) => brainTools.length > 0,
@@ -66,7 +66,7 @@ export function catalogInstructionsFor(served: ServedTools): string {
 
 export const brainEndpointInstructions = [
   'This MCP endpoint serves one brain of an org in auto-brain, the runtime for business brains.',
-  'Its tools are the operations inside that brain, such as defining, versioning, retiring and executing the specs of its primitives; it lists no tools when the server offers no primitive.',
+  'Its tools define, version, retire and run functions and workflows in this brain; it lists no tools when no definition types are configured.',
   'Each tool is one operation: its description says what it does, its input schema what it takes and its output schema what it returns.',
   'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
 ].join(' ');

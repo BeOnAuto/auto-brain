@@ -42,7 +42,7 @@ export const fileSettings: readonly FileSetting[] = [
     'MODEL_ALIASES',
     ModelAliasesSchema.annotate({
       description:
-        'Model references a spec may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it',
+        'Model references a reasoning function may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it',
     }),
     asJson,
   ),
@@ -58,7 +58,7 @@ export const fileSettings: readonly FileSetting[] = [
     'ALLOWED_MODELS',
     AllowedModelsSchema.annotate({
       description:
-        'The only model references a spec may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it',
+        'The only model references a reasoning function may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it',
     }),
     asJson,
   ),
@@ -66,7 +66,7 @@ export const fileSettings: readonly FileSetting[] = [
     'MCP_SERVERS',
     McpServersSchema.annotate({
       description:
-        'The MCP servers whose tools a reason function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it',
+        'The MCP servers whose tools a reasoning function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it',
     }),
     asJson,
     { references: 'kept' },
@@ -75,7 +75,7 @@ export const fileSettings: readonly FileSetting[] = [
     'ALLOWED_TOOLS',
     AllowedToolsSchema.annotate({
       description:
-        'The only tools a reason function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it',
+        'The only tools a reasoning function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it',
     }),
     asJson,
   ),

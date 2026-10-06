@@ -152,13 +152,13 @@ describe('the fields of the other type', () => {
 });
 
 describe('the name, org and brains of a server', () => {
-  it('refuses a name a reason function could not write, or could mistake for a model provider or gateway', () => {
+  it('refuses a name a reasoning function could not write, or could mistake for a model provider or gateway', () => {
     expect(problemsOf({ Graph: graph })).toEqual([
       'MCP_SERVERS /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
     ]);
     expect(problemsOf({ openai: graph, gateway: graph })).toEqual([
-      'MCP_SERVERS /openai: The name of a model provider or gateway, which a reason function could not tell apart from it',
-      'MCP_SERVERS /gateway: The name of a model provider or gateway, which a reason function could not tell apart from it',
+      'MCP_SERVERS /openai: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+      'MCP_SERVERS /gateway: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
     ]);
   });
 

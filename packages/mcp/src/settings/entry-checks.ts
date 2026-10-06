@@ -94,7 +94,11 @@ function checkedName(name: string, providers: readonly string[]): Checked<string
     );
   }
   return providers.includes(name)
-    ? refused(name, [], 'The name of a model provider or gateway, which a reason function could not tell apart from it')
+    ? refused(
+        name,
+        [],
+        'The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+      )
     : accepted(name);
 }
 

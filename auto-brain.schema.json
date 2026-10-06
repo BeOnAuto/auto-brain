@@ -96,14 +96,14 @@
           },
           "expose_provider_messages": {
             "type": "boolean",
-            "description": "true when the gateway's error messages are safe to show to the callers of a spec. Default false"
+            "description": "true when the gateway's error messages are safe to show to callers of a reasoning function. Default false"
           },
           "allowed_provider_options": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "The top-level request body fields a spec may set for this gateway through provider_options, such as user and metadata. Default none"
+            "description": "The top-level request body fields a reasoning function may set for this gateway through provider_options, such as user and metadata. Default none"
           }
         },
         "required": ["name", "base_url"],
@@ -116,7 +116,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "Model references a spec may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it"
+      "description": "Model references a reasoning function may give, each sent on as another reference; a trailing * on both sides covers every model of a provider. MODEL_ALIASES wins over it"
     },
     "declared_models": {
       "type": "object",
@@ -133,9 +133,9 @@
       "type": "array",
       "items": {
         "type": "string",
-        "description": "A model reference a spec may give, written provider/model, or provider/* for every model of a provider"
+        "description": "A model reference a reasoning function may give, written provider/model, or provider/* for every model of a provider"
       },
-      "description": "The only model references a spec may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it"
+      "description": "The only model references a reasoning function may give, by name or through an alias, and list_models shows, each provider/model or provider/* for every model of a provider; every model when left out. ALLOWED_MODELS wins over it"
     },
     "mcp_servers": {
       "type": "object",
@@ -230,15 +230,15 @@
         },
         "additionalProperties": false
       },
-      "description": "The MCP servers whose tools a reason function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
+      "description": "The MCP servers whose tools a reasoning function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
     },
     "allowed_tools": {
       "type": "array",
       "items": {
         "type": "string",
-        "description": "A tool a reason function may name, written server/tool, or server/* for every tool of a server"
+        "description": "A tool a reasoning function may name, written server/tool, or server/* for every tool of a server"
       },
-      "description": "The only tools a reason function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it"
+      "description": "The only tools a reasoning function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it"
     }
   },
   "additionalProperties": false,

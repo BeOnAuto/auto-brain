@@ -81,13 +81,13 @@ export type McpServerEntryFields = typeof McpServerEntrySchema.Type;
 export const McpServersSchema = Schema.Record(
   Schema.String.annotate({
     description:
-      'The name a reason function gives the server in server/tool: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, and not the name of a model provider or gateway',
+      'The name a reasoning function gives the server in server/tool: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, and not the name of a model provider or gateway',
   }),
   McpServerEntrySchema,
 );
 
 export const AllowedToolsSchema = Schema.Array(
   Schema.String.annotate({
-    description: 'A tool a reason function may name, written server/tool, or server/* for every tool of a server',
+    description: 'A tool a reasoning function may name, written server/tool, or server/* for every tool of a server',
   }),
 );

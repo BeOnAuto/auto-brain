@@ -11,7 +11,7 @@ import {
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const verdict = [
   '---',
@@ -63,10 +63,10 @@ function neverCalled(): ModelFailure {
   return new ProviderUnavailable({ detail: 'never called', provider: 'openai', status: null });
 }
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 async function failingWith(failure: () => ModelFailure, input: object) {
-  server = await servingInference([() => Effect.fail(failure())]);
+  server = await servingReasoning([() => Effect.fail(failure())]);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'verdict', source: verdict } });
   return server.call('POST', `${alpha}/specs/inference/verdict/execute`, {
@@ -137,7 +137,7 @@ describe('an execution of a spec the provider rejects', () => {
   it('answers 409 with the message of the provider, and records the conflict', async () => {
     const response = await failingWith(rejectedSpec, aDinner);
     const detail =
-      "openai answered HTTP 400: the request was rejected as invalid; update the spec. The provider said: Unsupported parameter: 'temperature'";
+      "openai answered HTTP 400: the request was rejected as invalid; update the reasoning function definition. The provider said: Unsupported parameter: 'temperature'";
 
     expect(response).toMatchObject({ status: 409, body: { reason: 'conflict', detail } });
     expect(await server.call('GET', `${alpha}/executions/${executionId}`)).toMatchObject({
@@ -151,7 +151,7 @@ describe('an execution of a spec the provider rejects', () => {
       body: {
         reason: 'conflict',
         detail:
-          'openai stopped the answer at max_output_tokens (300) before the JSON was complete; raise config.max_output_tokens in the spec',
+          'openai stopped the answer at max_output_tokens (300) before the JSON was complete; raise config.max_output_tokens in the reasoning function definition',
       },
     });
   });

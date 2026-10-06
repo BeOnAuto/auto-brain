@@ -7,24 +7,25 @@ const offers = providerNamespaces
   .join('; ');
 
 const naming = [
-  'A spec of the inference primitive is a reason function: it reasons with a language model, following a prompt, to turn',
+  'A reasoning function uses a language model and a prompt to turn',
   'an input into an answer.',
-  "In conversation, call it a reason function; the primitive's name, `inference`, is what the tools take.",
+  'Use reasoning function in conversation. The tools identify this function type with `primitive: inference`.',
 ].join(' ');
 
 const calls = [
-  'Calls a language model once per execution, with a prompt rendered from the input,',
+  'Calls a language model with a prompt rendered from the input,',
   'and answers with the text of the model or with a JSON value that matches a schema.',
 ].join(' ');
 
-const format = 'A spec document is YAML front matter between --- lines, then a Liquid template, for example:';
+const format =
+  'A reasoning function definition is YAML front matter between --- lines, then a Liquid template, for example:';
 
 const noProvider =
-  'No model provider is configured on this server yet, so a spec cannot run until its operator configures one.';
+  'No model provider is configured on this server yet, so a reasoning function cannot run until its operator configures one.';
 
 function anyModelUnder(wildcards: readonly string[]): string {
   const examples = wildcards.map((wildcard) => `${aliasPatternOf(wildcard).prefix}<model id>`).join(' or ');
-  return ` In a name that ends in *, the * stands for any model id, so a spec may give ${examples}.`;
+  return ` In a name that ends in *, the * stands for any model id, so a reasoning function may give ${examples}.`;
 }
 
 const listedByListModels = 'list_models lists the models this server can call.';
@@ -32,8 +33,8 @@ const listedByListModels = 'list_models lists the models this server can call.';
 function aliasesNamed(lead: string, aliases: readonly string[]): string {
   const wildcards = aliases.filter((alias) => isWildcardAlias(alias));
   return wildcards.length === 0
-    ? `${lead}, which a spec may give as its model as they are: ${aliases.join(', ')}.`
-    : `${lead}, which a spec may give as its model: ${aliases.join(', ')}.${anyModelUnder(wildcards)}`;
+    ? `${lead}, which a reasoning function may give as its model as they are: ${aliases.join(', ')}.`
+    : `${lead}, which a reasoning function may give as its model: ${aliases.join(', ')}.${anyModelUnder(wildcards)}`;
 }
 
 function namedModels(aliases: readonly string[]): string {
@@ -50,7 +51,7 @@ function offerOf({ providers, aliases }: OfferedModels): string {
   return `This server calls models through ${providers.join(', ')}: write model as <provider>/<model id>, with a model id that provider serves, for example ${examples}.${namedModels(aliases)} ${listedByListModels}`;
 }
 
-export const inferenceExample = [
+export const reasoningExample = [
   '---',
   'model: anthropic/claude-sonnet-4-5',
   'description: Summarizes an account',
@@ -77,19 +78,21 @@ const rules = [
   'The template reads only input, today (YYYY-MM-DD, UTC) and now (ISO 8601, UTC).',
   'One {% system %}...{% endsystem %} block at its top level may hold the instructions; the rest is the message.',
   'It has the data and string filters of Liquid, and money, clip and words; it cannot include other templates.',
-  'The input of an execution is a JSON object. Problems in a document are reported with their line.',
+  'The input of a run is a JSON object. Problems in a definition are reported with their line.',
 ].join(' ');
 
 const toolRules = [
   'tools: the tools of the MCP servers configured for its brain that it may call, each written server/tool,',
   'or server/* for every tool of a server that its operator allows.',
   'A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers;',
-  'each call is recorded on the run as it happens, and a run that names tools and did not succeed is not run again under its id, nor while it may still be in progress.',
+  'each call is recorded on the run as it happens.',
+  'A run that called tools and did not succeed is not run again under its id.',
+  'A started run whose definition names tools is not run again under its id while it may still be in progress.',
 ].join(' ');
 
-const noTools = 'No MCP server is configured on this server, so a spec may not name tools yet.';
+const noTools = 'No MCP server is configured on this server, so a reasoning function may not name tools yet.';
 
-export function inferenceDescriptionFor(offered: OfferedModels, toolsConfigured: boolean): string {
+export function reasoningDescriptionFor(offered: OfferedModels, toolsConfigured: boolean): string {
   const tools = toolsConfigured ? toolRules : noTools;
-  return `${naming} ${calls} ${offerOf(offered)} ${format}\n\n${inferenceExample}\n\n${rules} ${tools}`;
+  return `${naming} ${calls} ${offerOf(offered)} ${format}\n\n${reasoningExample}\n\n${rules} ${tools}`;
 }

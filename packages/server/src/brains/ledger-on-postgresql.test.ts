@@ -5,7 +5,7 @@ import { answers, textResult } from '@beonauto/inference/testing';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { servingInference } from '../testing/inference-server.ts';
+import { servingReasoning } from '../testing/reasoning-server.ts';
 import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
 import { executionIdIn, settledExecution, workflowSource } from '../testing/workflow-server.ts';
 
@@ -60,9 +60,9 @@ describe.skipIf(skipped)(
   `A server that keeps its ledger in PostgreSQL${notice}`,
   { timeout: spawnedServerTestTimeoutMs },
   () => {
-    it('executes an inference spec of a brain it created, and reads the execution again after a restart', async () => {
+    it('executes a reasoning function definition of a brain it created, and reads the execution again after a restart', async () => {
       const environment = await onADatabaseOfItsOwn();
-      const first = await servingInference([answers(textResult('Profits rose.'))], environment);
+      const first = await servingReasoning([answers(textResult('Profits rose.'))], environment);
       const created = await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
       const spec = await first.call('POST', `${brain}/specs/inference`, { body: { name: 'summary', source: summary } });
       const executed = await first.call('POST', `${brain}/specs/inference/summary/execute`, {
@@ -72,7 +72,7 @@ describe.skipIf(skipped)(
       const before = await first.call('GET', execution);
       await first.stop();
 
-      const second = await servingInference([], environment);
+      const second = await servingReasoning([], environment);
       const after = await second.call('GET', execution);
       const brainAfter = await second.call('GET', brain);
       await second.stop();
@@ -106,7 +106,7 @@ describe.skipIf(skipped)(
   () => {
     it('runs a workflow in the same database, and goes on with it after a restart', async () => {
       const environment = await onADatabaseOfItsOwn();
-      const first = await servingInference([], environment);
+      const first = await servingReasoning([], environment);
       await first.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
       await first.call('POST', `${brain}/specs/orchestration`, { body: { name: 'approval', source: approval } });
       const started = await first.call('POST', `${brain}/specs/orchestration/approval/execute`, {
@@ -114,7 +114,7 @@ describe.skipIf(skipped)(
       });
       await first.stop();
 
-      const second = await servingInference([], environment);
+      const second = await servingReasoning([], environment);
       const execution = `${brain}/executions/${executionIdIn(started.body)}`;
       const sent = await second.call('POST', `${execution}/events`, {
         body: { event: { type: 'com.acme.approved', data: { by: 'Ada' } } },

@@ -57,13 +57,15 @@ export function rejections(maxOutputTokens: number, tools?: RunTools) {
     cancelled: () => Effect.interrupt,
     spec_invalid: ({ detail, provider_message, issues }: RejectedSpec) => {
       const said = provider_message === null ? '' : `. The provider said: ${provider_message}`;
-      return Effect.fail(new Conflict({ detail: `${detail}${listed(issues)}; update the spec${said}` }));
+      return Effect.fail(
+        new Conflict({ detail: `${detail}${listed(issues)}; update the reasoning function definition${said}` }),
+      );
     },
     output_invalid: ({ detail, provider, finish_reason, issues }: InvalidAnswer) =>
       finish_reason === 'length'
         ? Effect.fail(
             new Conflict({
-              detail: `${provider} stopped the answer at max_output_tokens (${maxOutputTokens}) before the JSON was complete; raise config.max_output_tokens in the spec`,
+              detail: `${provider} stopped the answer at max_output_tokens (${maxOutputTokens}) before the JSON was complete; raise config.max_output_tokens in the reasoning function definition`,
             }),
           )
         : unavailable(`${detail}${listed(issues)}`, '; try again'),

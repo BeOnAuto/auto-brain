@@ -29,8 +29,8 @@ describe('the variables a template reads', () => {
     expect(
       issuesIn(documentOf('model: openai/gpt-5', 'Hello {{ user }} and {{ user.name }}\n{{ secrets.key }}')),
     ).toEqual([
-      'Line 4: user is not a variable of an inference template, which reads input, today and now; assign it first',
-      'Line 5: secrets is not a variable of an inference template, which reads input, today and now; assign it first',
+      'Line 4: user is not a variable of a reasoning function’s prompt template, which reads input, today and now; assign it first',
+      'Line 5: secrets is not a variable of a reasoning function’s prompt template, which reads input, today and now; assign it first',
     ]);
   });
 

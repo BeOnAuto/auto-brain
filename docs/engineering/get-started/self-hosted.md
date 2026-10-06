@@ -53,7 +53,7 @@ You can begin by asking: "Given what you know about my work, suggest a small reu
 Name a model your provider serves, such as `anthropic/claude-sonnet-4-5` or `gateway/<a model id your gateway serves>`. The assistant learns which providers the server has, but not which models your account offers.
 
 1. "Create a brain called support for our customer support team."
-2. "In support, create a reason function that classifies a support ticket by category (billing, bug, account or other) and urgency (low, normal or high), answering in JSON. Configure its prompt to follow those criteria, and run it on: I was charged twice for March and nobody has answered for three days."
+2. "In support, create a reasoning function that classifies a support ticket by category (billing, bug, account or other) and urgency (low, normal or high), answering in JSON. Configure its prompt to follow those criteria, and run it on: I was charged twice for March and nobody has answered for three days."
 3. "How many tokens did that run use, and what exactly was sent to the model?"
 4. "Change the prompt so that anything about money is billing and at least normal urgency, then run it on the same ticket again."
 5. "Build a workflow that classifies a ticket and, only when it is urgent, drafts a two-sentence note for the on-call lead. Run it on that ticket and on: How do I export my invoices as CSV?"
@@ -63,4 +63,4 @@ Each tool's description explains the supported definition format. This example d
 
 To reuse your first function, ask another question in a new conversation connected to the same runtime. For a shared deployment, use a persistent container and scoped API keys. Local mode is only for your own machine; do not expose it to colleagues through a proxy. See [Run in a container](../self-host/container.md) and [Authentication and security](../self-host/security.md).
 
-To try it without an assistant, `scripts/try-inference.sh http://localhost:8080 <provider/model>` and `scripts/try-workflows.sh http://localhost:8080 <provider/model>` run a prompt and a workflow over HTTP and print what happened. [How it works](../reference/http-tutorial.md) walks through the same steps.
+To try it without an assistant, `scripts/try-inference.sh http://localhost:8080 <provider/model>` and `scripts/try-workflows.sh http://localhost:8080 <provider/model>` run a reasoning function and a workflow over HTTP and print what happened. [How it works](../reference/http-tutorial.md) walks through the same steps.

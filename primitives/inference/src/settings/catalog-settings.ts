@@ -55,7 +55,7 @@ export const DeclaredModelsSchema = Schema.Record(
 export const AllowedModelsSchema = Schema.Array(
   Schema.String.annotate({
     description:
-      'A model reference a spec may give, written provider/model, or provider/* for every model of a provider',
+      'A model reference a reasoning function may give, written provider/model, or provider/* for every model of a provider',
   }),
 );
 

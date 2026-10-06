@@ -1,12 +1,14 @@
 <div v-pre>
 
-# Reason function format
+<span id="reason-function-format"></span>
 
-The current runtime stores reason functions as `inference` specs. Keep that identifier in API calls, MCP arguments and workflow definitions. A run performs one model invocation, or, when the function names [`tools`](#tools), a loop of them with the tools of the brain's MCP servers; skill references and additional context from other functions are planned.
+# Reasoning function format
 
-## The spec document format
+The current runtime stores reasoning functions as `inference` specs. Keep that identifier in API calls, MCP arguments and workflow definitions. A run performs one model invocation, or, when the function names [`tools`](#tools), a loop of them with the tools of the brain's MCP servers. Skill references are still planned; the `tools` field does not load skills or inherit an external agent's context.
 
-An inference spec is one Markdown document (`text/markdown`): YAML front matter between two lines of three dashes, then a Liquid template. The front matter uses Dotprompt's key names; the format is this package's own, and this package parses it.
+## Reasoning function document format {#the-spec-document-format}
+
+A reasoning function definition is one Markdown document (`text/markdown`): YAML front matter between two lines of three dashes, then a Liquid template. The front matter uses Dotprompt's key names; the format is this package's own, and this package parses it.
 
 ```markdown
 ---
@@ -65,7 +67,7 @@ A JSON output schema that some providers reject or do not enforce is accepted. T
 
 ### Provider options
 
-`provider_options` passes options to the AI SDK for a provider, keyed by the namespace the SDK reads for it. A spec may set only the options that shape how the model reasons or writes its answer. None of these is offered, whatever the provider: attribution (`user`, `metadata`, `labels`, request metadata), anything stored or reused on the operator's account (`store`, `previousResponseId`, `conversation`, `container`, `cachedContent`, prompt cache keys and retention), routing, fallbacks, capacity and service tiers, request headers and betas, tools and servers, guardrails, raw request fields, options for the state of a conversation (a spec makes one call), output the runtime does not read, and anything the front matter already sets (`config` and `output`, such as an effort level or the strictness of a JSON schema). An option is offered only when it is listed here; an option a provider adds is not offered until it is reviewed and listed.
+`provider_options` passes options to the AI SDK for a provider, keyed by the namespace the SDK reads for it. A spec may set only the options that shape how the model reasons or writes its answer. None of these is offered, whatever the provider: attribution (`user`, `metadata`, `labels`, request metadata), anything stored or reused on the operator's account (`store`, `previousResponseId`, `conversation`, `container`, `cachedContent`, prompt cache keys and retention), routing, fallbacks, capacity and service tiers, request headers and betas, tools and servers, guardrails, raw request fields, options for provider-managed conversation state (the runtime manages the run's conversation), output the runtime does not read, and anything the front matter already sets (`config` and `output`, such as an effort level or the strictness of a JSON schema). An option is offered only when it is listed here; an option a provider adds is not offered until it is reviewed and listed.
 
 | Namespace       | Read by                                                                      | Offered                                                                        |
 | --------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -91,13 +93,13 @@ A gateway is a different case: the AI SDK adds every key under the gateway's nam
 
 The parser does not know the gateways, so this check runs when the spec executes: a field outside the list rejects the execution as `conflict`, naming the field and saying the gateway does not allow it, and the gateway is not called. The same goes for a namespace that is shaped like a gateway's name but is no configured gateway's: the execution is rejected as `conflict` before any provider is called.
 
-A document is checked without calling a model, and the same document always gives the same answer. Whether its provider is configured, and whether the provider accepts the model and the settings, shows only when it runs; see [When an execution is rejected](#when-an-execution-is-rejected).
+A document is checked without calling a model, and the same document always gives the same answer. Whether its provider is configured, and whether the provider accepts the model and the settings, shows only when it runs; see [When a run is rejected](#when-an-execution-is-rejected).
 
 ### Tools
 
 `tools` names the tools an execution may call, each `server/tool` or `server/*`, from the servers in [`mcp_servers`](../self-host/configuration.md#mcp-servers) that serve the brain's org and brain. An execution checks them once its model is known to be offered, and before the model is called, so a run whose model is not offered reaches no server and starts no process: a server that is not configured for the brain is `unavailable` of the kind `tool_not_offered` because `mcp_server_not_configured`, a tool outside `allowed_tools` because `tool_not_allowed`, and a tool the server does not list because `tool_not_listed`; a server that cannot be used is `unavailable` of the kind `mcp_server_failed`, because `unreachable`, `failing` or `rate_limited`. `server/*` gives every tool the server lists that the operator allows.
 
-The model receives each tool under the name `mcp__server__tool`, with characters other than letters, digits and underscores written as underscores, cut to 64 characters with a short hash when longer, its description cut to 4 KiB and the server's input schema unchanged, and keeps the function's output format. It may call tools, several in one step, before it answers, each call forwarded with the execution id in the request's metadata under `com.beonauto/execution_id`:
+The model receives each tool under a unique name derived from `mcp__server__tool`. Characters other than letters, digits and underscores become underscores; names longer than 64 characters or sharing a normalized name receive an 8-character hash. A numeric suffix resolves any remaining collision within the run's tool list. The description is cut to 4 KiB and the server's input schema is unchanged. The model keeps the function's output format and may call tools, several in one step, before it answers, each call forwarded with the execution id in the request's metadata under `com.beonauto/execution_id`:
 
 | Bound                                           | Value                                                  | When it is reached                                                        |
 | ----------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------- |
@@ -189,16 +191,16 @@ As of October 2026, no published advisory affects liquidjs 10.27.2 or later; ear
 
 Names are counted in the text inside `{{ }}` and `{% %}`: every variable, property, filter and keyword. A template over the first two limits is rejected when it is parsed. The engine reads tags and parentheses recursively, so a template that nests them more deeply than it can read (about 2000 levels of tags) is rejected with `The tags or parentheses of the template nest too deeply to be read`, never with the engine's own message. A render that hits one of the last three stops the execution with `invalid_input`, because it is the input that makes the render grow.
 
-## Creating and executing a spec
+## Creating and running a reasoning function {#creating-and-executing-a-spec}
 
-The spec operations of [`@beonauto/specs`](../../../packages/specs) store and run inference specs: `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec` and `get_execution`, under `/v1/orgs/{org}/brains/{brain}`, with `inference` as the primitive. Give the server a key for the provider first; it reads the model settings when it starts:
+The definition and run operations of [`@beonauto/specs`](../../../packages/specs) store reasoning function definitions and record their runs: `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, `execute_spec` and `get_execution`, under `/v1/orgs/{org}/brains/{brain}`, with `primitive: "inference"` as the API type identifier. Give the server a key for the provider first; it reads the model settings when it starts:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 pnpm dev
 ```
 
-With the document of [The spec document format](#the-spec-document-format) saved as `account-summary.md`, create a brain and the spec. `jq` turns the document into a JSON string:
+With the [reasoning function document](#the-spec-document-format) saved as `account-summary.md`, create a brain and the function. `jq` turns the document into a JSON string:
 
 ```bash
 curl --request POST http://localhost:8080/v1/orgs/acme/brains \
@@ -209,14 +211,14 @@ jq --null-input --rawfile source account-summary.md '{name: "account-summary", s
     --header 'content-type: application/json' --data @-
 ```
 
-`create_spec` answers `201` with the spec: its `version` 1, the `description`, the `input_schema`, any `warnings`, and the document as `source`. A document with problems gets `422` with every problem under `/source`. Read it back, and list the specs of the brain:
+`create_spec` answers `201` with the definition: its `version` 1, the `description`, the `input_schema`, any `warnings`, and the document as `source`. A document with problems gets `422` with every problem under `/source`. Read it back, and list the reasoning functions in the brain:
 
 ```bash
 curl http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference/account-summary
 curl http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference
 ```
 
-Execute it. The optional `execution_id` names the execution, so a call can be retried safely:
+Run the function. The optional `execution_id` identifies the run so you can inspect it and retry according to the [retry rules](#when-an-execution-is-rejected):
 
 ```bash
 curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/inference/account-summary/execute \
@@ -244,9 +246,9 @@ curl --request POST http://localhost:8080/v1/orgs/acme/brains/sales/specs/infere
 curl http://localhost:8080/v1/orgs/acme/brains/sales/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a
 ```
 
-An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a brain take its id as `brain`: the tools that name a primitive carry this primitive's description of the document format, and a rejection comes back as `isError` with the same problem document. A retry with the same `execution_id`, the same spec and the same input answers the recorded execution and calls no model. `update_spec` (`PUT …/specs/inference/account-summary` with a new `source`) makes version 2, and `retire_spec` (`POST …/retire`) retires the spec for good. The [specs README](../../../packages/specs/README.md) has the rules of each operation.
+An agent calls the same operations as MCP tools on `POST /mcp`, where the tools inside a brain take its id as `brain`: the tools that name a primitive carry this adapter's description of the document format, and a rejection comes back as `isError` with the same problem document. A retry with the same `execution_id`, definition and input returns a recorded success or invalid-input rejection without calling the model. Other failures may permit another attempt, except where tool calls may already have changed something; [rejection and retry rules](#when-an-execution-is-rejected) cover those cases. `update_spec` (`PUT …/specs/inference/account-summary` with a new `source`) makes version 2, and `retire_spec` (`POST …/retire`) retires the function for good. The [specs README](../../../packages/specs/README.md) has the rules of each operation.
 
-`scripts/try-inference.sh` at the root of the repository does all of this against a server that is already running, with a small spec of its own, and prints the execution and its record. It starts nothing, and needs `curl` and `jq`:
+`scripts/try-inference.sh` at the root of the repository does all of this against a server that is already running, with a small reasoning function of its own, and prints the run and its record. It starts nothing, and needs `curl` and `jq`:
 
 ```bash
 scripts/try-inference.sh http://localhost:8080 anthropic/claude-sonnet-4-5
@@ -294,7 +296,7 @@ Executed with `{"input":{"expense":"Dinner for two with a client","amount":142.5
 }
 ```
 
-## When an execution is rejected
+## When a run is rejected {#when-an-execution-is-rejected}
 
 The spec operations answer every rejection as a problem document, and record it on the execution. A call with the same `execution_id` runs the spec again after `unavailable` or `conflict`, unless the execution called tools, and answers the same `invalid_input` again.
 
@@ -316,13 +318,13 @@ The spec operations answer every rejection as a problem document, and record it 
 | A JSON answer does not match the schema                                                              | `unavailable`, with the first issues, saying to try again                                                                                                                        | 503  |
 | The spec names a tool the brain's MCP servers do not offer, or a server cannot be used               | `unavailable` of the kind `tool_not_offered` or `mcp_server_failed`; the model is not called                                                                                     | 503  |
 | The execution called tools and then could not finish                                                 | `unavailable` of the kind `tools_unfinished`, naming the tools it called in words                                                                                                | 503  |
-| The same `execution_id` again, after an execution that called tools and did not succeed              | `conflict` of the kind `tools_called`, saying to start a new execution                                                                                                           | 409  |
-| The same `execution_id` again, while a run of a reason function with `tools` is started              | `conflict` of the kind `tools_called`, saying the run may still be in progress and to start a new execution                                                                      | 409  |
-| The caller goes away before the answer                                                               | the execution is interrupted and stays `started`                                                                                                                                 | 499  |
+| The same `execution_id` again, after an execution that called tools and did not succeed              | `conflict` of the kind `tools_called`; inspect the history and external effects before deliberately starting a new run                                                           | 409  |
+| The same `execution_id` again, while a run of a reasoning function with `tools` is started           | `conflict` of the kind `tools_called`; the run may still be in progress, so inspect its history before starting another                                                          | 409  |
+| The caller goes away before the answer                                                               | the run is interrupted and recorded as `failed`; in-flight tool calls are cancelled and may have external effects                                                                | 499  |
 
 A text answer cut off at `max_output_tokens` succeeds, with `finish_reason: "length"` in the record. A call may take 60 seconds plus 25 ms for every token of `max_output_tokens`: 85.6 seconds for the default 1024, and that covers the up to two retries of a failure that may pass (see [Retries](../self-host/models.md#retries)). The spec operations add their own rejections: `not_found` for a spec the brain does not have, and `conflict` for a retired spec or one whose document no longer parses.
 
-## What an execution records
+## What a run records {#what-an-execution-records}
 
 `get_execution` shows the record of a succeeded execution:
 

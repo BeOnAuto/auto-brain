@@ -1,9 +1,9 @@
 import type { RunTools } from '@beonauto/mcp';
 import { runBoundMs } from '@beonauto/mcp/policy';
-import type { ExecutionContext } from '@beonauto/specs';
+import type { RunContext } from '@beonauto/specs';
 
 import type { ModelRequest, ModelTools } from '../model/model-request.ts';
-import type { InferenceSpec } from '../spec/inference-spec.ts';
+import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-function-definition.ts';
 import { mostOutputTokens } from '../spec/spec-settings.ts';
 import type { RenderedPrompt } from '../template/compiled-template.ts';
 
@@ -22,9 +22,9 @@ function modelToolsOf({ offered, callsEnded, ended }: RunTools, timeoutMs: numbe
 }
 
 export function requestFor(
-  spec: InferenceSpec,
+  spec: ReasoningFunctionDefinitionDocument,
   { instructions, message }: RenderedPrompt,
-  execution: ExecutionContext,
+  execution: RunContext,
   tools?: RunTools,
 ): ModelRequest {
   const timeoutMs = timeoutFor(spec.settings.max_output_tokens);

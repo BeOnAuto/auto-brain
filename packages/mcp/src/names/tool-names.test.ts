@@ -9,7 +9,7 @@ const named = (...written: readonly string[]) =>
     written.map((each): Referring => ({ reference: toolReferenceOf(each) ?? { server: '', tool: '' } })),
   ).map(({ name }) => name);
 
-describe('a tool written in a reason function', () => {
+describe('a tool written in a reasoning function', () => {
   it('reads server/tool and server/*', () => {
     expect(toolReferenceOf('graph/search')).toEqual({ server: 'graph', tool: 'search' });
     expect(toolReferenceOf('graph/graph.query.v2')).toEqual({ server: 'graph', tool: 'graph.query.v2' });

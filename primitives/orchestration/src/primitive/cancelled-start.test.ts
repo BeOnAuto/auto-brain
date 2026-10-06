@@ -6,7 +6,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { brainOn } from '../testing/brain.ts';
-import { makeOrchestration } from './orchestration-primitive.ts';
+import { makeWorkflowAdapter } from './workflow.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-555555555551';
 
@@ -24,7 +24,7 @@ const slowlyStarting: Pick<WorkflowHost, 'start'> = {
 
 describe('an execution whose call is cancelled while its workflow starts', () => {
   it('waits for the start and records the execution waiting for the workflow it started', async () => {
-    const orchestration = makeOrchestration({
+    const orchestration = makeWorkflowAdapter({
       runs: slowlyStarting,
       mostDurationMs: 2_592_000_000,
       longestCallMs: 1000,

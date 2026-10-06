@@ -5,7 +5,7 @@ import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
@@ -40,7 +40,7 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
 });
 
-async function serving(fake: FakeMcpServer): Promise<InferenceServer> {
+async function serving(fake: FakeMcpServer): Promise<ReasoningServer> {
   const server = await servingWorkflows(
     [callingTools([['mcp__graph__sleep', { ms: 60_000 }]], answers(textResult('Slept.')))],
     {
@@ -70,7 +70,7 @@ async function untilCancelled(fake: FakeMcpServer): Promise<Seen> {
 }
 
 describe(
-  'a workflow step that times out while its reason function calls a tool',
+  'a workflow step that times out while its reasoning function calls a tool',
   { timeout: workflowTestTimeoutMs },
   () => {
     it('aborts the call in flight at its MCP server, and leaves the run failed with the call started and unanswered', async () => {

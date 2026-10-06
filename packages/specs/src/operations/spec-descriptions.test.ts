@@ -16,9 +16,9 @@ describe('the description of every operation that takes a primitive', () => {
     for (const { description } of takingAPrimitive) {
       expect(description).toContain(
         [
-          'Every brain has these primitives, each named by the `primitive` field:',
-          `- \`echo\` (Echo), whose spec documents are application/json: ${echo.description}`,
-          '- `probe` (Probe), whose spec documents are text/plain: Answers with its input and the execution it runs in.',
+          'This brain supports these definition types, selected by the legacy `primitive` field:',
+          `- \`echo\` (Echo), whose definition documents are application/json: ${echo.description}`,
+          '- `probe` (Probe), whose definition documents are text/plain: Answers with its input and the execution it runs in.',
         ].join('\n'),
       );
     }
@@ -29,7 +29,7 @@ describe('the description of execute_spec', () => {
   it('names no primitive the brain does not have', () => {
     const executeSpec = operations.find(({ name }) => name === 'execute_spec');
 
-    expect(executeSpec?.description).toContain('A primitive may start work that finishes after the call returns');
+    expect(executeSpec?.description).toContain('Work may finish after the call returns');
     expect(executeSpec?.description).not.toMatch(/workflow/iu);
   });
 });
@@ -40,7 +40,7 @@ describe('the JSON Schema of the input of the operations', () => {
       expect(input.schema).toHaveProperty(['properties', 'primitive'], {
         type: 'string',
         enum: ['echo', 'probe'],
-        description: 'The name of the primitive the spec belongs to: echo, probe',
+        description: 'The API type identifier of the function or workflow definition: echo, probe',
       });
       expect(input.schema).toMatchObject({ type: 'object', additionalProperties: false });
     }
@@ -49,7 +49,7 @@ describe('the JSON Schema of the input of the operations', () => {
   it('keeps every other field of the input as its schema gives it', () => {
     expect(operations[1]?.input.schema).toHaveProperty(['properties', 'include_retired'], {
       type: 'boolean',
-      description: 'Whether to list retired specs as well; false when left out',
+      description: 'Whether to list retired definitions as well; false when left out',
     });
     expect(operations[2]?.input.schema).toHaveProperty('required', ['primitive', 'name']);
   });
@@ -69,7 +69,7 @@ describe('the JSON Schema of the input of the operations', () => {
       properties: {
         input: {
           description:
-            'The input of the execution: any JSON value the spec takes, {} when left out, at most 262144 bytes as JSON in UTF-8',
+            'The run input: any JSON value the definition takes, {} when left out, at most 262144 bytes as JSON in UTF-8',
         },
         execution_id: { type: 'string', format: 'uuid' },
       },

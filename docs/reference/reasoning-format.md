@@ -1,8 +1,10 @@
 <div v-pre>
 
-# Reason function format
+<span id="reason-function-format"></span>
 
-The API stores a reason function as an `inference` spec. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
+# Reasoning function format
+
+The API stores a reasoning function as an `inference` spec. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
 
 ## A function document
 
@@ -52,7 +54,7 @@ Unknown fields are rejected. Creation and updates validate the document and repo
 
 The Liquid template reads supplied values through `input`. An optional `{% system %}` block provides system instructions. The document must also produce a message outside that block. A function document contains instructions, not model credentials.
 
-A run makes a model invocation and records its output and usage. An external agent can pass evidence it collected through its own connections as input.
+A run invokes the model and records its output and usage. When the function names tools, the model can use them in a bounded loop before answering. An external agent can also pass evidence it collected through its own connections as input.
 
 Changing the document creates a version. A run uses the active latest version and records `spec_version`; the current API does not select an arbitrary historical version to execute. See the [HTTP reference](http.md) for input limits and retry behavior.
 
@@ -66,7 +68,9 @@ tools: [graph/search, graph/execute, notes/*]
 
 The model receives those tools and can call them before it answers. A run makes at most 25 calls and receives at most 256 KiB of results; a call that would exceed a bound, sends more than 16 KiB of arguments or repeats an earlier call a third time is refused, and the model is told why. Once the calls end, the model answers from what it has, without the tools. Each call appears in the run's history, with the server and tool, the size of its arguments and result, and how it ended.
 
-A run whose function names a tool the brain's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. Once a run has called a tool, a run that cannot finish is `unavailable` with words that say what it called, and the same execution id is not run again: start a new run. Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. See [Tool access inside a reason function](../concepts/functions.md#tool-access-inside-a-reason-function).
+A run whose function names a tool the brain's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. After a tool call, an `unavailable` ending has the kind `tools_unfinished`: a tool may already have changed an external system. The same execution id cannot run that work again and returns `tools_called`. A tool-using run still marked `started` also cannot restart under its id, even before its first recorded call. Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
+
+Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
 ## Provider options
 

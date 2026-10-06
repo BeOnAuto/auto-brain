@@ -34,7 +34,7 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
 ];
 
 const calledToolsWords =
-  'Could not run the reason function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something. So it was not run again: start a new run instead, after checking what its history shows it has called so far.';
+  'Could not run the reasoning function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something. So it was not run again: start a new run instead, after checking what its history shows it has called so far.';
 
 const toolsNamed =
   'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, so once it names only those, it can be tried again.';
@@ -187,12 +187,12 @@ describe('unsuccessfulWords', () => {
 
   it('does not say that nothing changed for a command whose tool calls may have changed something', () => {
     expect(
-      unsuccessfulWords('run the reason function “summary”', 'command', {
+      unsuccessfulWords('run the reasoning function “summary”', 'command', {
         ...rejected('unavailable', 'x', undefined, 'tools_unfinished'),
         because: 'run_bound',
       }),
     ).toBe(
-      'Could not run the reason function “summary”: it called tools but could not finish, because it ran out of time. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
+      'Could not run the reasoning function “summary”: it called tools but could not finish, because it ran out of time. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
     );
   });
 
@@ -204,9 +204,9 @@ describe('unsuccessfulWords', () => {
 
   it('gives the reference of an unexpected failure, and says it was not the person’s doing', () => {
     expect(
-      unsuccessfulWords('run the reason function “summary”', 'command', { status: 'failed', incident: 'abc' }),
+      unsuccessfulWords('run the reasoning function “summary”', 'command', { status: 'failed', incident: 'abc' }),
     ).toBe(
-      'Could not run the reason function “summary”: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: abc.',
+      'Could not run the reasoning function “summary”: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: abc.',
     );
   });
 
@@ -221,7 +221,7 @@ describe('unsuccessfulWords for a run refused under its id', () => {
   it('does not say that nothing changed, since the tools of the run may have changed something', () => {
     expect(
       unsuccessfulWords(
-        'run the reason function “summary”',
+        'run the reasoning function “summary”',
         'command',
         rejected('conflict', 'x', undefined, 'tools_called'),
       ),

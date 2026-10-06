@@ -27,7 +27,7 @@ Measured on an Apple M-series machine, the expressions that do the most work per
 
 The count comes from a patch of `@gabrielbryk/jq-ts` 1.7.0 (`patches/@gabrielbryk__jq-ts@1.7.0.patch` at the root of the repository), which the library offers no hook for. It adds the `maxWork` limit and the `usage` it reports, charges the operations listed above, bounds a compiled regular expression, adds a `deadline` its caller may give, and replaces the library's string search, which in the engine's worst case takes time in proportion to the product of the two lengths, with the Knuth-Morris-Pratt search, linear in their sum. It changes the build that `import` loads and the one that `require()` loads alike, and `packages/workflow-engine/src/engine/portability.test.ts` fails if they drift apart. A new version of the library needs the patch ported, and `packages/workflow-engine/src/dsl/expression-work.test.ts` fails for any charge that goes missing.
 
-### Executing a spec
+### Calling a definition {#executing-a-spec}
 
 `call: execute_spec` executes the active spec of that primitive and name in the same brain through the server's dispatcher, for the caller who started the run, and outputs its output; the public reference lists the errors a call raises. Retrying is the document's choice, with `try` and `catch.retry`: the run waits on durable timers between attempts. The server does not retry a call on its own; a call cut off when the server stopped is performed again when it starts.
 
@@ -35,7 +35,7 @@ Each run of a call is its own execution, with an id derived from the workflow's 
 
 A call may run for the longest a nested execution may legitimately take and a minute more: the most `longestExecutionMs` the server's primitives state (see `@beonauto/specs`), which the server gives the run as its `longestCallMs`. For inference that is the deadline of a model call for the most output tokens, 60 seconds and 25 ms a token, 1660 seconds for 64000, so 1720 seconds; a primitive that states none is given 10 minutes. Each call arms a `call_deadline` timer at that limit: when it fires, the task fails with a `communication` error of status 503, and the call is cut off. When the server stops while a nested execution runs, the call stays recorded and is performed again when the server starts, under the same id, since an execution that started and never finished runs again for its id.
 
-A call cancelled, by the timeout of its task, by its `call_deadline` or because its run ends, stops the nested execution: the host interrupts the fiber that performs the call, `inRuntime` (`packages/server/src/workflows/host-dependencies.ts`) passes the abort of that fiber to the application runtime's `run` as its signal, and the runtime interrupts the execution. A reason function then stops forwarding tool calls, cancels the ones in flight, which its MCP client tells each server with `notifications/cancelled`, ends its sessions and records its ending, `execution_failed`, with each call in flight started and never answered (`src/workflow-executions/workflow-tool-cancellation.test.ts` of the server).
+A call cancelled, by the timeout of its task, by its `call_deadline` or because its run ends, stops the nested execution: the host interrupts the fiber that performs the call, `inRuntime` (`packages/server/src/workflows/host-dependencies.ts`) passes the abort of that fiber to the application runtime's `run` as its signal, and the runtime interrupts the execution. A reasoning function then stops forwarding tool calls, cancels the ones in flight, which its MCP client tells each server with `notifications/cancelled`, ends its sessions and records its ending, `execution_failed`, with each call in flight started and never answered (`src/workflow-executions/workflow-tool-cancellation.test.ts` of the server).
 
 ### Events
 
@@ -65,8 +65,8 @@ A run decides each input as a pure function of the input and its state: it reads
 
 Every server runs workflows (`packages/server/src/workflows/workflows.ts`). The pieces it puts together:
 
-- `openWorkflowHost(options)` of `@beonauto/workflow-host`, opened on the ledger's own database, with `orchestrationMachine`, the calls of `specCalls`, which execute a spec through the server's dispatcher as the caller who started the run (`specExecutionResultOf` turns its outcome into a result), `executionSettler` over the server's ledger, and reports to the server's log.
-- `makeOrchestration({ runs, mostDurationMs, longestCallMs })`, the primitive for `makeSpecOperations`, and `defineSendExecutionEvent(runs)`, the brain operation `send_execution_event`.
+- `openWorkflowHost(options)` of `@beonauto/workflow-host`, opened on the ledger's own database, with `orchestrationMachine`, the calls of `definitionCalls`, which run a definition through the server's dispatcher as the caller who started the run (`definitionRunResultOf` turns its outcome into a result), `executionSettler` over the server's ledger, and reports to the server's log. This callback also supports extension adapters outside the five brain function types.
+- `makeWorkflowAdapter({ runs, mostDurationMs, longestCallMs })`, the workflow runtime adapter for `makeSpecOperations`, and `defineSendExecutionEvent(runs)`, the brain operation `send_execution_event`.
 - `runPresenter`, given with the presenters of the primitives, so a workflow's history and the brain's events show each input its run took.
 
 The host runs in the server's process: it fires timers when they are due, sweeps every `ORCHESTRATION_SWEEP_INTERVAL`, and runs at most `ORCHESTRATION_NESTED_EXECUTIONS` calls at once. When the server stops, the host lets the starts and events it took and the decision in progress finish, then cuts off the calls in flight, which start again when the server next starts, lets go of its claim on the workflows, and closes its database. [Workflow operations](../self-host/workflows.md) describes it for an operator.
@@ -110,4 +110,4 @@ Measured once with the arm64 image and no memory limit, the server took about 18
 
 ## Not in this version
 
-The public reference lists what a document may not use. The implementation also has no operation that cancels a run, and runs the workflows of a database in one server at a time. A function is added by adding its name and the checks of its arguments to the functions the machine is given (`src/document/workflow-functions.ts`), and what a call of it does to the calls the host performs (`src/calls/spec-calls.ts`).
+The public reference lists what a document may not use. The implementation also has no operation that cancels a run, and runs the workflows of a database in one server at a time. The only supported DSL call is `execute_spec`. Adding another DSL call would require its name and argument checks in `src/document/workflow-functions.ts`, and an implementation in `src/calls/function-calls.ts`. This is the workflow engine's call interface, separate from defining a reusable brain function.

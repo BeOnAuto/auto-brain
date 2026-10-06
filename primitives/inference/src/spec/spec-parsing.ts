@@ -4,7 +4,7 @@ import type { CompiledTemplate } from '../template/compiled-template.ts';
 import { reportedIssues, type DocumentIssue } from './document-issue.ts';
 import { splitDocument, type DocumentParts } from './document-split.ts';
 import { decodeSection, frontMatterIn, type ReadFrontMatter } from './front-matter-schema.ts';
-import type { InferenceSpec } from './inference-spec.ts';
+import type { ReasoningFunctionDefinitionDocument } from './reasoning-function-definition.ts';
 import { inputContractOf, outputContractOf } from './spec-schemas.ts';
 import { modelOf, providerOptionsOf, settingsOf, toolsOf } from './spec-settings.ts';
 import { templateOf } from './spec-template.ts';
@@ -75,7 +75,7 @@ function specFrom({ root, lines, issues }: ReadFrontMatter, template: () => Chec
     : Result.all({ model, settings, input, output, template: template(), description, providerOptions, tools });
 }
 
-function specOf(parts: DocumentParts): Checked<InferenceSpec> {
+function specOf(parts: DocumentParts): Checked<ReasoningFunctionDefinitionDocument> {
   const template = templateOf(parts);
   const reading = frontMatterIn(parts.frontMatter, parts.frontMatterLine);
   if (Result.isFailure(reading)) {
@@ -97,6 +97,6 @@ function specOf(parts: DocumentParts): Checked<InferenceSpec> {
   );
 }
 
-export function parseSpecDocument(source: string): Checked<InferenceSpec> {
+export function parseSpecDocument(source: string): Checked<ReasoningFunctionDefinitionDocument> {
   return Result.mapError(Result.flatMap(splitDocument(source), specOf), reportedIssues);
 }

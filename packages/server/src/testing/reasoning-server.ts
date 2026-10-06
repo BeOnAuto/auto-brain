@@ -7,7 +7,7 @@ import { startServer } from '../lifecycle/lifecycle.ts';
 import { request, type RequestOptions, type TestResponse } from './http-client.ts';
 import { temporaryLedger } from './temporary-ledger.ts';
 
-export interface InferenceServer {
+export interface ReasoningServer {
   readonly origin: string;
   readonly call: (method: string, path: string, options?: RequestOptions) => Promise<TestResponse>;
   readonly modelCalls: () => number;
@@ -23,11 +23,11 @@ type Fetch = typeof globalThis.fetch;
 
 const noNetwork: Fetch = () => Promise.reject(new TypeError('fetch failed: the tests reach no network'));
 
-export async function servingInference(
+export async function servingReasoning(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
   fetch: Fetch = noNetwork,
-): Promise<InferenceServer> {
+): Promise<ReasoningServer> {
   const ledger = temporaryLedger();
   const scripted = scriptedLanguageModel(...replies);
   const server = await startServer(

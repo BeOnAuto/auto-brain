@@ -78,7 +78,7 @@ const hashedLongName: unknown = expect.stringMatching(
 );
 
 describe('the tools a run is offered', () => {
-  it('offers the tools a reason function names under their model-facing names, with their schemas unchanged', async () => {
+  it('offers the tools a reasoning function names under their model-facing names, with their schemas unchanged', async () => {
     const fake = await fakeServer({ bearer: apiKey });
     const { access } = accessTo({ graph: graphOf(fake) });
 
@@ -160,7 +160,7 @@ describe('a tool that is not offered', () => {
       _tag: 'tool_not_offered',
       because: 'mcp_server_not_configured',
       detail:
-        'The reason function names graph/search, crm/search, and mail/send, but no MCP server of that name is configured for this brain',
+        'The reasoning function names graph/search, crm/search, and mail/send, but no MCP server of that name is configured for this brain',
     });
     expect(fake.seen()).toEqual([]);
   });
@@ -172,7 +172,7 @@ describe('a tool that is not offered', () => {
     expect(await refusalOf(access, 'graph/search', 'graph/echo')).toMatchObject({
       _tag: 'tool_not_offered',
       because: 'tool_not_allowed',
-      detail: 'The reason function names graph/echo, which the operator of this server does not allow',
+      detail: 'The reasoning function names graph/echo, which the operator of this server does not allow',
     });
   });
 
@@ -183,7 +183,7 @@ describe('a tool that is not offered', () => {
     expect(await refusalOf(access, 'graph/search', 'graph/lookup')).toMatchObject({
       _tag: 'tool_not_offered',
       because: 'tool_not_listed',
-      detail: 'The reason function names graph/lookup, which its MCP server does not list',
+      detail: 'The reasoning function names graph/lookup, which its MCP server does not list',
     });
     expect(fake.openSessions()).toBe(0);
   });

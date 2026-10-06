@@ -22,7 +22,7 @@ const reasons = [
   'it brings in tools or servers',
   'it adds raw fields to the request',
   'the front matter sets it',
-  'it carries conversation state, and a spec makes one call',
+  'the runtime manages conversation state',
   'it asks for output the runtime does not read',
   'it changes how the runtime sends the request',
 ];
@@ -32,7 +32,7 @@ function verdictsOf(namespace: string, option: string): readonly string[] {
   return check === undefined ? ['no check'] : check(option, true).map(({ detail }) => detail);
 }
 
-describe('the provider options a spec may set', () => {
+describe('the provider options a reasoning function may set', () => {
   it('are kept for the namespaces of the built-in providers', () => {
     expect(providerNamespaces).toEqual(Object.keys(offered));
     expect(optionCheckFor('mistral')).toBeUndefined();

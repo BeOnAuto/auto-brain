@@ -28,17 +28,17 @@ const nothingToRecord: Decision = Result.succeed([]);
 
 const toolsWereCalled = new Conflict({
   detail:
-    'The execution called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another execution id, and read with get_execution_history what it called',
+    'The run called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another run id, and read with get_execution_history what it called',
   kind: 'tools_called',
 });
 
 const startedCallingTools = new Conflict({
   detail:
-    'The execution has started and its spec calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another execution id, and read with get_execution_history what it has called so far',
+    'The run has started and its definition calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another run id, and read with get_execution_history what it has called so far',
   kind: 'tools_called',
 });
 
-const runFinished = new Conflict({ detail: 'The execution has finished, so it records no more tool calls' });
+const runFinished = new Conflict({ detail: 'The run has finished, so it records no more tool calls' });
 
 function isSameRequest({ input, execution }: RecordedExecution, request: ExecutionRequest): boolean {
   return (
@@ -63,7 +63,7 @@ export function claimOf(state: ExecutionState, request: ExecutionRequest): Resul
   }
   if (!isSameRequest(state, request)) {
     return Result.fail(
-      new Conflict({ detail: 'The execution id belongs to an execution of another spec or with another input' }),
+      new Conflict({ detail: 'The run id belongs to a run of another definition or with another input' }),
     );
   }
   return claimOfRecorded(state);
@@ -112,14 +112,14 @@ function unsettleable({ result }: RecordedExecution): Conflict {
   return new Conflict({
     detail:
       result === undefined
-        ? 'The execution runs within the call that started it, so it cannot be settled'
-        : 'The execution already ended with another result',
+        ? 'The run executes within the call that started it, so it cannot be settled'
+        : 'The run already ended with another result',
   });
 }
 
 function decideSettlement({ result, at }: ExecutionSettlement, state: ExecutionState): Decision {
   if (state === undefined) {
-    return Result.fail(new NotFound({ detail: 'There is no such execution in this brain' }));
+    return Result.fail(new NotFound({ detail: 'There is no such run in this brain' }));
   }
   if (Equal.equals(state.result, result)) {
     return nothingToRecord;

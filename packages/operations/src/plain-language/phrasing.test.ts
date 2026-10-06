@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { alternatives, asSentence, capitalized, counted, listed, plainNumber, quoted } from '../index.ts';
 
-const reasonFunction = { one: 'reason function', other: 'reason functions' };
+const reasoningFunction = { one: 'reasoning function', other: 'reasoning functions' };
 
 const lists: ReadonlyArray<readonly [readonly string[], string]> = [
   [['a'], 'a'],
@@ -20,24 +20,24 @@ describe('phrasing', () => {
   });
 
   it('capitalizes the first letter of a sentence, and leaves one that starts with a quote', () => {
-    expect([capitalized('the reason function'), capitalized('“summary” is'), capitalized('')]).toEqual([
-      'The reason function',
+    expect([capitalized('the reasoning function'), capitalized('“summary” is'), capitalized('')]).toEqual([
+      'The reasoning function',
       '“summary” is',
       '',
     ]);
   });
 
   it('lists alternatives with or', () => {
-    expect(alternatives(['reason function', 'workflow'])).toBe('reason function or workflow');
+    expect(alternatives(['reasoning function', 'workflow'])).toBe('reasoning function or workflow');
   });
 
   it.each([
-    [0, '0 reason functions'],
-    [1, '1 reason function'],
-    [2, '2 reason functions'],
-    [100, 'one hundred reason functions'],
+    [0, '0 reasoning functions'],
+    [1, '1 reasoning function'],
+    [2, '2 reasoning functions'],
+    [100, 'one hundred reasoning functions'],
   ])('counts %i as %s', (count, text) => {
-    expect(counted(count, reasonFunction)).toBe(text);
+    expect(counted(count, reasoningFunction)).toBe(text);
   });
 });
 

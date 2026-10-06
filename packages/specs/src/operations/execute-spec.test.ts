@@ -48,7 +48,7 @@ describe('execute_spec', () => {
     expect(executeSpec.registration).toMatchObject({
       scope: 'brain',
       kind: 'command',
-      title: 'Execute spec',
+      title: 'Run definition',
       route: { method: 'POST', path: '/specs/{primitive}/{name}/execute' },
       pathParameters: ['primitive', 'name'],
       successStatus: 200,

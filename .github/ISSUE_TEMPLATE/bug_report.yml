@@ -31,7 +31,7 @@ body:
       options:
         - Docker image, self-hosted
         - From source (pnpm dev)
-        - Auto studio (on.auto)
+        - AUTO Studio (on.auto)
         - Other
     validations:
       required: true

@@ -2,7 +2,7 @@ import { answers, jsonResult, textResult, type ScriptedReply } from '@beonauto/i
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
@@ -89,7 +89,7 @@ const historyOf = Schema.decodeUnknownSync(
   }),
 );
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
@@ -113,7 +113,7 @@ async function executed(name: string, input: object): Promise<string> {
   return executionIdIn(response.body);
 }
 
-describe('a workflow that executes inference specs, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that runs reasoning functions, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
   it('branches on the first answer, executes the second spec, and settles succeeded with what it composed', async () => {
     await serving(answers(jsonResult({ approve: true })), answers(textResult('Dinner for six, within policy.')));
 

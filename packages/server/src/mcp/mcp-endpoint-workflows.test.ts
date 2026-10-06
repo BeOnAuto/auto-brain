@@ -4,7 +4,7 @@ import { toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@
 import { answers, textResult } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { InferenceServer } from '../testing/inference-server.ts';
+import type { ReasoningServer } from '../testing/reasoning-server.ts';
 import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
 
 const greeting = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Greet {{ input.name }}.'].join('\n');
@@ -27,7 +27,7 @@ const welcome = workflowSource(
 `,
 );
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
@@ -81,7 +81,7 @@ describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
 
     expect(served.tools).toHaveLength(17);
     expect(served.tools.at(-1)).toBe('send_execution_event');
-    expect(served.instructions).toContain('A workflow waiting for an event receives it through send_execution_event.');
+    expect(served.instructions).toContain('A waiting workflow run receives input through send_execution_event.');
   });
 
   it('runs a workflow in a brain it created and sends it the event it waits for, on one connection', async () => {

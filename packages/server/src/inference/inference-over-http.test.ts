@@ -1,7 +1,7 @@
 import { answers, jsonResult, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const summary = [
   '---',
@@ -24,10 +24,10 @@ const verdict = [
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
-async function serving(...replies: readonly ScriptedReply[]): Promise<InferenceServer> {
-  server = await servingInference(replies);
+async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
+  server = await servingReasoning(replies);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
   await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'verdict', source: verdict } });
@@ -42,7 +42,7 @@ afterEach(async () => {
   await server.stop();
 });
 
-describe('executing an inference spec over HTTP', () => {
+describe('executing a reasoning function definition over HTTP', () => {
   it('answers with the execution and the text of the model', async () => {
     await serving(answers(textResult('Profits rose.')));
 
@@ -62,7 +62,7 @@ describe('executing an inference spec over HTTP', () => {
   });
 });
 
-describe('the executions of an inference spec over HTTP', () => {
+describe('the executions of a reasoning function definition over HTTP', () => {
   it('rejects an input that does not match the input schema with 422, under /input', async () => {
     await serving();
 

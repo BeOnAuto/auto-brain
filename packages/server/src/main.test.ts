@@ -62,7 +62,7 @@ function logLines(stderr: string): readonly { readonly message: string; readonly
 }
 
 const noModelProvider =
-  'No model provider is configured, so inference specs cannot run; set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
+  'No model provider is configured, so reasoning functions cannot run; set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY or MODEL_GATEWAYS';
 
 const workflowsRun =
   'Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms';

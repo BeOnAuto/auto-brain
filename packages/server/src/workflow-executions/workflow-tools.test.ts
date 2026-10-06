@@ -4,7 +4,7 @@ import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
@@ -15,7 +15,7 @@ import {
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
-function reasonFunction(tool: string): string {
+function reasoningFunction(tool: string): string {
   return ['---', 'model: anthropic/claude-sonnet-4-5', `tools: [${tool}]`, '---', 'Find acme.'].join('\n');
 }
 
@@ -59,7 +59,7 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
 });
 
-async function serving(...replies: readonly ScriptedReply[]): Promise<InferenceServer> {
+async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
   const fake: FakeMcpServer = await serveFakeMcp({ bearer: apiKey });
   closing.push(fake.close);
   const gone = await serveFakeMcp();
@@ -77,16 +77,16 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<InferenceS
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/inference`, {
-    body: { name: 'graph', source: reasonFunction('graph/search') },
+    body: { name: 'graph', source: reasoningFunction('graph/search') },
   });
   await server.call('POST', `${alpha}/specs/inference`, {
-    body: { name: 'crm', source: reasonFunction('crm/search') },
+    body: { name: 'crm', source: reasoningFunction('crm/search') },
   });
   await server.call('POST', `${alpha}/specs/orchestration`, {
     body: { name: 'reporting', source: workflowCalling('reporting', 'crm', true) },
   });
   await server.call('POST', `${alpha}/specs/inference`, {
-    body: { name: 'down', source: reasonFunction('down/search') },
+    body: { name: 'down', source: reasoningFunction('down/search') },
   });
   await server.call('POST', `${alpha}/specs/orchestration`, {
     body: { name: 'careless', source: workflowCalling('careless', 'graph', false) },
@@ -97,7 +97,7 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<InferenceS
   return server;
 }
 
-async function settledRun(server: InferenceServer, name: string) {
+async function settledRun(server: ReasoningServer, name: string) {
   const started = await server.call('POST', `${alpha}/specs/orchestration/${name}/execute`, { body: { input: {} } });
   const executionId = executionIdIn(started.body);
   const settled = await settledExecution(server, `${alpha}/executions/${executionId}`);
@@ -109,7 +109,7 @@ async function settledRun(server: InferenceServer, name: string) {
 }
 
 describe(
-  'a workflow calling a reason function whose tools end it, over HTTP',
+  'a workflow calling a reasoning function whose tools end it, over HTTP',
   { timeout: workflowTestTimeoutMs },
   () => {
     it('catches the kind and because of a tool the server does not offer, and its history says why', async () => {

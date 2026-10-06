@@ -1,7 +1,7 @@
-import type { SpecSummary } from '@beonauto/specs';
+import type { DefinitionSummary } from '@beonauto/specs';
 import { type JsonObject, objectField, textField } from '@beonauto/workflow-engine';
 
-export function summaryOf(document: JsonObject): SpecSummary {
+export function summaryOf(document: JsonObject): DefinitionSummary {
   const header = objectField(document, 'document') ?? {};
   const description = textField(header, 'summary') ?? textField(header, 'title');
   const inputSchema = inlineSchemaOf(document, 'input');

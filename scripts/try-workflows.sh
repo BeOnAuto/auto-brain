@@ -30,7 +30,7 @@ settled() {
     fi
     sleep 1
   done
-  printf 'The execution %s was still started after a minute\n' "$1" >&2
+  printf 'The run %s was still started after a minute\n' "$1" >&2
   return 1
 }
 

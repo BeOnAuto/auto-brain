@@ -81,7 +81,7 @@ describe('get_execution_history', () => {
     expect(getExecutionHistory.registration).toMatchObject({
       scope: 'brain',
       kind: 'query',
-      title: 'Get execution history',
+      title: 'Get run history',
       route: { method: 'GET', path: '/executions/{execution_id}/history' },
       pathParameters: ['execution_id'],
       reasons: ['not_found', 'invalid_input'],
@@ -239,7 +239,7 @@ describe('get_execution_history rejecting', () => {
     const notFound = {
       status: 'rejected',
       reason: 'not_found',
-      detail: `There is no execution ${executionId} in this brain`,
+      detail: `There is no run ${executionId} in this brain`,
     };
     const [firstOfAnother] = idsIn(await reading({ execution_id: otherId }));
 

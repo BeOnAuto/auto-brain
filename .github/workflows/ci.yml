@@ -215,7 +215,7 @@ jobs:
           grep --quiet '"structuredContent":{"executions":\[\],"has_more":false,"next_cursor":null}' executions.txt
           docker stop mcp
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
-      - name: Execute an inference spec without model settings
+      - name: Run a reasoning function without model settings
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"

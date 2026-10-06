@@ -15,7 +15,7 @@ import {
   TimedOut,
   type ModelFailure,
 } from '../index.ts';
-import { inferenceWith, type Execution } from '../testing/inference-runs.ts';
+import { reasoningWith, type Execution } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
 
 const jsonSpec = documentOf(
@@ -23,7 +23,7 @@ const jsonSpec = documentOf(
 );
 
 function failingWith(failure: () => ModelFailure): Promise<Execution> {
-  return inferenceWith(() => Effect.fail(failure())).executing(jsonSpec, { text: 'x' });
+  return reasoningWith(() => Effect.fail(failure())).executing(jsonSpec, { text: 'x' });
 }
 
 describe('a provider that rejects the spec', () => {
@@ -40,7 +40,7 @@ describe('a provider that rejects the spec', () => {
       Exit.fail(
         new Conflict({
           detail:
-            'openai answered HTTP 404: the model was not found; update the spec. The provider said: The model gpt-6 does not exist',
+            'openai answered HTTP 404: the model was not found; update the reasoning function definition. The provider said: The model gpt-6 does not exist',
         }),
       ),
     );
@@ -58,7 +58,8 @@ describe('a provider that rejects the spec', () => {
     expect(await failingWith(() => failure)).toEqual(
       Exit.fail(
         new Conflict({
-          detail: 'The request is not valid (/settings/temperature: Expected a finite number); update the spec',
+          detail:
+            'The request is not valid (/settings/temperature: Expected a finite number); update the reasoning function definition',
         }),
       ),
     );
@@ -80,7 +81,7 @@ describe('a JSON answer that is not usable', () => {
       Exit.fail(
         new Conflict({
           detail:
-            'openai stopped the answer at max_output_tokens (200) before the JSON was complete; raise config.max_output_tokens in the spec',
+            'openai stopped the answer at max_output_tokens (200) before the JSON was complete; raise config.max_output_tokens in the reasoning function definition',
         }),
       ),
     );

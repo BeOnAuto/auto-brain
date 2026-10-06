@@ -6,7 +6,7 @@ The campaign and figures below are sample data. This exercise makes no changes t
 
 ## Before you start
 
-Complete [Build your first brain](first-brain.md) first. This exercise uses its practice brain, `campaign-review-tutorial`, and its reason function, `review-campaign-brief`, which takes one required input, `brief`.
+Complete [Build your first brain](first-brain.md) first. This exercise uses its practice brain, `campaign-review-tutorial`, and its reasoning function, `review-campaign-brief`, which takes one required input, `brief`.
 
 Your agent needs a connection with permission to create and run definitions in that brain. Every runtime offers workflows, and the first step below checks that your connection shows their tools.
 
@@ -16,21 +16,23 @@ Ask your connected agent:
 
 > List the Auto tools you can call. Tell me whether `send_execution_event` is one of them, and which values the `primitive` field of `create_spec` accepts.
 
-The agent should report `send_execution_event` among the tools, and `inference` and `orchestration` as the accepted primitives. `orchestration` is the API name for a workflow.
+The agent should report `send_execution_event` among the tools, and `inference` and `orchestration` as the accepted values of `primitive`. These are the API identifiers for reasoning functions and workflows.
 
 If neither `send_execution_event` nor `create_spec` is listed, the connection uses an organization endpoint, which offers brain management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the brain's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
 
-## 2. Confirm the reason function
+<span id="_2-confirm-the-reason-function"></span>
+
+## 2. Confirm the reasoning function
 
 Ask:
 
-> In `campaign-review-tutorial`, read back the reason function `review-campaign-brief`. Show its version and the inputs it requires. Do not change it.
+> In `campaign-review-tutorial`, read back the reasoning function `review-campaign-brief`. Show its version and the inputs it requires. Do not change it.
 
 You should see `review-campaign-brief`, its version, and `brief` as its required input. If the function is missing, complete Build your first brain before continuing.
 
 ## 3. Save the workflow
 
-The workflow has three steps. `review-first-brief` runs the reason function on the brief the run starts with. `wait-for-revision` waits for an event of type `com.example.brief.revised` and keeps the brief from its data. `review-revised-brief` runs the reason function again on that revised brief. The run's output keeps both reviews and the revised brief.
+The workflow has three steps. `review-first-brief` runs the reasoning function on the brief the run starts with. `wait-for-revision` waits for an event of type `com.example.brief.revised` and keeps the brief from its data. `review-revised-brief` runs the reasoning function again on that revised brief. The run's output keeps both reviews and the revised brief.
 
 Send this instruction with the document that follows it:
 
@@ -138,7 +140,7 @@ The two reviews come from your model, so their wording can vary. Check them agai
 | `first_review`  | Revise: the audience lacks a job role and type of company, and the success measure lacks a numeric target |
 | `second_review` | Ready: all four criteria are met                                                                          |
 
-A succeeded run means every step completed; it can still contain a Revise review. If the first review recommends Ready or the second Revise, inspect the reason function's prompt with your agent before relying on it.
+A succeeded run means every step completed; it can still contain a Revise review. If the first review recommends Ready or the second Revise, inspect the reasoning function's prompt with your agent before relying on it.
 
 Then read how the run got there:
 
@@ -172,6 +174,6 @@ Each call in this exercise was run against the runtime and its answers recorded.
 
 ## Review the saved workflow
 
-The brain now contains a workflow that uses the reason function twice, around a person's revision, and one recorded run of it. The review criteria still live in the reason function; the workflow decides when it runs and what it waits for.
+The brain now contains a workflow that uses the reasoning function twice, around a person's revision, and one recorded run of it. The review criteria still live in the reasoning function; the workflow decides when it runs and what it waits for.
 
 [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end, and [Workflow format](../reference/workflow-format.md) lists the steps you can add, such as a branch on a decision or a time limit on the wait.

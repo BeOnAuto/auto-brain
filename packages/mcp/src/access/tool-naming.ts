@@ -46,7 +46,7 @@ function isAllowed(reference: ToolReference, allowed: readonly ToolReference[] |
 export function notOffered(because: NotOfferedBecause, named: readonly ToolReference[], why: string): ToolNotOffered {
   return new ToolNotOffered({
     because,
-    detail: `The reason function names ${listedOf(named)}, ${why}`,
+    detail: `The reasoning function names ${listedOf(named)}, ${why}`,
   });
 }
 

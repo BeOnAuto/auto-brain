@@ -5,7 +5,7 @@ import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServ
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -26,7 +26,7 @@ const timedOut: ScriptedReply = () =>
     new TimedOut({ detail: 'anthropic did not answer within 60000 ms', provider: 'anthropic', timeout_ms: 60_000 }),
   );
 
-async function serving(fake: FakeMcpServer | undefined, replies: readonly ScriptedReply[]): Promise<InferenceServer> {
+async function serving(fake: FakeMcpServer | undefined, replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
   const servers =
     fake === undefined
       ? {}
@@ -41,7 +41,7 @@ async function serving(fake: FakeMcpServer | undefined, replies: readonly Script
             },
           }),
         };
-  const server = await servingInference(replies, {
+  const server = await servingReasoning(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',
@@ -57,17 +57,17 @@ async function fakeGraph(): Promise<FakeMcpServer> {
   return fake;
 }
 
-function onAlpha<T>(server: InferenceServer, use: (session: McpSession) => Promise<T>): Promise<T> {
+function onAlpha<T>(server: ReasoningServer, use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
 }
 
-async function withBrain(server: InferenceServer): Promise<void> {
+async function withBrain(server: ReasoningServer): Promise<void> {
   await withMcpSession('current revision', { url: `${server.origin}/orgs/acme/mcp`, headers: {} }, (session) =>
     session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
   );
 }
 
-async function executedTwice(server: InferenceServer, document = source) {
+async function executedTwice(server: ReasoningServer, document = source) {
   await withBrain(server);
   return onAlpha(server, async (session) => {
     await session.callTool('create_spec', { primitive: 'inference', name: 'summary', source: document });
@@ -79,7 +79,7 @@ async function executedTwice(server: InferenceServer, document = source) {
   });
 }
 
-async function annotationsOf(server: InferenceServer) {
+async function annotationsOf(server: ReasoningServer) {
   const listed = listedTools(await onAlpha(server, (session) => session.listTools()));
   return listed.find(({ name }) => name === 'execute_spec')?.annotations;
 }
@@ -95,7 +95,7 @@ describe('execute_spec over MCP on a server with MCP servers', () => {
     expect(await annotationsOf(unconfigured)).toMatchObject({ destructiveHint: false });
   });
 
-  it('runs a reason function with its tools, whose history shows the calls', async () => {
+  it('runs a reasoning function with its tools, whose history shows the calls', async () => {
     const fake = await fakeGraph();
     const { first, history } = await executedTwice(await serving(fake, [searched]));
 
@@ -111,9 +111,9 @@ describe('execute_spec over MCP on a server with MCP servers', () => {
   });
 });
 
-describe('a reason function with tools over MCP', () => {
+describe('a reasoning function with tools over MCP', () => {
   it(
-    'runs a reason function with the tools of a process the server starts',
+    'runs a reasoning function with the tools of a process the server starts',
     { timeout: stdioTestTimeoutMs },
     async () => {
       const reply = callingTools(
@@ -143,10 +143,10 @@ describe('a reason function with tools over MCP', () => {
     );
 
     expect(plainTextIn(first)).toBe(
-      'Could not run the reason function “summary”: it called tools but could not finish, because the model stopped answering. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
+      'Could not run the reasoning function “summary”: it called tools but could not finish, because the model stopped answering. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
     );
     expect(plainTextIn(again)).toMatch(
-      /^Could not run the reason function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something\. So it was not run again/u,
+      /^Could not run the reasoning function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something\. So it was not run again/u,
     );
     expect(fake.received()).toHaveLength(1);
   });

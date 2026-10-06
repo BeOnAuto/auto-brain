@@ -33,7 +33,7 @@ function referenceIssue(
   return {
     line,
     pointer: '',
-    detail: `${name} is not a variable of an inference template, which reads input, today and now; assign it first`,
+    detail: `${name} is not a variable of a reasoning function’s prompt template, which reads input, today and now; assign it first`,
   };
 }
 

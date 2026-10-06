@@ -1,6 +1,7 @@
 import { ConflictKindSchema, UnavailableBecauseSchema, UnavailableKindSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
+import type { BrainFunctionDefinition, WorkflowDefinition } from '../registry/spec.ts';
 import { mostResultBytes } from './recorded-size.ts';
 
 const IssueSchema = Schema.Struct({
@@ -16,7 +17,7 @@ export const ExecutionRejectionSchema = Schema.Union([
     kind: Schema.optionalKey(
       UnavailableKindSchema.annotate({
         description:
-          'What the primitive could not use, when it knows: model_not_offered for a model this server does not offer, tool_not_offered for a tool it does not offer, mcp_server_failed for a tool server that failed before any tool was called, and tools_unfinished for a run that called tools and could not finish, so that a tool may have changed something',
+          'What the run could not use, when known: model_not_offered for a model this server does not offer, tool_not_offered for a tool it does not offer, mcp_server_failed for a tool server that failed before any tool was called, and tools_unfinished for a run that called tools and could not finish, so that a tool may have changed something',
       }),
     ),
     because: Schema.optionalKey(
@@ -36,47 +37,57 @@ export const ExecutionRejectionSchema = Schema.Union([
       }),
     ),
   }),
-]).annotate({ description: 'Why the primitive rejected the execution' });
+]).annotate({ description: 'Why the runtime adapter rejected the run' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;
 
-export const ExecutionSchema = Schema.Struct({
-  execution_id: Schema.String.annotate({ description: 'The id of the execution, a UUID' }),
-  primitive: Schema.String.annotate({ description: 'The name of the primitive of the spec' }),
-  name: Schema.String.annotate({ description: 'The name of the spec' }),
-  spec_version: Schema.Int.annotate({ description: 'The version of the spec that ran' }),
+export const RunSchema = Schema.Struct({
+  execution_id: Schema.String.annotate({ description: 'The run id, a UUID' }),
+  primitive: Schema.String.annotate({ description: 'The API type identifier of the definition' }),
+  name: Schema.String.annotate({ description: 'The definition name' }),
+  spec_version: Schema.Int.annotate({ description: 'The definition version that ran' }),
   status: Schema.Literals(['started', 'succeeded', 'rejected', 'failed']).annotate({
     description:
       'started while it runs, while work it started finishes later, or when it never finished; then succeeded, rejected or failed',
   }),
   output: Schema.optionalKey(
     Schema.Json.annotate({
-      description: `The output, when the execution succeeded: with the record, at most ${mostResultBytes} bytes as JSON in UTF-8`,
+      description: `The result, when the run succeeded: with the record, at most ${mostResultBytes} bytes as JSON in UTF-8`,
     }),
   ),
   rejection: Schema.optionalKey(ExecutionRejectionSchema),
-  started_at: Schema.String.annotate({ description: 'When the execution started, in ISO 8601 UTC' }),
-  started_by: Schema.String.annotate({ description: 'The id of the caller who started the execution' }),
-  finished_at: Schema.optionalKey(
-    Schema.String.annotate({ description: 'When the execution finished, in ISO 8601 UTC' }),
-  ),
-}).annotate({ identifier: 'Execution', description: 'One run of a spec with an input, and how it ended' });
+  started_at: Schema.String.annotate({ description: 'When the run started, in ISO 8601 UTC' }),
+  started_by: Schema.String.annotate({ description: 'The id of the caller who started the run' }),
+  finished_at: Schema.optionalKey(Schema.String.annotate({ description: 'When the run finished, in ISO 8601 UTC' })),
+}).annotate({ identifier: 'Execution', description: 'One run of a definition with an input, and how it ended' });
 
-export type Execution = typeof ExecutionSchema.Type;
+export type Run = typeof RunSchema.Type;
 
-export type ExecutionRecord = Omit<Execution, 'execution_id'>;
+export type FunctionRun = Run & Pick<BrainFunctionDefinition, 'primitive'>;
 
-export const ExecutionDetailSchema = Schema.Struct({
-  ...ExecutionSchema.fields,
+export type WorkflowRun = Run & Pick<WorkflowDefinition, 'primitive'>;
+
+export function isFunctionRun(run: Run): run is FunctionRun {
+  return run.primitive === 'inference';
+}
+
+export function isWorkflowRun(run: Run): run is WorkflowRun {
+  return run.primitive === 'orchestration';
+}
+
+export type ExecutionRecord = Omit<Run, 'execution_id'>;
+
+export const RunDetailSchema = Schema.Struct({
+  ...RunSchema.fields,
   record: Schema.optionalKey(
     Schema.JsonObject.annotate({
       description:
-        'What the primitive recorded of what it did: of the run that succeeded, or of the work it started that finishes later',
+        'What the runtime adapter recorded: of the run that succeeded, or of the work it started that finishes later',
     }),
   ),
 }).annotate({
   identifier: 'ExecutionDetail',
-  description: 'One run of a spec with an input, how it ended, and what the primitive recorded of it',
+  description: 'One run of a definition with an input, how it ended, and what its runtime adapter recorded',
 });
 
-export type ExecutionDetail = typeof ExecutionDetailSchema.Type;
+export type RunDetail = typeof RunDetailSchema.Type;

@@ -3,7 +3,7 @@ import { Effect, type Schema } from 'effect';
 
 import type { ToolCallFact } from '../execution/execution-commands.ts';
 
-export interface SpecSummary {
+export interface DefinitionSummary {
   readonly description?: string;
   readonly inputSchema?: Schema.JsonObject;
   readonly outputSchema?: Schema.JsonObject;
@@ -14,7 +14,7 @@ export interface ToolCallJournal {
   readonly record: (fact: ToolCallFact) => Effect.Effect<boolean>;
 }
 
-export interface ExecutionContext {
+export interface RunContext {
   readonly id: string;
   readonly org: string;
   readonly brain: string;
@@ -49,11 +49,11 @@ export interface PrimitiveDefinition<Parsed> {
   readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
   readonly parse: (source: string) => Effect.Effect<Parsed, InvalidInput>;
-  readonly summarize: (parsed: NoInfer<Parsed>) => SpecSummary;
+  readonly summarize: (parsed: NoInfer<Parsed>) => DefinitionSummary;
   readonly execute: (
     parsed: NoInfer<Parsed>,
     input: Schema.Json,
-    execution: ExecutionContext,
+    execution: RunContext,
   ) => Effect.Effect<Executed, PrimitiveRejection>;
   readonly whenCancelled?: WhenCancelled;
   readonly longestExecutionMs?: number;
@@ -62,9 +62,9 @@ export interface PrimitiveDefinition<Parsed> {
   readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
 }
 
-export interface PreparedSpec {
-  readonly summary: SpecSummary;
-  readonly execute: (input: Schema.Json, execution: ExecutionContext) => Effect.Effect<Executed, PrimitiveRejection>;
+export interface PreparedDefinition {
+  readonly summary: DefinitionSummary;
+  readonly execute: (input: Schema.Json, execution: RunContext) => Effect.Effect<Executed, PrimitiveRejection>;
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
 }
@@ -83,7 +83,7 @@ export interface Primitive {
   readonly longestExecutionMs: number;
   readonly reachesOutside: boolean;
   readonly mayChangeOutside: boolean;
-  readonly prepare: (source: string) => Effect.Effect<PreparedSpec, InvalidInput>;
+  readonly prepare: (source: string) => Effect.Effect<PreparedDefinition, InvalidInput>;
 }
 
 const primitiveName = /^[a-z][a-z0-9-]{2,31}$/u;

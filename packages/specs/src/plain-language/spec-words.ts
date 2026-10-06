@@ -2,7 +2,7 @@ import { alternatives, asSentence, capitalized, counted, listed, quoted, type No
 import { Option, Schema } from 'effect';
 
 import type { Primitive } from '../primitive/primitive.ts';
-import type { ListedSpec } from '../registry/spec.ts';
+import type { ListedDefinition } from '../registry/spec.ts';
 import { wordsOf } from './in-words.ts';
 
 const mostNamed = 20;
@@ -45,7 +45,7 @@ function takesAndGives(inputs: readonly string[], outputs: readonly string[]): s
   return ` It takes ${listed(inputs)}${gives === '' ? '' : `, and ${gives}`}.`;
 }
 
-export function whatItDoes(spec: Pick<ListedSpec, 'description' | 'input_schema' | 'output_schema'>): string {
+export function whatItDoes(spec: Pick<ListedDefinition, 'description' | 'input_schema' | 'output_schema'>): string {
   return spec.description === undefined
     ? takesAndGives(propertyWordsOf(spec.input_schema), propertyWordsOf(spec.output_schema))
     : ` What it does: ${asSentence(spec.description)}`;
@@ -53,19 +53,19 @@ export function whatItDoes(spec: Pick<ListedSpec, 'description' | 'input_schema'
 
 export function specStanding(
   words: SpecWords,
-  { primitive, name, status }: Pick<ListedSpec, 'primitive' | 'name' | 'status'>,
+  { primitive, name, status }: Pick<ListedDefinition, 'primitive' | 'name' | 'status'>,
 ): string {
   const named = capitalized(words.named(primitive, name));
   return status === 'active' ? `${named} is in use.` : `${named} has been retired; it can no longer be run or changed.`;
 }
 
-function namesOf(specs: readonly ListedSpec[]): string {
+function namesOf(specs: readonly ListedDefinition[]): string {
   const named = specs.slice(0, mostNamed).map(({ name }) => quoted(name));
   const others = specs.length - named.length;
   return listed(others === 0 ? named : [...named, `${others} more`]);
 }
 
-export function specsListed(noun: Noun, specs: readonly ListedSpec[]): string {
+export function specsListed(noun: Noun, specs: readonly ListedDefinition[]): string {
   const active = specs.filter(({ status }) => status === 'active');
   const retired = specs.filter(({ status }) => status === 'retired');
   const inUse =

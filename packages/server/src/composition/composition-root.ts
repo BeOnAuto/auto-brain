@@ -6,7 +6,7 @@ import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle
 import { logIncident, logLedger } from '../logging/logging.ts';
 import { serveWorkflows } from '../workflows/workflows.ts';
 import { ledgerLayerOf } from './ledger-store.ts';
-import { inferenceServedBy, loggedModelAccess, type ModelAccessOf } from './served-inference.ts';
+import { reasoningServedBy, loggedModelAccess, type ModelAccessOf } from './served-inference.ts';
 
 const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter.of({ report: logIncident }));
 
@@ -21,7 +21,7 @@ export function compositionRootWith(modelAccessOf: ModelAccessOf): ServerOptions
     serve: async (runtime, settings) => {
       const { ledger, workflows } = settings;
       await runtime.run(logLedger(ledger));
-      const { primitive, listModels, withToolsClosed } = await inferenceServedBy(runtime, settings, modelAccessOf);
+      const { primitive, listModels, withToolsClosed } = await reasoningServedBy(runtime, settings, modelAccessOf);
       const orgOperations = [...brainOperations, listModels];
       return withToolsClosed(
         await serveWorkflows(runtime, { ledger, workflows, primitives: [primitive], orgOperations }),

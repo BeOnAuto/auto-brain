@@ -1,8 +1,8 @@
 import { NotFound } from '@beonauto/operations';
-import type { Execution, SettleExecution } from '@beonauto/specs';
+import type { Run, SettleExecution } from '@beonauto/specs';
 import { Effect } from 'effect';
 
-const settledExecution: Execution = {
+const settledExecution: Run = {
   execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   primitive: 'orchestration',
   name: 'flow',
@@ -20,7 +20,7 @@ export function knownExecutions(): { readonly settle: SettleExecution; readonly 
     settle: ({ id }) =>
       known.has(id)
         ? Effect.succeed(settledExecution)
-        : Effect.fail(new NotFound({ detail: 'There is no such execution in this brain' })),
+        : Effect.fail(new NotFound({ detail: 'There is no such run in this brain' })),
     know: (id) => {
       known.add(id);
     },

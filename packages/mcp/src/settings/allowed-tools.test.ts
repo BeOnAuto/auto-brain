@@ -39,7 +39,7 @@ function served(server: McpServerSettings | undefined, org: string, brain: strin
 }
 
 describe('reading the allowed tools', () => {
-  it('reads the tools a reason function may name', () => {
+  it('reads the tools a reasoning function may name', () => {
     expect(settingsOf({ graph, limitless }, ['graph/search', 'limitless/*']).allowed).toEqual([
       { server: 'graph', tool: 'search' },
       { server: 'limitless', tool: '*' },

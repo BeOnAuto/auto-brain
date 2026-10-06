@@ -10,7 +10,7 @@ import {
 import { anthropicModels, jsonResponse, recordingFetch, vercelGatewayModels } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const environment = {
   LOCAL_MODE: 'true',
@@ -89,7 +89,7 @@ const listedModels = {
 const plainWords =
   'This server can call 6 models through anthropic and gateway: Claude Haiku 4.5 (anthropic), Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5 (gateway), and fast.';
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
@@ -114,7 +114,7 @@ function leaksIn(...texts: readonly string[]): readonly string[] {
 describe('list_models over HTTP', () => {
   it('answers GET /v1/orgs/{org}/models with the models of every provider, read once with the server’s keys', async () => {
     const lists = providerLists();
-    server = await servingInference([], environment, lists.fetch);
+    server = await servingReasoning([], environment, lists.fetch);
 
     const listed = await server.call('GET', '/v1/orgs/local/models');
     const again = await server.call('GET', '/v1/orgs/local/models');
@@ -130,7 +130,7 @@ describe('list_models over HTTP', () => {
   });
 
   it('lists the models of one provider when the query names it', async () => {
-    server = await servingInference([], environment, providerLists().fetch);
+    server = await servingReasoning([], environment, providerLists().fetch);
 
     const listed = await server.call('GET', '/v1/orgs/local/models?provider=anthropic');
 
@@ -138,7 +138,7 @@ describe('list_models over HTTP', () => {
   });
 
   it('says the list is partial when a provider cannot be reached, and lists what it can', async () => {
-    server = await servingInference([], environment);
+    server = await servingReasoning([], environment);
 
     const listed = await server.call('GET', '/v1/orgs/local/models');
 
@@ -148,7 +148,7 @@ describe('list_models over HTTP', () => {
 
 describe('list_models over MCP', () => {
   it('answers on /mcp and on the endpoint of the org with the same list, led by plain words that leak nothing', async () => {
-    server = await servingInference([], environment, providerLists().fetch);
+    server = await servingReasoning([], environment, providerLists().fetch);
     const tools = await withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, (session) =>
       session.listTools(),
     );
@@ -169,7 +169,7 @@ describe('list_models over MCP', () => {
   });
 
   it('says plainly that the list may be incomplete when a provider cannot be reached', async () => {
-    server = await servingInference([], environment);
+    server = await servingReasoning([], environment);
 
     const listed = await listedOnMcp('/mcp');
 
@@ -179,7 +179,7 @@ describe('list_models over MCP', () => {
   });
 
   it('refuses a provider written as anything but a provider prefix, in plain words', async () => {
-    server = await servingInference([], environment, providerLists().fetch);
+    server = await servingReasoning([], environment, providerLists().fetch);
 
     const refused = await listedOnMcp('/mcp', { provider: 'Not/A Provider' });
 

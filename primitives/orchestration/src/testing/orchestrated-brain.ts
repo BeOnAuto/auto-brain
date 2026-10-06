@@ -6,8 +6,8 @@ import { echo } from '@beonauto/specs/testing';
 import { openWorkflowHost, type WorkflowHost } from '@beonauto/workflow-host';
 import { Effect, Function, Schema } from 'effect';
 
-import { specCalls } from '../calls/spec-calls.ts';
-import { makeOrchestration } from '../primitive/orchestration-primitive.ts';
+import { definitionCalls } from '../calls/function-calls.ts';
+import { makeWorkflowAdapter } from '../primitive/workflow.ts';
 import { orchestrationMachine } from '../runs/orchestration-machine.ts';
 import { brainOn, type Brain } from './brain.ts';
 
@@ -29,7 +29,7 @@ export async function orchestratedBrain(): Promise<OrchestratedBrain> {
   const host = await openWorkflowHost({
     database: { store: 'sqlite', file: ':memory:' },
     machine: orchestrationMachine,
-    perform: specCalls(nested.executeNested),
+    perform: definitionCalls(nested.executeNested),
     settle: nested.settle,
     reports: {
       unsettled: Effect.logWarning,
@@ -40,7 +40,7 @@ export async function orchestratedBrain(): Promise<OrchestratedBrain> {
     sweepEveryMs: 20,
     mostCallsAtOnce: 4,
   });
-  const brain = brainOn(ledger, [makeOrchestration({ runs: host, mostDurationMs, longestCallMs: 660_000 }), echo]);
+  const brain = brainOn(ledger, [makeWorkflowAdapter({ runs: host, mostDurationMs, longestCallMs: 660_000 }), echo]);
   const settled = async (executionId: string): Promise<Outcome> => {
     const outcome = await brain.call(brain.getExecution, { execution_id: executionId });
     if (!isStarted(outcome)) {

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "source": "@beonauto/specs",
+  "functions": [
+    {
+      "kind": "reason",
+      "label": "Reasoning",
+      "singular": "reasoning function",
+      "plural": "reasoning functions",
+      "description": "Use a prompt, skills, and tools to interpret information or produce a response."
+    },
+    {
+      "kind": "interact",
+      "label": "Interaction",
+      "singular": "interaction function",
+      "plural": "interaction functions",
+      "description": "Exchange information with people or systems."
+    },
+    {
+      "kind": "predict",
+      "label": "Prediction",
+      "singular": "prediction function",
+      "plural": "prediction functions",
+      "description": "Create and use an ML model to make predictions."
+    },
+    {
+      "kind": "recall",
+      "label": "Recall",
+      "singular": "recall function",
+      "plural": "recall functions",
+      "description": "Retrieve or reconstruct relevant information from configured sources."
+    },
+    {
+      "kind": "compute",
+      "label": "Computation",
+      "singular": "computation function",
+      "plural": "computation functions",
+      "description": "Run defined code or expressions to calculate or transform data."
+    }
+  ]
+}

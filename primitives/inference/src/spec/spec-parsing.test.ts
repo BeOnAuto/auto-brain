@@ -39,7 +39,7 @@ const complete = documentOf(
   '{% system %}You write for {{ input.tone }} readers. Today is {{ today }}.{% endsystem %}\nSummarize {{ input.account }}.',
 );
 
-describe('a complete inference spec document', () => {
+describe('a complete reasoning function definition', () => {
   it('parses into the model, the settings, the input, the output, the provider options and the template', () => {
     const spec = parsed(complete);
 
@@ -82,7 +82,7 @@ describe('a complete inference spec document', () => {
   });
 });
 
-describe('the smallest inference spec document', () => {
+describe('the smallest reasoning function definition', () => {
   it('names a model and writes a message', () => {
     expect(parsed('---\nmodel: openai/gpt-5\n---\nSay hello.')).toMatchObject({
       model: 'openai/gpt-5',
@@ -114,7 +114,7 @@ describe('the issues of a document', () => {
       'Line 2, /model: Expected provider/model, for example anthropic/claude-sonnet-4-5',
       'Line 4, /config/temperature: Expected number',
       'Line 5, /flavour: flavour is not a key of the front matter; it takes description, model, config, input, output, provider_options, tools',
-      'Line 7: customer is not a variable of an inference template, which reads input, today and now; assign it first',
+      'Line 7: customer is not a variable of a reasoning function’s prompt template, which reads input, today and now; assign it first',
     ]);
   });
 

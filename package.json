@@ -10,9 +10,11 @@
     "docs:dev": "cd docs && vitepress dev",
     "docs:build": "cd docs && vitepress build",
     "docs:preview": "cd docs && vitepress preview",
-    "docs:test": "node --test scripts/docs.test.ts",
-    "docs:lint": "oxlint -c .oxlintrc.json scripts/docs.test.ts && tsc --project scripts/tsconfig.json",
-    "docs:check": "pnpm docs:lint && pnpm docs:build && pnpm docs:test",
+    "docs:taxonomy": "node scripts/docs-function-taxonomy.ts",
+    "docs:taxonomy:check": "node scripts/docs-function-taxonomy.ts --check",
+    "docs:test": "node --test scripts/docs*.test.ts",
+    "docs:lint": "oxlint -c .oxlintrc.json scripts/docs*.ts && tsc --project scripts/tsconfig.json",
+    "docs:check": "pnpm docs:lint && pnpm docs:taxonomy:check && pnpm docs:build && pnpm docs:test",
     "test:watch": "vitest",
     "typecheck:watch": "tsc --watch",
     "check": "pnpm check:tasks && pnpm docs:check",
@@ -28,6 +30,7 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
+    "@beonauto/specs": "workspace:*",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@commitlint/types": "21.2.3",

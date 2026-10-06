@@ -31,7 +31,7 @@ model_aliases:
 | The models listed for Bedrock, Azure or Vertex       | `declared_models` in the file, a list of model ids for each provider prefix             | [Listing the models](models.md#listing-the-models)                                      |
 | Only some models                                     | `allowed_models` in the file, such as `[anthropic/*, gateway/llama-3.3-70b]`            | [Listing the models](models.md#listing-the-models)                                      |
 | An outbound proxy or a private certificate authority | `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` and `NODE_EXTRA_CA_CERTS`                         | [Proxy and CA](models.md#behind-an-outbound-proxy-with-a-private-certificate-authority) |
-| Tools that reason functions may call                 | `mcp_servers` in the file, and `allowed_tools` to allow only some                       | [MCP servers](#mcp-servers)                                                             |
+| Tools that reasoning functions may call              | `mcp_servers` in the file, and `allowed_tools` to allow only some                       | [MCP servers](#mcp-servers)                                                             |
 
 `list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases whose target's provider is configured, and leaves out what `allowed_models` does not allow. A spec that names a model outside `allowed_models`, by its own name or the alias it is sent through, cannot run, and its run says the model is not offered and that `list_models` shows those that are.
 
@@ -46,7 +46,7 @@ allowed_models:
 
 ## MCP servers
 
-A reason function that lists `tools` calls the tools of the MCP servers in `mcp_servers` ([decision 0003](../../decisions/0003-mcp-servers.md)). The key is the name a function writes in `server/tool`, and each entry is a remote server or a process, in the shape assistants read:
+A reasoning function that lists `tools` calls the tools of the MCP servers in `mcp_servers` ([decision 0003](../../decisions/0003-mcp-servers.md)). The key is the name a function writes in `server/tool`, and each entry is a remote server or a process, in the shape assistants read:
 
 ```yaml
 mcp_servers:

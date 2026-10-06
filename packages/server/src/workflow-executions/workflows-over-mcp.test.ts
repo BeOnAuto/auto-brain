@@ -5,7 +5,7 @@ import { answers, jsonResult, type ScriptedReply } from '@beonauto/inference/tes
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { InferenceServer } from '../testing/inference-server.ts';
+import type { ReasoningServer } from '../testing/reasoning-server.ts';
 import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
 
 const verdict = [
@@ -50,13 +50,13 @@ const brainTools = [
   'send_execution_event',
 ];
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();
 });
 
-function onAlphaOf<T>(served: InferenceServer, use: (session: McpSession) => Promise<T>): Promise<T> {
+function onAlphaOf<T>(served: ReasoningServer, use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession('current revision', { url: `${served.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
 }
 
@@ -94,7 +94,7 @@ describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
     expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'orchestration']);
   });
 
-  it('executes a workflow that calls an inference spec and waits for an event the tools send', async () => {
+  it('executes a workflow that calls a reasoning function definition and waits for an event the tools send', async () => {
     const { started, sent, execution } = await onAlpha([answers(jsonResult({ approve: true }))], async (session) => {
       await session.callTool('create_spec', { primitive: 'inference', name: 'verdict', source: verdict });
       await session.callTool('create_spec', { primitive: 'orchestration', name: 'approval', source: approval });

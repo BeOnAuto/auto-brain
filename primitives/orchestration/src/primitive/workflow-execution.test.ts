@@ -76,7 +76,7 @@ describe('executing a workflow spec', () => {
 });
 
 describe('executing again a workflow whose run ended without a final result', () => {
-  it('is rejected as a conflict, since a workflow runs once for an execution id, and the rejection is recorded', async () => {
+  it('is rejected as a conflict, since a workflow runs once for a run ID, and the rejection is recorded', async () => {
     const failed = '0199a3c4-7d2e-7c1a-9b3f-3333333333a2';
     await executing('failing', failed);
     const ended = await brain.settled(failed);
@@ -86,7 +86,7 @@ describe('executing again a workflow whose run ended without a final result', ()
       status: 'rejected',
       reason: 'conflict',
       detail:
-        'This execution id already ran its workflow, which ended; a workflow runs once for an execution id, so execute it with a new execution id to run it again',
+        'This run ID already ran its workflow, which ended; a workflow runs once for a run ID, so use a new run ID to run it again',
     });
   });
 });

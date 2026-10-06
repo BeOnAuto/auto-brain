@@ -13,15 +13,15 @@ const catalog = makeCatalog(operations);
 describe('the spec operations', () => {
   it('make one catalog of nine brain operations', () => {
     expect(catalog.operationsIn('brain').map(({ name, title }) => `${name}: ${title}`)).toEqual([
-      'create_spec: Create spec',
-      'list_specs: List specs',
-      'get_spec: Get spec',
-      'update_spec: Update spec',
-      'retire_spec: Retire spec',
-      'execute_spec: Execute spec',
-      'get_execution: Get execution',
-      'list_executions: List executions',
-      'get_execution_history: Get execution history',
+      'create_spec: Create definition',
+      'list_specs: List definitions',
+      'get_spec: Get definition',
+      'update_spec: Update definition',
+      'retire_spec: Retire definition',
+      'execute_spec: Run definition',
+      'get_execution: Get run',
+      'list_executions: List runs',
+      'get_execution_history: Get run history',
     ]);
     expect(catalog.operationsIn('org')).toEqual([]);
   });

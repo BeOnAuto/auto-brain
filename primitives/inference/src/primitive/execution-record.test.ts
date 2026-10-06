@@ -6,7 +6,7 @@ import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { answers, textResult } from '../testing/index.ts';
-import { inferenceWith } from '../testing/inference-runs.ts';
+import { reasoningWith } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
 
 const oneMebibyte = 1_048_576;
@@ -25,7 +25,7 @@ const measuring = {
 
 describe('the record of an execution', () => {
   it('keeps the whole prompt when it fits with the answer', async () => {
-    const { executing } = inferenceWith(answers(textResult('Short')));
+    const { executing } = reasoningWith(answers(textResult('Short')));
     const text = 'é'.repeat(150_000);
 
     expect(await executing(withInstructions, { rules: 'Be brief.', text })).toMatchObject(
@@ -37,7 +37,7 @@ describe('the record of an execution', () => {
   });
 
   it('cuts the prompt so that the answer and the record take at most 1 MiB', async () => {
-    const { executing } = inferenceWith(answers(textResult('a'.repeat(700_000))));
+    const { executing } = reasoningWith(answers(textResult('a'.repeat(700_000))));
     const execution = await executing(withInstructions, { rules: 'r'.repeat(199_000), text: 't'.repeat(199_000) });
 
     expect(execution).toMatchObject(
@@ -48,7 +48,7 @@ describe('the record of an execution', () => {
   });
 
   it('gives the message all the room when there are no instructions', async () => {
-    const { executing } = inferenceWith(answers(textResult('a'.repeat(900_000))));
+    const { executing } = reasoningWith(answers(textResult('a'.repeat(900_000))));
     const execution = await executing(withoutInstructions, { text: 't'.repeat(199_000) });
 
     expect(execution).toMatchObject(Exit.succeed({ record: { prompt: { truncated: true } } }));
@@ -57,13 +57,13 @@ describe('the record of an execution', () => {
   });
 
   it('cannot hold an answer that leaves no room for the prompt: the spec must ask for less', async () => {
-    const { executing } = inferenceWith(answers(textResult('a'.repeat(oneMebibyte))));
+    const { executing } = reasoningWith(answers(textResult('a'.repeat(oneMebibyte))));
 
     expect(await executing(withoutInstructions, { text: 'Go' })).toEqual(
       Exit.fail(
         new Conflict({
           detail:
-            'The answer takes more than an execution can record (1048576 bytes with its record); lower config.max_output_tokens in the spec',
+            'The answer takes more than a run can record (1048576 bytes with its record); lower config.max_output_tokens in the reasoning function definition',
         }),
       ),
     );

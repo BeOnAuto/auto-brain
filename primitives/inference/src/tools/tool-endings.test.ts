@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ContentRefused, TimedOut, ToolsStopped, type ToolsStoppedBecause } from '../index.ts';
 import { callingTools, type ScriptedCall } from '../testing/calling-tools.ts';
-import { inferenceWithTools } from '../testing/inference-runs.ts';
+import { reasoningWithTools } from '../testing/reasoning-runs.ts';
 import type { ScriptedReply } from '../testing/scripted-language-model.ts';
 import { documentOf } from '../testing/spec-documents.ts';
 
@@ -30,7 +30,7 @@ function ending(fake: FakeMcpServer, reply: ScriptedReply) {
   );
   closing.push(access.close);
   const source = documentOf('model: anthropic/claude-sonnet-4-5\ntools: [graph/*]', 'Summarize acme.');
-  return inferenceWithTools(access, reply).executing(source);
+  return reasoningWithTools(access, reply).executing(source);
 }
 
 const stoppedBy =

@@ -2,7 +2,7 @@ import { answers, textResult } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { TestResponse } from '../testing/http-client.ts';
-import { alpha, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
@@ -23,7 +23,7 @@ const nesting = workflowSource(
   'do:\n  - nest: { call: execute_spec, with: { primitive: orchestration, name: asking } }\n',
 );
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 afterEach(async () => {
   await server.stop();

@@ -10,7 +10,7 @@ export interface InputContract {
   readonly defaults: Schema.JsonObject;
 }
 
-export interface InferenceSpec {
+export interface ReasoningFunctionDefinitionDocument {
   readonly description?: string;
   readonly model: string;
   readonly settings: GenerationSettings;

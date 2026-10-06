@@ -2,11 +2,11 @@ import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp
 import { Effect, Exit } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { makeInference } from '../primitive/inference-primitive.ts';
+import { makeReasoningFunctionAdapter } from '../primitive/reasoning-function.ts';
 import { accessFor } from '../testing/adapter-harness.ts';
 import { callingTools } from '../testing/calling-tools.ts';
-import { execution, inferenceWith, inferenceWithTools } from '../testing/inference-runs.ts';
 import { textResult } from '../testing/model-results.ts';
+import { execution, reasoningWith, reasoningWithTools } from '../testing/reasoning-runs.ts';
 import { answers } from '../testing/scripted-language-model.ts';
 import { documentOf, issuesIn } from '../testing/spec-documents.ts';
 
@@ -36,7 +36,7 @@ function accessTo(fake: FakeMcpServer, org = 'acme') {
 const naming = (...tools: readonly string[]) =>
   documentOf(`model: anthropic/claude-sonnet-4-5\ntools: [${tools.join(', ')}]`, 'Summarize acme.');
 
-describe('the tools key of a reason function', () => {
+describe('the tools key of a reasoning function', () => {
   it('takes server/tool and server/*, each once', () => {
     expect(issuesIn(naming('graph/search', 'graph/*'))).toEqual([]);
     expect(issuesIn(naming('graph', 'graph/search', 'graph/search'))).toEqual([
@@ -46,10 +46,10 @@ describe('the tools key of a reason function', () => {
   });
 });
 
-describe('a reason function that names tools', () => {
+describe('a reasoning function that names tools', () => {
   it('runs with the tools it names, under their model-facing names, and lets their session go', async () => {
     const fake = await graphServer();
-    const run = inferenceWithTools(
+    const run = reasoningWithTools(
       accessTo(fake),
       callingTools([['mcp__graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.'))),
     );
@@ -69,16 +69,16 @@ describe('a reason function that names tools', () => {
   });
 
   it('says it may change something outside when MCP servers are configured', async () => {
-    const run = inferenceWithTools(accessTo(await graphServer()));
+    const run = reasoningWithTools(accessTo(await graphServer()));
 
     expect(run.primitive.mayChangeOutside).toBe(true);
-    expect(inferenceWith().primitive.mayChangeOutside).toBe(false);
+    expect(reasoningWith().primitive.mayChangeOutside).toBe(false);
   });
 });
 
-describe('a tool a reason function names that is not offered', () => {
+describe('a tool a reasoning function names that is not offered', () => {
   it('rejects the run as unavailable when no server of that name is configured for its brain', async () => {
-    const run = inferenceWithTools(accessTo(await graphServer(), 'globex'));
+    const run = reasoningWithTools(accessTo(await graphServer(), 'globex'));
 
     expect(await run.executing(naming('graph/search'))).toEqual(
       Exit.fail(
@@ -92,12 +92,13 @@ describe('a tool a reason function names that is not offered', () => {
   });
 
   it('rejects the run as unavailable when no MCP server is configured at all', async () => {
-    expect(await inferenceWith().executing(naming('graph/search', 'crm/find'))).toEqual(
+    expect(await reasoningWith().executing(naming('graph/search', 'crm/find'))).toEqual(
       Exit.fail(
         expect.objectContaining({
           kind: 'tool_not_offered',
           because: 'mcp_server_not_configured',
-          detail: 'The reason function names graph/search and crm/find, but no MCP server is configured on this server',
+          detail:
+            'The reasoning function names graph/search and crm/find, but no MCP server is configured on this server',
         }),
       ),
     );
@@ -106,7 +107,7 @@ describe('a tool a reason function names that is not offered', () => {
   it('rejects the run as unavailable when its server cannot be used', async () => {
     const fake = await serveFakeMcp();
     await fake.close();
-    const run = inferenceWithTools(accessTo(fake));
+    const run = reasoningWithTools(accessTo(fake));
 
     expect(await run.executing(naming('graph/search'))).toEqual(
       Exit.fail(expect.objectContaining({ kind: 'mcp_server_failed', because: 'unreachable' })),
@@ -114,11 +115,11 @@ describe('a tool a reason function names that is not offered', () => {
   });
 });
 
-describe('a reason function with tools whose model is not offered', () => {
+describe('a reasoning function with tools whose model is not offered', () => {
   it('is rejected before its tools are opened, so it reaches no server and starts no process', async () => {
     const fake = await graphServer();
     const { languageModel } = await accessFor({ OPENAI_API_KEY: 'k' }, {});
-    const primitive = makeInference({
+    const primitive = makeReasoningFunctionAdapter({
       languageModel,
       offered: { providers: ['openai'], aliases: [] },
       tools: accessTo(fake),

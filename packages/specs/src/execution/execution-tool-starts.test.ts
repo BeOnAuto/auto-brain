@@ -25,7 +25,7 @@ const unavailable: ExecutionEvent = {
 const failed: ExecutionEvent = { type: 'execution_failed', ...finish };
 
 const anotherRequest = new Conflict({
-  detail: 'The execution id belongs to an execution of another spec or with another input',
+  detail: 'The run id belongs to a run of another definition or with another input',
 });
 
 function stateAfter(...events: readonly ExecutionEvent[]) {
@@ -42,7 +42,7 @@ function starting(request: object = {}): ExecutionCommand {
 
 const startedCallingTools = new Conflict({
   detail:
-    'The execution has started and its spec calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another execution id, and read with get_execution_history what it has called so far',
+    'The run has started and its definition calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another run id, and read with get_execution_history what it has called so far',
   kind: 'tools_called',
 });
 

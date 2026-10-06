@@ -3,21 +3,26 @@ import { Effect, Exit } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';
 
+import { makeInference } from '../index.ts';
 import { answers, scriptedLanguageModel, textResult } from '../testing/index.ts';
-import { execution, inferenceWith } from '../testing/inference-runs.ts';
+import { execution, reasoningWith } from '../testing/reasoning-runs.ts';
 import { documentOf } from '../testing/spec-documents.ts';
-import { inferenceExample } from './inference-description.ts';
-import { makeInference } from './inference-primitive.ts';
+import { reasoningExample } from './reasoning-description.ts';
+import { makeReasoningFunctionAdapter } from './reasoning-function.ts';
 
-const { primitive, prepared } = inferenceWith();
+const { primitive, prepared } = reasoningWith();
 
-describe('the inference primitive', () => {
-  it('is named inference and takes Markdown documents', () => {
-    expect(primitive).toMatchObject({ name: 'inference', title: 'Inference', mediaType: 'text/markdown' });
+describe('the reasoning function implementation', () => {
+  it('uses Reasoning in display text while retaining the inference contract and Markdown format', () => {
+    expect(primitive).toMatchObject({ name: 'inference', title: 'Reasoning', mediaType: 'text/markdown' });
   });
 
-  it('calls a spec a reason function', () => {
-    expect(primitive.noun).toEqual({ one: 'reason function', other: 'reason functions' });
+  it('retains the exported constructor as the same implementation', () => {
+    expect(makeInference).toBe(makeReasoningFunctionAdapter);
+  });
+
+  it('calls a saved definition a reasoning function', () => {
+    expect(primitive.noun).toEqual({ one: 'reasoning function', other: 'reasoning functions' });
   });
 
   it('repeats a short answer, renders a small structured one, and points to the details for a long one', () => {
@@ -40,14 +45,16 @@ describe('the inference primitive', () => {
     expect(primitive.reachesOutside).toBe(true);
   });
 
-  it('says a reason function calls tools only when it names them, so a started run of it is never run again', () => {
-    expect(prepared(inferenceExample).callsTools).toBe(false);
+  it('says a reasoning function calls tools only when it names them, so a started run of it is never run again', () => {
+    expect(prepared(reasoningExample).callsTools).toBe(false);
     expect(prepared(documentOf('model: openai/gpt-5\ntools:\n  - graph/search')).callsTools).toBe(true);
   });
+});
 
+describe('the reasoning function document', () => {
   it('describes its document with an example that is a valid spec', () => {
-    expect(primitive.description).toContain(inferenceExample);
-    expect(prepared(inferenceExample).summary).toMatchObject({ description: 'Summarizes an account' });
+    expect(primitive.description).toContain(reasoningExample);
+    expect(prepared(reasoningExample).summary).toMatchObject({ description: 'Summarizes an account' });
   });
 
   it('says which provider options a spec may set, and that any other is rejected', () => {
@@ -60,9 +67,9 @@ describe('the inference primitive', () => {
   });
 });
 
-describe('preparing an inference spec', () => {
+describe('preparing a reasoning function definition', () => {
   it('summarizes the description, the input schema and the output schema', () => {
-    expect(prepared(inferenceExample).summary).toEqual({
+    expect(prepared(reasoningExample).summary).toEqual({
       description: 'Summarizes an account',
       inputSchema: { type: 'object', properties: { account: { type: 'string' } }, required: ['account'] },
       outputSchema: {
@@ -88,12 +95,12 @@ describe('preparing an inference spec', () => {
   });
 });
 
-describe('preparing an inference document that is not valid', () => {
+describe('preparing a reasoning function definition that is not valid', () => {
   it('rejects it with its problems, each with its line', () => {
     expect(Effect.runSyncExit(primitive.prepare(documentOf('model: gpt-5')))).toEqual(
       Exit.fail(
         new InvalidInput({
-          detail: 'The inference spec document has a problem',
+          detail: 'The reasoning function definition has a problem',
           issues: [
             { pointer: '', detail: 'Line 2, /model: Expected provider/model, for example anthropic/claude-sonnet-4-5' },
           ],
@@ -103,7 +110,7 @@ describe('preparing an inference document that is not valid', () => {
     expect(Effect.runSyncExit(primitive.prepare(documentOf('model: gpt-5\nseed: 1')))).toEqual(
       Exit.fail(
         new InvalidInput({
-          detail: 'The inference spec document has 2 problems',
+          detail: 'The reasoning function definition has 2 problems',
           issues: [
             { pointer: '', detail: 'Line 2, /model: Expected provider/model, for example anthropic/claude-sonnet-4-5' },
             {
@@ -127,7 +134,7 @@ describe('the moment an execution renders', () => {
       ),
     );
     const scripted = scriptedLanguageModel(answers(textResult('ok')));
-    const timed = makeInference({
+    const timed = makeReasoningFunctionAdapter({
       languageModel: scripted.languageModel,
       clock,
       offered: { providers: ['anthropic'], aliases: [] },

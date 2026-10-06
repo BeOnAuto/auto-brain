@@ -135,7 +135,7 @@ describe('execute_spec rejecting', () => {
     expect(await call(executeSpec, toAlpha(acmeAdmin, { primitive: 'probe', name: 'ghost' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no probe spec ghost in this brain',
+      detail: 'There is no probe definition ghost in this brain',
     });
     expect(await call(executeSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'plain' }))).toEqual({
       status: 'rejected',
@@ -152,7 +152,7 @@ describe('execute_spec rejecting', () => {
       status: 'rejected',
       reason: 'conflict',
       detail:
-        'The probe spec plain at version 1 no longer parses (The probe document has lines it does not accept); update it',
+        'The probe definition plain at version 1 no longer parses (The probe document has lines it does not accept); update it',
       kind: 'unworkable',
     });
     expect(ledger.streamNames()).toEqual(['brain/acme/alpha/specs/probe']);

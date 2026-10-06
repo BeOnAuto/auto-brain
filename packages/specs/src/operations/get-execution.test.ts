@@ -24,7 +24,7 @@ describe('get_execution', () => {
     expect(getExecution.registration).toMatchObject({
       scope: 'brain',
       kind: 'query',
-      title: 'Get execution',
+      title: 'Get run',
       route: { method: 'GET', path: '/executions/{execution_id}' },
       pathParameters: ['execution_id'],
       successStatus: 200,
@@ -53,7 +53,7 @@ describe('get_execution rejecting', () => {
     expect(await call(getExecution, toAlpha(acmeAdmin, { execution_id: unknownId }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: `There is no execution ${unknownId} in this brain`,
+      detail: `There is no run ${unknownId} in this brain`,
     });
   });
 

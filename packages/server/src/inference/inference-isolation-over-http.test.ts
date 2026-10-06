@@ -3,7 +3,7 @@ import { answers, textResult } from '@beonauto/inference/testing';
 import { allPermissions } from '@beonauto/operations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
 
@@ -13,10 +13,10 @@ const summary = '---\nmodel: anthropic/claude-sonnet-4-5\n---\nSummarize {{ inpu
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-let server: InferenceServer;
+let server: ReasoningServer;
 
 beforeEach(async () => {
-  server = await servingInference([answers(textResult('Done'))], {
+  server = await servingReasoning([answers(textResult('Done'))], {
     API_KEYS: JSON.stringify([acmeAdmin.entry, globexAdmin.entry]),
   });
   const acme = { key: acmeAdmin.key };
@@ -40,7 +40,7 @@ afterEach(async () => {
   await server.stop();
 });
 
-describe('an inference spec of one brain', () => {
+describe('a reasoning function definition of one brain', () => {
   it('is invisible from another brain of the same org', async () => {
     const beta = '/v1/orgs/acme/brains/beta';
     const options = { key: acmeAdmin.key };

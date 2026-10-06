@@ -18,11 +18,11 @@ For a campaign review, the method might require a specific audience, a clear off
 | Method   | The business's approach to the work                            | The criteria used to review a campaign brief |
 | Function | A reusable operation with defined inputs, outputs and behavior | Review a brief against those criteria        |
 | Workflow | A definition coordinating steps and their dependencies         | Review the brief, then request approval      |
-| Step     | A use of a function or control operation in a workflow         | Run the brief review                         |
+| Step     | A use of a function, another workflow or control operation     | Run the brief review                         |
 | Run      | One execution against particular inputs                        | Review of the autumn campaign brief          |
 | Result   | The output produced by that run                                | A recommendation and missing information     |
 
-The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md) coordinate those functions.
+The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md) coordinate those functions. A workflow step that calls another workflow is a subworkflow; the runtime does not support subworkflows yet.
 
 ## The agent and the brain
 
@@ -30,7 +30,7 @@ Your agent helps create and refine definitions, supplies inputs and calls functi
 
 The brain retains the saved definitions and recorded runs independently of that conversation. Another authorized colleague can use the same function from their agent. A colleague's access to the brain does not automatically grant access to someone else's connected accounts.
 
-The management interface provides visibility into running work, history and operating controls. Authoring starts with the agent.
+AUTO Studio provides visibility into running work, history and operating controls. Authoring starts with the agent.
 
 ## Authority and judgment
 

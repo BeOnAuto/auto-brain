@@ -4,7 +4,7 @@ import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServ
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingInference, type InferenceServer } from '../testing/inference-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -25,7 +25,7 @@ const timedOut: ScriptedReply = () =>
     new TimedOut({ detail: 'anthropic did not answer within 60000 ms', provider: 'anthropic', timeout_ms: 60_000 }),
   );
 
-function reasonFunction(...tools: readonly string[]): string {
+function reasoningFunction(...tools: readonly string[]): string {
   return ['---', 'model: anthropic/claude-sonnet-4-5', `tools: [${tools.join(', ')}]`, '---', 'Summarize acme.'].join(
     '\n',
   );
@@ -37,8 +37,8 @@ async function fakeGraph(): Promise<FakeMcpServer> {
   return fake;
 }
 
-async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]): Promise<InferenceServer> {
-  const server = await servingInference(replies, {
+async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
+  const server = await servingReasoning(replies, {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: apiKey,
     NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',
@@ -61,27 +61,27 @@ async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/inference`, {
-    body: { name: 'graph', source: reasonFunction('graph/search') },
+    body: { name: 'graph', source: reasoningFunction('graph/search') },
   });
   await server.call('POST', `${alpha}/specs/inference`, {
-    body: { name: 'limitless', source: reasonFunction('limitless/*') },
+    body: { name: 'limitless', source: reasoningFunction('limitless/*') },
   });
   await server.call('POST', `${alpha}/specs/inference`, {
-    body: { name: 'echo', source: reasonFunction('graph/echo') },
+    body: { name: 'echo', source: reasoningFunction('graph/echo') },
   });
   await server.call('POST', `${alpha}/specs/inference`, {
-    body: { name: 'crm', source: reasonFunction('crm/search') },
+    body: { name: 'crm', source: reasoningFunction('crm/search') },
   });
   return server;
 }
 
-function executing(server: InferenceServer, name: string) {
+function executing(server: ReasoningServer, name: string) {
   return server.call('POST', `${alpha}/specs/inference/${name}/execute`, {
     body: { input: {}, execution_id: executionId },
   });
 }
 
-async function historyOf(server: InferenceServer): Promise<readonly string[]> {
+async function historyOf(server: ReasoningServer): Promise<readonly string[]> {
   const read = await server.call('GET', `${alpha}/executions/${executionId}/history`);
   return decodeHistory(read.body).events.map(({ type }) => type);
 }
@@ -90,12 +90,12 @@ const searched = (server: string) =>
   callingTools([[`mcp__${server}__search`, { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
 
 const calledTools: unknown = expect.stringMatching(
-  /^The execution called tools and did not succeed, so it is not run again under its id/u,
+  /^The run called tools and did not succeed, so it is not run again under its id/u,
 );
 
 const toolRun = ['execution_started', 'tool_call_started', 'tool_call_answered', 'execution_succeeded'];
 
-describe('a reason function that calls tools, over HTTP', () => {
+describe('a reasoning function that calls tools, over HTTP', () => {
   it('runs with a tool of a remote server, and its history shows the call', async () => {
     const fake = await fakeGraph();
     const server = await serving(fake, searched('graph'));

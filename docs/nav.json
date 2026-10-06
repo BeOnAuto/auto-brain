@@ -17,6 +17,10 @@
       {
         "text": "History and Dream",
         "link": "/concepts/history-and-dream"
+      },
+      {
+        "text": "Terminology",
+        "link": "/concepts/terminology"
       }
     ]
   },
@@ -63,7 +67,7 @@
         "link": "/reference/mcp"
       },
       {
-        "text": "Reason function format",
+        "text": "Reasoning function format",
         "link": "/reference/reasoning-format"
       },
       {

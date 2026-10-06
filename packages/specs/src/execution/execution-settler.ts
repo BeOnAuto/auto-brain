@@ -13,7 +13,7 @@ import { DateTime, Effect, Option, Schema } from 'effect';
 import type { ExecutionResult } from './execution-commands.ts';
 import { executionDecider, executionStreamOf } from './execution-decider.ts';
 import { executionOf } from './execution-lookup.ts';
-import type { Execution } from './execution.ts';
+import type { Run } from './execution.ts';
 import { withinResultLimit } from './recorded-size.ts';
 
 export interface ExecutionAddress {
@@ -29,7 +29,7 @@ export type Settlement =
 export type SettleExecution = (
   execution: ExecutionAddress,
   settlement: Settlement,
-) => Effect.Effect<Execution, NotFound | Conflict>;
+) => Effect.Effect<Run, NotFound | Conflict>;
 
 const isWellFormed = Schema.is(
   Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
@@ -74,7 +74,7 @@ function rejectionOf({ reason, detail, kind, because }: Rejected): ExecutionResu
 function streamOf(address: ExecutionAddress): Effect.Effect<string, NotFound> {
   return isWellFormed(address)
     ? Effect.succeed(`${streamPrefixOfBrain(address)}${executionStreamOf(address.id.toLowerCase())}`)
-    : Effect.fail(new NotFound({ detail: 'There is no such execution in this brain' }));
+    : Effect.fail(new NotFound({ detail: 'There is no such run in this brain' }));
 }
 
 function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {
