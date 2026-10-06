@@ -28,6 +28,7 @@ interface Following {
   readonly sweepEveryMs: number;
   readonly pass: (brainKey: string) => Effect.Effect<PassEnd>;
   readonly upkeepFailing?: (sweep: number) => boolean;
+  readonly registries?: (registries: readonly string[]) => Effect.Effect<void>;
 }
 
 interface Followed {
@@ -35,7 +36,8 @@ interface Followed {
   readonly troubles: () => readonly string[];
 }
 
-function followed({ streams, sweepEveryMs, pass, upkeepFailing = () => false }: Following): Followed {
+function followed(following: Following): Followed {
+  const { streams, sweepEveryMs, pass, upkeepFailing = () => false, registries = () => Effect.void } = following;
   const counts = { reads: 0, upkeeps: 0 };
   const troubles: string[] = [];
   const store = {
@@ -52,7 +54,7 @@ function followed({ streams, sweepEveryMs, pass, upkeepFailing = () => false }: 
     });
   const follower = startFollower({
     pass,
-    discovery: { atStart: () => Effect.void, registriesAppended: () => Effect.void, brainSeen: () => Effect.void },
+    discovery: { atStart: () => Effect.void, registriesAppended: registries, brainSeen: () => Effect.void },
     sweeps: brainSweepsOn(store, noBrains),
     upkeep: { sweep: upkeep, fireSchedules: () => Effect.void, nextScheduleAt: () => Effect.succeed(null) },
     appended: streamSignalOf(),
@@ -143,4 +145,43 @@ describe('a sweep in which more brains fail than it has room for', () => {
 
     expect(watched.sweeps()).toBeLessThanOrEqual(2);
   });
+});
+
+function registryReadFailingOnce(read: (registries: readonly string[]) => void) {
+  const failures = { left: 1 };
+  return (registries: readonly string[]) =>
+    Effect.suspend(() => {
+      failures.left -= 1;
+      if (failures.left >= 0) {
+        return Effect.die(new Error('The registry could not be read'));
+      }
+      read(registries);
+      return Effect.void;
+    });
+}
+
+describe('a sweep whose read of a registry of brains fails', () => {
+  it(
+    'reads the registry again at the next sweep, so the brains it created are followed',
+    { timeout: 30_000 },
+    async () => {
+      const followedFrom: string[] = [];
+      const watched = followed({
+        streams: ['org/acme/brains'],
+        sweepEveryMs: 20,
+        pass: () => Effect.succeed<PassEnd>('caught_up'),
+        registries: registryReadFailingOnce((registries) => {
+          followedFrom.push(...registries);
+        }),
+      });
+
+      const read = await until(
+        () => Promise.resolve<readonly string[]>([...followedFrom]),
+        (registries) => registries.length > 0,
+      );
+
+      expect(read).toEqual(['org/acme/brains']);
+      expect(watched.troubles()).toEqual(['The follower of the brains failed; it tries again']);
+    },
+  );
 });

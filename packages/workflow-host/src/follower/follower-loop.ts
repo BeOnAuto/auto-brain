@@ -85,9 +85,13 @@ function swept(parts: FollowerParts, wakes: Wakes) {
         parts.sweeps.passAgain(brainKey);
       }
     });
-    yield* Effect.andThen(registriesRead(parts, sweep.registries), parts.upkeep.sweep()).pipe(
-      Effect.catchCause((cause) => Effect.andThen(handedBack, Effect.failCause(cause))),
-    );
+    const registriesTaken = Effect.sync(() => {
+      parts.sweeps.registriesRead(sweep.registries);
+    });
+    yield* Effect.andThen(
+      Effect.andThen(registriesRead(parts, sweep.registries), registriesTaken),
+      parts.upkeep.sweep(),
+    ).pipe(Effect.catchCause((cause) => Effect.andThen(handedBack, Effect.failCause(cause))));
     yield* Effect.forEach(
       sweep.brains,
       ({ brainKey, known }) => passedOnce(parts, wakes, { brainKey, mode: 'sweep', known }),

@@ -20,6 +20,7 @@ export interface BrainSweeps {
   readonly started: () => Effect.Effect<void>;
   readonly next: () => Effect.Effect<Sweep>;
   readonly passAgain: (brainKey: string) => void;
+  readonly registriesRead: (registries: readonly string[]) => void;
 }
 
 export const brainsInASweep = 128;
@@ -59,26 +60,24 @@ function roundGoneOn(brains: FollowedBrains, after: string | null, room: number)
 }
 
 function pendingBrains() {
-  const pending = new Set<string>();
-  const failed = new Set<string>();
+  const appendedSince = new Map<string, boolean>();
   return {
     appended: (brainKeys: readonly string[]) => {
       for (const brainKey of brainKeys) {
-        pending.add(brainKey);
+        appendedSince.set(brainKey, true);
       }
     },
     failed: (brainKey: string) => {
-      failed.add(brainKey);
+      appendedSince.set(brainKey, appendedSince.get(brainKey) === true);
     },
     chosen: (room: number): readonly SweptBrain[] =>
-      [...new Set([...pending, ...failed])].slice(0, room).map((brainKey) => ({ brainKey, known: undefined })),
+      [...appendedSince.keys()].slice(0, room).map((brainKey) => ({ brainKey, known: undefined })),
     taken: (chosen: readonly SweptBrain[]) => {
       for (const { brainKey } of chosen) {
-        pending.delete(brainKey);
-        failed.delete(brainKey);
+        appendedSince.delete(brainKey);
       }
     },
-    left: () => pending.size > 0,
+    left: () => [...appendedSince.values()].includes(true),
   };
 }
 
@@ -88,6 +87,7 @@ export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: F
     round: null,
   };
   const pending = pendingBrains();
+  const registries = new Set<string>();
   const appendedSince = (most: number) =>
     Effect.tap(
       Effect.promise(() => store.readAppended(state.through, most)),
@@ -95,6 +95,9 @@ export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: F
         Effect.sync(() => {
           state.through = appended.through;
           pending.appended(appended.streams.flatMap((stream) => followedBrainOf(stream) ?? []));
+          for (const registry of appended.streams.filter((stream) => isOrgRegistry(stream))) {
+            registries.add(registry);
+          }
         }),
     );
   return {
@@ -105,6 +108,11 @@ export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: F
         }),
       ),
     passAgain: pending.failed,
+    registriesRead: (read) => {
+      for (const registry of read) {
+        registries.delete(registry);
+      }
+    },
     next: () =>
       Effect.gen(function* () {
         const appended = yield* appendedSince(messagesReadInASweep);
@@ -115,7 +123,7 @@ export function brainSweepsOn(store: Pick<EventStore, 'readAppended'>, brains: F
         pending.taken(chosen);
         state.round = round.after;
         return {
-          registries: appended.streams.filter((stream) => isOrgRegistry(stream)),
+          registries: [...registries],
           brains: [...addedTo(changed, round.brains).values()],
           again: appended.more || pending.left(),
         };

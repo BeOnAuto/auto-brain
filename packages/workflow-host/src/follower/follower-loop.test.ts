@@ -70,6 +70,7 @@ function followerWith(following: Following = {}): Watched {
       started: () => logged('anchored'),
       next: failingFirst(following.sweepsFailing ?? 0, Effect.sync(sweep)),
       passAgain: Function.constVoid,
+      registriesRead: Function.constVoid,
     },
     upkeep: {
       sweep: () => logged('sweep'),

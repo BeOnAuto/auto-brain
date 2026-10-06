@@ -1,5 +1,5 @@
 import type { AppendedStreams } from '@beonauto/ledger';
-import { Effect } from 'effect';
+import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { FollowedBrain, FollowedBrains } from '../follower/followed-brains.ts';
@@ -51,7 +51,15 @@ async function sweptOver(ledger: Ledger, sweeps: number): Promise<Swept> {
   };
   const brainSweeps = brainSweepsOn(store, followedOf(ledger));
   await Effect.runPromise(brainSweeps.started());
-  const swept = await Effect.runPromise(Effect.forEach(Array.from({ length: sweeps }), () => brainSweeps.next()));
+  const swept = await Effect.runPromise(
+    Effect.forEach(Array.from({ length: sweeps }), () =>
+      Effect.tap(brainSweeps.next(), (sweep) =>
+        Effect.sync(() => {
+          brainSweeps.registriesRead(sweep.registries);
+        }),
+      ),
+    ),
+  );
   return { sweeps: swept, readsAfter };
 }
 
@@ -69,6 +77,7 @@ describe('the sweeps of the follower', () => {
         'brain/acme/alpha/specs/',
         'brain/acme/beta/runs/',
         'org/acme/brains',
+        'org/acme/keys/k1',
         'workflow/elsewhere',
       ],
       through: ['20'],
@@ -113,5 +122,85 @@ describe('the sweeps of the follower after its start', () => {
     const { sweeps } = await sweptOver({ appended: [now, appended] }, 1);
 
     expect(sweeps[0]?.again).toBe(true);
+  });
+});
+
+function answering(answers: readonly AppendedStreams[]) {
+  const reads = { count: 0 };
+  return {
+    readAppended: () => {
+      const answer = answers[Math.min(reads.count, answers.length - 1)] ?? now;
+      reads.count += 1;
+      return Promise.resolve(answer);
+    },
+  };
+}
+
+function followingFailingOnce(): FollowedBrains {
+  const failures = { left: 1 };
+  return {
+    ...followedOf({ appended: [] }),
+    following: () =>
+      Effect.suspend(() => {
+        failures.left -= 1;
+        return failures.left < 0 ? Effect.succeed([]) : Effect.die(new Error('The brains could not be read'));
+      }),
+  };
+}
+
+const quiet: AppendedStreams = { streams: [], through: ['30'], more: false };
+
+function loadOf(sweep: number): AppendedStreams {
+  return {
+    streams: Array.from({ length: 200 }, (_, index) => `brain/acme/s${sweep}b${index}/events/`),
+    through: [String(sweep)],
+    more: false,
+  };
+}
+
+describe('the sweeps of the follower when a read fails', () => {
+  it('keep the brains they chose when the read of the round fails, and hand them out at the next sweep', async () => {
+    const appended: AppendedStreams = { streams: ['brain/acme/alpha/events/'], through: ['20'], more: false };
+    const brainSweeps = brainSweepsOn(answering([now, appended, quiet]), followingFailingOnce());
+    await Effect.runPromise(brainSweeps.started());
+
+    const failed = await Effect.runPromiseExit(brainSweeps.next());
+    const next = await Effect.runPromise(brainSweeps.next());
+
+    expect(Exit.isFailure(failed)).toBe(true);
+    expect(keysOf(next)).toEqual(['brain/acme/alpha/']);
+  });
+
+  it('name a registry again at every sweep until it was read', async () => {
+    const appended: AppendedStreams = { streams: ['org/acme/brains'], through: ['20'], more: false };
+    const brainSweeps = brainSweepsOn(answering([now, appended, quiet]), followedOf({ appended: [] }));
+    await Effect.runPromise(brainSweeps.started());
+
+    const first = await Effect.runPromise(brainSweeps.next());
+    const unread = await Effect.runPromise(brainSweeps.next());
+    brainSweeps.registriesRead(unread.registries);
+    const read = await Effect.runPromise(brainSweeps.next());
+
+    expect([first.registries, unread.registries, read.registries]).toEqual([
+      ['org/acme/brains'],
+      ['org/acme/brains'],
+      [],
+    ]);
+  });
+});
+
+describe('the sweeps of the follower under a steady load', () => {
+  it('pass a failed brain within a few sweeps though 200 brains are appended to before each', async () => {
+    const loads = Array.from({ length: 8 }, (_, sweep) => loadOf(sweep));
+    const brainSweeps = brainSweepsOn(answering(loads), followedOf({ appended: [] }));
+    await Effect.runPromise(brainSweeps.started());
+    await Effect.runPromise(brainSweeps.next());
+    brainSweeps.passAgain('brain/acme/failed/');
+
+    const sweeps = await Effect.runPromise(Effect.forEach(Array.from({ length: 5 }), () => brainSweeps.next()));
+    const passedAt = sweeps.findIndex((sweep) => keysOf(sweep).includes('brain/acme/failed/'));
+
+    expect(passedAt).toBeGreaterThanOrEqual(0);
+    expect(passedAt).toBeLessThan(3);
   });
 });
