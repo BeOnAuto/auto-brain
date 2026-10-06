@@ -137,6 +137,8 @@ A `RegisterRoutes` function receives `routes.add`, to add a route, and `routes.o
 
 ## Exports
 
+`makeAppRuntime(layer)` builds the runtime every call runs in. Its `run(effect, signal?)` answers the effect's value, or `cancelled` when the effect was interrupted, by the runtime's disposal or by the abort of the signal given, which interrupts it so its finalizers run; the server gives the signal of the call a workflow performs, so a call the workflow cancels stops the execution it started.
+
 `src/index.ts` is the entry point: `createApiHandler`, `makeAppRuntime`, `operationRoutes`, `mcpRoutes`, the instructions, and their types. `@beonauto/api/testing` exports what the server's tests share: real MCP clients of the current SDK, on either revision, and of the SDK's 1.x line, helpers that read a tool listing, among them `takingBrain`, which gives a brain endpoint's tool the `brain` argument it has on `/mcp`, and the `wait_forever` operation, which never finishes on its own.
 
 ## Source

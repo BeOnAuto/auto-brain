@@ -9,8 +9,11 @@ function toolNamed({ tools }: ModelRequest, name: string): ModelTool {
   return Option.getOrThrow(Option.fromNullishOr(tools?.offered.find((offered) => offered.name === name)));
 }
 
-function calledInTurn(request: ModelRequest, calls: readonly ScriptedCall[]): Promise<readonly ToolReply[]> {
-  const signal = new AbortController().signal;
+function calledInTurn(
+  request: ModelRequest,
+  calls: readonly ScriptedCall[],
+  signal: Readonly<AbortSignal>,
+): Promise<readonly ToolReply[]> {
   return calls.reduce<Promise<readonly ToolReply[]>>(
     async (done, [name, input], index) => [
       ...(await done),
@@ -21,5 +24,6 @@ function calledInTurn(request: ModelRequest, calls: readonly ScriptedCall[]): Pr
 }
 
 export function callingTools(calls: readonly ScriptedCall[], then: ScriptedReply): ScriptedReply {
-  return (request) => Effect.promise(() => calledInTurn(request, calls)).pipe(Effect.andThen(then(request)));
+  return (request) =>
+    Effect.promise((interruption) => calledInTurn(request, calls, interruption)).pipe(Effect.andThen(then(request)));
 }

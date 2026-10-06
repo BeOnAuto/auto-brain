@@ -32,7 +32,7 @@ export function inRuntime<A, E>(
   work: Effect.Effect<A, E, DispatcherServices>,
 ): Effect.Effect<A, E> {
   return Effect.gen(function* () {
-    const ran = yield* Effect.promise(() => runtime.run(Effect.exit(work)));
+    const ran = yield* Effect.promise((signal) => runtime.run(Effect.exit(work), signal));
     if (!Exit.isExit(ran)) {
       return yield* Effect.die(new Error('The server stopped before the work could be done'));
     }

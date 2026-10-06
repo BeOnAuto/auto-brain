@@ -57,7 +57,7 @@ A run that calls tools costs more: every step resends the conversation so far, s
 
 `makeInference({ languageModel, clock, tools })` makes the primitive for `makeSpecOperations`; the server gives it the model of `makeModelAccess` and its `ToolAccess`, and a test the scripted model below. `clock` is optional: without it, `today` and `now` come from Effect's `Clock`.
 
-`@beonauto/inference/testing` exports a fake for the tests of other packages. `scriptedLanguageModel(...replies)` answers with its replies in order, admits and rejects an invalid request as the real one does, records every request (`requests()`), and provides itself as a `layer`. A reply is a function of the request; `answers(textResult('Hello'))` and `answers(jsonResult({ verdict: 'approve' }))` build the usual ones, and `() => Effect.fail(new RateLimited({ ... }))` scripts a failure.
+`@beonauto/inference/testing` exports a fake for the tests of other packages. `callingTools(calls, then)` scripts a model that calls tools before its reply, as the adapter does, with a signal that aborts when the call is interrupted. `scriptedLanguageModel(...replies)` answers with its replies in order, admits and rejects an invalid request as the real one does, records every request (`requests()`), and provides itself as a `layer`. A reply is a function of the request; `answers(textResult('Hello'))` and `answers(jsonResult({ verdict: 'approve' }))` build the usual ones, and `() => Effect.fail(new RateLimited({ ... }))` scripts a failure.
 
 No test in this package calls a model: the adapter is tested with the AI SDK's mock model and with the real provider packages against a fake `fetch` that answers with each provider's documented response shape.
 
