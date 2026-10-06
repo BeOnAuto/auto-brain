@@ -8,11 +8,11 @@ import {
 import { Result, Schema, SchemaAST } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { publishedEventDecider, publishedEventStreamOf, type EventPublished } from '../events/published-events.ts';
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
 import type { ExecutionEvent } from '../execution/execution-events.ts';
 import { mostInputBytes, mostResultBytes } from '../execution/recorded-size.ts';
 import { makeSpecPresenters } from '../index.ts';
-import type { SpecEvent } from '../registry/spec-events.ts';
 import { specsDecider, specsStreamOf } from '../registry/specs-decider.ts';
 import { echo } from '../testing/echo.ts';
 
@@ -25,6 +25,10 @@ const executionStream = executionStreamOf(executionId);
 const specStream = specsStreamOf(longestPrimitive);
 
 const specsOfTheLongestPrimitive = specsDecider(longestPrimitive);
+
+const eventStream = publishedEventStreamOf('/ledger/eu', 'm-1');
+
+type SpecEvent = typeof specsOfTheLongestPrimitive.eventSchema.Type;
 
 function storedTypesOf(ast: SchemaAST.AST): readonly string[] {
   const members = SchemaAST.isUnion(ast) ? ast.types : [ast];
@@ -40,6 +44,7 @@ function storedTypesOf(ast: SchemaAST.AST): readonly string[] {
 const catalog = [
   { stream: executionStream, storedTypes: storedTypesOf(executionDecider.eventSchema.ast) },
   { stream: specStream, storedTypes: storedTypesOf(specsOfTheLongestPrimitive.eventSchema.ast) },
+  { stream: eventStream, storedTypes: storedTypesOf(publishedEventDecider.eventSchema.ast) },
 ] as const;
 
 const presenters = makeSpecPresenters([echo]);
@@ -129,9 +134,28 @@ const largestSpecEvents: readonly SpecEvent[] = [
   { type: 'spec_retired', name: 'n'.repeat(48), ...fact },
 ];
 
+const awkwardText = (most: number) => '\u0000'.repeat(most);
+
+const largestEventPublished: EventPublished = {
+  type: 'event_published',
+  event: {
+    specversion: '1.0',
+    id: awkwardText(256),
+    source: 'x'.repeat(1024),
+    type: awkwardText(256),
+    subject: awkwardText(1024),
+    time: '2026-10-01T09:00:00.123456789+02:00',
+    data: { text: 'x'.repeat(200 * 1024) },
+  },
+  filled: ['id', 'time'],
+  ...fact,
+};
+
 const encodeExecutionEvent = Schema.encodeSync(Schema.toCodecJson(executionDecider.eventSchema));
 
 const encodeSpecEvent = Schema.encodeSync(Schema.toCodecJson(specsOfTheLongestPrimitive.eventSchema));
+
+const encodeEventPublished = Schema.encodeSync(Schema.toCodecJson(publishedEventDecider.eventSchema));
 
 const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
@@ -178,4 +202,13 @@ describe('the largest record of every stored type', () => {
       expect(conforms).toBe(true);
     },
   );
+
+  it('of an event published to the brain presents within the bound of public data', () => {
+    const [bytes, conforms] = presentedSizeOf(
+      recordOf(eventStream, largestEventPublished.type, encodeEventPublished(largestEventPublished)),
+    );
+
+    expect(bytes).toBeLessThanOrEqual(mostPublicEventDataBytes);
+    expect(conforms).toBe(true);
+  });
 });
