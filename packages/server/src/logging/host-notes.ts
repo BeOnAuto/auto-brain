@@ -27,6 +27,25 @@ function settledAfterBackingOff({ run, attempts }: NoteOf<'settled_after_back_of
   );
 }
 
+function offerDeclined({ run, detail }: NoteOf<'offer_declined'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'A run waiting for an event of its brain did not take one, since its filter failed on the event',
+  ).pipe(Effect.annotateLogs({ org: run.org, brain: run.brain, execution_id: run.executionId, error: detail }));
+}
+
+function recordUnreadable({ org, brain, recordId, type }: NoteOf<'record_unreadable'>): Effect.Effect<void> {
+  return Effect.logWarning(
+    'A record of the brain could not be read to match triggers and waiting runs against; it was passed over',
+  ).pipe(Effect.annotateLogs({ org, brain, record_id: recordId, type }));
+}
+
+function logRunNote(note: NoteOf<'settle_backing_off' | 'settled_after_back_off' | 'offer_declined'>) {
+  if (note.kind === 'offer_declined') {
+    return offerDeclined(note);
+  }
+  return note.kind === 'settle_backing_off' ? backingOff(note) : settledAfterBackingOff(note);
+}
+
 export function logHostNote(note: HostNote): Effect.Effect<void> {
   if (note.kind === 'standing_by') {
     return standingBy(note);
@@ -34,5 +53,5 @@ export function logHostNote(note: HostNote): Effect.Effect<void> {
   if (note.kind === 'took_over') {
     return tookOver(note);
   }
-  return note.kind === 'settle_backing_off' ? backingOff(note) : settledAfterBackingOff(note);
+  return note.kind === 'record_unreadable' ? recordUnreadable(note) : logRunNote(note);
 }

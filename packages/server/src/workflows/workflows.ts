@@ -1,7 +1,9 @@
 import type { AppRuntime } from '@beonauto/api';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import { defineSendExecutionEvent, makeWorkflowAdapter, runPresenter } from '@beonauto/orchestration';
-import type { Primitive } from '@beonauto/specs';
+import { defineStartVersion, type Primitive } from '@beonauto/specs';
+import type { WorkflowHost } from '@beonauto/workflow-host';
+import { Effect } from 'effect';
 
 import { brainOperationsServing } from '../composition/brain-operations.ts';
 import { routesFor } from '../composition/served-routes.ts';
@@ -22,14 +24,26 @@ export function longestCallOf(primitives: readonly Pick<Primitive, 'longestExecu
   return Math.max(0, ...primitives.map(({ longestExecutionMs }) => longestExecutionMs)) + callMarginMs;
 }
 
+function onceOpened(opening: Promise<WorkflowHost>): Pick<WorkflowHost, 'start'> {
+  return {
+    start: (run, start) =>
+      Effect.flatMap(
+        Effect.promise(() => opening),
+        (host) => host.start(run, start),
+      ),
+  };
+}
+
 export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, parts: WorkflowParts): Promise<Served> {
   const dispatcher = makeDispatcher([]);
-  const host = await openedHost(runtime, dispatcher, parts);
+  const opening = Promise.withResolvers<WorkflowHost>();
   const workflow = makeWorkflowAdapter({
-    runs: host,
+    runs: onceOpened(opening.promise),
     mostDurationMs: parts.workflows.mostDurationMs,
     longestCallMs: longestCallOf(parts.primitives),
   });
+  const host = await openedHost(runtime, dispatcher, parts, defineStartVersion([...parts.primitives, workflow]));
+  opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
     ...brainOperationsServing([...parts.primitives, workflow], [runPresenter]),

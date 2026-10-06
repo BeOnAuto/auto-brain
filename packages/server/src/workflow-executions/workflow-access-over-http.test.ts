@@ -94,7 +94,7 @@ describe('a workflow that listens for an event, over HTTP', { timeout: workflowT
     const nested = server.modelExecutions()[0];
 
     expect(sent).toMatchObject({ status: 200, body: { execution_id: executionId, event: decided } });
-    expect(Object.keys(sentEventOf(sent.body).event)).toEqual(['type', 'data', 'id', 'time']);
+    expect(Object.keys(sentEventOf(sent.body).event)).toEqual(['type', 'source', 'data', 'id', 'time']);
     expect(settled).toMatchObject({
       body: { status: 'succeeded', output: [{ approved: true }], started_by: 'acme-runner' },
     });

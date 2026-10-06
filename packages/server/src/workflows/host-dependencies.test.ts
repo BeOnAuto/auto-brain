@@ -4,7 +4,9 @@ import { Cause, Effect, Exit, Layer, Logger, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { applicationLayer } from '../composition/composition-root.ts';
-import { hostDatabaseOf, hostReports, inRuntime } from './host-dependencies.ts';
+import { hostDatabaseOf } from './host-dependencies.ts';
+import { hostReports } from './host-reports.ts';
+import { inRuntime } from './in-runtime.ts';
 
 const memoryLedger = ledgerLayer({ fileName: ':memory:' });
 
