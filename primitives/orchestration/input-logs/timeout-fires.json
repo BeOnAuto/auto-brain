@@ -65,7 +65,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000311",
@@ -75,14 +75,40 @@
         {
           "reference": "/do/0/guarded",
           "run": 1,
-          "outcome": "started"
+          "outcome": "started",
+          "name": "guarded",
+          "times": 1,
+          "caused_by": "input"
         },
         {
           "reference": "/do/0/guarded/try/0/slow",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "started",
+          "name": "slow",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/0/guarded/try/0/slow",
+          "run": 1,
+          "outcome": "waiting",
+          "name": "slow",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/slow",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "timer"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -307,7 +333,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3246
+          "value": 3616
         }
       ],
       "outputs": [
@@ -339,7 +365,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "timer_fired",
         "key": "2",
@@ -349,19 +375,56 @@
         {
           "reference": "/do/0/guarded/try/0/slow",
           "run": 1,
-          "outcome": "timed_out"
+          "outcome": "timed_out",
+          "name": "slow",
+          "times": 1,
+          "caused_by": "input",
+          "error": {
+            "type": "https://open-workflow-specification.org/spec/1.0.0/errors/timeout",
+            "title": "The task did not finish within 300 ms"
+          }
         },
         {
           "reference": "/do/0/guarded/catch/do/0/late",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "started",
+          "name": "late",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/slow",
+            "run": 1,
+            "outcome": "timed_out",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/0/guarded/catch/do/0/late",
+          "run": 1,
+          "outcome": "completed",
+          "name": "late",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/catch/do/0/late",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
         },
         {
           "reference": "/do/0/guarded",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "guarded",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/catch/do/0/late",
+            "run": 1,
+            "outcome": "completed",
+            "times": 1
+          }
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -428,7 +491,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4609
+          "value": 5607
         }
       ],
       "outputs": [

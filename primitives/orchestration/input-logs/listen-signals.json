@@ -60,7 +60,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
@@ -70,9 +70,27 @@
         {
           "reference": "/do/0/await",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "started",
+          "name": "await",
+          "times": 1,
+          "caused_by": "input"
+        },
+        {
+          "reference": "/do/0/await",
+          "run": 1,
+          "outcome": "waiting",
+          "name": "await",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/await",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "event"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -214,7 +232,8 @@
                     "timeout": null,
                     "body": {
                       "kind": "listen",
-                      "consumed": []
+                      "consumed": [],
+                      "waited": 1
                     }
                   }
                 }
@@ -225,7 +244,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2002
+          "value": 2252
         }
       ],
       "outputs": [
@@ -241,7 +260,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "event_received",
         "key": "e1",
@@ -249,6 +268,7 @@
         "eventType": "declined"
       },
       "steps": [],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -290,14 +310,14 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2590
+          "value": 2855
         }
       ],
       "outputs": []
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "event_received",
         "key": "e2",
@@ -308,9 +328,17 @@
         {
           "reference": "/do/0/await",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "await",
+          "times": 1,
+          "caused_by": "input"
         }
       ],
+      "resumed": {
+        "reference": "/do/0/await",
+        "run": 1,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -377,7 +405,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3719
+          "value": 4085
         }
       ],
       "outputs": [

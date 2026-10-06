@@ -59,7 +59,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000308",
@@ -69,14 +69,52 @@
         {
           "reference": "/do/0/decide",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "started",
+          "name": "decide",
+          "times": 1,
+          "caused_by": "input"
+        },
+        {
+          "reference": "/do/0/decide",
+          "run": 1,
+          "outcome": "completed",
+          "name": "decide",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/decide",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
         },
         {
           "reference": "/do/2/small",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "started",
+          "name": "small",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/decide",
+            "run": 1,
+            "outcome": "completed",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/2/small",
+          "run": 1,
+          "outcome": "completed",
+          "name": "small",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/2/small",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -218,7 +256,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1758
+          "value": 2246
         }
       ],
       "outputs": [

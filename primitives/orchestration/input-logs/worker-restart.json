@@ -52,7 +52,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000314",
@@ -62,14 +62,53 @@
         {
           "reference": "/do/0/first",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "started",
+          "name": "first",
+          "times": 1,
+          "caused_by": "input"
+        },
+        {
+          "reference": "/do/0/first",
+          "run": 1,
+          "outcome": "completed",
+          "name": "first",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/first",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
         },
         {
           "reference": "/do/1/pause",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "started",
+          "name": "pause",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/first",
+            "run": 1,
+            "outcome": "completed",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/1/pause",
+          "run": 1,
+          "outcome": "waiting",
+          "name": "pause",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/1/pause",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "timer"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -253,7 +292,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2534
+          "value": 3037
         }
       ],
       "outputs": [
@@ -277,7 +316,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "timer_fired",
         "key": "2",
@@ -287,14 +326,43 @@
         {
           "reference": "/do/1/pause",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "pause",
+          "times": 1,
+          "caused_by": "input"
         },
         {
           "reference": "/do/2/last",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "started",
+          "name": "last",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/1/pause",
+            "run": 1,
+            "outcome": "completed",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/2/last",
+          "run": 1,
+          "outcome": "completed",
+          "name": "last",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/2/last",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
         }
       ],
+      "resumed": {
+        "reference": "/do/1/pause",
+        "run": 1,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -361,7 +429,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3713
+          "value": 4577
         }
       ],
       "outputs": [

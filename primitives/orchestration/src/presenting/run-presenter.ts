@@ -1,8 +1,16 @@
 import type { Presenter } from '@beonauto/operations';
-import { RunEventSchema, type InputReceipt, type RunEvent, type Step } from '@beonauto/workflow-engine';
+import {
+  RunEventSchema,
+  type EarlierStep,
+  type InputReceipt,
+  type RunEvent,
+  type Step,
+} from '@beonauto/workflow-engine';
 import { Schema } from 'effect';
 
+import { cutAtCodePoint } from './cut-text.ts';
 import { summaryOf } from './run-words.ts';
+import { stepEventsOf, stepEventTypes } from './step-events.ts';
 
 const mostStepsShown = 5;
 
@@ -14,26 +22,9 @@ const runsKind = 'runs';
 
 const decodeRunEvent = Schema.decodeUnknownSync(Schema.toCodecJson(RunEventSchema));
 
-const utf8 = new TextEncoder();
-
-function encodedBytesOf(character: string): number {
-  return utf8.encode(JSON.stringify(character)).byteLength - 2;
-}
-
-export function cutAtCodePoint(text: string, mostBytes: number): string {
-  let bytes = 0;
-  let end = 0;
-  for (const character of text) {
-    bytes += encodedBytesOf(character);
-    if (bytes > mostBytes) {
-      return text.slice(0, end);
-    }
-    end += character.length;
-  }
-  return text;
-}
-
 type Rejection = NonNullable<Extract<InputReceipt, { readonly kind: 'call_answered' }>['rejection']>;
+
+type Moved = Pick<Step | EarlierStep, 'reference' | 'run' | 'outcome'>;
 
 function rejectionShown({ kind, because }: Rejection): Schema.JsonObject {
   return {
@@ -62,32 +53,44 @@ function inputShown(receipt: InputReceipt, executionId: string): Schema.JsonObje
   return { kind: receipt.kind, key: receipt.kind === 'timer_fired' ? receipt.key : executionId };
 }
 
-function stepShown({ reference, run, outcome }: Step): Schema.JsonObject {
+export function movedOf(steps: readonly (Step | EarlierStep)[]): readonly Moved[] {
+  const moved = new Map<string, Moved>();
+  for (const { reference, run, outcome } of steps) {
+    moved.set(JSON.stringify([reference, run]), { reference, run, outcome });
+  }
+  return [...moved.values()];
+}
+
+function stepShown({ reference, run, outcome }: Moved): Schema.JsonObject {
   return { task: cutAtCodePoint(reference, mostReferenceBytes), run, outcome };
 }
 
-function dataOf({ receipt, steps, outputs }: RunEvent, executionId: string): Schema.JsonObject {
+function dataOf({ receipt, outputs }: RunEvent, moved: readonly Moved[], executionId: string): Schema.JsonObject {
   return {
     execution_id: executionId,
     input: inputShown(receipt, executionId),
-    step_count: steps.length,
-    steps: steps.slice(0, mostStepsShown).map((step) => stepShown(step)),
+    step_count: moved.length,
+    steps: moved.slice(0, mostStepsShown).map((step) => stepShown(step)),
     output_kinds: [...new Set(outputs.map(({ kind }) => kind))],
   };
 }
 
 export const runPresenter: Presenter = {
   streamKind: runsKind,
-  publicNames: { input_applied: 'workflow_input_applied' },
-  present: ({ id, stream, data }) => {
-    const event = decodeRunEvent(data);
-    const executionId = stream.slice(runsKind.length + 1);
-    return {
-      id,
+  publicNames: { input_applied: ['workflow_input_applied', ...stepEventTypes] },
+  present: (recorded) => {
+    const event = decodeRunEvent(recorded.data);
+    const executionId = recorded.stream.slice(runsKind.length + 1);
+    const moved = movedOf(event.steps);
+    const record = {
+      id: recorded.id,
+      cursor: recorded.cursor,
+      causation_id: recorded.causationId,
       at: new Date(event.receipt.at).toISOString(),
       type: 'workflow_input_applied',
-      summary: summaryOf(event),
-      data: dataOf(event, executionId),
+      summary: summaryOf(event, moved.length),
+      data: dataOf(event, moved, executionId),
     };
+    return [record, ...stepEventsOf(recorded, event, executionId)];
   },
 };

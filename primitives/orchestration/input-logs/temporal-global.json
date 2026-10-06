@@ -36,7 +36,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000309",
@@ -46,9 +46,26 @@
         {
           "reference": "/do/0/clock",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "started",
+          "name": "clock",
+          "times": 1,
+          "caused_by": "input"
+        },
+        {
+          "reference": "/do/0/clock",
+          "run": 1,
+          "outcome": "completed",
+          "name": "clock",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/clock",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -164,7 +181,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1746
+          "value": 1965
         }
       ],
       "outputs": [

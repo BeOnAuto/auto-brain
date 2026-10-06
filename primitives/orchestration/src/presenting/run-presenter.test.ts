@@ -7,12 +7,12 @@ import {
   type InputReceipt,
   type RunEvent,
   type RunOutput,
-  type Step,
 } from '@beonauto/workflow-engine';
 import { Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { cutAtCodePoint, runPresenter } from './run-presenter.ts';
+import { cutAtCodePoint } from './cut-text.ts';
+import { runPresenter } from './run-presenter.ts';
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -24,17 +24,21 @@ const encodeEvent = Schema.encodeSync(Schema.toCodecJson(RunEventSchema));
 
 const decodePublicEvent = Schema.decodeUnknownResult(PublicEventSchema);
 
-const { present } = presentationOf([runPresenter]);
+const presentation = presentationOf([runPresenter]);
+
+function present(record: RecordedEvent) {
+  return presentation.present(record).at(0);
+}
 
 const utf8 = new TextEncoder();
 
-function stepsOf(count: number, reference = '/do/0/notify'): readonly Step[] {
+function stepsOf(count: number, reference = '/do/0/notify'): RunEvent['steps'] {
   return Array.from({ length: count }, (_, index) => ({ reference, run: index + 1, outcome: 'completed' }));
 }
 
 function eventOf(
   receipt: InputReceipt,
-  steps: readonly Step[] = [],
+  steps: RunEvent['steps'] = [],
   outputs: readonly RunOutput[] = [],
   patch: RunEvent['patch'] = [],
 ): RunEvent {
@@ -43,7 +47,10 @@ function eventOf(
 
 function recordOf(event: RunEvent): RecordedEvent {
   return {
-    id: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
+    cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+    causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
+    correlationId: executionId,
     stream: `runs/${executionId}`,
     type: event.type,
     data: encodeEvent(event),
@@ -62,7 +69,9 @@ describe('an input a workflow took, in the history of its run', () => {
     const event = eventOf({ kind: 'started', key: runId, at }, stepsOf(1), [armed, armed]);
 
     expect(present(recordOf(event))).toEqual({
-      id: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+      id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
+      cursor: 'WyJicmFpbi9hY21lL2FscGhhLyIsIjEiXQ',
+      causation_id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
       at: '2026-10-05T09:00:00.000Z',
       type: 'workflow_input_applied',
       summary: 'The workflow started, and 1 step moved.',
@@ -212,6 +221,14 @@ describe('the largest input a workflow can take', () => {
 describe('the presenter of the runs of workflows', () => {
   it('decides on every stored type of the log of a run', () => {
     expect(Object.keys(runPresenter.publicNames)).toEqual([RunEventSchema.fields.type.literal]);
+    expect(runPresenter.publicNames['input_applied']).toEqual([
+      'workflow_input_applied',
+      'step_started',
+      'step_waiting',
+      'step_finished',
+      'step_failed',
+      'step_skipped',
+    ]);
   });
 
   it('cuts a text at a code point, counting its bytes as JSON', () => {

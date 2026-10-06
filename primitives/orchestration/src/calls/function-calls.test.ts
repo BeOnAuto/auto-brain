@@ -1,4 +1,4 @@
-import type { StartCall } from '@beonauto/workflow-engine';
+import { stepEventIdOf, type StartCall } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -32,6 +32,13 @@ function callWith(arguments_: StartCall['arguments']): StartCall {
 
 const classify = callWith({ primitive: 'inference', name: 'classify', input: { ticket: 7 } });
 
+const waitingOfTheCall = stepEventIdOf(workflowExecution, {
+  reference: '/do/0/classify',
+  run: 1,
+  outcome: 'waiting',
+  times: 1,
+});
+
 function answering(result: DefinitionRunResult) {
   const asked: DefinitionRunRequest[] = [];
   const perform = definitionCalls((execution) =>
@@ -63,10 +70,20 @@ describe('a workflow call to a saved definition', () => {
           name: 'classify',
           input: { ticket: 7 },
           executionId: nestedExecutionId(workflowExecution, '/do/0/classify', 1),
+          lineage: { causationId: waitingOfTheCall, correlationId: workflowExecution },
         },
       ]);
     },
   );
+
+  it('starts the definition caused by the wait of its step, and belonging to the run the workflow belongs to', async () => {
+    const { perform, asked } = answering({ status: 'succeeded', output: null });
+    const belonging = { ...run, attributes: { ...run.attributes, lineage: { start: 'started', correlation: 'root' } } };
+
+    await Effect.runPromise(perform(classify, belonging));
+
+    expect(asked.map(({ lineage }) => lineage)).toEqual([{ causationId: waitingOfTheCall, correlationId: 'root' }]);
+  });
 });
 
 describe('a workflow call with invalid arguments', () => {

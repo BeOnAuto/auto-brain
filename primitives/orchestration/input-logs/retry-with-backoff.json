@@ -123,7 +123,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
@@ -133,14 +133,40 @@
         {
           "reference": "/do/0/guarded",
           "run": 1,
-          "outcome": "started"
+          "outcome": "started",
+          "name": "guarded",
+          "times": 1,
+          "caused_by": "input"
         },
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 1,
-          "outcome": "waiting"
+          "outcome": "started",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/0/guarded/try/0/fetch",
+          "run": 1,
+          "outcome": "waiting",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 1,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "call"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -392,7 +418,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3856
+          "value": 4229
         }
       ],
       "outputs": [
@@ -433,7 +459,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",1]",
@@ -444,9 +470,21 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 1,
-          "outcome": "raised"
+          "outcome": "raised",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": "input",
+          "error": {
+            "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
+            "title": "The reasoning function flaky rejected the execution with unavailable"
+          }
         }
       ],
+      "resumed": {
+        "reference": "/do/0/guarded/try/0/fetch",
+        "run": 1,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -520,9 +558,19 @@
           }
         },
         {
+          "op": "add",
+          "path": "/machine/root/body/list/current/task/body/phase/failed",
+          "value": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 1,
+            "outcome": "raised",
+            "times": 1
+          }
+        },
+        {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5683
+          "value": 6505
         }
       ],
       "outputs": [
@@ -543,7 +591,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "timer_fired",
         "key": "3",
@@ -553,9 +601,32 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 2,
-          "outcome": "waiting"
+          "outcome": "started",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 1,
+            "outcome": "raised",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/0/guarded/try/0/fetch",
+          "run": 2,
+          "outcome": "waiting",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 2,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "call"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -638,6 +709,10 @@
           "path": "/machine/root/body/list/current/task/body/phase/error"
         },
         {
+          "op": "remove",
+          "path": "/machine/root/body/list/current/task/body/phase/failed"
+        },
+        {
           "op": "replace",
           "path": "/machine/root/body/list/current/task/body/phase/kind",
           "value": "trying"
@@ -685,7 +760,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8254
+          "value": 9493
         }
       ],
       "outputs": [
@@ -718,7 +793,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",2]",
@@ -729,9 +804,21 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 2,
-          "outcome": "raised"
+          "outcome": "raised",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": "input",
+          "error": {
+            "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
+            "title": "The reasoning function flaky rejected the execution with unavailable"
+          }
         }
       ],
+      "resumed": {
+        "reference": "/do/0/guarded/try/0/fetch",
+        "run": 2,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -805,9 +892,19 @@
           }
         },
         {
+          "op": "add",
+          "path": "/machine/root/body/list/current/task/body/phase/failed",
+          "value": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 2,
+            "outcome": "raised",
+            "times": 1
+          }
+        },
+        {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 10082
+          "value": 11770
         }
       ],
       "outputs": [
@@ -828,7 +925,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "timer_fired",
         "key": "5",
@@ -838,9 +935,32 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 3,
-          "outcome": "waiting"
+          "outcome": "started",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 2,
+            "outcome": "raised",
+            "times": 1
+          }
+        },
+        {
+          "reference": "/do/0/guarded/try/0/fetch",
+          "run": 3,
+          "outcome": "waiting",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 3,
+            "outcome": "started",
+            "times": 1
+          },
+          "waits_for": "call"
         }
       ],
+      "resumed": null,
       "patch": [
         {
           "op": "replace",
@@ -923,6 +1043,10 @@
           "path": "/machine/root/body/list/current/task/body/phase/error"
         },
         {
+          "op": "remove",
+          "path": "/machine/root/body/list/current/task/body/phase/failed"
+        },
+        {
           "op": "replace",
           "path": "/machine/root/body/list/current/task/body/phase/kind",
           "value": "trying"
@@ -970,7 +1094,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 12654
+          "value": 14759
         }
       ],
       "outputs": [
@@ -1003,7 +1127,7 @@
     },
     {
       "type": "input_applied",
-      "format": 3,
+      "format": 4,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",3]",
@@ -1014,14 +1138,30 @@
         {
           "reference": "/do/0/guarded/try/0/fetch",
           "run": 3,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "fetch",
+          "times": 1,
+          "caused_by": "input"
         },
         {
           "reference": "/do/0/guarded",
           "run": 1,
-          "outcome": "completed"
+          "outcome": "completed",
+          "name": "guarded",
+          "times": 1,
+          "caused_by": {
+            "reference": "/do/0/guarded/try/0/fetch",
+            "run": 3,
+            "outcome": "completed",
+            "times": 1
+          }
         }
       ],
+      "resumed": {
+        "reference": "/do/0/guarded/try/0/fetch",
+        "run": 3,
+        "times": 1
+      },
       "patch": [
         {
           "op": "replace",
@@ -1082,7 +1222,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 14010
+          "value": 16351
         }
       ],
       "outputs": [
