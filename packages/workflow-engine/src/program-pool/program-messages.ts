@@ -14,7 +14,11 @@ export const ProgramAnswerSchema = Schema.Union([
     work: Schema.Number,
   }),
   Schema.Struct({ ran: Schema.Literal('oversized'), work: Schema.Number }),
-  Schema.Struct({ ran: Schema.Literal('mismatched'), issues: Schema.Array(Schema.String), work: Schema.Number }),
+  Schema.Struct({
+    ran: Schema.Literal('mismatched'),
+    issues: Schema.Array(Schema.Struct({ pointer: Schema.String, detail: Schema.String })),
+    work: Schema.Number,
+  }),
   Schema.Struct({ ran: Schema.Literal('raised'), issue: IssueSchema, work: Schema.Number }),
   Schema.Struct({
     ran: Schema.Literal('exhausted'),

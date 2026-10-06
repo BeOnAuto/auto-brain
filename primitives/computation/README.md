@@ -19,16 +19,16 @@ The program is compiled with the evaluator of [`@beonauto/workflow-engine/dsl`](
 3. for a definition with an output schema, names its own worker module, `src/run/output-worker.ts`, and the schema as the request's context, so the worker that runs the program also checks the output against the schema, under the run's deadline, and the thread that serves requests never waits on the check: a 1 MiB output against a recursive schema had taken 1,038 ms there;
 4. turns the outcome into the run's ending (`src/run/run-outcome.ts`):
 
-| Outcome of the pool                                                           | Ending                                                                                                      |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| answered, the output schema, if any, accepting it                             | succeeded, with the output and the record `{ language, work, duration_ms, input_bytes, output_bytes }`      |
-| mismatched: its worker found the output does not match the output schema      | `conflict`, kind `unworkable`, with the first three issues, each cut at 1,024 bytes                         |
-| raised                                                                        | `conflict`, `unworkable`: `The program raised an error on line N: <its error>`, its text cut at 1,024 bytes |
-| exhausted by work, the depth of a value, the depth of evaluation or the stack | `conflict`, `unworkable`, with the bound, the line and, for work, the units spent                           |
-| no output or more than one, an output that is not JSON, or one over its bytes | `conflict`, `unworkable`                                                                                    |
-| exhausted by the deadline, or stopped by the deadline, memory, no free worker | `unavailable`, with words that name the bound or the number of workers                                      |
-| stopped because the call was cancelled or the server is stopping              | `unavailable`; the operations record the cancelled run as `failed`                                          |
-| crashed, or refused by a worker although the definition was accepted          | a defect: the call fails with an incident and the run is `failed`                                           |
+| Outcome of the pool                                                           | Ending                                                                                                                  |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| answered, the output schema, if any, accepting it                             | succeeded, with the output and the record `{ language, work, duration_ms, input_bytes, output_bytes }`                  |
+| mismatched: its worker found the output does not match the output schema      | `conflict`, kind `unworkable`, with the first three issues, the pointer and the detail of each cut at 1,024 bytes apart |
+| raised                                                                        | `conflict`, `unworkable`: `The program raised an error on line N: <its error>`, its text cut at 1,024 bytes             |
+| exhausted by work, the depth of a value, the depth of evaluation or the stack | `conflict`, `unworkable`, with the bound, the line and, for work, the units spent                                       |
+| no output or more than one, an output that is not JSON, or one over its bytes | `conflict`, `unworkable`                                                                                                |
+| exhausted by the deadline, or stopped by the deadline, memory, no free worker | `unavailable`, with words that name the bound or the number of workers                                                  |
+| stopped because the call was cancelled or the server is stopping              | `unavailable`; the operations record the cancelled run as `failed`                                                      |
+| crashed, or refused by a worker although the definition was accepted          | a defect: the call fails with an incident and the run is `failed`                                                       |
 
 A `conflict` of the kind `unworkable` is recorded with its kind, so the run, the listing and the history show it, and a workflow sees a `runtime` error of status 409 with that kind, which a retry policy matching 503 leaves alone. The words of a run that succeeded say `Its result: ...` from the output, or that it is too long to repeat.
 

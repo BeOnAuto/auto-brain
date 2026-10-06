@@ -63,7 +63,12 @@ function cut(issue: ProgramIssue): ProgramIssue {
   return { ...issue, detail: textWithin(issue.detail, mostIssueBytes) };
 }
 
-export type OutputCheck = (output: Json) => readonly string[];
+export interface OutputIssue {
+  readonly pointer: string;
+  readonly detail: string;
+}
+
+export type OutputCheck = (output: Json) => readonly OutputIssue[];
 
 const unchecked: OutputCheck = () => [];
 
@@ -71,7 +76,14 @@ function checkedAnswer(value: Json, bytes: number, work: number, check: OutputCh
   const issues = check(value);
   return issues.length === 0
     ? { ran: 'answered', output: JSON.stringify(value), bytes, work }
-    : { ran: 'mismatched', issues: issues.map((issue) => textWithin(issue, mostIssueBytes)), work };
+    : {
+        ran: 'mismatched',
+        issues: issues.map(({ pointer, detail }) => ({
+          pointer: textWithin(pointer, mostIssueBytes),
+          detail: textWithin(detail, mostIssueBytes),
+        })),
+        work,
+      };
 }
 
 function answerFrom(run: ProgramRun, mostOutputBytes: number, check: OutputCheck): ProgramAnswerData {

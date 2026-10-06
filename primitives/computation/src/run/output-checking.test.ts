@@ -38,12 +38,16 @@ describe('the check of an output against the output schema', { timeout: workerTe
   it('names at most three issues of the output', () => {
     const check = outputCheckOf({ type: 'array', items: { type: 'string' } });
 
-    expect(check([1, 2, 3, 4])).toEqual(['/0: Expected string', '/1: Expected string', '/2: Expected string']);
-    expect(check('x')).toEqual(['the output: Expected array']);
+    expect(check([1, 2, 3, 4])).toEqual([
+      { pointer: '/0', detail: 'Expected string' },
+      { pointer: '/1', detail: 'Expected string' },
+      { pointer: '/2', detail: 'Expected string' },
+    ]);
+    expect(check('x')).toEqual([{ pointer: '', detail: 'Expected array' }]);
     expect(check(['x'])).toEqual([]);
   });
 
   it('refuses every output when the schema it is given does not compile, naming why', () => {
-    expect(outputCheckOf('not a schema')(1)).toEqual(['the output: A schema is a JSON object']);
+    expect(outputCheckOf('not a schema')(1)).toEqual([{ pointer: '', detail: 'A schema is a JSON object' }]);
   });
 });

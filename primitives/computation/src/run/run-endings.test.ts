@@ -67,20 +67,21 @@ describe('a run whose program cannot work as written', { timeout: workerTestTime
 });
 
 describe('the text of a long error', { timeout: workerTestTimeoutMs }, () => {
-  it('cuts the text of the error, and each issue of an output the schema refuses, at 1,024 bytes', async () => {
-    const longKey = 'language: jq\noutput: {schema: {type: object, additionalProperties: false}}';
-    const refused = await ended('{("k" * 500000): 1}', longKey);
-    const detailOf = Schema.decodeUnknownSync(Schema.Struct({ detail: Schema.String }));
-
+  it('cuts the text of the error at 1,024 bytes', async () => {
     expect(await ended('error("x" * 30000000)')).toEqual(
       unworkable(`The program raised an error on line 4: ${'x'.repeat(1024)}…`),
     );
-    expect(Exit.isFailure(refused)).toBe(true);
-    const detail = detailOf(Option.getOrThrow(Exit.findErrorOption(refused))).detail;
+  });
 
-    expect(detail.startsWith("The program's output does not match the output schema: /kkkk")).toBe(true);
-    expect(detail.endsWith('…')).toBe(true);
-    expect(detail.length).toBeLessThan(1200);
+  it('cuts the pointer of an issue of an output the schema refuses at 1,024 bytes, and keeps what it says', async () => {
+    const closed =
+      'language: jq\noutput: {schema: {type: object, properties: {total: {type: integer}}, additionalProperties: false}}';
+
+    expect(await ended('{("k" * 300000): 1}', closed)).toEqual(
+      unworkable(
+        `The program's output does not match the output schema: /${'k'.repeat(1023)}…: Expected no excess property`,
+      ),
+    );
   });
 });
 

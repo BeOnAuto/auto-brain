@@ -4,12 +4,8 @@ import { Result } from 'effect';
 
 const mostIssuesInADetail = 3;
 
-function issueText({ pointer, detail }: SchemaIssue): string {
-  return `${pointer === '' ? 'the output' : pointer}: ${detail}`;
-}
-
-function issuesOf(found: readonly SchemaIssue[]): readonly string[] {
-  return found.slice(0, mostIssuesInADetail).map((issue) => issueText(issue));
+function issuesOf(found: readonly SchemaIssue[]): readonly SchemaIssue[] {
+  return found.slice(0, mostIssuesInADetail);
 }
 
 export function outputCheckOf(schema: unknown): OutputCheck {
