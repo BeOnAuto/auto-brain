@@ -69,7 +69,7 @@ describe('the JSON Schema of the input of the operations', () => {
       properties: {
         input: {
           description:
-            'The run input: any JSON value the definition takes, {} when left out, at most 262144 bytes as JSON in UTF-8',
+            'The run input: any JSON value the definition takes, {} when left out, at most 262144 bytes as JSON in UTF-8 and 512 levels deep',
         },
         execution_id: { type: 'string', format: 'uuid' },
       },

@@ -5,6 +5,7 @@ import { Conflict, type Decider } from '@beonauto/operations';
 import { Effect, Equal, Result, Schema } from 'effect';
 
 import { CloudEventSchema, type CloudEvent } from './cloud-event.ts';
+import { instantOf } from './event-time.ts';
 
 const FilledAttributeSchema = Schema.Literals(['id', 'time']);
 
@@ -31,9 +32,10 @@ const anotherEvent = new Conflict({
 });
 
 function given(event: CloudEvent, filled: ReadonlySet<string>): Schema.JsonObject {
-  return Object.fromEntries(
+  const attributes = Object.fromEntries(
     Object.entries(event).filter(([attribute]: readonly [string, Schema.Json]) => !filled.has(attribute)),
   );
+  return filled.has('time') ? attributes : { ...attributes, time: instantOf(event.time) };
 }
 
 function isSameEvent(published: EventPublished, { event, filled }: PublishEvent): boolean {
