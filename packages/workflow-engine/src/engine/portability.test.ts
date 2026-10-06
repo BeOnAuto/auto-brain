@@ -42,7 +42,24 @@ const blockComments = /\/\*[\s\S]*?\*\//gu;
 
 const localTimeBuiltins = /Builtin\("\w+", false\)/gu;
 
-const jq = readFileSync(fileURLToPath(import.meta.resolve('@gabrielbryk/jq-ts')), 'utf8').replaceAll(blockComments, '');
+const jqForImport = fileURLToPath(import.meta.resolve('@gabrielbryk/jq-ts'));
+
+const jq = readFileSync(jqForImport, 'utf8').replaceAll(blockComments, '');
+
+const jqForRequire = readFileSync(join(dirname(jqForImport), 'index.cjs'), 'utf8');
+
+const patchOfJq = readFileSync(
+  fileURLToPath(new URL('../../../../patches/@gabrielbryk__jq-ts@1.7.0.patch', import.meta.url)),
+  'utf8',
+);
+
+function linesThePatchAddsTo(file: string): readonly string[] {
+  const section = patchOfJq.split('diff --git ').find((part) => part.startsWith(`a/dist/${file} `)) ?? '';
+  return section
+    .split('\n')
+    .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+    .map((line) => line.slice(1));
+}
 
 const growingCache: readonly Forbidden[] = [
   {
@@ -164,6 +181,13 @@ describe('the jq library the machine runs expressions with', () => {
   it('uses no Node-only API, no code generation and no host timer, and reads no clock or random source', () => {
     expect(jq.length).toBeGreaterThan(100_000);
     expect(caught(jq, [...nodeOnly, ...clockOrRandom])).toEqual([]);
+  });
+
+  it('is patched the same in the build require() loads as in the one import loads', () => {
+    const added = linesThePatchAddsTo('index.mjs');
+
+    expect(added.length).toBeGreaterThan(200);
+    expect(added.filter((line) => !jqForRequire.includes(line))).toEqual([]);
   });
 
   it('reaches the host time zone only through localtime and strflocaltime, which the DSL refuses', () => {
