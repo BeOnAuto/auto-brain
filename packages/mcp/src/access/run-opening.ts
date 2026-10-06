@@ -1,11 +1,13 @@
-import { Effect } from 'effect';
+import { Effect, Result } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import { runTools, type RunTools } from '../calls/run-tools.ts';
+import { ignored } from '../connections/ignored.ts';
+import type { McpServerFailed } from './mcp-server-failed.ts';
 import type { RunContext, ServerMessage, ToolsNotOpened } from './run-context.ts';
 import { listedOn, released } from './server-listing.ts';
-import { namedLinks, notOffered, offeredOn, unlistedOn, type Naming } from './tool-naming.ts';
+import { namedLinks, notOffered, offeredOn, unlistedOn, type Listed, type Naming } from './tool-naming.ts';
 
 export interface Opening extends Naming {
   readonly execution: RunContext;
@@ -14,11 +16,24 @@ export interface Opening extends Naming {
   readonly report: (message: ServerMessage) => void;
 }
 
+type Listing = Promise<Result.Result<readonly Listed[], McpServerFailed>>;
+
+function releasedOnceSettled(listing: Listing): Effect.Effect<void> {
+  return Effect.sync(() => {
+    void listing
+      .then(Result.getOrElse((): readonly Listed[] => []))
+      .then(released)
+      .catch(ignored);
+  });
+}
+
 export function openedRun(opening: Opening): Effect.Effect<RunTools, ToolsNotOpened> {
   return Effect.gen(function* () {
     const links = yield* Effect.fromResult(namedLinks(opening));
     const context = yield* Effect.context();
-    const listed = yield* Effect.fromResult(yield* Effect.promise(() => listedOn(links, opening)));
+    const listing = yield* Effect.sync(() => listedOn(links, opening));
+    const settled = yield* Effect.promise(() => listing).pipe(Effect.onInterrupt(() => releasedOnceSettled(listing)));
+    const listed = yield* Effect.fromResult(settled);
     const missing = listed.flatMap((each) => unlistedOn(each, opening));
     if (missing.length > 0) {
       yield* Effect.promise(() => released(listed));
