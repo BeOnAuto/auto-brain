@@ -1,4 +1,6 @@
+export { enclosedBody } from './dsl/expressions.ts';
 export { isJson, jsonBytesOf, measureOf, mostValueDepth, type Json, type JsonObject } from './dsl/json.ts';
+export { literalFilterOf, type LiteralFilterReading } from './filters/event-filter.ts';
 export {
   compileProgram,
   lineOf,
