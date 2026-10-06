@@ -18,6 +18,9 @@ const callThenHang: Responder = (request, attempt) =>
 
 const callTwice: Responder = () => jsonResponse(anthropicToolCall(searchTool, { query: 'acme' }));
 
+const refuse: Responder = () =>
+  jsonResponse({ type: 'error', error: { type: 'invalid_request_error', message: 'The request is invalid' } }, 400);
+
 const callWithAList: Responder = (_request, attempt) =>
   jsonResponse(attempt === 1 ? anthropicToolCall(searchTool, ['acme']) : anthropicMessage('No rows.'));
 
@@ -30,7 +33,8 @@ async function run(responder: Responder) {
   const recording = recordingFetch(responder);
   const access = await accessFor({ ANTHROPIC_API_KEY: 'k' }, { fetch: recording.fetch });
   const bodies = () => recording.requests().map(({ body }) => JSON.stringify(body));
-  return { access, bodies };
+  const aborted = () => recording.requests().map(({ signal }) => signal.aborted);
+  return { access, bodies, aborted };
 }
 
 describe('the steps of a run that may still call tools', () => {
@@ -96,6 +100,16 @@ describe('the deadlines of a run that calls tools', () => {
       _tag: 'timed_out',
       detail: 'anthropic did not answer within 100 ms',
     });
+  });
+
+  it('ends the deadline of a model call that failed with it, so it aborts nothing once the call is over', async () => {
+    const { tools } = scriptedTools();
+    const { access, aborted } = await run(refuse);
+
+    expect(await failed(access, textRequest(model, { tools, timeout_ms: 50 }))).toMatchObject({ _tag: 'spec_invalid' });
+    await setTimeout(150);
+
+    expect(aborted()).toEqual([false]);
   });
 
   it('ends the run at its bound', async () => {

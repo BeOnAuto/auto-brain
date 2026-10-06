@@ -52,5 +52,7 @@ export async function settledCall(
       providerText: providerTextOf(error, scrub),
       operatorHint: operatorHintOf(error, provider, scrub),
     };
+  } finally {
+    step.ended();
   }
 }

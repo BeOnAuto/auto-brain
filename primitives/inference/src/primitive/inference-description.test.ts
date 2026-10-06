@@ -70,7 +70,7 @@ describe('the description of inference on a server where specs may name only ali
 describe('the description of the tools a spec may name', () => {
   it('says how a spec names tools, and what a run does with them, when MCP servers are configured', () => {
     expect(inferenceDescriptionFor({ providers: ['anthropic'], aliases: [] }, true)).toMatch(
-      / Any other front matter key is rejected\..* tools: the tools of the MCP servers configured for its brain that it may call, each written server\/tool, or server\/\* for every tool of a server that its operator allows\. A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers; each call is recorded on the run as it happens, and a run that called tools and did not succeed is not run again under its id\.$/u,
+      / Any other front matter key is rejected\..* tools: the tools of the MCP servers configured for its brain that it may call, each written server\/tool, or server\/\* for every tool of a server that its operator allows\. A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers; each call is recorded on the run as it happens, and a run that names tools and did not succeed is not run again under its id, nor while it may still be in progress\.$/u,
     );
   });
 

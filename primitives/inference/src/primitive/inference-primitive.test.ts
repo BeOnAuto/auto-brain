@@ -40,6 +40,11 @@ describe('the inference primitive', () => {
     expect(primitive.reachesOutside).toBe(true);
   });
 
+  it('says a reason function calls tools only when it names them, so a started run of it is never run again', () => {
+    expect(prepared(inferenceExample).callsTools).toBe(false);
+    expect(prepared(documentOf('model: openai/gpt-5\ntools:\n  - graph/search')).callsTools).toBe(true);
+  });
+
   it('describes its document with an example that is a valid spec', () => {
     expect(primitive.description).toContain(inferenceExample);
     expect(prepared(inferenceExample).summary).toMatchObject({ description: 'Summarizes an account' });

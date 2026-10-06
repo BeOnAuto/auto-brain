@@ -58,5 +58,6 @@ export function makeInference(options: InferenceOptions): Primitive {
     longestExecutionMs: longestRequestMs,
     reachesOutside: true,
     mayChangeOutside: options.tools?.configured === true,
+    callsTools: ({ tools }) => tools.length > 0,
   });
 }
