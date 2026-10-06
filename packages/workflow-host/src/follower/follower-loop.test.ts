@@ -24,6 +24,7 @@ interface Following {
   readonly startsFailing?: number;
   readonly schedulesFailing?: number;
   readonly sweepsFailing?: number;
+  readonly followFailingOnce?: string;
 }
 
 function failingFirst<A>(times: number, read: Effect.Effect<A>): () => Effect.Effect<A> {
@@ -33,6 +34,11 @@ function failingFirst<A>(times: number, read: Effect.Effect<A>): () => Effect.Ef
       failures.left -= 1;
       return failures.left < 0 ? read : Effect.die(new Error('The database is down'));
     });
+}
+
+function followsFailingOnceFor(failing: string | undefined): (brainKey: string) => Effect.Effect<void> {
+  const follow = failingFirst(1, Effect.void);
+  return (brainKey) => (brainKey === failing ? follow() : Effect.void);
 }
 
 function inTurn<A>(items: readonly A[], after: A): () => A {
@@ -64,12 +70,14 @@ function followerWith(following: Following = {}): Watched {
     discovery: {
       atStart: failingFirst(following.startsFailing ?? 0, logged('start')),
       registriesAppended: (registries) => logged(`registries ${registries.join(' ')}`),
-      brainSeen: () => Effect.void,
+      brainSeen: followsFailingOnceFor(following.followFailingOnce),
     },
     sweeps: {
       started: () => logged('anchored'),
       next: failingFirst(following.sweepsFailing ?? 0, Effect.sync(sweep)),
-      passAgain: Function.constVoid,
+      passAgain: (brainKey) => {
+        log.push(`handed back ${brainKey}`);
+      },
       registriesRead: Function.constVoid,
     },
     upkeep: {
@@ -171,19 +179,37 @@ describe('the follower of the brains, when a read fails', () => {
       'sweep',
     ]);
   });
+});
 
+describe('the follower of the brains, when a pass over a brain fails', () => {
   it('says a pass that fails is trouble, and passes again at the next signal', async () => {
     const watched = followerWith({ passEnds: ['fails'] });
     await logReaching(watched, 3);
 
     watched.raise('brain/acme/alpha/events/e1');
-    await logReaching(watched, 4);
+    await logReaching(watched, 5);
     watched.raise('brain/acme/alpha/events/e2');
-    const log = await logReaching(watched, 5);
+    const log = await logReaching(watched, 6);
 
     expect(log.slice(3)).toEqual([
       'A pass over a brain failed; the next sweep passes the brain again',
+      'handed back brain/acme/alpha/',
       'pass brain/acme/alpha/ signal',
+    ]);
+  });
+
+  it('says a follow of a signalled brain that fails is trouble for that brain alone, passes the others, and hands the brain back', async () => {
+    const watched = followerWith({ followFailingOnce: 'brain/acme/alpha/' });
+    await logReaching(watched, 3);
+
+    watched.raise('brain/acme/alpha/events/e1');
+    watched.raise('brain/acme/beta/events/e1');
+    const log = await logReaching(watched, 6);
+
+    expect(log.slice(3)).toEqual([
+      'A pass over a brain failed; the next sweep passes the brain again',
+      'handed back brain/acme/alpha/',
+      'pass brain/acme/beta/ signal',
     ]);
   });
 });
