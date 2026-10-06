@@ -30,7 +30,7 @@ describe('catalogInstructionsFor', () => {
       [
         opening,
         'Start with list_brains to see them, or create_brain to make one.',
-        'A brain uses named, versioned definitions, called specs in this API.',
+        'A spec is a named, versioned definition in a brain.',
         'The primitive field selects a definition type; each tool describes its supported document formats.',
         'list_models lists the models this server can call.',
         'execute_spec runs a definition and records its run; execution_id identifies it.',

@@ -16,7 +16,7 @@ describe('the description of every operation that takes a primitive', () => {
     for (const { description } of takingAPrimitive) {
       expect(description).toContain(
         [
-          'This brain supports these definition types, selected by the legacy `primitive` field:',
+          'This brain supports these definition types, selected by the `primitive` field:',
           `- \`echo\` (Echo), whose definition documents are application/json: ${echo.description}`,
           '- `probe` (Probe), whose definition documents are text/plain: Answers with its input and the execution it runs in.',
         ].join('\n'),

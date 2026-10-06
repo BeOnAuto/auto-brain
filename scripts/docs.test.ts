@@ -264,7 +264,7 @@ await test('model discovery is documented without treating wildcard entries as r
   assert.ok(tutorial.includes('Do not use a wildcard'));
 });
 
-await test('public workflows are available, and link their format and tutorial without legacy runnable routes', () => {
+await test('public workflows are available and link their format and tutorial, while the runnable walkthroughs stay out of the public routes', () => {
   const workflows = readFileSync(join(docs, 'concepts/workflows.md'), 'utf8');
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
   const tutorial = readFileSync(join(docs, 'tutorials/first-workflow.md'), 'utf8');

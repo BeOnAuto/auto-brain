@@ -60,8 +60,6 @@ Prompts, skills, tools, models and sources support functions. They are not addit
 
 A skill is reusable task guidance and associated resources. A tool is a calling interface: a function exposed as a tool retains its function type. Tools can also represent operations outside the brain. A language model and a predictive model serve different purposes, so qualify the word model when that distinction matters.
 
-<span id="tool-access-inside-a-reason-function"></span>
-
 ## Tool access inside a reasoning function
 
 A reasoning function can call the tools of MCP servers that the runtime's operator configures. The operator binds each server to an org, and optionally to some of its brains, and can narrow which of its tools functions may name. A function lists the tools it may use, such as `graph/search`, or `graph/*` for every tool of a server that the operator allows. During a run, the model can request one of those tools, receive its result and continue before it answers, within bounds on the number of calls, the size of their results and the time the run takes. Each call appears in the run's history as it happens.
@@ -71,16 +69,3 @@ A tool may change something outside the brain. A run that called tools and did n
 One of those servers can be an agent services gateway, which fronts the systems an organization connected and applies its own policies to the application whose key the runtime uses. Provider settings called model gateways connect to language models; they do not provide MCP tools.
 
 Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. Skill references and a separately managed tool library are still planned. Connecting an external agent to Auto does not give the function access to that agent's tools, credentials or accounts: the agent can still collect evidence through its own connections and pass it in as input. See the [Reasoning function format](../reference/reasoning-format.md#tools) and, for the inbound connection, the [MCP reference](../reference/mcp.md).
-
-## API compatibility
-
-Use product terminology when explaining the work, while keeping current wire identifiers intact:
-
-| Product term       | Legacy API term      |
-| ------------------ | -------------------- |
-| Reasoning function | `inference` spec     |
-| Workflow           | `orchestration` spec |
-| Definition         | `spec`               |
-| Run                | `execution`          |
-
-For example, creating a reasoning function uses `create_spec` with `primitive: "inference"`, and creating a workflow uses `primitive: "orchestration"`. Renaming product categories does not rewrite event history or introduce new routes. Planned function types are not accepted API identifiers yet. [Workflow format](../reference/workflow-format.md) describes the workflow document.

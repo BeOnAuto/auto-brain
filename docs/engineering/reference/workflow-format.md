@@ -27,7 +27,7 @@ Measured on an Apple M-series machine, the expressions that do the most work per
 
 The count comes from a patch of `@gabrielbryk/jq-ts` 1.7.0 (`patches/@gabrielbryk__jq-ts@1.7.0.patch` at the root of the repository), which the library offers no hook for. It adds the `maxWork` limit and the `usage` it reports, charges the operations listed above, bounds a compiled regular expression, adds a `deadline` its caller may give, and replaces the library's string search, which in the engine's worst case takes time in proportion to the product of the two lengths, with the Knuth-Morris-Pratt search, linear in their sum. It changes the build that `import` loads and the one that `require()` loads alike, and `packages/workflow-engine/src/engine/portability.test.ts` fails if they drift apart. A new version of the library needs the patch ported, and `packages/workflow-engine/src/dsl/expression-work.test.ts` fails for any charge that goes missing.
 
-### Calling a definition {#executing-a-spec}
+### Calling a definition
 
 `call: execute_spec` executes the active spec of that primitive and name in the same brain through the server's dispatcher, for the caller who started the run, and outputs its output; the public reference lists the errors a call raises. Retrying is the document's choice, with `try` and `catch.retry`: the run waits on durable timers between attempts. The server does not retry a call on its own; a call cut off when the server stopped is performed again when it starts.
 

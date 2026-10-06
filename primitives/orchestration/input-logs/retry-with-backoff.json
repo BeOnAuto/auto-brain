@@ -374,7 +374,7 @@
                                 },
                                 "function": "execute_spec",
                                 "arguments": 2,
-                                "label": "the inference spec flaky",
+                                "label": "the reasoning function flaky",
                                 "deadline": "2"
                               }
                             }
@@ -392,7 +392,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3852
+          "value": 3856
         }
       ],
       "outputs": [
@@ -514,7 +514,7 @@
           "value": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "status": 503,
-            "title": "The inference spec flaky rejected the execution with unavailable",
+            "title": "The reasoning function flaky rejected the execution with unavailable",
             "detail": "busy on call 1",
             "instance": "/do/0/guarded/try/0/fetch"
           }
@@ -522,7 +522,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5675
+          "value": 5683
         }
       ],
       "outputs": [
@@ -670,7 +670,7 @@
                   },
                   "function": "execute_spec",
                   "arguments": 3,
-                  "label": "the inference spec flaky",
+                  "label": "the reasoning function flaky",
                   "deadline": "4"
                 }
               }
@@ -685,7 +685,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8242
+          "value": 8254
         }
       ],
       "outputs": [
@@ -799,7 +799,7 @@
           "value": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "status": 503,
-            "title": "The inference spec flaky rejected the execution with unavailable",
+            "title": "The reasoning function flaky rejected the execution with unavailable",
             "detail": "busy on call 2",
             "instance": "/do/0/guarded/try/0/fetch"
           }
@@ -807,7 +807,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 10066
+          "value": 10082
         }
       ],
       "outputs": [
@@ -955,7 +955,7 @@
                   },
                   "function": "execute_spec",
                   "arguments": 4,
-                  "label": "the inference spec flaky",
+                  "label": "the reasoning function flaky",
                   "deadline": "6"
                 }
               }
@@ -970,7 +970,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 12634
+          "value": 12654
         }
       ],
       "outputs": [
@@ -1082,7 +1082,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 13990
+          "value": 14010
         }
       ],
       "outputs": [

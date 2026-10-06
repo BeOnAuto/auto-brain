@@ -51,8 +51,6 @@ The preview opens under `/docs/`. Read [Documentation contributions](docs/contri
 - **The pull request title matters most.** Pull requests are squash-merged, so the title becomes the commit on `main` and the changelog entry. CI checks it too.
 - **CI must pass, then the pull request merges through the merge queue.** CI runs the full `pnpm check`, builds and smoke-tests the container, and audits the workflows. Keep each pull request to one change.
 
-<span id="adding-a-primitive"></span>
-
 ## Adding a function or workflow adapter
 
 Function and workflow implementations live in `primitives/<name>`. The shared `Primitive` interface is their low-level runtime adapter contract, including custom extension adapters. It is not a product category. Each implemented adapter is a workspace package:
@@ -61,7 +59,7 @@ Function and workflow implementations live in `primitives/<name>`. The shared `P
 - `README.md` saying what the adapter runs and how it reads and writes the ledger.
 - `src/index.ts` as its public interface, with tests beside the code.
 
-Open an issue before adding an adapter or implementing a planned function type. Follow [Brain terminology](docs/concepts/terminology.md) for resource names, canonical domain identifiers and the existing API compatibility boundaries. Workflow coordination is separate from the five function types.
+Open an issue before adding an adapter or implementing a planned function type. Follow [Brain terminology](docs/concepts/terminology.md) for resource names, and [CLAUDE.md](CLAUDE.md) for the names in code. Workflow coordination is separate from the five function types.
 
 ## License
 

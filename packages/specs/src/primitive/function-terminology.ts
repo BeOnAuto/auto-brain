@@ -26,14 +26,9 @@ export const functionDescriptions = {
 
 export const functionKindOrder: readonly BrainFunctionKind[] = ['reason', 'interact', 'predict', 'recall', 'compute'];
 
-export function legacyFunctionKind(primitive: string): BrainFunctionKind | undefined {
-  return primitive === 'inference' ? 'reason' : undefined;
-}
-
 export function definitionResourceLabel(primitive: string): string {
-  const kind = legacyFunctionKind(primitive);
-  if (kind !== undefined) {
-    return functionResourceLabels[kind].singular;
+  if (primitive === 'inference') {
+    return 'reasoning function';
   }
   return primitive === 'orchestration' ? 'workflow' : `${primitive} definition`;
 }

@@ -146,14 +146,14 @@ describe('the executor of the host, answering', () => {
 
 describe('the executor of the host, resuming recorded answers', () => {
   it.each<CallResult>([
-    { status: 'failed', detail: 'The execution failed with incident inc-1' },
+    { status: 'failed', detail: 'The run failed with incident inc-1' },
     {
       status: 'rejected',
       reason: 'invalid_arguments',
-      detail: 'The input of execute_spec takes 262211 bytes as JSON, more than the 262144 an execution takes',
+      detail: 'The input of execute_spec takes 262211 bytes as JSON, more than the 262144 a run takes',
     },
-  ])('redelivers a stored $status result with its historical wording unchanged', async (historical) => {
-    const calls = await executing(() => Effect.succeed(historical));
+  ])('gives a recorded $status answer, as it was recorded, when it next resumes', async (recorded) => {
+    const calls = await executing(() => Effect.succeed(recorded));
     const refusing = calls.executorOn(() => Effect.fail(new Error('The run is busy')));
     await Effect.runPromise(refusing.executor.start(call, run));
     await Effect.runPromise(refusing.idle());
@@ -167,7 +167,7 @@ describe('the executor of the host, resuming recorded answers', () => {
     expect(await Effect.runPromise(giving.resume())).toBe(1);
     await Effect.runPromise(giving.idle());
 
-    expect(answers).toEqual([historical]);
+    expect(answers).toEqual([recorded]);
     expect(calls.performed()).toBe(1);
     expect(await Effect.runPromise(giving.resume())).toBe(0);
   });

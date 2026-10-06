@@ -43,7 +43,7 @@ describe('a rejected execution', () => {
         type: `${types}/${kind}`,
         status,
         instance: '/do/0/lookup/try/0/fetch',
-        title: `The inference spec lookup rejected the execution with ${reason}`,
+        title: `The reasoning function lookup rejected the execution with ${reason}`,
         detail: 'The model is busy',
       },
     });
@@ -84,7 +84,7 @@ describe('a rejected execution that names its kind and because', () => {
         type: 'https://on.auto/problems/tools_unfinished',
         status: 503,
         instance: '/do/0/lookup/try/0/fetch',
-        title: 'The inference spec lookup rejected the execution with unavailable',
+        title: 'The reasoning function lookup rejected the execution with unavailable',
         detail: rejected.detail,
         kind: 'tools_unfinished',
         because: 'server_failed',
@@ -100,7 +100,8 @@ describe('a rejected execution that names its kind and because', () => {
     expect((await interpret(branching, { respond: rejectedAs('mcp_server_failed') })).ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message: 'The inference spec lookup rejected the execution with unavailable: No (at /do/0/lookup/try/0/fetch)',
+      message:
+        'The reasoning function lookup rejected the execution with unavailable: No (at /do/0/lookup/try/0/fetch)',
     });
   });
 });
@@ -132,7 +133,7 @@ describe('a run of a function that called tools and could not finish', () => {
       kind: 'failed',
       type: 'UncaughtError',
       message:
-        'The inference spec lookup rejected the execution with unavailable: It stopped (at /do/0/lookup/try/0/fetch)',
+        'The reasoning function lookup rejected the execution with unavailable: It stopped (at /do/0/lookup/try/0/fetch)',
     });
     expect(calls).toEqual(['run 1']);
   });
@@ -167,7 +168,7 @@ describe('a step that meets a run whose tools may have been called', () => {
       status: 'rejected',
       reason: 'conflict',
       detail:
-        'The inference spec lookup rejected the execution with conflict: It may have called tools (at /do/0/lookup/try/0/fetch)',
+        'The reasoning function lookup rejected the execution with conflict: It may have called tools (at /do/0/lookup/try/0/fetch)',
       kind: 'tools_called',
     });
   });
@@ -181,7 +182,7 @@ describe('a failed execution', () => {
         type: `${types}/runtime`,
         status: 500,
         instance: '/do/0/lookup/try/0/fetch',
-        title: 'The inference spec lookup failed',
+        title: 'The reasoning function lookup failed',
         detail: 'It failed with incident 7',
       },
     });
@@ -194,7 +195,7 @@ describe('a failed execution', () => {
         type: `${types}/communication`,
         status: 503,
         instance: '/do/0/lookup/try/0/fetch',
-        title: 'execute_spec could not reach the inference spec lookup',
+        title: 'execute_spec could not reach the reasoning function lookup',
         detail: 'Error: The call was lost: Error: the host is gone',
       },
     });
