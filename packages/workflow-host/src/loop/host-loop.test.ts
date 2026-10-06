@@ -76,7 +76,7 @@ async function looping({ sweepEveryMs, fire = firedAtOnce, sweep = sweptAtOnce }
     arm: async (timerId, inMs) => {
       const dueAt = Date.now() + inMs;
       const timer: ArmTimer = { kind: 'arm_timer', executionId: runId, timerId, dueAt, purpose: 'wait' };
-      await Effect.runPromise(timers.timers.arm(timer, run));
+      await Effect.runPromise(timers.timers.arm(timer, run, { version: 1, lastStep: null }));
       return dueAt;
     },
     fired: () => fired,
