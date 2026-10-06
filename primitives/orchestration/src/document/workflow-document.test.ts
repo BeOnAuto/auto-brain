@@ -132,4 +132,8 @@ describe('the summary of a workflow spec', () => {
     expect(summaryOf({ document: { title: 'Greeting' }, do: [] })).toEqual({ description: 'Greeting' });
     expect(summaryOf({ do: [] })).toEqual({});
   });
+
+  it('says the workflow reacts when its schedule names a trigger', () => {
+    expect(summaryOf({ schedule: { every: 'PT1H' }, do: [] })).toEqual({ reacts: true });
+  });
 });

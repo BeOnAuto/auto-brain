@@ -1,5 +1,5 @@
 import type { DefinitionSummary } from '@beonauto/specs';
-import { type JsonObject, objectField, textField } from '@beonauto/workflow-engine';
+import { field, type JsonObject, objectField, textField } from '@beonauto/workflow-engine';
 
 export function summaryOf(document: JsonObject): DefinitionSummary {
   const header = objectField(document, 'document') ?? {};
@@ -10,6 +10,7 @@ export function summaryOf(document: JsonObject): DefinitionSummary {
     ...(description === undefined ? {} : { description }),
     ...(inputSchema === undefined ? {} : { inputSchema }),
     ...(outputSchema === undefined ? {} : { outputSchema }),
+    ...(field(document, 'schedule') === undefined ? {} : { reacts: true }),
   };
 }
 

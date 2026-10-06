@@ -17,6 +17,7 @@ export interface DefinitionRunRequest {
   readonly input: Schema.Json;
   readonly executionId: string;
   readonly lineage: Lineage;
+  readonly depth: number;
 }
 
 export type DefinitionRunResult =

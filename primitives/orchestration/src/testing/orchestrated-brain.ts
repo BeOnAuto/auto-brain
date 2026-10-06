@@ -3,13 +3,12 @@ import { setTimeout } from 'node:timers/promises';
 import type { Outcome } from '@beonauto/operations';
 import { memoryLedger } from '@beonauto/operations/testing';
 import { echo } from '@beonauto/specs/testing';
-import { openWorkflowHost, type WorkflowHost } from '@beonauto/workflow-host';
-import { Effect, Function, Schema } from 'effect';
+import type { WorkflowHost } from '@beonauto/workflow-host';
+import { Schema } from 'effect';
 
-import { definitionCalls } from '../calls/function-calls.ts';
 import { makeWorkflowAdapter } from '../primitive/workflow.ts';
-import { orchestrationMachine } from '../runs/orchestration-machine.ts';
 import { brainOn, type Brain } from './brain.ts';
+import { testHost } from './test-host.ts';
 
 export interface OrchestratedBrain extends Brain {
   readonly host: WorkflowHost;
@@ -26,20 +25,7 @@ const isStarted = Schema.is(StartedSchema);
 export async function orchestratedBrain(): Promise<OrchestratedBrain> {
   const ledger = memoryLedger();
   const nested = brainOn(ledger, [echo]);
-  const host = await openWorkflowHost({
-    database: { store: 'sqlite', file: ':memory:' },
-    machine: orchestrationMachine,
-    perform: definitionCalls(nested.executeNested),
-    settle: nested.settle,
-    reports: {
-      unsettled: Effect.logWarning,
-      trouble: Effect.logWarning,
-      lostConnection: Function.constVoid,
-      note: Effect.logWarning,
-    },
-    sweepEveryMs: 20,
-    mostCallsAtOnce: 4,
-  });
+  const host = await testHost(nested);
   const brain = brainOn(ledger, [makeWorkflowAdapter({ runs: host, mostDurationMs, longestCallMs: 660_000 }), echo]);
   const settled = async (executionId: string): Promise<Outcome> => {
     const outcome = await brain.call(brain.getExecution, { execution_id: executionId });

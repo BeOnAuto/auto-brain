@@ -20,15 +20,12 @@ describe('the functions a workflow calls', () => {
     ]);
   });
 
-  it('are named when a document brings catalogs or functions, or a schedule', () => {
+  it('are named when a document brings catalogs or functions', () => {
     expect(
-      workflowPolicy(workflow('schedule: { every: PT1H }\nuse: { catalogs: {}, functions: {} }\ndo: []')).map(
-        ({ detail }) => detail,
-      ),
+      workflowPolicy(workflow('use: { catalogs: {}, functions: {} }\ndo: []')).map(({ detail }) => detail),
     ).toEqual([
       'catalogs are not supported in this version: a workflow calls only execute_spec',
       'reusable functions are not supported in this version: call execute_spec directly',
-      'schedules are not supported in this version: run the workflow with execute_spec',
     ]);
   });
 });

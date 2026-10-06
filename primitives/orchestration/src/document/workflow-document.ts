@@ -7,10 +7,12 @@ import {
   nestingRejections,
   type Rejection,
 } from '@beonauto/workflow-engine';
+import type { Trigger } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
 import { dslProblems, type Problem } from './dsl-validation.ts';
 import { workflowPolicy } from './workflow-functions.ts';
+import { triggerOfDocument } from './workflow-schedule.ts';
 
 const thirtyDays = 2_592_000_000;
 
@@ -54,6 +56,11 @@ export function parseWorkflowDocument(
       ? Effect.succeed(value)
       : Effect.fail(invalidDocument('The workflow document is not a workflow this runtime runs', problems));
   });
+}
+
+export function triggerOfSource(source: string): Trigger | undefined {
+  const reading = readYaml(source, workflowYaml);
+  return 'problems' in reading ? undefined : triggerOfDocument(reading.document.value);
 }
 
 function isShadowed({ pointer }: Problem, rejections: readonly Rejection[]): boolean {

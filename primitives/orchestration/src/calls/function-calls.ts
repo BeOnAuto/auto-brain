@@ -51,7 +51,7 @@ export function definitionCalls(executeSpec: RunDefinition): Perform {
   return (call, run) =>
     Option.match(attributesOfRun(run.attributes), {
       onNone: () => Effect.succeed(noCaller),
-      onSome: ({ org, brain, execution_id: workflowExecution, caller, lineage }) => {
+      onSome: ({ org, brain, execution_id: workflowExecution, caller, lineage, depth = 0 }) => {
         const spec = specArgumentsOf(call.arguments);
         if (isArgumentsProblem(spec)) {
           return Effect.succeed<CallResult>({ status: 'rejected', reason: invalidArguments, detail: spec.title });
@@ -67,6 +67,7 @@ export function definitionCalls(executeSpec: RunDefinition): Perform {
           ...spec,
           executionId,
           lineage: { causationId: waiting, correlationId },
+          depth,
         }).pipe(Effect.map(callResultOf));
       },
     });

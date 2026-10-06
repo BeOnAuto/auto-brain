@@ -71,6 +71,7 @@ describe('a workflow call to a saved definition', () => {
           input: { ticket: 7 },
           executionId: nestedExecutionId(workflowExecution, '/do/0/classify', 1),
           lineage: { causationId: waitingOfTheCall, correlationId: workflowExecution },
+          depth: 0,
         },
       ]);
     },
@@ -83,6 +84,15 @@ describe('a workflow call to a saved definition', () => {
     await Effect.runPromise(perform(classify, belonging));
 
     expect(asked.map(({ lineage }) => lineage)).toEqual([{ causationId: waitingOfTheCall, correlationId: 'root' }]);
+  });
+
+  it('starts the definition at the reaction depth of the run that calls it', async () => {
+    const { perform, asked } = answering({ status: 'succeeded', output: null });
+    const reacting = { ...run, attributes: { ...run.attributes, depth: 3 } };
+
+    await Effect.runPromise(perform(classify, reacting));
+
+    expect(asked.map(({ depth }) => depth)).toEqual([3]);
   });
 });
 
