@@ -2,6 +2,7 @@ import { InvalidInput } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import type { DeliveryEvent } from '../execution/execution-events.ts';
 import { defineExecuteSpec, definePrimitive, type RunContext, type PrimitiveDefinition } from '../index.ts';
 import { noLongestRuns } from '../testing/longest-runs.ts';
 import { recordingJournal } from '../testing/recording-journal.ts';
@@ -25,6 +26,18 @@ const words: PrimitiveDefinition<{ readonly words: readonly string[] }> = {
   summarize: (parsed) => ({ description: `${parsed.words.length} words` }),
   execute: (parsed, input, execution) =>
     Effect.succeed({ output: { words: parsed.words, input }, record: { execution: execution.id } }),
+};
+
+const deliveryOfWords: DeliveryEvent = {
+  type: 'delivery_started',
+  number: 1,
+  channel: 'approvals',
+  target: 'ada',
+  primitive: 'words',
+  name: 'count',
+  spec_version: 1,
+  by: 'brain:alpha',
+  at: '2026-10-01T09:00:00.000Z',
 };
 
 const execution: RunContext = {
@@ -145,7 +158,35 @@ describe('what a primitive declares of its runs', () => {
       { finishesLater: true, longestRunMs: 2000 },
     ]);
   });
+});
 
+describe('what a primitive decides of each document and says of its runs', () => {
+  it('finishes later for the documents it says do, when it decides by what it parsed', async () => {
+    const deciding = definePrimitive({ ...words, finishesLater: ({ words: given }) => given.includes('later') });
+
+    expect([
+      (await Effect.runPromise(deciding.prepare('now'))).finishesLater,
+      (await Effect.runPromise(deciding.prepare('answer later'))).finishesLater,
+    ]).toEqual([false, true]);
+  });
+
+  it('gives no words of a deferral and the words of every capability for a delivery, unless it gives its own', () => {
+    const own = definePrimitive({
+      ...words,
+      runWords: { deferral: (record) => ({ summary: 'Waiting.', data: record }) },
+    });
+
+    expect([definePrimitive(words).runWords.deferral({}), own.runWords.deferral({ to: 'ada' })]).toEqual([
+      undefined,
+      { summary: 'Waiting.', data: { to: 'ada' } },
+    ]);
+    expect(own.runWords.delivery(deliveryOfWords)).toBe(
+      'Delivery attempt 1 of the request started, through the channel “approvals”.',
+    );
+  });
+});
+
+describe('the cancelling of a run', () => {
   it('cancels a run by settling it as cancelled with the kind and reason asked, unless it decides otherwise', () => {
     const asked = { record: { step: 1 }, kind: 'deadline', reason: 'The step ran out of time' } as const;
     const deciding = definePrimitive({

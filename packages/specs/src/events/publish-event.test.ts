@@ -147,6 +147,27 @@ describe('an event the brain does not take', () => {
     });
     expect(specs.ledger.streamNames()).toEqual([]);
   });
+
+  it('is rejected when it claims the cause or the correlation the brain gives its own facts', async () => {
+    const specs = harness();
+
+    expect(
+      await specs.call(
+        publishEvent,
+        publishing({
+          source: '/ledger/eu',
+          type: 'com.acme.approved',
+          causationid: 'request-1',
+          correlationid: 'run-1',
+        }),
+      ),
+    ).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+      issues: [{ pointer: '/event/causationid' }, { pointer: '/event/correlationid' }],
+    });
+    expect(specs.ledger.streamNames()).toEqual([]);
+  });
 });
 
 describe('an event past its bound', () => {

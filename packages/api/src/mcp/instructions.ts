@@ -94,6 +94,12 @@ const orientation: readonly Orientation[] = [
     ),
   },
   {
+    when: serves('list_interactions', 'answer_interaction'),
+    says: saying(
+      'list_interactions lists the requests that runs of interaction functions wait on; answer_interaction answers one.',
+    ),
+  },
+  {
     when: serves('send_execution_event'),
     says: saying('A waiting workflow run receives input through send_execution_event.'),
   },

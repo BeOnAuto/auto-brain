@@ -39,6 +39,11 @@ const explanationByReason: Readonly<Record<RejectionReason, Explanation>> = {
     remedy: 'Nothing more of it runs; start a new run if it is still needed.',
     mayHaveChanged: true,
   },
+  unanswered: {
+    why: 'nobody answered what it asked',
+    remedy: 'Nothing more of it runs; asking again is a new run, which can be started if an answer is still needed.',
+    mayHaveChanged: true,
+  },
 };
 
 const ranUntilCancelled =
@@ -108,6 +113,27 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
     why: 'the run that waited for it ended first, so it was cancelled',
     remedy: 'Nothing more of it runs, since only that run needed it; what it did before may have changed something.',
     mayHaveChanged: true,
+  },
+  expired: {
+    why: 'nobody answered what it asked before the request expired',
+    remedy:
+      'Nothing more of it runs, though the request may have reached someone; asking again is a new run, which can be started, with more time if needed.',
+    mayHaveChanged: true,
+  },
+  undelivered: {
+    why: 'what it had to send could not be delivered, though every attempt was made',
+    remedy:
+      'Nothing more of it runs; whoever runs the server can look into the channel it names, and then a new run can send it again.',
+    mayHaveChanged: true,
+  },
+  channel_not_offered: {
+    why: 'this server does not offer the channel it names',
+    remedy:
+      'This can be put right on your side: whoever runs the server decides which channels this brain may use, so once it names one of those, it can be tried again.',
+  },
+  requests_full: {
+    why: 'the brain already holds as many open requests as it may',
+    remedy: 'Once some of them are answered, expire or are cancelled, it can be tried again.',
   },
   tools_unfinished: {
     why: 'it called tools but could not finish',

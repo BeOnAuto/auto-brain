@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import type { BrainAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
 import { InvalidInput } from '../outcome/invalid-input.ts';
+import type { BrainProjectionReader, ProjectionReader } from '../projections/run-projection.ts';
 import { isCalendarDay } from '../reading/calendar-days.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
 import type {
@@ -112,6 +113,16 @@ function wellFormedWindow(window: RunOutcomeWindow): Effect.Effect<RunOutcomeWin
   return isCalendarDay(from) && isCalendarDay(to) && from <= to
     ? Effect.succeed(window)
     : Effect.die(new RangeError(`The days from ${JSON.stringify(from)} to ${JSON.stringify(to)} are not a window`));
+}
+
+export function brainBoundProjectionReader(ledger: ProjectionReader, brain: BrainAddress): BrainProjectionReader {
+  return {
+    readProjectedRows: (projection, query) =>
+      Number.isSafeInteger(query.limit) && query.limit >= 1
+        ? ledger.readProjectedRows(projection, brain, query)
+        : Effect.die(new RangeError(`A read of projected rows takes a limit of 1 or more, not ${query.limit}`)),
+    countProjectedRows: (projection, where) => ledger.countProjectedRows(projection, brain, where),
+  };
 }
 
 export function brainBoundRunOutcomesReader(ledger: RunOutcomesReader, brain: BrainAddress): BrainRunOutcomesReader {

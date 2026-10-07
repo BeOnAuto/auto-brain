@@ -9,6 +9,7 @@ export interface CallerIdentity {
   readonly org: string;
   readonly permissions: readonly Permission[];
   readonly brains: BrainAccess;
+  readonly requestToken?: string;
 }
 
 export const CallerIdentitySchema = Schema.Struct({
@@ -17,6 +18,10 @@ export const CallerIdentitySchema = Schema.Struct({
   permissions: Schema.Array(PermissionSchema),
   brains: BrainAccessSchema,
 });
+
+export function requestTokenCallerOf(org: string, requestToken: string): CallerIdentity {
+  return { id: 'request-token', org, permissions: [], brains: [], requestToken };
+}
 
 export function brainCallerOf({ org, brain }: { readonly org: string; readonly brain: string }): CallerIdentity {
   return { id: `brain:${brain}`, org, permissions: ['brain:read', 'brain:write'], brains: [brain] };

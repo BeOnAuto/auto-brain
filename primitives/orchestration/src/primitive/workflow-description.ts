@@ -67,7 +67,8 @@ const rules = [
   'and the jq builtins localtime and strflocaltime.',
   'A run starts the workflow and answers started; get_execution shows it settled when the workflow ends:',
   'succeeded with its output, rejected when an error is not caught (invalid_input for a 4xx status other than',
-  '408 and 429, unavailable otherwise), rejected as cancelled when cancel_execution cancels it or it runs',
+  '408 and 429, unavailable otherwise), rejected as unanswered with the kind expired or undelivered when the',
+  'error of a request nobody answered is not caught, rejected as cancelled when cancel_execution cancels it or it runs',
   'as long as a workflow may, rejected as a conflict when its output is larger than a run records, or failed',
   'when it breaks down.',
 ].join(' ');

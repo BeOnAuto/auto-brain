@@ -1,59 +1,90 @@
-import { runStreamOf, type RunOutcome, type RunOutcomeMapping, type RunStream } from '@beonauto/operations';
-
-import type { StatementExecutor } from '../event-store.ts';
 import {
-  inlineRegistrationOf,
-  inTurn,
-  type InlineProjection,
-  type InlineRegistration,
-  type StoredMessage,
-} from './inline-projection.ts';
-import { rowIn, rowsWrite, type RunOutcomeStatements } from './run-outcome-statements.ts';
+  RunOutcomeStatusSchema,
+  type ProjectedRow,
+  type RunOutcome,
+  type RunOutcomeMapping,
+  type RunProjection,
+} from '@beonauto/operations';
+import { Schema } from 'effect';
 
-export interface RunOutcomeKeeping {
-  readonly statements: RunOutcomeStatements;
-  readonly mapping: RunOutcomeMapping;
-}
+const runOutcomesVersion = 1;
 
-async function keptAfter(
-  { statements, mapping }: RunOutcomeKeeping,
-  execute: StatementExecutor,
-  run: RunStream,
-  event: unknown,
-): Promise<void> {
-  const row = mapping.rowAfter(await rowIn(execute, statements, run), event);
-  if (row !== undefined) {
-    await execute.command(rowsWrite([{ run, row }]));
-  }
-}
+export const runOutcomesTable = `run_outcomes_${runOutcomesVersion}`;
 
-function runOutcomeProjection(keeping: RunOutcomeKeeping): InlineProjection {
+const KeptOutcomeSchema = Schema.Struct({
+  started_day: Schema.String,
+  started_at: Schema.String,
+  last_started_at: Schema.String,
+  primitive: Schema.String,
+  name: Schema.String,
+  status: RunOutcomeStatusSchema,
+  duration_ms: Schema.NullOr(Schema.Number),
+  input_tokens: Schema.NullOr(Schema.Number),
+  output_tokens: Schema.NullOr(Schema.Number),
+  cached_tokens: Schema.NullOr(Schema.Number),
+});
+
+const decodeKept = Schema.decodeUnknownSync(KeptOutcomeSchema);
+
+function outcomeOf(row: ProjectedRow): RunOutcome {
+  const kept = decodeKept(row);
   return {
-    types: keeping.mapping.types,
-    handle: (messages, execute) =>
-      inTurn(messages, async ({ stream, data }: StoredMessage) => {
-        const run = runStreamOf(stream);
-        if (run !== undefined) {
-          await keptAfter(keeping, execute, run, keeping.statements.appendedData(data));
-        }
-      }),
+    startedDay: kept.started_day,
+    startedAt: kept.started_at,
+    lastStartedAt: kept.last_started_at,
+    primitive: kept.primitive,
+    name: kept.name,
+    status: kept.status,
+    durationMs: kept.duration_ms,
+    inputTokens: kept.input_tokens,
+    outputTokens: kept.output_tokens,
+    cachedTokens: kept.cached_tokens,
   };
 }
 
-export function replayedRow(
-  { statements, mapping }: RunOutcomeKeeping,
-  messages: readonly { readonly data: unknown }[],
-): RunOutcome | undefined {
-  let row: RunOutcome | undefined;
-  for (const { data } of messages) {
-    row = mapping.rowAfter(row, statements.filledData(data)) ?? row;
-  }
-  return row;
+function rowOf(outcome: RunOutcome): ProjectedRow {
+  return {
+    started_day: outcome.startedDay,
+    started_at: outcome.startedAt,
+    last_started_at: outcome.lastStartedAt,
+    primitive: outcome.primitive,
+    name: outcome.name,
+    status: outcome.status,
+    duration_ms: outcome.durationMs,
+    input_tokens: outcome.inputTokens,
+    output_tokens: outcome.outputTokens,
+    cached_tokens: outcome.cachedTokens,
+  };
 }
 
-export function runOutcomeRegistrations(
-  statements: RunOutcomeStatements,
-  mapping: RunOutcomeMapping | undefined,
-): readonly InlineRegistration[] {
-  return mapping === undefined ? [] : [inlineRegistrationOf(runOutcomeProjection({ statements, mapping }))];
+function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): RunProjection {
+  return {
+    name: 'run_outcomes',
+    version: runOutcomesVersion,
+    types,
+    columns: [
+      { name: 'started_day', kind: 'text' },
+      { name: 'started_at', kind: 'text' },
+      { name: 'last_started_at', kind: 'text' },
+      { name: 'primitive', kind: 'text' },
+      { name: 'name', kind: 'text' },
+      { name: 'status', kind: 'text' },
+      { name: 'duration_ms', kind: 'integer' },
+      { name: 'input_tokens', kind: 'integer' },
+      { name: 'output_tokens', kind: 'integer' },
+      { name: 'cached_tokens', kind: 'integer' },
+    ],
+    indexes: [{ name: 'by_brain_and_day', columns: ['started_day'] }],
+    rowAfter: (row, event) => {
+      const outcome = rowAfter(row === undefined ? undefined : outcomeOf(row), event);
+      return outcome === undefined ? undefined : rowOf(outcome);
+    },
+  };
+}
+
+export function keptProjections(
+  runOutcomes: RunOutcomeMapping | undefined,
+  projections: readonly RunProjection[],
+): readonly RunProjection[] {
+  return [...(runOutcomes === undefined ? [] : [runOutcomeProjectionOf(runOutcomes)]), ...projections];
 }

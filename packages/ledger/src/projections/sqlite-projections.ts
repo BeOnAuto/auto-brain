@@ -1,0 +1,56 @@
+import { SQL } from '@event-driven-io/dumbo';
+import { Schema } from 'effect';
+
+import type { StatementExecutor } from '../event-store.ts';
+import type { ProjectionDialect } from './projection-dialect.ts';
+import { projectionPartsOf, type KeptTables, type ProjectionParts } from './projection-parts.ts';
+
+const defaultPartition = 'emt:default';
+
+const mostParameters = 100;
+
+const decodeText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
+
+const sqliteProjectionDialect: ProjectionDialect = {
+  tableVersions: (name) => SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB ${`${name}_*`}`,
+  columnTypes: { text: 'TEXT', integer: 'INTEGER', boolean: 'INTEGER' },
+  asNumber: (expression) => expression,
+  runStreamsAfter: (after, count, types) =>
+    SQL`SELECT s.stream_id AS stream, (
+        SELECT coalesce(sum(octet_length(m.message_data)), 0) FROM emt_messages AS m
+        WHERE m.stream_id = s.stream_id AND m.message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
+          AND m.partition = ${defaultPartition} AND m.is_archived = FALSE
+      ) AS size
+      FROM emt_streams AS s
+      WHERE s.stream_id > ${after} AND s.stream_id GLOB '*/*/*/executions/*'
+        AND s.partition = ${defaultPartition} AND s.is_archived = FALSE
+      ORDER BY s.stream_id
+      LIMIT ${count}`,
+  messagesOf: (streams, types) =>
+    SQL`SELECT stream_id AS stream, message_type AS type, message_data AS data, stream_position AS position
+      FROM emt_messages
+      WHERE stream_id IN (SELECT value FROM json_each(${JSON.stringify(streams)}))
+        AND message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
+        AND partition = ${defaultPartition} AND is_archived = FALSE
+      ORDER BY stream_id, stream_position`,
+  rowsInAWrite: (columns) => Math.max(1, Math.floor(mostParameters / (columns + 2))),
+  filledData: (column) => decodeText(column),
+  appendedData: (stored) => stored,
+  booleanOf: (value) => (value ? 1 : 0),
+};
+
+export function sqliteProjectionsOf(kept: KeptTables): ProjectionParts {
+  return projectionPartsOf(sqliteProjectionDialect, kept);
+}
+
+interface Transaction {
+  readonly execute: StatementExecutor;
+}
+
+export interface TransactionalPool extends Transaction {
+  readonly withTransaction: (handle: (transaction: Transaction) => Promise<void>) => Promise<void>;
+}
+
+export function preparedOn(prepare: ProjectionParts['prepare'], pool: TransactionalPool): Promise<void> {
+  return prepare(pool.execute, (work) => pool.withTransaction(({ execute }) => work(execute)));
+}

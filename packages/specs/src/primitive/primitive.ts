@@ -2,7 +2,8 @@ import type { CallerIdentity, Conflict, InvalidInput, Noun, Settlement, Unavaila
 import { Effect, type Schema } from 'effect';
 
 import type { CallAnsweredFact, CallStartedFact } from '../execution/execution-commands.ts';
-import type { CancelRequestKind } from '../execution/execution-events.ts';
+import type { CancelRequestKind, DeliveryEvent } from '../execution/execution-events.ts';
+import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
 
 export interface DefinitionSummary {
   readonly description?: string;
@@ -68,6 +69,17 @@ export interface CancelledRun {
 
 export type CancelDecision = (run: CancelledRun) => Settlement;
 
+export interface RunAccount {
+  readonly summary: string;
+  readonly data: { readonly [field: string]: Schema.Json };
+}
+
+export interface RunWords {
+  readonly deferralType: string;
+  readonly deferral: (record: Schema.JsonObject) => RunAccount | undefined;
+  readonly delivery: (fact: DeliveryEvent) => string;
+}
+
 type WhenCancelled = 'stop' | 'finish';
 
 const defaultLongestExecutionMs = 600_000;
@@ -91,9 +103,10 @@ export interface PrimitiveDefinition<Parsed> {
   readonly reachesOutside?: boolean;
   readonly mayChangeOutside?: boolean;
   readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
-  readonly finishesLater?: boolean;
+  readonly finishesLater?: boolean | ((parsed: NoInfer<Parsed>) => boolean);
   readonly longestRunOf?: (parsed: NoInfer<Parsed>) => number;
   readonly cancel?: CancelDecision;
+  readonly runWords?: Partial<RunWords>;
   readonly mostActive?: number;
   readonly standing?: Standing;
 }
@@ -110,6 +123,20 @@ export interface PreparedDefinition {
 function callsNoTools(): boolean {
   return false;
 }
+
+function noDeferralShown(): undefined {
+  return undefined;
+}
+
+function deliveryInWords(fact: DeliveryEvent): string {
+  return fact.type === 'delivery_started' ? deliveryStarted(fact.number, fact.channel) : deliveryEnded(fact);
+}
+
+export const defaultRunWords: RunWords = {
+  deferralType: 'execution_deferred',
+  deferral: noDeferralShown,
+  delivery: deliveryInWords,
+};
 
 export function cancelledAsAsked({ kind, reason }: CancelledRun): Settlement {
   return { status: 'rejected', reason: 'cancelled', kind, detail: reason };
@@ -132,6 +159,7 @@ export interface Primitive {
   readonly mostActive: number;
   readonly standing: Standing;
   readonly cancel: CancelDecision;
+  readonly runWords: RunWords;
   readonly prepare: (source: string) => Effect.Effect<PreparedDefinition, InvalidInput>;
 }
 
@@ -149,14 +177,19 @@ function declaredBounds<Parsed>(definition: PrimitiveDefinition<Parsed>) {
     mostActive: definition.mostActive ?? Number.POSITIVE_INFINITY,
     standing: definition.standing ?? standsAsSaved,
     cancel: definition.cancel ?? cancelledAsAsked,
+    runWords: { ...defaultRunWords, ...definition.runWords },
   };
+}
+
+function finishingOf<Parsed>(declared: PrimitiveDefinition<Parsed>['finishesLater']): (parsed: Parsed) => boolean {
+  return typeof declared === 'function' ? declared : () => declared ?? false;
 }
 
 function declaredRuns<Parsed>(definition: PrimitiveDefinition<Parsed>, longestExecutionMs: number) {
   return {
     whenCancelled: definition.whenCancelled ?? 'stop',
     callsTools: definition.callsTools ?? callsNoTools,
-    finishesLater: definition.finishesLater ?? false,
+    finishesLater: finishingOf<Parsed>(definition.finishesLater),
     longestRunOf: definition.longestRunOf ?? (() => longestExecutionMs),
   };
 }
@@ -186,7 +219,7 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
           execute: (input, execution) => execute(parsed, input, execution),
           whenCancelled,
           callsTools: callsTools(parsed),
-          finishesLater,
+          finishesLater: finishesLater(parsed),
           longestRunMs: longestRunOf(parsed),
         })),
       ),

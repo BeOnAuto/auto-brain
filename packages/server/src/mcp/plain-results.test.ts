@@ -13,6 +13,7 @@ import { answers, textResult, type ScriptedReply } from '@beonauto/inference/tes
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { interactionsCalled } from '../testing/servers/interaction-calls.ts';
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
@@ -242,6 +243,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
         ...(await brainsCalled(session)),
         ...(await reasonFunctionsCalled(session)),
         ...(await workflowsCalled(session)),
+        ...(await interactionsCalled(session, inSales)),
       ],
       errors: await errorsCalled(session),
     }));

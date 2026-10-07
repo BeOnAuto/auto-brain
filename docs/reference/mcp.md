@@ -26,9 +26,9 @@ Authorization uses the same organization, brain and operation permissions as the
 | `/orgs/{org}/mcp`                | Brain management and model discovery for the named org                                                                    |
 | `/orgs/{org}/brains/{brain}/mcp` | Function and workflow operations for one brain, without a `brain` argument                                                |
 
-An agent that connects receives instructions from the endpoint. They begin the same on every endpoint: a brain is the complete system for a business responsibility, it belongs to an organization and holds functions and the workflows that coordinate them, a definition is reusable and a run executes it on an input, and a reasoning function has a prompt and calls a model; the tools call a definition a `spec` and a run an `execution`; and the agent should tell the person in a sentence or two what was done and what they can do next. One sentence then says what the connection acts on: `/mcp` acts in the key's own org, `/orgs/{org}/mcp` manages the brains of one org, and `/orgs/{org}/brains/{brain}/mcp` acts inside one brain. The rest names only the tools the endpoint serves: where to start with the brains, what a definition is and each value of `primitive` the server takes with the kind of definition it names, the models, the tool servers a brain may use, how a run is started and read until it has ended, and how a waiting workflow run receives an event.
+An agent that connects receives instructions from the endpoint. They begin the same on every endpoint: a brain is the complete system for a business responsibility, it belongs to an organization and holds functions and the workflows that coordinate them, a definition is reusable and a run executes it on an input, and a reasoning function has a prompt and calls a model; the tools call a definition a `spec` and a run an `execution`; and the agent should tell the person in a sentence or two what was done and what they can do next. One sentence then says what the connection acts on: `/mcp` acts in the key's own org, `/orgs/{org}/mcp` manages the brains of one org, and `/orgs/{org}/brains/{brain}/mcp` acts inside one brain. The rest names only the tools the endpoint serves: where to start with the brains, what a definition is and each value of `primitive` the server takes with the kind of definition it names, the models, the tool servers a brain may use, how a run is started and read until it has ended, how the requests of interaction functions are listed and answered, and how a waiting workflow run receives an event.
 
-Functions and workflows share the definition tools: those tools accept `inference` for reasoning functions, `computation` for computation functions and `recollection` for recall functions in a self-hosted runtime, and `orchestration` for workflows. Workflow operations also include `send_execution_event`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
+Functions and workflows share the definition tools: those tools accept `inference` for reasoning functions, `interaction` for interaction functions, `computation` for computation functions and `recollection` for recall functions in a self-hosted runtime, and `orchestration` for workflows. Workflow operations also include `send_execution_event`, and interaction functions add `list_interactions` and `answer_interaction`. On `/mcp`, the API key determines the org; local mode uses its local org. Tools do not take a separate org argument. The named org and brain in scoped endpoints remain subject to the key's access restrictions on an authenticated deployment.
 
 ## Tools
 
@@ -37,12 +37,14 @@ Functions and workflows share the definition tools: those tools accept `inferenc
 | Manage brains                | `create_brain`, `list_brains`, `get_brain`, `update_brain`, `retire_brain`                               |
 | List available models        | `list_models`, with an optional `provider` filter                                                        |
 | Manage reasoning functions   | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "inference"`     |
+| Manage interaction functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "interaction"`   |
 | Manage computation functions | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "computation"`   |
 | Manage recall functions      | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "recollection"`  |
 | Manage workflows             | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
 | Run and inspect              | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
+| Answer a request             | `list_interactions`, `answer_interaction`                                                                |
 | Answer a waiting workflow    | `send_execution_event`                                                                                   |
-| Cancel a workflow run        | `cancel_execution`                                                                                       |
+| Cancel a run                 | `cancel_execution`                                                                                       |
 | Publish an event             | `publish_event`                                                                                          |
 | Follow a brain               | `list_brain_events`                                                                                      |
 | Read a brain's analytics     | `get_brain_analytics`                                                                                    |
@@ -57,6 +59,8 @@ Definition operations identify a function or workflow by `primitive` and `name`.
 `get_brain_analytics` counts the runs of a brain that ended over the last 7, 14 or 30 days, with `days`, or between two days, with `from` and `to`: by how they ended, the tokens their models used, and the median and 95th percentile of how long they took, for the whole window and for each `day` of `by_day`, and in `by_function` the number of runs of each definition. It takes the optional `primitive` and `name` filters of `list_executions`. See [Analytics](http.md#analytics) for the window and how each number is counted.
 
 `list_tool_servers` lists the MCP servers set up for the brain, each with the tools a reasoning function may name in `tools` as `server/tool` or `server/*`, so an agent finds the names without being told them; a server that cannot be asked just now shows `unavailable`, in words, in place of its tools. Its optional `server` keeps one server; a name the brain has no server of is refused with `invalid_input`. It asks the servers when it is called, so it is marked as reaching outside the runtime, and it works on a retired brain. See [Tool servers](http.md#tool-servers) for the fields.
+
+`list_interactions` lists the brain's open requests, newest first, each with the `execution_id` of the interaction function's run that asked, the party, the channel, the message, the expiry and how its delivery stands, with optional `to` and `function` filters; it pages with `limit` and `cursor`. `answer_interaction` answers one, with that `execution_id`, an `answer` the function's answer schema takes and an optional `claimed_for`; the run succeeds with the answer as its output, which reaches the workflow that waits for it. An answer that does not match is `invalid_input` with a pointer under `/answer`, and a request that has ended or was answered otherwise is `conflict`. See [Interaction function format](interaction-format.md#answering-a-request).
 
 Retirement is permanent. A retired name cannot be reused, and retired definitions cannot be edited or run.
 
@@ -87,10 +91,11 @@ A run result includes its execution id, definition version, status and output wh
 For a workflow, the summaries read like these, recorded from the [first-workflow tutorial](../tutorials/first-workflow.md):
 
 ```text
-execute_spec: The workflow “review-brief-revision” has started and is still running. It carries on by itself, and how it ends can be looked up later.
-get_execution: The workflow “review-brief-revision” is still running; how it ends can be looked up again later.
-send_execution_event: Delivered the event “com.example.brief.revised” to the running workflow. The workflow uses it as soon as it is waiting for it.
-get_execution: The run of the workflow “review-brief-revision” finished. Its result is too long to repeat here; the whole of it is in the details below.
+execute_spec: The workflow “review-and-approve” has started and is still running. It carries on by itself, and how it ends can be looked up later.
+get_execution: The workflow “review-and-approve” is still running; how it ends can be looked up again later.
+list_interactions: Found 1 request waiting on this page.
+answer_interaction: The request is answered: the run that asked it succeeded, with the answer as its output.
+get_execution: The run of the workflow “review-and-approve” finished. Its result: review: “Revise: the audience lacks a job role.” and approval: (verdict: “approve” and note: “Approved for the autumn launch.”)
 ```
 
 A workflow run is `started` when `execute_spec` returns, unless it ended before its first wait. Read it again with `get_execution` until its status is `succeeded`, `rejected` or `failed`; a cancelled run is `rejected` with the reason `cancelled`; the summary repeats a short result in words and points to `structuredContent` for a long one.

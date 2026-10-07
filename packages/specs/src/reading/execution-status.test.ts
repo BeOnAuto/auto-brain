@@ -20,7 +20,7 @@ const ofGreet = { primitive: 'echo', name: 'greet', spec_version: 1 };
 
 const latestOfEveryType: Readonly<Record<ExecutionEvent['type'], ExecutionEvent>> = {
   execution_started: start,
-  execution_deferred: { type: 'execution_deferred', record: {}, ...fact },
+  execution_deferred: { type: 'execution_deferred', record: {}, ...ofGreet, ...fact },
   execution_succeeded: { type: 'execution_succeeded', output: null, record: {}, ...ofGreet, ...fact },
   execution_rejected: {
     type: 'execution_rejected',
@@ -54,6 +54,15 @@ const latestOfEveryType: Readonly<Record<ExecutionEvent['type'], ExecutionEvent>
     result_sha256: 'b'.repeat(64),
     duration_ms: 5,
     jsonrpc_id: 1,
+    ...fact,
+  },
+  delivery_started: { type: 'delivery_started', number: 1, channel: 'inbox', target: 'ada', ...ofGreet, ...fact },
+  delivery_ended: {
+    type: 'delivery_ended',
+    number: 1,
+    outcome: 'delivered',
+    duration_ms: 5,
+    ...ofGreet,
     ...fact,
   },
 };

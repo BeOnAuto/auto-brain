@@ -9,6 +9,8 @@ export const storedTypesByStatus: Readonly<Record<ExecutionStatus, readonly stri
     'execution_cancel_requested',
     'tool_call_started',
     'tool_call_answered',
+    'delivery_started',
+    'delivery_ended',
   ],
   succeeded: ['execution_succeeded'],
   rejected: ['execution_rejected'],

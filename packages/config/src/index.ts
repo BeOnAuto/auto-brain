@@ -14,3 +14,21 @@ export { fileSetting, type FileSetting, type FileSettingOptions, type References
 export { credentialProblems } from './config-file/credentials.ts';
 export type { FileProblem } from './config-file/file-problem.ts';
 export { substituted, type Reference, type Substituted } from './config-file/references.ts';
+export {
+  decodedJsonSetting,
+  decodedJsonSettingWith,
+  pointerOf,
+  problem,
+  strictly,
+  type SettingDecoder,
+  type SettingProblem,
+} from './json-settings/json-setting.ts';
+export {
+  liesWithin,
+  servedScopeOf,
+  servesBrain,
+  type ServedAddress,
+  type ServedScope,
+  type WrittenScope,
+} from './json-settings/served-scope.ts';
+export { misplacedReferences, secretsOfEntry, type ReferencePlacement } from './json-settings/placed-references.ts';

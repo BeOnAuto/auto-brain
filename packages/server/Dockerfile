@@ -15,11 +15,13 @@ COPY packages/identity/package.json packages/identity/
 COPY packages/ledger/package.json packages/ledger/
 COPY packages/mcp/package.json packages/mcp/
 COPY packages/operations/package.json packages/operations/
+COPY packages/outbound/package.json packages/outbound/
 COPY packages/specs/package.json packages/specs/
 COPY packages/workflow-engine/package.json packages/workflow-engine/
 COPY packages/workflow-host/package.json packages/workflow-host/
 COPY primitives/computation/package.json primitives/computation/
 COPY primitives/inference/package.json primitives/inference/
+COPY primitives/interaction/package.json primitives/interaction/
 COPY primitives/orchestration/package.json primitives/orchestration/
 COPY primitives/recollection/package.json primitives/recollection/
 RUN pnpm install --frozen-lockfile --prod --no-optional --ignore-scripts --filter @beonauto/server...
@@ -47,12 +49,14 @@ COPY packages/identity/src packages/identity/src
 COPY packages/ledger/src packages/ledger/src
 COPY packages/mcp/src packages/mcp/src
 COPY packages/operations/src packages/operations/src
+COPY packages/outbound/src packages/outbound/src
 COPY packages/server/src packages/server/src
 COPY packages/specs/src packages/specs/src
 COPY packages/workflow-engine/src packages/workflow-engine/src
 COPY packages/workflow-host/src packages/workflow-host/src
 COPY primitives/computation/src primitives/computation/src
 COPY primitives/inference/src primitives/inference/src
+COPY primitives/interaction/src primitives/interaction/src
 COPY primitives/orchestration/src primitives/orchestration/src
 COPY primitives/recollection/src primitives/recollection/src
 RUN apt-get update \

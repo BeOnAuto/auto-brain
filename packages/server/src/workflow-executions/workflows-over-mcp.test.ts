@@ -51,6 +51,8 @@ const brainTools = [
   'list_brain_events',
   'publish_event',
   'list_tool_servers',
+  'answer_interaction',
+  'list_interactions',
   'send_execution_event',
 ];
 
@@ -91,11 +93,17 @@ function primitivesOfCreateSpec(listing: unknown): readonly string[] {
 }
 
 describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists fifteen tools on the endpoint of a brain, and every primitive in the spec tools', async () => {
+  it('lists seventeen tools on the endpoint of a brain, and every primitive in the spec tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
     expect(toolNamesIn(listing)).toEqual(brainTools);
-    expect(primitivesOfCreateSpec(listing)).toEqual(['inference', 'computation', 'recollection', 'orchestration']);
+    expect(primitivesOfCreateSpec(listing)).toEqual([
+      'inference',
+      'interaction',
+      'computation',
+      'recollection',
+      'orchestration',
+    ]);
   });
 
   it('executes a workflow that calls a reasoning function definition and waits for an event the tools send', async () => {

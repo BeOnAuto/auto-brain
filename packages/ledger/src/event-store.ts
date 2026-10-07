@@ -1,4 +1,5 @@
 import type {
+  ProjectionReader,
   Lineage,
   RecordedOrder,
   RecordedSelection,
@@ -104,7 +105,7 @@ export interface RunOutcomesStore {
   ) => Promise<readonly RunOutcomeGroup[]>;
 }
 
-export interface LedgerStore extends EventStore, RunOutcomesStore {}
+export interface LedgerStore extends EventStore, RunOutcomesStore, ProjectionReader {}
 
 export interface StatementExecutor {
   readonly query: (sql: SQL) => Promise<{ readonly rows: readonly unknown[] }>;

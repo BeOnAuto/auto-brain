@@ -1,7 +1,7 @@
+import { decodedJsonSettingWith, strictly } from '@beonauto/config';
 import { JsonPointer, Result, Schema } from 'effect';
 
 import { aliasPatternOf, namesModels, patternsOverlap, wildcardsAreTrailing } from '../model/model-alias.ts';
-import { decodeJsonSetting, strictly } from './json-setting.ts';
 import { problem, type SettingProblem } from './setting-values.ts';
 
 export interface AliasReading {
@@ -59,7 +59,7 @@ export function aliasReading(text: string | undefined): AliasReading {
   if (text === undefined) {
     return readingOf({});
   }
-  return Result.match(decodeJsonSetting(setting, text, decodeAliases), {
+  return Result.match(decodedJsonSettingWith(setting, text, decodeAliases), {
     onSuccess: readingOf,
     onFailure: (problems) => ({ problems, aliases: new Map() }),
   });

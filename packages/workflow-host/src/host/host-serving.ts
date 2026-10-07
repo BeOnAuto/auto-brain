@@ -2,7 +2,7 @@ import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import type { Consumer } from '../follower/consumers.ts';
-import { startLoop } from '../loop/host-loop.ts';
+import { startLoop, type LoopParts } from '../loop/host-loop.ts';
 import type { ProjectorSettings } from '../projector/projector-settings.ts';
 import { startProjector } from '../projector/projector.ts';
 import { startReacting } from '../reactions/host-reactions.ts';
@@ -16,6 +16,7 @@ export interface ServingOptions extends EngineOptions {
   readonly views?: ProjectorSettings;
   readonly waiting: WaitingOptions;
   readonly mostOpenCalls?: number;
+  readonly dueWork?: LoopParts['dueWork'];
 }
 
 export interface Serving {
@@ -61,6 +62,7 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
   const loop = startLoop({
     clock: options.clock,
     timers: engine.timers,
+    dueWork: options.dueWork ?? [],
     engine: engine.engine,
     fire: ({ runId, timerId }, at) =>
       Effect.andThen(

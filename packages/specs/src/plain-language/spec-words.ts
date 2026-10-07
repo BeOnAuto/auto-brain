@@ -1,7 +1,7 @@
 import { alternatives, asSentence, capitalized, counted, listed, quoted, type Noun } from '@beonauto/operations';
 import { Option, Schema } from 'effect';
 
-import type { Primitive } from '../primitive/primitive.ts';
+import { defaultRunWords, type Primitive, type RunWords } from '../primitive/primitive.ts';
 import type { ListedDefinition } from '../registry/spec.ts';
 import { wordsOf } from './in-words.ts';
 
@@ -16,6 +16,8 @@ export interface SpecWords {
   readonly allKinds: string;
   readonly nounOf: (primitive: string) => Noun;
   readonly named: (primitive: string, name: string) => string;
+  readonly runWordsOf: (primitive: string) => RunWords;
+  readonly deferralTypes: readonly string[];
 }
 
 const unknownNoun: Noun = { one: 'item', other: 'items' };
@@ -27,6 +29,10 @@ export function specWordsFor(primitives: readonly Primitive[]): SpecWords {
     allKinds: listed(primitives.map(({ noun }) => noun.other)),
     nounOf,
     named: (primitive, name) => `the ${nounOf(primitive).one} ${quoted(name)}`,
+    runWordsOf: (name) => primitives.find((primitive) => primitive.name === name)?.runWords ?? defaultRunWords,
+    deferralTypes: [
+      ...new Set([defaultRunWords.deferralType, ...primitives.map(({ runWords }) => runWords.deferralType)]),
+    ],
   };
 }
 

@@ -1,6 +1,7 @@
 import {
   isKindWithType,
   problemTypeOf,
+  UnansweredKindSchema,
   UnavailableBecauseSchema,
   type KindWithType,
   type Settlement,
@@ -102,7 +103,11 @@ const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
 
 const isUnavailableBecause = Schema.is(UnavailableBecauseSchema);
 
-const cancelledType = problemTypeOf('cancelled');
+const isUnansweredKind = Schema.is(UnansweredKindSchema);
+
+const unansweredType = problemTypeOf('unanswered');
+
+const reasonsWithTypes: ReadonlySet<string> = new Set(['cancelled', 'unanswered']);
 
 export function reasonOfStatus(status: number): 'invalid_input' | 'unavailable' {
   return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
@@ -123,6 +128,9 @@ function ownTypeRejectionOf(kind: KindWithType, detail: string, because: string 
 function settledRejectionOf(error: DslError): Settlement {
   const detail = describeError(error);
   const { type, kind, because } = error;
+  if (type === unansweredType && isUnansweredKind(kind)) {
+    return { status: 'rejected', reason: 'unanswered', kind, detail };
+  }
   if (isKindWithType(kind) && type === problemTypeOf(kind)) {
     return ownTypeRejectionOf(kind, detail, because);
   }
@@ -189,6 +197,7 @@ const rejections: Readonly<Record<string, Classification>> = {
   conflict: ['runtime', 409],
   unavailable: ['communication', 503],
   cancelled: ['runtime', 409],
+  unanswered: ['runtime', 410],
 };
 
 function kindAndBecauseOf({ kind, because }: RejectedCall): Pick<DslError, 'kind' | 'because'> {
@@ -196,8 +205,8 @@ function kindAndBecauseOf({ kind, because }: RejectedCall): Pick<DslError, 'kind
 }
 
 function typeOfRejection(result: FailedCall, kind: string | undefined): string | undefined {
-  if (result.status === 'rejected' && result.reason === 'cancelled') {
-    return cancelledType;
+  if (result.status === 'rejected' && reasonsWithTypes.has(result.reason)) {
+    return problemTypeOf(result.reason);
   }
   return isKindWithType(kind) ? problemTypeOf(kind) : undefined;
 }

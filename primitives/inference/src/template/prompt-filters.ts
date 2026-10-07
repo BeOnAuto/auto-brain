@@ -1,4 +1,4 @@
-import { outputText } from './output-text.ts';
+import { outputText } from '@beonauto/specs/template';
 
 const defaultClipLength = 400;
 

@@ -21,7 +21,7 @@ interface Bounds {
 
 const hour = 3_600_000;
 
-const wholeNumber = /^\d{1,4}$/u;
+const wholeNumber = /^\d{1,7}$/u;
 
 const mostDuration: Bounds = {
   setting: 'ORCHESTRATION_MAX_DURATION',

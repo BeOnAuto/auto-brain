@@ -1,3 +1,4 @@
+import { decodedJsonSettingWith, strictly, type SettingDecoder } from '@beonauto/config';
 import { JsonPointer, Option, Result, Schema } from 'effect';
 
 import { aliasPatternOf, namesModels, patternsOverlap, wildcardsAreTrailing } from '../model/model-alias.ts';
@@ -8,7 +9,6 @@ import {
   namesAnArn,
   parseModelReference,
 } from '../model/model-reference.ts';
-import { decodeJsonSetting, strictly, type SettingDecoder } from './json-setting.ts';
 import { problem, type SettingProblem } from './setting-values.ts';
 
 export interface CatalogReading {
@@ -162,7 +162,7 @@ function declaredReading(
   if (text === undefined) {
     return { problems: [], declared: new Map() };
   }
-  return Result.match(decodeJsonSetting(declaredSetting, text, decodeDeclarations), {
+  return Result.match(decodedJsonSettingWith(declaredSetting, text, decodeDeclarations), {
     onSuccess: (declarations) => {
       const entries = Object.entries(declarations);
       return {
@@ -183,7 +183,7 @@ function allowedReading(
   if (text === undefined) {
     return { problems: [], allowed: null };
   }
-  return Result.match(decodeJsonSetting(allowedSetting, text, decodeAllowed), {
+  return Result.match(decodedJsonSettingWith(allowedSetting, text, decodeAllowed), {
     onSuccess: (allowed) => ({ problems: allowedProblems(allowed, context), allowed }),
     onFailure: (problems) => ({ problems, allowed: null }),
   });

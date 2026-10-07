@@ -69,15 +69,15 @@ describe('the presenter of the events of an execution', () => {
 });
 
 describe('the presenter of work that finishes later', () => {
-  it('presents nothing for it and names no public type of it, so a history goes on from the start', () => {
-    const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'r-1' }, ...fact };
+  it('presents nothing for it when its capability gives no words of it, so a history goes on from the start', () => {
+    const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'r-1' }, ...ofGreet, ...fact };
     const executions = makeSpecPresenters([echo]).find(({ streamKind }) => streamKind === 'executions');
 
     expect([
       present(recorded(deferred)),
       executions?.present(recorded(deferred)),
       executions?.publicNames['execution_deferred'],
-    ]).toEqual([[], [], []]);
+    ]).toEqual([[], [], ['execution_deferred']]);
   });
 });
 

@@ -13,6 +13,7 @@ export { defineListSpecs } from './operations/list-specs.ts';
 export { defineStartVersion } from './operations/start-version.ts';
 export {
   definePrimitive,
+  defaultRunWords,
   type CancelDecision,
   type CancelledRun,
   type Executed,
@@ -25,17 +26,37 @@ export {
   type PrimitiveDefinition,
   type PrimitiveRejection,
   type DefinitionSummary,
+  type RunAccount,
+  type RunWords,
   type Standing,
   type StandingRequest,
   type ToolCallJournal,
 } from './primitive/primitive.ts';
-export type { CallAnsweredFact, CallStartedFact } from './execution/execution-commands.ts';
+export type {
+  CallAnsweredFact,
+  CallStartedFact,
+  DeliveryEndedFact,
+  DeliveryStartedFact,
+  OutboundCallFact,
+} from './execution/execution-commands.ts';
 export {
   CalledBySchema,
   CancelRequestKindSchema,
+  DeliveryBecauseSchema,
+  DeliveryOutcomeSchema,
   type CalledBy,
   type CancelRequestKind,
+  type DeliveryBecause,
+  type DeliveryEnded,
+  type DeliveryEvent,
+  type DeliveryOutcome,
+  type DeliveryStarted,
+  type ExecutionDeferred,
+  type ExecutionEvent,
 } from './execution/execution-events.ts';
+export { executionEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
+export { outboundCallRecorder, type RecordOutboundCall } from './run-work/outbound-calls.ts';
+export { deliveryEnded, deliveryStarted, statusInWords } from './run-work/delivery-words.ts';
 export { mostCallDepth } from './operations/execution-running.ts';
 export {
   cancelRequestOf,
@@ -57,6 +78,7 @@ export {
   type RunDetail,
 } from './execution/execution.ts';
 export {
+  brainBoundSettler,
   executionSettler,
   type ExecutionAddress,
   type SettleExecution,
@@ -66,6 +88,7 @@ export { defineGetExecution, getExecution } from './operations/get-execution.ts'
 export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
+export { ExecutionIdField } from './operations/spec-fields.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
 export { brainEventOf, brainFactOf } from './events/brain-facts.ts';
 export { SpecEventSchema, type SpecEvent } from './registry/spec-events.ts';
@@ -109,6 +132,7 @@ export {
   isWorkflowDefinition,
   type BrainFunctionDefinition,
   type ComputationFunctionDefinition,
+  type InteractionFunctionDefinition,
   type RecallFunctionDefinition,
   type ReasoningFunctionDefinition,
   type WorkflowDefinition,
