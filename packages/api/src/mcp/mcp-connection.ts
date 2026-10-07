@@ -11,7 +11,13 @@ import { serveGuides, type GuideRegistry } from '../guides/guide-serving.ts';
 import { guideShelfOf, type Guide, type GuideShelf, type Recipe } from '../guides/guide-shelf.ts';
 import { guideToolName } from '../guides/guide-tool.ts';
 import type { RunCall } from '../operations/operation-routes.ts';
-import { instructionsFor, type DefinitionType, type McpEndpoint, type ServedTools } from './instructions.ts';
+import {
+  instructionsFor,
+  recipesFollowedWith,
+  type DefinitionType,
+  type McpEndpoint,
+  type ServedTools,
+} from './instructions.ts';
 
 export interface ServerInfo {
   readonly name: string;
@@ -69,6 +75,6 @@ export function serverOf(
     },
   );
   registerTools(server);
-  serveGuides(server, connection.shelf);
+  serveGuides(server, connection.shelf, recipesFollowedWith(served, connection.shelf.recipes));
   return server;
 }

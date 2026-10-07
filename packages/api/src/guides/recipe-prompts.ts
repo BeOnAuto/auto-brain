@@ -2,7 +2,7 @@ import type { GetPromptResult, McpServer, StandardSchemaWithJSON } from '@modelc
 import { Schema } from 'effect';
 
 import { guideAddress, guideMediaType } from './guide-resources.ts';
-import type { GuideShelf, RecipeWords, ShelvedRecipe } from './guide-shelf.ts';
+import type { RecipeWords, ShelvedRecipe } from './guide-shelf.ts';
 
 function wordsSchemaOf({ arguments: given }: ShelvedRecipe): StandardSchemaWithJSON<unknown, RecipeWords> {
   const fields = Object.fromEntries(
@@ -40,7 +40,10 @@ function promptOf(recipe: ShelvedRecipe): (words: RecipeWords) => GetPromptResul
   });
 }
 
-export function serveRecipePrompts(server: Readonly<Pick<McpServer, 'registerPrompt'>>, { recipes }: GuideShelf): void {
+export function serveRecipePrompts(
+  server: Readonly<Pick<McpServer, 'registerPrompt'>>,
+  recipes: readonly ShelvedRecipe[],
+): void {
   for (const recipe of recipes) {
     server.registerPrompt(
       recipe.name,

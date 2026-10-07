@@ -1,10 +1,11 @@
+import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { notebookGuide, noteRecipe } from '../testing/guides.ts';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import { mcpClientKinds, withMcpSession, type McpSession } from '../testing/mcp-clients.ts';
 import { messagesIn, postMcp, requestOf } from '../testing/mcp-requests.ts';
-import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
+import { acmeAdmin, acmeReader, operationServer, type OperationServer } from '../testing/operation-server.ts';
 
 let server: OperationServer;
 let listening: Listening;
@@ -25,6 +26,17 @@ function onMcp<T>(kind: (typeof mcpClientKinds)[number], use: (session: McpSessi
     { url: `${listening.origin}/mcp`, headers: { authorization: `Bearer ${acmeAdmin.key}` } },
     use,
   );
+}
+
+const PromptNamesSchema = Schema.Struct({ prompts: Schema.Array(Schema.Struct({ name: Schema.String })) });
+
+async function promptsListedOn(path: string, key: string): Promise<readonly string[]> {
+  const listed = await withMcpSession(
+    'current revision',
+    { url: `${listening.origin}${path}`, headers: { authorization: `Bearer ${key}` } },
+    (session) => session.listPrompts(),
+  );
+  return Schema.decodeUnknownSync(PromptNamesSchema)(listed).prompts.map(({ name }) => name);
 }
 
 function promptAnswer(request: string) {
@@ -93,5 +105,27 @@ describe('a recipe asked without any arguments at all', () => {
     expect(JSON.stringify(messagesIn(answer))).toMatch(
       /"code":-32602,"message":"Invalid arguments for prompt take-a-note: [^"]*text/u,
     );
+  });
+});
+
+describe('the prompts of a connection', () => {
+  it('are the recipes whose every tool the connection lists for its key', async () => {
+    const listed = await Promise.all([
+      promptsListedOn('/orgs/acme/brains/alpha/mcp', acmeAdmin.key),
+      promptsListedOn('/orgs/acme/mcp', acmeAdmin.key),
+      promptsListedOn('/mcp', acmeReader.key),
+    ]);
+
+    expect(listed).toEqual([['take-a-note'], [], []]);
+  });
+
+  it('leave out a recipe the connection cannot follow, as a prompt it does not have', async () => {
+    await expect(
+      withMcpSession(
+        'current revision',
+        { url: `${listening.origin}/mcp`, headers: { authorization: `Bearer ${acmeReader.key}` } },
+        (session) => session.getPrompt('take-a-note', { text: 'buy milk' }),
+      ),
+    ).rejects.toThrow(/Prompt take-a-note not found/u);
   });
 });

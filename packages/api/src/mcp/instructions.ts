@@ -111,7 +111,7 @@ const guides: Sentences = ({ listed, recipes }) => {
   if (!listed('create_spec')) {
     return ['get_guide holds what these words mean and how each kind of definition is written.'];
   }
-  const served = recipes.filter(({ calls }) => calls.every((name) => listed(name))).map(({ name }) => name);
+  const served = recipes.map(({ name }) => name);
   const reading = 'Before writing a definition, read its format with get_guide';
   return [served.length === 0 ? `${reading}.` : `${reading}, which also holds the recipes: ${inTurn(served)}.`];
 };
@@ -158,20 +158,32 @@ const orientation: readonly Sentences[] = [
   closing,
 ];
 
+function namesOf(tools: ServedTools): readonly string[] {
+  return [...tools.orgTools, ...tools.brainTools];
+}
+
+export function recipesFollowedWith<Calls extends RecipeCalls>(
+  tools: ServedTools,
+  recipes: readonly Calls[],
+): readonly Calls[] {
+  const names = namesOf(tools);
+  return recipes.filter(({ calls }) => calls.every((name) => names.includes(name)));
+}
+
 export function instructionsFor(
   endpoint: McpEndpoint,
   tools: ServedTools,
   definitionTypes: readonly DefinitionType[],
   recipes: readonly RecipeCalls[],
 ): string {
-  const names = [...tools.orgTools, ...tools.brainTools];
+  const names = namesOf(tools);
   const serving: Serving = {
     endpoint,
     names,
     listed: (name) => names.includes(name),
     definitionTypes,
     reasoning: definitionTypes.find(({ primitive }) => primitive === reasoningFunctionType),
-    recipes,
+    recipes: recipesFollowedWith(tools, recipes),
   };
   return [...whatABrainIs, ...orientation.flatMap((sentences) => sentences(serving))].join(' ');
 }

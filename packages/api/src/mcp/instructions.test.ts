@@ -62,10 +62,10 @@ const definitionTypes: readonly DefinitionType[] = [
 ];
 
 const recipes: readonly RecipeCalls[] = [
-  { name: 'first-brain', calls: ['create_brain', 'create_spec', 'execute_spec'] },
-  { name: 'remember', calls: ['create_spec', 'execute_spec'] },
-  { name: 'give-tools', calls: ['list_tool_servers', 'create_spec'] },
-  { name: 'schedule', calls: ['create_spec', 'list_executions'] },
+  { name: 'first-brain', calls: ['list_brains', 'create_brain', 'create_spec', 'execute_spec'] },
+  { name: 'remember', calls: ['list_specs', 'create_spec', 'update_spec', 'execute_spec'] },
+  { name: 'give-tools', calls: ['list_tool_servers', 'create_spec', 'execute_spec', 'get_execution_history'] },
+  { name: 'schedule', calls: ['list_specs', 'create_spec', 'update_spec', 'list_executions', 'get_execution'] },
 ];
 
 const everyEndpoint: readonly (readonly [McpEndpoint, ServedTools])[] = [
