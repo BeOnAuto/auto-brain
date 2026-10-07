@@ -6,6 +6,7 @@ import type { Primitive } from '@beonauto/specs';
 
 import { withLinksResolved } from './page-links.ts';
 import { recipesFor } from './recipes.ts';
+import { withoutSiteMarkup } from './site-markup.ts';
 import { terminologyGuideOf } from './terminology-guide.ts';
 
 export interface ServedGuides {
@@ -28,7 +29,7 @@ function pageText(page: string): string {
 
 function typeGuideOf({ noun, guide }: Pick<Primitive, 'noun' | 'guide'>): Guide {
   const page = pageOfGuide(guide.name);
-  const text = withLinksResolved(pageText(page), page);
+  const text = withLinksResolved(withoutSiteMarkup(pageText(page)), page);
   return {
     name: guide.name,
     title: `${capitalized(noun.one)} format`,

@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withLinksResolved } from './page-links.ts';
 import { servedGuidesOf } from './served-guides.ts';
+import { withoutSiteMarkup } from './site-markup.ts';
 
 function primitiveOf(name: string, noun: string, guide: PrimitiveGuide): Primitive {
   return definePrimitive({
@@ -76,14 +77,16 @@ describe('the guides of a server that runs every type of definition', () => {
     ]);
   });
 
-  it('give each type the whole public page of its format, its links resolved, and the reasoning page what this server offers', () => {
+  it('give each type the whole public page of its format, without the markup of the documentation site, its links resolved, and the reasoning page what this server offers', () => {
     const [reasoningGuide, ...otherGuides] = guides.slice(1);
     const [reasoningPage = '', ...otherPages] = Object.values(pages);
 
     expect(reasoningGuide?.text).toBe(
-      `${withLinksResolved(page(reasoningPage), reasoningPage).trimEnd()}\n\n${onThisServer}\n`,
+      `${withLinksResolved(withoutSiteMarkup(page(reasoningPage)), reasoningPage).trimEnd()}\n\n${onThisServer}\n`,
     );
-    expect(otherGuides.map(({ text }) => text)).toEqual(otherPages.map((path) => withLinksResolved(page(path), path)));
+    expect(otherGuides.map(({ text }) => text)).toEqual(
+      otherPages.map((path) => withLinksResolved(withoutSiteMarkup(page(path)), path)),
+    );
   });
 
   it('title each type guide as its page is titled', () => {
@@ -97,6 +100,16 @@ describe('the guides of a server that runs every type of definition', () => {
 
   it('keep no link a reader of the guide could not follow', () => {
     expect(guides.filter(({ text }) => /\]\((?!https:\/\/)[^)]*\)/u.test(outsideCode(text)))).toEqual([]);
+  });
+});
+
+describe('the text of the guides of a server', () => {
+  it('holds none of the markup the documentation site needs', () => {
+    const { guides } = servedGuidesOf(everyType);
+
+    expect(
+      guides.filter(({ text }) => /^<div v-pre>|^<\/div>$|^<!-- prettier-ignore -->$/mu.test(outsideCode(text))),
+    ).toEqual([]);
   });
 });
 
