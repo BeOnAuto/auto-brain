@@ -46,6 +46,8 @@ export interface Definition<
   readonly successStatus?: SuccessStatusByKind[K];
   readonly reachesOutside?: boolean;
   readonly mayChangeOutside?: boolean;
+  readonly irreversible?: boolean;
+  readonly repeatable?: boolean;
   readonly inputSchema: In;
   readonly outputSchema: Out;
   readonly reasons: readonly R[];

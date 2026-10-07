@@ -105,6 +105,8 @@ function defineOperation<
       successStatus: definition.successStatus ?? 200,
       reachesOutside: definition.reachesOutside ?? false,
       mayChangeOutside: definition.mayChangeOutside ?? false,
+      irreversible: definition.irreversible ?? false,
+      repeatable: definition.repeatable ?? false,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),

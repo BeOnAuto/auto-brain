@@ -69,7 +69,11 @@ At run time, when a handler fails with a reason it did not declare, the call fai
 
 A definition sets `reachesOutside: true` when its handler calls a system outside the server, such as a model provider, and `mayChangeOutside: true` when that call may change something there, such as a tool that writes; the registration carries both, `false` when left out, and a transport can tell its callers, as the MCP tools do with `openWorldHint` and `destructiveHint`.
 
+A command sets `irreversible: true` when what it does cannot be undone, such as retiring a brain or cancelling a run, and `repeatable: true` when a repeat of the same call records nothing more, such as an update that changes nothing or retiring what is already retired. The registration carries both, `false` when left out; the MCP tools take `destructiveHint` from `irreversible` or `mayChangeOutside`, and `idempotentHint` from a query or `repeatable`.
+
 `Unavailable` may carry a `kind` and with it a `because`. Both reach the rejected outcome, where `explanationOf` and `unsuccessfulWords` turn them into plain words, and the problem document, as its extension members `kind` and `because`.
+
+Plain words have bounds: an outcome takes at most `mostOutcomeCharacters`, 400, and the words of a refusal at most `mostRefusalCharacters`, 600. `withinCharacters(text, most)` keeps the whole sentences that fit and ends with "The rest is in the details below.", since the detail is in the structured result beside the words; a first sentence longer than the bound is cut at a word with an ellipsis.
 
 | `kind`              | What could not be used                                                                | `because`                                                                                                                                                                                              |
 | ------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

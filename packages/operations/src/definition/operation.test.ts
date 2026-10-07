@@ -123,6 +123,28 @@ describe('the reach of a registration', () => {
   });
 });
 
+describe('what a registration says of a repeated call', () => {
+  it('says it cannot be undone, and that a repeat records nothing, only when its definition says so', () => {
+    const retiring = defineCommand('org', {
+      ...about,
+      name: 'retire',
+      route: { method: 'POST', path: '/retire' },
+      irreversible: true,
+      repeatable: true,
+    });
+
+    expect(
+      [addNote.registration, retiring.registration].map(({ irreversible, repeatable }) => ({
+        irreversible,
+        repeatable,
+      })),
+    ).toEqual([
+      { irreversible: false, repeatable: false },
+      { irreversible: true, repeatable: true },
+    ]);
+  });
+});
+
 describe('a definition', () => {
   it.each(['Probe', 'probe-name', '', '1probe', `p${'r'.repeat(64)}`])('may not be named %j', (name) => {
     expect(() => defineQuery('org', { ...about, name, route: { method: 'GET', path: '/probe' } })).toThrow(
