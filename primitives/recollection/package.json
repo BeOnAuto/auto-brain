@@ -14,6 +14,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@beonauto/computation": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/specs": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",

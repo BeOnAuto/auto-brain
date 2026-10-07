@@ -713,6 +713,9 @@ importers:
 
   primitives/recollection:
     dependencies:
+      '@beonauto/computation':
+        specifier: workspace:*
+        version: link:../computation
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../../packages/operations
