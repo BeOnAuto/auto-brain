@@ -4,9 +4,9 @@ export const mostInstructionCharacters = 2000;
 
 export const mostDescriptionCharacters = 800;
 
-export const fewestDescriptionSentences = 3;
+const fewestDescriptionSentences = 3;
 
-export const mostDescriptionSentences = 8;
+const mostDescriptionSentences = 8;
 
 export const mostArgumentDescriptionCharacters = 300;
 
@@ -34,7 +34,7 @@ function requireAtLeast(what: string, size: number, fewest: number, unit: string
   }
 }
 
-export function sentencesIn(text: string): number {
+function sentencesIn(text: string): number {
   return text.split(/(?<=[.!?])\s+(?=\S)/u).length;
 }
 
