@@ -54,6 +54,25 @@ describe('a tool call that throws', () => {
   });
 });
 
+describe('a tool call on /mcp that throws', () => {
+  it('names in its words what was asked of an operation whose input has no field, given only its brain', async () => {
+    const { handler, reported } = createTestHandler({ routes: [brokenRuntime] });
+    const listening = await listenOnLoopback(handler);
+
+    const result = await withMcpSession(
+      'current revision',
+      { url: `${listening.origin}/mcp`, headers: {} },
+      (session) => session.callTool('latest_note', { brain: 'alpha' }),
+    );
+    await listening.close();
+
+    expect(result.isError).toBe(true);
+    expect(plainTextIn(result)).toBe(
+      `Could not read the latest note: something went wrong inside the server. It was not caused by anything you did. If it happens again, whoever runs the server can look into it with this reference: ${String(reported[0]?.incident)}.`,
+    );
+  });
+});
+
 describe('an operation without plain language', () => {
   it('cannot be served as an MCP tool, so no result falls back to bare JSON', () => {
     const bare = defineQuery('brain', {

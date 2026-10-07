@@ -112,7 +112,7 @@ describe('a brain tool on /mcp', () => {
 
     expect(latest.isError).toBeUndefined();
     expect(latest.structuredContent).toEqual({ name: 'latest', text: 'the last note' });
-    expect(plainTextIn(latest)).toBe('Done: read the latest note.');
+    expect(plainTextIn(latest)).toBe('The latest note is “latest”.');
   });
 
   it('answers a call without a brain with invalid_input pointing at /brain', async () => {

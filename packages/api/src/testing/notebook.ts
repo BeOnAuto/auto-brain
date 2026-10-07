@@ -120,7 +120,11 @@ export const latestNote = defineQuery('brain', {
     }
     return latest;
   }),
-  plainLanguage: plainly('read the latest note'),
+  plainLanguage: {
+    task: 'read a note',
+    attempt: () => 'read the latest note',
+    outcome: ({ name }) => `The latest note is ${quoted(name)}.`,
+  },
 });
 
 const breakDown = defineQuery('brain', {

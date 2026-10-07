@@ -34,15 +34,17 @@ export function callbackFor(
   { dispatch, operationInputOf, ...words }: CalledTool,
 ): (input: unknown, context: ToolContext) => Promise<CallToolResult> {
   return async (input, { mcpReq: { id, signal } }) => {
+    let operationInput: unknown = input;
     try {
       const restored = withDroppedArgument(
         argumentsOf(input),
         dropped.find((argument) => argument.id === id),
       );
+      operationInput = operationInputOf(restored);
       const call = settle(dispatch(restored), signal).pipe(Effect.annotateLogs({ requestId }));
-      return toolResultOf(await runCall(call), signal.aborted, words, operationInputOf(restored));
+      return toolResultOf(await runCall(call), signal.aborted, words, operationInput);
     } catch (thrown) {
-      return toolResultOf(reportThrown(thrown, requestId), false, words, input);
+      return toolResultOf(reportThrown(thrown, requestId), false, words, operationInput);
     }
   };
 }
