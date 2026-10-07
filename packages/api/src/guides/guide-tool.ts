@@ -8,7 +8,7 @@ import type { GuideShelf } from './guide-shelf.ts';
 
 export const guideToolName = 'get_guide';
 
-export interface GuideToolDefinition {
+interface GuideToolDefinition {
   readonly title: string;
   readonly description: string;
   readonly inputSchema: StandardSchemaWithJSON;
@@ -28,7 +28,7 @@ const strictly: SchemaAST.ParseOptions = { onExcessProperty: 'error', errors: 'a
 
 const failureOf = SchemaIssue.makeFormatterStandardSchemaV1();
 
-export function guideToolDefinitionOf({ everyGuide }: GuideShelf): GuideToolDefinition {
+function guideToolDefinitionOf({ everyGuide }: GuideShelf): GuideToolDefinition {
   return {
     title: 'Get guide',
     description,

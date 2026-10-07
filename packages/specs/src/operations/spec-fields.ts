@@ -12,7 +12,7 @@ function fitsInSourceLimit(source: string): boolean {
 
 const specName = /^[a-z][a-z0-9-]{2,47}$/u;
 
-export function specNameFieldOf(description: string) {
+function specNameFieldOf(description: string) {
   return Schema.String.annotate({ description }).check(Schema.isPattern(specName));
 }
 
