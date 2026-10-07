@@ -21,6 +21,7 @@
     "@beonauto/config": "workspace:*",
     "@beonauto/identity": "workspace:*",
     "@beonauto/inference": "workspace:*",
+    "@beonauto/interaction": "workspace:*",
     "@beonauto/ledger": "workspace:*",
     "@beonauto/mcp": "workspace:*",
     "@beonauto/operations": "workspace:*",
@@ -32,6 +33,7 @@
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@beonauto/outbound": "workspace:*",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

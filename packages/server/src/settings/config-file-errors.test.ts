@@ -52,7 +52,7 @@ describe('a configuration file the server cannot read as settings', { timeout: s
     [
       'holds the URL of the ledger database, which only the environment holds',
       `database_url: postgresql://brains:${secret}@db.example.com/brains\n`,
-      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases, declared_models, allowed_models, mcp_servers, allowed_tools\n`,
+      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases, declared_models, allowed_models, mcp_servers, channels, allowed_tools\n`,
     ],
   ])('stops the start when it %s, naming the line and the key and never a value', async (_, text, line) => {
     await expect(startupLine(text)).resolves.toBe(line);

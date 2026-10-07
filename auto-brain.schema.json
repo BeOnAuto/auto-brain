@@ -232,6 +232,102 @@
       },
       "description": "The MCP servers whose tools a reasoning function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it"
     },
+    "channels": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["webhook"],
+                "description": "webhook: an HTTP POST of the request, signed"
+              },
+              "url": {
+                "type": "string",
+                "description": "The https URL the request is posted to, or http on a loopback address"
+              },
+              "headers": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Headers sent with every delivery, their values treated as secrets: in the configuration file a credential is a reference such as ${PARTNER_API_KEY}"
+              },
+              "secret": {
+                "type": "string",
+                "description": "The Standard Webhooks secret every delivery is signed with, whsec_ and a key of 24 to 64 bytes in base64, as a reference such as ${PARTNER_WEBHOOK_SECRET}"
+              },
+              "to": {
+                "type": "string",
+                "description": "A regular expression the whole of the party a request is rendered to must match, so a brain addresses no one the operator did not allow"
+              },
+              "answers": {
+                "type": "boolean",
+                "description": "true when the receiver may answer within the delivery, with a 200 whose body is the answer; false when left out"
+              },
+              "org": {
+                "type": "string",
+                "description": "The org whose functions may use the channel, required"
+              },
+              "brains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The brains of that org that may use it; every brain of the org when left out"
+              }
+            },
+            "required": ["type", "url", "secret", "to"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["mcp"],
+                "description": "mcp: one call of a tool of a configured MCP server"
+              },
+              "server": {
+                "type": "string",
+                "description": "The MCP server of mcp_servers whose tool delivers the request"
+              },
+              "tool": {
+                "type": "string",
+                "description": "The tool of that server, which allowed_tools must allow"
+              },
+              "with": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "The arguments of the call, each a Liquid template over to, message, run_id, function, expires_at and answer_schema; | json for a structured value"
+              },
+              "to": {
+                "type": "string",
+                "description": "A regular expression the whole of the party a request is rendered to must match, so a brain addresses no one the operator did not allow"
+              },
+              "org": {
+                "type": "string",
+                "description": "The org whose functions may use the channel, required"
+              },
+              "brains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The brains of that org that may use it; every brain of the org when left out"
+              }
+            },
+            "required": ["type", "server", "tool", "with", "to"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "description": "The channels interaction functions send their requests through, keyed by the name a function writes in channel: webhook for a signed HTTP POST, mcp for one call of a tool of mcp_servers. Each is bound to an org and optionally its brains, and to a pattern of the parties it may reach. Secrets are references such as ${PARTNER_WEBHOOK_SECRET}. CHANNELS wins over it"
+    },
     "allowed_tools": {
       "type": "array",
       "items": {

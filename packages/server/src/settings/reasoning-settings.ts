@@ -14,11 +14,11 @@ export interface ReasoningSettings {
   readonly mcp: McpSettings;
 }
 
-interface Problems {
+export interface Problems {
   readonly problems: readonly SettingProblem[];
 }
 
-function listedIn({ problems }: Problems, file: FileUse | undefined): string {
+export function listedIn({ problems }: Problems, file: FileUse | undefined): string {
   const listed = problems.map(({ setting, detail }) =>
     file !== undefined && file.fromFile.includes(setting) ? file.placed(setting, detail) : `${setting}: ${detail}`,
   );
