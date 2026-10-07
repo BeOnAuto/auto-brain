@@ -8,7 +8,9 @@ import type { OrgCall } from './caller-hand-off.ts';
 import { withDroppedArgument } from './dropped-arguments.ts';
 import { toolResultOf, type ToolWords } from './tool-result.ts';
 
-export type Dispatch = (input: Readonly<Record<string, unknown>>) => Effect.Effect<Outcome, never, DispatcherServices>;
+export type Arguments = Readonly<Record<string, unknown>>;
+
+export type Dispatch = (input: Arguments) => Effect.Effect<Outcome, never, DispatcherServices>;
 
 export interface CallServing {
   readonly runCall: RunCall;
@@ -17,6 +19,7 @@ export interface CallServing {
 
 export interface CalledTool extends ToolWords {
   readonly dispatch: Dispatch;
+  readonly operationInputOf: (input: Arguments) => Arguments;
 }
 
 interface ToolContext {
@@ -28,7 +31,7 @@ const argumentsOf = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema
 export function callbackFor(
   { runCall, reportThrown }: CallServing,
   { requestId, dropped }: OrgCall,
-  { dispatch, ...words }: CalledTool,
+  { dispatch, operationInputOf, ...words }: CalledTool,
 ): (input: unknown, context: ToolContext) => Promise<CallToolResult> {
   return async (input, { mcpReq: { id, signal } }) => {
     try {
@@ -37,7 +40,7 @@ export function callbackFor(
         dropped.find((argument) => argument.id === id),
       );
       const call = settle(dispatch(restored), signal).pipe(Effect.annotateLogs({ requestId }));
-      return toolResultOf(await runCall(call), signal.aborted, words, input);
+      return toolResultOf(await runCall(call), signal.aborted, words, operationInputOf(restored));
     } catch (thrown) {
       return toolResultOf(reportThrown(thrown, requestId), false, words, input);
     }

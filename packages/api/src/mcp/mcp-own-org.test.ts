@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
-import { mcpClientKinds, problemIn, withMcpSession, type McpSession } from '../testing/mcp-clients.ts';
+import { mcpClientKinds, plainTextIn, problemIn, withMcpSession, type McpSession } from '../testing/mcp-clients.ts';
 import { initializeAt, messagesIn, postMcp, requestOf } from '../testing/mcp-requests.ts';
 import {
   acmeAdmin,
@@ -102,6 +102,17 @@ describe('a brain tool on /mcp', () => {
     expect(outcome.added.structuredContent).toEqual({ name: 'own-org', text: 'hi' });
     expect(outcome.read.structuredContent).toEqual({ name: 'own-org', text: 'hi' });
     expect(problemIn(outcome.elsewhere)).toMatchObject({ reason: 'not_found', detail: 'There is no note own-org' });
+  });
+
+  it('answers an operation whose input has no field, given only the brain, with its result and its plain words', async () => {
+    const latest = await asKey(acmeAdmin.key, async (session) => {
+      await session.callTool('add_note', { brain: 'beta', name: 'latest', text: 'the last note' });
+      return session.callTool('latest_note', { brain: 'beta' });
+    });
+
+    expect(latest.isError).toBeUndefined();
+    expect(latest.structuredContent).toEqual({ name: 'latest', text: 'the last note' });
+    expect(plainTextIn(latest)).toBe('Done: read the latest note.');
   });
 
   it('answers a call without a brain with invalid_input pointing at /brain', async () => {
