@@ -48,7 +48,7 @@ export function nextAttempt(parts: DeliveryParts, request: DueRequest): Effect.E
     const began = yield* Clock.currentTimeMillis;
     const answerSchema = requestRecordOf(recorded.run.record)?.answer_schema;
     const end = yield* attemptOf(parts, channelFor(parts.channels, row.channel, address), request, answerSchema);
-    const ended = endedFact(start.number, end, (yield* Clock.currentTimeMillis) - began);
+    const ended = endedFact(start.number, end, (yield* Clock.currentTimeMillis) - began, parts.channels.secrets);
     const endedId = yield* recordedCall(parts.ledger, address, ended, { ...lineage, causationId: startedId });
     const settling = { ...request, lineage: { ...lineage, causationId: endedId ?? startedId } };
     yield* settledAfter(parts, settling, start.number, end);
