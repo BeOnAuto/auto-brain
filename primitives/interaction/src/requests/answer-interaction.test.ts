@@ -208,7 +208,7 @@ describe('the words of answers and requests', () => {
       'The request is answered: the run that asked it succeeded, with the answer as its output.',
       'list the open requests',
       'No request is waiting.',
-      '1 requests are waiting on this page.',
+      'Found 1 request waiting on this page.',
     ]);
   });
 });

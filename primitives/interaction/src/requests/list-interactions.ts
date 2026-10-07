@@ -3,6 +3,7 @@ import {
   InvalidInput,
   PagingInputFields,
   PagingOutputFields,
+  counted,
   cursorOfParts,
   defaultPageLimit,
   defineQuery,
@@ -32,6 +33,8 @@ const InteractionSchema = Schema.Struct({
       'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, or undelivered once every attempt failed',
   }),
 }).annotate({ identifier: 'Interaction', description: 'An open request of an interaction function' });
+
+const requestNoun = { one: 'request', other: 'requests' };
 
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
@@ -134,6 +137,6 @@ export const listInteractions = defineQuery('brain', {
     outcome: ({ interactions }) =>
       interactions.length === 0
         ? 'No request is waiting.'
-        : `${interactions.length} requests are waiting on this page.`,
+        : `Found ${counted(interactions.length, requestNoun)} waiting on this page.`,
   },
 });
