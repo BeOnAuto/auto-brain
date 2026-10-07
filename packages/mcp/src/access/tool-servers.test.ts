@@ -123,13 +123,28 @@ describe('the tool servers a listing asks', () => {
   });
 });
 
+describe('a tool server on which the operator allows no tool', () => {
+  it('is listed with no tools and is never asked, as no run could reach it', async () => {
+    const fake = await fakeServer();
+    const quiet = await fakeServer();
+
+    const listing = await listed({ graph: remote(fake), quiet: remote(quiet) }, { allowed: ['graph/echo'] });
+
+    expect(listing).toEqual([
+      { name: 'graph', type: 'http', tools: [echoTool] },
+      { name: 'quiet', type: 'http', tools: [] },
+    ]);
+    expect(quiet.seen()).toEqual([]);
+  });
+});
+
 describe('a tool server that cannot be asked for its tools', () => {
   it('is unavailable, in words, beside the servers that answer', async () => {
     const fake = await fakeServer();
     const gone = await serveFakeMcp();
     await gone.close();
 
-    const listing = await listed({ graph: remote(gone), wiki: remote(fake) }, { allowed: ['wiki/echo'] });
+    const listing = await listed({ graph: remote(gone), wiki: remote(fake) }, { allowed: ['graph/*', 'wiki/echo'] });
 
     expect(listing).toEqual([
       {
@@ -190,12 +205,26 @@ async function sessionsEnded(fake: FakeMcpServer, waited = 0): Promise<number> {
 }
 
 describe('the session a listing opens', () => {
-  it('is ended once the listing has its tools', async () => {
+  it('is ended once the listing has its tools, five requests in all', async () => {
     const fake = await fakeServer();
 
     await listed({ graph: remote(fake) });
 
+    expect(fake.seen().map(({ method, rpc = '' }) => `${method} ${rpc}`.trim())).toEqual(
+      expect.arrayContaining(['POST initialize', 'POST notifications/initialized', 'GET', 'POST tools/list', 'DELETE']),
+    );
+    expect(fake.seen()).toHaveLength(5);
     expect(fake.openSessions()).toBe(0);
+    expect(fake.endedSessions()).toBe(1);
+  });
+
+  it('is one for the listings made at once', async () => {
+    const fake = await fakeServer();
+    const access = accessTo({ graph: remote(fake) });
+
+    await Promise.all([Effect.runPromise(access.listServers(alpha)), Effect.runPromise(access.listServers(alpha))]);
+
+    expect(fake.seen().filter(({ rpc }) => rpc === 'initialize')).toHaveLength(1);
     expect(fake.endedSessions()).toBe(1);
   });
 
