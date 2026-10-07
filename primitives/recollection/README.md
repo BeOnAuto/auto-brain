@@ -39,4 +39,4 @@ The hosted runtime does not offer recall functions until its adapter bounds the 
 
 ## Source
 
-`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialects, the filters and parsing. `src/run` holds a run and the folding settings: the bounds, the input's checks, the answer, its endings and the words of a view not ready. `src/primitive` holds the primitive, its parsing and summary, its standing and its description for agents. `src/testing` holds the example and what the tests share.
+`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialects, the filters and parsing. `src/run` holds a run and the folding settings: the bounds, the input's checks, the answer, its endings and the words of a view not ready. `src/primitive` holds the primitive, its parsing and summary, its standing, and its guide, the public reference page, served to agents as `recall-function`. `src/testing` holds the example and what the tests share.
