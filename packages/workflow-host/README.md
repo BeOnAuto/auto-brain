@@ -271,7 +271,7 @@ The catch-up over 1,000 finishes of workflow runs that nothing waits for was mea
 | the consumer taking finishes, a `DELETE` each | 5,771, 2,639, 304, 271 and 307 ms | 1,505, 7,649, 1,613, 1,384 and 7,195 ms |
 | the consumer taking cancel requests alone     | 1,961, 1,013, 145, 134 and 148 ms | 898, 9,375, 2,869, 898 and 849 ms       |
 
-A finish that no call waits for now makes no delivery, so the follower goes through them about twice as fast on SQLite after the first two rounds, 134 to 148 ms against 271 to 307, and on PostgreSQL the median round fell from 1,613 to 898 ms, while three rounds there, two before and one after, took seven to nine seconds at this load.
+A finish that no call waits for now makes no delivery, so the follower goes through them about twice as fast on SQLite after the first two rounds, 134 to 148 ms against 271 to 307, and on PostgreSQL the median round fell from 1,613 to 898 ms, while three rounds there, two before and one after, took seven to nine seconds at this load. The first-resume and catch-up figures, like the rows above them, were measured on a machine loaded by other work, at the load averages given, so they say how the host behaves under that load and an idle machine is faster.
 
 ## Testing
 

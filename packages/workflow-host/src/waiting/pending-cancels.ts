@@ -61,7 +61,7 @@ const cancelsGivenAtOnce = 4;
 
 const finishTypes: ReadonlySet<string> = new Set(['execution_succeeded', 'execution_rejected', 'execution_failed']);
 
-function endedUnstarted(database: HostDatabase, runId: string): Effect.Effect<boolean> {
+function hasEnded(database: HostDatabase, runId: string): Effect.Effect<boolean> {
   const { org, brain, executionId } = addressOfRun(runId);
   return recordedReaderOf(database.store)(
     { org, brain },
@@ -73,22 +73,21 @@ function endedUnstarted(database: HostDatabase, runId: string): Effect.Effect<bo
   );
 }
 
-function clearedUnlessGoing(database: HostDatabase, runId: string, { outcome }: Submission) {
-  if (outcome !== 'not_started') {
-    return clearedPendingRow(database, runId);
-  }
-  return Effect.flatMap(endedUnstarted(database, runId), (ended) =>
-    ended ? clearedPendingRow(database, runId) : Effect.void,
+function givenToItsRun(parts: PendingParts, { runId, cause, cancel }: PendingCancelRow) {
+  return Effect.flatMap(
+    parts.submitted({ kind: 'cancel_requested', executionId: runId, at: parts.now(), cause, cancel }),
+    ({ outcome }) => (outcome === 'not_started' ? Effect.void : clearedPendingRow(parts.database, runId)),
   );
 }
 
-function givenOrKept(parts: PendingParts, trouble: Trouble, { runId, cause, cancel }: PendingCancelRow) {
-  return parts.submitted({ kind: 'cancel_requested', executionId: runId, at: parts.now(), cause, cancel }).pipe(
-    Effect.flatMap((submission) => clearedUnlessGoing(parts.database, runId, submission)),
+function givenOrKept(parts: PendingParts, trouble: Trouble, row: PendingCancelRow) {
+  return Effect.flatMap(hasEnded(parts.database, row.runId), (ended) =>
+    ended ? clearedPendingRow(parts.database, row.runId) : givenToItsRun(parts, row),
+  ).pipe(
     Effect.as(true),
     Effect.catchCause((failure: Cause.Cause<unknown>) =>
       Effect.as(
-        trouble(`The cancel asked of ${runId} could not be given; the next sweep gives it again`, failure),
+        trouble(`The cancel asked of ${row.runId} could not be given; the next sweep gives it again`, failure),
         false,
       ),
     ),

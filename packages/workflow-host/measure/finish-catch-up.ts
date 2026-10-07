@@ -54,7 +54,7 @@ async function latestOf(opened: Opened): Promise<string | null> {
 
 async function untilAt(opened: Opened, cursor: string | null): Promise<void> {
   const [place] = await placesOf(opened);
-  if (place === undefined || place !== cursor) {
+  if (place !== cursor) {
     await setTimeout(2);
     await untilAt(opened, cursor);
   }

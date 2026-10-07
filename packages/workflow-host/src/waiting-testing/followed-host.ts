@@ -15,12 +15,24 @@ export interface FollowedHost {
   readonly settled: (executionId: string) => Promise<Settlement | undefined>;
 }
 
-export function settledIn(hosted: HostedRuns): (executionId: string) => Promise<Settlement | undefined> {
+export function settledIn(
+  hosted: HostedRuns,
+  attempts?: number,
+): (executionId: string) => Promise<Settlement | undefined> {
   return (executionId) =>
     until(
       () => Promise.resolve(hosted.settlements().get(executionId)),
       (settlement) => settlement !== undefined,
+      attempts,
     );
+}
+
+export async function untilFollowed(database: HostDatabase, attempts?: number): Promise<void> {
+  await until(
+    () => Effect.runPromise(database.read(statement`SELECT brain_key FROM workflow_followed_brains`)),
+    (rows) => rows.length > 0,
+    attempts,
+  );
 }
 
 export async function followedHost(options: HostedOptions = {}): Promise<FollowedHost> {
@@ -28,10 +40,7 @@ export async function followedHost(options: HostedOptions = {}): Promise<Followe
   const database = await openedOn(settings);
   await brainCreated(database.store, 'alpha');
   const hosted = await hostedOn(settings, options);
-  await until(
-    () => Effect.runPromise(database.read(statement`SELECT brain_key FROM workflow_followed_brains`)),
-    (rows) => rows.length > 0,
-  );
+  await untilFollowed(database);
   return {
     database,
     hosted,
@@ -41,7 +50,7 @@ export async function followedHost(options: HostedOptions = {}): Promise<Followe
 
 const Places = Schema.Array(Schema.Struct({ cursor: Schema.NullOr(Schema.String) }));
 
-export async function followedThroughTheLatest(database: HostDatabase): Promise<void> {
+export async function followedThroughTheLatest(database: HostDatabase, attempts?: number): Promise<void> {
   const { records } = await Effect.runPromise(
     recordedReaderOf(database.store)(
       { org: 'acme', brain: 'alpha' },
@@ -57,5 +66,6 @@ export async function followedThroughTheLatest(database: HostDatabase): Promise<
         ),
       ),
     (places) => places[0]?.cursor === records[0]?.cursor,
+    attempts,
   );
 }
