@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 import { answers, scriptedLanguageModel, textResult } from '../testing/index.ts';
 import { execution, reasoningWith } from '../testing/reasoning-runs.ts';
-import { documentOf } from '../testing/spec-documents.ts';
-import { reasoningExample } from './reasoning-description.ts';
+import { documentOf, reasoningExample } from '../testing/spec-documents.ts';
+import { onThisServer } from './on-this-server.ts';
 import { makeReasoningFunctionAdapter } from './reasoning-function.ts';
 
 const { primitive, prepared } = reasoningWith();
@@ -58,19 +58,12 @@ describe('the longest run of a reasoning function', () => {
   });
 });
 
-describe('the reasoning function document', () => {
-  it('describes its document with an example that is a valid spec', () => {
-    expect(primitive.description).toContain(reasoningExample);
-    expect(prepared(reasoningExample).summary).toMatchObject({ description: 'Summarizes an account' });
-  });
-
-  it('says which provider options a spec may set, and that any other is rejected', () => {
-    expect(primitive.description).toContain(
-      'provider_options holds, under a provider namespace, only options that shape how the model reasons or writes its answer (anthropic: thinking; openai: textVerbosity, reasoningMode, logitBias;',
-    );
-    expect(primitive.description).toContain(
-      "bedrock: reasoningConfig), and under a gateway's name only the request body fields its operator allows; any other option is rejected.",
-    );
+describe('the guide to the reasoning function document', () => {
+  it('is reasoning-function, ending with what this server offers', () => {
+    expect(primitive.guide).toEqual({
+      name: 'reasoning-function',
+      onThisServer: onThisServer({ providers: ['anthropic'], aliases: [] }, false),
+    });
   });
 });
 

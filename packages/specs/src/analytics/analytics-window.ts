@@ -11,9 +11,14 @@ export const DaysField = Schema.Literals([7, 14, 30]).annotate({
   description: `The last 7, 14 or 30 days, ending today in UTC; ${defaultDays} when neither days nor from and to are given`,
 });
 
-export const DayField = Schema.String.check(
-  Schema.makeFilter(isCalendarDay, { expected: 'a day of the calendar as YYYY-MM-DD, such as 2026-10-06' }),
-);
+export function dayFieldOf(description: string) {
+  return Schema.String.annotate({ description }).check(
+    Schema.makeFilter(isCalendarDay, {
+      expected: 'a day of the calendar as YYYY-MM-DD, such as 2026-10-06',
+      toJsonSchema: () => [{ format: 'date' }, true],
+    }),
+  );
+}
 
 export interface WindowRequest {
   readonly days?: number;

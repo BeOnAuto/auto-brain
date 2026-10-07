@@ -17,12 +17,12 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
     defineQuery('brain', {
       name: 'get_spec',
       title: 'Get definition',
-      description: known.describe([
-        'Reads one function or workflow definition with its document and returns it, active or retired.',
-        'For a recall function it also returns its standing: the view it keeps, whether that view is live, rebuilding, waiting or stalled, the events folded and how far it lags the brain.',
-        '`primitive` selects the API type identifier and `name` the definition.',
-        'Rejected with not_found when that type is unavailable, or no definition of that type and name exists in the brain.',
-      ]),
+      description: [
+        'Reads one function or workflow definition with its document and returns it, active or retired, with its version and the input and output its document declares.',
+        'For a recall function it also returns the standing of its view: live, rebuilding, waiting or stalled, the events it has folded and how far it lags the brain.',
+        'Use it to show the person a definition or to learn the input a run takes; list_specs lists the definitions of a type.',
+        "`primitive` is the definition's type and `name` its name.",
+      ].join(' '),
       route: { method: 'GET', path: '/specs/{primitive}/{name}' },
       inputSchema: Schema.Struct({ primitive: known.field, name: SpecNameField }),
       outputSchema: DefinitionSchema,

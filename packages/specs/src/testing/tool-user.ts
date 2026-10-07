@@ -82,7 +82,7 @@ export function toolUser(): ToolUser {
   const primitive = definePrimitive({
     name: 'tool-user',
     title: 'Tool user',
-    description: 'Records the tool calls its input asks for, then ends as its input says.',
+    guide: { name: 'tool-user' },
     noun: { one: 'tool user', other: 'tool users' },
     describeOutput: () => 'It called its tools.',
     mediaType: 'text/plain',

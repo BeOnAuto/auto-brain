@@ -16,37 +16,35 @@ const onRuns = new Set([
 
 const takingAPrimitive = operations.filter(({ name }) => !onRuns.has(name));
 
-describe('the description of every operation that takes a primitive', () => {
-  it('lists the primitives by name and title, with the media type of their documents and their own description', () => {
-    expect(takingAPrimitive).toHaveLength(6);
-    for (const { description } of takingAPrimitive) {
-      expect(description).toContain(
-        [
-          'This brain supports these definition types, selected by the `primitive` field:',
-          `- \`echo\` (Echo), whose definition documents are application/json: ${echo.description}`,
-          '- `probe` (Probe), whose definition documents are text/plain: Answers with its input and the execution it runs in.',
-        ].join('\n'),
-      );
-    }
+function described(name: string): string {
+  return String(operations.find((operation) => operation.name === name)?.description);
+}
+
+describe('the description of create_spec', () => {
+  it('names each definition type the brain runs, the kind of definition it is and the guide to its format', () => {
+    expect(described('create_spec')).toContain(
+      "`primitive` is the definition's type and `name` is how workflows and other tools refer to it: echo, a greeting, guide echo; probe, a probe, guide probe.",
+    );
   });
 });
 
-describe('the description of execute_spec', () => {
-  it('names no primitive the brain does not have', () => {
-    const executeSpec = operations.find(({ name }) => name === 'execute_spec');
+describe('the description of every operation', () => {
+  it('stays under 800 characters', () => {
+    expect(operations.filter(({ description }) => description.length >= 800)).toEqual([]);
+  });
 
-    expect(executeSpec?.description).toContain('Work may finish after the call returns');
-    expect(executeSpec?.description).not.toMatch(/workflow/iu);
+  it('carries no format and no catalogue of refusals', () => {
+    expect(operations.filter(({ description }) => /Rejected with|^---$|```/mu.test(description))).toEqual([]);
   });
 });
 
 describe('the JSON Schema of the input of the operations', () => {
-  it('lists the known primitives for the primitive field as a plain enum', () => {
+  it('lists the known primitives for the primitive field as a plain enum, with the kind each names', () => {
     for (const { input } of takingAPrimitive) {
       expect(input.schema).toHaveProperty(['properties', 'primitive'], {
         type: 'string',
         enum: ['echo', 'probe'],
-        description: 'The API type identifier of the function or workflow definition: echo, probe',
+        description: "The definition's type: echo for a greeting or probe for a probe",
       });
       expect(input.schema).toMatchObject({ type: 'object', additionalProperties: false });
     }
@@ -84,6 +82,39 @@ describe('the JSON Schema of the input of the operations', () => {
     expect(operations[6]?.input.schema).toMatchObject({
       properties: { execution_id: { type: 'string', format: 'uuid' } },
       required: ['execution_id'],
+    });
+  });
+});
+
+describe('the JSON Schema of the filters of the runs', () => {
+  it('describes the runs a filter keeps', () => {
+    const listing = operations.find(({ name }) => name === 'list_executions');
+
+    expect(listing?.input.schema).toMatchObject({
+      properties: {
+        primitive: {
+          description: 'Only the runs of definitions of this type: echo for a greeting or probe for a probe',
+        },
+        name: { description: 'Only the runs of the definition with this name' },
+      },
+    });
+  });
+});
+
+describe('what the operations declare of a repeated call', () => {
+  it('declares retiring a definition and cancelling a run irreversible, and updating and retiring repeatable', () => {
+    const declared = Object.fromEntries(
+      operations
+        .filter(({ kind }) => kind === 'command')
+        .map(({ name, irreversible, repeatable }) => [name, { irreversible, repeatable }]),
+    );
+
+    expect(declared).toEqual({
+      create_spec: { irreversible: false, repeatable: false },
+      update_spec: { irreversible: false, repeatable: true },
+      retire_spec: { irreversible: true, repeatable: true },
+      execute_spec: { irreversible: false, repeatable: false },
+      cancel_execution: { irreversible: true, repeatable: true },
     });
   });
 });

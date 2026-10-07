@@ -77,3 +77,21 @@ export function interpret(document: JsonObject, options: InterpretOptions = {}):
 export function outputsAtTimeZero(document: JsonObject, input: Json = {}): ReturnType<typeof outputsAtOnce> {
   return outputsAtOnce(runOf(document, input));
 }
+
+export const workflowExample = [
+  "document: {dsl: '1.0.3', namespace: support, name: triage, version: '1.0.0'}",
+  'do:',
+  '  - classify:',
+  '      call: execute_spec',
+  "      with: {primitive: inference, name: classify-ticket, input: {ticket: '${ .ticket }'}}",
+  "      output: {as: '${ $input + {triage: .} }'}",
+  '  - escalate:',
+  '      if: .triage.urgency == "high"',
+  '      call: execute_spec',
+  "      with: {primitive: inference, name: draft-escalation, input: {ticket: '${ .ticket }'}}",
+  "      output: {as: '${ $input + {note: .} }'}",
+  '  - approval:',
+  '      if: .note != null',
+  '      listen: {to: {one: {with: {type: com.acme.escalation.approved}}}}',
+  "      output: {as: '${ $input + {approved_by: .[0].by} }'}",
+].join('\n');

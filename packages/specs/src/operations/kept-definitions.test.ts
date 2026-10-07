@@ -14,7 +14,7 @@ function keeper(mostActive: number): Primitive {
   return definePrimitive({
     name: 'keeper',
     title: 'Keeper',
-    description: 'Keeps what its document says, for a host to read from the definition record.',
+    guide: { name: 'keeper' },
     noun: { one: 'keeper', other: 'keepers' },
     describeOutput: () => 'It kept.',
     mediaType: 'text/plain',

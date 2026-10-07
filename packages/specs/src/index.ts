@@ -23,6 +23,7 @@ export {
   type PreparedDefinition,
   type Primitive,
   type PrimitiveDefinition,
+  type PrimitiveGuide,
   type PrimitiveRejection,
   type DefinitionSummary,
   type Standing,

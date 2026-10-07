@@ -10,7 +10,7 @@ import {
   recordedPublication,
   type FilledAttribute,
 } from './published-events.ts';
-import { refusingTheBrainsOwnAttributes, reservedEventTypes, reservedSourcesInWords } from './reserved-attributes.ts';
+import { refusingTheBrainsOwnAttributes } from './reserved-attributes.ts';
 
 interface Publication {
   readonly event: CloudEvent;
@@ -18,8 +18,6 @@ interface Publication {
 }
 
 const fillable: readonly FilledAttribute[] = ['id', 'time'];
-
-const reservedTypesInWords = [...reservedEventTypes].join(', ');
 
 function publicationOf(event: EventToPublish, at: string): Publication {
   return {
@@ -52,19 +50,11 @@ export const publishEvent = defineCommand('brain', {
   name: 'publish_event',
   title: 'Publish event',
   description: [
-    'Publishes an event to the brain and returns its id, its time and when the brain recorded it.',
-    '`event` is a CloudEvents 1.0 event. `source`, a URI reference such as /ledger/eu, and `type`, such as',
-    'com.acme.ledger.month-closed, are required; `specversion` (1.0), `id`, `subject`, `time` in RFC 3339,',
-    '`datacontenttype`, `dataschema` and `data`, any JSON value, are optional. Any other attribute is an extension,',
-    'named in lowercase letters and digits, with text, a boolean or an integer as its value, and is kept as given.',
-    'The brain makes an id when `id` is left out, and takes the time it records the event when `time` is left out;',
-    `with them, the event takes at most ${mostPublishedEventBytes} bytes as JSON in UTF-8.`,
-    'An event is one per source and id: publishing it again with the same source and id records nothing and answers',
-    'the id and time recorded first, so a call can be retried safely with the same id, and a time left out on the retry',
-    'changes nothing. A different event under the same source and id is rejected with conflict.',
-    `The types ${reservedTypesInWords} and sources under ${reservedSourcesInWords} are the brain's own, for what it`,
-    'records itself, and are refused. list_brain_events shows the events published to the brain.',
-    'Rejected with invalid_input for an event that breaks these rules.',
+    'Publishes an event to the brain, where a workflow whose schedule names its type starts a run and a recall function that filters on it folds it,',
+    'and returns its id and time.',
+    'Use it when something outside the brain happened that the brain should react to or remember; send_execution_event gives an event to one waiting run instead.',
+    '`event` is a CloudEvents event with a `source` and a `type`, and publishing the same source and id again records nothing, so a call can be retried with its id.',
+    "The brain's own types and sources, such as those of its runs and definitions, are refused.",
   ].join(' '),
   route: { method: 'POST', path: '/events' },
   inputSchema: Schema.Struct({ event: EventToPublishSchema.check(refusingTheBrainsOwnAttributes) }),

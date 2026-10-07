@@ -9,7 +9,7 @@ const header = [
   'export const { Caller, Conflict, InvalidInput, NotFound, Unavailable } = Operations;',
   "import { Effect } from 'effect';",
   "import { definePrimitive } from '../../../src/index.ts';",
-  "export const about = { name: 'probe', title: 'Probe', description: 'Probe.', noun: { one: 'probe', other: 'probes' }, describeOutput: () => 'Probed.', mediaType: 'text/plain' };",
+  "export const about = { name: 'probe', title: 'Probe', guide: { name: 'probe' }, noun: { one: 'probe', other: 'probes' }, describeOutput: () => 'Probed.', mediaType: 'text/plain' };",
   "export const parse = (source: string) => Effect.succeed({ lines: source.split('\\n') });",
   "export const summarize = () => ({ description: 'Probe' });",
 ];

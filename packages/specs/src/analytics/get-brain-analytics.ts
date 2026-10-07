@@ -1,38 +1,32 @@
 import { BrainReader, defineQuery } from '@beonauto/operations';
 import { Clock, Effect, Schema } from 'effect';
 
-import { SpecNameField } from '../operations/spec-fields.ts';
+import { RunsOfNameField } from '../operations/spec-fields.ts';
 import { specWordsFor } from '../plain-language/spec-words.ts';
 import { PrimitiveField, knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { analyticsOf, BrainAnalyticsSchema } from './analytics-answer.ts';
-import { DayField, DaysField, dayOf, defaultDays, longestWindowInDays, windowOf } from './analytics-window.ts';
+import { DaysField, dayFieldOf, dayOf, longestWindowInDays, windowOf } from './analytics-window.ts';
 import { analyticsWords } from './analytics-words.ts';
 
 const description = [
-  'Reads what the runs of the brain did over a window of days in UTC, counted by the day each run first started:',
-  'how many ended, by how they ended (succeeded, failed or rejected), the tokens their models used,',
-  'and how long they took, at the median and the 95th percentile, for the whole window, for each day of it,',
-  'and for each definition by API type identifier and name.',
-  `\`days\`, 7, 14 or 30, reads the last days ending today, ${defaultDays} when left out;`,
-  `\`from\` and \`to\`, days as YYYY-MM-DD, read the days between them, both included, at most ${longestWindowInDays},`,
-  'to no later than today. `days` and `from` and `to` are not given together.',
-  '`primitive` and `name` keep the runs of that API type identifier and definition name.',
-  'A run still going counts nowhere. Durations run from the latest start of a run to its end,',
-  'for the runs that succeeded or failed; a rejected run counts in runs and in tokens when it recorded them,',
-  'never in durations. A percentile is the nearest rank over those durations, and null when there are none.',
-  'Tokens sum what the runs recorded, over every attempt of a run started again under its id, 0 when none did;',
-  '`cached` is the part of `input` read from a cache.',
-  '`by_day` holds every day of the window, oldest first, and `by_function` the definitions with the most runs first.',
-  'Rejected with invalid_input for a window it cannot read, such as a day that is not in the calendar.',
+  'Counts what the runs of the brain did over a window of days in UTC: how many succeeded, failed or were rejected,',
+  'the tokens their models used, and how long they took at the median and the 95th percentile,',
+  'for the window, for each day of it and for each definition.',
+  'Use it when the person asks how the brain is doing; list_executions lists the runs themselves.',
+  '`days` reads the last 7, 14 or 30 days, or `from` and `to` the days between them, and `primitive` and `name` keep the runs of one definition.',
 ].join(' ');
 
 const AnalyticsInputSchema = Schema.Struct({
   days: Schema.optionalKey(DaysField),
-  from: Schema.optionalKey(DayField.annotate({ description: 'The first day to read, as YYYY-MM-DD, in UTC' })),
-  to: Schema.optionalKey(DayField.annotate({ description: 'The last day to read, as YYYY-MM-DD, in UTC' })),
+  from: Schema.optionalKey(dayFieldOf('The first day to read, YYYY-MM-DD in UTC, given with to and not with days')),
+  to: Schema.optionalKey(
+    dayFieldOf(
+      `The last day to read, YYYY-MM-DD in UTC, no later than today and at most ${longestWindowInDays} days from the first`,
+    ),
+  ),
   primitive: Schema.optionalKey(PrimitiveField),
-  name: Schema.optionalKey(SpecNameField.annotate({ description: 'Only runs of definitions with this name' })),
+  name: Schema.optionalKey(RunsOfNameField),
 });
 
 type AnalyticsInput = typeof AnalyticsInputSchema.Type;
@@ -60,5 +54,5 @@ export function defineGetBrainAnalytics(primitives: readonly Primitive[]) {
     handle: readAnalytics,
     plainLanguage: analyticsWords(specWordsFor(primitives)),
   });
-  return known.publish(operation, 'Only runs of definitions with this API type identifier');
+  return known.publish(operation, 'Only the runs of definitions of this type');
 }

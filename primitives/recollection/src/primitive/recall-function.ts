@@ -13,7 +13,6 @@ import type { Schema } from 'effect';
 import { recallBounds, recallDefinitionType } from '../run/recall-bounds.ts';
 import { recallRun } from '../run/recall-run.ts';
 import { parse, summarize } from './recall-definitions.ts';
-import { recallDescription } from './recall-description.ts';
 import { recallStanding } from './recall-standing.ts';
 
 export interface RecallFunctionAdapterOptions {
@@ -40,7 +39,7 @@ export function makeRecallFunctionAdapter({
   return definePrimitive({
     name: recallDefinitionType,
     title: functionCategoryLabels.recall,
-    description: recallDescription,
+    guide: { name: 'recall-function' },
     noun: { one: functionResourceLabels.recall.singular, other: functionResourceLabels.recall.plural },
     describeOutput: describeResult,
     mediaType: 'text/markdown',

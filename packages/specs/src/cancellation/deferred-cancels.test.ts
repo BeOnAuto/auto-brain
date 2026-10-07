@@ -19,7 +19,7 @@ function relayDeciding(cancel: Primitive['cancel']): Primitive {
   return definePrimitive({
     name: 'relay',
     title: 'Relay',
-    description: 'Hands its input on, and decides how a cancel of what it handed on ends.',
+    guide: { name: 'relay' },
     noun: { one: 'relay', other: 'relays' },
     describeOutput: () => 'It handed its input on.',
     mediaType: 'text/plain',
@@ -147,7 +147,7 @@ describe('a cancel of a run whose start says it finishes later, before it record
     const pending = definePrimitive({
       name: 'pending',
       title: 'Pending',
-      description: 'Starts work that finishes later, and is slow to say so.',
+      guide: { name: 'pending' },
       noun: { one: 'pending run', other: 'pending runs' },
       describeOutput: () => 'It is pending.',
       mediaType: 'text/plain',

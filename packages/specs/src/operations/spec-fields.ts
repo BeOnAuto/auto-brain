@@ -10,9 +10,17 @@ function fitsInSourceLimit(source: string): boolean {
   return Buffer.byteLength(source, 'utf8') <= mostSourceBytes;
 }
 
-export const SpecNameField = Schema.String.annotate({
-  description: 'The definition name: 3 to 48 lowercase letters, digits and hyphens, starting with a letter',
-}).check(Schema.isPattern(/^[a-z][a-z0-9-]{2,47}$/u));
+const specName = /^[a-z][a-z0-9-]{2,47}$/u;
+
+export function specNameFieldOf(description: string) {
+  return Schema.String.annotate({ description }).check(Schema.isPattern(specName));
+}
+
+export const SpecNameField = specNameFieldOf(
+  'The definition name: 3 to 48 lowercase letters, digits and hyphens, starting with a letter',
+);
+
+export const RunsOfNameField = specNameFieldOf('Only the runs of the definition with this name');
 
 export const SourceField = Schema.String.annotate({
   description: `The definition document in its type's format, at most ${mostSourceBytes} bytes in UTF-8`,
@@ -24,7 +32,7 @@ export const SourceField = Schema.String.annotate({
 );
 
 export const ExecutionIdField = Schema.String.annotate({
-  description: 'The run id, a UUID in any case, kept in lowercase',
+  description: "The run's id, a UUID in any case, kept in lowercase",
 })
   .check(Schema.isUUID())
   .pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toLowerCase()));

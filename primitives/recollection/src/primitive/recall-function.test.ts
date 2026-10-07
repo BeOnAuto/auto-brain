@@ -37,15 +37,8 @@ describe('a recall function', () => {
       longestExecutionMs: 10_000,
       mostActive: 32,
     });
-    expect(primitive.description).toContain('Use recall function in conversation.');
+    expect(primitive.guide).toEqual({ name: 'recall-function' });
     expect(prepared(campaignReviews).callsTools).toBe(false);
-  });
-
-  it('shows in its description an example it accepts', () => {
-    const { primitive, prepared } = recallWith(poolOf({ workers: 1 }));
-    const [, example = ''] = primitive.description.split('\n\n');
-
-    expect(prepared(example).summary).toMatchObject({ inputSchema: { required: ['campaign'] } });
   });
 });
 
