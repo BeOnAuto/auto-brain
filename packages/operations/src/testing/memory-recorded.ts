@@ -47,7 +47,7 @@ const DefinitionHeldSchema = Schema.Struct({
   name: Schema.optionalKey(Schema.Unknown),
 });
 
-const definitionHeldBy = Schema.decodeUnknownSync(DefinitionHeldSchema);
+const holdsADefinition = Schema.is(DefinitionHeldSchema);
 
 const positionPattern = /^[1-9]\d{0,14}$/u;
 
@@ -146,8 +146,11 @@ function holdsWhatWasAsked(asked: string | undefined, held: unknown): boolean {
 }
 
 function isOfTheDefinitionAsked({ primitive, name }: RunsSelection, { data }: MemoryRecord): boolean {
-  const held = definitionHeldBy(data);
-  return holdsWhatWasAsked(primitive, held.primitive) && holdsWhatWasAsked(name, held.name);
+  const asksForNone = primitive === undefined && name === undefined;
+  return (
+    asksForNone ||
+    (holdsADefinition(data) && holdsWhatWasAsked(primitive, data.primitive) && holdsWhatWasAsked(name, data.name))
+  );
 }
 
 function examinedRuns(

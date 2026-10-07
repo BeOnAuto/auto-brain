@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Decider, InvalidCursor, RecordedPageRequest, RecordedSelection } from '../index.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
+import { memoryRecordedReader } from './memory-recorded.ts';
 
 const HappenedSchema = Schema.Struct({ type: Schema.String });
 
@@ -141,5 +142,37 @@ describe('the in-memory read of the runs of one definition', () => {
       [[7, false]],
       [[0, false]],
     ]);
+  });
+});
+
+describe('the in-memory read of the runs of one definition, over a first record that is not an object', () => {
+  it('lists the run when no definition is asked, and finds it of none when one is', async () => {
+    const readOneRecord = memoryRecordedReader([
+      {
+        position: 1,
+        id: 'message-1',
+        causationId: null,
+        correlationId: null,
+        stream: 'brain/acme/alpha/executions/r1',
+        streamPosition: 1,
+        type: 'execution_started',
+        data: 'orchestration',
+        recordedAt: '2026-10-07T09:00:00.000Z',
+      },
+    ]);
+    const reading = (selection: RecordedSelection) =>
+      readOneRecord({ org: 'acme', brain: 'alpha' }, selection, newestHundred).pipe(
+        Effect.map(({ records }) => records.map(({ data }) => data)),
+      );
+
+    const pages = await Effect.runPromise(
+      Effect.all([
+        reading({ kind: 'executions' }),
+        reading({ kind: 'executions', primitive: 'orchestration' }),
+        reading({ kind: 'executions', name: 'orchestration' }),
+      ]),
+    );
+
+    expect(pages).toEqual([['orchestration'], [], []]);
   });
 });
