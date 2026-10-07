@@ -121,6 +121,39 @@ describe('due rows whose perform never ends, as a delivery to a receiver that ne
   });
 });
 
+describe('due rows in flight', () => {
+  it.each([16, 20, 300])(
+    'are read once a sweep while %i of them hang, however their work reports its next due time',
+    async (count) => {
+      const now = Date.now();
+      const rows = fakeDueWork(0, { reportsRowsInFlight: true });
+      for (const key of Array.from({ length: count }, (_, index) => `hanging-${index}`)) {
+        rows.add(key, now - 1000);
+        rows.hanging(key);
+      }
+
+      await dueLooping(rows, systemClock, 1000);
+      await Effect.runPromise(Effect.sleep(3000));
+
+      expect(rows.reads().due).toBeLessThanOrEqual(5);
+      expect(rows.attempts()).toHaveLength(duePerformedAtOnce);
+    },
+  );
+
+  it('wake the loop when one of them ends, to hand out the rows behind it', async () => {
+    const now = Date.now();
+    const rows = fakeDueWork(50);
+    for (const key of Array.from({ length: dueInOneTick + 20 }, (_, index) => `row-${index}`)) {
+      rows.add(key, now - 1000);
+    }
+
+    await dueLooping(rows);
+    const performed = await eventually(rows.performed, (done) => done.length === dueInOneTick + 20);
+
+    expect(performed).toHaveLength(dueInOneTick + 20);
+  });
+});
+
 describe('a due row that cannot be performed', () => {
   it('is tried again after a wait that doubles, without holding the rows due after it', async () => {
     const now = Date.now();

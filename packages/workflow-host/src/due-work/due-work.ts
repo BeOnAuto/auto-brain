@@ -59,6 +59,10 @@ function awaitedAtMost(handedOut: Effect.Effect<void>): Effect.Effect<void> {
   return Effect.interruptible(Effect.raceFirst(handedOut, Effect.sleep(dueAwaitedMs)));
 }
 
+function laterThan(now: number, next: number | null): number {
+  return next === null || next <= now ? Number.POSITIVE_INFINITY : next;
+}
+
 function workPerformer(work: DueWork, parts: DueParts): DuePerformer {
   const waits = rowWaits();
   const running = background();
@@ -66,9 +70,7 @@ function workPerformer(work: DueWork, parts: DueParts): DuePerformer {
   const backlog = { more: false };
   const performedItem = itemPerformer(work, waits, parts);
   const finished = Effect.sync(() => {
-    if (backlog.more) {
-      parts.wake();
-    }
+    parts.wake();
   });
   const handedOut = (items: readonly DueItem[], now: number): readonly string[] => {
     const ready = items.filter(({ key }) => !waits.holds(key, now) && !running.has(key));
@@ -92,7 +94,7 @@ function workPerformer(work: DueWork, parts: DueParts): DuePerformer {
       backlog.more && running.size() < dueInOneTick
         ? Effect.succeed(now)
         : work.nextDueAt(now).pipe(
-            Effect.map((next) => Math.min(next ?? Number.POSITIVE_INFINITY, waits.nextUntil(now))),
+            Effect.map((next) => Math.min(laterThan(now, next), waits.nextUntil(now))),
             Effect.catchCause((cause) =>
               Effect.as(
                 parts.trouble(

@@ -19,6 +19,7 @@ export interface FakeDueWork {
   readonly attempts: () => readonly PerformedRow[];
   readonly mostAtOnce: () => number;
   readonly failReads: (times: number) => void;
+  readonly reads: () => { readonly due: number; readonly next: number };
 }
 
 interface RowStore {
@@ -26,6 +27,7 @@ interface RowStore {
   readonly done: (row: PerformedRow) => void;
   readonly dueBy: (now: number, most: number) => readonly string[];
   readonly nextAfter: (after: number) => number | null;
+  readonly soonest: () => number;
   readonly performed: () => readonly PerformedRow[];
 }
 
@@ -62,6 +64,7 @@ function rowStore(): RowStore {
         .filter((dueAt) => dueAt > after);
       return later.length === 0 ? null : Math.min(...later);
     },
+    soonest: () => Math.min(Number.POSITIVE_INFINITY, ...listed().map(({ dueAt }) => dueAt)),
     performed: () => performed,
   };
 }
@@ -109,10 +112,14 @@ function itemOf(store: RowStore, flown: Flight, row: Omit<PerformedRow, 'at'>, p
   };
 }
 
-export function fakeDueWork(performMs = 0): FakeDueWork {
+export interface FakeOptions {
+  readonly reportsRowsInFlight?: boolean;
+}
+
+export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: FakeOptions = {}): FakeDueWork {
   const store = rowStore();
   const flown = flight();
-  const reads = { failing: 0 };
+  const reads = { failing: 0, due: 0, next: 0 };
   const read = <A>(answer: () => A): Effect.Effect<A, Error> =>
     Effect.suspend(() => {
       reads.failing -= 1;
@@ -121,8 +128,16 @@ export function fakeDueWork(performMs = 0): FakeDueWork {
   return {
     work: (by) => ({
       name: 'the fake rows',
-      due: (now, most) => read(() => store.dueBy(now, most).map((key) => itemOf(store, flown, { key, by }, performMs))),
-      nextDueAt: (after) => read(() => store.nextAfter(after)),
+      due: (now, most) =>
+        read(() => {
+          reads.due += 1;
+          return store.dueBy(now, most).map((key) => itemOf(store, flown, { key, by }, performMs));
+        }),
+      nextDueAt: (after) =>
+        read(() => {
+          reads.next += 1;
+          return reportsRowsInFlight ? store.soonest() : store.nextAfter(after);
+        }),
     }),
     add: store.add,
     failing: flown.failing,
@@ -133,5 +148,6 @@ export function fakeDueWork(performMs = 0): FakeDueWork {
     failReads: (times) => {
       reads.failing = times;
     },
+    reads: () => ({ due: reads.due, next: reads.next }),
   };
 }
