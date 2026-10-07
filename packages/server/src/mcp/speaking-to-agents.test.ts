@@ -1,72 +1,39 @@
-import {
-  internalTermsIn,
-  listedTools,
-  plainTextIn,
-  withMcpSession,
-  type ListedTool,
-  type McpSession,
-} from '@beonauto/api/testing';
+import { internalTermsIn, plainTextIn, type McpSession } from '@beonauto/api/testing';
 import { answers, jsonResult } from '@beonauto/inference/testing';
-import { serveFakeMcp } from '@beonauto/mcp/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import {
+  descriptionIn,
+  sentenceNaming,
+  sentencesOf,
+  servingMeetings,
+  type MeetingsServer,
+  type Surfaces,
+} from '../testing/servers/meetings-server.ts';
 import { recallTestTimeoutMs } from '../testing/servers/recall-server.ts';
 
-const slackKey = 'slack-api-key-7c2e9b14';
-
-const closing: (() => Promise<void>)[] = [];
-
-let server: ReasoningServer;
-
-interface Surfaces {
-  readonly instructions: string;
-  readonly tools: readonly ListedTool[];
-}
+let meetings: MeetingsServer;
 
 let surfaces: Surfaces;
 
 function onMcp<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
-  return withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, use);
+  return meetings.onMcp(use);
 }
 
 beforeAll(async () => {
-  const slack = await serveFakeMcp({ bearer: slackKey });
-  closing.push(slack.close);
-  server = await servingReasoning([answers(jsonResult({ posted: 'The notes of the standup, to the team channel' }))], {
-    LOCAL_MODE: 'true',
-    SLACK_KEY: slackKey,
-    NOTES_KEY: 'a-key-the-server-refuses',
-    MCP_SERVERS: JSON.stringify({
-      slack: { url: slack.url, headers: { Authorization: 'Bearer ${SLACK_KEY}' }, org: 'local', brains: ['meetings'] },
-      notes: { url: slack.url, headers: { Authorization: 'Bearer ${NOTES_KEY}' }, org: 'local', brains: ['meetings'] },
-    }),
-    ALLOWED_TOOLS: JSON.stringify(['slack/*', 'notes/*']),
-  });
-  closing.push(server.stop);
-  surfaces = await onMcp(async (session) => ({
-    instructions: String(session.instructions),
-    tools: listedTools(await session.listTools()),
-  }));
+  meetings = await servingMeetings([answers(jsonResult({ posted: 'The notes of the standup, to the team channel' }))]);
+  ({ surfaces } = meetings);
 });
 
 afterAll(async () => {
-  await Promise.all(closing.splice(0).map((close) => close()));
+  await meetings.stop();
 });
 
 const mappingOfTheWireNames = /The tools call a definition a spec[^.]*\./u;
 
-function sentencesOf(text: string): readonly string[] {
-  return text.split(/(?<=[.!?])\s+(?=[A-Z`])/u);
-}
-
-function sentenceNaming(text: string, ...words: readonly string[]): string {
-  return String(sentencesOf(text).find((sentence) => words.every((word) => sentence.includes(word))));
-}
-
 function descriptionOf(tool: string): string {
-  return String(surfaces.tools.find(({ name }) => name === tool)?.description);
+  return descriptionIn(surfaces, tool);
 }
 
 const PromptSchema = Schema.Struct({
