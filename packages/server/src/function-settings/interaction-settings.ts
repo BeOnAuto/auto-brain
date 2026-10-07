@@ -3,10 +3,10 @@ import { ChannelSettingsInvalid, readChannelSettings, type ChannelSettings } fro
 import type { McpSettings } from '@beonauto/mcp';
 import { Effect, Schema } from 'effect';
 
-import { InvalidSettingsError } from './invalid-settings-error.ts';
-import { Origin } from './origin.ts';
+import { InvalidSettingsError } from '../settings/invalid-settings-error.ts';
+import { Origin } from '../settings/origin.ts';
+import { countOf } from '../settings/workflow-settings.ts';
 import { listedIn, type Problems } from './reasoning-settings.ts';
-import { countOf } from './workflow-settings.ts';
 
 export interface InteractionSettings {
   readonly channels: ChannelSettings;

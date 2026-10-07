@@ -2,9 +2,9 @@ import { configurationOf, readServerConfig, type Environment, type FileUse } fro
 import { readApiKeys, type ApiKey } from '@beonauto/identity';
 import { Effect, Result } from 'effect';
 
+import { fileSettings } from '../config-file/file-settings.ts';
+import { readFunctionSettings, type FunctionSettings } from '../function-settings/function-settings.ts';
 import { readAccessSettings, type AccessSettings } from './access-settings.ts';
-import { fileSettings } from './file-settings.ts';
-import { readFunctionSettings, type FunctionSettings } from './function-settings.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
 import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
 

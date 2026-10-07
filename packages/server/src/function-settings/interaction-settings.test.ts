@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { readSettings } from './settings.ts';
+import { readSettings } from '../settings/settings.ts';
 
 const partner = {
   type: 'webhook',

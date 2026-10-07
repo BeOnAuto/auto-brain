@@ -2,7 +2,7 @@ import { configurationOf, type Environment } from '@beonauto/config';
 import { providerStatus, readModelSettings } from '@beonauto/inference';
 import { Effect, Function, Result } from 'effect';
 
-import { fileSettings } from '../settings/file-settings.ts';
+import { fileSettings } from '../config-file/file-settings.ts';
 
 const noModelYet = 'none configured; copy .env.example to .env and put a key in it';
 
