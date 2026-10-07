@@ -32,7 +32,7 @@ function listedOf(references: readonly ToolReference[]): string {
   return conjunction.format(references.map((reference) => writtenOf(reference)));
 }
 
-function isAllowed(reference: ToolReference, allowed: readonly ToolReference[] | null): boolean {
+export function isAllowed(reference: ToolReference, allowed: readonly ToolReference[] | null): boolean {
   return (
     allowed === null ||
     allowed.some(

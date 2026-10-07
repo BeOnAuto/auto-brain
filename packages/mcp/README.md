@@ -1,6 +1,6 @@
 # @beonauto/mcp
 
-How a brain reaches the outside world: the MCP servers the operator configures, and the tools a run is offered from them, as [decision 0003](../../docs/decisions/0003-mcp-servers.md) sets out. The server reads the settings and makes one `ToolAccess`; the reasoning function adapter opens a run's tools through it when a reasoning function names `tools`, and runs the model's tool loop over what it gets back.
+How a brain reaches the outside world: the MCP servers the operator configures, and the tools a run is offered from them, as [decision 0003](../../docs/decisions/0003-mcp-servers.md) sets out. The server reads the settings and makes one `ToolAccess` at its composition root, which it gives to both capabilities that reach a tool: the reasoning function adapter opens a run's tools through it when a reasoning function names `tools`, and runs the model's tool loop over what it gets back; the interaction function adapter delivers a request through a channel of the type `mcp` with one call of one tool.
 
 ## Entry points
 
@@ -39,6 +39,7 @@ Nothing is learned from a server when the settings are read: the server starts w
 
 - `configured`: whether any server is configured, which makes `execute_spec` destructive.
 - `open(execution, references)`: the tools of one run, for the execution's id, org, brain and journal, and the `server/tool` references its reasoning function names.
+- `callOnce(call)`: one call of one tool for a delivery (see [One call for a delivery](#one-call-for-a-delivery)).
 - `close()`: ends every session and stops every process, when the server stops.
 
 `open` fails with `ToolNotOffered` when a reference names a server not configured for the execution's org and brain (`mcp_server_not_configured`), a tool the operator does not allow (`tool_not_allowed`), or a tool its server does not list (`tool_not_listed`), and with `McpServerFailed` when a server cannot be used (`unreachable`, `failing` or `rate_limited`). Otherwise it connects to each named server, lists its tools once, and keeps that listing for the run: a `list_changed` notification changes nothing, and a call to a tool the server no longer has is a tool error. `server/*` offers every listed tool the operator allows.
@@ -54,6 +55,14 @@ A call of an offered tool:
 5. answers the model: text content as text, structured content only when there is no text, other content as a one-line placeholder, an `isError` result as a tool error, and a failure as a tool error naming the server, all scrubbed of the entry's secrets and minted tokens. A server's `instructions` never reach the model.
 
 A server failure is also reported to the operator through `reportServerMessage`, bounded and scrubbed, and the fifth ends the run's calls, with `ending()` saying `failing` or `rate_limited`.
+
+## One call for a delivery
+
+`callOnce({ org, brain, executionId, deliveryId, reference, input })` makes one call of one tool for a delivery of an interaction function's request, with bounds of its own, `deliveryBounds`, and never records a tool call: the delivery records its own attempt. It shares the server's link with the runs, so it opens a session within the connection bound of 10 s when none is open, and lists no tools: a tool the server no longer has is a tool error. The call carries the run's id under `com.beonauto/execution_id` and the delivery's id under `com.beonauto/delivery_id` in its metadata, the same id on every attempt of one request, so a receiver can tell an attempt it already took. It answers:
+
+- `result`, with what the tool answered, its `content` and `structuredContent` as JSON, scrubbed and cut at 4 KiB at a character, and the size of all of it;
+- `tool_error`, an `isError` result or a tool the server refuses, such as a gateway's denial or a tool it no longer has; `server_failure`, a server that cannot be reached, fails or asks to slow down, with the wait a 429 asked for in `retryAfterMs`, which the delivery's schedule honours, since the call itself never waits one out; `timed_out`, after 30 s; each with a detail cut at 1 KiB and scrubbed;
+- `not_offered`, sent nowhere, for a server not configured for the brain's org and brain or a tool the operator does not allow.
 
 ## Connections
 

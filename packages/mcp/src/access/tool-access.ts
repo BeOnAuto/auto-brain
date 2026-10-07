@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { RunTools } from '../calls/run-tools.ts';
 import type { LinkOptions } from '../connections/server-links.ts';
+import type { DeliveryCall, DeliveryCallEnded } from '../delivery/delivery-bounds.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
 import type { RunContext, ServerMessage, ToolsNotOpened } from './run-context.ts';
@@ -20,6 +21,7 @@ export interface ToolAccess {
     execution: RunContext,
     references: readonly ToolReference[],
   ) => Effect.Effect<RunTools, ToolsNotOpened>;
+  readonly callOnce: (call: DeliveryCall) => Effect.Effect<DeliveryCallEnded>;
   readonly close: () => Promise<void>;
 }
 
@@ -38,6 +40,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
     configured: settings.servers.length > 0,
     open: (execution, references) =>
       Effect.flatMap(Effect.promise(loaded), (access) => access.open(execution, references)),
+    callOnce: (call) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call)),
     close: async () => {
       const access = await loading.access;
       await access?.close();

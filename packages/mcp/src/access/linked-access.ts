@@ -1,6 +1,7 @@
 import { defaultTiming } from '../bounds/call-bounds.ts';
 import { secretsOfServers } from '../bounds/secrets.ts';
 import { serverLink, type LinkOptions } from '../connections/server-links.ts';
+import { deliveredCall } from '../delivery/delivery-call.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
 import { openedRun } from './run-opening.ts';
 import type { ToolAccess, ToolAccessOptions } from './tool-access.ts';
@@ -23,6 +24,7 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
     configured: settings.servers.length > 0,
     open: (execution, references) =>
       openedRun({ execution, references, links, allowed: settings.allowed, secrets, timing, report }),
+    callOnce: (call) => deliveredCall(call, { links, allowed: settings.allowed, secrets, timing }),
     close: async () => {
       await Promise.all([...links.values()].map((link) => link.stop()));
     },

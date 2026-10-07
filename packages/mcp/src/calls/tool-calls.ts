@@ -4,7 +4,7 @@ import { metaValueOf, type ToolResult } from '../bounds/result-text.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { Observed } from '../connections/observed-requests.ts';
 import { failureOf, type FailureKind } from '../connections/server-failures.ts';
-import { executionIdKey } from './execution-key.ts';
+import { deliveryIdKey, executionIdKey } from './execution-key.ts';
 import type { CallOutcome } from './recorded-calls.ts';
 import type { ServerSlot } from './server-slot.ts';
 
@@ -13,6 +13,7 @@ export interface Forwarding {
   readonly tool: string;
   readonly input: Readonly<Record<string, unknown>>;
   readonly executionId: string;
+  readonly deliveryId?: string;
   readonly callMs: number;
   readonly longestRetryWaitMs: number;
   readonly signal: Readonly<AbortSignal>;
@@ -26,6 +27,7 @@ export interface Forwarded {
   readonly failure: FailureKind | null;
   readonly jsonrpcId: string | number | null;
   readonly serverRequestId: string | null;
+  readonly retryAfterMs: number | null;
 }
 
 interface Attempt {
@@ -45,7 +47,16 @@ function requestIdOf(forwarding: Forwarding, observed: Observed, result: ToolRes
 }
 
 function failed(outcome: CallOutcome, failure: FailureKind | null, message: string, observed: Observed): Forwarded {
-  return { outcome, result: null, resultJson: null, message, failure, jsonrpcId: observed.id, serverRequestId: null };
+  return {
+    outcome,
+    result: null,
+    resultJson: null,
+    message,
+    failure,
+    jsonrpcId: observed.id,
+    serverRequestId: null,
+    retryAfterMs: observed.response?.retryAfterMs ?? null,
+  };
 }
 
 interface Answered {
@@ -63,6 +74,7 @@ function answered(forwarding: Forwarding, { result, resultJson, observed }: Answ
     failure: null,
     jsonrpcId: observed.id,
     serverRequestId: requestIdOf(forwarding, observed, result),
+    retryAfterMs: null,
   };
 }
 
@@ -95,11 +107,17 @@ function settledFailure(kind: FailureKind, message: string, observed: Observed):
     : failed('server_failure', kind, message, observed);
 }
 
+function metaOf({ executionId, deliveryId }: Forwarding): Readonly<Record<string, string>> {
+  return deliveryId === undefined
+    ? { [executionIdKey]: executionId }
+    : { [executionIdKey]: executionId, [deliveryIdKey]: deliveryId };
+}
+
 async function attempted(forwarding: Forwarding, attempt: Attempt): Promise<Forwarded> {
   const settled = await forwarding.slot.connection().call({
     tool: forwarding.tool,
     input: forwarding.input,
-    meta: { [executionIdKey]: forwarding.executionId },
+    meta: metaOf(forwarding),
     signal: AbortSignal.any([forwarding.signal, attempt.deadline]),
     timeoutMs: forwarding.callMs,
   });
