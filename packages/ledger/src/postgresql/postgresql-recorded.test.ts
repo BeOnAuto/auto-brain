@@ -221,11 +221,8 @@ describe('a read of runs on PostgreSQL', () => {
       [stored('3', '4', 'r2'), stored('1', '2', 'r1'), stored('5', '6', 'r1 done')],
     );
 
-    const page = await postgresqlRecordedStore(query).readRecorded(
-      alpha,
-      { kind: 'executions' },
-      { order: 'desc', limit: 5 },
-    );
+    const runsOnly = { kind: 'executions', notBeginningWith: ['execution_cancel_requested'] } as const;
+    const page = await postgresqlRecordedStore(query).readRecorded(alpha, runsOnly, { order: 'desc', limit: 5 });
 
     expect(page.records.map(({ type, data, id, causationId }) => [type, data, id, causationId])).toEqual([
       ['noted', { type: 'noted', detail: 'r2' }, 'message-4', null],
@@ -233,6 +230,10 @@ describe('a read of runs on PostgreSQL', () => {
       ['execution_succeeded', { type: 'noted', detail: 'r1 done' }, 'message-6', 'message-2'],
     ]);
     expect(asked[0]?.text).toContain(`WHERE ${kindKey} = ANY($2::text[]) AND stream_position = 1`);
+    expect([asked[0]?.text.includes('AND NOT message_type = ANY($3::text[])'), asked[0]?.values[2]]).toEqual([
+      true,
+      ['execution_cancel_requested'],
+    ]);
     expect(asked[0]?.text).toContain(`ORDER BY ${kindKey} DESC, transaction_id DESC, global_position DESC`);
   });
 });
