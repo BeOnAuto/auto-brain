@@ -1,0 +1,43 @@
+import { loadavg } from 'node:os';
+
+import type { DatabaseSettings } from '../src/database/host-databases.ts';
+import { openCallsCountOn } from './open-calls.ts';
+import { cancelLatencyOn, childEndingLatencyOn, type WaitingLatency } from './waiting.ts';
+
+function loadAverage(): string {
+  return (loadavg()[0] ?? 0).toFixed(0);
+}
+
+function waitingLine(store: string, what: string, signal: string, latency: WaitingLatency): string {
+  return `${store}: ${latency.runs} ${what}, ${signal} the append signal, settled their runs ${latency.p50} ms after at the median, ${latency.p99} ms at p99, ${latency.most} ms at most, under a load average of ${loadAverage()}`;
+}
+
+async function signalledInTurn(
+  store: string,
+  aDatabase: () => Promise<DatabaseSettings>,
+  write: (line: string) => void,
+  signalled: boolean,
+): Promise<void> {
+  const signal = signalled ? 'with' : 'without';
+  const alone = await childEndingLatencyOn(await aDatabase(), { runs: 50, signalled, oneAtATime: true });
+  write(waitingLine(store, 'endings, one at a time, of the runs that 50 waiting calls waited for', signal, alone));
+  const endings = await childEndingLatencyOn(await aDatabase(), { runs: 200, signalled, oneAtATime: false });
+  write(waitingLine(store, 'endings, back to back, of the runs that 200 waiting calls waited for', signal, endings));
+  const cancelledAlone = await cancelLatencyOn(await aDatabase(), { runs: 50, signalled, oneAtATime: true });
+  write(waitingLine(store, 'cancels, one at a time, of 50 runs that wait', signal, cancelledAlone));
+  const cancels = await cancelLatencyOn(await aDatabase(), { runs: 200, signalled, oneAtATime: false });
+  write(waitingLine(store, 'cancels, back to back, of 200 runs that wait', signal, cancels));
+}
+
+export async function waitingMeasuredOn(
+  store: string,
+  aDatabase: () => Promise<DatabaseSettings>,
+  write: (line: string) => void,
+): Promise<void> {
+  await signalledInTurn(store, aDatabase, write, true);
+  await signalledInTurn(store, aDatabase, write, false);
+  const counted = await openCallsCountOn(await aDatabase(), 1000);
+  write(
+    `${store}: counting ${counted.underTheRoot} open calls under one root, among ${counted.inAll}, took ${counted.p50Ms.toFixed(2)} ms at the median and ${counted.p99Ms.toFixed(2)} ms at p99, under a load average of ${loadAverage()}`,
+  );
+}
