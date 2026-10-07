@@ -12,19 +12,24 @@
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {
+    "measure:outcomes": "node measure/measure-outcomes.ts",
     "lint": "oxlint -c ../../.oxlintrc.json",
     "typecheck": "tsc",
     "test": "vitest run --coverage"
   },
   "dependencies": {
     "@beonauto/operations": "workspace:*",
+    "@beonauto/workflow-engine": "workspace:*",
     "effect": "catalog:",
     "liquidjs": "10.29.0",
     "yaml": "2.9.1"
   },
   "devDependencies": {
     "@beonauto/brains": "workspace:*",
+    "@beonauto/ledger": "workspace:*",
+    "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
+    "pg": "8.23.1",
     "vitest": "catalog:"
   }
 }

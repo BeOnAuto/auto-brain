@@ -83,7 +83,7 @@ const rules = [
 
 const toolRules = [
   'tools: the tools of the MCP servers configured for its brain that it may call, each written server/tool,',
-  'or server/* for every tool of a server that its operator allows.',
+  'or server/* for every tool of a server that its operator allows; list_tool_servers lists those servers and their tools.',
   'A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers;',
   'each call is recorded on the run as it happens.',
   'A run that called tools and did not succeed is not run again under its id.',

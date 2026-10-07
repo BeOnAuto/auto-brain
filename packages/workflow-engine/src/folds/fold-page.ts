@@ -1,10 +1,17 @@
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { jsonBytesWithin, mostIssueBytes, textWithin } from '../programs/byte-sizes.ts';
-import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
+import type { CompiledProgram } from '../programs/program-compiling.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
 import type { Deadline, ProgramLimits, ProgramRun } from '../programs/program-running.ts';
 import type { ProgramSpan } from '../programs/program-tree.ts';
-import { matchingOf, preparedFilters, type Matching, type PreparedFilter, type RunTest } from './fold-filters.ts';
+import {
+  matchingOf,
+  preparedFilters,
+  type Compile,
+  type Matching,
+  type PreparedFilter,
+  type RunTest,
+} from './fold-filters.ts';
 
 export type StallKind = 'raised' | 'none' | 'several' | 'work' | 'depth' | 'unfit' | 'size' | 'schema' | 'refused';
 
@@ -55,6 +62,7 @@ export interface FoldHost {
   readonly now: () => number;
   readonly folding: (event: number, view: number) => void;
   readonly checkOf: (schema: JsonObject) => ViewCheck;
+  readonly compile: Compile;
 }
 
 interface Prepared {
@@ -97,8 +105,8 @@ function stalled(kind: StallKind, message: string, span: ProgramSpan | null = an
 function foldingOf({ fold, filters, view, schema, events }: FoldingView, dialect: Dialect, host: FoldHost): Folding {
   return {
     prepared: {
-      compiled: compileProgram(fold, dialect),
-      filters: preparedFilters(filters, dialect),
+      compiled: host.compile(fold, dialect),
+      filters: preparedFilters(filters, dialect, host.compile),
       check: schema === undefined ? undefined : host.checkOf(schema),
       considered: new Set(events),
     },

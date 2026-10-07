@@ -1,3 +1,5 @@
+import { servesBrain } from '@beonauto/config';
+import type { BrainAddress } from '@beonauto/operations';
 import type { Redacted } from 'effect';
 
 import type { ToolReference } from '../names/tool-reference.ts';
@@ -41,4 +43,8 @@ export type McpServerSettings = HttpServerSettings | StdioServerSettings;
 export interface McpSettings {
   readonly servers: readonly McpServerSettings[];
   readonly allowed: readonly ToolReference[] | null;
+}
+
+export function isListedFor(server: ServedBy, address: BrainAddress, named: string | undefined): boolean {
+  return servesBrain(server, address) && (named === undefined || server.name === named);
 }

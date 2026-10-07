@@ -70,7 +70,7 @@ describe('the reasoning function description on a server where reasoning functio
 describe('the description of the tools a reasoning function may name', () => {
   it('says how a reasoning function names tools, and what a run does with them, when MCP servers are configured', () => {
     expect(reasoningDescriptionFor({ providers: ['anthropic'], aliases: [] }, true)).toMatch(
-      / Any other front matter key is rejected\..* tools: the tools of the MCP servers configured for its brain that it may call, each written server\/tool, or server\/\* for every tool of a server that its operator allows\. A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers; each call is recorded on the run as it happens\. A run that called tools and did not succeed is not run again under its id\. A started run whose definition names tools is not run again under its id while it may still be in progress\.$/u,
+      / Any other front matter key is rejected\..* tools: the tools of the MCP servers configured for its brain that it may call, each written server\/tool, or server\/\* for every tool of a server that its operator allows; list_tool_servers lists those servers and their tools\. A run that names tools gives them to the model, which may call them, at most 25 times in a run, before it answers; each call is recorded on the run as it happens\. A run that called tools and did not succeed is not run again under its id\. A started run whose definition names tools is not run again under its id while it may still be in progress\.$/u,
     );
   });
 

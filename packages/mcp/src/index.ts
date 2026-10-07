@@ -8,6 +8,7 @@ export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
 export type { OfferedTool, RunTools, ToolsEnding } from './calls/run-tools.ts';
 export { deliveryIdKey, executionIdKey } from './calls/execution-key.ts';
 export { deliveryBounds, type DeliveryCall, type DeliveryCallEnded } from './delivery/delivery-bounds.ts';
+export { defineListToolServers } from './listing/list-tool-servers.ts';
 export { defaultTiming, runBoundMs, toolBounds, type Timing } from './bounds/call-bounds.ts';
 export { toolReferenceOf, toolReferenceShape, writtenOf, type ToolReference } from './names/tool-reference.ts';
 export { AllowedToolsSchema, McpServersSchema } from './settings/server-entries.ts';

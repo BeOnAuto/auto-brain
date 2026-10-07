@@ -1,12 +1,12 @@
-import { Conflict, type Unavailable } from '@beonauto/operations';
-import type { CompiledSchema } from '@beonauto/specs/document';
-import { jsonBytesOf, type ProgramPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
+import type { Conflict, Unavailable } from '@beonauto/operations';
+import { checkedWorker } from '@beonauto/specs/json-schema';
+import type { ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import type { ViewsPort } from '@beonauto/workflow-host';
-import { Effect, Result, type Schema } from 'effect';
+import { Effect, type Schema } from 'effect';
 
 import { answerDialect, answerVariable } from '../document/recall-dialects.ts';
 import type { RecallAnswer, RecallFunctionDefinitionDocument } from '../document/recall-document.ts';
-import { answerEndingOf, type Answered } from './answer-endings.ts';
+import { answerEndingOf, viewAnswered, type Answered } from './answer-endings.ts';
 import { mostOutputBytes, recallLimits } from './recall-bounds.ts';
 
 export interface RecallRunOptions {
@@ -17,25 +17,8 @@ export interface RecallRunOptions {
 
 type Answering = Effect.Effect<Answered, Conflict | Unavailable>;
 
-const answerWorker = new URL('./answer-worker.ts', import.meta.url);
-
-const mostIssuesInADetail = 3;
-
 function checkedBy({ output }: RecallFunctionDefinitionDocument): Pick<ProgramRequest, 'worker' | 'context'> {
-  return output.schema === undefined ? {} : { worker: answerWorker, context: output.schema.document };
-}
-
-function viewAnswered(view: Schema.Json, schema: CompiledSchema | undefined): Answering {
-  const checked = schema === undefined ? Result.succeed(view) : schema.validate(view);
-  if (Result.isFailure(checked)) {
-    const issues = checked.failure
-      .slice(0, mostIssuesInADetail)
-      .map(({ pointer, detail }) => `${pointer === '' ? 'the output' : pointer}: ${detail}`);
-    return Effect.fail(
-      new Conflict({ detail: `The view does not match the output schema: ${issues.join('; ')}`, kind: 'unworkable' }),
-    );
-  }
-  return Effect.succeed({ output: view, work: 0, milliseconds: 0, bytes: jsonBytesOf(view) });
+  return { worker: checkedWorker, context: output.schema?.document ?? null };
 }
 
 function answeredBy(

@@ -57,6 +57,11 @@ const byCampaign = recallDocument(
   `${reviewRuns}\nview:\n  initial: {}`,
 );
 
+const counted = recallDocument(
+  '.[$event.data.output | tostring] += 1',
+  `${reviewRuns}\nview:\n  initial: {}\nanswer: '[.[]] | add'`,
+);
+
 const depths = recallDocument(
   'def depth: if . == 0 then 0 else (. - 1 | depth) + 1 end; . + [$event.data.output | tostring | length | depth]',
   `${reviewRuns}\nview:\n  initial: []`,
@@ -82,28 +87,45 @@ const decodeStanding = Schema.decodeUnknownSync(
 
 const decodeOutput = Schema.decodeUnknownSync(Schema.Struct({ output: Schema.Json }));
 
+const decodeRun = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
+
+const decodeRecord = Schema.decodeUnknownSync(
+  Schema.Struct({ output: Schema.Json, record: Schema.Struct({ work: Schema.Number }) }),
+);
+
+async function answeredBy(server: ReasoningServer, name: string) {
+  const run = decodeRun((await recalled(server, name, {})).body).execution_id;
+  const { output, record } = decodeRecord((await server.call('GET', `${alpha}/executions/${run}`)).body);
+  return { output, work: record.work };
+}
+
 async function viewsOn(server: ReasoningServer) {
   await brainWithReviews(server, outputs.length);
   await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'campaigns', source: byCampaign } });
   await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'depths', source: depths } });
+  await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'counted', source: counted } });
   await standingUntil(server, 'campaigns', liveWith(outputs.length));
+  await standingUntil(server, 'counted', liveWith(outputs.length));
+  const answers = { cold: await answeredBy(server, 'counted'), warm: await answeredBy(server, 'counted') };
   const stalled = decodeStanding(await standingUntil(server, 'depths', inState('stalled'))).standing;
   const campaigns = decodeOutput((await recalled(server, 'campaigns', {})).body).output;
   await server.stop();
-  return { campaigns, depths: stalled };
+  return { campaigns, depths: stalled, answers };
 }
 
 describe(
   `a recall function on a server on SQLite and on one on ${secondStore}`,
   { timeout: recallTestTimeoutMs },
   () => {
-    it('folds the same view from the same history, and stops at the same event where its fold recurses past its fixed depth', async () => {
+    it('folds the same view from the same history, stops at the same event where its fold recurses past its fixed depth, and answers after the same work in a cold worker and a warm one', async () => {
       const second = await secondEnvironment();
 
       const onSQLite = await viewsOn(await servingRecall(verdicts(...outputs)));
       const onTheOther = await viewsOn(await servingRecall(verdicts(...outputs), second));
 
       expect(onTheOther).toEqual(onSQLite);
+      expect(onSQLite.answers.warm).toEqual(onSQLite.answers.cold);
+      expect(onSQLite.answers.cold.output).toBe(outputs.length);
       expect(onSQLite).toMatchObject({
         campaigns: { spring: ['approve', 'xxxxxxxxxxxxxxxxxxxx', 'reject'], unknown: ['none', 'none', '3'] },
         depths: { folded: 4, stalled: { kind: 'depth', line: 10 } },

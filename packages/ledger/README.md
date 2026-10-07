@@ -130,7 +130,7 @@ The data of a record is decoded as the store's `read` decodes it: on SQLite the 
 
 ### Measurement
 
-`measure.ts` at the root of this package records these numbers again, writing the data of `measure/dataset.ts`:
+`measure.ts` at the root of this package records these numbers again, writing the data of `measure/dataset.ts`. The dataset is also the subpath `@beonauto/ledger/dataset`, so the measurement of the outcomes in `@beonauto/specs` fills from the same ledger (see [Measurement of the outcomes](#measurement-of-the-outcomes)):
 
 ```bash
 LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/ledger measure
@@ -222,10 +222,10 @@ The read answers, in one statement over the index, the rows of the brain whose `
 
 ### Measurement of the outcomes
 
-`measure-outcomes.ts` at the root of this package records these numbers again, writing the data of `measure/outcomes-dataset.ts` and, for the fill, `measure/dataset.ts`:
+`measure-outcomes.ts` in the `measure` folder of `@beonauto/specs` records these numbers again, writing the data of `measure/outcomes-dataset.ts` there and, for the fill, this package's `measure/dataset.ts`, through `@beonauto/ledger/dataset`. It lives with `runOutcomeMapping`, the mapping it opens the ledger with, so that this package depends on specs for nothing, not even a script:
 
 ```bash
-LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/ledger measure:outcomes
+LEDGER_MEASURE_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/postgres pnpm --filter @beonauto/specs measure:outcomes
 ```
 
 `LEDGER_MEASURE_OUTCOME_RUNS` sets the sizes, `10000,100000` when left out, and `LEDGER_MEASURE_FILL_TICKS` the ticks of the ledger the fill replays, 100,000 when left out. `LEDGER_MEASURE_PARTS` picks what it measures, `read,append,fill,large-fill` when left out.

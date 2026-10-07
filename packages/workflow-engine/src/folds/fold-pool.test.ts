@@ -1,13 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { JsonObject } from '../dsl/json.ts';
-import {
-  liftedLimits,
-  programPool,
-  type FoldRequest,
-  type PoolSettings,
-  type ProgramPool,
-} from '../program-pool/program-pool.ts';
+import type { FoldRequest, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
+import { liftedLimits, programPool } from '../program-pool/program-pool.ts';
 import type { FoldingView } from './fold-page.ts';
 
 const poolTestTimeoutMs = 30_000;
@@ -29,9 +24,13 @@ function workerOf(source: string): URL {
   return new URL(`data:text/javascript,${encodeURIComponent(source)}`);
 }
 
-const markingThenBlocking = workerOf(
-  'import { workerData } from "node:worker_threads"; const place = new Int32Array(workerData.progress.shared); Atomics.store(place, 0, 1); Atomics.store(place, 1, 0); while (true) {}',
-);
+function markingThen(event: number, view: number, then: string): URL {
+  return workerOf(
+    `import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ progress }) => { const place = new Int32Array(progress); Atomics.store(place, 0, ${event}); Atomics.store(place, 1, ${view}); ${then} });`,
+  );
+}
+
+const markingThenBlocking = markingThen(1, 0, 'while (true) {}');
 
 const coverage = process.env['NODE_V8_COVERAGE'];
 
@@ -108,8 +107,10 @@ describe('a page of folds the pool stops', { timeout: poolTestTimeoutMs }, () =>
   });
 
   it('names the fold that took more memory than its worker has', async () => {
-    const markingThenAllocating = workerOf(
-      'import { workerData } from "node:worker_threads"; const place = new Int32Array(workerData.progress.shared); Atomics.store(place, 0, 0); Atomics.store(place, 1, 1); const kept = []; while (true) { kept.push(new Array(100000).fill(kept.length)); }',
+    const markingThenAllocating = markingThen(
+      0,
+      1,
+      'const kept = []; while (true) { kept.push(new Array(100000).fill(kept.length)); }',
     );
 
     expect(
@@ -119,21 +120,23 @@ describe('a page of folds the pool stops', { timeout: poolTestTimeoutMs }, () =>
 });
 
 describe('a page of folds that waits for a worker', { timeout: poolTestTimeoutMs }, () => {
-  it('counts its deadline from when a worker takes it, after it waited for one', async () => {
+  it('counts its deadline from when a worker takes it, after it waited for one longer than that deadline', async () => {
     const pool = poolOf({ workers: 1 });
     const busy = pool.run({
-      source: '[range(500000)] | length',
+      source: '.',
       input: null,
       dialect: { refused: [] },
       limits: liftedLimits(64_000_000),
-      deadlineMs: 10_000,
+      deadlineMs: 6000,
       mostOutputBytes: 100,
+      worker: workerOf('while (true) {}'),
     });
 
-    const folded = await pool.fold(request([viewOf('. + 1')], { deadlineMs: 2000 }));
+    const folded = await pool.fold(request([viewOf('. + 1')], { deadlineMs: 5000 }));
 
-    expect(await busy).toMatchObject({ ran: 'answered' });
+    expect(await busy).toMatchObject({ ran: 'stopped', because: 'deadline' });
     expect(folded).toMatchObject({ ran: 'folded', views: [{ view: 2 }] });
+    expect(folded.milliseconds).toBeGreaterThan(6000 - timerSlackMs);
   });
 
   it('is turned away when no worker comes free within its wait, and names no fold', async () => {

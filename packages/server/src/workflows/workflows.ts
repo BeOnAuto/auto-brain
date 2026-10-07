@@ -1,7 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import { callMarginMs, defineSendExecutionEvent, makeWorkflowAdapter, runPresenter } from '@beonauto/orchestration';
-import { defineStartVersion, type Primitive } from '@beonauto/specs';
+import { defineStartVersion, type BrainOperation, type Primitive } from '@beonauto/specs';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
@@ -16,6 +16,7 @@ interface OrgOperation {
 
 export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
+  readonly brainOperations: readonly BrainOperation[];
 }
 
 export function longestCallOf(primitives: readonly Pick<Primitive, 'longestExecutionMs'>[]): number {
@@ -46,6 +47,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
   const catalog = makeCatalog([
     ...parts.orgOperations,
     ...brainOperationsServing(primitives, [runPresenter]),
+    ...parts.brainOperations,
     defineSendExecutionEvent(host),
   ]);
   return { routes: routesFor(runtime, catalog, dispatcher), stopWork: host.stop };

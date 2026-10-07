@@ -1,17 +1,14 @@
 import type { Option } from 'effect';
 
-export type Stopped = 'deadline' | 'memory' | 'busy' | 'cancelled' | 'closing';
+import type { Ending } from '../jobs/job-endings.ts';
+import type { JobSchema } from '../jobs/job-envelopes.ts';
 
-export type Interrupted =
-  | { readonly ran: 'stopped'; readonly because: Stopped }
-  | { readonly ran: 'crashed'; readonly detail: string };
-
-export type Ending<Answer> = Answer | Interrupted;
+type Envelope = typeof JobSchema.Encoded;
 
 export interface Job<Answer> {
   readonly module: Readonly<URL>;
-  readonly workerData: unknown;
-  readonly decode: (message: unknown) => Option.Option<Answer>;
+  readonly envelope: (job: number) => Envelope;
+  readonly decode: (answer: unknown) => Option.Option<Answer>;
 }
 
 export interface Running {
@@ -20,11 +17,3 @@ export interface Running {
 }
 
 export type Evaluate = <Answer>(job: Job<Answer>, running: Running) => Promise<Ending<Answer>>;
-
-export function stopped(because: Stopped): Interrupted {
-  return { ran: 'stopped', because };
-}
-
-export function isInterrupted<Answer extends { readonly ran: string }>(ending: Ending<Answer>): ending is Interrupted {
-  return ending.ran === 'stopped' || ending.ran === 'crashed';
-}
