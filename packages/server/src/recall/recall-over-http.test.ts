@@ -1,4 +1,4 @@
-import { scriptedPool } from '@beonauto/computation/testing';
+import { scriptedPool } from '@beonauto/workflow-engine/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 

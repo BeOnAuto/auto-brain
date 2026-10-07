@@ -50,15 +50,23 @@ async function computedOn(environment: Readonly<Record<string, string>>) {
   const computing = await servingReasoning([], environment);
   await computing.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await computing.call('POST', `${brain}/specs/computation`, { body: { name: 'pace', source: campaignPace } });
-  await computing.call('POST', `${brain}/specs/computation/pace/execute`, {
-    body: { input: campaignRows(500), execution_id: executionId },
-  });
-  const run = computedRun((await computing.call('GET', `${brain}/executions/${executionId}`)).body);
+  const runs = await executionIds.reduce<Promise<readonly ReturnType<typeof computedRun>[]>>(
+    async (before, executionId) => {
+      await computing.call('POST', `${brain}/specs/computation/pace/execute`, {
+        body: { input: campaignRows(500), execution_id: executionId },
+      });
+      const run = computedRun((await computing.call('GET', `${brain}/executions/${executionId}`)).body);
+      return [...(await before), run];
+    },
+    Promise.resolve([]),
+  );
   await computing.stop();
-  return run;
+  return runs;
 }
 
 const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+
+const executionIds = [executionId, '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b'];
 
 const summary = [
   '---',
@@ -122,12 +130,15 @@ describe.skipIf(skipped)(
   `Computation functions of a server that keeps its ledger in PostgreSQL${notice}`,
   { timeout: spawnedServerTestTimeoutMs },
   () => {
-    it('runs a computation function to the same output, after the same work, as a server on SQLite', async () => {
+    it('runs a computation function to the same output, after the same work, as a server on SQLite, in a cold worker and then a warm one', async () => {
       const onPostgresql = await computedOn(await onADatabaseOfItsOwn());
       const onSqlite = await computedOn({ LOCAL_MODE: 'true' });
 
+      const [cold, warm] = onPostgresql;
+
       expect(onPostgresql).toEqual(onSqlite);
-      expect(onPostgresql.status).toBe('succeeded');
+      expect(warm).toEqual(cold);
+      expect(cold?.status).toBe('succeeded');
     });
   },
 );
