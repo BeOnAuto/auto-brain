@@ -117,12 +117,16 @@ describe('the workers of a pool and its permits, while a worker is let go of', {
     const pool = poolOf({ workers: 2 });
     await Promise.all([run(pool, 'count'), run(pool, 'linger')]);
 
-    const both = Promise.all([run(pool, 'hold', countingElsewhere), run(pool, 'hold', countingElsewhere)]);
+    const both = Promise.all([
+      run(pool, 'hold', countingElsewhere, 20_000),
+      run(pool, 'hold', countingElsewhere, 20_000),
+    ]);
     await setTimeout(100);
     const whileTheLastDies = threadsAlive() - before;
     const answered = await both;
 
     expect(whileTheLastDies).toBeLessThanOrEqual(2);
+    expect(answered.map(({ ran }) => ran)).toEqual(['answered', 'answered']);
     expect(answered.map((outcome) => ranOf(outcome).jobs)).toEqual([1, 1]);
   });
 

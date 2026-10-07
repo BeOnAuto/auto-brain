@@ -17,7 +17,7 @@ const countingSource = [
   "  'wrong job': (job) => answer(job + 1, true),",
   "  'let go': (job) => answer(job, false),",
   '  hold: (job) => { setTimeout(() => answer(job, true), 300); },',
-  "  linger: (job) => { setTimeout(() => { answer(job, true); pbkdf2Sync('x', 'y', 10000000, 32, 'sha512'); }, 300); },",
+  "  linger: (job) => { setTimeout(() => { answer(job, true); pbkdf2Sync('x', 'y', 3000000, 32, 'sha512'); }, 300); },",
   "  'then message': (job) => { answer(job, true); setTimeout(() => parentPort.postMessage('stray'), 50); },",
   "  'then throw': (job) => { answer(job, true); setTimeout(() => { throw new Error('idle and broken'); }, 50); },",
   "  'then exit': (job) => { answer(job, true); setTimeout(() => process.exit(0), 50); },",
