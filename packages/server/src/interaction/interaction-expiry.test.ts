@@ -3,7 +3,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { asking, guarded, interactionServerOn, servingInteractions } from '../testing/servers/interaction-server.ts';
+import {
+  asking,
+  brief,
+  guarded,
+  interactionServerOn,
+  servingInteractions,
+} from '../testing/servers/interaction-server.ts';
+import { alpha } from '../testing/servers/reasoning-server.ts';
 import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 function ledgerFile(): string {
@@ -38,5 +45,10 @@ describe('requests past their expiry while the server was stopped', { timeout: w
     expect(await second.settled(caught)).toMatchObject({ status: 'succeeded', output: { caught: 'expired' } });
     expect(await second.settled(uncaught)).toMatchObject(unansweredAsExpired);
     expect(await second.openRequests(0)).toEqual([]);
+    expect(
+      await second.call('POST', `${alpha}/specs/interaction/approve-brief/execute`, {
+        body: { input: brief, execution_id: asked },
+      }),
+    ).toMatchObject({ status: 410, body: { type: 'https://on.auto/problems/unanswered', kind: 'expired' } });
   });
 });

@@ -18,6 +18,7 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
     const again = await server.answer(runId, { answer: { choice: 'approve' } });
     const another = await server.answer(runId, { answer: { choice: 'reject' } });
     const history = await server.call('GET', `${alpha}/executions/${runId}/history`);
+    const analytics = await server.call('GET', `${alpha}/analytics?primitive=interaction`);
 
     expect(started).toMatchObject({ status: 200, body: { status: 'started' } });
     expect(listed).toMatchObject({ status: 200, body: { interactions: [{ execution_id: runId }] } });
@@ -25,31 +26,41 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
     expect(invalid.body).toMatchObject({ errors: [{ pointer: '/answer/choice' }] });
     expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: { choice: 'approve' } });
     expect(history.text).not.toContain('approve"');
-  });
-
-  it('ends a cancelled request as cancelled, which a late answer then finds ended', async () => {
-    const server = await servingInteractions('inbox');
-    const runId = await server.ask('approve-brief');
-
-    await server.call('POST', `${alpha}/executions/${runId}/cancel`, { body: { reason: 'The brief was withdrawn' } });
-    const settled = await server.settled(runId);
-    const late = await server.answer(runId, { answer: { choice: 'approve' } });
-
-    expect(settled).toMatchObject({
-      status: 'rejected',
-      rejection: { reason: 'cancelled', detail: 'The brief was withdrawn' },
+    expect(analytics.body).toMatchObject({
+      runs: { succeeded: 1 },
+      by_function: [{ primitive: 'interaction', name: 'approve-brief', runs: 1 }],
     });
-    expect([late.status, await server.openRequests(0)]).toEqual([409, []]);
-  });
-
-  it('succeeds a notification at once, with nothing left in the inbox', async () => {
-    const server = await servingInteractions('inbox');
-    const runId = await server.ask('brief-out');
-
-    expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: {} });
-    expect((await server.call('GET', `${alpha}/interactions`)).body).toMatchObject({ interactions: [] });
   });
 });
+
+describe(
+  'an interaction function through the inbox that ends without an answer, over HTTP',
+  { timeout: workflowTestTimeoutMs },
+  () => {
+    it('ends a cancelled request as cancelled, which a late answer then finds ended', async () => {
+      const server = await servingInteractions('inbox');
+      const runId = await server.ask('approve-brief');
+
+      await server.call('POST', `${alpha}/executions/${runId}/cancel`, { body: { reason: 'The brief was withdrawn' } });
+      const settled = await server.settled(runId);
+      const late = await server.answer(runId, { answer: { choice: 'approve' } });
+
+      expect(settled).toMatchObject({
+        status: 'rejected',
+        rejection: { reason: 'cancelled', detail: 'The brief was withdrawn' },
+      });
+      expect([late.status, await server.openRequests(0)]).toEqual([409, []]);
+    });
+
+    it('succeeds a notification at once, with nothing left in the inbox', async () => {
+      const server = await servingInteractions('inbox');
+      const runId = await server.ask('brief-out');
+
+      expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: {} });
+      expect((await server.call('GET', `${alpha}/interactions`)).body).toMatchObject({ interactions: [] });
+    });
+  },
+);
 
 describe('a workflow that asks through the inbox', { timeout: workflowTestTimeoutMs }, () => {
   it('waits for the answer and takes it as the output of its step', async () => {

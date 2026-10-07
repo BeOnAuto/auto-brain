@@ -14,12 +14,27 @@ const decodeListed = Schema.decodeUnknownSync(
   Schema.Struct({ interactions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) }),
 );
 
+const decodeHistory = Schema.decodeUnknownSync(
+  Schema.Struct({
+    events: Schema.Array(
+      Schema.Struct({ id: Schema.String, type: Schema.String, causation_id: Schema.NullOr(Schema.String) }),
+    ),
+  }),
+);
+
+function causesIn(history: unknown): readonly (readonly [string, string | null | undefined])[] {
+  const { events } = decodeHistory(history);
+  const typeOf = new Map(events.map(({ id, type }) => [id, type]));
+  return events.map(({ type, causation_id: cause }) => [type, cause === null ? null : typeOf.get(cause)]);
+}
+
 export interface InteractionServer extends ReasoningServer {
   readonly ask: (name: string) => Promise<string>;
   readonly answer: (runId: string, body: unknown, authorization?: string) => ReturnType<ReasoningServer['call']>;
   readonly settled: (runId: string) => Promise<unknown>;
   readonly workflow: (name: string, steps: string) => Promise<string>;
   readonly openRequests: (count: number) => Promise<readonly string[]>;
+  readonly causes: (runId: string) => Promise<readonly (readonly [string, string | null | undefined])[]>;
 }
 
 function once(stop: () => Promise<void>): () => Promise<void> {
@@ -65,6 +80,7 @@ export async function interactionServerOn(environment: Readonly<Record<string, s
       );
       return listed.map(({ execution_id: runId }) => runId);
     },
+    causes: async (runId) => causesIn((await server.call('GET', `${alpha}/executions/${runId}/history`)).body),
   };
 }
 

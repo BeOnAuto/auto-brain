@@ -92,6 +92,13 @@ describe('an interaction function through a webhook channel', { timeout: workflo
     });
     expect([other?.data.execution_id, refused.status, answered.status]).toEqual([second, 403, 200]);
     expect(await server.settled(first)).toMatchObject({ status: 'succeeded', output: { choice: 'approve' } });
+    expect(await server.causes(first)).toEqual([
+      ['execution_started', null],
+      ['interaction_requested', 'execution_started'],
+      ['delivery_started', 'interaction_requested'],
+      ['delivery_ended', 'delivery_started'],
+      ['execution_succeeded', 'interaction_requested'],
+    ]);
   });
 });
 
