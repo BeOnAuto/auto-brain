@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 
 import { definitionStreamsBehaviour } from '../definitions/definition-streams-behaviour.ts';
 import { runOutcomeTableBehaviour } from '../outcomes/run-outcome-table-behaviour.ts';
-import { runOutcomesBehaviour } from '../outcomes/run-outcomes-behaviour.ts';
+import { projectionTableBehaviour } from '../projections/projection-table-behaviour.ts';
 import { commandsBehaviour } from './commands-behaviour.ts';
 import { eventsBehaviour } from './events-behaviour.ts';
 import { aLedger, type LedgerEntry } from './ledger-entry.ts';
@@ -28,6 +28,6 @@ export function ledgerBehaviour(entry: LedgerEntry): void {
   storeBehaviour(entry);
   definitionStreamsBehaviour(entry);
   recordedBehaviour(() => aLedgerReadingWhatCommitted(entry));
-  runOutcomesBehaviour((runOutcomes) => aLedger(entry, undefined, runOutcomes));
   runOutcomeTableBehaviour(entry);
+  projectionTableBehaviour(entry);
 }

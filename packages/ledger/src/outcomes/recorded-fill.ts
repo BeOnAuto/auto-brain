@@ -47,7 +47,7 @@ export function aRecordedFillOf(
       return stored.filter(({ stream }) => stream > String(after)).slice(0, Number(limit));
     }
     return statement.includes('FROM emt_messages')
-      ? stored.map(({ stream }) => ({ stream, type: 'run_began', data: dataOf(began) }))
+      ? stored.map(({ stream }) => ({ stream, type: 'run_began', data: dataOf(began), position: 1 }))
       : [];
   };
   return {

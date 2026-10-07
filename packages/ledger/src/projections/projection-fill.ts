@@ -1,19 +1,19 @@
-import { runStreamOf } from '@beonauto/operations';
+import { projectedTableOf, runStreamOf } from '@beonauto/operations';
 
 import type { StatementExecutor } from '../event-store.ts';
-import { inTurn, type StoredMessage } from './inline-projection.ts';
-import { replayedRow, type RunOutcomeKeeping } from './run-outcome-projection.ts';
+import { inTurn } from './inline-projection.ts';
+import { replayedRow, type ProjectionKeeping, type ReplayedMessage } from './projection-keeping.ts';
 import {
+  createdTable,
   messagesIn,
   namesIn,
   rowsWrite,
-  runOutcomesTable,
-  runOutcomesVersion,
   streamsIn,
+  tableAnalysis,
   tableDrop,
-  type KeptRow,
+  type ProjectedRunRowOf,
   type SizedStream,
-} from './run-outcome-statements.ts';
+} from './projection-statements.ts';
 
 export type InTransaction = (work: (execute: StatementExecutor) => Promise<void>) => Promise<void>;
 
@@ -21,11 +21,9 @@ const runStreamsInABatch = 100;
 
 const mostBytesInABatch = 16 * 1024 * 1024;
 
-const versionedTable = /^run_outcomes_(?<version>\d+)$/u;
-
-function isEarlierVersion(name: string): boolean {
-  const version = versionedTable.exec(name)?.groups?.['version'];
-  return version !== undefined && Number(version) < runOutcomesVersion;
+function isEarlierVersion({ projection }: ProjectionKeeping, table: string): boolean {
+  const version = new RegExp(`^${projection.name}_(?<version>\\d+)$`, 'u').exec(table)?.groups?.['version'];
+  return version !== undefined && Number(version) < projection.version;
 }
 
 function chunksOf<Item>(items: readonly Item[], size: number): readonly (readonly Item[])[] {
@@ -35,10 +33,10 @@ function chunksOf<Item>(items: readonly Item[], size: number): readonly (readonl
 }
 
 function replayedRows(
-  keeping: RunOutcomeKeeping,
+  keeping: ProjectionKeeping,
   streams: readonly string[],
-  messages: readonly StoredMessage[],
-): readonly KeptRow[] {
+  messages: readonly ReplayedMessage[],
+): readonly ProjectedRunRowOf[] {
   const byStream = Map.groupBy(messages, ({ stream }) => stream);
   return streams.flatMap((stream) => {
     const run = runStreamOf(stream);
@@ -76,20 +74,22 @@ function batchAfter({ listing }: Batch, listed: readonly SizedStream[], taken: r
 }
 
 async function batchFilled(
-  keeping: RunOutcomeKeeping,
+  keeping: ProjectionKeeping,
   execute: StatementExecutor,
   batch: Batch,
 ): Promise<Batch | undefined> {
-  const { statements, mapping } = keeping;
-  const listed = await streamsIn(execute, statements.runStreamsAfter(batch.after, batch.listing, mapping.types));
+  const { dialect, projection } = keeping;
+  const listed = await streamsIn(execute, dialect.runStreamsAfter(batch.after, batch.listing, projection.types));
   const streams = withinBytes(listed);
-  const messages = streams.length === 0 ? [] : await messagesIn(execute, statements.messagesOf(streams, mapping.types));
+  const messages = streams.length === 0 ? [] : await messagesIn(execute, dialect.messagesOf(streams, projection.types));
   const kept = replayedRows(keeping, streams, messages);
-  await inTurn(chunksOf(kept, statements.rowsInAWrite), (rows) => execute.command(rowsWrite(rows)));
+  await inTurn(chunksOf(kept, dialect.rowsInAWrite(projection.columns.length)), (rows) =>
+    execute.command(rowsWrite(dialect, projection, rows)),
+  );
   return batchAfter(batch, listed, streams);
 }
 
-async function filledFrom(keeping: RunOutcomeKeeping, execute: StatementExecutor, batch: Batch): Promise<void> {
+async function filledFrom(keeping: ProjectionKeeping, execute: StatementExecutor, batch: Batch): Promise<void> {
   const next = await batchFilled(keeping, execute, batch);
   if (next !== undefined) {
     await filledFrom(keeping, execute, next);
@@ -97,27 +97,35 @@ async function filledFrom(keeping: RunOutcomeKeeping, execute: StatementExecutor
 }
 
 async function created(
-  keeping: RunOutcomeKeeping,
+  keeping: ProjectionKeeping,
   execute: StatementExecutor,
   tables: readonly string[],
 ): Promise<void> {
-  const { statements } = keeping;
-  await inTurn(statements.create(), (statement) => execute.command(statement));
+  const { dialect, projection } = keeping;
+  await inTurn(createdTable(dialect, projection), (statement) => execute.command(statement));
   await filledFrom(keeping, execute, { after: '', listing: 1 });
   await inTurn(
-    tables.filter((name) => isEarlierVersion(name)),
+    tables.filter((name) => isEarlierVersion(keeping, name)),
     (name) => execute.command(tableDrop(name)),
   );
-  await inTurn(statements.afterFill(), (statement) => execute.command(statement));
+  await execute.command(tableAnalysis(projection));
 }
 
-export async function preparedRunOutcomes(
-  keeping: RunOutcomeKeeping,
+export async function preparedProjection(
+  keeping: ProjectionKeeping,
   execute: StatementExecutor,
   inTransaction: InTransaction,
 ): Promise<void> {
-  const tables = await namesIn(execute, keeping.statements.tableVersions());
-  if (!tables.includes(runOutcomesTable)) {
+  const tables = await namesIn(execute, keeping.dialect.tableVersions(keeping.projection.name));
+  if (!tables.includes(projectedTableOf(keeping.projection))) {
     await inTransaction((transaction) => created(keeping, transaction, tables));
   }
+}
+
+export async function preparedProjections(
+  keepings: readonly ProjectionKeeping[],
+  execute: StatementExecutor,
+  inTransaction: InTransaction,
+): Promise<void> {
+  await inTurn(keepings, (keeping) => preparedProjection(keeping, execute, inTransaction));
 }

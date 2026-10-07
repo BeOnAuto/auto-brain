@@ -3,72 +3,15 @@ import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
 import type { RunOutcomesStore, StatementExecutor } from '../event-store.ts';
-import { runOutcomeRegistrations, type RunOutcomeKeeping } from './run-outcome-projection.ts';
-import {
-  groupFields,
-  groupOf,
-  runOutcomesIndex,
-  runOutcomesTable,
-  type RunOutcomeStatements,
-} from './run-outcome-statements.ts';
-import { preparedRunOutcomes } from './run-outcome-table.ts';
+import { groupFields, groupOf } from './run-outcome-groups.ts';
+import { runOutcomesTable } from './run-outcome-projection.ts';
+import { keptOutcomesOnly } from './run-outcomes-reader.ts';
 
 const table = SQL.plain(runOutcomesTable);
-
-const defaultPartition = 'emt:default';
-
-const decodeText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
 const GroupRows = Schema.Array(
   Schema.Struct({ ...groupFields, durations: Schema.fromJsonString(Schema.Array(Schema.Number)) }),
 );
-
-const sqliteRunOutcomeStatements: RunOutcomeStatements = {
-  tableVersions: () => SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'run_outcomes_*'`,
-  create: () => [
-    SQL`CREATE TABLE IF NOT EXISTS ${table} (
-      brain_key TEXT NOT NULL,
-      run_id TEXT NOT NULL,
-      started_day TEXT,
-      started_at TEXT,
-      last_started_at TEXT,
-      primitive TEXT,
-      name TEXT,
-      status TEXT,
-      duration_ms INTEGER,
-      input_tokens INTEGER,
-      output_tokens INTEGER,
-      cached_tokens INTEGER,
-      PRIMARY KEY (brain_key, run_id)
-    )`,
-    SQL`CREATE INDEX IF NOT EXISTS ${SQL.plain(runOutcomesIndex)} ON ${table} (brain_key, started_day)`,
-  ],
-  runStreamsAfter: (after, count, types) =>
-    SQL`SELECT s.stream_id AS stream, (
-        SELECT coalesce(sum(octet_length(m.message_data)), 0) FROM emt_messages AS m
-        WHERE m.stream_id = s.stream_id AND m.message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
-          AND m.partition = ${defaultPartition} AND m.is_archived = FALSE
-      ) AS size
-      FROM emt_streams AS s
-      WHERE s.stream_id > ${after} AND s.stream_id GLOB '*/*/*/executions/*'
-        AND s.partition = ${defaultPartition} AND s.is_archived = FALSE
-      ORDER BY s.stream_id
-      LIMIT ${count}`,
-  messagesOf: (streams, types) =>
-    SQL`SELECT stream_id AS stream, message_type AS type, message_data AS data FROM emt_messages
-      WHERE stream_id IN (SELECT value FROM json_each(${JSON.stringify(streams)}))
-        AND message_type IN (SELECT value FROM json_each(${JSON.stringify(types)}))
-        AND partition = ${defaultPartition} AND is_archived = FALSE
-      ORDER BY stream_id, stream_position`,
-  rowsInAWrite: 8,
-  filledData: (column) => decodeText(column),
-  appendedData: (stored) => stored,
-  rowOf: ({ brainKey, runId }) =>
-    SQL`SELECT started_day, started_at, last_started_at, primitive, name, status, duration_ms, input_tokens,
-        output_tokens, cached_tokens
-      FROM ${table} WHERE brain_key = ${brainKey} AND run_id = ${runId}`,
-  afterFill: () => [SQL`ANALYZE ${table}`],
-};
 
 function selected({ primitive, name }: RunOutcomeSelection): SQL {
   return SQL.concat(
@@ -92,29 +35,9 @@ export function sqliteRunOutcomesReader(execute: StatementExecutor): RunOutcomes
   };
 }
 
-function keepingBy(mapping: RunOutcomeMapping): RunOutcomeKeeping {
-  return { statements: sqliteRunOutcomeStatements, mapping };
-}
-
-export function sqliteRunOutcomeProjections(mapping: RunOutcomeMapping | undefined) {
-  return runOutcomeRegistrations(sqliteRunOutcomeStatements, mapping);
-}
-
-interface Transaction {
-  readonly execute: StatementExecutor;
-}
-
-export interface TransactionalPool extends Transaction {
-  readonly withTransaction: (handle: (transaction: Transaction) => Promise<void>) => Promise<void>;
-}
-
-export async function prepareSQLiteRunOutcomes(
-  pool: TransactionalPool,
-  mapping: RunOutcomeMapping | undefined,
-): Promise<void> {
-  if (mapping !== undefined) {
-    await preparedRunOutcomes(keepingBy(mapping), pool.execute, (work) =>
-      pool.withTransaction(({ execute }) => work(execute)),
-    );
-  }
+export function sqliteRunOutcomesOf(
+  runOutcomes: RunOutcomeMapping | undefined,
+  execute: StatementExecutor,
+): RunOutcomesStore['readRunOutcomes'] {
+  return keptOutcomesOnly(runOutcomes, sqliteRunOutcomesReader(execute));
 }

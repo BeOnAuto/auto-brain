@@ -5,12 +5,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { aRecordedFillOf, mebibyte, runIdsOf, type RecordedFill } from '../outcomes/recorded-fill.ts';
+import { postgresqlProjectionsOf } from './postgresql-projections.ts';
 import type { Query } from './postgresql-recorded.ts';
-import {
-  afterTheSchemaWithin,
-  postgresqlRunOutcomeProjections,
-  postgresqlRunOutcomesReader,
-} from './postgresql-run-outcomes.ts';
+import { postgresqlRunOutcomesReader } from './postgresql-run-outcomes.ts';
+
+const tallied = postgresqlProjectionsOf({ runOutcomes: runTallies });
+
+const untallied = postgresqlProjectionsOf({});
 
 interface Recording {
   readonly execute: StatementExecutor;
@@ -59,7 +60,14 @@ function aLedgerWithOneRun(tables: readonly string[]): Answers {
     if (statement.includes('FROM emt_streams')) {
       return statement.includes('s.stream_id > ""') ? [{ stream: 'brain/acme/alpha/executions/r1', size: 120 }] : [];
     }
-    return [{ stream: 'brain/acme/alpha/executions/r1', type: 'run_began', data: { json: JSON.stringify(began) } }];
+    return [
+      {
+        stream: 'brain/acme/alpha/executions/r1',
+        type: 'run_began',
+        data: { json: JSON.stringify(began) },
+        position: 1,
+      },
+    ];
   };
 }
 
@@ -70,7 +78,7 @@ describe('the table of the outcomes of runs on PostgreSQL, as the ledger opens',
   it("is created after the brain's indexes, filled from the stored run streams, and analysed", async () => {
     const { execute, commands } = recording(aLedgerWithOneRun([]));
 
-    await afterTheSchemaWithin(runTallies)({ execute });
+    await tallied.afterTheSchema({ execute });
 
     expect(commands.map((command) => command.split(' ').slice(0, 6).join(' '))).toEqual([
       'CREATE TABLE IF NOT EXISTS run_outcomes_1',
@@ -85,8 +93,8 @@ describe('the table of the outcomes of runs on PostgreSQL, as the ledger opens',
     const found = recording(aLedgerWithOneRun(['run_outcomes_1']));
     const without = recording(aLedgerWithOneRun([]));
 
-    await afterTheSchemaWithin(runTallies)({ execute: found.execute });
-    await afterTheSchemaWithin()({ execute: without.execute });
+    await tallied.afterTheSchema({ execute: found.execute });
+    await untallied.afterTheSchema({ execute: without.execute });
 
     expect([found.commands, without.commands]).toEqual([[], []]);
   });
@@ -98,7 +106,7 @@ async function filledOnPostgreSQL(sizes: readonly number[]): Promise<RecordedFil
     (sql) => SQL.describe(sql, pgFormatter),
     (json) => ({ json }),
   );
-  await afterTheSchemaWithin(runTallies)({ execute: fill.execute });
+  await tallied.afterTheSchema({ execute: fill.execute });
   return fill;
 }
 
@@ -121,18 +129,18 @@ describe('the listings of the fill on PostgreSQL', () => {
 describe('the projection of the outcomes of runs on PostgreSQL', () => {
   it('reads each message out of the wrapper it is stored in, and keeps the row of its run', async () => {
     const { execute, commands } = recording(() => []);
-    const [registration] = postgresqlRunOutcomeProjections(runTallies);
+    const [registration] = tallied.registrations;
     const message = {
       type: 'run_began',
       data: { json: JSON.stringify(began) },
-      metadata: { streamName: 'brain/acme/alpha/executions/r1' },
+      metadata: { streamName: 'brain/acme/alpha/executions/r1', messageId: 'm1', streamPosition: 1n },
     };
 
     await registration?.projection.handle([message], { execute });
 
     expect(registration?.projection.canHandle).toEqual(['run_began', 'run_ended']);
     expect(commands[0]?.startsWith(keptRow)).toBe(true);
-    expect(postgresqlRunOutcomeProjections()).toEqual([]);
+    expect(untallied.registrations).toEqual([]);
   });
 });
 

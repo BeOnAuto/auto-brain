@@ -82,5 +82,9 @@ export function makeLedger(store: LedgerStore): Ledger['Service'] {
       )(stream, command).pipe(Effect.map(({ state, version }) => ({ state, version }))),
     readRecorded: recordedReaderOf(store),
     readRunOutcomes: runOutcomesReaderOf(store),
+    readProjectedRows: store.readProjectedRows,
+    countProjectedRows: store.countProjectedRows,
+    readDueRows: store.readDueRows,
+    nextDueOf: store.nextDueOf,
   });
 }

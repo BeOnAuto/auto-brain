@@ -6,6 +6,8 @@ export interface StoredMessage {
   readonly stream: string;
   readonly type: string;
   readonly data: unknown;
+  readonly id: string;
+  readonly position: number;
 }
 
 export interface InlineProjection {
@@ -28,14 +30,24 @@ export interface InlineRegistration {
 const AppendedMessageSchema = Schema.Struct({
   type: Schema.String,
   data: Schema.Unknown,
-  metadata: Schema.Struct({ streamName: Schema.String }),
+  metadata: Schema.Struct({
+    streamName: Schema.String,
+    messageId: Schema.String,
+    streamPosition: Schema.Union([Schema.BigInt, Schema.Number]),
+  }),
 });
 
 const decodeAppendedMessage = Schema.decodeUnknownSync(AppendedMessageSchema);
 
 function storedMessageOf(message: unknown): StoredMessage {
   const { type, data, metadata } = decodeAppendedMessage(message);
-  return { stream: metadata.streamName, type, data };
+  return {
+    stream: metadata.streamName,
+    type,
+    data,
+    id: metadata.messageId,
+    position: Number(metadata.streamPosition),
+  };
 }
 
 export function inlineRegistrationOf({ types, handle }: InlineProjection): InlineRegistration {

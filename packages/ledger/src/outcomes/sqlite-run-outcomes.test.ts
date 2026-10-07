@@ -3,8 +3,8 @@ import { SQL } from '@event-driven-io/dumbo';
 import { sqliteFormatter } from '@event-driven-io/dumbo/sqlite';
 import { describe, expect, it } from 'vitest';
 
+import { sqliteProjectionsOf } from '../projections/sqlite-projections.ts';
 import { aRecordedFillOf, mebibyte, runIdsOf, type RecordedFill } from './recorded-fill.ts';
-import { prepareSQLiteRunOutcomes } from './sqlite-run-outcomes.ts';
 
 async function filledOnSQLite(sizes: readonly number[]): Promise<RecordedFill> {
   const fill = aRecordedFillOf(
@@ -12,10 +12,7 @@ async function filledOnSQLite(sizes: readonly number[]): Promise<RecordedFill> {
     (sql) => SQL.describe(sql, sqliteFormatter),
     (json) => json,
   );
-  await prepareSQLiteRunOutcomes(
-    { execute: fill.execute, withTransaction: (handle) => handle({ execute: fill.execute }) },
-    runTallies,
-  );
+  await sqliteProjectionsOf({ runOutcomes: runTallies }).prepare(fill.execute, (work) => work(fill.execute));
   return fill;
 }
 

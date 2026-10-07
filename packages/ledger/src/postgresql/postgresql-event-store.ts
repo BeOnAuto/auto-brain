@@ -1,22 +1,19 @@
-import type { RunOutcomeMapping } from '@beonauto/operations';
+import type { RunOutcomeMapping, RunProjection } from '@beonauto/operations';
 import { getPostgreSQLEventStore } from '@event-driven-io/emmett-postgresql';
 import { pgEventStoreDriver } from '@event-driven-io/emmett-postgresql/pg';
 import { Pool } from 'pg';
 
 import { emmettEventStore } from '../emmett/emmett-event-store.ts';
 import type { LedgerStore } from '../event-store.ts';
-import { keptOutcomesOnly } from '../outcomes/run-outcomes-reader.ts';
 import { dataAsJsonText } from './json-text.ts';
+import { formattedFor, postgresqlProjectionsOf } from './postgresql-projections.ts';
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
-import {
-  afterTheSchemaWithin,
-  postgresqlRunOutcomeProjections,
-  postgresqlRunOutcomesReader,
-} from './postgresql-run-outcomes.ts';
+import { postgresqlRunOutcomesOf } from './postgresql-run-outcomes.ts';
 
 export interface PostgreSQLOptions {
   readonly connectionString: string;
   readonly runOutcomes?: RunOutcomeMapping;
+  readonly projections?: readonly RunProjection[];
 }
 
 export interface PostgreSQLStoreOptions extends PostgreSQLOptions {
@@ -29,17 +26,19 @@ export function postgresqlEventStore({
   connectionString,
   reportLostConnection,
   runOutcomes,
+  projections,
 }: PostgreSQLStoreOptions): LedgerStore {
   const pool = new Pool({ connectionString });
   pool.on('error', reportLostConnection);
+  const kept = postgresqlProjectionsOf({ runOutcomes, projections });
   const store = emmettEventStore(
     getPostgreSQLEventStore({
       driver: pgEventStoreDriver,
       connectionString,
       connectionOptions: { pool },
       schema: { autoMigration: 'None' },
-      projections: [...postgresqlRunOutcomeProjections(runOutcomes)],
-      hooks: { onAfterSchemaCreated: afterTheSchemaWithin(runOutcomes) },
+      projections: [...kept.registrations],
+      hooks: { onAfterSchemaCreated: kept.afterTheSchema },
     }),
     { data: dataAsJsonText, mostEventsInOneAppend: eventsInOneBoundedAppend },
   );
@@ -48,7 +47,8 @@ export function postgresqlEventStore({
   return {
     ...store,
     ...postgresqlRecordedStore(query),
-    readRunOutcomes: keptOutcomesOnly(runOutcomes, postgresqlRunOutcomesReader(query)),
+    ...kept.readerOn(formattedFor(query)),
+    readRunOutcomes: postgresqlRunOutcomesOf(runOutcomes, query),
     close: async () => {
       await store.close();
       await pool.end();

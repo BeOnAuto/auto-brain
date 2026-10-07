@@ -5,7 +5,16 @@ import { describe, expect, it } from 'vitest';
 
 import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
-import { began, ended, fourRuns, fourRunsKept, noting, reading, runsOf } from './run-outcomes-behaviour.ts';
+import {
+  began,
+  ended,
+  fourRuns,
+  fourRunsKept,
+  noting,
+  reading,
+  runOutcomesBehaviour,
+  runsOf,
+} from './run-outcomes-behaviour.ts';
 
 const breakingDown = 'The mapping broke down';
 
@@ -201,6 +210,7 @@ function aFillOfAnOversizedRun(entry: LedgerEntry): void {
 }
 
 export function runOutcomeTableBehaviour(entry: LedgerEntry): void {
+  runOutcomesBehaviour((runOutcomes) => aLedger(entry, undefined, runOutcomes));
   aProjectionThatBreaksDown(entry);
   aStoreWithoutTheProjection(entry);
   aNewTableVersion(entry);
