@@ -6,11 +6,13 @@ import {
   type ListedTool,
   type McpSession,
 } from '@beonauto/api/testing';
+import { answers, jsonResult } from '@beonauto/inference/testing';
 import { serveFakeMcp } from '@beonauto/mcp/testing';
 import { Schema } from 'effect';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { recallTestTimeoutMs } from '../testing/servers/recall-server.ts';
 
 const slackKey = 'slack-api-key-7c2e9b14';
 
@@ -32,7 +34,7 @@ function onMcp<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
 beforeAll(async () => {
   const slack = await serveFakeMcp({ bearer: slackKey });
   closing.push(slack.close);
-  server = await servingReasoning([], {
+  server = await servingReasoning([answers(jsonResult({ posted: 'The notes of the standup, to the team channel' }))], {
     LOCAL_MODE: 'true',
     SLACK_KEY: slackKey,
     NOTES_KEY: 'a-key-the-server-refuses',
@@ -124,7 +126,69 @@ describe('episode 3: asked to use Slack', () => {
   });
 });
 
-describe('episode 4: asked to make the brain remember what it posted today', () => {
+const postingWhatItPosted = [
+  '---',
+  'model: anthropic/claude-sonnet-4-5',
+  'description: Posts the notes of a meeting to the team, and answers what it posted',
+  'output:',
+  '  format: json',
+  '  schema: {type: object, properties: {posted: {type: string}}, required: [posted]}',
+  '---',
+  'Post the notes of {{ input.meeting }}, and answer what you posted.',
+].join('\n');
+
+const rememberingWhatWasPosted = [
+  '---',
+  'description: What post-notes answered it posted, oldest first',
+  'language: jq',
+  'source:',
+  '  events:',
+  '    - type: execution_succeeded',
+  '      subject: inference/post-notes',
+  'view:',
+  '  initial: []',
+  '---',
+  '. + [$event.data.output.posted]',
+].join('\n');
+
+const inPosts = { brain: 'posts' };
+
+function standingOf(session: McpSession): Promise<unknown> {
+  return vi.waitFor(
+    async () => {
+      const read = await session.callTool('get_spec', { ...inPosts, primitive: 'recollection', name: 'posted' });
+      expect(read.structuredContent).toMatchObject({ standing: { state: 'live', folded: 1 } });
+      return read.structuredContent;
+    },
+    { timeout: recallTestTimeoutMs - 10_000, interval: 50 },
+  );
+}
+
+async function rememberedOverMcp(session: McpSession) {
+  await session.callTool('create_brain', { ...inPosts, name: 'Posts' });
+  await session.callTool('create_spec', {
+    ...inPosts,
+    primitive: 'inference',
+    name: 'post-notes',
+    source: postingWhatItPosted,
+  });
+  await session.callTool('execute_spec', {
+    ...inPosts,
+    primitive: 'inference',
+    name: 'post-notes',
+    input: { meeting: 'the standup' },
+  });
+  await session.callTool('create_spec', {
+    ...inPosts,
+    primitive: 'recollection',
+    name: 'posted',
+    source: rememberingWhatWasPosted,
+  });
+  await standingOf(session);
+  return session.callTool('execute_spec', { ...inPosts, primitive: 'recollection', name: 'posted' });
+}
+
+describe('episode 4: asked to make the brain remember what it posted today', { timeout: recallTestTimeoutMs }, () => {
   it('finds what a recall function folds and never folds, and a recipe that says the function must answer what it posted', async () => {
     const prompt = Schema.decodeUnknownSync(PromptSchema)(
       await onMcp((session) => session.getPrompt('remember', { what: 'what it posted today' })),
@@ -136,6 +200,15 @@ describe('episode 4: asked to make the brain remember what it posted today', () 
     expect(String(prompt.messages[0]?.content.text)).toContain(
       'a function whose job is to post must answer what it posted.',
     );
+  });
+
+  it('saves the recall function the recipe describes over the runs of the function that posts, which answers what was posted', async () => {
+    const recalled = await onMcp(rememberedOverMcp);
+
+    expect(recalled.structuredContent).toMatchObject({
+      status: 'succeeded',
+      output: ['The notes of the standup, to the team channel'],
+    });
   });
 });
 
