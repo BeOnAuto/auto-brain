@@ -8,7 +8,7 @@ import type { LedgerStore } from '../event-store.ts';
 import { dataAsJsonText } from './json-text.ts';
 import { formattedFor, postgresqlProjectionsOf } from './postgresql-projections.ts';
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
-import { postgresqlRunOutcomesOf } from './postgresql-run-outcomes.ts';
+import { migrationLockTakenWithin, postgresqlRunOutcomesOf } from './postgresql-run-outcomes.ts';
 
 export interface PostgreSQLOptions {
   readonly connectionString: string;
@@ -38,7 +38,7 @@ export function postgresqlEventStore({
       connectionOptions: { pool },
       schema: { autoMigration: 'None' },
       projections: [...kept.registrations],
-      hooks: { onAfterSchemaCreated: kept.afterTheSchema },
+      hooks: { onBeforeSchemaCreated: migrationLockTakenWithin(), onAfterSchemaCreated: kept.afterTheSchema },
     }),
     { data: dataAsJsonText, mostEventsInOneAppend: eventsInOneBoundedAppend },
   );

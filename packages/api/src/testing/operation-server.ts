@@ -80,6 +80,7 @@ export async function operationServer({
       dispatcher,
       runCall: runtime.run,
       serverInfo: testServerInfo,
+      definitionTypes: [],
       reportError: (error) => {
         mcpErrors.push(error.message);
       },

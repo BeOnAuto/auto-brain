@@ -7,7 +7,12 @@ import type { StatementExecutor } from '../event-store.ts';
 import { aRecordedFillOf, mebibyte, runIdsOf, type RecordedFill } from '../outcomes/recorded-fill.ts';
 import { postgresqlProjectionsOf } from './postgresql-projections.ts';
 import type { Query } from './postgresql-recorded.ts';
-import { postgresqlRunOutcomesReader } from './postgresql-run-outcomes.ts';
+import {
+  emmettsMigrationLock,
+  longestMigrationLockWaitMs,
+  migrationLockTakenWithin,
+  postgresqlRunOutcomesReader,
+} from './postgresql-run-outcomes.ts';
 
 const tallied = postgresqlProjectionsOf({ runOutcomes: runTallies });
 
@@ -202,5 +207,70 @@ describe('the read of the outcomes of runs on PostgreSQL', () => {
       'WHERE brain_key = $1 AND started_day BETWEEN $2 AND $3 AND primitive = $4 AND name = $5 GROUP BY started_day, primitive, name, status',
     );
     expect(asked[1]?.text).toContain('BETWEEN $2 AND $3 GROUP BY');
+  });
+});
+
+interface HeldLock {
+  readonly execute: StatementExecutor;
+  readonly tries: () => readonly string[];
+}
+
+function aLockHeldWhile(held: (tries: number) => boolean): HeldLock {
+  const tries: string[] = [];
+  return {
+    tries: () => tries,
+    execute: {
+      query: (sql) => {
+        tries.push(described(sql));
+        return Promise.resolve({ rows: [{ locked: !held(tries.length) }] });
+      },
+      command: (sql) => Promise.reject(new Error(`The wait for the lock commands nothing: ${described(sql)}`)),
+    },
+  };
+}
+
+function aFakeClock() {
+  const clock = { at: 0 };
+  return {
+    elapsed: () => clock.at,
+    waiting: {
+      mostWaitMs: longestMigrationLockWaitMs,
+      now: () => clock.at,
+      pause: (milliseconds: number) => {
+        clock.at += milliseconds;
+        return Promise.resolve();
+      },
+    },
+  };
+}
+
+const lockTried = `SELECT pg_try_advisory_xact_lock(${emmettsMigrationLock}) AS locked`;
+
+describe('the wait of a server that starts for the migration lock of the ledger on PostgreSQL', () => {
+  it('takes the lock the migrator takes, in the migration, trying again every 100 ms until it is free', async () => {
+    const held = aLockHeldWhile((tries) => tries < 2);
+
+    await migrationLockTakenWithin()({ execute: held.execute });
+
+    expect(held.tries()).toEqual([lockTried, lockTried]);
+  });
+
+  it('waits past the 10 s the migrator itself waits, while another server fills the ledger, and goes on once it is done', async () => {
+    const clock = aFakeClock();
+    const held = aLockHeldWhile(() => clock.elapsed() < 12_000);
+
+    await migrationLockTakenWithin(clock.waiting)({ execute: held.execute });
+
+    expect({ elapsed: clock.elapsed(), tries: held.tries().length }).toEqual({ elapsed: 12_000, tries: 121 });
+  });
+
+  it('stops the start, saying why, when the lock is still held after 60 s', async () => {
+    const clock = aFakeClock();
+    const held = aLockHeldWhile(() => true);
+
+    await expect(migrationLockTakenWithin(clock.waiting)({ execute: held.execute })).rejects.toThrow(
+      "Another server held the migration lock of the ledger's database for more than 60 s, so this one does not start; start it again once that server is ready",
+    );
+    expect(clock.elapsed()).toBe(longestMigrationLockWaitMs);
   });
 });

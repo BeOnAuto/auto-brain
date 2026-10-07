@@ -1,7 +1,8 @@
 import type { RunOutcomeMapping, RunOutcomeSelection } from '@beonauto/operations';
+import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
 
-import type { RunOutcomesStore } from '../event-store.ts';
+import type { RunOutcomesStore, StatementExecutor } from '../event-store.ts';
 import { groupFields, groupOf } from '../outcomes/run-outcome-groups.ts';
 import { runOutcomesTable } from '../outcomes/run-outcome-projection.ts';
 import { keptOutcomesOnly } from '../outcomes/run-outcomes-reader.ts';
@@ -37,4 +38,51 @@ export function postgresqlRunOutcomesOf(
   query: Query,
 ): RunOutcomesStore['readRunOutcomes'] {
   return keptOutcomesOnly(runOutcomes, postgresqlRunOutcomesReader(query));
+}
+
+export const emmettsMigrationLock = 999_956_789;
+
+export const longestMigrationLockWaitMs = 60_000;
+
+const lockTriedEveryMs = 100;
+
+interface LockWaiting {
+  readonly mostWaitMs: number;
+  readonly now: () => number;
+  readonly pause: (milliseconds: number) => Promise<unknown>;
+}
+
+const onTheSystemClock: LockWaiting = {
+  mostWaitMs: longestMigrationLockWaitMs,
+  now: () => performance.now(),
+  pause: (milliseconds) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, milliseconds);
+    }),
+};
+
+const LockRows = Schema.Array(Schema.Struct({ locked: Schema.Boolean }));
+
+async function tookTheLock(execute: StatementExecutor): Promise<boolean> {
+  const { rows } = await execute.query(SQL`SELECT pg_try_advisory_xact_lock(${emmettsMigrationLock}) AS locked`);
+  return Schema.decodeUnknownSync(LockRows)(rows).some(({ locked }) => locked);
+}
+
+async function lockTakenBy(execute: StatementExecutor, deadline: number, waiting: LockWaiting): Promise<void> {
+  if (await tookTheLock(execute)) {
+    return;
+  }
+  if (waiting.now() >= deadline) {
+    throw new Error(
+      `Another server held the migration lock of the ledger's database for more than ${waiting.mostWaitMs / 1000} s, so this one does not start; start it again once that server is ready`,
+    );
+  }
+  await waiting.pause(lockTriedEveryMs);
+  await lockTakenBy(execute, deadline, waiting);
+}
+
+export function migrationLockTakenWithin(
+  waiting: LockWaiting = onTheSystemClock,
+): (migration: { readonly execute: StatementExecutor }) => Promise<void> {
+  return ({ execute }) => lockTakenBy(execute, waiting.now() + waiting.mostWaitMs, waiting);
 }

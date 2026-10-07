@@ -78,6 +78,7 @@ const largestExecutionEvents: readonly ExecutionEvent[] = [
   {
     type: 'execution_rejected',
     rejection: { reason: 'invalid_input', detail: awkward, issues: manyIssues },
+    record: largestJson,
     ...ofTheLongestNames,
     ...fact,
   },

@@ -16,7 +16,7 @@ Start with [Brains and methods](concepts/brains.md) to see how a business respon
 
 [Start Auto locally and connect your agent](get-started/local.md), then follow [Build your first brain](tutorials/first-brain.md). You do not need an Auto Cloud account. The tutorial creates a campaign-brief review function and compares two recorded runs.
 
-Auto Cloud is coming soon. [Request an invite](https://on.auto/request-invite) if you would prefer a hosted brain.
+Auto Cloud is currently invite-only. [Request an invitation](https://on.auto/request-invite) if you would prefer a hosted brain.
 
 To bring graph data into an existing function, follow [Use Auto with Apollo](integrations/apollo.md).
 

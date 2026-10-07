@@ -1,4 +1,4 @@
-import { mcpRoutes, operationRoutes, type AppRuntime, type RegisterRoutes } from '@beonauto/api';
+import { mcpRoutes, operationRoutes, type AppRuntime, type DefinitionType, type RegisterRoutes } from '@beonauto/api';
 import {
   makeCatalog,
   makeDispatcher,
@@ -16,6 +16,7 @@ export function routesFor(
   runtime: AppRuntime<DispatcherServices>,
   catalog: Catalog,
   dispatcher: Dispatcher,
+  definitionTypes: readonly DefinitionType[],
 ): readonly RegisterRoutes[] {
   return [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
@@ -24,6 +25,7 @@ export function routesFor(
       dispatcher,
       runCall: runtime.run,
       serverInfo: release,
+      definitionTypes,
       reportError: (error) => {
         void runtime.run(logMcpError(error));
       },
@@ -34,5 +36,5 @@ export function routesFor(
 export function routesServing(
   operations: Operations,
 ): (runtime: AppRuntime<DispatcherServices>) => readonly RegisterRoutes[] {
-  return (runtime) => routesFor(runtime, makeCatalog(operations), makeDispatcher([]));
+  return (runtime) => routesFor(runtime, makeCatalog(operations), makeDispatcher([]), []);
 }
