@@ -2,6 +2,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import type {
   BrainAddress,
+  BrainProjectionReader,
   BrainRecordedReader,
   BrainRunOutcomesReader,
   BrainRegistry,
@@ -55,7 +56,9 @@ describe('the services a handler may ask for', () => {
     expectTypeOf<BrainContext['Service']>().toEqualTypeOf<BrainAddress>();
     expectTypeOf<OrgReader['Service']>().toEqualTypeOf<StreamReader>();
     expectTypeOf<OrgWriter['Service']>().toEqualTypeOf<StreamWriter>();
-    expectTypeOf<BrainReader['Service']>().toEqualTypeOf<StreamReader & BrainRecordedReader & BrainRunOutcomesReader>();
+    expectTypeOf<BrainReader['Service']>().toEqualTypeOf<
+      StreamReader & BrainRecordedReader & BrainRunOutcomesReader & BrainProjectionReader
+    >();
     expectTypeOf<BrainWriter['Service']>().toEqualTypeOf<StreamWriter>();
   });
 });

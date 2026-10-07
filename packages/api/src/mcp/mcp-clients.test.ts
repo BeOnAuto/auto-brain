@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { instructionsFor } from '../index.ts';
-import { testRecipes } from '../testing/guides.ts';
+import { testDefinitionTypes, testRecipes } from '../testing/guides.ts';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import {
   expectedProtocolVersion,
@@ -66,7 +66,7 @@ describe.each(mcpClientKinds)('the %s client connecting to a brain endpoint', (k
     expect(connected).toEqual({
       protocolVersion: expectedProtocolVersion[kind],
       serverVersion: testServerInfo,
-      instructions: instructionsFor('brain', { orgTools: [], brainTools }, [], testRecipes),
+      instructions: instructionsFor('brain', { orgTools: [], brainTools }, testDefinitionTypes, testRecipes),
     });
   });
 

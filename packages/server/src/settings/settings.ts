@@ -3,11 +3,9 @@ import { readApiKeys, type ApiKey } from '@beonauto/identity';
 import { Effect, Result } from 'effect';
 
 import { readAccessSettings, type AccessSettings } from './access-settings.ts';
-import { readComputationSettings, type ComputationSettings } from './computation-settings.ts';
 import { fileSettings } from './file-settings.ts';
+import { readFunctionSettings, type FunctionSettings } from './function-settings.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
-import { readReasoningSettings, type ReasoningSettings } from './reasoning-settings.ts';
-import { readRecallSettings, type RecallSettings } from './recall-settings.ts';
 import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
 
 interface ConfigFileSources {
@@ -16,14 +14,12 @@ interface ConfigFileSources {
   readonly overridden: readonly string[];
 }
 
-export interface Settings extends ReasoningSettings, AccessSettings {
+export interface Settings extends FunctionSettings, AccessSettings {
   readonly host: string;
   readonly port: number;
   readonly apiKeys: readonly ApiKey[] | undefined;
   readonly ledger: LedgerSettings;
   readonly workflows: WorkflowSettings;
-  readonly computation: ComputationSettings;
-  readonly recall: RecallSettings;
   readonly configFile: ConfigFileSources | undefined;
 }
 
@@ -36,10 +32,8 @@ export function readSettings(given: Environment): Settings {
   const { host, port } = readServerConfig(environment);
   const { allowedOrigins, localMode, logFormat } = Effect.runSync(readAccessSettings(environment));
   const ledger = Effect.runSync(readLedgerSettings(environment));
-  const { models, mcp } = readReasoningSettings(environment, file);
+  const functions = readFunctionSettings(environment, file, port);
   const workflows = Effect.runSync(readWorkflowSettings(environment));
-  const computation = Effect.runSync(readComputationSettings(environment));
-  const recall = Effect.runSync(readRecallSettings(environment));
   return {
     host,
     port,
@@ -48,11 +42,8 @@ export function readSettings(given: Environment): Settings {
     ledger,
     localMode,
     logFormat,
-    models,
-    mcp,
+    ...functions,
     workflows,
-    computation,
-    recall,
     configFile: sourcesOf(file),
   };
 }

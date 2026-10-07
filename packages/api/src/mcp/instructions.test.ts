@@ -28,6 +28,8 @@ const insideABrain = [
   'list_brain_events',
   'publish_event',
   'list_tool_servers',
+  'list_interactions',
+  'answer_interaction',
   'send_execution_event',
   'get_guide',
 ];
@@ -41,6 +43,7 @@ const queriesInsideABrain = [
   'get_brain_analytics',
   'list_brain_events',
   'list_tool_servers',
+  'list_interactions',
   'get_guide',
 ];
 
@@ -52,6 +55,7 @@ const ownOrg: ServedTools = { orgTools: [...brainTools, 'list_models'], brainToo
 
 const definitionTypes: readonly DefinitionType[] = [
   { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
+  { primitive: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
   { primitive: 'computation', noun: 'computation function', guide: 'computation-function' },
   { primitive: 'recollection', noun: 'recall function', guide: 'recall-function' },
   { primitive: 'orchestration', noun: 'workflow', guide: 'workflow' },
@@ -70,17 +74,46 @@ const everyEndpoint: readonly (readonly [McpEndpoint, ServedTools])[] = [
   ['own org', ownOrg],
 ];
 
-const onMcp =
+const recordOnMcp =
   "A brain is the complete system for a business responsibility. It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history. A reasoning function has a prompt and calls a language model. A computation function runs a program on its input and gives the same output every time. A recall function keeps a view folded from the brain's own history, every run's start and ending with its result when it succeeded and fit, the definitions saved and every event published to the brain, never a run's input or the tool calls it made, so nothing has to write into it. A workflow runs functions in steps, waits for input and can start on a schedule or on an event. This connection acts in the caller's own org: list_brains shows its brains and create_brain makes one, and every tool inside a brain takes the brain's id as brain. The tools call a definition a spec, a run an execution and a definition's type its primitive: inference for a reasoning function, computation for a computation function, recollection for a recall function and orchestration for a workflow. Before writing a definition, read its format with get_guide, which also holds the recipes: first-brain, remember, give-tools and schedule. A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists. A workflow run answers started and ends later: read it with get_execution until its status changes, and give a run that waits for input its event with send_execution_event. Runs, history and events come a page at a time; read on only when the person needs more. When you tell the person what happened, say what was done and what they can do next, in the words of brains, functions, workflows and runs, not in the tools' names, fields or rules; give an id or a status only when the person needs it to act, as a run's id they will return to. A tool that cannot do what was asked says why and what to change.";
 
-const onAnOrg =
+const recordOnAnOrg =
   "A brain is the complete system for a business responsibility. It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history. A reasoning function has a prompt and calls a language model. A computation function runs a program on its input and gives the same output every time. A recall function keeps a view folded from the brain's own history, every run's start and ending with its result when it succeeded and fit, the definitions saved and every event published to the brain, never a run's input or the tool calls it made, so nothing has to write into it. A workflow runs functions in steps, waits for input and can start on a schedule or on an event. This connection manages the brains of one org: list_brains shows them and create_brain makes one, and a brain's functions and workflows are made on the brain's own connection. list_models lists the models this server can call, which a reasoning function names. get_guide holds what these words mean and how each kind of definition is written. When you tell the person what happened, say what was done and what they can do next, in the words of brains, functions, workflows and runs, not in the tools' names, fields or rules; give an id or a status only when the person needs it to act, as a run's id they will return to. A tool that cannot do what was asked says why and what to change.";
 
-const onABrain =
+const recordOnABrain =
   "A brain is the complete system for a business responsibility. It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history. A reasoning function has a prompt and calls a language model. A computation function runs a program on its input and gives the same output every time. A recall function keeps a view folded from the brain's own history, every run's start and ending with its result when it succeeded and fit, the definitions saved and every event published to the brain, never a run's input or the tool calls it made, so nothing has to write into it. A workflow runs functions in steps, waits for input and can start on a schedule or on an event. This connection acts inside one brain. The tools call a definition a spec, a run an execution and a definition's type its primitive: inference for a reasoning function, computation for a computation function, recollection for a recall function and orchestration for a workflow. Before writing a definition, read its format with get_guide, which also holds the recipes: remember, give-tools and schedule. A reasoning function names a model this server can call; the reasoning-function guide says how it is written, and it may name tools that list_tool_servers lists. A workflow run answers started and ends later: read it with get_execution until its status changes, and give a run that waits for input its event with send_execution_event. Runs, history and events come a page at a time; read on only when the person needs more. When you tell the person what happened, say what was done and what they can do next, in the words of brains, functions, workflows and runs, not in the tools' names, fields or rules; give an id or a status only when the person needs it to act, as a run's id they will return to. A tool that cannot do what was asked says why and what to change.";
 
+const recordWorkflowSentence =
+  'A workflow run answers started and ends later: read it with get_execution until its status changes, and give a run that waits for input its event with send_execution_event.';
+
+const runsSentence = 'A run of a workflow answers started; read it with get_execution until it ends.';
+
+const recordBrainArgument = ", and every tool inside a brain takes the brain's id as brain.";
+
+function asServedWithFourTypes(recordText: string): string {
+  return recordText.replace(recordWorkflowSentence, runsSentence).replace(recordBrainArgument, '.');
+}
+
+const interactionSentence = 'An interaction function asks a person or a system and takes the answer later.';
+
+function asServedWithFiveTypes(recordText: string): string {
+  return asServedWithFourTypes(recordText)
+    .replace(
+      'A reasoning function has a prompt and calls a language model.',
+      `A reasoning function has a prompt and calls a language model. ${interactionSentence}`,
+    )
+    .replace(
+      'inference for a reasoning function,',
+      'inference for a reasoning function, interaction for an interaction function,',
+    )
+    .replace(
+      runsSentence,
+      'A run of an interaction function or a workflow answers started; read it with get_execution until it ends.',
+    );
+}
+
 const wireNamesSentence =
-  "The tools call a definition a spec, a run an execution and a definition's type its primitive: inference for a reasoning function, computation for a computation function, recollection for a recall function and orchestration for a workflow.";
+  "The tools call a definition a spec, a run an execution and a definition's type its primitive: inference for a reasoning function, interaction for an interaction function, computation for a computation function, recollection for a recall function and orchestration for a workflow.";
 
 const terminology = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
 
@@ -98,12 +131,28 @@ function definitionOfABrainOnTheTerminologyPage(): string {
 
 describe('the instructions of each endpoint, for a key that may call every tool', () => {
   it.each([
-    ['own org', ownOrg, onMcp],
-    ['org', orgEndpoint, onAnOrg],
-    ['brain', brainEndpoint, onABrain],
-  ] as const)('read on the %s endpoint as the decision record gives them', (endpoint, served, expected) => {
-    expect(instructionsFor(endpoint, served, definitionTypes, recipes)).toBe(expected);
-  });
+    ['own org', ownOrg, recordOnMcp],
+    ['org', orgEndpoint, recordOnAnOrg],
+    ['brain', brainEndpoint, recordOnABrain],
+  ] as const)(
+    'read on the %s endpoint as the decision record gives them, with a sentence per type the server runs, and the run sentence and the brain argument the bound leaves room for',
+    (endpoint, served, recordText) => {
+      expect(instructionsFor(endpoint, served, definitionTypes, recipes)).toBe(asServedWithFiveTypes(recordText));
+    },
+  );
+
+  it.each([
+    ['own org', ownOrg, recordOnMcp],
+    ['org', orgEndpoint, recordOnAnOrg],
+    ['brain', brainEndpoint, recordOnABrain],
+  ] as const)(
+    'read on the %s endpoint of a server with the four types of the record as the record gives them, but for those two',
+    (endpoint, served, recordText) => {
+      const fourTypes = definitionTypes.filter(({ primitive }) => primitive !== 'interaction');
+
+      expect(instructionsFor(endpoint, served, fourTypes, recipes)).toBe(asServedWithFourTypes(recordText));
+    },
+  );
 
   it.each(everyEndpoint)('stay under 2,000 characters on the %s endpoint', (endpoint, served) => {
     expect(instructionsFor(endpoint, served, definitionTypes, recipes).length).toBeLessThan(2000);
@@ -120,13 +169,16 @@ describe('the instructions of a key that may only read', () => {
     );
 
     expect(
-      ['create_brain', 'create_spec', 'execute_spec', 'send_execution_event', 'first-brain'].filter((name) =>
-        reading.includes(name),
-      ),
+      [
+        'create_brain',
+        'create_spec',
+        'execute_spec',
+        'send_execution_event',
+        'answer_interaction',
+        'first-brain',
+      ].filter((name) => reading.includes(name)),
     ).toEqual([]);
-    expect(reading).toContain(
-      "This connection acts in the caller's own org: list_brains shows its brains, and every tool inside a brain takes the brain's id as brain.",
-    );
+    expect(reading).toContain("This connection acts in the caller's own org: list_brains shows its brains.");
     expect(reading).toContain('get_guide holds what these words mean and how each kind of definition is written.');
   });
 

@@ -33,6 +33,8 @@ const specTools = [
   'list_brain_events',
   'publish_event',
   'list_tool_servers',
+  'answer_interaction',
+  'list_interactions',
   'send_execution_event',
 ];
 

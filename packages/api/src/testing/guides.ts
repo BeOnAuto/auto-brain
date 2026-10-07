@@ -1,4 +1,4 @@
-import type { Guide, Recipe } from '../index.ts';
+import type { DefinitionType, Guide, Recipe } from '../index.ts';
 
 export const notebookGuide: Guide = {
   name: 'notebook',
@@ -32,3 +32,5 @@ export const noteRecipe: Recipe = {
 export const testGuides: readonly Guide[] = [wordsGuide, notebookGuide];
 
 export const testRecipes: readonly Recipe[] = [noteRecipe];
+
+export const testDefinitionTypes: readonly DefinitionType[] = [{ primitive: 'notes', noun: 'note', guide: 'notebook' }];

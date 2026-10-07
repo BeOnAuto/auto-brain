@@ -26,6 +26,15 @@ describe('the terminology guide', () => {
     expect(text).toContain('- Language model: A model used by a reasoning function.');
   });
 
+  it('lists the terms of a capability under its own heading only where the server runs its function type', () => {
+    const interacting = terminologyGuideOf(page, ['interaction function', 'workflow']).text;
+    const notInteracting = terminologyGuideOf(page, ['workflow']).text;
+
+    expect(interacting).toContain('Interaction:\n\n- Request: What a run of an interaction function asks');
+    expect(notInteracting).not.toContain('Interaction:');
+    expect(notInteracting).not.toContain('- Inbox:');
+  });
+
   it('is stripped of the markup and links of the page', () => {
     const { text } = terminologyGuideOf(page, ['reasoning function', 'workflow']);
 

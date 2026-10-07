@@ -1,7 +1,7 @@
+import { decodedJsonSettingWith, strictly } from '@beonauto/config';
 import { Effect, Redacted, Result, Schema } from 'effect';
 
 import { allowedOptionProblems } from './allowed-provider-options.ts';
-import { decodeJsonSetting, strictly } from './json-setting.ts';
 import {
   optionalSecret,
   problem,
@@ -182,7 +182,7 @@ const gatewayFrom = Effect.fnUntraced(function* (environment: Environment, entry
 });
 
 const entriesOf = (text: string | undefined): Result.Result<readonly GatewayEntry[], readonly SettingProblem[]> =>
-  text === undefined ? Result.succeed([]) : decodeJsonSetting(setting, text, decodeGateways);
+  text === undefined ? Result.succeed([]) : decodedJsonSettingWith(setting, text, decodeGateways);
 
 export const gatewayReading = Effect.fnUntraced(function* (environment: Environment, text: string | undefined) {
   const entries = entriesOf(text);

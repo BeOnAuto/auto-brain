@@ -4,6 +4,7 @@ import { Schema } from 'effect';
 import {
   ExecutionEventSchema,
   type CalledBy,
+  type DeliveryEvent,
   type ExecutionCancelRequested,
   type ExecutionDeferred,
   type ExecutionEvent,
@@ -23,6 +24,7 @@ import {
   toolCalled,
 } from '../plain-language/event-words.ts';
 import type { SpecWords } from '../plain-language/spec-words.ts';
+import { deferralAccount, deliveryAccount, type TypedAccount } from '../run-work/run-work-accounts.ts';
 import {
   cutAtCodePoint,
   issuesShown,
@@ -34,7 +36,7 @@ import {
 } from './event-data.ts';
 import type { Account } from './event-presenter.ts';
 
-type ShownExecutionEvent = Exclude<ExecutionEvent, ExecutionDeferred>;
+type ShownExecutionEvent = Exclude<ExecutionEvent, ExecutionDeferred | DeliveryEvent>;
 
 interface Fact {
   readonly execution_id: string;
@@ -50,7 +52,7 @@ function rejectionShown(rejection: ExecutionRejection) {
     const { reason, kind } = rejection;
     return { reason, detail, ...(kind === undefined ? {} : { kind }) };
   }
-  if (rejection.reason === 'cancelled') {
+  if (rejection.reason === 'cancelled' || rejection.reason === 'unanswered') {
     const { reason, kind } = rejection;
     return { reason, detail, kind };
   }
@@ -151,7 +153,7 @@ function accountOf(words: SpecWords, event: ShownExecutionEvent, executionId: st
 
 const executionsKind = 'executions';
 
-const shownNames: Readonly<Record<ShownExecutionEvent['type'], readonly [string]>> = {
+const shownNames: Readonly<Record<Exclude<ExecutionEvent, ExecutionDeferred>['type'], readonly [string]>> = {
   execution_started: ['execution_started'],
   execution_succeeded: ['execution_succeeded'],
   execution_rejected: ['execution_rejected'],
@@ -159,22 +161,31 @@ const shownNames: Readonly<Record<ShownExecutionEvent['type'], readonly [string]
   execution_cancel_requested: ['execution_cancel_requested'],
   tool_call_started: ['tool_call_started'],
   tool_call_answered: ['tool_call_answered'],
+  delivery_started: ['delivery_started'],
+  delivery_ended: ['delivery_ended'],
 };
 
 const decodeExecutionEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ExecutionEventSchema));
 
+function presentedAccount(words: SpecWords, event: ExecutionEvent, executionId: string): TypedAccount | undefined {
+  const fact = { execution_id: executionId, by: cutAtCodePoint(event.by, mostCallerBytes) };
+  if (event.type === 'execution_deferred') {
+    return deferralAccount(words.runWordsOf(event.primitive), event, fact);
+  }
+  if (event.type === 'delivery_started' || event.type === 'delivery_ended') {
+    return deliveryAccount(words.runWordsOf(event.primitive), event, fact);
+  }
+  return { type: event.type, ...accountOf(words, event, executionId) };
+}
+
 export function executionPresenter(words: SpecWords): Presenter {
   return {
     streamKind: executionsKind,
-    publicNames: { ...shownNames, execution_deferred: [] },
+    publicNames: { ...shownNames, execution_deferred: words.deferralTypes },
     present: ({ id, cursor, causationId, stream, data }) => {
       const event = decodeExecutionEvent(data);
-      if (event.type === 'execution_deferred') {
-        return [];
-      }
-      const [type] = shownNames[event.type];
-      const account = accountOf(words, event, stream.slice(executionsKind.length + 1));
-      return [{ id, cursor, causation_id: causationId, at: event.at, type, ...account }];
+      const account = presentedAccount(words, event, stream.slice(executionsKind.length + 1));
+      return account === undefined ? [] : [{ id, cursor, causation_id: causationId, at: event.at, ...account }];
     },
   };
 }

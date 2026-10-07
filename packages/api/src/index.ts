@@ -16,7 +16,7 @@ export {
   mostArgumentDescriptionCharacters,
   mostDescriptionCharacters,
   mostGuideBytes,
-  mostGuides,
+  mostGuidesBeyondTheRecipes,
   mostInstructionCharacters,
   mostRecipeBytes,
   mostRecipes,

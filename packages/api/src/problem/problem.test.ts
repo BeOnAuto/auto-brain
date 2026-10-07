@@ -9,6 +9,7 @@ const statusAndTitleByReason: ReadonlyArray<readonly [ProblemReason, number, str
   ['conflict', 409, 'Conflict'],
   ['unavailable', 503, 'Unavailable'],
   ['cancelled', 409, 'Cancelled'],
+  ['unanswered', 410, 'Unanswered'],
   ['client_closed_request', 499, 'Client closed request'],
   ['bad_request', 400, 'Bad request'],
   ['unauthenticated', 401, 'Unauthenticated'],
@@ -119,6 +120,31 @@ describe('a cancelled run', () => {
       kind: 'deadline',
     });
     expect(problemResponse(problem).headers.get('retry-after')).toBeNull();
+  });
+});
+
+describe('a request nobody answered', () => {
+  it('is gone, by a type of its own with its kind, and asks for no retry, since the same request answers it again', () => {
+    const problem = problemOf('unanswered', 'Nobody answered before the request expired', { kind: 'expired' });
+
+    expect(problem).toEqual({
+      type: 'https://on.auto/problems/unanswered',
+      title: 'Unanswered',
+      status: 410,
+      detail: 'Nobody answered before the request expired',
+      reason: 'unanswered',
+      kind: 'expired',
+    });
+    expect(problemResponse(problem).headers.get('retry-after')).toBeNull();
+  });
+});
+
+describe('a channel or room for a request the server cannot give', () => {
+  it('asks for no retry of a channel not offered, and for a retry once the brain has room for a request', () => {
+    expect([retryAfterOf({ kind: 'channel_not_offered' }), retryAfterOf({ kind: 'requests_full' })]).toEqual([
+      null,
+      '5',
+    ]);
   });
 });
 

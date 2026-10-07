@@ -56,7 +56,30 @@ describe('the callers an MCP endpoint rejects before the MCP SDK runs', () => {
     });
     expect(answer.headers.get('www-authenticate')).toBe('Bearer error="insufficient_scope"');
   });
+});
 
+describe('the answer token of a request at an MCP endpoint', () => {
+  it.each(['/mcp', '/orgs/acme/mcp', '/orgs/acme/brains/alpha/mcp'])(
+    'refuses the answer token of a request on %s, which answers over HTTP alone',
+    async (path) => {
+      const { handler } = await operationServer();
+
+      const answer = await postMcp(handler, path, { authorization: 'Request a-token-of-a-request' });
+
+      expect({ status: answer.status, body: jsonOf(answer.text) }).toMatchObject({
+        status: 401,
+        body: {
+          reason: 'unauthenticated',
+          detail:
+            'The answer token of a request answers it over HTTP alone, as Request <token>; MCP takes an API key, as Bearer <key>',
+        },
+      });
+      expect(answer.headers.get('www-authenticate')).toBe('Bearer error="invalid_token"');
+    },
+  );
+});
+
+describe('the origins an MCP endpoint rejects', () => {
   it('rejects an origin that is not allowed with a 403 problem document', async () => {
     const { handler } = await operationServer();
 

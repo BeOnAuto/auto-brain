@@ -6,6 +6,7 @@ import {
   ModelAliasesSchema,
   ModelGatewaysSchema,
 } from '@beonauto/inference';
+import { ChannelsSchema } from '@beonauto/interaction';
 import { AllowedToolsSchema, McpServersSchema } from '@beonauto/mcp';
 import { Schema } from 'effect';
 
@@ -67,6 +68,15 @@ export const fileSettings: readonly FileSetting[] = [
     McpServersSchema.annotate({
       description:
         'The MCP servers whose tools a reasoning function may name, each bound to an org and optionally its brains: url for a remote server, command for a process. Secrets are references such as ${GRAPH_API_KEY}. MCP_SERVERS wins over it',
+    }),
+    asJson,
+    { references: 'kept' },
+  ),
+  fileSetting(
+    'CHANNELS',
+    ChannelsSchema.annotate({
+      description:
+        'The channels interaction functions send their requests through, keyed by the name a function writes in channel: webhook for a signed HTTP POST, mcp for one call of a tool of mcp_servers. Each is bound to an org and optionally its brains, and to a pattern of the parties it may reach. Secrets are references such as ${PARTNER_WEBHOOK_SECRET}. CHANNELS wins over it',
     }),
     asJson,
     { references: 'kept' },

@@ -20,7 +20,6 @@ interface Serving {
   readonly endpoint: McpEndpoint;
   readonly names: readonly string[];
   readonly listed: (name: string) => boolean;
-  readonly takesABrain: boolean;
   readonly definitionTypes: readonly DefinitionType[];
   readonly reasoning: DefinitionType | undefined;
   readonly recipes: readonly RecipeCalls[];
@@ -32,6 +31,7 @@ const reasoningFunctionType = 'inference';
 
 const purposeByType: Readonly<Record<string, string>> = {
   inference: 'A reasoning function has a prompt and calls a language model.',
+  interaction: 'An interaction function asks a person or a system and takes the answer later.',
   computation: 'A computation function runs a program on its input and gives the same output every time.',
   recollection:
     "A recall function keeps a view folded from the brain's own history, every run's start and ending with its result when it succeeded and fit, the definitions saved and every event published to the brain, never a run's input or the tool calls it made, so nothing has to write into it.",
@@ -77,11 +77,7 @@ function joinedClauses(opening: string, brains: readonly string[], rest: readonl
 
 const whatTheConnectionDoes: Readonly<Record<McpEndpoint, (serving: Serving) => string>> = {
   'own org': (serving) =>
-    joinedClauses(
-      "This connection acts in the caller's own org",
-      brainsClause(serving, 'its brains'),
-      serving.takesABrain ? ["every tool inside a brain takes the brain's id as brain"] : [],
-    ),
+    joinedClauses("This connection acts in the caller's own org", brainsClause(serving, 'its brains'), []),
   org: (serving) =>
     joinedClauses('This connection manages the brains of one org', brainsClause(serving, 'them'), [
       "a brain's functions and workflows are made on the brain's own connection",
@@ -132,12 +128,16 @@ const modelsAndTools: Sentences = ({ reasoning, listed }) => {
   ];
 };
 
-const workflows: Sentences = ({ listed }) =>
-  listed('send_execution_event')
-    ? [
-        'A workflow run answers started and ends later: read it with get_execution until its status changes, and give a run that waits for input its event with send_execution_event.',
-      ]
+const typesThatFinishLater: ReadonlySet<string> = new Set(['interaction', 'orchestration']);
+
+const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
+  const finishingLater = definitionTypes
+    .filter(({ primitive }) => typesThatFinishLater.has(primitive))
+    .map(({ noun }) => articled(noun));
+  return listed('get_execution') && finishingLater.length > 0
+    ? [`A run of ${finishingLater.join(' or ')} answers started; read it with get_execution until it ends.`]
     : [];
+};
 
 const paging: Sentences = ({ listed }) =>
   pagedReads.some((name) => listed(name))
@@ -153,7 +153,7 @@ const orientation: readonly Sentences[] = [
   modelsBeforeWriting,
   guides,
   modelsAndTools,
-  workflows,
+  runsThatFinishLater,
   paging,
   closing,
 ];
@@ -169,7 +169,6 @@ export function instructionsFor(
     endpoint,
     names,
     listed: (name) => names.includes(name),
-    takesABrain: endpoint === 'own org' && tools.brainTools.length > 0,
     definitionTypes,
     reasoning: definitionTypes.find(({ primitive }) => primitive === reasoningFunctionType),
     recipes,

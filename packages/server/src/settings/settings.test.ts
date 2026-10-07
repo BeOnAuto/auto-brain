@@ -17,10 +17,15 @@ const { entry } = createApiKey({ id: 'ci-1', org: 'acme', permissions: ['org:rea
 
 describe('readSettings', () => {
   it('listens on every interface at port 8080, allows no origin, has no API keys and keeps the ledger in data/ by default', () => {
-    const { models, mcp, ...server } = readSettings({});
+    const { models, mcp, interaction, ...server } = readSettings({});
 
     expect(models.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
     expect(mcp).toEqual({ servers: [], allowed: null });
+    expect(interaction).toEqual({
+      channels: { channels: new Map(), secrets: [] },
+      mostOpenRequests: 10_000,
+      origin: 'http://localhost:8080',
+    });
     expect(server).toEqual({
       host: '0.0.0.0',
       port: 8080,
@@ -32,11 +37,14 @@ describe('readSettings', () => {
       workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
+      configFile: undefined,
     });
   });
+});
 
+describe('readSettings given every setting', () => {
   it('reads every setting from the environment it is given', () => {
-    const { models, mcp, ...server } = readSettings({
+    const { models, mcp, interaction, ...server } = readSettings({
       HOST: '127.0.0.1',
       PORT: '3000',
       ALLOWED_ORIGINS: 'https://app.example.com,http://localhost:5173,http://[::1]:3000',
@@ -45,8 +53,11 @@ describe('readSettings', () => {
       LOCAL_MODE: 'true',
       LOG_FORMAT: 'pretty',
       OPENAI_API_KEY: 'sk-test',
+      INTERACTION_OPEN_REQUESTS: '250',
+      PUBLIC_ORIGIN: 'https://brains.example.com',
     });
 
+    expect(interaction).toMatchObject({ mostOpenRequests: 250, origin: 'https://brains.example.com' });
     expect(models.openai).toMatchObject({ configured: true });
     expect(mcp.servers).toEqual([]);
     expect(server).toEqual({
@@ -68,8 +79,18 @@ describe('readSettings', () => {
 describe('readSettings with empty values', () => {
   it('treats empty variables as not set', () => {
     expect(
-      readSettings({ ALLOWED_ORIGINS: '', API_KEYS: '', LEDGER_FILE: '', LOCAL_MODE: '', LOG_FORMAT: '' }),
+      readSettings({
+        ALLOWED_ORIGINS: '',
+        API_KEYS: '',
+        LEDGER_FILE: '',
+        LOCAL_MODE: '',
+        LOG_FORMAT: '',
+        CHANNELS: '',
+        INTERACTION_OPEN_REQUESTS: '',
+        PUBLIC_ORIGIN: '',
+      }),
     ).toMatchObject({
+      interaction: { channels: { channels: new Map() }, mostOpenRequests: 10_000, origin: 'http://localhost:8080' },
       allowedOrigins: [],
       apiKeys: undefined,
       ledger: { store: 'sqlite', file: 'data/ledger.db' },

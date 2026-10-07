@@ -23,7 +23,7 @@ function described(name: string): string {
 describe('the description of create_spec', () => {
   it('names each definition type the brain runs, the kind of definition it is and the guide to its format', () => {
     expect(described('create_spec')).toContain(
-      "`primitive` is the definition's type and `name` is how workflows and other tools refer to it: echo, a greeting, guide echo; probe, a probe, guide probe.",
+      "`primitive` is the definition's type and `name` is how workflows and tools refer to it: echo, a greeting, guide echo; probe, a probe, guide probe.",
     );
   });
 });

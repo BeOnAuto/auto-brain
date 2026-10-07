@@ -1,3 +1,4 @@
+import { lineageAttributeNames } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import type { ExecutionEvent } from '../execution/execution-events.ts';
@@ -10,6 +11,8 @@ export const specSourcePrefix = '/specs/';
 
 export const callerSourcePrefix = '/callers/';
 
+type CapabilityEventType = 'interaction_requested';
+
 type WorkflowEventType =
   | 'workflow_input_applied'
   | 'step_started'
@@ -19,7 +22,12 @@ type WorkflowEventType =
   | 'step_skipped'
   | 'reaction_refused';
 
-type FeedType = ExecutionEvent['type'] | SpecEvent['type'] | EventPublished['type'] | WorkflowEventType;
+type FeedType =
+  | ExecutionEvent['type']
+  | SpecEvent['type']
+  | EventPublished['type']
+  | CapabilityEventType
+  | WorkflowEventType;
 
 const brainTypes: Readonly<Record<FeedType, true>> = {
   execution_started: true,
@@ -30,6 +38,9 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   execution_cancel_requested: true,
   tool_call_started: true,
   tool_call_answered: true,
+  delivery_started: true,
+  delivery_ended: true,
+  interaction_requested: true,
   spec_created: true,
   spec_updated: true,
   spec_retired: true,
@@ -56,14 +67,28 @@ export const reservedSourcesInWords = new Intl.ListFormat('en-GB', { type: 'disj
 interface Attributes {
   readonly type: string;
   readonly source?: string;
+  readonly [attribute: string]: unknown;
 }
 
 export function isReservedSource(source: string): boolean {
   return reservedSourcePrefixes.some((prefix) => source.startsWith(prefix));
 }
 
-function brainOwnAttributes({ type, source }: Attributes) {
+const lineageInWords = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(lineageAttributeNames);
+
+function lineageIssues(attributes: Attributes) {
+  return lineageAttributeNames
+    .filter((name) => Object.hasOwn(attributes, name))
+    .map((name) => ({
+      path: [name],
+      issue: `Expected no ${name}: ${lineageInWords} are the lineage the brain gives its own records, which no event may claim`,
+    }));
+}
+
+function brainOwnAttributes(attributes: Attributes) {
+  const { type, source } = attributes;
   return [
+    ...lineageIssues(attributes),
     ...(reservedEventTypes.has(type)
       ? [
           {

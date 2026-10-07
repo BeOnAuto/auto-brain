@@ -1,16 +1,12 @@
-import type { RunOutcomeMapping } from '@beonauto/operations';
 import { dumbo } from '@event-driven-io/dumbo';
 import { getSQLiteEventStore } from '@event-driven-io/emmett-sqlite';
 
 import { dataAsWritten, emmettEventStore } from './emmett/emmett-event-store.ts';
 import type { LedgerStore } from './event-store.ts';
 import { ledgerLayerOver, type StoreLayerOptions } from './ledger-layer.ts';
-import { keptOutcomesOnly } from './outcomes/run-outcomes-reader.ts';
-import {
-  prepareSQLiteRunOutcomes,
-  sqliteRunOutcomeProjections,
-  sqliteRunOutcomesReader,
-} from './outcomes/sqlite-run-outcomes.ts';
+import { sqliteRunOutcomesOf } from './outcomes/sqlite-run-outcomes.ts';
+import type { KeptTables } from './projections/projection-parts.ts';
+import { preparedOn, sqliteProjectionsOf } from './projections/sqlite-projections.ts';
 import { createSQLiteBrainIndexes } from './recorded/sqlite-indexes.ts';
 import { sqliteRecordedStore } from './recorded/sqlite-recorded.ts';
 
@@ -22,16 +18,17 @@ export type SQLiteStoreOptions<Driver extends AnyDriver> = Parameters<typeof get
 
 export function sqliteEventStore<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
-  runOutcomes?: RunOutcomeMapping,
+  kept: KeptTables = {},
 ): LedgerStore {
   const options = optionsOf();
   const pool =
     options.pool ?? dumbo({ serialization: options.serialization, ...options.driver.mapToDumboOptions(options) });
+  const projections = sqliteProjectionsOf(kept);
   const store = getSQLiteEventStore({
     ...options,
     pool,
     schema: { autoMigration: 'None' },
-    projections: [...(options.projections ?? []), ...sqliteRunOutcomeProjections(runOutcomes)],
+    projections: [...(options.projections ?? []), ...projections.registrations],
   });
   const streams = emmettEventStore(store, {
     data: dataAsWritten,
@@ -40,18 +37,19 @@ export function sqliteEventStore<Driver extends AnyDriver>(
   return {
     ...streams,
     ...sqliteRecordedStore(pool.execute),
-    readRunOutcomes: keptOutcomesOnly(runOutcomes, sqliteRunOutcomesReader(pool.execute)),
+    ...projections.readerOn(async (sql) => (await pool.execute.query(sql)).rows),
+    readRunOutcomes: sqliteRunOutcomesOf(kept.runOutcomes, pool.execute),
     migrate: async () => {
       await streams.migrate();
       await createSQLiteBrainIndexes(pool.execute);
-      await prepareSQLiteRunOutcomes(pool, runOutcomes);
+      await preparedOn(projections.prepare, pool);
     },
   };
 }
 
 export function sqliteLedgerLayer<Driver extends AnyDriver>(
   optionsOf: () => SQLiteStoreOptions<Driver>,
-  { runOutcomes, appends }: StoreLayerOptions = {},
+  { runOutcomes, projections, appends }: StoreLayerOptions = {},
 ) {
-  return ledgerLayerOver(() => sqliteEventStore(optionsOf, runOutcomes), appends);
+  return ledgerLayerOver(() => sqliteEventStore(optionsOf, { runOutcomes, projections }), appends);
 }

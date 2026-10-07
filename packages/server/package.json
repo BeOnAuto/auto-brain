@@ -8,6 +8,7 @@
     "dev": "node dev.ts",
     "start": "node src/main.ts",
     "config-schema": "node config-schema.ts",
+    "measure": "node measure.ts",
     "container:build": "docker build --file Dockerfile --tag beonauto/auto-brain:local ../..",
     "container:run": "docker run --rm --publish 8080:8080 beonauto/auto-brain:local",
     "lint": "oxlint -c ../../.oxlintrc.json",
@@ -21,6 +22,7 @@
     "@beonauto/config": "workspace:*",
     "@beonauto/identity": "workspace:*",
     "@beonauto/inference": "workspace:*",
+    "@beonauto/interaction": "workspace:*",
     "@beonauto/ledger": "workspace:*",
     "@beonauto/mcp": "workspace:*",
     "@beonauto/operations": "workspace:*",
@@ -32,6 +34,7 @@
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@beonauto/outbound": "workspace:*",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "pg": "8.23.1",

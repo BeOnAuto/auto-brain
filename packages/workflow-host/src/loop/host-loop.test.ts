@@ -6,10 +6,11 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { eventually } from '../testing/eventually.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import { runId } from '../testing/probe-subjects.ts';
 import { sqlTimers, type DueTimer, type TimerTable } from '../timers/sql-timers.ts';
 import { systemClock } from './host-clock.ts';
 import { startLoop, type HostLoop } from './host-loop.ts';
+
+const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const run = { executionId: runId, attributes: {} };
 
@@ -69,6 +70,7 @@ async function looping(options: LoopingOptions): Promise<Looping> {
   });
   const loop = startLoop({
     clock: systemClock,
+    dueWork: [],
     timers: failingReadsOf(timers, readsFailing),
     engine: {
       ...noEngine,

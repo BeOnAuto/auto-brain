@@ -20,6 +20,8 @@ const reasoningFunction: Definition = {
   updated_at: '2026-09-02T00:00:00.000Z',
 };
 
+const interactionFunction: Definition = { ...reasoningFunction, primitive: 'interaction', source: 'Approve?' };
+
 const computationFunction: Definition = { ...reasoningFunction, primitive: 'computation', source: '.a + 1' };
 
 const recallFunction: Definition = { ...reasoningFunction, primitive: 'recollection', source: '. + 1' };
@@ -27,18 +29,21 @@ const recallFunction: Definition = { ...reasoningFunction, primitive: 'recollect
 const workflow: Definition = { ...reasoningFunction, primitive: 'orchestration', media_type: 'application/yaml' };
 
 describe('a saved definition', () => {
-  it('is a brain function when it is a reasoning, a computation or a recall function, and a workflow when it is a workflow', () => {
-    const definitions = [reasoningFunction, computationFunction, recallFunction, workflow];
+  it('is a brain function when it is a reasoning, an interaction, a computation or a recall function, and a workflow when it is a workflow', () => {
+    const definitions = [reasoningFunction, interactionFunction, computationFunction, recallFunction, workflow];
 
     const functions = definitions.filter((definition) => isBrainFunctionDefinition(definition));
     const workflows = definitions.filter((definition) => isWorkflowDefinition(definition));
 
     expectTypeOf(functions).toEqualTypeOf<BrainFunctionDefinition[]>();
     expectTypeOf(workflows).toEqualTypeOf<WorkflowDefinition[]>();
-    expect([functions, workflows]).toEqual([[reasoningFunction, computationFunction, recallFunction], [workflow]]);
+    expect([functions, workflows]).toEqual([
+      [reasoningFunction, interactionFunction, computationFunction, recallFunction],
+      [workflow],
+    ]);
   });
 
-  it.each(['echo', 'reason', 'workflow', 'interaction', 'prediction', 'recall', 'compute'])(
+  it.each(['echo', 'reason', 'workflow', 'interact', 'prediction', 'recall', 'compute'])(
     'is neither of a custom adapter or a planned function type: %s',
     (primitive) => {
       const definition = { ...reasoningFunction, primitive };

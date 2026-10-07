@@ -18,21 +18,26 @@ const computationRun: Run = { ...functionRun, primitive: 'computation', output: 
 
 const recallRun: Run = { ...functionRun, primitive: 'recollection', output: [{ verdict: 'approve' }] };
 
+const interactionRun: Run = { ...functionRun, primitive: 'interaction', output: { choice: 'approve' } };
+
 const workflowRun: Run = { ...functionRun, primitive: 'orchestration' };
 
 describe('a run', () => {
-  it('is a function run when it ran a reasoning, a computation or a recall function, and a workflow run when it ran a workflow', () => {
-    const runs = [functionRun, computationRun, recallRun, workflowRun];
+  it('is a function run when it ran a reasoning, an interaction, a computation or a recall function, and a workflow run when it ran a workflow', () => {
+    const runs = [functionRun, interactionRun, computationRun, recallRun, workflowRun];
 
     const functionRuns = runs.filter((run) => isFunctionRun(run));
     const workflowRuns = runs.filter((run) => isWorkflowRun(run));
 
     expectTypeOf(functionRuns).toEqualTypeOf<FunctionRun[]>();
     expectTypeOf(workflowRuns).toEqualTypeOf<WorkflowRun[]>();
-    expect([functionRuns, workflowRuns]).toEqual([[functionRun, computationRun, recallRun], [workflowRun]]);
+    expect([functionRuns, workflowRuns]).toEqual([
+      [functionRun, interactionRun, computationRun, recallRun],
+      [workflowRun],
+    ]);
   });
 
-  it.each(['echo', 'reason', 'workflow', 'interaction', 'prediction', 'recall', 'compute'])(
+  it.each(['echo', 'reason', 'workflow', 'interact', 'prediction', 'recall', 'compute'])(
     'is neither of a custom adapter or a planned function type: %s',
     (primitive) => {
       const run = { ...functionRun, primitive };

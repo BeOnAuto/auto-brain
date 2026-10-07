@@ -39,12 +39,15 @@ const onSQLite: LedgerEntry = {
     onTestFinished(remove);
     return Promise.resolve(fileName);
   },
-  ledgerOn: (fileName, runOutcomes) => ledgerLayer({ fileName, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
+  ledgerOn: (fileName, runOutcomes, projections = []) =>
+    ledgerLayer({ fileName, projections, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
   storeOn: (fileName) => sqliteEventStore(() => ({ driver: sqlite3EventStoreDriver, fileName })),
   untilReadable: () => Promise.resolve(),
   queried,
   definitionStreamsIndexed,
   outcomeTables: "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'run_outcomes_*' ORDER BY name",
+  projectionTables: "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'run_tallies_*' ORDER BY name",
+  projectionIndexes: "SELECT name FROM sqlite_master WHERE type = 'index' AND name GLOB 'run_tallies_*' ORDER BY name",
 };
 
 describe('The ledger on SQLite', () => {

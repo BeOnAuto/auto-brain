@@ -223,6 +223,8 @@ const becauseOfKind = {
   mcp_server_failed: { because: 'unreachable' },
   tools_unfinished: { because: 'model_unavailable' },
   rebuilding: {},
+  channel_not_offered: {},
+  requests_full: {},
 } as const;
 
 const sendNotes = defineCommand('brain', {

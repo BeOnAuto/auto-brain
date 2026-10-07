@@ -7,9 +7,12 @@ interface Row {
 
 type Table = readonly Row[];
 
-const separatorRow = /^\|[\s|:-]+\|$/u;
+interface Section {
+  readonly heading: string;
+  readonly tables: readonly Table[];
+}
 
-const tablesInOrder = ['capabilities', 'their descriptions', 'definitions and runs', 'supporting assets'];
+const separatorRow = /^\|[\s|:-]+\|$/u;
 
 function rowOf(line: string): Row {
   const [term, meaning] = line
@@ -19,8 +22,8 @@ function rowOf(line: string): Row {
   return { term: String(term), meaning: String(meaning) };
 }
 
-function tablesOf(page: string): readonly Table[] {
-  return page
+function tablesOf(text: string): readonly Table[] {
+  return text
     .split(/\n\s*\n/u)
     .map((block) => block.trim().split('\n'))
     .filter((lines: readonly string[]) => lines.every((line) => line.startsWith('|')))
@@ -32,10 +35,20 @@ function tablesOf(page: string): readonly Table[] {
     );
 }
 
-function tableAt(tables: readonly Table[], index: number): Table {
-  const table = tables[index];
+function sectionsOf(page: string): readonly Section[] {
+  return page
+    .split(/^## /mu)
+    .slice(1)
+    .map((section) => ({ heading: section.slice(0, section.indexOf('\n')), tables: tablesOf(section) }));
+}
+
+function tableAt(sections: readonly Section[], index: number, what: string): Table {
+  const table = sections
+    .slice(0, 1)
+    .flatMap(({ tables }) => tables.slice(0, 2))
+    .at(index);
   if (table === undefined) {
-    throw new Error(`The terminology page has no table of ${String(tablesInOrder[index])}`);
+    throw new Error(`The terminology page has no table of ${what}`);
   }
   return table;
 }
@@ -59,16 +72,10 @@ function isGiven(text: string | undefined): text is string {
   return text !== undefined;
 }
 
-export function terminologyGuideOf(page: string, served: readonly string[]): Guide {
-  const tables = tablesOf(page);
-  const capabilities = tableAt(tables, 0);
-  const describing = new Map(tableAt(tables, 1).map(({ term, meaning }) => [term, meaning]));
-  const functionTypes = capabilities
-    .map(({ meaning }) => meaning.toLowerCase())
-    .filter((resource) => resource.endsWith(' function'));
-  const unserved = functionTypes.filter((type) => !served.includes(type));
-  const namesNoneUnserved = ({ meaning }: Row) => !unserved.some((type) => meaning.toLowerCase().includes(type));
-  const capabilityLines = capabilities
+function capabilityLinesOf(sections: readonly Section[], served: readonly string[]): readonly string[] {
+  const capabilities = tableAt(sections, 0, 'capabilities');
+  const describing = new Map(tableAt(sections, 1, 'categories').map(({ term, meaning }) => [term, meaning]));
+  return capabilities
     .filter(({ meaning }) => served.includes(meaning.toLowerCase()))
     .map(({ term, meaning }) =>
       lineOf(
@@ -79,8 +86,31 @@ export function terminologyGuideOf(page: string, served: readonly string[]): Gui
           .join(' '),
       ),
     );
-  const termLines = (rows: Table) =>
-    rows.filter((row) => namesNoneUnserved(row)).map(({ term, meaning }) => lineOf(term, asSentence(meaning)));
+}
+
+function termLinesOf(sections: readonly Section[], served: readonly string[]): readonly string[] {
+  const capabilities = tableAt(sections, 0, 'capabilities');
+  const unservedTypes = capabilities
+    .map(({ meaning }) => meaning.toLowerCase())
+    .filter((resource) => resource.endsWith(' function') && !served.includes(resource));
+  const unservedCapabilities = new Set(
+    capabilities.filter(({ meaning }) => unservedTypes.includes(meaning.toLowerCase())).map(({ term }) => term),
+  );
+  const namesNoneUnserved = ({ meaning }: Row) => !unservedTypes.some((type) => meaning.toLowerCase().includes(type));
+  return sections
+    .slice(1)
+    .filter(({ heading, tables }) => tables.length > 0 && !unservedCapabilities.has(heading))
+    .flatMap(({ heading, tables }) =>
+      ['', `${heading}:`, ''].concat(
+        tables.flatMap((rows) =>
+          rows.filter((row) => namesNoneUnserved(row)).map(({ term, meaning }) => lineOf(term, asSentence(meaning))),
+        ),
+      ),
+    );
+}
+
+export function terminologyGuideOf(page: string, served: readonly string[]): Guide {
+  const sections = sectionsOf(page);
   return {
     name: 'terminology',
     title: 'Terminology',
@@ -92,15 +122,8 @@ export function terminologyGuideOf(page: string, served: readonly string[]): Gui
       '',
       'The capabilities, the resource each one defines and what it does:',
       '',
-      ...capabilityLines,
-      '',
-      'Definitions and runs:',
-      '',
-      ...termLines(tableAt(tables, 2)),
-      '',
-      'Supporting assets:',
-      '',
-      ...termLines(tableAt(tables, 3)),
+      ...capabilityLinesOf(sections, served),
+      ...termLinesOf(sections, served),
       '',
     ].join('\n'),
   };

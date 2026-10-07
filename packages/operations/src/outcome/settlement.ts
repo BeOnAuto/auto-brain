@@ -3,6 +3,7 @@ import { Schema } from 'effect';
 import { CancelledKindSchema } from './cancelled-run.ts';
 import { ConflictKindSchema } from './conflict.ts';
 import { IssueSchema } from './issue.ts';
+import { UnansweredKindSchema } from './unanswered-run.ts';
 import { UnavailableBecauseSchema, UnavailableKindSchema } from './unavailable.ts';
 
 const settledBy = { by: Schema.optionalKey(Schema.NonEmptyString) };
@@ -26,6 +27,7 @@ export const SettlementSchema = Schema.Union([
   }),
   Schema.Struct({ ...rejected, reason: Schema.Literal('conflict'), kind: Schema.optionalKey(ConflictKindSchema) }),
   Schema.Struct({ ...rejected, reason: Schema.Literal('cancelled'), kind: CancelledKindSchema }),
+  Schema.Struct({ ...rejected, reason: Schema.Literal('unanswered'), kind: UnansweredKindSchema }),
   Schema.Struct({ status: Schema.Literal('failed'), incident: Schema.optionalKey(Schema.String), ...settledBy }),
 ]);
 

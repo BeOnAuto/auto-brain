@@ -16,7 +16,7 @@ const started: ExecutionEvent = { type: 'execution_started', ...greeting, spec_v
 
 const ofHandOn = { primitive: 'relay', name: 'hand-on', spec_version: 1 };
 
-const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'r-1' }, ...start };
+const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'r-1' }, ...ofHandOn, ...start };
 
 const success: ExecutionResult = { type: 'execution_succeeded', output: 'done', record: { steps: 3 } };
 

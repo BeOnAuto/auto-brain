@@ -94,6 +94,7 @@ const description = [
   "`execution_id` is the workflow run's id and `event` has a `type` and an optional `source`, `subject`, `data` and `id`;",
   'an event whose id the run already received is ignored, so a call can be retried with its id.',
   'An event no step takes yet waits in the run.',
+  "The brain's own types and sources, and the lineage attributes it gives its own records, are refused.",
 ].join(' ');
 
 export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {

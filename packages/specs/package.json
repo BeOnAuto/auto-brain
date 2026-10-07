@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./document": "./src/document.ts",
     "./json-schema": "./src/json-schema.ts",
+    "./template": "./src/template.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {
@@ -20,6 +21,7 @@
     "@beonauto/operations": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
     "effect": "catalog:",
+    "liquidjs": "10.29.0",
     "yaml": "2.9.1"
   },
   "devDependencies": {

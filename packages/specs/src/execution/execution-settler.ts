@@ -52,6 +52,10 @@ function rejectionOf(settlement: SettledRejection): ExecutionRejection {
     const { reason, detail, kind } = settlement;
     return { reason, detail, ...(kind === undefined ? {} : { kind }) };
   }
+  if (settlement.reason === 'unanswered') {
+    const { reason, detail, kind } = settlement;
+    return { reason, detail, kind };
+  }
   const { reason, detail, kind } = settlement;
   return { reason, detail, kind };
 }
@@ -64,10 +68,16 @@ function rejectedWith(settlement: SettledRejection): Effect.Effect<ExecutionResu
     : Effect.as(withinResultLimit(record), { type: 'execution_rejected', rejection, record });
 }
 
+const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
+
 function streamOf(address: ExecutionAddress): Effect.Effect<string, NotFound> {
   return isWellFormed(address)
     ? Effect.succeed(`${streamPrefixOfBrain(address)}${executionStreamOf(address.id.toLowerCase())}`)
-    : Effect.fail(new NotFound({ detail: 'There is no such run in this brain' }));
+    : Effect.fail(noSuchRun);
+}
+
+function brainStreamOf(address: ExecutionAddress): Effect.Effect<string, NotFound> {
+  return isWellFormed(address) ? Effect.succeed(executionStreamOf(address.id.toLowerCase())) : Effect.fail(noSuchRun);
 }
 
 function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {
@@ -85,7 +95,10 @@ function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {
   return Effect.succeed(incident === undefined ? failure : { type: 'execution_failed', incident });
 }
 
-export function executionSettler(ledger: StreamWriter): SettleExecution {
+function settlerOver(
+  ledger: StreamWriter,
+  streamNamed: (address: ExecutionAddress) => Effect.Effect<string, NotFound>,
+): SettleExecution {
   const settle = Effect.fnUntraced(function* (stream: string, result: ExecutionResult, by: string, lineage?: Lineage) {
     const at = DateTime.formatIso(yield* DateTime.now);
     return yield* ledger
@@ -94,7 +107,7 @@ export function executionSettler(ledger: StreamWriter): SettleExecution {
   });
   return (execution, settlement, lineage) =>
     Effect.gen(function* () {
-      const stream = yield* streamOf(execution);
+      const stream = yield* streamNamed(execution);
       const by = settlement.by ?? brainCallerOf(execution).id;
       const result = yield* resultOf(settlement).pipe(
         Effect.tapDefect(() => Effect.ignore(settle(stream, failure, by, lineage))),
@@ -102,4 +115,12 @@ export function executionSettler(ledger: StreamWriter): SettleExecution {
       const { state } = yield* settle(stream, result, by, lineage);
       return yield* executionOf(execution.id.toLowerCase(), state);
     });
+}
+
+export function executionSettler(ledger: StreamWriter): SettleExecution {
+  return settlerOver(ledger, streamOf);
+}
+
+export function brainBoundSettler(writer: StreamWriter): SettleExecution {
+  return settlerOver(writer, brainStreamOf);
 }

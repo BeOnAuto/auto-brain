@@ -63,3 +63,14 @@ describe('the answer of a run a workflow waited for that was cancelled', () => {
     expect(answered?.summary).toBe(`A function the workflow called did not succeed. ${why}`);
   });
 });
+
+describe('the answer of a request a workflow waited for that nobody answered', () => {
+  it.each([
+    ['expired', 'Nobody answered what it asked before the request expired.'],
+    ['undelivered', 'What it had to send could not be delivered, though every attempt was made.'],
+  ])('says why the request ended unanswered, for the kind %s', (kind, why) => {
+    const answered = presented({ kind: 'call_answered', key: callKey, at, status: 'rejected', rejection: { kind } });
+
+    expect(answered?.summary).toBe(`A function the workflow called did not succeed. ${why}`);
+  });
+});

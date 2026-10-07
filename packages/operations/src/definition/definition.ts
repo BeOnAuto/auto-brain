@@ -48,6 +48,7 @@ export interface Definition<
   readonly mayChangeOutside?: boolean;
   readonly irreversible?: boolean;
   readonly repeatable?: boolean;
+  readonly authorizesByToken?: boolean;
   readonly inputSchema: In;
   readonly outputSchema: Out;
   readonly reasons: readonly R[];

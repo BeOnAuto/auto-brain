@@ -18,6 +18,8 @@ import { acmeAdmin, operationServer, testServerInfo } from '../testing/operation
 
 const reportedErrors: string[] = [];
 
+const notebookTypes: readonly DefinitionType[] = [{ primitive: 'notes', noun: 'note', guide: 'notebook' }];
+
 interface Serving {
   readonly operations?: readonly { readonly registration: Registration }[];
   readonly guides?: readonly Guide[];
@@ -139,8 +141,8 @@ describe('the tools on a connection', () => {
   });
 });
 
-function typeOf(noun: string): DefinitionType {
-  return { primitive: 'asking', noun, guide: 'asking' };
+function typeOf(noun: string, guide = 'asking'): DefinitionType {
+  return { primitive: 'asking', noun, guide };
 }
 
 function instructionLengthWith(noun: string): number {
@@ -167,6 +169,10 @@ function guidesNumbering(count: number): readonly Guide[] {
   return Array.from({ length: count }, (_, index) => guideOf(`guide-${index}`));
 }
 
+function typesNumbering(count: number): readonly DefinitionType[] {
+  return Array.from({ length: count }, (_, index) => typeOf('kind', `guide-${index}`));
+}
+
 function recipesNumbering(count: number): readonly Recipe[] {
   return Array.from({ length: count }, (_, index) => ({ ...noteRecipe, name: `recipe-${index}` }));
 }
@@ -176,10 +182,10 @@ function noteRecipeSaying(text: string): Recipe {
 }
 
 describe('the guides a server carries', () => {
-  it('start the server at nine, and refuse to start it at ten', () => {
-    expect(starting({ guides: guidesNumbering(9) })).not.toThrow();
-    expect(starting({ guides: guidesNumbering(10) })).toThrow(
-      'The guides of the server: 10 guides, more than the 9 allowed',
+  it('start the server with one guide a type it runs and the terminology, and refuse to start it with one more', () => {
+    expect(starting({ guides: guidesNumbering(5), definitionTypes: typesNumbering(4) })).not.toThrow();
+    expect(starting({ guides: guidesNumbering(6), definitionTypes: typesNumbering(4) })).toThrow(
+      'The guides of the server: 6 guides, more than the 5 allowed',
     );
   });
 
@@ -191,17 +197,29 @@ describe('the guides a server carries', () => {
   });
 
   it('start the server with four recipes, and refuse to start it with five', () => {
-    expect(starting({ guides: [notebookGuide], recipes: recipesNumbering(4) })).not.toThrow();
-    expect(starting({ guides: [notebookGuide], recipes: recipesNumbering(5) })).toThrow(
+    expect(
+      starting({ guides: [notebookGuide], recipes: recipesNumbering(4), definitionTypes: notebookTypes }),
+    ).not.toThrow();
+    expect(starting({ guides: [notebookGuide], recipes: recipesNumbering(5), definitionTypes: notebookTypes })).toThrow(
       'The recipes of the server: 5 recipes, more than the 4 allowed',
     );
   });
 
   it('start the server with a recipe of 4,096 bytes, and refuse to start it with one of 4,097', () => {
-    expect(starting({ guides: [notebookGuide], recipes: [noteRecipeSaying('r'.repeat(4096))] })).not.toThrow();
-    expect(starting({ guides: [notebookGuide], recipes: [noteRecipeSaying('r'.repeat(4097))] })).toThrow(
-      'The recipe take-a-note: 4097 bytes, more than the 4096 allowed',
-    );
+    expect(
+      starting({
+        guides: [notebookGuide],
+        recipes: [noteRecipeSaying('r'.repeat(4096))],
+        definitionTypes: notebookTypes,
+      }),
+    ).not.toThrow();
+    expect(
+      starting({
+        guides: [notebookGuide],
+        recipes: [noteRecipeSaying('r'.repeat(4097))],
+        definitionTypes: notebookTypes,
+      }),
+    ).toThrow('The recipe take-a-note: 4097 bytes, more than the 4096 allowed');
   });
 });
 

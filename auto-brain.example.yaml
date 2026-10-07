@@ -60,6 +60,27 @@ model_aliases:
 #   - graph/search
 #   - notes/*
 
+# The channels an interaction function may send its request through, beside the
+# brain's own inbox: a signed webhook, or one call of a tool of an MCP server.
+# Each names the parties it may reach in to and is bound to an org and,
+# optionally, to some of its brains.
+# channels:
+#   partner:
+#     type: webhook
+#     url: https://partner.example.com/brain/requests
+#     secret: ${PARTNER_WEBHOOK_SECRET}
+#     to: '^[a-z.]+@partner\.example\.com$'
+#     org: acme
+#   approvals:
+#     type: mcp
+#     server: graph
+#     tool: post_message
+#     to: '^#approvals-[a-z-]+$'
+#     with:
+#       channel: '{{ to }}'
+#       text: '{{ message }}'
+#     org: acme
+
 # The origins a page in a browser may call the API from.
 allowed_origins:
   - http://localhost:5173

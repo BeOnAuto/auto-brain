@@ -54,7 +54,7 @@ export const publishEvent = defineCommand('brain', {
     'and returns its id and time.',
     'Use it when something outside the brain happened that the brain should react to or remember; send_execution_event gives an event to one waiting run instead.',
     '`event` is a CloudEvents event with a `source` and a `type`, and publishing the same source and id again records nothing, so a call can be retried with its id.',
-    "The brain's own types and sources, such as those of its runs and definitions, are refused.",
+    "The brain's own types and sources, such as those of its runs and definitions, and the lineage attributes it gives its own records, are refused.",
   ].join(' '),
   route: { method: 'POST', path: '/events' },
   inputSchema: Schema.Struct({ event: EventToPublishSchema.check(refusingTheBrainsOwnAttributes) }),

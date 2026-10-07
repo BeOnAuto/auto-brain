@@ -82,7 +82,7 @@ const callStarted: ExecutionEvent = { ...called, number: 1, ...during };
 
 const callAnswered: ExecutionEvent = { ...answered, ...during };
 
-const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'x' }, ...during };
+const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'x' }, ...ofGreet, ...during };
 
 const toolsWereCalled = new Conflict({
   detail:

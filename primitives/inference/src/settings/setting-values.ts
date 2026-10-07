@@ -1,11 +1,9 @@
+import type { SettingProblem } from '@beonauto/config';
 import { Config, ConfigProvider, Option, type Redacted } from 'effect';
 
-export type Environment = Readonly<Record<string, string | undefined>>;
+export type { SettingProblem } from '@beonauto/config';
 
-export interface SettingProblem {
-  readonly setting: string;
-  readonly detail: string;
-}
+export type Environment = Readonly<Record<string, string | undefined>>;
 
 interface Unconfigured {
   readonly configured: false;

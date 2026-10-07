@@ -2,12 +2,14 @@ import type { WorkflowEngine } from '@beonauto/workflow-engine';
 import { Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';
+import { duePerformer, type DueWork } from '../due-work/due-work.ts';
 import type { DueTimer, TimerTable } from '../timers/sql-timers.ts';
 import type { HostClock } from './host-clock.ts';
 
 export interface LoopParts {
   readonly clock: HostClock;
   readonly timers: TimerTable;
+  readonly dueWork: readonly DueWork[];
   readonly engine: WorkflowEngine;
   readonly fire: (timer: DueTimer, at: number) => Effect.Effect<void, unknown>;
   readonly resume: () => Effect.Effect<number>;
@@ -67,6 +69,7 @@ function nextDueOf({ timers, trouble }: LoopParts): Effect.Effect<number | null>
 
 export function startLoop(parts: LoopParts): HostLoop {
   const { clock, sweepEveryMs } = parts;
+  const due = duePerformer(parts.dueWork, parts.trouble);
   const plan = {
     wakeAt: Number.NEGATIVE_INFINITY,
     armedSince: Number.POSITIVE_INFINITY,
@@ -79,7 +82,9 @@ export function startLoop(parts: LoopParts): HostLoop {
     if (sweepDue) {
       plan.lastSweptAt = now;
     }
-    return Effect.andThen(firedDue(parts, now), sweepDue ? sweptBy(parts, now) : Effect.void);
+    return due
+      .performed(now)
+      .pipe(Effect.andThen(firedDue(parts, now)), Effect.andThen(sweepDue ? sweptBy(parts, now) : Effect.void));
   }).pipe(
     Effect.catchCause((cause) =>
       parts.trouble('The timers of the runs could not be read; the loop tries again', cause),
@@ -88,7 +93,8 @@ export function startLoop(parts: LoopParts): HostLoop {
   const wait = Effect.gen(function* () {
     plan.armedSince = Number.POSITIVE_INFINITY;
     const nextDue = (yield* nextDueOf(parts)) ?? Number.POSITIVE_INFINITY;
-    plan.wakeAt = Math.min(nextDue, plan.lastSweptAt + sweepEveryMs, plan.armedSince);
+    const dueWorkAt = yield* due.wakeAt(clock.now());
+    plan.wakeAt = Math.min(nextDue, dueWorkAt, plan.lastSweptAt + sweepEveryMs, plan.armedSince);
     plan.signal = Promise.withResolvers<void>();
     const { promise } = plan.signal;
     yield* Effect.raceFirst(

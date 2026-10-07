@@ -1,16 +1,7 @@
+import type { RenderFailure as EngineRenderFailure, VariableReference } from '@beonauto/specs/template';
 import type { Result, Schema } from 'effect';
 
-export interface TemplateIssue {
-  readonly line: number;
-  readonly detail: string;
-}
-
-export type VariableSegment = string | number | null;
-
-export interface VariableReference {
-  readonly path: readonly VariableSegment[];
-  readonly line: number;
-}
+export type { TemplateIssue } from '@beonauto/specs/template';
 
 export interface TemplateScope {
   readonly input: Schema.Json;
@@ -26,10 +17,8 @@ export interface RenderedPrompt {
 export type PromptPart = 'instructions' | 'message';
 
 export type RenderFailure =
-  | { readonly reason: 'missing_variable'; readonly variable: string; readonly line: number }
-  | { readonly reason: 'too_long'; readonly part: PromptPart; readonly line: number }
-  | { readonly reason: 'limit_exceeded'; readonly limit: 'memory' | 'time'; readonly line: number }
-  | { readonly reason: 'failed'; readonly detail: string; readonly line: number };
+  | EngineRenderFailure
+  | { readonly reason: 'too_long'; readonly part: PromptPart; readonly line: number };
 
 export interface CompiledTemplate {
   readonly hasInstructions: boolean;

@@ -42,6 +42,7 @@ const queriesInsideABrain = [
   'get_brain_analytics',
   'list_brain_events',
   'list_tool_servers',
+  'list_interactions',
 ];
 
 const commands = [
@@ -54,6 +55,7 @@ const commands = [
   'execute_spec',
   'cancel_execution',
   'publish_event',
+  'answer_interaction',
   'send_execution_event',
 ];
 
@@ -150,14 +152,12 @@ describe('a key that may only read inside brains, on /mcp', () => {
 
     expect(outcome.tools).toEqual([...queriesInsideABrain, 'get_guide']);
     expect(commands.filter((name) => outcome.instructions.includes(name))).toEqual([]);
-    expect(outcome.instructions).toContain(
-      "This connection acts in the caller's own org, and every tool inside a brain takes the brain's id as brain.",
-    );
+    expect(outcome.instructions).toContain("This connection acts in the caller's own org. The tools call a definition");
   });
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the twenty-two tools and reads a brain of its org', async () => {
+  it('lists the twenty-four tools and reads a brain of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
@@ -168,7 +168,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
       kind,
     );
 
-    expect(outcome.tools).toBe(22);
+    expect(outcome.tools).toBe(24);
     expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha' });
   });
 });

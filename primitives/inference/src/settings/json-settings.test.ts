@@ -92,7 +92,7 @@ describe('the key of a gateway', () => {
 describe('malformed MODEL_GATEWAYS', () => {
   it('is rejected without quoting text that is not JSON', async () => {
     expect(await problemsOf({ MODEL_GATEWAYS: `[{"headers": "${secret}"` })).toEqual([
-      { setting: 'MODEL_GATEWAYS', detail: 'Expected JSON' },
+      { setting: 'MODEL_GATEWAYS', detail: '/: Expected JSON' },
     ]);
   });
 
@@ -208,7 +208,7 @@ describe('MODEL_ALIASES', () => {
 
   it('rejects malformed text and shapes', async () => {
     expect(await problemsOf({ MODEL_ALIASES: 'nope' })).toEqual([
-      { setting: 'MODEL_ALIASES', detail: 'Expected JSON' },
+      { setting: 'MODEL_ALIASES', detail: '/: Expected JSON' },
     ]);
     expect(await problemsOf({ MODEL_ALIASES: '{"a/b": 1}' })).toEqual([
       { setting: 'MODEL_ALIASES', detail: '/a~1b: Expected string' },

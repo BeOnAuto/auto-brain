@@ -14,11 +14,37 @@ export { isCalendarDay } from './reading/calendar-days.ts';
 export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
 export { CallLineage, type CallLink, type GivenLineage } from './caller/call-lineage.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
-export { Caller, CallerIdentitySchema, brainCallerOf, type CallerIdentity } from './caller/caller.ts';
+export {
+  Caller,
+  CallerIdentitySchema,
+  brainCallerOf,
+  requestTokenCallerOf,
+  type CallerIdentity,
+} from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
 export { CancelledKindSchema, RunCancelled, type CancelledKind } from './outcome/cancelled-run.ts';
 export { Conflict, ConflictKindSchema, type ConflictKind } from './outcome/conflict.ts';
+export { Forbidden } from './outcome/forbidden.ts';
+export { RunUnanswered, UnansweredKindSchema, type UnansweredKind } from './outcome/unanswered-run.ts';
+export {
+  checkedProjection,
+  projectedTableOf,
+  type BrainProjectionReader,
+  type DueRowsQuery,
+  type ProjectedColumn,
+  type ProjectedColumnKind,
+  type ProjectedCondition,
+  type ProjectedIndex,
+  type ProjectedMessage,
+  type ProjectedOrder,
+  type ProjectedRow,
+  type ProjectedRowsQuery,
+  type ProjectedRunRow,
+  type ProjectedValue,
+  type ProjectionReader,
+  type RunProjection,
+} from './projections/run-projection.ts';
 export {
   isKindWithType,
   kindsWithTypes,
@@ -48,7 +74,7 @@ export {
 export { IssueSchema, type Issue } from './outcome/issue.ts';
 export type { JsonSchemaDocument } from './definition/json-schema.ts';
 export { Ledger } from './ledger/ledger.ts';
-export { messageIdOf, noLineage, type Lineage } from './ledger/message-lineage.ts';
+export { lineageAttributeNames, messageIdOf, noLineage, type Lineage } from './ledger/message-lineage.ts';
 export { NotFound } from './outcome/not-found.ts';
 export { defineCommand, defineQuery, type Operation } from './definition/operation.ts';
 export { OrgReader } from './ledger/org-reader.ts';

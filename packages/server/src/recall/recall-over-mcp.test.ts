@@ -98,7 +98,7 @@ describe('the spec tools an agent sees', { timeout: recallTestTimeoutMs }, () =>
 
     const guide = await onAlpha(server, (session) => session.callTool('get_guide', { guide: 'recall-function' }));
 
-    expect(listedTools(everyTool)).toHaveLength(22);
+    expect(listedTools(everyTool)).toHaveLength(24);
     expect(createSpec?.description).toContain('recollection, a recall function, guide recall-function');
     expect(textOf(guide)).toContain('# Recall function format');
   });

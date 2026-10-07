@@ -5,6 +5,7 @@ import {
   type DocumentParts,
   type ReadFrontMatter,
 } from '@beonauto/specs/document';
+import { inputVariableIssues } from '@beonauto/specs/template';
 import { Option, Result, type Schema } from 'effect';
 
 import type { CompiledTemplate } from '../template/compiled-template.ts';
@@ -13,7 +14,6 @@ import type { ReasoningFunctionDefinitionDocument } from './reasoning-function-d
 import { inputContractOf, outputContractOf } from './spec-schemas.ts';
 import { modelOf, providerOptionsOf, settingsOf, toolsOf } from './spec-settings.ts';
 import { templateOf } from './spec-template.ts';
-import { variableIssues } from './template-checks.ts';
 
 type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
 
@@ -33,7 +33,9 @@ function variablesOf(
   inputSchema: Schema.JsonObject | undefined,
 ): readonly DocumentIssue[] {
   const template = compiled();
-  return Result.isSuccess(template) ? variableIssues(template.success.variables, inputSchema) : [];
+  return Result.isSuccess(template)
+    ? inputVariableIssues(template.success.variables, inputSchema, 'a reasoning function’s prompt template')
+    : [];
 }
 
 function specFrom({ root, lines, issues }: ReadFrontMatter, template: () => Checked<CompiledTemplate>) {

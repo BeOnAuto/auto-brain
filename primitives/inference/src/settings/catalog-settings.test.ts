@@ -90,7 +90,7 @@ describe('DECLARED_MODELS that stops the start', () => {
     expect(await problemsOf({ DECLARED_MODELS: '{"azure": "gpt-5-secret-deployment"}' })).toEqual([
       declaredProblem('/azure: Expected array'),
     ]);
-    expect(await problemsOf({ DECLARED_MODELS: 'not json' })).toEqual([declaredProblem('Expected JSON')]);
+    expect(await problemsOf({ DECLARED_MODELS: 'not json' })).toEqual([declaredProblem('/: Expected JSON')]);
   });
 });
 

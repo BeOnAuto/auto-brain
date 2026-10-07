@@ -35,7 +35,7 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
         execution_id: Schema.optionalKey(ExecutionIdField),
       }),
       outputSchema: RunSchema,
-      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled'],
+      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled', 'unanswered'],
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name, input = {}, execution_id: suppliedId }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
         return yield* executeRequest(primitives, primitive, { primitive: primitive.name, name, input }, suppliedId);

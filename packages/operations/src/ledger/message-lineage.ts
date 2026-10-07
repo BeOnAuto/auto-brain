@@ -9,6 +9,8 @@ export interface Lineage {
 
 export const noLineage: Lineage = { causationId: null, correlationId: null };
 
+export const lineageAttributeNames: readonly string[] = ['causationid', 'correlationid'];
+
 export function messageIdOf(stream: string, position: number): string {
   return uuidV5(ledgerMessages, JSON.stringify([stream, position]));
 }

@@ -96,9 +96,14 @@ describe('the tools of /mcp', () => {
     const instructions = await asKey(acmeAdmin.key, (session) => Promise.resolve(session.instructions));
 
     expect(instructions).toBe(
-      instructionsFor('own org', { orgTools, brainTools }, [], [{ name: 'take-a-note', calls: ['add_note'] }]),
+      instructionsFor(
+        'own org',
+        { orgTools, brainTools },
+        [{ primitive: 'notes', noun: 'note', guide: 'notebook' }],
+        [{ name: 'take-a-note', calls: ['add_note'] }],
+      ),
     );
-    expect(instructions).toContain("every tool inside a brain takes the brain's id as brain.");
+    expect(instructions).toContain("This connection acts in the caller's own org.");
   });
 });
 

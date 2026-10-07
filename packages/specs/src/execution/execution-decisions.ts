@@ -1,6 +1,7 @@
 import { Conflict, NotFound, RunCancelled, type Rejection } from '@beonauto/operations';
 import { Equal, Result } from 'effect';
 
+import { decideOutboundCall, decideToolCall, ofTheDefinition } from '../run-work/work-decisions.ts';
 import type {
   CommandMetadata,
   ExecutionCancel,
@@ -10,7 +11,6 @@ import type {
   ExecutionRequest,
   ExecutionSettlement,
   ExecutionStart,
-  ExecutionToolCall,
   InterruptedAttempt,
 } from './execution-commands.ts';
 import type { ExecutionEvent } from './execution-events.ts';
@@ -45,8 +45,6 @@ const startedCallingTools = new Conflict({
     'The run has started and its definition calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another run id, and read with get_execution_history what it has called so far',
   kind: 'tools_called',
 });
-
-const runEnded = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
 
 const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
 
@@ -179,7 +177,7 @@ function recordedOutcome(
   metadata: CommandMetadata,
 ): ExecutionEvent {
   return result.type === 'execution_deferred'
-    ? { ...result, ...metadata }
+    ? { ...result, ...ofTheDefinition(state), ...metadata }
     : { ...result, ...ofTheStart(state), ...metadata };
 }
 
@@ -207,27 +205,6 @@ function decideFinish({ result, by, at }: ExecutionFinish & CommandMetadata, sta
   return needsNoRun(state) || isDeferralAfterItsResult(outcome, state)
     ? nothingToRecord
     : Result.succeed([recordedOutcome(outcome, state, { by, at })]);
-}
-
-function nextCallOf(state: RecordedExecution, number: number | undefined): Result.Result<number, Conflict> {
-  const next = state.lastCall + 1;
-  return number === undefined || number === next
-    ? Result.succeed(next)
-    : Result.fail(
-        new Conflict({
-          detail: `The run records its calls in order, and call ${number} is not its next call, ${next}; another attempt recorded it first`,
-        }),
-      );
-}
-
-function decideToolCall({ fact, by, at }: ExecutionToolCall & CommandMetadata, state: ExecutionState): Decision {
-  if (state === undefined || !isRunning(state)) {
-    return Result.fail(runEnded);
-  }
-  if (fact.type === 'tool_call_answered') {
-    return Result.succeed([{ ...fact, by, at }]);
-  }
-  return Result.map(nextCallOf(state, fact.number), (number) => [{ ...fact, number, by, at }]);
 }
 
 export const endedWithAnotherResult = new Conflict({ detail: 'The run already ended with another result' });
@@ -291,6 +268,9 @@ export function decideOnExecution(command: ExecutionCommand, state: ExecutionStr
   const run = runOf(state);
   if (command.type === 'tool_call') {
     return decideToolCall(command, run);
+  }
+  if (command.type === 'outbound_call') {
+    return decideOutboundCall(command, run);
   }
   return command.type === 'finish' ? decideFinish(command, run) : decideSettlement(command, run);
 }

@@ -1,12 +1,8 @@
+import { servesBrain } from '@beonauto/config';
 import type { BrainAddress } from '@beonauto/operations';
 import type { Redacted } from 'effect';
 
 import type { ToolReference } from '../names/tool-reference.ts';
-
-export interface SettingProblem {
-  readonly setting: string;
-  readonly detail: string;
-}
 
 export type AuthCredential =
   | { readonly kind: 'client_secret'; readonly client_secret: Redacted.Redacted }
@@ -47,10 +43,6 @@ export type McpServerSettings = HttpServerSettings | StdioServerSettings;
 export interface McpSettings {
   readonly servers: readonly McpServerSettings[];
   readonly allowed: readonly ToolReference[] | null;
-}
-
-export function servesBrain({ org, brains }: ServedBy, address: BrainAddress) {
-  return org === address.org && (brains === null || brains.includes(address.brain));
 }
 
 export function isListedFor(server: ServedBy, address: BrainAddress, named: string | undefined): boolean {

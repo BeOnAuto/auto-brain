@@ -35,6 +35,8 @@ const specTools = [
   'list_brain_events',
   'publish_event',
   'list_tool_servers',
+  'answer_interaction',
+  'list_interactions',
   'send_execution_event',
 ];
 
@@ -112,6 +114,7 @@ const orgTools = [...brainTools, 'list_models'];
 
 const definitionTypes = [
   { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
+  { primitive: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
   { primitive: 'computation', noun: 'computation function', guide: 'computation-function' },
   { primitive: 'recollection', noun: 'recall function', guide: 'recall-function' },
   { primitive: 'orchestration', noun: 'workflow', guide: 'workflow' },
@@ -153,7 +156,14 @@ const connections: readonly Connection[] = [
     endpoint: 'org',
     served: { orgTools, brainTools: [] },
     sentence: 'This connection manages the brains of one org: list_brains shows them',
-    unnamed: ['create_spec', 'execute_spec', 'get_execution', 'list_tool_servers', 'send_execution_event'],
+    unnamed: [
+      'create_spec',
+      'execute_spec',
+      'get_execution',
+      'list_tool_servers',
+      'answer_interaction',
+      'send_execution_event',
+    ],
   },
   {
     path: '/orgs/acme/brains/alpha/mcp',
@@ -188,7 +198,7 @@ describe('the instructions an agent receives when it connects', () => {
       definitionTypes.filter(({ noun }: Readonly<{ noun: string }>) => !resourcesOnTheTerminologyPage.has(noun)),
     ).toEqual([]);
     expect(instructions).toContain(
-      'inference for a reasoning function, computation for a computation function, recollection for a recall function and orchestration for a workflow.',
+      'inference for a reasoning function, interaction for an interaction function, computation for a computation function, recollection for a recall function and orchestration for a workflow.',
     );
   });
 });

@@ -4,6 +4,7 @@ import { Effect } from 'effect';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { RunTools } from '../calls/run-tools.ts';
 import type { LinkOptions } from '../connections/server-links.ts';
+import type { DeliveryCall, DeliveryCallEnded } from '../delivery/delivery-bounds.ts';
 import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { isListedFor, type McpSettings } from '../settings/mcp-settings.ts';
@@ -22,6 +23,7 @@ export interface ToolAccess {
     execution: RunContext,
     references: readonly ToolReference[],
   ) => Effect.Effect<RunTools, ToolsNotOpened>;
+  readonly callOnce: (call: DeliveryCall) => Effect.Effect<DeliveryCallEnded>;
   readonly listServers: (address: BrainAddress, named?: string) => Effect.Effect<readonly ToolServer[]>;
   readonly close: () => Promise<void>;
 }
@@ -41,6 +43,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
     configured: settings.servers.length > 0,
     open: (execution, references) =>
       Effect.flatMap(Effect.promise(loaded), (access) => access.open(execution, references)),
+    callOnce: (call) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call)),
     listServers: (address, named) =>
       settings.servers.some((server) => isListedFor(server, address, named))
         ? Effect.flatMap(Effect.promise(loaded), (access) => access.listServers(address, named))

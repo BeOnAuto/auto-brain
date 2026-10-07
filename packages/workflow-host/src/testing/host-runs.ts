@@ -28,6 +28,7 @@ export interface HostedOptions {
   readonly ledgerDown?: () => boolean;
   readonly holder?: string;
   readonly views?: HostOptions['views'];
+  readonly dueWork?: HostOptions['dueWork'];
 }
 
 const answeredWithNull = (): ReturnType<HostOptions['perform']> =>
@@ -56,6 +57,7 @@ export async function hostedOn(settings: HostOptions['database'], options: Hoste
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.holder === undefined ? {} : { holder: options.holder }),
     ...(options.views === undefined ? {} : { views: options.views }),
+    ...(options.dueWork === undefined ? {} : { dueWork: options.dueWork }),
   });
   onTestFinished(() => host.stop());
   return {

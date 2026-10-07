@@ -1,6 +1,6 @@
 import {
   mostGuideBytes,
-  mostGuides,
+  mostGuidesBeyondTheRecipes,
   mostRecipeBytes,
   mostRecipes,
   requireBytesWithin,
@@ -71,7 +71,12 @@ export function guideShelfOf(
     ...recipe,
     format: guideNamed(guides, `The recipe ${recipe.name}`, recipe.formatGuide),
   }));
-  requireWithin('The guides of the server', everyGuide.length, mostGuides, 'guides');
+  requireWithin(
+    'The guides of the server',
+    guides.length,
+    mostGuidesBeyondTheRecipes(definitionTypes.length),
+    'guides',
+  );
   requireWithin('The recipes of the server', recipes.length, mostRecipes, 'recipes');
   for (const { name, text } of guides) {
     requireBytesWithin(`The guide ${name}`, text, mostGuideBytes);

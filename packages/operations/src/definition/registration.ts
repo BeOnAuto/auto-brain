@@ -25,6 +25,7 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly mayChangeOutside: boolean;
   readonly irreversible: boolean;
   readonly repeatable: boolean;
+  readonly authorizesByToken: boolean;
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly output: JsonSchemaDocument;

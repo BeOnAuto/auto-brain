@@ -93,8 +93,8 @@ const onPostgreSQL: LedgerEntry = {
   closedWhileWriting: 'Cannot use a pool after calling end on the pool',
   aDatabase,
   untilReadable,
-  ledgerOn: (connectionString, runOutcomes) =>
-    postgresqlLedgerLayer({ connectionString, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
+  ledgerOn: (connectionString, runOutcomes, projections = []) =>
+    postgresqlLedgerLayer({ connectionString, projections, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
   storeOn: (connectionString) =>
     postgresqlEventStore({
       connectionString,
@@ -106,6 +106,10 @@ const onPostgreSQL: LedgerEntry = {
   definitionStreamsIndexed,
   outcomeTables:
     "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_outcomes_[0-9]+$' ORDER BY relname",
+  projectionTables:
+    "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_tallies_[0-9]+$' ORDER BY relname",
+  projectionIndexes:
+    "SELECT indexname AS name FROM pg_indexes WHERE indexname ~ '^run_tallies_[0-9]+_' AND indexname !~ '_pkey$' ORDER BY indexname",
 };
 
 const skipped = server === '';

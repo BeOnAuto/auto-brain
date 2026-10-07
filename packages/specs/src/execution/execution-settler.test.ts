@@ -222,6 +222,18 @@ describe('a settlement of a conflict or a cancellation', () => {
     expect(await executing()).toEqual({ status: 'rejected', reason: 'cancelled', detail, kind: 'deadline' });
     expect(relayer.runs()).toBe(1);
   });
+
+  it('records a request nobody answered with its kind, a final result a call with its id answers again', async () => {
+    const { executing, relayer, settling } = await withHandOn();
+    await executing();
+    const detail = 'Nobody answered before the request expired';
+
+    expect(await settling({ status: 'rejected', reason: 'unanswered', detail, kind: 'expired' })).toStrictEqual(
+      Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'unanswered', detail, kind: 'expired' } }),
+    );
+    expect(await executing()).toEqual({ status: 'rejected', reason: 'unanswered', detail, kind: 'expired' });
+    expect(relayer.runs()).toBe(1);
+  });
 });
 
 describe('what a settlement records', () => {
