@@ -1,0 +1,92 @@
+import { Conflict, InvalidInput } from '@beonauto/operations';
+import { refusingForbiddenCharacters } from '@beonauto/specs';
+import type { ParsedTemplate } from '@beonauto/specs/template';
+import { Effect, JsonPointer, Result, Schema } from 'effect';
+
+import { interactionBounds } from './run-bounds.ts';
+import { renderedText, type TextFailure } from './text-rendering.ts';
+
+export interface RenderedPart {
+  readonly template: ParsedTemplate;
+  readonly pointer: string;
+  readonly what: string;
+  readonly mostBytes: number;
+}
+
+const inputPath = /^input\./u;
+
+const isPartyText = Schema.is(Schema.String.check(refusingForbiddenCharacters));
+
+export function unworkable(pointer: string, detail: string): Conflict {
+  return new Conflict({ detail, kind: 'unworkable', record: { pointer } });
+}
+
+function inputPointerOf(variable: string): string {
+  return inputPath.test(variable)
+    ? variable
+        .replace(inputPath, '')
+        .split('.')
+        .map((segment) => `/${JsonPointer.escapeToken(segment)}`)
+        .join('')
+    : '';
+}
+
+function invalidWith(detail: string, issue: string, pointer = ''): InvalidInput {
+  return new InvalidInput({ detail, issues: [{ pointer, detail: issue }] });
+}
+
+function rejectionOf({ pointer, what, mostBytes }: RenderedPart, failure: TextFailure): Conflict | InvalidInput {
+  if (failure.reason === 'not_text') {
+    return unworkable(
+      pointer,
+      `${what} renders a value that is not text on line ${failure.line}; render a field that is text, or write | json after it`,
+    );
+  }
+  if (failure.reason === 'too_long') {
+    return unworkable(pointer, `${what} renders to more than the ${mostBytes} bytes a request may hold`);
+  }
+  if (failure.reason === 'missing_variable') {
+    return invalidWith(
+      'The definition reads a field the input does not have',
+      `Line ${failure.line}: it reads ${failure.variable}, which this input does not have`,
+      inputPointerOf(failure.variable),
+    );
+  }
+  return invalidWith(
+    `${what} cannot be rendered with this input`,
+    `Line ${failure.line}: the render stopped here, past what a render may take, or at a filter that refused the value`,
+  );
+}
+
+export function renderedPart(
+  part: RenderedPart,
+  variables: Readonly<Record<string, Schema.Json>>,
+): Effect.Effect<string, Conflict | InvalidInput> {
+  return Result.match(renderedText(part.template, variables, part.mostBytes), {
+    onSuccess: Effect.succeed,
+    onFailure: (failure) => Effect.fail(rejectionOf(part, failure)),
+  });
+}
+
+export interface PartyRule {
+  readonly channel: string;
+  readonly allowsParty: (party: string) => boolean;
+}
+
+export function checkedParty(party: string, rule: PartyRule): Effect.Effect<string, Conflict> {
+  if (party.trim() === '') {
+    return Effect.fail(unworkable('/to', 'The party the request goes to renders to nothing'));
+  }
+  if (!isPartyText(party)) {
+    return Effect.fail(
+      unworkable('/to', 'The party the request goes to holds a control character, or another a party may not hold'),
+    );
+  }
+  return rule.allowsParty(party)
+    ? Effect.succeed(party)
+    : Effect.fail(unworkable('/to', `The party the request goes to is not one the channel “${rule.channel}” allows`));
+}
+
+export const toPart = { pointer: '/to', what: 'The party the request goes to', mostBytes: interactionBounds.toBytes };
+
+export const messagePart = { pointer: '', what: 'The message', mostBytes: interactionBounds.messageBytes };
