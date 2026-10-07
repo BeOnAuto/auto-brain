@@ -29,9 +29,9 @@ export const PagingInputFields = {
     Schema.Literals(['asc', 'desc']).annotate({ description: 'asc for oldest first, desc for newest first' }),
   ),
   since: Schema.optionalKey(
-    Schema.String.check(
+    Schema.String.annotate({ description: 'A time in ISO 8601; only what was recorded from then on' }).check(
       Schema.makeFilter(isTime, { expected: 'a time in ISO 8601 with its offset, such as 2026-10-05T09:00:00Z' }),
-    ).annotate({ description: 'A time in ISO 8601; only what was recorded from then on' }),
+    ),
   ),
   type: Schema.optionalKey(
     Schema.String.check(Schema.isMinLength(1)).annotate({ description: 'The public name of one type of event' }),
