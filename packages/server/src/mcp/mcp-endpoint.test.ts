@@ -189,17 +189,23 @@ describe('the instructions an agent receives when it connects', () => {
     },
   );
 
-  it('name each definition type the server serves by the kind the terminology page gives it', async () => {
+  it('leave each definition type to the tools that take one, which name it by the kind the terminology page gives it', async () => {
     server = await servingReasoning([]);
 
-    const instructions = await onMcp('/mcp', (session) => Promise.resolve(session.instructions));
+    const tools = await onMcp('/mcp', async (session) => listedTools(await session.listTools()));
+    const createSpec = tools.find(({ name }) => name === 'create_spec');
 
     expect(
       definitionTypes.filter(({ noun }: Readonly<{ noun: string }>) => !resourcesOnTheTerminologyPage.has(noun)),
     ).toEqual([]);
-    expect(instructions).toContain(
-      'inference for a reasoning function, interaction for an interaction function, computation for a computation function, recollection for a recall function and orchestration for a workflow.',
-    );
+    expect(createSpec?.inputSchema).toMatchObject({
+      properties: {
+        primitive: {
+          description:
+            "The definition's type: inference (reasoning function), interaction (interaction function), computation (computation function), recollection (recall function), or orchestration (workflow)",
+        },
+      },
+    });
   });
 });
 

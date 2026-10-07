@@ -52,7 +52,7 @@ const pagedReads = ['list_executions', 'get_execution_history', 'list_brain_even
 const howToAnswer = [
   'When you tell the person what happened, say what was done and what they can do next,',
   "in the words of brains, functions, workflows and runs, not in the tools' names, fields or rules;",
-  "give an id or a status only when the person needs it to act, as a run's id they will return to.",
+  'give an id or a status only when the person needs it to act.',
 ].join(' ');
 
 const whenAToolCannot = 'A tool that cannot do what was asked says why and what to change.';
@@ -91,14 +91,10 @@ const purposes: Sentences = ({ definitionTypes }) =>
 
 const connection: Sentences = (serving) => [whatTheConnectionDoes[serving.endpoint](serving)];
 
-const wireNames: Sentences = ({ names, definitionTypes }) => {
-  if (!names.some((name) => wireWords.test(name))) {
-    return [];
-  }
-  const naming = "The tools call a definition a spec, a run an execution and a definition's type its primitive";
-  const types = inTurn(definitionTypes.map(({ primitive, noun }) => `${primitive} for ${articled(noun)}`));
-  return [types === '' ? `${naming}.` : `${naming}: ${types}.`];
-};
+const wireNames: Sentences = ({ names }) =>
+  names.some((name) => wireWords.test(name))
+    ? ["The tools call a definition a spec, a run an execution and a definition's type its primitive."]
+    : [];
 
 const modelsBeforeWriting: Sentences = ({ reasoning, listed }) =>
   reasoning !== undefined && listed('list_models') && !listed('list_tool_servers')
@@ -137,6 +133,13 @@ const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
     : [];
 };
 
+const answeringWhatRunsWaitOn: Sentences = ({ listed }) =>
+  listed('answer_interaction')
+    ? [
+        "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.",
+      ]
+    : [];
+
 const paging: Sentences = ({ listed }) => {
   const paged = listed('list_interactions') ? 'Runs, history, events and requests' : 'Runs, history and events';
   return pagedReads.some((name) => listed(name))
@@ -154,6 +157,7 @@ const orientation: readonly Sentences[] = [
   guides,
   modelsAndTools,
   runsThatFinishLater,
+  answeringWhatRunsWaitOn,
   paging,
   closing,
 ];

@@ -41,6 +41,11 @@ const amendments: readonly (readonly [string, string])[] = [
     'names a model this server can call; the reasoning-function guide says how it is written, and it may name tools',
     'names a model this server can call, as the reasoning-function guide says, and may name tools',
   ],
+  [
+    "a definition's type its primitive: inference for a reasoning function, computation for a computation function, recollection for a recall function and orchestration for a workflow.",
+    "a definition's type its primitive.",
+  ],
+  [", as a run's id they will return to.", '.'],
 ];
 
 function asServedWithFourTypes(recordText: string): string {
@@ -49,6 +54,9 @@ function asServedWithFourTypes(recordText: string): string {
 
 const interactionSentence = 'An interaction function asks a person or a system and takes the answer later.';
 
+const answeringSentence =
+  "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.";
+
 function asServedWithFiveTypes(recordText: string): string {
   return asServedWithFourTypes(recordText)
     .replace(
@@ -56,10 +64,9 @@ function asServedWithFiveTypes(recordText: string): string {
       `A reasoning function has a prompt and calls a language model. ${interactionSentence}`,
     )
     .replace(
-      'inference for a reasoning function,',
-      'inference for a reasoning function, interaction for an interaction function,',
+      'A run of a workflow answers started; get_execution shows whether it ended or still waits.',
+      `A run of an interaction function or a workflow answers started; get_execution shows whether it ended or still waits. ${answeringSentence}`,
     )
-    .replace('A run of a workflow answers started;', 'A run of an interaction function or a workflow answers started;')
     .replace('Runs, history and events come', 'Runs, history, events and requests come');
 }
 
@@ -71,7 +78,7 @@ function withoutInteraction({ orgTools, brainTools }: ServedTools): ServedTools 
 }
 
 const wireNamesSentence =
-  "The tools call a definition a spec, a run an execution and a definition's type its primitive: inference for a reasoning function, interaction for an interaction function, computation for a computation function, recollection for a recall function and orchestration for a workflow.";
+  "The tools call a definition a spec, a run an execution and a definition's type its primitive.";
 
 const terminology = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
 
@@ -163,7 +170,7 @@ describe('the instructions of a key that may only read', () => {
 });
 
 describe('what the instructions say of the definition types', () => {
-  it('give a sentence only to a type the server runs, and the wire names of each type it runs', () => {
+  it('give a sentence only to a type the server runs, and leave the values of a type to the tools that take one', () => {
     const reasoningAlone = definitionTypes.slice(0, 1);
     const instructions = instructionsFor('brain', brainEndpoint, reasoningAlone, recipes);
 
@@ -171,17 +178,14 @@ describe('what the instructions say of the definition types', () => {
     expect(
       ['computation function', 'recall function', 'A workflow runs'].filter((words) => instructions.includes(words)),
     ).toEqual([]);
-    expect(instructions).toContain("a definition's type its primitive: inference for a reasoning function.");
+    expect(instructions).toContain(`${wireNamesSentence} Before writing a definition`);
   });
 
-  it('give no sentence to a type they have no words for, and name no wire value when the server runs no type', () => {
-    const interacting = [{ primitive: 'interaction', noun: 'interaction function', guide: 'interaction-function' }];
+  it('give no sentence to a type they have no words for', () => {
+    const drafting = [{ primitive: 'drafting', noun: 'draft', guide: 'drafting' }];
 
-    expect(instructionsFor('brain', brainEndpoint, interacting, recipes)).toContain(
-      "This connection acts inside one brain. The tools call a definition a spec, a run an execution and a definition's type its primitive: interaction for an interaction function.",
-    );
-    expect(instructionsFor('brain', brainEndpoint, [], recipes)).toContain(
-      "This connection acts inside one brain. The tools call a definition a spec, a run an execution and a definition's type its primitive. Before",
+    expect(instructionsFor('brain', brainEndpoint, drafting, recipes)).toContain(
+      `A brain is the complete system for a business responsibility. It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history. This connection acts inside one brain. ${wireNamesSentence}`,
     );
   });
 
@@ -208,6 +212,21 @@ describe('what the instructions say of the definition types', () => {
     expect(instructionsFor('brain', brainEndpoint, definitionTypes, recipes.slice(1, 2))).toContain(
       'read its format with get_guide, which also holds the recipes: remember.',
     );
+  });
+});
+
+describe('what the instructions say of a run that waits', () => {
+  it('say how to answer what a run waits on only where answer_interaction is listed', () => {
+    const answering = instructionsFor('brain', brainEndpoint, definitionTypes, recipes);
+    const reading = instructionsFor(
+      'brain',
+      { orgTools: [], brainTools: queriesInsideABrain },
+      definitionTypes,
+      recipes,
+    );
+
+    expect(answering).toContain(answeringSentence);
+    expect(reading).not.toContain('answer_interaction');
   });
 });
 

@@ -127,12 +127,20 @@ describe('the tools on a connection', () => {
   });
 });
 
+function workflowCalled(noun: string): DefinitionType {
+  return { primitive: 'orchestration', noun, guide: 'asking' };
+}
+
 function instructionLengthWith(noun: string): number {
-  return instructionsFor('own org', { orgTools: [], brainTools: ['ask_spec'] }, [typeOf(noun)], []).length;
+  return instructionsFor('own org', { orgTools: [], brainTools: ['get_execution'] }, [workflowCalled(noun)], []).length;
 }
 
 function servingTypeOf(noun: string): Serving {
-  return { operations: [asking({})], guides: [guideOf('asking')], definitionTypes: [typeOf(noun)] };
+  return {
+    operations: [asking({ name: 'get_execution' })],
+    guides: [guideOf('asking')],
+    definitionTypes: [workflowCalled(noun)],
+  };
 }
 
 describe('the instructions of a connection', () => {
