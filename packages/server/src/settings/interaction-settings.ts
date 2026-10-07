@@ -38,18 +38,48 @@ function mostOpenRequestsOf(environment: Environment): Effect.Effect<number, Inv
       );
 }
 
-function originOf(environment: Environment): Effect.Effect<string | undefined, InvalidSettingsError> {
-  const written = environment['PUBLIC_ORIGIN'] ?? '';
-  if (written === '') {
-    return Effect.undefined;
+const loopbackHosts: ReadonlySet<string> = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+
+const exampleOrigin = 'such as https://brains.example.com';
+
+interface Listening {
+  readonly host: string;
+  readonly port: number;
+}
+
+function refusedOrigin(detail: string): InvalidSettingsError {
+  return new InvalidSettingsError({ message: `The interaction settings are invalid. PUBLIC_ORIGIN: ${detail}` });
+}
+
+function writtenOriginOf(written: string): Effect.Effect<string, InvalidSettingsError> {
+  if (!isOrigin(written)) {
+    return Effect.fail(refusedOrigin(`Expected an origin ${exampleOrigin}`));
   }
-  return isOrigin(written)
+  const { protocol, hostname } = new URL(written);
+  return protocol === 'https:' || loopbackHosts.has(hostname)
     ? Effect.succeed(written)
+    : Effect.fail(refusedOrigin(`Expected an https origin, or http on a loopback address, ${exampleOrigin}`));
+}
+
+function hasWebhook({ channels }: ChannelSettings): boolean {
+  return [...channels.values()].some(({ type }) => type === 'webhook');
+}
+
+function originOf(
+  environment: Environment,
+  channels: ChannelSettings,
+  { host, port }: Listening,
+): Effect.Effect<string, InvalidSettingsError> {
+  const written = environment['PUBLIC_ORIGIN'] ?? '';
+  if (written !== '') {
+    return writtenOriginOf(written);
+  }
+  return loopbackHosts.has(host) || !hasWebhook(channels)
+    ? Effect.succeed(`http://localhost:${port}`)
     : Effect.fail(
-        new InvalidSettingsError({
-          message:
-            'The interaction settings are invalid. PUBLIC_ORIGIN: Expected an origin such as https://brains.example.com',
-        }),
+        refusedOrigin(
+          `Expected the origin a delivered request names, ${exampleOrigin}, which a webhook channel needs on a server that listens beyond loopback`,
+        ),
       );
 }
 
@@ -57,16 +87,17 @@ export function readInteractionSettings(
   environment: Environment,
   file: FileUse | undefined,
   { servers, allowed }: McpSettings,
-  port: number,
+  listening: Listening,
 ): InteractionSettings {
   const context = { servers: servers.map(({ name, org, brains }) => ({ name, org, brains })), allowed };
   return Effect.runSync(
-    Effect.all({
-      channels: readChannelSettings(environment, context).pipe(
+    Effect.gen(function* () {
+      const channels = yield* readChannelSettings(environment, context).pipe(
         Effect.mapError((invalid: Problems) => placed(invalid, file)),
-      ),
-      mostOpenRequests: mostOpenRequestsOf(environment),
-      origin: Effect.map(originOf(environment), (origin) => origin ?? `http://localhost:${port}`),
+      );
+      const mostOpenRequests = yield* mostOpenRequestsOf(environment);
+      const origin = yield* originOf(environment, channels, listening);
+      return { channels, mostOpenRequests, origin };
     }),
   );
 }
