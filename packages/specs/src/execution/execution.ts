@@ -85,7 +85,7 @@ export type FunctionRun = Run & Pick<BrainFunctionDefinition, 'primitive'>;
 
 export type WorkflowRun = Run & Pick<WorkflowDefinition, 'primitive'>;
 
-const functionTypes: ReadonlySet<string> = new Set(['inference', 'computation', 'recollection']);
+const functionTypes: ReadonlySet<string> = new Set(['inference', 'interaction', 'computation', 'recollection']);
 
 export function isFunctionRun(run: Run): run is FunctionRun {
   return functionTypes.has(run.primitive);

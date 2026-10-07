@@ -34,6 +34,7 @@ const typesOfTheBrain = [
   'tool_call_answered',
   'delivery_started',
   'delivery_ended',
+  'interaction_requested',
   'spec_created',
   'spec_updated',
   'spec_retired',

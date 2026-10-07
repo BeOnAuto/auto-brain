@@ -9,11 +9,19 @@ interface Fact {
   readonly by: string;
 }
 
-export function deferralAccount(words: RunWords, event: ExecutionDeferred, fact: Fact): Account | undefined {
+export interface TypedAccount extends Account {
+  readonly type: string;
+}
+
+export function deferralAccount(words: RunWords, event: ExecutionDeferred, fact: Fact): TypedAccount | undefined {
   const account = words.deferral(event.record);
   return account === undefined
     ? undefined
-    : { summary: account.summary, data: { ...fact, record_bytes: jsonBytesOf(event.record), ...account.data } };
+    : {
+        type: words.deferralType,
+        summary: account.summary,
+        data: { ...fact, record_bytes: jsonBytesOf(event.record), ...account.data },
+      };
 }
 
 function endedShown(event: Extract<DeliveryEvent, { readonly type: 'delivery_ended' }>) {
@@ -29,7 +37,7 @@ function endedShown(event: Extract<DeliveryEvent, { readonly type: 'delivery_end
   };
 }
 
-export function deliveryAccount(words: RunWords, event: DeliveryEvent, fact: Fact): Account {
+export function deliveryAccount(words: RunWords, event: DeliveryEvent, fact: Fact): TypedAccount {
   const shown =
     event.type === 'delivery_started'
       ? {
@@ -37,5 +45,5 @@ export function deliveryAccount(words: RunWords, event: DeliveryEvent, fact: Fac
           target: cutAtCodePoint(event.target, mostNameBytes),
         }
       : endedShown(event);
-  return { summary: words.delivery(event), data: { ...fact, number: event.number, ...shown } };
+  return { type: event.type, summary: words.delivery(event), data: { ...fact, number: event.number, ...shown } };
 }

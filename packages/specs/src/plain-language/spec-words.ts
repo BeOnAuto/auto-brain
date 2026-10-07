@@ -17,6 +17,7 @@ export interface SpecWords {
   readonly nounOf: (primitive: string) => Noun;
   readonly named: (primitive: string, name: string) => string;
   readonly runWordsOf: (primitive: string) => RunWords;
+  readonly deferralTypes: readonly string[];
 }
 
 const unknownNoun: Noun = { one: 'item', other: 'items' };
@@ -29,6 +30,9 @@ export function specWordsFor(primitives: readonly Primitive[]): SpecWords {
     nounOf,
     named: (primitive, name) => `the ${nounOf(primitive).one} ${quoted(name)}`,
     runWordsOf: (name) => primitives.find((primitive) => primitive.name === name)?.runWords ?? defaultRunWords,
+    deferralTypes: [
+      ...new Set([defaultRunWords.deferralType, ...primitives.map(({ runWords }) => runWords.deferralType)]),
+    ],
   };
 }
 

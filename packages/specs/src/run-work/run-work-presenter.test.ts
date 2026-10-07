@@ -12,6 +12,7 @@ const asking: Primitive = {
   name: 'asking',
   runWords: {
     ...defaultRunWords,
+    deferralType: 'interaction_requested',
     deferral: (record) => ({
       summary: 'A request is waiting for an answer.',
       data: { channel: record['channel'] ?? null },
@@ -19,7 +20,7 @@ const asking: Primitive = {
   },
 };
 
-const { present } = presentationOf(makeSpecPresenters([echo, asking]));
+const { present, storedTypesOf } = presentationOf(makeSpecPresenters([echo, asking]));
 
 const encode = Schema.encodeSync(Schema.toCodecJson(ExecutionEventSchema));
 
@@ -45,10 +46,17 @@ function presented(event: ExecutionEvent) {
 }
 
 describe('the deferral of a run whose capability gives words of it', () => {
+  it('is named by the public type the capability gives it, beside the one every other capability shows', () => {
+    expect([storedTypesOf('interaction_requested'), storedTypesOf('execution_deferred')]).toEqual([
+      ['execution_deferred'],
+      ['execution_deferred'],
+    ]);
+  });
+
   it('is the request, in the words of the capability, with the size of its record', () => {
     expect(presented({ type: 'execution_deferred', record: { channel: 'inbox' }, ...ofAsking, ...fact })).toEqual([
       {
-        type: 'execution_deferred',
+        type: 'interaction_requested',
         summary: 'A request is waiting for an answer.',
         data: { execution_id: executionId, by: 'brain:alpha', record_bytes: 19, channel: 'inbox' },
       },

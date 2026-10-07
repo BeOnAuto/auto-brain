@@ -11,6 +11,8 @@ export const specSourcePrefix = '/specs/';
 
 export const callerSourcePrefix = '/callers/';
 
+type CapabilityEventType = 'interaction_requested';
+
 type WorkflowEventType =
   | 'workflow_input_applied'
   | 'step_started'
@@ -20,7 +22,12 @@ type WorkflowEventType =
   | 'step_skipped'
   | 'reaction_refused';
 
-type FeedType = ExecutionEvent['type'] | SpecEvent['type'] | EventPublished['type'] | WorkflowEventType;
+type FeedType =
+  | ExecutionEvent['type']
+  | SpecEvent['type']
+  | EventPublished['type']
+  | CapabilityEventType
+  | WorkflowEventType;
 
 const brainTypes: Readonly<Record<FeedType, true>> = {
   execution_started: true,
@@ -33,6 +40,7 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   tool_call_answered: true,
   delivery_started: true,
   delivery_ended: true,
+  interaction_requested: true,
   spec_created: true,
   spec_updated: true,
   spec_retired: true,

@@ -24,7 +24,7 @@ import {
   toolCalled,
 } from '../plain-language/event-words.ts';
 import type { SpecWords } from '../plain-language/spec-words.ts';
-import { deferralAccount, deliveryAccount } from '../run-work/run-work-accounts.ts';
+import { deferralAccount, deliveryAccount, type TypedAccount } from '../run-work/run-work-accounts.ts';
 import {
   cutAtCodePoint,
   issuesShown,
@@ -165,7 +165,7 @@ const shownNames: Readonly<Record<Exclude<ExecutionEvent, ExecutionDeferred>['ty
 
 const decodeExecutionEvent = Schema.decodeUnknownSync(Schema.toCodecJson(ExecutionEventSchema));
 
-function presentedAccount(words: SpecWords, event: ExecutionEvent, executionId: string): Account | undefined {
+function presentedAccount(words: SpecWords, event: ExecutionEvent, executionId: string): TypedAccount | undefined {
   const fact = { execution_id: executionId, by: cutAtCodePoint(event.by, mostCallerBytes) };
   if (event.type === 'execution_deferred') {
     return deferralAccount(words.runWordsOf(event.primitive), event, fact);
@@ -173,19 +173,17 @@ function presentedAccount(words: SpecWords, event: ExecutionEvent, executionId: 
   if (event.type === 'delivery_started' || event.type === 'delivery_ended') {
     return deliveryAccount(words.runWordsOf(event.primitive), event, fact);
   }
-  return accountOf(words, event, executionId);
+  return { type: event.type, ...accountOf(words, event, executionId) };
 }
 
 export function executionPresenter(words: SpecWords): Presenter {
   return {
     streamKind: executionsKind,
-    publicNames: { ...shownNames, execution_deferred: ['execution_deferred'] },
+    publicNames: { ...shownNames, execution_deferred: words.deferralTypes },
     present: ({ id, cursor, causationId, stream, data }) => {
       const event = decodeExecutionEvent(data);
       const account = presentedAccount(words, event, stream.slice(executionsKind.length + 1));
-      return account === undefined
-        ? []
-        : [{ id, cursor, causation_id: causationId, at: event.at, type: event.type, ...account }];
+      return account === undefined ? [] : [{ id, cursor, causation_id: causationId, at: event.at, ...account }];
     },
   };
 }

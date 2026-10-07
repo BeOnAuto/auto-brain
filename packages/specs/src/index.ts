@@ -130,6 +130,7 @@ export {
   isWorkflowDefinition,
   type BrainFunctionDefinition,
   type ComputationFunctionDefinition,
+  type InteractionFunctionDefinition,
   type RecallFunctionDefinition,
   type ReasoningFunctionDefinition,
   type WorkflowDefinition,

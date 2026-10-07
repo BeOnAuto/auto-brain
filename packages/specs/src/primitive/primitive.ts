@@ -75,6 +75,7 @@ export interface RunAccount {
 }
 
 export interface RunWords {
+  readonly deferralType: string;
   readonly deferral: (record: Schema.JsonObject) => RunAccount | undefined;
   readonly delivery: (fact: DeliveryEvent) => string;
 }
@@ -131,7 +132,11 @@ function deliveryInWords(fact: DeliveryEvent): string {
   return fact.type === 'delivery_started' ? deliveryStarted(fact.number, fact.channel) : deliveryEnded(fact);
 }
 
-export const defaultRunWords: RunWords = { deferral: noDeferralShown, delivery: deliveryInWords };
+export const defaultRunWords: RunWords = {
+  deferralType: 'execution_deferred',
+  deferral: noDeferralShown,
+  delivery: deliveryInWords,
+};
 
 export function cancelledAsAsked({ kind, reason }: CancelledRun): Settlement {
   return { status: 'rejected', reason: 'cancelled', kind, detail: reason };

@@ -67,16 +67,19 @@ export type Definition = typeof DefinitionSchema.Type;
 
 export type ReasoningFunctionDefinition = Definition & { readonly primitive: 'inference' };
 
+export type InteractionFunctionDefinition = Definition & { readonly primitive: 'interaction' };
+
 export type ComputationFunctionDefinition = Definition & { readonly primitive: 'computation' };
 
 export type RecallFunctionDefinition = Definition & { readonly primitive: 'recollection' };
 
 export type BrainFunctionDefinition =
   | ReasoningFunctionDefinition
+  | InteractionFunctionDefinition
   | ComputationFunctionDefinition
   | RecallFunctionDefinition;
 
-const brainFunctionTypes: ReadonlySet<string> = new Set(['inference', 'computation', 'recollection']);
+const brainFunctionTypes: ReadonlySet<string> = new Set(['inference', 'interaction', 'computation', 'recollection']);
 
 export type WorkflowDefinition = Definition & { readonly primitive: 'orchestration' };
 
