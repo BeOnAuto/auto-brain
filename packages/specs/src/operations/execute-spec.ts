@@ -10,9 +10,9 @@ import { ExecutionIdField, InputField, SpecNameField } from './spec-fields.ts';
 
 const description = [
   'Runs a function or workflow with an input and records the run.',
-  'A function answers its result; a workflow answers started with an execution_id unless it ends before its first wait, and get_execution shows how it ended.',
+  'A function answers its result; a workflow or an interaction function answers started with an execution_id unless it ends before its first wait, and get_execution shows how it ended.',
   "Use it to run a saved definition at the person's request; a workflow's steps call it the same way.",
-  '`primitive` and `name` say which definition, `input` is the value it takes, {} when left out, as the input_schema get_spec shows,',
+  '`primitive` and `name` say which definition, `input` is the value it takes, as the input_schema get_spec shows,',
   'and `execution_id` is optional: give the same id to retry safely, since a run that ended or waits answers as it stands and one that failed runs again.',
   'A reasoning function that names tools may change something outside the brain, so a run of one that did not succeed is never run again under its id;',
   'get_execution_history shows what it called.',
