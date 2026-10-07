@@ -3,9 +3,10 @@ import {
   makeDispatcher,
   type CallerIdentity,
   type DispatcherServices,
+  type Ledger,
   type Outcome,
 } from '@beonauto/operations';
-import { memoryBrainRegistry, memoryLedger, recordingReporter, type MemoryLedger } from '@beonauto/operations/testing';
+import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
 import type { OutboundFetch } from '@beonauto/outbound';
 import {
   defineCancelExecution,
@@ -29,7 +30,13 @@ export const alpha = { org: 'acme', brain: 'alpha' };
 
 type RequestLedger = Parameters<typeof requestsDue>[0]['ledger'];
 
+export interface HarnessLedger {
+  readonly service: Ledger['Service'];
+  readonly layer: Layer.Layer<Ledger>;
+}
+
 export interface HarnessOptions {
+  readonly ledger?: HarnessLedger | undefined;
   readonly channels?: ChannelSettings;
   readonly tools?: typeof noTools;
   readonly mostOpenRequests?: number;
@@ -37,7 +44,7 @@ export interface HarnessOptions {
 }
 
 export interface InteractionHarness {
-  readonly ledger: MemoryLedger;
+  readonly ledger: HarnessLedger;
   readonly primitive: Primitive;
   readonly due: RequestsDue;
   readonly call: (operation: BrainOperation, input: unknown, caller?: CallerIdentity) => Promise<Outcome>;
@@ -55,7 +62,7 @@ export interface InteractionHarness {
 }
 
 export function interactionHarness(options: HarnessOptions = {}): InteractionHarness {
-  const ledger = memoryLedger(undefined, [openRequests]);
+  const ledger: HarnessLedger = options.ledger ?? memoryLedger(undefined, [openRequests]);
   const channels = options.channels ?? noChannels;
   const primitive = makeInteractionFunctionAdapter({
     channels,

@@ -1,12 +1,13 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { Effect, Exit, Schema } from 'effect';
+import { memoryLedger } from '@beonauto/operations/testing';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { noChannels } from '../channels/channel-settings.ts';
 import { defineAnswerInteraction } from '../requests/answer-interaction.ts';
-import { askedRunId, askedThroughPartner, type AskedRequest } from '../testing/index.ts';
-import type { RequestLedger } from './request-ledger.ts';
+import { openRequests } from '../requests/open-requests.ts';
+import { askedRunId, askedThroughPartner, attemptedThenStopped } from '../testing/index.ts';
 
 const days = 24 * 60 * 60_000;
 
@@ -14,28 +15,9 @@ const answerOf = defineAnswerInteraction(noChannels);
 
 const anyTime: unknown = expect.any(String);
 
-const isOutboundCall = Schema.is(Schema.Struct({ type: Schema.Literal('outbound_call') }));
-
-function stoppingBeforeSettling(ledger: RequestLedger): RequestLedger {
-  return {
-    ...ledger,
-    execute: (stream, decider, command, lineage) =>
-      isOutboundCall(command)
-        ? ledger.execute(stream, decider, command, lineage)
-        : Effect.die(new Error('The server stopped before it settled the run')),
-  };
-}
-
-async function attemptedThenStopped({ brain, askedAt }: AskedRequest): Promise<boolean> {
-  const stopping = brain.dueOver(stoppingBeforeSettling(brain.ledger.service));
-  const items = await Effect.runPromise(stopping.due(askedAt, 256));
-  const exit = await Effect.runPromise(Effect.exit(Effect.forEach(items, (item) => item.perform(askedAt))));
-  return Exit.isFailure(exit);
-}
-
 describe('an answer given within the delivery, whose settlement the server stopped before', () => {
   it('is settled from the ended delivery after a restart, with no attempt made again', async () => {
-    const asked = await askedThroughPartner({ answers: true });
+    const asked = await askedThroughPartner({ answers: true, ledger: memoryLedger(undefined, [openRequests]) });
     asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'approve' }) });
 
     const stopped = await attemptedThenStopped(asked);
