@@ -42,12 +42,16 @@ function requested(fact: Fact<'execution_deferred'>, message: ProjectedMessage):
   });
 }
 
+function standingUnlessCancelling(row: OpenRequestRow, standing: OpenRequestRow['standing']) {
+  return row.standing === 'cancelling' ? row.standing : standing;
+}
+
 function attemptStarted(row: OpenRequestRow, fact: Fact<'delivery_started'>): ProjectedRow {
   return rowOf({
     ...row,
     attempts: fact.number,
     next_attempt_at: Date.parse(fact.at) + attemptInFlightMs,
-    standing: 'delivering',
+    standing: standingUnlessCancelling(row, 'delivering'),
   });
 }
 
@@ -57,14 +61,15 @@ function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: num
       ? nextAttemptAt({ attempt: fact.number, endedAt: at, retryAfterMs: fact.retry_after_ms })
       : undefined;
   return next === undefined
-    ? { ...row, next_attempt_at: null, standing: 'undelivered' }
-    : { ...row, next_attempt_at: next, standing: 'retrying' };
+    ? { ...row, next_attempt_at: null, standing: standingUnlessCancelling(row, 'undelivered') }
+    : { ...row, next_attempt_at: next, standing: standingUnlessCancelling(row, 'retrying') };
 }
 
 function attemptEnded(row: OpenRequestRow, fact: Fact<'delivery_ended'>): ProjectedRow {
   const at = Date.parse(fact.at);
   if (fact.outcome === 'delivered' || fact.outcome === 'answered') {
-    return rowOf({ ...row, next_attempt_at: null, standing: fact.answer === undefined ? 'delivered' : 'answered' });
+    const standing = fact.answer === undefined ? 'delivered' : 'answered';
+    return rowOf({ ...row, next_attempt_at: null, standing: standingUnlessCancelling(row, standing) });
   }
   return rowOf(afterFailure(row, fact, at));
 }
@@ -94,6 +99,9 @@ function changed(row: OpenRequestRow, fact: ExecutionEvent): ProjectedRow | unde
   if (fact.type === 'delivery_ended') {
     return attemptEnded(row, fact);
   }
+  if (fact.type === 'execution_cancel_requested') {
+    return row.open ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
+  }
   return fact.type === 'execution_succeeded' || fact.type === 'execution_rejected' || fact.type === 'execution_failed'
     ? closed(row, fact)
     : undefined;
@@ -115,6 +123,7 @@ export const openRequests: RunProjection = {
     'execution_deferred',
     'delivery_started',
     'delivery_ended',
+    'execution_cancel_requested',
     'execution_succeeded',
     'execution_rejected',
     'execution_failed',

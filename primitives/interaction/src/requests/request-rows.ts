@@ -9,6 +9,7 @@ export const StandingSchema = Schema.Literals([
   'retrying',
   'undelivered',
   'answered',
+  'cancelling',
 ]);
 
 const OpenRequestRowSchema = Schema.Struct({
@@ -44,7 +45,7 @@ export function settlesFromDelivery({ answers, standing }: Pick<OpenRequestRow, 
 }
 
 export function dueAtOf(row: Omit<OpenRequestRow, 'due_at'>): number | null {
-  if (!row.open) {
+  if (!row.open || row.standing === 'cancelling') {
     return null;
   }
   const settlesNow = settlesFromDelivery(row) || (!row.answers && row.standing === 'undelivered');

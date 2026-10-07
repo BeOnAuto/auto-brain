@@ -88,3 +88,48 @@ describe('the open request of a run that ends', () => {
     ]).toEqual([undefined, undefined, undefined]);
   });
 });
+
+describe('the open request of a run asked to cancel', () => {
+  const cancelAsked = { type: 'execution_cancel_requested', kind: 'requested', reason: 'Off', ...fact };
+  const ofTheRun = { primitive: 'interaction', ...fact };
+  const attempt = { type: 'delivery_started', number: 1, channel: 'partner', target: 'ada', ...ofTheRun };
+  const answered = {
+    type: 'delivery_ended',
+    number: 1,
+    outcome: 'answered',
+    status: 200,
+    answer: { choice: 'approve' },
+    duration_ms: 40,
+    ...ofTheRun,
+  };
+
+  it('stands cancelling and falls due no more, whatever its attempt in flight does', () => {
+    const delivering = openRequests.rowAfter(open, attempt, message);
+    const cancelling = openRequests.rowAfter(delivering, cancelAsked, message);
+    const afterTheAttempt = openRequests.rowAfter(cancelling, answered, message);
+    const failedAfter = openRequests.rowAfter(
+      cancelling,
+      { type: 'delivery_ended', number: 1, outcome: 'failed', status: 503, duration_ms: 40, ...ofTheRun },
+      message,
+    );
+
+    expect([cancelling, afterTheAttempt, failedAfter]).toMatchObject([
+      { standing: 'cancelling', due_at: null, open: true },
+      { standing: 'cancelling', due_at: null, attempts: 1 },
+      { standing: 'cancelling', due_at: null },
+    ]);
+    expect(
+      openRequests.rowAfter(openRequests.rowAfter(cancelling, attempt, message), cancelAsked, message),
+    ).toMatchObject({ standing: 'cancelling' });
+  });
+
+  it('is left alone once its run has ended', () => {
+    const closed = openRequests.rowAfter(
+      open,
+      { type: 'execution_failed', primitive: 'interaction', ...fact },
+      message,
+    );
+
+    expect(openRequests.rowAfter(closed, cancelAsked, message)).toBeUndefined();
+  });
+});

@@ -30,7 +30,7 @@ const InteractionSchema = Schema.Struct({
   attempts: Schema.Int.annotate({ description: 'The delivery attempts made so far' }),
   standing: StandingSchema.annotate({
     description:
-      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, or answered within its delivery while its run is settled',
+      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered within its delivery while its run is settled, or cancelling once a cancel was asked',
   }),
 }).annotate({ identifier: 'Interaction', description: 'An open request of an interaction function' });
 
