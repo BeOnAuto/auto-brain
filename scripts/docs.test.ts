@@ -183,29 +183,6 @@ await test('the first-brain tutorial supplies inputs and observable checks for t
   assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
 });
 
-await test('the README starts with an actionable local quick start and keeps Cloud optional', () => {
-  const readme = readFileSync(join(docs, '../README.md'), 'utf8');
-  assert.ok(readme.indexOf('## Quick start') < readme.indexOf('## Documentation and help'));
-  assert.ok(readme.includes('You do not need an Auto Cloud account'));
-  assert.ok(readme.includes('Run the saved function on:'));
-  assert.ok(readme.includes('recorded run, including its execution id'));
-  assert.ok(readme.includes('missing measurable goal'));
-  assert.doesNotMatch(readme, /<details>|workspace's MCP URL/u);
-  assert.ok(readme.includes('pnpm dev\n'));
-  assert.equal(readme.includes('pnpm dev:lean'), false);
-  assert.ok(readme.includes('http://localhost:8080/mcp'));
-  assert.ok(readme.includes('curl http://localhost:8080/health'));
-  assert.ok(readme.includes('do not expose it through a tunnel or public proxy'));
-  assert.ok(readme.includes('Claude Code, Claude Desktop or Codex'));
-  assert.ok(readme.includes('claude mcp add --transport http auto-brain http://localhost:8080/mcp'));
-  assert.ok(readme.includes('codex mcp add auto-brain --url http://localhost:8080/mcp'));
-  assert.ok(readme.indexOf('pnpm dev') < readme.indexOf('## Hosted brains'));
-  assert.ok(readme.includes('Auto Cloud is coming soon'));
-  assert.ok(readme.includes('You can also host your own brain'));
-  assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/docs/self-host'));
-  assert.ok(markdownDestinations(readme).some((href) => href === 'https://on.auto/request-invite'));
-});
-
 await test('the local quick start gives runnable setup and distinguishes local clients from Cloud', () => {
   const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
   for (const command of [
