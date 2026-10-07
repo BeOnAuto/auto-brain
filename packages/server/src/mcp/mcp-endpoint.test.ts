@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { instructionsFor, type McpEndpoint } from '@beonauto/api';
 import {
   danglingReferencesIn,
@@ -101,6 +103,21 @@ describe('the tools of /mcp', () => {
 
 const orgTools = [...brainTools, 'list_models'];
 
+const definitionTypes = [
+  { primitive: 'inference', noun: 'reasoning function' },
+  { primitive: 'computation', noun: 'computation function' },
+  { primitive: 'recollection', noun: 'recall function' },
+  { primitive: 'orchestration', noun: 'workflow' },
+];
+
+const terminology = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
+
+const resourcesOnTheTerminologyPage: ReadonlySet<string> = new Set(
+  [...terminology.matchAll(/^\| \w+ +\| ([A-Z][a-z]+(?: function)?) +\| /gmu)].map(
+    ([, resource = '']: readonly string[]) => resource.toLowerCase(),
+  ),
+);
+
 interface Connection {
   readonly path: string;
   readonly endpoint: McpEndpoint;
@@ -142,11 +159,24 @@ describe('the instructions an agent receives when it connects', () => {
 
       const instructions = await onMcp(path, (session) => Promise.resolve(session.instructions));
 
-      expect(instructions).toBe(instructionsFor(endpoint, served));
+      expect(instructions).toBe(instructionsFor(endpoint, served, definitionTypes));
       expect(instructions).toContain(sentence);
       expect(unnamed.filter((name) => instructions?.includes(name) === true)).toEqual([]);
     },
   );
+
+  it('name each definition type the server serves by the kind the terminology page gives it', async () => {
+    server = await servingReasoning([]);
+
+    const instructions = await onMcp('/mcp', (session) => Promise.resolve(session.instructions));
+
+    expect(
+      definitionTypes.filter(({ noun }: Readonly<{ noun: string }>) => !resourcesOnTheTerminologyPage.has(noun)),
+    ).toEqual([]);
+    expect(instructions).toContain(
+      'inference for a reasoning function, computation for a computation function, recollection for a recall function or orchestration for a workflow;',
+    );
+  });
 });
 
 function reachingOutside(tools: readonly ListedTool[]): readonly string[] {

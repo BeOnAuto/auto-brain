@@ -82,7 +82,7 @@ describe('the tools of /mcp', () => {
   it("carry the instructions of the caller's own org", async () => {
     const instructions = await asKey(acmeAdmin.key, (session) => Promise.resolve(session.instructions));
 
-    expect(instructions).toBe(instructionsFor('own org', { orgTools, brainTools }));
+    expect(instructions).toBe(instructionsFor('own org', { orgTools, brainTools }, []));
     expect(instructions).toContain("Every tool that works inside a brain takes the brain's id as brain.");
   });
 });

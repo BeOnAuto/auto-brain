@@ -6,7 +6,7 @@ import type { RunCall } from '../operations/operation-routes.ts';
 import type { ReportThrown } from '../problem/error-boundary.ts';
 import { brainArgumentOf } from './brain-argument.ts';
 import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from './caller-hand-off.ts';
-import { instructionsFor } from './instructions.ts';
+import { instructionsFor, type DefinitionType } from './instructions.ts';
 import { callbackFor, type CalledTool, type Dispatch } from './tool-callback.ts';
 import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from './tool-definition.ts';
 
@@ -20,6 +20,7 @@ export interface McpServing {
   readonly dispatcher: Dispatcher;
   readonly runCall: RunCall;
   readonly serverInfo: ServerInfo;
+  readonly definitionTypes: readonly DefinitionType[];
 }
 
 export interface ToolServing extends McpServing {
@@ -114,7 +115,11 @@ function brainArgumentDispatchOf(
 
 export function orgServerFactory(serving: ToolServing): McpServerFactory {
   const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
-  const instructions = instructionsFor('org', { orgTools: namesOf(orgOffers), brainTools: [] });
+  const instructions = instructionsFor(
+    'org',
+    { orgTools: namesOf(orgOffers), brainTools: [] },
+    serving.definitionTypes,
+  );
   return (context) => {
     const call = orgCallOf(context);
     const tools = toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call));
@@ -124,7 +129,11 @@ export function orgServerFactory(serving: ToolServing): McpServerFactory {
 
 export function brainServerFactory(serving: ToolServing): McpServerFactory {
   const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionOf);
-  const instructions = instructionsFor('brain', { orgTools: [], brainTools: namesOf(brainOffers) });
+  const instructions = instructionsFor(
+    'brain',
+    { orgTools: [], brainTools: namesOf(brainOffers) },
+    serving.definitionTypes,
+  );
   return (context) => {
     const call = brainCallOf(context);
     const tools = toolsOf(brainOffers, brainDispatchOf(serving.dispatcher, call));
@@ -135,7 +144,11 @@ export function brainServerFactory(serving: ToolServing): McpServerFactory {
 export function catalogServerFactory(serving: ToolServing): McpServerFactory {
   const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
   const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionTakingBrainOf);
-  const instructions = instructionsFor('own org', { orgTools: namesOf(orgOffers), brainTools: namesOf(brainOffers) });
+  const instructions = instructionsFor(
+    'own org',
+    { orgTools: namesOf(orgOffers), brainTools: namesOf(brainOffers) },
+    serving.definitionTypes,
+  );
   return (context) => {
     const call = orgCallOf(context);
     const tools = [

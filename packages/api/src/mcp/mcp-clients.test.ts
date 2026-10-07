@@ -65,7 +65,7 @@ describe.each(mcpClientKinds)('the %s client connecting to a brain endpoint', (k
     expect(connected).toEqual({
       protocolVersion: expectedProtocolVersion[kind],
       serverVersion: testServerInfo,
-      instructions: instructionsFor('brain', { orgTools: [], brainTools }),
+      instructions: instructionsFor('brain', { orgTools: [], brainTools }, []),
     });
   });
 
