@@ -1,7 +1,7 @@
 import { Effect, Predicate } from 'effect';
 
 import { canAccessBrain } from '../caller/brain-access.ts';
-import type { CallerIdentity } from '../caller/caller.ts';
+import { requestTokenRefused, type CallerIdentity } from '../caller/caller.ts';
 import { isBrainId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
 import { permissionFor } from '../caller/permission.ts';
@@ -84,11 +84,15 @@ function rejectionOfBrainStatus(status: BrainStatus, kind: OperationKind, brain:
     : undefined;
 }
 
-export const confirmBrainTakesCall = Effect.fnUntraced(function* (
-  { kind }: Registration<'brain'>,
-  { org, brain }: BrainRequest,
-) {
+const brainTakesCall = Effect.fnUntraced(function* ({ kind }: Registration<'brain'>, { org, brain }: BrainRequest) {
   yield* failWith(rejectionOfOrgId(org) ?? rejectionOfBrainId(brain));
   const status = yield* (yield* BrainRegistry).status({ org, brain });
   return yield* failWith(rejectionOfBrainStatus(status, kind, brain));
 });
+
+export function confirmBrainTakesCall(registration: Registration<'brain'>, request: BrainRequest) {
+  const confirmed = brainTakesCall(registration, request);
+  return authorizesItself(registration, request.caller)
+    ? Effect.mapError(confirmed, () => rejected('forbidden', requestTokenRefused))
+    : confirmed;
+}

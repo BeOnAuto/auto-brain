@@ -1,7 +1,7 @@
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { Caller, defineCommand, requestTokenCallerOf } from '../index.ts';
+import { Caller, defineCommand, requestTokenCallerOf, requestTokenRefused } from '../index.ts';
 import { acmeAlphaReader } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 import { addNote } from '../testing/notes.ts';
@@ -51,6 +51,35 @@ describe('a caller who presents a request token', () => {
       await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(holder, { name: 'n1', text: 'hi' }))),
     ).toEqual({ status: 'rejected', reason: 'forbidden', detail: 'The caller lacks the brain:write permission' });
   });
+});
+
+describe('a caller who presents a request token, at a brain the org may not have', () => {
+  const holder = requestTokenCallerOf('acme', 'a-token-of-a-request');
+
+  it('learns nothing of the brains of the org: a missing, a retired and a malformed brain answer as a bad token does', async () => {
+    const { dispatcher, run } = harness({ retiredBrains: [{ org: 'acme', brain: 'omega' }] });
+    const tokenRefused = { status: 'rejected', reason: 'forbidden', detail: requestTokenRefused };
+
+    expect(
+      await Promise.all(
+        ['nobody', 'omega', 'Not A Brain'].map((brain) =>
+          run(dispatcher.dispatchToBrain(answerNote.registration, toBrain('acme', brain)(holder, { name: 'n1' }))),
+        ),
+      ),
+    ).toEqual([tokenRefused, tokenRefused, tokenRefused]);
+    expect(
+      await run(
+        dispatcher.dispatchToBrain(
+          answerNote.registration,
+          toBrain('acme', 'nobody')({ ...acmeAlphaReader, brains: '*', permissions: ['brain:write'] }, { name: 'n1' }),
+        ),
+      ),
+    ).toMatchObject({ status: 'rejected', reason: 'not_found' });
+  });
+});
+
+describe('a caller who presents a request token for another org', () => {
+  const holder = requestTokenCallerOf('acme', 'a-token-of-a-request');
 
   it('belongs to the org it named, and is refused by another', async () => {
     const { dispatcher, run } = harness();
