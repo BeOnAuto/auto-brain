@@ -11,7 +11,7 @@ const mostParameters = 100;
 
 const decodeText = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown));
 
-export const sqliteProjectionDialect: ProjectionDialect = {
+const sqliteProjectionDialect: ProjectionDialect = {
   tableVersions: (name) => SQL`SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB ${`${name}_*`}`,
   columnTypes: { text: 'TEXT', integer: 'INTEGER', boolean: 'INTEGER' },
   asNumber: (expression) => expression,

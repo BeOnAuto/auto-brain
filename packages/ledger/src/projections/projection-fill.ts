@@ -111,7 +111,7 @@ async function created(
   await execute.command(tableAnalysis(projection));
 }
 
-export async function preparedProjection(
+async function preparedProjection(
   keeping: ProjectionKeeping,
   execute: StatementExecutor,
   inTransaction: InTransaction,

@@ -7,7 +7,7 @@ import {
 } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-export const runOutcomesVersion = 1;
+const runOutcomesVersion = 1;
 
 export const runOutcomesTable = `run_outcomes_${runOutcomesVersion}`;
 
@@ -57,7 +57,7 @@ function rowOf(outcome: RunOutcome): ProjectedRow {
   };
 }
 
-export function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): RunProjection {
+function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): RunProjection {
   return {
     name: 'run_outcomes',
     version: runOutcomesVersion,

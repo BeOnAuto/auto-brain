@@ -20,7 +20,7 @@ function selected({ primitive, name }: RunOutcomeSelection): SQL {
   );
 }
 
-export function sqliteRunOutcomesReader(execute: StatementExecutor): RunOutcomesStore['readRunOutcomes'] {
+function sqliteRunOutcomesReader(execute: StatementExecutor): RunOutcomesStore['readRunOutcomes'] {
   return async (brainKey, { from, to }, selection) => {
     const { rows } = await execute.query(
       SQL`SELECT started_day AS day, primitive, name, status, count(*) AS runs,

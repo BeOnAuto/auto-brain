@@ -1,7 +1,7 @@
 import type { RenderFailure as EngineRenderFailure, VariableReference } from '@beonauto/specs/template';
 import type { Result, Schema } from 'effect';
 
-export type { TemplateIssue, VariableReference, VariableSegment } from '@beonauto/specs/template';
+export type { TemplateIssue } from '@beonauto/specs/template';
 
 export interface TemplateScope {
   readonly input: Schema.Json;

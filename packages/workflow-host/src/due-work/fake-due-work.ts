@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 
 import type { DueItem, DueWork } from './due-work.ts';
 
-export interface PerformedRow {
+interface PerformedRow {
   readonly key: string;
   readonly at: number;
   readonly by: string;
