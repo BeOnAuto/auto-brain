@@ -1,10 +1,12 @@
 import { Schema } from 'effect';
 
-import type {
-  ExaminationScope,
-  ExaminedItem,
-  RecordedStatements,
-  RunsSelected,
+import {
+  fieldsAskedOf,
+  type ExaminationScope,
+  type ExaminedItem,
+  type FieldAsked,
+  type RecordedStatements,
+  type RunsSelected,
 } from '../recorded/recorded-statements.ts';
 import { kindKeyOfStream } from './brain-indexes.ts';
 import {
@@ -46,11 +48,16 @@ function notOfTypes(bind: Bind, types: readonly string[]): string {
   return types.length === 0 ? '' : ` AND NOT ${ofTypes(bind, 'message_type', types)}`;
 }
 
-function ofTheDefinitionAsked(bind: Bind, { primitive, name }: RunsSelected): string {
-  const asked = { ...(primitive === undefined ? {} : { primitive }), ...(name === undefined ? {} : { name }) };
-  return Object.keys(asked).length === 0
-    ? 'TRUE'
-    : `${eventAsJsonb(bind, 'message_data')} @> ${bind(JSON.stringify(asked))}::jsonb`;
+function heldAsAsked(bind: Bind, asked: readonly FieldAsked[]): string {
+  const written = asked.map(({ asWritten }) => `strpos(message_data ->> 'json', ${bind(asWritten)}) > 0`);
+  const held = JSON.stringify(Object.fromEntries(asked.map(({ field, value }) => [field, value])));
+  return `CASE WHEN ${written.join(' AND ')} THEN ${eventAsJsonb(bind, 'message_data')} @> ${bind(held)}::jsonb
+    ELSE FALSE END`;
+}
+
+function ofTheDefinitionAsked(bind: Bind, runs: RunsSelected): string {
+  const asked = fieldsAskedOf(runs);
+  return asked.length === 0 ? 'TRUE' : heldAsAsked(bind, asked);
 }
 
 function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationScope, runs: RunsSelected): string {

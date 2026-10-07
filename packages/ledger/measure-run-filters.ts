@@ -151,6 +151,12 @@ function cases(deepCursor: string): readonly Case[] {
       runsOf({ name: 'spec-none' }),
       aPage('desc', 20),
     ],
+    [
+      'Runs of the primitive nine in ten have, 1,000 examined, each run with an input of 256 KiB',
+      'large',
+      runsOf({ primitive: 'inference' }),
+      aPage('desc', 20),
+    ],
   ];
 }
 

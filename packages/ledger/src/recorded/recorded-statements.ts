@@ -50,6 +50,20 @@ export interface RecordedStatements {
 
 export type RunsSelected = Extract<RecordedSelection, { readonly kind: 'executions' }>;
 
+export interface FieldAsked {
+  readonly field: 'primitive' | 'name';
+  readonly value: string;
+  readonly asWritten: string;
+}
+
+function fieldAsked(field: FieldAsked['field'], value: string | undefined): readonly FieldAsked[] {
+  return value === undefined ? [] : [{ field, value, asWritten: `"${field}":${JSON.stringify(value)}` }];
+}
+
+export function fieldsAskedOf({ name, primitive }: RunsSelected): readonly FieldAsked[] {
+  return [...fieldAsked('name', name), ...fieldAsked('primitive', primitive)];
+}
+
 export type RecordsSelected =
   | { readonly kind: 'brain' }
   | { readonly kind: 'streams'; readonly streams: readonly string[] }
@@ -60,7 +74,7 @@ export function pointKey(point: RecordedPoint): string {
 }
 
 function asksForOneDefinition(selection: RecordedSelection): boolean {
-  return selection.kind === 'executions' && (selection.primitive !== undefined || selection.name !== undefined);
+  return selection.kind === 'executions' && fieldsAskedOf(selection).length > 0;
 }
 
 function scopeOf(
