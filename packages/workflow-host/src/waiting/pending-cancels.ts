@@ -1,10 +1,11 @@
+import { recordedReaderOf } from '@beonauto/ledger';
 import { messageIdOf, streamPrefixOfBrain, type Conflict } from '@beonauto/operations';
 import { cancelRequestOf } from '@beonauto/specs';
 import type { CancelOrder, RunInput, Submission } from '@beonauto/workflow-engine';
 import { Effect, Schema, type Cause } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
-import { runIdOf, type RunAddress } from '../runs/run-address.ts';
+import { addressOfRun, runIdOf, type RunAddress } from '../runs/run-address.ts';
 import { clearedPendingRow, pendingCancelRowsAfter, type PendingCancelRow } from './pending-cancel-rows.ts';
 
 interface PendingCancel {
@@ -58,11 +59,32 @@ const pendingRowsInAPage = 100;
 
 const cancelsGivenAtOnce = 4;
 
+const finishTypes: ReadonlySet<string> = new Set(['execution_succeeded', 'execution_rejected', 'execution_failed']);
+
+function endedUnstarted(database: HostDatabase, runId: string): Effect.Effect<boolean> {
+  const { org, brain, executionId } = addressOfRun(runId);
+  return recordedReaderOf(database.store)(
+    { org, brain },
+    { kind: 'run', execution: executionId },
+    { order: 'desc', limit: 1, dataOf: [] },
+  ).pipe(
+    Effect.orDie,
+    Effect.map(({ records: [newest] }) => newest !== undefined && finishTypes.has(newest.type)),
+  );
+}
+
+function clearedUnlessGoing(database: HostDatabase, runId: string, { outcome }: Submission) {
+  if (outcome !== 'not_started') {
+    return clearedPendingRow(database, runId);
+  }
+  return Effect.flatMap(endedUnstarted(database, runId), (ended) =>
+    ended ? clearedPendingRow(database, runId) : Effect.void,
+  );
+}
+
 function givenOrKept(parts: PendingParts, trouble: Trouble, { runId, cause, cancel }: PendingCancelRow) {
   return parts.submitted({ kind: 'cancel_requested', executionId: runId, at: parts.now(), cause, cancel }).pipe(
-    Effect.flatMap(({ outcome }) =>
-      outcome === 'not_started' ? Effect.void : clearedPendingRow(parts.database, runId),
-    ),
+    Effect.flatMap((submission) => clearedUnlessGoing(parts.database, runId, submission)),
     Effect.as(true),
     Effect.catchCause((failure: Cause.Cause<unknown>) =>
       Effect.as(

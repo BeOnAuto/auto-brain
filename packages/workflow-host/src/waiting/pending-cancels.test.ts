@@ -4,6 +4,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
+import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { passedOverRow, pendingCancelRowsAfter } from './pending-cancel-rows.ts';
@@ -16,7 +17,11 @@ const outcomes: Readonly<Record<string, Submission['outcome'] | 'conflict'>> = {
   'acme/alpha/ended': 'stale',
   'acme/alpha/failing': 'conflict',
   'acme/alpha/not-started': 'not_started',
+  'acme/alpha/finished-unstarted': 'not_started',
+  'acme/alpha/stranded': 'not_started',
 };
+
+const ofTheRun = { primitive: 'orchestration', name: 'pause', spec_version: 1, by: 'acme-admin', at };
 
 interface Resumed {
   readonly database: ReturnType<typeof faultyDatabase>;
@@ -79,6 +84,22 @@ describe('the cancels the follower passed over, given at the first resume after 
     ]);
     expect(await resumed.pending()).toEqual(['acme/alpha/not-started']);
     expect(resumed.troubles()).toEqual([]);
+  });
+
+  it('are cleared for a run that finished without ever reaching the host, by the newest head of its stream', async () => {
+    const resumed = await resumedWith(['acme/alpha/finished-unstarted', 'acme/alpha/stranded']);
+    const asked = { type: 'execution_cancel_requested', kind: 'requested', reason: 'Not needed any more', ...ofTheRun };
+    await recorded(resumed.database.store, `${alpha}executions/finished-unstarted`, asked);
+    await recorded(resumed.database.store, `${alpha}executions/finished-unstarted`, {
+      type: 'execution_rejected',
+      rejection: { reason: 'unavailable', detail: 'The workflow could not be started' },
+      ...ofTheRun,
+    });
+    await recorded(resumed.database.store, `${alpha}executions/stranded`, asked);
+
+    await resumed.resume();
+
+    expect(await resumed.pending()).toEqual(['acme/alpha/stranded']);
   });
 
   it('report a run that could not take its cancel without holding the others, and give it again next', async () => {

@@ -1,0 +1,85 @@
+import { setTimeout } from 'node:timers/promises';
+
+import { recordedReaderOf } from '@beonauto/ledger';
+import { Effect, Function, Schema } from 'effect';
+
+import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
+import { statement } from '../src/database/statement.ts';
+import { alpha, at, brainCreated, recorded } from '../src/reaction-testing/brain-writes.ts';
+import { measuredHost, runAt } from './measured-host.ts';
+
+export interface FinishCatchUp {
+  readonly finishes: number;
+  readonly milliseconds: number;
+}
+
+type Opened = Awaited<ReturnType<typeof openHostDatabase>>;
+
+const Places = Schema.Array(Schema.Struct({ cursor: Schema.NullOr(Schema.String) }));
+
+function finishOf(index: number) {
+  return {
+    type: 'execution_succeeded',
+    output: { index },
+    record: {},
+    primitive: 'orchestration',
+    name: 'measured',
+    spec_version: 1,
+    by: 'acme-admin',
+    at,
+  };
+}
+
+async function placesOf(opened: Opened): Promise<readonly (string | null)[]> {
+  const rows = await Effect.runPromise(
+    opened.read(statement`SELECT cursor FROM workflow_followed_brains WHERE brain_key = ${alpha}`),
+  );
+  return Schema.decodeUnknownSync(Places)(rows).map(({ cursor }) => cursor);
+}
+
+async function latestOf(opened: Opened): Promise<string | null> {
+  const { records } = await Effect.runPromise(
+    recordedReaderOf(opened.store)(
+      { org: 'acme', brain: 'alpha' },
+      { kind: 'everything' },
+      {
+        order: 'desc',
+        limit: 1,
+        dataOf: [],
+      },
+    ),
+  );
+  return records[0]?.cursor ?? null;
+}
+
+async function untilAt(opened: Opened, cursor: string | null): Promise<void> {
+  const [place] = await placesOf(opened);
+  if (place === undefined || place !== cursor) {
+    await setTimeout(2);
+    await untilAt(opened, cursor);
+  }
+}
+
+async function finishedInTurn(opened: Opened, count: number, index = 0): Promise<void> {
+  if (index < count) {
+    await recorded(opened.store, `${alpha}executions/${runAt(index).executionId}`, finishOf(index));
+    await finishedInTurn(opened, count, index + 1);
+  }
+}
+
+export async function finishCatchUpOn(database: DatabaseSettings, finishes: number): Promise<FinishCatchUp> {
+  const opened = await openHostDatabase(database, Function.constVoid);
+  await brainCreated(opened.store, 'alpha');
+  const following = await measuredHost(database);
+  await untilAt(opened, await latestOf(opened));
+  await following.host.stop();
+  await finishedInTurn(opened, finishes);
+  const latest = await latestOf(opened);
+  const started = performance.now();
+  const catchingUp = await measuredHost(database);
+  await untilAt(opened, latest);
+  const milliseconds = performance.now() - started;
+  await catchingUp.host.stop();
+  await opened.close();
+  return { finishes, milliseconds };
+}

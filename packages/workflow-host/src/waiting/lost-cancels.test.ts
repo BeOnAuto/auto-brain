@@ -1,12 +1,12 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { at, brainCreated, recorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, at, brainCreated, recorded } from '../reaction-testing/brain-writes.ts';
 import { until } from '../reaction-testing/until.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
 import { startedByAHostThatDied } from '../waiting-testing/crashed-host.ts';
-import { followedHost, followedThroughTheLatest, settledIn } from '../waiting-testing/followed-host.ts';
+import { followedThroughTheLatest, settledIn } from '../waiting-testing/followed-host.ts';
 import {
   askedCancel,
   lostCancelId,
@@ -43,27 +43,42 @@ describe('a host that died after it started a run and before it read the cancel 
   });
 });
 
+const ofTheRun = { primitive: 'orchestration', name: 'pause', spec_version: 1, by: 'brain:alpha', at };
+
 const rejectedUnstarted = {
   type: 'execution_rejected',
   rejection: { reason: 'unavailable', detail: 'The workflow could not be started' },
-  primitive: 'orchestration',
-  name: 'pause',
-  spec_version: 1,
-  by: 'brain:alpha',
-  at,
+  ...ofTheRun,
 };
 
+const strandedId = '0199a3c4-7d2e-7c1a-9b3f-0000000000e1';
+
+const strandedCancel = { type: 'execution_cancel_requested', kind: 'requested', reason: 'Gone', ...ofTheRun };
+
 describe('a cancel the follower passes over for a run the host has not started', () => {
-  it('is kept by the run with its request, and cleared when the run ends without ever starting', async () => {
-    const { database } = await followedHost();
+  it('is kept by the run with its request, until a first resume finds the run ended without ever starting', async () => {
+    const settings = { store: 'sqlite', file: aSQLiteFile() } as const;
+    const database = await openedOn(settings);
+    await brainCreated(database.store, 'alpha');
+    const first = await hostedOn(settings);
     const pending = () => Effect.runPromise(pendingCancelRowsAfter(database, '', 10));
-
     await startedThenCancelled(database);
-    const kept = await until(pending, (rows) => rows.length > 0);
+    await recorded(database.store, `${alpha}executions/${strandedId}`, strandedCancel);
+    const kept = await until(pending, (rows) => rows.length === 2);
     await recorded(database.store, lostStream, rejectedUnstarted);
-    const cleared = await until(pending, (rows) => rows.length === 0);
+    await followedThroughTheLatest(database);
+    const keptAfterTheEnding = await pending();
+    await first.host.stop();
 
-    expect(kept).toEqual([{ runId: lostRunId, cause: lostCancelId, cancel: askedCancel }]);
-    expect(cleared).toEqual([]);
+    await hostedOn(settings);
+    const left = await until(pending, (rows) => rows.length === 1);
+
+    expect(kept.find(({ runId }) => runId === lostRunId)).toEqual({
+      runId: lostRunId,
+      cause: lostCancelId,
+      cancel: askedCancel,
+    });
+    expect(keptAfterTheEnding).toHaveLength(2);
+    expect(left.map(({ runId }) => runId)).toEqual([`acme/alpha/${strandedId}`]);
   });
 });

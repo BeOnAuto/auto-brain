@@ -1,6 +1,7 @@
 import { loadavg } from 'node:os';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
+import { finishCatchUpOn } from './finish-catch-up.ts';
 import { firstResumeOn, type FirstResume } from './first-resume.ts';
 import { openCallsCountOn } from './open-calls.ts';
 import { cancelLatencyOn, childEndingLatencyOn, type WaitingLatency } from './waiting.ts';
@@ -42,6 +43,10 @@ async function firstResumesMeasuredOn(
 ): Promise<void> {
   write(firstResumeLine(store, await firstResumeOn(await aDatabase(), 10_000, 0)));
   write(firstResumeLine(store, await firstResumeOn(await aDatabase(), 10_000, 100)));
+  const { finishes, milliseconds } = await finishCatchUpOn(await aDatabase(), 1000);
+  write(
+    `${store}: a host that opened behind ${finishes} finishes of workflow runs, with nothing waiting on them, followed through them in ${milliseconds.toFixed(0)} ms, under a load average of ${loadAverage()}`,
+  );
 }
 
 export async function waitingMeasuredOn(
