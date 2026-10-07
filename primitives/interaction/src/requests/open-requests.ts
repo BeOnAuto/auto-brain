@@ -5,7 +5,7 @@ import { executionEventOf, type ExecutionEvent } from '@beonauto/specs';
 import { inboxChannel } from '../channels/channel-names.ts';
 import { interactionPrimitive } from '../primitive/primitive-name.ts';
 import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
-import { dueAtOf, requestRowOf, type OpenRequestRow } from './request-rows.ts';
+import { dueAtOf, requestRowOf, settlesFromDelivery, type OpenRequestRow } from './request-rows.ts';
 
 export const openRequestsName = 'open_requests';
 
@@ -100,7 +100,7 @@ function changed(row: OpenRequestRow, fact: ExecutionEvent): ProjectedRow | unde
     return attemptEnded(row, fact);
   }
   if (fact.type === 'execution_cancel_requested') {
-    return row.open ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
+    return row.open && !settlesFromDelivery(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
   }
   return fact.type === 'execution_succeeded' || fact.type === 'execution_rejected' || fact.type === 'execution_failed'
     ? closed(row, fact)

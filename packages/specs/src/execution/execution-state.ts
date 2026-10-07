@@ -4,6 +4,7 @@ import type { ExecutionResult } from './execution-commands.ts';
 import type {
   CalledBy,
   CancelRequestKind,
+  DeliveryOutcome,
   ExecutionEvent,
   ExecutionFinished,
   ExecutionStarted,
@@ -16,6 +17,12 @@ export interface AskedCancel {
   readonly by: string;
 }
 
+export interface EndedDelivery {
+  readonly outcome: DeliveryOutcome;
+  readonly answer?: Schema.Json;
+  readonly at: string;
+}
+
 export interface RecordedExecution {
   readonly input: Schema.Json;
   readonly execution: ExecutionRecord;
@@ -25,6 +32,7 @@ export interface RecordedExecution {
   readonly lastCall: number;
   readonly mayHaveChanged: boolean;
   readonly deliveryInFlight: number | null;
+  readonly lastDelivery: EndedDelivery | null;
   readonly cancel?: AskedCancel;
   readonly depth: number;
   readonly callDepth: number;
@@ -61,6 +69,7 @@ function startedExecution(event: ExecutionStarted, earlier: ExecutionState): Rec
     lastCall: earlier?.lastCall ?? 0,
     mayHaveChanged: earlier?.mayHaveChanged ?? false,
     deliveryInFlight: null,
+    lastDelivery: null,
     depth,
     callDepth,
     ...(calledBy === undefined ? {} : { calledBy }),
@@ -111,7 +120,12 @@ function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, 
     return { ...state, lastCall: event.number, deliveryInFlight: event.number };
   }
   if (event.type === 'delivery_ended') {
-    return { ...state, deliveryInFlight: null };
+    const { outcome, answer, at } = event;
+    return {
+      ...state,
+      deliveryInFlight: null,
+      lastDelivery: answer === undefined ? { outcome, at } : { outcome, answer, at },
+    };
   }
   if (event.type === 'tool_call_answered') {
     return state;

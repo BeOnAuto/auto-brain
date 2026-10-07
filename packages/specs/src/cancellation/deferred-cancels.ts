@@ -47,8 +47,13 @@ export function deferredCanceller(
         return;
       }
       const primitive = primitives.find(({ name }) => name === state.execution.primitive);
-      const settlement = yield* decided(primitive, { record: state.record ?? {}, kind, reason });
-      yield* settle(execution, { ...settlement, by: by ?? brainCallerOf(execution).id }, lineage).pipe(
+      const settlement = yield* decided(primitive, {
+        record: state.record ?? {},
+        kind,
+        reason,
+        lastDelivery: state.lastDelivery,
+      });
+      yield* settle(execution, { ...settlement, by: settlement.by ?? by ?? brainCallerOf(execution).id }, lineage).pipe(
         Effect.asVoid,
         Effect.catchIf(endedOtherwise, () => Effect.void),
       );

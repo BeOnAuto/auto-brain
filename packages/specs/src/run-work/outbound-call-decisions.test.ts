@@ -106,7 +106,10 @@ describe('the end of a delivery', () => {
       decided(recording(ended), started, deferred, attemptStarted, attemptEnded),
     ]).toEqual([Result.fail(notInFlight(1)), Result.fail(notInFlight(2)), Result.fail(notInFlight(1))]);
     expect(stateAfter(started, deferred, attemptStarted)).toMatchObject({ deliveryInFlight: 1 });
-    expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({ deliveryInFlight: null });
+    expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({
+      deliveryInFlight: null,
+      lastDelivery: { outcome: 'failed', at: during.at },
+    });
   });
 });
 
@@ -135,6 +138,21 @@ describe('the end of a delivery that answered', () => {
     expect(decided(recording(answered), started, deferred, attemptStarted)).toStrictEqual(
       Result.succeed([{ ...answered, ...ofApproval, ...during }]),
     );
+  });
+
+  it('is kept by the run as its last delivery, with the answer, for a cancel to settle from', () => {
+    const answered: ExecutionEvent = {
+      ...ended,
+      outcome: 'answered',
+      status: 200,
+      answer: { choice: 'approve' },
+      ...ofApproval,
+      ...during,
+    };
+
+    expect(stateAfter(started, deferred, attemptStarted, answered)).toMatchObject({
+      lastDelivery: { outcome: 'answered', answer: { choice: 'approve' }, at: during.at },
+    });
   });
 
   it('is refused once the run has ended, and of a run there is not', () => {

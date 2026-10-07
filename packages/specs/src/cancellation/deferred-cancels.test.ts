@@ -93,7 +93,39 @@ describe('a cancel of a run of another capability, as asked', () => {
 
     expect(records.at(-1)?.data).toMatchObject({ type: 'execution_rejected', by: 'brain:alpha' });
   });
+});
 
+describe('a cancel its capability settles otherwise', () => {
+  it('settles it as its capability decides, by the actor the decision names rather than whoever asked', async () => {
+    const { executing, ledger, run } = await withHandOn();
+    await executing();
+    const answering = relayDeciding(({ lastDelivery }) => ({
+      status: 'succeeded',
+      output: { delivered: JSON.stringify(lastDelivery) },
+      record: {},
+      by: 'channel:partner',
+    }));
+
+    await Effect.runPromise(deferredCanceller([answering], ledger.service)(relayed, asked, lineage));
+    const { records } = await run(
+      Effect.orDie(
+        ledger.service.readRecorded(
+          { org: 'acme', brain: 'alpha' },
+          { kind: 'everything' },
+          { order: 'asc', limit: 20 },
+        ),
+      ),
+    );
+
+    expect(records.at(-1)?.data).toMatchObject({
+      type: 'execution_succeeded',
+      output: { delivered: 'null' },
+      by: 'channel:partner',
+    });
+  });
+});
+
+describe('a cancel of a run of another capability, as asked, when its hook breaks', () => {
   it('fails the run when its capability’s hook throws', async () => {
     const { executing, ledger, reading } = await withHandOn();
     await executing();

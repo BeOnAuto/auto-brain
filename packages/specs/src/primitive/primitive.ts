@@ -3,6 +3,7 @@ import { Effect, type Schema } from 'effect';
 
 import type { CallAnsweredFact, CallStartedFact } from '../execution/execution-commands.ts';
 import type { CancelRequestKind, DeliveryEvent } from '../execution/execution-events.ts';
+import type { EndedDelivery } from '../execution/execution-state.ts';
 import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
 
 export interface DefinitionSummary {
@@ -65,6 +66,7 @@ export interface CancelledRun {
   readonly record: Schema.JsonObject;
   readonly kind: CancelRequestKind;
   readonly reason: string;
+  readonly lastDelivery: EndedDelivery | null;
 }
 
 export type CancelDecision = (run: CancelledRun) => Settlement;

@@ -12,6 +12,7 @@ export { defineGetSpec } from './operations/get-spec.ts';
 export { defineListSpecs } from './operations/list-specs.ts';
 export { defineStartVersion } from './operations/start-version.ts';
 export {
+  cancelledAsAsked,
   definePrimitive,
   defaultRunWords,
   type CancelDecision,
