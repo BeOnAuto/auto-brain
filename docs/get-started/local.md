@@ -136,6 +136,34 @@ Ask for the result and the recorded run, including its execution id. The review 
 
 For a second run and a comparison of the results, continue with [Build your first brain](../tutorials/first-brain.md).
 
+## 6. Give your brain tools
+
+A reasoning function can use the tools of an MCP server, such as a search service. You tell Auto about the server in a settings file, `auto-brain.yaml`, and keep the server's key in `.env`.
+
+1. Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers`, with a header that names the environment variable holding its key, written `${NAME}`, and allows its tools with `allowed_tools`:
+
+   ```yaml
+   mcp_servers:
+     search:
+       url: https://search.example.com/mcp
+       headers:
+         Authorization: Bearer ${SEARCH_API_KEY}
+       org: local
+   allowed_tools:
+     - search/*
+   ```
+
+2. Put the key in `.env` as `SEARCH_API_KEY=` followed by the key.
+3. Stop the server with Ctrl+C and start it again with `pnpm dev`.
+4. Ask your agent to make a function that can use the server:
+
+   ```text
+   In the quickstart brain, create a reasoning function that uses the search
+   tools to find recent news about a company and sums it up in three points.
+   ```
+
+The key never goes in `auto-brain.yaml`; the file only names the variable that holds it. `auto-brain.example.yaml` at the root of the repository shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
+
 ## If something does not connect
 
 If the health check fails, check the server terminal for startup errors and confirm that port 8080 is free. If your agent cannot connect but the health check works, check its MCP endpoint, restart the agent session, and confirm it is running on the same computer as Auto.

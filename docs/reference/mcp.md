@@ -4,7 +4,7 @@ The Auto runtime exposes brain, reasoning-function and workflow operations throu
 
 ## Connection direction
 
-This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reasoning function. Auto Cloud is coming soon; [request an invite](https://on.auto/request-invite) for hosted access.
+This is an inbound interface: an external assistant connects to a local or self-hosted Auto runtime and calls its operations. It does not configure tools inside a reasoning function: the operator configures their servers with `mcp_servers` and `allowed_tools`, which the repository's [configuration guide](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) describes, and a function names their tools in its [`tools`](reasoning-format.md#tools). Auto Cloud is currently invite-only. [Request an invitation](https://on.auto/request-invite) if you would prefer a hosted brain.
 
 A reasoning function can also call tools itself, through MCP servers the operator of a self-hosted runtime configures. That outbound connection is set up on the server, never by adding an endpoint to an external assistant. While any MCP server is configured, `execute_spec` carries the destructive annotation, since a function's tools may change something. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
