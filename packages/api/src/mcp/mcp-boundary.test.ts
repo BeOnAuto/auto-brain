@@ -17,6 +17,8 @@ const brokenRuntime = mcpRoutes({
   runCall: () => Promise.reject(new Error('the runtime broke while holding database password hunter2')),
   serverInfo: testServerInfo,
   definitionTypes: [],
+  guides: [],
+  recipes: [],
   reportError: (error) => {
     sdkErrors.push(error.message);
   },
@@ -92,6 +94,8 @@ describe('an operation without plain language', () => {
       runCall: () => Promise.reject(new Error('not called')),
       serverInfo: testServerInfo,
       definitionTypes: [],
+      guides: [],
+      recipes: [],
       reportError: () => {
         sdkErrors.push('unexpected');
       },

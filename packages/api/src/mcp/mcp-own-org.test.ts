@@ -14,7 +14,14 @@ import {
   type OperationServer,
 } from '../testing/operation-server.ts';
 import { danglingReferencesIn } from '../testing/self-contained.ts';
-import { listedTools, takingBrain, type ListedTool } from '../testing/tool-listing.ts';
+import {
+  guideToolName,
+  listedTools,
+  schemasOf,
+  takingBrain,
+  toolNamesIn,
+  type ListedTool,
+} from '../testing/tool-listing.ts';
 import { instructionsFor } from './instructions.ts';
 
 const orgTools = ['label_brain', 'list_labels'];
@@ -67,13 +74,19 @@ describe('the tools of /mcp', () => {
       listingOn('/orgs/acme/brains/alpha/mcp'),
     ]);
 
-    expect(own.map(({ name }) => name)).toEqual([...orgTools, ...brainTools]);
-    expect(own).toEqual([...org, ...brain.map((tool) => takingBrain(tool))]);
+    const guide = own.find(({ name }) => name === guideToolName);
+
+    expect(own.map(({ name }) => name)).toEqual([...orgTools, ...brainTools, guideToolName]);
+    expect(own).toEqual([
+      ...org.filter(({ name }) => name !== guideToolName),
+      ...brain.filter(({ name }) => name !== guideToolName).map((tool) => takingBrain(tool)),
+      guide,
+    ]);
+    expect([org.at(-1), brain.at(-1)]).toEqual([guide, guide]);
   });
 
   it('have self-contained schemas with an object root', async () => {
-    const tools = listedTools(await asKey(acmeAdmin.key, (session) => session.listTools()));
-    const schemas = tools.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
+    const schemas = schemasOf(listedTools(await asKey(acmeAdmin.key, (session) => session.listTools())));
 
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
@@ -82,8 +95,10 @@ describe('the tools of /mcp', () => {
   it("carry the instructions of the caller's own org", async () => {
     const instructions = await asKey(acmeAdmin.key, (session) => Promise.resolve(session.instructions));
 
-    expect(instructions).toBe(instructionsFor('own org', { orgTools, brainTools }, []));
-    expect(instructions).toContain("Every tool that works inside a brain takes the brain's id as brain.");
+    expect(instructions).toBe(
+      instructionsFor('own org', { orgTools, brainTools }, [], [{ name: 'take-a-note', calls: ['add_note'] }]),
+    );
+    expect(instructions).toContain("every tool inside a brain takes the brain's id as brain.");
   });
 });
 
@@ -143,17 +158,25 @@ describe('the callers of /mcp', () => {
     expect(outcome.own.structuredContent).toEqual({ notes: [] });
   });
 
-  it('are refused a brain outside their key, and a command their key does not permit', async () => {
+  it('are refused a brain outside their key, and are offered no command their key does not permit', async () => {
     const limited = await asKey(acmeAlphaWriter.key, (session) => session.callTool('list_notes', { brain: 'beta' }));
-    const reader = await asKey(acmeReader.key, (session) =>
-      session.callTool('add_note', { brain: 'alpha', name: 'read-only', text: 'no' }),
-    );
+    const offered = await asKey(acmeReader.key, async (session) => toolNamesIn(await session.listTools()));
 
     expect(problemIn(limited)).toMatchObject({ reason: 'forbidden', detail: 'The caller may not access this brain' });
-    expect(problemIn(reader)).toMatchObject({
-      reason: 'forbidden',
-      detail: 'The caller lacks the brain:write permission',
-    });
+    expect(offered).toEqual([
+      'list_labels',
+      'list_notes',
+      'get_note',
+      'latest_note',
+      'break_down',
+      'wait_forever',
+      guideToolName,
+    ]);
+    await expect(
+      asKey(acmeReader.key, (session) =>
+        session.callTool('add_note', { brain: 'alpha', name: 'read-only', text: 'no' }),
+      ),
+    ).rejects.toThrow('Tool add_note not found');
   });
 });
 
@@ -199,7 +222,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
       }),
     );
 
-    expect(outcome.tools).toEqual([...orgTools, ...brainTools]);
+    expect(outcome.tools).toEqual([...orgTools, ...brainTools, guideToolName]);
     expect(outcome.notes.isError).toBeUndefined();
   });
 });

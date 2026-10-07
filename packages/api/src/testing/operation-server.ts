@@ -10,6 +10,7 @@ import { Layer } from 'effect';
 
 import { makeAppRuntime, mcpRoutes, operationRoutes, type ApiHandler, type AppRuntime } from '../index.ts';
 import { createTestHandler } from './api-calls.ts';
+import { testGuides, testRecipes } from './guides.ts';
 import { notebookOperations } from './notebook.ts';
 
 export interface OperationServer {
@@ -81,6 +82,8 @@ export async function operationServer({
       runCall: runtime.run,
       serverInfo: testServerInfo,
       definitionTypes: [],
+      guides: testGuides,
+      recipes: testRecipes,
       reportError: (error) => {
         mcpErrors.push(error.message);
       },

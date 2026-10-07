@@ -7,7 +7,7 @@ import { withMcpSession, type McpConnection, type McpSession } from '../testing/
 import { notebookOperations } from '../testing/notebook.ts';
 import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
 import { danglingReferencesIn } from '../testing/self-contained.ts';
-import { listedTools } from '../testing/tool-listing.ts';
+import { guideToolName, listedTools, operationToolsIn, schemasOf } from '../testing/tool-listing.ts';
 
 const orgOperations = notebookOperations.filter(({ registration }) => registration.scope === 'org');
 
@@ -52,16 +52,19 @@ describe('the tools of each endpoint', () => {
       session.listTools(),
     );
 
-    expect(listedTools(listing).map(({ name }) => name)).toEqual(['label_brain', 'list_labels']);
+    expect(listedTools(listing).map(({ name }) => name)).toEqual(['label_brain', 'list_labels', guideToolName]);
   });
 
   it('lists the eleven spec operations on a brain endpoint and no org operation', async () => {
-    expect(listedTools(await onAlpha((session) => session.listTools())).map(({ name }) => name)).toEqual(specTools);
+    expect(listedTools(await onAlpha((session) => session.listTools())).map(({ name }) => name)).toEqual([
+      ...specTools,
+      guideToolName,
+    ]);
   });
 
   it('publishes self-contained schemas with an object root, and the primitive as a plain enum', async () => {
     const tools = listedTools(await onAlpha((session) => session.listTools()));
-    const schemas = tools.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
+    const schemas = schemasOf(tools);
 
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
@@ -124,18 +127,19 @@ describe('the spec tools on a brain endpoint', () => {
 });
 
 describe('the annotations of a tool', () => {
-  it('derive from the operation: read-only for a query, idempotent for GET and PUT, never destructive, open world only when it reaches outside', async () => {
+  it('derive from what the operation declares: read-only for a query, idempotent for a query or a repeatable command, destructive when it cannot be undone, open world only when it reaches outside', async () => {
     const listing = await onAlpha((session) => session.listTools());
     const annotationsByName = Object.fromEntries(
-      listedTools(listing).map(({ name, annotations }) => [name, annotations]),
+      operationToolsIn(listing).map(({ name, annotations }) => [name, annotations]),
     );
 
     expect(annotationsByName).toMatchObject({
       create_spec: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
       list_specs: { readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false },
       update_spec: { readOnlyHint: false, idempotentHint: true, destructiveHint: false, openWorldHint: false },
-      retire_spec: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
+      retire_spec: { readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false },
       execute_spec: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
+      cancel_execution: { readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false },
     });
   });
 });

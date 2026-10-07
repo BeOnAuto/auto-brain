@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import { problemIn, withMcpSession, type McpConnection, type ToolResult } from '../testing/mcp-clients.ts';
 import { acmeAlphaWriter, acmeReader, operationServer, type OperationServer } from '../testing/operation-server.ts';
-import { listedTools } from '../testing/tool-listing.ts';
+import { guideToolName, listedTools, toolNamesIn } from '../testing/tool-listing.ts';
 
 let server: OperationServer;
 let listening: Listening;
@@ -27,29 +27,41 @@ function problemOf(result: ToolResult): unknown {
 }
 
 describe('the permissions of the caller of a tool', () => {
-  it('reject a command of a read-only key as isError, and serve it a query', async () => {
+  it('list for a read-only key the queries and no command, in instructions that name no command', async () => {
     const outcome = await withMcpSession(
       'previous major',
       endpoint('/orgs/acme/brains/alpha/mcp', acmeReader.key),
       async (session) => ({
-        command: await session.callTool('add_note', { name: 'read-only', text: 'no' }),
+        tools: toolNamesIn(await session.listTools()),
+        instructions: String(session.instructions),
         query: await session.callTool('list_notes'),
       }),
     );
 
-    expect(problemOf(outcome.command)).toEqual({
-      isError: true,
-      problem: {
-        type: 'https://on.auto/problems/forbidden',
-        title: 'Forbidden',
-        status: 403,
-        detail: 'The caller lacks the brain:write permission',
-        reason: 'forbidden',
-      },
-    });
+    expect(outcome.tools).toEqual([
+      'list_notes',
+      'get_note',
+      'latest_note',
+      'break_down',
+      'wait_forever',
+      guideToolName,
+    ]);
+    expect(['add_note', 'check_lines', 'send_notes'].filter((name) => outcome.instructions.includes(name))).toEqual([]);
     expect(outcome.query.isError).toBeUndefined();
   });
+});
 
+describe('a command a read-only key is not offered', () => {
+  it('is answered as a tool the endpoint does not list', async () => {
+    await expect(
+      withMcpSession('current revision', endpoint('/orgs/acme/brains/alpha/mcp', acmeReader.key), (session) =>
+        session.callTool('add_note', { name: 'read-only', text: 'no' }),
+      ),
+    ).rejects.toThrow('Tool add_note not found');
+  });
+});
+
+describe('the brains of the caller of a tool', () => {
   it('let a key limited to some brains call the tools of a brain it may access', async () => {
     const added = await withMcpSession(
       'current revision',
