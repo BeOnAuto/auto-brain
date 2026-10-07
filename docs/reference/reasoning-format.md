@@ -50,11 +50,45 @@ Unknown fields are rejected. Creation and updates validate the document and repo
 
 ## Prompts and results
 
-The Liquid template reads supplied values through `input`. An optional `{% system %}` block provides system instructions. The document must also produce a message outside that block. A function document contains instructions, not model credentials.
+The Liquid template reads supplied values through `input`. An optional `{% system %}` block provides system instructions. The document must also produce a message outside that block. A function document contains instructions, not model credentials; see [The template](#the-template) for what a template may read and use.
 
 A run invokes the model and records its output and usage. When the function names tools, the model can use them in a bounded loop before answering. An external agent can also pass evidence it collected through its own connections as input.
 
 Changing the document creates a version. A run uses the active latest version and records `spec_version`; the current API does not select an arbitrary historical version to execute. See the [HTTP reference](http.md) for input limits and retry behavior.
+
+## The template
+
+The template reads three variables and nothing else:
+
+| Variable | Value                                                                              |
+| -------- | ---------------------------------------------------------------------------------- |
+| `input`  | The run's input, a JSON object, with `input.default` merged under it and validated |
+| `today`  | The date when the run starts, `YYYY-MM-DD`, in UTC                                 |
+| `now`    | The time when the run starts, in ISO 8601, in UTC                                  |
+
+Names the template makes itself, with `assign`, `for`, `increment` or `cycle`, are fine; any other name is rejected when the document is saved. When the input schema lists its `properties` and sets `additionalProperties: false`, `input.<field>` must be one of them. A field the input does not have stops the run with `invalid_input`, naming the field, except in a condition of `if`, `elsif` or `unless` and in the `default` filter, so a template can test a field that may be absent: `{% if input.vip %}…{% endif %}`, `{{ input.nickname | default: "friend" }}`. A list is written as its items without separators and an object as `[object Object]`; write `{{ input.account | json }}` for JSON.
+
+One `{% system %}…{% endsystem %}` block may hold the system instructions. It stands at the top level of the template, outside every other tag, and its tags take no arguments; there is at most one. Everything outside it is the message, sent as one user message, and the template must write something there. An input that holds `{% system %}` or `{% endsystem %}` is written as those characters and never opens or closes the instructions.
+
+The tags are `assign`, `if` with `elsif` and `else`, `unless`, `case` with `when`, `for` with `break` and `continue`, `cycle`, `increment`, `decrement`, `echo`, `liquid`, `raw`, `comment`, `#` and `tablerow`. A function document is one document, so `include`, `render`, `layout` and `block` are not available, and neither is `capture`; use `assign` with `append` instead.
+
+The filters are the plain data and string filters of Liquid: `abs`, `append`, `array_to_sentence_string`, `at_least`, `at_most`, `base64_decode`, `base64_encode`, `capitalize`, `ceil`, `compact`, `concat`, `default`, `divided_by`, `downcase`, `escape`, `escape_once`, `find`, `find_index`, `first`, `floor`, `group_by`, `has`, `join`, `json`, `last`, `lstrip`, `map`, `minus`, `modulo`, `newline_to_br`, `normalize_whitespace`, `number_of_words`, `plus`, `pop`, `prepend`, `push`, `raw`, `reject`, `remove`, `remove_first`, `remove_last`, `replace`, `replace_first`, `replace_last`, `reverse`, `round`, `rstrip`, `shift`, `size`, `slice`, `slugify`, `sort`, `sort_natural`, `split`, `squish`, `strip`, `strip_newlines`, `sum`, `times`, `to_integer`, `truncate`, `truncatewords`, `uniq`, `unshift`, `upcase`, `where` and `xml_escape`. Three more:
+
+| Filter  | What it does                                                                                                   | Example                                                        |
+| ------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `money` | A number, or text that is a decimal number, as US dollars with thousands separators: no cents when it is whole | `{{ 364028 \| money }}` is `$364,028`; `1234.5` is `$1,234.50` |
+| `clip`  | Text cut to a number of characters, 400 by default, with an ellipsis appended when it is cut                   | `{{ input.notes \| clip: 200 }}`                               |
+| `words` | The number of words in a text                                                                                  | `{% assign n = input.notes \| words %}`                        |
+
+The date filters are left out, since they read the server's clock and time zone, so the same function would render differently on another server; `today` and `now` give the date and the time. So are `sample`, which is random, the digest filters, `strip_html`, the URL encoders, and the filters that evaluate an expression given as text.
+
+| Limit                                       | Value                         | When it is reached              |
+| ------------------------------------------- | ----------------------------- | ------------------------------- |
+| Length of the template                      | 65,536 characters             | Refused when saved              |
+| Names in tags and outputs                   | 1,000                         | Refused when saved              |
+| Time to render                              | 200 ms                        | The run ends as `invalid_input` |
+| Memory that filters and ranges may charge   | 5,000,000 characters or items | The run ends as `invalid_input` |
+| Rendered instructions, and rendered message | 200,000 characters each       | The run ends as `invalid_input` |
 
 ## Tools
 
@@ -74,7 +108,15 @@ Tool access is available in a self-hosted runtime whose operator configures MCP 
 
 ## Provider options
 
-The runtime accepts a reviewed subset of provider options. It rejects credentials, request headers, tool-server configuration and unsupported keys in function documents. Your agent should use the operation's schema and validation feedback rather than copying a provider's full API request into this field.
+`provider_options` holds, under the namespace of a provider, only the options that shape how the model reasons or writes its answer:
+
+| Namespace   | Offered                                                    |
+| ----------- | ---------------------------------------------------------- |
+| `anthropic` | `thinking`, with only `type`, `budgetTokens` and `display` |
+| `openai`    | `textVerbosity`, `reasoningMode`, `logitBias`              |
+| `google`    | `thinkingConfig`, `safetySettings`, `threshold`            |
+
+The [engineering reference](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/reference/reasoning-format.md#provider-options) lists the namespaces of the other providers a server may be configured for, and the options each offers. Under a gateway's name a function may set only the request body fields that the gateway's operator allows, and by default none. Any other option is rejected when the document is saved, with the option named, and so are credentials, request headers, tool servers, routing and anything the front matter already sets, such as an effort level, which `config.reasoning` sets. Your agent should use the operation's schema and validation feedback rather than copying a provider's full API request into this field.
 
 The repository's [engineering reference](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/reference/reasoning-format.md) lists the complete format, supported template operations and provider-specific options for contributors.
 
