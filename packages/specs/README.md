@@ -182,7 +182,7 @@ A run rejected with `conflict` records the kind the primitive gave, so `get_exec
 
 Inference reads its documents with it and keeps its own keys, messages and tests; computation reads its own with the same reader. The subpath is separate from the main entry because it imports the YAML parser, which nothing else in this package needs.
 
-`@beonauto/specs/json-schema` exports `compileJsonSchema` alone, without the YAML reader, for a worker thread that checks a computation function's output against its schema: such a worker starts for each run, and the reader's modules and the YAML parser took it from 138 ms to 254 ms to load, measured on a busy machine.
+`@beonauto/specs/json-schema` exports `compileJsonSchema`, `schemaCheckOf(schema, { what, nesting })`, a check of a value that names at most three of its issues, and `issuesDetail(issues, what)`, the one wording of them, each at its pointer or as the output or the view itself at the root, without the YAML reader, for the checked worker of `@beonauto/computation`, which checks the outputs of computation and recall functions and the views of recall functions where they were computed: the reader's modules and the YAML parser had taken a worker from 138 ms to 254 ms to load, measured on a busy machine, a cost now paid once for each worker the pool starts rather than for each run.
 
 ## Reading runs
 
