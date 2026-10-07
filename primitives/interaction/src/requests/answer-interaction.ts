@@ -26,15 +26,15 @@ import { interactionBounds } from '../run/run-bounds.ts';
 import { answerFor, answererOf } from './answering.ts';
 import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
 
-const ClaimedForField = Schema.String.check(
+const ClaimedForField = Schema.String.annotate({
+  description: `Whom the caller says it answers for, kept with the answer as a claim and never checked, at most ${interactionBounds.claimBytes} bytes`,
+}).check(
   Schema.makeFilter((text: string) => Buffer.byteLength(text, 'utf8') <= interactionBounds.claimBytes, {
     expected: `at most ${interactionBounds.claimBytes} bytes`,
   }),
   refusingForbiddenCharacters,
   refusingBlankText,
-).annotate({
-  description: `Whom the caller says it answers for, kept with the answer as a claim and never checked, at most ${interactionBounds.claimBytes} bytes`,
-});
+);
 
 const description = [
   'Answers the request of an interaction function that a run of it waits for, and settles the run for good:',
