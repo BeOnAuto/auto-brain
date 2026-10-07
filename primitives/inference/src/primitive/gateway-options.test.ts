@@ -37,6 +37,7 @@ describe('an execution with provider options for a gateway', () => {
         new Conflict({
           detail:
             'The gateway internal does not allow the provider option metadata (/provider_options/internal/metadata: The gateway internal does not allow this option); update the reasoning function definition',
+          kind: 'unworkable',
         }),
       ),
     );
