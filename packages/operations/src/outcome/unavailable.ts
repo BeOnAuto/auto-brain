@@ -21,6 +21,7 @@ export const UnavailableBecauseSchema = Schema.Literals([
   'failing',
   'rate_limited',
   'unreachable',
+  'key_refused',
   'server_failed',
   'model_unavailable',
   'run_bound',

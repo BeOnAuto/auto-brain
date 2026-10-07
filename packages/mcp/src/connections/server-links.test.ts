@@ -186,7 +186,7 @@ describe('the headers and the end of a session', () => {
     const { link: unauthorized } = linked(httpSettings(fake.url));
 
     expect(await searched(await link.take())).toMatchObject({ result: { content: [{ type: 'text' }] } });
-    expect(await failureOfTaking(unauthorized)).toMatchObject({ kind: 'failing' });
+    expect(await failureOfTaking(unauthorized)).toMatchObject({ kind: 'key_refused' });
   });
 
   it('stops the session it holds, and stops nothing when it holds none', async () => {
@@ -268,7 +268,7 @@ describe('a link to an http server with an auth block', () => {
     expect(secrets.scrub(`Rejected ${String(token)}`)).toBe('Rejected [redacted]');
   });
 
-  it('authenticates again once on a 401, and fails on a second', async () => {
+  it('authenticates again once on a 401, and fails on a second as a refused key', async () => {
     const fake = await fakeServer({ client: { clientId: 'brain', clientSecret, expiresInSeconds: 3600 } });
     const { link } = linked(httpSettings(fake.url, { auth: authOf(fake) }));
     const connection = await link.take();
@@ -279,10 +279,7 @@ describe('a link to an http server with an auth block', () => {
     const refused = await searched(connection);
 
     expect(reauthenticated).toMatchObject({ result: { content: [{ text: 'Found 2 rows for acme.' }] } });
-    expect(failureOfCall(refused)).toEqual({
-      kind: 'failing',
-      message: 'The MCP server answered HTTP 401',
-    });
+    expect(failureOfCall(refused)).toEqual({ kind: 'key_refused', message: 'The MCP server answered HTTP 401' });
     expect(fake.tokenRequests()).toBe(3);
   });
 });

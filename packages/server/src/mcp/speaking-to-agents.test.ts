@@ -118,7 +118,9 @@ describe('episode 3: asked to use Slack', () => {
     );
     expect(plainTextIn(listed)).toMatch(/^This brain's functions may use 2 tool servers\. /u);
     expect(plainTextIn(listed)).toContain('“slack” offers');
-    expect(plainTextIn(listed)).toContain('“notes” could not be asked for its tools just now.');
+    expect(plainTextIn(listed)).toContain(
+      '“notes” did not accept the key this server gives it, so whoever runs this server can check that key.',
+    );
   });
 });
 
@@ -160,7 +162,7 @@ describe('episode 5: quoting the tools to a person who does not code', () => {
 });
 
 describe('episode 6: a tool server that refuses its key, and a brain with no tool server', () => {
-  it('says why and what to change in the refusal, and what to do in the words of an empty listing', async () => {
+  it('says the key was not accepted and that trying again will not help until it is checked, and what to do in the words of an empty listing', async () => {
     const outcome = await onMcp(async (session) => {
       await session.callTool('create_spec', {
         brain: 'meetings',
@@ -180,7 +182,7 @@ describe('episode 6: a tool server that refuses its key, and a brain with no too
     });
 
     expect(plainTextIn(outcome.refused)).toBe(
-      'Could not run the reasoning function “post-notes”: a tool server it needs could not be used, because the tool server kept failing. Nothing was changed. Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.',
+      'Could not run the reasoning function “post-notes”: a tool server it needs could not be used, because the tool server did not accept the key this server gives it. Nothing was changed. Trying again will not help until whoever runs the server checks the key it gives that tool server.',
     );
     expect(plainTextIn(outcome.empty)).toBe(
       'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools until they set one up; the give-tools guide says what they need.',

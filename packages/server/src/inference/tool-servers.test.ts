@@ -87,6 +87,7 @@ const listedForAlpha = {
       name: 'wiki',
       type: 'http',
       unavailable: 'The MCP server wiki could not be used: The MCP server could not be reached',
+      because: 'unreachable',
     },
   ],
 };

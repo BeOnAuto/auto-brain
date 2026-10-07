@@ -151,6 +151,7 @@ describe('a tool server that cannot be asked for its tools', () => {
         name: 'graph',
         type: 'http',
         unavailable: 'The MCP server graph could not be used: The MCP server could not be reached',
+        because: 'unreachable',
       },
       { name: 'wiki', type: 'http', tools: [echoTool] },
     ]);
@@ -168,6 +169,7 @@ describe('a tool server that cannot be asked for its tools', () => {
         name: 'graph',
         type: 'http',
         unavailable: 'The MCP server graph could not be used: The MCP server answered HTTP 503',
+        because: 'failing',
       },
     ]);
   });

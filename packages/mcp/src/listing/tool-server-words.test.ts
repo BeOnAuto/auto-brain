@@ -19,7 +19,8 @@ const servers = {
     { name: 'limitless', type: 'stdio', tools: [tool('getLifelogs')] },
     { name: 'notes', type: 'http', tools: lookups },
     { name: 'quiet', type: 'http', tools: [] },
-    { name: 'wiki', type: 'http', unavailable: 'The MCP server wiki could not be used' },
+    { name: 'vault', type: 'http', unavailable: 'The MCP server vault could not be used', because: 'key_refused' },
+    { name: 'wiki', type: 'http', unavailable: 'The MCP server wiki could not be used', because: 'unreachable' },
   ],
 };
 
@@ -41,11 +42,12 @@ describe('the plain words of list_tool_servers', () => {
 
     expect(words?.outcome(servers, {})).toBe(
       [
-        "This brain's functions may use 5 tool servers.",
+        "This brain's functions may use 6 tool servers.",
         '“graph” offers 2 tools: search and graph query v2.',
         '“limitless” offers 1 tool: get lifelogs.',
         `“notes” offers 23 tools: ${named}, and 3 more.`,
         '“quiet” offers no tool this brain may use.',
+        '“vault” did not accept the key this server gives it, so whoever runs this server can check that key.',
         '“wiki” could not be asked for its tools just now.',
       ].join(' '),
     );
