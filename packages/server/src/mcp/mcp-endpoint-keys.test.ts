@@ -144,15 +144,19 @@ describe('a read-only key on /mcp', () => {
 });
 
 describe('a key that may only read inside brains, on /mcp', () => {
-  it('lists the queries inside a brain and no command, and its instructions name no command', async () => {
+  it('lists the brains it may read, the queries inside a brain and no command, and its instructions name no command', async () => {
     const outcome = await asKey(acmeBrainReader.key, async (session) => ({
       tools: toolNamesIn(await session.listTools()),
       instructions: String(session.instructions),
+      listed: await session.callTool('list_brains', {}),
     }));
 
-    expect(outcome.tools).toEqual([...queriesInsideABrain, 'get_guide']);
+    expect(outcome.tools).toEqual(['list_brains', ...queriesInsideABrain, 'get_guide']);
     expect(commands.filter((name) => outcome.instructions.includes(name))).toEqual([]);
-    expect(outcome.instructions).toContain("This connection acts in the caller's own org. The tools call a definition");
+    expect(outcome.instructions).toContain(
+      "This connection acts in the caller's own org: list_brains shows its brains. The tools call a definition",
+    );
+    expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
   });
 });
 

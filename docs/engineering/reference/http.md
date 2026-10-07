@@ -26,7 +26,7 @@ These routes are relative to `/v1/orgs/{org}`:
 
 Brain ids contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Names contain 1 to 100 characters and descriptions at most 2,000. Ids are never reused. Retirement is permanent; it is not deletion or an archive that can be restored.
 
-Read operations need `org:read`, and writes need `org:write`. The key's brain restrictions apply to named-brain operations. Lists include only accessible brains, with retired brains excluded unless requested.
+Read operations need `org:read`, and writes need `org:write`; `list_brains` is permitted by `brain:read` as well, since it answers only the brains the key may access. The key's brain restrictions apply to named-brain operations. Lists include only accessible brains, with retired brains excluded unless requested.
 
 ## Definitions
 

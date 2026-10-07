@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBrain, listBrains, retireBrain } from '../index.ts';
-import { acmeAdmin } from '../testing/callers.ts';
+import { acmeAdmin, acmeGammaReader } from '../testing/callers.ts';
 import { asQueryString, firstMoment, harness, toOrg } from '../testing/harness.ts';
 
 const toAcme = toOrg('acme');
@@ -46,6 +46,15 @@ describe('list_brains', () => {
       pathParameters: [],
       successStatus: 200,
       reasons: [],
+      permissions: ['org:read', 'brain:read'],
+    });
+  });
+
+  it('answers a caller that may only read inside some brains, with those brains alone', async () => {
+    const { call } = await withGammaAlphaAndRetiredBeta();
+    expect(await call(listBrains, toAcme(acmeGammaReader))).toMatchObject({
+      status: 'succeeded',
+      output: { brains: [{ id: 'gamma' }] },
     });
   });
 

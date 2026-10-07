@@ -24,7 +24,7 @@ These routes are relative to `/v1/orgs/{org}`:
 | `update_brain` | `PUT /brains/{brain}`         | `name` and `description`                |
 | `retire_brain` | `POST /brains/{brain}/retire` | Brain id in path                        |
 
-Brain ids contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Names contain 1 to 100 characters and descriptions at most 2,000. Read operations need `org:read`, and writes need `org:write`. Lists include accessible brains, with retired brains excluded unless requested.
+Brain ids contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Names contain 1 to 100 characters and descriptions at most 2,000. Read operations need `org:read`, and writes need `org:write`; `list_brains` also answers a key with `brain:read`, so a key that may only read inside some brains can find them. Lists include accessible brains, with retired brains excluded unless requested.
 
 Retirement is permanent. Brain ids cannot be reused, and a retired brain cannot be restored.
 

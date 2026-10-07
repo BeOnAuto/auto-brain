@@ -16,6 +16,7 @@ export const listBrains = defineQuery('org', {
     '`include_retired` adds the retired brains, which are left out otherwise.',
   ].join(' '),
   route: { method: 'GET', path: '/brains' },
+  permittedBy: ['org:read', 'brain:read'],
   inputSchema: Schema.Struct({
     include_retired: Schema.optionalKey(
       Schema.Boolean.annotate({ description: 'Whether to list retired brains as well; false when left out' }),
