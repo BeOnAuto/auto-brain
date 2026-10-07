@@ -80,7 +80,7 @@ describe('the org endpoint of the server', () => {
       }),
     );
 
-    expect(connected).toEqual({ serverVersion: release, tools: [...brainTools, 'list_models'] });
+    expect(connected).toEqual({ serverVersion: release, tools: [...brainTools, 'list_models', 'get_guide'] });
   });
 
   it('answers a brain the org lacks as isError with a not_found problem', async () => {
@@ -147,20 +147,17 @@ describe('the callers the MCP endpoints of the server reject before MCP', () => 
 });
 
 describe('the permissions and brains of a key over MCP', () => {
-  it('reject a command of a read-only key as isError, and serve it a query', async () => {
+  it('offer a read-only key the queries of the org and no command, and serve it a query', async () => {
     const outcome = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeReader.key),
       async (session) => ({
-        created: await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
+        tools: toolNamesIn(await session.listTools()),
         listed: await session.callTool('list_brains', {}),
       }),
     );
 
-    expect({ isError: outcome.created.isError, problem: problemIn(outcome.created) }).toMatchObject({
-      isError: true,
-      problem: { status: 403, detail: 'The caller lacks the org:write permission' },
-    });
+    expect(outcome.tools).toEqual(['list_brains', 'get_brain', 'list_models', 'get_guide']);
     expect(outcome.listed.structuredContent).toEqual({ brains: [] });
   });
 
@@ -176,7 +173,7 @@ describe('the permissions and brains of a key over MCP', () => {
       status: 403,
       body: { detail: 'The caller may not access this brain' },
     });
-    expect(toolNamesIn(own)).toEqual(specTools);
+    expect(toolNamesIn(own)).toEqual([...specTools, 'get_guide']);
   });
 
   it('lists the spec tools on the brain endpoint of a brain that does not exist, whose calls find no brain', async () => {
@@ -189,7 +186,7 @@ describe('the permissions and brains of a key over MCP', () => {
       }),
     );
 
-    expect(toolNamesIn(tools)).toEqual(specTools);
+    expect(toolNamesIn(tools)).toEqual([...specTools, 'get_guide']);
     expect({ isError: listed.isError, problem: problemIn(listed) }).toMatchObject({
       isError: true,
       problem: { reason: 'not_found' },

@@ -1,4 +1,11 @@
-import { internalTermsIn, listedTools, plainTextIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
+import {
+  internalTermsIn,
+  listedTools,
+  plainTextIn,
+  textOf,
+  withMcpSession,
+  type McpSession,
+} from '@beonauto/api/testing';
 import { campaignReviews, recallDocument } from '@beonauto/recollection/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -77,7 +84,7 @@ describe('a recall function over MCP, on the endpoint of its brain', { timeout: 
 });
 
 describe('the spec tools an agent sees', { timeout: recallTestTimeoutMs }, () => {
-  it('describe how a recall function is written, with no tool more than before', async () => {
+  it('name the guide to a recall function, which get_guide serves whole', async () => {
     const server = await servingRecall([]);
     closing.push(server.stop);
 
@@ -89,12 +96,10 @@ describe('the spec tools an agent sees', { timeout: recallTestTimeoutMs }, () =>
       (session) => session.listTools(),
     );
 
-    expect(listedTools(everyTool)).toHaveLength(21);
-    expect(createSpec?.description).toContain(
-      '- `recollection` (Recall), whose definition documents are text/markdown',
-    );
-    expect(createSpec?.description).toContain(
-      'A recall function definition is YAML front matter between --- lines, then the fold in jq',
-    );
+    const guide = await onAlpha(server, (session) => session.callTool('get_guide', { guide: 'recall-function' }));
+
+    expect(listedTools(everyTool)).toHaveLength(22);
+    expect(createSpec?.description).toContain('recollection, a recall function, guide recall-function');
+    expect(textOf(guide)).toContain('# Recall function format');
   });
 });

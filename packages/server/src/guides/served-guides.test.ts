@@ -1,0 +1,170 @@
+import { Buffer } from 'node:buffer';
+import { readFileSync } from 'node:fs';
+
+import { mostGuideBytes, mostRecipeBytes } from '@beonauto/api';
+import { definePrimitive, type Primitive, type PrimitiveGuide } from '@beonauto/specs';
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { withLinksResolved } from './page-links.ts';
+import { servedGuidesOf } from './served-guides.ts';
+
+function primitiveOf(name: string, noun: string, guide: PrimitiveGuide): Primitive {
+  return definePrimitive({
+    name,
+    title: noun,
+    guide,
+    noun: { one: noun, other: `${noun}s` },
+    describeOutput: () => 'It ran.',
+    mediaType: 'text/markdown',
+    parse: () => Effect.succeed({}),
+    summarize: () => ({}),
+    execute: () => Effect.succeed({ output: null, record: {} }),
+  });
+}
+
+const onThisServer = 'On this server, a reasoning function names its model through anthropic.';
+
+const reasoning = primitiveOf('inference', 'reasoning function', { name: 'reasoning-function', onThisServer });
+
+const computation = primitiveOf('computation', 'computation function', { name: 'computation-function' });
+
+const recall = primitiveOf('recollection', 'recall function', { name: 'recall-function' });
+
+const workflow = primitiveOf('orchestration', 'workflow', { name: 'workflow' });
+
+const everyType = [reasoning, computation, recall, workflow];
+
+function page(path: string): string {
+  return readFileSync(new URL(`../../../../docs/${path}`, import.meta.url), 'utf8');
+}
+
+function outsideCode(text: string): string {
+  return text
+    .split(/^```/mu)
+    .filter((_, index) => index % 2 === 0)
+    .join('');
+}
+
+const pages: Readonly<Record<string, string>> = {
+  'reasoning-function': 'reference/reasoning-format.md',
+  'computation-function': 'reference/computation-format.md',
+  'recall-function': 'reference/recall-format.md',
+  workflow: 'reference/workflow-format.md',
+};
+
+describe('the guides of a server that runs every type of definition', () => {
+  const { definitionTypes, guides, recipes } = servedGuidesOf(everyType);
+
+  it('are the terminology, a guide per type and the four recipes, nine in all', () => {
+    expect([...guides, ...recipes].map(({ name }) => name)).toEqual([
+      'terminology',
+      'reasoning-function',
+      'computation-function',
+      'recall-function',
+      'workflow',
+      'first-brain',
+      'remember',
+      'give-tools',
+      'schedule',
+    ]);
+    expect(definitionTypes).toEqual([
+      { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
+      { primitive: 'computation', noun: 'computation function', guide: 'computation-function' },
+      { primitive: 'recollection', noun: 'recall function', guide: 'recall-function' },
+      { primitive: 'orchestration', noun: 'workflow', guide: 'workflow' },
+    ]);
+  });
+
+  it('give each type the whole public page of its format, its links resolved, and the reasoning page what this server offers', () => {
+    const [reasoningGuide, ...otherGuides] = guides.slice(1);
+    const [reasoningPage = '', ...otherPages] = Object.values(pages);
+
+    expect(reasoningGuide?.text).toBe(
+      `${withLinksResolved(page(reasoningPage), reasoningPage).trimEnd()}\n\n${onThisServer}\n`,
+    );
+    expect(otherGuides.map(({ text }) => text)).toEqual(otherPages.map((path) => withLinksResolved(page(path), path)));
+  });
+
+  it('title each type guide as its page is titled', () => {
+    expect(guides.slice(1).map(({ title }) => title)).toEqual([
+      'Reasoning function format',
+      'Computation function format',
+      'Recall function format',
+      'Workflow format',
+    ]);
+  });
+
+  it('keep no link a reader of the guide could not follow', () => {
+    expect(guides.filter(({ text }) => /\]\((?!https:\/\/)[^)]*\)/u.test(outsideCode(text)))).toEqual([]);
+  });
+});
+
+describe('the size and the words of the guides of a server', () => {
+  const { guides, recipes } = servedGuidesOf(everyType);
+
+  it('stay under 64 KiB each, and each recipe under 4 KiB', () => {
+    expect(guides.filter(({ text }) => Buffer.byteLength(text, 'utf8') > mostGuideBytes)).toEqual([]);
+    expect(recipes.filter(({ text }) => Buffer.byteLength(text, 'utf8') > mostRecipeBytes)).toEqual([]);
+  });
+
+  it('describe each guide in a sentence for a person or a client that lists them', () => {
+    expect(guides.slice(1).map(({ description }) => description)).toEqual([
+      'How reasoning functions are written: their document, fields, examples and bounds.',
+      'How computation functions are written: their document, fields, examples and bounds.',
+      'How recall functions are written: their document, fields, examples and bounds.',
+      'How workflows are written: their document, fields, examples and bounds.',
+    ]);
+  });
+});
+
+describe('the recipes of a server', () => {
+  it('leave out a recipe whose format guide the server does not carry', () => {
+    expect(servedGuidesOf([reasoning, workflow]).recipes.map(({ name }) => name)).toEqual([
+      'first-brain',
+      'give-tools',
+      'schedule',
+    ]);
+    expect(servedGuidesOf([]).recipes).toEqual([]);
+  });
+
+  it('ask the person in their own words, filled into what the prompt asks for', () => {
+    const asked = Object.fromEntries(servedGuidesOf(everyType).recipes.map(({ name, request }) => [name, request]));
+
+    expect([
+      asked['first-brain']?.({}),
+      asked['remember']?.({ what: 'what it posted today' }),
+      asked['give-tools']?.({}),
+      asked['give-tools']?.({ server: 'slack' }),
+      asked['schedule']?.({ workflow: 'daily-digest', when: 'every weekday at 9:00' }),
+    ]).toEqual([
+      'Create my first brain.',
+      'Make the brain remember what it posted today.',
+      'Give the brain tools.',
+      'Give the brain the tools of the tool server slack.',
+      'Run the workflow daily-digest every weekday at 9:00.',
+    ]);
+  });
+});
+
+describe('the terminology guide of a server', () => {
+  it('names only the types of definition the server runs', () => {
+    const [terminology] = servedGuidesOf([reasoning, workflow]).guides;
+
+    expect(terminology?.text).toContain('- Reasoning: Reasoning function.');
+    expect(terminology?.text).toContain('- Coordination: Workflow.');
+    expect(
+      ['recall function', 'computation function', 'interaction function', 'prediction function'].filter((type) =>
+        String(terminology?.text).toLowerCase().includes(type),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('a server without the page of a type it runs', () => {
+  it('fails to start', () => {
+    expect(() => servedGuidesOf([primitiveOf('drafting', 'draft', { name: 'drafting-function' })])).toThrow(
+      /no such file or directory.*drafting-format\.md/u,
+    );
+  });
+});

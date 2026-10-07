@@ -40,6 +40,8 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
 WORKDIR /app
 COPY --from=dependencies /app ./
 COPY LICENSE ./
+COPY docs/concepts/terminology.md docs/concepts/
+COPY docs/reference/*-format.md docs/reference/
 COPY packages/api/src packages/api/src
 COPY packages/brains/src packages/brains/src
 COPY packages/config/src packages/config/src

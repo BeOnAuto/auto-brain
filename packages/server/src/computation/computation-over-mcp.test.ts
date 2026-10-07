@@ -3,6 +3,7 @@ import {
   listedTools,
   plainTextIn,
   problemIn,
+  textOf,
   withMcpSession,
   type McpSession,
 } from '@beonauto/api/testing';
@@ -88,15 +89,12 @@ describe('a computation function that cannot work as written, over MCP', { timeo
 });
 
 describe('the spec tools an agent sees', { timeout: computationTestTimeoutMs }, () => {
-  it('describe how a computation function is written, with the language it is written in', async () => {
+  it('name the guide to a computation function, which says the language it is written in', async () => {
     const tools = listedTools(await onAlpha((session) => session.listTools()));
     const createSpec = tools.find(({ name }) => name === 'create_spec');
+    const guide = await onAlpha((session) => session.callTool('get_guide', { guide: 'computation-function' }));
 
-    expect(createSpec?.description).toContain(
-      '- `computation` (Computation), whose definition documents are text/markdown',
-    );
-    expect(createSpec?.description).toContain(
-      'A computation function definition is YAML front matter between --- lines, then a program in jq',
-    );
+    expect(createSpec?.description).toContain('computation, a computation function, guide computation-function');
+    expect(textOf(guide)).toContain('jq');
   });
 });

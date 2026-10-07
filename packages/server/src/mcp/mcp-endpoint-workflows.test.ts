@@ -71,7 +71,7 @@ async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
 }
 
 describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists twenty-one tools, and its instructions say how a workflow gets an event', async () => {
+  it('lists twenty-two tools, and its instructions say how a workflow run gets an event', async () => {
     server = await servingWorkflows([]);
 
     const served = await onMcp(async (session) => ({
@@ -79,9 +79,9 @@ describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
       instructions: session.instructions,
     }));
 
-    expect(served.tools).toHaveLength(21);
-    expect(served.tools.at(-1)).toBe('send_execution_event');
-    expect(served.instructions).toContain('A waiting workflow run receives input through send_execution_event.');
+    expect(served.tools).toHaveLength(22);
+    expect(served.tools.slice(-2)).toEqual(['send_execution_event', 'get_guide']);
+    expect(served.instructions).toContain('give a run that waits for input its event with send_execution_event.');
   });
 
   it('runs a workflow in a brain it created and sends it the event it waits for, on one connection', async () => {
