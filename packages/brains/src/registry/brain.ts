@@ -2,7 +2,7 @@ import { BrainIdSchema } from '@beonauto/operations';
 import { Schema } from 'effect';
 
 export const BrainSchema = Schema.Struct({
-  id: BrainIdSchema.annotate({ description: 'The id of the brain, unique within its org and never reused' }),
+  id: BrainIdSchema.annotate({ description: 'The id of the brain, unique within its org' }),
   name: Schema.String.annotate({ description: 'The display name of the brain' }),
   description: Schema.String.annotate({ description: 'What the brain is for, or empty' }),
   status: Schema.Literals(['active', 'retired']).annotate({ description: 'active, or retired for good' }),

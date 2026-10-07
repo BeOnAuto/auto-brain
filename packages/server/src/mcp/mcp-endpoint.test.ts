@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+
+import { instructionsFor, type McpEndpoint } from '@beonauto/api';
 import {
   danglingReferencesIn,
   listedTools,
@@ -97,25 +100,82 @@ describe('the tools of /mcp', () => {
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });
+});
 
-  it('carry instructions about brains, specs, executions and the events a workflow waits for', async () => {
+const orgTools = [...brainTools, 'list_models'];
+
+const definitionTypes = [
+  { primitive: 'inference', noun: 'reasoning function' },
+  { primitive: 'computation', noun: 'computation function' },
+  { primitive: 'recollection', noun: 'recall function' },
+  { primitive: 'orchestration', noun: 'workflow' },
+];
+
+const terminology = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
+
+const resourcesOnTheTerminologyPage: ReadonlySet<string> = new Set(
+  [...terminology.matchAll(/^\| \w+ +\| ([A-Z][a-z]+(?: function)?) +\| /gmu)].map(
+    ([, resource = '']: readonly string[]) => resource.toLowerCase(),
+  ),
+);
+
+interface Connection {
+  readonly path: string;
+  readonly endpoint: McpEndpoint;
+  readonly served: { readonly orgTools: readonly string[]; readonly brainTools: readonly string[] };
+  readonly sentence: string;
+  readonly unnamed: readonly string[];
+}
+
+const connections: readonly Connection[] = [
+  {
+    path: '/mcp',
+    endpoint: 'own org',
+    served: { orgTools, brainTools: specTools },
+    sentence: "This connection acts in the caller's own org.",
+    unnamed: [],
+  },
+  {
+    path: '/orgs/acme/mcp',
+    endpoint: 'org',
+    served: { orgTools, brainTools: [] },
+    sentence: 'This connection manages the brains of one org.',
+    unnamed: ['create_spec', 'execute_spec', 'get_execution', 'list_tool_servers', 'send_execution_event'],
+  },
+  {
+    path: '/orgs/acme/brains/alpha/mcp',
+    endpoint: 'brain',
+    served: { orgTools: [], brainTools: specTools },
+    sentence: 'This connection acts inside one brain.',
+    unnamed: ['create_brain', 'list_brains', 'list_models'],
+  },
+];
+
+describe('the instructions an agent receives when it connects', () => {
+  it.each(connections)(
+    'on $path say what a brain, a definition and a run are, and name only the tools the endpoint serves',
+    async ({ path, endpoint, served, sentence, unnamed }) => {
+      server = await servingReasoning([]);
+      await onMcp('/mcp', (session) => session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }));
+
+      const instructions = await onMcp(path, (session) => Promise.resolve(session.instructions));
+
+      expect(instructions).toBe(instructionsFor(endpoint, served, definitionTypes));
+      expect(instructions).toContain(sentence);
+      expect(unnamed.filter((name) => instructions?.includes(name) === true)).toEqual([]);
+    },
+  );
+
+  it('name each definition type the server serves by the kind the terminology page gives it', async () => {
     server = await servingReasoning([]);
 
     const instructions = await onMcp('/mcp', (session) => Promise.resolve(session.instructions));
 
-    expect(instructions).toBe(
-      [
-        'This server runs the business brains of your org.',
-        'Start with list_brains to see them, or create_brain to make one.',
-        'A spec is a named, versioned definition in a brain.',
-        'The primitive field selects a definition type; each tool describes its supported document formats.',
-        'list_models lists the models this server can call.',
-        'execute_spec runs a definition and records its run; execution_id identifies it.',
-        'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
-        'Workflows coordinate the work. A waiting workflow run receives input through send_execution_event.',
-        "Every tool that works inside a brain takes the brain's id as brain.",
-        'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
-      ].join(' '),
+    expect(
+      definitionTypes.filter(({ noun }: Readonly<{ noun: string }>) => !resourcesOnTheTerminologyPage.has(noun)),
+    ).toEqual([]);
+    expect(instructions).toContain(
+      'inference for a reasoning function, computation for a computation function, recollection for a recall function or orchestration for a workflow;',
     );
   });
 });

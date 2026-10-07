@@ -1,9 +1,23 @@
 import { appendFileSync } from 'node:fs';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { endingOf, runningDevelopment } from '../testing/processes/development-endings.ts';
-import { developmentTestTimeoutMs, untilWritten } from '../testing/processes/development-process.ts';
+import {
+  developmentFiles,
+  developmentTestTimeoutMs,
+  pidsOf,
+  startDevelopment,
+  untilListening,
+  untilWritten,
+  writeServerEntry,
+} from '../testing/processes/development-process.ts';
+
+const serverThatStopsOnlyWhenKilled = [
+  "process.on('SIGTERM', () => {});",
+  'setInterval(() => {}, 60_000);',
+  "process.stdout.write('auto-brain listening on port 0\\n');",
+].join('\n');
 
 describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
   it.each<NodeJS.Signals>(['SIGINT', 'SIGTERM', 'SIGHUP'])(
@@ -17,18 +31,26 @@ describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
     },
   );
 
-  it('stops when told to stop while the server restarts', async () => {
-    const development = await runningDevelopment();
+  it('stops without starting the server again when told to stop while the server restarts', async () => {
+    const files = developmentFiles();
+    writeServerEntry(files, serverThatStopsOnlyWhenKilled);
+    const development = startDevelopment(files);
+    onTestFinished(() => {
+      development.signal('SIGUSR2');
+    });
+    await untilListening(development);
 
-    appendFileSync(development.files.envFile, '# saved\n');
+    appendFileSync(files.envFile, '# saved\n');
     await untilWritten(development.stderr, /changed, so the server restarts/u);
     development.signal('SIGTERM');
+    development.signal('SIGUSR2');
 
     await expect(endingOf(development)).resolves.toEqual({
       exitCode: 0,
       allStopped: true,
-      said: [`${development.files.envFile} changed, so the server restarts`],
+      said: [`${files.envFile} changed, so the server restarts`],
     });
+    expect(pidsOf(development)).toHaveLength(1);
   });
 });
 

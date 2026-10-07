@@ -2,7 +2,7 @@
 
 To try Auto on your own computer, follow the [local quick start](get-started/local.md). You do not need a Cloud account or a deployment plan to start a local server.
 
-Auto Cloud is coming soon. [Request an invite](https://on.auto/request-invite) if you would prefer a hosted brain.
+Auto Cloud is currently invite-only. [Request an invitation](https://on.auto/request-invite) if you would prefer a hosted brain.
 
 Self-hosting gives your team control over where the runtime and its recorded data run. Auto's runtime is source-available; review the repository's [licensing terms](https://github.com/BeOnAuto/auto-brain/blob/main/LICENSING.md) when planning a deployment.
 

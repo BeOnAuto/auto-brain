@@ -24,6 +24,11 @@ await test('the local quick start connects an agent and runs a first function wi
     'Promote our reporting tool to finance teams with a USD 5,000 budget.',
     'the recorded run, including its execution id',
     'missing measurable goal',
+    '## 6. Give your brain tools',
+    'Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this',
+    'Authorization: Bearer ${SEARCH_API_KEY}',
+    'The key never goes in `auto-brain.yaml`',
+    'configuration.md#mcp-servers',
     '## Hosted brains',
   ];
   for (const passage of walkthrough) assert.ok(guide.includes(passage), `Missing from the quick start: ${passage}`);

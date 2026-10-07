@@ -109,7 +109,9 @@ describe('a program that would depend on the stack of its worker', { timeout: po
       ran: 'answered',
       output: 'regex too large: groups nested more than 128 deep',
     });
-    expect(await pool.run(request(recursion, null, { limits: unbounded }))).toMatchObject({
+    expect(
+      await pool.run(request(recursion, null, { limits: unbounded, deadlineMs: poolTestTimeoutMs })),
+    ).toMatchObject({
       ran: 'exhausted',
       limit: 'stack',
     });
