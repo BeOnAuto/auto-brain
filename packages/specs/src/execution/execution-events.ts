@@ -138,6 +138,7 @@ const DeliveryEndedSchema = Schema.Struct({
   retry_after_ms: Schema.optionalKey(Schema.Int),
   response_bytes: Schema.optionalKey(Schema.Int),
   detail: Schema.optionalKey(Schema.String),
+  answer: Schema.optionalKey(Schema.Json),
   duration_ms: Schema.Int,
   ...ofTheDefinition,
   ...fact,

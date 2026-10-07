@@ -91,6 +91,14 @@ describe('an outbound call of a run that finishes later', () => {
     );
   });
 
+  it('carries the answer a receiver gave within the delivery', () => {
+    const answered: DeliveryEndedFact = { ...ended, outcome: 'answered', status: 200, answer: { choice: 'approve' } };
+
+    expect(decided(recording(answered), started, deferred, attemptStarted)).toStrictEqual(
+      Result.succeed([{ ...answered, ...ofApproval, ...during }]),
+    );
+  });
+
   it('is refused once the run has ended, and of a run there is not', () => {
     expect(decided(recording(ended), started, deferred, attemptStarted, succeeded)).toEqual(Result.fail(noMoreWork));
     expect(decided(recording(attempt))).toEqual(Result.fail(noMoreWork));
