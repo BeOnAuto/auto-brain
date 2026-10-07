@@ -16,11 +16,10 @@ const tokenRefused = new Forbidden({ detail: requestTokenRefused });
 
 export interface TokenHolder {
   readonly requestId: string;
-  readonly channel: string;
 }
 
-function webhookAnswering(channels: ChannelSettings, brain: BrainAddress, requestId: string, token: string) {
-  return [...channels.channels.values()].find(
+function answeredThrough(channels: ChannelSettings, brain: BrainAddress, requestId: string, token: string): boolean {
+  return [...channels.channels.values()].some(
     (channel) =>
       channel.type === 'webhook' &&
       channelFor(channels, channel.name, brain) !== undefined &&
@@ -36,11 +35,10 @@ export function tokenHolderOf(
   if (requestToken === undefined) {
     return Effect.undefined;
   }
-  const requestId = requestOfAnswerToken(requestToken);
-  const channel = requestId === undefined ? undefined : webhookAnswering(channels, brain, requestId, requestToken);
-  return requestId === undefined || channel === undefined
-    ? Effect.fail(tokenRefused)
-    : Effect.succeed({ requestId, channel: channel.name });
+  const requestId = requestOfAnswerToken(requestToken) ?? '';
+  return answeredThrough(channels, brain, requestId, requestToken)
+    ? Effect.succeed({ requestId })
+    : Effect.fail(tokenRefused);
 }
 
 export function answererOf(
@@ -51,9 +49,7 @@ export function answererOf(
   if (holder === undefined) {
     return Effect.succeed(caller.id);
   }
-  return row?.request_id === holder.requestId && row.channel === holder.channel
-    ? Effect.succeed(`channel:${row.channel}`)
-    : Effect.fail(tokenRefused);
+  return row?.request_id === holder.requestId ? Effect.succeed(`channel:${row.channel}`) : Effect.fail(tokenRefused);
 }
 
 export function answerFor(answer: Schema.Json, schema: Schema.JsonObject): Effect.Effect<Schema.Json, InvalidInput> {

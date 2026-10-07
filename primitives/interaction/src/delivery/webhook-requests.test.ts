@@ -115,4 +115,18 @@ describe('the answer token of a request delivered by webhook', () => {
     ).toMatchObject({ status: 'rejected', reason: 'forbidden' });
     expect(await brain.runOf(runId)).toMatchObject({ output: { status: 'started' } });
   });
+
+  it('refuses its own token for another run, one with no request at all', async () => {
+    const { brain, receiver, answer } = await askedThroughPartner();
+    await brain.performDue(Date.now());
+    const token = decodeEvent(receiver.received()[0]?.body).data.answer_token;
+
+    expect(
+      await brain.call(
+        answer,
+        { execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7f', answer: { choice: 'approve' } },
+        requestTokenCallerOf('acme', token),
+      ),
+    ).toMatchObject({ status: 'rejected', reason: 'forbidden', detail: 'The token does not answer this request' });
+  });
 });
