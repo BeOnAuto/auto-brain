@@ -34,5 +34,5 @@ function toolsOf(toolsConfigured: boolean): string {
 }
 
 export function onThisServer(offered: OfferedModels, toolsConfigured: boolean): string {
-  return `On this server, ${modelsOf(offered)}; ${toolsOf(toolsConfigured)}; list_models lists the models in full.`;
+  return `On this server, ${modelsOf(offered)}; ${toolsOf(toolsConfigured)}.`;
 }
