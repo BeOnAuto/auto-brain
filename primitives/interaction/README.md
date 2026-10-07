@@ -87,6 +87,10 @@ The capability's run words show the deferral as `interaction_requested`, a type 
 
 `interactionBounds` holds them.
 
+## Measured
+
+10,000 requests made due at one moment, as a server stopped past their expiry finds them, were all settled `unanswered` as `expired` within 7.5 and 7.8 seconds on SQLite and 8.7 and 8.8 seconds on PostgreSQL, 1,142 to 1,336 a second, at one-minute load averages of 1.6 to 8.2 on 16 cores; workflow timers due in those seconds fired up to 0.55 s late, and those due after them 5 to 63 ms late, as with no request due. The workflow host's README, under its measurements, gives the method, `pnpm --filter @beonauto/server measure`, and every figure.
+
 ## Testing
 
 `@beonauto/interaction/testing` holds a harness over the in-memory ledger with the projection, the operations of the brain and the due work (`interactionHarness`), documents of a question and a notification, webhook channels over a fake receiver of `@beonauto/outbound/testing`, and a request asked through one.
