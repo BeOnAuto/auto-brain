@@ -1,12 +1,11 @@
 {
-  "name": "@beonauto/mcp",
+  "name": "@beonauto/outbound",
   "version": "0.0.0",
   "private": true,
   "license": "Elastic-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./policy": "./src/policy.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {
@@ -15,14 +14,9 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@beonauto/config": "workspace:*",
-    "@beonauto/operations": "workspace:*",
-    "@beonauto/outbound": "workspace:*",
-    "@modelcontextprotocol/client": "2.2.0",
     "effect": "catalog:"
   },
   "devDependencies": {
-    "@modelcontextprotocol/server": "2.2.0",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"
   }

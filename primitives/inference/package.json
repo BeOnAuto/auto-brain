@@ -25,6 +25,7 @@
     "@beonauto/config": "workspace:*",
     "@beonauto/mcp": "workspace:*",
     "@beonauto/operations": "workspace:*",
+    "@beonauto/outbound": "workspace:*",
     "@beonauto/specs": "workspace:*",
     "ai": "7.0.124",
     "effect": "catalog:",
