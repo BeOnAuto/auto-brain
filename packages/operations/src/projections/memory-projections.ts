@@ -156,9 +156,9 @@ export function memoryProjections(projections: readonly RunProjection[]): Memory
           .slice(0, limit)
           .map(([, kept]) => kept),
       ),
-    nextDueOf: (projection, column) =>
+    nextDueOf: (projection, column, after) =>
       Effect.sync(() => {
-        const due = [...rowsOf(projection).values()].flatMap((kept) => dueOf(kept, column));
+        const due = [...rowsOf(projection).values()].flatMap((kept) => dueOf(kept, column)).filter((at) => at > after);
         return due.length === 0 ? null : Math.min(...due);
       }),
   };

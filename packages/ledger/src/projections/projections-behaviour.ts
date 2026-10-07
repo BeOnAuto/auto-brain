@@ -81,7 +81,7 @@ function rowsKept(open: ProjectingLedger): void {
       expect(
         await Effect.runPromise(ledger.readDueRows('run_tallies', { column: 'due_at', through: nine, limit: 1 })),
       ).toEqual([]);
-      expect(await Effect.runPromise(ledger.nextDueOf('run_tallies', 'due_at'))).toBeNull();
+      expect(await Effect.runPromise(ledger.nextDueOf('run_tallies', 'due_at', 0))).toBeNull();
     });
   });
 }
@@ -136,7 +136,10 @@ function dueRows(open: ProjectingLedger): void {
       expect(await due(nine + tallyDueAfterMs)).toEqual(['globex/gamma/r2']);
       expect(await due(nine + 3 * minute, 1)).toEqual(['globex/gamma/r2']);
       expect(await due(nine)).toEqual([]);
-      expect(await Effect.runPromise(ledger.nextDueOf('run_tallies', 'due_at'))).toBe(nine + tallyDueAfterMs);
+      expect(await Effect.runPromise(ledger.nextDueOf('run_tallies', 'due_at', 0))).toBe(nine + tallyDueAfterMs);
+      expect(await Effect.runPromise(ledger.nextDueOf('run_tallies', 'due_at', nine + tallyDueAfterMs))).toBe(
+        nine + 3 * minute,
+      );
     });
   });
 }

@@ -78,7 +78,7 @@ export interface ProjectionReader {
     where: readonly ProjectedCondition[],
   ) => Effect.Effect<number>;
   readonly readDueRows: (projection: string, query: DueRowsQuery) => Effect.Effect<readonly ProjectedRunRow[]>;
-  readonly nextDueOf: (projection: string, column: string) => Effect.Effect<number | null>;
+  readonly nextDueOf: (projection: string, column: string, after: number) => Effect.Effect<number | null>;
 }
 
 export interface BrainProjectionReader {

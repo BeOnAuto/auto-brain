@@ -87,8 +87,12 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
     ]);
     expect((await due(nine + tallyDueAfterMs)).map(({ runId }) => runId)).toEqual(['r2']);
     expect((await due(nine + 3 * 60_000, 1)).map(({ runId }) => runId)).toEqual(['r2']);
-    expect(await Effect.runPromise(ledger.service.nextDueOf('run_tallies', 'due_at'))).toBe(nine + tallyDueAfterMs);
-    expect(await Effect.runPromise(ledger.service.nextDueOf('nothing', 'due_at'))).toBeNull();
+    expect(await Effect.runPromise(ledger.service.nextDueOf('run_tallies', 'due_at', 0))).toBe(nine + tallyDueAfterMs);
+    expect(await Effect.runPromise(ledger.service.nextDueOf('run_tallies', 'due_at', nine + tallyDueAfterMs))).toBe(
+      nine + 3 * 60_000,
+    );
+    expect(await Effect.runPromise(ledger.service.nextDueOf('run_tallies', 'due_at', nine + 3 * 60_000))).toBeNull();
+    expect(await Effect.runPromise(ledger.service.nextDueOf('nothing', 'due_at', 0))).toBeNull();
   });
 });
 

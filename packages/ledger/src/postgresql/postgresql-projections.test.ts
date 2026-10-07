@@ -95,11 +95,11 @@ describe('the counts and due times of a projection on PostgreSQL', () => {
         }),
       ),
     ).toMatchObject([{ runId: 'r1', row: { open: true } }]);
-    expect(await Effect.runPromise(readerOf(soonest.query).nextDueOf('run_tallies', 'due_at'))).toBe(61_000);
+    expect(await Effect.runPromise(readerOf(soonest.query).nextDueOf('run_tallies', 'due_at', 0))).toBe(61_000);
     expect([...counts.asked, ...due.asked, ...soonest.asked].map(({ text }) => text)).toEqual([
       'SELECT CAST(count(*) AS INTEGER) AS count FROM run_tallies_1 WHERE brain_key = $1',
       'SELECT brain_key, run_id, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_1 WHERE due_at IS NOT NULL AND due_at <= $1 ORDER BY due_at, brain_key, run_id LIMIT $2',
-      'SELECT min(due_at)::float8 AS due FROM run_tallies_1 WHERE due_at IS NOT NULL',
+      'SELECT min(due_at)::float8 AS due FROM run_tallies_1 WHERE due_at IS NOT NULL AND due_at > $1',
     ]);
   });
 

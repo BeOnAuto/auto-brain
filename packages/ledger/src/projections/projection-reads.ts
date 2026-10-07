@@ -119,10 +119,15 @@ async function counted(
   return Schema.decodeUnknownSync(CountRows)(rows).reduce((total, { count }) => total + count, 0);
 }
 
-async function soonest(reading: Reading, projection: RunProjection, column: string): Promise<number | null> {
+async function soonest(
+  reading: Reading,
+  projection: RunProjection,
+  column: string,
+  after: number,
+): Promise<number | null> {
   const named = columnOf(projection, column);
   const rows = await reading.query(
-    SQL`SELECT ${SQL.plain(reading.dialect.asNumber(`min(${named})`))} AS due FROM ${tableOf(projection)} WHERE ${SQL.plain(named)} IS NOT NULL`,
+    SQL`SELECT ${SQL.plain(reading.dialect.asNumber(`min(${named})`))} AS due FROM ${tableOf(projection)} WHERE ${SQL.plain(named)} IS NOT NULL AND ${SQL.plain(named)} > ${after}`,
   );
   const [{ due }] = Schema.decodeUnknownSync(DueRows)(rows);
   return due;
@@ -145,6 +150,7 @@ export function projectionReader(
     countProjectedRows: (name, brain, where) =>
       withProjection(name, 0, (projection) => counted(reading, projection, streamPrefixOfBrain(brain), where)),
     readDueRows: (name, dueQuery) => withProjection(name, [], (projection) => dueRows(reading, projection, dueQuery)),
-    nextDueOf: (name, column) => withProjection(name, null, (projection) => soonest(reading, projection, column)),
+    nextDueOf: (name, column, after) =>
+      withProjection(name, null, (projection) => soonest(reading, projection, column, after)),
   };
 }
