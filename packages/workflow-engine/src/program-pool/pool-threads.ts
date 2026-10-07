@@ -10,7 +10,7 @@ import type { Job, Running } from './pool-job.ts';
 
 export const workerStackMegabytes = 64;
 
-export interface Served<Answer> {
+interface Served<Answer> {
   readonly ending: Ending<Answer>;
   readonly keep: boolean;
 }
