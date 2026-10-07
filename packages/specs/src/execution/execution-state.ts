@@ -24,6 +24,7 @@ export interface RecordedExecution {
   readonly callsTools: boolean;
   readonly lastCall: number;
   readonly mayHaveChanged: boolean;
+  readonly deliveryInFlight: number | null;
   readonly cancel?: AskedCancel;
   readonly depth: number;
   readonly callDepth: number;
@@ -59,6 +60,7 @@ function startedExecution(event: ExecutionStarted, earlier: ExecutionState): Rec
     callsTools: calls_tools === true,
     lastCall: earlier?.lastCall ?? 0,
     mayHaveChanged: earlier?.mayHaveChanged ?? false,
+    deliveryInFlight: null,
     depth,
     callDepth,
     ...(calledBy === undefined ? {} : { calledBy }),
@@ -106,9 +108,12 @@ function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, 
     return { ...state, lastCall: event.number, mayHaveChanged: true };
   }
   if (event.type === 'delivery_started') {
-    return { ...state, lastCall: event.number };
+    return { ...state, lastCall: event.number, deliveryInFlight: event.number };
   }
-  if (event.type === 'tool_call_answered' || event.type === 'delivery_ended') {
+  if (event.type === 'delivery_ended') {
+    return { ...state, deliveryInFlight: null };
+  }
+  if (event.type === 'tool_call_answered') {
     return state;
   }
   if (event.type === 'execution_cancel_requested') {

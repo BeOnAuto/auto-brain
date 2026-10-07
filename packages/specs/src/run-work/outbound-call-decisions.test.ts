@@ -58,6 +58,12 @@ function recording(fact: OutboundCallFact): ExecutionCommand {
   return { type: 'outbound_call', fact, ...during };
 }
 
+function notInFlight(number: number): Conflict {
+  return new Conflict({
+    detail: `Delivery ${number} is not the attempt of the run in flight, so it cannot end; another attempt ended it, or it never started`,
+  });
+}
+
 const noMoreWork = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
 
 describe('the deferral of a run', () => {
@@ -89,6 +95,18 @@ describe('an outbound call of a run that finishes later', () => {
         }),
       ),
     );
+  });
+});
+
+describe('the end of a delivery', () => {
+  it('ends only the attempt in flight, once, so an attempt that never started or already ended is refused', () => {
+    expect([
+      decided(recording(ended), started, deferred),
+      decided(recording({ ...ended, number: 2 }), started, deferred, attemptStarted),
+      decided(recording(ended), started, deferred, attemptStarted, attemptEnded),
+    ]).toEqual([Result.fail(notInFlight(1)), Result.fail(notInFlight(2)), Result.fail(notInFlight(1))]);
+    expect(stateAfter(started, deferred, attemptStarted)).toMatchObject({ deliveryInFlight: 1 });
+    expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({ deliveryInFlight: null });
   });
 
   it('carries the answer a receiver gave within the delivery', () => {

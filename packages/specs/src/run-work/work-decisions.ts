@@ -35,6 +35,16 @@ export function decideToolCall({ fact, by, at }: ExecutionToolCall & CommandMeta
   return Result.map(nextCallOf(state, fact.number), (number) => [{ ...fact, number, by, at }]);
 }
 
+function attemptEndable(state: RecordedExecution, number: number): Result.Result<number, Conflict> {
+  return state.deliveryInFlight === number
+    ? Result.succeed(number)
+    : Result.fail(
+        new Conflict({
+          detail: `Delivery ${number} is not the attempt of the run in flight, so it cannot end; another attempt ended it, or it never started`,
+        }),
+      );
+}
+
 export function decideOutboundCall(
   { fact, by, at }: ExecutionOutboundCall & CommandMetadata,
   state: ExecutionState,
@@ -43,7 +53,6 @@ export function decideOutboundCall(
     return Result.fail(runEnded);
   }
   const recorded = { ...fact, ...ofTheDefinition(state), by, at };
-  return fact.type === 'delivery_ended'
-    ? Result.succeed([recorded])
-    : Result.map(nextCallOf(state, fact.number), () => [recorded]);
+  const allowed = fact.type === 'delivery_ended' ? attemptEndable(state, fact.number) : nextCallOf(state, fact.number);
+  return Result.map(allowed, () => [recorded]);
 }
