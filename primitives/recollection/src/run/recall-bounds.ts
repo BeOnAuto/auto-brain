@@ -1,4 +1,5 @@
 import { mostResultBytes } from '@beonauto/specs';
+import { checkedWorker } from '@beonauto/specs/json-schema';
 import { liftedLimits, mostEvaluationDepth, mostValueDepth, type ProgramLimits } from '@beonauto/workflow-engine/dsl';
 import type { FoldingSettings } from '@beonauto/workflow-host';
 
@@ -34,7 +35,7 @@ export const recallFolding: FoldingSettings = {
   foldDeadlineMs: recallBounds.foldDeadlineMs,
   pageBudgetMs: recallBounds.pageBudgetMs,
   mostViewBytes: recallBounds.mostViewBytes,
-  worker: new URL('./fold-worker.ts', import.meta.url),
+  worker: checkedWorker,
 };
 
 export const recallDefinitionType = 'recollection';

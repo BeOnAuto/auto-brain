@@ -69,6 +69,17 @@
     "eslint/max-depth": ["error", 3],
     "eslint/max-params": ["error", 4],
     "import/no-cycle": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "node:worker_threads",
+            "message": "Worker threads belong to the program pool of @beonauto/workflow-engine; a worker module serves its jobs with @beonauto/workflow-engine/job-loop."
+          }
+        ]
+      }
+    ],
     "typescript/prefer-readonly-parameter-types": [
       "error",
       {
@@ -92,5 +103,13 @@
         ]
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["packages/workflow-engine/src/program-pool/**", "primitives/computation/measure/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }

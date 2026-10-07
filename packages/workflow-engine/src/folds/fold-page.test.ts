@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { liftedLimits } from '../program-pool/program-pool.ts';
+import { compileProgram } from '../programs/program-compiling.ts';
 import { foldPage, type FoldHost, type FoldPage, type FoldingView, type ViewCheck } from './fold-page.ts';
 
 const foldDialect = {
@@ -65,6 +66,7 @@ function stillClock(): FoldHost & { readonly marks: readonly string[] } {
       marks.push(`${event}:${view}`);
     },
     checkOf: entriesAtMost,
+    compile: compileProgram,
   };
 }
 
@@ -79,6 +81,7 @@ function slowFirstFold(stepMs: number): FoldHost {
       time.slow = event === 0 && view === 0;
     },
     checkOf: entriesAtMost,
+    compile: compileProgram,
   };
 }
 
@@ -93,6 +96,7 @@ function foldsTaking(stepMs: number): FoldHost & { readonly marks: readonly stri
       time.now += stepMs;
     },
     checkOf: entriesAtMost,
+    compile: compileProgram,
   };
 }
 
@@ -105,6 +109,7 @@ function runningClock(stepMs: number): FoldHost {
     },
     folding: Function.constVoid,
     checkOf: entriesAtMost,
+    compile: compileProgram,
   };
 }
 

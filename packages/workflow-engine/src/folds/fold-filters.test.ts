@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { liftedLimits } from '../program-pool/program-pool.ts';
+import { compileProgram } from '../programs/program-compiling.ts';
 import { matchingOf, preparedFilters, type Matching, type RunTest } from './fold-filters.ts';
 
 const dialect = { refused: [{ name: 'now', why: 'reads the clock' }], variables: ['event'] };
@@ -16,7 +17,7 @@ const runTest: RunTest = (test, actual) =>
   test.program.run(actual, { limits: liftedLimits(16_000_000), outputs: 'first' });
 
 function matched(filters: readonly JsonObject[], event: JsonObject): Matching {
-  return matchingOf(preparedFilters(filters, dialect), event, runTest);
+  return matchingOf(preparedFilters(filters, dialect, compileProgram), event, runTest);
 }
 
 function workOf(matching: Matching): number {

@@ -21,19 +21,18 @@ export type {
   Variables,
 } from './programs/program-running.ts';
 export type { ProgramIssue, ProgramSpan } from './programs/program-tree.ts';
-export {
-  liftedLimits,
-  mostEvaluationDepth,
-  programPool,
-  workerStackMegabytes,
-  type FoldOutcome,
-  type FoldRequest,
-  type PoolOutcome,
-  type PoolSettings,
-  type ProgramPool,
-  type ProgramRequest,
-  type Stopped,
-} from './program-pool/program-pool.ts';
+export type { Stopped } from './jobs/job-endings.ts';
+export type {
+  FoldOutcome,
+  FoldRequest,
+  PoolOutcome,
+  PoolSettings,
+  ProgramPool,
+  ProgramRequest,
+} from './jobs/pool-contract.ts';
+export { liftedLimits, mostEvaluationDepth, programPool } from './program-pool/program-pool.ts';
+export { idleWorkerMs, jobsBeforeRecycling } from './program-pool/pool-workers.ts';
+export { workerStackMegabytes } from './program-pool/pool-threads.ts';
 export type {
   FoldPage,
   FoldStall,

@@ -59,13 +59,13 @@ The [workflow adapter](../reference/workflow-format.md) runs workflow specs in t
 | `ORCHESTRATION_MAX_OPEN_CALLS`    | `1000`  | How many calls may wait under one run at the top of a tree, from 1 to 9999              |
 | `ORCHESTRATION_SWEEP_INTERVAL`    | `PT1S`  | How often the server sweeps the runs, an ISO 8601 duration from `PT0.01S` to `PT1M`     |
 
-The [computation function adapter](../../reference/computation-format.md) runs each run of a computation function in a worker thread of its own, started for the run and ended with it, with this setting:
+The [computation function adapter](../../reference/computation-format.md) runs each run of a computation function in a worker thread the server keeps between runs, so a run pays for starting a worker only when none is ready, with this setting:
 
-| Variable              | Default | Purpose                                                                                                                             |
-| --------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `COMPUTATION_WORKERS` | `4`     | How many computation functions the server runs at once, from 1 to 64; a run that finds none free within 10 seconds is `unavailable` |
+| Variable              | Default | Purpose                                                                                                                                                      |
+| --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `COMPUTATION_WORKERS` | `4`     | The most worker threads the server keeps, and so the most runs it takes at once, from 1 to 64; a run that finds none free within 10 seconds is `unavailable` |
 
-A worker is stopped when its heap grows past 256 MiB, and it has a stack of 64 MiB, so plan for about 320 MiB for each worker on top of the server's own memory, about 1.25 GiB for the default four. A value outside the range stops the server at start, naming the setting.
+The server never keeps more worker threads alive, idle or busy, than this setting. It ends a worker after a run that ran past its time, used too much memory, was cancelled or broke, after its thousandth run, and after a minute without one, and starts another when a run needs it. A worker is stopped when its heap grows past 256 MiB, and it has a stack of 64 MiB, so plan for about 320 MiB for each worker on top of the server's own memory, about 1.25 GiB for the default four. A value outside the range stops the server at start, naming the setting.
 
 The [recall function adapter](../../reference/recall-format.md) shares those workers: a run of a recall function answers in one, and the server that runs the workflows keeps the views of recall functions, folding each page of a brain's history in one, using at most half of them at once and at least one. It keeps each view in a table beside the workflows' tables, in the ledger's database, so a view needs no other storage. These settings bound it:
 

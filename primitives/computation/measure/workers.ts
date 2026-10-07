@@ -9,9 +9,9 @@ import {
 } from '@beonauto/workflow-engine/dsl';
 import { Schema } from 'effect';
 
-import { computationDialect } from '../src/document/program-dialect.ts';
 import { computationBounds, computationLimits } from '../src/run/run-bounds.ts';
-import { formatted, inTurn, median } from './common.ts';
+import { formatted, inTurn } from './common.ts';
+import { poolOfOne, request } from './runs.ts';
 
 const recursion = 'def g: if . == 0 then 0 else (. - 1 | g) end; g';
 
@@ -27,33 +27,6 @@ const allocating = [
   '("[]," * 1000000) as $t | "[" + $t + "[]]" | fromjson | length',
   '[range(200000) | tostring] | join(",") | length',
 ];
-
-function request(source: string, input: number | null, deadlineMs: number = computationBounds.deadlineMs) {
-  return {
-    source,
-    input,
-    dialect: computationDialect,
-    limits: computationLimits,
-    deadlineMs,
-    mostOutputBytes: 1_000_000,
-  };
-}
-
-const outputWorker = new URL('../src/run/output-worker.ts', import.meta.url);
-
-async function startup(pool: ProgramPool): Promise<readonly string[]> {
-  const indexes = Array.from({ length: 30 }, (_, index) => index);
-  const plain = await inTurn(indexes, async (index) => (await pool.run(request('.', index))).milliseconds);
-  const checked = await inTurn(
-    indexes,
-    async (index) =>
-      (await pool.run({ ...request('.', index), worker: outputWorker, context: { type: 'integer' } })).milliseconds,
-  );
-  return [
-    `a run of a program that answers at once, worker started and ended: ${formatted(median(plain), 1)} ms at the median of ${plain.length}`,
-    `the same with an output schema, checked in its worker: ${formatted(median(checked), 1)} ms at the median of ${checked.length}`,
-  ];
-}
 
 async function termination(): Promise<string> {
   const pool = programPool({ workers: 1, heapMegabytes: computationBounds.heapMegabytes, worker: blocking });
@@ -95,9 +68,8 @@ function heapOf(source: string): Promise<string> {
 }
 
 export async function workersMeasured(): Promise<readonly string[]> {
-  const pool = programPool({ workers: 1, heapMegabytes: computationBounds.heapMegabytes });
+  const pool = poolOfOne();
   const lines = [
-    ...(await startup(pool)),
     await termination(),
     `the deepest recursion of ${recursion} within the bound of ${formatted(mostEvaluationDepth)} levels of evaluation: ${formatted(await deepestRecursion(pool, mostEvaluationDepth))} calls`,
     `the deepest it reaches in a worker's stack of ${workerStackMegabytes} MiB with no bound: ${formatted(await deepestRecursion(pool, Number.POSITIVE_INFINITY))} calls`,

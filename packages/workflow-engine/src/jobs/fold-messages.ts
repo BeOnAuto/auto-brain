@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-const SpanSchema = Schema.Struct({ start: Schema.Number, end: Schema.Number });
+import { DialectSchema, LimitsSchema, SpanSchema } from './program-messages.ts';
 
 const StallSchema = Schema.Struct({
   at: Schema.Number,
@@ -8,6 +8,27 @@ const StallSchema = Schema.Struct({
   message: Schema.String,
   span: Schema.NullOr(SpanSchema),
 });
+
+export const FoldJobSchema = Schema.Struct({
+  events: Schema.String,
+  views: Schema.Array(
+    Schema.Struct({
+      fold: Schema.String,
+      filters: Schema.Array(Schema.JsonObject),
+      view: Schema.String,
+      schema: Schema.optionalKey(Schema.JsonObject),
+      events: Schema.Array(Schema.Number),
+    }),
+  ),
+  dialect: DialectSchema,
+  variable: Schema.String,
+  limits: LimitsSchema,
+  foldDeadlineMs: Schema.Number,
+  pageBudgetMs: Schema.Number,
+  mostViewBytes: Schema.Number,
+});
+
+export type FoldJob = typeof FoldJobSchema.Type;
 
 export const FoldAnswerSchema = Schema.Union([
   Schema.Struct({

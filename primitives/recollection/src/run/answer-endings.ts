@@ -1,12 +1,15 @@
 import { Conflict, Unavailable } from '@beonauto/operations';
+import type { CompiledSchema } from '@beonauto/specs/document';
+import { issuesDetail } from '@beonauto/specs/json-schema';
 import {
+  jsonBytesOf,
   lineOf,
   type PoolOutcome,
   type ProgramSpan,
   type Stopped,
   workerStackMegabytes,
 } from '@beonauto/workflow-engine/dsl';
-import { Effect, type Schema } from 'effect';
+import { Effect, Result, type Schema } from 'effect';
 
 import type { RecallAnswer } from '../document/recall-document.ts';
 import { mostOutputBytes, recallBounds } from './recall-bounds.ts';
@@ -33,6 +36,8 @@ type Unworkable = Extract<
   PoolOutcome,
   { readonly ran: 'oversized' | 'mismatched' | 'unanswered' | 'unfit' | 'refused' }
 >;
+
+const mostIssuesInADetail = 3;
 
 function unworkable(detail: string): Ending {
   return Effect.fail(new Conflict({ detail, kind: 'unworkable' }));
@@ -80,8 +85,7 @@ function unworkableWith(outcome: Unworkable): Ending {
     return Effect.die(new Error('The worker refused an answer the definition was accepted with'));
   }
   if (outcome.ran === 'mismatched') {
-    const issues = outcome.issues.map(({ pointer, detail }) => `${pointer === '' ? 'the output' : pointer}: ${detail}`);
-    return unworkable(`The answer does not match the output schema: ${issues.join('; ')}`);
+    return unworkable(`The answer does not match the output schema: ${issuesDetail(outcome.issues, 'output')}`);
   }
   if (outcome.ran === 'oversized') {
     return unworkable(`The answer takes more than the ${mostOutputBytes} bytes as JSON a run can record`);
@@ -111,4 +115,13 @@ export function answerEndingOf(outcome: PoolOutcome, facts: AnswerFacts): Ending
     return Effect.fail(new Unavailable({ detail: stoppedBecause[outcome.because](facts) }));
   }
   return outcome.ran === 'crashed' ? Effect.die(new Error(outcome.detail)) : unworkableWith(outcome);
+}
+
+export function viewAnswered(view: Schema.Json, schema: CompiledSchema | undefined): Ending {
+  const checked = schema === undefined ? Result.succeed(view) : schema.validate(view);
+  if (Result.isFailure(checked)) {
+    const issues = issuesDetail(checked.failure.slice(0, mostIssuesInADetail), 'output');
+    return unworkable(`The view does not match the output schema: ${issues}`);
+  }
+  return Effect.succeed({ output: view, work: 0, milliseconds: 0, bytes: jsonBytesOf(view) });
 }

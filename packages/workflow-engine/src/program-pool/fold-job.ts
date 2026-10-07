@@ -1,20 +1,11 @@
 import { Schema, Struct } from 'effect';
 
-import { isInterrupted, type Ending, type Evaluate, type Interrupted, type Job } from '../program-pool/pool-job.ts';
-import { foldPageData } from './fold-answer.ts';
-import { FoldAnswerSchema, type FoldAnswer } from './fold-messages.ts';
-import type { FoldPage } from './fold-page.ts';
-import { foldProgress, type FoldPlace } from './fold-progress.ts';
-
-export interface FoldRequest extends FoldPage {
-  readonly waitMs: number;
-  readonly deadlineMs: number;
-  readonly worker?: Readonly<URL>;
-}
-
-type FoldEnding = FoldAnswer | (Interrupted & { readonly progress?: FoldPlace });
-
-export type FoldOutcome = FoldEnding & { readonly milliseconds: number };
+import { foldPageData } from '../folds/fold-answer.ts';
+import { foldProgress, type FoldPlace } from '../folds/fold-progress.ts';
+import { FoldAnswerSchema, type FoldAnswer } from '../jobs/fold-messages.ts';
+import { isInterrupted, type Ending } from '../jobs/job-endings.ts';
+import type { FoldEnding, FoldRequest } from '../jobs/pool-contract.ts';
+import type { Evaluate, Job } from './pool-job.ts';
 
 export interface FoldJob {
   readonly waitMs: number;
@@ -34,11 +25,11 @@ export function foldJobOf(
   signal?: Readonly<AbortSignal>,
 ): FoldJob {
   const { waitMs, deadlineMs } = request;
-  const page = Struct.omit(request, ['waitMs', 'deadlineMs', 'worker']);
+  const page = foldPageData(Struct.omit(request, ['waitMs', 'deadlineMs', 'worker']));
   const progress = foldProgress();
   const job: Job<FoldAnswer> = {
     module,
-    workerData: { ...foldPageData(page), progress: { shared: progress.shared } },
+    envelope: (id) => ({ job: id, kind: 'fold', request: page, progress: progress.shared }),
     decode: decodeFoldAnswer,
   };
   return {

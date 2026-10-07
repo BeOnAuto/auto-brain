@@ -44,7 +44,7 @@ function folded(pool: ProgramPool, details: ViewDetails, events: readonly Schema
   return pool.fold(request);
 }
 
-describe('the worker that folds the views of recall functions', { timeout: workerTestTimeoutMs }, () => {
+describe('the checked worker, folding the views of recall functions', { timeout: workerTestTimeoutMs }, () => {
   it('folds the example over the runs it names, in order, checking the view against its schema after each fold', async () => {
     const events = [
       review('2026-10-06T10:00:00.000Z', { campaign: 'spring', verdict: 'approve' }),

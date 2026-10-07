@@ -1,4 +1,4 @@
-import type { PoolOutcome, ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { PoolOutcome, ProgramPool } from '../jobs/pool-contract.ts';
 
 export function scriptedPool(script: readonly PoolOutcome[], otherwise: ProgramPool): ProgramPool {
   const remaining = [...script];

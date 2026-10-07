@@ -1,10 +1,38 @@
 import { Schema } from 'effect';
 
+export const SpanSchema = Schema.Struct({ start: Schema.Number, end: Schema.Number });
+
 const IssueSchema = Schema.Struct({
   detail: Schema.String,
-  span: Schema.Struct({ start: Schema.Number, end: Schema.Number }),
+  span: SpanSchema,
   error: Schema.optionalKey(Schema.String),
 });
+
+export const DialectSchema = Schema.Struct({
+  refused: Schema.Array(Schema.Struct({ name: Schema.String, why: Schema.String })),
+  variables: Schema.optionalKey(Schema.Array(Schema.String)),
+});
+
+export const LimitsSchema = Schema.Struct({
+  mostWork: Schema.Number,
+  mostSteps: Schema.Number,
+  mostDepth: Schema.Number,
+  mostOutputs: Schema.Number,
+  mostValueDepth: Schema.Number,
+});
+
+export const ProgramJobSchema = Schema.Struct({
+  source: Schema.String,
+  input: Schema.String,
+  variables: Schema.String,
+  dialect: DialectSchema,
+  limits: LimitsSchema,
+  mostOutputBytes: Schema.Number,
+  deadlineAt: Schema.Number,
+  context: Schema.Json,
+});
+
+export type ProgramJob = typeof ProgramJobSchema.Type;
 
 export const ProgramAnswerSchema = Schema.Union([
   Schema.Struct({
