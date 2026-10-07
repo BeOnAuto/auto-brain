@@ -49,20 +49,22 @@ function brainWriterOf(ledger: StreamWriter): StreamWriter {
 }
 
 describe('the outbound calls of a run', () => {
-  it('are recorded as the brain itself, with the lineage they are given, answering the id of each', async () => {
+  it('are recorded as the brain itself, with the lineage they are given, answering the id and time of each', async () => {
     const ledger = await aDeferredRun();
     const record = outboundCallRecorder(ledger.service);
 
-    const startedId = await Effect.runPromise(
+    const started = await Effect.runPromise(
       record(run, { type: 'delivery_started', number: 1, channel: 'inbox', target: 'ada' }, lineage),
     );
-    const endedId = await Effect.runPromise(
+    const startedId = started.id;
+    const ended = await Effect.runPromise(
       record(
         run,
         { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 },
         { ...lineage, causationId: startedId },
       ),
     );
+    const endedId = ended.id;
     const { records } = await Effect.runPromise(
       ledger.service.readRecorded(run, { kind: 'run', execution: run.id }, { order: 'asc', limit: 10 }),
     );
@@ -74,6 +76,7 @@ describe('the outbound calls of a run', () => {
       ['delivery_started', 'request-1', 'brain:alpha'],
       ['delivery_ended', startedId, 'brain:alpha'],
     ]);
+    expect(records.slice(2).map(({ data }) => executionEventOf(data)?.at)).toEqual([started.at, ended.at]);
   });
 
   it('are refused under a number another call took, and for a run the brain cannot hold', async () => {

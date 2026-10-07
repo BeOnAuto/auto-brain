@@ -24,11 +24,15 @@ function settlementAfter(request: DueRequest, number: number, end: AttemptEnd, a
   return isLastAttempt(end.ended, number) ? undeliveredSettlement(row) : undefined;
 }
 
-function settledAfter(parts: DeliveryParts, request: DueRequest, number: number, end: AttemptEnd) {
-  return Effect.flatMap(Clock.currentTimeMillis, (now) => {
-    const settlement = settlementAfter(request, number, end, new Date(now).toISOString());
-    return settlement === undefined ? Effect.void : settled(parts.ledger, request.address, settlement, request.lineage);
-  });
+interface Ended {
+  readonly number: number;
+  readonly end: AttemptEnd;
+  readonly at: string;
+}
+
+function settledAfter(parts: DeliveryParts, request: DueRequest, { number, end, at }: Ended) {
+  const settlement = settlementAfter(request, number, end, at);
+  return settlement === undefined ? Effect.void : settled(parts.ledger, request.address, settlement, request.lineage);
 }
 
 export function lostAttempt(parts: DeliveryParts, { address, row, lineage }: DueRequest): Effect.Effect<void> {
@@ -40,17 +44,19 @@ export function nextAttempt(parts: DeliveryParts, request: DueRequest): Effect.E
   return Effect.gen(function* () {
     const recorded = yield* recordedRunIn(parts.ledger, address);
     const start = startedFact(row);
-    const startedId =
+    const startedCall =
       recorded?.awaitsSettlement === true ? yield* recordedCall(parts.ledger, address, start, lineage) : undefined;
-    if (recorded === undefined || startedId === undefined) {
+    if (recorded === undefined || startedCall === undefined) {
       return;
     }
+    const startedId = startedCall.id;
     const began = yield* Clock.currentTimeMillis;
     const answerSchema = requestRecordOf(recorded.run.record)?.answer_schema;
     const end = yield* attemptOf(parts, channelFor(parts.channels, row.channel, address), request, answerSchema);
     const ended = endedFact(start.number, end, (yield* Clock.currentTimeMillis) - began, parts.channels.secrets);
-    const endedId = yield* recordedCall(parts.ledger, address, ended, { ...lineage, causationId: startedId });
-    const settling = { ...request, lineage: { ...lineage, causationId: endedId ?? startedId } };
-    yield* settledAfter(parts, settling, start.number, end);
+    const endedCall = yield* recordedCall(parts.ledger, address, ended, { ...lineage, causationId: startedId });
+    const settling = { ...request, lineage: { ...lineage, causationId: endedCall?.id ?? startedId } };
+    const at = endedCall?.at ?? new Date(yield* Clock.currentTimeMillis).toISOString();
+    yield* settledAfter(parts, settling, { number: start.number, end, at });
   });
 }

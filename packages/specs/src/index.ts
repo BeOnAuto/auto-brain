@@ -55,7 +55,7 @@ export {
   type ExecutionEvent,
 } from './execution/execution-events.ts';
 export { executionEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
-export { outboundCallRecorder, type RecordOutboundCall } from './run-work/outbound-calls.ts';
+export { outboundCallRecorder, type RecordedOutboundCall, type RecordOutboundCall } from './run-work/outbound-calls.ts';
 export { deliveryEnded, deliveryStarted, statusInWords } from './run-work/delivery-words.ts';
 export { mostCallDepth } from './operations/execution-running.ts';
 export {

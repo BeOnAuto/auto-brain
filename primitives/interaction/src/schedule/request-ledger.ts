@@ -6,7 +6,13 @@ import type {
   StreamReader,
   StreamWriter,
 } from '@beonauto/operations';
-import { executionSettler, outboundCallRecorder, type OutboundCallFact, type Settlement } from '@beonauto/specs';
+import {
+  executionSettler,
+  outboundCallRecorder,
+  type OutboundCallFact,
+  type RecordedOutboundCall,
+  type Settlement,
+} from '@beonauto/specs';
 import { Effect, Schema } from 'effect';
 
 import type { RequestAddress } from '../delivery/attempt-end.ts';
@@ -57,7 +63,7 @@ export function recordedCall(
   address: RequestAddress,
   fact: OutboundCallFact,
   lineage: Lineage,
-): Effect.Effect<string | undefined> {
+): Effect.Effect<RecordedOutboundCall | undefined> {
   return outboundCallRecorder(ledger)(address, fact, lineage).pipe(Effect.catchTag('conflict', () => Effect.undefined));
 }
 
