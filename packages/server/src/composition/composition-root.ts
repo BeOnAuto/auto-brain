@@ -37,6 +37,7 @@ export function compositionRootWith(
         workflows,
         primitives,
         orgOperations,
+        brainOperations: [reasoning.listToolServers],
         store: recall.store,
         views: recall.views,
       });

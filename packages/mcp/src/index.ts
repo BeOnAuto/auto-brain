@@ -7,6 +7,7 @@ export type { CallJournal, CallOutcome, RecordedCall } from './calls/recorded-ca
 export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
 export type { OfferedTool, RunTools, ToolsEnding } from './calls/run-tools.ts';
 export { executionIdKey } from './calls/execution-key.ts';
+export { defineListToolServers } from './listing/list-tool-servers.ts';
 export { defaultTiming, runBoundMs, toolBounds, type Timing } from './bounds/call-bounds.ts';
 export { toolReferenceOf, toolReferenceShape, writtenOf, type ToolReference } from './names/tool-reference.ts';
 export { AllowedToolsSchema, McpServersSchema } from './settings/server-entries.ts';

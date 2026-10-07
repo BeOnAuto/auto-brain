@@ -50,6 +50,7 @@ const brainTools = [
   'get_brain_analytics',
   'list_brain_events',
   'publish_event',
+  'list_tool_servers',
   'send_execution_event',
 ];
 
@@ -90,7 +91,7 @@ function primitivesOfCreateSpec(listing: unknown): readonly string[] {
 }
 
 describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
-  it('lists eight tools on the endpoint of a brain, and every primitive in the spec tools', async () => {
+  it('lists fifteen tools on the endpoint of a brain, and every primitive in the spec tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
     expect(toolNamesIn(listing)).toEqual(brainTools);
