@@ -8,7 +8,7 @@ import { executionIdIn, settledExecution, workflowSource } from './workflow-serv
 
 export const brief = { campaign: 'Spring', owner: 'ada' };
 
-export const unansweredType = 'https://on.auto/problems/unanswered';
+const unansweredType = 'https://on.auto/problems/unanswered';
 
 const decodeListed = Schema.decodeUnknownSync(
   Schema.Struct({ interactions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) }),

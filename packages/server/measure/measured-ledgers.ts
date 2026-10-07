@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { Client } from 'pg';
 
-export interface LedgerUse {
+interface LedgerUse {
   readonly environment: Readonly<Record<string, string>>;
   readonly expireEveryRequestAt: (at: number) => Promise<number>;
 }

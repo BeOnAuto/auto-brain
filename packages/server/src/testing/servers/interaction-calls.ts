@@ -1,6 +1,6 @@
 import type { McpSession, ToolResult } from '@beonauto/api/testing';
 
-export const approvalRequest = [
+const approvalRequest = [
   '---',
   'channel: inbox',
   "to: '{{ input.owner }}'",
