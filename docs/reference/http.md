@@ -28,6 +28,8 @@ Brain ids contain 3 to 48 lowercase letters, digits and hyphens, beginning with 
 
 Retirement is permanent. Brain ids cannot be reused, and a retired brain cannot be restored.
 
+A name and a description are stored without the whitespace around them, and a name cannot be all whitespace. `update_brain` takes both, even when only one of them changes, and an update that changes nothing records nothing. A key limited to a list of brains can create only a brain whose id is on that list. A retired brain can still be read with `get_brain` and listed with `include_retired`, but it can no longer be updated, and operations inside it return `not_found`; retiring it again succeeds and changes nothing. `create_brain` returns `conflict` for an id the org has or had, `update_brain` returns `conflict` for a retired brain, and `get_brain`, `update_brain` and `retire_brain` return `not_found` for an id the org does not have. A change that meets another change to the org's brains at the same moment returns `conflict`; send it again.
+
 ## Models
 
 `GET /v1/orgs/{org}/models` lists the models the server offers. It requires `org:read` and accepts an optional `provider` query parameter. A provider prefix contains 1 to 32 lowercase letters, digits or hyphens, starting with a letter.

@@ -12,13 +12,8 @@ export const createBrain = defineCommand('org', {
   description: [
     'Creates a brain in the org and returns it, active.',
     '`brain` is the id of the new brain: 3 to 48 lowercase letters, digits and hyphens, starting with a letter.',
-    'The id must be new to the org: an id is never reused, not even after its brain is retired.',
     '`name` is the display name, 1 to 100 characters and not all whitespace.',
     '`description` is optional text on what the brain is for, up to 2000 characters; it defaults to empty.',
-    'Both are stored with surrounding whitespace trimmed.',
-    'A caller limited to a list of brains may create only a brain whose id is on that list.',
-    'Rejected with conflict when the org already has or had a brain with that id,',
-    "or when another change to the org's brains landed at the same moment, in which case try again.",
   ].join(' '),
   route: { method: 'POST', path: '/brains' },
   successStatus: 201,
