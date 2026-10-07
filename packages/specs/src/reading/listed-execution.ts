@@ -1,6 +1,7 @@
 import {
   CancelledKindSchema,
   ConflictKindSchema,
+  UnansweredKindSchema,
   UnavailableBecauseSchema,
   UnavailableKindSchema,
   type RecordedEvent,
@@ -14,12 +15,14 @@ import { evolveExecution, runOf, type ExecutionStreamState } from '../execution/
 import { RunSchema, type Run, type ExecutionRejection } from '../execution/execution.ts';
 
 const ListedRejectionSchema = Schema.Struct({
-  reason: Schema.Literals(['invalid_input', 'unavailable', 'conflict', 'cancelled']),
-  kind: Schema.optionalKey(Schema.Union([UnavailableKindSchema, ConflictKindSchema, CancelledKindSchema])),
+  reason: Schema.Literals(['invalid_input', 'unavailable', 'conflict', 'cancelled', 'unanswered']),
+  kind: Schema.optionalKey(
+    Schema.Union([UnavailableKindSchema, ConflictKindSchema, CancelledKindSchema, UnansweredKindSchema]),
+  ),
   because: Schema.optionalKey(UnavailableBecauseSchema),
 }).annotate({
   description:
-    'Why the run was rejected: its reason, the kind it gave for unavailable or conflict, the kind of a cancellation, and for unavailable the because it gave',
+    'Why the run was rejected: its reason, the kind it gave for unavailable or conflict, the kind of a cancellation or of a request nobody answered, and for unavailable the because it gave',
 });
 
 export const ListedRunSchema = Schema.Struct({
@@ -54,7 +57,7 @@ function listedRejectionOf(rejection: ExecutionRejection): ListedRejection {
     const { reason, kind } = rejection;
     return { reason, ...(kind === undefined ? {} : { kind }) };
   }
-  if (rejection.reason === 'cancelled') {
+  if (rejection.reason === 'cancelled' || rejection.reason === 'unanswered') {
     const { reason, kind } = rejection;
     return { reason, kind };
   }

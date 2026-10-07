@@ -52,7 +52,7 @@ describe('execute_spec', () => {
       route: { method: 'POST', path: '/specs/{primitive}/{name}/execute' },
       pathParameters: ['primitive', 'name'],
       successStatus: 200,
-      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled'],
+      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled', 'unanswered'],
     });
   });
 

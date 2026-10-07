@@ -50,7 +50,7 @@ function rejectionShown(rejection: ExecutionRejection) {
     const { reason, kind } = rejection;
     return { reason, detail, ...(kind === undefined ? {} : { kind }) };
   }
-  if (rejection.reason === 'cancelled') {
+  if (rejection.reason === 'cancelled' || rejection.reason === 'unanswered') {
     const { reason, kind } = rejection;
     return { reason, detail, kind };
   }

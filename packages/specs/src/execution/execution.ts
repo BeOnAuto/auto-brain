@@ -2,6 +2,7 @@ import {
   CancelledKindSchema,
   ConflictKindSchema,
   IssueSchema,
+  UnansweredKindSchema,
   UnavailableBecauseSchema,
   UnavailableKindSchema,
 } from '@beonauto/operations';
@@ -46,7 +47,15 @@ export const ExecutionRejectionSchema = Schema.Union([
         'Why the run was cancelled: requested when someone allowed to change the brain asked for it with cancel_execution; deadline when the step that waited for it ran out of time; overrun when a workflow ran as long as a workflow may run; parent_ended when the run that waited for it ended first, or its branch of a race lost',
     }),
   }),
-]).annotate({ description: 'Why the run was rejected, or that it was cancelled' });
+  Schema.Struct({
+    reason: Schema.Literal('unanswered'),
+    detail: Schema.String,
+    kind: UnansweredKindSchema.annotate({
+      description:
+        'Why nobody answered what the run asked: expired when its request expired before an answer came; undelivered when a notification could not be delivered in any of its attempts',
+    }),
+  }),
+]).annotate({ description: 'Why the run was rejected, that it was cancelled, or that nobody answered it' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;
 

@@ -52,6 +52,10 @@ function rejectionOf(settlement: SettledRejection): ExecutionRejection {
     const { reason, detail, kind } = settlement;
     return { reason, detail, ...(kind === undefined ? {} : { kind }) };
   }
+  if (settlement.reason === 'unanswered') {
+    const { reason, detail, kind } = settlement;
+    return { reason, detail, kind };
+  }
   const { reason, detail, kind } = settlement;
   return { reason, detail, kind };
 }

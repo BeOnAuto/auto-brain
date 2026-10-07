@@ -134,7 +134,9 @@ export function evolveExecution(state: ExecutionStreamState, event: ExecutionEve
 
 export function hasFinalResult({ execution }: RecordedExecution): boolean {
   const reason = execution.rejection?.reason;
-  return execution.status === 'succeeded' || reason === 'invalid_input' || reason === 'cancelled';
+  return (
+    execution.status === 'succeeded' || reason === 'invalid_input' || reason === 'cancelled' || reason === 'unanswered'
+  );
 }
 
 export function awaitsSettlement({ execution, deferred }: RecordedExecution): boolean {
