@@ -64,8 +64,8 @@ function tupleCompared(left: readonly Ordered[], right: readonly Ordered[]): num
   return 0;
 }
 
-function matches({ row }: ProjectedRunRow, where: readonly ProjectedCondition[]): boolean {
-  return where.every(({ column, equals }) => row[column] === equals);
+function matches({ row, runId }: ProjectedRunRow, where: readonly ProjectedCondition[]): boolean {
+  return where.every(({ column, equals }) => (column === 'run_id' ? runId : row[column]) === equals);
 }
 
 function brainOf(

@@ -67,6 +67,7 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
     expect(await runsOf({ ...newestFirst, order: 'asc' })).toEqual(['r1', 'r2', 'r3']);
     expect(await runsOf({ ...newestFirst, where: [open] })).toEqual(['r3', 'r1']);
     expect(await runsOf({ ...newestFirst, where: [open, { column: 'fn', equals: 'triage' }] })).toEqual(['r1']);
+    expect(await runsOf({ ...newestFirst, where: [{ column: 'run_id', equals: 'r2' }] })).toEqual(['r2']);
     expect(await runsOf({ ...newestFirst, limit: 1 })).toEqual(['r3']);
     expect(await runsOf({ ...newestFirst, after: [nine + 120_000, 'r3'] })).toEqual(['r2', 'r1']);
     expect(await Effect.runPromise(ledger.service.countProjectedRows('run_tallies', alpha, [open]))).toBe(2);

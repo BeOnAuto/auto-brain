@@ -102,6 +102,7 @@ function rowsOfABrain(open: ProjectingLedger): void {
       expect(await runsOf(ledger, { ...newestFirst, where: [stillOpen, { column: 'fn', equals: 'triage' }] })).toEqual([
         'r1',
       ]);
+      expect(await runsOf(ledger, { ...newestFirst, where: [{ column: 'run_id', equals: 'r2' }] })).toEqual(['r2']);
       expect(await runsOf(ledger, { ...newestFirst, limit: 2 })).toEqual(['r3', 'r2']);
       expect(await runsOf(ledger, { ...newestFirst, after: [nine + 2 * minute, 'r3'] })).toEqual(['r2', 'r1']);
       expect(await runsOf(ledger, { ...newestFirst, order: 'asc', after: [nine, 'r1'] })).toEqual(['r2', 'r3']);
