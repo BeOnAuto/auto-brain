@@ -45,6 +45,26 @@ describe('a cancel by the caller of a run that has not started', () => {
   });
 });
 
+describe('the stream of a run its caller cancelled before it started', () => {
+  it('holds no run: the list leaves it out, filtered or not, and the run and its history are not found', async () => {
+    const { call, getExecution, getExecutionHistory, listExecutions, ledger } = await withHandOn();
+    await Effect.runPromise(executionCanceller(ledger.service)(child, parentEnded, lineage));
+
+    const filters: readonly Readonly<Record<string, string>>[] = [{}, { status: 'started' }, { primitive: 'relay' }];
+    const listed = await Promise.all(filters.map((filter) => call(listExecutions, toAlpha(acmeAdmin, filter))));
+    const read = await call(getExecution, toAlpha(acmeAdmin, { execution_id: childId }));
+    const history = await call(getExecutionHistory, toAlpha(acmeAdmin, { execution_id: childId }));
+
+    expect(listed).toEqual(
+      listed.map(() => ({ status: 'succeeded', output: { executions: [], has_more: false, next_cursor: null } })),
+    );
+    expect([read, history]).toMatchObject([
+      { status: 'rejected', reason: 'not_found' },
+      { status: 'rejected', reason: 'not_found' },
+    ]);
+  });
+});
+
 describe('a run within its call that its caller cancels and then interrupts', () => {
   it('ends rejected as cancelled with the kind of the cancel, not failed', async () => {
     const { call, callCancelledWhen, executeSpec, getExecution, ledger, prober } = await withHandOn();

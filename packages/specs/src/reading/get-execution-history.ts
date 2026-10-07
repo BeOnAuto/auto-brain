@@ -10,7 +10,6 @@ import {
   presentationOf,
   type Presentation,
   type Presenter,
-  type RecordedEvent,
 } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
@@ -62,8 +61,8 @@ const ExecutionHistoryInput = Schema.Struct({
 
 const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...PagingOutputFields });
 
-function requireExecution(id: string, records: readonly RecordedEvent[]) {
-  return records.length > 0 ? Effect.void : loadExecution(id).pipe(Effect.flatMap((state) => executionOf(id, state)));
+function requireExecution(id: string) {
+  return loadExecution(id).pipe(Effect.flatMap((state) => executionOf(id, state)));
 }
 
 function historyReader(presentation: Presentation) {
@@ -73,9 +72,9 @@ function historyReader(presentation: Presentation) {
     limit = defaultPageLimit,
     cursor,
   }: typeof ExecutionHistoryInput.Type) {
+    yield* requireExecution(id);
     const paging = { order, limit, ...(cursor === undefined ? {} : { cursor }) };
     const page = yield* (yield* BrainReader).readRecorded({ kind: 'run', execution: id }, paging);
-    yield* requireExecution(id, page.records);
     const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, paging);
     return {
       events: events.map(({ event }) => event),
