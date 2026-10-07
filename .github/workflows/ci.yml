@@ -205,8 +205,8 @@ jobs:
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
-          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 23
-          for tool in list_models list_executions get_execution_history get_brain_analytics list_brain_events publish_event list_tool_servers list_interactions answer_interaction send_execution_event cancel_execution; do
+          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 24
+          for tool in list_models list_executions get_execution_history get_brain_analytics list_brain_events publish_event list_tool_servers list_interactions answer_interaction send_execution_event cancel_execution get_guide; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
           call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_specs","arguments":{"brain":"smoke","primitive":"inference"}}}' > specs.txt
@@ -215,6 +215,19 @@ jobs:
           grep --quiet '"structuredContent":{"executions":\[\],"has_more":false,"next_cursor":null}' executions.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"brain":"smoke"}}}' > tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' tool-servers.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' > initialized.txt
+          grep --quiet 'Before writing a definition, read its format with get_guide' initialized.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"get_guide","arguments":{"guide":"reasoning-function"}}}' > guide.txt
+          grep --quiet '# Reasoning function format' guide.txt
+          grep --quiet 'On this server, ' guide.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":10,"method":"resources/list"}' > resources.txt
+          test "$(grep --only-matching '"uri":"guide://[a-z-]*"' resources.txt | wc -l)" -eq 10
+          call_mcp /mcp '{"jsonrpc":"2.0","id":11,"method":"prompts/list"}' > prompts.txt
+          for prompt in first-brain remember give-tools schedule; do
+            grep --quiet "\"name\":\"$prompt\"" prompts.txt
+          done
+          call_mcp /mcp '{"jsonrpc":"2.0","id":12,"method":"prompts/get","params":{"name":"first-brain"}}' > first-brain.txt
+          grep --quiet 'Create my first brain.' first-brain.txt
           docker stop mcp
           test "$(docker inspect mcp --format '{{.State.ExitCode}}')" = 0
       - name: Run a reasoning function without model settings
