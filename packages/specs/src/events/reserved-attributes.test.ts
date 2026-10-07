@@ -8,6 +8,8 @@ import { isReservedSource, refusingTheBrainsOwnAttributes, reservedEventTypes } 
 const EventSchema = Schema.Struct({
   type: Schema.String,
   source: Schema.optionalKey(Schema.String),
+  causationid: Schema.optionalKey(Schema.String),
+  correlationid: Schema.optionalKey(Schema.String),
 }).check(refusingTheBrainsOwnAttributes);
 
 const decode = Schema.decodeUnknownResult(EventSchema, { errors: 'all' });
@@ -21,29 +23,33 @@ function refusals(event: unknown): readonly string[] {
       );
 }
 
+const typesOfTheBrain = [
+  'execution_started',
+  'execution_deferred',
+  'execution_succeeded',
+  'execution_rejected',
+  'execution_failed',
+  'execution_cancel_requested',
+  'tool_call_started',
+  'tool_call_answered',
+  'delivery_started',
+  'delivery_ended',
+  'spec_created',
+  'spec_updated',
+  'spec_retired',
+  'event_published',
+  'workflow_input_applied',
+  'step_started',
+  'step_waiting',
+  'step_finished',
+  'step_failed',
+  'step_skipped',
+  'reaction_refused',
+];
+
 describe('the types and sources of what the brain records itself', () => {
   it('are reserved for the brain: every type its runs and definitions record, and every type its feed shows', () => {
-    expect([...reservedEventTypes]).toEqual([
-      'execution_started',
-      'execution_deferred',
-      'execution_succeeded',
-      'execution_rejected',
-      'execution_failed',
-      'execution_cancel_requested',
-      'tool_call_started',
-      'tool_call_answered',
-      'spec_created',
-      'spec_updated',
-      'spec_retired',
-      'event_published',
-      'workflow_input_applied',
-      'step_started',
-      'step_waiting',
-      'step_finished',
-      'step_failed',
-      'step_skipped',
-      'reaction_refused',
-    ]);
+    expect([...reservedEventTypes]).toEqual(typesOfTheBrain);
     const shown = makeSpecPresenters([echo]).flatMap(({ publicNames }) => Object.values(publicNames).flat());
     expect(shown.filter((name) => !reservedEventTypes.has(name))).toEqual([]);
     expect(
@@ -60,7 +66,7 @@ describe('the types and sources of what the brain records itself', () => {
 
   it('are refused in an event from outside, each where it is given', () => {
     expect(refusals({ type: 'execution_succeeded', source: '/executions/0199a3c4' })).toEqual([
-      '/type: Expected a type of your own, not one the brain records itself: execution_started, execution_deferred, execution_succeeded, execution_rejected, execution_failed, execution_cancel_requested, tool_call_started, tool_call_answered, spec_created, spec_updated, spec_retired, event_published, workflow_input_applied, step_started, step_waiting, step_finished, step_failed, step_skipped, reaction_refused',
+      `/type: Expected a type of your own, not one the brain records itself: ${typesOfTheBrain.join(', ')}`,
       '/source: Expected a source of your own, not one under /executions/, /specs/ or /callers/, which the brain records itself',
     ]);
     expect(
@@ -69,5 +75,14 @@ describe('the types and sources of what the brain records itself', () => {
       ),
     ).toEqual([1, 1, 1, 1, 1]);
     expect(refusals({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu' })).toEqual([]);
+  });
+});
+
+describe('the lineage the brain gives its own records', () => {
+  it('is refused in an event from outside, which may not claim it', () => {
+    expect(refusals({ type: 'com.acme.approved', causationid: 'm-1', correlationid: 'r-1' })).toEqual([
+      '/causationid: Expected no causationid: causationid and correlationid are the lineage the brain gives its own records, which no event may claim',
+      '/correlationid: Expected no correlationid: causationid and correlationid are the lineage the brain gives its own records, which no event may claim',
+    ]);
   });
 });

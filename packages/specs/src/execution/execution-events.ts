@@ -33,6 +33,7 @@ const ExecutionStartedSchema = Schema.Struct({
 const ExecutionDeferredSchema = Schema.Struct({
   type: Schema.Literal('execution_deferred'),
   record: Schema.JsonObject,
+  ...ofTheDefinition,
   ...fact,
 });
 
@@ -101,6 +102,47 @@ const ToolCallAnsweredSchema = Schema.Struct({
   ...fact,
 });
 
+const DeliveryStartedSchema = Schema.Struct({
+  type: Schema.Literal('delivery_started'),
+  number: Schema.Int,
+  channel: Schema.String,
+  target: Schema.String,
+  ...ofTheDefinition,
+  ...fact,
+});
+
+export const DeliveryOutcomeSchema = Schema.Literals(['delivered', 'answered', 'failed', 'refused']);
+
+export const DeliveryBecauseSchema = Schema.Literals([
+  'status',
+  'timed_out',
+  'unreachable',
+  'untrusted_certificate',
+  'redirected',
+  'not_https',
+  'too_large',
+  'channel_not_offered',
+  'tool_error',
+  'server_failure',
+  'not_json',
+  'answer_invalid',
+  'lost',
+]);
+
+const DeliveryEndedSchema = Schema.Struct({
+  type: Schema.Literal('delivery_ended'),
+  number: Schema.Int,
+  outcome: DeliveryOutcomeSchema,
+  status: Schema.optionalKey(Schema.Int),
+  because: Schema.optionalKey(DeliveryBecauseSchema),
+  retry_after_ms: Schema.optionalKey(Schema.Int),
+  response_bytes: Schema.optionalKey(Schema.Int),
+  detail: Schema.optionalKey(Schema.String),
+  duration_ms: Schema.Int,
+  ...ofTheDefinition,
+  ...fact,
+});
+
 export const ExecutionEventSchema = Schema.Union([
   ExecutionStartedSchema,
   ExecutionDeferredSchema,
@@ -110,6 +152,8 @@ export const ExecutionEventSchema = Schema.Union([
   ExecutionCancelRequestedSchema,
   ToolCallStartedSchema,
   ToolCallAnsweredSchema,
+  DeliveryStartedSchema,
+  DeliveryEndedSchema,
 ]);
 
 export type ExecutionEvent = typeof ExecutionEventSchema.Type;
@@ -128,7 +172,17 @@ export type ToolCallStarted = Extract<ToolCallEvent, { readonly type: 'tool_call
 
 export type ToolCallAnswered = Extract<ToolCallEvent, { readonly type: 'tool_call_answered' }>;
 
+export type DeliveryEvent = Extract<ExecutionEvent, { readonly type: 'delivery_started' | 'delivery_ended' }>;
+
+export type DeliveryStarted = Extract<DeliveryEvent, { readonly type: 'delivery_started' }>;
+
+export type DeliveryEnded = Extract<DeliveryEvent, { readonly type: 'delivery_ended' }>;
+
+export type DeliveryOutcome = typeof DeliveryOutcomeSchema.Type;
+
+export type DeliveryBecause = typeof DeliveryBecauseSchema.Type;
+
 export type ExecutionFinished = Exclude<
   ExecutionEvent,
-  ExecutionStarted | ExecutionDeferred | ExecutionCancelRequested | ToolCallEvent
+  ExecutionStarted | ExecutionDeferred | ExecutionCancelRequested | ToolCallEvent | DeliveryEvent
 >;

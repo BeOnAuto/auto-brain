@@ -3,6 +3,8 @@ import type { Schema } from 'effect';
 import type {
   CalledBy,
   CancelRequestKind,
+  DeliveryEnded,
+  DeliveryStarted,
   ExecutionDeferred,
   ExecutionFinished,
   ToolCallAnswered,
@@ -40,6 +42,14 @@ export type CallAnsweredFact = Omit<ToolCallAnswered, 'by' | 'at'>;
 
 export type ToolCallFact = (CallStartedFact & { readonly number?: number }) | CallAnsweredFact;
 
+type OfTheRun = 'by' | 'at' | 'primitive' | 'name' | 'spec_version';
+
+export type DeliveryStartedFact = Omit<DeliveryStarted, OfTheRun>;
+
+export type DeliveryEndedFact = Omit<DeliveryEnded, OfTheRun>;
+
+export type OutboundCallFact = DeliveryStartedFact | DeliveryEndedFact;
+
 export interface InterruptedAttempt {
   readonly type: 'execution_interrupted';
 }
@@ -52,6 +62,11 @@ export interface ExecutionFinish {
 export interface ExecutionToolCall {
   readonly type: 'tool_call';
   readonly fact: ToolCallFact;
+}
+
+export interface ExecutionOutboundCall {
+  readonly type: 'outbound_call';
+  readonly fact: OutboundCallFact;
 }
 
 export interface CommandMetadata {
@@ -72,6 +87,6 @@ export interface ExecutionCancel extends CommandMetadata {
 }
 
 export type ExecutionCommand =
-  | ((ExecutionStart | ExecutionFinish | ExecutionToolCall) & CommandMetadata)
+  | ((ExecutionStart | ExecutionFinish | ExecutionToolCall | ExecutionOutboundCall) & CommandMetadata)
   | ExecutionSettlement
   | ExecutionCancel;

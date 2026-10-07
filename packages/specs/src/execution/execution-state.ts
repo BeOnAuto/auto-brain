@@ -105,7 +105,10 @@ function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, 
   if (event.type === 'tool_call_started') {
     return { ...state, lastCall: event.number, mayHaveChanged: true };
   }
-  if (event.type === 'tool_call_answered') {
+  if (event.type === 'delivery_started') {
+    return { ...state, lastCall: event.number };
+  }
+  if (event.type === 'tool_call_answered' || event.type === 'delivery_ended') {
     return state;
   }
   if (event.type === 'execution_cancel_requested') {

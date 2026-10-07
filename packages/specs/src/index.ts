@@ -25,17 +25,37 @@ export {
   type PrimitiveDefinition,
   type PrimitiveRejection,
   type DefinitionSummary,
+  type RunAccount,
+  type RunWords,
   type Standing,
   type StandingRequest,
   type ToolCallJournal,
 } from './primitive/primitive.ts';
-export type { CallAnsweredFact, CallStartedFact } from './execution/execution-commands.ts';
+export type {
+  CallAnsweredFact,
+  CallStartedFact,
+  DeliveryEndedFact,
+  DeliveryStartedFact,
+  OutboundCallFact,
+} from './execution/execution-commands.ts';
 export {
   CalledBySchema,
   CancelRequestKindSchema,
+  DeliveryBecauseSchema,
+  DeliveryOutcomeSchema,
   type CalledBy,
   type CancelRequestKind,
+  type DeliveryBecause,
+  type DeliveryEnded,
+  type DeliveryEvent,
+  type DeliveryOutcome,
+  type DeliveryStarted,
+  type ExecutionDeferred,
+  type ExecutionEvent,
 } from './execution/execution-events.ts';
+export { executionEventOf, recordedRunIn, recordedRunInBrain, type RecordedRun } from './run-work/recorded-runs.ts';
+export { outboundCallRecorder, type RecordOutboundCall } from './run-work/outbound-calls.ts';
+export { deliveryEnded, deliveryStarted, statusInWords } from './run-work/delivery-words.ts';
 export { mostCallDepth } from './operations/execution-running.ts';
 export {
   cancelRequestOf,
@@ -57,6 +77,7 @@ export {
   type RunDetail,
 } from './execution/execution.ts';
 export {
+  brainBoundSettler,
   executionSettler,
   type ExecutionAddress,
   type SettleExecution,
