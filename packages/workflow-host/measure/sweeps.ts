@@ -81,6 +81,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
       cancelDeferred: () => Effect.void,
       workflows: 'orchestration',
       now: Date.now,
+      trouble: () => Effect.void,
     }).calls,
     primitive: 'orchestration',
     applySpecRecord: specRecordsOn(opened, triggerOfSource),

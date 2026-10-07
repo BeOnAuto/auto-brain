@@ -47,6 +47,7 @@ function servedOf(database: HostDatabase, options: ServingOptions, engine: HostE
     cancelDeferred: options.waiting.cancelDeferred,
     workflows: options.reactions.primitive,
     now: options.clock.now,
+    trouble: options.reports.trouble,
   });
 }
 
@@ -66,7 +67,7 @@ export function startServing(database: HostDatabase, options: ServingOptions): S
         served.endedChildren(runId),
         engine.submitted({ kind: 'timer_fired', executionId: runId, at, timerId }),
       ),
-    resume: engine.executor.resume,
+    resume: () => Effect.andThen(served.cancelsAsked, engine.executor.resume()),
     trouble: options.reports.trouble,
     sweepEveryMs: options.sweepEveryMs,
   });

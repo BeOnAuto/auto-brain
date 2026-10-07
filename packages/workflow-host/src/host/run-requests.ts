@@ -7,7 +7,7 @@ import { statement } from '../database/statement.ts';
 import { ledgerRunStore } from '../runs/ledger-run-store.ts';
 import { runIdOf, type RunAddress } from '../runs/run-address.ts';
 import { backOffLifted } from '../settlement/settle-attempts.ts';
-import { pendingCancelOf } from '../waiting/pending-cancels.ts';
+import { cancelledIfAsked } from '../waiting/pending-cancels.ts';
 import type { HostEngine } from './host-engine.ts';
 
 export type RunStart = Omit<Started, 'kind' | 'executionId' | 'at'>;
@@ -65,20 +65,6 @@ function settledAgain(parts: RequestParts, engine: HostEngine, runId: string): E
   });
 }
 
-function cancelledIfAsked(
-  { database, clock }: RequestParts,
-  engine: HostEngine,
-  run: RunAddress,
-): Effect.Effect<void, Conflict> {
-  return Effect.flatMap(pendingCancelOf(database, run), (pending) =>
-    pending === undefined
-      ? Effect.void
-      : Effect.asVoid(
-          engine.submitted({ kind: 'cancel_requested', executionId: runIdOf(run), at: clock.now(), ...pending }),
-        ),
-  );
-}
-
 export function runRequests(parts: RequestParts): RunRequests {
   const { database, clock } = parts;
   const runStore = ledgerRunStore(database);
@@ -104,7 +90,7 @@ export function runRequests(parts: RequestParts): RunRequests {
         if (outcome !== 'applied') {
           return 'going';
         }
-        yield* cancelledIfAsked(parts, engine, run);
+        yield* cancelledIfAsked({ database, submitted: engine.submitted, now: clock.now }, run);
         return 'started';
       }),
     deliver: (run, event) =>
