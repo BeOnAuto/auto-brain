@@ -146,8 +146,9 @@ describe('the presenter of an execution rejected for a conflict', () => {
 });
 
 describe('the presenter of an execution rejected for something it relies on', () => {
-  it('shows the kind and the reason of something unavailable, when it was given', () => {
+  it('shows the kind and the reason of something unavailable, when it was given, and the size of a record it kept', () => {
     const unavailable = { reason: 'unavailable', detail: 'No model' } as const;
+    const record = { usage: { total: 320 }, duration_ms: 41 };
 
     expect([
       presented({
@@ -157,6 +158,7 @@ describe('the presenter of an execution rejected for something it relies on', ()
         ...fact,
       }),
       presented({ type: 'execution_rejected', rejection: unavailable, ...ofGreet, ...fact }),
+      presented({ type: 'execution_rejected', rejection: unavailable, record, ...ofGreet, ...fact }),
     ]).toMatchObject([
       {
         summary:
@@ -167,6 +169,7 @@ describe('the presenter of an execution rejected for something it relies on', ()
         summary: 'A run did not go through: something the server relies on is not available right now.',
         data: { execution_id: executionId, by: 'acme-admin', ...unavailable },
       },
+      { data: { execution_id: executionId, by: 'acme-admin', ...unavailable, record_bytes: 40 } },
     ]);
   });
 
