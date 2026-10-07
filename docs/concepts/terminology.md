@@ -28,10 +28,10 @@ Use these descriptions when choosing a function type:
 | Reasoning   | Use a prompt, skills, and tools to interpret information or produce a response. |
 | Interaction | Exchange information with people or systems.                                    |
 | Prediction  | Create and use an ML model to make predictions.                                 |
-| Recall      | Retrieve or reconstruct relevant information from configured sources.           |
+| Recall      | Answer from what the brain keeps of its own history.                            |
 | Computation | Run defined code or expressions to calculate or transform data.                 |
 
-These describe each type's intended responsibility. Self-hosted reasoning functions can use operator-configured MCP tools in a bounded loop. Auto Cloud tool access, skill references and a separately managed tool library are still planned. A reasoning function can interpret, generate, classify or judge; it is not restricted to a model's reasoning mode. Interaction covers people and machines. Prediction includes creating and using a predictive model. Recall can consult sources beyond event history. Computation executes specified logic and need not be mathematically pure.
+These describe each type's intended responsibility. Self-hosted reasoning functions can use operator-configured MCP tools in a bounded loop. Auto Cloud tool access, skill references and a separately managed tool library are still planned. A reasoning function can interpret, generate, classify or judge; it is not restricted to a model's reasoning mode. Interaction covers people and machines. Prediction includes creating and using a predictive model. Recall answers from the brain's own history; recall over documents and other sources is not available yet. Computation executes specified logic and need not be mathematically pure.
 
 Classify a function by its responsibility. Calling an API does not turn a recall function into an interaction function. Running code does not turn a prediction function into a computation function.
 
@@ -48,7 +48,7 @@ Classify a function by its responsibility. Calling an API does not turn a recall
 | Version  | An identified revision of a definition or predictive model.                                                                                |
 | Run      | One execution of a workflow or function against particular inputs.                                                                         |
 | Step run | Execution of one workflow step.                                                                                                            |
-| Attempt  | One attempt under the existing retry model.                                                                                                |
+| Attempt  | One try at a step's work, or at a run started again under its id; a retry is another attempt.                                              |
 | Result   | The output produced by a run.                                                                                                              |
 
 A method does not require a `Method` resource. A shared function remains one definition when several workflows use it. A step refers to that definition; it does not copy it. A retry does not create another business function.
@@ -87,7 +87,7 @@ An interaction function asks a person or a system and takes the answer later. On
 | Memory           | The broader ability to retain information and make it available.                                         |
 | Event ledger     | One source of recorded history.                                                                          |
 
-A reasoning function has a prompt; the prompt is not the entire configured function. A function exposed as a tool keeps its function type and identity. A skill supplies guidance rather than naming every executable component. Recall retrieves or reconstructs information; memory, projections and the event ledger retain their distinct meanings.
+A reasoning function has a prompt; the prompt is not the entire configured function. A function exposed as a tool keeps its function type and identity. A skill supplies guidance rather than naming every executable component. Recall answers from what the brain keeps; memory, projections and the event ledger retain their distinct meanings.
 
 The prediction function, its predictive model and the prediction in a run result are also distinct. Labels such as **Build model**, **Evaluate model**, **Predict**, **Retrain model**, **No model**, **Building model** and **Ready** apply only when those lifecycle controls exist. Prediction is not implemented yet.
 

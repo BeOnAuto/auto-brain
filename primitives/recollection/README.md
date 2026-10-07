@@ -2,7 +2,7 @@
 
 The implementation of recall functions. A recall function keeps a view of its brain's own history: its fold, a program in jq, folds each event its filters name into the view, the host keeps the view as the brain records events, and a run answers from the view as it stands, applying the function's `answer` to it with the run's input. Its API identifier and package name are `recollection`; in text a user reads it is a recall function, and what it keeps its view.
 
-A recall function retrieves or reconstructs relevant information from configured sources, as [Brain terminology](../../docs/concepts/terminology.md) says. This package implements the source that exists today, the brain's own history; documents, files and other connected sources are not implemented, and neither is semantic search over text.
+A recall function answers from what the brain keeps of its own history, as [Brain terminology](../../docs/concepts/terminology.md) says. Documents, files and other connected sources are not implemented, and neither is semantic search over text.
 
 User documentation is [Recall function format](../../docs/reference/recall-format.md), published at [on.auto/docs](https://on.auto/docs/): the document, the events, the fold's contract, how the view is kept, the endings and the bounds. Update it alongside behaviour changes; `src/document/reference-example.test.ts` checks that its example is the document the tests run, folds to the view it shows and answers the output it shows, and runs its example of the common case, the outputs of one function's runs in a list, within the bound on a view.
 
