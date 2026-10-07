@@ -50,7 +50,7 @@ export function withBrainArgument(schema: Readonly<JsonSchema>): JsonSchema {
   return withoutUnreferencedDefinitions(withBrainOnEveryMember(schema));
 }
 
-function withoutBrain(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+export function withoutBrain(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
   return Object.fromEntries(Object.entries(input).filter(([key]: readonly [string, unknown]) => key !== 'brain'));
 }
 

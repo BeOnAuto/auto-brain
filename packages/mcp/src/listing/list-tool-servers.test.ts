@@ -111,3 +111,20 @@ describe('list_tool_servers', () => {
     expect(fake.seen()).toEqual([]);
   });
 });
+
+describe('list_tool_servers asked for one server', () => {
+  it('rejects a name that no tool server of the brain has, saying so and how to list the ones it has', async () => {
+    const fake = await fakeServer();
+    const { listed } = listingOn(fake);
+    const detail =
+      'This brain has no tool server named mail; call list_tool_servers without server to list the ones it has';
+
+    expect(await listed({ input: { server: 'mail' } })).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail,
+      issues: [{ detail, pointer: '/server' }],
+    });
+    expect(fake.seen()).toEqual([]);
+  });
+});
