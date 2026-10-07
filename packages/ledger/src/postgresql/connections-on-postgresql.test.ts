@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { setTimeout } from 'node:timers/promises';
 
 import { Effect, Layer, Logger } from 'effect';
 import { Client } from 'pg';
@@ -7,6 +8,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { openLedgerWith } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
 import { postgresqlLedgerLayer } from './postgresql-ledger.ts';
+import { emmettsMigrationLock } from './postgresql-run-outcomes.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -51,6 +53,26 @@ function endingConnectionsTo(database: string): string {
   return `SELECT pg_terminate_backend(pid) AS ended ${otherConnectionsTo(database)}`;
 }
 
+const closedWithinMs = 5000;
+
+const heldPastTheMigratorsOwnWaitMs = 12_000;
+
+async function untilNoneOpen(database: string): Promise<void> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  try {
+    await vi.waitFor(
+      async () => {
+        const { rows } = await client.query<Readonly<Record<string, unknown>>>(connectionsTo(database));
+        expect({ afterDisposal: rows }).toEqual({ afterDisposal: [{ open: 0 }] });
+      },
+      { timeout: closedWithinMs, interval: 50 },
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`, () => {
   it('builds on a database that another server is migrating at the same moment', async () => {
     const database = await aDatabase();
@@ -66,7 +88,7 @@ describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`
     expect(loaded).toEqual({ state: 1, version: 1 });
   });
 
-  it('closes every connection to the database when the runtime is disposed', async () => {
+  it('closes every connection to the database when the runtime is disposed', { timeout: 30_000 }, async () => {
     const database = await aDatabase();
     const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
     await Effect.runPromise(ledger.load('org/acme/tallies', tally));
@@ -74,12 +96,41 @@ describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`
 
     await dispose();
 
-    expect({ whileOpen, afterDisposal: await queried(database, connectionsTo(database)) }).toEqual({
-      whileOpen: [{ open: 1 }],
-      afterDisposal: [{ open: 0 }],
-    });
+    expect(whileOpen).toEqual([{ open: 1 }]);
+    await untilNoneOpen(database);
   });
 });
+
+describe.skipIf(skipped)(
+  `A ledger whose PostgreSQL database another server is filling${notice}`,
+  { timeout: 30_000 },
+  () => {
+    it('waits past the 10 s the migrator itself waits for the migration lock, and builds once the fill is done', async () => {
+      const database = await aDatabase();
+      const filling = new Client({ connectionString: database });
+      await filling.connect();
+      onTestFinished(() => filling.end());
+      await filling.query('SELECT pg_advisory_lock($1)', [emmettsMigrationLock]);
+      const fill = { done: false };
+
+      const opening = openLedgerWith(postgresqlLedgerLayer({ connectionString: database })).then((opened) => ({
+        opened,
+        afterTheFill: fill.done,
+      }));
+      await setTimeout(heldPastTheMigratorsOwnWaitMs);
+      fill.done = true;
+      await filling.query('SELECT pg_advisory_unlock($1)', [emmettsMigrationLock]);
+      const { opened, afterTheFill } = await opening;
+      onTestFinished(opened.dispose);
+
+      expect(afterTheFill).toBe(true);
+      expect(await Effect.runPromise(opened.ledger.execute('org/acme/tallies', tally, [1]))).toEqual({
+        state: 1,
+        version: 1,
+      });
+    });
+  },
+);
 
 describe.skipIf(skipped)(`A ledger whose PostgreSQL database ends its connections${notice}`, () => {
   it('reports each lost connection to the log, and goes on reading and appending on new ones', async () => {

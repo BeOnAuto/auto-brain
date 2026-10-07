@@ -141,7 +141,9 @@ function accountOf(words: SpecWords, event: ShownExecutionEvent, executionId: st
     return { summary: runFinished, data: { ...fact, ...sizes } };
   }
   if (event.type === 'execution_rejected') {
-    return { summary: runRejected(event.rejection), data: { ...fact, ...rejectionShown(event.rejection) } };
+    const { rejection, record } = event;
+    const recordSize = record === undefined ? {} : { record_bytes: jsonBytesOf(record) };
+    return { summary: runRejected(rejection), data: { ...fact, ...rejectionShown(rejection), ...recordSize } };
   }
   const { incident } = event;
   return { summary: runBrokeDown, data: incident === undefined ? fact : { ...fact, incident } };
