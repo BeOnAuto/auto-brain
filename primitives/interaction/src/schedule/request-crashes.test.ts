@@ -73,3 +73,17 @@ describe('a notification delivered, whose settlement the server stopped before',
     expect(asked.receiver.received()).toHaveLength(1);
   });
 });
+
+describe('a due request, as the host sees it', () => {
+  it('calls out for an attempt, and not for an expiry, a settlement or an attempt lost', async () => {
+    const { brain, askedAt } = await askedThroughPartner();
+
+    const toAttempt = await brain.dueItems(askedAt);
+    const toExpire = await brain.dueItems(askedAt + 3 * days);
+
+    expect([toAttempt.map(({ callsOut }) => callsOut), toExpire.map(({ callsOut }) => callsOut)]).toEqual([
+      [true],
+      [false],
+    ]);
+  });
+});

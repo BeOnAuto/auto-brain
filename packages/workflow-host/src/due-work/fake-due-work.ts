@@ -15,6 +15,7 @@ export interface FakeDueWork {
   readonly add: (key: string, dueAt: number) => void;
   readonly failing: (key: string) => void;
   readonly hanging: (key: string) => void;
+  readonly local: (key: string) => void;
   readonly performed: () => readonly PerformedRow[];
   readonly attempts: () => readonly PerformedRow[];
   readonly mostAtOnce: () => number;
@@ -95,9 +96,15 @@ function flight(): Flight {
   };
 }
 
-function itemOf(store: RowStore, flown: Flight, row: Omit<PerformedRow, 'at'>, performMs: number): DueItem {
+function itemOf(
+  store: RowStore,
+  flown: Flight,
+  row: Omit<PerformedRow, 'at'>,
+  { performMs, callsOut }: { readonly performMs: number; readonly callsOut: boolean },
+): DueItem {
   return {
     key: row.key,
+    callsOut,
     perform: (at) =>
       Effect.promise(() => flown.attempt({ ...row, at }, performMs)).pipe(
         Effect.andThen((fails) => (flown.hangs(row.key) ? Effect.never : Effect.succeed(fails))),
@@ -120,6 +127,7 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
   const store = rowStore();
   const flown = flight();
   const reads = { failing: 0, due: 0, next: 0 };
+  const locals = new Set<string>();
   const read = <A>(answer: () => A): Effect.Effect<A, Error> =>
     Effect.suspend(() => {
       reads.failing -= 1;
@@ -131,7 +139,9 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
       due: (now, most) =>
         read(() => {
           reads.due += 1;
-          return store.dueBy(now, most).map((key) => itemOf(store, flown, { key, by }, performMs));
+          return store
+            .dueBy(now, most)
+            .map((key) => itemOf(store, flown, { key, by }, { performMs, callsOut: !locals.has(key) }));
         }),
       nextDueAt: (after) =>
         read(() => {
@@ -142,6 +152,9 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
     add: store.add,
     failing: flown.failing,
     hanging: flown.hanging,
+    local: (key) => {
+      locals.add(key);
+    },
     performed: store.performed,
     attempts: flown.attempts,
     mostAtOnce: flown.most,

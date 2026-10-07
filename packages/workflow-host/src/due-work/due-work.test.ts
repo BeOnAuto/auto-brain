@@ -154,6 +154,26 @@ describe('due rows in flight', () => {
   });
 });
 
+describe('a due row that calls out nowhere, while deliveries hang', () => {
+  it('is performed at once, beside the 16 that hang, not behind them', async () => {
+    const now = Date.now();
+    const rows = fakeDueWork();
+    for (const key of Array.from({ length: 20 }, (_, index) => `delivery-${index}`)) {
+      rows.add(key, now - 1000);
+      rows.hanging(key);
+    }
+    rows.add('expiry', now - 1000);
+    rows.local('expiry');
+
+    await dueLooping(rows);
+    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
+
+    expect(performed?.key).toBe('expiry');
+    expect(Date.now() - now).toBeLessThan(dueAwaitedMs);
+    expect(rows.mostAtOnce()).toBe(duePerformedAtOnce + 1);
+  });
+});
+
 describe('a due row that cannot be performed', () => {
   it('is tried again after a wait that doubles, without holding the rows due after it', async () => {
     const now = Date.now();
