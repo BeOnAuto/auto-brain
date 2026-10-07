@@ -26,6 +26,7 @@ const specTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'cancel_execution',
   'list_executions',
   'get_execution_history',
   'get_brain_analytics',

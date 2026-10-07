@@ -1,6 +1,6 @@
 import type { AppRuntime } from '@beonauto/api';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
-import { defineSendExecutionEvent, makeWorkflowAdapter, runPresenter } from '@beonauto/orchestration';
+import { callMarginMs, defineSendExecutionEvent, makeWorkflowAdapter, runPresenter } from '@beonauto/orchestration';
 import { defineStartVersion, type Primitive } from '@beonauto/specs';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
@@ -9,8 +9,6 @@ import { brainOperationsServing } from '../composition/brain-operations.ts';
 import { routesFor } from '../composition/served-routes.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { openedHost, type HostParts } from './host-dependencies.ts';
-
-const callMarginMs = 60_000;
 
 interface OrgOperation {
   readonly registration: Registration<'org'>;
@@ -42,11 +40,12 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     mostDurationMs: parts.workflows.mostDurationMs,
     longestCallMs: longestCallOf(parts.primitives),
   });
-  const host = await openedHost(runtime, dispatcher, parts, defineStartVersion([...parts.primitives, workflow]));
+  const primitives = [...parts.primitives, workflow];
+  const host = await openedHost(runtime, dispatcher, { ...parts, primitives }, defineStartVersion(primitives));
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
-    ...brainOperationsServing([...parts.primitives, workflow], [runPresenter]),
+    ...brainOperationsServing(primitives, [runPresenter]),
     defineSendExecutionEvent(host),
   ]);
   return { routes: routesFor(runtime, catalog, dispatcher), stopWork: host.stop };

@@ -29,7 +29,7 @@ describe('readSettings', () => {
       ledger: { store: 'sqlite', file: 'data/ledger.db' },
       localMode: false,
       logFormat: 'json',
-      workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
+      workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
     });
@@ -57,7 +57,7 @@ describe('readSettings', () => {
       ledger: { store: 'sqlite', file: '/data/ledger.db' },
       localMode: true,
       logFormat: 'pretty',
-      workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, sweepEveryMs: 1000 },
+      workflows: { mostDurationMs: 2_592_000_000, mostCallsAtOnce: 32, mostOpenCalls: 1000, sweepEveryMs: 1000 },
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, brainsAtOnce: 4 },
       configFile: undefined,

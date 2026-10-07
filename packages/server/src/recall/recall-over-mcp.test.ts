@@ -89,7 +89,7 @@ describe('the spec tools an agent sees', { timeout: recallTestTimeoutMs }, () =>
       (session) => session.listTools(),
     );
 
-    expect(listedTools(everyTool)).toHaveLength(19);
+    expect(listedTools(everyTool)).toHaveLength(20);
     expect(createSpec?.description).toContain(
       '- `recollection` (Recall), whose definition documents are text/markdown',
     );

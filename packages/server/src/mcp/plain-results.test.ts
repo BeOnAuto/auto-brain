@@ -165,8 +165,13 @@ async function workflowsCalled(session: McpSession): Promise<Called> {
       'send_execution_event',
       await session.callTool('send_execution_event', inSales({ execution_id: executionId, event })),
     ],
+    ['cancel_execution', await cancelled(session, await session.callTool('execute_spec', inSales(workflow)))],
     ['retire_spec', await session.callTool('retire_spec', inSales(workflow))],
   ];
+}
+
+function cancelled(session: McpSession, { structuredContent }: ToolResult): Promise<ToolResult> {
+  return session.callTool('cancel_execution', inSales({ execution_id: String(structuredContent?.['execution_id']) }));
 }
 
 async function errorsCalled(session: McpSession): Promise<Called> {
@@ -244,14 +249,13 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
       ],
       errors: await errorsCalled(session),
     }));
+    const everyResult = [...successes, ...errors];
 
     expect(new Set(successes.map(([name]) => name))).toEqual(new Set(tools));
     expect(successes.filter(([, result]) => result.isError === true)).toEqual([]);
     expect(errors.map((called) => audienceOf(called))).toEqual(errors.map(([label]) => [label, true]));
-    expect([...successes, ...errors].flatMap((called) => leaked(called))).toEqual([]);
-    expect([...successes, ...errors].map(([, result]) => result.content.length)).toEqual(
-      [...successes, ...errors].map(() => 2),
-    );
+    expect(everyResult.flatMap((called) => leaked(called))).toEqual([]);
+    expect(everyResult.map(([, result]) => result.content.length)).toEqual(everyResult.map(() => 2));
   });
 
   it('say plainly that a connection is not allowed to do what it asked', async () => {

@@ -13,33 +13,41 @@ function errorFrom(environment: Environment): unknown {
 }
 
 describe('the workflow settings', () => {
-  it('let a run last 30 days, run 32 calls at once and sweep every second when nothing is set', () => {
+  it('let a run last 30 days, run 32 calls at once, keep 1000 calls open under a run and sweep every second when nothing is set', () => {
     expect(readSettings({}).workflows).toEqual({
       mostDurationMs: 2_592_000_000,
       mostCallsAtOnce: 32,
+      mostOpenCalls: 1000,
       sweepEveryMs: 1000,
     });
   });
 
-  it('read how long a run may last, how many calls run at once and how often the runs are swept', () => {
+  it('read how long a run may last, how many calls run at once, how many stay open and how often the runs are swept', () => {
     const workflows = readSettings({
       ORCHESTRATION_MAX_DURATION: 'P7D',
       ORCHESTRATION_NESTED_EXECUTIONS: '8',
+      ORCHESTRATION_MAX_OPEN_CALLS: '50',
       ORCHESTRATION_SWEEP_INTERVAL: 'PT0.25S',
     }).workflows;
 
-    expect(workflows).toEqual({ mostDurationMs: 604_800_000, mostCallsAtOnce: 8, sweepEveryMs: 250 });
+    expect(workflows).toEqual({
+      mostDurationMs: 604_800_000,
+      mostCallsAtOnce: 8,
+      mostOpenCalls: 50,
+      sweepEveryMs: 250,
+    });
   });
 
   it('stop the server from starting when one is malformed or out of bounds, naming each and never its value', () => {
     const error = errorFrom({
       ORCHESTRATION_MAX_DURATION: 'secret-forever',
       ORCHESTRATION_NESTED_EXECUTIONS: '1001',
+      ORCHESTRATION_MAX_OPEN_CALLS: '0',
       ORCHESTRATION_SWEEP_INTERVAL: 'PT2M',
     });
 
     expect(String(error)).toBe(
-      'InvalidSettingsError: The workflow settings are invalid. ORCHESTRATION_MAX_DURATION: Expected an ISO 8601 duration from PT2H to P365D, such as P30D; ORCHESTRATION_NESTED_EXECUTIONS: Expected a whole number from 1 to 1000, such as 32; ORCHESTRATION_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
+      'InvalidSettingsError: The workflow settings are invalid. ORCHESTRATION_MAX_DURATION: Expected an ISO 8601 duration from PT2H to P365D, such as P30D; ORCHESTRATION_NESTED_EXECUTIONS: Expected a whole number from 1 to 1000, such as 32; ORCHESTRATION_MAX_OPEN_CALLS: Expected a whole number from 1 to 9999, such as 1000; ORCHESTRATION_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
     );
   });
 

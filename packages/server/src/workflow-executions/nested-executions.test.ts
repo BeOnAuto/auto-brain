@@ -56,14 +56,16 @@ describe('a nested execution of a workflow', { timeout: workflowTestTimeoutMs },
     expect(server.modelCalls()).toBe(1);
   });
 
-  it('cannot be of another workflow: a workflow that names one is refused when it is created', async () => {
+  it('may be of another workflow, whose run it waits for under the id it gives that run', async () => {
     await servingAsking();
+    await server.call('POST', `${alpha}/specs/orchestration`, { body: { name: 'nesting', source: nesting } });
 
-    const created = await server.call('POST', `${alpha}/specs/orchestration`, {
-      body: { name: 'nesting', source: nesting },
-    });
+    const settled = await settledRunOf('nesting');
+    const nested = String(server.modelExecutions()[0]);
+    const askingRuns = await server.call('GET', `${alpha}/executions?name=asking`);
 
-    expect(created.status).toBe(422);
-    expect(created.text).toContain('A workflow cannot execute another workflow in this version');
+    expect(settled).toMatchObject({ body: { status: 'succeeded', output: 'Short.' } });
+    expect(askingRuns).toMatchObject({ body: { executions: [{ status: 'succeeded' }] } });
+    expect(nested).not.toBe(executionIdIn(settled.body));
   });
 });
