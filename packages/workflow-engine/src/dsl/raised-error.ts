@@ -1,9 +1,7 @@
 import {
-  CancelledKindSchema,
   isKindWithType,
   problemTypeOf,
   UnavailableBecauseSchema,
-  type CancelledKind,
   type KindWithType,
   type Settlement,
 } from '@beonauto/operations';
@@ -102,15 +100,9 @@ export function describeError({ type, title, detail, instance }: DslError): stri
 
 const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
 
-const isCancelledKind = Schema.is(CancelledKindSchema);
-
 const isUnavailableBecause = Schema.is(UnavailableBecauseSchema);
 
 const cancelledType = problemTypeOf('cancelled');
-
-function cancelledKindOf({ type, kind }: DslError): CancelledKind | undefined {
-  return type === cancelledType && isCancelledKind(kind) ? kind : undefined;
-}
 
 export function reasonOfStatus(status: number): 'invalid_input' | 'unavailable' {
   return status >= 400 && status < 500 && !retryableStatuses.has(status) ? 'invalid_input' : 'unavailable';
@@ -130,10 +122,6 @@ function ownTypeRejectionOf(kind: KindWithType, detail: string, because: string 
 
 function settledRejectionOf(error: DslError): Settlement {
   const detail = describeError(error);
-  const cancelled = cancelledKindOf(error);
-  if (cancelled !== undefined) {
-    return { status: 'rejected', reason: 'cancelled', detail, kind: cancelled };
-  }
   const { type, kind, because } = error;
   if (isKindWithType(kind) && type === problemTypeOf(kind)) {
     return ownTypeRejectionOf(kind, detail, because);
@@ -214,7 +202,7 @@ function typeOfRejection(result: FailedCall, kind: string | undefined): string |
   return isKindWithType(kind) ? problemTypeOf(kind) : undefined;
 }
 
-function capitalized(text: string): string {
+export function capitalized(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 

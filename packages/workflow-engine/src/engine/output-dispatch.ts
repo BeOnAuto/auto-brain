@@ -53,7 +53,7 @@ function originOf(version: number, { steps }: RunEvent): OutputOrigin {
 }
 
 function isMootOnceEnded(output: RunOutput): boolean {
-  return output.kind === 'start_call' || output.kind === 'cancel_call';
+  return output.kind === 'start_call';
 }
 
 function firstFailureIn(

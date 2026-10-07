@@ -3,7 +3,7 @@ import { invalidArguments, type CallResult } from '@beonauto/operations';
 import type { CancelReason } from '../dispatch/run-output.ts';
 import { evaluateTemplate } from '../dsl/evaluation.ts';
 import { field, jsonBytesOf } from '../dsl/json.ts';
-import { callErrorOf, errorType, raised } from '../dsl/raised-error.ts';
+import { callErrorOf, capitalized, errorType, raised } from '../dsl/raised-error.ts';
 import { callKeyText } from '../executor/call-key.ts';
 import type { DslError } from '../machine/dsl-error.ts';
 import { mostCallArgumentsBytes } from '../machine/limits.ts';
@@ -76,7 +76,7 @@ function timedOutCall({ machine }: Invocation, body: CallBody, milliseconds: num
   return raisedOf({
     type: errorType('timeout'),
     status: 408,
-    title: `${body.label} did not finish within ${milliseconds} ms, the most it may take`,
+    title: `${capitalized(body.label)} did not finish within ${milliseconds} ms, the most it may take`,
     instance: body.key.reference,
   });
 }

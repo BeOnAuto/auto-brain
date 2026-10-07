@@ -20,8 +20,19 @@ function cancelledWhileItAsks(failing: 'cancel_call' | 'settle') {
 }
 
 describe('the outputs of a run that has ended', () => {
-  it('pass a cancel of a call that fails, so the settlement after it is made and the dispatch moves on', () => {
-    expect(cancelledWhileItAsks('cancel_call')).toMatchObject({ watermark: 2, settled: { status: 'rejected' } });
+  it('stop at a cancel of a call that fails, which is dispatched again, since the run it waits for must be cancelled', () => {
+    expect(cancelledWhileItAsks('cancel_call')).toEqual({ watermark: 1, settled: undefined });
+  });
+
+  it('pass a start of a call that fails, which nothing can use once the run has ended', () => {
+    const driver = memoryDriver({ respond: () => 'never' });
+    driver.ports.faults.failNext('start_call');
+    driver.start({ executionId, document: asking });
+    driver.ports.faults.failNext('start_call');
+    driver.cancel(executionId);
+
+    expect(Effect.runSync(driver.ports.watermark.read(executionId))).toBe(2);
+    expect(driver.ports.recordStore.settlementOf(executionId)).toMatchObject({ status: 'rejected' });
   });
 
   it('stop at a settlement that fails, which is never passed', () => {

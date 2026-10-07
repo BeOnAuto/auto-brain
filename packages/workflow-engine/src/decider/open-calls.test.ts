@@ -186,7 +186,7 @@ describe('every open call', () => {
       error: {
         type: 'https://open-workflow-specification.org/spec/1.0.0/errors/timeout',
         status: 408,
-        title: `the function notify did not finish within ${longestCallMs} ms, the most it may take`,
+        title: `The function notify did not finish within ${longestCallMs} ms, the most it may take`,
         instance: '/do/0/ask',
       },
     });

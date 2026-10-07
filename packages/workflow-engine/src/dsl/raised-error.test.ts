@@ -125,21 +125,18 @@ describe('the error of a call whose run was cancelled', () => {
     });
   });
 
-  it('ends a workflow that does not catch it as cancelled with the same kind', () => {
+  it('ends a workflow that does not catch it by its status, without the kind, since the workflow itself was not cancelled', () => {
     const error = callErrorOf({ status: 'rejected', reason: 'cancelled', detail: 'Out', kind: 'parent_ended' }, site);
 
     expect(settlementOf({ kind: 'raised', error })).toEqual({
       status: 'rejected',
-      reason: 'cancelled',
-      detail: 'The function notify rejected the execution with cancelled: Out (at /do/0/ask)',
-      kind: 'parent_ended',
-    });
-    expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'overrun' } })).toMatchObject({
-      reason: 'cancelled',
-      kind: 'overrun',
-    });
-    expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'stalled' } })).toMatchObject({
       reason: 'invalid_input',
+      detail: 'The function notify rejected the execution with cancelled: Out (at /do/0/ask)',
+    });
+    expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'overrun' } })).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'The function notify rejected the execution with cancelled: Out (at /do/0/ask)',
     });
   });
 });
