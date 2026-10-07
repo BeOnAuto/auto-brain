@@ -1,11 +1,43 @@
 import { viewsTable } from '../views/view-statements.ts';
 import { statement, type Statement } from './statement.ts';
 
-export const timerColumnsOnSQLite = statement`SELECT name FROM pragma_table_info('workflow_timers')`;
+export interface AddedColumn {
+  readonly table: string;
+  readonly column: string;
+  readonly added: Statement;
+  readonly addedWhenMissing: Statement;
+}
 
-export const armedByAdded = statement`ALTER TABLE workflow_timers ADD COLUMN armed_by BIGINT`;
+export function columnsOnSQLite(table: string): Statement {
+  return statement`SELECT name FROM pragma_table_info(${table})`;
+}
 
-export const armedByAddedWhenMissing = statement`ALTER TABLE workflow_timers ADD COLUMN IF NOT EXISTS armed_by BIGINT`;
+export const addedColumns: readonly AddedColumn[] = [
+  {
+    table: 'workflow_timers',
+    column: 'armed_by',
+    added: statement`ALTER TABLE workflow_timers ADD COLUMN armed_by BIGINT`,
+    addedWhenMissing: statement`ALTER TABLE workflow_timers ADD COLUMN IF NOT EXISTS armed_by BIGINT`,
+  },
+  {
+    table: 'workflow_calls',
+    column: 'child',
+    added: statement`ALTER TABLE workflow_calls ADD COLUMN child TEXT`,
+    addedWhenMissing: statement`ALTER TABLE workflow_calls ADD COLUMN IF NOT EXISTS child TEXT`,
+  },
+  {
+    table: 'workflow_calls',
+    column: 'root_id',
+    added: statement`ALTER TABLE workflow_calls ADD COLUMN root_id TEXT`,
+    addedWhenMissing: statement`ALTER TABLE workflow_calls ADD COLUMN IF NOT EXISTS root_id TEXT`,
+  },
+];
+
+export const indexesOfAddedColumns: readonly Statement[] = [
+  statement`CREATE INDEX IF NOT EXISTS workflow_calls_open_by_root ON workflow_calls (root_id)
+    WHERE state IN ('running', 'waiting')`,
+  statement`CREATE INDEX IF NOT EXISTS workflow_calls_waiting_by_run ON workflow_calls (run_id) WHERE state = 'waiting'`,
+];
 
 const followerTables: readonly Statement[] = [
   statement`CREATE TABLE IF NOT EXISTS workflow_followed_brains (
@@ -128,7 +160,9 @@ export const hostTables: readonly Statement[] = [
     call TEXT,
     attributes TEXT,
     result TEXT,
-    delivered INTEGER NOT NULL DEFAULT 0
+    delivered INTEGER NOT NULL DEFAULT 0,
+    child TEXT,
+    root_id TEXT
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_calls_unfinished ON workflow_calls (call_key)
     WHERE state = 'running' OR (state = 'answered' AND delivered = 0)`,

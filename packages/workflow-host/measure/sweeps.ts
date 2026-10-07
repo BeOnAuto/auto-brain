@@ -1,13 +1,14 @@
 import { Effect, Function } from 'effect';
 
-import type { DatabaseSettings } from '../src/database/host-databases.ts';
-import { openHostDatabase } from '../src/database/host-databases.ts';
+import { openHostDatabase, type DatabaseSettings } from '../src/database/host-databases.ts';
 import { passOf } from '../src/follower/brain-pass.ts';
 import { brainRecordsOf } from '../src/follower/brain-records.ts';
 import { followedBrainsOn } from '../src/follower/followed-brains.ts';
 import { eventTrigger, published, specRecorded, triggerOfSource } from '../src/reaction-testing/brain-writes.ts';
 import { specRecordsOn } from '../src/reactions/spec-records.ts';
 import { brainSweepsOn, type BrainSweeps } from '../src/sweeps/brain-sweeps.ts';
+import { resultOfEnding } from '../src/waiting-testing/recorded-waiting.ts';
+import { servedWaitingOf } from '../src/waiting/waiting-parts.ts';
 
 export interface SweepCost {
   readonly brains: number;
@@ -73,6 +74,15 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
     records: brainRecordsOf(opened.store),
     brains: followed,
     consumers: [],
+    calls: servedWaitingOf({
+      database: opened,
+      submitted: Effect.die,
+      resultOf: resultOfEnding,
+      settle: () => Effect.die(new Error('The measured brains settle nothing')),
+      cancelDeferred: () => Effect.void,
+      workflows: 'orchestration',
+      now: Date.now,
+    }).calls,
     primitive: 'orchestration',
     applySpecRecord: specRecordsOn(opened, triggerOfSource),
     unreadable: () => Effect.void,

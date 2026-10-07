@@ -1,6 +1,6 @@
 import { Effect, Result, Schema } from 'effect';
 
-import { deliveriesOfARecordInAPass, type RecordConsumer, type Delivery, type FollowedRecord } from './consumers.ts';
+import { deliveriesOfARecordInAPass, type BoundConsumer, type Delivery } from './consumers.ts';
 import type { Progress } from './followed-brains.ts';
 
 export type Mode = 'signal' | 'sweep';
@@ -17,7 +17,7 @@ interface Resumption {
 
 const MarkerSchema = Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String]));
 
-function resumptionOf(consumers: readonly RecordConsumer[], delivered: string | null): Resumption {
+function resumptionOf(consumers: readonly BoundConsumer[], delivered: string | null): Resumption {
   if (delivered === null) {
     return { first: 0, after: undefined };
   }
@@ -35,14 +35,9 @@ function textOf(consumer: string, key: string): string {
   return JSON.stringify([consumer, key]);
 }
 
-interface Delivering {
-  readonly followed: FollowedRecord;
-  readonly mode: Mode;
-}
-
 function deliveredOne(
-  { followed, mode }: Delivering,
-  consumer: RecordConsumer,
+  mode: Mode,
+  consumer: BoundConsumer,
   delivery: Delivery,
   progress: Progress,
 ): Effect.Effect<Delivered> {
@@ -55,22 +50,22 @@ function deliveredOne(
     if (attempts < consumer.skippedAfterSweeps) {
       return { progress: { ...progress, attempts, waiting: true }, end: 'waiting' };
     }
-    yield* consumer.skipped(followed, delivery, done.failure.detail);
+    yield* consumer.skipped(delivery, done.failure.detail);
     return { progress: { ...progress, delivered: textOf(consumer.name, delivery.key), attempts: 0 } };
   });
 }
 
 function deliveredByConsumer(
-  delivering: Delivering,
-  consumer: RecordConsumer,
+  mode: Mode,
+  consumer: BoundConsumer,
   start: { readonly progress: Progress; readonly after: string | undefined; readonly budget: number },
 ): Effect.Effect<Delivered & { readonly budget: number }> {
   return Effect.gen(function* () {
     let { progress, after, budget } = start;
     for (;;) {
-      const batch = yield* consumer.batchOf(delivering.followed, after, budget);
+      const batch = yield* consumer.batchOf(after, budget);
       for (const delivery of batch.deliveries) {
-        const delivered = yield* deliveredOne(delivering, consumer, delivery, progress);
+        const delivered = yield* deliveredOne(mode, consumer, delivery, progress);
         progress = delivered.progress;
         budget -= 1;
         if (delivered.end !== undefined) {
@@ -95,8 +90,7 @@ interface DeliveredAll extends Delivered {
 }
 
 export function deliveredAll(
-  consumers: readonly RecordConsumer[],
-  followed: FollowedRecord,
+  consumers: readonly BoundConsumer[],
   progress: Progress,
   mode: Mode,
 ): Effect.Effect<DeliveredAll> {
@@ -105,7 +99,7 @@ export function deliveredAll(
     let current: Delivered & { readonly budget: number } = { progress, budget: deliveriesOfARecordInAPass };
     for (const [offset, consumer] of consumers.slice(first).entries()) {
       const after = offset === 0 ? resumedAfter : undefined;
-      current = yield* deliveredByConsumer({ followed, mode }, consumer, { ...current, after });
+      current = yield* deliveredByConsumer(mode, consumer, { ...current, after });
       if (current.end !== undefined) {
         return { progress: current.progress, end: current.end, made: current.budget < deliveriesOfARecordInAPass };
       }

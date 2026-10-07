@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DatabaseFailed, HostDatabase } from './host-database.ts';
 import { openHostDatabase } from './host-databases.ts';
-import { armedByAddedWhenMissing, hostTables } from './host-tables.ts';
+import { addedColumns, hostTables, indexesOfAddedColumns } from './host-tables.ts';
 import { postgresqlDatabaseOn, type Connection, type Connections } from './postgresql-database.ts';
 import { statement, textOnPostgreSQL, type StatementValue } from './statement.ts';
 
@@ -83,7 +83,8 @@ const migrationAsked: readonly Asked[] = [
   { text: 'BEGIN', values: [] },
   { text: 'SELECT pg_advisory_xact_lock($1)', values: [7_461_239_041] },
   ...hostTables.map((table) => ({ text: textOnPostgreSQL(table), values: [] })),
-  { text: textOnPostgreSQL(armedByAddedWhenMissing), values: [] },
+  ...addedColumns.map(({ addedWhenMissing }) => ({ text: textOnPostgreSQL(addedWhenMissing), values: [] })),
+  ...indexesOfAddedColumns.map((index) => ({ text: textOnPostgreSQL(index), values: [] })),
   { text: 'COMMIT', values: [] },
 ];
 

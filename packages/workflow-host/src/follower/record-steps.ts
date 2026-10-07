@@ -3,8 +3,14 @@ import { Effect } from 'effect';
 
 import type { ApplySpecRecord } from '../reactions/spec-records.ts';
 import { relativeRecord } from './brain-records.ts';
-import type { Consumer, FollowedRecord, RecordConsumer } from './consumers.ts';
-import { deliverySweeps } from './consumers.ts';
+import {
+  boundTo,
+  deliverySweeps,
+  type CallConsumer,
+  type Consumer,
+  type FollowedRecord,
+  type RecordConsumer,
+} from './consumers.ts';
 import { deliveredAll, type Mode } from './delivery-loop.ts';
 import type { Progress } from './followed-brains.ts';
 import { followedEventOf } from './followed-events.ts';
@@ -21,6 +27,7 @@ export interface Step {
 export interface StepParts {
   readonly consumers: readonly RecordConsumer[];
   readonly registered: readonly Consumer[];
+  readonly calls: readonly CallConsumer[];
   readonly primitive: string;
   readonly applySpecRecord: ApplySpecRecord;
   readonly unreadable: (brainKey: string, record: RecordedEvent) => Effect.Effect<void>;
@@ -44,8 +51,7 @@ function passedOver(record: RecordedEvent): Progress {
   return { cursor: record.cursor, delivered: null, attempts: 0, waiting: false };
 }
 
-function followedOf(parts: StepParts, brainKey: string, record: RecordedEvent): Effect.Effect<FollowedRecord | null> {
-  const relative = relativeRecord(brainKey, record);
+function followedOf(parts: StepParts, brainKey: string, relative: RecordedEvent): Effect.Effect<FollowedRecord | null> {
   const event = followedEventOf(relative, parts.primitive);
   if (event === 'unreadable') {
     return Effect.as(parts.unreadable(brainKey, relative), null);
@@ -70,15 +76,26 @@ function runRecordStep(parts: StepParts, stepping: Stepping, progress: Progress,
   });
 }
 
+function boundOf(parts: StepParts, followed: FollowedRecord | null) {
+  if (followed === null) {
+    return [];
+  }
+  const wanting = parts.registered.filter(({ types }) => types.includes(followed.event.event.type));
+  return [...parts.consumers, ...wanting].map((consumer) => boundTo(consumer, followed));
+}
+
 function deliveredStep(parts: StepParts, stepping: Stepping, progress: Progress, record: RecordedEvent) {
   return Effect.gen(function* () {
-    const followed = yield* followedOf(parts, stepping.brainKey, record);
-    if (followed === null) {
+    const { brainKey } = stepping;
+    const relative = relativeRecord(brainKey, record);
+    const calls = parts.calls
+      .filter(({ types }) => types.includes(record.type))
+      .map((consumer) => boundTo(consumer, { brain: brainOfKey(brainKey), brainKey, record: relative }));
+    const consumers = [...calls, ...boundOf(parts, yield* followedOf(parts, brainKey, relative))];
+    if (consumers.length === 0) {
       return { progress: passedOver(record) };
     }
-    const wanting = parts.registered.filter(({ types }) => types.includes(followed.event.event.type));
-    const consumers = [...parts.consumers, ...wanting];
-    const { made, ...delivered } = yield* deliveredAll(consumers, followed, progress, stepping.mode);
+    const { made, ...delivered } = yield* deliveredAll(consumers, progress, stepping.mode);
     return delivered.end === undefined
       ? { progress: passedOver(record), delivered: made }
       : { ...delivered, delivered: made };

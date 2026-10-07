@@ -1,5 +1,5 @@
 import { NotFound, SettlementSchema, type Lineage, type Settlement } from '@beonauto/operations';
-import type { SettleExecution, Settlement as RecordedSettlement } from '@beonauto/specs';
+import type { SettleExecution } from '@beonauto/specs';
 import { DispatchFailed, type RecordStore, type SettleReceipt } from '@beonauto/workflow-engine';
 import { Cause, Effect, Equal, Option, Predicate, Schema } from 'effect';
 
@@ -42,11 +42,11 @@ interface Settling {
   readonly lineage: Lineage;
 }
 
-function recordedSettlementOf(settlement: Settlement): RecordedSettlement {
-  return settlement.status === 'succeeded' ? { ...settlement, record: {} } : settlement;
-}
-
-function recorded(database: HostDatabase, runId: string, settlement: Settlement): Effect.Effect<void, DatabaseFailed> {
+export function settlementRecorded(
+  database: HostDatabase,
+  runId: string,
+  settlement: Settlement,
+): Effect.Effect<void, DatabaseFailed> {
   return Effect.asVoid(
     Effect.all([
       database.write(
@@ -79,7 +79,7 @@ function failedAttempt({ database, parts, runId }: Settling, detail: string): Re
 
 function succeeded({ database, parts, runId, settlement }: Settling, attemptsBefore: number): Receipt {
   return Effect.gen(function* () {
-    yield* recorded(database, runId, settlement);
+    yield* settlementRecorded(database, runId, settlement);
     if (attemptsBefore >= settleAttemptsBeforeBackingOff) {
       yield* parts.note({ kind: 'settled_after_back_off', run: addressOfRun(runId), attempts: attemptsBefore + 1 });
     }
@@ -90,7 +90,7 @@ function succeeded({ database, parts, runId, settlement }: Settling, attemptsBef
 function settledFor(settling: Settling, attemptsBefore: number): Receipt {
   const { org, brain, executionId } = addressOfRun(settling.runId);
   const execution = { org, brain, id: executionId };
-  return settling.parts.settle(execution, recordedSettlementOf(settling.settlement), settling.lineage).pipe(
+  return settling.parts.settle(execution, settling.settlement, settling.lineage).pipe(
     Effect.matchCauseEffect({
       onSuccess: () => succeeded(settling, attemptsBefore),
       onFailure: (cause: Cause.Cause<unknown>) =>

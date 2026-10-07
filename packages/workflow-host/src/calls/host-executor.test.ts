@@ -11,6 +11,8 @@ import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runId } from '../testing/probe-subjects.ts';
 import { hostExecutor, type Deliver, type HostExecutor } from './host-executor.ts';
 
+const origin = { version: 2, lastStep: null };
+
 const run = { executionId: runId, attributes: { org: 'acme' } };
 
 const call: StartCall = {
@@ -62,6 +64,10 @@ async function executing(answer: Answer = answeredSent): Promise<Executing> {
             troubles.push(what);
           }),
         mostAtOnce: 2,
+        mostOpen: 1000,
+        childOf: () => null,
+        childAnswerOf: () => Effect.undefined,
+        cancelChild: () => Effect.void,
       }),
     performed: () => counts.performed,
     answered: () => answered,
@@ -88,7 +94,7 @@ describe('the executor of the host', () => {
     const calls = await executing(neverAnswered);
     const executor = calls.executorOn();
     await Effect.runPromise(executor.executor.start(call, run));
-    await Effect.runPromise(executor.executor.cancel({ kind: 'cancel_call', key: call.key }, run));
+    await Effect.runPromise(executor.executor.cancel({ kind: 'cancel_call', key: call.key }, run, origin));
     await Effect.runPromise(executor.executor.start({ ...call, key: { ...call.key, run: 2 } }, run));
 
     await Effect.runPromise(executor.stop());
@@ -105,7 +111,7 @@ describe('the executor of the host, after a host died', () => {
     await Effect.runPromise(died.stop());
 
     const cancelled = await Effect.runPromise(
-      calls.executorOn().executor.cancel({ kind: 'cancel_call', key: call.key }, run),
+      calls.executorOn().executor.cancel({ kind: 'cancel_call', key: call.key }, run, origin),
     );
 
     expect(cancelled).toBe('cancelled');
@@ -120,12 +126,12 @@ describe('the executor of the host, answering', () => {
     await Effect.runPromise(running.executor.start(call, run));
     const cancel = { kind: 'cancel_call', key: call.key } as const;
 
-    const cancelled = await Effect.runPromise(calls.executorOn().executor.cancel(cancel, run));
-    const cancelledAgain = await Effect.runPromise(calls.executorOn().executor.cancel(cancel, run));
+    const cancelled = await Effect.runPromise(calls.executorOn().executor.cancel(cancel, run, origin));
+    const cancelledAgain = await Effect.runPromise(calls.executorOn().executor.cancel(cancel, run, origin));
     await Effect.runPromise(Deferred.succeed(finishing, sent));
     await Effect.runPromise(running.idle());
 
-    expect([cancelled, cancelledAgain, calls.answered()]).toEqual(['cancelled', 'tombstoned', []]);
+    expect([cancelled, cancelledAgain, calls.answered()]).toEqual(['cancelled', 'cancelled', []]);
   });
 
   it('keeps an answer it could not give to its run, and gives it when it next resumes', async () => {
@@ -233,7 +239,7 @@ describe('the executor of the host, failing', () => {
 
     const start = await Effect.runPromise(Effect.flip(executor.executor.start(call, run)));
     const cancel = await Effect.runPromise(
-      Effect.flip(executor.executor.cancel({ kind: 'cancel_call', key: call.key }, run)),
+      Effect.flip(executor.executor.cancel({ kind: 'cancel_call', key: call.key }, run, origin)),
     );
 
     expect([start.output, cancel.output]).toEqual(['start_call', 'cancel_call']);

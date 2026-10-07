@@ -21,7 +21,7 @@ export function followerOver(database: HostDatabase, sweepEveryMs: number): Reco
     },
     { ...reactions.options, appended: streamSignalOf() },
     refusalsOn(database, Date.now),
-    [],
+    { consumers: [], calls: [] },
   );
   onTestFinished(() => follower.stop());
   return reactions;
