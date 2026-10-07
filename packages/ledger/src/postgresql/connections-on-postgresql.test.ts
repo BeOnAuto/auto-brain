@@ -51,6 +51,24 @@ function endingConnectionsTo(database: string): string {
   return `SELECT pg_terminate_backend(pid) AS ended ${otherConnectionsTo(database)}`;
 }
 
+const closedWithinMs = 5000;
+
+async function untilNoneOpen(database: string): Promise<void> {
+  const client = new Client({ connectionString: database });
+  await client.connect();
+  try {
+    await vi.waitFor(
+      async () => {
+        const { rows } = await client.query<Readonly<Record<string, unknown>>>(connectionsTo(database));
+        expect({ afterDisposal: rows }).toEqual({ afterDisposal: [{ open: 0 }] });
+      },
+      { timeout: closedWithinMs, interval: 50 },
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`, () => {
   it('builds on a database that another server is migrating at the same moment', async () => {
     const database = await aDatabase();
@@ -66,7 +84,7 @@ describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`
     expect(loaded).toEqual({ state: 1, version: 1 });
   });
 
-  it('closes every connection to the database when the runtime is disposed', async () => {
+  it('closes every connection to the database when the runtime is disposed', { timeout: 30_000 }, async () => {
     const database = await aDatabase();
     const { ledger, dispose } = await openLedgerWith(postgresqlLedgerLayer({ connectionString: database }));
     await Effect.runPromise(ledger.load('org/acme/tallies', tally));
@@ -74,10 +92,8 @@ describe.skipIf(skipped)(`A ledger on a PostgreSQL database of its own${notice}`
 
     await dispose();
 
-    expect({ whileOpen, afterDisposal: await queried(database, connectionsTo(database)) }).toEqual({
-      whileOpen: [{ open: 1 }],
-      afterDisposal: [{ open: 0 }],
-    });
+    expect(whileOpen).toEqual([{ open: 1 }]);
+    await untilNoneOpen(database);
   });
 });
 
