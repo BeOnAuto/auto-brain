@@ -120,21 +120,23 @@ describe('a page of folds the pool stops', { timeout: poolTestTimeoutMs }, () =>
 });
 
 describe('a page of folds that waits for a worker', { timeout: poolTestTimeoutMs }, () => {
-  it('counts its deadline from when a worker takes it, after it waited for one', async () => {
+  it('counts its deadline from when a worker takes it, after it waited for one longer than that deadline', async () => {
     const pool = poolOf({ workers: 1 });
     const busy = pool.run({
-      source: '[range(500000)] | length',
+      source: '.',
       input: null,
       dialect: { refused: [] },
       limits: liftedLimits(64_000_000),
-      deadlineMs: 10_000,
+      deadlineMs: 6000,
       mostOutputBytes: 100,
+      worker: workerOf('while (true) {}'),
     });
 
-    const folded = await pool.fold(request([viewOf('. + 1')], { deadlineMs: 2000 }));
+    const folded = await pool.fold(request([viewOf('. + 1')], { deadlineMs: 5000 }));
 
-    expect(await busy).toMatchObject({ ran: 'answered' });
+    expect(await busy).toMatchObject({ ran: 'stopped', because: 'deadline' });
     expect(folded).toMatchObject({ ran: 'folded', views: [{ view: 2 }] });
+    expect(folded.milliseconds).toBeGreaterThan(6000 - timerSlackMs);
   });
 
   it('is turned away when no worker comes free within its wait, and names no fold', async () => {
