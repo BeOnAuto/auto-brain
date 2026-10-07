@@ -1,4 +1,10 @@
-import { Forbidden, InvalidInput, type BrainAddress, type CallerIdentity } from '@beonauto/operations';
+import {
+  Forbidden,
+  InvalidInput,
+  requestTokenRefused,
+  type BrainAddress,
+  type CallerIdentity,
+} from '@beonauto/operations';
 import { answersRequest } from '@beonauto/outbound';
 import { Effect, Result, type Schema } from 'effect';
 
@@ -6,7 +12,7 @@ import { channelFor, type ChannelSettings } from '../channels/channel-settings.t
 import { checkedAnswer } from './answer-check.ts';
 import type { OpenRequestRow } from './request-rows.ts';
 
-const tokenRefused = new Forbidden({ detail: 'The answer token does not answer this request' });
+const tokenRefused = new Forbidden({ detail: requestTokenRefused });
 
 export function answererOf(
   caller: CallerIdentity,
