@@ -18,7 +18,7 @@ export interface RecallRunOptions {
 type Answering = Effect.Effect<Answered, Conflict | Unavailable>;
 
 function checkedBy({ output }: RecallFunctionDefinitionDocument): Pick<ProgramRequest, 'worker' | 'context'> {
-  return output.schema === undefined ? {} : { worker: checkedWorker, context: output.schema.document };
+  return { worker: checkedWorker, context: output.schema?.document ?? null };
 }
 
 function answeredBy(
