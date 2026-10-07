@@ -136,23 +136,29 @@ const awkwardText = {
   unpaired: 'half a pair \uD800 alone',
   escapedBackslash: String.raw`\u0000 is six characters`,
   beforeNul: '\\\u0000',
+  emoji: '😀',
+  escapedNul: String.raw`a\u0000b`,
 };
 
 function theDefinitionOfAnAwkwardRun(aLedger: LedgerMaker): void {
-  it('is read at the top of the first message alone, whatever else the message holds', async () => {
+  it('is read at the top of the first message alone, exactly as recorded, whatever else the message holds', async () => {
     const ledger = await aLedger();
     const awkward = { primitive: 'orchestration', name: 'qualify-enquiry', text: awkwardText };
     const start = { type: 'execution_started', primitive: 'inference', name: 'summary', detail: awkward };
+    const namedAwkwardly = { ...start, name: awkwardText.escapedNul, detail: 'named awkwardly' };
     await Effect.runPromise(recordedRun(ledger, 'awkward', [start]));
+    await Effect.runPromise(recordedRun(ledger, 'named-awkwardly', [namedAwkwardly]));
     const newest = { order: 'desc', limit: 10 } as const;
 
     const pages = await Promise.all([
       reading(ledger, { kind: 'executions', primitive: 'inference', name: 'summary' }, newest),
       reading(ledger, runsOfOrchestration, newest),
       reading(ledger, { kind: 'executions', name: 'qualify-enquiry' }, newest),
+      reading(ledger, { kind: 'executions', name: awkwardText.escapedNul }, newest),
+      reading(ledger, { kind: 'executions', name: 'a' }, newest),
     ]);
 
-    expect(pages.map((page) => details(page))).toEqual([[awkward], [], []]);
+    expect(pages.map((page) => details(page))).toEqual([[awkward], [], [], ['named awkwardly'], []]);
   });
 }
 
