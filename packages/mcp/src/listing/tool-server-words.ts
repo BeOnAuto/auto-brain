@@ -34,7 +34,7 @@ function serverInWords(server: ToolServer): string {
 }
 
 const noServer =
-  'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools.';
+  'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools until they set one up; the give-tools guide says what they need.';
 
 export function toolServersAsked({ server }: ToolServersAsked): string {
   return server === undefined
