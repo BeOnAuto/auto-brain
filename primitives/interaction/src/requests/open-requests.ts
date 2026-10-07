@@ -64,7 +64,7 @@ function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: num
 function attemptEnded(row: OpenRequestRow, fact: Fact<'delivery_ended'>): ProjectedRow {
   const at = Date.parse(fact.at);
   if (fact.outcome === 'delivered' || fact.outcome === 'answered') {
-    return rowOf({ ...row, next_attempt_at: null, standing: 'delivered' });
+    return rowOf({ ...row, next_attempt_at: null, standing: fact.answer === undefined ? 'delivered' : 'answered' });
   }
   return rowOf(afterFailure(row, fact, at));
 }

@@ -27,6 +27,8 @@ export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permis
 
 export const alpha = { org: 'acme', brain: 'alpha' };
 
+type RequestLedger = Parameters<typeof requestsDue>[0]['ledger'];
+
 export interface HarnessOptions {
   readonly channels?: ChannelSettings;
   readonly tools?: typeof noTools;
@@ -46,6 +48,7 @@ export interface InteractionHarness {
   readonly performDue: (now: number) => Promise<number>;
   readonly firstOpen: () => Promise<unknown>;
   readonly dueWith: (channels: ChannelSettings) => RequestsDue;
+  readonly dueOver: (over: RequestLedger) => RequestsDue;
   readonly dueItems: (now: number, due?: RequestsDue) => Promise<readonly DueRequestItem[]>;
   readonly performAll: (items: readonly DueRequestItem[], now: number) => Promise<void>;
   readonly performEach: (times: readonly number[]) => Promise<void>;
@@ -66,14 +69,15 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
     Effect.runPromise(calls.pipe(Effect.provide(services)));
   const call: InteractionHarness['call'] = (operation, input, caller = acmeAdmin) =>
     run(dispatcher.dispatchToBrain(operation.registration, { caller, ...alpha, input, encoding: 'json' }));
-  const dueWith = (given: ChannelSettings): RequestsDue =>
+  const dueOn = (over: RequestLedger, given: ChannelSettings): RequestsDue =>
     requestsDue({
-      ledger: ledger.service,
+      ledger: over,
       channels: given,
       tools: options.tools ?? noTools,
       origin: 'https://brains.example.com',
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
+  const dueWith = (given: ChannelSettings): RequestsDue => dueOn(ledger.service, given);
   const due = dueWith(channels);
   const primitives = [primitive];
   const performDue = async (now: number): Promise<number> => {
@@ -93,6 +97,7 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
     runOf: (executionId) => call(defineGetExecution(primitives), { execution_id: executionId }),
     performDue,
     dueWith,
+    dueOver: (over) => dueOn(over, channels),
     dueItems: (now, from = due) => Effect.runPromise(from.due(now, 256)),
     performAll: performedAll,
     performEach: (times) => performedEach(times, performDue),

@@ -2,11 +2,11 @@ import type { ProjectedRunRow } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import { openRequestsName } from '../requests/open-requests.ts';
-import { requestRowFrom, type OpenRequestRow } from '../requests/request-rows.ts';
+import { requestRowFrom, settlesFromDelivery, type OpenRequestRow } from '../requests/request-rows.ts';
 import type { DeliveryParts, DueRequest } from './delivery-parts.ts';
 import { lostAttempt, nextAttempt } from './request-attempts.ts';
 import { expiredSettlement, undeliveredSettlement } from './request-endings.ts';
-import { correlationOf, settled } from './request-ledger.ts';
+import { correlationOf, settled, settledFromDelivery } from './request-ledger.ts';
 
 export interface DueRequestItem {
   readonly key: string;
@@ -21,6 +21,9 @@ export interface RequestsDue {
 
 function performedNow(parts: DeliveryParts, request: DueRequest, now: number): Effect.Effect<void> {
   const { row, address, lineage } = request;
+  if (settlesFromDelivery(row)) {
+    return settledFromDelivery(parts.ledger, request);
+  }
   if (now >= row.expires_at) {
     return settled(parts.ledger, address, expiredSettlement(row), lineage);
   }
