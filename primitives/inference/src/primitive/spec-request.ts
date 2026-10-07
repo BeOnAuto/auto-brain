@@ -17,6 +17,11 @@ function timeoutFor(maxOutputTokens: number): number {
 
 export const longestRequestMs = timeoutFor(mostOutputTokens);
 
+export function longestRunMsOf({ settings, tools }: ReasoningFunctionDefinitionDocument): number {
+  const timeoutMs = timeoutFor(settings.max_output_tokens);
+  return tools.length === 0 ? timeoutMs : runBoundMs(timeoutMs);
+}
+
 function modelToolsOf({ offered, callsEnded, ended }: RunTools, timeoutMs: number): ModelTools {
   return { offered, callsEnded, ended, runBoundMs: runBoundMs(timeoutMs) };
 }
