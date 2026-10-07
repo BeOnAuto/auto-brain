@@ -1,7 +1,7 @@
-import type { DocumentIssue } from '@beonauto/specs/document';
 import { Predicate, type Schema } from 'effect';
 
-import type { VariableReference } from '../template/compiled-template.ts';
+import type { DocumentIssue } from '../document/document-issue.ts';
+import type { VariableReference } from './template-parsing.ts';
 
 const moments: ReadonlyMap<string, string> = new Map([
   ['today', 'the date, as YYYY-MM-DD'],
@@ -18,6 +18,7 @@ function declaredProperties(schema: Schema.JsonObject | undefined): ReadonlySet<
 function referenceIssue(
   { path, line }: VariableReference,
   declared: ReadonlySet<string> | undefined,
+  what: string,
 ): DocumentIssue | undefined {
   const [root, property] = path;
   const name = String(root);
@@ -33,17 +34,18 @@ function referenceIssue(
   return {
     line,
     pointer: '',
-    detail: `${name} is not a variable of a reasoning function’s prompt template, which reads input, today and now; assign it first`,
+    detail: `${name} is not a variable of ${what}, which reads input, today and now; assign it first`,
   };
 }
 
-export function variableIssues(
+export function inputVariableIssues(
   variables: readonly VariableReference[],
   inputSchema: Schema.JsonObject | undefined,
+  what: string,
 ): readonly DocumentIssue[] {
   const declared = declaredProperties(inputSchema);
   const issues = variables.flatMap((reference) => {
-    const issue = referenceIssue(reference, declared);
+    const issue = referenceIssue(reference, declared, what);
     return issue === undefined ? [] : [issue];
   });
   return [...new Map(issues.map((issue) => [`${issue.line} ${issue.detail}`, issue])).values()];

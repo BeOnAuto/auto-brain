@@ -1,7 +1,7 @@
+import type { LineOfOffset } from '@beonauto/specs/template';
 import { toValueSync, TypeGuards, type Template } from 'liquidjs';
 
 import type { TemplateIssue } from './compiled-template.ts';
-import type { LineOfOffset } from './engine-failure.ts';
 
 type MarkerName = 'system' | 'endsystem';
 

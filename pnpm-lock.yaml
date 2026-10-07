@@ -518,6 +518,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0
+      liquidjs:
+        specifier: 10.29.0
+        version: 10.29.0
       yaml:
         specifier: 2.9.1
         version: 2.9.1
