@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
 import { secondFoldWithBudget } from './pool-faults.ts';
+import { breakingFoldWorker, breaksTheWorker, sleepsBeforeItIsFolded } from './test-fold-workers.ts';
 import {
-  breakingFoldWorker,
-  breaksTheWorker,
   collecting,
   counting,
   detailsOf,
@@ -13,7 +12,6 @@ import {
   isLive,
   isStalled,
   liveWith,
-  sleepsBeforeItIsFolded,
   succeeded,
   viewTestTimeoutMs,
 } from './view-documents.ts';
@@ -81,7 +79,7 @@ function stoppingTests(settingsOf: SettingsOf): void {
     const kept = await views.until('runs', isStalled);
 
     expect(kept).toMatchObject({ view: ['good'], folded: 1, stall: { kind: 'schema', line: null } });
-    expect(kept.stall?.message).toMatch(/^Expected a value with a length of at most 1/u);
+    expect(kept.stall?.message).toMatch(/^the view: Expected a value with a length of at most 1/u);
   });
 }
 
