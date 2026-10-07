@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { asking, servingInteractions } from '../testing/servers/interaction-server.ts';
+import { asking, brief, servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { executionIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 describe('an interaction function through the inbox, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
   it('leaves its request in the inbox and takes a checked answer as the output, once', async () => {
     const server = await servingInteractions('inbox');
-    const runId = await server.ask('approve-brief');
+    const started = await server.call('POST', `${alpha}/specs/interaction/approve-brief/execute`, {
+      body: { input: brief },
+    });
+    const runId = executionIdIn(started.body);
 
     const listed = await server.call('GET', `${alpha}/interactions?to=ada&function=approve-brief`);
     const invalid = await server.answer(runId, { answer: { choice: 'maybe' } });
@@ -16,6 +19,7 @@ describe('an interaction function through the inbox, over HTTP', { timeout: work
     const another = await server.answer(runId, { answer: { choice: 'reject' } });
     const history = await server.call('GET', `${alpha}/executions/${runId}/history`);
 
+    expect(started).toMatchObject({ status: 200, body: { status: 'started' } });
     expect(listed).toMatchObject({ status: 200, body: { interactions: [{ execution_id: runId }] } });
     expect([invalid.status, answered.status, again.status, another.status]).toEqual([422, 200, 200, 409]);
     expect(invalid.body).toMatchObject({ errors: [{ pointer: '/answer/choice' }] });
