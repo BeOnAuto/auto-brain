@@ -1,13 +1,16 @@
 import type { BrainAddress, Conflict, Lineage, RecordedEvent } from '@beonauto/operations';
-import { cancelRequestOf, type CancelRequested } from '@beonauto/specs';
+import { cancelRequestOf, runEndingOf, type CancelRequested } from '@beonauto/specs';
 import type { RunInput, Submission } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
+import type { HostDatabase } from '../database/host-database.ts';
 import { DeliveryFailed, type CallConsumer, type CallRecord, type Delivery } from '../follower/consumers.ts';
 import { runIdOf } from '../runs/run-address.ts';
+import { clearedPendingRow, passedOverRow } from './pending-cancel-rows.ts';
 import type { WaitingOptions } from './waiting-options.ts';
 
 export interface CancelParts {
+  readonly database: HostDatabase;
   readonly submitted: (input: RunInput) => Effect.Effect<Submission, Conflict>;
   readonly cancelDeferred: WaitingOptions['cancelDeferred'];
   readonly workflows: string;
@@ -32,15 +35,12 @@ function lineageOf({ id, correlationId }: RecordedEvent): Lineage {
 
 function cancelledWorkflow(parts: CancelParts, { brain, record, request, executionId }: Asked) {
   const { kind, reason, by } = request;
-  return parts
-    .submitted({
-      kind: 'cancel_requested',
-      executionId: runIdOf({ ...brain, executionId }),
-      at: parts.now(),
-      cancel: { by, kind, reason },
-      cause: record.id,
-    })
-    .pipe(Effect.asVoid, Effect.mapError(failedWith));
+  const runId = runIdOf({ ...brain, executionId });
+  const pending = { runId, cause: record.id, cancel: { by, kind, reason } };
+  return parts.submitted({ kind: 'cancel_requested', executionId: runId, at: parts.now(), ...pending }).pipe(
+    Effect.flatMap(({ outcome }) => (outcome === 'not_started' ? passedOverRow(parts.database, pending) : Effect.void)),
+    Effect.mapError(failedWith),
+  );
 }
 
 function cancelled(parts: CancelParts, asked: Asked): Effect.Effect<void, DeliveryFailed> {
@@ -54,13 +54,31 @@ function cancelled(parts: CancelParts, asked: Asked): Effect.Effect<void, Delive
     .pipe(Effect.mapError(failedWith));
 }
 
-function deliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readonly Delivery[] {
+function executionIdOf({ stream }: RecordedEvent): string {
+  return stream.slice(stream.lastIndexOf('/') + 1);
+}
+
+function endingDeliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readonly Delivery[] {
+  const ending = runEndingOf(record.data);
+  if (ending?.primitive !== parts.workflows) {
+    return [];
+  }
+  const executionId = executionIdOf(record);
+  const cleared = clearedPendingRow(parts.database, runIdOf({ ...brain, executionId }));
+  return [{ key: 'ended', workflow: executionId, deliver: Effect.mapError(cleared, failedWith) }];
+}
+
+function deliveriesOf(parts: CancelParts, followed: CallRecord): readonly Delivery[] {
+  const { brain, record } = followed;
+  if (record.type !== 'execution_cancel_requested') {
+    return endingDeliveriesOf(parts, followed);
+  }
   const request = cancelRequestOf(record.data);
   const primitive = request?.primitive;
   if (request === undefined || primitive === undefined) {
     return [];
   }
-  const executionId = record.stream.slice(record.stream.lastIndexOf('/') + 1);
+  const executionId = executionIdOf(record);
   const delivery: Delivery = {
     key: 'cancel',
     workflow: executionId,
@@ -72,7 +90,7 @@ function deliveriesOf(parts: CancelParts, { brain, record }: CallRecord): readon
 export function cancelRequests(parts: CancelParts): CallConsumer {
   return {
     name: 'cancel_requests',
-    types: ['execution_cancel_requested'],
+    types: ['execution_cancel_requested', 'execution_succeeded', 'execution_rejected', 'execution_failed'],
     skippedAfterSweeps: Number.POSITIVE_INFINITY,
     batchOf: (followed, after) =>
       Effect.sync(() => ({

@@ -1,6 +1,7 @@
 import { loadavg } from 'node:os';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
+import { firstResumeOn, type FirstResume } from './first-resume.ts';
 import { openCallsCountOn } from './open-calls.ts';
 import { cancelLatencyOn, childEndingLatencyOn, type WaitingLatency } from './waiting.ts';
 
@@ -29,6 +30,20 @@ async function signalledInTurn(
   write(waitingLine(store, 'cancels, back to back, of 200 runs that wait', signal, cancels));
 }
 
+function firstResumeLine(store: string, resume: FirstResume): string {
+  const { going, pending, startedMs, resumedMs, troubles, left } = resume;
+  return `${store}: the first resume after a start, with ${going} runs going and ${pending} cancels the follower passed over, gave them in ${resumedMs.toFixed(1)} ms, leaving ${left} and reporting ${troubles} troubles, after the runs were started in ${(startedMs / 1000).toFixed(1)} s, under a load average of ${loadAverage()}`;
+}
+
+async function firstResumesMeasuredOn(
+  store: string,
+  aDatabase: () => Promise<DatabaseSettings>,
+  write: (line: string) => void,
+): Promise<void> {
+  write(firstResumeLine(store, await firstResumeOn(await aDatabase(), 10_000, 0)));
+  write(firstResumeLine(store, await firstResumeOn(await aDatabase(), 10_000, 100)));
+}
+
 export async function waitingMeasuredOn(
   store: string,
   aDatabase: () => Promise<DatabaseSettings>,
@@ -40,4 +55,5 @@ export async function waitingMeasuredOn(
   write(
     `${store}: counting ${counted.underTheRoot} open calls under one root, among ${counted.inAll}, took ${counted.p50Ms.toFixed(2)} ms at the median and ${counted.p99Ms.toFixed(2)} ms at p99, under a load average of ${loadAverage()}`,
   );
+  await firstResumesMeasuredOn(store, aDatabase, write);
 }

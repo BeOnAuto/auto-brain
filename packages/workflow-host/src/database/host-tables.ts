@@ -166,6 +166,13 @@ export const hostTables: readonly Statement[] = [
   )`,
   statement`CREATE INDEX IF NOT EXISTS workflow_calls_unfinished ON workflow_calls (call_key)
     WHERE state = 'running' OR (state = 'answered' AND delivered = 0)`,
+  statement`CREATE TABLE IF NOT EXISTS workflow_pending_cancels (
+    run_id TEXT NOT NULL PRIMARY KEY,
+    cause TEXT NOT NULL,
+    cancelled_by TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    reason TEXT NOT NULL
+  )`,
   statement`CREATE TABLE IF NOT EXISTS workflow_due (
     run_id TEXT NOT NULL PRIMARY KEY,
     version BIGINT NOT NULL,

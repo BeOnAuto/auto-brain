@@ -2,7 +2,7 @@ import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { hostEngineOn } from '../host/host-engine.ts';
+import { hostEngineOn, type HostEngine } from '../host/host-engine.ts';
 import type { RunStart } from '../host/run-requests.ts';
 import { systemClock } from '../loop/host-clock.ts';
 import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
@@ -10,8 +10,8 @@ import { recordingReports, recordingSettlements } from '../testing/recording-rep
 import { executorWaitingOf } from '../waiting/waiting-parts.ts';
 import { recordedWaiting } from './recorded-waiting.ts';
 
-export async function startedByAHostThatDied(database: HostDatabase, runId: string, start: RunStart): Promise<void> {
-  const engine = hostEngineOn(
+export function bareEngineOn(database: HostDatabase): HostEngine {
+  return hostEngineOn(
     database,
     {
       machine: testMachine,
@@ -25,5 +25,10 @@ export async function startedByAHostThatDied(database: HostDatabase, runId: stri
     executorWaitingOf(database, testMachine, recordedWaiting().options),
     Function.constVoid,
   );
-  await Effect.runPromise(engine.submitted({ ...start, kind: 'started', executionId: runId, at: Date.now() }));
+}
+
+export async function startedByAHostThatDied(database: HostDatabase, runId: string, start: RunStart): Promise<void> {
+  await Effect.runPromise(
+    bareEngineOn(database).submitted({ ...start, kind: 'started', executionId: runId, at: Date.now() }),
+  );
 }

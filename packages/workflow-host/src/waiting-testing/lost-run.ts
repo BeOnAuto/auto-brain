@@ -1,3 +1,5 @@
+import { messageIdOf } from '@beonauto/operations';
+
 import type { HostDatabase } from '../database/host-database.ts';
 import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
 import { startOf, workflow } from '../testing/host-documents.ts';
@@ -7,6 +9,8 @@ export const lostExecutionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 export const lostRunId = `acme/alpha/${lostExecutionId}`;
 
 export const lostStream = `${alpha}executions/${lostExecutionId}`;
+
+export const lostCancelId = messageIdOf(lostStream, 2);
 
 export const lostStart = startOf(workflow('do:\n  - pause: { wait: PT1H }'));
 

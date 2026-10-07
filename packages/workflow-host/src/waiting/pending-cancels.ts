@@ -3,9 +3,9 @@ import { cancelRequestOf } from '@beonauto/specs';
 import type { CancelOrder, RunInput, Submission } from '@beonauto/workflow-engine';
 import { Effect, Schema, type Cause } from 'effect';
 
-import { rowsOf, type HostDatabase } from '../database/host-database.ts';
-import { statement } from '../database/statement.ts';
-import { addressOfRun, runIdOf, type RunAddress } from '../runs/run-address.ts';
+import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
+import { runIdOf, type RunAddress } from '../runs/run-address.ts';
+import { clearedPendingRow, pendingCancelRowsAfter, type PendingCancelRow } from './pending-cancel-rows.ts';
 
 interface PendingCancel {
   readonly cancel: CancelOrder;
@@ -52,32 +52,55 @@ export function cancelledIfAsked(parts: PendingParts, run: RunAddress): Effect.E
   );
 }
 
-const GoingRun = Schema.Struct({ run_id: Schema.String });
+type Trouble = (what: string, cause: Cause.Cause<unknown>) => Effect.Effect<void>;
 
-export function pendingCancelsGivenOnce(
-  parts: PendingParts,
-  trouble: (what: string, cause: Cause.Cause<unknown>) => Effect.Effect<void>,
-): Effect.Effect<void> {
+const pendingRowsInAPage = 100;
+
+const cancelsGivenAtOnce = 4;
+
+function givenOrKept(parts: PendingParts, trouble: Trouble, { runId, cause, cancel }: PendingCancelRow) {
+  return parts.submitted({ kind: 'cancel_requested', executionId: runId, at: parts.now(), cause, cancel }).pipe(
+    Effect.flatMap(({ outcome }) =>
+      outcome === 'not_started' ? Effect.void : clearedPendingRow(parts.database, runId),
+    ),
+    Effect.as(true),
+    Effect.catchCause((failure: Cause.Cause<unknown>) =>
+      Effect.as(
+        trouble(`The cancel asked of ${runId} could not be given; the next sweep gives it again`, failure),
+        false,
+      ),
+    ),
+  );
+}
+
+function pagesGiven(parts: PendingParts, trouble: Trouble, after: string): Effect.Effect<boolean, DatabaseFailed> {
+  return Effect.flatMap(pendingCancelRowsAfter(parts.database, after, pendingRowsInAPage), (rows) =>
+    Effect.flatMap(
+      Effect.forEach(rows, (row) => givenOrKept(parts, trouble, row), { concurrency: cancelsGivenAtOnce }),
+      (given: readonly boolean[]) => {
+        const allGiven = given.every(Boolean);
+        const last = rows.at(-1);
+        return last === undefined || rows.length < pendingRowsInAPage
+          ? Effect.succeed(allGiven)
+          : Effect.map(pagesGiven(parts, trouble, last.runId), (rest) => allGiven && rest);
+      },
+    ),
+  );
+}
+
+export function pendingCancelsGivenOnce(parts: PendingParts, trouble: Trouble): Effect.Effect<void> {
   const given = { once: false };
   return Effect.suspend(() =>
     given.once
       ? Effect.void
-      : rowsOf(
-          GoingRun,
-          parts.database.read(statement`SELECT run_id FROM workflow_runs WHERE ended_at IS NULL ORDER BY run_id`),
-        ).pipe(
-          Effect.flatMap((runs) =>
-            Effect.forEach(runs, ({ run_id: runId }) => cancelledIfAsked(parts, addressOfRun(runId)), {
-              discard: true,
-            }),
-          ),
-          Effect.andThen(
+      : pagesGiven(parts, trouble, '').pipe(
+          Effect.flatMap((allGiven) =>
             Effect.sync(() => {
-              given.once = true;
+              given.once = allGiven;
             }),
           ),
           Effect.catchCause((cause: Cause.Cause<unknown>) =>
-            trouble('The cancels asked of the runs could not be read; the next sweep reads them again', cause),
+            trouble('The cancels the follower passed over could not be read; the next sweep reads them again', cause),
           ),
         ),
   );

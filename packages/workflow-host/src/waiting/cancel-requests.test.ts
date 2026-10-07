@@ -114,7 +114,7 @@ describe('a cancel request recorded before the host started the workflow', () =>
   });
 });
 
-function asked(data: unknown) {
+function asked(data: unknown, type = 'execution_cancel_requested') {
   return {
     brain: { org: 'acme', brain: 'alpha' },
     brainKey: alpha,
@@ -125,22 +125,38 @@ function asked(data: unknown) {
       correlationId: null,
       stream: `executions/${executionId}`,
       version: 1,
-      type: 'execution_cancel_requested',
+      type,
       data,
       recordedAt: at,
     },
   };
 }
 
-describe('the consumer of cancel requests', () => {
-  const consumer = cancelRequests({
+async function failingConsumer() {
+  const { database } = await followedHost();
+  return cancelRequests({
+    database,
     submitted: () => Effect.fail(new Conflict({ detail: 'The log of the run kept changing' })),
     cancelDeferred: () => Effect.void,
     workflows: 'orchestration',
     now: Date.now,
   });
+}
 
+const endingOfAnotherCapability = {
+  type: 'execution_succeeded',
+  output: null,
+  record: {},
+  primitive: 'interaction',
+  name: 'ask',
+  spec_version: 1,
+  by: 'brain:alpha',
+  at,
+};
+
+describe('the consumer of cancel requests', () => {
   it('never skips a request, and fails a delivery the run cannot take now, to be made again', async () => {
+    const consumer = await failingConsumer();
     const { deliveries } = await Effect.runPromise(consumer.batchOf(asked(askedOf('orchestration')), undefined, 100));
     const failure = await Effect.runPromise(Effect.flip(Effect.forEach(deliveries, ({ deliver }) => deliver)));
     const skipped = consumer.skipped(asked({}), { key: 'cancel', workflow: 'pause', deliver: Effect.void }, '');
@@ -149,7 +165,8 @@ describe('the consumer of cancel requests', () => {
     expect(await Effect.runPromise(Effect.as(skipped, 'nothing skipped'))).toBe('nothing skipped');
   });
 
-  it('makes no delivery of a cancel before a start, which the start meets, nor of a record that is no request', async () => {
+  it('makes no delivery of a cancel before a start, nor of a record that is no request or ends another capability’s run', async () => {
+    const consumer = await failingConsumer();
     const beforeTheStart = {
       type: 'execution_cancel_requested',
       kind: 'requested',
@@ -162,8 +179,11 @@ describe('the consumer of cancel requests', () => {
         consumer.batchOf(asked(data), undefined, 100),
       ),
     );
+    const ending = await Effect.runPromise(
+      consumer.batchOf(asked(endingOfAnotherCapability, 'execution_succeeded'), undefined, 100),
+    );
     const resumed = await Effect.runPromise(consumer.batchOf(asked(askedOf('orchestration')), 'cancel', 100));
 
-    expect([...batches, resumed].map(({ deliveries }) => deliveries)).toEqual([[], [], []]);
+    expect([...batches, ending, resumed].map(({ deliveries }) => deliveries)).toEqual([[], [], [], []]);
   });
 });
