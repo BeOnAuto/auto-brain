@@ -49,7 +49,7 @@ The compiler holds a definition to these rules:
 - A query's route uses `GET` and a command's `POST` or `PUT`. Only a command may answer `201` instead of `200`.
 - The route path is relative to the scope's prefix. Each `{parameter}` must be a string field of the input.
 - The input may not have an `org` field, nor a `brain` field at brain scope.
-- The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict`, `Unavailable` or `InvalidInput`.
+- The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict`, `Unavailable`, `InvalidInput` or `RunCancelled`, the rejection of a run that was cancelled, with the kind `requested`, `deadline`, `overrun` or `parent_ended`, answered with HTTP 409 and no `Retry-After`.
 - The handler may ask only for the services of its scope and kind:
 
 | Scope   | Query                                   | Command also gets            |
@@ -112,7 +112,7 @@ An org operation targets at most one brain, and names it `brain`. When its input
 
 A caller of one org gets the same `forbidden` rejection for an existing and a missing brain of another org. A caller's identity can be decoded with `CallerIdentitySchema`.
 
-A brain request may carry a `lineage`, `{ causationId, correlationId }`: the message that caused the call and the run the call belongs to, and a `depth`, the reaction depth of the run it starts (see the workflow host's reactions). Only callers in the same process set them, as the workflow host does when a workflow calls a function or a reaction starts a workflow; a transport never does, so no input reaches them. The brain binding gives them to a brain command as the `CallLineage` service, `{ lineage, depth }`, `lineage` `null` and `depth` 0 when the request carried none, and the command passes the lineage to `BrainWriter.execute` with the events it appends.
+A brain request may carry a `lineage`, `{ causationId, correlationId }`: the message that caused the call and the run the call belongs to, a `depth`, the reaction depth of the run it starts (see the workflow host's reactions), a `callDepth`, the number of calls above the run it starts, and a `calledBy`, the call that run answers (`CallLink`: the execution id of the workflow, the call's reference and its run). Only callers in the same process set them, as the workflow host does when a workflow calls a function or a reaction starts a workflow; a transport never does, so no input reaches them. The brain binding gives them to a brain command as the `CallLineage` service, `{ lineage, depth, callDepth, calledBy }`, `lineage` and `calledBy` `null` and the depths 0 when the request carried none, and the command passes the lineage to `BrainWriter.execute` with the events it appends.
 
 `brainCallerOf({ org, brain })` is the caller a brain acts as itself, for the work no person started, such as a run a reaction starts: `brain:<brain>`, with `brain:read` and `brain:write` on that brain and no other, an id no API key can hold, since key ids take no `:`.
 
