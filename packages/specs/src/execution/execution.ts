@@ -1,13 +1,14 @@
-import { ConflictKindSchema, UnavailableBecauseSchema, UnavailableKindSchema } from '@beonauto/operations';
+import {
+  CancelledKindSchema,
+  ConflictKindSchema,
+  IssueSchema,
+  UnavailableBecauseSchema,
+  UnavailableKindSchema,
+} from '@beonauto/operations';
 import { Schema } from 'effect';
 
 import type { BrainFunctionDefinition, WorkflowDefinition } from '../registry/spec.ts';
 import { mostResultBytes } from './recorded-size.ts';
-
-const IssueSchema = Schema.Struct({
-  detail: Schema.String.annotate({ description: 'What is wrong' }),
-  pointer: Schema.String.annotate({ description: 'A JSON Pointer to the part of the input that is wrong' }),
-});
 
 export const ExecutionRejectionSchema = Schema.Union([
   Schema.Struct({ reason: Schema.Literal('invalid_input'), detail: Schema.String, issues: Schema.Array(IssueSchema) }),
@@ -33,11 +34,19 @@ export const ExecutionRejectionSchema = Schema.Union([
     kind: Schema.optionalKey(
       ConflictKindSchema.annotate({
         description:
-          'What clashed, when it is known: unworkable for a definition that cannot run as written, such as a computation function whose program raised an error, gave no output or more than one, or did more work than a run may do, which only changing the definition puts right; stalled for a recall function whose view stopped at an event its fold could not take, which a corrected version rebuilds; tools_called for a workflow whose step met a run of a function that may have called tools, which is not run again under its id',
+          'What clashed, when it is known: unworkable for a definition that cannot run as written, such as a computation function whose program raised an error, gave no output or more than one, or did more work than a run may do, which only changing the definition puts right; stalled for a recall function whose view stopped at an event its fold could not take, which a corrected version rebuilds; tools_called for a workflow whose step met a run of a function that may have called tools, which is not run again under its id; oversized for a workflow whose output is larger than a run may record',
       }),
     ),
   }),
-]).annotate({ description: 'Why the runtime adapter rejected the run' });
+  Schema.Struct({
+    reason: Schema.Literal('cancelled'),
+    detail: Schema.String,
+    kind: CancelledKindSchema.annotate({
+      description:
+        'Why the run was cancelled: requested when someone allowed to change the brain asked for it with cancel_execution; deadline when the step that waited for it ran out of time; overrun when a workflow ran as long as a workflow may run; parent_ended when the run that waited for it ended first, or its branch of a race lost',
+    }),
+  }),
+]).annotate({ description: 'Why the run was rejected, or that it was cancelled' });
 
 export type ExecutionRejection = typeof ExecutionRejectionSchema.Type;
 

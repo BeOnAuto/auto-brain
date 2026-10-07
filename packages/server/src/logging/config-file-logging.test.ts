@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { linesLoggedBy } from '../testing/logged-lines.ts';
+import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logConfigFile } from './logging.ts';
 
 describe('logConfigFile', () => {

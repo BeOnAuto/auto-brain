@@ -3,11 +3,11 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { shortShutdownTimeoutMs } from '../testing/short-shutdown-timeout.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
+import { shortShutdownTimeoutMs } from '../testing/processes/short-shutdown-timeout.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { defaultServerOptions } from './lifecycle.ts';
 
-const serveWithTestRoutes = fileURLToPath(new URL('../testing/serve-with-test-routes.ts', import.meta.url));
+const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
 const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };
 

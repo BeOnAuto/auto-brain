@@ -92,7 +92,9 @@ function inSelection(key: string, selection: RecordedSelection): (record: Memory
     return ({ stream }) => streams.has(stream);
   }
   if (selection.kind === 'executions') {
-    return ({ stream, streamPosition }) => streamPosition === 1 && stream.startsWith(`${key}executions/`);
+    const leftOut = new Set(selection.notBeginningWith);
+    return ({ stream, streamPosition, type }) =>
+      streamPosition === 1 && stream.startsWith(`${key}executions/`) && !leftOut.has(type);
   }
   return selection.kind === 'correlated' ? ({ correlationId }) => correlationId === selection.correlation : () => true;
 }

@@ -14,14 +14,14 @@ export function endingOf(outcome: RunOutcome): WorkflowEnding {
     return {
       kind: 'failed',
       type: 'WorkflowRanTooLong',
-      message: `The workflow ran for ${outcome.milliseconds} ms, the most it may run; it was stopped and its execution settled failed`,
+      message: `The workflow ran for ${outcome.milliseconds} ms, the most it may run; it was stopped and its run ended cancelled`,
     };
   }
   if (outcome.kind === 'oversized') {
     return {
       kind: 'failed',
       type: 'WorkflowOutputTooLarge',
-      message: `The workflow's output takes ${outcome.bytes} bytes as JSON, more than the ${outcome.most} an execution records`,
+      message: `The workflow's output takes ${outcome.bytes} bytes as JSON, more than the ${outcome.most} a run records`,
     };
   }
   return outcome;

@@ -10,6 +10,7 @@ import { openHostDatabase } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
 import { alpha, brainCreated, eventTrigger, published, specRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
+import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
 
 export interface ReactionLatency {
   readonly events: number;
@@ -87,6 +88,7 @@ export async function reactionLatencyOn(database: DatabaseSettings, measured: La
         }),
       ...(measured.signalled ? {} : { appended: streamSignalOf() }),
     },
+    waiting: recordedWaiting().options,
   });
   await Array.from({ length: measured.workflows }, (_, index) => index).reduce<Promise<void>>(
     (before, index) =>

@@ -5,8 +5,8 @@ import { createApiKey } from '@beonauto/identity';
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { spawnServer, spawnedServerTestTimeoutMs } from './testing/spawned-server.ts';
-import { temporaryLedger } from './testing/temporary-ledger.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from './testing/processes/spawned-server.ts';
+import { temporaryLedger } from './testing/records/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('main.ts', import.meta.url));
 

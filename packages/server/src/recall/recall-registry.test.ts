@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { recallDocument } from '@beonauto/recollection/testing';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   brainWithReviews,
   liveWith,
@@ -15,7 +15,7 @@ import {
   servingRecall,
   standingUntil,
   verdicts,
-} from '../testing/recall-server.ts';
+} from '../testing/servers/recall-server.ts';
 
 const runs = 'language: jq\nsource:\n  events:\n    - type: execution_succeeded\nview:\n  initial: 0';
 

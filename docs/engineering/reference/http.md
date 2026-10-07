@@ -41,6 +41,7 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 | `retire_spec`          | `POST /specs/{primitive}/{name}/retire`  | Path parameters                                |
 | `execute_spec`         | `POST /specs/{primitive}/{name}/execute` | Optional `input`, optional UUID `execution_id` |
 | `get_execution`        | `GET /executions/{execution_id}`         | Execution id in path                           |
+| `cancel_execution`     | `POST /executions/{execution_id}/cancel` | Optional `reason`, for a workflow's run        |
 | `send_execution_event` | `POST /executions/{execution_id}/events` | `event`, for a workflow's run                  |
 
 Supported primitive identifiers are `inference` and `orchestration`. A reasoning function uses the [Markdown prompt format](reasoning-format.md). A workflow uses the [YAML workflow format](../../reference/workflow-format.md), which [workflow execution](workflow-format.md) runs.
@@ -55,7 +56,7 @@ Queries need `brain:read`; commands, including execution and events, need `brain
 
 A run includes `execution_id`, `primitive`, `name`, `spec_version`, `status`, timestamps and caller identity. It includes an `output` when successful or a rejection when rejected. Reading a run with `get_execution` also returns its detailed `record`.
 
-Reasoning functions normally complete within the execute request. Workflows return `started` while work continues. Poll `get_execution` until the status becomes `succeeded`, `rejected` or `failed`. An approval event should be sent to the waiting run; it does not create another run.
+Reasoning functions normally complete within the execute request. Workflows return `started` while work continues, unless the run ended before its first wait. Poll `get_execution` until the status becomes `succeeded`, `rejected` or `failed`. An approval event should be sent to the waiting run; it does not create another run. `cancel_execution` records a cancel on a workflow run that is still `started`, on any server, and the run ends `rejected` with the reason `cancelled` within a moment ([Cancelling a run](../../reference/http.md#cancelling-a-run)); it answers `conflict` for a run that has ended or one that runs within its request.
 
 Inputs may be at most 256 KiB as encoded JSON and nest at most 512 levels deep, which `invalid_input` at `/input` refuses before anything is recorded; the data of an event sent to a run or published to a brain may nest at most 510, so that a run can hold the event in a list. Output and record together may be at most 1 MiB. The runtime applies these limits independently of the request-body limit.
 
@@ -93,13 +94,13 @@ Every message the ledger writes carries, in its metadata, its id, its cause and 
 
 Supply `execution_id` when you need to inspect failures or retry a request. Reusing an id with a different function or input returns `conflict`.
 
-Once a run succeeds or rejects invalid input, it has a final result. Calling again with the same id and input returns that recorded result. A waiting workflow also returns its existing run without restarting it. A workflow runs once for an execution id: calling again with the id of a workflow that ended without a final result, `unavailable` or `failed`, returns `conflict`; run it again under a new id.
+Once a run succeeds, rejects invalid input or is cancelled, it has a final result. Calling again with the same id and input returns that recorded result. A waiting workflow also returns its existing run without restarting it. A workflow runs once for an execution id: calling again with the id of a workflow that ended without a final result, `unavailable` or `failed`, returns `conflict`; run it again under a new id.
 
 A run without a final result may be attempted again after an interruption, an unavailable dependency or another recoverable failure. A retry can use the latest definition version, which the new attempt records. Side effects must tolerate at-least-once execution; one recorded final result does not guarantee that an external action ran only once. A reasoning function that calls tools is the exception, since its tools are the side effects: a run whose stream holds a tool call and that did not succeed, or a started run whose function names tools, is not attempted again under its id: the call answers `conflict` with the kind `tools_called`, and a new run needs a new id.
 
 ## Errors
 
-API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`, whose `type` is `https://on.auto/problems/<reason>`, or `https://on.auto/problems/tools_unfinished` for a run that called tools and could not finish and `https://on.auto/problems/tools_called` for a run not run again under its id because its tools may have been called ([the list](../../reference/http.md#responses-and-errors)). Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers. A rejection that has a `kind` carries it, and an `unavailable` one its `because`, as extension members: `tools_unfinished` means a run called tools and could not finish, so its tools may have changed something, and a request with the same `execution_id` answers `conflict` with the kind `tools_called`. `Retry-After: 5` comes only with an `unavailable` answer that a retry of the same request may resolve, never with `tools_unfinished`, `tool_not_offered` or `model_not_offered`.
+API errors use RFC 9457 problem documents with `Content-Type: application/problem+json`, whose `type` is `https://on.auto/problems/<reason>`, or `https://on.auto/problems/tools_unfinished` for a run that called tools and could not finish `https://on.auto/problems/tools_called` for a run not run again under its id because its tools may have been called, and `https://on.auto/problems/cancelled` for a run that was cancelled ([the list](../../reference/http.md#responses-and-errors)). Inspect `reason` and `detail`; `invalid_input` includes an `errors` list of JSON pointers. A rejection that has a `kind` carries it, and an `unavailable` one its `because`, as extension members: `tools_unfinished` means a run called tools and could not finish, so its tools may have changed something, and a request with the same `execution_id` answers `conflict` with the kind `tools_called`. `Retry-After: 5` comes only with an `unavailable` answer that a retry of the same request may resolve, never with `tools_unfinished`, `tool_not_offered` or `model_not_offered`.
 
 | Status | Common reason                       |
 | ------ | ----------------------------------- |
@@ -107,7 +108,7 @@ API errors use RFC 9457 problem documents with `Content-Type: application/proble
 | 401    | Missing or invalid credentials      |
 | 403    | `forbidden` or `origin_not_allowed` |
 | 404    | `not_found`                         |
-| 409    | `conflict`                          |
+| 409    | `conflict` or `cancelled`           |
 | 422    | `invalid_input`                     |
 | 500    | `internal`                          |
 | 503    | `unavailable`                       |

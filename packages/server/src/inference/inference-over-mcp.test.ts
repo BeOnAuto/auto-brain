@@ -3,7 +3,7 @@ import { makeReasoningFunctionAdapter } from '@beonauto/inference';
 import { answers, scriptedLanguageModel, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const summary = [
   '---',
@@ -23,6 +23,7 @@ const specTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'cancel_execution',
   'list_executions',
   'get_execution_history',
   'get_brain_analytics',
@@ -104,7 +105,7 @@ describe('a reasoning function definition over MCP, on the endpoint of its brain
 });
 
 describe('the spec tools an agent sees on the endpoint of a brain', () => {
-  it('are the thirteen operations inside a brain, and those that name a primitive describe the document format of inference', async () => {
+  it('are the fourteen operations inside a brain, and those that name a primitive describe the document format of inference', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const describing = tools.filter(({ description }) => description?.includes(reasoningDescription) === true);
 
@@ -128,7 +129,7 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const schemas = tools.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
 
-    expect(schemas).toHaveLength(26);
+    expect(schemas).toHaveLength(28);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

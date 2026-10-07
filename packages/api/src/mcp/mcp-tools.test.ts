@@ -40,6 +40,7 @@ const specTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'cancel_execution',
   'list_executions',
   'get_execution_history',
   'get_brain_analytics',
@@ -54,7 +55,7 @@ describe('the tools of each endpoint', () => {
     expect(listedTools(listing).map(({ name }) => name)).toEqual(['label_brain', 'list_labels']);
   });
 
-  it('lists the ten spec operations on a brain endpoint and no org operation', async () => {
+  it('lists the eleven spec operations on a brain endpoint and no org operation', async () => {
     expect(listedTools(await onAlpha((session) => session.listTools())).map(({ name }) => name)).toEqual(specTools);
   });
 

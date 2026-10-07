@@ -19,6 +19,7 @@ export type RecordCause =
   | { readonly kind: 'start' }
   | { readonly kind: 'resumed'; readonly step: StepKey }
   | { readonly kind: 'timer'; readonly timerId: string }
+  | { readonly kind: 'given'; readonly id: string }
   | { readonly kind: 'none' };
 
 export interface RecordLineage {

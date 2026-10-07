@@ -1,4 +1,5 @@
 import {
+  CancelledKindSchema,
   ConflictKindSchema,
   UnavailableBecauseSchema,
   UnavailableKindSchema,
@@ -25,12 +26,19 @@ function happened(receipt: InputReceipt): string {
       ? 'A function the workflow called answered'
       : 'A function the workflow called did not succeed';
   }
-  return receipt.kind === 'event_received' ? 'The workflow received an event' : 'The workflow was asked to stop';
+  if (receipt.kind === 'event_received') {
+    return 'The workflow received an event';
+  }
+  return receipt.kind === 'cancel_requested' && receipt.cancel !== undefined
+    ? `${receipt.cancel.by} cancelled the workflow`
+    : 'The workflow was asked to stop';
 }
 
 const decodeUnavailableKind = Schema.decodeUnknownOption(UnavailableKindSchema);
 
 const decodeConflictKind = Schema.decodeUnknownOption(ConflictKindSchema);
+
+const decodeCancelledKind = Schema.decodeUnknownOption(CancelledKindSchema);
 
 const decodeBecause = Schema.decodeUnknownOption(UnavailableBecauseSchema);
 
@@ -44,11 +52,24 @@ function whyNot({ kind, because }: Rejection): string {
     return explanationOf({ reason: 'unavailable', kind: unavailable, ...withBecause }).why;
   }
   const conflict = Option.getOrUndefined(decodeConflictKind(kind));
-  return conflict === undefined ? '' : explanationOf({ reason: 'conflict', kind: conflict }).why;
+  if (conflict !== undefined) {
+    return explanationOf({ reason: 'conflict', kind: conflict }).why;
+  }
+  const cancelled = Option.getOrUndefined(decodeCancelledKind(kind));
+  return cancelled === undefined ? '' : explanationOf({ reason: 'cancelled', kind: cancelled }).why;
+}
+
+function saidOf(receipt: InputReceipt): string {
+  if (receipt.kind === 'call_answered') {
+    return receipt.rejection === undefined ? '' : whyNot(receipt.rejection);
+  }
+  return receipt.kind === 'cancel_requested' && receipt.cancel !== undefined
+    ? whyNot({ kind: receipt.cancel.kind })
+    : '';
 }
 
 function why(receipt: InputReceipt): string {
-  const said = receipt.kind === 'call_answered' && receipt.rejection !== undefined ? whyNot(receipt.rejection) : '';
+  const said = saidOf(receipt);
   return said === '' ? '' : ` ${asSentence(capitalized(said))}`;
 }
 

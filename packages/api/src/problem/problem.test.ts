@@ -8,6 +8,7 @@ const statusAndTitleByReason: ReadonlyArray<readonly [ProblemReason, number, str
   ['not_found', 404, 'Not found'],
   ['conflict', 409, 'Conflict'],
   ['unavailable', 503, 'Unavailable'],
+  ['cancelled', 409, 'Cancelled'],
   ['client_closed_request', 499, 'Client closed request'],
   ['bad_request', 400, 'Bad request'],
   ['unauthenticated', 401, 'Unauthenticated'],
@@ -102,6 +103,22 @@ describe('problemResponse', () => {
     const response = problemResponse(problemOf('method_not_allowed', 'Not here'), { allow: 'GET, HEAD' });
 
     expect(response.headers.get('allow')).toBe('GET, HEAD');
+  });
+});
+
+describe('a cancelled run', () => {
+  it('is described by a type of its own with its kind, and asks for no retry, since the same request answers it again', () => {
+    const problem = problemOf('cancelled', 'The step ran out of time', { kind: 'deadline' });
+
+    expect(problem).toEqual({
+      type: 'https://on.auto/problems/cancelled',
+      title: 'Cancelled',
+      status: 409,
+      detail: 'The step ran out of time',
+      reason: 'cancelled',
+      kind: 'deadline',
+    });
+    expect(problemResponse(problem).headers.get('retry-after')).toBeNull();
   });
 });
 

@@ -11,7 +11,7 @@ import { allPermissions } from '@beonauto/operations';
 import { Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const listResultOf = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ result: Schema.Unknown })));
 
@@ -101,7 +101,7 @@ describe('a read-only key on /mcp', () => {
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the nineteen tools and reads a brain of its org', async () => {
+  it('lists the twenty tools and reads a brain of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
@@ -112,7 +112,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
       kind,
     );
 
-    expect(outcome.tools).toBe(19);
+    expect(outcome.tools).toBe(20);
     expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha' });
   });
 });

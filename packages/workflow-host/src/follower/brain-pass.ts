@@ -53,8 +53,13 @@ function pagesPassed(
 }
 
 function deliveredTypesOf(parts: PassParts, brainKey: string): Effect.Effect<ReadonlySet<string>> {
-  return Effect.map(wantedTypesIn(parts.database, brainKey), (types) =>
-    recordTypesOf([...types, ...parts.registered.flatMap((consumer) => consumer.types)]),
+  return Effect.map(
+    wantedTypesIn(parts.database, brainKey),
+    (types) =>
+      new Set([
+        ...recordTypesOf([...types, ...parts.registered.flatMap((consumer) => consumer.types)]),
+        ...parts.calls.flatMap((consumer) => consumer.types),
+      ]),
   );
 }
 

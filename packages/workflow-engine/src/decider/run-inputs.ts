@@ -61,6 +61,6 @@ export function applied(machine: Machine, input: RunInput): void {
     offered(machine, input);
   } else {
     machine.session.requestCancel();
-    machine.session.end({ kind: 'cancelled' });
+    machine.session.end({ kind: 'cancelled', cancel: input.cancel });
   }
 }

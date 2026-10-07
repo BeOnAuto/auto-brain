@@ -6,6 +6,7 @@ import { recoveryOn } from './measure/recovery.ts';
 import { measuredStores, type MeasuredStore } from './measure/stores.ts';
 import { sweepCostOn } from './measure/sweeps.ts';
 import { throughputOn, type Throughput } from './measure/throughput.ts';
+import { waitingMeasuredOn } from './measure/waiting-lines.ts';
 
 const postgresqlServer = process.env['LEDGER_MEASURE_POSTGRESQL_URL'] ?? '';
 
@@ -26,6 +27,7 @@ function latencyLine(store: string, signal: string, latency: ReactionLatency): s
 
 async function measuredOn({ store, aDatabase, removeAll }: MeasuredStore): Promise<void> {
   try {
+    await waitingMeasuredOn(store, aDatabase, write);
     const lateness = await timerLatenessOn(await aDatabase(), 1000);
     write(
       `${store}: ${lateness.timers} timers fired late by ${lateness.p50} ms at the median, ${lateness.p99} ms at p99, ${lateness.most} ms at most`,

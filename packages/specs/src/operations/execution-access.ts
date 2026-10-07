@@ -11,15 +11,19 @@ import { Effect } from 'effect';
 
 import type { ExecutionFinish, ExecutionStart } from '../execution/execution-commands.ts';
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
-import type { ExecutionState } from '../execution/execution-state.ts';
+import { runOf, type ExecutionState, type ExecutionStreamState } from '../execution/execution-state.ts';
 import { commandMetadata } from './command-metadata.ts';
 
 export const newExecutionId = Effect.sync(() => randomUUIDv7());
 
-export function loadExecution(id: string): Effect.Effect<ExecutionState, never, BrainReader> {
+export function loadExecutionStream(id: string): Effect.Effect<ExecutionStreamState, never, BrainReader> {
   return BrainReader.use((reader) => reader.load(executionStreamOf(id), executionDecider)).pipe(
     Effect.map(({ state }) => state),
   );
+}
+
+export function loadExecution(id: string): Effect.Effect<ExecutionState, never, BrainReader> {
+  return Effect.map(loadExecutionStream(id), runOf);
 }
 
 export const recordExecution = Effect.fnUntraced(function* (
@@ -35,7 +39,7 @@ export const recordExecution = Effect.fnUntraced(function* (
     lineage,
   );
   return {
-    state,
+    state: runOf(state),
     messageId: messageIdOf(`${streamPrefixOfBrain(yield* BrainContext)}${executionStreamOf(id)}`, version),
   };
 });

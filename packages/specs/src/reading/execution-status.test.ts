@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { executionDecider } from '../execution/execution-decider.ts';
 import type { ExecutionEvent } from '../execution/execution-events.ts';
-import { evolveExecution } from '../execution/execution-state.ts';
+import { evolveExecution, runOf } from '../execution/execution-state.ts';
 import { storedTypesByStatus } from './execution-status.ts';
 
 const fact = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -29,6 +29,13 @@ const latestOfEveryType: Readonly<Record<ExecutionEvent['type'], ExecutionEvent>
     ...fact,
   },
   execution_failed: { type: 'execution_failed', ...ofGreet, ...fact },
+  execution_cancel_requested: {
+    type: 'execution_cancel_requested',
+    kind: 'requested',
+    reason: 'Not needed',
+    ...ofGreet,
+    ...fact,
+  },
   tool_call_started: {
     type: 'tool_call_started',
     number: 1,
@@ -62,7 +69,7 @@ const latestByType = new Map<string, ExecutionEvent>(
 function statusAfter(type: string): string | undefined {
   const latest = latestByType.get(type);
   const started = evolveExecution(executionDecider.initialState, start);
-  return latest === undefined ? undefined : evolveExecution(started, latest)?.execution.status;
+  return latest === undefined ? undefined : runOf(evolveExecution(started, latest))?.execution.status;
 }
 
 describe('the stored types of a status', () => {

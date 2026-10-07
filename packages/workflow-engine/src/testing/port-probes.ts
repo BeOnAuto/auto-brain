@@ -2,7 +2,7 @@ import type { CallResult } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { OutputOrigin, RunContext } from '../dispatch/dispatch-watermark.ts';
-import type { ArmTimer, StartCall } from '../dispatch/run-output.ts';
+import type { ArmTimer, CancelCall, StartCall } from '../dispatch/run-output.ts';
 import { callKeyText } from '../executor/call-key.ts';
 import type { Executor } from '../executor/executor.ts';
 import type { Timers } from '../timers/timers.ts';
@@ -132,9 +132,11 @@ function callOf({ run }: ExecutorSubject, reference: string): StartCall {
   };
 }
 
-function cancelCallOf({ key }: StartCall): { readonly kind: 'cancel_call'; readonly key: StartCall['key'] } {
-  return { kind: 'cancel_call', key };
+function cancelCallOf({ key }: StartCall): CancelCall {
+  return { kind: 'cancel_call', key, reason: 'parent_ended' };
 }
+
+const cancelledBy: OutputOrigin = { version: 2, lastStep: null };
 
 function answeredOf(subject: ExecutorSubject, call: StartCall): Effect.Effect<string, unknown> {
   const key = callKeyText(call.key);
@@ -159,7 +161,7 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
         const answered = yield* answeredOf(subject, call);
         const again = yield* subject.executor.start(call, subject.run);
         const answeredAgain = yield* answeredOf(subject, call);
-        const cancel = yield* subject.executor.cancel(cancelCallOf(call), subject.run);
+        const cancel = yield* subject.executor.cancel(cancelCallOf(call), subject.run, cancelledBy);
         return [started, running, answered, again, answeredAgain, cancel];
       }),
   },
@@ -169,7 +171,7 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
     run: (subject) =>
       Effect.gen(function* () {
         const call = callOf(subject, '/do/0/second');
-        const cancelled = yield* subject.executor.cancel(cancelCallOf(call), subject.run);
+        const cancelled = yield* subject.executor.cancel(cancelCallOf(call), subject.run, cancelledBy);
         const refused = yield* subject.executor.start(call, subject.run);
         return [cancelled, refused, yield* answeredOf(subject, call)];
       }),
@@ -194,7 +196,7 @@ export const executorProbes: readonly Probe<ExecutorSubject>[] = [
       Effect.gen(function* () {
         const call = callOf(subject, '/do/0/fourth');
         const started = yield* subject.executor.start(call, subject.run);
-        const cancelled = yield* subject.executor.cancel(cancelCallOf(call), subject.run);
+        const cancelled = yield* subject.executor.cancel(cancelCallOf(call), subject.run, cancelledBy);
         const refused = yield* subject.executor.start(call, subject.run);
         return [started, cancelled, refused, yield* answeredOf(subject, call)];
       }),

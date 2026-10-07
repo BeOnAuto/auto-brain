@@ -2,7 +2,7 @@ import type { Environment } from '@beonauto/config';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { isAcceptingConnections } from '../testing/accepting-connections.ts';
+import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
 import { defaultServerOptions } from './lifecycle.ts';
 import { exitOnStartupFailure, runServer, type ServerProcess } from './run-server.ts';
 import { stopInsistedBy, stopRequestedBy, type StopSignal } from './stop-request.ts';

@@ -125,6 +125,56 @@ function theRunsOfABrain(aLedger: LedgerMaker): void {
   });
 }
 
+const runsOnly: RecordedSelection = { kind: 'executions', notBeginningWith: ['execution_cancel_requested'] };
+
+const newestHundred = { order: 'desc', limit: 100 } as const;
+
+function streamsBeginningWith(ledger: AnyLedger, firstTypes: readonly string[]): Promise<void> {
+  return Effect.runPromise(
+    Effect.forEach(
+      firstTypes,
+      (type, index) => ledger.execute(inAlpha(`executions/s${index}`), happenings, [noted(type)]),
+      { concurrency: 8, discard: true },
+    ),
+  );
+}
+
+function runsWithOneLeftOutEvery(every: number, count: number): readonly string[] {
+  return Array.from({ length: count }, (_, index) =>
+    index % every === 0 ? 'execution_cancel_requested' : 'execution_started',
+  );
+}
+
+function pageFigures({ records, hasMore }: Awaited<ReturnType<typeof reading>>): readonly [number, boolean, boolean] {
+  return [records.length, hasMore, records.some(({ type }) => type === 'execution_cancel_requested')];
+}
+
+function theRunsLeavingOutSomeStreams(aLedger: LedgerMaker): void {
+  describe('the read of runs that leaves out the streams beginning with some types', () => {
+    it('fills its page from the runs among them, and has no more once they are read', { timeout: 60_000 }, async () => {
+      const ledger = await aLedger();
+      await streamsBeginningWith(ledger, runsWithOneLeftOutEvery(21, 105));
+
+      const page = await reading(ledger, runsOnly, newestHundred);
+
+      expect(pageFigures(page)).toEqual([100, false, false]);
+    });
+
+    it('has no more after the last run when the oldest stream is left out', { timeout: 60_000 }, async () => {
+      const ledger = await aLedger();
+      await happen(ledger, inAlpha('executions/oldest'), noted('execution_cancel_requested'));
+      await streamsBeginningWith(ledger, runsWithOneLeftOutEvery(101, 101).slice(1));
+
+      const pages = await Promise.all([reading(ledger, runsOnly, newestHundred), reading(ledger, runs, newestHundred)]);
+
+      expect(pages.map((page) => pageFigures(page))).toEqual([
+        [100, false, false],
+        [100, true, false],
+      ]);
+    });
+  });
+}
+
 const withNul = { text: 'a NUL \u0000 inside', also: 'half a pair \uD800 alone' };
 
 function aRunHoldingU0000(aLedger: LedgerMaker): void {
@@ -150,5 +200,6 @@ export function runsBehaviour(aLedger: LedgerMaker): void {
   theRunsAPageExamines(aLedger);
   theStreamsOfOneRun(aLedger);
   theRunsOfABrain(aLedger);
+  theRunsLeavingOutSomeStreams(aLedger);
   aRunHoldingU0000(aLedger);
 }

@@ -60,7 +60,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 5,
+      "format": 6,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
@@ -269,7 +269,7 @@
     },
     {
       "type": "input_applied",
-      "format": 5,
+      "format": 6,
       "receipt": {
         "kind": "event_received",
         "key": "e1",
@@ -326,7 +326,7 @@
     },
     {
       "type": "input_applied",
-      "format": 5,
+      "format": 6,
       "receipt": {
         "kind": "event_received",
         "key": "e2",

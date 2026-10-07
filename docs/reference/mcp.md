@@ -40,13 +40,14 @@ Functions and workflows share the definition tools: those tools accept `inferenc
 | Manage workflows             | `create_spec`, `list_specs`, `get_spec`, `update_spec`, `retire_spec`, with `primitive: "orchestration"` |
 | Run and inspect              | `execute_spec`, `get_execution`, `list_executions`, `get_execution_history`                              |
 | Answer a waiting workflow    | `send_execution_event`                                                                                   |
+| Cancel a workflow run        | `cancel_execution`                                                                                       |
 | Publish an event             | `publish_event`                                                                                          |
 | Follow a brain               | `list_brain_events`                                                                                      |
 | Read a brain's analytics     | `get_brain_analytics`                                                                                    |
 
 Every tool supplies its description and input and output JSON Schemas. Read-only operations are marked as such. Brain-management and model-discovery tools are available at `/mcp` and the org endpoint; function, workflow and brain event tools are available at `/mcp` and the brain endpoint.
 
-Definition operations identify a function or workflow by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. Publishing an event to a brain requires an `event` with a `source` and a `type`; [Publishing events](http.md#publishing-events) lists its attributes and limits and what publishing it again returns. See [HTTP operations](http.md) for field limits and retry behavior.
+Definition operations identify a function or workflow by `primitive` and `name`. Creating or updating a definition takes its document as `source`. Running it accepts `input` and an optional UUID `execution_id`; inspecting a run requires `execution_id`. Cancelling a run requires its `execution_id` and takes an optional `reason`, 1 to 1,024 characters, which the run keeps as the detail of its ending; [Cancelling a run](http.md#cancelling-a-run) says which runs can be cancelled. Sending an event requires the run's `execution_id` and an `event` with a `type`; [HTTP workflows](http.md#workflows) lists its other fields and limits. Publishing an event to a brain requires an `event` with a `source` and a `type`; [Publishing events](http.md#publishing-events) lists its attributes and limits and what publishing it again returns. See [HTTP operations](http.md) for field limits and retry behavior.
 
 `list_executions` lists a brain's runs newest first, with optional `primitive`, `name` and `status` filters. `get_execution_history` reads what was recorded about one run, and `list_brain_events` follows everything that happened in a brain, with optional `type`, `since` and `execution_id` filters, the last keeping the whole tree of one run; both take `order`. Their events carry `id`, `cursor`, `causation_id`, the `id` of the event that led to it, `at`, `type`, a plain-language `summary` and `data` of at most 4 KiB; a workflow run's start is followed directly by one event for each input it took and each step that moved. All three page with `limit` and `cursor` and answer `has_more` and `next_cursor`; a page may be short or empty while `has_more` is `true`. They work on a retired brain. See [Run history and brain events](http.md#run-history-and-brain-events) for the fields and limits.
 
@@ -87,7 +88,7 @@ send_execution_event: Delivered the event “com.example.brief.revised” to the
 get_execution: The run of the workflow “review-brief-revision” finished. Its result is too long to repeat here; the whole of it is in the details below.
 ```
 
-A workflow run is `started` when `execute_spec` returns. Read it again with `get_execution` until its status is `succeeded`, `rejected` or `failed`; the summary repeats a short result in words and points to `structuredContent` for a long one.
+A workflow run is `started` when `execute_spec` returns, unless it ended before its first wait. Read it again with `get_execution` until its status is `succeeded`, `rejected` or `failed`; a cancelled run is `rejected` with the reason `cancelled`; the summary repeats a short result in words and points to `structuredContent` for a long one.
 
 ## Errors
 

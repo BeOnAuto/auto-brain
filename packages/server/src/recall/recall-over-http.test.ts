@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { workerPool } from '../composition/served-computation.ts';
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   brainWithReviews,
   liveWith,
@@ -13,7 +13,7 @@ import {
   servingRecall,
   standingUntil,
   verdicts,
-} from '../testing/recall-server.ts';
+} from '../testing/servers/recall-server.ts';
 
 const decodeHistory = Schema.decodeUnknownSync(
   Schema.Struct({

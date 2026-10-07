@@ -1,6 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
 import { Ledger, type Dispatcher, type DispatcherServices } from '@beonauto/operations';
 import {
+  callResultOfEnding,
   definitionCalls,
   definitionRunResultOf,
   orchestrationMachine,
@@ -8,18 +9,20 @@ import {
 } from '@beonauto/orchestration';
 import {
   defineExecuteSpec,
+  deferredCanceller,
+  executionCanceller,
   executionSettler,
   type BrainOperation,
   type Primitive,
   type SettleExecution,
 } from '@beonauto/specs';
-import type { HostOptions } from '@beonauto/workflow-host';
+import type { HostOptions, WaitingOptions } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
 import { inRuntime } from './in-runtime.ts';
 import { reactionsOf } from './reaction-dependencies.ts';
 
-export type HostWork = Pick<HostOptions, 'machine' | 'perform' | 'settle' | 'reactions'>;
+export type HostWork = Pick<HostOptions, 'machine' | 'perform' | 'settle' | 'reactions' | 'waiting'>;
 
 export interface WorkParts {
   readonly primitives: readonly Primitive[];
@@ -31,7 +34,7 @@ function nestedExecutions(
   dispatcher: Dispatcher,
   executeSpec: BrainOperation,
 ): RunDefinition {
-  return ({ org, brain, caller, primitive, name, input, executionId, lineage, depth }) =>
+  return ({ org, brain, caller, primitive, name, input, executionId, lineage, depth, callDepth, calledBy }) =>
     inRuntime(
       runtime,
       dispatcher.dispatchToBrain(executeSpec.registration, {
@@ -42,6 +45,8 @@ function nestedExecutions(
         encoding: 'json',
         lineage,
         depth,
+        callDepth,
+        calledBy,
       }),
     ).pipe(Effect.map(definitionRunResultOf));
 }
@@ -54,6 +59,24 @@ function settlements(runtime: AppRuntime<DispatcherServices>): SettleExecution {
     );
 }
 
+function waitingOf(runtime: AppRuntime<DispatcherServices>, primitives: readonly Primitive[]): WaitingOptions {
+  return {
+    resultOf: callResultOfEnding,
+    cancel: (execution, request, lineage) =>
+      inRuntime(
+        runtime,
+        Effect.flatMap(Effect.service(Ledger), (ledger) => executionCanceller(ledger)(execution, request, lineage)),
+      ),
+    cancelDeferred: (execution, request, lineage) =>
+      inRuntime(
+        runtime,
+        Effect.flatMap(Effect.service(Ledger), (ledger) =>
+          deferredCanceller(primitives, ledger)(execution, request, lineage),
+        ),
+      ),
+  };
+}
+
 export function hostWorkOf(
   runtime: AppRuntime<DispatcherServices>,
   dispatcher: Dispatcher,
@@ -64,5 +87,6 @@ export function hostWorkOf(
     perform: definitionCalls(nestedExecutions(runtime, dispatcher, defineExecuteSpec(primitives))),
     settle: settlements(runtime),
     reactions: reactionsOf(runtime, dispatcher, startVersion),
+    waiting: waitingOf(runtime, primitives),
   };
 }

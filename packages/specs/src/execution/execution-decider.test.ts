@@ -2,9 +2,10 @@ import { Conflict } from '@beonauto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { ExecutionCommand, ExecutionResult, ToolCallFact } from './execution-commands.ts';
+import type { ExecutionCommand, ExecutionResult } from './execution-commands.ts';
 import { executionDecider, executionStreamOf } from './execution-decider.ts';
 import type { ExecutionEvent } from './execution-events.ts';
+import { runOf } from './execution-state.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -158,11 +159,19 @@ describe('an execution', () => {
         finished_at: finish.at,
       },
       finishesLater: false,
+      deferred: false,
       callsTools: false,
-      toolCalls: 0,
+      lastCall: 0,
+      mayHaveChanged: false,
       depth: 0,
+      callDepth: 0,
       result: { type: 'execution_rejected', rejection: { reason: 'unavailable', detail: 'The model is busy' } },
     });
+  });
+});
+
+describe('an execution started again', () => {
+  it('holds how its latest attempt went, at the version that attempt ran', () => {
     expect(stateAfter(started, unavailable, { ...started, spec_version: 2 }, succeeded)).toStrictEqual({
       input: greeting.input,
       execution: {
@@ -176,9 +185,12 @@ describe('an execution', () => {
         finished_at: finish.at,
       },
       finishesLater: false,
+      deferred: false,
       callsTools: false,
-      toolCalls: 0,
+      lastCall: 0,
+      mayHaveChanged: false,
       depth: 0,
+      callDepth: 0,
       record: { model: 'x' },
       result: { type: 'execution_succeeded', output: 'Hello Ada', record: { model: 'x' } },
     });
@@ -187,7 +199,7 @@ describe('an execution', () => {
 
 describe('the attempts of an execution', () => {
   it('hold a failure without an output or a rejection', () => {
-    expect(stateAfter(started, failed)?.execution).toStrictEqual({
+    expect(runOf(stateAfter(started, failed))?.execution).toStrictEqual({
       primitive: 'echo',
       name: 'greet',
       spec_version: 1,
@@ -200,82 +212,5 @@ describe('the attempts of an execution', () => {
 
   it('are ignored when the execution was never seen to start', () => {
     expect(stateAfter(succeeded, failed)).toBeUndefined();
-  });
-});
-
-const called: ToolCallFact = {
-  type: 'tool_call_started',
-  number: 1,
-  call_id: 'toolu_01',
-  server: 'graph',
-  tool: 'search',
-  arguments_bytes: 17,
-  arguments_sha256: 'a'.repeat(64),
-};
-
-const answered: ToolCallFact = {
-  type: 'tool_call_answered',
-  number: 1,
-  outcome: 'result',
-  result_bytes: 42,
-  result_sha256: 'b'.repeat(64),
-  duration_ms: 120,
-  jsonrpc_id: 3,
-};
-
-const during = { by: 'acme-admin', at: '2026-10-01T09:00:02.000Z' };
-
-function recordingCall(fact: ToolCallFact): ExecutionCommand {
-  return { type: 'tool_call', fact, ...during };
-}
-
-const callStarted: ExecutionEvent = { ...called, ...during };
-
-const callAnswered: ExecutionEvent = { ...answered, ...during };
-
-const toolsWereCalled = new Conflict({
-  detail:
-    'The run called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another run id, and read with get_execution_history what it called',
-  kind: 'tools_called',
-});
-
-const noMoreCalls = new Conflict({ detail: 'The run has finished, so it records no more tool calls' });
-
-describe('a tool call of an execution', () => {
-  it('is recorded while the execution runs, with who and when', () => {
-    expect(decided(recordingCall(called), started)).toStrictEqual(Result.succeed([callStarted]));
-    expect(decided(recordingCall(answered), started, callStarted)).toStrictEqual(Result.succeed([callAnswered]));
-  });
-
-  it('is refused once the execution has finished, however it ended, and before it started', () => {
-    expect(decided(recordingCall(answered), started, callStarted, failed)).toEqual(Result.fail(noMoreCalls));
-    expect(decided(recordingCall(called), started, succeeded)).toEqual(Result.fail(noMoreCalls));
-    expect(decided(recordingCall(called), started, unavailable)).toEqual(Result.fail(noMoreCalls));
-    expect(decided(recordingCall(called))).toEqual(Result.fail(noMoreCalls));
-  });
-
-  it('is refused for work that finishes later', () => {
-    const deferred: ExecutionEvent = { type: 'execution_deferred', record: { run: 'x' }, ...during };
-
-    expect(decided(recordingCall(called), started, deferred)).toEqual(Result.fail(noMoreCalls));
-  });
-
-  it('leaves the execution started, counting its calls, until it finishes', () => {
-    const running = stateAfter(started, callStarted, callAnswered, { ...callStarted, number: 2 });
-
-    expect(running).toMatchObject({ execution: { status: 'started' }, toolCalls: 2 });
-    expect(stateAfter(started, callStarted, failed)).toMatchObject({ execution: { status: 'failed' }, toolCalls: 1 });
-  });
-
-  it('keeps the execution from running again under its id unless it succeeded or its input was rejected', () => {
-    expect(decided(starting(), started, callStarted)).toEqual(Result.fail(toolsWereCalled));
-    expect(decided(starting(), started, callStarted, failed)).toEqual(Result.fail(toolsWereCalled));
-    expect(decided(starting(), started, callStarted, unavailable)).toEqual(Result.fail(toolsWereCalled));
-    expect(decided(starting(), started, callStarted, succeeded)).toStrictEqual(Result.succeed([]));
-    expect(decided(starting(), started, callStarted, rejectedInput)).toStrictEqual(Result.succeed([]));
-  });
-
-  it('is counted across a start that was recorded again', () => {
-    expect(stateAfter(started, callStarted, started)).toMatchObject({ toolCalls: 1 });
   });
 });

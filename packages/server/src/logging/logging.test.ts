@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { Cause, Effect, Logger } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { linesLoggedBy } from '../testing/logged-lines.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import {
   formatPretty,
   logAccessMode,
@@ -37,7 +37,7 @@ function syntaxErrorParsing(text: string): SyntaxError {
   throw new TypeError(`${text} parsed as JSON`);
 }
 
-const serveWithTestRoutes = fileURLToPath(new URL('../testing/serve-with-test-routes.ts', import.meta.url));
+const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 

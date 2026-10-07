@@ -8,6 +8,7 @@ const RunAttributesSchema = Schema.Struct({
   spec: Schema.Struct({ name: Schema.String, version: Schema.Int }),
   caller: CallerIdentitySchema,
   depth: Schema.optionalKey(Schema.Int),
+  call_depth: Schema.optionalKey(Schema.Int),
   lineage: Schema.optionalKey(Schema.Struct({ start: Schema.String, correlation: Schema.String })),
 });
 

@@ -3,7 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { RecordedCall } from '../calls/recorded-calls.ts';
+import type { CallJournal, RecordedCall } from '../calls/recorded-calls.ts';
 import {
   controlledSignals,
   fakeApiKey,
@@ -43,7 +43,7 @@ describe('a run that has ended', () => {
   it('never sends a call whose start could not be recorded', async () => {
     const { call, fake, journal } = await runWith(['search']);
 
-    journal.refuseFromNowOn();
+    journal.refuseStartsFromNowOn();
 
     expect(await call('search', { query: 'unrecorded' })).toEqual({
       text: 'This call could not be recorded on its run, so it was not sent; answer without it.',
@@ -106,11 +106,16 @@ async function runCancelledOnRecording() {
   closing.push(access.close);
   const signals = controlledSignals();
   const facts: RecordedCall[] = [];
-  const journal = {
-    record: (fact: RecordedCall) =>
+  const journal: CallJournal = {
+    started: (fact) =>
+      Effect.sync(() => {
+        facts.push({ ...fact, number: 1 });
+        signals.cancel();
+        return 1;
+      }),
+    answered: (fact) =>
       Effect.sync(() => {
         facts.push(fact);
-        signals.cancel();
         return true;
       }),
   };

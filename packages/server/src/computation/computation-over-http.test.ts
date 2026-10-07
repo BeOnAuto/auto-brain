@@ -5,7 +5,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const computationTestTimeoutMs = 30_000;
 

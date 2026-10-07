@@ -4,7 +4,7 @@ import { Effect, Function, Schema } from 'effect';
 import { Pool } from 'pg';
 
 import { failedWith, oneRowOf, WholeNumber, type HostDatabase } from './host-database.ts';
-import { armedByAddedWhenMissing, hostTables } from './host-tables.ts';
+import { addedColumns, hostTables, indexesOfAddedColumns } from './host-tables.ts';
 import { statement, textOnPostgreSQL, type Statement, type StatementValue } from './statement.ts';
 
 export interface PostgreSQLDatabaseOptions {
@@ -46,7 +46,11 @@ async function migratedOn(connections: Connections): Promise<void> {
   try {
     await connection.query('BEGIN');
     await connection.query('SELECT pg_advisory_xact_lock($1)', [migrationLock]);
-    await createdEach(connection, [...hostTables, armedByAddedWhenMissing]);
+    await createdEach(connection, [
+      ...hostTables,
+      ...addedColumns.map(({ addedWhenMissing }) => addedWhenMissing),
+      ...indexesOfAddedColumns,
+    ]);
     await connection.query('COMMIT');
   } catch (failure) {
     await connection.query('ROLLBACK');

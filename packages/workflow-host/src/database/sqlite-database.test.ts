@@ -31,6 +31,7 @@ describe('the host database on SQLite', () => {
         'workflow_listener_types',
         'workflow_listeners',
         'workflow_passed_runs',
+        'workflow_pending_cancels',
         'workflow_reaction_backlog',
         'workflow_reaction_rates',
         'workflow_reaction_refusals',
@@ -47,18 +48,35 @@ describe('the host database on SQLite', () => {
 });
 
 describe('the host database on SQLite, made before a column was added', () => {
-  it('adds the column of the record that armed a timer to a timers table made before it, once', async () => {
+  it('adds the columns added since to tables made before them, once, and then their indexes', async () => {
     const file = aSQLiteFile();
     const first = await openedOn({ store: 'sqlite', file });
-    await Effect.runPromise(first.write(statement`ALTER TABLE workflow_timers DROP COLUMN armed_by`));
+    await Effect.runPromise(
+      Effect.forEach(
+        [
+          statement`ALTER TABLE workflow_timers DROP COLUMN armed_by`,
+          statement`DROP INDEX workflow_calls_open_by_root`,
+          statement`DROP INDEX workflow_calls_waiting_by_run`,
+          statement`ALTER TABLE workflow_calls DROP COLUMN child`,
+          statement`ALTER TABLE workflow_calls DROP COLUMN root_id`,
+        ],
+        first.write,
+      ),
+    );
     await openedOn({ store: 'sqlite', file });
     const third = await openedOn({ store: 'sqlite', file });
 
     expect(
       await Effect.runPromise(
-        third.read(statement`SELECT name FROM pragma_table_info('workflow_timers') WHERE name = 'armed_by'`),
+        third.read(statement`SELECT name FROM pragma_table_info('workflow_timers') WHERE name = 'armed_by'
+          UNION ALL SELECT name FROM pragma_table_info('workflow_calls') WHERE name IN ('child', 'root_id')
+          UNION ALL SELECT name FROM sqlite_master WHERE name LIKE 'workflow_calls_%_by_%' ORDER BY name`),
       ),
-    ).toEqual([{ name: 'armed_by' }]);
+    ).toEqual(
+      ['armed_by', 'child', 'root_id', 'workflow_calls_open_by_root', 'workflow_calls_waiting_by_run'].map((name) => ({
+        name,
+      })),
+    );
   });
 });
 
@@ -66,7 +84,7 @@ describe('the host database on SQLite, in memory or refusing', () => {
   it('opens a private database in memory', async () => {
     const database = await openedOn({ store: 'sqlite', file: ':memory:' });
 
-    expect(await Effect.runPromise(database.read(tablesOfTheHost))).toHaveLength(18);
+    expect(await Effect.runPromise(database.read(tablesOfTheHost))).toHaveLength(19);
   });
 
   it('fails a statement the database refuses with the error of the driver', async () => {

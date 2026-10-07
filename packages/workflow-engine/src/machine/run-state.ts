@@ -6,7 +6,7 @@ import { StepCauseSchema, type StepCause } from '../steps/step-entry.ts';
 import { TimerPurposeSchema, type TimerPurpose } from '../timers/timer-id.ts';
 import { DslErrorSchema, type DslError } from './dsl-error.ts';
 import { InstantSchema } from './instant.ts';
-import { RunLimitsSchema, type RunLimits } from './run-input.ts';
+import { CancelOrderSchema, RunLimitsSchema, type CancelOrder, type RunLimits } from './run-input.ts';
 
 export type ValueId = number;
 
@@ -84,7 +84,7 @@ export interface MachineState {
 export type RunOutcome =
   | { readonly kind: 'completed'; readonly output: Schema.Json }
   | { readonly kind: 'raised'; readonly error: DslError }
-  | { readonly kind: 'cancelled' }
+  | { readonly kind: 'cancelled'; readonly cancel: CancelOrder }
   | { readonly kind: 'broken'; readonly reason: string }
   | { readonly kind: 'oversized'; readonly bytes: number; readonly most: number }
   | { readonly kind: 'overran'; readonly milliseconds: number };
@@ -220,7 +220,7 @@ const TaskFrameSchema: Schema.Codec<TaskFrame> = Schema.Struct({
 const RunOutcomeSchema: Schema.Codec<RunOutcome> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal('completed'), output: Schema.Json }),
   Schema.Struct({ kind: Schema.Literal('raised'), error: DslErrorSchema }),
-  Schema.Struct({ kind: Schema.Literal('cancelled') }),
+  Schema.Struct({ kind: Schema.Literal('cancelled'), cancel: CancelOrderSchema }),
   Schema.Struct({ kind: Schema.Literal('broken'), reason: Schema.String }),
   Schema.Struct({ kind: Schema.Literal('oversized'), bytes: IntSchema, most: IntSchema }),
   Schema.Struct({ kind: Schema.Literal('overran'), milliseconds: IntSchema }),

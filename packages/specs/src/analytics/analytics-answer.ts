@@ -9,7 +9,7 @@ const RunsSchema = Schema.Struct({
   total: Count.annotate({ description: 'The runs that ended: succeeded, failed or rejected' }),
   succeeded: Count.annotate({ description: 'The runs that succeeded' }),
   failed: Count.annotate({ description: 'The runs that failed' }),
-  rejected: Count.annotate({ description: 'The runs that were rejected' }),
+  rejected: Count.annotate({ description: 'The runs that were rejected, those that were cancelled among them' }),
 }).annotate({ description: 'How many runs ended, by how they ended; a run still going counts nowhere' });
 
 const TokensSchema = Schema.Struct({

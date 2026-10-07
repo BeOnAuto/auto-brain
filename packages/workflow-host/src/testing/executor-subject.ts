@@ -1,7 +1,7 @@
 import type { CallResult } from '@beonauto/operations';
 import { callKeyText, type CallKey } from '@beonauto/workflow-engine';
 import type { ExecutorSubject } from '@beonauto/workflow-engine/testing';
-import { Deferred, Effect } from 'effect';
+import { Deferred, Effect, Function } from 'effect';
 
 import { hostExecutor, type HostExecutor } from '../calls/host-executor.ts';
 import type { HostDatabase } from '../database/host-database.ts';
@@ -25,12 +25,16 @@ export function executorSubjectOn(database: HostDatabase): ExecutorSubject {
         }),
       trouble: Effect.logWarning,
       mostAtOnce: 4,
+      mostOpen: 1000,
+      childOf: (call) => callKeyText(call.key),
+      childAnswerOf: Function.constant(Effect.undefined),
+      cancelChild: () => Effect.succeed('requested'),
     });
   const host = { current: executorNow() };
   return {
     executor: {
       start: (call, run) => host.current.executor.start(call, run),
-      cancel: (call, run) => host.current.executor.cancel(call, run),
+      cancel: (call, run, origin) => host.current.executor.cancel(call, run, origin),
     },
     run: { executionId: runId, attributes: {} },
     finish: (call, result) => Deferred.succeed(finisherOf(call.key), result),

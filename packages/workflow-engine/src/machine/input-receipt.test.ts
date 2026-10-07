@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { callKeyText, clampedAt, inputTimeOf, receiptOf, type RunInput } from '../index.ts';
+import { testCancel } from '../testing/driver-inputs.ts';
 import { armedTimer, at, executionId, openCall, runningState, started } from '../testing/runs.ts';
 
 const inputs: readonly RunInput[] = [
@@ -35,7 +36,7 @@ const inputs: readonly RunInput[] = [
     result: { status: 'rejected', reason: 'conflict', detail: 'no' },
   },
   { kind: 'event_received', executionId, at, event: { id: 'event-9', type: 'com.acme.approval' } },
-  { kind: 'cancel_requested', executionId, at },
+  { kind: 'cancel_requested', executionId, at, cancel: testCancel },
 ];
 
 describe('the receipt of an input', () => {
@@ -60,7 +61,7 @@ describe('the receipt of an input', () => {
       },
       { kind: 'call_answered', key: callKeyText(openCall), at, status: 'rejected' },
       { kind: 'event_received', key: 'event-9', at, eventType: 'com.acme.approval' },
-      { kind: 'cancel_requested', key: executionId, at },
+      { kind: 'cancel_requested', key: executionId, at, cancel: { by: 'tester', kind: 'requested' } },
     ]);
   });
 });
@@ -70,7 +71,9 @@ describe('the time of an input', () => {
     const later = { ...runningState, lastInputAt: at + 5000 };
 
     expect(inputTimeOf(later, started)).toBe(at + 5000);
-    expect(inputTimeOf(runningState, { kind: 'cancel_requested', executionId, at: at + 1 })).toBe(at + 1);
+    expect(inputTimeOf(runningState, { kind: 'cancel_requested', executionId, at: at + 1, cancel: testCancel })).toBe(
+      at + 1,
+    );
     expect([clampedAt(at, at - 1), clampedAt(at, at + 1)]).toEqual([at, at + 1]);
   });
 

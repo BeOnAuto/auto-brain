@@ -1,7 +1,7 @@
 import type { CallFunctions } from '../dsl/call-functions.ts';
 import { isObject, type Json, type JsonObject } from '../dsl/json.ts';
 import { rejection, templateRejections } from '../dsl/policy-checks.ts';
-import type { RunLimits, Started } from '../machine/run-input.ts';
+import type { CancelOrder, RunLimits, Started } from '../machine/run-input.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
 
 export interface StartRequest {
@@ -34,6 +34,8 @@ export const testMachine: MachineOptions = { functions: testFunctions, runtime: 
 export const defaultLimits: RunLimits = { mostDurationMs: 2_592_000_000, longestCallMs: 600_000 };
 
 export const defaultSeed = 7;
+
+export const testCancel: CancelOrder = { by: 'tester', kind: 'requested', reason: 'The test cancelled the run' };
 
 export function startedOf(request: StartRequest, at: number): Started {
   const { executionId, document, input = {}, limits = {}, attributes = {}, seed = defaultSeed } = request;

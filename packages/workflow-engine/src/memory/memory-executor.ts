@@ -1,6 +1,6 @@
 import type { CallResult } from '@beonauto/operations';
 
-import type { StartCall } from '../dispatch/run-output.ts';
+import type { CancelCall, StartCall } from '../dispatch/run-output.ts';
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
 import type { CallCancelReceipt, Executor, StartReceipt } from '../executor/executor.ts';
 import type { Faults, Submit } from './memory-timers.ts';
@@ -15,6 +15,7 @@ export type Responder = (call: StartCall) => CallAnswer;
 
 export interface MemoryExecutor extends Executor {
   readonly lose: (key: CallKey) => void;
+  readonly cancelled: () => readonly CancelCall[];
 }
 
 interface CallBook {
@@ -82,6 +83,7 @@ export function memoryExecutor(
 ): MemoryExecutor {
   const book = callBookOf(clock, submit, responder);
   const tombstones = new Set<string>();
+  const cancels: CancelCall[] = [];
   const start = (call: StartCall): StartReceipt => {
     const key = callKeyText(call.key);
     const result = book.answered.get(key);
@@ -103,9 +105,14 @@ export function memoryExecutor(
   };
   return {
     start: (call) => faults.attempt(call, () => start(call)),
-    cancel: (call) => faults.attempt(call, () => cancel(callKeyText(call.key))),
+    cancel: (call) =>
+      faults.attempt(call, () => {
+        cancels.push(call);
+        return cancel(callKeyText(call.key));
+      }),
     lose: (key) => {
       book.lose(callKeyText(key));
     },
+    cancelled: () => [...cancels],
   };
 }

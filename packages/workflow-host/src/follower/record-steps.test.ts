@@ -14,6 +14,7 @@ const parts: StepParts = {
   unreadable: () => Effect.void,
   passedEarly: () => Effect.void,
   registered: [],
+  calls: [],
 };
 
 const record: RecordedEvent = {

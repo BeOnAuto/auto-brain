@@ -1,0 +1,77 @@
+import type { StartCall } from '@beonauto/workflow-engine';
+import { testMachine } from '@beonauto/workflow-engine/testing';
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
+import { recordedWaiting } from '../waiting-testing/recorded-waiting.ts';
+import { mostOpenCallsOfATree } from './waiting-options.ts';
+import { executorWaitingOf } from './waiting-parts.ts';
+
+const run = { executionId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
+
+function callWith(arguments_: StartCall['arguments']): StartCall {
+  return {
+    kind: 'start_call',
+    key: { executionId: run.executionId, reference: '/do/0/ask', run: 1 },
+    function: 'notify',
+    arguments: arguments_,
+    longestMs: 60_000,
+  };
+}
+
+const withoutChildren = {
+  ...testMachine,
+  functions: {
+    argumentChecks: {},
+    describe: () => 'a function',
+    howAWorkflowReachesTheWorld: 'through its functions',
+    howAWorkflowStarts: 'through its runtime',
+  },
+};
+
+describe('the run a call waits for', () => {
+  it('is the one its functions derive from the call, and none when they derive none', async () => {
+    const { options } = recordedWaiting();
+    const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
+    const derived = executorWaitingOf(database, testMachine, options);
+    const underived = executorWaitingOf(database, withoutChildren, options, 5);
+
+    expect([
+      derived.childOf(callWith({ to: 'ada' }), run),
+      derived.childOf(callWith('ada'), run),
+      underived.childOf(callWith({ to: 'ada' }), run),
+    ]).toEqual(['notify at /do/0/ask #1', null, null]);
+    expect([derived.mostOpen, underived.mostOpen]).toEqual([mostOpenCallsOfATree, 5]);
+  });
+});
+
+describe('the answer of a run a call waits for', () => {
+  it('is the ending of that run when it names the call, and none while it runs or names no call', async () => {
+    const { options } = recordedWaiting();
+    const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
+    const { childAnswerOf } = executorWaitingOf(database, testMachine, options);
+    const ofTheChild = { primitive: 'orchestration', name: 'check', spec_version: 1, by: 'brain:alpha', at };
+    const calledBy = { execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 1 };
+    await recorded(database.store, `${alpha}executions/answered`, {
+      type: 'execution_succeeded',
+      output: 'checked',
+      record: {},
+      ...ofTheChild,
+      called_by: calledBy,
+    });
+    await recorded(database.store, `${alpha}executions/uncalled`, {
+      type: 'execution_succeeded',
+      output: 'checked',
+      record: {},
+      ...ofTheChild,
+    });
+
+    const answers = await Effect.runPromise(
+      Effect.all(['answered', 'uncalled', 'running'].map((child) => childAnswerOf(run.executionId, child))),
+    );
+
+    expect(answers).toEqual([{ status: 'succeeded', output: 'checked' }, undefined, undefined]);
+  });
+});

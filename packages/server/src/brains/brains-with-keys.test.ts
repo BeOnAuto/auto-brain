@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
 import { startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
-import { request } from '../testing/http-client.ts';
-import { temporaryLedger, type TemporaryLedger } from '../testing/temporary-ledger.ts';
+import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { request } from '../testing/servers/http-client.ts';
 
 const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
 

@@ -108,22 +108,27 @@ do:
 });
 
 describe('a workflow run whose output is too large', () => {
-  it('settles as failed and fails for the tenant, naming the limit', async () => {
+  it('ends rejected as a conflict of the kind oversized, naming the limit', async () => {
     const document = workflow('do:\n  - grow:\n      set: ${ .big }');
 
     const { ending, settlement } = await interpret(document, { input: { big: 'x'.repeat(1_100_000) } });
 
-    expect(settlement).toEqual({ status: 'failed' });
+    expect(settlement).toEqual({
+      status: 'rejected',
+      reason: 'conflict',
+      kind: 'oversized',
+      detail: 'The output of the workflow takes 1100002 bytes as JSON, more than the 1048574 a run records',
+    });
     expect(ending).toEqual({
       kind: 'failed',
       type: 'WorkflowOutputTooLarge',
-      message: "The workflow's output takes 1100002 bytes as JSON, more than the 1048574 an execution records",
+      message: "The workflow's output takes 1100002 bytes as JSON, more than the 1048574 a run records",
     });
   });
 });
 
 describe('a workflow run that is cancelled', () => {
-  it('settles as failed and ends cancelled', async () => {
+  it('ends rejected as cancelled, with who asked and why', async () => {
     const { ending, settlement } = await interpret(pausing, {
       started: (_start, fake) => {
         fake.at(1000, () => {
@@ -132,7 +137,13 @@ describe('a workflow run that is cancelled', () => {
       },
     });
 
-    expect(settlement).toEqual({ status: 'failed' });
+    expect(settlement).toEqual({
+      status: 'rejected',
+      reason: 'cancelled',
+      kind: 'requested',
+      detail: 'The test cancelled the run',
+      by: 'tester',
+    });
     expect(ending.kind).toBe('cancelled');
   });
 

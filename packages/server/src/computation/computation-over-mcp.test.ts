@@ -9,7 +9,7 @@ import {
 import { campaignPace, campaignRows } from '@beonauto/computation/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const computationTestTimeoutMs = 30_000;
 

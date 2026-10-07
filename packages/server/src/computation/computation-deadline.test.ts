@@ -4,7 +4,7 @@ import { programPool } from '@beonauto/workflow-engine/dsl';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const blockingOnTwoRows = new URL(
   `data:text/javascript,${encodeURIComponent(

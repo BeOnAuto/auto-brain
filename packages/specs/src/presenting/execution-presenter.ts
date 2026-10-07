@@ -3,6 +3,8 @@ import { Schema } from 'effect';
 
 import {
   ExecutionEventSchema,
+  type CalledBy,
+  type ExecutionCancelRequested,
   type ExecutionDeferred,
   type ExecutionEvent,
   type ToolCallAnswered,
@@ -12,6 +14,7 @@ import {
 import type { ExecutionRejection } from '../execution/execution.ts';
 import { jsonBytesOf } from '../execution/recorded-size.ts';
 import {
+  cancelAsked,
   runBrokeDown,
   runFinished,
   runRejected,
@@ -47,8 +50,24 @@ function rejectionShown(rejection: ExecutionRejection) {
     const { reason, kind } = rejection;
     return { reason, detail, ...(kind === undefined ? {} : { kind }) };
   }
+  if (rejection.reason === 'cancelled') {
+    const { reason, kind } = rejection;
+    return { reason, detail, kind };
+  }
   const { reason, kind, because } = rejection;
   return { reason, detail, ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
+}
+
+function calledByShown(calledBy: CalledBy | undefined) {
+  if (calledBy === undefined) {
+    return {};
+  }
+  const { execution_id, reference, run } = calledBy;
+  return { called_by: { execution_id, reference: cutAtCodePoint(reference, mostNameBytes), run } };
+}
+
+function cancelAskedAccount({ kind, reason }: ExecutionCancelRequested, fact: Fact): Account {
+  return { summary: cancelAsked(kind), data: { ...fact, kind, reason: cutAtCodePoint(reason, mostDetailBytes) } };
 }
 
 function contentShown(name: string, content: string | undefined) {
@@ -108,11 +127,14 @@ function accountOf(words: SpecWords, event: ShownExecutionEvent, executionId: st
     return toolCallAccount(event, fact);
   }
   if (event.type === 'execution_started') {
-    const { primitive, name, spec_version, input } = event;
+    const { primitive, name, spec_version, input, called_by: calledBy } = event;
     return {
       summary: runStarted(words, primitive, name),
-      data: { ...fact, primitive, name, spec_version, input_bytes: jsonBytesOf(input) },
+      data: { ...fact, primitive, name, spec_version, input_bytes: jsonBytesOf(input), ...calledByShown(calledBy) },
     };
+  }
+  if (event.type === 'execution_cancel_requested') {
+    return cancelAskedAccount(event, fact);
   }
   if (event.type === 'execution_succeeded') {
     const sizes = { output_bytes: jsonBytesOf(event.output), record_bytes: jsonBytesOf(event.record) };
@@ -121,7 +143,8 @@ function accountOf(words: SpecWords, event: ShownExecutionEvent, executionId: st
   if (event.type === 'execution_rejected') {
     return { summary: runRejected(event.rejection), data: { ...fact, ...rejectionShown(event.rejection) } };
   }
-  return { summary: runBrokeDown, data: fact };
+  const { incident } = event;
+  return { summary: runBrokeDown, data: incident === undefined ? fact : { ...fact, incident } };
 }
 
 const executionsKind = 'executions';
@@ -131,6 +154,7 @@ const shownNames: Readonly<Record<ShownExecutionEvent['type'], readonly [string]
   execution_succeeded: ['execution_succeeded'],
   execution_rejected: ['execution_rejected'],
   execution_failed: ['execution_failed'],
+  execution_cancel_requested: ['execution_cancel_requested'],
   tool_call_started: ['tool_call_started'],
   tool_call_answered: ['tool_call_answered'],
 };

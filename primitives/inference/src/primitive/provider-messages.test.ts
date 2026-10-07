@@ -32,6 +32,7 @@ describe('an execution whose gateway rejects the spec', () => {
       Exit.fail(
         new Conflict({
           detail: 'gateway answered HTTP 404: the model was not found; update the reasoning function definition',
+          kind: 'unworkable',
         }),
       ),
     );
@@ -54,6 +55,7 @@ describe('an execution whose gateway rejects the spec', () => {
       Exit.fail(
         new Conflict({
           detail: `gateway answered HTTP 404: the model was not found; update the reasoning function definition. The provider said: ${gatewayErrorText.slice(0, 300)}`,
+          kind: 'unworkable',
         }),
       ),
     );

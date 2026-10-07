@@ -23,7 +23,7 @@ const description = [
   'an answer larger than that fails the run.',
   '`execution_id` is an optional UUID that identifies the run and controls retries as described below;',
   'without it, a new id is made, and the run answers with it.',
-  'Once a run succeeded, or its input was rejected as invalid, a call with its id and the same definition',
+  'Once a run succeeded, its input was rejected as invalid, or it was cancelled, a call with its id and the same definition',
   'and input runs nothing and answers the same again; so does a call with the id of a run',
   'that waits for work it started to end, answering it as it stands.',
   'Until then, a call with its id runs the definition again: after the server stopped during a run,',
@@ -38,7 +38,8 @@ const description = [
   'or when another call recorded on the same run at the same moment;',
   'with invalid_input when its runtime adapter rejects the input, with issues under /input;',
   'and with unavailable when a dependency cannot serve now, in which case try again later,',
-  'unless its kind is tools_unfinished: tools were called, so try again only as a new run with another id.',
+  'unless its kind is tools_unfinished: tools were called, so try again only as a new run with another id;',
+  'and with cancelled, with its kind, when the run under that id was cancelled.',
   'Rejections from the runtime adapter (invalid_input, unavailable, and the conflict it finds) are recorded on the run.',
 ];
 
@@ -59,10 +60,10 @@ export function defineExecuteSpec(primitives: readonly Primitive[]) {
         execution_id: Schema.optionalKey(ExecutionIdField),
       }),
       outputSchema: RunSchema,
-      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable'],
+      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled'],
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name, input = {}, execution_id: suppliedId }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
-        return yield* executeRequest(primitive, { primitive: primitive.name, name, input }, suppliedId);
+        return yield* executeRequest(primitives, primitive, { primitive: primitive.name, name, input }, suppliedId);
       }),
       plainLanguage: runPlainLanguage(primitives),
     }),

@@ -4,7 +4,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { workerPool } from '../composition/served-computation.ts';
-import { alpha } from '../testing/reasoning-server.ts';
+import { alpha } from '../testing/servers/reasoning-server.ts';
 import {
   brainWithReviews,
   inState,
@@ -13,7 +13,7 @@ import {
   servingRecall,
   standingUntil,
   verdicts,
-} from '../testing/recall-server.ts';
+} from '../testing/servers/recall-server.ts';
 
 const reviewRuns =
   'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief';

@@ -5,14 +5,14 @@ import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
   settledExecution,
   workflowSource,
   workflowTestTimeoutMs,
-} from '../testing/workflow-server.ts';
+} from '../testing/servers/workflow-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -73,7 +73,7 @@ describe(
   'a workflow step that times out while its reasoning function calls a tool',
   { timeout: workflowTestTimeoutMs },
   () => {
-    it('aborts the call in flight at its MCP server, and leaves the run failed with the call started and unanswered', async () => {
+    it('aborts the call in flight at its MCP server, and leaves the run cancelled with the call started and unanswered', async () => {
       const fake = await serveFakeMcp({ bearer: apiKey });
       closing.push(fake.close);
       const server = await serving(fake);
@@ -95,13 +95,16 @@ describe(
       expect(calls[1]?.session).toBe(calls[0]?.session);
       expect(calls[0]?.session).toEqual(expect.any(String));
       expect(fake.received()).toMatchObject([{ tool: 'sleep', arguments: { ms: 60_000 } }]);
-      expect(run).toMatchObject({ body: { status: 'failed' } });
+      expect(run).toMatchObject({
+        body: { status: 'rejected', rejection: { reason: 'cancelled', kind: 'deadline' } },
+      });
       expect(decodeHistory(history.body).events.map(({ type }) => type)).toEqual([
         'execution_started',
         'tool_call_started',
-        'execution_failed',
+        'execution_cancel_requested',
+        'execution_rejected',
       ]);
-      expect(again).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'tools_called' } });
+      expect(again).toMatchObject({ status: 409, body: { reason: 'cancelled', kind: 'deadline' } });
     });
   },
 );

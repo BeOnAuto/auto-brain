@@ -93,8 +93,23 @@ const rejections: ReadonlyArray<readonly [string, Readonly<Record<string, unknow
   ],
   [
     'a spec it could not run as written',
-    { reason: 'conflict', detail: 'x' },
+    { reason: 'conflict', detail: 'x', kind: 'unworkable' },
     'it cannot work as it is written. This can be corrected and tried again; the details below say what to change.',
+  ],
+  [
+    'a clash that names no kind',
+    { reason: 'conflict', detail: 'x' },
+    'it clashes with something already there. The details below say what is in the way.',
+  ],
+  [
+    'a workflow whose result was larger than a run may record',
+    { reason: 'conflict', detail: 'x', kind: 'oversized' },
+    'its result is larger than a run may record. This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
+  ],
+  [
+    'a run cancelled because the step that waited for it ran out of time',
+    { reason: 'cancelled', detail: 'x', kind: 'deadline' },
+    'the step that waited for it ran out of time, so it was cancelled. Nothing more of it runs, but what it did before may have changed something; the step that waited for it decides what happens next.',
   ],
   [
     'a step that met a run whose tools may have been called',

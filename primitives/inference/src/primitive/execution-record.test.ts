@@ -70,6 +70,7 @@ describe('the record of an execution', () => {
         new Conflict({
           detail:
             'The answer takes more than a run can record (1048576 bytes with its record); lower config.max_output_tokens in the reasoning function definition',
+          kind: 'unworkable',
           record: { usage, duration_ms: 1500 },
         }),
       ),

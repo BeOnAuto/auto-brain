@@ -34,7 +34,15 @@ const explanationByReason: Readonly<Record<RejectionReason, Explanation>> = {
     why: 'it clashes with something already there',
     remedy: 'The details below say what is in the way.',
   },
+  cancelled: {
+    why: 'it was cancelled before it finished',
+    remedy: 'Nothing more of it runs; start a new run if it is still needed.',
+    mayHaveChanged: true,
+  },
 };
+
+const ranUntilCancelled =
+  'Nothing more of it runs, but what it did before may have changed something; start a new run if it is still needed.';
 
 const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   taken: { why: 'that name is already taken', remedy: 'A different name will work.' },
@@ -73,6 +81,33 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
     why: 'a tool server it needs could not be used',
     remedy:
       'Nothing was called through it, so it can be tried again later; if it keeps happening, whoever runs the server can look into that tool server.',
+  },
+  oversized: {
+    why: 'its result is larger than a run may record',
+    remedy:
+      'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
+  },
+  requested: {
+    why: 'it was cancelled at the request of someone allowed to change the brain',
+    remedy: ranUntilCancelled,
+    mayHaveChanged: true,
+  },
+  deadline: {
+    why: 'the step that waited for it ran out of time, so it was cancelled',
+    remedy:
+      'Nothing more of it runs, but what it did before may have changed something; the step that waited for it decides what happens next.',
+    mayHaveChanged: true,
+  },
+  overrun: {
+    why: 'it ran for as long as a workflow may run, so it was stopped',
+    remedy:
+      'Whoever runs the server decides how long a workflow may run; what it did before may have changed something, so check before starting a new run.',
+    mayHaveChanged: true,
+  },
+  parent_ended: {
+    why: 'the run that waited for it ended first, so it was cancelled',
+    remedy: 'Nothing more of it runs, since only that run needed it; what it did before may have changed something.',
+    mayHaveChanged: true,
   },
   tools_unfinished: {
     why: 'it called tools but could not finish',

@@ -175,7 +175,11 @@ function examineRecords(execute: SQLExecutor): RecordedStatements['examineRecord
   };
 }
 
-function firstMessagesOfRuns(scope: ExaminationScope): SQL {
+function notOfTypes(column: string, types: readonly string[]): SQL {
+  return types.length === 0 ? SQL`` : SQL` AND NOT ${ofTypes(column, types)}`;
+}
+
+function firstMessagesOfRuns(scope: ExaminationScope, notBeginningWith: readonly string[]): SQL {
   return SQL`SELECT scanned.*, row_number() OVER (ORDER BY scanned.position ${direction(scope)}) AS examined,
       count(*) OVER () AS scanned_count
     FROM (
@@ -185,7 +189,7 @@ function firstMessagesOfRuns(scope: ExaminationScope): SQL {
         ${correlationOfMessage} AS correlation, octet_length(message_data) AS size
       FROM emt_messages
       WHERE ${kindKeyOfStream} = ${`${scope.brainKey}executions/`} AND stream_position = 1
-        AND partition = ${defaultPartition} AND is_archived = FALSE${bounds(scope)}
+        AND partition = ${defaultPartition} AND is_archived = FALSE${bounds(scope)}${notOfTypes('message_type', notBeginningWith)}
       ORDER BY global_position ${direction(scope)}
       LIMIT ${scope.examineAtMost + 1}
     ) AS scanned`;
@@ -216,7 +220,7 @@ function examinedRunOf(row: typeof ExaminedRunRow.Type): ExaminedItem {
 }
 
 function examineRuns(execute: SQLExecutor): RecordedStatements['examineRuns'] {
-  return async (scope) => {
+  return async (scope, notBeginningWith) => {
     const wanted = ofTypes('latest.message_type', scope.types);
     const { rows } = await execute.query(
       SQL`SELECT f.position, f.stream, f.version, f.type, f.recorded, f.id, f.causation, f.correlation, f.examined,
@@ -226,7 +230,7 @@ function examineRuns(execute: SQLExecutor): RecordedStatements['examineRuns'] {
           ${sizeOf(scope, wanted, 'latest.message_type', 'octet_length(latest.message_data)')} AS latest_size,
           latest.message_id AS latest_id, json_extract(latest.message_metadata, '$.causationId') AS latest_causation,
           json_extract(latest.message_metadata, '$.correlationId') AS latest_correlation, ${wanted} AS wanted
-        FROM (${firstMessagesOfRuns(scope)}) AS f
+        FROM (${firstMessagesOfRuns(scope, notBeginningWith)}) AS f
         JOIN emt_messages AS latest
           ON latest.stream_id = f.stream AND latest.partition = ${defaultPartition} AND latest.is_archived = FALSE
           AND latest.stream_position = (

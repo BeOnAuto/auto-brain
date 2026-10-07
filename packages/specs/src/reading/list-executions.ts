@@ -6,6 +6,7 @@ import {
   defineQuery,
   mostRecordsInAPage,
   mostExaminedInAPage,
+  type RecordedSelection,
 } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
@@ -51,6 +52,8 @@ const ListedExecutionsPage = Schema.Struct({
   ...PagingOutputFields,
 });
 
+const streamsOfRuns: RecordedSelection = { kind: 'executions', notBeginningWith: ['execution_cancel_requested'] };
+
 interface SpecFilter {
   readonly primitive: string | undefined;
   readonly name: string | undefined;
@@ -69,15 +72,12 @@ const listExecutions = Effect.fnUntraced(function* ({
   limit = defaultPageLimit,
   cursor,
 }: typeof ListExecutionsInput.Type) {
-  const page = yield* (yield* BrainReader).readRecorded(
-    { kind: 'executions' },
-    {
-      order: 'desc',
-      limit,
-      ...(cursor === undefined ? {} : { cursor }),
-      ...(status === undefined ? {} : { types: storedTypesByStatus[status] }),
-    },
-  );
+  const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns, {
+    order: 'desc',
+    limit,
+    ...(cursor === undefined ? {} : { cursor }),
+    ...(status === undefined ? {} : { types: storedTypesByStatus[status] }),
+  });
   const listed = yield* listedExecutionsOf(page.records);
   return {
     executions: listed.filter((execution) => isOfSpec(execution, { primitive, name })),

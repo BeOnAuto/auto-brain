@@ -1,8 +1,8 @@
 import { openWorkflowHost, type WorkflowHost } from '@beonauto/workflow-host';
-import { recordedReactions } from '@beonauto/workflow-host/testing';
+import { recordedReactions, recordedWaiting } from '@beonauto/workflow-host/testing';
 import { Effect, Function } from 'effect';
 
-import { definitionCalls } from '../calls/function-calls.ts';
+import { callResultOfEnding, definitionCalls } from '../calls/function-calls.ts';
 import { triggerOfSource } from '../document/workflow-document.ts';
 import { orchestrationMachine } from '../runs/orchestration-machine.ts';
 import type { Brain } from './brain.ts';
@@ -22,5 +22,6 @@ export function testHost(nested: Brain): Promise<WorkflowHost> {
     sweepEveryMs: 20,
     mostCallsAtOnce: 4,
     reactions: recordedReactions({ triggerOf: triggerOfSource }).options,
+    waiting: { ...recordedWaiting().options, resultOf: callResultOfEnding },
   });
 }

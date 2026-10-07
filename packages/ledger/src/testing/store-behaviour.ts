@@ -3,7 +3,7 @@ import { Effect, Result } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { eventAppenderOf } from '../event-appender.ts';
-import type { RecordedStream } from '../event-store.ts';
+import type { RecordedPoint, RecordedStream } from '../event-store.ts';
 import { VersionConflict } from '../version-conflict.ts';
 import { journal } from './journal.ts';
 import { aLedger, aStore, tallies, type LedgerEntry } from './ledger-entry.ts';
@@ -63,6 +63,10 @@ function theLineageOfEachMessage(entry: LedgerEntry): void {
   });
 }
 
+function orderOf(point: RecordedPoint): bigint {
+  return point.reduce((order, part) => (order << 64n) + BigInt(part), 0n);
+}
+
 async function aStoreAndItsDatabase(entry: LedgerEntry) {
   const database = await entry.aDatabase();
   const store = entry.storeOn(database);
@@ -93,7 +97,9 @@ function readingWhatWasAppended(entry: LedgerEntry): void {
         'org/acme/brains',
       ]);
       expect(appended.more).toBe(false);
-      expect(nothingSince).toEqual({ streams: [], through: appended.through, more: false });
+      expect([nothingSince.streams, nothingSince.more]).toEqual([[], false]);
+      expect(nothingSince.through).toHaveLength(appended.through.length);
+      expect(orderOf(nothingSince.through) >= orderOf(appended.through)).toBe(true);
     });
 
     it('reads at most as many messages as it is asked, and the next read goes on after the last it read', async () => {

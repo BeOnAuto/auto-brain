@@ -5,6 +5,7 @@ import { Effect, Random, type Schema } from 'effect';
 
 import { parseWorkflowDocument, type WorkflowDefinitionDocument } from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
+import { longestCallsOf } from '../runs/call-limits.ts';
 import { unavailableUnless } from '../runs/host-refusals.ts';
 import type { RunAttributes } from '../runs/run-attributes.ts';
 import { workflowDescription } from './workflow-description.ts';
@@ -39,7 +40,7 @@ function started(
   { runs, mostDurationMs, longestCallMs }: WorkflowAdapterDependencies,
   document: WorkflowDefinitionDocument,
   input: Schema.Json,
-  { id, org, brain, caller, spec, lineage, depth }: RunContext,
+  { id, org, brain, caller, spec, lineage, depth, callDepth, longestRunOf }: RunContext,
 ): Effect.Effect<FinishesLater, Conflict | Unavailable> {
   return Effect.gen(function* () {
     const seed = yield* Random.nextIntBetween(0, mostSeed);
@@ -50,13 +51,13 @@ function started(
       spec,
       caller,
       depth,
+      call_depth: callDepth,
       lineage: { start: lineage.startId, correlation: lineage.correlationId },
     };
+    const longestCallMsByTask = yield* longestCallsOf(document, longestRunOf);
+    const limits = { mostDurationMs, longestCallMs, longestCallMsByTask };
     const answer = yield* runs
-      .start(
-        { org, brain, executionId: id },
-        { document, input, limits: { mostDurationMs, longestCallMs }, attributes, seed },
-      )
+      .start({ org, brain, executionId: id }, { document, input, limits, attributes, seed })
       .pipe(Effect.mapError(unavailableUnless(notNow)));
     return yield* finishedLaterOr(answer);
   });
@@ -75,5 +76,7 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
     summarize: summaryOf,
     execute: (document, input, execution) => started(dependencies, document, input, execution),
     whenCancelled: 'finish',
+    finishesLater: true,
+    longestRunOf: () => dependencies.mostDurationMs,
   });
 }

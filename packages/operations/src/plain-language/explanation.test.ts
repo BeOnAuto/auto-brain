@@ -4,6 +4,7 @@ import {
   explanationOf,
   rejected,
   unsuccessfulWords,
+  type CancelledKind,
   type ConflictKind,
   type ExplainedRejection,
   type OperationKind,
@@ -35,6 +36,33 @@ const byConflict: ReadonlyArray<readonly [ConflictKind, string, string]> = [
     'stalled',
     'what it keeps of the brain’s history stopped at a recorded event it could not take in',
     'It answers again once a corrected version is saved, which builds it anew from the history; the details below say which event stopped it and why.',
+  ],
+  [
+    'oversized',
+    'its result is larger than a run may record',
+    'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
+  ],
+];
+
+const ranUntilCancelled =
+  'Nothing more of it runs, but what it did before may have changed something; start a new run if it is still needed.';
+
+const byCancellation: ReadonlyArray<readonly [CancelledKind, string, string]> = [
+  ['requested', 'it was cancelled at the request of someone allowed to change the brain', ranUntilCancelled],
+  [
+    'deadline',
+    'the step that waited for it ran out of time, so it was cancelled',
+    'Nothing more of it runs, but what it did before may have changed something; the step that waited for it decides what happens next.',
+  ],
+  [
+    'overrun',
+    'it ran for as long as a workflow may run, so it was stopped',
+    'Whoever runs the server decides how long a workflow may run; what it did before may have changed something, so check before starting a new run.',
+  ],
+  [
+    'parent_ended',
+    'the run that waited for it ended first, so it was cancelled',
+    'Nothing more of it runs, since only that run needed it; what it did before may have changed something.',
   ],
 ];
 
@@ -182,6 +210,23 @@ describe('explanationOf', () => {
     });
   });
 
+  it.each(byCancellation)(
+    'explains a run cancelled with the kind %s, which may have changed something',
+    (kind, why, remedy) => {
+      expect(explanationOf({ reason: 'cancelled', kind })).toEqual({ why, remedy, mayHaveChanged: true });
+    },
+  );
+});
+
+describe('explanationOf a run that names no kind', () => {
+  it('explains a cancelled run that does not say its kind', () => {
+    expect(explanationOf({ reason: 'cancelled' })).toEqual({
+      why: 'it was cancelled before it finished',
+      remedy: 'Nothing more of it runs; start a new run if it is still needed.',
+      mayHaveChanged: true,
+    });
+  });
+
   it('explains a conflict that does not say its kind', () => {
     expect(explanationOf({ reason: 'conflict' })).toEqual({
       why: 'it clashes with something already there',
@@ -207,6 +252,14 @@ describe('unsuccessfulWords', () => {
       }),
     ).toBe(
       'Could not run the reasoning function “summary”: it called tools but could not finish, because it ran out of time. What it called may have changed something, so it is not run again by itself: check what its history shows it called, then start a new run if it is still needed.',
+    );
+  });
+
+  it('does not say that nothing changed for a run that was cancelled, since it may have done some of its work', () => {
+    expect(
+      unsuccessfulWords('run the workflow “close”', 'command', rejected('cancelled', 'x', undefined, 'deadline')),
+    ).toBe(
+      'Could not run the workflow “close”: the step that waited for it ran out of time, so it was cancelled. Nothing more of it runs, but what it did before may have changed something; the step that waited for it decides what happens next.',
     );
   });
 

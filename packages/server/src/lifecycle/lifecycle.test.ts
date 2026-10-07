@@ -5,8 +5,8 @@ import { createApiKey } from '@beonauto/identity';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { isAcceptingConnections } from '../testing/accepting-connections.ts';
-import { testRoutes } from '../testing/test-routes.ts';
+import { testRoutes } from '../testing/entries/test-routes.ts';
+import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
 import { startServer, tcpPort, defaultServerOptions, servedBy, type Served } from './lifecycle.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0', LOCAL_MODE: 'true' };

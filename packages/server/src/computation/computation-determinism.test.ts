@@ -2,7 +2,7 @@ import { campaignPace, campaignRows } from '@beonauto/computation/testing';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const executionIds = { cold: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', warm: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b' };
 

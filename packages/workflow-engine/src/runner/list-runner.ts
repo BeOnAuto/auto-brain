@@ -1,3 +1,4 @@
+import type { CancelReason } from '../dispatch/run-output.ts';
 import { valueAtPointer } from '../dsl/json.ts';
 import { caughtRaise, raised } from '../dsl/raised-error.ts';
 import { taskEntries, type TaskEntry } from '../dsl/tasks.ts';
@@ -111,10 +112,10 @@ export function resumeList(machine: Machine, cursor: ListCursor, signal: Signal)
   });
 }
 
-export function cancelList(machine: Machine, { current }: ListCursor): void {
+export function cancelList(machine: Machine, { current }: ListCursor, reason: CancelReason): void {
   if (current.kind === 'yielding') {
     machine.session.timers.disarm(current.timer);
     return;
   }
-  machine.runner.cancelTask(machine, current.task);
+  machine.runner.cancelTask(machine, current.task, reason);
 }

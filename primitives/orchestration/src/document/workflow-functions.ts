@@ -2,7 +2,6 @@ import { definitionResourceLabel, emittedEventRefusal, isReservedSource, reserve
 import {
   type CallFunctions,
   field,
-  forbidden,
   isObject,
   type Json,
   type JsonObject,
@@ -30,11 +29,7 @@ function executeSpecRejections(arguments_: Json | undefined, pointer: string): r
   const missing = ['primitive', 'name']
     .filter((key) => typeof field(arguments_, key) !== 'string')
     .map((key) => rejection(pointerTo(pointer, key), `${executeSpecFunction} needs a string ${key}`));
-  const workflow =
-    field(arguments_, 'primitive') === 'orchestration'
-      ? [forbidden(`${pointer}/primitive`, 'A workflow cannot execute another workflow in this version')]
-      : [];
-  return unknown.concat(missing, workflow, templateRejections(arguments_, pointer));
+  return unknown.concat(missing, templateRejections(arguments_, pointer));
 }
 
 function specDescribed(name: string, arguments_: Json): string {

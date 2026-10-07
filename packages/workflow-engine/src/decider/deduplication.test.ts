@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { RunInput } from '../machine/run-input.ts';
 import { startedOf } from '../testing/driver-inputs.ts';
+import { testCancel } from '../testing/driver-inputs.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
 import { armedTimerIds, drivenExecutionId as executionId } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
@@ -86,11 +87,9 @@ describe('an event or a cancel given twice is applied once', () => {
   it('when it asks for a cancel', () => {
     const driver = started();
 
-    expect(twice(driver, { kind: 'cancel_requested', executionId, at: driver.clock.now() })).toEqual([
-      'applied',
-      'stale',
-      '1 appended',
-    ]);
+    expect(
+      twice(driver, { kind: 'cancel_requested', executionId, at: driver.clock.now(), cancel: testCancel }),
+    ).toEqual(['applied', 'stale', '1 appended']);
   });
 });
 

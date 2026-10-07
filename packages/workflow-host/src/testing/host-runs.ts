@@ -1,13 +1,13 @@
-import type { CallResult, Lineage, Settlement } from '@beonauto/operations';
+import type { Lineage, Settlement } from '@beonauto/operations';
 import type { StartCall } from '@beonauto/workflow-engine';
 import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import type { HostNote } from '../host/host-reports.ts';
 import { openWorkflowHost, type HostOptions, type WorkflowHost } from '../host/workflow-host.ts';
 import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
-import { recordingReports, recordingSettlements } from './recording-reports.ts';
+import { recordedWaiting } from '../waiting-testing/recorded-waiting.ts';
+import { recordingReports, recordingSettlements, type RecordingReports } from './recording-reports.ts';
 
 export interface HostedRuns {
   readonly host: WorkflowHost;
@@ -16,12 +16,13 @@ export interface HostedRuns {
   readonly settledWith: () => ReadonlyMap<string, Lineage | undefined>;
   readonly settleAttempts: () => number;
   readonly troubles: () => readonly string[];
-  readonly notes: () => readonly HostNote[];
+  readonly notes: RecordingReports['notes'];
   readonly know: (executionId: string) => void;
 }
 
 export interface HostedOptions {
-  readonly answer?: (call: StartCall) => Effect.Effect<CallResult>;
+  readonly answer?: (call: StartCall) => ReturnType<HostOptions['perform']>;
+  readonly waiting?: HostOptions['waiting'];
   readonly clock?: NonNullable<HostOptions['clock']>;
   readonly sweepEveryMs?: number;
   readonly ledgerDown?: () => boolean;
@@ -29,7 +30,8 @@ export interface HostedOptions {
   readonly views?: HostOptions['views'];
 }
 
-const answeredWithNull = (): Effect.Effect<CallResult> => Effect.succeed({ status: 'succeeded', output: null });
+const answeredWithNull = (): ReturnType<HostOptions['perform']> =>
+  Effect.succeed({ status: 'succeeded', output: null });
 
 const ledgerUp = (): boolean => false;
 
@@ -50,6 +52,7 @@ export async function hostedOn(settings: HostOptions['database'], options: Hoste
     sweepEveryMs: options.sweepEveryMs ?? 50,
     mostCallsAtOnce: 4,
     reactions: recordedReactions().options,
+    waiting: options.waiting ?? recordedWaiting().options,
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.holder === undefined ? {} : { holder: options.holder }),
     ...(options.views === undefined ? {} : { views: options.views }),

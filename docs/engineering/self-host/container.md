@@ -56,6 +56,7 @@ The [workflow adapter](../reference/workflow-format.md) runs workflow specs in t
 | --------------------------------- | ------- | --------------------------------------------------------------------------------------- |
 | `ORCHESTRATION_MAX_DURATION`      | `P30D`  | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`                |
 | `ORCHESTRATION_NESTED_EXECUTIONS` | `32`    | How many nested executions the server runs at once, from 1 to 1000; shared by every org |
+| `ORCHESTRATION_MAX_OPEN_CALLS`    | `1000`  | How many calls may wait under one run at the top of a tree, from 1 to 9999              |
 | `ORCHESTRATION_SWEEP_INTERVAL`    | `PT1S`  | How often the server sweeps the runs, an ISO 8601 duration from `PT0.01S` to `PT1M`     |
 
 The [computation function adapter](../../reference/computation-format.md) runs each run of a computation function in a worker thread the server keeps between runs, so a run pays for starting a worker only when none is ready, with this setting:

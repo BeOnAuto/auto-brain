@@ -18,7 +18,7 @@ import type { BrainRequest } from './request.ts';
 
 export function runInBrain(
   registration: Registration<'brain'>,
-  { caller, org, brain, input, encoding, lineage, depth }: BrainRequest,
+  { caller, org, brain, input, encoding, lineage, depth, callDepth, calledBy }: BrainRequest,
   ledger: StreamReader & StreamWriter & RecordedReader & RunOutcomesReader,
 ) {
   const prefix = streamPrefixOfBrain({ org, brain });
@@ -32,7 +32,12 @@ export function runInBrain(
   );
   const forCommands = forQueries.pipe(
     Context.add(BrainWriter, prefixedWriter(ledger, prefix)),
-    Context.add(CallLineage, { lineage: lineage ?? null, depth: depth ?? 0 }),
+    Context.add(CallLineage, {
+      lineage: lineage ?? null,
+      depth: depth ?? 0,
+      callDepth: callDepth ?? 0,
+      calledBy: calledBy ?? null,
+    }),
   );
   return registration.kind === 'query'
     ? registration.run(input, encoding).pipe(Effect.provideContext(forQueries))

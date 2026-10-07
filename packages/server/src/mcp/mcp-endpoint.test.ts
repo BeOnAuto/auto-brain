@@ -11,7 +11,7 @@ import { answers, textResult } from '@beonauto/inference/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
 
@@ -23,6 +23,7 @@ const specTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'cancel_execution',
   'list_executions',
   'get_execution_history',
   'get_brain_analytics',

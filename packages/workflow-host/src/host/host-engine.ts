@@ -12,7 +12,7 @@ import {
 } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
-import { hostExecutor, type HostExecutor, type Perform } from '../calls/host-executor.ts';
+import { hostExecutor, type ExecutorParts, type HostExecutor, type Perform } from '../calls/host-executor.ts';
 import type { HostDatabase } from '../database/host-database.ts';
 import type { HostClock } from '../loop/host-clock.ts';
 import type { ReactionOptions } from '../reactions/reaction-options.ts';
@@ -38,9 +38,12 @@ export interface HostEngine {
   readonly submitted: (input: RunInput) => Effect.Effect<Submission, Conflict>;
 }
 
+export type WaitingCalls = Pick<ExecutorParts, 'mostOpen' | 'childOf' | 'childAnswerOf' | 'cancelChild'>;
+
 export function hostEngineOn(
   database: HostDatabase,
   options: EngineOptions,
+  waiting: WaitingCalls,
   armed: (dueAt: number) => void,
 ): HostEngine {
   const { reports, clock } = options;
@@ -54,6 +57,7 @@ export function hostEngineOn(
       submitted({ kind: 'call_answered', executionId: key.executionId, at: clock.now(), key, result }),
     trouble: reports.trouble,
     mostAtOnce: options.mostCallsAtOnce,
+    ...waiting,
   });
   const reacting = reactionPortsOn(database, options.reactions, clock.now);
   const ports = hostPortsOn(database, {

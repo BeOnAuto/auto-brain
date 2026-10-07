@@ -1,4 +1,4 @@
-export type { Perform, Trouble } from './calls/host-executor.ts';
+export type { CallAnswer, Perform, Trouble } from './calls/host-executor.ts';
 export type { DatabaseSettings } from './database/host-databases.ts';
 export { DeliveryFailed, type Consumer, type Delivery, type FollowedRecord } from './follower/consumers.ts';
 export type { FollowedEvent } from './follower/followed-events.ts';
@@ -31,3 +31,4 @@ export { cronRejectionOf } from './schedules/schedule-times.ts';
 export { mostListenersInABrain } from './listeners/sql-listeners.ts';
 export { mostReactionDepth } from './reactions/subscription-starts.ts';
 export { mostDeferredStarts, mostStartsAMinute } from './reactions/start-rates.ts';
+export { mostOpenCallsOfATree, type WaitingOptions } from './waiting/waiting-options.ts';

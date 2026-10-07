@@ -103,6 +103,7 @@ export function finishedWith(output: Schema.Json, answered: Answered): Effect.Ef
     ? Effect.fail(
         new Conflict({
           detail: `The answer takes more than a run can record (${mostResultBytes} bytes with its record); lower config.max_output_tokens in the reasoning function definition`,
+          kind: 'unworkable',
           record: spendingRecord(answered.result.usage, answered.result.duration_ms),
         }),
       )

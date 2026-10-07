@@ -22,7 +22,7 @@ For a campaign review, the method might require a specific audience, a clear off
 | Run      | One execution against particular inputs                        | Review of the autumn campaign brief          |
 | Result   | The output produced by that run                                | A recommendation and missing information     |
 
-The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md) coordinate those functions. A workflow step that calls another workflow is a subworkflow; the runtime does not support subworkflows yet.
+The [function types](functions.md) describe different kinds of work. [Workflows](workflows.md) coordinate those functions. A workflow that another workflow calls is a subworkflow, and the workflow that calls it waits for its run.
 
 ## The agent and the brain
 

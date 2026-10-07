@@ -173,7 +173,7 @@ describe('the presenter of an execution rejected for something it relies on', ()
   it('shows a spec that cannot run as written, and cuts a long detail and caller at a code point', () => {
     const conflict = presented({
       type: 'execution_rejected',
-      rejection: { reason: 'conflict', detail: '😀'.repeat(1000) },
+      rejection: { reason: 'conflict', detail: '😀'.repeat(1000), kind: 'unworkable' },
       ...ofGreet,
       by: 'c'.repeat(300),
       at: fact.at,

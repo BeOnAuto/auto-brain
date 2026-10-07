@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { linesLoggedBy } from '../testing/logged-lines.ts';
+import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logHostNote } from './host-notes.ts';
 
 const run = { org: 'acme', brain: 'alpha', executionId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' };

@@ -14,4 +14,5 @@ Use a numbered Markdown filename for each decision and link to it from the affec
 | [2. Reading the runs of a brain and what happened in it](0002-reading-runs-and-brain-events.md)                                             | accepted 2026-10-05, amended 2026-10-05 |
 | [3. MCP servers: a brain reaches the outside world through configured MCP servers](0003-mcp-servers.md)                                     | accepted 2026-10-05                     |
 | [5. Computation functions: a brain computes with a program, deterministically and without the outside world](0005-computation-functions.md) | proposed 2026-10-05, built 2026-10-06   |
+| [11. Waiting calls: a workflow waits for a run that finishes later, and a run can be cancelled](0011-waiting-calls.md)                      | accepted 2026-10-07                     |
 | [14. A warm worker pool: a run costs its own work, in a worker kept between jobs and let go of after any bad one](0014-warm-worker-pool.md) | proposed 2026-10-06, built 2026-10-07   |

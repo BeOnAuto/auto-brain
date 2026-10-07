@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { followedRecordOf } from '../reaction-testing/followed-records.ts';
-import { DeliveryFailed, type RecordConsumer, type Delivery } from './consumers.ts';
+import { DeliveryFailed, boundTo, type RecordConsumer, type Delivery } from './consumers.ts';
 import { deliveredAll } from './delivery-loop.ts';
 import type { Progress } from './followed-brains.ts';
 
@@ -14,6 +14,10 @@ interface Counted {
   readonly consumer: RecordConsumer;
   readonly delivered: () => readonly string[];
   readonly skipped: () => readonly string[];
+}
+
+function boundAll(...consumers: readonly RecordConsumer[]) {
+  return consumers.map((consumer) => boundTo(consumer, followed));
 }
 
 function keyed(index: number): string {
@@ -66,10 +70,10 @@ describe('the deliveries of one record', () => {
   it('are 100 in a pass at most, the rest following in the next pass from the last delivered, consumer by consumer', async () => {
     const listeners = counted('listeners', 120);
     const starts = counted('starts', 30);
-    const consumers = [listeners.consumer, starts.consumer];
+    const consumers = boundAll(listeners.consumer, starts.consumer);
 
-    const first = await Effect.runPromise(deliveredAll(consumers, followed, fresh, 'signal'));
-    const second = await Effect.runPromise(deliveredAll(consumers, followed, first.progress, 'signal'));
+    const first = await Effect.runPromise(deliveredAll(consumers, fresh, 'signal'));
+    const second = await Effect.runPromise(deliveredAll(consumers, first.progress, 'signal'));
 
     expect([first.end, listeners.delivered().length, second.end, starts.delivered().length]).toEqual([
       'more',
@@ -82,9 +86,9 @@ describe('the deliveries of one record', () => {
 
   it('try a delivery that keeps failing on 20 sweeps, holding the record, then skip it and say so', async () => {
     const starts = counted('starts', 3, new Set(['0001']));
-    const swept = (progress: Progress) => deliveredAll([starts.consumer], followed, progress, 'sweep');
+    const swept = (progress: Progress) => deliveredAll(boundAll(starts.consumer), progress, 'sweep');
 
-    const signalled = await Effect.runPromise(deliveredAll([starts.consumer], followed, fresh, 'signal'));
+    const signalled = await Effect.runPromise(deliveredAll(boundAll(starts.consumer), fresh, 'signal'));
     const held = await Effect.runPromise(
       Array.from({ length: 19 }).reduce<Effect.Effect<Progress>>(
         (before) => Effect.flatMap(before, (progress) => Effect.map(swept(progress), (step) => step.progress)),
@@ -105,7 +109,7 @@ describe('the deliveries of one record', () => {
   it('ask a consumer again within the pass, from where its last batch ended, while its batches deliver fewer than they take', async () => {
     const sparse = counted('sparse', 298, new Set(), (key) => Number(key) % 3 === 0);
 
-    const pass = await Effect.runPromise(deliveredAll([sparse.consumer], followed, fresh, 'signal'));
+    const pass = await Effect.runPromise(deliveredAll(boundAll(sparse.consumer), fresh, 'signal'));
 
     expect([pass.end, sparse.delivered().length, sparse.delivered().at(-1)]).toEqual([undefined, 100, 'sparse 0297']);
   });

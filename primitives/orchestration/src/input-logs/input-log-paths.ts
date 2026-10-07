@@ -48,7 +48,7 @@ export const inputLogPaths: readonly InputLogPath[] = [
   {
     name: 'cancelled',
     source: 'do:\n  - pause: { wait: PT1H }',
-    ends: { kind: 'cancelled' },
+    ends: { kind: 'cancelled', cancel: { by: 'tester', kind: 'requested', reason: 'The test cancelled the run' } },
     meanwhile: cancellingAfter(10),
   },
   {
