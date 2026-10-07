@@ -9,6 +9,7 @@ coverage
 .DS_Store
 .idea
 .claude/worktrees/
+/.codex/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
