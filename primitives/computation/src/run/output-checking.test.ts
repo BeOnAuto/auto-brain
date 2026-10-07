@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
 import { computationWith, poolOf, programDocument, workerTestTimeoutMs } from '../testing/computation-runs.ts';
-import { outputCheckOf } from './output-check.ts';
 
 function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly requests: ProgramRequest[] } {
   const requests: ProgramRequest[] = [];
@@ -23,32 +22,30 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
   };
 }
 
+const outputSchema = 'language: jq\noutput:\n  schema: {type: array, items: {type: string}}';
+
 describe('the check of an output against the output schema', { timeout: workerTestTimeoutMs }, () => {
-  it('runs in the worker that runs the program, under its deadline, never on the thread that asked', async () => {
+  it('runs in the checked worker that runs the program, under its deadline, never on the thread that asked', async () => {
     const { pool, requests } = recording(poolOf());
     const run = computationWith(pool);
 
     expect(await run.executing(campaignPace, campaignRows(10))).toMatchObject(Exit.succeed({}));
     expect(await run.executing(programDocument('.'), 1)).toMatchObject(Exit.succeed({ output: 1 }));
     expect(requests.map(({ worker, context }) => ({ worker: worker?.pathname.split('/').at(-1), context }))).toEqual([
-      { worker: 'output-worker.ts', context: run.prepared(campaignPace).summary.outputSchema },
+      { worker: 'checked-worker.ts', context: run.prepared(campaignPace).summary.outputSchema },
       { worker: undefined, context: undefined },
     ]);
   });
 
-  it('names at most three issues of the output', () => {
-    const check = outputCheckOf({ type: 'array', items: { type: 'string' } });
+  it('refuses an output the schema refuses, naming at most three of its issues in the one wording of them', async () => {
+    const run = computationWith();
 
-    expect(check([1, 2, 3, 4])).toEqual([
-      { pointer: '/0', detail: 'Expected string' },
-      { pointer: '/1', detail: 'Expected string' },
-      { pointer: '/2', detail: 'Expected string' },
-    ]);
-    expect(check('x')).toEqual([{ pointer: '', detail: 'Expected array' }]);
-    expect(check(['x'])).toEqual([]);
-  });
-
-  it('refuses every output when the schema it is given does not compile, naming why', () => {
-    expect(outputCheckOf('not a schema')(1)).toEqual([{ pointer: '', detail: 'A schema is a JSON object' }]);
+    expect(await run.executing(programDocument('[1, 2, 3, 4]', outputSchema))).toMatchObject(
+      Exit.fail({
+        kind: 'unworkable',
+        detail:
+          "The program's output does not match the output schema: /0: Expected string; /1: Expected string; /2: Expected string",
+      }),
+    );
   });
 });

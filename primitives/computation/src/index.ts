@@ -1,3 +1,4 @@
+export { checkedWorker } from './checking/value-checks.ts';
 export type { ComputationFunctionDefinitionDocument } from './document/computation-document.ts';
 export {
   makeComputationFunctionAdapter,

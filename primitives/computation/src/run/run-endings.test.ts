@@ -1,11 +1,11 @@
 import { Conflict, InvalidInput, Unavailable } from '@beonauto/operations';
 import type { PoolOutcome } from '@beonauto/workflow-engine/dsl';
+import { scriptedPool } from '@beonauto/workflow-engine/testing';
 import { Exit, Option, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
 import { computationWith, poolOf, programDocument, workerTestTimeoutMs } from '../testing/computation-runs.ts';
-import { scriptedPool } from '../testing/scripted-pool.ts';
 
 const decodeRun = Schema.decodeUnknownSync(
   Schema.Struct({ output: Schema.Json, record: Schema.Struct({ work: Schema.Number }) }),
