@@ -59,6 +59,7 @@ function foldedOver(source: string, foldedEvents: readonly Schema.JsonObject[]) 
   const { fold, filters, initial, schema = {} } = Result.getOrThrow(parseRecallDocument(source)).details;
   return poolOf().fold({
     ...recallFolding,
+    pageBudgetMs: 20_000,
     events: foldedEvents,
     views: [{ fold, filters, view: initial, schema, events: foldedEvents.map((_, index) => index) }],
     waitMs: 5000,
