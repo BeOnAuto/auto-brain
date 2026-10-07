@@ -37,11 +37,12 @@ const ClaimedForField = Schema.String.annotate({
 );
 
 const description = [
-  'Answers the request of an interaction function that a run of it waits for, and settles the run for good:',
+  "Answers a request an interaction function's run waits on, and settles the run for good:",
   'the run succeeds with the answer as its output, which reaches the workflow step that waits for it.',
-  'Use it when the person gives the answer to a request that list_interactions shows; send_execution_event gives an event to a waiting workflow run instead.',
-  '`execution_id` is the run of the request, `answer` must match the answer schema the request names,',
-  'and `claimed_for` is whom the caller says it answers for, kept as a claim.',
+  'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them;',
+  'a new run asks again and answers nothing, and send_execution_event gives an event to a waiting workflow instead.',
+  '`execution_id` is the run of the request, and `answer` takes the shape of the request\'s answer schema, its function\'s output_schema, such as {"decision": "approve"}.',
+  '`claimed_for` is whom the caller says it answers for, kept as a claim.',
   'The same answer again answers the run as it stands, and an answer that does not match leaves the request open.',
 ].join(' ');
 
