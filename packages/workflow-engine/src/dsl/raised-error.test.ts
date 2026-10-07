@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { callErrorOf, errorAsJson, errorType, rejectionReasonOf, settlementOf } from './raised-error.ts';
+import { callErrorOf, errorAsJson, errorType, reasonOfStatus, settlementOf } from './raised-error.ts';
 
 describe('the rejection of an uncaught error', () => {
   it.each([400, 401, 403, 404, 409, 422, 499])('is invalid_input for the client error %d, a final result', (status) => {
-    expect(rejectionReasonOf({ type: errorType('validation'), status, instance: '/' })).toBe('invalid_input');
+    expect(reasonOfStatus(status)).toBe('invalid_input');
   });
 
   it.each([408, 429, 500, 503, 302, 0])('is unavailable for %d, which retrying may get past', (status) => {
-    expect(rejectionReasonOf({ type: errorType('runtime'), status, instance: '/' })).toBe('unavailable');
+    expect(reasonOfStatus(status)).toBe('unavailable');
   });
 });
 
@@ -41,7 +41,9 @@ describe('the rejection of an uncaught error of a kind with a type of its own', 
         because: 'run_bound',
       },
     ]);
-    expect(rejectionReasonOf({ ...called, type: errorType('runtime') })).toBe('invalid_input');
+    expect(settlementOf({ kind: 'raised', error: { ...called, type: errorType('runtime') } })).toMatchObject({
+      reason: 'invalid_input',
+    });
   });
 });
 
@@ -104,5 +106,108 @@ describe('the type of the error of a call rejected with a kind', () => {
         kind: 'tools_called',
       },
     ]);
+  });
+});
+
+describe('the error of a call whose run was cancelled', () => {
+  const site = { function: 'notify', label: 'the function notify', reference: '/do/0/ask' };
+
+  it('is of the type of a cancellation, status 409, with its kind, which no retry of a communication error matches', () => {
+    expect(
+      callErrorOf({ status: 'rejected', reason: 'cancelled', detail: 'Out of time', kind: 'deadline' }, site),
+    ).toEqual({
+      type: 'https://on.auto/problems/cancelled',
+      status: 409,
+      title: 'The function notify rejected the execution with cancelled',
+      detail: 'Out of time',
+      instance: '/do/0/ask',
+      kind: 'deadline',
+    });
+  });
+
+  it('ends a workflow that does not catch it as cancelled with the same kind', () => {
+    const error = callErrorOf({ status: 'rejected', reason: 'cancelled', detail: 'Out', kind: 'parent_ended' }, site);
+
+    expect(settlementOf({ kind: 'raised', error })).toEqual({
+      status: 'rejected',
+      reason: 'cancelled',
+      detail: 'The function notify rejected the execution with cancelled: Out (at /do/0/ask)',
+      kind: 'parent_ended',
+    });
+    expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'overrun' } })).toMatchObject({
+      reason: 'cancelled',
+      kind: 'overrun',
+    });
+    expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'stalled' } })).toMatchObject({
+      reason: 'invalid_input',
+    });
+  });
+});
+
+function raisedWith(kind: string, because: string) {
+  return {
+    kind: 'raised' as const,
+    error: { type: errorType('runtime'), status: 503, instance: '/', title: 'No', kind, because },
+  };
+}
+
+describe('the settlement of a workflow that ended otherwise', () => {
+  it('keeps no kind or because of a step whose words hold for that step alone', () => {
+    expect([
+      settlementOf(raisedWith('rebuilding', 'run_bound')),
+      settlementOf(raisedWith('taken', 'nothing_known')),
+      settlementOf({
+        kind: 'raised',
+        error: { type: errorType('runtime'), status: 409, instance: '/', kind: 'stalled' },
+      }),
+    ]).toEqual([
+      { status: 'rejected', reason: 'unavailable', detail: 'No (at /)' },
+      { status: 'rejected', reason: 'unavailable', detail: 'No (at /)' },
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime (at /)',
+      },
+    ]);
+  });
+});
+
+describe('the settlement of a workflow whose output or run broke', () => {
+  it('is a conflict of the kind oversized for an output larger than a run records, and a failure for a broken run', () => {
+    expect([
+      settlementOf({ kind: 'oversized', bytes: 1_048_575, most: 1_048_574 }),
+      settlementOf({ kind: 'broken', reason: 'A step could not be read' }),
+    ]).toEqual([
+      {
+        status: 'rejected',
+        reason: 'conflict',
+        kind: 'oversized',
+        detail: 'The output of the workflow takes 1048575 bytes as JSON, more than the 1048574 a run records',
+      },
+      { status: 'failed' },
+    ]);
+  });
+
+  it('keeps no because of a kind of a type of its own that names none', () => {
+    const rebuilding = callErrorOf(
+      { status: 'rejected', reason: 'unavailable', detail: 'Still building', kind: 'rebuilding' },
+      { function: 'notify', label: 'the function notify', reference: '/do/0/ask' },
+    );
+
+    expect(settlementOf({ kind: 'raised', error: rebuilding })).toEqual({
+      status: 'rejected',
+      reason: 'unavailable',
+      detail: 'The function notify rejected the execution with unavailable: Still building (at /do/0/ask)',
+      kind: 'rebuilding',
+    });
+  });
+
+  it('takes a conflict from a step only with a kind of a type of its own', () => {
+    const conflict = callErrorOf(
+      { status: 'rejected', reason: 'conflict', detail: 'Too much', kind: 'oversized' },
+      { function: 'notify', label: 'the function notify', reference: '/do/0/ask' },
+    );
+
+    expect(settlementOf({ kind: 'raised', error: conflict })).toMatchObject({ reason: 'invalid_input' });
   });
 });

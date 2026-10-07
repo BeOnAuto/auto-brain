@@ -1,5 +1,8 @@
 import type { CallResult } from '@beonauto/operations';
 
+import type { CancelReason } from '../dispatch/run-output.ts';
+
+export type { CancelReason } from '../dispatch/run-output.ts';
 import type { Json } from '../dsl/json.ts';
 import type { TaskEntry, TaskKind } from '../dsl/tasks.ts';
 import type { ReceivedEvent } from '../inbox/received-event.ts';
@@ -52,12 +55,12 @@ export interface ListStart {
 export interface Runner {
   readonly startTask: (machine: Machine, entry: TaskEntry, rawInput: ValueId, scope: Scope) => TaskAdvance;
   readonly resumeTask: (machine: Machine, frame: TaskFrame, signal: Signal) => TaskAdvance | undefined;
-  readonly cancelTask: (machine: Machine, frame: TaskFrame) => void;
+  readonly cancelTask: (machine: Machine, frame: TaskFrame, reason: CancelReason) => void;
   readonly invocationAt: (machine: Machine, frame: TaskFrame) => Invocation;
   readonly startList: (machine: Machine, start: ListStart) => ListAdvance;
   readonly yieldList: (machine: Machine, start: ListStart, reference: string) => ListAdvance;
   readonly resumeList: (machine: Machine, cursor: ListCursor, signal: Signal) => ListAdvance | undefined;
-  readonly cancelList: (machine: Machine, cursor: ListCursor) => void;
+  readonly cancelList: (machine: Machine, cursor: ListCursor, reason: CancelReason) => void;
 }
 
 export interface Machine {

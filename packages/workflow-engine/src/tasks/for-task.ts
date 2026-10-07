@@ -1,3 +1,4 @@
+import type { CancelReason } from '../dispatch/run-output.ts';
 import { evaluateExpression, holds } from '../dsl/evaluation.ts';
 import { field, isList, itemAt, objectField, textField, type JsonObject } from '../dsl/json.ts';
 import { raised } from '../dsl/raised-error.ts';
@@ -116,6 +117,6 @@ export function resumeFor(invocation: Invocation, body: ForBody, signal: Signal)
   return turn.kind === 'next' ? iterated(invocation, turn.iteration) : turn;
 }
 
-export function cancelFor(machine: Machine, body: ForBody): void {
-  machine.runner.cancelList(machine, body.list);
+export function cancelFor(machine: Machine, body: ForBody, reason: CancelReason): void {
+  machine.runner.cancelList(machine, body.list, reason);
 }

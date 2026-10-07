@@ -92,6 +92,25 @@ describe('the cause the engine gives the run store with each record', () => {
     expect(run.driver.ports.runStore.lineages(executionId).map(({ attributes }) => attributes)).toEqual([{}, {}, {}]);
     expect(run.driver.ports.runStore.lineages('no run')).toEqual([]);
   });
+
+  it('is the message a cancel request names as its cause', () => {
+    const cancelled = drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
+      meanwhile: (driver, running) => {
+        driver.submit({
+          kind: 'cancel_requested',
+          executionId: running,
+          at: driver.clock.now(),
+          cancel: { by: 'acme-admin', kind: 'requested', reason: 'Not needed' },
+          cause: 'a-cancel-request',
+        });
+      },
+    });
+
+    expect(causesAlong(cancelled, cancelled.ended.executionId)).toEqual([
+      { kind: 'start' },
+      { kind: 'given', id: 'a-cancel-request' },
+    ]);
+  });
 });
 
 describe('what a waiting step waits for', () => {

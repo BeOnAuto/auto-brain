@@ -175,21 +175,24 @@ describe('every open call', () => {
     },
   );
 
-  it('is answered by its deadline when the executor never answers, as a call that cannot be reached', () => {
+  it('is answered by its deadline when the executor never answers, as a timeout that cancels it', () => {
     const driver = memoryDriver({ respond: () => 'never' });
-    const ended = endedRun(driver, '0199a3c4-7d2e-7c1a-9b3f-000000000034', aCall);
+    const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000000034';
+    const ended = endedRun(driver, executionId, aCall);
 
     expect(driver.clock.now() - ended.startedAt).toBe(longestCallMs);
     expect(ended.outcome).toEqual({
       kind: 'raised',
       error: {
-        type: 'https://open-workflow-specification.org/spec/1.0.0/errors/communication',
-        status: 503,
-        title: 'notify could not reach the function notify',
-        detail: `No answer came within ${longestCallMs} ms`,
+        type: 'https://open-workflow-specification.org/spec/1.0.0/errors/timeout',
+        status: 408,
+        title: `the function notify did not finish within ${longestCallMs} ms, the most it may take`,
         instance: '/do/0/ask',
       },
     });
+    expect(driver.ports.executor.cancelled()).toEqual([
+      { kind: 'cancel_call', key: { executionId, reference: '/do/0/ask', run: 1 }, reason: 'deadline' },
+    ]);
   });
 });
 

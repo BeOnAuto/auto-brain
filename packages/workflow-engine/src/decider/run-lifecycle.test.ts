@@ -44,29 +44,44 @@ do:
     });
   });
 
-  it('is stopped when it has run the most it may, and settles failed', () => {
+  it('is stopped when it has run the most it may, and settles as cancelled for overrunning', () => {
     const document = workflow('do:\n  - first: { wait: PT40M }\n  - second: { wait: PT40M }');
     const run = drivenRun(document, { limits: { mostDurationMs: 3_600_000 } });
 
     expect(run.outcome).toEqual({ kind: 'overran', milliseconds: 3_600_000 });
-    expect(run.driver.ports.recordStore.settlementOf(drivenExecutionId)).toEqual({ status: 'failed' });
+    expect(run.driver.ports.recordStore.settlementOf(drivenExecutionId)).toEqual({
+      status: 'rejected',
+      reason: 'cancelled',
+      kind: 'overrun',
+      detail: 'The workflow ran for 3600000 ms, the most a workflow may run, and was stopped',
+    });
   });
 });
 
 describe('a run that is cancelled or refused', () => {
-  it('is cancelled when asked, cancels what it waits for, and settles failed', () => {
+  it('is cancelled when asked, cancels what it waits for as its parent ended, and settles as cancelled by who asked', () => {
+    const cancel = { by: 'acme-admin', kind: 'requested', reason: 'Not needed any more' } as const;
     const run = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: ada } }'), {
       respond: () => 'never',
       meanwhile: (driver, executionId) => {
         driver.at(5, () => {
-          driver.cancel(executionId);
+          driver.cancel(executionId, cancel);
         });
       },
     });
 
-    expect(run.outcome).toEqual({ kind: 'cancelled' });
+    expect(run.outcome).toEqual({ kind: 'cancelled', cancel });
     expect(run.ended.cancelRequested).toBe(true);
     expect(outputKindsIn(run.events.slice(-1))).toEqual(['cancel_call', 'cancel_timer', 'cancel_timer', 'settle']);
+    expect(run.events.at(-1)?.event.outputs[0]).toMatchObject({ kind: 'cancel_call', reason: 'parent_ended' });
+    expect(run.events.at(-1)?.event.receipt).toMatchObject({ cancel: { by: 'acme-admin', kind: 'requested' } });
+    expect(run.driver.ports.recordStore.settlementOf(drivenExecutionId)).toEqual({
+      status: 'rejected',
+      reason: 'cancelled',
+      kind: 'requested',
+      detail: 'Not needed any more',
+      by: 'acme-admin',
+    });
   });
 
   it('refuses a document this runtime does not run before it runs any task', () => {

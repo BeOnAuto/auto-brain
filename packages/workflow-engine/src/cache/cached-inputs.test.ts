@@ -6,9 +6,14 @@ import type { RunInput } from '../machine/run-input.ts';
 import { newRun, type RunState } from '../machine/run-state.ts';
 import type { RunEvent } from '../run-log/run-event.ts';
 import { testMachine } from '../testing/driver-inputs.ts';
+import { testCancel } from '../testing/driver-inputs.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
 import { armedTimerIds, drivenExecutionId, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
+
+function cancelAt(at: number): RunInput {
+  return { kind: 'cancel_requested', executionId: drivenExecutionId, at, cancel: testCancel };
+}
 
 const elsewhere = { cause: { kind: 'none' as const }, attributes: {} };
 
@@ -70,11 +75,11 @@ describe('an input to a run the engine keeps', () => {
 
   it('loads the run again once its stream moved past the version the engine keeps', () => {
     const driver = startedTicking(3);
-    const cancel: RunInput = { kind: 'cancel_requested', executionId: drivenExecutionId, at: driver.clock.now() };
-    const written = decidedElsewhere(driver, cancel);
+    const at = driver.clock.now();
+    const written = decidedElsewhere(driver, cancelAt(at));
     appendedElsewhere(driver, written);
 
-    const answer = driver.submit({ ...cancel, at: cancel.at + 1 });
+    const answer = driver.submit(cancelAt(at + 1));
 
     expect(answer).toEqual({ outcome: 'stale', version: 2 });
     expect(driver.ports.runStore.loads(drivenExecutionId)).toBe(2);

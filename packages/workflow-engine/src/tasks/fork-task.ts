@@ -1,3 +1,4 @@
+import type { CancelReason } from '../dispatch/run-output.ts';
 import { field, objectField } from '../dsl/json.ts';
 import { entryAt, taskEntries, type TaskEntry } from '../dsl/tasks.ts';
 import type { Branch, FrameBody } from '../machine/run-state.ts';
@@ -54,12 +55,12 @@ function started(invocation: Invocation, entry: TaskEntry, order: number): Branc
   return branchOf(machine.runner.startTask(machine, entry, frame.input, frame.variables), order);
 }
 
-function cancelBranch(machine: Machine, branch: Branch): void {
+function cancelBranch(machine: Machine, branch: Branch, reason: CancelReason): void {
   if (branch.state === 'yielding') {
     machine.session.timers.disarm(branch.timer);
   }
   if (branch.state === 'running') {
-    machine.runner.cancelTask(machine, branch.task);
+    machine.runner.cancelTask(machine, branch.task, reason);
   }
 }
 
@@ -84,7 +85,7 @@ function settledTogether(invocation: Invocation, branches: readonly Branch[]): B
   const failure = firstFailure(branches);
   if (failure !== undefined) {
     for (const branch of branches) {
-      cancelBranch(invocation.machine, branch);
+      cancelBranch(invocation.machine, branch, 'parent_ended');
     }
     return raisedOf(failure.error);
   }
@@ -97,7 +98,7 @@ function settledCompeting(invocation: Invocation, branches: readonly Branch[]): 
   const winner = branches.find((branch): branch is Finished => branch.state === 'finished');
   if (winner !== undefined) {
     for (const branch of branches) {
-      cancelBranch(invocation.machine, branch);
+      cancelBranch(invocation.machine, branch, 'parent_ended');
     }
     return doneOf(winner.output, winner.flow === 'end' ? 'end' : null);
   }
@@ -145,8 +146,8 @@ export function resumeFork(invocation: Invocation, body: ForkBody, signal: Signa
     : settled(invocation, body.compete, branches);
 }
 
-export function cancelFork(machine: Machine, body: ForkBody): void {
+export function cancelFork(machine: Machine, body: ForkBody, reason: CancelReason): void {
   for (const branch of body.branches) {
-    cancelBranch(machine, branch);
+    cancelBranch(machine, branch, reason);
   }
 }

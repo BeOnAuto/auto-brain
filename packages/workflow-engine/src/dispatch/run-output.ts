@@ -30,9 +30,12 @@ const StartCallSchema = Schema.Struct({
   longestMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
 });
 
+export const CancelReasonSchema = Schema.Literals(['deadline', 'parent_ended']);
+
 const CancelCallSchema = Schema.Struct({
   kind: Schema.Literal('cancel_call'),
   key: CallKeySchema,
+  reason: Schema.optionalKey(CancelReasonSchema),
 });
 
 const ArmListenerSchema = Schema.Struct({
@@ -76,6 +79,8 @@ export type CancelTimer = typeof CancelTimerSchema.Type;
 export type StartCall = typeof StartCallSchema.Type;
 
 export type CancelCall = typeof CancelCallSchema.Type;
+
+export type CancelReason = typeof CancelReasonSchema.Type;
 
 export type ArmListener = typeof ArmListenerSchema.Type;
 

@@ -14,6 +14,7 @@ import {
   type RunEvent,
   type RunInput,
 } from '../index.ts';
+import { testCancel } from '../testing/driver-inputs.ts';
 import { at, executionId, openCall, runningState, started } from '../testing/runs.ts';
 
 function asStored<S extends Schema.Codec<unknown, unknown>>(schema: S, value: S['Type']): unknown {
@@ -68,7 +69,7 @@ const inputs: readonly RunInput[] = [
     result: { status: 'rejected', reason: 'invalid_arguments', detail: 'x' },
   },
   { kind: 'event_received', executionId, at, event: { id: 'event-3', type: 'com.acme.approval', data: [1, 2] } },
-  { kind: 'cancel_requested', executionId, at },
+  { kind: 'cancel_requested', executionId, at, cancel: testCancel },
 ];
 
 describe('a run event', () => {

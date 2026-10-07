@@ -9,6 +9,7 @@ import { cancelBody, resumeBody, startBody } from '../tasks/task-bodies.ts';
 import {
   raisedOf,
   type BodyAdvance,
+  type CancelReason,
   type FramePrefix,
   type Invocation,
   type Machine,
@@ -147,7 +148,7 @@ export function resumeTask(machine: Machine, frame: TaskFrame, signal: Signal): 
   const { session } = machine;
   session.continues(frame);
   if (signal.kind === 'timer' && signal.timerId === frame.timeout) {
-    cancelBody(machine, frame);
+    cancelBody(machine, frame, 'deadline');
     const { error } = timedOut(signal.timer.dueAt - signal.timer.armedAt, frame.reference);
     session.record({ reference: frame.reference, run: frame.run, outcome: 'timed_out', error });
     return raisedOf(error);
@@ -161,10 +162,10 @@ export function resumeTask(machine: Machine, frame: TaskFrame, signal: Signal): 
   return resumed.kind === 'waiting' && resumed.frame === frame ? undefined : resumed;
 }
 
-export function cancelTask(machine: Machine, frame: TaskFrame): void {
+export function cancelTask(machine: Machine, frame: TaskFrame, reason: CancelReason): void {
   machine.session.continues(frame);
   machine.session.timers.disarm(frame.timeout);
-  cancelBody(machine, frame);
+  cancelBody(machine, frame, reason);
   machine.session.record({ reference: frame.reference, run: frame.run, outcome: 'cancelled' });
 }
 

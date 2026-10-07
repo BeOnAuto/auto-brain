@@ -69,7 +69,7 @@ function endingOf(state: RunState, now: number, descriptors: Descriptors, journa
   const timers = timerTableOf(state, descriptors, now, journal);
   return {
     timers,
-    calls: callTableOf(state, descriptors, timers, journal),
+    calls: callTableOf(state, descriptors, { timers, journal, now }),
     listeners: listenerTableOf(state, journal),
     inbox: inboxOf(state.inbox),
     journal,

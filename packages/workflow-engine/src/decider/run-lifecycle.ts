@@ -142,7 +142,7 @@ function rootInvocation(machine: Machine, frame: FramePrefix): Invocation {
 function resumeRoot(machine: Machine, frame: FramePrefix & { readonly body: FrameBody }, signal: Signal): void {
   const { session } = machine;
   if (signal.kind === 'timer' && signal.timerId === frame.timeout) {
-    cancelBody(machine, frame);
+    cancelBody(machine, frame, 'deadline');
     session.end({ kind: 'raised', error: timedOut(signal.timer.dueAt - signal.timer.armedAt, root).error });
     return;
   }
