@@ -245,7 +245,7 @@ This route is relative to `/v1/orgs/{org}/brains/{brain}` and needs `brain:read`
 | ------------------- | ------------------- | ----------------- |
 | `list_tool_servers` | `GET /tool-servers` | Optional `server` |
 
-`list_tool_servers` lists the MCP servers the operator of a self-hosted runtime set up for the brain, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list. `server` keeps only the server of that name, and asks no other.
+`list_tool_servers` lists the MCP servers the operator of a self-hosted runtime set up for the brain, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list; a server on which the operator allows no tool is listed with no tools and is not asked, since no run could reach it either. `server` keeps only the server of that name, and asks no other; a name that no server of the brain has returns `invalid_input` at `/server`, so call it without `server` to see the names.
 
 ```http
 GET /v1/orgs/acme/brains/sales/tool-servers
@@ -286,7 +286,7 @@ Authorization: Bearer <key>
 | `tools`       | The tools the server lists that the operator allows, in the server's order, each with its `name`, its `description` cut to 4 KiB and its `input_schema`          |
 | `unavailable` | In place of `tools`, why the server could not be asked for its tools just now, in words; asking again later may work, and the other servers are listed beside it |
 
-Servers are sorted by name, and a server set up for another org, or for other brains of the org, is neither listed nor asked. The answer holds no header, environment value, address or credential of a server, and what a server says is scrubbed of the secrets the runtime holds for it. A brain that does not exist returns `not_found`; a retired brain answers like any other.
+Servers are sorted by name, and a server set up for another org, or for other brains of the org, is neither listed nor asked. The runtime adds no header, environment value, address, command or credential of a server to the answer. What a server writes, such as its tools' names, descriptions and schemas, is passed on with the values of the operator's `${...}` references and the tokens minted for a server scrubbed out; a referenced value shorter than 8 characters is not scrubbed. A brain that does not exist returns `not_found`; a retired brain answers like any other.
 
 ## Responses and errors
 
