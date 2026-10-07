@@ -62,6 +62,34 @@ describe(
   },
 );
 
+describe('a token for a brain that is missing or retired, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+  it('is refused as a bad token for a brain that exists is, so a token tells nothing of the brains', async () => {
+    const server = await servingInteractions('inbox');
+    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'omega', name: 'Omega' } });
+    await server.call('POST', '/v1/orgs/acme/brains/omega/retire', { body: {} });
+    const answered = (brain: string) =>
+      server.call('POST', `/v1/orgs/acme/brains/${brain}/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/answer`, {
+        body: { answer: { choice: 'approve' } },
+        authorization: 'Request not-a-token-of-any-request',
+      });
+
+    const refusals = await Promise.all(['alpha', 'nobody', 'omega'].map((brain) => answered(brain)));
+
+    expect(refusals.map(({ status, body }) => [status, body])).toEqual(
+      refusals.map(() => [
+        403,
+        {
+          type: 'https://on.auto/problems/forbidden',
+          title: 'Forbidden',
+          status: 403,
+          reason: 'forbidden',
+          detail: 'The token does not answer this request',
+        },
+      ]),
+    );
+  });
+});
+
 describe('a workflow that asks through the inbox', { timeout: workflowTestTimeoutMs }, () => {
   it('waits for the answer and takes it as the output of its step', async () => {
     const server = await servingInteractions('inbox');
