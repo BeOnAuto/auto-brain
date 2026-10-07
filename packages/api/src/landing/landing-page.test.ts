@@ -33,11 +33,10 @@ describe('the root of the server, opened in a browser', () => {
     expect(page).toContain('<span class="address">127.0.0.1:9090</span>');
   });
 
-  it('offers a Studio invite without sending the server address', async () => {
+  it('opens the studio on this server', async () => {
     const page = await (await open(createTestHandler().handler)).text();
 
-    expect(page).toContain('<p>Auto Studio is invite-only.</p>');
-    expect(page).toContain('href="https://on.auto/request-invite">Request a Studio invite');
+    expect(page).toContain('href="https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A8080"');
   });
 
   it('is served without a key', async () => {
@@ -98,10 +97,12 @@ describe('what the page at the root of the server loads', () => {
     expect(page).toContain("font-family: 'DM Sans';");
   });
 
-  it('names only the Studio invitation page', async () => {
+  it('names no other server than the studio it opens', async () => {
     const page = await (await open(createTestHandler().handler)).text();
 
-    expect(page.match(/https?:\/\/[^"')\s]+/gu)).toEqual(['https://on.auto/request-invite']);
+    expect(page.match(/https?:\/\/[^"')\s]+/gu)).toEqual([
+      'https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A8080',
+    ]);
   });
 });
 
