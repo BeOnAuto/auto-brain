@@ -311,6 +311,17 @@ The due rows of interaction functions were measured through the server, `pnpm --
 
 Every expiry was settled `rejected` as `unanswered`, kind `expired`, on both stores, within 9 seconds of the moment they were all due, about 1,150 to 1,340 a second through the 256 rows a tick performs. A tick performs its due rows before its timers, so a timer due while the expiries were settled waited for the rows of its own tick and of the next, at most 0.55 s, and the timers due after them fired as late as with none due.
 
+Due rows that hang were measured the same way (`packages/server/measure/hanging.ts`), with `MEASURE_ONLY=hanging` to run them alone: 32, then 256, requests of an interaction function through a webhook channel whose receiver takes each request and never answers, so each attempt ends only at its bound of 10 seconds, and, from six seconds after they were asked, 20 workflow runs that each wait 5 seconds, a timer due every 3 seconds. Measured on 2026-10-07 from 15:20 to 15:26 UTC on the same machine with Node 26.10.0, after the loop came to hand its due rows out to the background and wait for them a second at most; the review that led to that change measured one tick of the loop before it at about 20 seconds with 32 such requests and about 160 seconds with 256.
+
+| What                                                            | SQLite                                                 | PostgreSQL                                             |
+| --------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
+| 32 requests: attempts sent in the minute, open at once at most  | 32, 16                                                 | 33, 16                                                 |
+| the 20 timers due meanwhile                                     | 7 to 23 ms late, 13 ms at the median; load 8.2 to 13.1 | 24 to 79 ms late, 46 ms at the median; load 2.4 to 4.1 |
+| 256 requests: attempts sent in the minute, open at once at most | 112, 16                                                | 112, 16                                                |
+| the 20 timers due meanwhile                                     | 7 to 29 ms late, 13 ms at the median; load 5.1 to 7.1  | 32 to 72 ms late, 50 ms at the median; load 2.4 to 3.2 |
+
+The timers fired as late as with no row due, measured above, whatever the receiver did; the attempts went out 16 at a time, one batch every 10 seconds, so the 256 requests took their first attempt over 160 seconds without holding a tick.
+
 ## Testing
 
 The suites of `src/testing` run on SQLite in `src/host/host-on-sqlite.test.ts` and on PostgreSQL in `src/host/host-on-postgresql.test.ts`, which needs `LEDGER_TEST_POSTGRESQL_URL` and makes a database of its own for each test:
