@@ -57,6 +57,10 @@ const notARequest = new Conflict({
 
 const takesNoAnswer = new Conflict({ detail: 'The request is a notification, which takes no answer' });
 
+const answeredInItsDelivery = new Conflict({
+  detail: 'The request was answered within its delivery, and its run is settled with that answer',
+});
+
 interface Answering {
   readonly id: string;
   readonly answer: Schema.Json;
@@ -85,6 +89,9 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
   }
   if (!row.answers) {
     return yield* takesNoAnswer;
+  }
+  if (row.standing === 'answered') {
+    return yield* answeredInItsDelivery;
   }
   const output = yield* checkedFor(run, answer);
   const at = new Date(yield* Clock.currentTimeMillis).toISOString();

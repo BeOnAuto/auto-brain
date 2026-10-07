@@ -1,10 +1,16 @@
+import { setTimeout } from 'node:timers/promises';
+
 import { Effect, Exit, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { noChannels } from '../channels/channel-settings.ts';
+import { defineAnswerInteraction } from '../requests/answer-interaction.ts';
 import { askedRunId, askedThroughPartner, type AskedRequest } from '../testing/index.ts';
 import type { RequestLedger } from './request-ledger.ts';
 
 const days = 24 * 60 * 60_000;
+
+const answerOf = defineAnswerInteraction(noChannels);
 
 const anyTime: unknown = expect.any(String);
 
@@ -85,5 +91,46 @@ describe('a due request, as the host sees it', () => {
       [true],
       [false],
     ]);
+  });
+});
+
+describe('an answer within the delivery and another one given meanwhile', () => {
+  it('keeps the answer the delivery recorded first, and refuses the other as a conflict', async () => {
+    const asked = await askedThroughPartner({ answers: true });
+    asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'approve' }) });
+
+    await attemptedThenStopped(asked);
+    const meanwhile = await asked.brain.call(answerOf, { execution_id: askedRunId, answer: { choice: 'reject' } });
+    await asked.brain.performDue(Date.now());
+
+    expect(meanwhile).toMatchObject({
+      status: 'rejected',
+      reason: 'conflict',
+      detail: 'The request was answered within its delivery, and its run is settled with that answer',
+    });
+    expect(await asked.brain.runOf(askedRunId)).toMatchObject({
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+    });
+  });
+
+  it('keeps the answer given first while the delivery is in flight, and records no end of that delivery', async () => {
+    const asked = await askedThroughPartner({ answers: true });
+    asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'approve' }), delayMs: 300 });
+
+    const delivering = asked.brain.performDue(asked.askedAt);
+    await setTimeout(100);
+    const first = await asked.brain.call(answerOf, { execution_id: askedRunId, answer: { choice: 'reject' } });
+    await delivering;
+    const { records } = await Effect.runPromise(
+      asked.brain.ledger.service.readRecorded(
+        { org: 'acme', brain: 'alpha' },
+        { kind: 'run', execution: askedRunId },
+        { order: 'asc', limit: 20 },
+      ),
+    );
+
+    expect(first).toMatchObject({ status: 'succeeded', output: { output: { choice: 'reject' } } });
+    expect(await asked.brain.runOf(askedRunId)).toMatchObject({ output: { output: { choice: 'reject' } } });
+    expect(records.map(({ type }) => type)).not.toContain('delivery_ended');
   });
 });
