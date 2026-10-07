@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
-import { settledExecution, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { settledExecution, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 

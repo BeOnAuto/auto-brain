@@ -12,7 +12,7 @@ import {
   developmentTestTimeoutMs,
   startDevelopment,
   untilListening,
-} from '../testing/development-process.ts';
+} from '../testing/processes/development-process.ts';
 
 const brain = 'support';
 

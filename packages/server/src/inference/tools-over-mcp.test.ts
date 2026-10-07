@@ -5,7 +5,7 @@ import { fakeStdioServerPath, serveFakeMcp, stdioTestTimeoutMs, type FakeMcpServ
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 

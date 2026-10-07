@@ -2,9 +2,14 @@ import { withMcpSession } from '@beonauto/api/testing';
 import { answers, textResult } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
-import { ended, runsOf, servingCalls, startedRunOf, until } from '../testing/workflow-calls.ts';
-import { executionIdIn, settledExecution, settledOverMcp, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { ended, runsOf, servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
+import {
+  executionIdIn,
+  settledExecution,
+  settledOverMcp,
+  workflowTestTimeoutMs,
+} from '../testing/servers/workflow-server.ts';
 
 let server: ReasoningServer;
 

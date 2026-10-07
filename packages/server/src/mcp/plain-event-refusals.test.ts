@@ -1,7 +1,7 @@
 import { internalTermsIn, plainTextIn, withMcpSession, type ToolResult } from '@beonauto/api/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 let server: ReasoningServer;
 

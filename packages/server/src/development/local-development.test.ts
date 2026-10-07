@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { localDevelopment } from './local-development.ts';
 
-const repository = fileURLToPath(new URL('../../../../', import.meta.url));
+const repository = fileURLToPath(new URL('../../../..', import.meta.url));
 
 describe('the local development setup', () => {
   it('runs src/main.ts with dev.env, then the repository .env, and auto-brain.yaml at the root', () => {

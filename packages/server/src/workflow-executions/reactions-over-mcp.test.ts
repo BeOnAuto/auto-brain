@@ -4,8 +4,8 @@ import { withMcpSession, type McpSession } from '@beonauto/api/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ReasoningServer } from '../testing/reasoning-server.ts';
-import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const closing = workflowSource(
   'close-the-month',

@@ -3,11 +3,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import type { SpawnedServer } from '../testing/spawned-server.ts';
-import { temporaryLedger } from '../testing/temporary-ledger.ts';
-import { until, workflows } from '../testing/workflow-calls.ts';
-import { requestTo, settledOver, workflowProcess, type Answer } from '../testing/workflow-process.ts';
-import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { requestTo, settledOver, workflowProcess, type Answer } from '../testing/processes/workflow-process.ts';
+import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { until, workflows } from '../testing/servers/workflow-calls.ts';
+import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const Listed = Schema.Struct({ executions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) });
 

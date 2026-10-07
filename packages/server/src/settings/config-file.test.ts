@@ -1,9 +1,14 @@
 import { createApiKey } from '@beonauto/identity';
 import { describe, expect, it } from 'vitest';
 
-import { configuredServer, rejectedExecution, settingLines, stoppedOutput } from '../testing/configured-server.ts';
-import { request } from '../testing/http-client.ts';
-import { spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
+import {
+  configuredServer,
+  rejectedExecution,
+  settingLines,
+  stoppedOutput,
+} from '../testing/processes/configured-server.ts';
+import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { request } from '../testing/servers/http-client.ts';
 
 const gatewayKey = 'gateway-key-SECRET-7f3a';
 

@@ -2,8 +2,8 @@ import { appendFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { endingOf, runningDevelopment } from '../testing/development-endings.ts';
-import { developmentTestTimeoutMs, untilWritten } from '../testing/development-process.ts';
+import { endingOf, runningDevelopment } from '../testing/processes/development-endings.ts';
+import { developmentTestTimeoutMs, untilWritten } from '../testing/processes/development-process.ts';
 
 describe('stopping pnpm dev', { timeout: developmentTestTimeoutMs }, () => {
   it.each<NodeJS.Signals>(['SIGINT', 'SIGTERM', 'SIGHUP'])(

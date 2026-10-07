@@ -10,7 +10,7 @@ import {
 import { anthropicModels, jsonResponse, recordingFetch, vercelGatewayModels } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const environment = {
   LOCAL_MODE: 'true',

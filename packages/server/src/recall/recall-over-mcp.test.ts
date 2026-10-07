@@ -2,8 +2,8 @@ import { internalTermsIn, listedTools, plainTextIn, withMcpSession, type McpSess
 import { campaignReviews, recallDocument } from '@beonauto/recollection/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ReasoningServer } from '../testing/reasoning-server.ts';
-import { anyReview, recallTestTimeoutMs, servingRecall, verdicts } from '../testing/recall-server.ts';
+import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { anyReview, recallTestTimeoutMs, servingRecall, verdicts } from '../testing/servers/recall-server.ts';
 
 const closing: (() => Promise<void>)[] = [];
 

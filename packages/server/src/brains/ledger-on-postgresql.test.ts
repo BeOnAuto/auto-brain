@@ -7,9 +7,9 @@ import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { servingReasoning } from '../testing/reasoning-server.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
-import { executionIdIn, settledExecution, workflowSource } from '../testing/workflow-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { servingReasoning } from '../testing/servers/reasoning-server.ts';
+import { executionIdIn, settledExecution, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 

@@ -3,7 +3,7 @@ import { answers, textResult } from '@beonauto/inference/testing';
 import { allPermissions } from '@beonauto/operations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
 

@@ -2,11 +2,11 @@ import { makeModelAccess } from '@beonauto/inference';
 import { scriptedLanguageModel, type ScriptedReply } from '@beonauto/inference/testing';
 import { Effect } from 'effect';
 
-import { compositionRootWith } from '../composition/composition-root.ts';
-import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';
-import { startServer } from '../lifecycle/lifecycle.ts';
+import { compositionRootWith } from '../../composition/composition-root.ts';
+import { workerPool, type ProgramPoolOf } from '../../composition/served-computation.ts';
+import { startServer } from '../../lifecycle/lifecycle.ts';
+import { temporaryLedger } from '../records/temporary-ledger.ts';
 import { request, type RequestOptions, type TestResponse } from './http-client.ts';
-import { temporaryLedger } from './temporary-ledger.ts';
 
 export interface ReasoningServer {
   readonly origin: string;

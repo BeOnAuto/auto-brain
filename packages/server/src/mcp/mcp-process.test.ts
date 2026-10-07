@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { connectMcp, problemIn, withMcpSession, type McpClientKind, type McpSession } from '@beonauto/api/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { shortShutdownTimeoutMs } from '../testing/short-shutdown-timeout.ts';
-import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from '../testing/spawned-server.ts';
-import { temporaryLedger, type TemporaryLedger } from '../testing/temporary-ledger.ts';
+import { shortShutdownTimeoutMs } from '../testing/processes/short-shutdown-timeout.ts';
+import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
-const serveWithWaitingTool = fileURLToPath(new URL('../testing/serve-with-waiting-tool.ts', import.meta.url));
+const serveWithWaitingTool = fileURLToPath(new URL('../testing/entries/serve-with-waiting-tool.ts', import.meta.url));
 
 const clientKinds: readonly McpClientKind[] = ['current revision', 'previous revision', 'previous major'];
 

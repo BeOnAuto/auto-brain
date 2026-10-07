@@ -3,9 +3,9 @@ import { setTimeout } from 'node:timers/promises';
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { temporaryLedger } from '../testing/temporary-ledger.ts';
-import { logLinesOf, requestTo, settledOver, workflowProcess } from '../testing/workflow-process.ts';
-import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import { logLinesOf, requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
+import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
 

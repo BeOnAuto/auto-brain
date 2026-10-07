@@ -4,7 +4,7 @@ import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Option, Schema } from 'effect';
 import { expect, vi } from 'vitest';
 
-import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';
+import { workerPool, type ProgramPoolOf } from '../../composition/served-computation.ts';
 import { alpha, servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 
 export const recallTestTimeoutMs = 60_000;

@@ -9,7 +9,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { ledgerLayerOf } from '../composition/ledger-store.ts';
 import type { LedgerSettings } from '../settings/ledger-settings.ts';
-import { temporaryLedger } from '../testing/temporary-ledger.ts';
+import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 

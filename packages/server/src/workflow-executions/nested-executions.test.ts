@@ -1,15 +1,15 @@
 import { answers, textResult } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { TestResponse } from '../testing/http-client.ts';
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import type { TestResponse } from '../testing/servers/http-client.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
   settledExecution,
   workflowSource,
   workflowTestTimeoutMs,
-} from '../testing/workflow-server.ts';
+} from '../testing/servers/workflow-server.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 

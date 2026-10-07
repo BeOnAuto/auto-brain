@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { endingOf, runningDevelopment } from '../testing/development-endings.ts';
+import { endingOf, runningDevelopment } from '../testing/processes/development-endings.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,
@@ -12,8 +12,8 @@ import {
   untilListening,
   untilWritten,
   writeServerEntry,
-} from '../testing/development-process.ts';
-import { gatewayThatHangsFirst, settledOver, welcomingStarted } from '../testing/workflow-process.ts';
+} from '../testing/processes/development-process.ts';
+import { gatewayThatHangsFirst, settledOver, welcomingStarted } from '../testing/processes/workflow-process.ts';
 
 const runnerSays = /changed, so the server restarts$|^The server stopped/u;
 

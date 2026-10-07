@@ -4,10 +4,10 @@ import { setTimeout } from 'node:timers/promises';
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import type { SpawnedServer } from '../testing/spawned-server.ts';
-import { temporaryLedger } from '../testing/temporary-ledger.ts';
-import { requestTo, settledOver, workflowProcess } from '../testing/workflow-process.ts';
-import { workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
+import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const marker = 'marker-7d1c9e';
 

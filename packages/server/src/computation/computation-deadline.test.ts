@@ -3,7 +3,7 @@ import { campaignPace, campaignRows } from '@beonauto/computation/testing';
 import { programPool } from '@beonauto/workflow-engine/dsl';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const blockingWorker = new URL(`data:text/javascript,${encodeURIComponent('while (true) {}')}`);
 
