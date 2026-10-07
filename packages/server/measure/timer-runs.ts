@@ -33,7 +33,7 @@ export function executionIdOf(answer: unknown): string {
   return decodeStarted(answer).execution_id;
 }
 
-export function loadNow(): string {
+function loadNow(): string {
   return loadavg()
     .map((average) => average.toFixed(1))
     .join(', ');
@@ -43,7 +43,7 @@ export function spread(sorted: readonly number[]): string {
   return `${percentile(sorted, 0)} ms at least, ${percentile(sorted, 0.5)} ms at the median, ${percentile(sorted, 0.95)} ms at p95 and ${percentile(sorted, 1)} ms at most`;
 }
 
-export function sampledLoads(): Sampling {
+function sampledLoads(): Sampling {
   const loads: string[] = [];
   const sampler = setInterval(() => {
     loads.push(loadNow());
@@ -56,7 +56,7 @@ export function sampledLoads(): Sampling {
   };
 }
 
-export async function timersStarted(server: MeasuredServer, plan: TimerPlan, index = 0): Promise<readonly string[]> {
+async function timersStarted(server: MeasuredServer, plan: TimerPlan, index = 0): Promise<readonly string[]> {
   if (index === plan.count) {
     return [];
   }
@@ -65,7 +65,7 @@ export async function timersStarted(server: MeasuredServer, plan: TimerPlan, ind
   return [executionIdOf(started), ...(await timersStarted(server, plan, index + 1))];
 }
 
-export async function latenessOf(
+async function latenessOf(
   server: MeasuredServer,
   runs: readonly string[],
   { seconds }: TimerPlan,
