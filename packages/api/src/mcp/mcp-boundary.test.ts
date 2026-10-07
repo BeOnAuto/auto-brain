@@ -81,7 +81,7 @@ describe('an operation without plain language', () => {
     const bare = defineQuery('brain', {
       name: 'bare_query',
       title: 'Bare query',
-      description: 'Answers without plain language.',
+      description: 'Answers without plain language. Use it in tests. It answers nothing.',
       route: { method: 'GET', path: '/bare' },
       inputSchema: Schema.Struct({ size: Schema.Int }),
       outputSchema: Schema.Struct({ size: Schema.Int }),

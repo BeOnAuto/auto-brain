@@ -1,20 +1,12 @@
-import {
-  NotFound,
-  defineQuery,
-  makeCatalog,
-  makeDispatcher,
-  unsuccessfulWords,
-  type Registration,
-} from '@beonauto/operations';
+import { defineQuery, makeCatalog, makeDispatcher, type Registration } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { instructionsFor, mcpRoutes, type DefinitionType, type Guide, type Recipe } from '../index.ts';
 import { createTestHandler } from '../testing/api-calls.ts';
+import { asking, sentencesOf } from '../testing/asking-operation.ts';
 import { notebookGuide, noteRecipe, wordsGuide } from '../testing/guides.ts';
-import { listenOnLoopback } from '../testing/listening.ts';
-import { plainTextIn, withMcpSession, type ToolResult } from '../testing/mcp-clients.ts';
-import { acmeAdmin, operationServer, testServerInfo } from '../testing/operation-server.ts';
+import { testServerInfo } from '../testing/operation-server.ts';
 
 const reportedErrors: string[] = [];
 
@@ -48,50 +40,44 @@ function starting({ operations = [], guides = [], recipes = [], definitionTypes 
   };
 }
 
-interface Asking {
-  readonly name?: string;
-  readonly description?: string;
-  readonly argument?: string;
-  readonly outcome?: string;
-  readonly attempt?: string;
-}
-
-function asking({
-  name = 'ask_spec',
-  description = 'Asks.',
-  argument = 'What to ask',
-  outcome = 'Asked.',
-  attempt = 'ask',
-}: Asking) {
-  return defineQuery('brain', {
-    name,
-    title: 'Ask',
-    description,
-    route: { method: 'GET', path: `/${name.replaceAll('_', '-')}` },
-    inputSchema: Schema.Struct({ question: Schema.optionalKey(Schema.String.annotate({ description: argument })) }),
-    outputSchema: Schema.Struct({ answered: Schema.Boolean }),
-    reasons: ['not_found'],
-    handle: ({ question }) =>
-      question === 'nothing'
-        ? Effect.fail(new NotFound({ detail: 'There is nothing' }))
-        : Effect.succeed({ answered: true }),
-    plainLanguage: { task: 'ask', attempt: () => attempt, outcome: () => outcome },
-  });
-}
-
-function sentencesOf(length: number): string {
-  return `${'A'.padEnd(length - 1, 'a')}.`;
-}
-
 function guideOf(name: string, text = '# A guide\n'): Guide {
   return { name, title: name, description: `The guide ${name}.`, text };
 }
 
+function typeOf(noun: string, guide = 'asking'): DefinitionType {
+  return { primitive: 'asking', noun, guide };
+}
+
+const twoSentences = 'Asks. It answers. ';
+
+function describedIn(length: number): string {
+  return `${twoSentences}${sentencesOf(length - twoSentences.length)}`;
+}
+
+function sentencesNumbering(count: number): string {
+  return Array.from({ length: count }, () => 'It asks.').join(' ');
+}
+
 describe('a tool description', () => {
   it('starts the server at 800 characters, and refuses to start it at 801', () => {
-    expect(starting({ operations: [asking({ description: sentencesOf(800) })] })).not.toThrow();
-    expect(starting({ operations: [asking({ description: sentencesOf(801) })] })).toThrow(
+    expect(describedIn(800)).toHaveLength(800);
+    expect(starting({ operations: [asking({ description: describedIn(800) })] })).not.toThrow();
+    expect(starting({ operations: [asking({ description: describedIn(801) })] })).toThrow(
       'The description of ask_spec: 801 characters, more than the 800 allowed',
+    );
+  });
+
+  it('starts the server at three sentences, and refuses to start it at two', () => {
+    expect(starting({ operations: [asking({ description: sentencesNumbering(3) })] })).not.toThrow();
+    expect(starting({ operations: [asking({ description: sentencesNumbering(2) })] })).toThrow(
+      'The description of ask_spec: 2 sentences, fewer than the 3 required',
+    );
+  });
+
+  it('starts the server at eight sentences, and refuses to start it at nine', () => {
+    expect(starting({ operations: [asking({ description: sentencesNumbering(8) })] })).not.toThrow();
+    expect(starting({ operations: [asking({ description: sentencesNumbering(9) })] })).toThrow(
+      'The description of ask_spec: 9 sentences, more than the 8 allowed',
     );
   });
 });
@@ -114,7 +100,7 @@ describe('the description of an argument of one shape of a union input', () => {
     const shaped = defineQuery('brain', {
       name: 'shape_spec',
       title: 'Shape',
-      description: 'Shapes.',
+      description: 'Shapes. Use it to shape. It answers.',
       route: { method: 'GET', path: '/shape' },
       inputSchema: Schema.Union([
         Schema.Struct({ circle: Schema.String.annotate({ description: 'c'.repeat(300) }) }),
@@ -140,10 +126,6 @@ describe('the tools on a connection', () => {
     );
   });
 });
-
-function typeOf(noun: string, guide = 'asking'): DefinitionType {
-  return { primitive: 'asking', noun, guide };
-}
 
 function instructionLengthWith(noun: string): number {
   return instructionsFor('own org', { orgTools: [], brainTools: ['ask_spec'] }, [typeOf(noun)], []).length;
@@ -243,48 +225,5 @@ describe('a server without the guides it names', () => {
     expect(starting({ guides: [notebookGuide, notebookGuide] })).toThrow(
       'The guide name notebook is used more than once',
     );
-  });
-});
-
-async function plainWordsOf(operation: ReturnType<typeof asking>, question?: string): Promise<string> {
-  const server = await operationServer({ operations: [operation] });
-  const listening = await listenOnLoopback(server.handler);
-  const result: ToolResult = await withMcpSession(
-    'current revision',
-    { url: `${listening.origin}/orgs/acme/brains/alpha/mcp`, headers: { authorization: `Bearer ${acmeAdmin.key}` } },
-    (session) => session.callTool(operation.registration.name, question === undefined ? {} : { question }),
-  );
-  await listening.close();
-  await server.runtime.dispose();
-  return plainTextIn(result);
-}
-
-describe('the words of an outcome', () => {
-  it('are served whole at 400 characters, and cut at a sentence with the rest in the details at 401', async () => {
-    const first = sentencesOf(199);
-
-    expect(await plainWordsOf(asking({ outcome: `${first} ${sentencesOf(200)}` }))).toBe(
-      `${first} ${sentencesOf(200)}`,
-    );
-    expect(await plainWordsOf(asking({ outcome: `${first} ${sentencesOf(201)}` }))).toBe(
-      `${first} The rest is in the details below.`,
-    );
-  });
-});
-
-function refusalWordsOf(attempt: string): string {
-  return unsuccessfulWords(attempt, 'query', { status: 'rejected', reason: 'not_found', detail: 'There is nothing' });
-}
-
-describe('the words of a refusal', () => {
-  it('are served whole at 600 characters, and cut with the rest in the details at 601', async () => {
-    const attemptAt = (length: number) => 'a'.repeat(length - refusalWordsOf('').length);
-
-    expect(await plainWordsOf(asking({ attempt: attemptAt(600) }), 'nothing')).toBe(refusalWordsOf(attemptAt(600)));
-    expect(
-      (await plainWordsOf(asking({ attempt: attemptAt(601) }), 'nothing')).endsWith(
-        ' The rest is in the details below.',
-      ),
-    ).toBe(true);
   });
 });

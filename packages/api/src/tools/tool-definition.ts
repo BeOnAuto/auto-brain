@@ -1,14 +1,15 @@
 import type { Registration } from '@beonauto/operations';
 import type { StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server';
-import { Schema } from 'effect';
 
 import {
   mostArgumentDescriptionCharacters,
   mostDescriptionCharacters,
+  requireSentencesWithin,
   requireTextWithin,
 } from '../bounds/served-bounds.ts';
+import { argumentDescriptionsIn } from './argument-descriptions.ts';
 import { withBrainArgument } from './brain-argument.ts';
-import { advertisedSchema, objectMembersOf, selfContainedSchemaOf, type JsonSchema } from './tool-schema.ts';
+import { advertisedSchema, selfContainedSchemaOf, type JsonSchema } from './tool-schema.ts';
 
 export interface ToolDefinition {
   readonly title: string;
@@ -33,25 +34,19 @@ function annotationsOf({
   };
 }
 
-const ArgumentsSchema = Schema.Struct({
-  properties: Schema.optionalKey(
-    Schema.Record(Schema.String, Schema.Struct({ description: Schema.optionalKey(Schema.String) })),
-  ),
-});
-
-const argumentsOf = Schema.decodeUnknownSync(ArgumentsSchema);
-
 function requireArgumentsWithinBounds(name: string, schema: Readonly<JsonSchema>): void {
-  for (const member of objectMembersOf(schema)) {
-    const { properties = {} } = argumentsOf(member);
-    for (const [argument, { description = '' }] of Object.entries(properties)) {
-      requireTextWithin(`The description of ${argument} of ${name}`, description, mostArgumentDescriptionCharacters);
-    }
+  for (const { where, description } of argumentDescriptionsIn(schema)) {
+    requireTextWithin(`The description of ${where} of ${name}`, description, mostArgumentDescriptionCharacters);
   }
 }
 
+function requireDescriptionWithinBounds({ name, description }: Registration): void {
+  requireTextWithin(`The description of ${name}`, description, mostDescriptionCharacters);
+  requireSentencesWithin(`The description of ${name}`, description);
+}
+
 function definitionWith(registration: Registration, inputSchema: Readonly<JsonSchema>): ToolDefinition {
-  requireTextWithin(`The description of ${registration.name}`, registration.description, mostDescriptionCharacters);
+  requireDescriptionWithinBounds(registration);
   requireArgumentsWithinBounds(registration.name, inputSchema);
   return {
     title: registration.title,

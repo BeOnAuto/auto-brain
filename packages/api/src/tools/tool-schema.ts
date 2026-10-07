@@ -1,6 +1,6 @@
 import type { JsonSchemaDocument } from '@beonauto/operations';
 import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server';
-import { Option, Predicate, Schema } from 'effect';
+import { Predicate, Schema } from 'effect';
 
 export type JsonSchema = Record<string, unknown>;
 
@@ -19,20 +19,6 @@ export function inlinedRootOf({ schema, definitions }: JsonSchemaDocument): Json
   const name = typeof reference === 'string' ? definitionReference.exec(reference)?.[1] : undefined;
   const definition = name === undefined ? undefined : definitions[name];
   return definition === undefined ? { ...schema } : { ...definition, ...withoutReference(schema) };
-}
-
-const UnionSchema = Schema.Struct({
-  anyOf: Schema.Array(Schema.Record(Schema.String, Schema.Unknown)),
-  $defs: Schema.optionalKey(Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Unknown))),
-});
-
-const unionOf = Schema.decodeUnknownOption(UnionSchema);
-
-export function objectMembersOf(schema: Readonly<JsonSchema>): readonly JsonSchema[] {
-  return Option.match(unionOf(schema), {
-    onNone: () => [{ ...schema }],
-    onSome: ({ anyOf, $defs = {} }) => anyOf.map((member) => inlinedRootOf({ schema: member, definitions: $defs })),
-  });
 }
 
 const DefinitionsSchema = Schema.Struct({

@@ -47,7 +47,7 @@ function plainly(task: string): PlainLanguage<unknown, unknown> {
 export const addNote = defineCommand('brain', {
   name: 'add_note',
   title: 'Add note',
-  description: 'Adds a note to the brain.',
+  description: 'Adds a note to the brain. Use it when the person dictates one. `name` names it and `text` says it.',
   route: { method: 'POST', path: '/notes' },
   successStatus: 201,
   inputSchema: NoteSchema,
@@ -67,7 +67,7 @@ export const addNote = defineCommand('brain', {
 const listNotes = defineQuery('brain', {
   name: 'list_notes',
   title: 'List notes',
-  description: 'Lists the notes of the brain.',
+  description: 'Lists the notes of the brain. Use it to find a note. get_note reads one.',
   route: { method: 'GET', path: '/notes' },
   inputSchema: Schema.Struct({
     limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))),
@@ -84,7 +84,7 @@ const listNotes = defineQuery('brain', {
 export const getNote = defineQuery('brain', {
   name: 'get_note',
   title: 'Get note',
-  description: 'Reads one note of the brain.',
+  description: 'Reads one note of the brain. Use it when the note is named. `name` names it.',
   route: { method: 'GET', path: '/notes/{name}' },
   inputSchema: Schema.Struct({ name: NoteName }),
   outputSchema: NoteSchema,
@@ -107,7 +107,7 @@ export const getNote = defineQuery('brain', {
 export const latestNote = defineQuery('brain', {
   name: 'latest_note',
   title: 'Latest note',
-  description: 'Reads the note added last.',
+  description: 'Reads the note added last. Use it when no note is named. list_notes lists them all.',
   route: { method: 'GET', path: '/notes/latest' },
   inputSchema: Nothing,
   outputSchema: NoteSchema,
@@ -130,7 +130,7 @@ export const latestNote = defineQuery('brain', {
 const breakDown = defineQuery('brain', {
   name: 'break_down',
   title: 'Break down',
-  description: 'Fails with a defect.',
+  description: 'Fails with a defect. It answers nothing. It is for tests.',
   route: { method: 'GET', path: '/broken' },
   inputSchema: Nothing,
   outputSchema: Nothing,
@@ -142,7 +142,7 @@ const breakDown = defineQuery('brain', {
 export const waitForever = defineQuery('brain', {
   name: 'wait_forever',
   title: 'Wait forever',
-  description: 'Never finishes on its own.',
+  description: 'Never finishes on its own. It waits until it is stopped. It is for tests.',
   route: { method: 'GET', path: '/waiting' },
   inputSchema: Nothing,
   outputSchema: Nothing,
@@ -169,7 +169,7 @@ const labelBook: Decider<readonly BrainLabel[], BrainLabel, BrainLabelled> = {
 const labelBrain = defineCommand('org', {
   name: 'label_brain',
   title: 'Label brain',
-  description: 'Gives a brain of the org a label.',
+  description: 'Gives a brain of the org a label. Use it to tell brains apart. `brain` names the brain.',
   route: { method: 'PUT', path: '/brains/{brain}/label' },
   inputSchema: BrainLabelSchema,
   outputSchema: BrainLabelSchema,
@@ -184,7 +184,7 @@ const labelBrain = defineCommand('org', {
 const listLabels = defineQuery('org', {
   name: 'list_labels',
   title: 'List labels',
-  description: 'Lists the labels of the brains of the org.',
+  description: 'Lists the labels of the brains of the org. Use it to find a brain by its label. label_brain gives one.',
   route: { method: 'GET', path: '/brain-labels' },
   inputSchema: Nothing,
   outputSchema: Schema.Struct({ labels: Schema.Array(BrainLabelSchema) }),
@@ -199,7 +199,8 @@ const listLabels = defineQuery('org', {
 const checkLines = defineCommand('brain', {
   name: 'check_lines',
   title: 'Check lines',
-  description: 'Accepts lines that all start with a capital letter, and rejects every other line.',
+  description:
+    'Accepts lines that all start with a capital letter, and rejects every other line. Use it to check lines. `lines` are the lines.',
   route: { method: 'POST', path: '/lines' },
   inputSchema: Schema.Struct({ lines: Schema.Array(Schema.String) }),
   outputSchema: Schema.Struct({ accepted: Schema.Int }),
@@ -230,7 +231,8 @@ const becauseOfKind = {
 const sendNotes = defineCommand('brain', {
   name: 'send_notes',
   title: 'Send notes',
-  description: 'Sends the notes nowhere, and says why it could not, by the kind it is given.',
+  description:
+    'Sends the notes nowhere, and says why it could not, by the kind it is given. It never succeeds. It is for tests.',
   route: { method: 'POST', path: '/notes/sending' },
   inputSchema: Schema.Struct({ kind: UnavailableKindSchema }),
   outputSchema: Nothing,
