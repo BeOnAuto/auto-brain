@@ -13,6 +13,7 @@ import {
   type Outcome,
   type PipelineStep,
   type RunOutcomeMapping,
+  type RunProjection,
   type Settled,
 } from '../index.ts';
 import { memoryBrainRegistry } from './memory-brain-registry.ts';
@@ -25,6 +26,7 @@ export interface HarnessOptions {
   readonly brains?: readonly BrainAddress[];
   readonly retiredBrains?: readonly BrainAddress[];
   readonly runOutcomes?: RunOutcomeMapping;
+  readonly projections?: readonly RunProjection[];
 }
 
 export interface Harness {
@@ -50,8 +52,9 @@ export function harness({
   brains = knownBrains,
   retiredBrains = [],
   runOutcomes,
+  projections = [],
 }: HarnessOptions = {}): Harness {
-  const ledger = memoryLedger(runOutcomes);
+  const ledger = memoryLedger(runOutcomes, projections);
   const recording = recordingReporter();
   const services = Layer.mergeAll(
     ledger.layer,

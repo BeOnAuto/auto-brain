@@ -1,7 +1,13 @@
 import { Schema } from 'effect';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { CallerIdentitySchema, brainCallerOf, canAccessBrain, type CallerIdentity } from '../index.ts';
+import {
+  CallerIdentitySchema,
+  brainCallerOf,
+  canAccessBrain,
+  requestTokenCallerOf,
+  type CallerIdentity,
+} from '../index.ts';
 
 const isCallerIdentity = Schema.is(CallerIdentitySchema);
 
@@ -24,6 +30,12 @@ describe('a caller identity', () => {
 
   it.each(malformed)('rejects %s', (_case, identity) => {
     expect(isCallerIdentity(identity)).toBe(false);
+  });
+
+  it('carries the token of a request it presented, and never an empty one', () => {
+    expect(isCallerIdentity({ ...keyHolder, requestToken: 'abc' })).toBe(true);
+    expect(isCallerIdentity({ ...keyHolder, requestToken: '' })).toBe(false);
+    expect(isCallerIdentity(requestTokenCallerOf('acme', 'abc'))).toBe(true);
   });
 });
 

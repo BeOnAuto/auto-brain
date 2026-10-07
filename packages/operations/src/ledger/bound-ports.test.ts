@@ -2,6 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { streamPrefixOfBrain, streamPrefixOfOrg, type RunOutcomeWindow } from '../index.ts';
+import { readTallyRows, runTallyRows } from '../projections/tally-rows.ts';
 import { readRunTallies, runFacts, runTallies, type RunFact } from '../run-outcomes/run-tallies.ts';
 import { getBrainLabel, labelBrain, listBrainLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader, globexAdmin } from '../testing/callers.ts';
@@ -259,5 +260,32 @@ describe('the read of the outcomes of runs, bound to a call', () => {
       await run(dispatcher.dispatchToBrain(readRunTallies.registration, toAlpha(acmeAdmin, window))),
     ).toMatchObject({ status: 'failed' });
     expect(reported().map(({ original }) => String(original))).toEqual([defect]);
+  });
+});
+
+describe('the read of projected rows, bound to a call', () => {
+  it('reads only the brain of the call, and counts its rows', async () => {
+    const { dispatcher, ledger, run } = harness({ projections: [runTallyRows] });
+    const began: RunFact = { type: 'run_began', at: '2026-10-01T09:00:00.000Z', fn: 'triage' };
+    await Effect.runPromise(ledger.service.execute('brain/acme/alpha/executions/r1', runFacts, [began]));
+    await Effect.runPromise(ledger.service.execute('brain/acme/beta/executions/r2', runFacts, [began]));
+
+    expect(await run(dispatcher.dispatchToBrain(readTallyRows.registration, toAlpha(acmeAdmin, { limit: 5 })))).toEqual(
+      {
+        status: 'succeeded',
+        output: { runs: ['r1'], open: 1 },
+      },
+    );
+  });
+
+  it('fails the call for a limit below one', async () => {
+    const { dispatcher, reported, run } = harness({ projections: [runTallyRows] });
+
+    expect(
+      await run(dispatcher.dispatchToBrain(readTallyRows.registration, toAlpha(acmeAdmin, { limit: 0 }))),
+    ).toMatchObject({ status: 'failed' });
+    expect(reported().map(({ original }) => String(original))).toEqual([
+      'RangeError: A read of projected rows takes a limit of 1 or more, not 0',
+    ]);
   });
 });

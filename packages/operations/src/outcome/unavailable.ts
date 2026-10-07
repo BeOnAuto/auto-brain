@@ -6,6 +6,8 @@ export const UnavailableKindSchema = Schema.Literals([
   'mcp_server_failed',
   'tools_unfinished',
   'rebuilding',
+  'channel_not_offered',
+  'requests_full',
 ]);
 
 export type UnavailableKind = typeof UnavailableKindSchema.Type;

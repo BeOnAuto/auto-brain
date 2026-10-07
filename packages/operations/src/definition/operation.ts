@@ -105,6 +105,7 @@ function defineOperation<
       successStatus: definition.successStatus ?? 200,
       reachesOutside: definition.reachesOutside ?? false,
       mayChangeOutside: definition.mayChangeOutside ?? false,
+      authorizesByToken: definition.authorizesByToken ?? false,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),

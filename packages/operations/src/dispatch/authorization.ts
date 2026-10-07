@@ -10,18 +10,28 @@ import { BrainRegistry, type BrainStatus } from '../ledger/brain-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import type { BrainRequest, OrgRequest } from './request.ts';
 
+function authorizesItself({ authorizesByToken }: Registration, { requestToken }: CallerIdentity): boolean {
+  return authorizesByToken && requestToken !== undefined;
+}
+
 function rejectionOfCaller(registration: Registration, { caller, org }: OrgRequest): Rejected | undefined {
   if (caller.org !== org) {
     return rejected('forbidden', 'The caller does not belong to this org');
   }
   const permission = permissionFor(registration.kind, registration.scope);
-  return caller.permissions.includes(permission)
+  return authorizesItself(registration, caller) || caller.permissions.includes(permission)
     ? undefined
     : rejected('forbidden', `The caller lacks the ${permission} permission`);
 }
 
-function rejectionOfBrainAccess({ brains }: CallerIdentity, brain: unknown): Rejected | undefined {
-  return canAccessBrain(brains, brain) ? undefined : rejected('forbidden', 'The caller may not access this brain');
+function rejectionOfBrainAccess(
+  registration: Registration,
+  caller: CallerIdentity,
+  brain: unknown,
+): Rejected | undefined {
+  return authorizesItself(registration, caller) || canAccessBrain(caller.brains, brain)
+    ? undefined
+    : rejected('forbidden', 'The caller may not access this brain');
 }
 
 function rejectionOfOrgId(org: string): Rejected | undefined {
@@ -46,7 +56,9 @@ export function authorizeOrgCall(
 ): Effect.Effect<void, Rejected> {
   return failWith(
     rejectionOfCaller(registration, request) ??
-      (registration.targetsBrain ? rejectionOfBrainAccess(request.caller, brainFieldOf(request.input)) : undefined),
+      (registration.targetsBrain
+        ? rejectionOfBrainAccess(registration, request.caller, brainFieldOf(request.input))
+        : undefined),
   );
 }
 
@@ -54,7 +66,9 @@ export function authorizeBrainCall(
   registration: Registration<'brain'>,
   request: BrainRequest,
 ): Effect.Effect<void, Rejected> {
-  return failWith(rejectionOfCaller(registration, request) ?? rejectionOfBrainAccess(request.caller, request.brain));
+  return failWith(
+    rejectionOfCaller(registration, request) ?? rejectionOfBrainAccess(registration, request.caller, request.brain),
+  );
 }
 
 export function confirmOrgExists({ org }: OrgRequest): Effect.Effect<void, Rejected> {
