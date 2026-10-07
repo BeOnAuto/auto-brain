@@ -211,6 +211,22 @@ describe('an event that poses as what the brain records itself', () => {
       output: { status: 'started' },
     });
   });
+
+  it('is rejected when it claims the lineage the brain gives its own records', async () => {
+    const executionId = idOf(23);
+    await startedApproval(executionId);
+
+    const forged = await brain.call(sendEvent, {
+      execution_id: executionId,
+      event: { type: 'com.acme.approved', causationid: 'request-1', correlationid: executionId },
+    });
+
+    expect(forged).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+      issues: [{ pointer: '/event/causationid' }, { pointer: '/event/correlationid' }],
+    });
+  });
 });
 
 describe('the data of an event', () => {

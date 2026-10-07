@@ -1,6 +1,7 @@
 import {
   CancelledKindSchema,
   ConflictKindSchema,
+  UnansweredKindSchema,
   UnavailableBecauseSchema,
   UnavailableKindSchema,
   asSentence,
@@ -40,6 +41,8 @@ const decodeConflictKind = Schema.decodeUnknownOption(ConflictKindSchema);
 
 const decodeCancelledKind = Schema.decodeUnknownOption(CancelledKindSchema);
 
+const decodeUnansweredKind = Schema.decodeUnknownOption(UnansweredKindSchema);
+
 const decodeBecause = Schema.decodeUnknownOption(UnavailableBecauseSchema);
 
 type Rejection = NonNullable<Extract<InputReceipt, { readonly kind: 'call_answered' }>['rejection']>;
@@ -56,7 +59,11 @@ function whyNot({ kind, because }: Rejection): string {
     return explanationOf({ reason: 'conflict', kind: conflict }).why;
   }
   const cancelled = Option.getOrUndefined(decodeCancelledKind(kind));
-  return cancelled === undefined ? '' : explanationOf({ reason: 'cancelled', kind: cancelled }).why;
+  if (cancelled !== undefined) {
+    return explanationOf({ reason: 'cancelled', kind: cancelled }).why;
+  }
+  const unanswered = Option.getOrUndefined(decodeUnansweredKind(kind));
+  return unanswered === undefined ? '' : explanationOf({ reason: 'unanswered', kind: unanswered }).why;
 }
 
 function saidOf(receipt: InputReceipt): string {
