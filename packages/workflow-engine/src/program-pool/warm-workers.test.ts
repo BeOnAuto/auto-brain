@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { FoldingView } from '../folds/fold-page.ts';
 import type { FoldOutcome, FoldRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
-import { counting, countingOnTheLoop } from '../testing/counting-workers.ts';
+import { counting, countingElsewhere, countingOnTheLoop } from '../testing/counting-workers.ts';
 import { liftedLimits, programPool } from './program-pool.ts';
 
 interface Ran {
@@ -145,6 +145,24 @@ describe('a worker of the pool after a job the pool had to stop', { timeout: poo
 
     expect(await blocked).toMatchObject({ ran: 'stopped', because: 'cancelled' });
     expect([first.jobs, (await counted(pool)).jobs]).toEqual([1, 1]);
+  });
+});
+
+describe('a job of the pool cancelled before it has a worker', { timeout: poolTestTimeoutMs }, () => {
+  it('ends as cancelled a job cancelled while it waits for its seat, rather than running it to its deadline', async () => {
+    const pool = poolOf({ workers: 1 });
+    await counted(pool);
+    const cancelling = new AbortController();
+
+    const blocked = run(pool, 'block', { deadlineMs: 3000, signal: cancelling.signal, worker: countingElsewhere });
+    setImmediate(() => {
+      cancelling.abort();
+    });
+    const ended = await blocked;
+
+    expect(ended).toMatchObject({ ran: 'stopped', because: 'cancelled' });
+    expect(ended.milliseconds).toBeLessThan(2000);
+    expect((await counted(pool)).jobs).toBe(1);
   });
 });
 
