@@ -3,6 +3,7 @@ function workerOf(source: string): URL {
 }
 
 const countingSource = [
+  "import { pbkdf2Sync } from 'node:crypto';",
   "import { parentPort, threadId } from 'node:worker_threads';",
   'let jobs = 0;',
   'const answer = (job, keep) => {',
@@ -16,6 +17,7 @@ const countingSource = [
   "  'wrong job': (job) => answer(job + 1, true),",
   "  'let go': (job) => answer(job, false),",
   '  hold: (job) => { setTimeout(() => answer(job, true), 300); },',
+  "  linger: (job) => { setTimeout(() => { answer(job, true); pbkdf2Sync('x', 'y', 10000000, 32, 'sha512'); }, 300); },",
   "  'then message': (job) => { answer(job, true); setTimeout(() => parentPort.postMessage('stray'), 50); },",
   "  'then throw': (job) => { answer(job, true); setTimeout(() => { throw new Error('idle and broken'); }, 50); },",
   "  'then exit': (job) => { answer(job, true); setTimeout(() => process.exit(0), 50); },",
@@ -28,7 +30,7 @@ const countingSource = [
 
 export const counting = workerOf(countingSource);
 
-export const countingElsewhere = workerOf(`${countingSource}\n// the same module at another address`);
+export const countingElsewhere = workerOf(`${countingSource}\nvoid 0;`);
 
 export const countingOnTheLoop = workerOf(
   [

@@ -92,6 +92,15 @@ describe('a worker of the pool kept between jobs', { timeout: poolTestTimeoutMs 
     expect(new Set(ran.map(({ thread }) => thread)).size).toBe(1);
   });
 
+  it('keeps the warm worker a job takes past the time it may idle, so a job longer than that answers in the same thread', async () => {
+    const pool = poolOf({ idleMs: 100 });
+    const first = await counted(pool);
+
+    const held = await run(pool, 'hold');
+
+    expect(ranOf(held)).toEqual({ jobs: 2, thread: first.thread });
+  });
+
   it('is recycled after the last of the jobs a worker takes', async () => {
     const pool = poolOf({ jobsPerWorker: 2 });
 

@@ -109,6 +109,22 @@ describe('the workers of a pool and its permits', { timeout: poolTestTimeoutMs }
     expect(both.map(({ jobs }) => jobs)).toEqual([1, 1]);
     expect(threadsAlive() - before).toBe(2);
   });
+});
+
+describe('the workers of a pool and its permits, while a worker is let go of', { timeout: poolTestTimeoutMs }, () => {
+  it('starts two jobs at once against a worker still dying only once it has gone, so the threads alive never exceed the permits', async () => {
+    const before = threadsAlive();
+    const pool = poolOf({ workers: 2 });
+    await Promise.all([run(pool, 'count'), run(pool, 'linger')]);
+
+    const both = Promise.all([run(pool, 'hold', countingElsewhere), run(pool, 'hold', countingElsewhere)]);
+    await setTimeout(100);
+    const whileTheLastDies = threadsAlive() - before;
+    const answered = await both;
+
+    expect(whileTheLastDies).toBeLessThanOrEqual(2);
+    expect(answered.map((outcome) => ranOf(outcome).jobs)).toEqual([1, 1]);
+  });
 
   it('ends as closing the jobs that wait for a worker to be let go of when the pool closes', async () => {
     const pool = poolOf({ workers: 2 });
