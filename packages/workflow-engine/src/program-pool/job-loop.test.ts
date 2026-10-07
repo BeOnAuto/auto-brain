@@ -4,9 +4,9 @@ import type { Json, JsonObject } from '../dsl/json.ts';
 import { foldAnswerOf, foldPageData } from '../folds/fold-answer.ts';
 import type { FoldPage } from '../folds/fold-page.ts';
 import { foldProgress, type FoldProgress } from '../folds/fold-progress.ts';
+import type { JobHandlers } from '../jobs/job-kit.ts';
 import { answerOf, type OutputCheck, type ProgramAnswerData } from '../jobs/program-answer.ts';
 import type { CompiledProgram } from '../programs/program-compiling.ts';
-import type { JobHandlers } from './job-kit.ts';
 import { serveJobs } from './job-loop.ts';
 import { liftedLimits } from './program-pool.ts';
 

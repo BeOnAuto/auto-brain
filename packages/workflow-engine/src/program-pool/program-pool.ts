@@ -12,9 +12,9 @@ import { poolWorkers } from './pool-workers.ts';
 
 export const mostEvaluationDepth = 10_000;
 
-const programWorker = new URL('./program-worker.ts', import.meta.url);
+const programWorker = new URL('../workers/program-worker.ts', import.meta.url);
 
-const foldWorker = new URL('./fold-worker.ts', import.meta.url);
+const foldWorker = new URL('../workers/fold-worker.ts', import.meta.url);
 
 const decodeProgramAnswer = Schema.decodeUnknownOption(ProgramAnswerSchema);
 

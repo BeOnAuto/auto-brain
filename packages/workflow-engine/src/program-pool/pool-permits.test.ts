@@ -5,7 +5,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
-import { counting, countingElsewhere } from '../testing/counting-workers.ts';
+import { counting, countingElsewhere } from '../pool-testing/counting-workers.ts';
 import { liftedLimits, programPool } from './program-pool.ts';
 
 interface Ran {

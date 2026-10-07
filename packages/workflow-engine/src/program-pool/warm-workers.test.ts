@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { FoldingView } from '../folds/fold-page.ts';
 import type { FoldOutcome, FoldRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
-import { counting, countingElsewhere, countingOnTheLoop } from '../testing/counting-workers.ts';
+import { counting, countingElsewhere, countingOnTheLoop } from '../pool-testing/counting-workers.ts';
 import { liftedLimits, programPool } from './program-pool.ts';
 
 interface Ran {

@@ -95,7 +95,7 @@ const growingCache: readonly Forbidden[] = [
 ];
 
 function isProductionSource(file: string): boolean {
-  return file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.startsWith('testing');
+  return file.endsWith('.ts') && !file.endsWith('.test.ts') && !/^(?:[\w-]+-)?testing\//u.test(file);
 }
 
 function sourcesUnder(folder: string): readonly string[] {
@@ -137,7 +137,7 @@ function caught(text: string, forbidden: readonly Forbidden[]): readonly string[
 
 const everySource = sourcesUnder('.');
 
-const nodeHosted = ['dsl.ts', 'job-loop.ts', 'program-pool/'];
+const nodeHosted = ['dsl.ts', 'job-loop.ts', 'program-pool/', 'workers/'];
 
 const portableSources = everySource.filter((file) => !nodeHosted.some((hosted) => file.startsWith(hosted)));
 
@@ -176,7 +176,7 @@ describe('the testing entry', () => {
   it('takes no Node module and no YAML parser, so a hosted adapter can run its probes, its driver and the scripted pool', () => {
     const testingEntry = reachableFrom('testing/index.ts');
 
-    expect(testingEntry).toEqual(expect.arrayContaining(['memory/memory-ports.ts', 'testing/scripted-pool.ts']));
+    expect(testingEntry).toEqual(expect.arrayContaining(['memory/memory-ports.ts', 'pool-testing/scripted-pool.ts']));
     expect(findingsIn(testingEntry, nodeOrYaml)).toEqual([]);
   });
 });

@@ -3,11 +3,11 @@ import { mostCompiledCharacters } from '../dsl/expressions.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import type { FoldAnswerData } from '../folds/fold-answer.ts';
 import type { FoldHost, ViewCheck } from '../folds/fold-page.ts';
-import type { FoldJob } from '../jobs/fold-messages.ts';
-import { unchecked, type OutputCheck, type ProgramAnswerData, type ProgramHost } from '../jobs/program-answer.ts';
-import type { ProgramJob } from '../jobs/program-messages.ts';
 import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
+import type { FoldJob } from './fold-messages.ts';
+import { unchecked, type OutputCheck, type ProgramAnswerData, type ProgramHost } from './program-answer.ts';
+import type { ProgramJob } from './program-messages.ts';
 
 export interface ValueChecks {
   readonly output: (schema: Json) => OutputCheck;

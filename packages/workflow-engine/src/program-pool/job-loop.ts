@@ -5,9 +5,9 @@ import { Option, Schema } from 'effect';
 import type { FoldAnswerData } from '../folds/fold-answer.ts';
 import { progressOf } from '../folds/fold-progress.ts';
 import { JobSchema, type JobAnswer, type JobEnvelope } from '../jobs/job-envelopes.ts';
+import { keptFor, type FoldHandler, type JobHandlers, type Kept, type ProgramHandler } from '../jobs/job-kit.ts';
 import type { ProgramAnswerData } from '../jobs/program-answer.ts';
 import { fieldOf } from '../programs/program-tree.ts';
-import { keptFor, type FoldHandler, type JobHandlers, type Kept, type ProgramHandler } from './job-kit.ts';
 
 type ProgramEnvelope = Extract<JobEnvelope, { readonly kind: 'program' }>;
 
