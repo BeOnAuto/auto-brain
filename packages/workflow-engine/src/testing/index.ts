@@ -26,6 +26,8 @@ export {
 } from '../memory/memory-reactions.ts';
 export { memoryRunStore, type MemoryRunStore } from '../memory/run-store.ts';
 export { runWatchOf, type RunWatch } from './run-watch.ts';
+export type { PoolOutcome } from '../jobs/pool-contract.ts';
+export { scriptedPool } from './scripted-pool.ts';
 export {
   recordStoreProbes,
   runStoreProbes,

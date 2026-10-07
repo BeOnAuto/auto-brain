@@ -137,7 +137,7 @@ function caught(text: string, forbidden: readonly Forbidden[]): readonly string[
 
 const everySource = sourcesUnder('.');
 
-const nodeHosted = ['dsl.ts', 'program-pool/'];
+const nodeHosted = ['dsl.ts', 'job-loop.ts', 'program-pool/'];
 
 const portableSources = everySource.filter((file) => !nodeHosted.some((hosted) => file.startsWith(hosted)));
 
@@ -173,21 +173,22 @@ const nodeOrYaml: readonly Forbidden[] = [
 ];
 
 describe('the testing entry', () => {
-  it('takes no Node module and no YAML parser, so a hosted adapter can run its probes and its driver', () => {
+  it('takes no Node module and no YAML parser, so a hosted adapter can run its probes, its driver and the scripted pool', () => {
     const testingEntry = reachableFrom('testing/index.ts');
 
-    expect(testingEntry).toContain('memory/memory-ports.ts');
+    expect(testingEntry).toEqual(expect.arrayContaining(['memory/memory-ports.ts', 'testing/scripted-pool.ts']));
     expect(findingsIn(testingEntry, nodeOrYaml)).toEqual([]);
   });
 });
 
 describe('the entries of the engine', () => {
-  it('reach the worker pool only through the dsl subpath, so the main and testing entries stay portable', () => {
-    const dslEntry = reachableFrom('dsl.ts');
+  it('reach the worker pool only through the dsl and job-loop subpaths, so the main, testing and worker entries stay portable', () => {
+    const dslEntry = ['program-pool/program-pool.ts', 'programs/program-compiling.ts'];
 
-    expect(dslEntry).toContain('program-pool/program-pool.ts');
-    expect(dslEntry).toContain('programs/program-compiling.ts');
-    for (const entry of ['index.ts', 'testing/index.ts']) {
+    expect(reachableFrom('dsl.ts')).toEqual(expect.arrayContaining(dslEntry));
+    expect(reachableFrom('job-loop.ts')).toContain('program-pool/job-loop.ts');
+    expect(reachableFrom('worker.ts')).toContain('jobs/program-answer.ts');
+    for (const entry of ['index.ts', 'testing/index.ts', 'worker.ts']) {
       expect(reachableFrom(entry).filter((file) => nodeHosted.some((hosted) => file.startsWith(hosted)))).toEqual([]);
     }
   });
@@ -206,7 +207,7 @@ describe('the engine core', () => {
     expect(findingsIn(portableSources, hostOnly)).toEqual([]);
     expect(findingsIn(sourcesUnder('program-pool'), hostOnly).toSorted()).toEqual([
       'program-pool/pool-slots.ts: a host timer',
-      'program-pool/program-pool.ts: a host timer',
+      'program-pool/pool-threads.ts: a host timer',
     ]);
   });
 

@@ -1,8 +1,4 @@
-import { parentPort, workerData } from 'node:worker_threads';
+import { answerOf } from '../jobs/program-answer.ts';
+import { serveJobs } from './job-loop.ts';
 
-import { answerOf } from './program-answer.ts';
-
-parentPort?.postMessage(
-  answerOf(workerData, () => performance.timeOrigin + performance.now()),
-  [],
-);
+serveJobs({ program: answerOf });
