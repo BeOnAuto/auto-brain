@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 import type { Environment } from '@beonauto/config';
 
 import type { ChildCommand, RunningChild, Written } from './children.ts';
@@ -25,14 +27,14 @@ interface Serving {
   readonly output: Written;
 }
 
-const stopWithRunner = new URL('stop-with-runner.ts', import.meta.url).href;
+const stopWithRunner = fileURLToPath(new URL('stop-with-runner.ts', import.meta.url));
 
 function serverCommand(run: DevelopmentRun, output: Written): ChildCommand {
   return {
     command: run.execPath,
     args: [
-      `--import=${stopWithRunner}`,
       ...presentEnvFiles(run.setup).map((envFile) => `--env-file=${envFile}`),
+      stopWithRunner,
       run.setup.serverEntry,
     ],
     environment: { ...run.environment, ...rootConfigFile(run) },
