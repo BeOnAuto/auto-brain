@@ -1,4 +1,7 @@
-import { Effect, Result } from 'effect';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+
+import { Effect, Function, Result, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { deliveryIdKey, executionIdKey } from '../calls/execution-key.ts';
@@ -13,6 +16,8 @@ import {
 import { deliveryBounds, type DeliveryCall } from './delivery-bounds.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
+
+const portOf = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Number }));
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -180,4 +185,32 @@ describe('a delivery through a tool this brain is not offered', () => {
     ]);
     expect(fake.received()).toEqual([]);
   });
+});
+
+describe('a delivery to a server that opens no connection', () => {
+  it(
+    'fails at the bound of a delivery, though the shared opening of tool calls may wait longer',
+    async () => {
+      const silent = createServer(Function.constVoid);
+      silent.listen(0, '127.0.0.1');
+      await once(silent, 'listening');
+      closing.push(async () => {
+        silent.closeAllConnections();
+        silent.close();
+        await once(silent, 'close');
+      });
+      const startedAt = Date.now();
+
+      const ended = await calledOnce(accessTo(`http://127.0.0.1:${String(portOf(silent.address()).port)}/mcp`));
+
+      expect(patientTiming.openMs).toBeGreaterThan(deliveryBounds.connectionMs);
+      expect(ended).toEqual({
+        outcome: 'timed_out',
+        detail: `The MCP server graph did not open a connection within ${deliveryBounds.connectionMs} ms`,
+        retryAfterMs: null,
+      });
+      expect(Date.now() - startedAt).toBeLessThan(patientTiming.openMs);
+    },
+    2 * deliveryBounds.connectionMs,
+  );
 });
