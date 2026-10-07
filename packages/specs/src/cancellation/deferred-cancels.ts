@@ -13,7 +13,7 @@ import { Effect, Equal } from 'effect';
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
 import { endedWithAnotherResult } from '../execution/execution-decisions.ts';
 import { executionSettler, type ExecutionAddress } from '../execution/execution-settler.ts';
-import { isRunning } from '../execution/execution-state.ts';
+import { runOf, takesSettlement } from '../execution/execution-state.ts';
 import { cancelledAsAsked, type CancelledRun, type Primitive } from '../primitive/primitive.ts';
 import type { CancelRequest } from './run-cancels.ts';
 
@@ -42,8 +42,8 @@ export function deferredCanceller(
   return (execution, { kind, reason, by }, lineage) =>
     Effect.gen(function* () {
       const stream = `${streamPrefixOfBrain(execution)}${executionStreamOf(execution.id.toLowerCase())}`;
-      const { state } = yield* ledger.load(stream, executionDecider);
-      if (state === undefined || !isRunning(state)) {
+      const state = runOf((yield* ledger.load(stream, executionDecider)).state);
+      if (state === undefined || !takesSettlement(state)) {
         return;
       }
       const primitive = primitives.find(({ name }) => name === state.execution.primitive);

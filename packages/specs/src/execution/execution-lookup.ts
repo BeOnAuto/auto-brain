@@ -1,16 +1,17 @@
 import { Conflict, InvalidInput, NotFound, RunCancelled, Unavailable } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { ExecutionState, RecordedExecution } from './execution-state.ts';
+import { runOf, type ExecutionStreamState, type RecordedExecution } from './execution-state.ts';
 import type { Run, RunDetail, ExecutionRejection } from './execution.ts';
 
-function recorded(id: string, state: ExecutionState): Effect.Effect<RecordedExecution, NotFound> {
+function recorded(id: string, stream: ExecutionStreamState): Effect.Effect<RecordedExecution, NotFound> {
+  const state = runOf(stream);
   return state === undefined
     ? Effect.fail(new NotFound({ detail: `There is no run ${id} in this brain` }))
     : Effect.succeed(state);
 }
 
-export function executionOf(id: string, state: ExecutionState): Effect.Effect<Run, NotFound> {
+export function executionOf(id: string, state: ExecutionStreamState): Effect.Effect<Run, NotFound> {
   return recorded(id, state).pipe(Effect.map(({ execution }) => ({ execution_id: id, ...execution })));
 }
 
@@ -18,7 +19,7 @@ function detailOf(id: string, { execution, record }: RecordedExecution): RunDeta
   return record === undefined ? { execution_id: id, ...execution } : { execution_id: id, ...execution, record };
 }
 
-export function executionDetailOf(id: string, state: ExecutionState): Effect.Effect<RunDetail, NotFound> {
+export function executionDetailOf(id: string, state: ExecutionStreamState): Effect.Effect<RunDetail, NotFound> {
   return recorded(id, state).pipe(Effect.map((execution) => detailOf(id, execution)));
 }
 
@@ -39,13 +40,14 @@ function replayed(rejection: ExecutionRejection): ReplayedRejection {
   if (rejection.reason === 'cancelled') {
     return new RunCancelled({ detail: rejection.detail, kind: rejection.kind });
   }
-  return new Conflict({ detail: rejection.detail, kind: rejection.kind ?? 'unworkable' });
+  const { detail, kind } = rejection;
+  return new Conflict(kind === undefined ? { detail } : { detail, kind });
 }
 
 function answerWith(execution: Run): Effect.Effect<Run, ReplayedRejection> {
   return execution.rejection === undefined ? Effect.succeed(execution) : Effect.fail(replayed(execution.rejection));
 }
 
-export function answerOf(id: string, state: ExecutionState): Effect.Effect<Run, NotFound | ReplayedRejection> {
+export function answerOf(id: string, state: ExecutionStreamState): Effect.Effect<Run, NotFound | ReplayedRejection> {
   return executionOf(id, state).pipe(Effect.flatMap(answerWith));
 }

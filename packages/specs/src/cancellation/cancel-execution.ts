@@ -45,12 +45,14 @@ const correlationOf = Effect.fnUntraced(function* (id: string) {
 const cancelled = Effect.fnUntraced(function* (id: string, reason: string | undefined) {
   const { by, at } = yield* commandMetadata;
   const correlationId = yield* Effect.orDie(correlationOf(id));
-  const { state } = yield* (yield* BrainWriter).execute(
-    executionStreamOf(id),
-    executionDecider,
-    { type: 'cancel', kind: 'requested', reason: reason ?? `Cancelled at the request of ${by}`, by, at },
-    { causationId: null, correlationId },
-  );
+  const { state } = yield* (yield* BrainWriter)
+    .execute(
+      executionStreamOf(id),
+      executionDecider,
+      { type: 'cancel', kind: 'requested', reason: reason ?? `Cancelled at the request of ${by}`, by, at },
+      { causationId: null, correlationId },
+    )
+    .pipe(Effect.catchTag('cancelled', Effect.die));
   return yield* executionOf(id, state);
 });
 

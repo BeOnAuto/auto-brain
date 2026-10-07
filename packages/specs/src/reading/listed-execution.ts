@@ -10,7 +10,7 @@ import { Effect, Schema, Struct } from 'effect';
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
 import { ExecutionEventSchema, type ExecutionEvent } from '../execution/execution-events.ts';
 import { executionOf } from '../execution/execution-lookup.ts';
-import { evolveExecution, type ExecutionState } from '../execution/execution-state.ts';
+import { evolveExecution, runOf, type ExecutionStreamState } from '../execution/execution-state.ts';
 import { RunSchema, type Run, type ExecutionRejection } from '../execution/execution.ts';
 
 const ListedRejectionSchema = Schema.Struct({
@@ -70,9 +70,12 @@ function listedOf(execution: Run): ListedRun {
 function listedExecutionOf(stream: string, heads: readonly RecordedEvent[]): Effect.Effect<ListedRun> {
   return Effect.forEach(heads, ({ data }) => decodeEvent(data)).pipe(
     Effect.map((events: readonly ExecutionEvent[]) =>
-      events.reduce((state: ExecutionState, event) => evolveExecution(state, event), executionDecider.initialState),
+      events.reduce(
+        (state: ExecutionStreamState, event: ExecutionEvent) => evolveExecution(state, event),
+        executionDecider.initialState,
+      ),
     ),
-    Effect.flatMap((state) => executionOf(stream.slice(executionStreamPrefix.length), state)),
+    Effect.flatMap((state) => executionOf(stream.slice(executionStreamPrefix.length), runOf(state))),
     Effect.orDie,
     Effect.map(listedOf),
   );

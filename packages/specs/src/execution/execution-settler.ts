@@ -88,7 +88,9 @@ function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {
 export function executionSettler(ledger: StreamWriter): SettleExecution {
   const settle = Effect.fnUntraced(function* (stream: string, result: ExecutionResult, by: string, lineage?: Lineage) {
     const at = DateTime.formatIso(yield* DateTime.now);
-    return yield* ledger.execute(stream, executionDecider, { type: 'settle', result, by, at }, lineage);
+    return yield* ledger
+      .execute(stream, executionDecider, { type: 'settle', result, by, at }, lineage)
+      .pipe(Effect.catchTag('cancelled', Effect.die));
   });
   return (execution, settlement, lineage) =>
     Effect.gen(function* () {

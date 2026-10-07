@@ -10,7 +10,7 @@ import {
 import { DateTime, Effect, Equal, Schema } from 'effect';
 
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
-import { endedBeforeCancelling, runsWithinItsCall } from '../execution/execution-decisions.ts';
+import { endedBeforeCancelling } from '../execution/execution-decisions.ts';
 import type { CancelRequestKind } from '../execution/execution-events.ts';
 import type { ExecutionAddress } from '../execution/execution-settler.ts';
 
@@ -20,7 +20,7 @@ export interface CancelRequest {
   readonly by?: string;
 }
 
-export type CancelReceipt = 'requested' | 'ended' | 'within_its_call' | 'unknown_run';
+export type CancelReceipt = 'requested' | 'ended' | 'unknown_run';
 
 export type CancelExecution = (
   execution: ExecutionAddress,
@@ -36,10 +36,6 @@ function endedFirst(error: unknown): boolean {
   return Equal.equals(error, endedBeforeCancelling);
 }
 
-function runsWithinACall(error: unknown): boolean {
-  return Equal.equals(error, runsWithinItsCall);
-}
-
 export function executionCanceller(ledger: StreamWriter): CancelExecution {
   return (execution, { kind, reason, by }, lineage) =>
     Effect.gen(function* () {
@@ -50,12 +46,11 @@ export function executionCanceller(ledger: StreamWriter): CancelExecution {
       const at = DateTime.formatIso(yield* DateTime.now);
       const actor = by ?? brainCallerOf(execution).id;
       return yield* ledger
-        .execute(stream, executionDecider, { type: 'cancel', kind, reason, by: actor, at }, lineage)
+        .execute(stream, executionDecider, { type: 'cancel', kind, reason, by: actor, at, byItsCaller: true }, lineage)
         .pipe(
           Effect.as<CancelReceipt>('requested'),
-          Effect.catchTag('not_found', () => Effect.succeed<CancelReceipt>('unknown_run')),
+          Effect.catchTags({ not_found: Effect.die, cancelled: Effect.die }),
           Effect.catchIf(endedFirst, () => Effect.succeed<CancelReceipt>('ended')),
-          Effect.catchIf(runsWithinACall, () => Effect.succeed<CancelReceipt>('within_its_call')),
         );
     });
 }

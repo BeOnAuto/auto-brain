@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { ExecutionCommand, ExecutionResult } from './execution-commands.ts';
 import { executionDecider, executionStreamOf } from './execution-decider.ts';
 import type { ExecutionEvent } from './execution-events.ts';
+import { runOf } from './execution-state.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -162,7 +163,6 @@ describe('an execution', () => {
       callsTools: false,
       lastCall: 0,
       mayHaveChanged: false,
-      cancelRequested: false,
       depth: 0,
       callDepth: 0,
       result: { type: 'execution_rejected', rejection: { reason: 'unavailable', detail: 'The model is busy' } },
@@ -189,7 +189,6 @@ describe('an execution started again', () => {
       callsTools: false,
       lastCall: 0,
       mayHaveChanged: false,
-      cancelRequested: false,
       depth: 0,
       callDepth: 0,
       record: { model: 'x' },
@@ -200,7 +199,7 @@ describe('an execution started again', () => {
 
 describe('the attempts of an execution', () => {
   it('hold a failure without an output or a rejection', () => {
-    expect(stateAfter(started, failed)?.execution).toStrictEqual({
+    expect(runOf(stateAfter(started, failed))?.execution).toStrictEqual({
       primitive: 'echo',
       name: 'greet',
       spec_version: 1,

@@ -93,8 +93,13 @@ const rejections: ReadonlyArray<readonly [string, Readonly<Record<string, unknow
   ],
   [
     'a spec it could not run as written',
-    { reason: 'conflict', detail: 'x' },
+    { reason: 'conflict', detail: 'x', kind: 'unworkable' },
     'it cannot work as it is written. This can be corrected and tried again; the details below say what to change.',
+  ],
+  [
+    'a clash that names no kind',
+    { reason: 'conflict', detail: 'x' },
+    'it clashes with something already there. The details below say what is in the way.',
   ],
   [
     'a workflow whose result was larger than a run may record',

@@ -1,13 +1,13 @@
 import { BrainContext, BrainReader, CallLineage, Caller, Conflict, type GivenLineage } from '@beonauto/operations';
-import { Effect, Option } from 'effect';
+import { Cause, Effect, Option } from 'effect';
 
-import type { ExecutionOutcome, ExecutionRequest } from '../execution/execution-commands.ts';
+import type { ExecutionOutcome, ExecutionRequest, InterruptedAttempt } from '../execution/execution-commands.ts';
 import { claimOf, runTaken } from '../execution/execution-decisions.ts';
 import { answerOf } from '../execution/execution-lookup.ts';
 import type { Primitive, PreparedDefinition, RunContext, RunLineage } from '../primitive/primitive.ts';
 import { toolCallJournal, type RunJournal } from '../tool-calls/tool-call-journal.ts';
-import { loadExecution, newExecutionId, recordExecution } from './execution-access.ts';
-import { attempt, failedAttempt } from './execution-attempt.ts';
+import { loadExecution, loadExecutionStream, newExecutionId, recordExecution } from './execution-access.ts';
+import { attempt, failedAttempt, interruptedAttempt } from './execution-attempt.ts';
 import { preparedSpec, preparedVersion, type VersionToRun } from './spec-preparation.ts';
 
 export const mostCallDepth = 8;
@@ -20,7 +20,7 @@ interface Called extends GivenLineage {
   readonly primitives: readonly Primitive[];
 }
 
-function finishedBy(id: string, execution: JournalledRun, outcome: ExecutionOutcome) {
+function finishedBy(id: string, execution: JournalledRun, outcome: ExecutionOutcome | InterruptedAttempt) {
   return Effect.gen(function* () {
     const causationId =
       outcome.type === 'execution_deferred' ? execution.lineage.startId : yield* execution.journal.latest;
@@ -112,7 +112,9 @@ const runExecution = Effect.fnUntraced(function* (
       const execution = yield* contextOf(id, run, { startId: messageId, correlationId }, given);
       const executing = run.prepared.execute(request.input, execution);
       const result = yield* attempt(run.prepared.whenCancelled === 'finish' ? executing : restore(executing)).pipe(
-        Effect.onError(() => Effect.ignore(finishedBy(id, execution, failedAttempt))),
+        Effect.onError((cause) =>
+          Effect.ignore(finishedBy(id, execution, Cause.hasInterruptsOnly(cause) ? interruptedAttempt : failedAttempt)),
+        ),
       );
       return yield* finishedBy(id, execution, result);
     }),
@@ -127,7 +129,7 @@ export const executeRequest = Effect.fnUntraced(function* (
   suppliedId: string | undefined,
 ) {
   const id = suppliedId ?? (yield* newExecutionId);
-  const recorded = yield* loadExecution(id);
+  const recorded = yield* loadExecutionStream(id);
   const claim = yield* Effect.fromResult(claimOf(recorded, request));
   return claim === 'answer'
     ? yield* answerOf(id, recorded)

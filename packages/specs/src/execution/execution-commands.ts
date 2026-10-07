@@ -40,9 +40,13 @@ export type CallAnsweredFact = Omit<ToolCallAnswered, 'by' | 'at'>;
 
 export type ToolCallFact = (CallStartedFact & { readonly number?: number }) | CallAnsweredFact;
 
+export interface InterruptedAttempt {
+  readonly type: 'execution_interrupted';
+}
+
 export interface ExecutionFinish {
   readonly type: 'finish';
-  readonly result: ExecutionOutcome;
+  readonly result: ExecutionOutcome | InterruptedAttempt;
 }
 
 export interface ExecutionToolCall {
@@ -64,6 +68,7 @@ export interface ExecutionCancel extends CommandMetadata {
   readonly type: 'cancel';
   readonly kind: CancelRequestKind;
   readonly reason: string;
+  readonly byItsCaller?: true;
 }
 
 export type ExecutionCommand =

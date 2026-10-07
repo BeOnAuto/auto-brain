@@ -214,7 +214,7 @@ describe('cancelling a run', () => {
     expect(decided(cancelling(), started, deferred, cancelAsked)).toStrictEqual(Result.succeed([]));
     expect(stateAfter(started, deferred, cancelAsked)).toMatchObject({
       execution: { status: 'started' },
-      cancelRequested: true,
+      cancel: { kind: 'requested', reason: 'Not needed any more', by: 'acme-admin' },
     });
   });
 

@@ -3,7 +3,7 @@ import { DateTime, Effect, Exit, Ref, Semaphore } from 'effect';
 
 import type { ToolCallFact } from '../execution/execution-commands.ts';
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
-import { lastCallOf, type ExecutionState } from '../execution/execution-state.ts';
+import { lastCallOf, runOf, type ExecutionState } from '../execution/execution-state.ts';
 import type { RunLineage, ToolCallJournal } from '../primitive/primitive.ts';
 
 export interface RunJournal extends ToolCallJournal {
@@ -46,7 +46,7 @@ export const toolCallJournal = Effect.fnUntraced(function* (id: string, lineage:
           { type: 'tool_call', fact, by, at },
           { causationId: causeOf(fact, known), correlationId: lineage.correlationId },
         );
-        const number = numberOf(fact, state);
+        const number = numberOf(fact, runOf(state));
         yield* Ref.set(calls, noted(fact, known, number, messageIdOf(stream, version)));
         return number;
       }),

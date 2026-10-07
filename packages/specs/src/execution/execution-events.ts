@@ -68,7 +68,9 @@ const ExecutionCancelRequestedSchema = Schema.Struct({
   type: Schema.Literal('execution_cancel_requested'),
   kind: CancelRequestKindSchema,
   reason: Schema.String,
-  ...ofTheDefinition,
+  primitive: Schema.optionalKey(Schema.String),
+  name: Schema.optionalKey(Schema.String),
+  spec_version: Schema.optionalKey(Schema.Int),
   ...fact,
 });
 

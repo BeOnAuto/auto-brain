@@ -79,7 +79,7 @@ describe('an execution that names a model the server is not set up for, while it
 });
 
 describe('an execution of a spec the primitive cannot run as written', () => {
-  it('is rejected with conflict, and the rejection is recorded', async () => {
+  it('is rejected with conflict, and the rejection is recorded and answered without a kind, as it was given', async () => {
     const { call, executing, getExecution, prober } = await withPlain();
     prober.sufferOnNextRun('conflict');
 
@@ -87,7 +87,6 @@ describe('an execution of a spec the primitive cannot run as written', () => {
       status: 'rejected',
       reason: 'conflict',
       detail: 'The probe cannot run this spec as written; update it',
-      kind: 'unworkable',
     });
     expect(await call(getExecution, readingTheExecution)).toStrictEqual({
       status: 'succeeded',

@@ -36,7 +36,7 @@ describe('a cancel request the workflow host records on a run', () => {
     });
   });
 
-  it('answers that the run has ended, runs within its call, or is not in the brain, which are receipts and not failures', async () => {
+  it('answers that the run has ended, and records the request on a run within its call, on a run not started yet, but not at an ill-formed address', async () => {
     const { call, executeSpec, executing, ledger, prober, settling } = await withHandOn();
     await executing();
     await settling({ status: 'failed' });
@@ -60,7 +60,7 @@ describe('a cancel request the workflow host records on a run', () => {
       Effect.forEach(addresses, (execution) => cancel(execution, { ...deadline, by: 'acme-admin' }, lineage)),
     );
 
-    expect(receipts).toEqual(['ended', 'within_its_call', 'unknown_run', 'unknown_run', 'unknown_run']);
+    expect(receipts).toEqual(['ended', 'requested', 'requested', 'unknown_run', 'unknown_run']);
   });
 });
 

@@ -1,8 +1,20 @@
 import type { Schema } from 'effect';
 
 import type { ExecutionResult } from './execution-commands.ts';
-import type { CalledBy, ExecutionEvent, ExecutionFinished, ExecutionStarted } from './execution-events.ts';
+import type {
+  CalledBy,
+  CancelRequestKind,
+  ExecutionEvent,
+  ExecutionFinished,
+  ExecutionStarted,
+} from './execution-events.ts';
 import type { ExecutionRecord } from './execution.ts';
+
+export interface AskedCancel {
+  readonly kind: CancelRequestKind;
+  readonly reason: string;
+  readonly by: string;
+}
 
 export interface RecordedExecution {
   readonly input: Schema.Json;
@@ -12,7 +24,7 @@ export interface RecordedExecution {
   readonly callsTools: boolean;
   readonly lastCall: number;
   readonly mayHaveChanged: boolean;
-  readonly cancelRequested: boolean;
+  readonly cancel?: AskedCancel;
   readonly depth: number;
   readonly callDepth: number;
   readonly calledBy?: CalledBy;
@@ -21,6 +33,20 @@ export interface RecordedExecution {
 }
 
 export type ExecutionState = RecordedExecution | undefined;
+
+interface CancelledBeforeStart {
+  readonly cancelledBeforeStart: AskedCancel;
+}
+
+export type ExecutionStreamState = ExecutionState | CancelledBeforeStart;
+
+export function runOf(state: ExecutionStreamState): ExecutionState {
+  return state === undefined || 'cancelledBeforeStart' in state ? undefined : state;
+}
+
+export function cancelBeforeStartOf(state: ExecutionStreamState): AskedCancel | undefined {
+  return state !== undefined && 'cancelledBeforeStart' in state ? state.cancelledBeforeStart : undefined;
+}
 
 function startedExecution(event: ExecutionStarted, earlier: ExecutionState): RecordedExecution {
   const { primitive, name, spec_version, input, calls_tools, finishes_later, depth = 0, by, at } = event;
@@ -33,7 +59,6 @@ function startedExecution(event: ExecutionStarted, earlier: ExecutionState): Rec
     callsTools: calls_tools === true,
     lastCall: earlier?.lastCall ?? 0,
     mayHaveChanged: earlier?.mayHaveChanged ?? false,
-    cancelRequested: false,
     depth,
     callDepth,
     ...(calledBy === undefined ? {} : { calledBy }),
@@ -84,18 +109,27 @@ function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, 
     return state;
   }
   if (event.type === 'execution_cancel_requested') {
-    return { ...state, cancelRequested: true };
+    const { kind, reason, by } = event;
+    return { ...state, cancel: { kind, reason, by } };
   }
   return event.type === 'execution_deferred'
     ? { ...state, deferred: true, record: event.record }
     : finishedExecution(state, event);
 }
 
-export function evolveExecution(state: ExecutionState, event: ExecutionEvent): ExecutionState {
+export function evolveExecution(state: ExecutionStreamState, event: ExecutionEvent): ExecutionStreamState {
   if (event.type === 'execution_started') {
-    return startedExecution(event, state);
+    return startedExecution(event, runOf(state));
   }
-  return state === undefined ? state : evolveStarted(state, event);
+  const run = runOf(state);
+  if (run !== undefined) {
+    return evolveStarted(run, event);
+  }
+  if (state === undefined && event.type === 'execution_cancel_requested') {
+    const { kind, reason, by } = event;
+    return { cancelledBeforeStart: { kind, reason, by } };
+  }
+  return state;
 }
 
 export function hasFinalResult({ execution }: RecordedExecution): boolean {

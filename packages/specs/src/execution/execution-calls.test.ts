@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { CallAnsweredFact, CallStartedFact, ExecutionCommand, ToolCallFact } from './execution-commands.ts';
 import { executionDecider } from './execution-decider.ts';
 import type { ExecutionEvent } from './execution-events.ts';
-import { lastCallOf } from './execution-state.ts';
+import { lastCallOf, runOf } from './execution-state.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 
@@ -149,7 +149,7 @@ describe('the calls an execution recorded', () => {
   });
 
   it('name no last call for a run that never started', () => {
-    expect(lastCallOf(stateAfter())).toBe(0);
+    expect(lastCallOf(runOf(stateAfter()))).toBe(0);
   });
 
   it('are counted across a start that was recorded again, so numbers never repeat under one id', () => {
