@@ -13,6 +13,7 @@ export { defineListSpecs } from './operations/list-specs.ts';
 export { defineStartVersion } from './operations/start-version.ts';
 export {
   definePrimitive,
+  defaultRunWords,
   type CancelDecision,
   type CancelledRun,
   type Executed,
@@ -87,6 +88,7 @@ export { defineGetExecution, getExecution } from './operations/get-execution.ts'
 export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';
 export { ListedRunSchema, type ListedRun } from './reading/listed-execution.ts';
+export { ExecutionIdField } from './operations/spec-fields.ts';
 export { makeSpecPresenters } from './presenting/spec-presenters.ts';
 export { brainEventOf, brainFactOf } from './events/brain-facts.ts';
 export { SpecEventSchema, type SpecEvent } from './registry/spec-events.ts';
