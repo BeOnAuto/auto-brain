@@ -6,7 +6,7 @@ import type { RunOutcomesStore, StatementExecutor } from '../event-store.ts';
 import { groupFields, groupOf } from '../outcomes/run-outcome-groups.ts';
 import { runOutcomesTable } from '../outcomes/run-outcome-projection.ts';
 import { keptOutcomesOnly } from '../outcomes/run-outcomes-reader.ts';
-import { binding, type Bind, type Query } from './recorded-parts.ts';
+import { binding, type Bind, type Query } from '../postgresql-reads/recorded-parts.ts';
 
 const GroupRows = Schema.Array(Schema.Struct({ ...groupFields, durations: Schema.Array(Schema.Number) }));
 

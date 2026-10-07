@@ -2,8 +2,8 @@ import { runTallyRows } from '@beonauto/operations/testing';
 import { Effect, Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import type { Query } from '../postgresql-reads/recorded-parts.ts';
 import { formattedFor, postgresqlProjectionDialect, postgresqlProjectionsOf } from './postgresql-projections.ts';
-import type { Query } from './recorded-parts.ts';
 
 interface Asked {
   readonly text: string;

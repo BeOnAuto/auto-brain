@@ -1,8 +1,13 @@
 import { Schema } from 'effect';
 
 import type { AppendedStreams, RecordedStore } from '../event-store.ts';
-import { kindKeyOfStream } from '../postgresql/brain-indexes.ts';
-import { binding, defaultPartition, oldestWriteOfThisDatabase, type Query } from '../postgresql/recorded-parts.ts';
+import { kindKeyOfStream } from '../postgresql-reads/brain-indexes.ts';
+import {
+  binding,
+  defaultPartition,
+  oldestWriteOfThisDatabase,
+  type Query,
+} from '../postgresql-reads/recorded-parts.ts';
 
 const AppendedRows = Schema.NonEmptyArray(
   Schema.Union([

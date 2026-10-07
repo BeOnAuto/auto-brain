@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { aRecordedFillOf, mebibyte, runIdsOf, type RecordedFill } from '../outcomes/recorded-fill.ts';
+import type { Query } from '../postgresql-reads/postgresql-recorded.ts';
 import { postgresqlProjectionsOf } from './postgresql-projections.ts';
-import type { Query } from './postgresql-recorded.ts';
 import {
   emmettsMigrationLock,
   longestMigrationLockWaitMs,
