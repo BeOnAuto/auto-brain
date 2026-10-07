@@ -17,7 +17,7 @@ import { specWordsFor } from '../plain-language/spec-words.ts';
 import { PrimitiveField, knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { storedTypesByStatus } from './execution-status.ts';
-import { ListedRunSchema, listedExecutionsOf, type ListedRun } from './listed-execution.ts';
+import { ListedRunSchema, listedExecutionsOf } from './listed-execution.ts';
 
 const description = [
   'Lists the runs of the brain, one page at a time, newest first by when each first started;',
@@ -27,8 +27,7 @@ const description = [
   'and the reason of a rejection with, for unavailable and conflict, its kind.',
   '`status` keeps runs in that status; `primitive` and `name` keep those of that API type identifier and definition name.',
   `\`limit\`, 1 to ${mostRecordsInAPage} and ${defaultPageLimit} when left out, is the most runs a page answers with.`,
-  `A page also stops after loading 4 MiB of stored data, and after looking at ${mostExaminedInAPage} runs for a \`status\`;`,
-  '`primitive` and `name` apply to the runs a page looked at,',
+  `A page also stops after loading 4 MiB of stored data, and after looking at ${mostExaminedInAPage} runs for a \`status\`, \`primitive\` or \`name\`,`,
   'so a page may hold fewer runs than `limit`, or none, while `has_more` is true.',
   'Read on with `cursor` set to the `next_cursor` of the page before; `next_cursor` is null when nothing remains.',
   'Read one run in full with get_execution, and what happened in it with get_execution_history.',
@@ -52,17 +51,13 @@ const ListedExecutionsPage = Schema.Struct({
   ...PagingOutputFields,
 });
 
-const streamsOfRuns: RecordedSelection = { kind: 'executions', notBeginningWith: ['execution_cancel_requested'] };
-
-interface SpecFilter {
-  readonly primitive: string | undefined;
-  readonly name: string | undefined;
-}
-
-function isOfSpec(execution: ListedRun, { primitive, name }: SpecFilter): boolean {
-  return (
-    (primitive === undefined || execution.primitive === primitive) && (name === undefined || execution.name === name)
-  );
+function streamsOfRuns(primitive: string | undefined, name: string | undefined): RecordedSelection {
+  return {
+    kind: 'executions',
+    notBeginningWith: ['execution_cancel_requested'],
+    ...(primitive === undefined ? {} : { primitive }),
+    ...(name === undefined ? {} : { name }),
+  };
 }
 
 const listExecutions = Effect.fnUntraced(function* ({
@@ -72,15 +67,14 @@ const listExecutions = Effect.fnUntraced(function* ({
   limit = defaultPageLimit,
   cursor,
 }: typeof ListExecutionsInput.Type) {
-  const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns, {
+  const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns(primitive, name), {
     order: 'desc',
     limit,
     ...(cursor === undefined ? {} : { cursor }),
     ...(status === undefined ? {} : { types: storedTypesByStatus[status] }),
   });
-  const listed = yield* listedExecutionsOf(page.records);
   return {
-    executions: listed.filter((execution) => isOfSpec(execution, { primitive, name })),
+    executions: yield* listedExecutionsOf(page.records),
     has_more: page.hasMore,
     next_cursor: page.nextCursor,
   };
