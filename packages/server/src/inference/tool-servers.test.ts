@@ -139,6 +139,29 @@ describe('list_tool_servers over HTTP', () => {
   });
 });
 
+describe('list_tool_servers over HTTP, asked for one server', () => {
+  it('refuses a server name the brain has no server of, such as one of another org, and asks no server', async () => {
+    const { server, graph, others } = await serving();
+
+    const refused = await server.call('GET', `${alpha}/tool-servers?server=crm`);
+
+    expect(refused).toMatchObject({
+      status: 422,
+      body: {
+        reason: 'invalid_input',
+        errors: [
+          {
+            detail:
+              'This brain has no tool server named crm; call list_tool_servers without server to list the ones it has',
+            pointer: '/server',
+          },
+        ],
+      },
+    });
+    expect([...graph.seen(), ...others.seen()]).toEqual([]);
+  });
+});
+
 describe('list_tool_servers over MCP', () => {
   it('is a read-only tool of the brain that lists the same, led by plain words', async () => {
     const { server } = await serving();

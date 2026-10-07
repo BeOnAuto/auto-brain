@@ -30,12 +30,9 @@ describe('the plain words of list_tool_servers', () => {
     expect(words?.attempt({ server: 'Not A Server' })).toBe("list the tool servers this brain's functions may use");
   });
 
-  it('say that no tool server is set up for the brain, or none of the name asked for', () => {
+  it('say that no tool server is set up for the brain', () => {
     expect(words?.outcome({ tool_servers: [] }, {})).toBe(
       'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools.',
-    );
-    expect(words?.outcome({ tool_servers: [] }, { server: 'graph' })).toBe(
-      'Whoever runs this server has set up no tool server named “graph” for this brain.',
     );
   });
 
