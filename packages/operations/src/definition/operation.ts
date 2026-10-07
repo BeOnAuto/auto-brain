@@ -86,7 +86,7 @@ function defineOperation<
   definition: Definition<K, string, In, Out, R, Services>,
 ): Operation<S, K, In['Type'], Out['Type'], R, Services> {
   const { name, route, inputSchema, outputSchema, handle } = definition;
-  const { pathParameters, targetsBrain } = checkedDefinition(scope, definition);
+  const { pathParameters, targetsBrain, permissions } = checkedDefinition(scope, kind, definition);
   const reasons: readonly DeclarableReason[] = [...new Set(definition.reasons)];
   const decodeInput = inputDecoder(inputSchema);
   const encodeOutput = outputEncoder(outputSchema);
@@ -108,6 +108,7 @@ function defineOperation<
       irreversible: definition.irreversible ?? false,
       repeatable: definition.repeatable ?? false,
       authorizesByToken: definition.authorizesByToken ?? false,
+      permissions,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),
       output: jsonSchemaDocumentOf(outputSchema),

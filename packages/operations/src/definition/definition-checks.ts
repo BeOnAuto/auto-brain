@@ -1,6 +1,7 @@
 import { Array as Arr, SchemaAST, type Schema } from 'effect';
 
-import type { OperationScope } from '../caller/operation-scope.ts';
+import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
+import { permissionFor, type Permission } from '../caller/permission.ts';
 import {
   fieldOf,
   handlerMembersOf,
@@ -16,11 +17,13 @@ interface CheckableDefinition {
   readonly route: { readonly path: string };
   readonly inputSchema: Schema.Constraint;
   readonly outputSchema: Schema.Constraint;
+  readonly permittedBy?: readonly Permission[];
 }
 
 interface CheckedDefinition {
   readonly pathParameters: readonly string[];
   readonly targetsBrain: boolean;
+  readonly permissions: readonly Permission[];
 }
 
 const operationName = /^[a-z][a-z0-9_]{0,63}$/u;
@@ -84,9 +87,17 @@ function requireBrainFromBrainField(
   }
 }
 
+function permissionsOf(name: string, permittedBy: readonly Permission[]): readonly Permission[] {
+  if (permittedBy.length === 0) {
+    throw new Error(`The operation ${name} is permitted by no permission`);
+  }
+  return permittedBy;
+}
+
 export function checkedDefinition(
   scope: OperationScope,
-  { name, route, inputSchema, outputSchema }: CheckableDefinition,
+  kind: OperationKind,
+  { name, route, inputSchema, outputSchema, permittedBy = [permissionFor(kind, scope)] }: CheckableDefinition,
 ): CheckedDefinition {
   if (!operationName.test(name)) {
     throw new Error(`The operation name ${name} is malformed`);
@@ -100,5 +111,6 @@ export function checkedDefinition(
   return {
     pathParameters,
     targetsBrain: inputMembers.some((member) => fieldOf(member, 'brain') !== undefined),
+    permissions: permissionsOf(name, permittedBy),
   };
 }

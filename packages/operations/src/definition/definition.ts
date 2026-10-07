@@ -1,6 +1,7 @@
 import type { Effect, Schema } from 'effect';
 
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
+import type { Permission } from '../caller/permission.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { PlainLanguage } from '../plain-language/plain-language.ts';
 import type { PathParameters, Route } from './route.ts';
@@ -49,6 +50,7 @@ export interface Definition<
   readonly irreversible?: boolean;
   readonly repeatable?: boolean;
   readonly authorizesByToken?: boolean;
+  readonly permittedBy?: readonly Permission[];
   readonly inputSchema: In;
   readonly outputSchema: Out;
   readonly reasons: readonly R[];

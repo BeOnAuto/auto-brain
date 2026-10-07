@@ -1,5 +1,4 @@
 import {
-  permissionFor,
   type CallerIdentity,
   type RegisteredPlainLanguage,
   type Registration,
@@ -55,7 +54,9 @@ function permittedTo<R extends Registration>(
   { permissions }: CallerIdentity,
   offers: readonly Offered<R>[],
 ): readonly Offered<R>[] {
-  return offers.filter(({ registration: { kind, scope } }) => permissions.includes(permissionFor(kind, scope)));
+  return offers.filter(({ registration }) =>
+    registration.permissions.some((permission) => permissions.includes(permission)),
+  );
 }
 
 function namesOf(offers: readonly Offered<Registration>[]): readonly string[] {
