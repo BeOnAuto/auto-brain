@@ -40,9 +40,9 @@ export function caller(
     if (!admitted.admitted) {
       return { text: admitted.refusal, isError: true };
     }
-    const number = state.numbered();
-    const start = callStarted({ number, callId, ...reference, argumentsJson: JSON.stringify(input) }, recording);
-    if (!(await parts.run(parts.execution.journal.record(start)))) {
+    const start = callStarted({ callId, ...reference, argumentsJson: JSON.stringify(input) }, recording);
+    const number = await parts.run(parts.execution.journal.started(start));
+    if (number === undefined) {
       return notRecorded;
     }
     state.used(reference);
@@ -52,7 +52,7 @@ export function caller(
     const done = await forwarded({ ...forwarding, ...timing });
     if (!signals.cancelled.aborted) {
       const answer = { ...done, number, durationMs: Math.round(performance.now() - began) };
-      await parts.run(execution.journal.record(callAnswered(answer, recording)));
+      await parts.run(execution.journal.answered(callAnswered(answer, recording)));
     }
     return replied(state, done, replying);
   };
