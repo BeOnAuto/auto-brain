@@ -135,6 +135,7 @@ function workerOptions(settings: PoolSettings): WorkerOptions {
   return {
     resourceLimits: { maxOldGenerationSizeMb: settings.heapMegabytes, stackSizeMb: workerStackMegabytes },
     env: { ...settings.environment },
+    execArgv: [],
   };
 }
 
