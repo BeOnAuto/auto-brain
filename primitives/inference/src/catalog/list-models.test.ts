@@ -120,19 +120,17 @@ describe('the plain words of list_models', () => {
 });
 
 describe('the description of list_models', () => {
-  it('says what each field of the answer means', async () => {
+  it('says what a model id is, which entries are not models to run, and when to use it', async () => {
     const { registration } = await listModels({});
 
     expect(registration.description).toBe(
       [
-        'Lists the models this server can call, in the shape of the list of models of the OpenAI API, so a reasoning function can name one that works.',
-        'Each entry has the id a reasoning function gives as its model (provider/model id), object model, created (seconds since 1970, 0 when the provider does not say),',
-        'owned_by (the provider prefix that serves it) and, when the provider reports them, name, context_window and max_tokens.',
-        'An alias its operator set is listed by its own name, with resolved_to naming the model it is sent to;',
-        'an entry whose id ends in * has pattern true and stands for any model id in place of the *.',
-        'Lists are read from the providers with the credentials of this server and kept for five minutes;',
-        'catalog_status is partial when a provider could not be asked, so its models are missing or as they were last read,',
-        'and listed_at says when the oldest list was read.',
+        'Lists the models this server can call, so a reasoning function names one that runs.',
+        'Each id is what a reasoning function gives as its model, written provider/model;',
+        'an id that ends in * stands for any model of that provider and is not itself a model to run,',
+        'and an alias its operator named says in resolved_to the model it is sent to.',
+        'Use it before a reasoning function names its model, or when a run says its model is not offered.',
+        '`provider` keeps the models of one provider or gateway, and catalog_status is partial when a provider could not be asked.',
       ].join(' '),
     );
   });
