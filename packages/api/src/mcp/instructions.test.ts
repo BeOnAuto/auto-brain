@@ -44,12 +44,15 @@ const concepts = [
   'It belongs to an org and holds functions and the workflows that coordinate them.',
   'A function or a workflow is a reusable definition, and a run executes it on an input.',
   'A reasoning function has a prompt and calls a language model.',
-  'Until they are renamed, the tools say spec for a definition and execution for a run.',
-  'When you answer the person, say in a sentence or two what was done and what they can do next, in the words of brains, functions, workflows and runs, and leave ids, statuses and the rules of this server out unless they ask.',
+  'The tools say spec for a definition and execution for a run.',
+  "Answer the person in a sentence or two: what was done and what they can do next, in the words of brains, functions, workflows and runs, without ids, statuses or this server's rules unless asked.",
 ].join(' ');
 
+const recall =
+  "A recall function keeps a view folded from the brain's own history, its runs with their outputs and published events, so nothing needs to write into it, and answers from it without a model.";
+
 const closing =
-  'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.';
+  'A tool that cannot do what was asked returns isError with a problem document whose reason and detail say why.';
 
 const terminology = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
 
@@ -60,20 +63,19 @@ function definitionOfABrainOnTheTerminologyPage(): string {
 }
 
 describe("the instructions of /mcp, the endpoint of the caller's own org", () => {
-  it('say what a brain is, then orient an agent to the brains, definitions, runs and workflows it serves', () => {
+  it('say what a brain is, then orient an agent to the brains, definitions, recall functions, runs and workflows it serves', () => {
     expect(instructionsFor('own org', ownOrg, definitionTypes)).toBe(
       [
         concepts,
         "This connection acts in the caller's own org.",
-        "Start with list_brains to see the org's brains, or create_brain to make one.",
-        'A spec is a named, versioned definition in a brain.',
-        'The primitive field selects a definition type, inference for a reasoning function, computation for a computation function, recollection for a recall function or orchestration for a workflow; each tool describes its supported document formats.',
+        'Start with list_brains, or create_brain to make one.',
+        'A spec is a named, versioned definition whose primitive field selects its type, inference for a reasoning function, computation for a computation function, recollection for a recall function or orchestration for a workflow; each tool describes their formats.',
+        recall,
         'list_models lists the models this server can call.',
         'list_tool_servers lists the tool servers the brain may use and their tools.',
-        'execute_spec runs a definition and records its run; execution_id identifies it.',
-        'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
+        'execute_spec runs a definition and records its run under an execution_id; while its status is started, poll get_execution until it changes.',
         'A waiting workflow run receives input through send_execution_event.',
-        "Every tool that works inside a brain takes the brain's id as brain.",
+        "Every tool inside a brain takes the brain's id as brain.",
         closing,
       ].join(' '),
     );
@@ -83,10 +85,10 @@ describe("the instructions of /mcp, the endpoint of the caller's own org", () =>
     const interacting = [{ primitive: 'interaction', noun: 'interaction function' }];
 
     expect(instructionsFor('own org', ownOrg, interacting)).toContain(
-      'The primitive field selects a definition type, interaction for an interaction function; each tool',
+      'whose primitive field selects its type, interaction for an interaction function; each tool',
     );
     expect(instructionsFor('own org', ownOrg, [])).toContain(
-      'The primitive field selects a definition type; each tool describes its supported document formats.',
+      'A spec is a named, versioned definition whose primitive field selects its type; each tool describes their formats.',
     );
   });
 
@@ -110,7 +112,7 @@ describe('the instructions of a scoped endpoint', () => {
       [
         concepts,
         'This connection manages the brains of one org.',
-        "Start with list_brains to see the org's brains, or create_brain to make one.",
+        'Start with list_brains, or create_brain to make one.',
         'list_models lists the models this server can call.',
         closing,
       ].join(' '),
@@ -121,12 +123,36 @@ describe('the instructions of a scoped endpoint', () => {
     const instructions = instructionsFor('brain', brainEndpoint, definitionTypes);
 
     expect(instructions).toContain('This connection acts inside one brain.');
-    expect(instructions).toContain('orchestration for a workflow; each tool describes its supported document formats.');
-    expect(instructions).toContain('then poll get_execution until the status changes.');
+    expect(instructions).toContain('orchestration for a workflow; each tool describes their formats.');
+    expect(instructions).toContain('while its status is started, poll get_execution until it changes.');
     expect(instructions).toContain('A waiting workflow run receives input through send_execution_event.');
     expect(
       ['create_brain', 'list_brains', 'list_models', 'takes the brain'].filter((name) => instructions.includes(name)),
     ).toEqual([]);
+  });
+});
+
+describe('the sentence on recall functions', () => {
+  it('follows the definition types on every endpoint that serves create_spec, and on no other', () => {
+    const servingCreateSpec = everyEndpoint.filter(([, served]) =>
+      [...served.orgTools, ...served.brainTools].includes('create_spec'),
+    );
+
+    expect(servingCreateSpec.map(([endpoint]) => endpoint)).toEqual(['brain', 'own org']);
+    expect(
+      servingCreateSpec.filter(
+        ([endpoint, served]) =>
+          !instructionsFor(endpoint, served, definitionTypes).includes(`each tool describes their formats. ${recall}`),
+      ),
+    ).toEqual([]);
+    expect(instructionsFor('org', orgEndpoint, definitionTypes)).not.toContain(recall);
+  });
+
+  it('is left out where the server runs no recall functions', () => {
+    const withoutRecall = definitionTypes.filter(({ primitive }) => primitive !== 'recollection');
+
+    expect(instructionsFor('own org', ownOrg, withoutRecall)).not.toContain(recall);
+    expect(instructionsFor('brain', brainEndpoint, withoutRecall)).not.toContain(recall);
   });
 });
 

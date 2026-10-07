@@ -26,9 +26,14 @@ const concepts = [
   'It belongs to an org and holds functions and the workflows that coordinate them.',
   'A function or a workflow is a reusable definition, and a run executes it on an input.',
   'A reasoning function has a prompt and calls a language model.',
-  'Until they are renamed, the tools say spec for a definition and execution for a run.',
-  'When you answer the person, say in a sentence or two what was done and what they can do next, in the words of brains, functions, workflows and runs, and leave ids, statuses and the rules of this server out unless they ask.',
+  'The tools say spec for a definition and execution for a run.',
+  "Answer the person in a sentence or two: what was done and what they can do next, in the words of brains, functions, workflows and runs, without ids, statuses or this server's rules unless asked.",
 ].join(' ');
+
+const recallFunctionType = 'recollection';
+
+const whatARecallFunctionKeeps =
+  "A recall function keeps a view folded from the brain's own history, its runs with their outputs and published events, so nothing needs to write into it, and answers from it without a model.";
 
 const whatTheConnectionDoes: Readonly<Record<McpEndpoint, string>> = {
   org: 'This connection manages the brains of one org.',
@@ -68,17 +73,24 @@ function typesOf(definitionTypes: readonly DefinitionType[]): string {
 function primitiveField({ definitionTypes }: Serving): string {
   const selects =
     definitionTypes.length === 0
-      ? 'The primitive field selects a definition type'
-      : `The primitive field selects a definition type, ${typesOf(definitionTypes)}`;
-  return `A spec is a named, versioned definition in a brain. ${selects}; each tool describes its supported document formats.`;
+      ? 'primitive field selects its type'
+      : `primitive field selects its type, ${typesOf(definitionTypes)}`;
+  return `A spec is a named, versioned definition whose ${selects}; each tool describes their formats.`;
+}
+
+function definesRecallFunctions(serving: Serving): boolean {
+  return (
+    serves('create_spec')(serving) && serving.definitionTypes.some(({ primitive }) => primitive === recallFunctionType)
+  );
 }
 
 const orientation: readonly Orientation[] = [
   {
     when: serves('list_brains', 'create_brain'),
-    says: saying("Start with list_brains to see the org's brains, or create_brain to make one."),
+    says: saying('Start with list_brains, or create_brain to make one.'),
   },
   { when: serves('create_spec'), says: primitiveField },
+  { when: definesRecallFunctions, says: saying(whatARecallFunctionKeeps) },
   { when: serves('list_models'), says: saying('list_models lists the models this server can call.') },
   {
     when: serves('list_tool_servers'),
@@ -87,10 +99,7 @@ const orientation: readonly Orientation[] = [
   {
     when: serves('execute_spec', 'get_execution'),
     says: saying(
-      [
-        'execute_spec runs a definition and records its run; execution_id identifies it.',
-        'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
-      ].join(' '),
+      'execute_spec runs a definition and records its run under an execution_id; while its status is started, poll get_execution until it changes.',
     ),
   },
   {
@@ -99,12 +108,12 @@ const orientation: readonly Orientation[] = [
   },
   {
     when: ({ endpoint, tools }) => endpoint === 'own org' && tools.brainTools.length > 0,
-    says: saying("Every tool that works inside a brain takes the brain's id as brain."),
+    says: saying("Every tool inside a brain takes the brain's id as brain."),
   },
   {
     when: () => true,
     says: saying(
-      'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
+      'A tool that cannot do what was asked returns isError with a problem document whose reason and detail say why.',
     ),
   },
 ];
