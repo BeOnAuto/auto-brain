@@ -33,11 +33,8 @@ function serverInWords(server: ToolServer): string {
     : `${name} offers ${counted(server.tools.length, toolNoun)}: ${namesOf(server.tools)}.`;
 }
 
-function noServerFor({ server }: ToolServersAsked): string {
-  return server === undefined
-    ? 'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools.'
-    : `Whoever runs this server has set up no tool server named ${quoted(server)} for this brain.`;
-}
+const noServer =
+  'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools.';
 
 export function toolServersAsked({ server }: ToolServersAsked): string {
   return server === undefined
@@ -45,9 +42,9 @@ export function toolServersAsked({ server }: ToolServersAsked): string {
     : `list the tools of the tool server ${quoted(server)}`;
 }
 
-export function toolServersFound({ tool_servers: servers }: ToolServers, asked: ToolServersAsked): string {
+export function toolServersFound({ tool_servers: servers }: ToolServers): string {
   if (servers.length === 0) {
-    return noServerFor(asked);
+    return noServer;
   }
   const opening = `This brain's functions may use ${counted(servers.length, serverNoun)}.`;
   return [opening, ...servers.map((server) => serverInWords(server))].join(' ');

@@ -4,10 +4,10 @@ import { Effect, Result } from 'effect';
 
 import type { RunCall } from '../operations/operation-routes.ts';
 import type { ReportThrown } from '../problem/error-boundary.ts';
-import { brainArgumentOf } from './brain-argument.ts';
+import { brainArgumentOf, withoutBrain } from './brain-argument.ts';
 import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from './caller-hand-off.ts';
 import { instructionsFor, type DefinitionType } from './instructions.ts';
-import { callbackFor, type CalledTool, type Dispatch } from './tool-callback.ts';
+import { callbackFor, type Arguments, type CalledTool, type Dispatch } from './tool-callback.ts';
 import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from './tool-definition.ts';
 
 export interface ServerInfo {
@@ -73,9 +73,14 @@ function namesOf(offers: readonly Offered<Registration>[]): readonly string[] {
   return offers.map(({ registration }) => registration.name);
 }
 
+function asGiven(input: Arguments): Arguments {
+  return input;
+}
+
 function toolsOf<R extends Registration>(
   offers: readonly Offered<R>[],
   dispatchOf: (registration: R) => Dispatch,
+  operationInputOf: (input: Arguments) => Arguments = asGiven,
 ): readonly Tool[] {
   return offers.map(({ registration, definition, plainLanguage }) => ({
     name: registration.name,
@@ -83,6 +88,7 @@ function toolsOf<R extends Registration>(
     kind: registration.kind,
     plainLanguage,
     dispatch: dispatchOf(registration),
+    operationInputOf,
   }));
 }
 
@@ -153,7 +159,7 @@ export function catalogServerFactory(serving: ToolServing): McpServerFactory {
     const call = orgCallOf(context);
     const tools = [
       ...toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call)),
-      ...toolsOf(brainOffers, brainArgumentDispatchOf(serving.dispatcher, call)),
+      ...toolsOf(brainOffers, brainArgumentDispatchOf(serving.dispatcher, call), withoutBrain),
     ];
     return serverWithTools(serving, instructions, call, tools);
   };

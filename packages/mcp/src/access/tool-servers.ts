@@ -8,7 +8,7 @@ import type { ServerTool, ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { isListedFor } from '../settings/mcp-settings.ts';
 import { connectedTo, type Listing } from './server-listing.ts';
-import { offeredOn } from './tool-naming.ts';
+import { isAllowed, offeredOn } from './tool-naming.ts';
 
 export interface ServersListing extends Listing {
   readonly links: ReadonlyMap<string, ServerLink>;
@@ -40,13 +40,17 @@ function shownTool({ name, description = '', inputSchema }: ListedTool, scrub: S
 
 async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<ToolServer> {
   const { name, type } = link.settings;
+  const everyTool = { server: name, tool: '*' };
+  if (!isAllowed(everyTool, listing.allowed)) {
+    return { name, type, tools: [] };
+  }
   const connected = await connectedTo(link, listing);
   if (Result.isFailure(connected)) {
     return { name, type, unavailable: cutToDescriptionBound(connected.failure.detail) };
   }
   const listed = connected.success;
   await listed.slot.release();
-  const offered = offeredOn(listed, { references: [{ server: name, tool: '*' }], allowed: listing.allowed });
+  const offered = offeredOn(listed, { references: [everyTool], allowed: listing.allowed });
   return { name, type, tools: offered.map(({ tool }) => shownTool(tool, listing.secrets.scrub)) };
 }
 
