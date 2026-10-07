@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { headsBehaviour } from '../heads/heads-behaviour.ts';
 import { lineageBehaviour } from '../lineage/lineage-behaviour.ts';
+import { runFiltersBehaviour } from '../run-filters/run-filters-behaviour.ts';
 import {
   alpha,
   details,
@@ -284,6 +285,7 @@ export function recordedBehaviour(aLedger: LedgerMaker): void {
   cursorsOfARead(aLedger);
   theTimeAPageStartsFrom(aLedger);
   runsBehaviour(aLedger);
+  runFiltersBehaviour(aLedger);
   lineageBehaviour(aLedger);
   headsBehaviour(aLedger);
 }

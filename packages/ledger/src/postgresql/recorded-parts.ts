@@ -113,6 +113,12 @@ export function sizeOf({ wanted, types }: Sized, { sized }: ExaminationScope, me
     : `CASE WHEN ${wanted} AND ${type} = ANY(${types}::text[]) THEN octet_length(${message}.message_data ->> 'json') ELSE 0 END`;
 }
 
+const escapedBackslashOrEscapeJsonbRefuses = String.raw`(\\\\)|\\u(?:0000|d[89a-f][0-9a-f]{2})`;
+
+export function eventAsJsonb(bind: Bind, data: string): string {
+  return `regexp_replace(${data} ->> 'json', ${bind(escapedBackslashOrEscapeJsonbRefuses)}, ${bind(String.raw`\1`)}, 'gi')::jsonb`;
+}
+
 interface HeadRow {
   readonly transaction: string;
   readonly position: string;
