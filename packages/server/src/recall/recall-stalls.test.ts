@@ -3,7 +3,7 @@ import { recallDocument } from '@beonauto/recollection/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   brainWithReviews,
   inState,
@@ -15,7 +15,7 @@ import {
   servingRecall,
   standingUntil,
   verdicts,
-} from '../testing/recall-server.ts';
+} from '../testing/servers/recall-server.ts';
 
 const reviewRuns =
   'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief\nview:\n  initial: 0';

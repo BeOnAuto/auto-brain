@@ -1,7 +1,7 @@
 import type { ConflictKind, UnavailableBecause, UnavailableKind } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import type { ExecutionOutcome, ExecutionResult } from '../execution/execution-commands.ts';
+import type { ExecutionOutcome, ExecutionResult, InterruptedAttempt } from '../execution/execution-commands.ts';
 import type { ExecutionRejection } from '../execution/execution.ts';
 import { withinResultLimit } from '../execution/recorded-size.ts';
 import type { Executed, PrimitiveRejection } from '../primitive/primitive.ts';
@@ -15,6 +15,8 @@ const decodeExecuted = Schema.decodeUnknownEffect(
 );
 
 export const failedAttempt: ExecutionResult = { type: 'execution_failed' };
+
+export const interruptedAttempt: InterruptedAttempt = { type: 'execution_interrupted' };
 
 function recordedOutcome(executed: Executed): Effect.Effect<ExecutionOutcome> {
   return 'finishesLater' in executed

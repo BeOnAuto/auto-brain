@@ -7,7 +7,7 @@ import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3'
 import { Effect, Function, Schema } from 'effect';
 
 import { failedWith, type DatabaseFailed, type HostDatabase } from './host-database.ts';
-import { armedByAdded, hostTables, timerColumnsOnSQLite } from './host-tables.ts';
+import { addedColumns, columnsOnSQLite, hostTables, indexesOfAddedColumns, type AddedColumn } from './host-tables.ts';
 import { onSQLite } from './statement.ts';
 
 const pageCacheOfEightMebibytes = -8192;
@@ -24,13 +24,23 @@ function prepareDirectoryOf(fileName: string): void {
 
 const ColumnRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
-function columnsAddedTo(database: HostDatabase): Effect.Effect<void, DatabaseFailed> {
+function columnAddedTo(
+  database: HostDatabase,
+  { table, column, added }: AddedColumn,
+): Effect.Effect<void, DatabaseFailed> {
   return Effect.gen(function* () {
-    const columns = Schema.decodeUnknownSync(ColumnRows)(yield* database.read(timerColumnsOnSQLite));
-    if (!columns.some(({ name }) => name === 'armed_by')) {
-      yield* database.write(armedByAdded);
+    const columns = Schema.decodeUnknownSync(ColumnRows)(yield* database.read(columnsOnSQLite(table)));
+    if (!columns.some(({ name }) => name === column)) {
+      yield* database.write(added);
     }
   });
+}
+
+function columnsAddedTo(database: HostDatabase): Effect.Effect<void, DatabaseFailed> {
+  return Effect.andThen(
+    Effect.forEach(addedColumns, (column) => columnAddedTo(database, column), { discard: true }),
+    Effect.forEach(indexesOfAddedColumns, database.write, { discard: true }),
+  );
 }
 
 export async function openSQLiteDatabase(fileName: string): Promise<HostDatabase> {

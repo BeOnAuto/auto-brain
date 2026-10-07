@@ -1,3 +1,4 @@
+import type { CancelReason } from '../dispatch/run-output.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import { callKeyText, type CallKey } from '../executor/call-key.ts';
 import type { ArmedTimer, RunState } from '../machine/run-state.ts';
@@ -34,8 +35,8 @@ interface OpenCall {
 export interface CallTable {
   readonly startCall: (request: CallRequest) => string;
   readonly answerCall: (call: OpenCall) => void;
-  readonly cancelCall: (call: OpenCall) => void;
-  readonly cancelAll: () => void;
+  readonly cancelCall: (call: OpenCall, reason: CancelReason) => void;
+  readonly cancelAll: (reason: CancelReason) => void;
   readonly calls: () => RunState['calls'];
 }
 
@@ -84,11 +85,27 @@ export function timerTableOf(
   };
 }
 
+interface CallDeadline {
+  readonly reference: string;
+  readonly now: number;
+}
+
+function longestOf(run: Pick<Descriptors, 'limits' | 'startedAt'>, { reference, now }: CallDeadline): number {
+  const { longestCallMs, longestCallMsByTask = {}, mostDurationMs } = run.limits();
+  const longest = Object.hasOwn(longestCallMsByTask, reference) ? longestCallMsByTask[reference] : undefined;
+  return Math.max(1, Math.min(longest ?? longestCallMs, run.startedAt() + mostDurationMs - now));
+}
+
+interface CallTableParts {
+  readonly timers: TimerTable;
+  readonly journal: Journal;
+  readonly now: number;
+}
+
 export function callTableOf(
   state: RunState,
-  run: Pick<Descriptors, 'limits'>,
-  timers: TimerTable,
-  journal: Journal,
+  run: Pick<Descriptors, 'limits' | 'startedAt'>,
+  { timers, journal, now }: CallTableParts,
 ): CallTable {
   const calls: Record<string, CallKey> = { ...state.calls };
   const close = (key: CallKey): boolean => {
@@ -97,15 +114,15 @@ export function callTableOf(
     delete calls[text];
     return open;
   };
-  const cancel = (key: CallKey): void => {
+  const cancel = (key: CallKey, reason: CancelReason): void => {
     if (close(key)) {
-      journal.emit({ kind: 'cancel_call', key });
+      journal.emit({ kind: 'cancel_call', key, reason });
     }
   };
   return {
     startCall: ({ key, function: name, arguments: given }) => {
       calls[callKeyText(key)] = key;
-      const longestMs = run.limits().longestCallMs;
+      const longestMs = longestOf(run, { reference: key.reference, now });
       journal.emit({ kind: 'start_call', key, function: name, arguments: given, longestMs });
       const label = `${key.reference} deadline`;
       return timers.arm({ purpose: 'call_deadline', reference: key.reference, milliseconds: longestMs, label });
@@ -114,13 +131,13 @@ export function callTableOf(
       close(key);
       timers.disarm(deadline);
     },
-    cancelCall: ({ key, deadline }) => {
-      cancel(key);
+    cancelCall: ({ key, deadline }, reason) => {
+      cancel(key, reason);
       timers.disarm(deadline);
     },
-    cancelAll: () => {
+    cancelAll: (reason) => {
       for (const key of Object.values(calls)) {
-        cancel(key);
+        cancel(key, reason);
       }
     },
     calls: () => calls,

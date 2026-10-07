@@ -43,6 +43,7 @@ export async function openedHost(
     reports: hostReports(runtime),
     sweepEveryMs: workflows.sweepEveryMs,
     mostCallsAtOnce: workflows.mostCallsAtOnce,
+    mostOpenCalls: workflows.mostOpenCalls,
   });
   await runtime.run(logWorkflows(workflows));
   return host;

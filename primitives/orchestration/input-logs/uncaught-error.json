@@ -38,7 +38,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 5,
+      "format": 6,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
@@ -186,8 +186,8 @@
           "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
           "settlement": {
             "status": "rejected",
-            "reason": "invalid_input",
-            "detail": "No (at /do/0/reject)"
+            "detail": "No (at /do/0/reject)",
+            "reason": "invalid_input"
           }
         }
       ]

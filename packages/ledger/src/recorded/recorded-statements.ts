@@ -44,7 +44,10 @@ export interface ExaminationScope {
 export interface RecordedStatements {
   readonly firstPointSince: (brainKey: string, since: string) => Promise<RecordedPoint | undefined>;
   readonly examineRecords: (records: RecordsSelected, scope: ExaminationScope) => Promise<readonly ExaminedItem[]>;
-  readonly examineRuns: (scope: ExaminationScope) => Promise<readonly ExaminedItem[]>;
+  readonly examineRuns: (
+    scope: ExaminationScope,
+    notBeginningWith: readonly string[],
+  ) => Promise<readonly ExaminedItem[]>;
   readonly dataAt: (points: readonly RecordedPoint[]) => Promise<ReadonlyMap<string, unknown>>;
 }
 
@@ -90,7 +93,7 @@ function examine(
   scope: ExaminationScope,
 ): Promise<readonly ExaminedItem[]> {
   if (selection.kind === 'executions') {
-    return statements.examineRuns(scope);
+    return statements.examineRuns(scope, selection.notBeginningWith ?? []);
   }
   return statements.examineRecords(selectedOf(scope.brainKey, selection), scope);
 }

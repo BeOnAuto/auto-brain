@@ -13,9 +13,10 @@ import {
 } from '../index.ts';
 import { memoryRunStore } from '../memory/run-store.ts';
 import { countingDecider } from '../testing/counting-decider.ts';
+import { testCancel } from '../testing/driver-inputs.ts';
 import { at, executionId, runningState, started } from '../testing/runs.ts';
 
-const cancelled: RunInput = { kind: 'cancel_requested', executionId, at: at + 1 };
+const cancelled: RunInput = { kind: 'cancel_requested', executionId, at: at + 1, cancel: testCancel };
 
 function submitted(store: ReturnType<typeof memoryRunStore>, input: RunInput) {
   return runLoopOf(store, countingDecider)(input.executionId, input).pipe(

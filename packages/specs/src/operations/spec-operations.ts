@@ -1,10 +1,9 @@
 import type { Presenter, Registration } from '@beonauto/operations';
 
 import type { Primitive } from '../primitive/primitive.ts';
-import { executionReadings } from '../reading/execution-reading.ts';
+import { runOperations } from '../reading/run-operations.ts';
 import { defineCreateSpec } from './create-spec.ts';
 import { defineExecuteSpec } from './execute-spec.ts';
-import { defineGetExecution } from './get-execution.ts';
 import { defineGetSpec } from './get-spec.ts';
 import { defineListSpecs } from './list-specs.ts';
 import { defineRetireSpec } from './retire-spec.ts';
@@ -25,7 +24,6 @@ export function makeSpecOperations(
     defineUpdateSpec(primitives),
     defineRetireSpec(primitives),
     defineExecuteSpec(primitives),
-    defineGetExecution(primitives),
-    ...executionReadings(primitives, presenters),
+    ...runOperations(primitives, presenters),
   ];
 }

@@ -41,6 +41,7 @@ describe('a provider that rejects the spec', () => {
         new Conflict({
           detail:
             'openai answered HTTP 404: the model was not found; update the reasoning function definition. The provider said: The model gpt-6 does not exist',
+          kind: 'unworkable',
         }),
       ),
     );
@@ -60,6 +61,7 @@ describe('a provider that rejects the spec', () => {
         new Conflict({
           detail:
             'The request is not valid (/settings/temperature: Expected a finite number); update the reasoning function definition',
+          kind: 'unworkable',
         }),
       ),
     );
@@ -82,6 +84,7 @@ describe('a JSON answer that is not usable', () => {
         new Conflict({
           detail:
             'openai stopped the answer at max_output_tokens (200) before the JSON was complete; raise config.max_output_tokens in the reasoning function definition',
+          kind: 'unworkable',
         }),
       ),
     );

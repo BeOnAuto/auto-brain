@@ -69,9 +69,21 @@ A run ends in one of three states:
 | ----------- | ---------------------------------------------------------------------------------------- |
 | `succeeded` | Its steps completed; the run's `output` is its result                                    |
 | `rejected`  | A step raised an error that no step handled; the rejection gives the reason and the step |
-| `failed`    | The run broke down inside the runtime, produced too large an output, or ran too long     |
+| `failed`    | The run broke down inside the runtime                                                    |
+
+A run that was cancelled, or that ran as long as a run may last, is `rejected` with the reason `cancelled` and the kind of its cancellation, and a run whose output is too large to record is `rejected` as a `conflict` of the kind `oversized`.
 
 A rejection's reason is `invalid_input` when the error says the input or the document led to it, and `unavailable` when it was a timeout or a function that could not be reached, failed or was unavailable; a new run may then succeed. Two endings are different, because a reasoning function's tools may have changed something: `unavailable` of the kind `tools_unfinished`, when it called tools and could not finish, and `conflict` of the kind `tools_called`, when a step met a function run whose tools may already have been called. After either, check what the run's history shows the function called before starting a new run. The [workflow format](../reference/workflow-format.md#how-a-run-ends) lists the exact rules.
+
+## Calling another workflow
+
+A workflow calls another workflow with `execute_spec`, as it calls any function of its brain; the workflow it calls is a subworkflow. A run of a reasoning, computation or recall function finishes within its call. A run of a workflow finishes later, so the calling workflow waits for that run, holding nothing of the server while it waits, and continues with its output, or catches its rejection like any error. A server that restarts meanwhile keeps the wait, and the subworkflow's ending answers it on whichever server that ending is recorded.
+
+A call waits as long as the function it names may take, plus a minute; past that, it raises a `timeout` error and the run it waited for is cancelled. Workflows that call workflows reach 8 calls deep, and the runs under one workflow wait for at most 1,000 calls at once.
+
+## Cancelling a run
+
+`cancel_execution` cancels a workflow run that has not ended, with a reason the run keeps. The request is recorded at once, so it can reach any server and outlasts a restart; the run then stops, cancels each run it waits for, and ends `rejected` as `cancelled` with the kind `requested`. A run of a reasoning, computation or recall function ends within its call, and cannot be cancelled from outside it.
 
 ## Inspecting a run
 
@@ -82,5 +94,3 @@ A rejection's reason is `invalid_input` when the error says the input or the doc
 ## Planned
 
 A schedule trigger reads its times in UTC; time zones are planned. Starting one run from several events that belong together is planned too. Timers and event waits inside a run are control steps, not triggers for new runs.
-
-A workflow cannot currently call another workflow. The name for that use, when supported, is a workflow step or subworkflow.

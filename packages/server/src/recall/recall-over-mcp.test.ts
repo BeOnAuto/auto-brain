@@ -2,8 +2,8 @@ import { internalTermsIn, listedTools, plainTextIn, withMcpSession, type McpSess
 import { campaignReviews, recallDocument } from '@beonauto/recollection/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ReasoningServer } from '../testing/reasoning-server.ts';
-import { anyReview, recallTestTimeoutMs, servingRecall, verdicts } from '../testing/recall-server.ts';
+import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { anyReview, recallTestTimeoutMs, servingRecall, verdicts } from '../testing/servers/recall-server.ts';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -89,7 +89,7 @@ describe('the spec tools an agent sees', { timeout: recallTestTimeoutMs }, () =>
       (session) => session.listTools(),
     );
 
-    expect(listedTools(everyTool)).toHaveLength(19);
+    expect(listedTools(everyTool)).toHaveLength(20);
     expect(createSpec?.description).toContain(
       '- `recollection` (Recall), whose definition documents are text/markdown',
     );

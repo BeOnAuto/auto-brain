@@ -7,7 +7,7 @@ import { providerStatus } from '@beonauto/inference';
 import { describe, expect, it } from 'vitest';
 
 import { readSettings } from '../settings/settings.ts';
-import { stoppedWith } from '../testing/development-endings.ts';
+import { stoppedWith } from '../testing/processes/development-endings.ts';
 import {
   developmentFiles,
   developmentTestTimeoutMs,
@@ -16,7 +16,7 @@ import {
   untilListening,
   untilWritten,
   type DevelopmentOptions,
-} from '../testing/development-process.ts';
+} from '../testing/processes/development-process.ts';
 
 const example = new URL('../../../../.env.example', import.meta.url);
 

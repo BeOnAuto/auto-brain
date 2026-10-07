@@ -3,6 +3,7 @@ import { Option, Schema } from 'effect';
 
 import {
   ExecutionEventSchema,
+  type CalledBy,
   type ExecutionEvent,
   type ExecutionFinished,
   type ExecutionStarted,
@@ -21,6 +22,9 @@ type RunData = {
   readonly version: number;
   readonly caller: string;
   readonly depth: number;
+  readonly called_by?: CalledBy;
+  readonly reason?: string;
+  readonly kind?: string;
 };
 
 const runFactTypes: readonly RunFact['type'][] = [
@@ -49,9 +53,26 @@ function withOutput(fact: CloudEvent, data: RunData, output: Schema.Json): Cloud
     : { ...fact, data: { ...data, output_bytes: jsonBytesOf(output) } };
 }
 
+function rejectionOf(event: RunFact): Pick<RunData, 'reason' | 'kind'> {
+  if (event.type !== 'execution_rejected') {
+    return {};
+  }
+  const { rejection } = event;
+  const kind = 'kind' in rejection ? rejection.kind : undefined;
+  return kind === undefined ? { reason: rejection.reason } : { reason: rejection.reason, kind };
+}
+
 function runFactOf(id: string, execution: string, event: RunFact): CloudEvent {
-  const { primitive, name, spec_version: version, by: caller, at: time, depth = 0 } = event;
-  const data: RunData = { primitive, name, version, caller, depth };
+  const { primitive, name, spec_version: version, by: caller, at: time, depth = 0, called_by: calledBy } = event;
+  const data: RunData = {
+    primitive,
+    name,
+    version,
+    caller,
+    depth,
+    ...(calledBy === undefined ? {} : { called_by: calledBy }),
+    ...rejectionOf(event),
+  };
   const fact = {
     specversion: '1.0',
     id,

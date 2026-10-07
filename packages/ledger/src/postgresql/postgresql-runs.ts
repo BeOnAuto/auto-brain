@@ -36,7 +36,16 @@ const ExaminedRunRow = Schema.Struct({
   latest_size: Schema.Int,
 });
 
-function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationScope): string {
+function notOfTypes(bind: Bind, types: readonly string[]): string {
+  return types.length === 0 ? '' : ` AND NOT ${ofTypes(bind, 'message_type', types)}`;
+}
+
+function firstMessagesOfRuns(
+  bind: Bind,
+  partition: string,
+  scope: ExaminationScope,
+  leftOut: readonly string[],
+): string {
   return `SELECT scanned.*, row_number() OVER (
       ORDER BY scanned.transaction_id ${direction(scope)}, scanned.global_position ${direction(scope)}
     ) AS examined, count(*) OVER () AS scanned_count
@@ -46,7 +55,7 @@ function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationSc
         message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns}, message_data
       FROM emt_messages
       WHERE ${matchedThroughItsIndex(bind, kindKeyOfStream, `${scope.brainKey}executions/`)} AND stream_position = 1
-        AND partition = ${partition} AND is_archived = FALSE
+        AND partition = ${partition} AND is_archived = FALSE${notOfTypes(bind, leftOut)}
         ${horizonOf(scope)}${bounds(bind, scope)}
       ORDER BY ${orderedThroughItsIndex(kindKeyOfStream, scope)}
       LIMIT ${bind(scope.examineAtMost + 1)}
@@ -78,7 +87,7 @@ function examinedRunOf(row: typeof ExaminedRunRow.Type): ExaminedItem {
 }
 
 export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
-  return async (scope) => {
+  return async (scope, notBeginningWith) => {
     const { values, bind } = binding();
     const wanted = ofTypes(bind, 'latest.message_type', scope.types);
     const sized = { wanted, types: sizedTypesOf(bind, scope) };
@@ -94,7 +103,7 @@ export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
           ${sizeOf(sized, scope, 'f', 'f.type')} AS size,
           CASE WHEN latest.stream_position <> 1 THEN ${sizeOf(sized, scope, 'latest', 'latest.message_type')}
           ELSE 0 END AS latest_size
-        FROM (${firstMessagesOfRuns(bind, partition, scope)}) AS f
+        FROM (${firstMessagesOfRuns(bind, partition, scope, notBeginningWith)}) AS f
         CROSS JOIN LATERAL (
           SELECT transaction_id, global_position, stream_position, message_type, created, message_data,
             message_id, message_metadata

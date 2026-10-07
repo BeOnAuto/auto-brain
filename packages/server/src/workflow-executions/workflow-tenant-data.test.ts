@@ -1,12 +1,13 @@
+import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import type { SpawnedServer } from '../testing/spawned-server.ts';
-import { temporaryLedger } from '../testing/temporary-ledger.ts';
-import { requestTo, settledOver, workflowProcess } from '../testing/workflow-process.ts';
-import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
+import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const marker = 'marker-7d1c9e';
 
@@ -44,10 +45,12 @@ const specs: readonly Spec[] = [
 ];
 
 async function started(port: number, name: string): Promise<readonly [string, string]> {
-  const answer = await requestTo(port, 'POST', `/alpha/specs/orchestration/${name}/execute`, {
+  const executionId = randomUUID();
+  await requestTo(port, 'POST', `/alpha/specs/orchestration/${name}/execute`, {
     input: { secret: marker },
+    execution_id: executionId,
   });
-  return [name, executionIdIn(answer.body)];
+  return [name, executionId];
 }
 
 function idOf(ids: ReadonlyMap<string, string>, name: string): string {

@@ -16,6 +16,7 @@ export interface Descriptors {
   readonly attributes: () => JsonObject;
   readonly document: () => JsonObject;
   readonly limits: () => RunLimits;
+  readonly startedAt: () => number;
   readonly components: () => Components;
   readonly workflow: () => JsonObject;
 }
@@ -30,6 +31,7 @@ export function descriptorsOf(cell: RunCell, values: ValueTable): Descriptors {
     attributes: () => cell.get().state.attributes,
     document: () => documentOf(cell),
     limits: () => cell.get().state.limits,
+    startedAt: () => cell.get().state.startedAt,
     components: () => {
       const use = objectField(documentOf(cell), 'use') ?? {};
       return {

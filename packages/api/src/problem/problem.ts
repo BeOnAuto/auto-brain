@@ -13,6 +13,7 @@ export type ProblemReason =
   | 'not_found'
   | 'conflict'
   | 'unavailable'
+  | 'cancelled'
   | 'client_closed_request'
   | 'bad_request'
   | 'unauthenticated'
@@ -52,6 +53,7 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
   not_found: { status: 404, title: 'Not found' },
   conflict: { status: 409, title: 'Conflict' },
   unavailable: { status: 503, title: 'Unavailable' },
+  cancelled: { status: 409, title: 'Cancelled' },
   client_closed_request: { status: 499, title: 'Client closed request' },
   bad_request: { status: 400, title: 'Bad request' },
   unauthenticated: { status: 401, title: 'Unauthenticated' },

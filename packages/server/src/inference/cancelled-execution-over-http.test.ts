@@ -3,7 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import { Effect, Option, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 

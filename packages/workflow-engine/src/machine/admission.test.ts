@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { newRun, outcomeOf, RunMismatch, staleReasonOf, type RunInput } from '../index.ts';
+import { testCancel } from '../testing/driver-inputs.ts';
 import { armedTimer, at, document, executionId, openCall, runningState, started } from '../testing/runs.ts';
 
 const fired = (timerId: string): RunInput => ({ kind: 'timer_fired', executionId, at, timerId });
@@ -20,7 +21,7 @@ const received = (id: string): RunInput => ({
   event: { id, type: 'com.acme.approval' },
 });
 
-const cancelled: RunInput = { kind: 'cancel_requested', executionId, at };
+const cancelled: RunInput = { kind: 'cancel_requested', executionId, at, cancel: testCancel };
 
 describe('an input that can still change a run', () => {
   it('is a start of a new run, the fire of an armed timer, the answer of an open call, a new event or a first cancel', () => {

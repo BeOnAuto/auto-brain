@@ -53,7 +53,7 @@ Classify a function by its responsibility. Calling an API does not turn a recall
 
 A method does not require a `Method` resource. A shared function remains one definition when several workflows use it. A step refers to that definition; it does not copy it. A retry does not create another business function.
 
-Definitions, versions, runs and results are separate concepts. The runtime versions definitions and records the version each run uses. It does not currently let a caller select an arbitrary historical definition version to run. Workflow steps can call reasoning functions in the same brain; calling another workflow, or a subworkflow, is not supported yet.
+Definitions, versions, runs and results are separate concepts. The runtime versions definitions and records the version each run uses. It does not currently let a caller select an arbitrary historical definition version to run. A workflow can call the functions of its brain and other workflows; a workflow called this way is a subworkflow. A run of a workflow finishes later, so the call waits for it, and a run can be cancelled, which ends it as cancelled.
 
 The configured trigger types are **Schedule trigger** and **Event trigger**; a workflow names one in its schedule. Manual execution is a **Run** action. Sending an approval or other input to a waiting run answers that run; it does not start a new one. Existing workflow timers and event waits are control steps, not configured triggers.
 

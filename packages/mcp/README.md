@@ -48,7 +48,7 @@ Nothing is learned from a server when the settings are read: the server starts w
 A call of an offered tool:
 
 1. is refused as a tool error, never sent and never recorded, when the run's calls or results are spent, its arguments are too large, or it repeats a call made twice already;
-2. records `tool_call_started` through the run's journal, and is not sent if that fails;
+2. records `tool_call_started` through the run's journal, which answers the number the run's record gave the call, and is not sent if that fails;
 3. is forwarded with the execution id in the request's metadata under `com.beonauto/execution_id`, within its deadline, waiting out a 429 whose `Retry-After` fits the longest wait, opening a session the server forgot once, and restarting a `stdio` process that exited once per run;
 4. records `tool_call_answered`, unless the run was cancelled meanwhile;
 5. answers the model: text content as text, structured content only when there is no text, other content as a one-line placeholder, an `isError` result as a tool error, and a failure as a tool error naming the server, all scrubbed of the entry's secrets and minted tokens. A server's `instructions` never reach the model.

@@ -1,14 +1,14 @@
 import { Effect } from 'effect';
 
 import type { RunContext } from '../access/run-context.ts';
-import type { CallJournal, RecordedCall } from '../calls/recorded-calls.ts';
+import type { CallJournal, CallStarted, RecordedCall } from '../calls/recorded-calls.ts';
 import type { CallSignals } from '../calls/run-parts.ts';
 
 export const toolRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 export interface RecordingCallJournal extends CallJournal {
   readonly facts: () => readonly RecordedCall[];
-  readonly refuseFromNowOn: () => void;
+  readonly refuseStartsFromNowOn: () => void;
 }
 
 export interface ControlledSignals extends CallSignals {
@@ -25,17 +25,21 @@ export function inTurn<A, B>(items: readonly A[], step: (item: A) => Promise<B>)
 
 export function recordingCallJournal(): RecordingCallJournal {
   const facts: RecordedCall[] = [];
-  const state = { refusing: false };
+  const state = { refusing: false, last: 0 };
+  const numbered = (fact: CallStarted): number => {
+    state.last += 1;
+    facts.push({ ...fact, number: state.last });
+    return state.last;
+  };
   return {
-    record: (fact) =>
+    started: (fact) => Effect.sync(() => (state.refusing ? undefined : numbered(fact))),
+    answered: (fact) =>
       Effect.sync(() => {
-        if (!state.refusing) {
-          facts.push(fact);
-        }
-        return !state.refusing;
+        facts.push(fact);
+        return true;
       }),
     facts: () => [...facts],
-    refuseFromNowOn: () => {
+    refuseStartsFromNowOn: () => {
       state.refusing = true;
     },
   };

@@ -15,7 +15,7 @@ import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-func
 import { parseSpecDocument } from '../spec/spec-parsing.ts';
 import { reasoningDescriptionFor } from './reasoning-description.ts';
 import { specExecution, type ExecutionServices } from './spec-execution.ts';
-import { longestRequestMs } from './spec-request.ts';
+import { longestRequestMs, longestRunMsOf } from './spec-request.ts';
 
 export interface ReasoningFunctionAdapterOptions extends ExecutionServices {
   readonly offered: OfferedModels;
@@ -63,6 +63,7 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
     summarize,
     execute: (spec, input, execution) => execute(spec, input, execution),
     longestExecutionMs: longestRequestMs,
+    longestRunOf: longestRunMsOf,
     reachesOutside: true,
     mayChangeOutside: options.tools?.configured === true,
     callsTools: ({ tools }) => tools.length > 0,

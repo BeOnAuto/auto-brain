@@ -3,14 +3,14 @@ import { answers, jsonResult } from '@beonauto/inference/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   executionIdIn,
   servingWorkflows,
   settledExecution,
   workflowSource,
   workflowTestTimeoutMs,
-} from '../testing/workflow-server.ts';
+} from '../testing/servers/workflow-server.ts';
 
 const verdict = [
   '---',

@@ -1,3 +1,4 @@
+import type { CancelReason } from '../dispatch/run-output.ts';
 import { field, objectField, textField, type JsonObject } from '../dsl/json.ts';
 import { errorAsJson } from '../dsl/raised-error.ts';
 import { attemptDuration, retryDelay, retryPolicyOf, type RetryContext, type RetryState } from '../dsl/retry-policy.ts';
@@ -138,7 +139,7 @@ function resumeTrying(invocation: Invocation, body: TryBody, trying: Trying, sig
   const { machine } = invocation;
   const retry = { attempt: body.attempt, startedAt: body.startedAt };
   if (signal.kind === 'timer' && signal.timerId === attemptLimit) {
-    machine.runner.cancelList(machine, list);
+    machine.runner.cancelList(machine, list, 'deadline');
     const milliseconds = signal.timer.dueAt - signal.timer.armedAt;
     return handled(invocation, retry, timedOut(milliseconds, invocation.entry.reference).error);
   }
@@ -161,7 +162,7 @@ export function resumeTry(invocation: Invocation, body: TryBody, signal: Signal)
   return advance === undefined ? undefined : recovering({ attempt: body.attempt, startedAt: body.startedAt }, advance);
 }
 
-export function cancelTry(machine: Machine, { phase }: TryBody): void {
+export function cancelTry(machine: Machine, { phase }: TryBody, reason: CancelReason): void {
   if (phase.kind === 'backing_off') {
     machine.session.timers.disarm(phase.timer);
     return;
@@ -169,5 +170,5 @@ export function cancelTry(machine: Machine, { phase }: TryBody): void {
   if (phase.kind === 'trying') {
     machine.session.timers.disarm(phase.attemptLimit);
   }
-  machine.runner.cancelList(machine, phase.list);
+  machine.runner.cancelList(machine, phase.list, reason);
 }

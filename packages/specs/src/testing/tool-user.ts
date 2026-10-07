@@ -4,9 +4,10 @@ import { Effect, Schema } from 'effect';
 import {
   definePrimitive,
   type Executed,
+  type CallAnsweredFact,
+  type CallStartedFact,
   type PrimitiveRejection,
   type Primitive,
-  type ToolCallFact,
   type ToolCallJournal,
 } from '../index.ts';
 
@@ -16,12 +17,12 @@ export interface ToolUser {
   readonly primitive: Primitive;
   readonly stalled: Promise<void>;
   readonly recordedLate: () => Promise<readonly boolean[]>;
+  readonly startedLate: () => Promise<readonly (number | undefined)[]>;
 }
 
-export function startOfCall(number: number): ToolCallFact {
+export function startOfCall(number: number): CallStartedFact {
   return {
     type: 'tool_call_started',
-    number,
     call_id: `toolu_${number}`,
     server: 'graph',
     tool: 'search',
@@ -30,7 +31,7 @@ export function startOfCall(number: number): ToolCallFact {
   };
 }
 
-export function answerOfCall(number: number): ToolCallFact {
+export function answerOfCall(number: number): CallAnsweredFact {
   return {
     type: 'tool_call_answered',
     number,
@@ -49,12 +50,22 @@ const decodeInput = Schema.decodeUnknownSync(
   }),
 );
 
-function everyCall(count: number, fact: (number: number) => ToolCallFact, journal: ToolCallJournal) {
+function numbersUpTo(count: number): readonly number[] {
+  return Array.from({ length: count }, (_, index) => index + 1);
+}
+
+function everyStart(count: number, journal: ToolCallJournal) {
   return Effect.forEach(
-    Array.from({ length: count }, (_, index) => fact(index + 1)),
-    (called) => journal.record(called),
+    numbersUpTo(count),
+    (number) => Effect.map(journal.started(startOfCall(number)), (assigned) => assigned !== undefined),
     { concurrency: 'unbounded' },
   );
+}
+
+function everyAnswer(count: number, journal: ToolCallJournal) {
+  return Effect.forEach(numbersUpTo(count), (number) => journal.answered(answerOfCall(number)), {
+    concurrency: 'unbounded',
+  });
 }
 
 const endings: Readonly<
@@ -81,12 +92,12 @@ export function toolUser(): ToolUser {
       Effect.gen(function* () {
         journals.push(journal);
         const { calls, ending = 'succeed' } = decodeInput(input);
-        const started = yield* everyCall(calls, startOfCall, journal);
+        const started = yield* everyStart(calls, journal);
         if (ending === 'stall') {
           stalling.resolve();
           return yield* Effect.never;
         }
-        const answered = yield* everyCall(calls, answerOfCall, journal);
+        const answered = yield* everyAnswer(calls, journal);
         return yield* endings[ending]([...started, ...answered]);
       }),
     reachesOutside: true,
@@ -96,6 +107,7 @@ export function toolUser(): ToolUser {
   return {
     primitive,
     stalled: stalling.promise,
-    recordedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.record(answerOfCall(1))))),
+    recordedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.answered(answerOfCall(1))))),
+    startedLate: () => Promise.all(journals.map((journal) => Effect.runPromise(journal.started(startOfCall(9))))),
   };
 }

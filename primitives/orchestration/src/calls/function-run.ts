@@ -1,4 +1,5 @@
 import type {
+  CallLink,
   CallerIdentity,
   Issue,
   Lineage,
@@ -18,9 +19,11 @@ export interface DefinitionRunRequest {
   readonly executionId: string;
   readonly lineage: Lineage;
   readonly depth: number;
+  readonly callDepth: number;
+  readonly calledBy: CallLink;
 }
 
-export type DefinitionRunResult =
+export type EndedRunResult =
   | { readonly status: 'succeeded'; readonly output: Schema.Json }
   | {
       readonly status: 'rejected';
@@ -31,5 +34,7 @@ export type DefinitionRunResult =
       readonly because?: UnavailableBecause;
     }
   | { readonly status: 'failed'; readonly detail: string };
+
+export type DefinitionRunResult = EndedRunResult | { readonly status: 'waiting' };
 
 export type RunDefinition = (execution: DefinitionRunRequest) => Effect.Effect<DefinitionRunResult>;

@@ -2,8 +2,8 @@ import { appendFileSync } from 'node:fs';
 
 import { Schema } from 'effect';
 
-import { startChild, type RunningChild, type StartChild } from '../development/children.ts';
-import { runDevelopment } from '../development/development.ts';
+import { startChild, type RunningChild, type StartChild } from '../../development/children.ts';
+import { runDevelopment } from '../../development/development.ts';
 
 const TestSetupSchema = Schema.Struct({
   envFiles: Schema.Array(Schema.String),

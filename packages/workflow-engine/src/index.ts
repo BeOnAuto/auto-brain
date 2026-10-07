@@ -8,11 +8,13 @@ export {
   type RunContext,
 } from './dispatch/dispatch-watermark.ts';
 export {
+  CancelReasonSchema,
   RunOutputSchema,
   type ArmListener,
   type ArmTimer,
   type CancelCall,
   type CancelListener,
+  type CancelReason,
   type CancelTimer,
   type EmitEvent,
   type RunOutput,
@@ -40,7 +42,7 @@ export { nestingRejections } from './dsl/nesting.ts';
 export { policyOf } from './dsl/policy.ts';
 export { forbidden, rejection, templateRejections, type Rejection } from './dsl/policy-checks.ts';
 export { describeError, type ErrorKind } from './dsl/raised-error.ts';
-export { pointerTo, taskKinds } from './dsl/tasks.ts';
+export { allTaskEntries, pointerTo, taskKinds } from './dsl/tasks.ts';
 export { runCacheBounds, runCacheOf, type RunCache, type RunCacheBounds } from './cache/run-cache.ts';
 export { workflowEngineOf } from './engine/engine.ts';
 export { SplitDecision, runLoopOf, type RunDecision } from './engine/run-loop.ts';
@@ -99,8 +101,10 @@ export {
 } from './machine/limits.ts';
 export type { RunDecider } from './machine/run-decider.ts';
 export {
+  CancelOrderSchema,
   RunInputSchema,
   type CallAnswered,
+  type CancelOrder,
   type CancelRequested,
   type EventOffered,
   type EventReceived,

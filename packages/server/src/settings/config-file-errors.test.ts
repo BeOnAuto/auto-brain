@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { configuredServer } from '../testing/configured-server.ts';
-import { spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
+import { configuredServer } from '../testing/processes/configured-server.ts';
+import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 
 const secret = 'sk-live-SECRET-0123456789abcdef';
 

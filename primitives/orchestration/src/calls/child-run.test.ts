@@ -18,12 +18,17 @@ describe('the run a call of a workflow starts', () => {
     expect(childRunOf(call)).toBe(nestedExecutionId(workflowExecution, '/do/0/classify', 2));
   });
 
+  it('is the run of a workflow the call starts, derived the same way', () => {
+    expect(childRunOf({ ...call, arguments: { primitive: 'orchestration', name: 'other' } })).toBe(
+      nestedExecutionId(workflowExecution, '/do/0/classify', 2),
+    );
+  });
+
   it('is none for arguments the call would refuse, another function, or a run whose attributes name no run', () => {
     expect([
-      childRunOf({ ...call, arguments: { primitive: 'orchestration', name: 'other' } }),
       childRunOf({ ...call, arguments: 'plain' }),
       childRunOf({ ...call, function: 'notify' }),
       childRunOf({ ...call, attributes: {} }),
-    ]).toEqual([undefined, undefined, undefined, undefined]);
+    ]).toEqual([undefined, undefined, undefined]);
   });
 });

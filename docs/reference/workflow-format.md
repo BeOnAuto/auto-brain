@@ -206,9 +206,13 @@ A `switch` tests its cases in order and follows the `then` of the first case who
 
 ### Calling a function
 
-`call: execute_spec` runs the active latest version of another definition in the same brain: `with.primitive` names its type, `inference` for a reasoning function, `computation` for a [computation function](computation-format.md) or `recollection` for a [recall function](recall-format.md), and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered, the value a computation function's program gave, or what a recall function answered from its view.
+`call: execute_spec` runs the active latest version of another definition in the same brain: `with.primitive` names its type, `inference` for a reasoning function, `computation` for a [computation function](computation-format.md), `recollection` for a [recall function](recall-format.md) or `orchestration` for another workflow, and `with.name` the definition. `with.input` is a template for its input, `{}` when left out. The task's output is that run's output: the text or JSON value a reasoning function answered, the value a computation function's program gave, what a recall function answered from its view, or the output of the workflow it ran.
 
-Each time the task runs, including on a retry, it starts a separate run of the function, recorded under its own `execution_id`. That run acts for the caller who started the workflow, with the permissions that caller had when the workflow started. A workflow cannot execute another workflow, and `execute_spec` takes no arguments other than `primitive`, `name` and `input`.
+Each time the task runs, including on a retry, it starts a separate run of the function, recorded under its own `execution_id`. That run acts for the caller who started the workflow, with the permissions that caller had when the workflow started. `execute_spec` takes no arguments other than `primitive`, `name` and `input`.
+
+A run of a reasoning, computation or recall function finishes within the call that starts it. A run of a workflow finishes later, and the task waits for it: the run records the task it answers, and its ending, whenever it comes and on whichever server it is recorded, answers the task. While the task waits, it holds none of the calls the server runs at once, and a restart of the server does not start the run again. A task waits for a run as long as a run of that definition may take, plus a minute, and never past the longest the workflow itself may still run: a workflow may take the longest a run may last, a reasoning function its model's deadline or, when it names tools, the bound of its tool loop, and a computation or recall function ten seconds. That is settled when the workflow starts, for each task that names its definition as written; a task whose `with.primitive` or `with.name` is an expression, or a definition saved after the workflow started, waits as long as the longest run of any function other than a workflow, plus a minute. When the wait passes, the task raises a `timeout` error, status 408, and the run it waited for is cancelled with the kind `deadline`; an ending that comes later answers nothing.
+
+Workflows that call workflows reach at most 8 calls deep: the run that would sit a ninth call below the workflow at the top is refused as a `conflict`, which the calling task raises as a `runtime` error. The runs under one workflow at the top of a tree wait for at most 1,000 calls at once, a limit the deployment can change; the next call is refused in the same way.
 
 A run of the function that does not succeed raises an error the workflow can catch:
 
@@ -221,6 +225,8 @@ A run of the function that does not succeed raises an error the workflow can cat
 | Rejected with `conflict` of the kind `tools_called`        | `https://on.auto/problems/tools_called`     | 409    |
 | Rejected with `unavailable`                                | `communication`                             | 503    |
 | Rejected with `unavailable` of the kind `tools_unfinished` | `https://on.auto/problems/tools_unfinished` | 503    |
+| Rejected with `cancelled`                                  | `https://on.auto/problems/cancelled`        | 409    |
+| Ran past the wait of its task                              | `timeout`                                   | 408    |
 | Failed                                                     | `runtime`                                   | 500    |
 | Could not be reached                                       | `communication`                             | 503    |
 
@@ -229,6 +235,8 @@ The short types are under `https://open-workflow-specification.org/spec/1.0.0/er
 A computation function's run that is rejected with `conflict` has the kind `unworkable`: its program raised an error, gave no output or more than one, or did more work or nested deeper than a run may. The same input gives the same result every time, so a retry policy should not match it: retry on status 503, which a run that was `unavailable` raises, and leave 409 out. [Computation function format](computation-format.md#in-a-workflow) has a workflow that does so.
 
 A recall function's run that is rejected with `conflict` has the kind `stalled`, when its view stopped at an event its fold could not take, or `unworkable`, when its answer could not give an output; neither changes on a retry, so leave 409 out of a retry policy as well. While its view is still being built, its run is `unavailable` with the kind `rebuilding`, status 503, which a retry after a few seconds may resolve. A recall function answers from what its view has folded so far, so a step may not see an event recorded a moment before. [Recall function format](recall-format.md#in-a-workflow) has a workflow that recalls, reasons and computes.
+
+A run that was cancelled raises the [problem type](http.md#responses-and-errors) `https://on.auto/problems/cancelled` with the kind of its cancellation: `requested` when someone cancelled it with `cancel_execution`, `deadline` when what waited for it ran out of time, `overrun` when it ran as long as a workflow may, and `parent_ended` when the run that waited for it ended first. No retry policy matches it unless it names that type, so a workflow catches a cancellation only on purpose, as with `errors: { with: { type: https://on.auto/problems/cancelled } }` and `when: '${ $error.kind == "requested" }'`. A workflow that does not catch it is rejected by the error's status, 409, as `invalid_input`, and not as `cancelled`, since the workflow itself was not cancelled.
 
 The error's `title` names the definition and, for a rejection, its reason; its `detail` carries the detail the run gave. A rejection that has a kind carries it as the error's `kind`, and its cause as `because`, as the [HTTP problem document](http.md#responses-and-errors) does: a reasoning function whose tools are not offered is `tool_not_offered`, one whose tool server cannot be used `mcp_server_failed`, and one that called tools and could not finish `tools_unfinished`, its tools having perhaps changed something. A `catch` reads them in the error it catches, so `when: '${ $error.kind == "tool_not_offered" }'` handles only that, and `${ $error.because }` names why.
 
@@ -292,7 +300,7 @@ A retry policy is written inline or named from `use.retries`:
 | `limit.duration`           | No retry starts once this much time has passed since the first attempt                                                  |
 | `when`, `exceptWhen`       | Retry only when, or except when, the condition holds                                                                    |
 
-The `patient` policy in the example retries at most three times, after 5, 10 and 20 seconds. A `timeout` on a task cancels the task when its duration passes and raises a `timeout` error at that task. A call it cancels stops the function's run at once: a reasoning function's tool calls still in flight are cancelled at their tool servers, and its run ends `failed`, its history showing each of those calls started and never answered. Once it has ended, that run is not run again under its id if it had recorded a tool call, since its tools may have changed something; a run that recorded none may be run again under its id, even of a function that names tools. The error is still a plain `timeout`, which says nothing of the tools: a `retry` that matches timeouts calls the function again, under a new id, and so calls its tools again. To keep them from being called again, leave timeouts out of such a retry, as with `exceptWhen: '${ $error.status == 408 }'`, and check the run's history before starting another. A `timeout` on the document does the same for the whole run.
+The `patient` policy in the example retries at most three times, after 5, 10 and 20 seconds. A `timeout` on a task cancels the task when its duration passes and raises a `timeout` error at that task. A call it cancels stops the function's run at once: a reasoning function's tool calls still in flight are cancelled at their tool servers, and its run ends `rejected` as `cancelled` with the kind `deadline`, its history showing each of those calls started and never answered. A cancelled run is never run again under its id, whether or not it recorded a tool call: a request with its id and input returns its cancellation, as with any final result. The error is still a plain `timeout`, which says nothing of the tools: a `retry` that matches timeouts calls the function again, under a new id, and so calls its tools again. To keep them from being called again, leave timeouts out of such a retry, as with `exceptWhen: '${ $error.status == 408 }'`, and check the run's history before starting another. A `timeout` on the document does the same for the whole run.
 
 ### Loops and parallel branches
 
@@ -378,7 +386,6 @@ These are refused when a document is saved:
 | `run` tasks                                                                                    | The runtime does not run them                                   |
 | `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a` or `mcp`                                | A workflow reaches the world only through its brain's functions |
 | A `call` of anything other than `execute_spec`                                                 | `execute_spec` is the one function                              |
-| `execute_spec` of an `orchestration` definition                                                | A workflow cannot execute another workflow                      |
 | `schedule.after`, `schedule.on.all`, `schedule.on.until`, or more than one trigger             | A trigger starts one run for each event or time                 |
 | A trigger filter without a written `type`, or with a `data` expression that uses `$` variables | A trigger is matched before any run exists                      |
 | `schedule.every` shorter than a minute, or a `cron` that is not five fields or names no time   | See [Triggers](#triggers)                                       |
@@ -394,46 +401,55 @@ These are refused when a document is saved:
 
 ## How a run ends
 
-`execute_spec` answers `status: started` as soon as the run begins. `get_execution` shows the run as `started` until it ends:
+`execute_spec` answers `status: started` as soon as the run begins, or how the run ended when it ended before its first wait. `get_execution` shows the run as `started` until it ends:
 
 - `succeeded`, with the run's `output`, when its last task completes or a task ends it.
 - `rejected`, when an error is not caught. The rejection's `reason` is `invalid_input` for an error with a 4xx status other than 408 and 429, and `unavailable` otherwise. Its `detail` gives the error's title, or else its type, then its detail and the task that raised it, such as `The brief is not usable: Missing: audience (at /do/0/stop)`.
-- `failed`, when the run broke down inside the runtime, produced an output larger than 1 MiB, or was still running when it reached the longest a run may last.
+- `rejected` with the reason `cancelled`, when it was cancelled: with the kind `requested` by `cancel_execution`, `deadline` when the workflow that waited for it ran out of time, `overrun` when it was still running at the longest a run may last, and `parent_ended` when the workflow that waited for it ended first, or the branch that waited for it lost a race. The `detail` says why, in the words of whoever cancelled it.
+- `rejected` with the reason `conflict` of the kind `oversized`, when its output is larger than 1 MiB.
+- `failed`, when the run broke down inside the runtime.
 
 A timeout that is not caught therefore rejects the run as `unavailable`, and a call rejected with `invalid_input` that is not caught rejects it as `invalid_input`.
 
+`cancel_execution` cancels a workflow run that has not ended, from any server: the run stops its tasks, cancels each run it waits for, with the kind `parent_ended`, and ends as `cancelled` within a moment, unless it ends first. A run that has ended, or a run of a function that finishes within its call, cannot be cancelled.
+
 ## Limits
 
-| Limit                        | Value                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Source document              | 65,536 bytes in UTF-8                                                                                   |
-| Nested task lists            | 64 levels                                                                                               |
-| Nested values                | 512 levels                                                                                              |
-| Nesting of an expression     | 128 levels, refused when the document is saved                                                          |
-| Branches of a fork           | 32                                                                                                      |
-| Duration of a run            | 30 days, unless the deployment sets between 2 hours and 365 days; a run still going at that limit fails |
-| Input of a run               | 256 KiB as JSON                                                                                         |
-| Input of a call              | 256 KiB as JSON                                                                                         |
-| Output of a run              | 1 MiB as JSON, together with the run's record                                                           |
-| Data a run holds at once     | 4 MiB: the values it keeps, as JSON in UTF-8, the document, and 4 KiB for each task under way           |
-| One value kept across a wait | 1.5 MiB (1,572,864 bytes) as JSON, less the rest of the change recorded with it                         |
-| Tasks without waiting        | 10,000                                                                                                  |
-| Inputs a run takes           | 100,000: its start, each answer of a function, each timer and each event                                |
-| Recorded history of a run    | 512 MiB as JSON                                                                                         |
-| An event                     | 256 KiB as JSON; `type` and `id` at most 256 characters, `source` and `subject` at most 1,024           |
-| Events waiting to be taken   | 64, or 1 MiB as JSON                                                                                    |
-| Events over a run's life     | 1,024, or 4 MiB as JSON                                                                                 |
-| Events a run emits           | 1,024, or 4 MiB as JSON, over its life                                                                  |
-| An emitted event             | 240 KiB as JSON                                                                                         |
-| Workflows with a trigger     | 1,024 in a brain; saving one more is refused with `conflict`                                            |
-| Tasks listening to a brain   | 4,096 at once; one more hears only the events sent to its run                                           |
-| Runs a trigger starts        | 60 a minute for each workflow; at most 1,000 more wait for a later minute                               |
-| Depth of a chain of triggers | 8                                                                                                       |
-| `schedule.every`             | At least a minute                                                                                       |
+| Limit                        | Value                                                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Source document              | 65,536 bytes in UTF-8                                                                                          |
+| Nested task lists            | 64 levels                                                                                                      |
+| Nested values                | 512 levels                                                                                                     |
+| Nesting of an expression     | 128 levels, refused when the document is saved                                                                 |
+| Branches of a fork           | 32                                                                                                             |
+| Duration of a run            | 30 days, unless the deployment sets between 2 hours and 365 days; a run still going at that limit is cancelled |
+| Wait for a call              | The longest its function may run, plus a minute, within what remains of the run's duration                     |
+| Calls above a run            | 8                                                                                                              |
+| Calls waiting under one run  | 1,000 under the workflow at the top of a tree, unless the deployment sets between 1 and 9,999                  |
+| Input of a run               | 256 KiB as JSON                                                                                                |
+| Input of a call              | 256 KiB as JSON                                                                                                |
+| Output of a run              | 1 MiB as JSON, together with the run's record                                                                  |
+| Data a run holds at once     | 4 MiB: the values it keeps, as JSON in UTF-8, the document, and 4 KiB for each task under way                  |
+| One value kept across a wait | 1.5 MiB (1,572,864 bytes) as JSON, less the rest of the change recorded with it                                |
+| Tasks without waiting        | 10,000                                                                                                         |
+| Inputs a run takes           | 100,000: its start, each answer of a function, each timer and each event                                       |
+| Recorded history of a run    | 512 MiB as JSON                                                                                                |
+| An event                     | 256 KiB as JSON; `type` and `id` at most 256 characters, `source` and `subject` at most 1,024                  |
+| Events waiting to be taken   | 64, or 1 MiB as JSON                                                                                           |
+| Events over a run's life     | 1,024, or 4 MiB as JSON                                                                                        |
+| Events a run emits           | 1,024, or 4 MiB as JSON, over its life                                                                         |
+| An emitted event             | 240 KiB as JSON                                                                                                |
+| Workflows with a trigger     | 1,024 in a brain; saving one more is refused with `conflict`                                                   |
+| Tasks listening to a brain   | 4,096 at once; one more hears only the events sent to its run                                                  |
+| Runs a trigger starts        | 60 a minute for each workflow; at most 1,000 more wait for a later minute                                      |
+| Depth of a chain of triggers | 8                                                                                                              |
+| `schedule.every`             | At least a minute                                                                                              |
 
 A duration written in the document that is longer than a run may last is refused when the document is saved; one that an expression computes fails its task with a `configuration` error. Exceeding the limits on held data, a value kept across a wait, tasks without waiting, inputs or history ends the run at once, rejected as `unavailable` with a `runtime` error of status 500. One event more than the event limits allow ends the run at once, rejected, and later events to it are refused with `not_found`. An emit beyond the limit on emitted events fails its task with a `runtime` error of status 500, which the workflow's `try` can catch, and an emitted event larger than 240 KiB with a `validation` error of status 400.
 
 ## Upgrading
+
+A call whose function's run takes longer than its task waits for it now raises a `timeout` error, status 408, where it raised a `communication` error of status 503, and the run it waited for is cancelled. A retry policy that matches status 503 or the `communication` type therefore no longer retries it; to retry it, match `timeout` or status 408, and remember that a `timeout` also comes from a task's own `timeout`. A run that is cancelled, or still running at the longest a run may last, now ends `rejected` as `cancelled` rather than `failed`, and a run whose output is larger than 1 MiB `rejected` as a `conflict` of the kind `oversized`.
 
 An event sent to a run without a `source` now has the source `/callers/` and the id of the caller who sent it, so that every event says where it came from. A `listen` filter of `source: null` therefore no longer matches an event sent to the run; match it on its `type`, or test the `source` it is sent with.
 

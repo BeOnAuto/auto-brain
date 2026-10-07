@@ -1,8 +1,9 @@
-import { Conflict, NotFound, type Rejection } from '@beonauto/operations';
+import { Conflict, NotFound, RunCancelled, type Rejection } from '@beonauto/operations';
 import { Equal, Result } from 'effect';
 
 import type {
   CommandMetadata,
+  ExecutionCancel,
   ExecutionCommand,
   ExecutionFinish,
   ExecutionOutcome,
@@ -10,18 +11,24 @@ import type {
   ExecutionSettlement,
   ExecutionStart,
   ExecutionToolCall,
+  InterruptedAttempt,
 } from './execution-commands.ts';
 import type { ExecutionEvent } from './execution-events.ts';
 import {
   awaitsSettlement,
-  calledTools,
+  cancelBeforeStartOf,
   hasFinalResult,
   isRunning,
+  mayHaveChangedSomething,
+  runOf,
+  takesSettlement,
   type ExecutionState,
+  type ExecutionStreamState,
   type RecordedExecution,
 } from './execution-state.ts';
+import { settlementKeyOf } from './settlement-keys.ts';
 
-type Decision = Result.Result<readonly ExecutionEvent[], Rejection<'not_found' | 'conflict'>>;
+type Decision = Result.Result<readonly ExecutionEvent[], Rejection<'not_found' | 'conflict' | 'cancelled'>>;
 
 export type Claim = 'run' | 'answer';
 
@@ -39,11 +46,22 @@ const startedCallingTools = new Conflict({
   kind: 'tools_called',
 });
 
-const runFinished = new Conflict({ detail: 'The run has finished, so it records no more tool calls' });
+const runEnded = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
+
+const noSuchRun = new NotFound({ detail: 'There is no such run in this brain' });
 
 export const runTaken = new Conflict({
   detail: 'A run under this id is going or has ended with a result, so this start records nothing',
   kind: 'taken',
+});
+
+export const endedBeforeCancelling = new Conflict({
+  detail: 'The run has already ended, so there is nothing left to cancel',
+});
+
+const runsWithinItsCall = new Conflict({
+  detail:
+    'The run runs within the call that started it, which no server can interrupt from outside, so it cannot be cancelled; it ends when that call does',
 });
 
 function isSameRequest({ input, execution }: RecordedExecution, request: ExecutionRequest): boolean {
@@ -60,31 +78,45 @@ function claimOfRecorded(state: RecordedExecution): Result.Result<Claim, Conflic
   if (needsNoRun(state)) {
     return Result.succeed('answer');
   }
-  return calledTools(state) ? Result.fail(toolsWereCalled) : Result.succeed('run');
+  return mayHaveChangedSomething(state) ? Result.fail(toolsWereCalled) : Result.succeed('run');
 }
 
-export function claimOf(state: ExecutionState, request: ExecutionRequest): Result.Result<Claim, Conflict> {
-  if (state === undefined) {
+function cancelledBeforeItsStart(state: ExecutionStreamState): RunCancelled | undefined {
+  const cancel = cancelBeforeStartOf(state);
+  return cancel === undefined ? undefined : new RunCancelled({ detail: cancel.reason, kind: cancel.kind });
+}
+
+export function claimOf(
+  state: ExecutionStreamState,
+  request: ExecutionRequest,
+): Result.Result<Claim, Conflict | RunCancelled> {
+  const cancelled = cancelledBeforeItsStart(state);
+  if (cancelled !== undefined) {
+    return Result.fail(cancelled);
+  }
+  const run = runOf(state);
+  if (run === undefined) {
     return Result.succeed('run');
   }
-  if (!isSameRequest(state, request)) {
+  if (!isSameRequest(run, request)) {
     return Result.fail(
       new Conflict({ detail: 'The run id belongs to a run of another definition or with another input' }),
     );
   }
-  return claimOfRecorded(state);
+  return claimOfRecorded(run);
 }
 
 function startedCallingToolsBefore(start: ExecutionStart, state: ExecutionState): boolean {
   return state !== undefined && isRunning(state) && (state.callsTools || start.calls_tools);
 }
 
-function ofDepth(depth: number): { readonly depth?: number } {
-  return depth > 0 ? { depth } : {};
+function counted(name: 'depth' | 'call_depth', count: number): Readonly<Record<string, number>> {
+  return count > 0 ? { [name]: count } : {};
 }
 
 function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
-  const { primitive, name, input, spec_version, calls_tools, depth = 0, by, at } = start;
+  const { primitive, name, spec_version, input, calls_tools, finishes_later, by, at } = start;
+  const { depth = 0, call_depth: callDepth = 0, called_by: calledBy } = start;
   return {
     type: 'execution_started',
     primitive,
@@ -92,14 +124,17 @@ function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
     spec_version,
     input,
     ...(calls_tools ? { calls_tools } : {}),
-    ...ofDepth(depth),
+    ...(finishes_later === true ? { finishes_later } : {}),
+    ...counted('depth', depth),
+    ...counted('call_depth', callDepth),
+    ...(calledBy === undefined ? {} : { called_by: calledBy }),
     by,
     at,
   };
 }
 
 function startsAgain(start: ExecutionStart, state: RecordedExecution): boolean {
-  return !isRunning(state) && !needsNoRun(state) && !calledTools(state) && isSameRequest(state, start);
+  return !isRunning(state) && !needsNoRun(state) && !mayHaveChangedSomething(state) && isSameRequest(state, start);
 }
 
 function decideCreateOnly(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
@@ -108,71 +143,154 @@ function decideCreateOnly(start: ExecutionStart & CommandMetadata, state: Execut
     : Result.fail(runTaken);
 }
 
-function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionState): Decision {
+function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionStreamState): Decision {
+  const cancelled = cancelledBeforeItsStart(state);
+  if (cancelled !== undefined) {
+    return Result.fail(cancelled);
+  }
   if (start.createOnly === true) {
-    return decideCreateOnly(start, state);
+    return decideCreateOnly(start, runOf(state));
   }
   return Result.flatMap(claimOf(state, start), (claim): Decision => {
     if (claim === 'answer') {
       return nothingToRecord;
     }
-    return startedCallingToolsBefore(start, state)
+    return startedCallingToolsBefore(start, runOf(state))
       ? Result.fail(startedCallingTools)
       : Result.succeed([startedEvent(start)]);
   });
 }
 
+function ofTheStart({ execution, depth, callDepth, calledBy }: RecordedExecution) {
+  const { primitive, name, spec_version } = execution;
+  return {
+    primitive,
+    name,
+    spec_version,
+    ...counted('depth', depth),
+    ...counted('call_depth', callDepth),
+    ...(calledBy === undefined ? {} : { called_by: calledBy }),
+  };
+}
+
 function recordedOutcome(
   result: ExecutionOutcome,
-  { execution, depth }: RecordedExecution,
+  state: RecordedExecution,
   metadata: CommandMetadata,
 ): ExecutionEvent {
-  if (result.type === 'execution_deferred') {
-    return { ...result, ...metadata };
+  return result.type === 'execution_deferred'
+    ? { ...result, ...metadata }
+    : { ...result, ...ofTheStart(state), ...metadata };
+}
+
+function isDeferralAfterItsResult(result: ExecutionOutcome, state: RecordedExecution): boolean {
+  return result.type === 'execution_deferred' && state.result !== undefined;
+}
+
+function outcomeOfAttempt(
+  result: ExecutionOutcome | InterruptedAttempt,
+  { cancel }: RecordedExecution,
+): ExecutionOutcome {
+  if (result.type !== 'execution_interrupted') {
+    return result;
   }
-  const { primitive, name, spec_version } = execution;
-  return { ...result, primitive, name, spec_version, ...ofDepth(depth), ...metadata };
+  return cancel === undefined
+    ? { type: 'execution_failed' }
+    : { type: 'execution_rejected', rejection: { reason: 'cancelled', kind: cancel.kind, detail: cancel.reason } };
 }
 
 function decideFinish({ result, by, at }: ExecutionFinish & CommandMetadata, state: ExecutionState): Decision {
-  return state === undefined || needsNoRun(state)
+  if (state === undefined) {
+    return nothingToRecord;
+  }
+  const outcome = outcomeOfAttempt(result, state);
+  return needsNoRun(state) || isDeferralAfterItsResult(outcome, state)
     ? nothingToRecord
-    : Result.succeed([recordedOutcome(result, state, { by, at })]);
+    : Result.succeed([recordedOutcome(outcome, state, { by, at })]);
+}
+
+function nextCallOf(state: RecordedExecution, number: number | undefined): Result.Result<number, Conflict> {
+  const next = state.lastCall + 1;
+  return number === undefined || number === next
+    ? Result.succeed(next)
+    : Result.fail(
+        new Conflict({
+          detail: `The run records its calls in order, and call ${number} is not its next call, ${next}; another attempt recorded it first`,
+        }),
+      );
 }
 
 function decideToolCall({ fact, by, at }: ExecutionToolCall & CommandMetadata, state: ExecutionState): Decision {
-  return state !== undefined && isRunning(state) && !state.finishesLater
-    ? Result.succeed([{ ...fact, by, at }])
-    : Result.fail(runFinished);
-}
-
-function unsettleable({ result }: RecordedExecution): Conflict {
-  return new Conflict({
-    detail:
-      result === undefined
-        ? 'The run executes within the call that started it, so it cannot be settled'
-        : 'The run already ended with another result',
-  });
-}
-
-function decideSettlement({ result, at }: ExecutionSettlement, state: ExecutionState): Decision {
-  if (state === undefined) {
-    return Result.fail(new NotFound({ detail: 'There is no such run in this brain' }));
+  if (state === undefined || !isRunning(state)) {
+    return Result.fail(runEnded);
   }
-  if (Equal.equals(state.result, result)) {
+  if (fact.type === 'tool_call_answered') {
+    return Result.succeed([{ ...fact, by, at }]);
+  }
+  return Result.map(nextCallOf(state, fact.number), (number) => [{ ...fact, number, by, at }]);
+}
+
+export const endedWithAnotherResult = new Conflict({ detail: 'The run already ended with another result' });
+
+function settledAlready(state: RecordedExecution, settlement: ExecutionSettlement): Decision {
+  return state.result !== undefined && settlementKeyOf(state.result) === settlementKeyOf(settlement.result)
+    ? nothingToRecord
+    : Result.fail(endedWithAnotherResult);
+}
+
+function decideSettlement(settlement: ExecutionSettlement, state: ExecutionState): Decision {
+  if (state === undefined) {
+    return Result.fail(noSuchRun);
+  }
+  if (!isRunning(state)) {
+    return settledAlready(state, settlement);
+  }
+  const { result, by, at } = settlement;
+  return takesSettlement(state)
+    ? Result.succeed([recordedOutcome(result, state, { by, at })])
+    : Result.fail(
+        new Conflict({ detail: 'The run executes within the call that started it, so it cannot be settled' }),
+      );
+}
+
+function cancelOfARun(cancel: ExecutionCancel, run: RecordedExecution): Decision {
+  if (!isRunning(run)) {
+    return Result.fail(endedBeforeCancelling);
+  }
+  if (!takesSettlement(run) && cancel.byItsCaller !== true) {
+    return Result.fail(runsWithinItsCall);
+  }
+  const { kind, reason, by, at } = cancel;
+  const { primitive, name, spec_version } = run.execution;
+  return run.cancel === undefined
+    ? Result.succeed([{ type: 'execution_cancel_requested', kind, reason, primitive, name, spec_version, by, at }])
+    : nothingToRecord;
+}
+
+function decideCancel(cancel: ExecutionCancel, state: ExecutionStreamState): Decision {
+  if (cancelBeforeStartOf(state) !== undefined) {
     return nothingToRecord;
   }
-  return awaitsSettlement(state)
-    ? Result.succeed([recordedOutcome(result, state, { by: state.execution.started_by, at })])
-    : Result.fail(unsettleable(state));
+  const run = runOf(state);
+  if (run !== undefined) {
+    return cancelOfARun(cancel, run);
+  }
+  const { kind, reason, by, at } = cancel;
+  return cancel.byItsCaller === true
+    ? Result.succeed([{ type: 'execution_cancel_requested', kind, reason, by, at }])
+    : Result.fail(noSuchRun);
 }
 
-export function decideOnExecution(command: ExecutionCommand, state: ExecutionState): Decision {
+export function decideOnExecution(command: ExecutionCommand, state: ExecutionStreamState): Decision {
   if (command.type === 'start') {
     return decideStart(command, state);
   }
-  if (command.type === 'tool_call') {
-    return decideToolCall(command, state);
+  if (command.type === 'cancel') {
+    return decideCancel(command, state);
   }
-  return command.type === 'finish' ? decideFinish(command, state) : decideSettlement(command, state);
+  const run = runOf(state);
+  if (command.type === 'tool_call') {
+    return decideToolCall(command, run);
+  }
+  return command.type === 'finish' ? decideFinish(command, run) : decideSettlement(command, run);
 }

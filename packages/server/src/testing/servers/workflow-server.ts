@@ -4,7 +4,7 @@ import type { McpSession, ToolResult } from '@beonauto/api/testing';
 import type { ScriptedReply } from '@beonauto/inference/testing';
 import { Option, Schema } from 'effect';
 
-import type { ProgramPoolOf } from '../composition/served-computation.ts';
+import type { ProgramPoolOf } from '../../composition/served-computation.ts';
 import type { RequestOptions, TestResponse } from './http-client.ts';
 import { servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 

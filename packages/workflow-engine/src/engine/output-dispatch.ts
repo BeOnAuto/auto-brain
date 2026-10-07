@@ -31,7 +31,7 @@ function performed(
     return ports.executor.start(output, run);
   }
   if (output.kind === 'cancel_call') {
-    return ports.executor.cancel(output, run);
+    return ports.executor.cancel(output, run, origin);
   }
   if (output.kind === 'arm_listener') {
     return ports.listeners.arm(output, run, origin);
@@ -52,17 +52,22 @@ function originOf(version: number, { steps }: RunEvent): OutputOrigin {
   return { version, lastStep: last !== undefined && isRecordedStep(last) ? keyOf(last) : null };
 }
 
+function isMootOnceEnded(output: RunOutput): boolean {
+  return output.kind === 'start_call';
+}
+
 function firstFailureIn(
   ports: EnginePorts,
   run: RunContext,
   events: readonly PositionedEvent[],
+  ended: boolean,
 ): Effect.Effect<number | null> {
   return Effect.gen(function* () {
     for (const { version, event } of events) {
       const origin = originOf(version, event);
       for (const output of event.outputs) {
         const done = yield* Effect.result(performed(ports, run, output, origin));
-        if (Result.isFailure(done)) {
+        if (Result.isFailure(done) && !(ended && isMootOnceEnded(output))) {
           return version;
         }
       }
@@ -88,7 +93,7 @@ export function dispatchRun(ports: EnginePorts, loaded: LoadedForDispatch): Effe
   return Effect.gen(function* () {
     const watermark = yield* ports.watermark.read(executionId);
     const events = yield* ports.runStore.eventsAfter(executionId, watermark);
-    const failed = yield* firstFailureIn(ports, run, events);
+    const failed = yield* firstFailureIn(ports, run, events, state.status === 'ended');
     const changed = failed !== null || events.some((event) => changesTimers(event));
     const noted = changed ? yield* notedDue(ports, run, loaded) : true;
     const through = noted ? dispatchedThrough(watermark, events, failed ?? undefined) : watermark;

@@ -14,6 +14,7 @@ export interface FollowerAssembly extends ReactionUse {
   readonly appended: FollowerParts['appended'];
   readonly pace: FollowerParts['pace'];
   readonly consumers: PassParts['registered'];
+  readonly calls: PassParts['calls'];
 }
 
 export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Follower {
@@ -26,6 +27,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     brains,
     consumers: reacting.consumers,
     registered: assembly.consumers,
+    calls: assembly.calls,
     primitive: assembly.options.primitive,
     applySpecRecord: reacting.applySpecRecord,
     unreadable: (brainKey, record) =>

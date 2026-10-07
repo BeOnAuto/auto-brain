@@ -10,7 +10,12 @@ import { deeplyFrozen, frozenRuns } from '../testing/frozen-runs.ts';
 import { at, executionId, runningState, started } from '../testing/runs.ts';
 import { runCacheOf } from './run-cache.ts';
 
-const cancelled: RunInput = { kind: 'cancel_requested', executionId, at: at + 1 };
+const cancelled: RunInput = {
+  kind: 'cancel_requested',
+  executionId,
+  at: at + 1,
+  cancel: { by: 'tester', kind: 'requested', reason: 'The test cancelled the run' },
+};
 
 const writing: RunDecider = {
   ...countingDecider,

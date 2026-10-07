@@ -3,10 +3,13 @@ import { Data, type Effect } from 'effect';
 
 import type { FollowedEvent } from './followed-events.ts';
 
-export interface FollowedRecord {
+export interface CallRecord {
   readonly brain: BrainAddress;
   readonly brainKey: string;
   readonly record: RecordedEvent;
+}
+
+export interface FollowedRecord extends CallRecord {
   readonly event: FollowedEvent;
 }
 
@@ -24,15 +27,38 @@ interface Batch {
   readonly more: boolean;
 }
 
-export interface RecordConsumer {
+export interface RecordConsumer<Followed extends CallRecord = FollowedRecord> {
   readonly name: string;
   readonly skippedAfterSweeps: number;
-  readonly batchOf: (followed: FollowedRecord, after: string | undefined, most: number) => Effect.Effect<Batch>;
-  readonly skipped: (followed: FollowedRecord, delivery: Delivery, detail: string) => Effect.Effect<void>;
+  readonly batchOf: (followed: Followed, after: string | undefined, most: number) => Effect.Effect<Batch>;
+  readonly skipped: (followed: Followed, delivery: Delivery, detail: string) => Effect.Effect<void>;
 }
 
 export interface Consumer extends RecordConsumer {
   readonly types: readonly string[];
+}
+
+export interface CallConsumer extends RecordConsumer<CallRecord> {
+  readonly types: readonly string[];
+}
+
+export interface BoundConsumer {
+  readonly name: string;
+  readonly skippedAfterSweeps: number;
+  readonly batchOf: (after: string | undefined, most: number) => Effect.Effect<Batch>;
+  readonly skipped: (delivery: Delivery, detail: string) => Effect.Effect<void>;
+}
+
+export function boundTo<Followed extends CallRecord>(
+  consumer: RecordConsumer<Followed>,
+  followed: Followed,
+): BoundConsumer {
+  return {
+    name: consumer.name,
+    skippedAfterSweeps: consumer.skippedAfterSweeps,
+    batchOf: (after, most) => consumer.batchOf(followed, after, most),
+    skipped: (delivery, detail) => consumer.skipped(followed, delivery, detail),
+  };
 }
 
 export const deliveriesOfARecordInAPass = 100;

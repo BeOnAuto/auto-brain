@@ -6,10 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
 import { startServer } from '../lifecycle/lifecycle.ts';
-import { request } from '../testing/http-client.ts';
-import { appendMalformedBrainEvent } from '../testing/malformed-brain-event.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
-import { temporaryLedger, type TemporaryLedger } from '../testing/temporary-ledger.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { appendMalformedBrainEvent } from '../testing/records/malformed-brain-event.ts';
+import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { request } from '../testing/servers/http-client.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 

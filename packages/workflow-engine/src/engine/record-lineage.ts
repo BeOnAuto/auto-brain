@@ -10,6 +10,9 @@ function causeOf(input: RunInput, { resumed }: RunEvent): RecordCause {
   if (resumed !== undefined && resumed !== null) {
     return { kind: 'resumed', step: { ...resumed, outcome: 'waiting' } };
   }
+  if (input.kind === 'cancel_requested' && input.cause !== undefined) {
+    return { kind: 'given', id: input.cause };
+  }
   return input.kind === 'timer_fired' ? { kind: 'timer', timerId: input.timerId } : { kind: 'none' };
 }
 

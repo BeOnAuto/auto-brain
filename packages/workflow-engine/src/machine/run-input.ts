@@ -13,6 +13,13 @@ const PositiveMillisecondsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualT
 export const RunLimitsSchema = Schema.Struct({
   mostDurationMs: PositiveMillisecondsSchema,
   longestCallMs: PositiveMillisecondsSchema,
+  longestCallMsByTask: Schema.optionalKey(Schema.Record(Schema.String, PositiveMillisecondsSchema)),
+});
+
+export const CancelOrderSchema = Schema.Struct({
+  by: Schema.NonEmptyString,
+  kind: Schema.Literals(['requested', 'deadline', 'parent_ended']),
+  reason: Schema.String,
 });
 
 const StartedSchema = Schema.Struct({
@@ -63,6 +70,8 @@ const CancelRequestedSchema = Schema.Struct({
   kind: Schema.Literal('cancel_requested'),
   executionId: ExecutionIdSchema,
   at: InstantSchema,
+  cancel: CancelOrderSchema,
+  cause: Schema.optionalKey(Schema.NonEmptyString),
 });
 
 export const RunInputSchema = Schema.Union([
@@ -75,6 +84,8 @@ export const RunInputSchema = Schema.Union([
 ]);
 
 export type RunLimits = typeof RunLimitsSchema.Type;
+
+export type CancelOrder = typeof CancelOrderSchema.Type;
 
 export type Started = typeof StartedSchema.Type;
 

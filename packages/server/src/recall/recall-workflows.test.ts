@@ -3,7 +3,7 @@ import { answers, jsonResult, type ScriptedReply } from '@beonauto/inference/tes
 import { recallDocument } from '@beonauto/recollection/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   brainWithReviews,
   inState,
@@ -12,8 +12,8 @@ import {
   servingRecall,
   standingUntil,
   verdicts,
-} from '../testing/recall-server.ts';
-import { executionIdIn, settledExecution, settledOverMcp, workflowSource } from '../testing/workflow-server.ts';
+} from '../testing/servers/recall-server.ts';
+import { executionIdIn, settledExecution, settledOverMcp, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const advise = [
   '---',

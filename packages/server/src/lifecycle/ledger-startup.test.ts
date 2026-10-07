@@ -4,7 +4,7 @@ import { unreachableDatabase } from '@beonauto/ledger/testing';
 import { describe, expect, it } from 'vitest';
 
 import { compositionRoot } from '../composition/composition-root.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { startServer } from './lifecycle.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));

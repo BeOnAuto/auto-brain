@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 import { onTestFinished } from 'vitest';
 
-import { request, type TestResponse } from './http-client.ts';
-import { alpha } from './reasoning-server.ts';
+import { temporaryLedger } from '../records/temporary-ledger.ts';
+import { request, type TestResponse } from '../servers/http-client.ts';
+import { alpha } from '../servers/reasoning-server.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
-import { temporaryLedger } from './temporary-ledger.ts';
 
-const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
+const mainModule = fileURLToPath(new URL('../../main.ts', import.meta.url));
 
 const verdict = [
   '---',

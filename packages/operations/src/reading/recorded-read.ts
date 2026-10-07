@@ -4,7 +4,7 @@ export type RecordedOrder = 'asc' | 'desc';
 
 export type RecordedSelection =
   | { readonly kind: 'everything' }
-  | { readonly kind: 'executions' }
+  | { readonly kind: 'executions'; readonly notBeginningWith?: readonly string[] }
   | { readonly kind: 'run'; readonly execution: string }
   | { readonly kind: 'correlated'; readonly correlation: string };
 

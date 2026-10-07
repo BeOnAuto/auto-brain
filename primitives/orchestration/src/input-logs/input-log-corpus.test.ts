@@ -8,7 +8,14 @@ import { recordedInputLogs, recordInputLog } from './input-log-corpus.ts';
 
 const log = {
   name: 'example',
-  inputs: [{ kind: 'cancel_requested', executionId: '0199a3c4-7d2e-7c1a-9b3f-000000000300', at: 1 }],
+  inputs: [
+    {
+      kind: 'cancel_requested',
+      executionId: '0199a3c4-7d2e-7c1a-9b3f-000000000300',
+      at: 1,
+      cancel: { by: 'tester', kind: 'requested', reason: 'The test cancelled the run' },
+    },
+  ],
   events: [],
 } as const;
 

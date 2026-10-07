@@ -1,33 +1,67 @@
 import type { Schema } from 'effect';
 
 import type { ExecutionResult } from './execution-commands.ts';
-import type { ExecutionEvent, ExecutionFinished, ExecutionStarted } from './execution-events.ts';
+import type {
+  CalledBy,
+  CancelRequestKind,
+  ExecutionEvent,
+  ExecutionFinished,
+  ExecutionStarted,
+} from './execution-events.ts';
 import type { ExecutionRecord } from './execution.ts';
+
+export interface AskedCancel {
+  readonly kind: CancelRequestKind;
+  readonly reason: string;
+  readonly by: string;
+}
 
 export interface RecordedExecution {
   readonly input: Schema.Json;
   readonly execution: ExecutionRecord;
   readonly finishesLater: boolean;
+  readonly deferred: boolean;
   readonly callsTools: boolean;
-  readonly toolCalls: number;
+  readonly lastCall: number;
+  readonly mayHaveChanged: boolean;
+  readonly cancel?: AskedCancel;
   readonly depth: number;
+  readonly callDepth: number;
+  readonly calledBy?: CalledBy;
   readonly record?: Schema.JsonObject;
   readonly result?: ExecutionResult;
 }
 
 export type ExecutionState = RecordedExecution | undefined;
 
-function startedExecution(
-  { primitive, name, spec_version, input, calls_tools, depth = 0, by, at }: ExecutionStarted,
-  earlier: ExecutionState,
-): RecordedExecution {
+interface CancelledBeforeStart {
+  readonly cancelledBeforeStart: AskedCancel;
+}
+
+export type ExecutionStreamState = ExecutionState | CancelledBeforeStart;
+
+export function runOf(state: ExecutionStreamState): ExecutionState {
+  return state === undefined || 'cancelledBeforeStart' in state ? undefined : state;
+}
+
+export function cancelBeforeStartOf(state: ExecutionStreamState): AskedCancel | undefined {
+  return state !== undefined && 'cancelledBeforeStart' in state ? state.cancelledBeforeStart : undefined;
+}
+
+function startedExecution(event: ExecutionStarted, earlier: ExecutionState): RecordedExecution {
+  const { primitive, name, spec_version, input, calls_tools, finishes_later, depth = 0, by, at } = event;
+  const { call_depth: callDepth = 0, called_by: calledBy } = event;
   return {
     input,
     execution: { primitive, name, spec_version, status: 'started', started_at: at, started_by: by },
-    finishesLater: false,
+    finishesLater: finishes_later === true,
+    deferred: false,
     callsTools: calls_tools === true,
-    toolCalls: earlier?.toolCalls ?? 0,
+    lastCall: earlier?.lastCall ?? 0,
+    mayHaveChanged: earlier?.mayHaveChanged ?? false,
     depth,
+    callDepth,
+    ...(calledBy === undefined ? {} : { calledBy }),
   };
 }
 
@@ -38,7 +72,7 @@ function resultOf(event: ExecutionFinished): ExecutionResult {
   if (event.type === 'execution_rejected') {
     return { type: event.type, rejection: event.rejection };
   }
-  return { type: event.type };
+  return event.incident === undefined ? { type: event.type } : { type: event.type, incident: event.incident };
 }
 
 function finishedRecord(
@@ -69,35 +103,56 @@ function finishedExecution(state: RecordedExecution, event: ExecutionFinished): 
 
 function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, ExecutionStarted>): RecordedExecution {
   if (event.type === 'tool_call_started') {
-    return { ...state, toolCalls: state.toolCalls + 1 };
+    return { ...state, lastCall: event.number, mayHaveChanged: true };
   }
   if (event.type === 'tool_call_answered') {
     return state;
   }
+  if (event.type === 'execution_cancel_requested') {
+    const { kind, reason, by } = event;
+    return { ...state, cancel: { kind, reason, by } };
+  }
   return event.type === 'execution_deferred'
-    ? { ...state, finishesLater: true, record: event.record }
+    ? { ...state, deferred: true, record: event.record }
     : finishedExecution(state, event);
 }
 
-export function evolveExecution(state: ExecutionState, event: ExecutionEvent): ExecutionState {
+export function evolveExecution(state: ExecutionStreamState, event: ExecutionEvent): ExecutionStreamState {
   if (event.type === 'execution_started') {
-    return startedExecution(event, state);
+    return startedExecution(event, runOf(state));
   }
-  return state === undefined ? state : evolveStarted(state, event);
+  const run = runOf(state);
+  if (run !== undefined) {
+    return evolveStarted(run, event);
+  }
+  if (state === undefined && event.type === 'execution_cancel_requested') {
+    const { kind, reason, by } = event;
+    return { cancelledBeforeStart: { kind, reason, by } };
+  }
+  return state;
 }
 
 export function hasFinalResult({ execution }: RecordedExecution): boolean {
-  return execution.status === 'succeeded' || execution.rejection?.reason === 'invalid_input';
+  const reason = execution.rejection?.reason;
+  return execution.status === 'succeeded' || reason === 'invalid_input' || reason === 'cancelled';
 }
 
-export function awaitsSettlement({ execution, finishesLater }: RecordedExecution): boolean {
-  return execution.status === 'started' && finishesLater;
+export function awaitsSettlement({ execution, deferred }: RecordedExecution): boolean {
+  return execution.status === 'started' && deferred;
+}
+
+export function takesSettlement({ execution, finishesLater, deferred }: RecordedExecution): boolean {
+  return execution.status === 'started' && (finishesLater || deferred);
 }
 
 export function isRunning({ execution }: RecordedExecution): boolean {
   return execution.status === 'started';
 }
 
-export function calledTools({ toolCalls }: RecordedExecution): boolean {
-  return toolCalls > 0;
+export function lastCallOf(state: ExecutionState): number {
+  return state?.lastCall ?? 0;
+}
+
+export function mayHaveChangedSomething({ mayHaveChanged }: RecordedExecution): boolean {
+  return mayHaveChanged;
 }

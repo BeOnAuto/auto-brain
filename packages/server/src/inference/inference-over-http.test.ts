@@ -1,7 +1,7 @@
 import { answers, jsonResult, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const summary = [
   '---',

@@ -62,11 +62,34 @@ describe('the journal of a run', () => {
     expect(user.primitive.describeOutput({ recorded: [] })).toBe('It called its tools.');
   });
 
-  it('records nothing more once the run has finished', async () => {
+  it('numbers the calls made at once in the order their starts land, each from the run, never twice', async () => {
+    const { call, executing, getExecutionHistory } = await brainWithToolUser();
+    await executing({ calls: 10 });
+
+    const read = await call(getExecutionHistory, toAlpha(acmeAdmin, { execution_id: executionId, limit: 100 }));
+    const { events } = Schema.decodeUnknownSync(
+      Schema.Struct({
+        output: Schema.Struct({
+          events: Schema.Array(
+            Schema.Struct({ type: Schema.String, data: Schema.Struct({ number: Schema.optionalKey(Schema.Int) }) }),
+          ),
+        }),
+      }),
+    )(read).output;
+
+    expect(events.filter(({ type }) => type === 'tool_call_started').map(({ data }) => data.number)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    ]);
+  });
+});
+
+describe('the journal of a run that has finished', () => {
+  it('records nothing more', async () => {
     const { executing, history, user } = await brainWithToolUser();
     await executing({ calls: 1 });
 
     expect(await user.recordedLate()).toEqual([false]);
+    expect(await user.startedLate()).toEqual([undefined]);
     expect(await history()).toEqual([
       'execution_started',
       'tool_call_started',

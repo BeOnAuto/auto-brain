@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { linesLoggedBy } from '../testing/logged-lines.ts';
+import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logLedger } from './logging.ts';
 
 describe('logLedger', () => {

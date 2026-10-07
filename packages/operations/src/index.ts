@@ -12,11 +12,12 @@ export {
 export { BrainReader } from './ledger/brain-reader.ts';
 export { isCalendarDay } from './reading/calendar-days.ts';
 export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
-export { CallLineage, type GivenLineage } from './caller/call-lineage.ts';
+export { CallLineage, type CallLink, type GivenLineage } from './caller/call-lineage.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
 export { Caller, CallerIdentitySchema, brainCallerOf, type CallerIdentity } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
+export { CancelledKindSchema, RunCancelled, type CancelledKind } from './outcome/cancelled-run.ts';
 export { Conflict, ConflictKindSchema, type ConflictKind } from './outcome/conflict.ts';
 export {
   isKindWithType,
@@ -44,7 +45,7 @@ export {
   type RecordedPageRequest,
   type RecordedSelection,
 } from './reading/recorded-read.ts';
-export type { Issue } from './outcome/issue.ts';
+export { IssueSchema, type Issue } from './outcome/issue.ts';
 export type { JsonSchemaDocument } from './definition/json-schema.ts';
 export { Ledger } from './ledger/ledger.ts';
 export { messageIdOf, noLineage, type Lineage } from './ledger/message-lineage.ts';
@@ -91,7 +92,7 @@ export type { BrainRequest, OrgRequest } from './dispatch/request.ts';
 export type { Method, Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';
-export { SettlementSchema, type Settlement } from './outcome/settlement.ts';
+export { SettlementSchema, type SettledRejection, type Settlement } from './outcome/settlement.ts';
 export type {
   BrainRecordedReader,
   BrainRunOutcomesReader,

@@ -32,7 +32,7 @@ export function runSuite(settings: SettingsOf): void {
 
     expect([started, delivered, again, startedAgain]).toEqual(['started', 'delivered', 'ended', 'settled']);
     expect(hosted.calls()).toEqual([expect.objectContaining({ function: 'notify', arguments: { to: 'ada' } })]);
-    expect([...settlements]).toEqual([[executionId, { status: 'succeeded', output: [{ by: 'grace' }], record: {} }]]);
+    expect([...settlements]).toEqual([[executionId, { status: 'succeeded', output: [{ by: 'grace' }] }]]);
     expect(hosted.troubles()).toEqual([]);
   });
 }

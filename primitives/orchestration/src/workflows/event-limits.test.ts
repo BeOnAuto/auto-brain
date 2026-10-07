@@ -40,7 +40,12 @@ function flooding(count: number, event: (index: number) => unknown) {
   };
 }
 
-const ranUntilItsDeadline = { status: 'failed' };
+const ranUntilItsDeadline = {
+  status: 'rejected',
+  reason: 'cancelled',
+  kind: 'overrun',
+  detail: 'The workflow ran for 2592000000 ms, the most a workflow may run, and was stopped',
+};
 
 function rejectionDetailOf(settlement: RunSettlement | undefined): string {
   return settlement?.status === 'rejected' ? settlement.detail : '';

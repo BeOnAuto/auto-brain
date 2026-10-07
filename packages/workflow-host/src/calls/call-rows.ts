@@ -2,7 +2,7 @@ import { CallResultSchema, type CallResult } from '@beonauto/operations';
 import { CallKeySchema, type RunContext, type StartCall } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
-import { oneRowOf, rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
+import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 
 const StartCallSchema = Schema.Struct({
@@ -25,9 +25,10 @@ const encodeAttributes = Schema.encodeSync(AttributesText);
 
 const encodeResult = Schema.encodeSync(ResultText);
 
-const StateRow = Schema.Struct({
-  state: Schema.Literals(['running', 'answered', 'cancelled']),
+const CallRowSchema = Schema.Struct({
+  state: Schema.Literals(['running', 'waiting', 'answered', 'cancelled']),
   result: Schema.NullOr(ResultText),
+  child: Schema.NullOr(Schema.String),
 });
 
 const UnfinishedRow = Schema.Struct({
@@ -38,7 +39,11 @@ const UnfinishedRow = Schema.Struct({
   result: Schema.NullOr(ResultText),
 });
 
-export type CallState = typeof StateRow.Type;
+const WaitingRow = Schema.Struct({ call_key: Schema.String, call: CallText, child: Schema.String });
+
+const CountRow = Schema.Struct({ open: WholeNumber });
+
+export type CallRow = typeof CallRowSchema.Type;
 
 export interface UnfinishedCall {
   readonly key: string;
@@ -47,28 +52,65 @@ export interface UnfinishedCall {
   readonly result: CallResult | null;
 }
 
+export interface WaitingCall {
+  readonly key: string;
+  readonly call: StartCall;
+  readonly child: string;
+}
+
+export interface StartedCall {
+  readonly call: StartCall;
+  readonly run: RunContext;
+  readonly child: string | null;
+  readonly root: string;
+}
+
 export function startedRow(
   database: HostDatabase,
   key: string,
-  call: StartCall,
-  run: RunContext,
+  { call, run, child, root }: StartedCall,
 ): Effect.Effect<boolean, DatabaseFailed> {
   return database
     .write(
-      statement`INSERT INTO workflow_calls (call_key, run_id, state, call, attributes)
-        VALUES (${key}, ${run.executionId}, 'running', ${encodeCall(call)}, ${encodeAttributes(run.attributes)})
+      statement`INSERT INTO workflow_calls (call_key, run_id, state, call, attributes, child, root_id)
+        VALUES (${key}, ${run.executionId}, 'running', ${encodeCall(call)}, ${encodeAttributes(run.attributes)},
+          ${child}, ${root})
         ON CONFLICT (call_key) DO NOTHING RETURNING state`,
     )
     .pipe(Effect.map((rows) => rows.length > 0));
 }
 
-export function cancelledRow(database: HostDatabase, key: string): Effect.Effect<boolean, DatabaseFailed> {
+export function refusedRow(
+  database: HostDatabase,
+  key: string,
+  run: RunContext,
+  refusal: CallResult,
+): Effect.Effect<boolean, DatabaseFailed> {
   return database
     .write(
-      statement`UPDATE workflow_calls SET state = 'cancelled' WHERE call_key = ${key} AND state = 'running'
-        RETURNING state`,
+      statement`INSERT INTO workflow_calls (call_key, run_id, state, result) VALUES (${key}, ${run.executionId},
+        'answered', ${encodeResult(refusal)})
+        ON CONFLICT (call_key) DO NOTHING RETURNING state`,
     )
     .pipe(Effect.map((rows) => rows.length > 0));
+}
+
+export function waitingRow(database: HostDatabase, key: string, child: string): Effect.Effect<boolean, DatabaseFailed> {
+  return database
+    .write(
+      statement`UPDATE workflow_calls SET state = 'waiting', child = ${child}
+        WHERE call_key = ${key} AND state = 'running' RETURNING state`,
+    )
+    .pipe(Effect.map((rows) => rows.length > 0));
+}
+
+export function cancelledRow(database: HostDatabase, key: string): Effect.Effect<void, DatabaseFailed> {
+  return Effect.asVoid(
+    database.write(
+      statement`UPDATE workflow_calls SET state = 'cancelled' WHERE call_key = ${key}
+        AND state IN ('running', 'waiting')`,
+    ),
+  );
 }
 
 export function tombstonedRow(
@@ -92,7 +134,7 @@ export function answeredRow(
   return database
     .write(
       statement`UPDATE workflow_calls SET state = 'answered', result = ${encodeResult(result)}
-        WHERE call_key = ${key} AND state = 'running' RETURNING state`,
+        WHERE call_key = ${key} AND state IN ('running', 'waiting') RETURNING state`,
     )
     .pipe(Effect.map((rows) => rows.length > 0));
 }
@@ -101,8 +143,54 @@ export function deliveredRow(database: HostDatabase, key: string): Effect.Effect
   return Effect.asVoid(database.write(statement`UPDATE workflow_calls SET delivered = 1 WHERE call_key = ${key}`));
 }
 
-export function callStateOf(database: HostDatabase, key: string): Effect.Effect<CallState, DatabaseFailed> {
-  return oneRowOf(StateRow, database.read(statement`SELECT state, result FROM workflow_calls WHERE call_key = ${key}`));
+export function callRowOf(database: HostDatabase, key: string): Effect.Effect<CallRow | undefined, DatabaseFailed> {
+  return rowsOf(
+    CallRowSchema,
+    database.read(statement`SELECT state, result, child FROM workflow_calls WHERE call_key = ${key}`),
+  ).pipe(Effect.map((rows) => rows.at(0)));
+}
+
+export function existingRowOf(database: HostDatabase, key: string): Effect.Effect<CallRow, DatabaseFailed> {
+  return oneRowOf(
+    CallRowSchema,
+    database.read(statement`SELECT state, result, child FROM workflow_calls WHERE call_key = ${key}`),
+  );
+}
+
+export function openCallsUnder(database: HostDatabase, root: string): Effect.Effect<number, DatabaseFailed> {
+  return oneRowOf(
+    CountRow,
+    database.read(
+      statement`SELECT COUNT(*) AS open FROM workflow_calls WHERE root_id = ${root}
+        AND state IN ('running', 'waiting')`,
+    ),
+  ).pipe(Effect.map(({ open }) => open));
+}
+
+function waitingOf(rows: readonly (typeof WaitingRow.Type)[]): readonly WaitingCall[] {
+  return rows.map(({ call_key: key, call, child }) => ({ key, call, child }));
+}
+
+export function waitingCallsOf(
+  database: HostDatabase,
+  runId: string,
+): Effect.Effect<readonly WaitingCall[], DatabaseFailed> {
+  return rowsOf(
+    WaitingRow,
+    database.read(
+      statement`SELECT call_key, call, child FROM workflow_calls WHERE run_id = ${runId} AND state = 'waiting'
+        ORDER BY call_key`,
+    ),
+  ).pipe(Effect.map(waitingOf));
+}
+
+export function allWaitingCalls(database: HostDatabase): Effect.Effect<readonly WaitingCall[], DatabaseFailed> {
+  return rowsOf(
+    WaitingRow,
+    database.read(
+      statement`SELECT call_key, call, child FROM workflow_calls WHERE state = 'waiting' ORDER BY call_key`,
+    ),
+  ).pipe(Effect.map(waitingOf));
 }
 
 export function unfinishedCalls(database: HostDatabase): Effect.Effect<readonly UnfinishedCall[], DatabaseFailed> {

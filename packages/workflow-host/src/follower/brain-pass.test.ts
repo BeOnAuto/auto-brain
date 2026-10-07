@@ -127,6 +127,7 @@ async function passing(
     records: counted.records,
     brains,
     consumers,
+    calls: [],
     primitive: 'orchestration',
     applySpecRecord: () => Effect.void,
     unreadable: () => Effect.void,

@@ -1,6 +1,6 @@
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import type { Executed, PreparedDefinition, Primitive, RunContext } from '@beonauto/specs';
-import { recordingJournal } from '@beonauto/specs/testing';
+import { noLongestRuns, recordingJournal } from '@beonauto/specs/testing';
 import { programPool, type PoolSettings, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 import type { KeptView } from '@beonauto/workflow-host';
 import { Effect, type Exit, type Schema } from 'effect';
@@ -21,6 +21,8 @@ const reviewsRun: RunContext = {
   journal: recordingJournal(),
   lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
   depth: 0,
+  callDepth: 0,
+  longestRunOf: noLongestRuns,
 };
 
 type Execution = Exit.Exit<Executed, InvalidInput | Unavailable | Conflict>;

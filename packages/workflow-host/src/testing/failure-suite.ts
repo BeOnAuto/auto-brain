@@ -6,7 +6,7 @@ import { aSQLiteFile, type SettingsOf } from './host-files.ts';
 import { hostIn, linesOf, type Mode } from './host-processes.ts';
 
 const settledOnce = [
-  { id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', settlement: { status: 'succeeded', output: 'sent', record: {} } },
+  { id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', settlement: { status: 'succeeded', output: 'sent' } },
 ];
 
 const hangs: readonly { readonly mode: Mode; readonly line: string; readonly title: string }[] = [

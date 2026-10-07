@@ -77,7 +77,7 @@ describe('the facts of a run as events', () => {
 
     expect(facts).toEqual([
       { ...aboutTheRun, type: 'execution_started', data: ofTheRun },
-      { ...aboutTheRun, type: 'execution_rejected', data: ofTheRun },
+      { ...aboutTheRun, type: 'execution_rejected', data: { ...ofTheRun, reason: 'unavailable' } },
       { ...aboutTheRun, type: 'execution_failed', data: ofTheRun },
     ]);
     expect(facts.every((event) => isCloudEvent(event))).toBe(true);
@@ -133,8 +133,13 @@ describe('the output a success carries as an event', () => {
 });
 
 describe('the records of a run that are no facts', () => {
-  it('are its deferrals and its tool calls', () => {
+  it('are its deferrals, its cancel requests and its tool calls', () => {
     expect(brainFactOf(ofRun({ type: 'execution_deferred', record: { run: 'r-1' }, ...fact }))).toBeUndefined();
+    expect(
+      brainFactOf(
+        ofRun({ type: 'execution_cancel_requested', kind: 'requested', reason: 'No', ...ofSummary, ...fact }),
+      ),
+    ).toBeUndefined();
     expect(
       brainFactOf(
         ofRun({

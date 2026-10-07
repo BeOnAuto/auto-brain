@@ -37,7 +37,7 @@ export interface Development {
 
 const runner = fileURLToPath(new URL('run-development.ts', import.meta.url));
 
-const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
+const mainModule = fileURLToPath(new URL('../../main.ts', import.meta.url));
 
 const pidLine = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Struct({ pid: Schema.optional(Schema.Number) })));
 

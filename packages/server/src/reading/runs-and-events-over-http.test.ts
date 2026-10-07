@@ -7,8 +7,8 @@ import { Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
-import type { TestResponse } from '../testing/http-client.ts';
-import { alpha, servingReasoning, type ReasoningServer } from '../testing/reasoning-server.ts';
+import type { TestResponse } from '../testing/servers/http-client.ts';
+import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 

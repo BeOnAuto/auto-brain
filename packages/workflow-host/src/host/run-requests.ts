@@ -4,10 +4,10 @@ import { Data, Effect, Schema } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import type { HostClock } from '../loop/host-clock.ts';
 import { ledgerRunStore } from '../runs/ledger-run-store.ts';
 import { runIdOf, type RunAddress } from '../runs/run-address.ts';
 import { backOffLifted } from '../settlement/settle-attempts.ts';
+import { cancelledIfAsked } from '../waiting/pending-cancels.ts';
 import type { HostEngine } from './host-engine.ts';
 
 export type RunStart = Omit<Started, 'kind' | 'executionId' | 'at'>;
@@ -26,7 +26,7 @@ export interface RunRequests {
 
 export interface RequestParts {
   readonly database: HostDatabase;
-  readonly clock: HostClock;
+  readonly clock: { readonly now: () => number };
   readonly serving: () => HostEngine | undefined;
 }
 
@@ -87,7 +87,11 @@ export function runRequests(parts: RequestParts): RunRequests {
           return 'going';
         }
         const { outcome } = yield* engine.submitted({ ...start, kind: 'started', executionId: runId, at: clock.now() });
-        return outcome === 'applied' ? 'started' : 'going';
+        if (outcome !== 'applied') {
+          return 'going';
+        }
+        yield* cancelledIfAsked({ database, submitted: engine.submitted, now: clock.now }, run);
+        return 'started';
       }),
     deliver: (run, event) =>
       Effect.gen(function* () {

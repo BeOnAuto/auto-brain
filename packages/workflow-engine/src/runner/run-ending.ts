@@ -51,7 +51,7 @@ export function lifecycleOf(cell: RunCell, ending: Ending, now: number): Lifecyc
       cell.update({ state: { ...cell.get().state, cancelRequested: true } });
     },
     end: (outcome) => {
-      ending.calls.cancelAll();
+      ending.calls.cancelAll('parent_ended');
       ending.listeners.cancelAll();
       ending.timers.disarmAll();
       ending.inbox.clear();

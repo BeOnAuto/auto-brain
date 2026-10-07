@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { compositionRoot } from '../composition/composition-root.ts';
 import { release } from '../composition/release.ts';
 import { startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
-import { temporaryLedger, type TemporaryLedger } from '../testing/temporary-ledger.ts';
+import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const acmeAdmin = createApiKey({ id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' });
 
@@ -26,6 +26,7 @@ const specTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'cancel_execution',
   'list_executions',
   'get_execution_history',
   'get_brain_analytics',

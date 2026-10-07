@@ -1,8 +1,9 @@
 import { invalidArguments, type CallResult } from '@beonauto/operations';
 
+import type { CancelReason } from '../dispatch/run-output.ts';
 import { evaluateTemplate } from '../dsl/evaluation.ts';
 import { field, jsonBytesOf } from '../dsl/json.ts';
-import { callErrorOf, errorType, raised } from '../dsl/raised-error.ts';
+import { callErrorOf, capitalized, errorType, raised } from '../dsl/raised-error.ts';
 import { callKeyText } from '../executor/call-key.ts';
 import type { DslError } from '../machine/dsl-error.ts';
 import { mostCallArgumentsBytes } from '../machine/limits.ts';
@@ -70,9 +71,14 @@ function answered({ machine }: Invocation, body: CallBody, result: CallResult): 
   return result.status === 'succeeded' ? doneOf(machine.session.hold(result.output)) : raisedOf(errorOf(result, body));
 }
 
-function unreachable({ machine }: Invocation, body: CallBody, milliseconds: number): BodyAdvance {
-  machine.session.calls.cancelCall(body);
-  return raisedOf(errorOf({ status: 'unreachable', detail: `No answer came within ${milliseconds} ms` }, body));
+function timedOutCall({ machine }: Invocation, body: CallBody, milliseconds: number): BodyAdvance {
+  machine.session.calls.cancelCall(body, 'deadline');
+  return raisedOf({
+    type: errorType('timeout'),
+    status: 408,
+    title: `${capitalized(body.label)} did not finish within ${milliseconds} ms, the most it may take`,
+    instance: body.key.reference,
+  });
 }
 
 function resumed({ machine }: Invocation, { key }: CallBody): void {
@@ -86,11 +92,11 @@ export function resumeCall(invocation: Invocation, body: CallBody, signal: Signa
   }
   if (signal.kind === 'timer' && signal.timerId === body.deadline) {
     resumed(invocation, body);
-    return unreachable(invocation, body, signal.timer.dueAt - signal.timer.armedAt);
+    return timedOutCall(invocation, body, signal.timer.dueAt - signal.timer.armedAt);
   }
   return undefined;
 }
 
-export function cancelCall(machine: Machine, body: CallBody): void {
-  machine.session.calls.cancelCall(body);
+export function cancelCall(machine: Machine, body: CallBody, reason: CancelReason): void {
+  machine.session.calls.cancelCall(body, reason);
 }

@@ -20,12 +20,17 @@ const note = defineCommand('brain', {
   description: 'Notes that it was called, with the lineage the call was given.',
   route: { method: 'POST', path: '/notes' },
   inputSchema: Schema.Record(Schema.String, Schema.Never),
-  outputSchema: Schema.Struct({ version: Schema.Int, depth: Schema.Int }),
+  outputSchema: Schema.Struct({
+    version: Schema.Int,
+    depth: Schema.Int,
+    callDepth: Schema.Int,
+    calledBy: Schema.NullOr(Schema.Struct({ execution_id: Schema.String, reference: Schema.String, run: Schema.Int })),
+  }),
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* () {
-    const { lineage, depth } = yield* CallLineage;
+    const { lineage, depth, callDepth, calledBy } = yield* CallLineage;
     const { version } = yield* (yield* BrainWriter).execute('notes', notes, null, lineage ?? undefined);
-    return { version, depth };
+    return { version, depth, callDepth, calledBy };
   }),
 });
 
@@ -56,9 +61,24 @@ describe('the lineage of a call', () => {
       await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin))),
     ];
 
-    expect(outcomes).toEqual([
+    expect(outcomes).toMatchObject([
       { status: 'succeeded', output: { version: 1, depth: 3 } },
       { status: 'succeeded', output: { version: 2, depth: 0 } },
+    ]);
+  });
+
+  it('carries how many calls are above the run and the call it answers, and none for a request that gave none', async () => {
+    const { dispatcher, run } = harness();
+    const calledBy = { execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 2 };
+
+    const outcomes = [
+      await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), callDepth: 2, calledBy })),
+      await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin))),
+    ];
+
+    expect(outcomes).toEqual([
+      { status: 'succeeded', output: { version: 1, depth: 0, callDepth: 2, calledBy } },
+      { status: 'succeeded', output: { version: 2, depth: 0, callDepth: 0, calledBy: null } },
     ]);
   });
 });

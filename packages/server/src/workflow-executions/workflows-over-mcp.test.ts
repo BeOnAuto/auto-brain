@@ -5,8 +5,8 @@ import { answers, jsonResult, type ScriptedReply } from '@beonauto/inference/tes
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ReasoningServer } from '../testing/reasoning-server.ts';
-import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
+import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const verdict = [
   '---',
@@ -44,6 +44,7 @@ const brainTools = [
   'retire_spec',
   'execute_spec',
   'get_execution',
+  'cancel_execution',
   'list_executions',
   'get_execution_history',
   'get_brain_analytics',

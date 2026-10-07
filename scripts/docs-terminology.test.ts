@@ -24,5 +24,6 @@ await test('terminology distinguishes available and absent capabilities', () => 
       'Auto Cloud tool access, skill references and a separately managed tool library are still planned',
     ),
   );
-  assert.ok(terminology.includes('calling another workflow, or a subworkflow, is not supported yet'));
+  assert.ok(terminology.includes('A workflow can call the functions of its brain and other workflows'));
+  assert.ok(terminology.includes('a workflow called this way is a subworkflow'));
 });

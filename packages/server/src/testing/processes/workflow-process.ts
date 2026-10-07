@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import { tcpPort } from '../lifecycle/lifecycle.ts';
+import { tcpPort } from '../../lifecycle/lifecycle.ts';
+import { executionIdIn, isStarted, workflowSource } from '../servers/workflow-server.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
-import { executionIdIn, isStarted, workflowSource } from './workflow-server.ts';
 
 export interface LogLine {
   readonly message: string;
@@ -22,7 +22,7 @@ export interface Answer {
   readonly body: unknown;
 }
 
-const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
+const mainModule = fileURLToPath(new URL('../../main.ts', import.meta.url));
 
 const decodeLine = Schema.decodeUnknownSync(
   Schema.fromJsonString(

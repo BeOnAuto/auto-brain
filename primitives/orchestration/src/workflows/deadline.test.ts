@@ -7,16 +7,21 @@ const threeHours = 10_800_000;
 const stoppedAfter = threeHours;
 
 describe('a workflow that runs up to the most it may run', () => {
-  it('is stopped once it has run the most it may, exactly, and settles its execution failed', async () => {
+  it('is stopped once it has run the most it may, exactly, and ends cancelled as overrun', async () => {
     const waiting = workflow('do:\n  - await: { listen: { to: { one: { with: { type: never } } } } }');
     const { ending, settlement, commands, fake } = await interpret(waiting, { mostDuration: threeHours });
 
     expect(commands[0]).toStrictEqual({ kind: 'deadline', milliseconds: stoppedAfter });
-    expect(settlement).toStrictEqual({ status: 'failed' });
+    expect(settlement).toStrictEqual({
+      status: 'rejected',
+      reason: 'cancelled',
+      kind: 'overrun',
+      detail: `The workflow ran for ${stoppedAfter} ms, the most a workflow may run, and was stopped`,
+    });
     expect(ending).toStrictEqual({
       kind: 'failed',
       type: 'WorkflowRanTooLong',
-      message: `The workflow ran for ${stoppedAfter} ms, the most it may run; it was stopped and its execution settled failed`,
+      message: `The workflow ran for ${stoppedAfter} ms, the most it may run; it was stopped and its run ended cancelled`,
     });
     expect(fake.now() - Date.parse('2026-10-01T09:00:00.000Z')).toBe(stoppedAfter);
   });

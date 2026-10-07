@@ -24,6 +24,10 @@ function givenOf(runId: string, attributes: Schema.JsonObject): GivenLineage {
   });
 }
 
+export function correlationOfRun(runId: string, attributes: Schema.JsonObject): string {
+  return givenOf(runId, attributes).correlation;
+}
+
 function causeOfRecord(
   database: HostDatabase,
   runId: string,
@@ -35,6 +39,9 @@ function causeOfRecord(
   }
   if (cause.kind === 'resumed') {
     return Effect.succeed(stepEventIdOf(addressOfRun(runId).executionId, cause.step));
+  }
+  if (cause.kind === 'given') {
+    return Effect.succeed(cause.id);
   }
   return cause.kind === 'timer'
     ? Effect.map(armedByOf(database, runId, cause.timerId), (armedBy) =>

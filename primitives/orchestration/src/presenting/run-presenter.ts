@@ -48,6 +48,10 @@ function inputShown(receipt: InputReceipt, executionId: string): Schema.JsonObje
       event_type: cutAtCodePoint(receipt.eventType, mostKeyBytes),
     };
   }
+  if (receipt.kind === 'cancel_requested' && receipt.cancel !== undefined) {
+    const { by, kind } = receipt.cancel;
+    return { kind: receipt.kind, key: executionId, cancel: { by: cutAtCodePoint(by, mostKeyBytes), kind } };
+  }
   return { kind: receipt.kind, key: receipt.kind === 'timer_fired' ? receipt.key : executionId };
 }
 

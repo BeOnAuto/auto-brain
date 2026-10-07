@@ -1,5 +1,5 @@
 import { NotFound, SettlementSchema, type Lineage, type Settlement } from '@beonauto/operations';
-import type { SettleExecution, Settlement as RecordedSettlement } from '@beonauto/specs';
+import type { SettleExecution } from '@beonauto/specs';
 import { DispatchFailed, type RecordStore, type SettleReceipt } from '@beonauto/workflow-engine';
 import { Cause, Effect, Equal, Option, Predicate, Schema } from 'effect';
 
@@ -40,10 +40,6 @@ interface Settling {
   readonly runId: string;
   readonly settlement: Settlement;
   readonly lineage: Lineage;
-}
-
-function recordedSettlementOf(settlement: Settlement): RecordedSettlement {
-  return settlement.status === 'succeeded' ? { ...settlement, record: {} } : settlement;
 }
 
 function recorded(database: HostDatabase, runId: string, settlement: Settlement): Effect.Effect<void, DatabaseFailed> {
@@ -90,7 +86,7 @@ function succeeded({ database, parts, runId, settlement }: Settling, attemptsBef
 function settledFor(settling: Settling, attemptsBefore: number): Receipt {
   const { org, brain, executionId } = addressOfRun(settling.runId);
   const execution = { org, brain, id: executionId };
-  return settling.parts.settle(execution, recordedSettlementOf(settling.settlement), settling.lineage).pipe(
+  return settling.parts.settle(execution, settling.settlement, settling.lineage).pipe(
     Effect.matchCauseEffect({
       onSuccess: () => succeeded(settling, attemptsBefore),
       onFailure: (cause: Cause.Cause<unknown>) =>

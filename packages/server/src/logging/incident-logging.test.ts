@@ -3,11 +3,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { linesLoggedBy } from '../testing/logged-lines.ts';
-import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from '../testing/spawned-server.ts';
+import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logIncident } from './logging.ts';
 
-const serveWithSelfCausedError = fileURLToPath(new URL('../testing/serve-with-self-caused-error.ts', import.meta.url));
+const serveWithSelfCausedError = fileURLToPath(
+  new URL('../testing/entries/serve-with-self-caused-error.ts', import.meta.url),
+);
 
 const selfCaused = new Error('an error whose cause is itself');
 selfCaused.cause = selfCaused;

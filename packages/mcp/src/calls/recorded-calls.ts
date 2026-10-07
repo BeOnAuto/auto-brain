@@ -9,7 +9,6 @@ export type CallOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_ou
 
 export interface CallStarted {
   readonly type: 'tool_call_started';
-  readonly number: number;
   readonly call_id: string;
   readonly server: string;
   readonly tool: string;
@@ -30,14 +29,14 @@ export interface CallAnswered {
   readonly result_json?: string;
 }
 
-export type RecordedCall = CallStarted | CallAnswered;
+export type RecordedCall = (CallStarted & { readonly number: number }) | CallAnswered;
 
 export interface CallJournal {
-  readonly record: (fact: RecordedCall) => Effect.Effect<boolean>;
+  readonly started: (fact: CallStarted) => Effect.Effect<number | undefined>;
+  readonly answered: (fact: CallAnswered) => Effect.Effect<boolean>;
 }
 
 export interface StartedCall {
-  readonly number: number;
   readonly callId: string;
   readonly server: string;
   readonly tool: string;
@@ -70,7 +69,6 @@ function contentOf(name: string, json: string, { content, scrub }: Recording) {
 export function callStarted(call: StartedCall, recording: Recording): CallStarted {
   return {
     type: 'tool_call_started',
-    number: call.number,
     call_id: call.callId,
     server: call.server,
     tool: call.tool,
