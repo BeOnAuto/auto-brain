@@ -71,6 +71,10 @@
         "link": "/reference/reasoning-format"
       },
       {
+        "text": "Interaction function format",
+        "link": "/reference/interaction-format"
+      },
+      {
         "text": "Computation function format",
         "link": "/reference/computation-format"
       },

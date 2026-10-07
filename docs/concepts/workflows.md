@@ -8,9 +8,9 @@ A workflow is a saved definition that coordinates a brain's functions through st
 
 A function defines a reusable operation; a step is where a workflow uses it. A reasoning function such as `review-campaign-brief` can be called directly by an agent and used as a step in more than one workflow. Other steps decide what happens next, wait, repeat work or handle errors without calling a function.
 
-In the current runtime, the functions a workflow calls are reasoning functions in the same brain and, in a self-hosted runtime, computation and recall functions. A workflow reaches outside the brain only through those functions: it makes no network calls of its own, and a computation or recall function reaches nothing outside either. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
+In the current runtime, the functions a workflow calls are reasoning functions in the same brain and, in a self-hosted runtime, interaction, computation and recall functions. A workflow reaches outside the brain only through those functions: it makes no network calls of its own, an interaction function reaches only the channels the runtime's operator configures, and a computation or recall function reaches nothing outside. Check [Functions and availability](functions.md#availability) before planning a step around another function type.
 
-A budget-review workflow could assess the options with a reasoning function, then wait for a person's approval. The evidence arrives as the run's input or with an event, and the approval is an event sent to the waiting run. [Build your first workflow](../tutorials/first-workflow.md) builds a small version: it reviews a campaign brief, waits for the revised brief, and reviews that.
+A budget-review workflow could assess the options with a reasoning function, then ask a person to approve them with an interaction function. The evidence arrives as the run's input or with an event, and the approval is the answer to the interaction function's request. [Build your first workflow](../tutorials/first-workflow.md) builds a small version: it reviews a campaign brief, then asks its owner to approve it through the brain's inbox.
 
 ## Definitions, versions and runs
 
@@ -59,7 +59,7 @@ An event answers a waiting run. A caller sends it with `send_execution_event`, n
 
 A step that listens for an event whose type it names also hears the events of the whole brain while it listens: one published with `publish_event`, emitted by another workflow, or one of the brain's facts. The run checks the event against its own filter, so it can take only the event about the case it handles. An event published before the step listened, or after it stopped, does not reach it; send the event to the run itself when it must not be missed.
 
-An approval works this way: the workflow listens for an event such as `com.example.brief.decided`, and the person's answer arrives as that event's data. A step can give up waiting after a set time and continue on another path.
+An approval is an interaction function. The workflow calls it as it calls any function; the function's run asks the person, through the brain's inbox or a channel the operator configured, and the workflow waits, holding nothing of the runtime, until someone answers with `answer_interaction`. The answer, checked against the function's answer schema, is the output of that call. A request nobody answers before it expires raises an `unanswered` error, which a workflow can catch to take another path, and the function's `expires` bounds how long the workflow waits. Events remain for input that is not the answer to a question.
 
 ## How a run ends
 
@@ -71,19 +71,19 @@ A run ends in one of three states:
 | `rejected`  | A step raised an error that no step handled; the rejection gives the reason and the step |
 | `failed`    | The run broke down inside the runtime                                                    |
 
-A run that was cancelled, or that ran as long as a run may last, is `rejected` with the reason `cancelled` and the kind of its cancellation, and a run whose output is too large to record is `rejected` as a `conflict` of the kind `oversized`.
+A run that was cancelled, or that ran as long as a run may last, is `rejected` with the reason `cancelled` and the kind of its cancellation, a run that did not catch a request nobody answered is `rejected` as `unanswered` with the kind `expired` or `undelivered`, and a run whose output is too large to record is `rejected` as a `conflict` of the kind `oversized`.
 
 A rejection's reason is `invalid_input` when the error says the input or the document led to it, and `unavailable` when it was a timeout or a function that could not be reached, failed or was unavailable; a new run may then succeed. Two endings are different, because a reasoning function's tools may have changed something: `unavailable` of the kind `tools_unfinished`, when it called tools and could not finish, and `conflict` of the kind `tools_called`, when a step met a function run whose tools may already have been called. After either, check what the run's history shows the function called before starting a new run. The [workflow format](../reference/workflow-format.md#how-a-run-ends) lists the exact rules.
 
 ## Calling another workflow
 
-A workflow calls another workflow with `execute_spec`, as it calls any function of its brain; the workflow it calls is a subworkflow. A run of a reasoning, computation or recall function finishes within its call. A run of a workflow finishes later, so the calling workflow waits for that run, holding nothing of the server while it waits, and continues with its output, or catches its rejection like any error. A server that restarts meanwhile keeps the wait, and the subworkflow's ending answers it on whichever server that ending is recorded.
+A workflow calls another workflow with `execute_spec`, as it calls any function of its brain; the workflow it calls is a subworkflow. A run of a reasoning, computation or recall function finishes within its call. A run of a workflow, like a run of an interaction function, finishes later, so the calling workflow waits for that run, holding nothing of the server while it waits, and continues with its output, or catches its rejection like any error. A server that restarts meanwhile keeps the wait, and the subworkflow's ending answers it on whichever server that ending is recorded.
 
 A call waits as long as the function it names may take, plus a minute; past that, it raises a `timeout` error and the run it waited for is cancelled. Workflows that call workflows reach 8 calls deep, and the runs under one workflow wait for at most 1,000 calls at once.
 
 ## Cancelling a run
 
-`cancel_execution` cancels a workflow run that has not ended, with a reason the run keeps. The request is recorded at once, so it can reach any server and outlasts a restart; the run then stops, cancels each run it waits for, and ends `rejected` as `cancelled` with the kind `requested`. A run of a reasoning, computation or recall function ends within its call, and cannot be cancelled from outside it.
+`cancel_execution` cancels a workflow run that has not ended, with a reason the run keeps. The request is recorded at once, so it can reach any server and outlasts a restart; the run then stops, cancels each run it waits for, and ends `rejected` as `cancelled` with the kind `requested`. `cancel_execution` also cancels the run of an interaction function whose request waits, which ends `rejected` as `cancelled`. A run of a reasoning, computation or recall function ends within its call, and cannot be cancelled from outside it.
 
 ## Inspecting a run
 

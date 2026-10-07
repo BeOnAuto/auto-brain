@@ -1,6 +1,8 @@
+<div v-pre>
+
 # Build your first workflow
 
-Turn the campaign review from [Build your first brain](first-brain.md) into a workflow. It reviews a brief, waits for the revised brief, and reviews the revision. You will save the workflow, start a run, send the revised brief to the waiting run as an event, and read the finished run.
+Turn the campaign review from [Build your first brain](first-brain.md) into a workflow. It reviews a brief, then asks the campaign's owner to approve it, and waits for the answer. You will save an interaction function that asks for the approval, save the workflow, start a run, find its request in the brain's inbox, answer it, and read the finished run.
 
 The campaign and figures below are sample data. This exercise makes no changes to advertising accounts or campaign budgets.
 
@@ -8,17 +10,17 @@ The campaign and figures below are sample data. This exercise makes no changes t
 
 Complete [Build your first brain](first-brain.md) first. This exercise uses its practice brain, `campaign-review-tutorial`, and its reasoning function, `review-campaign-brief`, which takes one required input, `brief`.
 
-Your agent needs a connection with permission to create and run definitions in that brain. Every runtime offers workflows, and the first step below checks that your connection shows their tools.
+Your agent needs a connection with permission to create and run definitions in that brain. Every runtime offers workflows. The approval is an interaction function, which a self-hosted runtime offers, such as the one [Connect your agent](../get-started/local.md) starts; the first check below shows whether your connection offers it.
 
-## 1. Check the workflow tools
+## 1. Check the tools
 
 Ask your connected agent:
 
-> List the Auto tools you can call. Tell me whether `send_execution_event` is one of them, and which values the `primitive` field of `create_spec` accepts.
+> List the Auto tools you can call. Tell me whether `list_interactions` and `answer_interaction` are among them, and which values the `primitive` field of `create_spec` accepts.
 
-The agent should report `send_execution_event` among the tools, and `inference` and `orchestration` as the accepted values of `primitive`. These are the API identifiers for reasoning functions and workflows.
+The agent should report `list_interactions` and `answer_interaction` among the tools, and `inference`, `interaction` and `orchestration` among the accepted values of `primitive`. These are the API identifiers for reasoning functions, interaction functions and workflows. The tools also include `send_execution_event`, which sends a waiting run an event that is not the answer to a question.
 
-If neither `send_execution_event` nor `create_spec` is listed, the connection uses an organization endpoint, which offers brain management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the brain's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
+If neither `create_spec` nor `list_interactions` is listed, the connection uses an organization endpoint, which offers brain management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the brain's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
 
 ## 2. Confirm the reasoning function
 
@@ -28,30 +30,66 @@ Ask:
 
 You should see `review-campaign-brief`, its version, and `brief` as its required input. If the function is missing, complete Build your first brain before continuing.
 
-## 3. Save the workflow
+## 3. Save the interaction function
 
-The workflow has three steps. `review-first-brief` runs the reasoning function on the brief the run starts with. `wait-for-revision` waits for an event of type `com.example.brief.revised` and keeps the brief from its data. `review-revised-brief` runs the reasoning function again on that revised brief. The run's output keeps both reviews and the revised brief.
+The interaction function asks one person for a decision. Its run renders the message from its input, leaves the request in the brain's inbox for the party named in `to`, and waits until someone answers, the request expires after two days, or the run is cancelled. The answer must match `output.schema`, and the answer is the run's output.
 
-Send this instruction with the document that follows it:
+> In `campaign-review-tutorial`, create an interaction function named `approve-campaign-brief` from the document below. Use the document unchanged as the source, with the primitive `interaction`. If a function with that name already exists, show it to me instead of changing it. Then show me the saved function's version and description.
 
-> In `campaign-review-tutorial`, create a workflow named `review-brief-revision` from the document below. Use the document unchanged as the source, with the primitive `orchestration`. If a workflow with that name already exists, show it to me instead of changing it. Then show me the saved workflow's version, description and required input.
+<!-- prettier-ignore -->
+```markdown
+---
+description: Asks the campaign owner to approve a reviewed brief
+channel: inbox
+to: '{{ input.owner }}'
+expires: P2D
+input:
+  schema:
+    type: object
+    required: [owner, review]
+    properties:
+      owner: { type: string }
+      review: { type: string }
+output:
+  schema:
+    type: object
+    required: [verdict]
+    properties:
+      verdict: { type: string, enum: [approve, revise] }
+      note: { type: string, maxLength: 2000 }
+---
+The review of your campaign brief is ready:
+
+{{ input.review }}
+
+Approve the brief as it stands, or ask for a revision.
+```
+
+The agent should confirm the interaction function `approve-campaign-brief` at version 1. The tool's summary reads: Created the interaction function “approve-campaign-brief”. What it does: Asks the campaign owner to approve a reviewed brief. It has been saved but has not been run yet.
+
+## 4. Save the workflow
+
+The workflow has two tasks. `review-brief` runs the reasoning function on the brief the run starts with and keeps the owner beside the review. `ask-for-approval` runs the interaction function with the owner and the review, and waits for its answer. The run's output keeps the review and the approval.
+
+> In `campaign-review-tutorial`, create a workflow named `review-and-approve` from the document below. Use the document unchanged as the source, with the primitive `orchestration`. If a workflow with that name already exists, show it to me instead of changing it. Then show me the saved workflow's version, description and required input.
 
 ```yaml
 document:
   dsl: '1.0.3'
   namespace: campaign-review-tutorial
-  name: review-brief-revision
+  name: review-and-approve
   version: '1.0.0'
-  summary: Reviews a campaign brief, waits for the revised brief, then reviews the revision.
+  summary: Reviews a campaign brief, then asks its owner to approve it.
 input:
   schema:
     document:
       type: object
       properties:
         brief: { type: string }
-      required: [brief]
+        owner: { type: string }
+      required: [brief, owner]
 do:
-  - review-first-brief:
+  - review-brief:
       call: execute_spec
       with:
         primitive: inference
@@ -59,33 +97,26 @@ do:
         input:
           brief: ${ .brief }
       output:
-        as: '${ { first_review: . } }'
-  - wait-for-revision:
-      listen:
-        to:
-          one:
-            with:
-              type: com.example.brief.revised
-      output:
-        as: '${ $input + { revised_brief: .[0].brief } }'
-  - review-revised-brief:
+        as: '${ { owner: $input.owner, review: . } }'
+  - ask-for-approval:
       call: execute_spec
       with:
-        primitive: inference
-        name: review-campaign-brief
+        primitive: interaction
+        name: approve-campaign-brief
         input:
-          brief: ${ .revised_brief }
+          owner: ${ .owner }
+          review: ${ .review }
       output:
-        as: '${ $input + { second_review: . } }'
+        as: '${ { review: $input.review, approval: . } }'
 ```
 
-The agent should confirm the workflow `review-brief-revision` at version 1, with the description from the document's `summary` and with `brief` as its required input. The tool's summary reads: Created the workflow “review-brief-revision”. What it does: Reviews a campaign brief, waits for the revised brief, then reviews the revision. It has been saved but has not been run yet.
+The agent should confirm the workflow `review-and-approve` at version 1, with the description from the document's `summary` and with `brief` and `owner` as its required input. The tool's summary reads: Created the workflow “review-and-approve”. What it does: Reviews a campaign brief, then asks its owner to approve it. It has been saved but has not been run yet.
 
 If the agent reports issues under `/source`, each gives a line and a column. Compare that line with the document above; [Workflow format](../reference/workflow-format.md) describes every field.
 
-## 4. Start a run
+## 5. Start a run
 
-Ask the agent to run the workflow with this text as the `brief` input:
+Ask the agent to run the workflow with this text as the `brief` input and `ada@example.com` as the `owner`:
 
 ```text
 Campaign: Autumn reporting trial
@@ -96,89 +127,80 @@ Total budget: USD 8,000
 Success measure: Generate interest in the product
 ```
 
-> Run the workflow `review-brief-revision` in `campaign-review-tutorial` with the brief above as its `brief` input. Show me the run's execution id and status, and keep the execution id for the next steps.
+> Run the workflow `review-and-approve` in `campaign-review-tutorial` with the brief above as its `brief` input and `ada@example.com` as its `owner`. Show me the run's execution id and status, and keep the execution id for later.
 
-The run should answer with an `execution_id` and `status: started`. The tool's summary reads: The workflow “review-brief-revision” has started and is still running. It carries on by itself, and how it ends can be looked up later.
+The run should answer with an `execution_id` and `status: started`. The tool's summary reads: The workflow “review-and-approve” has started and is still running. It carries on by itself, and how it ends can be looked up later.
 
-The run's first step reviews the brief; then the run waits for the revision.
-
-Check it:
+The run reviews the brief, then asks for the approval and waits. Check it:
 
 > Read the Auto run with that execution id and show its status.
 
-It should still show `status: started`, and the tool's summary reads: The workflow “review-brief-revision” is still running; how it ends can be looked up again later. A run that waits for an event stays started until the event arrives. The first review appears in the run's output when it ends.
+It should still show `status: started`, and the tool's summary reads: The workflow “review-and-approve” is still running; how it ends can be looked up again later. A run that waits for an answer stays started until the answer arrives.
 
-## 5. Send the revised brief
+## 6. Read the inbox
 
-> Send the event `com.example.brief.revised` to that run. Its data is an object whose `brief` field is the text below. Show me what was delivered.
+> List the open requests of `campaign-review-tutorial`. Show the execution id, the party, the message, the expiry and the standing of each.
 
-```text
-Campaign: Autumn reporting trial
-Audience: Finance directors at UK manufacturing companies with 50 to 250 employees
-Offer: A 30-day trial
-Channel: Paid LinkedIn ads
-Total budget: USD 8,000
-Success measure: 100 trial registrations
-```
+The agent should show one request, to `ada@example.com`, through the channel `inbox`, with the standing `in_inbox`, an `expires_at` two days ahead, and the message rendered from the review. The tool's summary reads: Found 1 request waiting on this page.
 
-The agent should report the event delivered, with its `type`, its `data`, an `id` the runtime assigned and the `time` it was sent. The tool's summary reads: Delivered the event “com.example.brief.revised” to the running workflow. The workflow uses it as soon as it is waiting for it.
+The request has an `execution_id` of its own: it is the run of the interaction function that the workflow started, and it is the id to answer.
 
-The event goes to the waiting run; it does not start another one.
+## 7. Answer the request
 
-## 6. Read the finished run
+> Answer that request with the verdict `approve` and the note `Approved for the autumn launch.` Show me what the answer settled.
 
-> Read the run again until its status is no longer `started`. Show its status, definition version, finish time and output.
+The agent should report the run of `approve-campaign-brief` `succeeded`, with the answer as its output. The tool's summary reads: The request is answered: the run that asked it succeeded, with the answer as its output.
 
-The run should show `status: succeeded`, `spec_version: 1`, a `finished_at` time and an output with three fields: `first_review`, `revised_brief` and `second_review`. `revised_brief` is the text you sent in step 5.
+An answer that does not match the function's `output.schema`, such as the verdict `maybe`, is refused with `invalid_input` and a pointer under `/answer`, and the request stays open.
 
-The two reviews come from your model, so their wording can vary. Check them against the expected findings from Build your first brain:
+## 8. Read the finished run
 
-| Field           | Expected finding                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------- |
-| `first_review`  | Revise: the audience lacks a job role and type of company, and the success measure lacks a numeric target |
-| `second_review` | Ready: all four criteria are met                                                                          |
+> Read the workflow run again until its status is no longer `started`. Show its status, definition version, finish time and output.
 
-A succeeded run means every step completed; it can still contain a Revise review. If the first review recommends Ready or the second Revise, inspect the reasoning function's prompt with your agent before relying on it.
+The run should show `status: succeeded`, `spec_version: 1`, a `finished_at` time and an output with two fields: `review`, the reasoning function's review, and `approval`, the answer you gave, `{ "verdict": "approve", "note": "Approved for the autumn launch." }`.
+
+The review comes from your model, so its wording can vary. For this brief it should recommend Revise: the audience lacks a job role and type of company, and the success measure lacks a numeric target. The approval is the decision of whoever answered; the workflow records both.
 
 Then read how the run got there:
 
-> Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the steps that moved and how each ended.
+> Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the tasks that moved and how each ended.
 
-The tool's summary reads: Found 12 events in the history of the run, oldest first.
+The tool's summary reads: Found 9 events in the history of the run, oldest first.
 
-The twelve events, with the steps each input moved:
+| Type                     | Summary                                                                        | Tasks that moved                                                 |
+| ------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `execution_started`      | A run of the workflow “review-and-approve” started.                            |                                                                  |
+| `workflow_input_applied` | The workflow started, and 1 step moved.                                        | `/do/0/review-brief` waiting                                     |
+| `step_waiting`           | The step “review brief” waits for a function it called.                        |                                                                  |
+| `workflow_input_applied` | A function the workflow called answered, and 2 steps moved.                    | `/do/0/review-brief` completed; `/do/1/ask-for-approval` waiting |
+| `step_finished`          | The step “review brief” finished.                                              |                                                                  |
+| `step_waiting`           | The step “ask for approval” waits for a function it called.                    |                                                                  |
+| `workflow_input_applied` | A function the workflow called answered, and 1 step moved; the workflow ended. | `/do/1/ask-for-approval` completed                               |
+| `step_finished`          | The step “ask for approval” finished.                                          |                                                                  |
+| `execution_succeeded`    | A run finished.                                                                |                                                                  |
 
-| Type                     | Summary                                                                        | Steps that moved                                                          |
-| ------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `execution_started`      | A run of the workflow “review-brief-revision” started.                         |                                                                           |
-| `workflow_input_applied` | The workflow started, and 1 step moved.                                        | `/do/0/review-first-brief` waiting                                        |
-| `step_waiting`           | The step “review first brief” waits for a function it called.                  |                                                                           |
-| `workflow_input_applied` | A function the workflow called answered, and 2 steps moved.                    | `/do/0/review-first-brief` completed; `/do/1/wait-for-revision` waiting   |
-| `step_finished`          | The step “review first brief” finished.                                        |                                                                           |
-| `step_waiting`           | The step “wait for revision” waits for an event.                               |                                                                           |
-| `workflow_input_applied` | The workflow received an event, and 2 steps moved.                             | `/do/1/wait-for-revision` completed; `/do/2/review-revised-brief` waiting |
-| `step_finished`          | The step “wait for revision” finished.                                         |                                                                           |
-| `step_waiting`           | The step “review revised brief” waits for a function it called.                |                                                                           |
-| `workflow_input_applied` | A function the workflow called answered, and 1 step moved; the workflow ended. | `/do/2/review-revised-brief` completed                                    |
-| `step_finished`          | The step “review revised brief” finished.                                      |                                                                           |
-| `execution_succeeded`    | A run finished.                                                                |                                                                           |
+Each event also carries `causation_id`, the `id` of the event that led to it, so the run can be drawn as a graph; each `step_waiting` names the run of the function it started, among them the run of `approve-campaign-brief` that held the request.
 
-Each event also carries `causation_id`, the `id` of the event that led to it, so the steps can be drawn as a graph; each `step_waiting` of a review names the run of the reasoning function it started.
+Read that run too:
 
-The history shows the steps, never the briefs or the reviews; those are in the run's output.
+> Read the run of `approve-campaign-brief` that you answered. Show its status, output and record.
 
-## 7. Check that the run has ended
+Its record shows `answered_by`, the caller that answered, and `answered_at`. The tool's summary reads: The run of the interaction function “approve-campaign-brief” finished. Its answer: verdict: “approve” and note: “Approved for the autumn launch.”
 
-> Send the same event again to that run, and show me the answer.
+## 9. Check that the request has ended
 
-The agent should report that the event was refused with `not_found` and the detail `The brain has no running workflow execution with that id`. Events reach only a run that is still going. To review another brief, start a new run: it receives a new execution id and uses the same definition version.
+> Answer the same request again with the verdict `revise`, and show me the answer. Then list the open requests again.
+
+The agent should report the answer refused with `conflict`, since the request was already answered with another answer, and the inbox empty: No request is waiting. The same answer again would answer the run as it stands. To ask again, start a new run of the workflow: it receives a new execution id and uses the same definition versions.
 
 ## What was tested
 
-Each call in this exercise was run against the runtime and its answers recorded. The statuses, fields, summaries, history and refusals in steps 1 and 3 to 7 are the ones observed. The model in that test was scripted to return one Revise review and one Ready review, so the test confirms the workflow's steps and events, not a model's judgement of the briefs. The findings in step 6 are what a model following the review criteria should report.
+Each call in this exercise was run against the runtime and its answers recorded. The statuses, fields, summaries, history and refusals in sections 1 and 3 to 9 are the ones observed. The model in that test was scripted to return one Revise review, so the test confirms the workflow's tasks, its request and its answer, not a model's judgement of the brief.
 
 ## Review the saved workflow
 
-The brain now contains a workflow that uses the reasoning function twice, around a person's revision, and one recorded run of it. The review criteria still live in the reasoning function; the workflow decides when it runs and what it waits for.
+The brain now contains a workflow that reviews a brief with a reasoning function and asks for an approval with an interaction function, and one recorded run of it. The review criteria live in the reasoning function, the question and the shape of its answer in the interaction function, and the workflow decides when each runs.
 
-[Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end, and [Workflow format](../reference/workflow-format.md) lists the steps you can add, such as a branch on a decision or a time limit on the wait.
+A request can also go to a person or a system outside the brain through a channel that the runtime's operator configures, such as a webhook; [Interaction function format](../reference/interaction-format.md) describes the document, the channels and how a request ends, and [Workflows and runs](../concepts/workflows.md) explains how runs start, wait and end.
+
+</div>

@@ -11,14 +11,14 @@ The source-available runtime is in early development and is not ready for produc
 | Group       | What someone defines    | Current runtime                    |
 | ----------- | ----------------------- | ---------------------------------- |
 | Reasoning   | A reasoning function    | Available                          |
-| Interaction | An interaction function | Planned                            |
+| Interaction | An interaction function | Available in a self-hosted runtime |
 | Prediction  | A prediction function   | Planned                            |
 | Recall      | A recall function       | Available in a self-hosted runtime |
 | Computation | A computation function  | Available in a self-hosted runtime |
 
 Workflows are available and coordinate the functions above. They are not another function type.
 
-Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`. A self-hosted runtime runs computation and recall functions too, and its `create_spec` accepts the primitives `computation` and `recollection`; Auto Cloud does not offer them yet.
+Every runtime runs workflows itself, with nothing more to set up: a connection's tools include `send_execution_event`, and `create_spec` accepts the primitive `orchestration`. A self-hosted runtime runs interaction, computation and recall functions too: its `create_spec` accepts the primitives `interaction`, `computation` and `recollection`, and its tools include `list_interactions` and `answer_interaction`; Auto Cloud does not offer them yet.
 
 Dream is coming soon. It is an optional process using history and functions, not a sixth function type. API details should match the runtime version in use.
 
@@ -37,6 +37,12 @@ See [Reasoning function format](../reference/reasoning-format.md).
 An interaction function defines input or output between the brain and people or other machines. Examples include requesting an approval, sending a notification, receiving structured input and exchanging information with a system.
 
 Human approval is one interaction pattern; machine-to-machine input and output belong here too.
+
+In the current runtime, an interaction function asks one party and takes the answer later. Its run renders a request from its input, a message and the party it goes to, and sends it through a channel or leaves it in the brain's inbox. The run then waits, holding nothing of the runtime, until the request is answered, expires or is cancelled. An answer must match the answer schema the function declares, and it becomes the run's output, so a workflow that asked continues with the decision. A function without an answer schema is a notification, which succeeds once it is delivered.
+
+The inbox is the brain's own: `list_interactions` lists the requests waiting in it, and a caller who may write to the brain answers one with `answer_interaction`. Other channels are configured by the runtime's operator: a webhook that posts a signed request to a system, which can answer with the token it received, or a tool of an MCP server, such as one that posts in a chat. The operator decides which brains may use a channel and which parties it may reach. A request nobody answers before it expires ends the run as `unanswered`, which a workflow can catch and handle.
+
+See [Interaction function format](../reference/interaction-format.md).
 
 ## Prediction
 
