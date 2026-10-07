@@ -66,6 +66,11 @@ describe('the interaction function settings', () => {
       'partner',
     ]);
     expect(fromEnvironment).toMatchObject({ mostOpenRequests: 500, origin: 'https://brains.example.com' });
+    expect(
+      ['10000', '1000000'].map(
+        (most) => readSettings({ INTERACTION_OPEN_REQUESTS: most }).interaction.mostOpenRequests,
+      ),
+    ).toEqual([10_000, 1_000_000]);
   });
 });
 
