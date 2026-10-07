@@ -26,6 +26,18 @@ const anotherOrg = problemOf('forbidden', 'The caller does not belong to this or
 
 const anotherBrain = problemOf('forbidden', 'The caller may not access this brain');
 
+const tokenOverMcp = problemOf(
+  'unauthenticated',
+  'The answer token of a request answers it over HTTP alone, as Request <token>; MCP takes an API key, as Bearer <key>',
+);
+
+function refusingRequestTokens(handler: RouteHandler): RouteHandler {
+  return (c) =>
+    c.get('principal').requestToken === undefined
+      ? handler(c)
+      : problemResponse(tokenOverMcp, { 'www-authenticate': 'Bearer error="invalid_token"' });
+}
+
 function rejectionOf(caller: CallerIdentity, org: string, brain: string | undefined): Problem | undefined {
   if (caller.org !== org) {
     return anotherOrg;
@@ -74,9 +86,9 @@ export function mcpRoutes(options: McpRoutesOptions): RegisterRoutes {
     const catalog = handlerFor(catalogServerFactory(serving), options);
     const org = handlerFor(orgServerFactory(serving), options);
     const brain = handlerFor(brainServerFactory(serving), options);
-    routes.add('POST', '/mcp', ownOrgEndpoint(catalog.fetch));
-    routes.add('POST', '/orgs/:org/mcp', endpoint(org.fetch, 'org'));
-    routes.add('POST', '/orgs/:org/brains/:brain/mcp', endpoint(brain.fetch, 'brain'));
+    routes.add('POST', '/mcp', refusingRequestTokens(ownOrgEndpoint(catalog.fetch)));
+    routes.add('POST', '/orgs/:org/mcp', refusingRequestTokens(endpoint(org.fetch, 'org')));
+    routes.add('POST', '/orgs/:org/brains/:brain/mcp', refusingRequestTokens(endpoint(brain.fetch, 'brain')));
     routes.onClose(async () => {
       await Promise.all([catalog.close(), org.close(), brain.close()]);
     });

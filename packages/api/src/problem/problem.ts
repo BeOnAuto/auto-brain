@@ -14,6 +14,7 @@ export type ProblemReason =
   | 'conflict'
   | 'unavailable'
   | 'cancelled'
+  | 'unanswered'
   | 'client_closed_request'
   | 'bad_request'
   | 'unauthenticated'
@@ -54,6 +55,7 @@ const problemTypes: Readonly<Record<ProblemReason, ProblemType>> = {
   conflict: { status: 409, title: 'Conflict' },
   unavailable: { status: 503, title: 'Unavailable' },
   cancelled: { status: 409, title: 'Cancelled' },
+  unanswered: { status: 410, title: 'Unanswered' },
   client_closed_request: { status: 499, title: 'Client closed request' },
   bad_request: { status: 400, title: 'Bad request' },
   unauthenticated: { status: 401, title: 'Unauthenticated' },
@@ -87,6 +89,7 @@ const resolvedOnlyByChange: ReadonlySet<RejectionKind> = new Set<UnavailableKind
   'tools_unfinished',
   'tool_not_offered',
   'model_not_offered',
+  'channel_not_offered',
 ]);
 
 function isWorthRetrying({ reason, kind }: Problem): boolean {
