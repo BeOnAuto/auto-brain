@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 
 import { withMcpSession, type McpSession } from '@beonauto/api/testing';
+import { createApiKey } from '@beonauto/identity';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -8,8 +9,8 @@ import { servingReasoning, type ReasoningServer } from '../testing/servers/reaso
 
 let server: ReasoningServer;
 
-function onMcp<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
-  return withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, use);
+function onMcp<T>(use: (session: McpSession) => Promise<T>, path = '/mcp'): Promise<T> {
+  return withMcpSession('current revision', { url: `${server.origin}${path}`, headers: {} }, use);
 }
 
 beforeAll(async () => {
@@ -135,5 +136,42 @@ describe('the prompts of the server', () => {
     expect(asked.content.text).toMatch(
       /^Make the brain remember what it posted today\.\n\n# Make the brain remember something\n/u,
     );
+  });
+});
+
+const PromptNamesSchema = Schema.Struct({ prompts: Schema.Array(Schema.Struct({ name: Schema.String })) });
+
+function promptNamesIn(listed: unknown): readonly string[] {
+  return Schema.decodeUnknownSync(PromptNamesSchema)(listed).prompts.map(({ name }) => name);
+}
+
+const acmeReader = createApiKey({
+  id: 'acme-reader',
+  org: 'acme',
+  permissions: ['org:read', 'brain:read'],
+  brains: '*',
+});
+
+describe('the prompts of a connection', () => {
+  it('are the recipes whose every tool it lists: on a brain endpoint, all but making a first brain, and on an org endpoint none', async () => {
+    const [onABrain, onAnOrg] = await Promise.all([
+      onMcp((session) => session.listPrompts(), '/orgs/local/brains/alpha/mcp'),
+      onMcp((session) => session.listPrompts(), '/orgs/local/mcp'),
+    ]);
+
+    expect([promptNamesIn(onABrain), promptNamesIn(onAnOrg)]).toEqual([['remember', 'give-tools', 'schedule'], []]);
+  });
+
+  it('are none for a key that may only read, whose instructions name no recipe either', async () => {
+    const reading = await servingReasoning([], { API_KEYS: JSON.stringify([acmeReader.entry]) });
+    const served = await withMcpSession(
+      'current revision',
+      { url: `${reading.origin}/mcp`, headers: { authorization: `Bearer ${acmeReader.key}` } },
+      async (session) => ({ prompts: await session.listPrompts(), instructions: String(session.instructions) }),
+    );
+    await reading.stop();
+
+    expect(promptNamesIn(served.prompts)).toEqual([]);
+    expect(served.instructions).not.toMatch(/recipe|first-brain|give-tools/u);
   });
 });

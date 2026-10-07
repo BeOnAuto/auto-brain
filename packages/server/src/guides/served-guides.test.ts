@@ -147,6 +147,25 @@ describe('the recipes of a server', () => {
   });
 });
 
+const calledWhereListed: ReadonlySet<string> = new Set(['get_guide', 'list_models']);
+
+function toolsNamedIn(text: string): readonly string[] {
+  return [...new Set(text.replaceAll(/`[^`]*`/gu, '').match(/\b[a-z]+(?:_[a-z]+)+\b/gu))].filter(
+    (name) => !calledWhereListed.has(name),
+  );
+}
+
+describe('the tools a recipe calls', () => {
+  it('are every tool its steps name, but the guide tool, listed on every connection, and list_models, called only where it is listed', () => {
+    const { recipes } = servedGuidesOf(everyType);
+
+    expect(recipes.map(({ name, text }) => [name, toolsNamedIn(text).toSorted()])).toEqual(
+      recipes.map(({ name, calls }) => [name, calls.toSorted()]),
+    );
+    expect(recipes[0]?.text).toContain('list_models where this connection has it');
+  });
+});
+
 describe('the terminology guide of a server', () => {
   it('names only the types of definition the server runs', () => {
     const [terminology] = servedGuidesOf([reasoning, workflow]).guides;

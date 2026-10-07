@@ -11,7 +11,7 @@ const outlines: readonly RecipeOutline[] = [
     description: 'Creates a brain with a first reasoning function, and runs it once the person has agreed to it.',
     arguments: [],
     formatGuide: 'reasoning-function',
-    calls: ['create_brain', 'create_spec', 'execute_spec'],
+    calls: ['list_brains', 'create_brain', 'create_spec', 'execute_spec'],
     request: () => 'Create my first brain.',
   },
   {
@@ -26,7 +26,7 @@ const outlines: readonly RecipeOutline[] = [
       },
     ],
     formatGuide: 'recall-function',
-    calls: ['create_spec', 'execute_spec'],
+    calls: ['list_specs', 'create_spec', 'update_spec', 'execute_spec'],
     request: ({ what }) => `Make the brain remember ${String(what)}.`,
   },
   {
@@ -41,7 +41,7 @@ const outlines: readonly RecipeOutline[] = [
       },
     ],
     formatGuide: 'reasoning-function',
-    calls: ['list_tool_servers', 'create_spec'],
+    calls: ['list_tool_servers', 'create_spec', 'execute_spec', 'get_execution_history'],
     request: ({ server }) =>
       server === undefined ? 'Give the brain tools.' : `Give the brain the tools of the tool server ${server}.`,
   },
@@ -58,7 +58,7 @@ const outlines: readonly RecipeOutline[] = [
       },
     ],
     formatGuide: 'workflow',
-    calls: ['create_spec', 'list_executions'],
+    calls: ['list_specs', 'create_spec', 'update_spec', 'list_executions', 'get_execution'],
     request: ({ workflow, when }) => `Run the workflow ${String(workflow)} ${String(when)}.`,
   },
 ];
