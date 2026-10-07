@@ -7,12 +7,12 @@ export const BrainIdField = BrainIdSchema.annotate({
 
 export const BrainNameField = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100))
   .annotate({
-    description: 'The display name of the brain: 1 to 100 characters, not all whitespace, stored trimmed',
+    description: 'The display name of the brain: 1 to 100 characters, not all whitespace',
   })
   .pipe(
     Schema.decodeTo(Schema.Trimmed.check(Schema.isMinLength(1), Schema.isMaxLength(100)), SchemaTransformation.trim()),
   );
 
 export const BrainDescriptionField = Schema.String.check(Schema.isMaxLength(2000))
-  .annotate({ description: 'What the brain is for: up to 2000 characters, or empty, stored trimmed' })
+  .annotate({ description: 'What the brain is for: up to 2000 characters, or empty' })
   .pipe(Schema.decodeTo(Schema.Trimmed.check(Schema.isMaxLength(2000)), SchemaTransformation.trim()));

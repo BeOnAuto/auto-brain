@@ -70,7 +70,7 @@ The model receives those tools and can call them before it answers. A run makes 
 
 A run whose function names a tool the brain's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. After a tool call, an `unavailable` ending has the kind `tools_unfinished`: a tool may already have changed an external system. The same execution id cannot run that work again and returns `tools_called`. A tool-using run still marked `started` also cannot restart under its id, even before its first recorded call. Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
 
-Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
+Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. The operator configures the servers with `mcp_servers` and narrows their tools with `allowed_tools`, as the repository's [configuration guide](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) describes. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 
 ## Provider options
 

@@ -10,6 +10,7 @@ import { dataAsJsonText } from './json-text.ts';
 import { postgresqlRecordedStore, type Query } from './postgresql-recorded.ts';
 import {
   afterTheSchemaWithin,
+  migrationLockTakenWithin,
   postgresqlRunOutcomeProjections,
   postgresqlRunOutcomesReader,
 } from './postgresql-run-outcomes.ts';
@@ -39,7 +40,10 @@ export function postgresqlEventStore({
       connectionOptions: { pool },
       schema: { autoMigration: 'None' },
       projections: [...postgresqlRunOutcomeProjections(runOutcomes)],
-      hooks: { onAfterSchemaCreated: afterTheSchemaWithin(runOutcomes) },
+      hooks: {
+        onBeforeSchemaCreated: migrationLockTakenWithin(),
+        onAfterSchemaCreated: afterTheSchemaWithin(runOutcomes),
+      },
     }),
     { data: dataAsJsonText, mostEventsInOneAppend: eventsInOneBoundedAppend },
   );

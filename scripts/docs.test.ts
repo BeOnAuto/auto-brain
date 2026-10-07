@@ -121,7 +121,7 @@ await test('public docs offer a local learning path and one self-hosting service
   const selfHost = readFileSync(join(docs, 'self-host.md'), 'utf8');
   assert.ok(selfHost.includes('[Xolvio Professional Services](https://www.xolv.io/contact-us)'));
   assert.ok(markdownDestinations(selfHost).includes('get-started/local.md'));
-  assert.ok(selfHost.includes('Auto Cloud is coming soon'));
+  assert.ok(selfHost.includes('Auto Cloud is currently invite-only'));
   const index = readFileSync(join(docs, 'index.md'), 'utf8');
   const destinations = markdownDestinations(index);
   assert.ok(destinations.includes('get-started/local.md'));

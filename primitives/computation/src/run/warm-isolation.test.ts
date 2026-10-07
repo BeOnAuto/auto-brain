@@ -1,4 +1,4 @@
-import type { Json, PoolOutcome, ProgramLimits, ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { Json, PoolOutcome, ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -10,10 +10,23 @@ import { computationLimits, mostOutputBytes } from './run-bounds.ts';
 
 const example = Result.getOrThrow(parseComputationDocument(campaignPace)).program;
 
-const withoutADepth: ProgramLimits = { ...computationLimits, mostDepth: Number.POSITIVE_INFINITY };
+const withoutADepth = { ...computationLimits, mostDepth: Number.POSITIVE_INFINITY };
 
-function ran(pool: ProgramPool, source: string, input: Json = null, limits = computationLimits): Promise<PoolOutcome> {
-  return pool.run({ source, input, dialect: computationDialect, limits, deadlineMs: 10_000, mostOutputBytes });
+function ran(
+  pool: ProgramPool,
+  source: string,
+  input: Json = null,
+  more: Partial<ProgramRequest> = {},
+): Promise<PoolOutcome> {
+  return pool.run({
+    source,
+    input,
+    dialect: computationDialect,
+    limits: computationLimits,
+    deadlineMs: 10_000,
+    mostOutputBytes,
+    ...more,
+  });
 }
 
 function threadsAlive(): readonly unknown[] {
@@ -33,7 +46,10 @@ describe('a warm worker after jobs that ended badly', { timeout: workerTestTimeo
       await ran(warm, 'error("raised on purpose")'),
       await ran(warm, '"x" * 100000000'),
       await ran(warm, '"x" * 1048576'),
-      await ran(warm, 'def g: if . == 0 then 0 else (. - 1 | g) end; 1000000 | g', null, withoutADepth),
+      await ran(warm, 'def g: if . == 0 then 0 else (. - 1 | g) end; 1000000 | g', null, {
+        limits: withoutADepth,
+        deadlineMs: workerTestTimeoutMs,
+      }),
     ];
     const first = threadsAlive();
     const writes = [
