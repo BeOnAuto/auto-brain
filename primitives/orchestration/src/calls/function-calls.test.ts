@@ -72,6 +72,8 @@ describe('a workflow call to a saved definition', () => {
           executionId: nestedExecutionId(workflowExecution, '/do/0/classify', 1),
           lineage: { causationId: waitingOfTheCall, correlationId: workflowExecution },
           depth: 0,
+          callDepth: 1,
+          calledBy: { execution_id: workflowExecution, reference: '/do/0/classify', run: 1 },
         },
       ]);
     },
@@ -100,25 +102,13 @@ describe('a workflow call with invalid arguments', () => {
   it('executes nothing when they do not name a definition it may execute', async () => {
     const { perform, asked } = answering({ status: 'succeeded', output: null });
 
-    const results = await Effect.runPromise(
-      Effect.all([
-        perform(callWith({ primitive: 'orchestration', name: 'other' }), run),
-        perform(callWith('classify'), run),
-      ]),
-    );
+    const result = await Effect.runPromise(perform(callWith('classify'), run));
 
-    expect(results).toEqual([
-      {
-        status: 'rejected',
-        reason: 'invalid_arguments',
-        detail: 'A workflow cannot execute another workflow in this version',
-      },
-      {
-        status: 'rejected',
-        reason: 'invalid_arguments',
-        detail: 'execute_spec takes with: { primitive, name, input }',
-      },
-    ]);
+    expect(result).toEqual({
+      status: 'rejected',
+      reason: 'invalid_arguments',
+      detail: 'execute_spec takes with: { primitive, name, input }',
+    });
     expect(asked).toEqual([]);
   });
 });

@@ -62,6 +62,16 @@ do:
     ]);
   });
 
+  it('calls a workflow as it calls any other function, its name computed or written out', async () => {
+    const document = workflow(
+      'do:\n  - x: { call: execute_spec, with: { primitive: "${ \\"orchestration\\" }", name: triage } }',
+    );
+
+    const { commands } = await interpret(document);
+
+    expect(callsIn(commands)).toEqual([expect.objectContaining({ primitive: 'orchestration', name: 'triage' })]);
+  });
+
   it('gives an execution an empty object when it is given no input', async () => {
     const document = workflow('do:\n  - plain: { call: execute_spec, with: { primitive: echo, name: greet } }');
 
@@ -83,11 +93,6 @@ describe('the arguments of execute_spec', () => {
       'no primitive',
       'do:\n  - x: { call: execute_spec, with: { primitive: "${ null }", name: a } }',
       'execute_spec needs a string primitive and a string name',
-    ],
-    [
-      'a workflow',
-      'do:\n  - x: { call: execute_spec, with: { primitive: "${ \\"orchestration\\" }", name: a } }',
-      'A workflow cannot execute another workflow in this version',
     ],
   ])('are rejected when they evaluate to %s', async (_case, source, title) => {
     const { settlement, commands } = await interpret(workflow(source));

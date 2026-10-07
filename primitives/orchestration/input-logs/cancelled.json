@@ -31,13 +31,18 @@
     {
       "kind": "cancel_requested",
       "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
-      "at": 1790845200010
+      "at": 1790845200010,
+      "cancel": {
+        "by": "tester",
+        "kind": "requested",
+        "reason": "The test cancelled the run"
+      }
     }
   ],
   "events": [
     {
       "type": "input_applied",
-      "format": 5,
+      "format": 6,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
@@ -233,11 +238,15 @@
     },
     {
       "type": "input_applied",
-      "format": 5,
+      "format": 6,
       "receipt": {
         "kind": "cancel_requested",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
-        "at": 1790845200010
+        "at": 1790845200010,
+        "cancel": {
+          "by": "tester",
+          "kind": "requested"
+        }
       },
       "steps": [],
       "resumed": null,
@@ -284,13 +293,18 @@
           "op": "replace",
           "path": "/outcome",
           "value": {
-            "kind": "cancelled"
+            "kind": "cancelled",
+            "cancel": {
+              "by": "tester",
+              "kind": "requested",
+              "reason": "The test cancelled the run"
+            }
           }
         },
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3308
+          "value": 3528
         }
       ],
       "outputs": [
@@ -308,7 +322,11 @@
           "kind": "settle",
           "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
           "settlement": {
-            "status": "failed"
+            "status": "rejected",
+            "detail": "The test cancelled the run",
+            "by": "tester",
+            "reason": "cancelled",
+            "kind": "requested"
           }
         }
       ]

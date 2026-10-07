@@ -14,10 +14,9 @@ describe('the result of executing a spec through the operations', () => {
     });
   });
 
-  it('is a failure for an execution that finishes later, which a workflow cannot wait for yet', () => {
+  it('is a wait for an execution that finishes later', () => {
     expect(definitionRunResultOf({ status: 'succeeded', output: { status: 'started' } })).toEqual({
-      status: 'failed',
-      detail: 'The run finishes later, and a workflow cannot wait for it in this version',
+      status: 'waiting',
     });
   });
 

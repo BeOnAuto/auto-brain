@@ -24,9 +24,6 @@ export function specArgumentsOf(arguments_: Json): SpecArguments | ArgumentsProb
   if (primitive === undefined || name === undefined) {
     return { kind: 'validation', title: `${executeSpecFunction} needs a string primitive and a string name` };
   }
-  if (primitive === 'orchestration') {
-    return { kind: 'configuration', title: 'A workflow cannot execute another workflow in this version' };
-  }
   const input = field(arguments_, 'input') ?? {};
   const bytes = jsonBytesOf(input);
   return bytes > mostSpecInputBytes

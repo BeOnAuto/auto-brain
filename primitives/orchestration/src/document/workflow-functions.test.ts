@@ -66,14 +66,11 @@ describe('the policy of execute_spec', () => {
     ]);
   });
 
-  it('rejects executing another workflow, and broken expressions in its arguments', () => {
+  it('takes a call of another workflow, and rejects broken expressions in its arguments', () => {
     expect(
       rejectedIn(`
   - nested: { call: execute_spec, with: { primitive: orchestration, name: other, input: ['\${ .a + }'] } }
 `),
-    ).toEqual([
-      '/do/0/nested/with/primitive: A workflow cannot execute another workflow in this version',
-      expect.stringMatching(/^\/do\/0\/nested\/with\/input\/0: /u),
-    ]);
+    ).toEqual([expect.stringMatching(/^\/do\/0\/nested\/with\/input\/0: /u)]);
   });
 });
