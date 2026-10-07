@@ -32,6 +32,42 @@ const events = reviews.map(([time, run, output]) => ({
   data: { primitive: 'inference', name: 'review-brief', version: 1, caller: 'acme-admin', output },
 }));
 
+function announcementRun(index: number) {
+  const run = String(index).padStart(2, '0');
+  return { time: `2026-10-07T09:${run}:00.000Z`, source: `/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8c${run}` };
+}
+
+type Outcome = { readonly output: Schema.Json } | { readonly output_bytes: number };
+
+function announcement(index: number, outcome: Outcome): Schema.JsonObject {
+  return {
+    specversion: '1.0',
+    id: `announcement-${index}`,
+    ...announcementRun(index),
+    type: 'execution_succeeded',
+    subject: 'inference/post-announcement',
+    data: { primitive: 'inference', name: 'post-announcement', version: 1, caller: 'acme-admin', ...outcome },
+  };
+}
+
+function keptAs(index: number, output: Schema.Json): Schema.JsonObject {
+  const { time, source } = announcementRun(index);
+  return { at: time, run: source, output };
+}
+
+function foldedOver(source: string, foldedEvents: readonly Schema.JsonObject[]) {
+  const { fold, filters, initial, schema = {} } = Result.getOrThrow(parseRecallDocument(source)).details;
+  return poolOf().fold({
+    ...recallFolding,
+    events: foldedEvents,
+    views: [{ fold, filters, view: initial, schema, events: foldedEvents.map((_, index) => index) }],
+    waitMs: 5000,
+    deadlineMs: 20_000,
+  });
+}
+
+const largestKept = 'x'.repeat(8190);
+
 describe('the example on the reference page of recall functions', { timeout: workerTestTimeoutMs }, () => {
   it('is, byte for byte, the document the tests run', () => {
     const [example] = fencedBlocks;
@@ -42,18 +78,12 @@ describe('the example on the reference page of recall functions', { timeout: wor
 
   it('folds the three runs of review-brief to the view the page shows', async () => {
     const [, view] = fencedBlocks;
-    const { fold, filters, initial, schema = {} } = Result.getOrThrow(parseRecallDocument(campaignReviews)).details;
-
-    const folded = await poolOf().fold({
-      ...recallFolding,
-      events,
-      views: [{ fold, filters, view: initial, schema, events: [0, 1, 2] }],
-      waitMs: 5000,
-      deadlineMs: 20_000,
-    });
 
     expect(view?.language).toBe('json');
-    expect(folded).toMatchObject({ ran: 'folded', views: [{ folded: 3, view: decodeJson(view?.body) }] });
+    expect(await foldedOver(campaignReviews, events)).toMatchObject({
+      ran: 'folded',
+      views: [{ folded: 3, view: decodeJson(view?.body) }],
+    });
   });
 
   it('answers the input the page gives with the output the page shows', async () => {
@@ -65,5 +95,46 @@ describe('the example on the reference page of recall functions', { timeout: wor
     expect(await run.executing(campaignReviews, decodeJson(input?.body))).toMatchObject(
       Exit.succeed({ output: decodeJson(output?.body) }),
     );
+  });
+});
+
+describe('the example of the common case on the reference page', { timeout: workerTestTimeoutMs }, () => {
+  const [, , , , document] = fencedBlocks;
+  const source = document?.body ?? '';
+
+  it('folds the succeeded runs of post-announcement, by the filter written out', () => {
+    expect(document?.language).toBe('markdown');
+    expect(Result.getOrThrow(parseRecallDocument(source)).details.filters).toEqual([
+      { type: 'execution_succeeded', subject: 'inference/post-announcement' },
+    ]);
+  });
+
+  it('keeps the output of each run, and as null one over 8 KiB as JSON or too large for its event', async () => {
+    const posted = { channel: 'launches', text: 'The autumn launch is live.' };
+    const runs = [
+      announcement(0, { output: posted }),
+      announcement(1, { output: largestKept }),
+      announcement(2, { output: `${largestKept}x` }),
+      announcement(3, { output_bytes: 250_000 }),
+    ];
+
+    expect(await foldedOver(source, runs)).toMatchObject({
+      ran: 'folded',
+      views: [
+        {
+          folded: 4,
+          view: [keptAs(0, posted), keptAs(1, largestKept), keptAs(2, null), keptAs(3, null)],
+        },
+      ],
+    });
+  });
+
+  it('keeps the last 50 runs, under the bound on a view when every output takes its 8 KiB', async () => {
+    const runs = Array.from({ length: 51 }, (_, index) => announcement(index, { output: largestKept }));
+
+    expect(await foldedOver(source, runs)).toMatchObject({
+      ran: 'folded',
+      views: [{ folded: 51, view: Array.from({ length: 50 }, (_, index) => keptAs(index + 1, largestKept)) }],
+    });
   });
 });

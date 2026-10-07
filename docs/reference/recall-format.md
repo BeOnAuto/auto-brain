@@ -99,6 +99,27 @@ the run succeeds with this output:
 ]
 ```
 
+The common case keeps what one function answered. This document keeps the output of each run of the reasoning function `post-announcement` that succeeds, the last 50, oldest first:
+
+<!-- prettier-ignore -->
+```markdown
+---
+description: What the post-announcement function answered, oldest first, the last 50
+language: jq
+source:
+  events:
+    - type: execution_succeeded
+      subject: inference/post-announcement
+view:
+  initial: []
+  schema: { type: array, maxItems: 50 }
+---
+. + [{ at: $event.time, run: $event.source, output: (if ($event.data.output | tojson | utf8bytelength) <= 8192 then $event.data.output else null end) }]
+| .[-50:]
+```
+
+The filter writes out the type and the subject, `inference/post-announcement` for the runs of that reasoning function. An output larger than 8 KiB as JSON, or too large for its event, is kept as `null`, so 50 entries stay under the 512 KiB a view may take, and `get_execution` of the run an entry names reads the whole output. Every run of `post-announcement` is in the brain's history whoever started it, so this view misses none, where a log that workflows write into misses each run that does not write to it.
+
 ## Fields
 
 | Field           | Purpose                                                                                                                                              |

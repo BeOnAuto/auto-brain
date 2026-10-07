@@ -24,8 +24,12 @@ const recallExample = [
 ].join('\n');
 
 const naming = [
-  'A recall function keeps a view of the brain’s own history: a program in jq, its fold, folds each recorded event its filters match into the view,',
-  'and a run answers from the view as it stands, such as the last reviews of a campaign, the latest verdict per region or a count of refusals.',
+  'A recall function keeps a view folded from the brain’s own history, which already holds the runs of each function and workflow,',
+  'with the output of each run that succeeds, the definitions saved and the events published to the brain.',
+  'A program in jq, its fold, folds each of those events its filters match into the view, so no workflow needs to write into a log,',
+  'and a run that matches is folded whoever started it.',
+  'A run of the recall function answers from the view as it stands, without a model,',
+  'such as what one function posted today, the last reviews of a campaign or the latest verdict per region.',
   'Use recall function in conversation. The tools identify this function type with `primitive: recollection`.',
 ].join(' ');
 
