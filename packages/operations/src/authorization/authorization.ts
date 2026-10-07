@@ -6,9 +6,9 @@ import { isBrainId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
 import { permissionFor } from '../caller/permission.ts';
 import type { Registration } from '../definition/registration.ts';
+import type { BrainRequest, OrgRequest } from '../dispatch/request.ts';
 import { BrainRegistry, type BrainStatus } from '../ledger/brain-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
-import type { BrainRequest, OrgRequest } from './request.ts';
 
 function authorizesItself({ authorizesByToken }: Registration, { requestToken }: CallerIdentity): boolean {
   return authorizesByToken && requestToken !== undefined;

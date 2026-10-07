@@ -1,9 +1,14 @@
 import { Effect } from 'effect';
 
+import {
+  authorizeBrainCall,
+  authorizeOrgCall,
+  confirmBrainTakesCall,
+  confirmOrgExists,
+} from '../authorization/authorization.ts';
 import type { Registration } from '../definition/registration.ts';
 import { Ledger } from '../ledger/ledger.ts';
 import type { Outcome, Rejected } from '../outcome/outcome.ts';
-import { authorizeBrainCall, authorizeOrgCall, confirmBrainTakesCall, confirmOrgExists } from './authorization.ts';
 import { runInBrain } from './brain-binding.ts';
 import { withoutDispatcherServices, type DispatcherServices } from './dispatcher-services.ts';
 import { withErrorBoundary } from './error-boundary.ts';
