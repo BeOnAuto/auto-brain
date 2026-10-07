@@ -67,7 +67,7 @@ async function executing(answer: Answer = answeredSent): Promise<Executing> {
         mostOpen: 1000,
         childOf: () => null,
         childAnswerOf: () => Effect.undefined,
-        cancelChild: () => Effect.void,
+        cancelChild: () => Effect.succeed('requested'),
       }),
     performed: () => counts.performed,
     answered: () => answered,

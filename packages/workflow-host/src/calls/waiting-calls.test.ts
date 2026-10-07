@@ -7,7 +7,7 @@ import { statement } from '../database/statement.ts';
 import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import type { ChildCancel } from './call-cancels.ts';
+import type { ChildCancel, ChildReceipt } from './call-cancels.ts';
 import { hostExecutor, type CallAnswer } from './host-executor.ts';
 
 const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -50,7 +50,16 @@ const refusal = {
 
 const RowsOfCalls = Schema.Array(Schema.Struct({ state: Schema.String, child: Schema.NullOr(Schema.String) }));
 
-async function executing(answer: (call: StartCall) => Effect.Effect<CallAnswer>, mostOpen = 1000, ended?: CallResult) {
+interface Executing {
+  readonly mostOpen?: number;
+  readonly ended?: CallResult;
+  readonly receipt?: ChildReceipt;
+}
+
+async function executing(
+  answer: (call: StartCall) => Effect.Effect<CallAnswer>,
+  { mostOpen = 1000, ended, receipt = 'requested' }: Executing = {},
+) {
   const database = faultyDatabase(await openedOn({ store: 'sqlite', file: aSQLiteFile() }));
   const counts = { performed: 0 };
   const answered: CallResult[] = [];
@@ -74,6 +83,7 @@ async function executing(answer: (call: StartCall) => Effect.Effect<CallAnswer>,
     cancelChild: (cancel) =>
       Effect.sync(() => {
         cancels.push(cancel);
+        return receipt;
       }),
   });
   const rows = async () =>
@@ -110,9 +120,8 @@ describe('a call whose run finishes later', () => {
 
 describe('a call whose run ended before the call was marked waiting', () => {
   it('is answered at once with the ending of that run, so no answer is lost', async () => {
-    const calls = await executing(() => Effect.succeed({ status: 'waiting', child }), 1000, {
-      status: 'succeeded',
-      output: 'done',
+    const calls = await executing(() => Effect.succeed({ status: 'waiting', child }), {
+      ended: { status: 'succeeded', output: 'done' },
     });
 
     await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
@@ -125,7 +134,7 @@ describe('a call whose run ended before the call was marked waiting', () => {
 
 describe('the open calls under one run at the top of a tree', () => {
   it('are bounded, the call past the bound answered as a conflict without being performed', async () => {
-    const calls = await executing(() => Effect.never, 2);
+    const calls = await executing(() => Effect.never, { mostOpen: 2 });
     const elsewhere = { executionId: 'acme/alpha/other', attributes: {} };
     await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
     await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/b'), run));
@@ -225,5 +234,20 @@ describe('a cancel of a call whose run could not be cancelled', () => {
     );
 
     expect([failure.output, failure.detail]).toEqual(['cancel_call', 'The ledger is busy']);
+  });
+
+  it('fails too when the run it waits for is not one its brain can hold, and leaves the call as it was', async () => {
+    const calls = await executing(() => Effect.succeed({ status: 'waiting', child }), { receipt: 'unknown_run' });
+    await Effect.runPromise(calls.executor.executor.start(callAt('/do/0/a'), run));
+    await Effect.runPromise(calls.executor.idle());
+
+    const failure = await Effect.runPromise(
+      Effect.flip(calls.executor.executor.cancel({ kind: 'cancel_call', key: callAt('/do/0/a').key }, run, origin)),
+    );
+
+    expect(failure.detail).toBe(
+      'The run this call waits for has an address its brain cannot hold, so it could not be cancelled',
+    );
+    expect(await calls.rows()).toEqual([{ state: 'waiting', child }]);
   });
 });

@@ -28,7 +28,7 @@ export function executorSubjectOn(database: HostDatabase): ExecutorSubject {
       mostOpen: 1000,
       childOf: (call) => callKeyText(call.key),
       childAnswerOf: Function.constant(Effect.undefined),
-      cancelChild: () => Effect.void,
+      cancelChild: () => Effect.succeed('requested'),
     });
   const host = { current: executorNow() };
   return {

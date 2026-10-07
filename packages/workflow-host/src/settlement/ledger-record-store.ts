@@ -42,11 +42,7 @@ interface Settling {
   readonly lineage: Lineage;
 }
 
-export function settlementRecorded(
-  database: HostDatabase,
-  runId: string,
-  settlement: Settlement,
-): Effect.Effect<void, DatabaseFailed> {
+function recorded(database: HostDatabase, runId: string, settlement: Settlement): Effect.Effect<void, DatabaseFailed> {
   return Effect.asVoid(
     Effect.all([
       database.write(
@@ -79,7 +75,7 @@ function failedAttempt({ database, parts, runId }: Settling, detail: string): Re
 
 function succeeded({ database, parts, runId, settlement }: Settling, attemptsBefore: number): Receipt {
   return Effect.gen(function* () {
-    yield* settlementRecorded(database, runId, settlement);
+    yield* recorded(database, runId, settlement);
     if (attemptsBefore >= settleAttemptsBeforeBackingOff) {
       yield* parts.note({ kind: 'settled_after_back_off', run: addressOfRun(runId), attempts: attemptsBefore + 1 });
     }

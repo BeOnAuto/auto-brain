@@ -20,9 +20,15 @@ export interface ChildCancel {
   readonly lineage: Lineage;
 }
 
-export type CancelChild = (cancel: ChildCancel) => Effect.Effect<unknown, Readonly<{ detail: string }>>;
+export type ChildReceipt = 'requested' | 'ended' | 'unknown_run';
+
+export type CancelChild = (cancel: ChildCancel) => Effect.Effect<ChildReceipt, Readonly<{ detail: string }>>;
 
 export class ChildNotCancelled extends Data.TaggedError('child_not_cancelled')<{ readonly detail: string }> {}
+
+const childNotInItsBrain = new ChildNotCancelled({
+  detail: 'The run this call waits for has an address its brain cannot hold, so it could not be cancelled',
+});
 
 export interface CancelParts {
   readonly database: HostDatabase;
@@ -45,12 +51,13 @@ function childCancelled(
     return Effect.void;
   }
   const { org, brain } = addressOfRun(run.executionId);
-  return Effect.asVoid(
-    cancelChild({
-      child: { org, brain, executionId: child },
-      reason: call.reason ?? 'parent_ended',
-      lineage: lineageOfSettlement(run, origin),
-    }).pipe(Effect.mapError(({ detail }) => new ChildNotCancelled({ detail }))),
+  return cancelChild({
+    child: { org, brain, executionId: child },
+    reason: call.reason ?? 'parent_ended',
+    lineage: lineageOfSettlement(run, origin),
+  }).pipe(
+    Effect.mapError(({ detail }) => new ChildNotCancelled({ detail })),
+    Effect.flatMap((receipt) => (receipt === 'unknown_run' ? Effect.fail(childNotInItsBrain) : Effect.void)),
   );
 }
 
@@ -64,13 +71,12 @@ function cancelledAs(
     if (row.state === 'answered') {
       return 'already_answered';
     }
-    if (row.state === 'running') {
-      yield* cancelledRow(parts.database, key);
-      yield* parts.interrupt(key);
-    }
     yield* childCancelled(parts, row.child, cancelling);
-    if (row.state === 'waiting') {
+    if (row.state !== 'cancelled') {
       yield* cancelledRow(parts.database, key);
+    }
+    if (row.state === 'running') {
+      yield* parts.interrupt(key);
     }
     return 'cancelled';
   });

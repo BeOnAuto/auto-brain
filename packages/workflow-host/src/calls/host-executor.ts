@@ -11,10 +11,12 @@ import {
 import { Effect, Schedule, Semaphore, type Cause } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
+import { runSerialiser } from '../dispatch/run-serialiser.ts';
 import { correlationOfRun } from '../runs/run-lineage.ts';
 import { background, type Background } from './background.ts';
 import { cancelledCall, type CancelChild } from './call-cancels.ts';
 import {
+  allWaitingCalls,
   answeredRow,
   deliveredRow,
   existingRowOf,
@@ -25,6 +27,7 @@ import {
   waitingRow,
   type CallRow,
   type UnfinishedCall,
+  type WaitingCall,
 } from './call-rows.ts';
 
 interface Waiting {
@@ -64,6 +67,8 @@ interface Calls {
   readonly answerAgain: (key: string, callKey: CallKey, result: CallResult) => void;
   readonly isRunning: (key: string) => boolean;
   readonly interrupt: (key: string) => Effect.Effect<void>;
+  readonly answeredIfEnded: (waiting: WaitingCall) => Effect.Effect<void, DatabaseFailed>;
+  readonly underItsRoot: <A, E>(root: string, work: Effect.Effect<A, E>) => Effect.Effect<A, E>;
 }
 
 const answerWrittenAgain = Schedule.min([Schedule.exponential('50 millis'), Schedule.spaced('30 seconds')]);
@@ -111,13 +116,17 @@ function callsOf(parts: ExecutorParts, running: Background): Calls {
     Effect.flatMap(writtenUntilItIs(answeredRow(database, key, result), trouble), (written) =>
       written ? delivered(key, call.key, result) : Effect.void,
     );
+  const answeredIfEnded = ({ key, call, child }: WaitingCall): Effect.Effect<void, DatabaseFailed> =>
+    Effect.flatMap(parts.childAnswerOf(call.key.executionId, child), (ended) =>
+      ended === undefined ? Effect.void : settled(key, call, ended),
+    );
   const waited = (key: string, call: StartCall, child: string): Effect.Effect<void, DatabaseFailed> =>
     writtenUntilItIs(waitingRow(database, key, child), trouble).pipe(
-      Effect.andThen(parts.childAnswerOf(call.key.executionId, child)),
-      Effect.flatMap((ended) => (ended === undefined ? Effect.void : settled(key, call, ended))),
+      Effect.andThen(answeredIfEnded({ key, call, child })),
     );
   const answered = (key: string, call: StartCall, answer: CallAnswer): Effect.Effect<void, DatabaseFailed> =>
     answer.status === 'waiting' ? waited(key, call, answer.child) : settled(key, call, answer);
+  const roots = runSerialiser();
   return {
     begin: (key, call, run) => {
       running.run(
@@ -133,6 +142,8 @@ function callsOf(parts: ExecutorParts, running: Background): Calls {
     },
     isRunning: running.has,
     interrupt: running.interrupt,
+    answeredIfEnded,
+    underItsRoot: roots.serialise,
   };
 }
 
@@ -145,7 +156,8 @@ function startedOnce(
   return Effect.gen(function* () {
     const key = callKeyText(call.key);
     const root = correlationOfRun(run.executionId, run.attributes);
-    if ((yield* openCallsUnder(database, root)) >= mostOpen) {
+    const open = yield* openCallsUnder(database, root);
+    if (open >= mostOpen) {
       const refusal = tooManyOpen(mostOpen);
       const refused = yield* refusedRow(database, key, run, refusal);
       if (refused) {
@@ -158,7 +170,7 @@ function startedOnce(
       calls.begin(key, call, run);
     }
     return inserted;
-  });
+  }).pipe((counted) => calls.underItsRoot(correlationOfRun(run.executionId, run.attributes), counted));
 }
 
 function startedAgain(calls: Calls, call: StartCall, run: RunContext, { state, result }: CallRow): StartReceipt {
@@ -199,10 +211,30 @@ function resumedIn(calls: Calls, { key, call, run, result }: UnfinishedCall): vo
   }
 }
 
+function waitingAnsweredOnce(parts: ExecutorParts, calls: Calls): Effect.Effect<void> {
+  const swept = { waiting: false };
+  return Effect.suspend(() =>
+    swept.waiting
+      ? Effect.void
+      : allWaitingCalls(parts.database).pipe(
+          Effect.flatMap((waiting) => Effect.forEach(waiting, calls.answeredIfEnded, { discard: true })),
+          Effect.andThen(
+            Effect.sync(() => {
+              swept.waiting = true;
+            }),
+          ),
+          Effect.catchCause((cause: Cause.Cause<unknown>) =>
+            parts.trouble('The calls that wait for runs could not be read; the next sweep reads them again', cause),
+          ),
+        ),
+  );
+}
+
 export function hostExecutor(parts: ExecutorParts): HostExecutor {
   const { database } = parts;
   const running = background();
   const calls = callsOf(parts, running);
+  const waitingAnswered = waitingAnsweredOnce(parts, calls);
   return {
     executor: {
       start: (call, run) => started(parts, calls, call, run).pipe(Effect.mapError(failedTo('start_call'))),
@@ -212,7 +244,8 @@ export function hostExecutor(parts: ExecutorParts): HostExecutor {
         ),
     },
     resume: () =>
-      Effect.orDie(unfinishedCalls(database)).pipe(
+      waitingAnswered.pipe(
+        Effect.andThen(Effect.orDie(unfinishedCalls(database))),
         Effect.map((unfinished: readonly UnfinishedCall[]) => unfinished.filter(({ key }) => !running.has(key))),
         Effect.tap((orphaned: readonly UnfinishedCall[]) =>
           Effect.sync(() => {

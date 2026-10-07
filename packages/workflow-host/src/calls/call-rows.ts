@@ -167,6 +167,10 @@ export function openCallsUnder(database: HostDatabase, root: string): Effect.Eff
   ).pipe(Effect.map(({ open }) => open));
 }
 
+function waitingOf(rows: readonly (typeof WaitingRow.Type)[]): readonly WaitingCall[] {
+  return rows.map(({ call_key: key, call, child }) => ({ key, call, child }));
+}
+
 export function waitingCallsOf(
   database: HostDatabase,
   runId: string,
@@ -177,7 +181,16 @@ export function waitingCallsOf(
       statement`SELECT call_key, call, child FROM workflow_calls WHERE run_id = ${runId} AND state = 'waiting'
         ORDER BY call_key`,
     ),
-  ).pipe(Effect.map((rows) => rows.map(({ call_key: key, call, child }) => ({ key, call, child }))));
+  ).pipe(Effect.map(waitingOf));
+}
+
+export function allWaitingCalls(database: HostDatabase): Effect.Effect<readonly WaitingCall[], DatabaseFailed> {
+  return rowsOf(
+    WaitingRow,
+    database.read(
+      statement`SELECT call_key, call, child FROM workflow_calls WHERE state = 'waiting' ORDER BY call_key`,
+    ),
+  ).pipe(Effect.map(waitingOf));
 }
 
 export function unfinishedCalls(database: HostDatabase): Effect.Effect<readonly UnfinishedCall[], DatabaseFailed> {

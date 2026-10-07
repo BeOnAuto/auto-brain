@@ -3,8 +3,9 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { alpha, at, recorded } from '../reaction-testing/brain-writes.ts';
+import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase } from '../testing/faulty-database.ts';
-import { resultOfEnding } from '../waiting-testing/recorded-waiting.ts';
+import { recordedWaiting, resultOfEnding } from '../waiting-testing/recorded-waiting.ts';
 import { parentId, parentRun, waitingParent } from '../waiting-testing/waiting-parent.ts';
 import { childEndings, endedChildrenOn } from './child-endings.ts';
 
@@ -43,7 +44,17 @@ describe('the ending of a run that answers a call', () => {
   });
 
   it('is a receipt and no failure when it reaches a call that is closed, as when it is delivered again', async () => {
-    const { database, hosted, settled } = await waitingParent(child);
+    const mapped: string[] = [];
+    const waiting = recordedWaiting();
+    const { database, hosted, settled } = await waitingParent(child, {
+      waiting: {
+        ...waiting.options,
+        resultOf: (ending) => {
+          mapped.push(ending.type);
+          return resultOfEnding(ending);
+        },
+      },
+    });
 
     await recorded(database.store, `${alpha}executions/${child}`, succeeded);
     await recorded(database.store, `${alpha}executions/${child}`, succeeded);
@@ -53,7 +64,12 @@ describe('the ending of a run that answers a call', () => {
       called_by: calledBy,
     });
     await settled(parentId);
+    await eventually(
+      (): readonly string[] => mapped,
+      (types) => types.includes('execution_failed'),
+    );
 
+    expect(mapped).toContain('execution_failed');
     expect(hosted.troubles()).toEqual([]);
   });
 });

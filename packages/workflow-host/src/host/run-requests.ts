@@ -4,10 +4,10 @@ import { Data, Effect, Schema } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import type { HostClock } from '../loop/host-clock.ts';
 import { ledgerRunStore } from '../runs/ledger-run-store.ts';
 import { runIdOf, type RunAddress } from '../runs/run-address.ts';
 import { backOffLifted } from '../settlement/settle-attempts.ts';
+import { pendingCancelOf } from '../waiting/pending-cancels.ts';
 import type { HostEngine } from './host-engine.ts';
 
 export type RunStart = Omit<Started, 'kind' | 'executionId' | 'at'>;
@@ -26,7 +26,7 @@ export interface RunRequests {
 
 export interface RequestParts {
   readonly database: HostDatabase;
-  readonly clock: HostClock;
+  readonly clock: { readonly now: () => number };
   readonly serving: () => HostEngine | undefined;
 }
 
@@ -65,6 +65,20 @@ function settledAgain(parts: RequestParts, engine: HostEngine, runId: string): E
   });
 }
 
+function cancelledIfAsked(
+  { database, clock }: RequestParts,
+  engine: HostEngine,
+  run: RunAddress,
+): Effect.Effect<void, Conflict> {
+  return Effect.flatMap(pendingCancelOf(database, run), (pending) =>
+    pending === undefined
+      ? Effect.void
+      : Effect.asVoid(
+          engine.submitted({ kind: 'cancel_requested', executionId: runIdOf(run), at: clock.now(), ...pending }),
+        ),
+  );
+}
+
 export function runRequests(parts: RequestParts): RunRequests {
   const { database, clock } = parts;
   const runStore = ledgerRunStore(database);
@@ -87,7 +101,11 @@ export function runRequests(parts: RequestParts): RunRequests {
           return 'going';
         }
         const { outcome } = yield* engine.submitted({ ...start, kind: 'started', executionId: runId, at: clock.now() });
-        return outcome === 'applied' ? 'started' : 'going';
+        if (outcome !== 'applied') {
+          return 'going';
+        }
+        yield* cancelledIfAsked(parts, engine, run);
+        return 'started';
       }),
     deliver: (run, event) =>
       Effect.gen(function* () {

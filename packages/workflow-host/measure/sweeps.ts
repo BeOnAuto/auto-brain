@@ -78,7 +78,6 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
       database: opened,
       submitted: Effect.die,
       resultOf: resultOfEnding,
-      settle: () => Effect.die(new Error('The measured brains settle nothing')),
       cancelDeferred: () => Effect.void,
       workflows: 'orchestration',
       now: Date.now,

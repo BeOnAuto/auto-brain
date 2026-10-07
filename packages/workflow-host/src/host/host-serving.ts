@@ -44,7 +44,6 @@ function servedOf(database: HostDatabase, options: ServingOptions, engine: HostE
     database,
     submitted: engine.submitted,
     resultOf: options.waiting.resultOf,
-    settle: options.settle,
     cancelDeferred: options.waiting.cancelDeferred,
     workflows: options.reactions.primitive,
     now: options.clock.now,
