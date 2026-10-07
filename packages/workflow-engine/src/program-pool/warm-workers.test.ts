@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { FoldingView } from '../folds/fold-page.ts';
 import type { FoldOutcome, FoldRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { counting, countingElsewhere, countingOnTheLoop } from '../pool-testing/counting-workers.ts';
+import { threadsAlive } from '../pool-testing/threads-alive.ts';
 import { liftedLimits, programPool } from './program-pool.ts';
 
 interface Ran {
@@ -158,7 +159,8 @@ describe('a worker of the pool after a job the pool had to stop', { timeout: poo
 });
 
 describe('a job of the pool cancelled before it has a worker', { timeout: poolTestTimeoutMs }, () => {
-  it('ends as cancelled a job cancelled while it waits for its seat, rather than running it to its deadline', async () => {
+  it('ends as cancelled a job cancelled while it waits for its seat, starting no worker for it, rather than running it to its deadline', async () => {
+    const before = threadsAlive();
     const pool = poolOf({ workers: 1 });
     await counted(pool);
     const cancelling = new AbortController();
@@ -168,10 +170,26 @@ describe('a job of the pool cancelled before it has a worker', { timeout: poolTe
       cancelling.abort();
     });
     const ended = await blocked;
+    const afterTheCancel = threadsAlive() - before;
 
     expect(ended).toMatchObject({ ran: 'stopped', because: 'cancelled' });
     expect(ended.milliseconds).toBeLessThan(2000);
+    expect(afterTheCancel).toBe(0);
     expect((await counted(pool)).jobs).toBe(1);
+  });
+
+  it('rests the warm worker it took for a job cancelled before the job reached it, and serves the next job there', async () => {
+    const pool = poolOf();
+    const first = await counted(pool);
+    const cancelling = new AbortController();
+
+    const cancelled = run(pool, 'count', { signal: cancelling.signal });
+    queueMicrotask(() => {
+      cancelling.abort();
+    });
+
+    expect(await cancelled).toMatchObject({ ran: 'stopped', because: 'cancelled' });
+    expect(await counted(pool)).toEqual({ jobs: 2, thread: first.thread });
   });
 });
 

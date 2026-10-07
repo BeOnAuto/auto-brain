@@ -22,7 +22,7 @@ interface Shelf {
 }
 
 interface Fleet {
-  readonly start: (module: string) => Promise<Thread | undefined>;
+  readonly start: (module: string, signal?: Readonly<AbortSignal>) => Promise<Thread | undefined>;
   readonly letGo: (thread: Thread) => Promise<number>;
   readonly ended: () => Promise<unknown>;
 }
@@ -35,7 +35,7 @@ interface Seats {
 }
 
 interface Roster {
-  readonly take: (module: string) => Promise<Thread | undefined>;
+  readonly take: (module: string, signal?: Readonly<AbortSignal>) => Promise<Thread | undefined>;
   readonly rest: (thread: Thread) => void;
   readonly letGo: (thread: Thread) => Promise<number>;
   readonly closing: () => boolean;
@@ -111,11 +111,11 @@ function fleetOf(settings: PoolSettings, shelf: Shelf, closing: () => boolean): 
     return thread;
   };
   return {
-    start: async (module) => {
+    start: async (module, signal) => {
       count.starting += 1;
       await roomIn(seats);
       count.starting -= 1;
-      return closing() ? undefined : started(module);
+      return closing() || signal?.aborted === true ? undefined : started(module);
     },
     letGo,
     ended: () => Promise.all(dying),
@@ -127,10 +127,10 @@ function rosterOf(settings: PoolSettings, idleMs: number): Roster {
   const state = { closing: false };
   const fleet = fleetOf(settings, shelf, () => state.closing);
   return {
-    take: async (module) => {
+    take: async (module, signal) => {
       const warm = shelf.warm(module);
       warm?.wake();
-      const thread = warm ?? (await fleet.start(module));
+      const thread = warm ?? (await fleet.start(module, signal));
       if (thread !== undefined) {
         shelf.hold(thread);
       }
@@ -158,9 +158,13 @@ export function poolWorkers(settings: PoolSettings): PoolWorkers {
   const jobs = { last: 0 };
   return {
     evaluate: async (work, running) => {
-      const thread = await roster.take(work.module.href);
+      const thread = await roster.take(work.module.href, running.signal);
       if (thread === undefined) {
-        return stopped('closing');
+        return stopped(roster.closing() ? 'closing' : 'cancelled');
+      }
+      if (running.signal?.aborted === true) {
+        roster.rest(thread);
+        return stopped('cancelled');
       }
       jobs.last += 1;
       const { ending, keep } = await thread.serve(jobs.last, work, running);

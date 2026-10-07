@@ -87,9 +87,6 @@ function watchOf<Answer>(job: number, work: Job<Answer>, running: Running, closi
     ended(stopped('cancelled'));
   };
   running.signal?.addEventListener('abort', cancel, { once: true });
-  if (running.signal?.aborted === true) {
-    cancel();
-  }
   return {
     served: promise,
     events: {

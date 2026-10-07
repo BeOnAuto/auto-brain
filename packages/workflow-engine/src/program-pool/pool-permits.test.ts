@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { counting, countingElsewhere } from '../pool-testing/counting-workers.ts';
+import { threadsAlive } from '../pool-testing/threads-alive.ts';
 import { liftedLimits, programPool } from './program-pool.ts';
 
 interface Ran {
@@ -71,11 +72,6 @@ async function counted(pool: ProgramPool, worker: Readonly<URL> = counting): Pro
 async function held(pool: ProgramPool, jobs: number): Promise<readonly number[]> {
   const outcomes = await Promise.all(Array.from({ length: jobs }, () => run(pool, 'hold')));
   return outcomes.map((outcome) => ranOf(outcome).thread);
-}
-
-function threadsAlive(): number {
-  const workers: unknown = Reflect.get(process.report.getReport(), 'workers');
-  return Array.isArray(workers) ? workers.length : 0;
 }
 
 describe('the workers of a pool and its permits', { timeout: poolTestTimeoutMs }, () => {

@@ -209,6 +209,8 @@ describe('the engine core', () => {
       'program-pool/pool-slots.ts: a host timer',
       'program-pool/pool-threads.ts: a host timer',
     ]);
+    expect(sourcesUnder('workers').length).toBeGreaterThan(1);
+    expect(findingsIn(sourcesUnder('workers'), hostOnly)).toEqual([]);
   });
 
   it('keeps no module-level cache that could grow with the history of a run: a collection built empty at module level is one; a constant collection of literals is not, nor a WeakMap, whose entries go with the values they describe', () => {
