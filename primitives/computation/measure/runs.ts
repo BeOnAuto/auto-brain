@@ -1,8 +1,8 @@
 import { setTimeout } from 'node:timers/promises';
 
+import { checkedWorker } from '@beonauto/specs/json-schema';
 import { idleWorkerMs, programPool, type ProgramPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
 
-import { checkedWorker } from '../src/checking/value-checks.ts';
 import { computationDialect } from '../src/document/program-dialect.ts';
 import { computationBounds, computationLimits } from '../src/run/run-bounds.ts';
 import { formatted, inTurn, median, millisecondsOf } from './common.ts';

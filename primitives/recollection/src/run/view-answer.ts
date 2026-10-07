@@ -1,5 +1,5 @@
-import { checkedWorker } from '@beonauto/computation';
 import type { Conflict, Unavailable } from '@beonauto/operations';
+import { checkedWorker } from '@beonauto/specs/json-schema';
 import type { ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import type { ViewsPort } from '@beonauto/workflow-host';
 import { Effect, type Schema } from 'effect';

@@ -1,7 +1,7 @@
 import { Result } from 'effect';
 
-import type { SchemaIssue } from './json-bounds.ts';
-import { compileJsonSchema, type Validation } from './json-schema.ts';
+import type { SchemaIssue } from '../document/json-bounds.ts';
+import { compileJsonSchema, type Validation } from '../document/json-schema.ts';
 
 export type SchemaCheck = (value: unknown) => readonly SchemaIssue[];
 

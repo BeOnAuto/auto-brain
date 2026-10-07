@@ -1,6 +1,7 @@
-import { issuesDetail, schemaCheckOf } from '@beonauto/specs/json-schema';
 import type { ValueChecks } from '@beonauto/workflow-engine/job-loop';
 import { mostValueDepth, type Json, type OutputCheck, type ViewCheck } from '@beonauto/workflow-engine/worker';
+
+import { issuesDetail, schemaCheckOf } from './schema-checks.ts';
 
 export const checkedWorker = new URL('./checked-worker.ts', import.meta.url);
 

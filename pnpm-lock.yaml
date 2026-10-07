@@ -493,6 +493,9 @@ importers:
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../operations
+      '@beonauto/workflow-engine':
+        specifier: workspace:*
+        version: link:../workflow-engine
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -719,9 +722,6 @@ importers:
 
   primitives/recollection:
     dependencies:
-      '@beonauto/computation':
-        specifier: workspace:*
-        version: link:../computation
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../../packages/operations

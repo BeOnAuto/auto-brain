@@ -1,5 +1,5 @@
-import { checkedWorker } from '@beonauto/computation';
 import { mostResultBytes } from '@beonauto/specs';
+import { checkedWorker } from '@beonauto/specs/json-schema';
 import { liftedLimits, mostEvaluationDepth, mostValueDepth, type ProgramLimits } from '@beonauto/workflow-engine/dsl';
 import type { FoldingSettings } from '@beonauto/workflow-host';
 
