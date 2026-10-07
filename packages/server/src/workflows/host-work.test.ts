@@ -14,7 +14,7 @@ const unknownRun = { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2
 const lineage = { causationId: 'cancel-1', correlationId: unknownRun.id };
 
 describe('the cancels the workflow host hands to the runtime of the server', () => {
-  it('leave alone a run the ledger does not have, whether it is to be settled as cancelled or cancelled', async () => {
+  it('settle nothing for a run the ledger does not have, and record the cancel of a run that has not started yet', async () => {
     const runtime = await makeAppRuntime(applicationLayer(ledgerLayer({ fileName: ':memory:' })));
     const { waiting } = hostWorkOf(runtime, makeDispatcher([]), {
       primitives: [echo],
@@ -29,6 +29,6 @@ describe('the cancels the workflow host hands to the runtime of the server', () 
     );
     await runtime.dispose();
 
-    expect([settled, cancelled]).toEqual(['left', 'unknown_run']);
+    expect([settled, cancelled]).toEqual(['left', 'requested']);
   });
 });

@@ -50,8 +50,22 @@ describe('the workflow settings', () => {
       'InvalidSettingsError: The workflow settings are invalid. ORCHESTRATION_MAX_DURATION: Expected an ISO 8601 duration from PT2H to P365D, such as P30D; ORCHESTRATION_NESTED_EXECUTIONS: Expected a whole number from 1 to 1000, such as 32; ORCHESTRATION_MAX_OPEN_CALLS: Expected a whole number from 1 to 9999, such as 1000; ORCHESTRATION_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
     );
   });
+});
 
-  it('refuse a count of calls that is not a whole number', () => {
+describe('the most calls open under one run', () => {
+  it('take from 1 to 9999, and refuse 10000', () => {
+    expect([
+      readSettings({ ORCHESTRATION_MAX_OPEN_CALLS: '1' }).workflows.mostOpenCalls,
+      readSettings({ ORCHESTRATION_MAX_OPEN_CALLS: '9999' }).workflows.mostOpenCalls,
+    ]).toEqual([1, 9999]);
+    expect(String(errorFrom({ ORCHESTRATION_MAX_OPEN_CALLS: '10000' }))).toContain(
+      'ORCHESTRATION_MAX_OPEN_CALLS: Expected a whole number from 1 to 9999',
+    );
+  });
+});
+
+describe('a count of calls in the workflow settings', () => {
+  it('is refused when it is not a whole number', () => {
     expect(String(errorFrom({ ORCHESTRATION_NESTED_EXECUTIONS: 'many' }))).toContain(
       'ORCHESTRATION_NESTED_EXECUTIONS: Expected a whole number from 1 to 1000',
     );

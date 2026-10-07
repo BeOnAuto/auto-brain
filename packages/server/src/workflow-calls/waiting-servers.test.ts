@@ -5,9 +5,9 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { SpawnedServer } from '../testing/spawned-server.ts';
 import { temporaryLedger } from '../testing/temporary-ledger.ts';
+import { until, workflows } from '../testing/workflow-calls.ts';
 import { requestTo, settledOver, workflowProcess, type Answer } from '../testing/workflow-process.ts';
 import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
-import { until, workflows } from './workflow-calls.ts';
 
 const Listed = Schema.Struct({ executions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) });
 
@@ -88,7 +88,7 @@ describe(
 );
 
 describe('a cancel that lands on a server that does not hold the lease', { timeout: workflowTestTimeoutMs }, () => {
-  it('is accepted, and the server that holds it ends the run and answers the run that waited for it', async () => {
+  it('is accepted, and the server that holds it ends the run and answers the run that waited for it, which fails by the status of the error', async () => {
     const file = ledgerFile();
     const holder = workflowProcess(file);
     const { parent, child } = await waitingOn(await holder.port, file);
@@ -104,7 +104,8 @@ describe('a cancel that lands on a server that does not hold the lease', { timeo
     expect(ofTheChild).toMatchObject({
       rejection: { reason: 'cancelled', kind: 'requested', detail: 'Cancelled elsewhere' },
     });
-    expect(settled).toMatchObject({ status: 'rejected', rejection: { reason: 'cancelled', kind: 'requested' } });
+    expect(settled).toMatchObject({ status: 'rejected', rejection: { reason: 'invalid_input' } });
+    expect(JSON.stringify(settled)).toContain('Cancelled elsewhere');
     expect([await stopped(standby, 'SIGTERM'), await stopped(holder, 'SIGTERM')]).toEqual([0, 0]);
   });
 

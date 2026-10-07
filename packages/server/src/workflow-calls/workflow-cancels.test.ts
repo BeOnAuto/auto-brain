@@ -3,8 +3,8 @@ import { answers, textResult } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
+import { ended, runsOf, servingCalls, startedRunOf, until } from '../testing/workflow-calls.ts';
 import { executionIdIn, settledExecution, settledOverMcp, workflowTestTimeoutMs } from '../testing/workflow-server.ts';
-import { ended, runsOf, servingCalls, startedRunOf, until } from './workflow-calls.ts';
 
 let server: ReasoningServer;
 

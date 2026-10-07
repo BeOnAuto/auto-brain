@@ -3,9 +3,9 @@ import { setTimeout } from 'node:timers/promises';
 import type { ScriptedReply } from '@beonauto/inference/testing';
 import { Schema } from 'effect';
 
-import type { TestResponse } from '../testing/http-client.ts';
-import { alpha, type ReasoningServer } from '../testing/reasoning-server.ts';
-import { servingWorkflows, workflowSource } from '../testing/workflow-server.ts';
+import type { TestResponse } from './http-client.ts';
+import { alpha, type ReasoningServer } from './reasoning-server.ts';
+import { servingWorkflows, workflowSource } from './workflow-server.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 
