@@ -8,14 +8,22 @@ const docs = resolve(import.meta.dirname, '../docs');
 await test('docs distinguish inbound MCP from the tools a reasoning function calls', () => {
   const mcp = readFileSync(join(docs, 'reference/mcp.md'), 'utf8');
   const functions = readFileSync(join(docs, 'concepts/functions.md'), 'utf8');
-  const readme = readFileSync(join(docs, '../README.md'), 'utf8');
   assert.ok(mcp.includes('inbound interface'));
+  assert.ok(mcp.includes('It does not configure tools inside a reasoning function'));
+  assert.ok(mcp.includes('through MCP servers the operator of a self-hosted runtime configures'));
   assert.ok(mcp.includes('never by adding an endpoint to an external assistant'));
-  assert.ok(functions.includes('Auto Cloud does not offer it yet'));
+  assert.ok(
+    functions.includes(
+      'Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet',
+    ),
+  );
   assert.ok(functions.includes('model gateways connect to language models'));
-  assert.ok(readme.includes('Auto Cloud does not offer this yet'));
-  assert.ok(readme.includes('the function does not inherit the agent'));
-  assert.ok(readme.includes('reasoning functions tools from operator-configured MCP servers'));
+  assert.ok(
+    functions.includes("A reasoning function can call the tools of MCP servers that the runtime's operator configures"),
+  );
+  assert.ok(
+    functions.includes("Connecting an external agent to Auto does not give the function access to that agent's tools"),
+  );
   assert.ok(functions.includes('Skill references and a separately managed tool library are still planned'));
 });
 
