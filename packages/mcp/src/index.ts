@@ -10,7 +10,7 @@ export { executionIdKey } from './calls/execution-key.ts';
 export { defaultTiming, runBoundMs, toolBounds, type Timing } from './bounds/call-bounds.ts';
 export { toolReferenceOf, toolReferenceShape, writtenOf, type ToolReference } from './names/tool-reference.ts';
 export { AllowedToolsSchema, McpServersSchema } from './settings/server-entries.ts';
-export type { McpServerSettings, McpSettings, SettingProblem } from './settings/mcp-settings.ts';
+export type { McpServerSettings, McpSettings } from './settings/mcp-settings.ts';
 export {
   McpSettingsInvalid,
   readMcpSettings,

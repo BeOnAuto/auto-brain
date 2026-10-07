@@ -1,12 +1,17 @@
 import { JsonPointer, Result, Schema, SchemaIssue, type StandardSchema } from 'effect';
 
-import type { SettingProblem } from './mcp-settings.ts';
-
 type PathSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
+
+export interface SettingProblem {
+  readonly setting: string;
+  readonly detail: string;
+}
+
+export type SettingDecoder<A> = (input: unknown) => Result.Result<A, Schema.SchemaError>;
 
 const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
 
-const strictly = { onExcessProperty: 'error', errors: 'all' } as const;
+export const strictly = { onExcessProperty: 'error', errors: 'all' } as const;
 
 function isPropertyKey(segment: PathSegment): segment is PropertyKey {
   return typeof segment !== 'object';
@@ -29,12 +34,11 @@ function parsedJson(setting: string, text: string): Result.Result<unknown, reado
   }
 }
 
-export function decodedJsonSetting<S extends Schema.Codec<unknown, unknown>>(
+export function decodedJsonSettingWith<A>(
   setting: string,
   text: string,
-  schema: S,
-): Result.Result<S['Type'], readonly SettingProblem[]> {
-  const decode = Schema.decodeUnknownResult(schema, strictly);
+  decode: SettingDecoder<A>,
+): Result.Result<A, readonly SettingProblem[]> {
   return Result.flatMap(parsedJson(setting, text), (parsed) =>
     Result.mapError(decode(parsed), ({ issue }: { readonly issue: SchemaIssue.Issue }) =>
       formatIssues(issue).issues.map(({ message, path = [] }) =>
@@ -42,4 +46,12 @@ export function decodedJsonSetting<S extends Schema.Codec<unknown, unknown>>(
       ),
     ),
   );
+}
+
+export function decodedJsonSetting<S extends Schema.Codec<unknown, unknown>>(
+  setting: string,
+  text: string,
+  schema: S,
+): Result.Result<S['Type'], readonly SettingProblem[]> {
+  return decodedJsonSettingWith(setting, text, Schema.decodeUnknownResult(schema, strictly));
 }

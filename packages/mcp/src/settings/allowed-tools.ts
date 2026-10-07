@@ -1,8 +1,7 @@
+import { decodedJsonSetting, problem, type SettingProblem } from '@beonauto/config';
 import { Result } from 'effect';
 
 import { toolReferenceOf, toolReferenceShape, type ToolReference } from '../names/tool-reference.ts';
-import { decodedJsonSetting, problem } from './json-setting.ts';
-import type { SettingProblem } from './mcp-settings.ts';
 import { AllowedToolsSchema } from './server-entries.ts';
 
 export const allowedToolsSetting = 'ALLOWED_TOOLS';

@@ -1,14 +1,12 @@
-import { BrainIdSchema, OrgIdSchema } from '@beonauto/operations';
-import { JsonPointer, Redacted, Result, Schema } from 'effect';
+import { problem, servedScopeOf, type SettingProblem } from '@beonauto/config';
+import { JsonPointer, Redacted, Result } from 'effect';
 
 import { isServerName } from '../names/tool-reference.ts';
-import { problem } from './json-setting.ts';
 import type {
   AuthCredential,
   AuthSettings,
   HttpServerSettings,
   McpServerSettings,
-  SettingProblem,
   StdioServerSettings,
 } from './mcp-settings.ts';
 import type { McpServerEntryFields } from './server-entries.ts';
@@ -24,10 +22,6 @@ type Transport<S extends McpServerSettings> = S extends McpServerSettings
 type Auth = NonNullable<McpServerEntryFields['auth']>;
 
 export const mcpServersSetting = 'MCP_SERVERS';
-
-const isOrgId = Schema.is(OrgIdSchema);
-
-const isBrainId = Schema.is(BrainIdSchema);
 
 const headerName = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
 
@@ -100,25 +94,6 @@ function checkedName(name: string, providers: readonly string[]): Checked<string
         'The name of a model provider or gateway, which a reasoning function could not tell apart from it',
       )
     : accepted(name);
-}
-
-function checkedOrg(name: string, org: string | undefined): Checked<string> {
-  if (org === undefined) {
-    return refused(name, [], 'Expected the org this server serves');
-  }
-  return isOrgId(org) ? accepted(org) : refused(name, ['org'], 'Expected an org id');
-}
-
-function checkedBrains(name: string, brains: readonly string[] | undefined): Checked<readonly string[] | null> {
-  if (brains === undefined) {
-    return accepted(null);
-  }
-  const problems = problemsOf(
-    ...brains.map((brain, index) =>
-      isBrainId(brain) ? accepted(brain) : refused(name, ['brains', String(index)], 'Expected a brain id'),
-    ),
-  );
-  return problems.length === 0 ? accepted(brains) : rejected(problems);
 }
 
 function checkedHeaders(
@@ -250,11 +225,14 @@ export function checkedEntry(
   secrets: readonly Redacted.Redacted[],
 ): Result.Result<McpServerSettings, readonly SettingProblem[]> {
   const named = checkedName(name, providers);
-  const org = checkedOrg(name, fields.org);
-  const brains = checkedBrains(name, fields.brains);
+  const scope = servedScopeOf(mcpServersSetting, name, fields, 'server');
   const transport = checkedTransport(name, fields);
-  if (!org.ok || !brains.ok || !transport.ok) {
-    return Result.fail(problemsOf(named, org, brains, transport));
+  if (Result.isFailure(scope) || !transport.ok) {
+    return Result.fail([
+      ...problemsOf(named),
+      ...(Result.isFailure(scope) ? scope.failure : []),
+      ...problemsOf(transport),
+    ]);
   }
   const problems = problemsOf(named);
   return problems.length > 0
@@ -262,8 +240,8 @@ export function checkedEntry(
     : Result.succeed({
         ...transport.value,
         name,
-        org: org.value,
-        brains: brains.value,
+        org: scope.success.org,
+        brains: scope.success.brains,
         record_content: fields.record_content ?? false,
         request_id: fields.request_id ?? null,
         secrets,

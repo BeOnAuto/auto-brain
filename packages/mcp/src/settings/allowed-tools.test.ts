@@ -1,8 +1,8 @@
+import { servesBrain } from '@beonauto/config';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { readMcpSettings, type Environment, type McpServerSettings } from '../index.ts';
-import { servesBrain } from './mcp-settings.ts';
 
 const context = { modelProviders: ['openai'] };
 

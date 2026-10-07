@@ -1,11 +1,17 @@
-import { credentialProblems, substituted } from '@beonauto/config';
+import {
+  credentialProblems,
+  decodedJsonSetting,
+  pointerOf,
+  problem,
+  substituted,
+  type SettingProblem,
+} from '@beonauto/config';
 import { Data, Effect, Option, Result, Schema } from 'effect';
 
 import { allowedToolsOf, allowedToolsSetting } from './allowed-tools.ts';
 import { checkedEntry, mcpServersSetting } from './entry-checks.ts';
 import { misplacedReferences, secretsOfEntry } from './entry-references.ts';
-import { decodedJsonSetting, pointerOf, problem } from './json-setting.ts';
-import type { McpServerSettings, McpSettings, SettingProblem } from './mcp-settings.ts';
+import type { McpServerSettings, McpSettings } from './mcp-settings.ts';
 import { McpServerEntrySchema, McpServersSchema, type McpServerEntryFields } from './server-entries.ts';
 
 export type Environment = Readonly<Record<string, string | undefined>>;
@@ -36,14 +42,14 @@ function readEntry(
   );
   const resolved = substituted(written, pointer, environment);
   const unresolved = resolved.problems.map(({ pointer: place, detail }) => problem(mcpServersSetting, place, detail));
-  const problems = [...credentials, ...unresolved, ...misplacedReferences(pointer, resolved.references)];
+  const problems = [...credentials, ...unresolved, ...misplacedReferences(name, resolved.references)];
   return problems.length > 0
     ? Result.fail(problems)
     : checkedEntry(
         name,
         decodeEntry(resolved.value),
         context.modelProviders,
-        secretsOfEntry(pointer, resolved.references),
+        secretsOfEntry(name, resolved.references),
       );
 }
 

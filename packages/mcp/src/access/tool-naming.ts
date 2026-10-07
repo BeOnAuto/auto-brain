@@ -1,3 +1,4 @@
+import { servesBrain } from '@beonauto/config';
 import { Result } from 'effect';
 
 import type { ListedTool } from '../bounds/result-text.ts';
@@ -5,7 +6,6 @@ import type { OfferedOnServer } from '../calls/run-parts.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import { namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
-import { servesBrain } from '../settings/mcp-settings.ts';
 import type { RunContext } from './run-context.ts';
 import { ToolNotOffered, type NotOfferedBecause } from './tool-not-offered.ts';
 

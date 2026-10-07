@@ -2,11 +2,6 @@ import type { Redacted } from 'effect';
 
 import type { ToolReference } from '../names/tool-reference.ts';
 
-export interface SettingProblem {
-  readonly setting: string;
-  readonly detail: string;
-}
-
 export type AuthCredential =
   | { readonly kind: 'client_secret'; readonly client_secret: Redacted.Redacted }
   | { readonly kind: 'private_key'; readonly private_key: Redacted.Redacted; readonly algorithm: string };
@@ -46,8 +41,4 @@ export type McpServerSettings = HttpServerSettings | StdioServerSettings;
 export interface McpSettings {
   readonly servers: readonly McpServerSettings[];
   readonly allowed: readonly ToolReference[] | null;
-}
-
-export function servesBrain({ org, brains }: ServedBy, address: { readonly org: string; readonly brain: string }) {
-  return org === address.org && (brains === null || brains.includes(address.brain));
 }

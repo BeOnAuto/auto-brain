@@ -322,6 +322,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@beonauto/operations':
+        specifier: workspace:*
+        version: link:../operations
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -635,6 +638,9 @@ importers:
       '@aws-sdk/credential-providers':
         specifier: 3.1144.0
         version: 3.1144.0
+      '@beonauto/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@beonauto/mcp':
         specifier: workspace:*
         version: link:../../packages/mcp
