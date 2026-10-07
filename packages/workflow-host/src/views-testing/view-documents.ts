@@ -4,6 +4,7 @@ import { liftedLimits, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 import type { FoldingSettings, ProjectorSettings } from '../projector/projector-settings.ts';
 import type { ViewDetails } from '../views/view-details.ts';
 import type { KeptView } from '../views/view-rows.ts';
+import { testFoldWorker } from './test-fold-workers.ts';
 
 export interface Brain {
   readonly org: string;
@@ -15,27 +16,6 @@ export const alpha: Brain = { org: 'acme', brain: 'alpha' };
 export const alphaKey = 'brain/acme/alpha/';
 
 export const viewTestTimeoutMs = 60_000;
-
-export const breaksTheWorker = 'breaks the worker';
-
-export const sleepsBeforeItIsFolded = 'sleeps before it is folded';
-
-export const sleepBeforeItIsFoldedMs = 1600;
-
-const breakingWorkerSource = [
-  "import { parentPort, workerData } from 'node:worker_threads';",
-  `import { foldAnswerOf, progressOf } from '${import.meta.resolve('@beonauto/workflow-engine/worker')}';`,
-  'const events = JSON.parse(String(workerData.events));',
-  'const progress = progressOf(workerData);',
-  'const folding = (event, view) => {',
-  '  progress.mark(event, view);',
-  `  if (events[event]?.data?.output === '${breaksTheWorker}') throw new Error('broken on purpose');`,
-  '};',
-  'const now = () => performance.timeOrigin + performance.now();',
-  'parentPort.postMessage(foldAnswerOf(workerData, { now, folding, checkOf: () => () => undefined }), []);',
-].join('\n');
-
-export const breakingFoldWorker = new URL(`data:text/javascript,${encodeURIComponent(breakingWorkerSource)}`);
 
 export function brainKeyOf({ org, brain }: Brain): string {
   return `brain/${org}/${brain}/`;
@@ -58,8 +38,6 @@ export function detailsOf(fold: string, filters: ViewDetails['filters'], more: P
 export const counting = detailsOf('. + 1', succeeded, { initial: 0 });
 
 export const collecting = detailsOf('. + [$event.data.output]', succeeded, { initial: [] });
-
-const testFoldWorker = new URL('./test-fold-worker.ts', import.meta.url);
 
 export const measuredEnvironment: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(process.env).flatMap(([key, value]: readonly [string, string | undefined]) =>

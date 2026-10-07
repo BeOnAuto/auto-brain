@@ -75,7 +75,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
   tool_not_offered: {
     why: 'this server does not offer a tool it names',
     remedy:
-      'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, so once it names only those, it can be tried again.',
+      'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, which list_tool_servers shows, so once it names only those, it can be tried again.',
   },
   mcp_server_failed: {
     why: 'a tool server it needs could not be used',

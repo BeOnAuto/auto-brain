@@ -1,68 +1,22 @@
-import { Worker, type WorkerOptions } from 'node:worker_threads';
+import { Schema } from 'effect';
 
-import { Option, Schema } from 'effect';
-
-import { mostValueDepth, type Json } from '../dsl/json.ts';
-import { foldJobOf, type FoldOutcome, type FoldRequest } from '../folds/fold-job.ts';
-import type { Dialect } from '../programs/program-dialect.ts';
-import type { ProgramLimits, Variables } from '../programs/program-running.ts';
-import { fieldOf, textOf } from '../programs/program-tree.ts';
-import { stopped, type Ending, type Evaluate, type Interrupted, type Job, type Running } from './pool-job.ts';
+import { mostValueDepth } from '../dsl/json.ts';
+import { stopped, type Ending } from '../jobs/job-endings.ts';
+import type { PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
+import { ProgramAnswerSchema, type ProgramAnswer } from '../jobs/program-messages.ts';
+import type { ProgramLimits } from '../programs/program-running.ts';
+import { foldJobOf } from './fold-job.ts';
+import type { Job } from './pool-job.ts';
 import { poolSlots, type PoolSlots } from './pool-slots.ts';
-import { ProgramAnswerSchema, type ProgramAnswer } from './program-messages.ts';
-
-export type { FoldOutcome, FoldRequest } from '../folds/fold-job.ts';
-export type { Stopped } from './pool-job.ts';
-
-export interface PoolSettings {
-  readonly workers: number;
-  readonly heapMegabytes: number;
-  readonly worker?: Readonly<URL>;
-  readonly foldWorker?: Readonly<URL>;
-  readonly environment?: Readonly<Record<string, string>>;
-}
-
-export interface ProgramRequest {
-  readonly source: string;
-  readonly input: Json;
-  readonly variables?: Variables;
-  readonly dialect: Dialect;
-  readonly limits: ProgramLimits;
-  readonly deadlineMs: number;
-  readonly mostOutputBytes: number;
-  readonly worker?: Readonly<URL>;
-  readonly context?: Json;
-}
-
-export type PoolOutcome = Ending<ProgramAnswer> & { readonly milliseconds: number };
-
-export interface ProgramPool {
-  readonly workers: number;
-  readonly heapMegabytes: number;
-  readonly run: (request: ProgramRequest, signal?: Readonly<AbortSignal>) => Promise<PoolOutcome>;
-  readonly fold: (request: FoldRequest, signal?: Readonly<AbortSignal>) => Promise<FoldOutcome>;
-  readonly close: () => Promise<void>;
-}
-
-interface Watch<Answer> {
-  readonly ending: Promise<Ending<Answer>>;
-  readonly answered: (message: unknown) => void;
-  readonly failed: (error: unknown) => void;
-  readonly exited: (code: number) => void;
-  readonly done: () => void;
-}
-
-export const workerStackMegabytes = 64;
+import { poolWorkers } from './pool-workers.ts';
 
 export const mostEvaluationDepth = 10_000;
 
-const programWorker = new URL('./program-worker.ts', import.meta.url);
+const programWorker = new URL('../workers/program-worker.ts', import.meta.url);
 
-const foldWorker = new URL('./fold-worker.ts', import.meta.url);
+const foldWorker = new URL('../workers/fold-worker.ts', import.meta.url);
 
 const decodeProgramAnswer = Schema.decodeUnknownOption(ProgramAnswerSchema);
-
-const outOfMemory = 'ERR_WORKER_OUT_OF_MEMORY';
 
 export function liftedLimits(mostWork: number): ProgramLimits {
   return {
@@ -74,74 +28,21 @@ export function liftedLimits(mostWork: number): ProgramLimits {
   };
 }
 
-function failedWith(error: unknown): Interrupted {
-  return fieldOf(error, 'code') === outOfMemory
-    ? stopped('memory')
-    : { ran: 'crashed', detail: `The worker failed: ${textOf(error, 'message')}` };
-}
-
-function watchUntil<Answer>(
-  { until, signal }: Running,
-  closing: () => boolean,
-  decode: Job<Answer>['decode'],
-): Watch<Answer> {
-  const { promise, resolve } = Promise.withResolvers<Ending<Answer>>();
-  const timer = setTimeout(() => {
-    resolve(stopped('deadline'));
-  }, until - performance.now());
-  const cancel = (): void => {
-    resolve(stopped('cancelled'));
-  };
-  signal?.addEventListener('abort', cancel, { once: true });
-  return {
-    ending: promise,
-    answered: (message) => {
-      resolve(
-        Option.getOrElse(decode(message), (): Ending<Answer> => ({
-          ran: 'crashed',
-          detail: 'The worker answered with something that is not an answer',
-        })),
-      );
-    },
-    failed: (error) => {
-      resolve(failedWith(error));
-    },
-    exited: (code) => {
-      resolve(
-        closing()
-          ? stopped('closing')
-          : { ran: 'crashed', detail: `The worker ended with code ${code} before it answered` },
-      );
-    },
-    done: () => {
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', cancel);
-    },
-  };
-}
-
-function workerOptions(workerData: unknown, settings: PoolSettings): WorkerOptions {
-  return {
-    workerData,
-    resourceLimits: { maxOldGenerationSizeMb: settings.heapMegabytes, stackSizeMb: workerStackMegabytes },
-    env: { ...settings.environment },
-  };
-}
-
 function programJob(module: Readonly<URL>, request: ProgramRequest, until: number): Job<ProgramAnswer> {
   const { source, input, variables = {}, dialect, limits, mostOutputBytes, context = null } = request;
+  const job = {
+    source,
+    input: JSON.stringify(input),
+    variables: JSON.stringify(variables),
+    dialect,
+    limits,
+    mostOutputBytes,
+    deadlineAt: performance.timeOrigin + until,
+    context,
+  };
   return {
     module,
-    workerData: {
-      source,
-      input: JSON.stringify(input),
-      variables: JSON.stringify(variables),
-      dialect,
-      limits,
-      mostOutputBytes,
-      context,
-      deadlineAt: performance.timeOrigin + until,
-    },
+    envelope: (id) => ({ job: id, kind: 'program', request: job }),
     decode: decodeProgramAnswer,
   };
 }
@@ -165,20 +66,7 @@ async function admitted<Answer>(
 
 export function programPool(settings: PoolSettings): ProgramPool {
   const slots = poolSlots(settings.workers);
-  const stops = new Set<() => Promise<number>>();
-  const state = { closing: false };
-  const evaluate: Evaluate = async (job, running) => {
-    const worker = new Worker(new URL(job.module.href), workerOptions(job.workerData, settings));
-    const stop = (): Promise<number> => worker.terminate();
-    stops.add(stop);
-    const watch = watchUntil(running, () => state.closing, job.decode);
-    worker.once('message', watch.answered).once('error', watch.failed).once('exit', watch.exited);
-    const ending = await watch.ending;
-    watch.done();
-    await stop();
-    stops.delete(stop);
-    return ending;
-  };
+  const workers = poolWorkers(settings);
   return {
     workers: settings.workers,
     heapMegabytes: settings.heapMegabytes,
@@ -187,20 +75,19 @@ export function programPool(settings: PoolSettings): ProgramPool {
       const until = started + request.deadlineMs;
       const module = settings.worker ?? request.worker ?? programWorker;
       const ending = await admitted(slots, until, signal, () =>
-        evaluate(programJob(module, request, until), { until, signal }),
+        workers.evaluate(programJob(module, request, until), { until, signal }),
       );
       return { ...ending, milliseconds: performance.now() - started };
     },
     fold: async (request, signal) => {
       const started = performance.now();
-      const job = foldJobOf(settings.foldWorker ?? request.worker ?? foldWorker, evaluate, request, signal);
+      const job = foldJobOf(settings.foldWorker ?? request.worker ?? foldWorker, workers.evaluate, request, signal);
       const ending = await admitted(slots, started + job.waitMs, signal, job.run);
       return { ...ending, milliseconds: performance.now() - started };
     },
     close: async () => {
-      state.closing = true;
       slots.close();
-      await Promise.all([...stops].map((stop) => stop()));
+      await workers.close();
     },
   };
 }

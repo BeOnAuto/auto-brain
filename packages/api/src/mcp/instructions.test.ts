@@ -19,7 +19,10 @@ const specTools = [
 
 const orgEndpoint: ServedTools = { orgTools: [...brainTools, 'list_models'], brainTools: [] };
 
-const brainEndpoint: ServedTools = { orgTools: [], brainTools: [...specTools, 'send_execution_event'] };
+const brainEndpoint: ServedTools = {
+  orgTools: [],
+  brainTools: [...specTools, 'list_tool_servers', 'send_execution_event'],
+};
 
 const ownOrg: ServedTools = { orgTools: orgEndpoint.orgTools, brainTools: brainEndpoint.brainTools };
 
@@ -38,7 +41,7 @@ const everyEndpoint: readonly (readonly [McpEndpoint, ServedTools])[] = [
 
 const concepts = [
   'A brain is the complete system for a business responsibility.',
-  'It belongs to an org and holds functions, which do its work, and workflows, which coordinate them.',
+  'It belongs to an org and holds functions and the workflows that coordinate them.',
   'A function or a workflow is a reusable definition, and a run executes it on an input.',
   'A reasoning function has a prompt and calls a language model.',
   'Until they are renamed, the tools say spec for a definition and execution for a run.',
@@ -66,6 +69,7 @@ describe("the instructions of /mcp, the endpoint of the caller's own org", () =>
         'A spec is a named, versioned definition in a brain.',
         'The primitive field selects a definition type, inference for a reasoning function, computation for a computation function, recollection for a recall function or orchestration for a workflow; each tool describes its supported document formats.',
         'list_models lists the models this server can call.',
+        'list_tool_servers lists the tool servers the brain may use and their tools.',
         'execute_spec runs a definition and records its run; execution_id identifies it.',
         'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
         'A waiting workflow run receives input through send_execution_event.',

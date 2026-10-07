@@ -32,6 +32,7 @@ const specTools = [
   'get_brain_analytics',
   'list_brain_events',
   'publish_event',
+  'list_tool_servers',
   'send_execution_event',
 ];
 

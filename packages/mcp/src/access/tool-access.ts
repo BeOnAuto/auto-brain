@@ -1,10 +1,12 @@
+import type { BrainAddress } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { RunTools } from '../calls/run-tools.ts';
 import type { LinkOptions } from '../connections/server-links.ts';
+import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
-import type { McpSettings } from '../settings/mcp-settings.ts';
+import { isListedFor, type McpSettings } from '../settings/mcp-settings.ts';
 import type { RunContext, ServerMessage, ToolsNotOpened } from './run-context.ts';
 
 export interface ToolAccessOptions {
@@ -20,6 +22,7 @@ export interface ToolAccess {
     execution: RunContext,
     references: readonly ToolReference[],
   ) => Effect.Effect<RunTools, ToolsNotOpened>;
+  readonly listServers: (address: BrainAddress, named?: string) => Effect.Effect<readonly ToolServer[]>;
   readonly close: () => Promise<void>;
 }
 
@@ -38,6 +41,10 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
     configured: settings.servers.length > 0,
     open: (execution, references) =>
       Effect.flatMap(Effect.promise(loaded), (access) => access.open(execution, references)),
+    listServers: (address, named) =>
+      settings.servers.some((server) => isListedFor(server, address, named))
+        ? Effect.flatMap(Effect.promise(loaded), (access) => access.listServers(address, named))
+        : Effect.succeed([]),
     close: async () => {
       const access = await loading.access;
       await access?.close();

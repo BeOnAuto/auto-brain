@@ -3,8 +3,9 @@ import { setTimeout } from 'node:timers/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Json } from '../dsl/json.ts';
+import type { PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
-import { liftedLimits, programPool, type PoolSettings, type ProgramPool, type ProgramRequest } from './program-pool.ts';
+import { liftedLimits, programPool } from './program-pool.ts';
 
 const poolTestTimeoutMs = 30_000;
 
@@ -19,6 +20,18 @@ function workerOf(source: string): URL {
 }
 
 const blocking = workerOf('while (true) {}');
+
+function answeringWith(output: string): URL {
+  return workerOf(
+    [
+      "import { parentPort } from 'node:worker_threads';",
+      'parentPort.on("message", ({ job, request }) => {',
+      `  const output = JSON.stringify(${output});`,
+      "  parentPort.postMessage({ job, answer: { ran: 'answered', output, bytes: output.length, work: 0 }, keep: true });",
+      '});',
+    ].join('\n'),
+  );
+}
 
 const coverage = process.env['NODE_V8_COVERAGE'];
 
@@ -190,13 +203,7 @@ describe('the workers of a pool', { timeout: poolTestTimeoutMs }, () => {
 
 describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
   it("answers that request, with the context the request gives, while other requests keep the pool's worker", async () => {
-    const echoing = workerOf(
-      [
-        "import { parentPort, workerData } from 'node:worker_threads';",
-        "const output = JSON.stringify({ context: workerData.context, worker: 'named' });",
-        "parentPort.postMessage({ ran: 'answered', output, bytes: output.length, work: 0 });",
-      ].join('\n'),
-    );
+    const echoing = answeringWith("{ context: request.context, worker: 'named' }");
     const pool = poolOf();
     const context = { schema: { type: 'string' } };
 
@@ -211,13 +218,7 @@ describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
 
 describe('the environment of a worker', { timeout: poolTestTimeoutMs }, () => {
   it('is empty unless the pool is given one, so no setting of the server, such as a key, reaches a program or its worker', async () => {
-    const reading = workerOf(
-      [
-        "import { parentPort } from 'node:worker_threads';",
-        'const output = JSON.stringify(Object.keys(process.env));',
-        "parentPort.postMessage({ ran: 'answered', output, bytes: output.length, work: 0 });",
-      ].join('\n'),
-    );
+    const reading = answeringWith('Object.keys(process.env)');
 
     expect(Object.keys(process.env).length).toBeGreaterThan(1);
     const unset = programPool({ workers: 1, heapMegabytes: 64, worker: reading });
@@ -238,6 +239,16 @@ describe('a worker that breaks', { timeout: poolTestTimeoutMs }, () => {
       'answers with something else',
       'import { parentPort } from "node:worker_threads"; parentPort.postMessage({ nonsense: true });',
       'The worker answered with something that is not an answer',
+    ],
+    [
+      'answers its job with something that is not an answer of the pool',
+      'import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ job }) => { parentPort.postMessage({ job, answer: { ran: "folded" }, keep: true }); });',
+      'The worker answered with something that is not an answer',
+    ],
+    [
+      'answers a job it was not given',
+      'import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ job }) => { parentPort.postMessage({ job: job + 1, answer: { ran: "unfit", work: 0 }, keep: true }); });',
+      'The worker answered job 2 while it ran job 1',
     ],
   ])('is answered as crashed when it %s', async (_crash, source, detail) => {
     expect(await poolOf({ worker: workerOf(source) }).run(request('.'))).toMatchObject({ ran: 'crashed', detail });

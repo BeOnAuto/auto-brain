@@ -5,12 +5,12 @@ export interface ToolReference {
 
 const everyTool = '*';
 
-const serverName = /^[a-z][a-z0-9-]{0,31}$/u;
+export const serverNamePattern = /^[a-z][a-z0-9-]{0,31}$/u;
 
 const toolName = /^[A-Za-z0-9_.-]{1,128}$/u;
 
 export function isServerName(name: string): boolean {
-  return serverName.test(name);
+  return serverNamePattern.test(name);
 }
 
 export function isToolName(name: string): boolean {

@@ -1,0 +1,96 @@
+import { recallDocument } from '@beonauto/recollection/testing';
+import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { Schema } from 'effect';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { workerPool } from '../composition/served-computation.ts';
+import { alpha } from '../testing/servers/reasoning-server.ts';
+import {
+  brainWithReviews,
+  inState,
+  recallTestTimeoutMs,
+  recalled,
+  servingRecall,
+  standingUntil,
+  verdicts,
+} from '../testing/servers/recall-server.ts';
+
+const reviewRuns =
+  'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief';
+
+const strings = '---\nlanguage: jq\noutput:\n  schema: {type: array, items: {type: string}}\n---\n[1, 2, 3, 4]';
+
+const answeredWrong = recallDocument(
+  '.',
+  `${reviewRuns}\nview:\n  initial: {}\noutput:\n  schema: {type: string}\nanswer: '[1]'`,
+);
+
+const outgrowing = recallDocument(
+  '. + [1]',
+  `${reviewRuns}\nview:\n  initial: []\n  schema: {type: array, maxItems: 0}`,
+);
+
+const decodeStall = Schema.decodeUnknownSync(
+  Schema.Struct({ standing: Schema.Struct({ stalled: Schema.Struct({ kind: Schema.String, error: Schema.String }) }) }),
+);
+
+const closing: (() => Promise<void>)[] = [];
+
+afterEach(async () => {
+  await Promise.all(closing.splice(0).map((close) => close()));
+});
+
+function recordingModules(pool: ProgramPool, modules: Set<string | undefined>): ProgramPool {
+  return {
+    ...pool,
+    run: (request, signal) => {
+      modules.add(request.worker?.pathname.split('/').at(-1));
+      return pool.run(request, signal);
+    },
+    fold: (request, signal) => {
+      modules.add(request.worker?.pathname.split('/').at(-1));
+      return pool.fold(request, signal);
+    },
+  };
+}
+
+describe(
+  'values their schemas refuse, through the one checked worker, over HTTP',
+  { timeout: recallTestTimeoutMs },
+  () => {
+    it('refuse a computation output and a recall answer, and stall a view, in the one wording of the issues', async () => {
+      const modules = new Set<string | undefined>();
+      const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }), {}, (settings) =>
+        recordingModules(workerPool(settings), modules),
+      );
+      closing.push(server.stop);
+      await brainWithReviews(server, 1);
+      await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'strings', source: strings } });
+      await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'wrong', source: answeredWrong } });
+      await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'outgrowing', source: outgrowing } });
+
+      const computed = await server.call('POST', `${alpha}/specs/computation/strings/execute`, { body: { input: {} } });
+      await standingUntil(server, 'wrong', inState('live'));
+      const answered = await recalled(server, 'wrong', {});
+      const stalled = decodeStall(await standingUntil(server, 'outgrowing', inState('stalled'))).standing.stalled;
+
+      expect(computed).toMatchObject({
+        status: 409,
+        body: {
+          kind: 'unworkable',
+          detail:
+            "The program's output does not match the output schema: /0: Expected string; /1: Expected string; /2: Expected string",
+        },
+      });
+      expect(answered).toMatchObject({
+        status: 409,
+        body: {
+          kind: 'unworkable',
+          detail: 'The answer does not match the output schema: the output: Expected string',
+        },
+      });
+      expect(stalled).toEqual({ kind: 'schema', error: 'the view: Expected a value with a length of at most 0' });
+      expect([...modules].filter((module) => module !== undefined)).toEqual(['checked-worker.ts']);
+    });
+  },
+);

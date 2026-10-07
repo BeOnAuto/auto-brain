@@ -1,8 +1,10 @@
 import { enclosedBody } from '../dsl/expressions.ts';
 import { entriesOf, field, isTruthy, jsonEquals, type Json, type JsonEntry, type JsonObject } from '../dsl/json.ts';
-import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
+import type { CompiledProgram } from '../programs/program-compiling.ts';
 import type { Dialect } from '../programs/program-dialect.ts';
 import type { ProgramRun } from '../programs/program-running.ts';
+
+export type Compile = (source: string, dialect: Dialect) => CompiledProgram;
 
 type Expected =
   | { readonly name: string; readonly value: Json }
@@ -21,16 +23,20 @@ export type Matching =
 
 export type RunTest = (test: Extract<CompiledProgram, { readonly program: unknown }>, actual: Json) => ProgramRun;
 
-function expectedOf([name, value]: JsonEntry, dialect: Dialect): Expected {
+function expectedOf([name, value]: JsonEntry, dialect: Dialect, compile: Compile): Expected {
   const body = enclosedBody(value);
-  return body === undefined ? { name, value } : { name, test: compileProgram(body, dialect) };
+  return body === undefined ? { name, value } : { name, test: compile(body, dialect) };
 }
 
-export function preparedFilters(filters: readonly JsonObject[], dialect: Dialect): readonly PreparedFilter[] {
+export function preparedFilters(
+  filters: readonly JsonObject[],
+  dialect: Dialect,
+  compile: Compile,
+): readonly PreparedFilter[] {
   const tests: Dialect = { refused: dialect.refused, variables: [] };
   return filters
     .filter((filter) => typeof field(filter, 'type') === 'string')
-    .map((filter) => ({ expected: entriesOf(filter).map((entry: JsonEntry) => expectedOf(entry, tests)) }));
+    .map((filter) => ({ expected: entriesOf(filter).map((entry: JsonEntry) => expectedOf(entry, tests, compile)) }));
 }
 
 function attributeMatching(expected: Expected, event: JsonObject, runTest: RunTest): Matching {

@@ -23,7 +23,7 @@ interface Orientation {
 
 const concepts = [
   'A brain is the complete system for a business responsibility.',
-  'It belongs to an org and holds functions, which do its work, and workflows, which coordinate them.',
+  'It belongs to an org and holds functions and the workflows that coordinate them.',
   'A function or a workflow is a reusable definition, and a run executes it on an input.',
   'A reasoning function has a prompt and calls a language model.',
   'Until they are renamed, the tools say spec for a definition and execution for a run.',
@@ -80,6 +80,10 @@ const orientation: readonly Orientation[] = [
   },
   { when: serves('create_spec'), says: primitiveField },
   { when: serves('list_models'), says: saying('list_models lists the models this server can call.') },
+  {
+    when: serves('list_tool_servers'),
+    says: saying('list_tool_servers lists the tool servers the brain may use and their tools.'),
+  },
   {
     when: serves('execute_spec', 'get_execution'),
     says: saying(

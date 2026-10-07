@@ -20,12 +20,12 @@ The fold and the answer are compiled with the evaluator of [`@beonauto/workflow-
 
 1. refuses an input nested deeper than 512 levels, and one its input schema refuses, as `invalid_input` with the schema's pointers;
 2. reads the view through the views port and, while the view of the version saved is missing, of an older version, waiting or being built, answers `unavailable` with the kind `rebuilding`, the count folded and the lag in words; while it is stalled, `conflict` with the kind `stalled`, in fixed words with the type and time of the event and the line of the fold, never the fold's own message, the event's values or its id (`src/run/view-words.ts`);
-3. without an `answer`, answers the view itself, checked against the output schema on the serving thread, since the view is at most 512 KiB; with one, asks the pool to apply it to the view with the input as `$input`, under 16,000,000 units of work, in `exactly one` mode, with an output of at most `mostOutputBytes`, 1 MiB less 2,048 bytes for the record, and, for a definition with an output schema, its own worker, `src/run/answer-worker.ts`, which checks the output there;
+3. without an `answer`, answers the view itself, checked against the output schema on the serving thread, since the view is at most 512 KiB; with one, asks the pool to apply it to the view with the input as `$input`, under 16,000,000 units of work, in `exactly one` mode, with an output of at most `mostOutputBytes`, 1 MiB less 2,048 bytes for the record, and the checked worker of `@beonauto/specs/json-schema` for every answer, with the output schema as its context, or `null` without one, so the worker that applies `answer` also checks its output there;
 4. turns the outcome into the run's ending as a computation function's run does (`src/run/answer-endings.ts`), and records `{ language, work, duration_ms, input_bytes, output_bytes, view: { version, checkpoint, checkpoint_at, folded, last_event } }`, so a caller who does not see an event can tell how far the view had read.
 
 A run never waits for the projector. `get_spec` of a recall function adds its `standing` (`src/primitive/recall-standing.ts`): the view's state, version, checkpoint, count folded, last event, lag and the time of the brain's newest record, and for a stalled view the event's id, type and time, the kind of stall, the fold's raw error and its line; a retired function has none.
 
-The host's projector folds pages of events in the pool with `recallFolding`, whose worker, `src/run/fold-worker.ts`, checks each view against its schema where it was folded.
+The host's projector folds pages of events in the pool with `recallFolding`, whose worker is that checked worker too, so each view is checked against its schema where it was folded, and a view or an answer it refuses is worded with `issuesDetail` of `@beonauto/specs/json-schema`, the one wording of the issues a computation output gets.
 
 ## Bounds
 
@@ -35,8 +35,8 @@ The hosted runtime does not offer recall functions until its adapter bounds the 
 
 ## Testing
 
-`@beonauto/recollection/testing` exports `campaignReviews`, the example document, `recallDocument(fold, frontMatter)`, a document of a fold over every successful run, and `reviewBrief`, a reasoning function whose runs the example folds. The tests of this package run real workers through a fake views port (`src/testing/kept-views.ts`), and a scripted pool for the outcomes a real worker gives only rarely.
+`@beonauto/recollection/testing` exports `campaignReviews`, the example document, `recallDocument(fold, frontMatter)`, a document of a fold over every successful run, and `reviewBrief`, a reasoning function whose runs the example folds. The tests of this package run real workers through a fake views port (`src/testing/kept-views.ts`), and the engine's `scriptedPool` for the outcomes a real worker gives only rarely.
 
 ## Source
 
-`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialects, the filters and parsing. `src/run` holds a run and the folding settings: the bounds, the input's checks, the answer, its endings, the words of a view not ready, and the two workers. `src/primitive` holds the primitive, its parsing and summary, its standing and its description for agents. `src/testing` holds the example and what the tests share.
+`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialects, the filters and parsing. `src/run` holds a run and the folding settings: the bounds, the input's checks, the answer, its endings and the words of a view not ready. `src/primitive` holds the primitive, its parsing and summary, its standing and its description for agents. `src/testing` holds the example and what the tests share.

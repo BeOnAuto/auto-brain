@@ -1,8 +1,7 @@
 import type { Schema } from 'effect';
 
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
-import { callsEnded, noCalls } from '../bounds/call-bounds.ts';
-import { cutAtCodePoint } from '../bounds/text-bytes.ts';
+import { callsEnded, cutToDescriptionBound, noCalls } from '../bounds/call-bounds.ts';
 import { modelFacingNames } from '../names/model-facing-names.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { toolsInWords } from '../names/tool-words.ts';
@@ -31,8 +30,6 @@ export interface RunTools {
   readonly close: () => Promise<void>;
 }
 
-const mostDescriptionBytes = 4096;
-
 export function runTools(parts: RunToolsParts): RunTools {
   let tally = noCalls;
   let ending: ToolsEnding | undefined;
@@ -53,7 +50,7 @@ export function runTools(parts: RunToolsParts): RunTools {
   };
   const offered = modelFacingNames(parts.offered).map((tool): OfferedTool => ({
     name: tool.name,
-    description: cutAtCodePoint(tool.tool.description ?? '', mostDescriptionBytes),
+    description: cutToDescriptionBound(tool.tool.description ?? ''),
     inputSchema: tool.tool.inputSchema,
     call: caller(parts, state, tool),
   }));

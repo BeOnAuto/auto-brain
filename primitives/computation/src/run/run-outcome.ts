@@ -1,5 +1,6 @@
 import { Conflict, Unavailable } from '@beonauto/operations';
 import type { Finished } from '@beonauto/specs';
+import { issuesDetail } from '@beonauto/specs/json-schema';
 import {
   lineOf,
   type PoolOutcome,
@@ -95,8 +96,9 @@ function unworkableWith(outcome: Unworkable): Ending {
     return Effect.die(new Error('The worker refused a program the definition was accepted with'));
   }
   if (outcome.ran === 'mismatched') {
-    const issues = outcome.issues.map(({ pointer, detail }) => `${pointer === '' ? 'the output' : pointer}: ${detail}`);
-    return unworkable(`The program's output does not match the output schema: ${issues.join('; ')}`);
+    return unworkable(
+      `The program's output does not match the output schema: ${issuesDetail(outcome.issues, 'output')}`,
+    );
   }
   if (outcome.ran === 'oversized') {
     return unworkable(`The program's output takes more than the ${mostOutputBytes} bytes as JSON a run can record`);

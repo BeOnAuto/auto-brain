@@ -1,5 +1,6 @@
 import type { InvalidInput } from '@beonauto/operations';
 import type { Executed, PrimitiveRejection } from '@beonauto/specs';
+import { checkedWorker } from '@beonauto/specs/json-schema';
 import { jsonBytesOf, type ProgramPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import { Effect, type Schema } from 'effect';
 
@@ -19,10 +20,8 @@ export type ComputationRun = (
   input: Schema.Json,
 ) => Effect.Effect<Executed, PrimitiveRejection>;
 
-const outputWorker = new URL('./output-worker.ts', import.meta.url);
-
 function checkedBy({ output }: ComputationFunctionDefinitionDocument): Pick<ProgramRequest, 'worker' | 'context'> {
-  return output.schema === undefined ? {} : { worker: outputWorker, context: output.schema.document };
+  return { worker: checkedWorker, context: output.schema?.document ?? null };
 }
 
 export function computationRun({ pool, deadlineMs }: ComputationRunOptions): ComputationRun {

@@ -1,6 +1,6 @@
 # HTTP API
 
-The HTTP API provides brain management, reasoning-function, computation-function, recall-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, and the brain's analytics. Requests use the API base URL and credentials supplied for the workspace.
+The HTTP API provides brain management, reasoning-function, computation-function, recall-function and workflow definitions, recorded runs, events for waiting workflows, events published to a brain, the history of a run and of a brain, the brain's analytics, and the tool servers its functions may use. Requests use the API base URL and credentials supplied for the workspace.
 
 The runtime exposes the same operations through HTTP and [MCP](mcp.md). The API calls definitions `specs` and runs `executions`. The `primitive` field names the type of a definition: `inference` for a reasoning function, `computation` for a computation function, `recollection` for a recall function and `orchestration` for a workflow.
 
@@ -239,6 +239,57 @@ The example shortens `by_day`, which holds every day of the window, oldest first
 
 A run started again under its `execution_id` counts once: its tokens add up over every attempt that ended, while its duration is that of its last attempt. A percentile is the nearest rank: the duration at place ⌈p × n⌉ of the n durations in order. Rejected runs count in `runs` and in `tokens`, never in `duration_ms`; workflow runs count in `runs` and in `duration_ms`, from when the run started to when the workflow ended. The answer reads a table the runtime keeps as each run is recorded, so it is as current as the runs themselves. A brain that does not exist returns `not_found`; a retired brain answers like any other.
 
+## Tool servers
+
+This route is relative to `/v1/orgs/{org}/brains/{brain}` and needs `brain:read`:
+
+| Operation           | Method and route    | Input             |
+| ------------------- | ------------------- | ----------------- |
+| `list_tool_servers` | `GET /tool-servers` | Optional `server` |
+
+`list_tool_servers` lists the MCP servers the operator of a self-hosted runtime set up for the brain, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list. `server` keeps only the server of that name, and asks no other.
+
+```http
+GET /v1/orgs/acme/brains/sales/tool-servers
+Authorization: Bearer <key>
+```
+
+```json
+{
+  "tool_servers": [
+    {
+      "name": "graph",
+      "type": "http",
+      "tools": [
+        {
+          "name": "search",
+          "description": "Finds the operations that answer a question.",
+          "input_schema": {
+            "type": "object",
+            "properties": { "query": { "type": "string" } },
+            "required": ["query"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "notes",
+      "type": "stdio",
+      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached"
+    }
+  ]
+}
+```
+
+| Field         | Contents                                                                                                                                                         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | The server's name, which a function writes before the slash                                                                                                      |
+| `type`        | `http` for a remote server, `stdio` for a process the runtime starts                                                                                             |
+| `tools`       | The tools the server lists that the operator allows, in the server's order, each with its `name`, its `description` cut to 4 KiB and its `input_schema`          |
+| `unavailable` | In place of `tools`, why the server could not be asked for its tools just now, in words; asking again later may work, and the other servers are listed beside it |
+
+Servers are sorted by name, and a server set up for another org, or for other brains of the org, is neither listed nor asked. The answer holds no header, environment value, address or credential of a server, and what a server says is scrubbed of the secrets the runtime holds for it. A brain that does not exist returns `not_found`; a retired brain answers like any other.
+
 ## Responses and errors
 
 Successful responses contain JSON with `Cache-Control: no-store`. Create operations return 201; other successful operations generally return 200.
@@ -281,4 +332,4 @@ A problem document's `type` is a URI that names its kind of problem:
 
 A 500 response contains an incident reference. Its `instance` and the `x-request-id` response header identify the server log entry. Include that reference when reporting a problem, without sharing credentials or confidential input. Malformed HTTP can return a bare status before the API handles it.
 
-A function naming a model outside the deployment's allow list returns `unavailable` with kind `model_not_offered` and `because: "model_not_allowed"`, before calling the provider. A missing provider can return the same kind with `because: "provider_not_configured"`. Use `list_models` to inspect the offered references.
+A function naming a model outside the deployment's allow list returns `unavailable` with kind `model_not_offered` and `because: "model_not_allowed"`, before calling the provider. A missing provider can return the same kind with `because: "provider_not_configured"`. Use `list_models` to inspect the offered references. A function naming a tool the brain's servers do not offer returns `unavailable` with kind `tool_not_offered`; use `list_tool_servers` to see the servers and tools it may name.

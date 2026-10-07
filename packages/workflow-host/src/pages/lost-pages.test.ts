@@ -21,8 +21,9 @@ function workerOf(source: string): URL {
   return new URL(`data:text/javascript,${encodeURIComponent(source)}`);
 }
 
-const marking =
-  'import { parentPort, workerData } from "node:worker_threads"; const place = new Int32Array(workerData.progress.shared); Atomics.store(place, 0, 0); Atomics.store(place, 1, 0);';
+function markingThen(event: number, then: string): string {
+  return `import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ progress }) => { const place = new Int32Array(progress); Atomics.store(place, 0, ${event}); Atomics.store(place, 1, 0); ${then} });`;
+}
 
 const quick = {
   folding: { ...foldingOf(), foldDeadlineMs: 1, pageBudgetMs: 1 },
@@ -33,17 +34,22 @@ const quick = {
 const workersThatStop: readonly (readonly [string, string, StallCause, string])[] = [
   [
     'stops at its deadline',
-    `${marking} while (true) {}`,
+    markingThen(0, 'while (true) {}'),
     'time',
     'The fold was stopped by its deadline of 1 ms 2 times',
   ],
   [
     'runs out of memory',
-    `${marking} const kept = []; while (true) { kept.push(new Array(100000).fill(kept.length)); }`,
+    markingThen(0, 'const kept = []; while (true) { kept.push(new Array(100000).fill(kept.length)); }'),
     'memory',
     'The fold was stopped by its memory 2 times',
   ],
-  ['crashes', `${marking} throw new Error("broken on purpose");`, 'crash', 'The fold was stopped by its crash 2 times'],
+  [
+    'crashes',
+    markingThen(0, 'throw new Error("broken on purpose");'),
+    'crash',
+    'The fold was stopped by its crash 2 times',
+  ],
 ];
 
 const workersThatNameNoFold: readonly (readonly [string, string, string])[] = [
@@ -59,7 +65,7 @@ const workersThatNameNoFold: readonly (readonly [string, string, string])[] = [
   ],
   [
     'answers what the projector cannot read',
-    'import { parentPort } from "node:worker_threads"; parentPort.postMessage({ ran: "unreadable" });',
+    'import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ job }) => { parentPort.postMessage({ job, answer: { ran: "unreadable" }, keep: false }); });',
     'A worker answered a page of folds with something it could not read',
   ],
 ];
@@ -110,8 +116,7 @@ describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs 
 
 describe('a page of folds lost twice', { timeout: viewTestTimeoutMs }, () => {
   it('counts a try and keeps the checkpoint when what it folds before the event breaks its worker too', async () => {
-    const atTheSecondRun =
-      'import { workerData } from "node:worker_threads"; const place = new Int32Array(workerData.progress.shared); Atomics.store(place, 0, 2); Atomics.store(place, 1, 0); throw new Error("broken on purpose");';
+    const atTheSecondRun = markingThen(2, 'throw new Error("broken on purpose");');
     const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(atTheSecondRun) });
     await views.saved('runs', counting);
     await views.ranEach('inference/runs', [1, 2]);

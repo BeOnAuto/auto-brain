@@ -1,11 +1,11 @@
 import { Conflict, Unavailable } from '@beonauto/operations';
 import type { PoolOutcome } from '@beonauto/workflow-engine/dsl';
+import { scriptedPool } from '@beonauto/workflow-engine/testing';
 import { Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignReviews, recallDocument } from '../testing/campaign-reviews.ts';
 import { liveView, poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
-import { scriptedPool } from '../testing/scripted-pool.ts';
 
 const succeeded = 'language: jq\nsource:\n  events:\n    - type: execution_succeeded';
 
