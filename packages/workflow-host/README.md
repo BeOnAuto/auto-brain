@@ -223,6 +223,16 @@ The pool now keeps its workers between pages (see [the engine](../workflow-engin
 
 Kept workers built the view 11 to 67 seconds sooner on SQLite and 22 to 24 seconds sooner on PostgreSQL, more in each round than its pages times the start of a fold worker of the code before, measured alone in that round, 123.3 and 42.2 ms; they read fewer pages because fewer ended at their 2 seconds of folding, which a worker's start never spends: a fresh worker folds a page more slowly than a warm one, 742.5 ms less its 112.8 ms start against 429.6 ms warm, in the engine's measurement of the second round.
 
+Measured once more later the same day on the machine at rest, at a load average of 2.6 to 3.7, the code before and this pool alternately:
+
+| What                                       | SQLite                     | PostgreSQL                 |
+| ------------------------------------------ | -------------------------- | -------------------------- |
+| the view built, a worker for each page     | 39.0 s, 2,563 a second     | 41.0 s, 2,437 a second     |
+| the view built, workers kept between pages | 34.9 s, 2,862 a second     | 36.2 s, 2,761 a second     |
+| pages read and writes of the view's row    | 101 and 100 for each build | 101 and 100 for each build |
+
+At rest no page ended at its 2 seconds, and kept workers built the view 4.1 seconds sooner on SQLite and 4.8 seconds sooner on PostgreSQL, more than its 101 pages times the start of a fold worker of the code before measured alone at rest, 31.1 and 30.8 ms, about 3.1 seconds: the bound of decision 0014 is met on both stores at rest, in one build each.
+
 One run's inputs are taken one at a time, each a few round trips to the database: on PostgreSQL that bounds one run to about 180 inputs a second, while runs side by side share the database's time. The spike's timers fired 3.7 ms late at p99 when idle (`spikes/node/results/timers-precision.json`); the host's, armed by the runs it decides, fired 2 to 5 ms late at p99 on SQLite and 5 ms on PostgreSQL in the three measurements here, and 9 ms on PostgreSQL in a reviewer's measurement, so allow for up to 10 ms at p99.
 
 The follower was first measured on 2026-10-06, on the same machine and versions, while the machine also ran other work, whose load was not recorded, so the figures of the host itself moved by as much as twice from one run to the next; `main` measured the same way just after gave timer lateness at p99 of 165 ms on SQLite and 1,664 ms on PostgreSQL, and 149 and 46 inputs a second for the long-run loop, against 95 ms, 406 ms, 112 and 28 for this host in the run before it, and two runs of each, one after the other, of 1,000 inputs on PostgreSQL gave this host 69 and 31 inputs a second and `main` 60 and 34:

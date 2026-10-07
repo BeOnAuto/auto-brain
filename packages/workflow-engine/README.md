@@ -392,7 +392,27 @@ The same script measures a page of the example of the recall reference, 1,000 ru
 | the page less its folds, the same round                              | 120.8 ms                             | 61.6 ms warm                           |
 | the JSON round trip of the page's bytes, in and out                  | 0.80 and 0.70 ms                     | 0.68 and 0.80 ms                       |
 
-A warm run costs its work and well under a millisecond more, with or without an output schema, against the 35 to 164 ms a worker's start cost each run; the first job of a module, and the first after a minute idle, still pays the start, now with `effect`, which the job loop decodes its envelopes with and the pool's program worker did not load before: 115.6 ms in the first round and 229.9 ms in the second, past the 200 ms the decision asks. A warm page cost 266 ms less than a cold one at the median of their differences, more than a fold worker's start alone, but 61.6 ms more than its folds on the measuring thread, against 120.8 ms for a page in a worker of its own in the same round, where [decision 0014](../../docs/decisions/0014-warm-worker-pool.md) asks at most the round trip of its bytes and 2 ms; whether a warm page meets that bound on an idle machine was not measured. These two bounds, the warm page's and the first job's, are to be measured again on an idle machine before the decision's gates are called met.
+A warm run costs its work and well under a millisecond more, with or without an output schema, against the 35 to 164 ms a worker's start cost each run; the first job of a module, and the first after a minute idle, still pays the start, now with `effect`, which the job loop decodes its envelopes with and the pool's program worker did not load before: 115.6 ms in the first round and 229.9 ms in the second, past the 200 ms the decision asks. A warm page cost 266 ms less than a cold one at the median of their differences, more than a fold worker's start alone, but 61.6 ms more than its folds on the measuring thread, against 120.8 ms for a page in a worker of its own in the same round, where [decision 0014](../../docs/decisions/0014-warm-worker-pool.md) asks at most the round trip of its bytes and 2 ms. Measured again later the same day on the machine at rest, both alternately, at a load average of 1.9 to 3.7:
+
+| What, at the median, on the machine at rest                          | A worker for each job                | Workers kept between jobs              |
+| -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| a run of a program that answers at once, of 30                       | 26.6 and 22.3 ms                     | 0.07 and 0.07 ms                       |
+| the same with an output schema, checked where it ran                 | 104.0 and 102.1 ms                   | 0.09 and 0.08 ms                       |
+| the first job of a worker, of 9 fresh pools, without and with schema | 29.5 and 29.2 ms; 104.4 and 101.8 ms | 100.7 and 104.1 ms; 98.9 and 105.9 ms  |
+| a job after its worker was idle past its minute, once                | every job is the first of its worker | 125.4 ms                               |
+| a fold worker's start, of 9 fresh pools                              | 31.1 and 30.8 ms                     | 99.9 and 102.9 ms                      |
+| the page of 1,000 events, cold, of 9                                 | 358.6 and 355.9 ms                   | 429.7 and 439.4 ms                     |
+| the same page warm, and its folds on the thread that measures        | every page is cold                   | 283.7 and 287.9 ms; 281.1 and 289.9 ms |
+| the cold page less the warm one, of 6 runs                           |                                      | 149.3 to 162.3 ms                      |
+| the warm page less its folds, of 6 runs                              |                                      | 4.5, 1.0, 4.9, 4.9, 8.1 and −1.4 ms    |
+| the JSON round trip of the page's bytes, in and out, of 6 runs       | 0.65 and 0.65 ms                     | 0.59 to 0.71 ms                        |
+
+On the machine at rest, against the bounds of the decision:
+
+- a warm run costs at most the round trip of its request and 2 ms, 0.07 to 0.09 ms against about 2.004 ms, with and without an output schema: met;
+- a warm page costs less than a cold one by more than a fold worker's start alone, 149.3 to 162.3 ms against 99.9 to 102.9 ms for this pool's worker and 31 ms for one that loads no `effect`: met;
+- the first job of a worker starts in at most 200 ms, 100.7 and 104.1 ms, and 125.4 ms after a minute idle: met. It is three times the 29 ms of a worker that loads no `effect`, which the job loop decodes its envelopes with;
+- a warm page costs beyond its folds at most the round trip of its bytes and 2 ms, about 2.6 to 2.7 ms: not met at the median of six runs, about 4.7 ms. Two runs met it, at 1.0 and −1.4 ms, and four did not, at 4.5 to 8.1 ms. The spread of the measurement across runs is wider than the allowance itself, so this bound sits at the edge of what the measurement resolves.
 
 The tests assert behaviour at the smallest size that proves it and measure nothing: `src/engine/long-run.test.ts` resumes a run of 3,000 inputs from its last snapshot, and no test of the engine is given more than 60 s.
 
