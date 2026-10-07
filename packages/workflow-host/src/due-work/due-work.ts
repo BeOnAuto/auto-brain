@@ -1,5 +1,6 @@
-import { Effect } from 'effect';
+import { Effect, Semaphore } from 'effect';
 
+import { background } from '../calls/background.ts';
 import type { Trouble } from '../calls/host-executor.ts';
 import { rowWaits, type RowWaits } from './row-waits.ts';
 
@@ -17,59 +18,84 @@ export interface DueWork {
 export interface DuePerformer {
   readonly performed: (now: number) => Effect.Effect<void>;
   readonly wakeAt: (now: number) => Effect.Effect<number>;
+  readonly stop: () => Effect.Effect<void>;
+}
+
+export interface DueParts {
+  readonly trouble: Trouble;
+  readonly now: () => number;
+  readonly wake: () => void;
 }
 
 export const dueInOneTick = 256;
 
 export const duePerformedAtOnce = 16;
 
-function itemPerformer(work: DueWork, waits: RowWaits, trouble: Trouble) {
-  return (item: DueItem, now: number): Effect.Effect<void> =>
-    item.perform(now).pipe(
-      Effect.andThen(
-        Effect.sync(() => {
-          waits.performed(item.key);
-        }),
-      ),
-      Effect.catchCause((cause) =>
+export const dueAwaitedMs = 1000;
+
+function itemPerformer(work: DueWork, waits: RowWaits, { trouble, now }: DueParts) {
+  return (item: DueItem): Effect.Effect<void> =>
+    Effect.suspend(() => {
+      const at = now();
+      return item.perform(at).pipe(
         Effect.andThen(
           Effect.sync(() => {
-            waits.failed(item.key, now);
+            waits.performed(item.key);
           }),
-          trouble(`A due row of ${work.name} could not be performed; the loop tries it again after a wait`, cause),
         ),
-      ),
-    );
+        Effect.catchCause((cause) =>
+          Effect.andThen(
+            Effect.sync(() => {
+              waits.failed(item.key, at);
+            }),
+            trouble(`A due row of ${work.name} could not be performed; the loop tries it again after a wait`, cause),
+          ),
+        ),
+      );
+    });
 }
 
-function workPerformer(work: DueWork, trouble: Trouble): DuePerformer {
+function awaitedAtMost(handedOut: Effect.Effect<void>): Effect.Effect<void> {
+  return Effect.interruptible(Effect.raceFirst(handedOut, Effect.sleep(dueAwaitedMs)));
+}
+
+function workPerformer(work: DueWork, parts: DueParts): DuePerformer {
   const waits = rowWaits();
+  const running = background();
+  const atOnce = Semaphore.makeUnsafe(duePerformedAtOnce);
   const backlog = { more: false };
-  const performedItem = itemPerformer(work, waits, trouble);
-  const performedReady = (items: readonly DueItem[], now: number): Effect.Effect<void> => {
-    const ready = items.filter(({ key }) => !waits.holds(key, now));
-    backlog.more = ready.length > dueInOneTick;
-    return Effect.forEach(ready.slice(0, dueInOneTick), (item) => performedItem(item, now), {
-      concurrency: duePerformedAtOnce,
-      discard: true,
-    });
+  const performedItem = itemPerformer(work, waits, parts);
+  const finished = Effect.sync(() => {
+    if (backlog.more) {
+      parts.wake();
+    }
+  });
+  const handedOut = (items: readonly DueItem[], now: number): readonly string[] => {
+    const ready = items.filter(({ key }) => !waits.holds(key, now) && !running.has(key));
+    const given = ready.slice(0, Math.max(0, dueInOneTick - running.size()));
+    backlog.more = ready.length > given.length;
+    for (const item of given) {
+      running.run(item.key, atOnce.withPermit(performedItem(item)).pipe(Effect.ensuring(finished)));
+    }
+    return given.map(({ key }) => key);
   };
   return {
     performed: (now) =>
-      work.due(now, dueInOneTick + 1 + waits.heldAt(now)).pipe(
-        Effect.flatMap((items) => performedReady(items, now)),
+      work.due(now, dueInOneTick + 1 + waits.heldAt(now) + running.size()).pipe(
+        Effect.map((items) => handedOut(items, now)),
+        Effect.flatMap((keys) => awaitedAtMost(running.awaited(keys))),
         Effect.catchCause((cause) =>
-          trouble(`The due rows of ${work.name} could not be read; the loop tries again`, cause),
+          parts.trouble(`The due rows of ${work.name} could not be read; the loop tries again`, cause),
         ),
       ),
     wakeAt: (now) =>
-      backlog.more
+      backlog.more && running.size() < dueInOneTick
         ? Effect.succeed(now)
         : work.nextDueAt(now).pipe(
             Effect.map((next) => Math.min(next ?? Number.POSITIVE_INFINITY, waits.nextUntil(now))),
             Effect.catchCause((cause) =>
               Effect.as(
-                trouble(
+                parts.trouble(
                   `The next due time of ${work.name} could not be read; the loop waits for the next sweep`,
                   cause,
                 ),
@@ -77,17 +103,20 @@ function workPerformer(work: DueWork, trouble: Trouble): DuePerformer {
               ),
             ),
           ),
+    stop: running.stop,
   };
 }
 
-export function duePerformer(works: readonly DueWork[], trouble: Trouble): DuePerformer {
-  const performers = works.map((work) => workPerformer(work, trouble));
+export function duePerformer(works: readonly DueWork[], parts: DueParts): DuePerformer {
+  const performers = works.map((work) => workPerformer(work, parts));
   return {
-    performed: (now) => Effect.forEach(performers, ({ performed }) => performed(now), { discard: true }),
+    performed: (now) =>
+      Effect.forEach(performers, ({ performed }) => performed(now), { concurrency: 'unbounded', discard: true }),
     wakeAt: (now) =>
       Effect.map(
         Effect.forEach(performers, ({ wakeAt }) => wakeAt(now)),
         (wakes: readonly number[]) => Math.min(Number.POSITIVE_INFINITY, ...wakes),
       ),
+    stop: () => Effect.forEach(performers, ({ stop }) => stop(), { discard: true }),
   };
 }

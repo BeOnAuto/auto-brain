@@ -2,7 +2,7 @@ import type { WorkflowEngine } from '@beonauto/workflow-engine';
 import { Effect, Fiber } from 'effect';
 
 import type { Trouble } from '../calls/host-executor.ts';
-import { duePerformer, type DueWork } from '../due-work/due-work.ts';
+import { duePerformer, type DuePerformer, type DueWork } from '../due-work/due-work.ts';
 import type { DueTimer, TimerTable } from '../timers/sql-timers.ts';
 import type { HostClock } from './host-clock.ts';
 
@@ -67,15 +67,21 @@ function nextDueOf({ timers, trouble }: LoopParts): Effect.Effect<number | null>
     );
 }
 
+function dueOf({ dueWork, trouble, clock }: LoopParts, wake: () => void): DuePerformer {
+  return duePerformer(dueWork, { trouble, now: clock.now, wake });
+}
+
 export function startLoop(parts: LoopParts): HostLoop {
   const { clock, sweepEveryMs } = parts;
-  const due = duePerformer(parts.dueWork, parts.trouble);
   const plan = {
     wakeAt: Number.NEGATIVE_INFINITY,
     armedSince: Number.POSITIVE_INFINITY,
     lastSweptAt: Number.NEGATIVE_INFINITY,
     signal: Promise.withResolvers<void>(),
   };
+  const due = dueOf(parts, () => {
+    plan.signal.resolve();
+  });
   const tick = Effect.suspend(() => {
     const now = clock.now();
     const sweepDue = now >= plan.lastSweptAt + sweepEveryMs;
@@ -110,6 +116,6 @@ export function startLoop(parts: LoopParts): HostLoop {
         plan.signal.resolve();
       }
     },
-    stop: () => Effect.runPromise(Fiber.interrupt(fiber)),
+    stop: () => Effect.runPromise(Fiber.interrupt(fiber).pipe(Effect.andThen(due.stop()))),
   };
 }

@@ -7,7 +7,7 @@ import { startLoop } from '../loop/host-loop.ts';
 import { eventually } from '../testing/eventually.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { sqlTimers } from '../timers/sql-timers.ts';
-import { dueInOneTick, duePerformedAtOnce } from './due-work.ts';
+import { dueAwaitedMs, dueInOneTick, duePerformedAtOnce } from './due-work.ts';
 import { fakeDueWork, type FakeDueWork } from './fake-due-work.ts';
 
 const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -21,7 +21,7 @@ const engine: WorkflowEngine = {
 interface DueLooping {
   readonly order: () => readonly string[];
   readonly troubles: () => readonly string[];
-  readonly armTimer: (dueAt: number) => Promise<void>;
+  readonly armTimer: (dueAt: number, timerId?: string) => Promise<void>;
 }
 
 async function dueLooping(
@@ -55,8 +55,8 @@ async function dueLooping(
   return {
     order: () => order,
     troubles: () => troubles,
-    armTimer: async (dueAt) => {
-      const timer: ArmTimer = { kind: 'arm_timer', executionId: runId, timerId: '1', dueAt, purpose: 'wait' };
+    armTimer: async (dueAt, timerId = '1') => {
+      const timer: ArmTimer = { kind: 'arm_timer', executionId: runId, timerId, dueAt, purpose: 'wait' };
       await Effect.runPromise(
         timers.timers.arm(timer, { executionId: runId, attributes: {} }, { version: 1, lastStep: null }),
       );
@@ -94,6 +94,30 @@ describe('the due rows of a projection, in the loop of the host', () => {
     const [performed] = await eventually(rows.performed, (done) => done.length > 0);
 
     expect(performed).toEqual({ key: 'later', at: now + 90_000, by: 'host' });
+  });
+});
+
+describe('due rows whose perform never ends, as a delivery to a receiver that never answers', () => {
+  it('hold the timers of a tick for a second at most, and the ticks after not at all, 16 of them at once', async () => {
+    const now = Date.now();
+    const rows = fakeDueWork();
+    for (const key of Array.from({ length: 20 }, (_, index) => `hanging-${index}`)) {
+      rows.add(key, now - 1000);
+      rows.hanging(key);
+    }
+    const looping = await dueLooping(rows);
+
+    await looping.armTimer(now - 1000);
+    await eventually(looping.order, (order) => order.length === 1);
+    const firstFiredAt = Date.now();
+    const secondDueAt = Date.now() + 300;
+    await looping.armTimer(secondDueAt, '2');
+    await eventually(looping.order, (order) => order.length === 2);
+
+    expect(firstFiredAt - now).toBeLessThan(dueAwaitedMs + 3000);
+    expect(Date.now() - secondDueAt).toBeLessThan(dueAwaitedMs);
+    expect(looping.order()).toEqual(['timer 1 after 0 rows', 'timer 2 after 0 rows']);
+    expect([rows.attempts().length, rows.mostAtOnce()]).toEqual([duePerformedAtOnce, duePerformedAtOnce]);
   });
 });
 

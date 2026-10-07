@@ -14,6 +14,7 @@ export interface FakeDueWork {
   readonly work: (by: string) => DueWork;
   readonly add: (key: string, dueAt: number) => void;
   readonly failing: (key: string) => void;
+  readonly hanging: (key: string) => void;
   readonly performed: () => readonly PerformedRow[];
   readonly attempts: () => readonly PerformedRow[];
   readonly mostAtOnce: () => number;
@@ -31,6 +32,8 @@ interface RowStore {
 interface Flight {
   readonly attempt: (row: PerformedRow, performMs: number) => Promise<boolean>;
   readonly failing: (key: string) => void;
+  readonly hanging: (key: string) => void;
+  readonly hangs: (key: string) => boolean;
   readonly attempts: () => readonly PerformedRow[];
   readonly most: () => number;
 }
@@ -65,6 +68,7 @@ function rowStore(): RowStore {
 
 function flight(): Flight {
   const failing = new Set<string>();
+  const hanging = new Set<string>();
   const attempts: PerformedRow[] = [];
   const counts = { now: 0, most: 0 };
   return {
@@ -79,6 +83,10 @@ function flight(): Flight {
     failing: (key) => {
       failing.add(key);
     },
+    hanging: (key) => {
+      hanging.add(key);
+    },
+    hangs: (key) => hanging.has(key),
     attempts: () => attempts,
     most: () => counts.most,
   };
@@ -89,6 +97,7 @@ function itemOf(store: RowStore, flown: Flight, row: Omit<PerformedRow, 'at'>, p
     key: row.key,
     perform: (at) =>
       Effect.promise(() => flown.attempt({ ...row, at }, performMs)).pipe(
+        Effect.andThen((fails) => (flown.hangs(row.key) ? Effect.never : Effect.succeed(fails))),
         Effect.flatMap((fails) =>
           fails
             ? Effect.fail(new Error(`The row ${row.key} cannot be performed`))
@@ -117,6 +126,7 @@ export function fakeDueWork(performMs = 0): FakeDueWork {
     }),
     add: store.add,
     failing: flown.failing,
+    hanging: flown.hanging,
     performed: store.performed,
     attempts: flown.attempts,
     mostAtOnce: flown.most,
