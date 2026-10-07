@@ -141,6 +141,51 @@ describe('the error of a call whose run was cancelled', () => {
   });
 });
 
+describe('the error of a call whose request went unanswered', () => {
+  const site = { function: 'approve', label: 'the function approve', reference: '/do/0/ask' };
+  const expired = callErrorOf(
+    { status: 'rejected', reason: 'unanswered', detail: 'Nobody answered', kind: 'expired' },
+    site,
+  );
+
+  it('is of the type of an unanswered request, status 410, with its kind, which no retry of a communication error matches', () => {
+    expect(expired).toEqual({
+      type: 'https://on.auto/problems/unanswered',
+      status: 410,
+      title: 'The function approve rejected the execution with unanswered',
+      detail: 'Nobody answered',
+      instance: '/do/0/ask',
+      kind: 'expired',
+    });
+  });
+
+  it('ends a workflow that does not catch it unanswered, with its kind, as the request it waited for ended', () => {
+    expect([
+      settlementOf({ kind: 'raised', error: expired }),
+      settlementOf({ kind: 'raised', error: { ...expired, kind: 'undelivered' } }),
+      settlementOf({ kind: 'raised', error: { ...expired, kind: 'lapsed' } }),
+    ]).toEqual([
+      {
+        status: 'rejected',
+        reason: 'unanswered',
+        kind: 'expired',
+        detail: 'The function approve rejected the execution with unanswered: Nobody answered (at /do/0/ask)',
+      },
+      {
+        status: 'rejected',
+        reason: 'unanswered',
+        kind: 'undelivered',
+        detail: 'The function approve rejected the execution with unanswered: Nobody answered (at /do/0/ask)',
+      },
+      {
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'The function approve rejected the execution with unanswered: Nobody answered (at /do/0/ask)',
+      },
+    ]);
+  });
+});
+
 function raisedWith(kind: string, because: string) {
   return {
     kind: 'raised' as const,
