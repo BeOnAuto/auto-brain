@@ -4,75 +4,15 @@ import { describe, expect, it } from 'vitest';
 
 import { internalTermsIn } from '../testing/internal-terms.ts';
 import {
-  instructionsFor,
-  type DefinitionType,
-  type McpEndpoint,
-  type RecipeCalls,
-  type ServedTools,
-} from './instructions.ts';
-
-const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
-
-const insideABrain = [
-  'create_spec',
-  'list_specs',
-  'get_spec',
-  'update_spec',
-  'retire_spec',
-  'execute_spec',
-  'get_execution',
-  'cancel_execution',
-  'list_executions',
-  'get_execution_history',
-  'get_brain_analytics',
-  'list_brain_events',
-  'publish_event',
-  'list_tool_servers',
-  'list_interactions',
-  'answer_interaction',
-  'send_execution_event',
-  'get_guide',
-];
-
-const queriesInsideABrain = [
-  'list_specs',
-  'get_spec',
-  'get_execution',
-  'list_executions',
-  'get_execution_history',
-  'get_brain_analytics',
-  'list_brain_events',
-  'list_tool_servers',
-  'list_interactions',
-  'get_guide',
-];
-
-const orgEndpoint: ServedTools = { orgTools: [...brainTools, 'list_models', 'get_guide'], brainTools: [] };
-
-const brainEndpoint: ServedTools = { orgTools: [], brainTools: insideABrain };
-
-const ownOrg: ServedTools = { orgTools: [...brainTools, 'list_models'], brainTools: insideABrain };
-
-const definitionTypes: readonly DefinitionType[] = [
-  { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
-  { primitive: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
-  { primitive: 'computation', noun: 'computation function', guide: 'computation-function' },
-  { primitive: 'recollection', noun: 'recall function', guide: 'recall-function' },
-  { primitive: 'orchestration', noun: 'workflow', guide: 'workflow' },
-];
-
-const recipes: readonly RecipeCalls[] = [
-  { name: 'first-brain', calls: ['list_brains', 'create_brain', 'create_spec', 'execute_spec'] },
-  { name: 'remember', calls: ['list_specs', 'create_spec', 'update_spec', 'execute_spec'] },
-  { name: 'give-tools', calls: ['list_tool_servers', 'create_spec', 'execute_spec', 'get_execution_history'] },
-  { name: 'schedule', calls: ['list_specs', 'create_spec', 'update_spec', 'list_executions', 'get_execution'] },
-];
-
-const everyEndpoint: readonly (readonly [McpEndpoint, ServedTools])[] = [
-  ['org', orgEndpoint],
-  ['brain', brainEndpoint],
-  ['own org', ownOrg],
-];
+  brainEndpoint,
+  definitionTypes,
+  everyEndpoint,
+  orgEndpoint,
+  ownOrg,
+  queriesInsideABrain,
+  recipes,
+} from '../testing/served-instructions.ts';
+import { instructionsFor, type ServedTools } from './instructions.ts';
 
 const recordOnMcp =
   "A brain is the complete system for a business responsibility. It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history. A reasoning function has a prompt and calls a language model. A computation function runs a program on its input and gives the same output every time. A recall function keeps a view folded from the brain's own history, every run's start and ending with its result when it succeeded and fit, the definitions saved and every event published to the brain, never a run's input or the tool calls it made, so nothing has to write into it. A workflow runs functions in steps, waits for input and can start on a schedule or on an event. This connection acts in the caller's own org: list_brains shows its brains and create_brain makes one, and every tool inside a brain takes the brain's id as brain. The tools call a definition a spec, a run an execution and a definition's type its primitive: inference for a reasoning function, computation for a computation function, recollection for a recall function and orchestration for a workflow. Before writing a definition, read its format with get_guide, which also holds the recipes: first-brain, remember, give-tools and schedule. A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists. A workflow run answers started and ends later: read it with get_execution until its status changes, and give a run that waits for input its event with send_execution_event. Runs, history and events come a page at a time; read on only when the person needs more. When you tell the person what happened, say what was done and what they can do next, in the words of brains, functions, workflows and runs, not in the tools' names, fields or rules; give an id or a status only when the person needs it to act, as a run's id they will return to. A tool that cannot do what was asked says why and what to change.";
@@ -86,12 +26,25 @@ const recordOnABrain =
 const recordWorkflowSentence =
   'A workflow run answers started and ends later: read it with get_execution until its status changes, and give a run that waits for input its event with send_execution_event.';
 
-const runsSentence = 'A run of a workflow answers started; read it with get_execution until it ends.';
+const recordRecallSentence =
+  "A recall function keeps a view folded from the brain's own history, every run's start and ending with its result when it succeeded and fit, the definitions saved and every event published to the brain, never a run's input or the tool calls it made, so nothing has to write into it.";
 
-const recordBrainArgument = ", and every tool inside a brain takes the brain's id as brain.";
+const amendments: readonly (readonly [string, string])[] = [
+  [recordWorkflowSentence, 'A run of a workflow answers started; get_execution shows whether it ended or still waits.'],
+  [", and every tool inside a brain takes the brain's id as brain.", '.'],
+  [
+    recordRecallSentence,
+    "A recall function answers from what it keeps of the brain's own history: every run's start and end, with its result when it succeeded, the definitions saved and the events published to the brain, never a run's input or its tool calls, so nothing has to write into it.",
+  ],
+  ["made on the brain's own connection.", "made on the brain's own connection, /orgs/{org}/brains/{brain}/mcp."],
+  [
+    'names a model this server can call; the reasoning-function guide says how it is written, and it may name tools',
+    'names a model this server can call, as the reasoning-function guide says, and may name tools',
+  ],
+];
 
 function asServedWithFourTypes(recordText: string): string {
-  return recordText.replace(recordWorkflowSentence, runsSentence).replace(recordBrainArgument, '.');
+  return amendments.reduce((text, [recorded, served]) => text.replace(recorded, served), recordText);
 }
 
 const interactionSentence = 'An interaction function asks a person or a system and takes the answer later.';
@@ -106,10 +59,15 @@ function asServedWithFiveTypes(recordText: string): string {
       'inference for a reasoning function,',
       'inference for a reasoning function, interaction for an interaction function,',
     )
-    .replace(
-      runsSentence,
-      'A run of an interaction function or a workflow answers started; read it with get_execution until it ends.',
-    );
+    .replace('A run of a workflow answers started;', 'A run of an interaction function or a workflow answers started;')
+    .replace('Runs, history and events come', 'Runs, history, events and requests come');
+}
+
+function withoutInteraction({ orgTools, brainTools }: ServedTools): ServedTools {
+  return {
+    orgTools,
+    brainTools: brainTools.filter((name) => !name.endsWith('_interaction') && !name.endsWith('_interactions')),
+  };
 }
 
 const wireNamesSentence =
@@ -150,7 +108,9 @@ describe('the instructions of each endpoint, for a key that may call every tool'
     (endpoint, served, recordText) => {
       const fourTypes = definitionTypes.filter(({ primitive }) => primitive !== 'interaction');
 
-      expect(instructionsFor(endpoint, served, fourTypes, recipes)).toBe(asServedWithFourTypes(recordText));
+      expect(instructionsFor(endpoint, withoutInteraction(served), fourTypes, recipes)).toBe(
+        asServedWithFourTypes(recordText),
+      );
     },
   );
 
@@ -191,13 +151,13 @@ describe('the instructions of a key that may only read', () => {
     );
 
     expect(reading).toContain(
-      'get_guide holds what these words mean and how each kind of definition is written. A reasoning function names a model this server can call;',
+      'get_guide holds what these words mean and how each kind of definition is written. A reasoning function names a model this server can call, as the reasoning-function guide says,',
     );
   });
 
   it('on an org endpoint that only creates brains, say that it makes a brain', () => {
     expect(instructionsFor('org', { orgTools: ['create_brain'], brainTools: [] }, definitionTypes, recipes)).toContain(
-      "This connection manages the brains of one org: create_brain makes a brain, and a brain's functions and workflows are made on the brain's own connection.",
+      "This connection manages the brains of one org: create_brain makes a brain, and a brain's functions and workflows are made on the brain's own connection, /orgs/{org}/brains/{brain}/mcp.",
     );
   });
 });
@@ -270,9 +230,11 @@ describe('the instructions of every endpoint', () => {
     expect(definitionTypes.filter(({ noun }) => !resourcesOnTheTerminologyPage.has(noun))).toEqual([]);
   });
 
-  it('use no term of the internal vocabulary once the sentence that maps the wire names is taken out, and no product name', () => {
+  it('use no term of the internal vocabulary once the sentence that maps the wire names and the address of a brain are taken out, and no product name', () => {
     const instructions = everyEndpoint.map(([endpoint, served]) =>
-      instructionsFor(endpoint, served, definitionTypes, recipes).replace(wireNamesSentence, ''),
+      instructionsFor(endpoint, served, definitionTypes, recipes)
+        .replace(wireNamesSentence, '')
+        .replace(', /orgs/{org}/brains/{brain}/mcp.', '.'),
     );
 
     expect(instructions.flatMap((text) => internalTermsIn(text))).toEqual([]);

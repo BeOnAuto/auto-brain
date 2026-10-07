@@ -129,7 +129,7 @@ describe('episode 4: asked to make the brain remember what it posted today', () 
     );
 
     expect(sentenceNaming(surfaces.instructions, 'A recall function')).toContain(
-      "never a run's input or the tool calls it made, so nothing has to write into it.",
+      "never a run's input or its tool calls, so nothing has to write into it.",
     );
     expect(String(prompt.messages[0]?.content.text)).toContain(
       'a function whose job is to post must answer what it posted.',

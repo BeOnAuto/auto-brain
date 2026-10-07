@@ -36,7 +36,7 @@ const purposeByType: Readonly<Record<string, string>> = {
   interaction: 'An interaction function asks a person or a system and takes the answer later.',
   computation: 'A computation function runs a program on its input and gives the same output every time.',
   recollection:
-    "A recall function keeps a view folded from the brain's own history, every run's start and ending with its result when it succeeded and fit, the definitions saved and every event published to the brain, never a run's input or the tool calls it made, so nothing has to write into it.",
+    "A recall function answers from what it keeps of the brain's own history: every run's start and end, with its result when it succeeded, the definitions saved and the events published to the brain, never a run's input or its tool calls, so nothing has to write into it.",
   orchestration: 'A workflow runs functions in steps, waits for input and can start on a schedule or on an event.',
 };
 
@@ -47,7 +47,7 @@ const whatABrainIs = [
 
 const wireWords = /(?:^|_)(?:specs?|executions?)(?:_|$)/u;
 
-const pagedReads = ['list_executions', 'get_execution_history', 'list_brain_events'];
+const pagedReads = ['list_executions', 'get_execution_history', 'list_brain_events', 'list_interactions'];
 
 const howToAnswer = [
   'When you tell the person what happened, say what was done and what they can do next,',
@@ -78,7 +78,7 @@ const whatTheConnectionDoes: Readonly<Record<McpEndpoint, (serving: Serving) => 
     joinedClauses("This connection acts in the caller's own org", brainsClause(serving, 'its brains'), []),
   org: (serving) =>
     joinedClauses('This connection manages the brains of one org', brainsClause(serving, 'them'), [
-      "a brain's functions and workflows are made on the brain's own connection",
+      "a brain's functions and workflows are made on the brain's own connection, /orgs/{org}/brains/{brain}/mcp",
     ]),
   brain: () => 'This connection acts inside one brain.',
 };
@@ -122,7 +122,7 @@ const modelsAndTools: Sentences = ({ reasoning, listed }) => {
   return [
     listed('list_models')
       ? `A reasoning function names a model that list_models lists and ${tools}.`
-      : `A reasoning function names a model this server can call; the ${reasoning.guide} guide says how it is written, and it ${tools}.`,
+      : `A reasoning function names a model this server can call, as the ${reasoning.guide} guide says, and ${tools}.`,
   ];
 };
 
@@ -133,14 +133,16 @@ const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
     .filter(({ primitive }) => typesThatFinishLater.has(primitive))
     .map(({ noun }) => articled(noun));
   return listed('get_execution') && finishingLater.length > 0
-    ? [`A run of ${finishingLater.join(' or ')} answers started; read it with get_execution until it ends.`]
+    ? [`A run of ${finishingLater.join(' or ')} answers started; get_execution shows whether it ended or still waits.`]
     : [];
 };
 
-const paging: Sentences = ({ listed }) =>
-  pagedReads.some((name) => listed(name))
-    ? ['Runs, history and events come a page at a time; read on only when the person needs more.']
+const paging: Sentences = ({ listed }) => {
+  const paged = listed('list_interactions') ? 'Runs, history, events and requests' : 'Runs, history and events';
+  return pagedReads.some((name) => listed(name))
+    ? [`${paged} come a page at a time; read on only when the person needs more.`]
     : [];
+};
 
 const closing: Sentences = () => [howToAnswer, whenAToolCannot];
 

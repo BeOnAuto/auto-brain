@@ -1,6 +1,6 @@
 # Make the brain remember something
 
-A recall function keeps a view folded from the brain's own history: every run's start and ending, with its result when it succeeded and fit, the definitions saved and every event published to the brain. A view holds what a run answered, never what it was given or the tools it called. Read the recall-function guide with get_guide before you write one.
+A recall function answers from what it keeps of the brain's own history, its view: every run's start and end, with its result when it succeeded, the definitions saved and every event published to the brain. A view holds what a run answered, never what it was given or the tools it called. Read the recall-function guide with get_guide before you write one.
 
 1. Ask the person what the brain should remember, and which function's runs hold it, such as what one function posted today. Find that function with list_specs.
 2. Tell the person that a view holds what a run answered, never what it was given or the tools it called, so a function whose job is to post must answer what it posted. When the function does not answer it, offer to change the function so that it does, and show the change before you save it with update_spec.
