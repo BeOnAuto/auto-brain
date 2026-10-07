@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { alternatives, asSentence, capitalized, counted, listed, plainNumber, quoted } from '../index.ts';
+import { alternatives, articled, asSentence, capitalized, counted, listed, plainNumber, quoted } from '../index.ts';
 
 const reasoningFunction = { one: 'reasoning function', other: 'reasoning functions' };
 
@@ -24,6 +24,14 @@ describe('phrasing', () => {
       'The reasoning function',
       '“summary” is',
       '',
+    ]);
+  });
+
+  it('gives a noun the article its first letter takes', () => {
+    expect([articled('reasoning function'), articled('interaction function'), articled('workflow')]).toEqual([
+      'a reasoning function',
+      'an interaction function',
+      'a workflow',
     ]);
   });
 

@@ -86,6 +86,7 @@ export {
 } from './plain-language/explanation.ts';
 export {
   alternatives,
+  articled,
   asSentence,
   capitalized,
   counted,

@@ -1,4 +1,4 @@
-import { NotFound, alternatives, type JsonSchemaDocument, type Registration } from '@beonauto/operations';
+import { NotFound, alternatives, articled, type JsonSchemaDocument, type Registration } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { isPrimitiveName, type Primitive } from './primitive.ts';
@@ -31,10 +31,6 @@ function requireDistinctNames(names: readonly string[]): void {
   if (repeated !== undefined) {
     throw new Error(`The primitive name ${repeated} is used more than once`);
   }
-}
-
-function articled(noun: string): string {
-  return /^[aeiou]/u.test(noun) ? `an ${noun}` : `a ${noun}`;
 }
 
 const primitiveMeaning = "The definition's type";

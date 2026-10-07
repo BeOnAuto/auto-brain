@@ -1,3 +1,5 @@
+import { articled } from '@beonauto/operations';
+
 export type McpEndpoint = 'org' | 'brain' | 'own org';
 
 export interface DefinitionType {
@@ -57,10 +59,6 @@ const whenAToolCannot = 'A tool that cannot do what was asked says why and what 
 
 function inTurn(items: readonly string[]): string {
   return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${String(items.at(-1))}`;
-}
-
-function articled(noun: string): string {
-  return /^[aeiou]/u.test(noun) ? `an ${noun}` : `a ${noun}`;
 }
 
 function brainsClause({ listed }: Serving, shows: string): readonly string[] {
