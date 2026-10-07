@@ -111,6 +111,7 @@ describe('the arguments of the tools of /mcp', () => {
         .filter((argument) => isUndescribedOrLong(argument))
         .map(({ where }) => where),
     ).toEqual([]);
+    expect(Math.max(...everyArgument().map(({ description }) => String(description).length))).toBeLessThan(200);
   });
 
   it('each give their constraints as keywords, but an argument that takes any JSON value', () => {

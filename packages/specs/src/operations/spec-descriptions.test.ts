@@ -113,7 +113,7 @@ describe('the JSON Schema of the filters of the runs', () => {
     expect(listing?.input.schema).toMatchObject({
       properties: {
         primitive: {
-          description: 'Only the runs of definitions of this type: echo (greeting) or probe (probe)',
+          description: 'Only the runs of this type: echo (greeting) or probe (probe)',
         },
         name: { description: 'Only the runs of the definition with this name' },
       },

@@ -148,7 +148,7 @@ describe('list_executions', () => {
         primitive: {
           type: 'string',
           enum: ['echo', 'probe'],
-          description: 'Only the runs of definitions of this type: echo (greeting) or probe (probe)',
+          description: 'Only the runs of this type: echo (greeting) or probe (probe)',
         },
       },
     });

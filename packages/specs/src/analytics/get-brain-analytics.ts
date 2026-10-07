@@ -54,5 +54,5 @@ export function defineGetBrainAnalytics(primitives: readonly Primitive[]) {
     handle: readAnalytics,
     plainLanguage: analyticsWords(specWordsFor(primitives)),
   });
-  return known.publish(operation, 'Only the runs of definitions of this type');
+  return known.publish(operation, 'Only the runs of this type');
 }

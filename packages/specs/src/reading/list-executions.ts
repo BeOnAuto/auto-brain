@@ -94,5 +94,5 @@ export function defineListExecutions(primitives: readonly Primitive[]) {
       outcome: (page, filters) => runsListed(words, page, filters),
     },
   });
-  return known.publish(operation, 'Only the runs of definitions of this type');
+  return known.publish(operation, 'Only the runs of this type');
 }
