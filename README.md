@@ -1,12 +1,12 @@
-# auto-brain
+# brain-runtime
 
 The runtime for business brains, built and used through your agent.
-/
+
 [![CI](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/BeOnAuto/auto-brain/actions/workflows/ci.yml) [![License: ELv2](https://img.shields.io/badge/license-ELv2-blue?style=flat-square)](LICENSING.md)
 
 ## Documentation and help
 
-[Auto documentation](https://on.auto/docs/)
+Please visit the [Auto documentation site](https://on.auto/docs/) for instructions.
 
 For bugs and questions, [open an issue](https://github.com/BeOnAuto/auto-brain/issues/new/choose). Report vulnerabilities through [SECURITY.md](SECURITY.md).
 
@@ -16,4 +16,4 @@ Runtime code and its documentation live here. See [CONTRIBUTING.md](CONTRIBUTING
 
 ## License
 
-auto-brain is source-available under the [Elastic License 2.0](LICENSE). [LICENSING.md](LICENSING.md) explains the terms, including restrictions on offering it as a hosted or managed service. Contributions follow the [CLA](CLA.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+Auto brain-runtime is source-available under the [Elastic License 2.0](LICENSE). [LICENSING.md](LICENSING.md) explains the terms, including restrictions on offering it as a hosted or managed service. Contributions follow the [CLA](CLA.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
