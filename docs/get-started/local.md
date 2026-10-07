@@ -140,7 +140,7 @@ For a second run and a comparison of the results, continue with [Build your firs
 
 A reasoning function can use the tools of an MCP server, such as a search service. You tell Auto about the server in a settings file, `auto-brain.yaml`, and keep the server's key in `.env`.
 
-1. Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers`, with a header that names the environment variable holding its key, written `${NAME}`, and allows its tools with `allowed_tools`:
+1. Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`, and allows its tools with `allowed_tools`:
 
    ```yaml
    mcp_servers:
