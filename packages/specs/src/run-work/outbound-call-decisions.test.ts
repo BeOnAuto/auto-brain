@@ -108,7 +108,27 @@ describe('the end of a delivery', () => {
     expect(stateAfter(started, deferred, attemptStarted)).toMatchObject({ deliveryInFlight: 1 });
     expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({ deliveryInFlight: null });
   });
+});
 
+describe('the deliveries of a run asked to cancel', () => {
+  it('starts no attempt once a cancel is asked, though the attempt in flight may still end', () => {
+    const cancelAsked: ExecutionEvent = {
+      type: 'execution_cancel_requested',
+      kind: 'requested',
+      reason: 'No longer needed',
+      ...during,
+    };
+
+    expect(decided(recording(attempt), started, deferred, cancelAsked)).toEqual(
+      Result.fail(new Conflict({ detail: 'The run is being cancelled, so it starts no more deliveries' })),
+    );
+    expect(decided(recording(ended), started, deferred, attemptStarted, cancelAsked)).toStrictEqual(
+      Result.succeed([attemptEnded]),
+    );
+  });
+});
+
+describe('the end of a delivery that answered', () => {
   it('carries the answer a receiver gave within the delivery', () => {
     const answered: DeliveryEndedFact = { ...ended, outcome: 'answered', status: 200, answer: { choice: 'approve' } };
 

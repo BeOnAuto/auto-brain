@@ -45,6 +45,12 @@ function attemptEndable(state: RecordedExecution, number: number): Result.Result
       );
 }
 
+const beingCancelled = new Conflict({ detail: 'The run is being cancelled, so it starts no more deliveries' });
+
+function attemptStartable(state: RecordedExecution, number: number): Result.Result<number, Conflict> {
+  return state.cancel === undefined ? nextCallOf(state, number) : Result.fail(beingCancelled);
+}
+
 export function decideOutboundCall(
   { fact, by, at }: ExecutionOutboundCall & CommandMetadata,
   state: ExecutionState,
@@ -53,6 +59,7 @@ export function decideOutboundCall(
     return Result.fail(runEnded);
   }
   const recorded = { ...fact, ...ofTheDefinition(state), by, at };
-  const allowed = fact.type === 'delivery_ended' ? attemptEndable(state, fact.number) : nextCallOf(state, fact.number);
+  const allowed =
+    fact.type === 'delivery_ended' ? attemptEndable(state, fact.number) : attemptStartable(state, fact.number);
   return Result.map(allowed, () => [recorded]);
 }
