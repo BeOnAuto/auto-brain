@@ -7,6 +7,7 @@ export const ConflictKindSchema = Schema.Literals([
   'unworkable',
   'stalled',
   'tools_called',
+  'oversized',
 ]);
 
 export type ConflictKind = typeof ConflictKindSchema.Type;
