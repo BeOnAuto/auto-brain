@@ -28,7 +28,7 @@
       "label": "Recall",
       "singular": "recall function",
       "plural": "recall functions",
-      "description": "Retrieve or reconstruct relevant information from configured sources."
+      "description": "Answer from what the brain keeps of its own history."
     },
     {
       "kind": "compute",
