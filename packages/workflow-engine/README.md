@@ -375,7 +375,7 @@ Each engine keeps the runs it loaded between their inputs (`src/cache/run-cache.
 
 An input to a run the engine keeps costs its decision, one fold and the engine's writes: 0.16 ms an input through the memory ports, against 4.43 ms when every input loads the run, a cost that grows with the events since the last snapshot. A run the cache let go of, or one that moved on in its store, costs one load, at most 8.14 ms for this loop.
 
-### The workers of the pool
+### The workers of the pool, measured
 
 The same script measures a page of the example of the recall reference, 1,000 runs of 100 campaigns folded from an empty view, 313,339 bytes as JSON in and out: a fold worker's start alone, a page with no events on a fresh pool; then nine times in turn the page cold, on a fresh pool, warm, on one pool, and folded on the thread that measures; and the JSON round trip of its bytes there (`measure/pages.ts`). `pnpm --filter @beonauto/computation measure` measures the runs of a program that answers at once (`primitives/computation/measure/runs.ts`). Measured on 2026-10-07 on Node 26.10.0 on an Apple M4 Max, the code before this pool, which started a worker for each job, and this pool alternately, twice, under a load average of 94 to 186 on its 16 cores from other work, so an idle machine is faster and the figures of one round differ from the other's by the load alone:
 
