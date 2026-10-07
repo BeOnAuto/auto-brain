@@ -25,7 +25,7 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
 const outputSchema = 'language: jq\noutput:\n  schema: {type: array, items: {type: string}}';
 
 describe('the check of an output against the output schema', { timeout: workerTestTimeoutMs }, () => {
-  it('runs in the checked worker that runs the program, under its deadline, never on the thread that asked', async () => {
+  it('runs in the checked worker that runs the program, under its deadline, never on the thread that asked, the one module every run names', async () => {
     const { pool, requests } = recording(poolOf());
     const run = computationWith(pool);
 
@@ -33,7 +33,7 @@ describe('the check of an output against the output schema', { timeout: workerTe
     expect(await run.executing(programDocument('.'), 1)).toMatchObject(Exit.succeed({ output: 1 }));
     expect(requests.map(({ worker, context }) => ({ worker: worker?.pathname.split('/').at(-1), context }))).toEqual([
       { worker: 'checked-worker.ts', context: run.prepared(campaignPace).summary.outputSchema },
-      { worker: undefined, context: undefined },
+      { worker: 'checked-worker.ts', context: null },
     ]);
   });
 

@@ -1,5 +1,6 @@
 import { cpus, totalmem } from 'node:os';
 
+import { burstMeasured } from './measure/burst.ts';
 import { constructsMeasured } from './measure/constructs.ts';
 import { exampleMeasured } from './measure/example.ts';
 import { idleMeasured, runsMeasured } from './measure/runs.ts';
@@ -12,6 +13,7 @@ const measured = [
   ...exampleMeasured(),
   ...constructsMeasured(),
   ...(await runsMeasured()),
+  await burstMeasured(),
   await idleMeasured(),
   ...(await workersMeasured()),
 ];

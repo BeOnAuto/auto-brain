@@ -21,7 +21,7 @@ export type ComputationRun = (
 ) => Effect.Effect<Executed, PrimitiveRejection>;
 
 function checkedBy({ output }: ComputationFunctionDefinitionDocument): Pick<ProgramRequest, 'worker' | 'context'> {
-  return output.schema === undefined ? {} : { worker: checkedWorker, context: output.schema.document };
+  return { worker: checkedWorker, context: output.schema?.document ?? null };
 }
 
 export function computationRun({ pool, deadlineMs }: ComputationRunOptions): ComputationRun {
