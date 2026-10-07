@@ -14,9 +14,11 @@ function wordsSchemaOf({ arguments: given }: ShelvedRecipe): StandardSchemaWithJ
     required: given.filter(({ required }) => required).map(({ name }) => name),
   };
   const described = () => jsonSchema;
+  const { validate, ...standard } = Schema.toStandardSchemaV1(Schema.Struct(fields))['~standard'];
   return {
     '~standard': {
-      ...Schema.toStandardSchemaV1(Schema.Struct(fields))['~standard'],
+      ...standard,
+      validate: (value) => validate(value ?? {}),
       jsonSchema: { input: described, output: described },
     },
   };

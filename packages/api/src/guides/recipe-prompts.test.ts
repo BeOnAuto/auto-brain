@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { notebookGuide, noteRecipe } from '../testing/guides.ts';
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
 import { mcpClientKinds, withMcpSession, type McpSession } from '../testing/mcp-clients.ts';
+import { messagesIn, postMcp, requestOf } from '../testing/mcp-requests.ts';
 import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
 
 let server: OperationServer;
@@ -76,6 +77,21 @@ describe('a recipe asked without the words it needs', () => {
   it('is a protocol error that names the argument', async () => {
     await expect(onMcp('current revision', (session) => session.getPrompt('take-a-note'))).rejects.toThrow(
       /Invalid arguments for prompt take-a-note/u,
+    );
+  });
+});
+
+describe('a recipe asked without any arguments at all', () => {
+  it('is read as asked with none, so the error names the argument it needs', async () => {
+    const answer = await postMcp(
+      server.handler,
+      '/mcp',
+      { authorization: `Bearer ${acmeAdmin.key}`, 'mcp-protocol-version': '2025-11-25' },
+      requestOf(1, 'prompts/get', { name: 'take-a-note' }),
+    );
+
+    expect(JSON.stringify(messagesIn(answer))).toMatch(
+      /"code":-32602,"message":"Invalid arguments for prompt take-a-note: [^"]*text/u,
     );
   });
 });
