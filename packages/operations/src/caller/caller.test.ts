@@ -32,10 +32,16 @@ describe('a caller identity', () => {
     expect(isCallerIdentity(identity)).toBe(false);
   });
 
-  it('carries the token of a request it presented, and never an empty one', () => {
-    expect(isCallerIdentity({ ...keyHolder, requestToken: 'abc' })).toBe(true);
-    expect(isCallerIdentity({ ...keyHolder, requestToken: '' })).toBe(false);
-    expect(isCallerIdentity(requestTokenCallerOf('acme', 'abc'))).toBe(true);
+  it('carries the token of a request it presented, which no stored caller schema keeps', () => {
+    const holder = requestTokenCallerOf('acme', 'abc');
+
+    expect(holder).toEqual({ id: 'request-token', org: 'acme', permissions: [], brains: [], requestToken: 'abc' });
+    expect(Schema.decodeUnknownSync(CallerIdentitySchema)(holder)).toEqual({
+      id: 'request-token',
+      org: 'acme',
+      permissions: [],
+      brains: [],
+    });
   });
 });
 

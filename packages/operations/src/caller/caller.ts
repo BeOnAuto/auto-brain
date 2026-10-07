@@ -17,7 +17,6 @@ export const CallerIdentitySchema = Schema.Struct({
   org: OrgIdSchema,
   permissions: Schema.Array(PermissionSchema),
   brains: BrainAccessSchema,
-  requestToken: Schema.optionalKey(Schema.NonEmptyString),
 });
 
 export function requestTokenCallerOf(org: string, requestToken: string): CallerIdentity {
