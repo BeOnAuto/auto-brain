@@ -1,12 +1,11 @@
+import { tick, timeOf } from '@beonauto/ledger/dataset';
 import type { Decider } from '@beonauto/operations';
 import { runFacts, type RunFact } from '@beonauto/operations/testing';
-import { runOutcomeMapping } from '@beonauto/specs';
 import { Effect, Result, Schema } from 'effect';
 
-import { tick, timeOf } from './measure/dataset.ts';
-import { firstDay, lastDay, runOf, type OutcomeRow } from './measure/outcomes-dataset.ts';
-import { onPostgreSQL, onSQLite, type Bench } from './measure/outcomes-stores.ts';
-import { openLedgerWith, type OpenLedger } from './src/testing/open-ledger.ts';
+import { runOutcomeMapping } from '../src/analytics/run-outcome-mapping.ts';
+import { firstDay, lastDay, runOf, type OutcomeRow } from './outcomes-dataset.ts';
+import { onPostgreSQL, onSQLite, openLedgerWith, type Bench, type OpenLedger } from './outcomes-stores.ts';
 
 const sizes = (process.env['LEDGER_MEASURE_OUTCOME_RUNS'] ?? '10000,100000').split(',').map(Number);
 

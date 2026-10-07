@@ -6,13 +6,13 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./dataset": "./measure/dataset.ts",
     "./postgresql": "./src/postgresql/postgresql-ledger.ts",
     "./sqlite3": "./src/sqlite3.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {
     "measure": "node measure.ts",
-    "measure:outcomes": "node measure-outcomes.ts",
     "measure:heads": "node measure-heads.ts",
     "lint": "oxlint -c ../../.oxlintrc.json",
     "typecheck": "tsc",
@@ -29,7 +29,6 @@
     "sqlite3": "6.0.1"
   },
   "devDependencies": {
-    "@beonauto/specs": "workspace:*",
     "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"

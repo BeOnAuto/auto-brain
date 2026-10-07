@@ -1,12 +1,14 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import type { Ledger, RunOutcomeMapping } from '@beonauto/operations';
-import { Effect, type Layer } from 'effect';
+import { postgresqlLedgerLayer } from '@beonauto/ledger/postgresql';
+import { ledgerLayer } from '@beonauto/ledger/sqlite3';
+import { Ledger, type RunOutcomeMapping } from '@beonauto/operations';
+import { Effect, ManagedRuntime, type Layer } from 'effect';
 import { Client } from 'pg';
 
-import { postgresqlLedgerLayer } from '../src/postgresql/postgresql-ledger.ts';
-import { ledgerLayer } from '../src/sqlite3.ts';
-import { temporaryDatabase } from '../src/testing/temporary-database.ts';
 import { firstDay, lastDay, type OutcomeRow } from './outcomes-dataset.ts';
 
 interface Place {
@@ -15,6 +17,17 @@ interface Place {
 }
 
 type RowsOf = (index: number) => readonly OutcomeRow[];
+
+export interface OpenLedger {
+  readonly ledger: Ledger['Service'];
+  readonly dispose: () => Promise<void>;
+}
+
+export async function openLedgerWith(layer: Layer.Layer<Ledger>): Promise<OpenLedger> {
+  const runtime = ManagedRuntime.make(layer);
+  const ledger = await runtime.runPromise(Ledger);
+  return { ledger, dispose: () => runtime.dispose() };
+}
 
 export interface Bench {
   readonly store: string;
@@ -88,12 +101,12 @@ function sqliteWrite(fileName: string, count: number, rowsOf: RowsOf): void {
 export const onSQLite: Bench = {
   store: 'SQLite',
   aPlace: () => {
-    const { fileName, remove } = temporaryDatabase();
+    const directory = mkdtempSync(join(tmpdir(), 'auto-brain-outcomes-'));
     const drop = async (): Promise<void> => {
       await Promise.resolve();
-      remove();
+      rmSync(directory, { recursive: true, force: true });
     };
-    return Promise.resolve({ location: fileName, drop });
+    return Promise.resolve({ location: join(directory, 'ledger.db'), drop });
   },
   ledgerOn: ({ location }, runOutcomes) =>
     ledgerLayer({ fileName: location, ...(runOutcomes === undefined ? {} : { runOutcomes }) }),
