@@ -3,8 +3,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
 
 import { defaultTiming } from '../bounds/call-bounds.ts';
+import type { ServerSlot } from '../calls/server-slot.ts';
 import type { McpConnection } from '../connections/mcp-connection.ts';
-import { connectionBoundOf, takenWithin } from './connection-bound.ts';
+import type { StdioServerSettings } from '../settings/mcp-settings.ts';
+import { boundedSlot, connectionBoundOf, takenWithin } from './connection-bound.ts';
 import { deliveryBounds } from './delivery-bounds.ts';
 
 const connection: McpConnection = {
@@ -67,5 +69,43 @@ describe('the opening of a connection for a delivery', () => {
 
     expect(taken).toEqual([{ late: true }, { late: true }]);
     expect([slow.released(), slowFailing.released()]).toEqual([1, 0]);
+  });
+});
+
+describe('the session of a delivery, opened again or its process started again', () => {
+  const settings: StdioServerSettings = {
+    type: 'stdio',
+    name: 'notes',
+    org: 'acme',
+    brains: null,
+    record_content: false,
+    request_id: null,
+    secrets: [],
+    command: '/usr/local/bin/notes-mcp-server',
+    args: [],
+    env: new Map(),
+  };
+  const hanging: ServerSlot = {
+    settings,
+    connection: () => connection,
+    reopenOnce: () => Promise.withResolvers<boolean>().promise,
+    restartIfExited: () => Promise.withResolvers<'restarted'>().promise,
+    release: () => Promise.resolve(),
+  };
+  const quick: ServerSlot = {
+    ...hanging,
+    reopenOnce: () => Promise.resolve(true),
+    restartIfExited: () => Promise.resolve('restarted'),
+  };
+
+  it('waits no longer than the bound of a delivery, and answers as the slot does when it is in time', async () => {
+    const bounded = boundedSlot(hanging, 10);
+
+    expect(await bounded.reopenOnce()).toBe(false);
+    await expect(bounded.restartIfExited()).rejects.toThrow('The MCP server process did not start again within 10 ms');
+    expect([await boundedSlot(quick, 1000).reopenOnce(), await boundedSlot(quick, 1000).restartIfExited()]).toEqual([
+      true,
+      'restarted',
+    ]);
   });
 });

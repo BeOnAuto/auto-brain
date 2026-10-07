@@ -3,7 +3,7 @@ import { bytesOf, cutAtCodePoint } from '../bounds/text-bytes.ts';
 import { serverSlot } from '../calls/server-slot.ts';
 import { forwarded, type Forwarded } from '../calls/tool-calls.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import { connectionBoundOf, takenWithin } from './connection-bound.ts';
+import { boundedSlot, connectionBoundOf, takenWithin } from './connection-bound.ts';
 import {
   deliveryBounds,
   failedWith,
@@ -42,7 +42,7 @@ export async function calledOnce(
   if ('failure' in taken) {
     return failedWith('server_failure', access.secrets.scrub(taken.failure.message));
   }
-  const slot = serverSlot(link, taken.connection);
+  const slot = boundedSlot(serverSlot(link, taken.connection), connectionMs);
   try {
     const done = await forwarded({
       slot,
