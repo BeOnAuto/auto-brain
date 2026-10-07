@@ -1,4 +1,4 @@
-import { Conflict, InvalidInput, NotFound, Unavailable } from '@beonauto/operations';
+import { Conflict, InvalidInput, NotFound, RunCancelled, Unavailable } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { ExecutionState, RecordedExecution } from './execution-state.ts';
@@ -22,7 +22,7 @@ export function executionDetailOf(id: string, state: ExecutionState): Effect.Eff
   return recorded(id, state).pipe(Effect.map((execution) => detailOf(id, execution)));
 }
 
-type ReplayedRejection = InvalidInput | Unavailable | Conflict;
+type ReplayedRejection = InvalidInput | Unavailable | Conflict | RunCancelled;
 
 function replayed(rejection: ExecutionRejection): ReplayedRejection {
   if (rejection.reason === 'invalid_input') {
@@ -35,6 +35,9 @@ function replayed(rejection: ExecutionRejection): ReplayedRejection {
       ...(kind === undefined ? {} : { kind }),
       ...(because === undefined ? {} : { because }),
     });
+  }
+  if (rejection.reason === 'cancelled') {
+    return new RunCancelled({ detail: rejection.detail, kind: rejection.kind });
   }
   return new Conflict({ detail: rejection.detail, kind: rejection.kind ?? 'unworkable' });
 }

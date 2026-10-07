@@ -1,3 +1,11 @@
+export { defineCancelExecution } from './cancellation/cancel-execution.ts';
+export { deferredCanceller, type SettleCancelled } from './cancellation/deferred-cancels.ts';
+export {
+  executionCanceller,
+  type CancelExecution,
+  type CancelReceipt,
+  type CancelRequest,
+} from './cancellation/run-cancels.ts';
 export { defineCreateSpec } from './operations/create-spec.ts';
 export { defineExecuteSpec } from './operations/execute-spec.ts';
 export { defineGetSpec } from './operations/get-spec.ts';
@@ -5,6 +13,8 @@ export { defineListSpecs } from './operations/list-specs.ts';
 export { defineStartVersion } from './operations/start-version.ts';
 export {
   definePrimitive,
+  type CancelDecision,
+  type CancelledRun,
   type Executed,
   type RunContext,
   type RunLineage,
@@ -19,7 +29,21 @@ export {
   type StandingRequest,
   type ToolCallJournal,
 } from './primitive/primitive.ts';
-export type { ToolCallFact } from './execution/execution-commands.ts';
+export type { CallAnsweredFact, CallStartedFact } from './execution/execution-commands.ts';
+export {
+  CalledBySchema,
+  CancelRequestKindSchema,
+  type CalledBy,
+  type CancelRequestKind,
+} from './execution/execution-events.ts';
+export { mostCallDepth } from './operations/execution-running.ts';
+export {
+  cancelRequestOf,
+  lastEndingOf,
+  runEndingOf,
+  type CancelRequested,
+  type RunEnding,
+} from './execution/run-endings.ts';
 export { defineRetireSpec } from './operations/retire-spec.ts';
 export { defineUpdateSpec } from './operations/update-spec.ts';
 export {

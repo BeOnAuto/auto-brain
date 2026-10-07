@@ -27,6 +27,7 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   execution_succeeded: true,
   execution_rejected: true,
   execution_failed: true,
+  execution_cancel_requested: true,
   tool_call_started: true,
   tool_call_answered: true,
   spec_created: true,

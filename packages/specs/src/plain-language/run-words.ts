@@ -32,6 +32,9 @@ export function explainedRejectionOf(rejection: DescribedExecution['rejection'])
   if (rejection.reason === 'conflict') {
     return { reason: 'conflict', kind: rejection.kind ?? 'unworkable' };
   }
+  if (rejection.reason === 'cancelled') {
+    return { reason: 'cancelled', kind: rejection.kind };
+  }
   if (rejection.reason !== 'unavailable' || rejection.kind === undefined) {
     return { reason: rejection.reason };
   }

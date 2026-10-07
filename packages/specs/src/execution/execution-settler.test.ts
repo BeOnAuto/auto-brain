@@ -1,5 +1,5 @@
 import { Conflict, NotFound } from '@beonauto/operations';
-import { Result, Schema } from 'effect';
+import { Effect, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { Settlement } from '../index.ts';
@@ -142,62 +142,23 @@ describe('a settlement whose output is too large or is not JSON', () => {
   });
 });
 
-describe('settling a deferred execution as unavailable', () => {
-  it('records the kind and because the run ended with, and leaves out those it does not know', async () => {
+function finishIn(page: { readonly records: readonly { readonly data: unknown }[] }): unknown {
+  return page.records.at(-1)?.data;
+}
+
+const everything = { kind: 'everything' } as const;
+
+describe('a settlement', () => {
+  it('carries every kind and because of an unavailable run, those of a step included', async () => {
     const { executing, settling } = await withHandOn();
     await executing();
-    const detail = 'A step called tools and could not finish';
+    const detail = 'A tool server could not be used';
 
     expect(
       await settling({
         status: 'rejected',
         reason: 'unavailable',
         detail,
-        kind: 'tools_unfinished',
-        because: 'run_bound',
-      }),
-    ).toMatchObject(
-      Result.succeed({
-        status: 'rejected',
-        rejection: { reason: 'unavailable', detail, kind: 'tools_unfinished', because: 'run_bound' },
-      }),
-    );
-  });
-});
-
-describe('settling a deferred execution as a conflict', () => {
-  it('records a conflict of tools called with its kind', async () => {
-    const { executing, settling } = await withHandOn();
-    await executing();
-    const detail = 'A step met a run that may have called tools';
-
-    expect(await settling({ status: 'rejected', reason: 'conflict', detail, kind: 'tools_called' })).toMatchObject(
-      Result.succeed({ status: 'rejected', rejection: { reason: 'conflict', detail, kind: 'tools_called' } }),
-    );
-  });
-
-  it('records a conflict of a kind it does not know without one', async () => {
-    const { executing, settling } = await withHandOn();
-    await executing();
-
-    expect(
-      await settling({ status: 'rejected', reason: 'conflict', detail: 'Clashed', kind: 'something_new' }),
-    ).toStrictEqual(
-      Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'conflict', detail: 'Clashed' } }),
-    );
-  });
-});
-
-describe('settling a deferred execution as unavailable of another kind', () => {
-  it('keeps no other kind of a step, whose words would speak for the step and not for the whole workflow', async () => {
-    const { executing, settling } = await withHandOn();
-    await executing();
-
-    expect(
-      await settling({
-        status: 'rejected',
-        reason: 'unavailable',
-        detail: 'A tool server could not be used',
         kind: 'mcp_server_failed',
         because: 'unreachable',
       }),
@@ -205,29 +166,102 @@ describe('settling a deferred execution as unavailable of another kind', () => {
       Result.succeed({
         ...settled,
         status: 'rejected',
-        rejection: { reason: 'unavailable', detail: 'A tool server could not be used' },
+        rejection: { reason: 'unavailable', detail, kind: 'mcp_server_failed', because: 'unreachable' },
       }),
     );
   });
 
-  it('keeps no because it does not know', async () => {
-    const { executing, settling } = await withHandOn();
+  it('carries the issues of a rejected input and the record of a rejection', async () => {
+    const { executing, reading, settling } = await withHandOn();
+    await executing();
+    const issues = [{ detail: 'Expected a customer', pointer: '/input/customer' }];
+
+    await settling({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail: 'No such customer',
+      issues,
+      record: { looked_up: 3 },
+    });
+
+    expect(await reading()).toMatchObject({
+      output: {
+        status: 'rejected',
+        rejection: { reason: 'invalid_input', detail: 'No such customer', issues },
+        record: { looked_up: 3 },
+      },
+    });
+  });
+});
+
+describe('a settlement of a conflict or a cancellation', () => {
+  it('records a conflict with its kind as given, and one without a kind without one', async () => {
+    const { executing, reading, settling } = await withHandOn();
+    await executing();
+    const detail = 'The output takes more than a run records';
+    await settling({ status: 'rejected', reason: 'conflict', detail, kind: 'oversized' });
+    const withKind = await reading();
+    await executing();
+    await settling({ status: 'rejected', reason: 'conflict', detail: 'Clashed' });
+
+    expect([withKind, await reading()]).toMatchObject([
+      { output: { rejection: { reason: 'conflict', detail, kind: 'oversized' } } },
+      { output: { rejection: { reason: 'conflict', detail: 'Clashed' } } },
+    ]);
+    expect(await reading()).not.toHaveProperty('output.rejection.kind');
+  });
+
+  it('records a cancellation with its kind, a final result a call with its id answers again', async () => {
+    const { executing, relayer, settling } = await withHandOn();
+    await executing();
+    const detail = 'The step that waited for it ran out of time';
+
+    expect(await settling({ status: 'rejected', reason: 'cancelled', detail, kind: 'deadline' })).toStrictEqual(
+      Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'cancelled', detail, kind: 'deadline' } }),
+    );
+    expect(await executing()).toEqual({ status: 'rejected', reason: 'cancelled', detail, kind: 'deadline' });
+    expect(relayer.runs()).toBe(1);
+  });
+});
+
+describe('what a settlement records', () => {
+  it('is an empty record for a success that names none, as the workflow host settles a run', async () => {
+    const { executing, reading, settling } = await withHandOn();
     await executing();
 
-    expect(
-      await settling({
-        status: 'rejected',
-        reason: 'unavailable',
-        detail: 'No',
-        kind: 'tools_unfinished',
-        because: 'odder',
-      }),
-    ).toStrictEqual(
-      Result.succeed({
-        ...settled,
-        status: 'rejected',
-        rejection: { reason: 'unavailable', detail: 'No', kind: 'tools_unfinished' },
-      }),
+    await settling({ status: 'succeeded', output: 'handed on' });
+
+    expect(await reading()).toMatchObject({ output: { status: 'succeeded', output: 'handed on', record: {} } });
+  });
+
+  it('records a failure with its incident', async () => {
+    const { executing, ledger, run, settling } = await withHandOn();
+    await executing();
+
+    await settling({ status: 'failed', incident: 'incident-1' });
+    const page = await run(
+      Effect.orDie(
+        ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, everything, { order: 'asc', limit: 20 }),
+      ),
     );
+
+    expect(finishIn(page)).toMatchObject({ type: 'execution_failed', incident: 'incident-1' });
+  });
+
+  it('records the actor who settled it, the brain itself when none is named', async () => {
+    const { executing, ledger, run, settling } = await withHandOn();
+    const read = () =>
+      run(
+        Effect.orDie(
+          ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, everything, { order: 'asc', limit: 20 }),
+        ),
+      );
+    await executing();
+    await settling({ status: 'rejected', reason: 'unavailable', detail: 'Gone' });
+    const bySelf = finishIn(await read());
+    await executing();
+    await settling({ ...success, by: 'acme-admin' });
+
+    expect([bySelf, finishIn(await read())]).toMatchObject([{ by: 'brain:alpha' }, { by: 'acme-admin' }]);
   });
 });

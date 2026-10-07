@@ -6,7 +6,17 @@ const fact = { by: Schema.String, at: Schema.String };
 
 const ofTheDefinition = { primitive: Schema.String, name: Schema.String, spec_version: Schema.Int };
 
-const ofTheChain = { depth: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))) };
+const Counted = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
+
+export const CalledBySchema = Schema.Struct({ execution_id: Schema.String, reference: Schema.String, run: Counted });
+
+export type CalledBy = typeof CalledBySchema.Type;
+
+const ofTheChain = {
+  depth: Schema.optionalKey(Counted),
+  call_depth: Schema.optionalKey(Counted),
+  called_by: Schema.optionalKey(CalledBySchema),
+};
 
 const ExecutionStartedSchema = Schema.Struct({
   type: Schema.Literal('execution_started'),
@@ -15,6 +25,7 @@ const ExecutionStartedSchema = Schema.Struct({
   spec_version: Schema.Int,
   input: Schema.Json,
   calls_tools: Schema.optionalKey(Schema.Literal(true)),
+  finishes_later: Schema.optionalKey(Schema.Literal(true)),
   ...ofTheChain,
   ...fact,
 });
@@ -45,8 +56,19 @@ const ExecutionRejectedSchema = Schema.Struct({
 
 const ExecutionFailedSchema = Schema.Struct({
   type: Schema.Literal('execution_failed'),
+  incident: Schema.optionalKey(Schema.String),
   ...ofTheDefinition,
   ...ofTheChain,
+  ...fact,
+});
+
+export const CancelRequestKindSchema = Schema.Literals(['requested', 'deadline', 'parent_ended']);
+
+const ExecutionCancelRequestedSchema = Schema.Struct({
+  type: Schema.Literal('execution_cancel_requested'),
+  kind: CancelRequestKindSchema,
+  reason: Schema.String,
+  ...ofTheDefinition,
   ...fact,
 });
 
@@ -83,6 +105,7 @@ export const ExecutionEventSchema = Schema.Union([
   ExecutionSucceededSchema,
   ExecutionRejectedSchema,
   ExecutionFailedSchema,
+  ExecutionCancelRequestedSchema,
   ToolCallStartedSchema,
   ToolCallAnsweredSchema,
 ]);
@@ -93,10 +116,17 @@ export type ExecutionStarted = Extract<ExecutionEvent, { readonly type: 'executi
 
 export type ExecutionDeferred = Extract<ExecutionEvent, { readonly type: 'execution_deferred' }>;
 
+export type ExecutionCancelRequested = Extract<ExecutionEvent, { readonly type: 'execution_cancel_requested' }>;
+
+export type CancelRequestKind = ExecutionCancelRequested['kind'];
+
 export type ToolCallEvent = Extract<ExecutionEvent, { readonly type: 'tool_call_started' | 'tool_call_answered' }>;
 
 export type ToolCallStarted = Extract<ToolCallEvent, { readonly type: 'tool_call_started' }>;
 
 export type ToolCallAnswered = Extract<ToolCallEvent, { readonly type: 'tool_call_answered' }>;
 
-export type ExecutionFinished = Exclude<ExecutionEvent, ExecutionStarted | ExecutionDeferred | ToolCallEvent>;
+export type ExecutionFinished = Exclude<
+  ExecutionEvent,
+  ExecutionStarted | ExecutionDeferred | ExecutionCancelRequested | ToolCallEvent
+>;

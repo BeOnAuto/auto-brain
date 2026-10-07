@@ -29,6 +29,13 @@ const latestOfEveryType: Readonly<Record<ExecutionEvent['type'], ExecutionEvent>
     ...fact,
   },
   execution_failed: { type: 'execution_failed', ...ofGreet, ...fact },
+  execution_cancel_requested: {
+    type: 'execution_cancel_requested',
+    kind: 'requested',
+    reason: 'Not needed',
+    ...ofGreet,
+    ...fact,
+  },
   tool_call_started: {
     type: 'tool_call_started',
     number: 1,

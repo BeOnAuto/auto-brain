@@ -1,6 +1,7 @@
 import type { Presenter } from '@beonauto/operations';
 
 import {
+  defineCancelExecution,
   defineCreateSpec,
   defineExecuteSpec,
   defineGetExecutionHistory,
@@ -26,6 +27,7 @@ export function specOperationsFor(
     retireSpec: defineRetireSpec(primitives),
     executeSpec: defineExecuteSpec(primitives),
     getExecution,
+    cancelExecution: defineCancelExecution(primitives),
     listExecutions: defineListExecutions(primitives),
     getExecutionHistory: defineGetExecutionHistory(presenters),
   };

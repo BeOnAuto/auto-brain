@@ -33,10 +33,10 @@ export function defineStartVersion(primitives: readonly Primitive[]) {
         execution_id: ExecutionIdField,
       }),
       outputSchema: RunSchema,
-      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable'],
+      reasons: ['not_found', 'conflict', 'invalid_input', 'unavailable', 'cancelled'],
       handle: Effect.fnUntraced(function* ({ primitive: primitiveName, name, version, input, execution_id: id }) {
         const primitive = yield* known.primitiveNamed(primitiveName);
-        return yield* startVersionOnce(primitive, { primitive: primitive.name, name, version, input }, id);
+        return yield* startVersionOnce(primitives, primitive, { primitive: primitive.name, name, version, input }, id);
       }),
       plainLanguage: {
         ...words,

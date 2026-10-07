@@ -1,6 +1,6 @@
 import { capitalized, explanationOf, plainNumber, quoted } from '@beonauto/operations';
 
-import type { ToolCallAnswered } from '../execution/execution-events.ts';
+import type { CancelRequestKind, ToolCallAnswered } from '../execution/execution-events.ts';
 import type { ExecutionRejection } from '../execution/execution.ts';
 import { wordsOf } from './in-words.ts';
 import { explainedRejectionOf } from './run-words.ts';
@@ -9,6 +9,16 @@ import type { SpecWords } from './spec-words.ts';
 export const runFinished = 'A run finished.';
 
 export const runBrokeDown = 'A run broke down because of a problem inside the server.';
+
+const cancelsAsked: Readonly<Record<CancelRequestKind, string>> = {
+  requested: 'Someone allowed to change the brain asked for the run to be cancelled.',
+  deadline: 'The step that waited for the run ran out of time, so the run is being cancelled.',
+  parent_ended: 'The run that waited for this run ended first, so this run is being cancelled.',
+};
+
+export function cancelAsked(kind: CancelRequestKind): string {
+  return cancelsAsked[kind];
+}
 
 export function runStarted(words: SpecWords, primitive: string, name: string): string {
   return `A run of ${words.named(primitive, name)} started.`;
