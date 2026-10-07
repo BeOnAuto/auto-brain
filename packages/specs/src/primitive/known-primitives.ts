@@ -44,7 +44,7 @@ function withPrimitiveField(
   primitives: readonly Primitive[],
   meaning: string,
 ): JsonSchemaDocument {
-  const types = alternatives(primitives.map(({ name, noun }) => `${name} for ${articled(noun.one)}`));
+  const types = alternatives(primitives.map(({ name, noun }) => `${name} (${noun.one})`));
   const primitive = {
     type: 'string',
     enum: primitives.map(({ name }) => name),

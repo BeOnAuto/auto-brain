@@ -1,6 +1,7 @@
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { makeSpecOperations } from '../index.ts';
+import { definePrimitive, makeSpecOperations } from '../index.ts';
 import { echo } from '../testing/echo.ts';
 import { probe } from '../testing/probe.ts';
 
@@ -28,6 +29,25 @@ describe('the description of create_spec', () => {
   });
 });
 
+describe('the kind of definition create_spec names', () => {
+  it('takes an before a kind that begins with a vowel', () => {
+    const outlining = definePrimitive({
+      name: 'outlining',
+      title: 'Outlining',
+      guide: { name: 'outline' },
+      noun: { one: 'outline', other: 'outlines' },
+      describeOutput: () => 'It outlined.',
+      mediaType: 'text/plain',
+      parse: () => Effect.succeed({}),
+      summarize: () => ({}),
+      execute: () => Effect.succeed({ output: null, record: {} }),
+    });
+    const createSpec = makeSpecOperations([outlining]).find(({ registration }) => registration.name === 'create_spec');
+
+    expect(createSpec?.registration.description).toContain('outlining, an outline, guide outline.');
+  });
+});
+
 describe('the description of every operation', () => {
   it('stays under 800 characters', () => {
     expect(operations.filter(({ description }) => description.length >= 800)).toEqual([]);
@@ -44,7 +64,7 @@ describe('the JSON Schema of the input of the operations', () => {
       expect(input.schema).toHaveProperty(['properties', 'primitive'], {
         type: 'string',
         enum: ['echo', 'probe'],
-        description: "The definition's type: echo for a greeting or probe for a probe",
+        description: "The definition's type: echo (greeting) or probe (probe)",
       });
       expect(input.schema).toMatchObject({ type: 'object', additionalProperties: false });
     }
@@ -93,7 +113,7 @@ describe('the JSON Schema of the filters of the runs', () => {
     expect(listing?.input.schema).toMatchObject({
       properties: {
         primitive: {
-          description: 'Only the runs of definitions of this type: echo for a greeting or probe for a probe',
+          description: 'Only the runs of definitions of this type: echo (greeting) or probe (probe)',
         },
         name: { description: 'Only the runs of the definition with this name' },
       },
