@@ -15,6 +15,7 @@ import {
 } from '../testing/operation-server.ts';
 import { danglingReferencesIn } from '../testing/self-contained.ts';
 import { listedTools, takingBrain, type ListedTool } from '../testing/tool-listing.ts';
+import { instructionsFor } from './instructions.ts';
 
 const orgTools = ['label_brain', 'list_labels'];
 
@@ -78,16 +79,11 @@ describe('the tools of /mcp', () => {
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });
 
-  it('carry the instructions generated from what the catalog serves', async () => {
+  it("carry the instructions of the caller's own org", async () => {
     const instructions = await asKey(acmeAdmin.key, (session) => Promise.resolve(session.instructions));
 
-    expect(instructions).toBe(
-      [
-        'This server runs the business brains of your org.',
-        "Every tool that works inside a brain takes the brain's id as brain.",
-        'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
-      ].join(' '),
-    );
+    expect(instructions).toBe(instructionsFor('own org', { orgTools, brainTools }));
+    expect(instructions).toContain("Every tool that works inside a brain takes the brain's id as brain.");
   });
 });
 

@@ -3,7 +3,7 @@ export type { ApiHandler } from './api-handler.ts';
 export type { ApiOptions } from './api-options.ts';
 export { operationRoutes, type OperationRoutesOptions, type RunCall } from './operations/operation-routes.ts';
 export { mcpRoutes, type McpRoutesOptions } from './mcp/mcp-routes.ts';
-export { brainEndpointInstructions, orgEndpointInstructions } from './mcp/instructions.ts';
+export { instructionsFor, type McpEndpoint } from './mcp/instructions.ts';
 export type { ServerInfo } from './mcp/mcp-server-factory.ts';
 export type { ReportIncident } from './problem/error-boundary.ts';
 export { problemOf, problemResponse } from './problem/problem.ts';

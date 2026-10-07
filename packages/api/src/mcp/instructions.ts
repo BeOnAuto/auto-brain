@@ -1,9 +1,4 @@
-export const orgEndpointInstructions = [
-  'This MCP endpoint serves one org of auto-brain, the runtime for business brains.',
-  'Its tools are the operations on the org as a whole, such as creating, listing, reading, updating and retiring its brains.',
-  'Each tool is one operation: its description says what it does, its input schema what it takes and its output schema what it returns.',
-  'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
-].join(' ');
+export type McpEndpoint = 'org' | 'brain' | 'own org';
 
 export interface ServedTools {
   readonly orgTools: readonly string[];
@@ -11,16 +6,29 @@ export interface ServedTools {
 }
 
 interface Orientation {
-  readonly when: (served: ServedTools) => boolean;
+  readonly when: (served: ServedTools, endpoint: McpEndpoint) => boolean;
   readonly text: string;
 }
+
+const concepts = [
+  'A brain belongs to an org and holds functions, with which it reasons, interacts, predicts, recalls and computes, and workflows that coordinate them.',
+  'A function or a workflow is a reusable definition, and a run executes it on an input.',
+  'A reasoning function has a prompt and calls a language model.',
+  'Until they are renamed, the tools say spec for a definition and execution for a run, primitive inference for a reasoning function and primitive orchestration for a workflow.',
+  'When you answer the person, say in a sentence or two what was done and what they can do next, in the words of brains, functions, workflows and runs, and leave ids, statuses and the rules of this server out unless they ask.',
+].join(' ');
+
+const whatTheConnectionDoes: Readonly<Record<McpEndpoint, string>> = {
+  org: 'This connection manages the brains of one org.',
+  brain: 'This connection acts inside one brain.',
+  'own org': "This connection acts in the caller's own org.",
+};
 
 function serves(...names: readonly string[]): (served: ServedTools) => boolean {
   return ({ orgTools, brainTools }) => names.every((name) => orgTools.includes(name) || brainTools.includes(name));
 }
 
 const orientation: readonly Orientation[] = [
-  { when: () => true, text: 'This server runs the business brains of your org.' },
   {
     when: serves('list_brains', 'create_brain'),
     text: 'Start with list_brains to see them, or create_brain to make one.',
@@ -45,10 +53,10 @@ const orientation: readonly Orientation[] = [
   },
   {
     when: serves('send_execution_event'),
-    text: 'Workflows coordinate the work. A waiting workflow run receives input through send_execution_event.',
+    text: 'A waiting workflow run receives input through send_execution_event.',
   },
   {
-    when: ({ brainTools }) => brainTools.length > 0,
+    when: ({ brainTools }, endpoint) => endpoint === 'own org' && brainTools.length > 0,
     text: "Every tool that works inside a brain takes the brain's id as brain.",
   },
   {
@@ -57,16 +65,10 @@ const orientation: readonly Orientation[] = [
   },
 ];
 
-export function catalogInstructionsFor(served: ServedTools): string {
-  return orientation
-    .filter(({ when }) => when(served))
-    .map(({ text }) => text)
-    .join(' ');
+export function instructionsFor(endpoint: McpEndpoint, served: ServedTools): string {
+  return [
+    concepts,
+    whatTheConnectionDoes[endpoint],
+    ...orientation.filter(({ when }) => when(served, endpoint)).map(({ text }) => text),
+  ].join(' ');
 }
-
-export const brainEndpointInstructions = [
-  'This MCP endpoint serves one brain of an org in auto-brain, the runtime for business brains.',
-  'Its tools define, version, retire and run functions and workflows in this brain; it lists no tools when no definition types are configured.',
-  'Each tool is one operation: its description says what it does, its input schema what it takes and its output schema what it returns.',
-  'A tool that cannot do what was asked returns isError with an RFC 9457 problem document as text; its reason and detail say why.',
-].join(' ');
