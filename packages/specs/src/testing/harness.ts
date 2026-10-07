@@ -1,10 +1,13 @@
 import {
+  Ledger,
   makeDispatcher,
   settle,
   type BrainRequest,
   type CallerIdentity,
   type DispatcherServices,
   type Outcome,
+  type RecordedPageRequest,
+  type RecordedSelection,
   type Settled,
 } from '@beonauto/operations';
 import {
@@ -21,8 +24,13 @@ import { runOutcomeMapping, type BrainOperation } from '../index.ts';
 
 export const firstMoment = '2026-10-01T09:00:00.000Z';
 
+export type LedgerRead =
+  | { readonly loaded: string }
+  | { readonly selection: RecordedSelection; readonly page: RecordedPageRequest };
+
 export interface Harness {
   readonly ledger: MemoryLedger;
+  readonly ledgerReads: () => readonly LedgerRead[];
   readonly reported: () => readonly ReportedIncident[];
   readonly dispatch: (
     operation: BrainOperation,
@@ -43,10 +51,37 @@ const knownBrains = [
   { org: 'globex', brain: 'gamma' },
 ];
 
+function readsRecordedIn(ledger: Ledger['Service'], recorded: (read: LedgerRead) => void): Ledger['Service'] {
+  return Ledger.of({
+    ...ledger,
+    load: (stream, decider) =>
+      Effect.suspend(() => {
+        recorded({ loaded: stream });
+        return ledger.load(stream, decider);
+      }),
+    readRecorded: (brain, selection, page) =>
+      Effect.suspend(() => {
+        recorded({ selection, page });
+        return ledger.readRecorded(brain, selection, page);
+      }),
+  });
+}
+
 export function harness(): Harness {
   const ledger = memoryLedger(runOutcomeMapping);
+  const reads: LedgerRead[] = [];
   const recording = recordingReporter();
-  const services = Layer.mergeAll(ledger.layer, memoryBrainRegistry(knownBrains), recording.layer, TestClock.layer());
+  const services = Layer.mergeAll(
+    Layer.succeed(
+      Ledger,
+      readsRecordedIn(ledger.service, (read) => {
+        reads.push(read);
+      }),
+    ),
+    memoryBrainRegistry(knownBrains),
+    recording.layer,
+    TestClock.layer(),
+  );
   const dispatcher = makeDispatcher([]);
   const dispatch: Harness['dispatch'] = (operation, request) =>
     dispatcher.dispatchToBrain(operation.registration, request);
@@ -59,6 +94,7 @@ export function harness(): Harness {
     );
   return {
     ledger,
+    ledgerReads: () => reads,
     reported: recording.reported,
     dispatch,
     run,

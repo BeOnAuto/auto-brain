@@ -67,32 +67,22 @@ function listedOf(execution: Run): ListedRun {
   return execution.rejection === undefined ? listed : { ...listed, rejection: listedRejectionOf(execution.rejection) };
 }
 
-function listedExecutionOf(stream: string, heads: readonly RecordedEvent[]): Effect.Effect<readonly ListedRun[]> {
+function listedExecutionOf(stream: string, heads: readonly RecordedEvent[]): Effect.Effect<ListedRun> {
   return Effect.forEach(heads, ({ data }) => decodeEvent(data)).pipe(
     Effect.map((events: readonly ExecutionEvent[]) =>
-      runOf(
-        events.reduce(
-          (state: ExecutionStreamState, event: ExecutionEvent) => evolveExecution(state, event),
-          executionDecider.initialState,
-        ),
+      events.reduce(
+        (state: ExecutionStreamState, event: ExecutionEvent) => evolveExecution(state, event),
+        executionDecider.initialState,
       ),
     ),
-    Effect.flatMap((run) =>
-      run === undefined
-        ? Effect.succeed([])
-        : Effect.map(executionOf(stream.slice(executionStreamPrefix.length), run), (execution) => [
-            listedOf(execution),
-          ]),
-    ),
+    Effect.flatMap((state) => executionOf(stream.slice(executionStreamPrefix.length), runOf(state))),
     Effect.orDie,
+    Effect.map(listedOf),
   );
 }
 
 export function listedExecutionsOf(records: readonly RecordedEvent[]): Effect.Effect<readonly ListedRun[]> {
-  return Effect.map(
-    Effect.forEach(runsOf(records), ([stream, heads]: readonly [string, readonly RecordedEvent[]]) =>
-      listedExecutionOf(stream, heads),
-    ),
-    (listed: readonly (readonly ListedRun[])[]) => listed.flat(),
+  return Effect.forEach(runsOf(records), ([stream, heads]: readonly [string, readonly RecordedEvent[]]) =>
+    listedExecutionOf(stream, heads),
   );
 }

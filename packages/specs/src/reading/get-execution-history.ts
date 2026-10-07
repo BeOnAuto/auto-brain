@@ -10,11 +10,12 @@ import {
   presentationOf,
   type Presentation,
   type Presenter,
+  type RecordedEvent,
+  type RecordedPageRequest,
 } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
-import { executionOf } from '../execution/execution-lookup.ts';
-import { loadExecution } from '../operations/execution-access.ts';
+import { noRunCalled } from '../execution/execution-lookup.ts';
 import { ExecutionIdField } from '../operations/spec-fields.ts';
 import { historyFound } from '../plain-language/reading-words.ts';
 
@@ -61,8 +62,28 @@ const ExecutionHistoryInput = Schema.Struct({
 
 const EventsPage = Schema.Struct({ events: Schema.Array(PublicEventSchema), ...PagingOutputFields });
 
-function requireExecution(id: string) {
-  return loadExecution(id).pipe(Effect.flatMap((state) => executionOf(id, state)));
+const cancelRequested = 'execution_cancel_requested';
+
+const newestHeadAlone: RecordedPageRequest = { order: 'desc', limit: 1, dataOf: [] };
+
+function isACancel({ type }: RecordedEvent): boolean {
+  return type === cancelRequested;
+}
+
+function isACancelAlone({ type, version }: RecordedEvent): boolean {
+  return type === cancelRequested && version === 1;
+}
+
+function holdsNoRun(heads: readonly RecordedEvent[]): boolean {
+  const [newest] = heads;
+  return newest === undefined || isACancelAlone(newest);
+}
+
+function newestHeadOf(id: string) {
+  return Effect.gen(function* () {
+    const { records } = yield* (yield* BrainReader).readRecorded({ kind: 'run', execution: id }, newestHeadAlone);
+    return records;
+  });
 }
 
 function historyReader(presentation: Presentation) {
@@ -72,9 +93,11 @@ function historyReader(presentation: Presentation) {
     limit = defaultPageLimit,
     cursor,
   }: typeof ExecutionHistoryInput.Type) {
-    yield* requireExecution(id);
     const paging = { order, limit, ...(cursor === undefined ? {} : { cursor }) };
     const page = yield* (yield* BrainReader).readRecorded({ kind: 'run', execution: id }, paging);
+    if (page.records.every((record) => isACancel(record)) && holdsNoRun(yield* newestHeadOf(id))) {
+      return yield* Effect.fail(noRunCalled(id));
+    }
     const { events, hasMore, nextCursor } = eventsPageOf(presentation, page, paging);
     return {
       events: events.map(({ event }) => event),

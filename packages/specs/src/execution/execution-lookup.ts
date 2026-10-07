@@ -4,11 +4,13 @@ import { Effect } from 'effect';
 import { runOf, type ExecutionStreamState, type RecordedExecution } from './execution-state.ts';
 import type { Run, RunDetail, ExecutionRejection } from './execution.ts';
 
+export function noRunCalled(id: string): NotFound {
+  return new NotFound({ detail: `There is no run ${id} in this brain` });
+}
+
 function recorded(id: string, stream: ExecutionStreamState): Effect.Effect<RecordedExecution, NotFound> {
   const state = runOf(stream);
-  return state === undefined
-    ? Effect.fail(new NotFound({ detail: `There is no run ${id} in this brain` }))
-    : Effect.succeed(state);
+  return state === undefined ? Effect.fail(noRunCalled(id)) : Effect.succeed(state);
 }
 
 export function executionOf(id: string, state: ExecutionStreamState): Effect.Effect<Run, NotFound> {
