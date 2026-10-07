@@ -90,6 +90,37 @@ describe('a token for a brain that is missing or retired, over HTTP', { timeout:
   });
 });
 
+describe('input that does not fit, with a bad token, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+  it('is refused as invalid input for a brain that exists, is missing or is retired', async () => {
+    const server = await servingInteractions('inbox');
+    await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'omega', name: 'Omega' } });
+    await server.call('POST', '/v1/orgs/acme/brains/omega/retire', { body: {} });
+    const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+    const malformed: readonly (readonly [string, unknown])[] = [
+      [runId, {}],
+      ['not-a-uuid', { answer: 'yes' }],
+      [runId, { answer: 'yes', claimed_for: 'a'.repeat(300) }],
+    ];
+    const answered = (brain: string, [id, body]: readonly [string, unknown]) =>
+      server.call('POST', `/v1/orgs/acme/brains/${brain}/executions/${id}/answer`, {
+        body,
+        authorization: 'Request not-a-token-of-any-request',
+      });
+
+    const statuses = await Promise.all(
+      ['alpha', 'nobody', 'omega'].map((brain) =>
+        Promise.all(malformed.map(async (asked) => (await answered(brain, asked)).status)),
+      ),
+    );
+
+    expect(statuses).toEqual([
+      [422, 422, 422],
+      [422, 422, 422],
+      [422, 422, 422],
+    ]);
+  });
+});
+
 describe('a workflow that asks through the inbox', { timeout: workflowTestTimeoutMs }, () => {
   it('waits for the answer and takes it as the output of its step', async () => {
     const server = await servingInteractions('inbox');

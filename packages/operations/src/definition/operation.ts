@@ -111,6 +111,7 @@ function defineOperation<
       output: jsonSchemaDocumentOf(outputSchema),
       ...plainLanguageFields(definition.plainLanguage, inputSchema, outputSchema),
       run: runnerOf(decodeInput, handle, encodeOutput, reasons),
+      checkInput: (input, encoding) => Effect.asVoid(decodeInput(input, encoding)),
     },
     call: (input) => validateInput(input).pipe(Effect.flatMap(handle), Effect.tap(validateOutput)),
   };

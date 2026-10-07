@@ -76,6 +76,22 @@ describe('a caller who presents a request token, at a brain the org may not have
       ),
     ).toMatchObject({ status: 'rejected', reason: 'not_found' });
   });
+
+  it('is told of input that does not fit as invalid input for every brain, before the brain is looked at', async () => {
+    const { dispatcher, run } = harness({ retiredBrains: [{ org: 'acme', brain: 'omega' }] });
+
+    const answers = await Promise.all(
+      ['alpha', 'nobody', 'omega'].map((brain) =>
+        run(dispatcher.dispatchToBrain(answerNote.registration, toBrain('acme', brain)(holder, { name: 7 }))),
+      ),
+    );
+
+    expect(answers).toMatchObject([
+      { status: 'rejected', reason: 'invalid_input' },
+      { status: 'rejected', reason: 'invalid_input' },
+      { status: 'rejected', reason: 'invalid_input' },
+    ]);
+  });
 });
 
 describe('a caller who presents a request token for another org', () => {

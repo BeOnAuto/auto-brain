@@ -23,7 +23,7 @@ import { Clock, Effect, Schema } from 'effect';
 
 import type { ChannelSettings } from '../channels/channel-settings.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
-import { answerFor, answererOf } from './answering.ts';
+import { answerFor, answererOf, tokenHolderOf } from './answering.ts';
 import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
 
 const ClaimedForField = Schema.String.check(
@@ -72,8 +72,10 @@ function checkedFor(run: RecordedRun, answer: Schema.Json): Effect.Effect<Schema
 
 const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering, channels: ChannelSettings) {
   const brain = yield* BrainContext;
+  const caller = yield* Caller;
+  const holder = yield* tokenHolderOf(caller, channels, brain);
   const row = yield* openRequestRowIn(id);
-  const answeredBy = yield* answererOf(yield* Caller, row, channels, brain);
+  const answeredBy = yield* answererOf(caller, holder, row);
   const run = yield* recordedRunInBrain(yield* BrainReader, id);
   if (run === undefined) {
     return yield* new NotFound({ detail: 'There is no such run in this brain' });

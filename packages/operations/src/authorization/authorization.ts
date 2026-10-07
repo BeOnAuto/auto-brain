@@ -92,7 +92,11 @@ const brainTakesCall = Effect.fnUntraced(function* ({ kind }: Registration<'brai
 
 export function confirmBrainTakesCall(registration: Registration<'brain'>, request: BrainRequest) {
   const confirmed = brainTakesCall(registration, request);
-  return authorizesItself(registration, request.caller)
-    ? Effect.mapError(confirmed, () => rejected('forbidden', requestTokenRefused))
-    : confirmed;
+  if (!authorizesItself(registration, request.caller)) {
+    return confirmed;
+  }
+  return Effect.andThen(
+    registration.checkInput(request.input, request.encoding),
+    Effect.mapError(confirmed, () => rejected('forbidden', requestTokenRefused)),
+  );
 }
