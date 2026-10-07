@@ -21,13 +21,14 @@ const orgEndpoint: ServedTools = { orgTools: [...brainTools, 'list_models'], bra
 
 const brainEndpoint: ServedTools = {
   orgTools: [],
-  brainTools: [...specTools, 'list_tool_servers', 'send_execution_event'],
+  brainTools: [...specTools, 'list_tool_servers', 'list_interactions', 'answer_interaction', 'send_execution_event'],
 };
 
 const ownOrg: ServedTools = { orgTools: orgEndpoint.orgTools, brainTools: brainEndpoint.brainTools };
 
 const definitionTypes: readonly DefinitionType[] = [
   { primitive: 'inference', noun: 'reasoning function' },
+  { primitive: 'interaction', noun: 'interaction function' },
   { primitive: 'computation', noun: 'computation function' },
   { primitive: 'recollection', noun: 'recall function' },
   { primitive: 'orchestration', noun: 'workflow' },
@@ -67,11 +68,12 @@ describe("the instructions of /mcp, the endpoint of the caller's own org", () =>
         "This connection acts in the caller's own org.",
         "Start with list_brains to see the org's brains, or create_brain to make one.",
         'A spec is a named, versioned definition in a brain.',
-        'The primitive field selects a definition type, inference for a reasoning function, computation for a computation function, recollection for a recall function or orchestration for a workflow; each tool describes its supported document formats.',
+        'The primitive field selects a definition type, inference for a reasoning function, interaction for an interaction function, computation for a computation function, recollection for a recall function or orchestration for a workflow; each tool describes its supported document formats.',
         'list_models lists the models this server can call.',
         'list_tool_servers lists the tool servers the brain may use and their tools.',
         'execute_spec runs a definition and records its run; execution_id identifies it.',
         'It may answer with status started while the work goes on; then poll get_execution until the status changes.',
+        'list_interactions lists the requests that runs of interaction functions wait on; answer_interaction answers one.',
         'A waiting workflow run receives input through send_execution_event.',
         "Every tool that works inside a brain takes the brain's id as brain.",
         closing,
@@ -95,6 +97,7 @@ describe("the instructions of /mcp, the endpoint of the caller's own org", () =>
 
     expect(instructions).not.toContain('send_execution_event');
     expect(instructions).not.toContain('list_models');
+    expect(instructions).not.toContain('answer_interaction');
   });
 
   it('say only what holds for every endpoint when it serves nothing', () => {
@@ -131,8 +134,8 @@ describe('the instructions of a scoped endpoint', () => {
 });
 
 describe('the instructions of every endpoint', () => {
-  it.each(everyEndpoint)('stay under 1,600 characters on the %s endpoint', (endpoint, served) => {
-    expect(instructionsFor(endpoint, served, definitionTypes).length).toBeLessThan(1600);
+  it.each(everyEndpoint)('stay under 2,000 characters on the %s endpoint', (endpoint, served) => {
+    expect(instructionsFor(endpoint, served, definitionTypes).length).toBeLessThan(2000);
   });
 
   it('use no term of the internal vocabulary but the wire names they explain, and no product name', () => {
