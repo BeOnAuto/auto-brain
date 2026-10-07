@@ -23,7 +23,7 @@ const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
   refused: 'failing',
 };
 
-async function connectedTo(
+export async function connectedTo(
   link: ServerLink,
   { secrets, timing }: Listing,
 ): Promise<Result.Result<Listed, McpServerFailed>> {

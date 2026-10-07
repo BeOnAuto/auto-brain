@@ -113,3 +113,7 @@ export function callsEnded({ calls, resultBytes }: CallTally): boolean {
 export function runBoundMs(stepDeadlineMs: number): number {
   return Math.max(toolBounds.runMs, stepDeadlineMs);
 }
+
+export function cutToDescriptionBound(text: string): string {
+  return cutAtCodePoint(text, toolBounds.descriptionBytes);
+}

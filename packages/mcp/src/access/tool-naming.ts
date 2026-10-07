@@ -74,11 +74,13 @@ export function namedLinks({
   return Result.succeed([...new Set(configured.map(({ link }) => link))].filter((link) => link !== undefined));
 }
 
-function namedOn({ slot }: Listed, naming: Naming): readonly ToolReference[] {
+type Offering = Pick<Naming, 'references' | 'allowed'>;
+
+function namedOn({ slot }: Listed, naming: Offering): readonly ToolReference[] {
   return naming.references.filter((reference) => reference.server === slot.settings.name);
 }
 
-export function offeredOn(listed: Listed, naming: Naming): readonly OfferedOnServer[] {
+export function offeredOn(listed: Listed, naming: Offering): readonly OfferedOnServer[] {
   const named = namedOn(listed, naming);
   const { slot } = listed;
   const server = slot.settings.name;

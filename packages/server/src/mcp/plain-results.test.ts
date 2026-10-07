@@ -127,17 +127,12 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     inSales({ ...reasonFunction, input: { text: 'the quarter' } }),
   );
   const executionId = String(executed.structuredContent?.['execution_id']);
+  const revised = summary.replace('Summarize: ', 'Sum up: ');
   return [
     ['create_spec', created],
     ['list_specs', await session.callTool('list_specs', inSales({ primitive: 'inference' }))],
     ['get_spec', await session.callTool('get_spec', inSales(reasonFunction))],
-    [
-      'update_spec',
-      await session.callTool(
-        'update_spec',
-        inSales({ ...reasonFunction, source: summary.replace('Summarize: ', 'Sum up: ') }),
-      ),
-    ],
+    ['update_spec', await session.callTool('update_spec', inSales({ ...reasonFunction, source: revised }))],
     ['execute_spec', executed],
     ['get_execution', await session.callTool('get_execution', inSales({ execution_id: executionId }))],
     ['list_executions', await session.callTool('list_executions', inSales({}))],
@@ -149,6 +144,7 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     ['list_brain_events', await session.callTool('list_brain_events', inSales({ limit: 3 }))],
     ['list_brain_events', await session.callTool('list_brain_events', { brain: 'old-sales' })],
     ['get_brain_analytics', await session.callTool('get_brain_analytics', inSales({ days: 30 }))],
+    ['list_tool_servers', await session.callTool('list_tool_servers', inSales({}))],
   ];
 }
 

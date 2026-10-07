@@ -29,6 +29,7 @@ const specTools = [
   'get_brain_analytics',
   'list_brain_events',
   'publish_event',
+  'list_tool_servers',
   'send_execution_event',
 ];
 
@@ -124,10 +125,10 @@ function reachingOutside(tools: readonly ListedTool[]): readonly string[] {
 }
 
 describe('the open-world hint of the tools of /mcp', () => {
-  it('is set for list_models and execute_spec, which reach model providers, and for no other tool', async () => {
+  it('is set for list_models and execute_spec, which reach model providers, for list_tool_servers, which reaches tool servers, and for no other tool', async () => {
     server = await servingReasoning([]);
 
-    expect(reachingOutside(await listingOn('/mcp'))).toEqual(['list_models', 'execute_spec']);
+    expect(reachingOutside(await listingOn('/mcp'))).toEqual(['list_models', 'execute_spec', 'list_tool_servers']);
   });
 });
 
