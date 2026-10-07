@@ -107,8 +107,8 @@ export function readChannelSettings(
   environment: Environment,
   context: ChannelContext,
 ): Effect.Effect<ChannelSettings, ChannelSettingsInvalid> {
-  const text = environment[channelsSetting];
-  if (text === undefined) {
+  const text = environment[channelsSetting] ?? '';
+  if (text.trim() === '') {
     return Effect.succeed({ channels: new Map(), secrets: [] });
   }
   return Result.match(channelsOf(text, environment, context), {

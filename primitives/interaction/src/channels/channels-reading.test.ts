@@ -76,10 +76,11 @@ describe('the channels of a server', () => {
 
     expect([
       Effect.runSync(readChannelSettings({}, context)),
+      Effect.runSync(readChannelSettings({ CHANNELS: ' ' }, context)),
       channelFor(settings, 'partner', { org: 'acme', brain: 'sales' })?.name,
       channelFor(settings, 'partner', { org: 'acme', brain: 'support' }),
       channelFor(settings, 'gone', { org: 'acme', brain: 'sales' }),
-    ]).toEqual([noChannels, 'partner', undefined, undefined]);
+    ]).toEqual([noChannels, noChannels, 'partner', undefined, undefined]);
   });
 });
 

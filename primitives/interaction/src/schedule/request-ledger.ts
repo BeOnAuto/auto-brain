@@ -4,7 +4,8 @@ import { Effect, Schema } from 'effect';
 
 import type { RequestAddress } from '../delivery/attempt-end.ts';
 
-export interface RequestLedger extends StreamWriter, StreamReader, RecordedReader, ProjectionReader {}
+export interface RequestLedger
+  extends StreamWriter, StreamReader, RecordedReader, Pick<ProjectionReader, 'readDueRows' | 'nextDueOf'> {}
 
 const decodeFirst = Schema.decodeUnknownSync(Schema.NonEmptyArray(Schema.Struct({ correlationId: Schema.String })));
 
