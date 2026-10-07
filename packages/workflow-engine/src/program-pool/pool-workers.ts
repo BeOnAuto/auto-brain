@@ -17,7 +17,7 @@ interface Shelf {
   readonly hold: (thread: Thread) => void;
   readonly rest: (thread: Thread) => void;
   readonly warm: (module: string) => Thread | undefined;
-  readonly oldest: () => Thread | undefined;
+  readonly oldest: () => readonly Thread[];
   readonly all: () => readonly Thread[];
 }
 
@@ -29,7 +29,7 @@ interface Fleet {
 
 interface Seats {
   readonly free: () => boolean;
-  readonly evictable: () => Thread | undefined;
+  readonly oldest: () => readonly Thread[];
   readonly letGo: (thread: Thread) => Promise<number>;
   readonly someEnded: () => Promise<number>;
 }
@@ -46,8 +46,7 @@ async function roomIn(seats: Seats): Promise<void> {
   if (seats.free()) {
     return;
   }
-  const oldest = seats.evictable();
-  if (oldest !== undefined) {
+  for (const oldest of seats.oldest()) {
     void seats.letGo(oldest);
   }
   await seats.someEnded();
@@ -75,7 +74,7 @@ function shelfOf(): Shelf {
       idle.push(thread);
     },
     warm: (module) => idle.findLast((each) => each.module === module),
-    oldest: () => idle[0],
+    oldest: () => idle.slice(0, 1),
     all: () => [...idle, ...busy],
   };
 }
@@ -102,7 +101,7 @@ function fleetOf(settings: PoolSettings, shelf: Shelf, closing: () => boolean): 
   };
   const seats: Seats = {
     free: () => closing() || count.alive + count.starting <= settings.workers,
-    evictable: () => (count.alive - dying.size + count.starting > settings.workers ? shelf.oldest() : undefined),
+    oldest: shelf.oldest,
     letGo,
     someEnded: () => Promise.race(dying),
   };
