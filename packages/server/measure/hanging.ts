@@ -12,6 +12,7 @@ interface HangingReceiver {
   readonly url: string;
   readonly mostOpen: () => number;
   readonly received: () => number;
+  readonly requests: () => number;
   readonly close: () => Promise<void>;
 }
 
@@ -34,9 +35,11 @@ type Write = (line: string) => void;
 
 async function hangingReceiver(): Promise<HangingReceiver> {
   const counts = { open: 0, mostOpen: 0, received: 0 };
+  const ids = new Set<string>();
   const server = createServer((incoming: IncomingMessage) => {
     counts.open += 1;
     counts.received += 1;
+    ids.add(String(incoming.headers['webhook-id']));
     counts.mostOpen = Math.max(counts.mostOpen, counts.open);
     incoming.resume();
     incoming.socket.on('close', () => {
@@ -49,6 +52,7 @@ async function hangingReceiver(): Promise<HangingReceiver> {
     url: `http://127.0.0.1:${decodeAddress(server.address()).port}/requests`,
     mostOpen: () => counts.mostOpen,
     received: () => counts.received,
+    requests: () => ids.size,
     close: async () => {
       const closed = once(server, 'close');
       server.close();
@@ -86,11 +90,14 @@ export async function hangingOn({ store, aLedger }: MeasuredLedger, requests: nu
   const server = await measuredServer({ ...ledger.environment, ...partnerOf(receiver.url) });
   try {
     const plan: TimerPlan = { firstDueAt: Date.now() + 6000, count: 20, spacingMs: 3000, seconds: 5 };
+    const askedAt = Date.now();
     const askedMs = await askedOn(server, requests, plan);
     const { late, loads } = await timersMeasured(server, plan);
+    const watchedMs = Date.now() - askedAt;
     const sorted = late.toSorted((a, b) => a - b);
+    const again = receiver.received() - receiver.requests();
     write(
-      `${store}: ${requests} requests to a receiver that never answers, asked in ${askedMs} ms; it was sent ${receiver.received()} in the minute that followed, ${receiver.mostOpen()} open at once at most`,
+      `${store}: ${requests} requests to a receiver that never answers, asked in ${askedMs} ms; in the ${Math.round(watchedMs / 1000)} s from the first ask it took ${receiver.received()} attempts of ${receiver.requests()} requests, ${again} of them a second attempt of a request whose first timed out, ${receiver.mostOpen()} open at once at most`,
     );
     write(
       `${store}: ${late.length} workflow timers due meanwhile, one every ${plan.spacingMs} ms, late by ${spread(sorted)}; in the order they were due, ${late.join(', ')} ms; p50 ${percentile(sorted, 0.5)} ms`,
