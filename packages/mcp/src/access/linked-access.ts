@@ -29,7 +29,12 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
       openedRun({ context, references, links, allowed: settings.allowed, secrets, timing, report }),
     callOnce: (call) => deliveredCall(call, { links, allowed: settings.allowed, secrets, timing }),
     listServers: (address, named) =>
-      Effect.promise(() => toolServersOf({ address, named }, { links, allowed: settings.allowed, secrets, timing })),
+      Effect.promise(() =>
+        toolServersOf(
+          { address, named },
+          { links, allowed: settings.allowed, testable: settings.testable, secrets, timing },
+        ),
+      ),
     close: async () => {
       await Promise.all([...links.values()].map((link) => link.stop()));
     },

@@ -7,6 +7,7 @@ import { readMcpSettings, type Environment } from '../settings/settings-reading.
 
 export interface AccessOptions {
   readonly allowed?: readonly string[];
+  readonly testable?: readonly string[];
   readonly environment?: Environment;
   readonly timing?: Timing;
   readonly fetch?: ToolAccessOptions['fetch'];
@@ -19,7 +20,7 @@ export interface ReportingAccess {
 
 export function reportingAccess(
   servers: Readonly<Record<string, unknown>>,
-  { allowed, environment = {}, timing, fetch }: AccessOptions = {},
+  { allowed, testable, environment = {}, timing, fetch }: AccessOptions = {},
 ): ReportingAccess {
   const messages: ServerMessage[] = [];
   const settings = Effect.runSync(
@@ -28,6 +29,7 @@ export function reportingAccess(
         ...environment,
         MCP_SERVERS: JSON.stringify(servers),
         ...(allowed === undefined ? {} : { ALLOWED_TOOLS: JSON.stringify(allowed) }),
+        ...(testable === undefined ? {} : { TESTABLE_TOOLS: JSON.stringify(testable) }),
       },
       { modelProviders: [] },
     ),

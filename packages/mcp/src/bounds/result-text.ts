@@ -15,7 +15,7 @@ const ToolResultSchema = Schema.Struct({
   [metaField]: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
 });
 
-const ToolAnnotationsSchema = Schema.Struct({
+export const ToolAnnotationsSchema = Schema.Struct({
   readOnlyHint: Schema.optionalKey(Schema.Boolean),
   destructiveHint: Schema.optionalKey(Schema.Boolean),
   idempotentHint: Schema.optionalKey(Schema.Boolean),
@@ -32,6 +32,8 @@ const ListedToolSchema = Schema.Struct({
 export type ToolResult = typeof ToolResultSchema.Type;
 
 export type ListedTool = typeof ListedToolSchema.Type;
+
+export type ToolAnnotations = typeof ToolAnnotationsSchema.Type;
 
 type ContentBlock = typeof ContentBlockSchema.Type;
 

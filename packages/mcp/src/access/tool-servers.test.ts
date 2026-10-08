@@ -55,11 +55,18 @@ const searchTool = {
     properties: { query: { type: 'string', description: 'What to look for' } },
     required: ['query'],
   },
+  annotations: { readOnlyHint: true, openWorldHint: true },
+  testable: true,
 };
 
 const nothingTaken = { type: 'object', properties: {}, required: [] };
 
-const echoTool = { name: 'echo', description: 'Answers with its arguments.', input_schema: nothingTaken };
+const echoTool = {
+  name: 'echo',
+  description: 'Answers with its arguments.',
+  input_schema: nothingTaken,
+  testable: false,
+};
 
 describe('the tool servers a brain may use', () => {
   it('are those that serve its org and brain, by name, each with the tools the operator allows', async () => {
@@ -93,7 +100,14 @@ describe('the tool servers a brain may use', () => {
       {
         name: 'graph',
         type: 'http',
-        tools: [{ name: 'verbose', description: verboseDescription.slice(0, 4096), input_schema: nothingTaken }],
+        tools: [
+          {
+            name: 'verbose',
+            description: verboseDescription.slice(0, 4096),
+            input_schema: nothingTaken,
+            testable: false,
+          },
+        ],
       },
     ]);
   });
@@ -231,6 +245,8 @@ describe('the secrets of a tool server', () => {
               ...searchTool.input_schema,
               properties: { query: { type: 'string', description: '[redacted]' } },
             },
+            annotations: searchTool.annotations,
+            testable: true,
           },
         ],
       },

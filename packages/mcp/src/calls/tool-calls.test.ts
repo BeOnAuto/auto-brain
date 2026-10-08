@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Timing } from '../bounds/call-bounds.ts';
-import { deniedText, fakeApiKey, inTurn, openFakeToolRun, toolRunId } from '../testing/index.ts';
+import { deniedText, fakeApiKey, fakeChannels, inTurn, openFakeToolRun, toolRunId } from '../testing/index.ts';
 
 const quick: Timing = { callMs: 2000, openMs: 2000, longestRetryWaitMs: 1000 };
 
@@ -31,7 +31,7 @@ const reportedWithKey: unknown = expect.stringMatching(
 
 describe('the result of a call', () => {
   it('gives the model text as text, structured content without text as JSON, and other content as placeholders', async () => {
-    const { call, tools } = await runWith(['search', 'profile', 'photo']);
+    const { call, tools } = await runWith(['search', 'profile', 'photo', 'list_channels']);
 
     expect(await call('search', { query: 'acme' })).toMatchObject({ text: 'Found 2 rows for acme.', isError: false });
     expect(await call('profile', {})).toMatchObject({ text: '{"name":"Ada","rows":2}', isError: false });
@@ -39,8 +39,9 @@ describe('the result of a call', () => {
       text: '[image content (image/png), not shown]\n[audio content (audio/wav), not shown]',
       isError: false,
     });
+    expect(await call('list_channels', {})).toMatchObject({ text: JSON.stringify(fakeChannels), isError: false });
     expect(tools.calledAny()).toBe(true);
-    expect(tools.usedInWords()).toBe('the search, profile, and photo tools of graph');
+    expect(tools.usedInWords()).toBe('the search, profile, photo, and list channels tools of graph');
   });
 
   it('gives the model a denial as a tool error it may recover from, never counted as a failure', async () => {

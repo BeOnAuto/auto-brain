@@ -7,15 +7,19 @@ const { registration } = defineListToolServers({ listServers: () => Effect.succe
 
 const words = registration.plainLanguage;
 
-function tool(name: string) {
-  return { name, description: '', input_schema: {} };
+function tool(name: string, testable = false) {
+  return { name, description: '', input_schema: {}, testable };
 }
 
 const lookups = Array.from({ length: 23 }, (_, index) => tool(`lookup_${index + 1}`));
 
+const gateway = ['search', 'introspect', 'execute', 'validate', 'dry_run'].map((name) =>
+  tool(name, name === 'search' || name === 'introspect'),
+);
+
 const servers = {
   tool_servers: [
-    { name: 'graph', type: 'http', tools: [tool('search'), tool('graph.query.v2')] },
+    { name: 'graph', type: 'http', tools: [tool('search', true), tool('graph.query.v2')] },
     { name: 'limitless', type: 'stdio', tools: [tool('getLifelogs')] },
     { name: 'notes', type: 'http', tools: lookups },
     { name: 'quiet', type: 'http', tools: [] },
@@ -43,13 +47,19 @@ describe('the plain words of list_tool_servers', () => {
     expect(words?.outcome(servers, {})).toBe(
       [
         "This brain's functions may use 6 tool servers.",
-        '“graph” offers 2 tools: search and graph query v2.',
-        '“limitless” offers 1 tool: get lifelogs.',
-        `“notes” offers 23 tools: ${named}, and 3 more.`,
+        '“graph” offers 2 tools: search and graph query v2; search can be tested.',
+        '“limitless” offers 1 tool: get lifelogs; none can be tested.',
+        `“notes” offers 23 tools: ${named}, and 3 more; none can be tested.`,
         '“quiet” offers no tool this brain may use.',
         '“vault” did not accept the key this server gives it, so whoever runs this server can check that key.',
         '“wiki” could not be asked for its tools just now.',
       ].join(' '),
+    );
+  });
+
+  it('name the tools of a server that can be tested, as a gateway marks its readers', () => {
+    expect(words?.outcome({ tool_servers: [{ name: 'graph', type: 'http', tools: gateway }] }, {})).toBe(
+      "This brain's functions may use 1 tool server. “graph” offers 5 tools: search, introspect, execute, validate, and dry run; search and introspect can be tested.",
     );
   });
 });

@@ -6,6 +6,7 @@ export { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer, type SeenRequest
 export type { ClientRegistration } from './fake-authorization.ts';
 export {
   deniedText,
+  fakeChannels,
   fakeRequestIdKey,
   fakeToolNames,
   longToolName,
