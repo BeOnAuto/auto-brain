@@ -260,12 +260,13 @@ A run started again under its `execution_id` counts once: its tokens add up over
 
 ## Tool servers
 
-These routes are relative to `/v1/orgs/{org}/brains/{brain}`. `list_tool_servers` needs `brain:read` and `test_tool_call` `brain:write`:
+These routes are relative to `/v1/orgs/{org}`. `list_tool_servers` at the org needs `org:read` or `brain:read`, at a brain `brain:read`, and `test_tool_call` `brain:write`:
 
-| Operation           | Method and route                                | Input                                             |
-| ------------------- | ----------------------------------------------- | ------------------------------------------------- |
-| `list_tool_servers` | `GET /tool-servers`                             | Optional `server`                                 |
-| `test_tool_call`    | `POST /tool-servers/{server}/tools/{tool}/test` | Server and tool in the path; optional `arguments` |
+| Operation           | Method and route                                               | Input                                             |
+| ------------------- | -------------------------------------------------------------- | ------------------------------------------------- |
+| `list_tool_servers` | `GET /tool-servers`                                            | Optional `brain` and `server`                     |
+| `list_tool_servers` | `GET /brains/{brain}/tool-servers`                             | Brain id in path; optional `server`               |
+| `test_tool_call`    | `POST /brains/{brain}/tool-servers/{server}/tools/{tool}/test` | Server and tool in the path; optional `arguments` |
 
 `list_tool_servers` lists the MCP servers the operator of a self-hosted runtime set up for the brain, with the tools each offers, so a [reasoning function](reasoning-format.md#tools) can name them in `tools` as `server/tool` or `server/*`. It asks each server for its tools when you call it, as a run does, within the same time to connect and to list; a server on which the operator allows no tool is listed with no tools and is not asked, since no run could reach it either. `server` keeps only the server of that name, and asks no other; a name that no server of the brain has returns `invalid_input` at `/server`, so call it without `server` to see the names.
 
@@ -317,10 +318,33 @@ Authorization: Bearer <key>
 | `tools`       | The tools the server lists that the operator allows, in the server's order, each with its `name`, its `description` cut to 4 KiB, its `input_schema`, the hints its server gives it as `annotations`, and `testable` |
 | `unavailable` | In place of `tools`, why the server could not be asked for its tools, in words cut to 1 KiB; the other servers are listed beside it                                                                                  |
 | `because`     | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can put right; `failing`, `rate_limited` or `unreachable` when asking again later may work    |
+| `brains`      | At the org only: the brains of the org whose functions may use the server, or `["*"]` for every brain of the org                                                                                                     |
 
 A tool's `annotations` are the hints its server gives it, `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint`, as booleans and as the server gives them; a tool its server gives no hint has no `annotations`. `testable` is `true` when `test_tool_call` may test the tool: when its server marks it read-only, or the operator lists it in `testable_tools`.
 
-Servers are sorted by name, and a server set up for another org, or for other brains of the org, is neither listed nor asked. The runtime adds no header, environment value, address, command or credential of a server to the answer. What a server writes, such as its tools' names, descriptions and schemas, is passed on with the values of the operator's `${...}` references and the tokens minted for a server scrubbed out; a referenced value shorter than 8 characters is not scrubbed. A brain that does not exist returns `not_found`; a retired brain answers like any other.
+Servers are sorted by name, and a server set up for another org, or for other brains of the org, is neither listed nor asked. The runtime adds no header, environment value, address, command or credential of a server to the answer. What a server writes, such as its tools' names, descriptions and schemas, is passed on with the values of the operator's `${...}` references and the tokens minted for a server scrubbed out; a referenced value shorter than 8 characters is not scrubbed. At a brain, a brain that does not exist returns `not_found`; a retired brain answers like any other.
+
+At the org, `list_tool_servers` answers for the org's brains, so you can see what the operator set up before a brain exists or without naming one. It lists every server set up for the org, each with `brains`, the brains whose functions may use it, `["*"]` for every brain of the org; `brain` keeps the servers that serve that brain, as the brain's own route lists them, `brains` included. A key limited to some brains must give `brain`, and sees in `brains` only the brains it may access; without `brain` it is refused with `forbidden`. The org's route does not look the brain up: a brain the org does not have is answered with the servers that would serve it. A `server` that no server of the org, or of the brain given, has returns `invalid_input` at `/server`.
+
+```http
+GET /v1/orgs/acme/tool-servers
+Authorization: Bearer <key>
+```
+
+```json
+{
+  "tool_servers": [
+    { "name": "graph", "type": "http", "brains": ["*"], "tools": [] },
+    {
+      "name": "notes",
+      "type": "stdio",
+      "brains": ["sales"],
+      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached",
+      "because": "unreachable"
+    }
+  ]
+}
+```
 
 ### Testing a tool
 
