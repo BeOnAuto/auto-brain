@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   descriptionIn,
   sentenceNaming,
+  sentencesOf,
   servingMeetings,
   type MeetingsServer,
 } from '../testing/servers/meetings-server.ts';
@@ -80,9 +81,26 @@ const OpenRequestsSchema = Schema.Struct({
       channel: Schema.String,
       message: Schema.String,
       standing: Schema.String,
+      answer_schema: Schema.NullOr(Schema.JsonObject),
     }),
   ),
 });
+
+const draftAnswerSchema = {
+  type: 'object',
+  required: ['decision'],
+  properties: { decision: { type: 'string', enum: ['approve', 'revise', 'skip'] }, note: { type: 'string' } },
+};
+
+const decodeAnswerSchemaField = Schema.decodeUnknownSync(
+  Schema.Struct({
+    $defs: Schema.Struct({
+      Interaction: Schema.Struct({
+        properties: Schema.Struct({ answer_schema: Schema.Struct({ description: Schema.String }) }),
+      }),
+    }),
+  }),
+);
 
 type OpenRequest = (typeof OpenRequestsSchema.Type)['interactions'][number];
 
@@ -164,9 +182,10 @@ describe(
     it('answers the request the person approved, which ends the run that waited, and starts a new run only for the next month', async () => {
       const outcome = await meetings.onMcp(approvedThenNextMonth);
 
-      expect([outcome.asked?.channel, outcome.asked?.message]).toEqual([
+      expect([outcome.asked?.channel, outcome.asked?.message, outcome.asked?.answer_schema]).toEqual([
         'team-chat',
         'Here is the draft for September: approve, revise or skip?',
+        draftAnswerSchema,
       ]);
       expect(outcome.answered.structuredContent).toMatchObject({
         status: 'succeeded',
@@ -180,3 +199,23 @@ describe(
     });
   },
 );
+
+describe('the shape of the answer an open request takes, as the agent reads it', () => {
+  it('is on each listed request, described within the bounds the server holds texts to', () => {
+    const description = descriptionIn(meetings.surfaces, 'list_interactions');
+    const listing = meetings.surfaces.tools.find(({ name }) => name === 'list_interactions');
+    const field = decodeAnswerSchemaField(listing?.outputSchema).$defs.Interaction.properties.answer_schema;
+
+    expect(sentenceNaming(description, 'answer_schema')).toBe(
+      'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked, which get_spec may no longer show; null for a notification.',
+    );
+    expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
+      "`answer` takes the shape of the request's answer_schema, which list_interactions shows,",
+    );
+    expect([description.length < 800, sentencesOf(description).length, field.description.length < 300]).toEqual([
+      true,
+      5,
+      true,
+    ]);
+  });
+});
