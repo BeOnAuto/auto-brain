@@ -147,7 +147,11 @@ describe('list_tool_servers of the org, refusing', () => {
     const fake = await fakeServer();
     const { listed } = listingOn(fake);
 
-    expect(await listed({ caller: alphaReader })).toMatchObject({ status: 'rejected', reason: 'forbidden' });
+    expect(await listed({ caller: alphaReader })).toMatchObject({
+      status: 'rejected',
+      reason: 'forbidden',
+      detail: 'The caller may access only some brains of this org; name one of them in brain',
+    });
     expect(await listed({ input: { brain: 'beta' }, caller: alphaReader })).toMatchObject({
       status: 'rejected',
       reason: 'forbidden',

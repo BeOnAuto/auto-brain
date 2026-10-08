@@ -109,7 +109,7 @@ An org operation targets at most one brain, and names it `brain`. When its input
 
 1. The caller's org must equal the org of the call, or the call is rejected with `forbidden`.
 2. The caller must hold one of the operation's `permissions`: the permission of its kind and scope, `org:read`, `org:write`, `brain:read` or `brain:write`, unless its definition names others, or the call is rejected with `forbidden`, whose detail names each.
-3. At brain scope, and for an org operation that targets a brain, the caller must have access to that brain.
+3. At brain scope, and for an org operation that targets a brain, the caller must have access to that brain. A caller limited to some brains that calls an org operation that takes `brain` without one is refused with the detail `The caller may access only some brains of this org; name one of them in brain`, so it knows to name one; any other brain it may not access gets `The caller may not access this brain`.
 4. The org id must be well formed and, at brain scope, the brain id must be well formed and the brain must exist, or the call is rejected with `not_found`. An ill-formed id is never echoed back. A retired brain stays readable: a query runs on it as on an active brain, while a command is rejected with `conflict`, kind `retired`, and the detail `The brain <id> is retired and can no longer change`, the words `update_brain` uses for a retired brain.
 5. The pipeline steps run in order.
 6. The input is decoded, rejecting unknown keys and pointing at every problem, up to 100 of them. Input nested too deeply to decode is rejected the same way.
