@@ -63,9 +63,9 @@ model_aliases:
 # The tools test_tool_call may test although their servers do not mark them
 # read-only, each also allowed by allowed_tools; only the tools their servers
 # mark read-only can be tested when left out. A server that marks its read-only
-# tools needs nothing here; one that marks none, as a gateway may, needs its
-# read-only tools named here, such as the gateway's search, introspect,
-# validate and dry_run.
+# tools needs nothing here; one that marks none needs its read-only tools named
+# here, for example a Constellation gateway's search, introspect, validate and
+# dry_run.
 # testable_tools:
 #   - graph/search
 #   - graph/introspect

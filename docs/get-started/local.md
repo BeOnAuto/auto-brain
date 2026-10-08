@@ -166,7 +166,7 @@ A reasoning function can use the tools of an MCP server, such as a search servic
 
 The key never goes in `auto-brain.yaml`; the file only names the variable that holds it. `auto-brain.example.yaml` at the root of the repository shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
 
-Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that; one that marks none, as a gateway may, needs its read-only tools named under `testable_tools`, such as a gateway's search, introspect, validate and dry_run:
+Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that; one that marks none needs its read-only tools named under `testable_tools`, for example a Constellation gateway's search, introspect, validate and dry_run:
 
 ```yaml
 testable_tools: [search/search, search/introspect, search/validate, search/dry_run]
