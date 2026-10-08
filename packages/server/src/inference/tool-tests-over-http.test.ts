@@ -3,6 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import { createApiKey } from '@beonauto/identity';
 import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { allPermissions } from '@beonauto/operations';
+import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -54,6 +55,12 @@ async function until(holds: () => boolean, waited = 0): Promise<boolean> {
   await setTimeout(10);
   return until(holds, waited + 10);
 }
+
+const decodeRun = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
+
+const decodeEvents = Schema.decodeUnknownSync(
+  Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),
+);
 
 const aTestId: unknown = expect.stringMatching(/^[0-9a-f-]{36}$/u);
 
@@ -146,6 +153,28 @@ describe('what a test records in the history of the brain', () => {
       { events: [{ type: 'tool_test_answered' }] },
     ]);
     expect(runs.body).toMatchObject({ executions: [] });
+  });
+});
+
+describe('what a test does not record', () => {
+  it('is in the history of no run, which shows only what the run recorded', async () => {
+    const { server } = await serving();
+    const echo = ['---', 'language: jq', '---', '.'].join('\n');
+    await server.call('POST', `${alpha}/specs/computation`, { key: builder.key, body: { name: 'echo', source: echo } });
+
+    const ran = await server.call('POST', `${alpha}/specs/computation/echo/execute`, {
+      key: builder.key,
+      body: { input: { said: 'hello' } },
+    });
+    await testOf(server, 'search', { arguments: { query: 'acme' } });
+    const history = await server.call('GET', `${alpha}/executions/${decodeRun(ran.body).execution_id}/history`, {
+      key: builder.key,
+    });
+
+    expect(decodeEvents(history.body).events.map(({ type }) => type)).toEqual([
+      'execution_started',
+      'execution_succeeded',
+    ]);
   });
 
   it('is refused as the type of an event published to the brain', async () => {
