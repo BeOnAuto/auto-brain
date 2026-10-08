@@ -8,7 +8,7 @@ import {
 import { answersRequest, requestOfAnswerToken } from '@beonauto/outbound';
 import { Effect, Result, type Schema } from 'effect';
 
-import { channelFor, type ChannelSettings } from '../channels/channel-settings.ts';
+import { channelFor, type Channel, type ChannelSettings } from '../channels/channel-settings.ts';
 import { checkedAnswer } from './answer-check.ts';
 import type { OpenRequestRow } from './request-rows.ts';
 
@@ -16,15 +16,11 @@ const tokenRefused = new Forbidden({ detail: requestTokenRefused });
 
 export interface TokenHolder {
   readonly requestId: string;
+  readonly signedThrough: (channel: string) => boolean;
 }
 
-function answeredThrough(channels: ChannelSettings, brain: BrainAddress, requestId: string, token: string): boolean {
-  return [...channels.channels.values()].some(
-    (channel) =>
-      channel.type === 'webhook' &&
-      channelFor(channels, channel.name, brain) !== undefined &&
-      answersRequest(channel.secret, requestId, token),
-  );
+function signedBy(channel: Channel | undefined, requestId: string, token: string): boolean {
+  return channel?.type === 'webhook' && answersRequest(channel.secret, requestId, token);
 }
 
 export function tokenHolderOf(
@@ -36,8 +32,9 @@ export function tokenHolderOf(
     return Effect.undefined;
   }
   const requestId = requestOfAnswerToken(requestToken) ?? '';
-  return answeredThrough(channels, brain, requestId, requestToken)
-    ? Effect.succeed({ requestId })
+  const signedThrough = (channel: string) => signedBy(channelFor(channels, channel, brain), requestId, requestToken);
+  return [...channels.channels.keys()].some((channel) => signedThrough(channel))
+    ? Effect.succeed({ requestId, signedThrough })
     : Effect.fail(tokenRefused);
 }
 
@@ -49,7 +46,9 @@ export function answererOf(
   if (holder === undefined) {
     return Effect.succeed(caller.id);
   }
-  return row?.request_id === holder.requestId ? Effect.succeed(`channel:${row.channel}`) : Effect.fail(tokenRefused);
+  return row?.request_id === holder.requestId && holder.signedThrough(row.channel)
+    ? Effect.succeed(`channel:${row.channel}`)
+    : Effect.fail(tokenRefused);
 }
 
 export function answerFor(answer: Schema.Json, schema: Schema.JsonObject): Effect.Effect<Schema.Json, InvalidInput> {
