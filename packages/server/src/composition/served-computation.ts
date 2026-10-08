@@ -2,8 +2,8 @@ import { computationBounds, makeComputationFunctionAdapter } from '@beonauto/com
 import type { Primitive } from '@beonauto/specs';
 import { programPool, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 
+import type { ComputationSettings } from '../function-settings/computation-settings.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';
-import type { ComputationSettings } from '../settings/computation-settings.ts';
 
 export type ProgramPoolOf = (settings: ComputationSettings) => ProgramPool;
 

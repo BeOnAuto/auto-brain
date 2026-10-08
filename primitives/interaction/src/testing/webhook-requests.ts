@@ -2,7 +2,7 @@ import { serveFakeReceiver, type FakeReceiver } from '@beonauto/outbound/testing
 import { afterEach } from 'vitest';
 
 import { approvalDocument, notificationDocument } from './documents.ts';
-import { interactionHarness, type InteractionHarness } from './interaction-harness.ts';
+import { interactionHarness, type HarnessLedger, type InteractionHarness } from './interaction-harness.ts';
 import { webhookChannels, type WebhookChannelOptions } from './webhook-channels.ts';
 
 export const askedRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -22,12 +22,13 @@ export interface AskedRequest {
 export interface AskingOptions extends WebhookChannelOptions {
   readonly notification?: boolean;
   readonly expires?: string;
+  readonly ledger?: HarnessLedger;
 }
 
 export async function askedThroughPartner(options: AskingOptions = {}): Promise<AskedRequest> {
   const receiver = await serveFakeReceiver();
   receivers.push(receiver);
-  const brain = interactionHarness({ channels: webhookChannels(receiver.url, options) });
+  const brain = interactionHarness({ channels: webhookChannels(receiver.url, options), ledger: options.ledger });
   const expires = options.expires ?? 'P2D';
   await brain.define(
     'approve-brief',

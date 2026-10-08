@@ -65,7 +65,7 @@ These routes are relative to `/v1/orgs/{org}/brains/{brain}`:
 | `list_interactions`  | `GET /interactions`                      | `brain:read`                                 | Optional `to`, `function`, `limit` and `cursor`              |
 | `answer_interaction` | `POST /executions/{execution_id}/answer` | `brain:write`, or the request's answer token | Execution id in path; `answer` and an optional `claimed_for` |
 
-`list_interactions` returns `interactions`, the brain's open requests newest first, with `has_more` and `next_cursor`. Each has the `execution_id` of the interaction function's run, `function` and `version`, `to`, `channel`, `message`, `takes_answer`, `requested_at`, `expires_at`, `attempts` and `standing`, which is `in_inbox`, `to_deliver`, `delivering`, `delivered`, `retrying` or `undelivered`.
+`list_interactions` returns `interactions`, the brain's open requests newest first, with `has_more` and `next_cursor`. Each has the `execution_id` of the interaction function's run, `function` and `version`, `to`, `channel`, `message`, `takes_answer`, `requested_at`, `expires_at`, `attempts` and `standing`, which is `in_inbox`, `to_deliver`, `delivering`, `delivered`, `retrying`, `undelivered`, `answered`, while an answer given within its delivery settles its run, or `cancelling`, once a cancel of its run was asked.
 
 Each request also has `answer_schema`, the JSON Schema the request recorded when it was asked, which an answer must match: `answer_interaction` checks this one, even once the function has a newer version whose `output_schema` `get_spec` shows. It is `null` for a notification. A schema takes at most 64 KiB as JSON, so a page of 100 requests can hold up to 6.25 MiB of schemas, and a smaller `limit` keeps a page smaller.
 

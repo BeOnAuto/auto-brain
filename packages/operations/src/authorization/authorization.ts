@@ -1,17 +1,17 @@
 import { Effect, Predicate } from 'effect';
 
 import { canAccessBrain } from '../caller/brain-access.ts';
-import type { CallerIdentity } from '../caller/caller.ts';
+import { requestTokenRefused, type CallerIdentity } from '../caller/caller.ts';
 import { isBrainId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Registration } from '../definition/registration.ts';
+import type { BrainRequest, OrgRequest } from '../dispatch/request.ts';
 import { BrainRegistry, type BrainStatus } from '../ledger/brain-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { alternatives } from '../plain-language/phrasing.ts';
-import type { BrainRequest, OrgRequest } from './request.ts';
 
 function authorizesItself({ authorizesByToken }: Registration, { requestToken }: CallerIdentity): boolean {
-  return authorizesByToken && requestToken !== undefined;
+  return authorizesByToken !== undefined && requestToken !== undefined;
 }
 
 function rejectionOfCaller(registration: Registration, { caller, org }: OrgRequest): Rejected | undefined {
@@ -85,11 +85,25 @@ function rejectionOfBrainStatus(status: BrainStatus, kind: OperationKind, brain:
     : undefined;
 }
 
-export const confirmBrainTakesCall = Effect.fnUntraced(function* (
-  { kind }: Registration<'brain'>,
-  { org, brain }: BrainRequest,
-) {
+const brainTakesCall = Effect.fnUntraced(function* ({ kind }: Registration<'brain'>, { org, brain }: BrainRequest) {
   yield* failWith(rejectionOfOrgId(org) ?? rejectionOfBrainId(brain));
   const status = yield* (yield* BrainRegistry).status({ org, brain });
   return yield* failWith(rejectionOfBrainStatus(status, kind, brain));
 });
+
+const tokenRefused = rejected('forbidden', requestTokenRefused);
+
+export function confirmBrainTakesCall(registration: Registration<'brain'>, request: BrainRequest) {
+  const confirmed = brainTakesCall(registration, request);
+  const { authorizesByToken } = registration;
+  const { requestToken } = request.caller;
+  if (authorizesByToken === undefined || requestToken === undefined) {
+    return confirmed;
+  }
+  return registration
+    .checkInput(request.input, request.encoding)
+    .pipe(
+      Effect.andThen(failWith(authorizesByToken(requestToken) ? undefined : tokenRefused)),
+      Effect.andThen(Effect.mapError(confirmed, () => tokenRefused)),
+    );
+}

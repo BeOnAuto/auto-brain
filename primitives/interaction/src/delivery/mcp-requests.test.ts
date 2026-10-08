@@ -4,7 +4,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { ChannelSettings } from '../channels/channel-settings.ts';
 import { readChannelSettings } from '../channels/channels-reading.ts';
-import { approvalDocument, askedRunId, interactionHarness, notificationDocument } from '../testing/index.ts';
+import {
+  approvalDocument,
+  askedRunId,
+  interactionHarness,
+  notificationDocument,
+  partnerSecret,
+} from '../testing/index.ts';
 
 function mcpChannels(written: Readonly<Record<string, string>>): ChannelSettings {
   return Effect.runSync(
@@ -105,6 +111,63 @@ describe('a request delivered by a tool', () => {
 
     expect(tools.calls()).toHaveLength(2);
     expect(await brain.firstOpen()).toMatchObject({ attempts: 2, standing: 'delivered' });
+  });
+});
+
+const partnerKey = 'partner-api-key-7f3a9c';
+
+function channelsHoldingSecrets(): ChannelSettings {
+  const partner = {
+    type: 'webhook',
+    url: 'https://partner.example.com/brain/requests',
+    headers: { Authorization: 'Bearer ${PARTNER_API_KEY}' },
+    secret: '${PARTNER_WEBHOOK_SECRET}',
+    to: '^[a-z]+$',
+    org: 'acme',
+  };
+  const approvals = {
+    type: 'mcp',
+    server: 'slack',
+    tool: 'post_message',
+    to: '^[a-z]+$',
+    with: channelArguments,
+    org: 'acme',
+  };
+  return Effect.runSync(
+    readChannelSettings(
+      {
+        CHANNELS: JSON.stringify({ approvals, partner }),
+        PARTNER_API_KEY: partnerKey,
+        PARTNER_WEBHOOK_SECRET: partnerSecret,
+      },
+      { servers: [{ name: 'slack', org: 'acme', brains: null }], allowed: null },
+    ),
+  );
+}
+
+describe('the detail of an attempt that echoes a secret of a channel', () => {
+  it('is recorded with the secret scrubbed, as an MCP server scrubs its own', async () => {
+    const tools = toolsAnswering({
+      outcome: 'tool_error',
+      detail: `The gateway refused the header Bearer ${partnerKey}`,
+      retryAfterMs: null,
+    });
+    const brain = interactionHarness({ channels: channelsHoldingSecrets(), tools });
+    await brain.define('approve-brief', approvalDocument('approvals'));
+    await brain.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, askedRunId);
+
+    await brain.performDue(Date.now());
+    const { records } = await Effect.runPromise(
+      brain.ledger.service.readRecorded(
+        { org: 'acme', brain: 'alpha' },
+        { kind: 'run', execution: askedRunId },
+        { order: 'asc', limit: 10, types: ['delivery_ended'] },
+      ),
+    );
+
+    expect(records.map(({ data }) => data)).toMatchObject([
+      { detail: 'The gateway refused the header Bearer [redacted]' },
+    ]);
   });
 });
 

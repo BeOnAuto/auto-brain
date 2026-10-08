@@ -3,6 +3,8 @@ import { Deferred, Effect, Exit, Fiber } from 'effect';
 export interface Background {
   readonly run: (key: string, work: Effect.Effect<void>) => void;
   readonly has: (key: string) => boolean;
+  readonly size: () => number;
+  readonly awaited: (keys: readonly string[]) => Effect.Effect<void>;
   readonly interrupt: (key: string) => Effect.Effect<void>;
   readonly idle: () => Effect.Effect<void>;
   readonly stop: () => Effect.Effect<void>;
@@ -31,6 +33,16 @@ export function background(): Background {
       Deferred.doneUnsafe(gate, Exit.void);
     },
     has: (key) => fibers.has(key),
+    size: () => fibers.size,
+    awaited: (keys) =>
+      Effect.asVoid(
+        Fiber.awaitAll(
+          keys.flatMap((key) => {
+            const fiber = fibers.get(key);
+            return fiber === undefined ? [] : [fiber];
+          }),
+        ),
+      ),
     interrupt: (key) => {
       const fiber = fibers.get(key);
       return fiber === undefined ? Effect.void : Fiber.interrupt(fiber);

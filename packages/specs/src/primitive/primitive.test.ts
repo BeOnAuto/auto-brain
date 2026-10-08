@@ -188,7 +188,12 @@ describe('what a primitive decides of each document and says of its runs', () =>
 
 describe('the cancelling of a run', () => {
   it('cancels a run by settling it as cancelled with the kind and reason asked, unless it decides otherwise', () => {
-    const asked = { record: { step: 1 }, kind: 'deadline', reason: 'The step ran out of time' } as const;
+    const asked = {
+      record: { step: 1 },
+      kind: 'deadline',
+      reason: 'The step ran out of time',
+      lastDelivery: null,
+    } as const;
     const deciding = definePrimitive({
       ...words,
       cancel: ({ record }) => ({ status: 'rejected', reason: 'conflict', detail: `At step ${JSON.stringify(record)}` }),

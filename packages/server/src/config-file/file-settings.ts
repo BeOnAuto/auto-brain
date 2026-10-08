@@ -10,7 +10,7 @@ import { ChannelsSchema } from '@beonauto/interaction';
 import { AllowedToolsSchema, McpServersSchema, TestableToolsSchema } from '@beonauto/mcp';
 import { Schema } from 'effect';
 
-import { Origin } from './origin.ts';
+import { Origin } from '../settings/origin.ts';
 
 function asJson(value: unknown): string {
   return JSON.stringify(value);

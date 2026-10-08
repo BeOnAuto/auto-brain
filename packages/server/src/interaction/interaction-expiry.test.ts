@@ -24,7 +24,7 @@ function ledgerFile(): string {
 function expiredAgo(file: string, milliseconds: number): void {
   const database = new DatabaseSync(file);
   const past = Date.now() - milliseconds;
-  database.prepare(`UPDATE ${projectedTableOf(openRequests)} SET expires_at = ?, due_at = ?`).run(past, past);
+  database.prepare(`UPDATE ${projectedTableOf(openRequests)} SET expires_at = ?, ending_due_at = ?`).run(past, past);
   database.close();
 }
 

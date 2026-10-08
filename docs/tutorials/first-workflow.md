@@ -69,7 +69,7 @@ The agent should confirm the interaction function `approve-campaign-brief` at ve
 
 ## 4. Save the workflow
 
-The workflow has two tasks. `review-brief` runs the reasoning function on the brief the run starts with and keeps the owner beside the review. `ask-for-approval` runs the interaction function with the owner and the review, and waits for its answer. The run's output keeps the review and the approval.
+The workflow has two steps. `review-brief` runs the reasoning function on the brief the run starts with and keeps the owner beside the review. `ask-for-approval` runs the interaction function with the owner and the review, and waits for its answer. The run's output keeps the review and the approval.
 
 > In `campaign-review-tutorial`, create a workflow named `review-and-approve` from the document below. Use the document unchanged as the source, with the primitive `orchestration`. If a workflow with that name already exists, show it to me instead of changing it. Then show me the saved workflow's version, description and required input.
 
@@ -163,11 +163,11 @@ The review comes from your model, so its wording can vary. For this brief it sho
 
 Then read how the run got there:
 
-> Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the tasks that moved and how each ended.
+> Read the history of that run. Show each event's type and summary and, for each `workflow_input_applied` event, the steps that moved and how each ended.
 
 The tool's summary reads: Found 9 events in the history of the run, oldest first.
 
-| Type                     | Summary                                                                        | Tasks that moved                                                 |
+| Type                     | Summary                                                                        | Steps that moved                                                 |
 | ------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
 | `execution_started`      | A run of the workflow “review-and-approve” started.                            |                                                                  |
 | `workflow_input_applied` | The workflow started, and 1 step moved.                                        | `/do/0/review-brief` waiting                                     |
@@ -195,7 +195,7 @@ The agent should report the answer refused with `conflict`, since the request wa
 
 ## What was tested
 
-Each call in this exercise was run against the runtime and its answers recorded. The statuses, fields, summaries, history and refusals in sections 1 and 3 to 9 are the ones observed. The model in that test was scripted to return one Revise review, so the test confirms the workflow's tasks, its request and its answer, not a model's judgement of the brief.
+Each call in this exercise was run against the runtime and its answers recorded. The statuses, fields, summaries, history and refusals in sections 1 and 3 to 9 are the ones observed. The model in that test was scripted to return one Revise review, so the test confirms the workflow's steps, its request and its answer, not a model's judgement of the brief.
 
 ## Review the saved workflow
 

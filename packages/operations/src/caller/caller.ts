@@ -19,6 +19,8 @@ export const CallerIdentitySchema = Schema.Struct({
   brains: BrainAccessSchema,
 });
 
+export const requestTokenRefused = 'The token does not answer this request';
+
 export function requestTokenCallerOf(org: string, requestToken: string): CallerIdentity {
   return { id: 'request-token', org, permissions: [], brains: [], requestToken };
 }

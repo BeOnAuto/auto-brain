@@ -1,12 +1,10 @@
-import { Result } from 'effect';
-
 import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import { bytesOf, cutAtCodePoint } from '../bounds/text-bytes.ts';
 import { deliveryIdKey, executionIdKey } from '../calls/call-meta.ts';
-import { takenSlot } from '../calls/server-slot.ts';
 import { forwarded, type Forwarded } from '../calls/tool-calls.ts';
 import type { ServerLink } from '../connections/server-links.ts';
+import { boundedSlot, connectionBoundOf, takenWithin } from './connection-bound.ts';
 import {
   deliveryBounds,
   failedWith,
@@ -34,11 +32,18 @@ export async function calledOnce(
   access: DeliveryAccess,
   signal: Readonly<AbortSignal>,
 ): Promise<DeliveryCallEnded> {
-  const taken = await takenSlot(link);
-  if (Result.isFailure(taken)) {
+  const connectionMs = connectionBoundOf(access.timing);
+  const taken = await takenWithin(link, connectionMs);
+  if ('late' in taken) {
+    return failedWith(
+      'timed_out',
+      `The MCP server ${call.reference.server} did not open a connection within ${connectionMs} ms`,
+    );
+  }
+  if ('failure' in taken) {
     return failedWith('server_failure', cutToFailureBound(access.secrets.scrub(taken.failure.message)));
   }
-  const slot = taken.success;
+  const slot = boundedSlot(taken.slot, connectionMs);
   try {
     const done = await forwarded({
       slot,

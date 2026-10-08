@@ -13,6 +13,7 @@ import {
 import {
   ExecutionIdField,
   RunSchema,
+  answeredWithinDelivery,
   brainBoundSettler,
   recordedRunInBrain,
   type RecordedRun,
@@ -23,7 +24,7 @@ import { Clock, Effect, Schema } from 'effect';
 
 import type { ChannelSettings } from '../channels/channel-settings.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
-import { answerFor, answererOf } from './answering.ts';
+import { answerFor, answererOf, signedByAChannel, tokenHolderOf } from './answering.ts';
 import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
 
 const ClaimedForField = Schema.String.annotate({
@@ -69,8 +70,10 @@ function checkedFor(run: RecordedRun, answer: Schema.Json): Effect.Effect<Schema
 
 const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering, channels: ChannelSettings) {
   const brain = yield* BrainContext;
+  const caller = yield* Caller;
+  const holder = yield* tokenHolderOf(caller, channels, brain);
   const row = yield* openRequestRowIn(id);
-  const answeredBy = yield* answererOf(yield* Caller, row, channels, brain);
+  const answeredBy = yield* answererOf(caller, holder, row);
   const run = yield* recordedRunInBrain(yield* BrainReader, id);
   if (run === undefined) {
     return yield* new NotFound({ detail: 'There is no such run in this brain' });
@@ -80,6 +83,9 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
   }
   if (!row.answers) {
     return yield* takesNoAnswer;
+  }
+  if (row.standing === 'answered') {
+    return yield* answeredWithinDelivery;
   }
   const output = yield* checkedFor(run, answer);
   const at = new Date(yield* Clock.currentTimeMillis).toISOString();
@@ -101,7 +107,7 @@ export function defineAnswerInteraction(channels: ChannelSettings) {
     title: 'Answer a request',
     description,
     route: { method: 'POST', path: '/executions/{execution_id}/answer' },
-    authorizesByToken: true,
+    authorizesByToken: signedByAChannel(channels),
     irreversible: true,
     repeatable: true,
     inputSchema: Schema.Struct({

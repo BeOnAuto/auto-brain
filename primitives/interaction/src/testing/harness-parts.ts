@@ -4,7 +4,7 @@ import type { BrainOperation } from '@beonauto/specs';
 import { Effect, Schema } from 'effect';
 
 import { listInteractions } from '../requests/list-interactions.ts';
-import type { DueRequestItem } from '../schedule/due-requests.ts';
+import type { DueRequestItem, RequestsDue } from '../schedule/due-requests.ts';
 
 const ListedSchema = Schema.Struct({
   status: Schema.Literal('succeeded'),
@@ -22,6 +22,14 @@ export async function firstOpenOf(
 export const noTools: Pick<ToolAccess, 'callOnce'> = {
   callOnce: () => Effect.succeed({ outcome: 'not_offered', detail: 'No MCP server is configured', retryAfterMs: null }),
 };
+
+export function dueInBothLanes(due: RequestsDue, now: number): Promise<readonly DueRequestItem[]> {
+  return Effect.runPromise(
+    Effect.zipWith(due.due(now, 256, true), due.due(now, 256, false), (outward, inward) => [
+      ...new Map([...outward, ...inward].map((item) => [item.key, item])).values(),
+    ]),
+  );
+}
 
 export function performedAll(items: readonly DueRequestItem[], now: number): Promise<void> {
   return Effect.runPromise(

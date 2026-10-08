@@ -25,6 +25,7 @@ export {
   CallerIdentitySchema,
   brainCallerOf,
   requestTokenCallerOf,
+  requestTokenRefused,
   type CallerIdentity,
 } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';

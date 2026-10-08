@@ -19,7 +19,7 @@ export interface MeasuredLedger {
   readonly removeAll: () => Promise<void>;
 }
 
-const expiring = `UPDATE ${projectedTableOf(openRequests)} SET expires_at = $1, due_at = $1`;
+const expiring = `UPDATE ${projectedTableOf(openRequests)} SET expires_at = $1, ending_due_at = $1`;
 
 async function administered(server: string, statement: string, values: readonly number[] = []): Promise<number> {
   const client = new Client({ connectionString: server });

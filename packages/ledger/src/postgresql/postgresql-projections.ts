@@ -3,12 +3,12 @@ import { pgFormatter } from '@event-driven-io/dumbo/pg';
 import { Schema } from 'effect';
 
 import type { StatementExecutor } from '../event-store.ts';
+import { createPostgreSQLBrainIndexes } from '../postgresql-reads/brain-indexes.ts';
+import type { Query } from '../postgresql-reads/recorded-parts.ts';
 import type { ProjectionDialect } from '../projections/projection-dialect.ts';
 import { projectionPartsOf, type KeptTables } from '../projections/projection-parts.ts';
 import type { ReadQuery } from '../projections/projection-reads.ts';
-import { createPostgreSQLBrainIndexes } from './brain-indexes.ts';
 import { dataAsJsonText } from './json-text.ts';
-import type { Query } from './recorded-parts.ts';
 
 const defaultPartition = 'emt:default';
 

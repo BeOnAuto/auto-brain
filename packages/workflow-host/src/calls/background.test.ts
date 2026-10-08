@@ -37,6 +37,21 @@ describe('the work a host does in the background', () => {
     expect(noted.begun()).toEqual(['first', 'third']);
   });
 
+  it('counts the work that runs, and awaits the work of the keys it is given that still runs', async () => {
+    const running = background();
+    const noted = noting();
+    running.run('quick', Effect.void);
+    await Effect.runPromise(running.awaited(['quick']));
+    running.run('held', noted.work('held'));
+
+    const sizes = [running.size()];
+    const awaiting = Effect.runPromise(running.awaited(['quick', 'held', 'never run']));
+    await noted.released();
+    await awaiting;
+
+    expect([...sizes, running.size()]).toEqual([1, 0]);
+  });
+
   it('begins nothing once it stopped', async () => {
     const running = background();
     const noted = noting();

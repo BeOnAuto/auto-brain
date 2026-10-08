@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Query } from '../postgresql/recorded-parts.ts';
+import type { Query } from '../postgresql-reads/recorded-parts.ts';
 import { postgresqlAppended } from './postgresql-appended.ts';
 
 interface Asked {

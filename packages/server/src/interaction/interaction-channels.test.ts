@@ -3,31 +3,21 @@ import { createHmac } from 'node:crypto';
 
 import { partnerSecret } from '@beonauto/interaction/testing';
 import { serveFakeMcp } from '@beonauto/mcp/testing';
-import { serveFakeReceiver, type FakeReceiver, type ReceivedRequest } from '@beonauto/outbound/testing';
-import { Schema } from 'effect';
+import type { ReceivedRequest } from '@beonauto/outbound/testing';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { guarded, servingInteractions } from '../testing/servers/interaction-server.ts';
+import {
+  decodeEvent,
+  partnerChannel,
+  partnerReceiver,
+  publicOrigin as origin,
+  receivedAtLeast,
+} from '../testing/servers/partner-channels.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
 import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
-const origin = 'https://brains.example.com';
-
 const apiKey = 'graph-api-key-4f1d9a7c2b';
-
-const EventSchema = Schema.Struct({
-  id: Schema.String,
-  type: Schema.String,
-  data: Schema.Struct({
-    execution_id: Schema.String,
-    to: Schema.String,
-    message: Schema.String,
-    answer_url: Schema.String,
-    answer_token: Schema.String,
-  }),
-});
-
-const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(EventSchema));
 
 function independentlySigned(posted: ReceivedRequest | undefined): string {
   const key = Buffer.from(partnerSecret.slice('whsec_'.length), 'base64');
@@ -35,32 +25,9 @@ function independentlySigned(posted: ReceivedRequest | undefined): string {
   return `v1,${createHmac('sha256', key).update(signed, 'utf8').digest('base64')}`;
 }
 
-async function receiver(): Promise<FakeReceiver> {
-  const fake = await serveFakeReceiver();
-  onTestFinished(fake.close);
-  return fake;
-}
-
-function partnerChannel(url: string, answers = false): Readonly<Record<string, string>> {
-  return {
-    CHANNELS: JSON.stringify({
-      partner: { type: 'webhook', url, secret: '${PARTNER_WEBHOOK_SECRET}', to: '^[a-z]+$', answers, org: 'acme' },
-    }),
-    PARTNER_WEBHOOK_SECRET: partnerSecret,
-    PUBLIC_ORIGIN: origin,
-  };
-}
-
-function receivedAtLeast(partner: FakeReceiver, count: number): Promise<readonly ReceivedRequest[]> {
-  return until(
-    () => Promise.resolve(partner.received()),
-    (received) => received.length >= count,
-  );
-}
-
 describe('an interaction function through a webhook channel', { timeout: workflowTestTimeoutMs }, () => {
   it('posts its request signed as Standard Webhooks signs it, and takes the answer its own token gives', async () => {
-    const partner = await receiver();
+    const partner = await partnerReceiver();
     const server = await servingInteractions('partner', partnerChannel(partner.url));
     const first = await server.ask('approve-brief');
     const [posted] = await receivedAtLeast(partner, 1);
@@ -107,7 +74,7 @@ describe(
   { timeout: workflowTestTimeoutMs },
   () => {
     it('takes the answer a receiver gives within the delivery, on a channel that allows it', async () => {
-      const partner = await receiver();
+      const partner = await partnerReceiver();
       partner.answerWith({ status: 200, body: JSON.stringify({ choice: 'reject', note: 'Not this quarter' }) });
       const server = await servingInteractions('partner', partnerChannel(partner.url, true));
 
@@ -118,7 +85,7 @@ describe(
     });
 
     it('ends a notification its receiver refuses as unanswered, which a workflow catch names', async () => {
-      const partner = await receiver();
+      const partner = await partnerReceiver();
       partner.answerEveryWith({ status: 400 });
       const server = await servingInteractions('partner', partnerChannel(partner.url));
 

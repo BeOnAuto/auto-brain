@@ -1,11 +1,13 @@
 import { Buffer } from 'node:buffer';
 
+import { secretsOf } from '@beonauto/mcp';
 import { outboundBounds } from '@beonauto/outbound';
 import type { DeliveryEndedFact, DeliveryStartedFact } from '@beonauto/specs';
 
+import type { ChannelSettings } from '../channels/channel-settings.ts';
 import { attemptInFlightMs } from '../requests/open-requests.ts';
 import type { OpenRequestRow } from '../requests/request-rows.ts';
-import { mostDetailBytes, type AttemptFields } from './attempt-end.ts';
+import { mostDetailBytes, type AttemptEnd, type AttemptFields } from './attempt-end.ts';
 
 function cutDetail(detail: string): string {
   const bytes = Buffer.from(detail, 'utf8');
@@ -16,18 +18,25 @@ export function startedFact(row: OpenRequestRow): DeliveryStartedFact {
   return { type: 'delivery_started', number: row.attempts + 1, channel: row.channel, target: row.party };
 }
 
-export function endedFact(number: number, { detail, ...ended }: AttemptFields, durationMs: number): DeliveryEndedFact {
+export function endedFact(
+  number: number,
+  { ended, answer }: AttemptEnd,
+  durationMs: number,
+  secrets: ChannelSettings['secrets'],
+): DeliveryEndedFact {
+  const { detail, ...fields } = ended;
   return {
     type: 'delivery_ended',
     number,
-    ...ended,
-    ...(detail === undefined ? {} : { detail: cutDetail(detail) }),
+    ...fields,
+    ...(detail === undefined ? {} : { detail: cutDetail(secretsOf(secrets).scrub(detail)) }),
+    ...(answer === undefined ? {} : { answer }),
     duration_ms: durationMs,
   };
 }
 
 export function lostFact(row: OpenRequestRow): DeliveryEndedFact {
-  return endedFact(row.attempts, { outcome: 'failed', because: 'lost' }, attemptInFlightMs);
+  return endedFact(row.attempts, { ended: { outcome: 'failed', because: 'lost' } }, attemptInFlightMs, []);
 }
 
 export function isLastAttempt({ outcome }: AttemptFields, number: number): boolean {

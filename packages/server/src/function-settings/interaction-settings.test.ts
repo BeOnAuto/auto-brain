@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { readSettings } from './settings.ts';
+import { readSettings } from '../settings/settings.ts';
 
 const partner = {
   type: 'webhook',
@@ -26,6 +26,14 @@ const refusals: readonly (readonly [Readonly<Record<string, string>>, string])[]
   [
     { PUBLIC_ORIGIN: 'https://brains.example.com/' },
     'InvalidSettingsError: The interaction settings are invalid. PUBLIC_ORIGIN: Expected an origin such as https://brains.example.com',
+  ],
+  [
+    { PUBLIC_ORIGIN: 'http://brains.example.com' },
+    'InvalidSettingsError: The interaction settings are invalid. PUBLIC_ORIGIN: Expected an https origin, or http on a loopback address, such as https://brains.example.com',
+  ],
+  [
+    { ...secrets, CHANNELS: JSON.stringify({ partner }) },
+    'InvalidSettingsError: The interaction settings are invalid. PUBLIC_ORIGIN: Expected the origin a delivered request names, such as https://brains.example.com, which a webhook channel needs on a server that listens beyond loopback',
   ],
 ];
 
@@ -58,6 +66,7 @@ describe('the interaction function settings', () => {
     }).interaction;
     const fromFile = readSettings({
       ...secrets,
+      HOST: '127.0.0.1',
       CONFIG_FILE: configFile(`channels:\n  partner: ${JSON.stringify(partner)}\n`),
     }).interaction;
 
@@ -66,11 +75,25 @@ describe('the interaction function settings', () => {
       'partner',
     ]);
     expect(fromEnvironment).toMatchObject({ mostOpenRequests: 500, origin: 'https://brains.example.com' });
+    expect(fromFile.origin).toBe('http://localhost:8080');
     expect(
       ['10000', '1000000'].map(
         (most) => readSettings({ INTERACTION_OPEN_REQUESTS: most }).interaction.mostOpenRequests,
       ),
     ).toEqual([10_000, 1_000_000]);
+  });
+});
+
+describe('the origin a delivered request names', () => {
+  it('may be http on a loopback address, and is the loopback one when the server listens there alone', () => {
+    const onLoopback = { ...secrets, CHANNELS: JSON.stringify({ partner }), HOST: '::1', PORT: '3000' };
+
+    expect([
+      readSettings({ PUBLIC_ORIGIN: 'http://localhost:3000' }).interaction.origin,
+      readSettings({ PUBLIC_ORIGIN: 'http://[::1]:3000' }).interaction.origin,
+      readSettings(onLoopback).interaction.origin,
+      readSettings({ HOST: '0.0.0.0' }).interaction.origin,
+    ]).toEqual(['http://localhost:3000', 'http://[::1]:3000', 'http://localhost:3000', 'http://localhost:8080']);
   });
 });
 

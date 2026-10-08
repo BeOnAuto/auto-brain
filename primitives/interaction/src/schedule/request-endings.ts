@@ -1,4 +1,5 @@
 import type { Settlement } from '@beonauto/specs';
+import type { Schema } from 'effect';
 
 import type { OpenRequestRow } from '../requests/request-rows.ts';
 
@@ -9,6 +10,15 @@ export function expiredSettlement(row: Pick<OpenRequestRow, 'expires_at'>): Sett
     kind: 'expired',
     detail: `Nobody answered the request before it expired at ${new Date(row.expires_at).toISOString()}`,
   };
+}
+
+export function answeredSettlement(channel: string, answer: Schema.Json, at: string): Settlement {
+  const by = `channel:${channel}`;
+  return { status: 'succeeded', output: answer, record: { answered_by: by, answered_at: at }, by };
+}
+
+export function deliveredSettlement(at: string): Settlement {
+  return { status: 'succeeded', output: {}, record: { delivered_at: at } };
 }
 
 export function undeliveredSettlement(row: Pick<OpenRequestRow, 'channel'>): Settlement {

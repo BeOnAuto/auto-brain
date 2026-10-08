@@ -4,8 +4,8 @@ import { Effect, Function } from 'effect';
 import { Client } from 'pg';
 
 import type { StoredPageRequest } from './src/event-store.ts';
+import { postgresqlRecordedStore, type Query } from './src/postgresql-reads/postgresql-recorded.ts';
 import { postgresqlEventStore } from './src/postgresql/postgresql-event-store.ts';
-import { postgresqlRecordedStore, type Query } from './src/postgresql/postgresql-recorded.ts';
 
 type Querying = Readonly<Pick<Client, 'query'>>;
 

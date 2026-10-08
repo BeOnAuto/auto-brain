@@ -1,8 +1,8 @@
 import type { Environment } from '@beonauto/config';
 import { Config, ConfigProvider, Effect } from 'effect';
 
-import { InvalidSettingsError } from './invalid-settings-error.ts';
-import { countOf } from './workflow-settings.ts';
+import { InvalidSettingsError } from '../settings/invalid-settings-error.ts';
+import { countOf } from '../settings/workflow-settings.ts';
 
 export interface RecallSettings {
   readonly mostFunctions: number;

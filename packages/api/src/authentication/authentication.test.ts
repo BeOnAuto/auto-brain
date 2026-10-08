@@ -30,6 +30,20 @@ const malformedAuthorization: ReadonlyArray<readonly [string, ReadonlyArray<read
       ['authorization', `Bearer ${acme.key}`],
     ],
   ],
+  [
+    'a Bearer and a Request header together',
+    [
+      ['authorization', `Bearer ${acme.key}`],
+      ['authorization', 'Request a-request.a-digest'],
+    ],
+  ],
+  [
+    'a Request and a Bearer header together',
+    [
+      ['authorization', 'Request a-request.a-digest'],
+      ['authorization', `Bearer ${acme.key}`],
+    ],
+  ],
 ];
 
 describe('authentication with API keys', () => {

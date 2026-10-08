@@ -140,9 +140,11 @@ Only `headers` and `secret` may hold a reference to an environment variable, and
 
 A system that receives a request by webhook verifies its signature with the secret, and answers it either within the delivery, on a channel with `answers: true`, or later with `Authorization: Request <answer_token>` at the `answer_url` the request gives, a token derived from the channel's secret for that request alone and never stored. The [interaction function format](../../reference/interaction-format.md#what-a-webhook-receives) describes the request and its attempts.
 
+A receiver answers at the `answer_url` a request names, so the server stops at start when a webhook channel is set, `HOST` is not a loopback address and `PUBLIC_ORIGIN` is unset, and when `PUBLIC_ORIGIN` is http on any other host: set it to the https origin through which receivers reach the server.
+
 Two settings go with channels:
 
-| Setting                     | What it holds                                                                                                                                                                 |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `INTERACTION_OPEN_REQUESTS` | The most requests a brain may have open at once, from 1 to 1,000,000, 10,000 when unset; a run past it is `unavailable` with the kind `requests_full`                         |
-| `PUBLIC_ORIGIN`             | The origin a delivered request names in its `source` and `answer_url`, such as `https://brains.example.com`; `http://localhost` and the port the server listens on when unset |
+| Setting                     | What it holds                                                                                                                                                                                                                                                                                                   |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INTERACTION_OPEN_REQUESTS` | The most requests a brain may have open at once, from 1 to 1,000,000, 10,000 when unset; a run past it is `unavailable` with the kind `requests_full`                                                                                                                                                           |
+| `PUBLIC_ORIGIN`             | The origin a delivered request names in its `source` and `answer_url`, such as `https://brains.example.com`: https, or http on a loopback address; `http://localhost` and the port the server listens on when unset, which only a server that listens on a loopback address may leave it with a webhook channel |

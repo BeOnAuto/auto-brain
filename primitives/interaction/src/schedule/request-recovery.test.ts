@@ -66,3 +66,17 @@ describe('a due request whose run has ended, or whose channel is gone', () => {
     expect(await Effect.runPromise(withoutChannels.nextDueAt(askedAt))).toBeGreaterThan(askedAt + minute - 1000);
   });
 });
+
+describe('a request whose run is asked to cancel', () => {
+  it('sends nothing more, even for an attempt read as due before the cancel was asked', async () => {
+    const { brain, receiver, askedAt } = await askedThroughPartner();
+    const items = await brain.dueItems(askedAt);
+
+    const asked = await brain.cancel(askedRunId);
+    await brain.performAll(items, askedAt);
+    const performed = await brain.performDue(Date.now() + 10 * minute);
+
+    expect([asked.status, performed, receiver.received()]).toEqual(['succeeded', 0, []]);
+    expect(await brain.firstOpen()).toMatchObject({ standing: 'cancelling', attempts: 0 });
+  });
+});

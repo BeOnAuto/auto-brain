@@ -1,8 +1,8 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, type StreamReader, type StreamWriter } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { deferredCanceller, definePrimitive, type Primitive } from '../index.ts';
+import { deferredCanceller, definePrimitive, outboundCallRecorder, type Primitive } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 import { relay } from '../testing/relay.ts';
@@ -93,7 +93,39 @@ describe('a cancel of a run of another capability, as asked', () => {
 
     expect(records.at(-1)?.data).toMatchObject({ type: 'execution_rejected', by: 'brain:alpha' });
   });
+});
 
+describe('a cancel its capability settles otherwise', () => {
+  it('settles it as its capability decides, by the actor the decision names rather than whoever asked', async () => {
+    const { executing, ledger, run } = await withHandOn();
+    await executing();
+    const answering = relayDeciding(({ lastDelivery }) => ({
+      status: 'succeeded',
+      output: { delivered: JSON.stringify(lastDelivery) },
+      record: {},
+      by: 'channel:partner',
+    }));
+
+    await Effect.runPromise(deferredCanceller([answering], ledger.service)(relayed, asked, lineage));
+    const { records } = await run(
+      Effect.orDie(
+        ledger.service.readRecorded(
+          { org: 'acme', brain: 'alpha' },
+          { kind: 'everything' },
+          { order: 'asc', limit: 20 },
+        ),
+      ),
+    );
+
+    expect(records.at(-1)?.data).toMatchObject({
+      type: 'execution_succeeded',
+      output: { delivered: 'null' },
+      by: 'channel:partner',
+    });
+  });
+});
+
+describe('a cancel of a run of another capability, as asked, when its hook breaks', () => {
   it('fails the run when its capability’s hook throws', async () => {
     const { executing, ledger, reading } = await withHandOn();
     await executing();
@@ -138,6 +170,36 @@ describe('a cancel of a run of another capability that is over', () => {
     expect(await Effect.runPromise(Effect.flip(deferredCanceller([], changedMeanwhile)(relayed, asked, lineage)))).toBe(
       changed,
     );
+  });
+});
+
+const decidingFromDelivery = relayDeciding(({ lastDelivery }) =>
+  lastDelivery === null
+    ? { status: 'rejected', reason: 'cancelled', kind: 'requested', detail: 'Nothing was delivered' }
+    : { status: 'succeeded', output: { delivered: lastDelivery.outcome } },
+);
+
+describe('a cancel whose run changes between its read and its settlement', () => {
+  it('reads the run again and lets its capability decide from what the run holds now', async () => {
+    const { executing, ledger, reading } = await withHandOn();
+    await executing();
+    const record = outboundCallRecorder(ledger.service);
+    const delivered = Effect.all([
+      record(relayed, { type: 'delivery_started', number: 1, channel: 'partner', target: 'ada' }, lineage),
+      record(relayed, { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 }, lineage),
+    ]);
+    const turns = { next: (): Effect.Effect<unknown, unknown> => delivered };
+    const changedOnce: StreamReader & StreamWriter = {
+      ...ledger.service,
+      execute: (stream, decider, command, given) => {
+        const turn = Effect.orDie(turns.next());
+        turns.next = () => Effect.void;
+        return Effect.andThen(turn, ledger.service.execute(stream, decider, command, given));
+      },
+    };
+    await Effect.runPromise(deferredCanceller([decidingFromDelivery], changedOnce)(relayed, asked, lineage));
+
+    expect(await reading()).toMatchObject({ output: { status: 'succeeded', output: { delivered: 'delivered' } } });
   });
 });
 

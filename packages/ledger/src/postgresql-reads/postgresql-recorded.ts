@@ -2,6 +2,7 @@ import { Schema } from 'effect';
 
 import { postgresqlAppended } from '../appended/postgresql-appended.ts';
 import type { DefinitionStreamsStore, RecordedStore } from '../event-store.ts';
+import { dataAsJsonText } from '../postgresql/json-text.ts';
 import {
   pointKey,
   recordedReadingOver,
@@ -11,7 +12,6 @@ import {
   type RecordsSelected,
 } from '../recorded/recorded-statements.ts';
 import { brainKeyOfStream, correlationOfMessage } from './brain-indexes.ts';
-import { dataAsJsonText } from './json-text.ts';
 import { postgresqlDefinitionStreams } from './postgresql-definition-streams.ts';
 import { examineRuns } from './postgresql-runs.ts';
 import {

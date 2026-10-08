@@ -45,6 +45,17 @@ describe('an interaction function definition', () => {
   );
 });
 
+function expiresOf(expires: string): number {
+  return Result.getOrThrow(parseInteractionDocument(documentWith(['channel: inbox', "to: 'x'", `expires: ${expires}`])))
+    .expiresMs;
+}
+
+describe('the expiry of a definition', () => {
+  it('takes one minute and thirty days exactly, the bounds of a request', () => {
+    expect([expiresOf('PT1M'), expiresOf('P30D')]).toEqual([60_000, 2_592_000_000]);
+  });
+});
+
 describe('the refusals of a definition', () => {
   it('refuse a channel name that is not one, and an expiry outside its bounds or not a duration', () => {
     expect([

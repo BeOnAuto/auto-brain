@@ -9,7 +9,7 @@ export {
   type PostOutcome,
   type RefusedBecause,
 } from './delivery/outbound-post.ts';
-export { answerTokenOf, answersRequest } from './signing/answer-tokens.ts';
+export { answerTokenOf, answersRequest, requestOfAnswerToken } from './signing/answer-tokens.ts';
 export {
   isSignedWebhook,
   signedWebhookHeaders,

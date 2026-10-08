@@ -6,9 +6,11 @@ import type {
   DeliveryEndedFact,
   DeliveryStartedFact,
   ExecutionCommand,
+  ExecutionResult,
   OutboundCallFact,
 } from '../execution/execution-commands.ts';
 import { executionDecider } from '../execution/execution-decider.ts';
+import { answeredWithinDelivery } from '../execution/execution-decisions.ts';
 import type { ExecutionEvent } from '../execution/execution-events.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -58,6 +60,12 @@ function recording(fact: OutboundCallFact): ExecutionCommand {
   return { type: 'outbound_call', fact, ...during };
 }
 
+function notInFlight(number: number): Conflict {
+  return new Conflict({
+    detail: `Delivery ${number} is not the attempt of the run in flight, so it cannot end; another attempt ended it, or it never started`,
+  });
+}
+
 const noMoreWork = new Conflict({ detail: 'The run has ended, so it records no more of its work' });
 
 describe('the deferral of a run', () => {
@@ -89,6 +97,95 @@ describe('an outbound call of a run that finishes later', () => {
         }),
       ),
     );
+  });
+});
+
+describe('the end of a delivery', () => {
+  it('ends only the attempt in flight, once, so an attempt that never started or already ended is refused', () => {
+    expect([
+      decided(recording(ended), started, deferred),
+      decided(recording({ ...ended, number: 2 }), started, deferred, attemptStarted),
+      decided(recording(ended), started, deferred, attemptStarted, attemptEnded),
+    ]).toEqual([Result.fail(notInFlight(1)), Result.fail(notInFlight(2)), Result.fail(notInFlight(1))]);
+    expect(stateAfter(started, deferred, attemptStarted)).toMatchObject({ deliveryInFlight: 1 });
+    expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({
+      deliveryInFlight: null,
+      lastDelivery: { outcome: 'failed', at: during.at },
+    });
+  });
+});
+
+describe('the deliveries of a run asked to cancel', () => {
+  it('starts no attempt once a cancel is asked, though the attempt in flight may still end', () => {
+    const cancelAsked: ExecutionEvent = {
+      type: 'execution_cancel_requested',
+      kind: 'requested',
+      reason: 'No longer needed',
+      ...during,
+    };
+
+    expect(decided(recording(attempt), started, deferred, cancelAsked)).toEqual(
+      Result.fail(new Conflict({ detail: 'The run is being cancelled, so it starts no more deliveries' })),
+    );
+    expect(decided(recording(ended), started, deferred, attemptStarted, cancelAsked)).toStrictEqual(
+      Result.succeed([attemptEnded]),
+    );
+  });
+});
+
+describe('a run whose delivery answered', () => {
+  it('leaves the run to be settled with that answer alone, whoever settles it and however', () => {
+    const answered: ExecutionEvent = {
+      ...ended,
+      outcome: 'answered',
+      status: 200,
+      answer: { choice: 'approve' },
+      ...ofApproval,
+      ...during,
+    };
+    const settling = (result: ExecutionResult): ExecutionCommand => ({ type: 'settle', result, ...during });
+    const withTheAnswer = settling({ type: 'execution_succeeded', output: { choice: 'approve' }, record: {} });
+    const history = [started, deferred, attemptStarted, answered];
+
+    expect([
+      decided(settling({ type: 'execution_succeeded', output: { choice: 'reject' }, record: {} }), ...history),
+      decided(
+        settling({ type: 'execution_rejected', rejection: { reason: 'cancelled', kind: 'requested', detail: 'Off' } }),
+        ...history,
+      ),
+      decided(withTheAnswer, ...history),
+      decided(withTheAnswer, started, deferred, attemptStarted, attemptEnded),
+    ]).toMatchObject([
+      Result.fail(answeredWithinDelivery),
+      Result.fail(answeredWithinDelivery),
+      Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
+      Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
+    ]);
+  });
+});
+
+describe('the end of a delivery that answered', () => {
+  it('carries the answer a receiver gave within the delivery', () => {
+    const answered: DeliveryEndedFact = { ...ended, outcome: 'answered', status: 200, answer: { choice: 'approve' } };
+
+    expect(decided(recording(answered), started, deferred, attemptStarted)).toStrictEqual(
+      Result.succeed([{ ...answered, ...ofApproval, ...during }]),
+    );
+  });
+
+  it('is kept by the run as its last delivery, with the answer, for a cancel to settle from', () => {
+    const answered: ExecutionEvent = {
+      ...ended,
+      outcome: 'answered',
+      status: 200,
+      answer: { choice: 'approve' },
+      ...ofApproval,
+      ...during,
+    };
+
+    expect(stateAfter(started, deferred, attemptStarted, answered)).toMatchObject({
+      lastDelivery: { outcome: 'answered', answer: { choice: 'approve' }, at: during.at },
+    });
   });
 
   it('is refused once the run has ended, and of a run there is not', () => {

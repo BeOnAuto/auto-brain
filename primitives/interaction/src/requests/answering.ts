@@ -1,25 +1,63 @@
-import { Forbidden, InvalidInput, type BrainAddress, type CallerIdentity } from '@beonauto/operations';
-import { answersRequest } from '@beonauto/outbound';
+import {
+  Forbidden,
+  InvalidInput,
+  requestTokenRefused,
+  type BrainAddress,
+  type CallerIdentity,
+} from '@beonauto/operations';
+import { answersRequest, requestOfAnswerToken } from '@beonauto/outbound';
 import { Effect, Result, type Schema } from 'effect';
 
-import { channelFor, type ChannelSettings } from '../channels/channel-settings.ts';
+import { channelFor, type Channel, type ChannelSettings } from '../channels/channel-settings.ts';
 import { checkedAnswer } from './answer-check.ts';
 import type { OpenRequestRow } from './request-rows.ts';
 
-const tokenRefused = new Forbidden({ detail: 'The answer token does not answer this request' });
+const tokenRefused = new Forbidden({ detail: requestTokenRefused });
+
+export interface TokenHolder {
+  readonly requestId: string;
+  readonly signedThrough: (channel: string) => boolean;
+}
+
+function signedBy(channel: Channel | undefined, requestId: string, token: string): boolean {
+  return channel?.type === 'webhook' && answersRequest(channel.secret, requestId, token);
+}
+
+function requestIdIn(token: string): string {
+  return requestOfAnswerToken(token) ?? '';
+}
+
+export function signedByAChannel(channels: ChannelSettings): (token: string) => boolean {
+  return (token) => {
+    const requestId = requestIdIn(token);
+    return [...channels.channels.values()].some((channel) => signedBy(channel, requestId, token));
+  };
+}
+
+export function tokenHolderOf(
+  { requestToken }: CallerIdentity,
+  channels: ChannelSettings,
+  brain: BrainAddress,
+): Effect.Effect<TokenHolder | undefined, Forbidden> {
+  if (requestToken === undefined) {
+    return Effect.undefined;
+  }
+  const requestId = requestIdIn(requestToken);
+  const signedThrough = (channel: string) => signedBy(channelFor(channels, channel, brain), requestId, requestToken);
+  return [...channels.channels.keys()].some((channel) => signedThrough(channel))
+    ? Effect.succeed({ requestId, signedThrough })
+    : Effect.fail(tokenRefused);
+}
 
 export function answererOf(
   caller: CallerIdentity,
+  holder: TokenHolder | undefined,
   row: OpenRequestRow | undefined,
-  channels: ChannelSettings,
-  brain: BrainAddress,
-) {
-  const token = caller.requestToken;
-  if (token === undefined) {
+): Effect.Effect<string, Forbidden> {
+  if (holder === undefined) {
     return Effect.succeed(caller.id);
   }
-  const channel = row === undefined ? undefined : channelFor(channels, row.channel, brain);
-  return row !== undefined && channel?.type === 'webhook' && answersRequest(channel.secret, row.request_id, token)
+  return row?.request_id === holder.requestId && holder.signedThrough(row.channel)
     ? Effect.succeed(`channel:${row.channel}`)
     : Effect.fail(tokenRefused);
 }

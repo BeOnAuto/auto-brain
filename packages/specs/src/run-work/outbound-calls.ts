@@ -14,11 +14,16 @@ import type { OutboundCallFact } from '../execution/execution-commands.ts';
 import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
 import type { ExecutionAddress } from '../execution/execution-settler.ts';
 
+export interface RecordedOutboundCall {
+  readonly id: string;
+  readonly at: string;
+}
+
 export type RecordOutboundCall = (
   run: ExecutionAddress,
   fact: OutboundCallFact,
   lineage: Lineage,
-) => Effect.Effect<string, Conflict>;
+) => Effect.Effect<RecordedOutboundCall, Conflict>;
 
 const isWellFormed = Schema.is(
   Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
@@ -37,6 +42,6 @@ export function outboundCallRecorder(ledger: StreamWriter): RecordOutboundCall {
       const { version } = yield* ledger
         .execute(stream, executionDecider, { type: 'outbound_call', fact, by: brainCallerOf(run).id, at }, lineage)
         .pipe(Effect.catchTags({ not_found: Effect.die, cancelled: Effect.die }));
-      return messageIdOf(stream, version);
+      return { id: messageIdOf(stream, version), at };
     });
 }

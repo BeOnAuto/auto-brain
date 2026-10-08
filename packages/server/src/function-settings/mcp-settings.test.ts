@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Redacted } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { readSettings } from './settings.ts';
+import { readSettings } from '../settings/settings.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 

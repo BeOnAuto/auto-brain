@@ -5,6 +5,7 @@ import type { InteractionPorts } from '../run/request-reach.ts';
 import { parse, summarize } from './definition-reading.ts';
 import { describeAnswer, interactionRunWords } from './interaction-words.ts';
 import { interactionPrimitive } from './primitive-name.ts';
+import { cancelledRequest } from './request-cancels.ts';
 
 export function makeInteractionFunctionAdapter(ports: InteractionPorts): Primitive {
   const run = interactionRun(ports);
@@ -25,5 +26,6 @@ export function makeInteractionFunctionAdapter(ports: InteractionPorts): Primiti
     finishesLater,
     longestRunOf: ({ expiresMs }) => expiresMs,
     runWords: interactionRunWords,
+    cancel: cancelledRequest,
   });
 }

@@ -1,10 +1,8 @@
-import { loadavg } from 'node:os';
-import { setTimeout as sleep } from 'node:timers/promises';
-
 import { Schema } from 'effect';
 
 import type { MeasuredLedger } from './measured-ledgers.ts';
 import { brain, inTurns, measuredServer, percentile, type MeasuredServer } from './measured-server.ts';
+import { executionIdOf, pauseSource, spread, timersMeasured, type TimerPlan } from './timer-runs.ts';
 
 const timers = { count: 20, seconds: 30, spacingMs: 3000 };
 
@@ -21,16 +19,6 @@ const approval = [
   'Approve the brief of {{ input.owner }}?',
 ].join('\n');
 
-const pause = `document: { dsl: '1.0.3', namespace: measure, name: pause, version: '1.0.0' }
-do:
-  - pause: { wait: { seconds: ${timers.seconds} } }
-  - done: { set: { done: true } }
-`;
-
-const decodeStarted = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
-
-const decodeEnded = Schema.decodeUnknownSync(Schema.Struct({ started_at: Schema.String, finished_at: Schema.String }));
-
 const decodePage = Schema.decodeUnknownSync(
   Schema.Struct({
     executions: Schema.Array(Schema.Struct({ status: Schema.String, finished_at: Schema.optionalKey(Schema.String) })),
@@ -40,48 +28,19 @@ const decodePage = Schema.decodeUnknownSync(
 
 type Write = (line: string) => void;
 
-function loadNow(): string {
-  return loadavg()
-    .map((average) => average.toFixed(1))
-    .join(', ');
-}
-
-function spread(sorted: readonly number[]): string {
-  return `${percentile(sorted, 0)} ms at least, ${percentile(sorted, 0.5)} ms at the median, ${percentile(sorted, 0.95)} ms at p95 and ${percentile(sorted, 1)} ms at most`;
-}
-
 async function askedOn(server: MeasuredServer, requests: number): Promise<number> {
   await server.call('POST', '/v1/orgs/local/brains', { brain: 'measure', name: 'Measure' });
   await server.call('POST', `${brain}/specs/interaction`, { name: 'approval', source: approval });
-  await server.call('POST', `${brain}/specs/orchestration`, { name: 'pause', source: pause });
+  await server.call('POST', `${brain}/specs/orchestration`, { name: 'pause', source: pauseSource(timers.seconds) });
   const from = Date.now();
   await inTurns(requests, 32, async (index) => {
-    decodeStarted(
+    executionIdOf(
       await server.call('POST', `${brain}/specs/interaction/approval/execute`, {
         input: { owner: `owner-${index % 100}` },
       }),
     );
   });
   return Date.now() - from;
-}
-
-async function timersStarted(server: MeasuredServer, dueAt: number, index = 0): Promise<readonly string[]> {
-  if (index === timers.count) {
-    return [];
-  }
-  await sleep(Math.max(0, dueAt - timers.seconds * 1000 + index * timers.spacingMs - Date.now()));
-  const started = decodeStarted(await server.call('POST', `${brain}/specs/orchestration/pause/execute`, { input: {} }));
-  return [started.execution_id, ...(await timersStarted(server, dueAt, index + 1))];
-}
-
-async function latenessOf(server: MeasuredServer, runs: readonly string[]): Promise<readonly number[]> {
-  const ended = await Promise.all(
-    runs.map(async (run) => decodeEnded(await server.call('GET', `${brain}/executions/${run}`))),
-  );
-  return ended.map(
-    ({ started_at: startedAt, finished_at: finishedAt }) =>
-      Date.parse(finishedAt) - Date.parse(startedAt) - timers.seconds * 1000,
-  );
 }
 
 async function expiryLagsOf(
@@ -97,27 +56,11 @@ async function expiryLagsOf(
   return page.next_cursor === null ? lags : [...lags, ...(await expiryLagsOf(server, dueAt, page.next_cursor))];
 }
 
-function sampledLoads(): { readonly loads: string[]; readonly stop: () => void } {
-  const loads: string[] = [];
-  const sampler = setInterval(() => {
-    loads.push(loadNow());
-  }, 10_000);
-  return {
-    loads,
-    stop: () => {
-      clearInterval(sampler);
-    },
-  };
-}
-
 async function measuredAfterRestart(server: MeasuredServer, dueAt: number, requests: number) {
-  const sampling = sampledLoads();
-  const runs = await timersStarted(server, dueAt);
-  await sleep(dueAt + timers.count * timers.spacingMs + 5000 - Date.now());
-  sampling.stop();
-  const late = await latenessOf(server, runs);
+  const plan: TimerPlan = { ...timers, firstDueAt: dueAt };
+  const { late, loads } = await timersMeasured(server, plan);
   const lags = requests === 0 ? [] : await expiryLagsOf(server, dueAt);
-  return { late, lags: lags.toSorted((a, b) => a - b), loads: sampling.loads };
+  return { late, lags: lags.toSorted((a, b) => a - b), loads };
 }
 
 export async function expiriesOn({ store, aLedger }: MeasuredLedger, requests: number, write: Write): Promise<void> {

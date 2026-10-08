@@ -1,7 +1,7 @@
 import type { Environment } from '@beonauto/config';
 import { describe, expect, it } from 'vitest';
 
-import { readSettings } from './settings.ts';
+import { readSettings } from '../settings/settings.ts';
 
 function errorFrom(environment: Environment): unknown {
   try {
