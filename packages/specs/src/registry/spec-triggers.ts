@@ -46,7 +46,7 @@ export type ScheduleTrigger = Exclude<Trigger, EventTrigger>;
 
 export type TriggerFilter = EventTrigger['filters'][number];
 
-export const TriggerKindSchema = Schema.Literals(['event', 'cron', 'every']);
+const TriggerKindSchema = Schema.Literals(['event', 'cron', 'every']);
 
 export const StartingTriggerSchema = Schema.Struct({ kind: TriggerKindSchema, reference: Schema.String });
 

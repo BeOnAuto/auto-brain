@@ -8,7 +8,7 @@ import { triggersActivated, triggersRemoved } from './trigger-rows.ts';
 
 export type SpecRecord = Pick<RecordedEvent, 'id' | 'type' | 'data'>;
 
-export type SpecApplied = 'applied' | 'unreadable';
+type SpecApplied = 'applied' | 'unreadable';
 
 export type ApplySpecRecord = (brainKey: string, record: SpecRecord) => Effect.Effect<SpecApplied>;
 
