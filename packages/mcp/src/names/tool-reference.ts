@@ -7,14 +7,14 @@ const everyTool = '*';
 
 export const serverNamePattern = /^[a-z][a-z0-9-]{0,31}$/u;
 
-const toolName = /^[A-Za-z0-9_.-]{1,128}$/u;
+export const toolNamePattern = /^[A-Za-z0-9_.-]{1,128}$/u;
 
 export function isServerName(name: string): boolean {
   return serverNamePattern.test(name);
 }
 
 export function isToolName(name: string): boolean {
-  return toolName.test(name);
+  return toolNamePattern.test(name);
 }
 
 export function namesEveryTool({ tool }: ToolReference): boolean {

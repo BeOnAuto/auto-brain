@@ -54,7 +54,7 @@ export function failureCounted(
   return { tally: counted, value: failuresEnded(counted) ? because : undefined };
 }
 
-function serverFailedText(server: string, said: string): string {
+export function serverFailedText(server: string, said: string): string {
   return `The MCP server ${server} failed: ${said}`;
 }
 

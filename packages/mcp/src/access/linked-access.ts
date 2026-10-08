@@ -25,6 +25,7 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
   return {
     configured: settings.servers.length > 0,
+    testing: { allowed: settings.allowed, testable: settings.testable },
     open: (context, references) =>
       openedRun({ context, references, links, allowed: settings.allowed, secrets, timing, report }),
     callOnce: (call) => deliveredCall(call, { links, allowed: settings.allowed, secrets, timing }),

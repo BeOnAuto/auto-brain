@@ -1,3 +1,4 @@
+import { answeredInWords } from '@beonauto/mcp';
 import { capitalized, explanationOf, plainNumber, quoted } from '@beonauto/operations';
 
 import type { CancelRequestKind, ToolCallAnswered } from '../execution/execution-events.ts';
@@ -40,14 +41,6 @@ export function specRetired(words: SpecWords, primitive: string, name: string): 
   return `${capitalized(words.named(primitive, name))} was retired.`;
 }
 
-const answers: Readonly<Record<ToolCallAnswered['outcome'], string>> = {
-  result: 'answered',
-  tool_error: 'answered with an error',
-  server_failure: 'failed at its server',
-  timed_out: 'took too long, so it was given up',
-  cancelled: 'was cancelled when the run ended',
-};
-
 const notLettersOrDigits = /[^A-Za-z0-9]+/gu;
 
 function nameInWords(name: string): string {
@@ -59,7 +52,7 @@ export function toolCalled(number: number, server: string, tool: string): string
 }
 
 export function toolAnswered(number: number, outcome: ToolCallAnswered['outcome']): string {
-  return `Tool call ${plainNumber(number)} ${answers[outcome]}.`;
+  return `Tool call ${plainNumber(number)} ${answeredInWords[outcome]}.`;
 }
 
 export function eventPublished(type: string): string {

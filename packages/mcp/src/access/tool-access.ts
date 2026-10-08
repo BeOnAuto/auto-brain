@@ -19,6 +19,7 @@ export interface ToolAccessOptions {
 
 export interface ToolAccess {
   readonly configured: boolean;
+  readonly testing: Pick<McpSettings, 'allowed' | 'testable'>;
   readonly open: (
     context: CallerContext,
     references: readonly ToolReference[],
@@ -41,6 +42,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
   };
   return {
     configured: settings.servers.length > 0,
+    testing: { allowed: settings.allowed, testable: settings.testable },
     open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
     callOnce: (call) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call)),
     listServers: (address, named) =>

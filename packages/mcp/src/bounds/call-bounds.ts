@@ -14,6 +14,7 @@ export const toolBounds = {
   descriptionBytes: 4096,
   failureBytes: 1024,
   recordedContentBytes: 4096,
+  shownContentBytes: 2048,
 } as const;
 
 export interface Timing {
