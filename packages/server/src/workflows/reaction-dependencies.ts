@@ -7,7 +7,6 @@ import {
   type DispatcherServices,
   type Outcome,
 } from '@beonauto/operations';
-import { triggerOfSource } from '@beonauto/orchestration';
 import { eventEmitter, type BrainOperation } from '@beonauto/specs';
 import { StartRefused, StartRejected, type ReactionOptions, type ReactionStart } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
@@ -16,7 +15,17 @@ import { inRuntime } from './in-runtime.ts';
 
 const workflows = 'orchestration';
 
-function requestOf({ org, brain, workflow, version, input, executionId, depth, cause }: ReactionStart): BrainRequest {
+function requestOf({
+  org,
+  brain,
+  workflow,
+  version,
+  input,
+  executionId,
+  depth,
+  cause,
+  trigger,
+}: ReactionStart): BrainRequest {
   return {
     caller: brainCallerOf({ org, brain }),
     org,
@@ -25,6 +34,7 @@ function requestOf({ org, brain, workflow, version, input, executionId, depth, c
     encoding: 'json',
     lineage: { causationId: cause, correlationId: executionId },
     depth,
+    trigger,
   };
 }
 
@@ -47,7 +57,6 @@ export function reactionsOf(
 ): ReactionOptions {
   return {
     primitive: workflows,
-    triggerOf: triggerOfSource,
     start: (start) =>
       Effect.flatMap(
         inRuntime(runtime, dispatcher.dispatchToBrain(startVersion.registration, requestOf(start))),
