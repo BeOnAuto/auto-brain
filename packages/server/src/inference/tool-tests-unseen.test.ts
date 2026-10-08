@@ -43,7 +43,12 @@ const RunsSchema = Schema.Struct({ executions: Schema.Array(Schema.Struct({ stat
 
 const decodeRuns = Schema.decodeUnknownSync(RunsSchema);
 
-async function servingATestedBrain(): Promise<ReasoningServer> {
+interface TestedBrain {
+  readonly server: ReasoningServer;
+  readonly saved: readonly number[];
+}
+
+async function servingATestedBrain(): Promise<TestedBrain> {
   const graph = await serveFakeMcp({ bearer: apiKey });
   closing.push(graph.close);
   const server = await servingWorkflows([], {
@@ -55,10 +60,12 @@ async function servingATestedBrain(): Promise<ReasoningServer> {
   });
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', `${alpha}/specs/orchestration`, { body: { name: 'on-a-test', source: onATest } });
-  await server.call('POST', `${alpha}/specs/orchestration`, { body: { name: 'on-a-closing', source: onAClosing } });
-  await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'seen', source: foldingWhatItSees } });
-  return server;
+  const saving = [
+    await server.call('POST', `${alpha}/specs/orchestration`, { body: { name: 'on-a-test', source: onATest } }),
+    await server.call('POST', `${alpha}/specs/orchestration`, { body: { name: 'on-a-closing', source: onAClosing } }),
+    await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'seen', source: foldingWhatItSees } }),
+  ];
+  return { server, saved: saving.map(({ status }) => status) };
 }
 
 async function runsOf(server: ReasoningServer, name: string) {
@@ -68,7 +75,7 @@ async function runsOf(server: ReasoningServer, name: string) {
 
 describe('the tests of a tool in a brain', { timeout: recallTestTimeoutMs }, () => {
   it('reach no recall function and start no workflow, while the events after them do', async () => {
-    const server = await servingATestedBrain();
+    const { server, saved } = await servingATestedBrain();
 
     const tested = await server.call('POST', `${alpha}/tool-servers/graph/tools/search/test`, {
       body: { arguments: { query: 'acme' } },
@@ -93,6 +100,7 @@ describe('the tests of a tool in a brain', { timeout: recallTestTimeoutMs }, () 
       { timeout: recallTestTimeoutMs - 10_000, interval: 100 },
     );
 
+    expect(saved).toEqual([201, 201, 201]);
     expect(tested).toMatchObject({ status: 200, body: { outcome: 'result' } });
     expect(triggered).toHaveLength(1);
     expect(await runsOf(server, 'on-a-test')).toEqual([]);
