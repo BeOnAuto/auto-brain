@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import { TriggerSchema } from './spec-triggers.ts';
+
 const listedDefinitionFields = {
   primitive: Schema.String.annotate({ description: 'The API type identifier of the definition' }),
   name: Schema.String.annotate({
@@ -27,10 +29,10 @@ const listedDefinitionFields = {
         'What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings',
     }),
   ),
-  reacts: Schema.optionalKey(
-    Schema.Literal(true).annotate({
+  triggers: Schema.optionalKey(
+    Schema.Array(TriggerSchema).annotate({
       description:
-        'true for a definition that starts runs on its own: a workflow whose schedule starts it on events or on time',
+        'For a definition that starts runs on its own, its triggers in the order its document names them: a workflow may have an event trigger, a cron schedule and an every schedule, each kept and matched on its own',
     }),
   ),
   created_at: Schema.String.annotate({ description: 'When the definition was created, in ISO 8601 UTC' }),
@@ -54,10 +56,10 @@ export const ListedDefinitionSchema = Schema.Struct(listedDefinitionFields).anno
 export const DefinitionSchema = Schema.Struct({
   ...listedDefinitionFields,
   source: Schema.String.annotate({ description: 'The definition document' }),
-  reacts_since: Schema.optionalKey(
+  triggers_since: Schema.optionalKey(
     Schema.String.annotate({
       description:
-        'For a definition that reacts, the id of the record that made its current version, the first record of the brain it reacts to',
+        'For an active definition with triggers, the id of the record that saved its current version: from that record on, what its triggers start is a run of this version',
     }),
   ),
   standing: Schema.optionalKey(StandingField),
@@ -93,6 +95,6 @@ export function isWorkflowDefinition(definition: Definition): definition is Work
 
 export type ListedDefinition = typeof ListedDefinitionSchema.Type;
 
-export type StoredDefinition = Omit<Definition, 'primitive' | 'media_type' | 'reacts_since' | 'standing'> & {
+export type StoredDefinition = Omit<Definition, 'primitive' | 'media_type' | 'triggers_since' | 'standing'> & {
   readonly details?: Schema.JsonObject;
 };

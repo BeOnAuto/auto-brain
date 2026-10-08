@@ -111,6 +111,12 @@ describe('matching an event over the event alone', () => {
   it('matches on the rest when its data expression reads variables of a run', () => {
     expect(matched({ type: 'com.acme.ledger.month-closed', data: '${ .region == $context.region }' })).toBe(true);
   });
+
+  it('takes a filter of its place and its attributes alone, as a trigger keeps one', () => {
+    const kept = { reference: at, attributes: { type: 'com.acme.ledger.month-closed', data: '${ .region == "eu" }' } };
+
+    expect(matchEvent(kept, monthClosed, now)).toBe(true);
+  });
 });
 
 describe('matching an event whose data expression fails', () => {

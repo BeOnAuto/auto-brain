@@ -2,6 +2,7 @@ import { capitalized, explanationOf, plainNumber, quoted } from '@beonauto/opera
 
 import type { CancelRequestKind, ToolCallAnswered } from '../execution/execution-events.ts';
 import type { ExecutionRejection } from '../execution/execution.ts';
+import type { StartingTrigger } from '../registry/spec-triggers.ts';
 import { wordsOf } from './in-words.ts';
 import { explainedRejectionOf } from './run-words.ts';
 import type { SpecWords } from './spec-words.ts';
@@ -20,8 +21,20 @@ export function cancelAsked(kind: CancelRequestKind): string {
   return cancelsAsked[kind];
 }
 
-export function runStarted(words: SpecWords, primitive: string, name: string): string {
-  return `A run of ${words.named(primitive, name)} started.`;
+const triggerNames: Readonly<Record<StartingTrigger['kind'], string>> = {
+  event: 'event trigger',
+  cron: 'cron schedule',
+  every: 'every schedule',
+};
+
+export function triggerNamed(kind: StartingTrigger['kind']): string {
+  return triggerNames[kind];
+}
+
+export function runStarted(words: SpecWords, primitive: string, name: string, trigger?: StartingTrigger): string {
+  return trigger === undefined
+    ? `A run of ${words.named(primitive, name)} started.`
+    : `A run of ${words.named(primitive, name)} was started by its ${triggerNamed(trigger.kind)}.`;
 }
 
 export function runRejected(rejection: ExecutionRejection): string {
@@ -71,5 +84,5 @@ export function eventEmitted(type: string, workflow: string): string {
 }
 
 export function reactionsRefused(workflow: string): string {
-  return `The workflow ${quoted(workflow)} was not started for everything its trigger matched in a minute; the details say how often and why.`;
+  return `The workflow ${quoted(workflow)} was not started every time its triggers called for it in a minute; the details say how often and why.`;
 }

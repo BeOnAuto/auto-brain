@@ -40,14 +40,16 @@ Every step acts for the caller who started the run, with the permissions that ca
 
 ## Triggers
 
-A workflow can start on its own. Its document's `schedule` names one trigger:
+A workflow can start on its own. Its document's `schedule` names up to three triggers, one of each kind, each kept and matched on its own:
 
-- An **event trigger** starts a run for each event of the brain that matches its filter: an event published with `publish_event`, an event another workflow emits, or one of the brain's own facts, such as a reasoning function's run that succeeded. The run's input is a list holding the event.
-- A **schedule trigger** starts a run at the times a `cron` rule names, in UTC, or every period of at least a minute. The run's input says when it was due. One run of a schedule runs at a time: a time due while the run before still runs is skipped.
+- An **event trigger**, `on`, starts a run for each event of the brain that one of its filters matches: an event published with `publish_event`, an event another workflow emits, or one of the brain's own facts, such as a reasoning function's run that succeeded. The run's input is a list holding the event. It takes at most 64 filters.
+- A **schedule trigger** starts a run at the times a `cron` rule names, in UTC, or `every` period of at least a minute, counted from when the trigger was saved as it is. The run's input says when it was due. One run of a schedule trigger runs at a time: a time due while the run it started before still runs is skipped.
 
-A run a trigger starts acts as the brain itself, shown as `brain:` and the brain's name in `started_by`, rather than for a person. A trigger applies from when its version is saved, never to what the brain recorded before. Each event or due time starts its run once, even across a restart of the runtime.
+So a workflow can start on an event and at its times without switching between them. Each trigger is identified by its kind, `event`, `cron` or `every`, and its place in the document, such as `/schedule/cron`; a saved workflow shows its triggers that way, and a run says which trigger started it.
 
-A workflow does not start for its own runs or for the events they emit, a chain of runs started by events stops at a depth of 8, and a trigger starts at most 60 runs of its workflow a minute. What a trigger did not start appears among the brain's events as `reaction_refused`. The [workflow format](../reference/workflow-format.md#triggers) gives the exact rules.
+A run a trigger starts acts as the brain itself, shown as `brain:` and the brain's name in `started_by`, rather than for a person. A trigger applies from when it is saved as it is, never to what the brain recorded before: a new version that leaves a trigger unchanged keeps it going as it was, with its times, while a trigger the version changes or adds applies from that version on. Each event or due time starts its run once, even across a restart of the runtime.
+
+A workflow does not start for its own runs or for the events they emit, a chain of runs started by events stops at a depth of 8, and its event trigger starts at most 60 runs of it a minute. What a trigger did not start appears among the brain's events as `reaction_refused`. The [workflow format](../reference/workflow-format.md#triggers) gives the exact rules.
 
 A workflow can also announce something with an `emit` step, which records an event in the brain; another workflow's event trigger, or a run waiting for that event, can take it.
 

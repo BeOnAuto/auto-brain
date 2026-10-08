@@ -114,7 +114,7 @@ function counted(name: 'depth' | 'call_depth', count: number): Readonly<Record<s
 
 function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
   const { primitive, name, spec_version, input, calls_tools, finishes_later, by, at } = start;
-  const { depth = 0, call_depth: callDepth = 0, called_by: calledBy } = start;
+  const { depth = 0, call_depth: callDepth = 0, called_by: calledBy, trigger } = start;
   return {
     type: 'execution_started',
     primitive,
@@ -126,6 +126,7 @@ function startedEvent(start: ExecutionStart & CommandMetadata): ExecutionEvent {
     ...counted('depth', depth),
     ...counted('call_depth', callDepth),
     ...(calledBy === undefined ? {} : { called_by: calledBy }),
+    ...(trigger === undefined ? {} : { trigger }),
     by,
     at,
   };
@@ -159,7 +160,7 @@ function decideStart(start: ExecutionStart & CommandMetadata, state: ExecutionSt
   });
 }
 
-function ofTheStart({ execution, depth, callDepth, calledBy }: RecordedExecution) {
+function ofTheStart({ execution, depth, callDepth, calledBy, trigger }: RecordedExecution) {
   const { primitive, name, spec_version } = execution;
   return {
     primitive,
@@ -168,6 +169,7 @@ function ofTheStart({ execution, depth, callDepth, calledBy }: RecordedExecution
     ...counted('depth', depth),
     ...counted('call_depth', callDepth),
     ...(calledBy === undefined ? {} : { called_by: calledBy }),
+    ...(trigger === undefined ? {} : { trigger }),
   };
 }
 

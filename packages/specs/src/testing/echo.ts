@@ -2,6 +2,7 @@ import { InvalidInput } from '@beonauto/operations';
 import { Effect, Predicate, Result, Schema, SchemaIssue } from 'effect';
 
 import { definePrimitive } from '../index.ts';
+import { TriggerSchema } from '../registry/spec-triggers.ts';
 
 const decodeDocument = Schema.decodeUnknownEffect(
   Schema.fromJsonString(
@@ -9,7 +10,7 @@ const decodeDocument = Schema.decodeUnknownEffect(
       greeting: Schema.String,
       description: Schema.optionalKey(Schema.String),
       warnings: Schema.optionalKey(Schema.Array(Schema.String)),
-      reacts: Schema.optionalKey(Schema.Boolean),
+      triggers: Schema.optionalKey(Schema.Array(TriggerSchema)),
     }),
   ),
   { onExcessProperty: 'error', errors: 'all' },
@@ -41,10 +42,10 @@ export const echo = definePrimitive({
   describeOutput: () => 'It answered with its greeting.',
   mediaType: 'application/json',
   parse: parseDocument,
-  summarize: ({ greeting, description, warnings, reacts }) => ({
+  summarize: ({ greeting, description, warnings, triggers }) => ({
     ...(description === undefined ? {} : { description }),
     ...(warnings === undefined ? {} : { warnings }),
-    ...(reacts === undefined ? {} : { reacts }),
+    ...(triggers === undefined ? {} : { triggers }),
     inputSchema: { type: 'object' },
     outputSchema: {
       type: 'object',

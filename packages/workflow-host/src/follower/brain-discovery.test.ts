@@ -33,7 +33,7 @@ describe('a brain its org created before the host started', () => {
     const settings = await onSQLite();
     const { store } = await openedOn(settings);
     await brainCreated(store, 'alpha');
-    await specRecorded(store, { name: 'close', version: 1, trigger: closed });
+    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
     await published(store, { id: 'before', type: 'com.acme.closed' });
 
     const reacting = await reactingHost({ settings });
@@ -52,7 +52,7 @@ describe('a brain its org creates while the host runs', () => {
     await brainRenamed(store, 'alpha');
 
     await brainCreated(store, 'beta');
-    await specRecorded(store, { name: 'watch', version: 1, trigger: sentinel }, beta);
+    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] }, beta);
     await published(store, { id: 's1', type: 'com.acme.sentinel' }, {}, beta);
     const starts = await startsReaching(reacting, 1);
 
@@ -72,7 +72,7 @@ describe('a brain its org created while the host was stopped', () => {
     await first.host.stop();
 
     await brainCreated(first.database.store, 'beta');
-    await specRecorded(first.database.store, { name: 'watch', version: 1, trigger: sentinel }, beta);
+    await specRecorded(first.database.store, { name: 'watch', version: 1, triggers: [sentinel] }, beta);
     await published(first.database.store, { id: 's1', type: 'com.acme.sentinel' }, {}, beta);
     const second = await reactingHost({ settings });
     const starts = await startsReaching(second, 1);

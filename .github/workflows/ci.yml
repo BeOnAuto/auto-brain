@@ -460,7 +460,7 @@ jobs:
           docker stop recall
           test "$(docker inspect recall --format '{{.State.ExitCode}}')" = 0
 
-      - name: Start workflows by an event and by a schedule
+      - name: Start a workflow by its event trigger and by its schedule
         timeout-minutes: 5
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
@@ -478,33 +478,40 @@ jobs:
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
-          ended_run() {
-            for attempt in $(seq 1 "$2"); do
+          ended_runs() {
+            for attempt in $(seq 1 "$3"); do
               test "$(call runs.json "$brain/executions?primitive=orchestration&name=$1")" = 200
-              jq --exit-status '.executions | any(.status != "started")' runs.json > /dev/null && return 0
+              jq --exit-status --argjson count "$2" '[.executions[] | select(.status != "started")] | length >= $count' \
+                runs.json > /dev/null && return 0
               sleep 1
             done
             return 1
           }
           closing="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: closing, version: '1.0.0' }" \
-            'schedule: { on: { one: { with: { type: com.example.ledger.closed } } } }' 'do:' \
-            "  - total: { set: { month: '\${ .[0].data.month }' } }")"
-          ticking="$(printf '%s\n' "document: { dsl: '1.0.3', namespace: smoke, name: ticking, version: '1.0.0' }" \
-            'schedule: { every: PT1M }' 'do:' "  - tock: { set: { due: '\${ .schedule.due }' } }")"
+            'schedule: { on: { one: { with: { type: com.example.ledger.closed } } }, every: PT1M }' 'do:' \
+            "  - total: { set: { input: '\${ . }' } }")"
           test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          for name in closing ticking; do
-            spec="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
-            test "$(call created.json --data "$spec" "$brain/specs/orchestration")" = 201
-          done
+          spec="$(jq --null-input --arg source "$closing" '{name: "closing", source: $source}')"
+          test "$(call created.json --data "$spec" "$brain/specs/orchestration")" = 201
+          test "$(jq --compact-output '[.triggers[] | [.kind, .reference]]' created.json)" = \
+            '[["event","/schedule/on"],["every","/schedule/every"]]'
           test "$(call published.json \
             --data '{"event":{"source":"/ledger","type":"com.example.ledger.closed","data":{"month":"september"}}}' \
             "$brain/events")" = 200
-          ended_run closing 30
-          test "$(jq --compact-output '[.executions[] | [.status, .started_by]]' runs.json)" = '[["succeeded","brain:smoke"]]'
-          test "$(call closed.json "$brain/executions/$(jq --raw-output '.executions[0].execution_id' runs.json)")" = 200
-          test "$(jq --compact-output '.output' closed.json)" = '{"month":"september"}'
-          ended_run ticking 150
-          test "$(jq --compact-output '[.executions[0] | .status, .started_by]' runs.json)" = '["succeeded","brain:smoke"]'
+          ended_runs closing 2 150
+          test "$(jq --compact-output '[.executions[] | [.status, .started_by]]' runs.json)" = \
+            '[["succeeded","brain:smoke"],["succeeded","brain:smoke"]]'
+          for run in $(jq --raw-output '.executions[].execution_id' runs.json); do
+            test "$(call "history-$run.json" "$brain/executions/$run/history")" = 200
+            test "$(call "run-$run.json" "$brain/executions/$run")" = 200
+            case "$(jq --raw-output '.events[0].data.trigger.kind' "history-$run.json")" in
+              event) test "$(jq --raw-output '.output.input[0].data.month' "run-$run.json")" = september ;;
+              every) jq --exit-status '.output.input.schedule.due | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")' \
+                "run-$run.json" > /dev/null ;;
+            esac
+          done
+          test "$(jq --slurp --compact-output 'map(.events[0] | [.data.trigger.kind, .summary]) | sort' history-*.json)" = \
+            '[["event","A run of the workflow “closing” was started by its event trigger."],["every","A run of the workflow “closing” was started by its every schedule."]]'
           docker stop reactions
           test "$(docker inspect reactions --format '{{.State.ExitCode}}')" = 0
 

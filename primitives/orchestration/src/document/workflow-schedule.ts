@@ -1,3 +1,4 @@
+import type { Trigger, TriggerFilter } from '@beonauto/specs';
 import {
   field,
   forbidden,
@@ -5,21 +6,25 @@ import {
   type Json,
   type JsonObject,
   literalFilterOf,
-  type LiteralFilter,
   pointerTo,
   readDuration,
   type Rejection,
   rejection,
 } from '@beonauto/workflow-engine';
-import { cronRejectionOf, type Trigger } from '@beonauto/workflow-host';
+import { cronRejectionOf } from '@beonauto/workflow-host';
+import { Schema } from 'effect';
 
 type Kind = 'on' | 'cron' | 'every';
 
 const kinds: readonly Kind[] = ['on', 'cron', 'every'];
 
+export const mostTriggerFilters = 64;
+
 const shortestPeriodMs = 60_000;
 
-const oneKind = 'A workflow has one trigger: its schedule names one of on, cron and every';
+const scheduleTakes = 'schedule is a mapping that names the triggers of the workflow: on, cron and every';
+
+const noTrigger = 'A schedule names at least one trigger: on, cron or every, each at most once';
 
 const afterRefused =
   'A workflow is not started again after its run ends: give it a trigger with on, cron or every instead';
@@ -34,6 +39,15 @@ const onTakes = 'on takes one, a filter of the events that start the workflow, o
 const variablesRefused =
   'A trigger is matched before any run starts, so its data expression cannot use variables such as $workflow';
 
+const tooManyFilters = `A trigger takes at most ${mostTriggerFilters} filters, since each is matched against every event of a type it names for as long as its version is active`;
+
+const sameAttributes = Schema.toEquivalence(Schema.JsonObject);
+
+interface PlacedFilter {
+  readonly filter: Json;
+  readonly place: string;
+}
+
 function isKind(key: string): key is Kind {
   return kinds.some((kind) => kind === key);
 }
@@ -46,13 +60,41 @@ function filterRejections(filter: Json, pointer: string): readonly Rejection[] {
   return reading.filter.dataNeedsVariables ? [forbidden(`${pointer}/with/data`, variablesRefused)] : [];
 }
 
-function filtersOf(on: JsonObject): readonly (readonly [Json, string])[] {
+function filtersOf(on: JsonObject): readonly PlacedFilter[] {
   const one = field(on, 'one');
   const any = field(on, 'any');
   if (one !== undefined) {
-    return [[one, '/one']];
+    return [{ filter: one, place: '/one' }];
   }
-  return Array.isArray(any) ? any.map((filter, index): readonly [Json, string] => [filter, `/any/${index}`]) : [];
+  return Array.isArray(any) ? any.map((filter: Json, index): PlacedFilter => ({ filter, place: `/any/${index}` })) : [];
+}
+
+function triggerFiltersOf(on: JsonObject, pointer: string): readonly TriggerFilter[] {
+  return filtersOf(on).flatMap(({ filter, place }): readonly TriggerFilter[] => {
+    const reading = literalFilterOf(filter, `${pointer}${place}`);
+    if ('rejections' in reading) {
+      return [];
+    }
+    const { reference, type, attributes } = reading.filter;
+    return [{ reference, type, attributes }];
+  });
+}
+
+function isSameFilter(first: TriggerFilter, second: TriggerFilter): boolean {
+  return first.type === second.type && sameAttributes(first.attributes, second.attributes);
+}
+
+function repeatedRejections(filters: readonly TriggerFilter[]): readonly Rejection[] {
+  return filters.flatMap((filter, index) => {
+    const first = filters.slice(0, index).find((earlier) => isSameFilter(earlier, filter));
+    return first === undefined
+      ? []
+      : [rejection(filter.reference, `This filter takes the same events as the one at ${first.reference}`)];
+  });
+}
+
+function boundRejections(on: JsonObject, pointer: string): readonly Rejection[] {
+  return filtersOf(on).length > mostTriggerFilters ? [rejection(`${pointer}/any`, tooManyFilters)] : [];
 }
 
 function onRejections(on: Json, pointer: string): readonly Rejection[] {
@@ -67,7 +109,9 @@ function onRejections(on: Json, pointer: string): readonly Rejection[] {
   const empty = filters.length === 0 ? [rejection(pointer, onTakes)] : [];
   return until.concat(
     empty,
-    filters.flatMap(([filter, place]) => filterRejections(filter, `${pointer}${place}`)),
+    boundRejections(on, pointer),
+    filters.flatMap(({ filter, place }) => filterRejections(filter, `${pointer}${place}`)),
+    repeatedRejections(triggerFiltersOf(on, pointer)),
   );
 }
 
@@ -101,7 +145,7 @@ function isKindEntry(entry: readonly [string, Json]): entry is readonly [Kind, J
 
 export function scheduleRejections(schedule: Json, pointer: string): readonly Rejection[] {
   if (!isObject(schedule)) {
-    return [rejection(pointer, 'schedule is a mapping that names the trigger of the workflow: on, cron or every')];
+    return [rejection(pointer, scheduleTakes)];
   }
   const entries: readonly (readonly [string, Json])[] = Object.entries(schedule);
   const named = entries.filter((entry: readonly [string, Json]) => isKindEntry(entry));
@@ -109,37 +153,34 @@ export function scheduleRejections(schedule: Json, pointer: string): readonly Re
   const unknown = entries
     .filter(([key]: readonly [string, Json]) => !isKind(key) && key !== 'after')
     .map(([key]: readonly [string, Json]) =>
-      rejection(pointerTo(pointer, key), `schedule takes on, cron or every, not ${key}`),
+      rejection(pointerTo(pointer, key), `schedule takes on, cron and every, not ${key}`),
     );
-  const count = named.length === 1 || (named.length === 0 && after.length > 0) ? [] : [rejection(pointer, oneKind)];
+  const none = named.length > 0 || after.length > 0 ? [] : [rejection(pointer, noTrigger)];
   return after.concat(
     unknown,
-    count,
+    none,
     named.flatMap(([kind, value]: readonly [Kind, Json]) => kindRejections[kind](value, pointerTo(pointer, kind))),
   );
 }
 
-function eventTriggerOf(on: JsonObject): Trigger {
-  const filters = filtersOf(on).flatMap(([filter, place]): readonly LiteralFilter[] => {
-    const reading = literalFilterOf(filter, `/schedule/on${place}`);
-    return 'filter' in reading ? [reading.filter] : [];
-  });
-  return { kind: 'events', filters };
+function triggerOf([key, value]: readonly [string, Json]): readonly Trigger[] {
+  const reference = pointerTo('/schedule', key);
+  if (key === 'on' && isObject(value)) {
+    return [{ kind: 'event', reference, filters: triggerFiltersOf(value, reference) }];
+  }
+  if (key === 'cron' && typeof value === 'string') {
+    return [{ kind: 'cron', reference, expression: value }];
+  }
+  if (key !== 'every') {
+    return [];
+  }
+  const every = readDuration(value);
+  return 'milliseconds' in every ? [{ kind: 'every', reference, milliseconds: every.milliseconds }] : [];
 }
 
-export function triggerOfDocument(document: JsonObject): Trigger | undefined {
+export function triggersOfDocument(document: JsonObject): readonly Trigger[] {
   const schedule = field(document, 'schedule');
-  if (!isObject(schedule)) {
-    return undefined;
-  }
-  const on = field(schedule, 'on');
-  const cron = field(schedule, 'cron');
-  const every = readDuration(field(schedule, 'every') ?? null);
-  if (isObject(on)) {
-    return eventTriggerOf(on);
-  }
-  if (typeof cron === 'string') {
-    return { kind: 'cron', expression: cron };
-  }
-  return 'milliseconds' in every ? { kind: 'every', milliseconds: every.milliseconds } : undefined;
+  return isObject(schedule)
+    ? Object.entries(schedule).flatMap((entry: readonly [string, Json]) => triggerOf(entry))
+    : [];
 }

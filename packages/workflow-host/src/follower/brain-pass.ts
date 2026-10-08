@@ -2,7 +2,7 @@ import type { RecordedPage } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
-import { wantedTypesIn } from '../reactions/subscriptions.ts';
+import { wantedTypesIn } from '../triggers/trigger-rows.ts';
 import { noRecordTypes, recordTypesOf, type BrainRecords } from './brain-records.ts';
 import type { Mode } from './delivery-loop.ts';
 import type { FollowedBrain, FollowedBrains, Progress } from './followed-brains.ts';

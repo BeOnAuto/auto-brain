@@ -1,12 +1,14 @@
 import { Schema } from 'effect';
 
+import { TriggerSchema } from './spec-triggers.ts';
+
 const SpecContentSchema = Schema.Struct({
   source: Schema.String,
   description: Schema.optionalKey(Schema.String),
   input_schema: Schema.optionalKey(Schema.JsonObject),
   output_schema: Schema.optionalKey(Schema.JsonObject),
   warnings: Schema.optionalKey(Schema.Array(Schema.String)),
-  reacts: Schema.optionalKey(Schema.Literal(true)),
+  triggers: Schema.optionalKey(Schema.Array(TriggerSchema)),
   details: Schema.optionalKey(Schema.JsonObject),
 });
 

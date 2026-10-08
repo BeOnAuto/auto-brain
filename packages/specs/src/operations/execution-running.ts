@@ -61,7 +61,7 @@ const longestRunsIn = Effect.fnUntraced(function* (primitives: readonly Primitiv
 });
 
 function startOf(request: ExecutionRequest, { spec, prepared, createOnly }: Prepared, given: GivenLineage) {
-  const { depth, callDepth, calledBy } = given;
+  const { depth, callDepth, calledBy, trigger } = given;
   return {
     type: 'start' as const,
     ...request,
@@ -71,6 +71,7 @@ function startOf(request: ExecutionRequest, { spec, prepared, createOnly }: Prep
     depth,
     call_depth: callDepth,
     ...(calledBy === null ? {} : { called_by: calledBy }),
+    ...(trigger === null ? {} : { trigger }),
     ...(createOnly === true ? { createOnly } : {}),
   };
 }

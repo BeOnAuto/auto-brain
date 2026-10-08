@@ -37,7 +37,7 @@ function scripted(...outcomes: readonly PoolOutcome[]): ProgramPoolOf {
 }
 
 async function serving(programPoolOf: ProgramPoolOf = workerPool): Promise<ReasoningServer> {
-  server = await servingReasoning([], { LOCAL_MODE: 'true' }, undefined, programPoolOf);
+  server = await servingReasoning([], { LOCAL_MODE: 'true' }, undefined, { programPoolOf });
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'pace', source: campaignPace } });
   await server.call('POST', `${alpha}/specs/computation`, { body: { name: 'raising', source: raising } });

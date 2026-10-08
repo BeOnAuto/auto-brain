@@ -22,7 +22,7 @@ const RefusalRow = Schema.Struct({ workflow: Schema.String, reason: Schema.Strin
 
 async function startsOnceTheSentinelPassed(reacting: ReactingHost) {
   const sentinel = eventTrigger({ type: 'com.acme.sentinel' });
-  await specRecorded(reacting.database.store, { name: 'watch', version: 1, trigger: sentinel });
+  await specRecorded(reacting.database.store, { name: 'watch', version: 1, triggers: [sentinel] });
   await published(reacting.database.store, { id: 'sentinel', type: 'com.acme.sentinel' });
   return until(
     () => Promise.resolve(reacting.reactions.starts()),
@@ -38,7 +38,7 @@ describe('a workflow that reacts to the facts of the brain', () => {
   it('starts on the success of another run, with the fact as its input and one more reaction depth', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'follow', version: 1, trigger: eventTrigger(succeeded) });
+    await specRecorded(store, { name: 'follow', version: 1, triggers: [eventTrigger(succeeded)] });
 
     await runRecorded(
       store,
@@ -71,7 +71,7 @@ describe('a workflow and its own runs', () => {
   it('never reacts to facts about its runs, nor about runs one of its runs started, nor to events its runs emitted', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'follow', version: 1, trigger: eventTrigger(succeeded, told) });
+    await specRecorded(store, { name: 'follow', version: 1, triggers: [eventTrigger(succeeded, told)] });
 
     await runRecorded(
       store,
@@ -92,7 +92,7 @@ describe('a chain of reactions', () => {
   it('stops at a reaction depth of 8: a match past it starts nothing and is refused', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'deep', version: 1, trigger: eventTrigger(told) });
+    await specRecorded(store, { name: 'deep', version: 1, triggers: [eventTrigger(told)] });
 
     await published(store, { id: 'eighth', type: 'com.acme.told' }, emittedBy('r1', 'other', 8));
     await published(store, { id: 'ninth', type: 'com.acme.told' }, emittedBy('r2', 'other', 9));
@@ -109,7 +109,7 @@ describe('a chain of reactions', () => {
       {
         workflow: 'deep',
         reason:
-          'An event matched the trigger of the workflow at reaction depth 9, past the 8 a chain of reactions may reach',
+          'An event matched the event trigger of the workflow at reaction depth 9, past the 8 a chain of reactions may reach',
       },
     ]);
   });
@@ -122,7 +122,7 @@ describe('a brain whose run log holds a record its dispatch never covers', () =>
     async () => {
       const reacting = await reactingHost({ sweepEveryMs: 10 });
       const { store } = reacting.database;
-      await specRecorded(store, { name: 'close', version: 1, trigger: eventTrigger({ type: 'com.acme.closed' }) });
+      await specRecorded(store, { name: 'close', version: 1, triggers: [eventTrigger({ type: 'com.acme.closed' })] });
       await recorded(store, `${alpha}runs/r-stuck`, {
         type: 'input_applied',
         input: {},

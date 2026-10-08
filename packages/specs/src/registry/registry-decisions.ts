@@ -6,6 +6,7 @@ import { specNotFound } from './registry-lookup.ts';
 import type { CommandMetadata, SpecCommand, SpecCreation, SpecRetirement, SpecUpdate } from './spec-commands.ts';
 import type { SpecEvent } from './spec-events.ts';
 import type { SpecRegistry } from './spec-registry.ts';
+import { hasTriggers } from './spec-triggers.ts';
 import type { StoredDefinition } from './spec.ts';
 
 type Decision = Result.Result<readonly SpecEvent[], Rejection<'not_found' | 'conflict'>>;
@@ -15,7 +16,7 @@ const nothingToRecord: Decision = Result.succeed([]);
 export const mostReactingDefinitions = 1024;
 
 function reactingOtherThan(registry: SpecRegistry, name: string): number {
-  return [...registry.values()].filter((spec) => spec.status === 'active' && spec.reacts === true && spec.name !== name)
+  return [...registry.values()].filter((spec) => spec.status === 'active' && hasTriggers(spec) && spec.name !== name)
     .length;
 }
 
@@ -24,7 +25,7 @@ function beyondTheReactingBound(
   registry: SpecRegistry,
   { name, content }: Pick<SpecCreation, 'name' | 'content'>,
 ): Conflict | undefined {
-  return content.reacts === true && reactingOtherThan(registry, name) >= mostReactingDefinitions
+  return hasTriggers(content) && reactingOtherThan(registry, name) >= mostReactingDefinitions
     ? new Conflict({
         detail: `The brain already has ${mostReactingDefinitions} ${definitionResourceLabel(primitive)}s that start on their own, the most a brain holds; retire one, or save this one without its schedule`,
       })

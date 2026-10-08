@@ -8,6 +8,7 @@ import {
   type ExecutionCancelRequested,
   type ExecutionDeferred,
   type ExecutionEvent,
+  type ExecutionStarted,
   type ToolCallAnswered,
   type ToolCallEvent,
   type ToolCallStarted,
@@ -66,6 +67,12 @@ function calledByShown(calledBy: CalledBy | undefined) {
   }
   const { execution_id, reference, run } = calledBy;
   return { called_by: { execution_id, reference: cutAtCodePoint(reference, mostNameBytes), run } };
+}
+
+function triggerShown(trigger: ExecutionStarted['trigger']) {
+  return trigger === undefined
+    ? {}
+    : { trigger: { kind: trigger.kind, reference: cutAtCodePoint(trigger.reference, mostNameBytes) } };
 }
 
 function cancelAskedAccount({ kind, reason }: ExecutionCancelRequested, fact: Fact): Account {
@@ -129,10 +136,18 @@ function accountOf(words: SpecWords, event: ShownExecutionEvent, executionId: st
     return toolCallAccount(event, fact);
   }
   if (event.type === 'execution_started') {
-    const { primitive, name, spec_version, input, called_by: calledBy } = event;
+    const { primitive, name, spec_version, input, called_by: calledBy, trigger } = event;
     return {
-      summary: runStarted(words, primitive, name),
-      data: { ...fact, primitive, name, spec_version, input_bytes: jsonBytesOf(input), ...calledByShown(calledBy) },
+      summary: runStarted(words, primitive, name, trigger),
+      data: {
+        ...fact,
+        primitive,
+        name,
+        spec_version,
+        input_bytes: jsonBytesOf(input),
+        ...calledByShown(calledBy),
+        ...triggerShown(trigger),
+      },
     };
   }
   if (event.type === 'execution_cancel_requested') {

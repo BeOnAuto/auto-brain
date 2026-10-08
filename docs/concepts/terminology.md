@@ -55,7 +55,7 @@ A method does not require a `Method` resource. A shared function remains one def
 
 Definitions, versions, runs and results are separate concepts. The runtime versions definitions and records the version each run uses. It does not currently let a caller select an arbitrary historical definition version to run. A workflow can call the functions of its brain and other workflows; a workflow called this way is a subworkflow. A run of a workflow finishes later, so the call waits for it, and a run can be cancelled, which ends it as cancelled.
 
-The configured trigger types are **Schedule trigger** and **Event trigger**; a workflow names one in its schedule. Manual execution is a **Run** action. Sending an approval or other input to a waiting run answers that run; it does not start a new one. Existing workflow timers and event waits are control steps, not configured triggers.
+The configured trigger types are **Schedule trigger** and **Event trigger**; a workflow's schedule may name an event trigger and schedule triggers of both kinds, a cron schedule and an every schedule, each kept and matched on its own. Manual execution is a **Run** action. Sending an approval or other input to a waiting run answers that run; it does not start a new one. Existing workflow timers and event waits are control steps, not configured triggers.
 
 See [Workflows and runs](workflows.md) for the implemented version, retry, waiting and event behavior.
 

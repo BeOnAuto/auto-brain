@@ -1,5 +1,6 @@
 import type { Schema } from 'effect';
 
+import type { StartingTrigger } from '../registry/spec-triggers.ts';
 import type {
   CalledBy,
   CancelRequestKind,
@@ -25,10 +26,20 @@ export interface ExecutionStart extends ExecutionRequest {
   readonly depth?: number;
   readonly call_depth?: number;
   readonly called_by?: CalledBy;
+  readonly trigger?: StartingTrigger;
   readonly createOnly?: true;
 }
 
-type CopiedFromTheStart = 'by' | 'at' | 'primitive' | 'name' | 'spec_version' | 'depth' | 'call_depth' | 'called_by';
+type CopiedFromTheStart =
+  | 'by'
+  | 'at'
+  | 'primitive'
+  | 'name'
+  | 'spec_version'
+  | 'depth'
+  | 'call_depth'
+  | 'called_by'
+  | 'trigger';
 
 type WithoutFact<Event> = Event extends ExecutionFinished | ExecutionDeferred ? Omit<Event, CopiedFromTheStart> : never;
 

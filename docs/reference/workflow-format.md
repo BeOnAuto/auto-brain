@@ -95,20 +95,20 @@ For this document, `create_spec` takes `primitive: "orchestration"`, a workflow 
 
 ## Document fields
 
-| Field                                       | Purpose                                                                                                  |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `document.dsl`                              | Required DSL version, from `1.0.0` to `1.0.3`                                                            |
-| `document.namespace`, `document.name`       | Required names of the document                                                                           |
-| `document.version`                          | Required semantic version of the document, such as `1.0.0`                                               |
-| `document.title`, `document.summary`        | Optional; the summary, or else the title, becomes the definition's `description`                         |
-| `input.schema.document`                     | Optional inline JSON Schema, published as the definition's `input_schema`                                |
-| `input.from`                                | Optional expression or template that shapes the run's input before the first task                        |
-| `schedule`                                  | Optional trigger that starts the workflow on its own: `on`, `cron` or `every`; see [Triggers](#triggers) |
-| `do`                                        | Required list of named tasks, run in order                                                               |
-| `output.as`                                 | Optional expression or template that shapes the run's output                                             |
-| `output.schema.document`                    | Optional inline JSON Schema, published as the definition's `output_schema`                               |
-| `timeout`                                   | Optional limit for the whole run: `after` with a duration, or the name of a timeout in `use.timeouts`    |
-| `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks refer to by name                           |
+| Field                                       | Purpose                                                                                                                                  |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `document.dsl`                              | Required DSL version, from `1.0.0` to `1.0.3`                                                                                            |
+| `document.namespace`, `document.name`       | Required names of the document                                                                                                           |
+| `document.version`                          | Required semantic version of the document, such as `1.0.0`                                                                               |
+| `document.title`, `document.summary`        | Optional; the summary, or else the title, becomes the definition's `description`                                                         |
+| `input.schema.document`                     | Optional inline JSON Schema, published as the definition's `input_schema`                                                                |
+| `input.from`                                | Optional expression or template that shapes the run's input before the first task                                                        |
+| `schedule`                                  | Optional triggers that start the workflow on its own: `on`, `cron` and `every`, any one, two or three of them; see [Triggers](#triggers) |
+| `do`                                        | Required list of named tasks, run in order                                                                                               |
+| `output.as`                                 | Optional expression or template that shapes the run's output                                                                             |
+| `output.schema.document`                    | Optional inline JSON Schema, published as the definition's `output_schema`                                                               |
+| `timeout`                                   | Optional limit for the whole run: `after` with a duration, or the name of a timeout in `use.timeouts`                                    |
+| `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks refer to by name                                                           |
 
 The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails: a reasoning function, for example, rejects input that does not match its own schema. Schemas must be written inline under `document`, as JSON Schema.
 
@@ -116,50 +116,50 @@ The runtime does not check a run's input or output against these schemas; they t
 
 ## Triggers
 
-A workflow whose document has a `schedule` starts on its own, besides when a caller executes it. The schedule names one trigger: an event trigger, `on`, or a schedule trigger, `cron` or `every`.
+A workflow whose document has a `schedule` starts on its own, besides when a caller executes it. The schedule names up to three triggers, any one, two or three of them: an event trigger, `on`, and schedule triggers of two kinds, `cron` and `every`. Each is a trigger of its own, kept and matched on its own, so a workflow starts on an event and at its times without switching between them.
 
-| Trigger          | Starts a run                                               | Input of the run                    |
-| ---------------- | ---------------------------------------------------------- | ----------------------------------- |
-| `schedule.on`    | For each event of the brain that matches its filter        | A list holding the event            |
-| `schedule.cron`  | At each time its five fields name, in UTC                  | `{ "schedule": { "due": <time> } }` |
-| `schedule.every` | At each multiple of its period after the version was saved | `{ "schedule": { "due": <time> } }` |
+| Trigger          | Starts a run                                                        | Input of the run                    |
+| ---------------- | ------------------------------------------------------------------- | ----------------------------------- |
+| `schedule.on`    | For each event of the brain that one of its filters matches         | A list holding the event            |
+| `schedule.cron`  | At each time its five fields name, in UTC                           | `{ "schedule": { "due": <time> } }` |
+| `schedule.every` | At each multiple of its period after the trigger was saved as it is | `{ "schedule": { "due": <time> } }` |
 
-This event trigger starts a run for each brief submitted with a high priority, and these schedule triggers start one at nine in the morning, UTC, on working days, and one every fifteen minutes:
+This schedule starts a run for each brief submitted with a high priority, one at nine in the morning, UTC, on working days, and one every fifteen minutes:
 
 ```yaml
 schedule:
   on:
     one:
       with: { type: com.example.brief.submitted, data: '${ .priority == "high" }' }
-```
-
-```yaml
-schedule:
   cron: '0 9 * * 1-5'
-```
-
-```yaml
-schedule:
   every: PT15M
 ```
 
-`on.one` takes one filter and `on.any` a list of at least one; a run starts when any of them matches. A filter names the `type` of its events as written text, and may name `source` and `subject` as written text and `data` as a value or as an expression over the event alone, such as `data: '${ .region == "eu" }'`; an expression cannot use the variables of a run, such as `$workflow`, since no run exists yet. An expression that fails on an event does not match it, and the brain records that once. A filter matches every event the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts, such as `execution_succeeded`, whose `source` is `/executions/<execution id>` and whose `subject` names the definition, as `inference/summarize`.
+A trigger is identified by its kind, `event`, `cron` or `every`, and its place in the document, `/schedule/on`, `/schedule/cron` or `/schedule/every`. `get_spec` and `list_specs` show a saved workflow's triggers in that form as `triggers`, and a run a trigger started names its trigger on its `execution_started` event, whose words say which kind started it, such as "was started by its cron schedule". No trigger has an input of its own: a run's input is the list holding the event or the due time, so a workflow with both kinds tells them apart with `input.from` or a `switch`:
 
-`cron` has the five fields minute, hour, day of month, month and day of week, read in UTC; when both day of month and day of week are restricted, a day that matches either is due. `every` is a [duration](#durations) of at least a minute, counted from when the version was saved.
+```yaml
+input:
+  from: '${ if type == "array" then { month: .[0].data.month } else { due: .schedule.due } end }'
+```
 
-A trigger applies from the moment its version is saved: nothing recorded before is matched. The saving itself is the first thing it can match, so a trigger that names `spec_created` also starts on the fact of its own workflow's definition being saved, which a `data` filter on the definition's name, such as `data: '${ .name != "close-month" }'`, leaves out. Saving a version without a schedule, or retiring the workflow, stops it, and a new version replaces the trigger of the one before. A run a trigger starts uses the version that declared the trigger, and its `execution_id` is derived from the workflow, that version, and the event or the due time, so an event or a time starts it once.
+`on.one` takes one filter and `on.any` a list of at least one and at most 64; a run starts when any of them matches. A filter names the `type` of its events as written text, and may name `source` and `subject` as written text and `data` as a value or as an expression over the event alone, such as `data: '${ .region == "eu" }'`; an expression cannot use the variables of a run, such as `$workflow`, since no run exists yet. A filter is written once: a filter of `any` whose `type` and attributes an earlier one has, in any order, is refused. An expression that fails on an event does not match it, and the brain records that once for each version. A filter matches every event the brain records: events published with `publish_event`, events workflows emit, and the brain's own facts, such as `execution_succeeded`, whose `source` is `/executions/<execution id>` and whose `subject` names the definition, as `inference/summarize`. A run's facts carry the trigger that started it in their data, so a filter can test it, as `data: '${ .trigger.kind == "event" }'`.
+
+`cron` has the five fields minute, hour, day of month, month and day of week, read in UTC; when both day of month and day of week are restricted, a day that matches either is due. `every` is a [duration](#durations) of at least a minute, counted from when the trigger was saved as it is.
+
+A trigger applies from the moment it is saved as it is: nothing recorded before is matched. The saving itself is the first thing it can match, so a trigger that names `spec_created` also starts on the fact of its own workflow's definition being saved, which a `data` filter on the definition's name, such as `data: '${ .name != "close-month" }'`, leaves out. A new version's triggers are compared with those of the version before, by kind and place: a trigger it leaves unchanged goes on as it was, with its times and its running run, and starts the new version from then on; a trigger it changes or adds applies from the new version's saving, and a changed schedule counts its times from then; a trigger it removes stops. Saving a version without a schedule, or retiring the workflow, stops every trigger. A run a trigger starts uses the version current when the event was recorded or the time came, and its `execution_id` is derived from the workflow, that version, the trigger and the event or the due time, so an event or a time starts it once.
 
 A run a trigger starts acts as the brain itself: its `started_by` is `brain:` and the brain's name, and each step acts with read and write access to that brain and nothing else. It never acts for a person, so no key's permissions or revocation affect it.
 
 These keep triggers from running away:
 
-- A workflow does not start for a fact about one of its own runs, about a run one of its runs started, or for an event one of its runs emitted.
+- A workflow does not start for a fact about one of its own runs, about a run one of its runs started, or for an event one of its runs emitted, whichever of its triggers started that run.
 - A chain of runs started by events stops at a depth of 8. An event published from outside counts 1, an event or fact about a run counts one more than the run, and a run its trigger starts takes the depth of what it matched; a match deeper than 8 starts nothing.
-- A trigger starts at most 60 runs of its workflow a minute. More wait for a later minute, at most 1,000 of them, and one more is refused.
-- A schedule trigger has one run at a time: a time due while the run before it still runs is skipped. After the runtime was stopped, only the latest of the times it missed runs.
+- A workflow's event trigger starts at most 60 runs of it a minute, across its filters. More wait for a later minute, at most 1,000 of them, and one more is refused. The runs of its schedules are not counted.
+- A schedule trigger has one run at a time: a time due while the run it started before still runs, of this version or of one before, is skipped. After the runtime was stopped, only the latest of the times it missed runs.
+- An event and a due time in one moment start two runs, and so do a `cron` and an `every` due at the same time.
 - A start the brain refuses, as once the brain is retired, is not tried again; one it cannot take at that moment is tried again at each sweep, about twenty times, before it is given up.
 
-What a trigger did not start is recorded in the brain as a `reaction_refused` event of its workflow, at most once a minute, with how many and the last reason; `list_brain_events` shows it beside the runs triggers started.
+What a trigger did not start is recorded in the brain as a `reaction_refused` event of its workflow, at most once a minute, with how many and the last reason, which names the trigger by its kind; `list_brain_events` shows it beside the runs triggers started.
 
 ## Tasks
 
@@ -389,8 +389,9 @@ These are refused when a document is saved:
 | `run` tasks                                                                                    | The runtime does not run them                                   |
 | `call` of `http`, `grpc`, `openapi`, `asyncapi`, `a2a` or `mcp`                                | A workflow reaches the world only through its brain's functions |
 | A `call` of anything other than `execute_spec`                                                 | `execute_spec` is the one function                              |
-| `schedule.after`, `schedule.on.all`, `schedule.on.until`, or more than one trigger             | A trigger starts one run for each event or time                 |
+| `schedule.after`, `schedule.on.all`, `schedule.on.until`, or a schedule that names no trigger  | A trigger starts one run for each event or time                 |
 | A trigger filter without a written `type`, or with a `data` expression that uses `$` variables | A trigger is matched before any run exists                      |
+| A trigger filter written twice in `any`, or more than 64 filters in one trigger                | See [Triggers](#triggers)                                       |
 | `schedule.every` shorter than a minute, or a `cron` that is not five fields or names no time   | See [Triggers](#triggers)                                       |
 | An `emit` without `type` or `source`, with an `id`, or with a type or source the brain keeps   | See [Emitting an event](#emitting-an-event)                     |
 | `use.catalogs`, `use.extensions`, `use.functions`, `use.secrets`, `use.authentications`        | Not supported                                                   |
@@ -443,11 +444,13 @@ A timeout that is not caught therefore rejects the run as `unavailable`, and a c
 | Events over a run's life     | 1,024, or 4 MiB as JSON                                                                                        |
 | Events a run emits           | 1,024, or 4 MiB as JSON, over its life                                                                         |
 | An emitted event             | 240 KiB as JSON                                                                                                |
-| Workflows with a trigger     | 1,024 in a brain; saving one more is refused with `conflict`                                                   |
+| Triggers of a workflow       | 3: one `on`, one `cron` and one `every`                                                                        |
+| Filters of an event trigger  | 64                                                                                                             |
+| Workflows with triggers      | 1,024 in a brain, however many triggers each has; saving one more is refused with `conflict`                   |
 | Tasks listening to a brain   | 4,096 at once; one more hears only the events sent to its run                                                  |
-| Runs a trigger starts        | 60 a minute for each workflow; at most 1,000 more wait for a later minute                                      |
+| Runs a trigger starts        | 60 a minute for each workflow by its event trigger, at most 1,000 more waiting; its schedules are not counted  |
 | Depth of a chain of triggers | 8                                                                                                              |
-| `schedule.every`             | At least a minute                                                                                              |
+| `schedule.every`             | At least a minute, counted from when the trigger was saved as it is                                            |
 
 A duration written in the document that is longer than a run may last is refused when the document is saved; one that an expression computes fails its task with a `configuration` error. Exceeding the limits on held data, a value kept across a wait, tasks without waiting, inputs or history ends the run at once, rejected as `unavailable` with a `runtime` error of status 500. One event more than the event limits allow ends the run at once, rejected, and later events to it are refused with `not_found`. An emit beyond the limit on emitted events fails its task with a `runtime` error of status 500, which the workflow's `try` can catch, and an emitted event larger than 240 KiB with a `validation` error of status 400.
 
