@@ -17,5 +17,5 @@ Use a numbered Markdown filename for each decision and link to it from the affec
 | [10. Interaction functions: a brain asks a person or a system and waits for the answer](0010-interaction-functions.md)                         | accepted 2026-10-07                     |
 | [11. Waiting calls: a workflow waits for a run that finishes later, and a run can be cancelled](0011-waiting-calls.md)                         | accepted 2026-10-07                     |
 | [14. A warm worker pool: a run costs its own work, in a worker kept between jobs and let go of after any bad one](0014-warm-worker-pool.md)    | proposed 2026-10-06, built 2026-10-07   |
-| [15. Several triggers: a workflow starts on an event and on its schedules, each trigger kept and matched on its own](0015-several-triggers.md) | accepted 2026-10-08                     |
+| [15. Several triggers: a workflow starts on an event and on its schedules, each trigger kept and matched on its own](0015-several-triggers.md) | accepted 2026-10-08, amended 2026-10-08 |
 | [16. Speaking to agents: what the brain says when an agent connects](0016-speaking-to-agents.md)                                               | accepted 2026-10-07                     |
