@@ -10,10 +10,11 @@ How a brain reaches the outside world: the MCP servers the operator configures, 
 
 ## Settings
 
-`readMcpSettings(environment, { modelProviders })` reads two settings, each JSON, which the server also writes from the configuration file's `mcp_servers` and `allowed_tools`:
+`readMcpSettings(environment, { modelProviders })` reads three settings, each JSON, which the server also writes from the configuration file's `mcp_servers`, `allowed_tools` and `testable_tools`:
 
 - `MCP_SERVERS`: an object with one entry per server, keyed by the name a reasoning function writes in `server/tool`.
 - `ALLOWED_TOOLS`: a list of `server/tool` and `server/*`, the tools a reasoning function may name. Every tool of every server when it is left out.
+- `TESTABLE_TOOLS`: a list in the same shape, the tools `test_tool_call` may test although their servers do not mark them read-only, read beside `ALLOWED_TOOLS` with the same refusals and one of its own: a tool `ALLOWED_TOOLS` does not allow, since a tool a function may not call cannot be tested either. Only the tools their servers mark read-only can be tested when it is left out. It is the only place an operator vouches for a tool, and names none a server marks read-only, since those need no listing.
 
 | Field            | Of    | What it holds                                                                                                                                 |
 | ---------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -5,10 +5,10 @@ import { cutToDescriptionBound, cutToFailureBound } from '../bounds/call-bounds.
 import type { ListedTool } from '../bounds/result-text.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { ServerTool, ToolServer } from '../listing/tool-server.ts';
-import type { ToolReference } from '../names/tool-reference.ts';
+import { isAllowed, type ToolReference } from '../names/tool-reference.ts';
 import { isListedFor } from '../settings/mcp-settings.ts';
 import { connectedTo, type Listing } from './server-listing.ts';
-import { isAllowed, offeredOn } from './tool-naming.ts';
+import { offeredOn } from './tool-naming.ts';
 
 export interface ServersListing extends Listing {
   readonly links: ReadonlyMap<string, ServerLink>;

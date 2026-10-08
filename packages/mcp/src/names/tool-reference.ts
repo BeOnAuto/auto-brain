@@ -21,6 +21,17 @@ export function namesEveryTool({ tool }: ToolReference): boolean {
   return tool === everyTool;
 }
 
+export function isAllowed(reference: ToolReference, allowed: readonly ToolReference[] | null): boolean {
+  return (
+    allowed === null ||
+    allowed.some(
+      (entry) =>
+        entry.server === reference.server &&
+        (namesEveryTool(entry) || namesEveryTool(reference) || entry.tool === reference.tool),
+    )
+  );
+}
+
 export function toolReferenceOf(written: string): ToolReference | undefined {
   const slash = written.indexOf('/');
   const server = written.slice(0, slash);

@@ -6,7 +6,7 @@ import type { ListedTool } from '../bounds/result-text.ts';
 import type { OfferedOnServer } from '../calls/run-parts.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import { namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
+import { isAllowed, namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
 import { ToolNotOffered } from './tool-not-offered.ts';
 
 export interface Naming {
@@ -28,17 +28,6 @@ interface NamedLink {
 const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
 const disjunction = new Intl.ListFormat('en', { style: 'long', type: 'disjunction' });
-
-export function isAllowed(reference: ToolReference, allowed: readonly ToolReference[] | null): boolean {
-  return (
-    allowed === null ||
-    allowed.some(
-      (entry) =>
-        entry.server === reference.server &&
-        (namesEveryTool(entry) || namesEveryTool(reference) || entry.tool === reference.tool),
-    )
-  );
-}
 
 function notConfigured(named: readonly ToolReference[]): ToolNotOffered {
   const servers = disjunction.format(new Set(named.map(({ server }) => server)));
