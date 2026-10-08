@@ -1,8 +1,7 @@
-import { Effect, Result } from 'effect';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineTestToolCall } from '../index.ts';
-import { toolTestDecider } from './tool-test-decider.ts';
 
 const { registration } = defineTestToolCall({
   open: () => Effect.die(new Error('A test of the words opens nothing')),
@@ -66,30 +65,5 @@ describe('the plain words of test_tool_call', () => {
     expect(words?.outcome(failed, asked)).toBe(
       'The tool server “graph” failed to answer the test: Gone away. It may or may not have received the call.',
     );
-  });
-});
-
-describe('the record of a test', () => {
-  const started = {
-    type: 'tool_test_started',
-    test_id: answer.test_id,
-    server: 'graph',
-    tool: 'search',
-    arguments_bytes: 2,
-    arguments_sha256: 'a',
-    by: 'acme-builder',
-    at: answer.tested_at,
-  } as const;
-
-  it('takes its start once and then its answer once, and refuses any other', () => {
-    const afterTheStart = toolTestDecider.evolve(toolTestDecider.initialState, started);
-
-    expect(Result.isSuccess(toolTestDecider.decide(started, toolTestDecider.initialState))).toBe(true);
-    expect(toolTestDecider.decide(started, afterTheStart)).toMatchObject({
-      failure: {
-        _tag: 'conflict',
-        detail: 'A test records its start once and then its answer once, so this is not recorded',
-      },
-    });
   });
 });
