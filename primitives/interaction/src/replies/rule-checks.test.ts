@@ -160,6 +160,18 @@ describe('the bounds of a reply rule, held when the definition is saved', () => 
   });
 });
 
+describe('a function that reads replies without a reply rule', () => {
+  it('is refused when saved, for an answer schema no rule is derived from and no reply block', () => {
+    const unruled = threadDocument({ rule: [] }).replace('required: [choice]', 'required: [choice, note]');
+
+    expect(problemsOf(unruled)).toEqual([
+      expect.stringMatching(
+        /^Line \d+, \/replies: A function that reads replies needs a reply rule: an answer schema with one required string and its enum, or a reply block that maps the words$/u,
+      ),
+    ]);
+  });
+});
+
 describe('a reply rule on a definition that takes no answer', () => {
   it('refuses a rule on a notification, which takes no answer', () => {
     expect(

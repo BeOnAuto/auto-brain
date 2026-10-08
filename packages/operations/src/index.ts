@@ -53,6 +53,7 @@ export {
   type ProjectedStream,
   type ProjectedValue,
   type ProjectionAdvancer,
+  type RowAdvance,
   type ProjectionReader,
 } from './projections/keyed-projection.ts';
 export {

@@ -19,6 +19,7 @@ const ConversationRowSchema = Schema.Struct({
   conversation: Schema.String,
   since: Schema.NullOr(Schema.String),
   last_fact: Schema.String,
+  joined_by: Schema.String,
   open: Schema.Boolean,
   active_at: Schema.Int,
   reads: Schema.Int,
@@ -87,6 +88,7 @@ function joined(row: ConversationRow | undefined, { place, at }: Join, { id }: P
     conversation: place.key,
     since: row?.since ?? null,
     last_fact: id,
+    joined_by: id,
     ...advancedOf({ open: true, active_at: at, reads: 0, next_read_at: nextRead }),
   };
 }
@@ -111,6 +113,7 @@ export const conversations: KeyedProjection = {
     { name: 'conversation', kind: 'text' },
     { name: 'since', kind: 'text' },
     { name: 'last_fact', kind: 'text' },
+    { name: 'joined_by', kind: 'text' },
     { name: 'open', kind: 'boolean' },
     { name: 'active_at', kind: 'integer' },
     { name: 'reads', kind: 'integer' },

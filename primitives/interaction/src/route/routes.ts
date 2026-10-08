@@ -23,7 +23,7 @@ export function routeOf({ deliver, replies }: RecordedBlocks): Route {
 
 export function throughWords(route: Route): string {
   return route.kind === 'inbox'
-    ? 'in the brain’s inbox'
+    ? 'in the inbox'
     : `through the tool ${route.delivery.tool} of ${route.delivery.server}`;
 }
 

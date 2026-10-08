@@ -15,7 +15,15 @@ import { SQL } from '@event-driven-io/dumbo';
 import { Effect, Schema } from 'effect';
 
 import { boundOf, type ProjectionDialect } from './projection-dialect.ts';
-import { rowAdvance, rowFrom, rowsFrom, selectedColumns, tableOf } from './projection-statements.ts';
+import {
+  columnOf,
+  conditionsOf,
+  rowAdvance,
+  rowFrom,
+  rowsFrom,
+  selectedColumns,
+  tableOf,
+} from './projection-statements.ts';
 
 export type ReadQuery = (sql: SQL) => Promise<readonly unknown[]>;
 
@@ -40,22 +48,6 @@ interface Reading {
   readonly dialect: ProjectionDialect;
   readonly projections: readonly KeyedProjection[];
   readonly query: ReadQuery;
-}
-
-function columnOf(projection: KeyedProjection, name: string): string {
-  if (name !== rowKeyColumn && !projection.columns.some((column) => column.name === name)) {
-    throw new Error(`The projection ${projection.name} has no column ${name}`);
-  }
-  return name;
-}
-
-function conditionsOf(dialect: ProjectionDialect, projection: KeyedProjection, where: readonly ProjectedCondition[]) {
-  return SQL.merge(
-    where.map(
-      ({ column, equals }) => SQL` AND ${SQL.plain(columnOf(projection, column))} = ${boundOf(dialect, equals)}`,
-    ),
-    '',
-  );
 }
 
 function afterOf(dialect: ProjectionDialect, projection: KeyedProjection, query: ProjectedRowsQuery): SQL {
@@ -162,12 +154,12 @@ export function projectionReader(
     readDueRows: (name, dueQuery) => withProjection(name, [], (projection) => dueRows(reading, projection, dueQuery)),
     nextDueOf: (name, column, after) =>
       withProjection(name, null, (projection) => soonest(reading, projection, column, after)),
-    advanceRow: (name, brain, key, columns) =>
+    advanceRow: (name, brain, key, advance) =>
       Effect.promise(async () => {
         const projection = projectionNamed(projections, name);
         if (projection !== undefined) {
-          requireAdvancedColumns(projection, columns);
-          await command(rowAdvance(dialect, projection, { brainKey: streamPrefixOfBrain(brain), key }, columns));
+          requireAdvancedColumns(projection, advance.set);
+          await command(rowAdvance(dialect, projection, { brainKey: streamPrefixOfBrain(brain), key }, advance));
         }
       }),
   };

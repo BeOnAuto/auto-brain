@@ -219,8 +219,8 @@ describe('the words of answers and requests', () => {
       'list the open requests',
       'No request is waiting.',
       'Found 1 request waiting on this page.',
-      'Found 2 requests waiting on this page. A reply to one of them was refused.',
-      'Found 2 requests waiting on this page. Replies to 2 of them were refused.',
+      'Found 2 requests waiting on this page. One of them has had a reply refused.',
+      'Found 2 requests waiting on this page. 2 of them have had a reply refused.',
     ]);
   });
 });

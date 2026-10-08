@@ -20,6 +20,7 @@ import {
   type ProjectedValue,
   type ProjectionAdvancer,
   type ProjectionReader,
+  type RowAdvance,
 } from './keyed-projection.ts';
 
 export interface MemoryProjections extends ProjectionReader, ProjectionAdvancer {
@@ -145,19 +146,19 @@ function projectedOn(tables: readonly Table[]): MemoryProjections['project'] {
 interface Advance {
   readonly brain: BrainAddress;
   readonly key: string;
-  readonly columns: ProjectedRow;
+  readonly advance: RowAdvance;
 }
 
-function advancedIn(table: Table | undefined, { brain, key, columns }: Advance): Effect.Effect<void> {
+function advancedIn(table: Table | undefined, { brain, key, advance }: Advance): Effect.Effect<void> {
   return Effect.sync(() => {
     if (table === undefined) {
       return;
     }
-    requireAdvancedColumns(table.projection, columns);
+    requireAdvancedColumns(table.projection, advance.set);
     const stored = `${streamPrefixOfBrain(brain)}${key}`;
     const kept = table.rows.get(stored);
-    if (kept !== undefined) {
-      table.rows.set(stored, { ...kept, row: { ...kept.row, ...columns } });
+    if (kept !== undefined && matches(kept, advance.when)) {
+      table.rows.set(stored, { ...kept, row: { ...kept.row, ...advance.set } });
     }
   });
 }
@@ -194,7 +195,7 @@ export function memoryProjections(projections: readonly KeyedProjection[]): Memo
   const rowsOf = (name: string): ReadonlyMap<string, ProjectedKeyedRow> => tableNamed(name)?.rows ?? nothingKept;
   return {
     project: projectedOn(tables),
-    advanceRow: (projection, brain, key, columns) => advancedIn(tableNamed(projection), { brain, key, columns }),
+    advanceRow: (projection, brain, key, advance) => advancedIn(tableNamed(projection), { brain, key, advance }),
     readProjectedRows: (projection, brain, query) =>
       Effect.sync(() => pageIn(brainOf(rowsOf(projection), brain), query)),
     countProjectedRows: (projection, brain, where) =>

@@ -14,6 +14,7 @@ export interface FakeMcpOptions {
   readonly issuesSessionIds?: boolean;
   readonly annotated?: boolean;
   readonly chat?: boolean;
+  readonly echoes?: string;
 }
 
 export interface SeenRequest {
@@ -193,7 +194,7 @@ export async function serveFakeMcp(options: FakeMcpOptions = {}): Promise<FakeMc
   const received: ReceivedCall[] = [];
   const removed = new Set<string>();
   const authorizations: FakeAuthorization[] = [];
-  const chat = fakeChat();
+  const chat = fakeChat(options.echoes);
   const records = recordsOf(options, removed, chat);
   const sessions = fakeSessions({ ...records, receive: (call) => received.push(call) }, options.issuesSessionIds);
   const endpoint = mcpEndpoint({

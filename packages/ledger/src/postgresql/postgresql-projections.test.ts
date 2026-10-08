@@ -131,14 +131,21 @@ describe('the advance of a row of a projection on PostgreSQL', () => {
   it('updates the columns the reader advances of one row, binding every value, and nothing else', async () => {
     const { query, asked } = answering([]);
 
-    await Effect.runPromise(readerOf(query).advanceRow('topics', alpha, 'spring', { open: false, next_at: 9000 }));
-    const refused = await Effect.runPromiseExit(readerOf(query).advanceRow('topics', alpha, 'spring', { note: 'x' }));
+    await Effect.runPromise(
+      readerOf(query).advanceRow('topics', alpha, 'spring', {
+        set: { open: false, next_at: 9000 },
+        when: [{ column: 'last_message', equals: 'm-1' }],
+      }),
+    );
+    const refused = await Effect.runPromiseExit(
+      readerOf(query).advanceRow('topics', alpha, 'spring', { set: { note: 'x' }, when: [] }),
+    );
 
     expect(Exit.isFailure(refused)).toBe(true);
     expect(asked).toEqual([
       {
-        text: 'UPDATE topics_1 SET open = $1, next_at = $2 WHERE brain_key = $3 AND row_key = $4',
-        values: [false, 9000, 'brain/acme/alpha/', 'spring'],
+        text: 'UPDATE topics_1 SET open = $1, next_at = $2 WHERE brain_key = $3 AND row_key = $4 AND last_message = $5',
+        values: [false, 9000, 'brain/acme/alpha/', 'spring', 'm-1'],
       },
     ]);
   });

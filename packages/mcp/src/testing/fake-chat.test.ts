@@ -59,6 +59,21 @@ describe('the replies in the chat of the fake MCP server', () => {
   });
 });
 
+describe('the chat of a fake MCP server that echoes a value', () => {
+  it('carries it in every answer of its chat tools, as a server that echoes its key would', async () => {
+    const fake = await serveFakeMcp({ bearer: deliveryKey, chat: true, echoes: 'echoed-value-5c1d' });
+    closedAfter(fake.close);
+    const access = deliveryAccess(fake.url, { allowed: ['post_message', 'thread_replies'] });
+
+    const answers = await Promise.all([
+      calledOnce(access, { ...posting, input: { channel: '#approvals', text: 'Approve?' } }),
+      calledOnce(access, { reference: { server: 'graph', tool: 'thread_replies' }, input: { channel: '#approvals' } }),
+    ]);
+
+    expect(answers.map((answer) => JSON.stringify(answer).includes('echoed-value-5c1d'))).toEqual([true, true]);
+  });
+});
+
 describe('the chat tools of the fake MCP server', () => {
   it('is offered only by a server asked to hold one', async () => {
     const plain = await serveFakeMcp({ bearer: deliveryKey });

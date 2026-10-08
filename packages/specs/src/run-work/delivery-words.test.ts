@@ -30,6 +30,7 @@ describe('the words of a delivery', () => {
   const reasons: ReadonlyArray<readonly [DeliveryBecause, string]> = [
     ['timed_out', 'the tool server did not answer in time'],
     ['too_large', 'its arguments are larger than a call may send'],
+    ['unworkable', 'its arguments cannot be rendered for this request'],
     ['tool_not_offered', 'this server no longer offers the tool it names'],
     ['tool_error', 'the tool answered with an error'],
     ['server_failure', 'the tool server failed'],

@@ -1,14 +1,18 @@
 import { approvalDocument, chatDelivery } from '@beonauto/interaction/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
-import { chatEnvironment, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
+import { chatEnvironment, chatKey, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
 import {
+  brainEventsOf,
   flatReading,
   interactionsOf,
   readingIn,
+  readRecorded,
   readsOf,
+  readAndTold,
   someRead,
   threadReading,
+  toldReading,
 } from '../testing/servers/chat-readings.ts';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
@@ -30,7 +34,7 @@ describe(
       chat.chat.reply({ channel: '#approvals-ada', thread: question?.ts, user: 'ada', text: 'Approve, ready to ship' });
 
       const settled = await server.settled(runId);
-      const events = await server.call('GET', `${alpha}/events`);
+      const events = await until(() => brainEventsOf(server), readRecorded);
 
       expect(listed).toMatchObject({ conversation: '#approvals-ada/1699.000001', answerer: 'ada', reply_refusals: 0 });
       expect(settled).toMatchObject({
@@ -46,7 +50,7 @@ describe(
           replies_in: { server: 'chat', tool: 'thread_replies', key: '#approvals-ada/1699.000001' },
         },
       ]);
-      expect(JSON.stringify(events.body)).toContain(
+      expect(events).toContain(
         'The brain looked for new replies in the conversation “#approvals-ada/1699.000001” through the tool thread_replies of chat and found 2, took 1 as an answer and refused 0.',
       );
     });
@@ -90,6 +94,37 @@ describe(
 
       expect(listed.map(({ conversation }) => conversation)).toEqual(['#approvals-ada', '#approvals-ada']);
       expect(reads).toHaveLength(1);
+    });
+  },
+);
+
+const secretSeen = (texts: readonly string[]) => texts.filter((text) => text.includes(chatKey));
+
+describe(
+  'the secret of the tool server a function reads replies through, over HTTP',
+  { timeout: workflowTestTimeoutMs },
+  () => {
+    it('reaches no read, telling, listing, history or line of the log, though the tool echoes it', async () => {
+      const logged = vi.spyOn(console, 'error');
+      onTestFinished(() => {
+        logged.mockRestore();
+      });
+      const chat = await chatServer(chatKey);
+      const server = await servingInteractions(
+        [...chatDelivery, ...toldReading],
+        chatEnvironment(chat.url, { record_content: true }),
+      );
+      const runId = await server.ask('approve-brief');
+      await until(() => interactionsOf(server), readingIn(1));
+      chat.chat.reply({ channel: '#approvals-ada', thread: chat.chat.posted()[0]?.ts, user: 'ada', text: 'maybe' });
+
+      const events = await until(() => brainEventsOf(server), readAndTold);
+      const listing = JSON.stringify((await server.call('GET', `${alpha}/interactions`)).body);
+      const history = JSON.stringify((await server.call('GET', `${alpha}/executions/${runId}/history`)).body);
+
+      expect(events).toContain('[redacted]');
+      expect(events).toContain('telling_started');
+      expect(secretSeen([events, listing, history, ...logged.mock.calls.flat().map(String)])).toEqual([]);
     });
   },
 );

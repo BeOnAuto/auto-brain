@@ -32,6 +32,14 @@ describe('a message a delivery that reads no replies cannot keep', () => {
   });
 });
 
+describe('a recorded reading without a reply rule', () => {
+  it('keeps what the message was delivered as, and no place to read replies', () => {
+    const { reply: _rule, ...unruled } = record;
+
+    expect(keptOf(unruled, posted)).toEqual({ delivered_as: { conversation: 'C0123', id: '1699.1' } });
+  });
+});
+
 describe('the conversation key of a recorded reading', () => {
   it('keeps no place to read when it cannot be rendered, and says so', () => {
     expect(keptOf(record, posted)).toEqual({

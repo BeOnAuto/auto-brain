@@ -199,7 +199,7 @@ function rowsAdvanced(open: ProjectingLedger): void {
       const ledger = await open([topicRows]);
       await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
       await Effect.runPromise(
-        ledger.advanceRow('topics', alpha, 'spring', { open: false, next_at: null, due_at: null }),
+        ledger.advanceRow('topics', alpha, 'spring', { set: { open: false, next_at: null, due_at: null }, when: [] }),
       );
       await topics(ledger, 'brain/acme/alpha/notes/n1', { type: 'topic_noted', topic: 'spring', note: 'after' });
       const advanced = await topicsOf(ledger);
@@ -226,14 +226,45 @@ function rowsAdvanced(open: ProjectingLedger): void {
       const ledger = await open([topicRows]);
       await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
 
-      const refused = await Effect.runPromiseExit(ledger.advanceRow('topics', alpha, 'spring', { note: 'advanced' }));
-      await Effect.runPromise(ledger.advanceRow('topics', alpha, 'autumn', { open: false }));
-      await Effect.runPromise(ledger.advanceRow('nothing', alpha, 'spring', { open: false }));
+      const refused = await Effect.runPromiseExit(
+        ledger.advanceRow('topics', alpha, 'spring', { set: { note: 'advanced' }, when: [] }),
+      );
+      await Effect.runPromise(ledger.advanceRow('topics', alpha, 'autumn', { set: { open: false }, when: [] }));
+      await Effect.runPromise(ledger.advanceRow('nothing', alpha, 'spring', { set: { open: false }, when: [] }));
 
       expect(Exit.isFailure(refused)).toBe(true);
       expect((await topicsOf(ledger)).map(({ key, row }) => [key, row['open'], row['note']])).toEqual([
         ['spring', true, null],
       ]);
+    });
+  });
+}
+
+function rowsAdvancedWhileUnchanged(open: ProjectingLedger): void {
+  describe('the advance of a row that its fold changed since its reader read it', () => {
+    it('advances a row only while the columns it is told to compare still hold what its reader read', async () => {
+      const ledger = await open([topicRows]);
+      await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
+      const readAt = messageIdOf('brain/acme/alpha/executions/r1', 1);
+      await topics(ledger, 'brain/acme/alpha/notes/n1', { type: 'topic_noted', topic: 'spring', note: 'meanwhile' });
+      const folded = messageIdOf('brain/acme/alpha/notes/n1', 1);
+
+      await Effect.runPromise(
+        ledger.advanceRow('topics', alpha, 'spring', {
+          set: { open: false },
+          when: [{ column: 'last_message', equals: readAt }],
+        }),
+      );
+      const kept = await topicsOf(ledger);
+      await Effect.runPromise(
+        ledger.advanceRow('topics', alpha, 'spring', {
+          set: { open: false },
+          when: [{ column: 'last_message', equals: folded }],
+        }),
+      );
+
+      expect(kept.map(({ row }) => row['open'])).toEqual([true]);
+      expect((await topicsOf(ledger)).map(({ row }) => row['open'])).toEqual([false]);
     });
   });
 }
@@ -244,4 +275,5 @@ export function projectionsBehaviour(open: ProjectingLedger): void {
   dueRows(open);
   rowsKeyedByTheirMapping(open);
   rowsAdvanced(open);
+  rowsAdvancedWhileUnchanged(open);
 }

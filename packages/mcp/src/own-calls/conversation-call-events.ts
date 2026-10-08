@@ -14,6 +14,12 @@ const startedFields = {
   arguments_json: Schema.optionalKey(Schema.String),
 };
 
+const readArguments = {
+  arguments_bytes: Schema.optionalKey(Schema.Int),
+  arguments_sha256: Schema.optionalKey(Schema.String),
+  arguments_json: Schema.optionalKey(Schema.String),
+};
+
 const answeredFields = {
   result_bytes: Schema.optionalKey(Schema.NullOr(Schema.Int)),
   result_sha256: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -50,15 +56,17 @@ const ReadOutcomeSchema = Schema.Literals([
   'unreadable',
   'too_large',
   'tool_not_offered',
+  'not_sent',
 ]);
 
 const RepliesReadSchema = Schema.Struct({
   type: Schema.Literal('replies_read'),
   call_id: Schema.String,
   ...theTool,
-  ...startedFields,
+  ...readArguments,
   ...answeredFields,
   outcome: ReadOutcomeSchema,
+  detail: Schema.optionalKey(Schema.String),
   conversation: Schema.String,
   since: Schema.NullOr(Schema.String),
   replies: Schema.Int,

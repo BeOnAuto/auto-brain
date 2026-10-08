@@ -47,7 +47,14 @@ function partsOf(written: InteractionFrontMatter, { lines }: ReadFrontMatter, pa
     message: messageOf(parts, inputSchema),
     reply: Result.isFailure(output)
       ? Result.succeed(null)
-      : replyOf(written.reply, output.success.schema?.document, lines),
+      : replyOf(
+          {
+            reply: written.reply,
+            answerSchema: output.success.schema?.document,
+            readsReplies: written.replies !== undefined,
+          },
+          lines,
+        ),
   };
 }
 

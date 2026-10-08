@@ -18,7 +18,7 @@ export interface ReadAnswer {
   readonly retryAfterMs: number | null;
 }
 
-function failedRead(outcome: ReadOutcome, retryAfterMs: number | null = null): ReadAnswer {
+export function failedRead(outcome: ReadOutcome, retryAfterMs: number | null = null): ReadAnswer {
   return { outcome, replies: [], ids: [], considered: 0, retryAfterMs };
 }
 

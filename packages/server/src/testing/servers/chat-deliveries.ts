@@ -7,8 +7,8 @@ import { alpha } from './reasoning-server.ts';
 
 export const chatKey = 'chat-api-key-5a1c9e27';
 
-export async function chatServer(): Promise<FakeMcpServer> {
-  const chat = await serveFakeMcp({ bearer: chatKey, chat: true });
+export async function chatServer(echoes?: string): Promise<FakeMcpServer> {
+  const chat = await serveFakeMcp({ bearer: chatKey, chat: true, ...(echoes === undefined ? {} : { echoes }) });
   onTestFinished(chat.close);
   return chat;
 }

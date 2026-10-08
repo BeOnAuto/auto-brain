@@ -14,6 +14,7 @@ export interface ChatReply {
 }
 
 export interface FakeChat {
+  readonly echoed: Readonly<Record<string, string>>;
   readonly post: (input: unknown) => ChatMessage;
   readonly read: (input: unknown) => readonly ChatMessage[];
   readonly reply: (reply: ChatReply) => string;
@@ -35,7 +36,7 @@ function inThreadOf(thread: string) {
   return (message: ChatMessage) => thread === '' || message.ts === thread || message.thread_ts === thread;
 }
 
-export function fakeChat(): FakeChat {
+export function fakeChat(echoing?: string): FakeChat {
   const messages: ChatMessage[] = [];
   const nextTs = () => `1699.${String(messages.length + 1).padStart(6, '0')}`;
   const kept = (message: ChatMessage) => {
@@ -43,6 +44,7 @@ export function fakeChat(): FakeChat {
     return message;
   };
   return {
+    echoed: echoing === undefined ? {} : { echo: echoing },
     post: (input) =>
       kept({
         ts: nextTs(),

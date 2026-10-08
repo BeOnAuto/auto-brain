@@ -74,6 +74,7 @@ describe('the conversations projection', () => {
       conversation: 'C0123/1699.1',
       since: null,
       last_fact: 'fact-1',
+      joined_by: 'fact-1',
       open: true,
       active_at: joinedAt,
       reads: 0,
@@ -90,6 +91,7 @@ describe('a row of the conversations projection', () => {
     expect(rowAfter({ ...joined, reads: 3 }, read('1699.4'), 'fact-2')).toMatchObject({
       since: '1699.4',
       last_fact: 'fact-2',
+      joined_by: 'fact-1',
       reads: 3,
     });
   });
@@ -100,6 +102,7 @@ describe('a row of the conversations projection', () => {
     expect(rowAfter(resting, deliveryEnded('2026-10-01T10:00:00.000Z'), 'fact-3')).toMatchObject({
       since: '1699.4',
       last_fact: 'fact-3',
+      joined_by: 'fact-3',
       open: true,
       reads: 0,
       active_at: joinedAt + 3_600_000,

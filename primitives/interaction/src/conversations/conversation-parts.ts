@@ -28,10 +28,13 @@ export interface ReadingRoute {
 
 export function advanced(
   parts: ConversationParts,
-  { brain, key }: ConversationPlace,
+  { brain, key, row }: ConversationPlace,
   cadence: Cadence,
 ): Effect.Effect<void> {
-  return parts.ledger.advanceRow(conversationsName, brain, key, advancedOf(cadence));
+  return parts.ledger.advanceRow(conversationsName, brain, key, {
+    set: advancedOf(cadence),
+    when: [{ column: 'joined_by', equals: row.joined_by }],
+  });
 }
 
 export function cadenceOf({ row }: ConversationPlace): Cadence {

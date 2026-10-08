@@ -89,6 +89,8 @@ describe('a read the brain made in a conversation, as the brain events show it',
 describe('a read the brain could not make in a conversation, as the brain events show it', () => {
   it('says why, with no answer where no call was answered and the wait a server asked for', () => {
     const notOffered = shown({ ...reading, outcome: 'tool_not_offered' });
+    const { arguments_bytes: _bytes, arguments_sha256: _digest, ...unsent } = reading;
+    const notSent = shown({ ...unsent, outcome: 'not_sent', detail: 'The argument ts of the read cannot be rendered' });
     const timedOut = shown({
       ...reading,
       outcome: 'timed_out',
@@ -105,6 +107,12 @@ describe('a read the brain could not make in a conversation, as the brain events
       'The brain could not read the replies of the conversation “C0123/1699.1” through the tool thread_replies of chat: the tool server did not answer within 30 seconds.',
     ]);
     expect(notOffered?.data).not.toHaveProperty('duration_ms');
+    expect(notSent).toMatchObject({
+      summary:
+        'The brain could not read the replies of the conversation “C0123/1699.1” through the tool thread_replies of chat: its arguments could not be rendered, so nothing was sent.',
+      data: { detail: 'The argument ts of the read cannot be rendered' },
+    });
+    expect(notSent?.data).not.toHaveProperty('arguments_bytes');
     expect(timedOut?.data).toMatchObject({
       result_bytes: null,
       result_sha256: null,

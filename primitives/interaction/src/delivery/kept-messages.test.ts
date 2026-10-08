@@ -9,7 +9,6 @@ import {
   chatDelivery,
   chatHarness,
   notificationDocument,
-  threadDocument,
   type ChatHarness,
   type FakeAnswer,
 } from '../testing/index.ts';
@@ -116,16 +115,14 @@ describe('a delivery whose answer names no message the brain can keep', () => {
 });
 
 describe('a delivery whose request takes no reply', () => {
-  it('keeps what the message was delivered as, and no place to read replies, for a notification, a function without replies or one without a rule', async () => {
-    const noRule = threadDocument({ rule: [] }).replace('required: [choice]', 'required: [choice, note]');
-    const documents = [notificationDocument(chatDelivery), approvalDocument(chatDelivery), noRule];
+  it('keeps what the message was delivered as, and no place to read replies, for a notification or a function without replies', async () => {
+    const documents = [notificationDocument(chatDelivery), approvalDocument(chatDelivery)];
 
     const ends = await Promise.all(documents.map(async (document) => (await deliveredWith(undefined, document)).ended));
 
     expect(ends.map((ended) => keptOf(ended))).toEqual([
       [{ conversation: '#approvals-U024BE7LH', id: '1699.000001' }, undefined, undefined],
       [{ conversation: '#approvals-U024BE7LH', id: '1699.000001' }, undefined, undefined],
-      [{ conversation: '#approvals-sales', id: '1699.000001' }, undefined, undefined],
     ]);
   });
 

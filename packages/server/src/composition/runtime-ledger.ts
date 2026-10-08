@@ -17,8 +17,8 @@ export function runtimeLedger(runtime: AppRuntime<DispatcherServices>): RuntimeL
     readRecorded: (brain, selection, page) => viaLedger((ledger) => ledger.readRecorded(brain, selection, page)),
     readProjectedRows: (projection, brain, query) =>
       viaLedger((ledger) => ledger.readProjectedRows(projection, brain, query)),
-    advanceRow: (projection, brain, key, columns) =>
-      viaLedger((ledger) => ledger.advanceRow(projection, brain, key, columns)),
+    advanceRow: (projection, brain, key, advance) =>
+      viaLedger((ledger) => ledger.advanceRow(projection, brain, key, advance)),
     countProjectedRows: (projection, brain, where) =>
       viaLedger((ledger) => ledger.countProjectedRows(projection, brain, where)),
     readDueRows: (projection, query) => viaLedger((ledger) => ledger.readDueRows(projection, query)),

@@ -94,12 +94,17 @@ export interface ProjectionReader {
   readonly nextDueOf: (projection: string, column: string, after: number) => Effect.Effect<number | null>;
 }
 
+export interface RowAdvance {
+  readonly set: ProjectedRow;
+  readonly when: readonly ProjectedCondition[];
+}
+
 export interface ProjectionAdvancer {
   readonly advanceRow: (
     projection: string,
     brain: BrainAddress,
     key: string,
-    columns: ProjectedRow,
+    advance: RowAdvance,
   ) => Effect.Effect<void>;
 }
 

@@ -32,6 +32,7 @@ const failedReadWords: Readonly<Record<Exclude<ReadOutcome, 'result'>, string>> 
   unreadable: 'what the tool answered could not be read as a list of replies',
   too_large: `the tool answered more than the ${counted.format(toolBounds.resultBytes)} bytes a read may take`,
   tool_not_offered: 'the tool server no longer offers the tool to this brain',
+  not_sent: 'its arguments could not be rendered, so nothing was sent',
 };
 
 const tellingInWords: Readonly<Record<TellingOutcome, string>> = {
@@ -55,14 +56,19 @@ function throughTheTool({ server, tool }: Pick<TellingStarted, 'server' | 'tool'
   return `through the tool ${named(tool)} of ${named(server)}`;
 }
 
+function argumentsShown(bytes: number | undefined, digest: string | undefined) {
+  return bytes === undefined || digest === undefined
+    ? {}
+    : { arguments_bytes: bytes, arguments_sha256: digestShown(digest) };
+}
+
 function startShown(event: RepliesRead | TellingStarted, content: number) {
   return {
     call_id: named(event.call_id),
     by: named(event.by),
     server: named(event.server),
     tool: named(event.tool),
-    arguments_bytes: event.arguments_bytes,
-    arguments_sha256: digestShown(event.arguments_sha256),
+    ...argumentsShown(event.arguments_bytes, event.arguments_sha256),
     ...contentShown('arguments_json', event.arguments_json, content),
   };
 }
@@ -98,6 +104,7 @@ function readAccount(event: RepliesRead) {
       conversation: named(event.conversation),
       since: event.since === null ? null : named(event.since),
       outcome: event.outcome,
+      ...contentShown('detail', event.detail, mostReadContentBytes),
       replies: event.replies,
       taken: event.taken,
       refused: event.refused,

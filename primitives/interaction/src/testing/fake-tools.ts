@@ -71,7 +71,7 @@ function namedBy(refusals: readonly (Refusal | undefined)[]): Result.Result<void
   return refusal === undefined ? Result.void : Result.fail(new ToolNotOffered(refusal));
 }
 
-export function fakeTools(duringCall: () => Effect.Effect<unknown> = () => Effect.void): FakeTools {
+export function fakeTools(duringCall: (call: DeliveryCall) => Effect.Effect<unknown> = () => Effect.void): FakeTools {
   const board = chatBoard();
   const calls: DeliveryCall[] = [];
   const queued: FakeAnswer[] = [];
@@ -86,7 +86,7 @@ export function fakeTools(duringCall: () => Effect.Effect<unknown> = () => Effec
       return Effect.succeed(unsentBy(next, call));
     }
     calls.push(call);
-    return Effect.as(duringCall(), answeredWith(next, calls.length));
+    return Effect.as(duringCall(call), answeredWith(next, calls.length));
   };
   return {
     configured: true,

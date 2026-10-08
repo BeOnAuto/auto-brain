@@ -105,6 +105,7 @@ export const DeliveryOutcomeSchema = Schema.Literals(['delivered', 'failed', 're
 export const DeliveryBecauseSchema = Schema.Literals([
   'timed_out',
   'too_large',
+  'unworkable',
   'tool_not_offered',
   'tool_error',
   'server_failure',

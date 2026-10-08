@@ -15,7 +15,7 @@ const asking: Primitive = {
     deferralType: 'interaction_requested',
     deferral: (record) => ({
       summary: 'A request is waiting for an answer.',
-      data: { channel: record['channel'] ?? null },
+      data: { to: record['to'] ?? null },
     }),
   },
 };
@@ -54,11 +54,23 @@ describe('the deferral of a run whose capability gives words of it', () => {
   });
 
   it('is the request, in the words of the capability, with the size of its record', () => {
-    expect(presented({ type: 'execution_deferred', record: { channel: 'inbox' }, ...ofAsking, ...fact })).toEqual([
+    expect(
+      presented({
+        type: 'execution_deferred',
+        record: {
+          to: 'ada',
+          message: 'Approve?',
+          expires_at: '2026-10-09T09:00:00.000Z',
+          requested_at: '2026-10-07T09:00:00.000Z',
+        },
+        ...ofAsking,
+        ...fact,
+      }),
+    ).toEqual([
       {
         type: 'interaction_requested',
         summary: 'A request is waiting for an answer.',
-        data: { execution_id: executionId, by: 'brain:alpha', record_bytes: 19, channel: 'inbox' },
+        data: { execution_id: executionId, by: 'brain:alpha', record_bytes: 115, to: 'ada' },
       },
     ]);
   });

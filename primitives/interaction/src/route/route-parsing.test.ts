@@ -142,6 +142,36 @@ describe('the pointers into what a tool answered', () => {
   });
 });
 
+const repeated = (times: number) => `'{% for i in (1..${times}) %}{{ to }}{% endfor %}'`;
+
+describe('the arguments of a read, rendered once when saved', () => {
+  it('refuse one that renders no JSON, one past what a call may send, and arguments past it, over a sample reading', () => {
+    const unrendered = replacing(reading, "    ts: '{{ sent.id }}'", "    ts: '{{ 1 | divided_by: 0 }}'");
+    const long = replacing(reading, "    ts: '{{ sent.id }}'", `    ts: ${repeated(6000)}`);
+    const large = replacing(
+      replacing(reading, "    ts: '{{ sent.id }}'", `    ts: ${repeated(3000)}`),
+      '    limit: 15',
+      `    limit: ${repeated(3000)}`,
+    );
+
+    expect([
+      problemsOf(documentOf(delivering, unrendered, answering)),
+      problemsOf(documentOf(delivering, long, answering)),
+      problemsOf(documentOf(delivering, large, answering)),
+    ]).toEqual([
+      ['Line 18, /replies/with/ts: The argument ts of the read over a sample reading cannot be rendered'],
+      [
+        'Line 18, /replies/with/ts: The argument ts of the read over a sample reading renders more than the 16384 bytes a call may send',
+      ],
+      [
+        expect.stringMatching(
+          /^Line 17, \/replies\/with: The arguments of the read over a sample reading take \d+ bytes, more than the 16384 a call may send$/u,
+        ),
+      ],
+    ]);
+  });
+});
+
 describe('the wait of a reading', () => {
   it.each(['PT5S', 'PT1H'])('takes %s, at its bound', (wait) => {
     expect(

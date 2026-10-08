@@ -20,6 +20,7 @@ export interface ChatHarness extends InteractionHarness {
 export interface ChatHarnessOptions {
   readonly ledger?: HarnessLedger;
   readonly document?: string;
+  readonly duringCall?: Parameters<typeof fakeTools>[0];
 }
 
 export const answererId = 'U024BE7LH';
@@ -27,7 +28,7 @@ export const answererId = 'U024BE7LH';
 export const farAhead = 3_600_000;
 
 export async function chatHarness(options: ChatHarnessOptions = {}): Promise<ChatHarness> {
-  const chat = fakeTools();
+  const chat = fakeTools(options.duringCall);
   const ledger = options.ledger ?? memoryLedger(undefined, [openRequests, conversations]);
   const brain = interactionHarness({ ledger, tools: chat });
   const reads = conversationsDue({ ledger: ledger.service, tools: chat });

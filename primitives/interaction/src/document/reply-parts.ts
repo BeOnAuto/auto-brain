@@ -21,12 +21,25 @@ export function fromOf(
   return compiledTemplate(written, { line, pointer: '/from', what: 'the party whose reply counts' }, inputSchema);
 }
 
+const ruleNeeded =
+  'A function that reads replies needs a reply rule: an answer schema with one required string and its enum, or a reply block that maps the words';
+
+export interface Answering {
+  readonly reply: WrittenRule | undefined;
+  readonly answerSchema: Schema.JsonObject | undefined;
+  readonly readsReplies: boolean;
+}
+
 export function replyOf(
-  written: WrittenRule | undefined,
-  answerSchema: Schema.JsonObject | undefined,
+  { reply, answerSchema, readsReplies }: Answering,
   lines: SourceLines,
 ): Checked<ReplyRule | null> {
-  return Result.mapError(checkedRule(written, answerSchema), (issues) =>
+  const checked = Result.mapError(checkedRule(reply, answerSchema), (issues) =>
     issues.map(({ pointer, detail }) => issueAt(lines, pointer, detail)),
+  );
+  return Result.flatMap(checked, (rule) =>
+    rule === null && readsReplies && answerSchema !== undefined
+      ? Result.fail([issueAt(lines, '/replies', ruleNeeded)])
+      : Result.succeed(rule),
   );
 }

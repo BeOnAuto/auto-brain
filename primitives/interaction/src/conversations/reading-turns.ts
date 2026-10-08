@@ -15,16 +15,18 @@ interface ReadEnd {
 function cadenceAfterRead(
   place: ConversationPlace,
   { kept, more }: OpenInConversation,
-  read: ReadDone | undefined,
+  { state, answer }: ReadDone,
   { floorMs, now }: ReadEnd,
 ): Cadence {
-  const answered = read?.state.answered ?? new Set<string>();
+  if (answer.outcome === 'not_sent') {
+    return resting(place);
+  }
   return cadenceAfter(place.row, {
     now,
     floorMs,
-    open: more || kept.some(({ runId }) => !answered.has(runId)),
-    foundAnswerer: read?.state.foundAnswerer === true,
-    retryAfterMs: read?.answer.retryAfterMs ?? null,
+    open: more || kept.some(({ runId }) => !state.answered.has(runId)),
+    foundAnswerer: state.foundAnswerer,
+    retryAfterMs: answer.retryAfterMs,
   });
 }
 

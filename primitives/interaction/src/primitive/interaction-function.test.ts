@@ -79,7 +79,7 @@ describe('the words of an interaction run', () => {
       interactionRunWords.deferral({ run: 'not a request' }),
     ]).toEqual([
       {
-        summary: 'A request is waiting for an answer, in the brain’s inbox, until 2026-10-09T09:00:00.000Z.',
+        summary: 'A request is waiting for an answer, in the inbox, until 2026-10-09T09:00:00.000Z.',
         data: {
           delivery: null,
           to: 'ada',
@@ -118,7 +118,7 @@ describe('the words of a request answered by reply', () => {
       }),
     ).toMatchObject({
       summary:
-        'A request is waiting for an answer, in the brain’s inbox, until 2026-10-09T09:00:00.000Z; a reply counts from its answerer alone.',
+        'A request is waiting for an answer, in the inbox, until 2026-10-09T09:00:00.000Z; a reply counts from its answerer alone.',
       data: { to: '#approvals-sales', answerer: 'U024BE7LH' },
     });
     expect(

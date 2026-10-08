@@ -23,6 +23,15 @@ export const threadReading: readonly string[] = readingOf(
   ["    ts: '{{ sent.id }}'"],
 );
 
+export const toldReading: readonly string[] = [
+  ...threadReading,
+  '  tell:',
+  '    with:',
+  "      channel: '{{ sent.conversation }}'",
+  "      thread_ts: '{{ sent.id }}'",
+  "      text: '{{ message }}'",
+];
+
 export const flatReading: readonly string[] = readingOf([], []);
 
 const ListedSchema = Schema.Struct({
@@ -47,6 +56,18 @@ export async function interactionsOf(server: InteractionServer): Promise<readonl
 
 export function readingIn(count: number): (listed: readonly ListedInteraction[]) => boolean {
   return (listed) => listed.length >= count && listed.every(({ conversation }) => conversation !== null);
+}
+
+export async function brainEventsOf(server: InteractionServer): Promise<string> {
+  return JSON.stringify((await server.call('GET', `${alpha}/events`)).body);
+}
+
+export function readRecorded(events: string): boolean {
+  return events.includes('replies_read');
+}
+
+export function readAndTold(events: string): boolean {
+  return readRecorded(events) && events.includes('telling_ended');
 }
 
 export function readsOf(chat: Pick<FakeMcpServer, 'received'>): Promise<readonly unknown[]> {

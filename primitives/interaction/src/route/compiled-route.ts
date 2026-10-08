@@ -4,6 +4,7 @@ import { readDuration } from '@beonauto/workflow-engine/dsl';
 import { JsonPointer, Result, type Schema } from 'effect';
 
 import { isJsonPointer } from './json-pointers.ts';
+import { argumentsFailureWords, renderedArguments } from './rendered-arguments.ts';
 import type { Replies, ToolDelivery } from './route-schemas.ts';
 import { templateIssues, templatesIssues, type TemplatePlace } from './route-templates.ts';
 import { conversationTemplates, deliveryTemplates, readingTemplates, tellingTemplates } from './template-sets.ts';
@@ -70,6 +71,24 @@ function deliveryIssues({ deliver }: WrittenRoute, place: TemplatePlace): readon
   ];
 }
 
+function readArgumentIssues(replies: Replies, place: TemplatePlace): readonly DocumentIssue[] {
+  const pointer = placeOf('replies', 'with');
+  const written = templatesIssues(readingTemplates, replies.with, { ...place, pointer });
+  if (written.length > 0) {
+    return written;
+  }
+  return Result.match(renderedArguments(replies.with, readingTemplates.sample), {
+    onSuccess: () => [],
+    onFailure: (failure) => [
+      issueAt(
+        place.lines,
+        failure.reason === 'too_large' ? pointer : `${pointer}/${failure.argument}`,
+        argumentsFailureWords(failure, 'the read over a sample reading'),
+      ),
+    ],
+  });
+}
+
 function readingIssues(replies: Replies, place: TemplatePlace): readonly DocumentIssue[] {
   const { lines } = place;
   const { read, tell } = replies;
@@ -87,7 +106,7 @@ function readingIssues(replies: Replies, place: TemplatePlace): readonly Documen
       ...place,
       pointer: placeOf('replies', 'conversation'),
     }),
-    ...templatesIssues(readingTemplates, replies.with, { ...place, pointer: placeOf('replies', 'with') }),
+    ...readArgumentIssues(replies, place),
     ...templatesIssues(tellingTemplates, tell?.with ?? {}, { ...place, pointer: placeOf('replies', 'tell', 'with') }),
     ...pointerIssues(lines, [
       [placeOf('replies', 'read', 'list'), read.list],

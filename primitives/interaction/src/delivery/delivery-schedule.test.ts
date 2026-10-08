@@ -1,10 +1,10 @@
 import { Ledger } from '@beonauto/operations';
 import { memoryLedger } from '@beonauto/operations/testing';
-import { Layer, Schema } from 'effect';
+import { Effect, Layer, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { openRequests } from '../requests/open-requests.ts';
-import { askedRunId, askedThroughChat, type HarnessLedger } from '../testing/index.ts';
+import { askedRunId, askedThroughChat, type HarnessLedger, type InteractionHarness } from '../testing/index.ts';
 
 const minute = 60_000;
 
@@ -21,19 +21,34 @@ const isDeferring = Schema.is(Deferring);
 
 const grownArguments = Object.fromEntries(Array.from({ length: 600 }, (_, index) => [`a${index}`, '{{ message }}']));
 
-function growingArguments(ledger: HarnessLedger): HarnessLedger {
+function recordedWith(ledger: HarnessLedger, arguments_: Readonly<Record<string, string>>): HarnessLedger {
   const service: Ledger['Service'] = {
     ...ledger.service,
     execute: (stream, decider, command, given) => {
       if (!isDeferring(command)) {
         return ledger.service.execute(stream, decider, command, given);
       }
-      const deliver = { server: 'chat', tool: 'post_message', with: grownArguments };
+      const deliver = { server: 'chat', tool: 'post_message', with: arguments_ };
       const record = { ...command.result.record, deliver };
       return ledger.service.execute(stream, decider, { ...command, result: { ...command.result, record } }, given);
     },
   };
   return { service, layer: Layer.succeed(Ledger, service) };
+}
+
+const largeWords: unknown = expect.stringMatching(
+  /^The arguments of the call that delivers the request take \d+ bytes, more than the 16384 a call may send$/u,
+);
+
+async function endedOf(brain: InteractionHarness): Promise<readonly unknown[]> {
+  const { records } = await Effect.runPromise(
+    brain.ledger.service.readRecorded(
+      { org: 'acme', brain: 'alpha' },
+      { kind: 'run', execution: askedRunId },
+      { order: 'asc', limit: 20, types: ['delivery_ended'], dataOf: ['delivery_ended'] },
+    ),
+  );
+  return records.map(({ data }) => data);
 }
 
 describe('a delivery that fails for a while', () => {
@@ -74,7 +89,7 @@ describe('a delivery that fails for a while', () => {
 
 describe('a delivery whose arguments grew past what a call may send', () => {
   it('is refused once without a call, even by two hosts, not tried again, and a notification ends undelivered', async () => {
-    const ledger = growingArguments(memoryLedger(undefined, [openRequests]));
+    const ledger = recordedWith(memoryLedger(undefined, [openRequests]), grownArguments);
     const { brain, tools, askedAt } = await askedThroughChat({ notification: true, ledger });
     const items = await brain.dueItems(askedAt);
 
@@ -86,6 +101,23 @@ describe('a delivery whose arguments grew past what a call may send', () => {
     expect(await brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'unanswered', kind: 'undelivered' } },
     });
+    expect(await endedOf(brain)).toMatchObject([{ outcome: 'refused', because: 'too_large', detail: largeWords }]);
+  });
+
+  it('is refused as unworkable, with what went wrong, when its recorded arguments cannot be rendered', async () => {
+    const ledger = recordedWith(memoryLedger(undefined, [openRequests]), { text: '{{ nothing }}' });
+    const { brain, tools, askedAt } = await askedThroughChat({ notification: true, ledger });
+
+    await brain.performDue(askedAt);
+
+    expect(tools.calls()).toEqual([]);
+    expect(await endedOf(brain)).toEqual([
+      expect.objectContaining({
+        outcome: 'refused',
+        because: 'unworkable',
+        detail: 'The argument text of the call that delivers the request reads a value it does not have',
+      }),
+    ]);
   });
 });
 

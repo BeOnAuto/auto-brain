@@ -1,5 +1,6 @@
 import type { StartedFields } from '../calls/recorded-calls.ts';
 import type { CalledOnce } from '../delivery/delivery-bounds.ts';
+import type { ToolReference } from '../names/tool-reference.ts';
 import {
   ConversationCallEventSchema,
   type ConversationCallEvent,
@@ -24,8 +25,8 @@ export interface Recorded {
   readonly at: string;
 }
 
-function answeredOf(end: CalledOnce) {
-  return end.kind === 'answered' ? { ...end.fields, duration_ms: end.durationMs } : {};
+function answeredOf(end: CalledOnce | undefined) {
+  return end?.kind === 'answered' ? { ...end.fields, duration_ms: end.durationMs } : {};
 }
 
 function tellingOutcomeOf(end: CalledOnce): TellingOutcome {
@@ -60,9 +61,10 @@ export function tellingEndedOf(callId: string, end: CalledOnce, recorded: Record
 
 export interface Reading {
   readonly callId: string;
-  readonly start: StartedFields;
-  readonly end: CalledOnce;
+  readonly start: StartedFields | ToolReference;
+  readonly end?: CalledOnce;
   readonly outcome: ReadOutcome;
+  readonly detail?: string;
   readonly conversation: string;
   readonly since: string | null;
   readonly replies: number;
@@ -72,13 +74,14 @@ export interface Reading {
 }
 
 export function repliesReadOf(reading: Reading, recorded: Recorded): RepliesRead {
-  const { callId, start, end, outcome, conversation, since, replies, taken, refused, retryAfterMs } = reading;
+  const { callId, start, end, outcome, detail, conversation, since, replies, taken, refused, retryAfterMs } = reading;
   return {
     type: 'replies_read',
     call_id: callId,
     ...start,
     ...answeredOf(end),
     outcome,
+    ...(detail === undefined ? {} : { detail }),
     conversation,
     since,
     replies,

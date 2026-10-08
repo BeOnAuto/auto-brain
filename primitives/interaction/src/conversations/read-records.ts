@@ -2,9 +2,10 @@ import {
   conversationCallDecider,
   conversationCallStreamOf,
   repliesReadOf,
-  type StartedFields,
   type CalledOnce,
+  type StartedFields,
 } from '@beonauto/mcp';
+import type { ToolReference } from '@beonauto/mcp/policy';
 import { brainCallerOf, streamPrefixOfBrain, type StreamWriter } from '@beonauto/operations';
 import { DateTime, Effect } from 'effect';
 
@@ -13,8 +14,9 @@ import type { ConversationPlace } from './conversation-parts.ts';
 import type { ReadAnswer } from './read-answers.ts';
 
 export interface ReadRecord {
-  readonly start: StartedFields;
-  readonly called: CalledOnce;
+  readonly start: StartedFields | ToolReference;
+  readonly called?: CalledOnce;
+  readonly detail?: string;
   readonly answer: ReadAnswer;
   readonly state: ReadingState;
   readonly callId: string;
@@ -24,7 +26,7 @@ export interface ReadRecord {
 export function recordedRead(
   ledger: StreamWriter,
   { brain, row }: ConversationPlace,
-  { start, called, answer, state, callId, since }: ReadRecord,
+  { start, called, detail, answer, state, callId, since }: ReadRecord,
 ): Effect.Effect<void> {
   const stream = `${streamPrefixOfBrain(brain)}${conversationCallStreamOf(callId)}`;
   return Effect.gen(function* () {
@@ -33,8 +35,9 @@ export function recordedRead(
       {
         callId,
         start,
-        end: called,
+        ...(called === undefined ? {} : { end: called }),
         outcome: answer.outcome,
+        ...(detail === undefined ? {} : { detail }),
         conversation: row.conversation,
         since,
         replies: answer.considered,

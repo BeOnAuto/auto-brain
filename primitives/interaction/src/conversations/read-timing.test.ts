@@ -22,7 +22,7 @@ async function deliveredInThread(document?: string) {
 }
 
 describe('a conversation read later', () => {
-  it('sends no read whose arguments do not fit, and reads again as the cadence says', async () => {
+  it('sends no read whose arguments do not fit its request, records why, and rests the conversation', async () => {
     const brain = await deliveredInThread(
       threadRepliesWith("    ts: '{{ sent.id }}'", "    ts: '{% for i in (1..2000) %}{{ to }}{% endfor %}'"),
     );
@@ -30,8 +30,18 @@ describe('a conversation read later', () => {
     await brain.performReads(Date.now() + farAhead);
     const [row] = await conversationRows(brain.ledger);
 
-    expect([brain.chat.calls(), await recordsOf(brain.ledger, 'replies_read')]).toMatchObject([[{}], []]);
-    expect(row?.row).toMatchObject({ open: true, reads: 1 });
+    expect(brain.chat.calls()).toHaveLength(1);
+    expect(await recordsOf(brain.ledger, 'replies_read')).toMatchObject([
+      {
+        data: {
+          server: 'chat',
+          tool: 'thread_replies',
+          outcome: 'not_sent',
+          detail: 'The argument ts of the read renders more than the 16384 bytes a call may send',
+        },
+      },
+    ]);
+    expect(row?.row).toMatchObject({ open: false, due_at: null });
   });
 
   it('is not read before the shortest wait its reading sets, counted from when a request joined it', async () => {

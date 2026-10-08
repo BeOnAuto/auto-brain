@@ -109,6 +109,43 @@ describe('a read the brain makes in a conversation', () => {
   });
 });
 
+describe('a read the brain could not send', () => {
+  it('names the tool alone, with no answer and the reason in its detail', () => {
+    const { arguments_bytes: _bytes, arguments_sha256: _digest, ...tool } = started;
+
+    expect(
+      repliesReadOf(
+        {
+          callId: 'call-5',
+          start: tool,
+          outcome: 'not_sent',
+          detail: 'The arguments of the read take 18015 bytes, more than the 16384 a call may send',
+          conversation: 'C0123/1699.1',
+          since: null,
+          replies: 0,
+          taken: 0,
+          refused: 0,
+          retryAfterMs: null,
+        },
+        recorded,
+      ),
+    ).toEqual({
+      type: 'replies_read',
+      call_id: 'call-5',
+      server: 'chat',
+      tool: 'thread_replies',
+      outcome: 'not_sent',
+      detail: 'The arguments of the read take 18015 bytes, more than the 16384 a call may send',
+      conversation: 'C0123/1699.1',
+      since: null,
+      replies: 0,
+      taken: 0,
+      refused: 0,
+      ...recorded,
+    });
+  });
+});
+
 describe('the turns of a call in a conversation', () => {
   const telling = tellingStartedOf({ callId: 'call-2', executionId: 'run-1' }, started, recorded);
   const ending = tellingEndedOf('call-2', answered, recorded);

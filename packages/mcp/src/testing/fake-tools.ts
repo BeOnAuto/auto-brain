@@ -235,7 +235,7 @@ function chatTools(chat: FakeChat): readonly FakeTool[] {
       inputSchema: posting,
       answer: (input) => {
         const { channel, ts } = chat.post(input);
-        return text(JSON.stringify({ ok: true, channel, ts }));
+        return text(JSON.stringify({ ok: true, channel, ts, ...chat.echoed }));
       },
     },
     {
@@ -243,7 +243,7 @@ function chatTools(chat: FakeChat): readonly FakeTool[] {
       description: 'Lists the messages of a conversation, or of one thread of it, oldest first.',
       inputSchema: reading,
       annotations: { readOnlyHint: true },
-      answer: (input) => text(JSON.stringify({ messages: chat.read(input) })),
+      answer: (input) => text(JSON.stringify({ messages: chat.read(input), ...chat.echoed })),
     },
   ];
 }

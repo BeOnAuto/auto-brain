@@ -88,6 +88,20 @@ export function renderedArguments(
   });
 }
 
+const failureWords: Readonly<Record<TextFailure['reason'], string>> = {
+  not_text: 'renders a value that is not text',
+  too_long: `renders more than the ${toolBounds.argumentBytes} bytes a call may send`,
+  missing_variable: 'reads a value it does not have',
+  limit_exceeded: 'cannot be rendered within the limits of a template',
+  failed: 'cannot be rendered',
+};
+
+export function argumentsFailureWords(failure: ArgumentsFailure, call: string): string {
+  return failure.reason === 'too_large'
+    ? `The arguments of ${call} take ${failure.bytes} bytes, more than the ${toolBounds.argumentBytes} a call may send`
+    : `The argument ${failure.argument} of ${call} ${failureWords[failure.failure.reason]}`;
+}
+
 export interface DeliveryContext {
   readonly input: Schema.Json;
   readonly runId: string;

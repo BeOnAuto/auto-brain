@@ -2,7 +2,7 @@ import type { DeliveryCall, StartedFields } from '@beonauto/mcp';
 import { deliveryIdKey, executionIdKey } from '@beonauto/mcp/policy';
 import { Effect, Result, type Schema } from 'effect';
 
-import { deliveryVariablesOf, renderedArguments } from '../route/rendered-arguments.ts';
+import { argumentsFailureWords, deliveryVariablesOf, renderedArguments } from '../route/rendered-arguments.ts';
 import type { DeliveringRecord } from '../run/request-record.ts';
 import type { DeliveryParts, DueRequest } from '../schedule/delivery-parts.ts';
 import { recordedCall } from '../schedule/request-ledger.ts';
@@ -48,8 +48,14 @@ export function deliveredOnce(parts: DeliveryParts, plan: DeliveryPlan): Effect.
   const asking = { input, runId: request.address.id, functionName: request.row.function };
   const rendered = renderedArguments(record.deliver.with, deliveryVariablesOf(record, asking));
   if (Result.isFailure(rendered)) {
+    const { failure } = rendered;
+    const end: AttemptEnd = {
+      outcome: 'refused',
+      because: failure.reason === 'too_large' ? 'too_large' : 'unworkable',
+      detail: argumentsFailureWords(failure, 'the call that delivers the request'),
+    };
     return Effect.map(recordedStart(parts, plan), (startedId): Delivered | undefined =>
-      startedId === undefined ? undefined : { startedId, end: { outcome: 'refused', because: 'too_large' } },
+      startedId === undefined ? undefined : { startedId, end },
     );
   }
   const call = callOf(plan, rendered.success.input);

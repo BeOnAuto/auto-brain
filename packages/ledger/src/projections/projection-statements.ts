@@ -1,10 +1,13 @@
 import {
   advancedColumnsOf,
   projectedTableOf,
+  rowKeyColumn,
   type KeyedProjection,
+  type ProjectedCondition,
   type ProjectedIndex,
   type ProjectedRow,
   type ProjectedValue,
+  type RowAdvance,
 } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
@@ -127,19 +130,39 @@ export function rowsWrite(
     ON CONFLICT (brain_key, row_key) DO UPDATE SET ${updates}`;
 }
 
+export function columnOf(projection: KeyedProjection, name: string): string {
+  if (name !== rowKeyColumn && !projection.columns.some((column) => column.name === name)) {
+    throw new Error(`The projection ${projection.name} has no column ${name}`);
+  }
+  return name;
+}
+
+export function conditionsOf(
+  dialect: ProjectionDialect,
+  projection: KeyedProjection,
+  where: readonly ProjectedCondition[],
+) {
+  return SQL.merge(
+    where.map(
+      ({ column, equals }) => SQL` AND ${SQL.plain(columnOf(projection, column))} = ${boundOf(dialect, equals)}`,
+    ),
+    '',
+  );
+}
+
 export function rowAdvance(
   dialect: ProjectionDialect,
   projection: KeyedProjection,
   { brainKey, key }: RowPlace,
-  columns: ProjectedRow,
+  { set, when }: RowAdvance,
 ): SQL {
   const assignments = SQL.merge(
-    Object.entries(columns).map(
+    Object.entries(set).map(
       ([name, value]: readonly [string, ProjectedValue]) => SQL`${SQL.plain(name)} = ${boundOf(dialect, value)}`,
     ),
     ', ',
   );
-  return SQL`UPDATE ${tableOf(projection)} SET ${assignments} WHERE brain_key = ${brainKey} AND row_key = ${key}`;
+  return SQL`UPDATE ${tableOf(projection)} SET ${assignments} WHERE brain_key = ${brainKey} AND row_key = ${key}${conditionsOf(dialect, projection, when)}`;
 }
 
 export function tableDrop(name: string): SQL {

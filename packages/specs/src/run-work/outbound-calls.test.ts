@@ -34,7 +34,15 @@ async function aDeferredRun() {
   await Effect.runPromise(
     ledger.service.execute(stream, executionDecider, {
       type: 'finish',
-      result: { type: 'execution_deferred', record: { channel: 'inbox' } },
+      result: {
+        type: 'execution_deferred',
+        record: {
+          to: 'ada',
+          message: 'Approve?',
+          expires_at: '2026-10-09T09:00:00.000Z',
+          requested_at: '2026-10-07T09:00:00.000Z',
+        },
+      },
       ...fact,
     }),
   );
@@ -112,7 +120,16 @@ describe('a run as it was recorded', () => {
     const read = await Effect.runPromise(recordedRunIn(ledger.service, run));
 
     expect(read).toMatchObject({
-      run: { execution_id: run.id, status: 'started', record: { channel: 'inbox' } },
+      run: {
+        execution_id: run.id,
+        status: 'started',
+        record: {
+          to: 'ada',
+          message: 'Approve?',
+          expires_at: '2026-10-09T09:00:00.000Z',
+          requested_at: '2026-10-07T09:00:00.000Z',
+        },
+      },
       input: { owner: 'ada' },
       awaitsSettlement: true,
       lastCall: 0,

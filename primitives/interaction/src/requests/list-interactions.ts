@@ -63,8 +63,8 @@ function refusedInWords(interactions: readonly { readonly reply_refusals: number
     return '';
   }
   return refused === 1
-    ? ' A reply to one of them was refused.'
-    : ` Replies to ${plainNumber(refused)} of them were refused.`;
+    ? ' One of them has had a reply refused.'
+    : ` ${plainNumber(refused)} of them have had a reply refused.`;
 }
 
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));

@@ -226,12 +226,15 @@ describe('a projection keyed by what its mapping says, over the stream kinds it 
     await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
 
     await Effect.runPromise(
-      ledger.service.advanceRow('topics', alpha, 'spring', { open: false, next_at: null, due_at: null }),
+      ledger.service.advanceRow('topics', alpha, 'spring', {
+        set: { open: false, next_at: null, due_at: null },
+        when: [],
+      }),
     );
-    await Effect.runPromise(ledger.service.advanceRow('topics', alpha, 'autumn', { open: false }));
-    await Effect.runPromise(ledger.service.advanceRow('nothing', alpha, 'spring', { open: false }));
+    await Effect.runPromise(ledger.service.advanceRow('topics', alpha, 'autumn', { set: { open: false }, when: [] }));
+    await Effect.runPromise(ledger.service.advanceRow('nothing', alpha, 'spring', { set: { open: false }, when: [] }));
     const refused = await Effect.runPromiseExit(
-      ledger.service.advanceRow('topics', alpha, 'spring', { note: 'advanced' }),
+      ledger.service.advanceRow('topics', alpha, 'spring', { set: { note: 'advanced' }, when: [] }),
     );
     await topics(ledger, 'brain/acme/alpha/notes/n1', { type: 'topic_noted', topic: 'spring', note: 'after' });
 
@@ -239,5 +242,23 @@ describe('a projection keyed by what its mapping says, over the stream kinds it 
     expect((await topicsOf(ledger)).map(({ key, row }) => [key, row['open'], row['due_at'], row['note']])).toEqual([
       ['spring', false, null, 'after'],
     ]);
+  });
+});
+
+describe('the advance of a row of the in-memory ledger that its fold changed since its reader read it', () => {
+  it('advances a row only while the columns it is told to compare still hold what its reader read', async () => {
+    const ledger = memoryLedger(undefined, [topicRows]);
+    await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
+    const readAt = messageIdOf('brain/acme/alpha/executions/r1', 1);
+    await topics(ledger, 'brain/acme/alpha/notes/n1', { type: 'topic_noted', topic: 'spring', note: 'meanwhile' });
+
+    await Effect.runPromise(
+      ledger.service.advanceRow('topics', alpha, 'spring', {
+        set: { open: false },
+        when: [{ column: 'last_message', equals: readAt }],
+      }),
+    );
+
+    expect((await topicsOf(ledger)).map(({ row }) => row['open'])).toEqual([true]);
   });
 });

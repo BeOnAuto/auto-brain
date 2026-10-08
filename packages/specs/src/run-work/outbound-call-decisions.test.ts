@@ -29,13 +29,23 @@ const started: ExecutionEvent = {
   ...start,
 };
 
-const deferred: ExecutionEvent = { type: 'execution_deferred', record: { channel: 'inbox' }, ...ofApproval, ...during };
+const deferred: ExecutionEvent = {
+  type: 'execution_deferred',
+  record: {
+    to: 'ada',
+    message: 'Approve?',
+    expires_at: '2026-10-09T09:00:00.000Z',
+    requested_at: '2026-10-07T09:00:00.000Z',
+  },
+  ...ofApproval,
+  ...during,
+};
 
 const succeeded: ExecutionEvent = { type: 'execution_succeeded', output: {}, record: {}, ...ofApproval, ...during };
 
 const unavailable: ExecutionEvent = {
   type: 'execution_rejected',
-  rejection: { reason: 'unavailable', detail: 'The channel is gone' },
+  rejection: { reason: 'unavailable', detail: 'The tool server is gone' },
   ...ofApproval,
   ...during,
 };
@@ -84,7 +94,19 @@ describe('the deferral of a run', () => {
   it('names the definition that ran, as its endings do', () => {
     expect(
       decided(
-        { type: 'finish', result: { type: 'execution_deferred', record: { channel: 'inbox' } }, ...during },
+        {
+          type: 'finish',
+          result: {
+            type: 'execution_deferred',
+            record: {
+              to: 'ada',
+              message: 'Approve?',
+              expires_at: '2026-10-09T09:00:00.000Z',
+              requested_at: '2026-10-07T09:00:00.000Z',
+            },
+          },
+          ...during,
+        },
         started,
       ),
     ).toStrictEqual(Result.succeed([deferred]));
