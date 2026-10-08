@@ -100,6 +100,27 @@ describe('the starts of the workflows whose trigger an event matches', () => {
   });
 });
 
+describe('the event triggers an event is matched against', () => {
+  it('are those that name its type, so the filters of other types are never evaluated on it', async () => {
+    const { database, delivered, starts, said } = await starting();
+    await subscribed(database, 'other', { data: '${ .a.b }', type: 'stop' });
+    await subscribed(database, 'close', { type: 'go' });
+
+    await delivered(followedRecordOf('text'));
+
+    expect([starts().map(({ workflow }) => workflow), said()]).toEqual([['close'], []]);
+  });
+
+  it('start a workflow once for an event that two filters of its trigger match', async () => {
+    const { database, delivered, starts } = await starting();
+    await subscribed(database, 'close', { type: 'go', data: { region: 'eu' } }, { type: 'go' });
+
+    await delivered(followedRecordOf({ region: 'eu' }));
+
+    expect(starts().map(({ workflow }) => workflow)).toEqual(['close']);
+  });
+});
+
 describe('the starts a workflow is kept from', () => {
   it('are those for records about its own runs, about runs one of its runs began, or past the reaction depth', async () => {
     const { database, delivered, starts, said } = await starting();

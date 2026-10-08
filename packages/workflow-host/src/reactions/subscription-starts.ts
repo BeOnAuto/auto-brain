@@ -85,9 +85,8 @@ export function subscriptionStarts(parts: StartParts): RecordConsumer {
     batchOf: (followed, after, most) =>
       Effect.gen(function* () {
         const now = parts.now();
-        const candidates = (yield* eventSubscriptionsOf(parts.database, followed.brainKey)).filter(
-          (subscription) => after === undefined || subscription.workflow > after,
-        );
+        const type = followed.event.event.type;
+        const candidates = yield* eventSubscriptionsOf(parts.database, followed.brainKey, { type, after, most });
         const taken = candidates.slice(0, most);
         const verdicts = taken.map((subscription) => verdictOf(subscription, followed, now));
         yield* Effect.forEach(

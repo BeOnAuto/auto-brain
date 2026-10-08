@@ -14,6 +14,12 @@ export interface Activation {
   readonly activatedAt: number;
 }
 
+export interface EventPage {
+  readonly type: string;
+  readonly after: string | undefined;
+  readonly most: number;
+}
+
 export interface EventSubscription {
   readonly workflow: string;
   readonly version: number;
@@ -123,14 +129,17 @@ export function triggersRemoved(database: HostDatabase, brainKey: string, workfl
 export function eventSubscriptionsOf(
   database: HostDatabase,
   brainKey: string,
+  { type, after = '', most }: EventPage,
 ): Effect.Effect<readonly EventSubscription[]> {
   return Effect.orDie(
     rowsOf(
       EventRow,
       Effect.orDie(
         database.read(
-          statement`SELECT workflow, version, rule FROM workflow_subscriptions
-            WHERE brain_key = ${brainKey} AND kind = 'event' ORDER BY workflow`,
+          statement`SELECT s.workflow, s.version, s.rule FROM workflow_subscription_types t
+            JOIN workflow_subscriptions s ON s.brain_key = t.brain_key AND s.workflow = t.workflow AND s.kind = 'event'
+            WHERE t.brain_key = ${brainKey} AND t.type = ${type} AND t.workflow > ${after}
+            ORDER BY t.workflow LIMIT ${most + 1}`,
         ),
       ),
     ),
