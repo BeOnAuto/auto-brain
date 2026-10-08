@@ -126,7 +126,7 @@ describe('a key limited to one brain on /mcp', () => {
 });
 
 describe('the tool servers on /mcp, for a key limited to one brain', () => {
-  it('are those of its brain, and those of the whole org are refused it with forbidden', async () => {
+  it('are those of its brain, and those of the whole org are refused it with words that say to name its brain', async () => {
     const outcome = await asKey(acmeAlpha.key, async (session) => ({
       own: await session.callTool('list_tool_servers', { brain: 'alpha' }),
       org: await session.callTool('list_tool_servers', {}),
@@ -135,7 +135,7 @@ describe('the tool servers on /mcp, for a key limited to one brain', () => {
     expect(outcome.own.structuredContent).toEqual({ tool_servers: [] });
     expect(problemIn(outcome.org)).toMatchObject({
       reason: 'forbidden',
-      detail: 'The caller may not access this brain',
+      detail: 'The caller may access only some brains of this org; name one of them in brain',
     });
   });
 });

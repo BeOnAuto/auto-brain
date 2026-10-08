@@ -25,14 +25,17 @@ function rejectionOfCaller(registration: Registration, { caller, org }: OrgReque
     : rejected('forbidden', `The caller lacks the ${alternatives(permissions)} permission`);
 }
 
+const brainUnnamed = 'The caller may access only some brains of this org; name one of them in brain';
+
 function rejectionOfBrainAccess(
   registration: Registration,
   caller: CallerIdentity,
   brain: unknown,
 ): Rejected | undefined {
-  return authorizesItself(registration, caller) || canAccessBrain(caller.brains, brain)
-    ? undefined
-    : rejected('forbidden', 'The caller may not access this brain');
+  if (authorizesItself(registration, caller) || canAccessBrain(caller.brains, brain)) {
+    return undefined;
+  }
+  return rejected('forbidden', brain === undefined ? brainUnnamed : 'The caller may not access this brain');
 }
 
 function rejectionOfOrgId(org: string): Rejected | undefined {

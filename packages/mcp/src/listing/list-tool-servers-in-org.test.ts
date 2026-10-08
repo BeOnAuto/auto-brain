@@ -21,9 +21,11 @@ const alphaReader: CallerIdentity = {
 
 const writerOnly: CallerIdentity = { id: 'acme-writer', org: 'acme', permissions: ['brain:write'], brains: '*' };
 
+const brainsOfTheOrg: readonly string[] = ['alpha', 'beta'];
+
 const services = Layer.mergeAll(
   memoryLedger().layer,
-  memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }]),
+  memoryBrainRegistry(brainsOfTheOrg.map((brain) => ({ org: 'acme', brain }))),
   recordingReporter().layer,
 );
 
@@ -38,10 +40,8 @@ interface Asking {
   readonly caller?: CallerIdentity;
 }
 
-const brainsOfTheOrg: ReadonlySet<string> = new Set(['alpha', 'beta']);
-
 function lookUpBrain(brain: string): Effect.Effect<void, NotFound> {
-  return brainsOfTheOrg.has(brain)
+  return brainsOfTheOrg.includes(brain)
     ? Effect.void
     : Effect.fail(new NotFound({ detail: `There is no brain ${brain} in this org` }));
 }
@@ -147,7 +147,11 @@ describe('list_tool_servers of the org, refusing', () => {
     const fake = await fakeServer();
     const { listed } = listingOn(fake);
 
-    expect(await listed({ caller: alphaReader })).toMatchObject({ status: 'rejected', reason: 'forbidden' });
+    expect(await listed({ caller: alphaReader })).toMatchObject({
+      status: 'rejected',
+      reason: 'forbidden',
+      detail: 'The caller may access only some brains of this org; name one of them in brain',
+    });
     expect(await listed({ input: { brain: 'beta' }, caller: alphaReader })).toMatchObject({
       status: 'rejected',
       reason: 'forbidden',

@@ -79,6 +79,26 @@ describe('a caller limited to some brains', () => {
   });
 });
 
+describe('a caller limited to some brains that names none', () => {
+  it('is told it may access only some brains and to name one, by every operation that takes a brain', async () => {
+    const { call } = harness();
+    const unnamed = {
+      status: 'rejected',
+      reason: 'forbidden',
+      detail: 'The caller may access only some brains of this org; name one of them in brain',
+    };
+
+    expect(
+      await Promise.all([
+        call(createBrain, toAcme(acmeAlphaKeeper, { name: 'Alpha' })),
+        call(getBrain, toAcme(acmeAlphaKeeper, {})),
+        call(updateBrain, toAcme(acmeAlphaKeeper, renamed)),
+        call(retireBrain, toAcme(acmeAlphaKeeper, {})),
+      ]),
+    ).toEqual([unnamed, unnamed, unnamed, unnamed]);
+  });
+});
+
 describe('creating a brain', () => {
   it('is open to a limited caller only for an id on its list, and to a caller of every brain for any', async () => {
     const { call } = harness();
