@@ -8,11 +8,11 @@ import {
 } from '@beonauto/config';
 import { Data, Effect, Option, Result, Schema } from 'effect';
 
-import { allowedToolsOf, allowedToolsSetting } from './allowed-tools.ts';
 import { checkedEntry, mcpServersSetting } from './entry-checks.ts';
 import { misplacedReferences, secretsOfEntry } from './entry-references.ts';
 import type { McpServerSettings, McpSettings } from './mcp-settings.ts';
 import { McpServerEntrySchema, McpServersSchema, type McpServerEntryFields } from './server-entries.ts';
+import { allowedToolsOf, allowedToolsSetting, testableToolsOf, testableToolsSetting } from './tool-lists.ts';
 
 export type Environment = Readonly<Record<string, string | undefined>>;
 
@@ -85,13 +85,14 @@ export function readMcpSettings(
   const servers = serversOf(environment[mcpServersSetting], environment, context);
   const names = Result.isSuccess(servers) ? servers.success.map(({ name }) => name) : [];
   const allowed = allowedToolsOf(environment[allowedToolsSetting], names);
-  if (Result.isSuccess(servers) && Result.isSuccess(allowed)) {
-    return Effect.succeed({ servers: servers.success, allowed: allowed.success });
+  const testable = Result.flatMap(allowed, (tools) => testableToolsOf(environment[testableToolsSetting], names, tools));
+  if (Result.isSuccess(servers) && Result.isSuccess(allowed) && Result.isSuccess(testable)) {
+    return Effect.succeed({ servers: servers.success, allowed: allowed.success, testable: testable.success });
   }
   return Effect.fail(
     invalid([
       ...(Result.isFailure(servers) ? servers.failure : []),
-      ...(Result.isFailure(allowed) && Result.isSuccess(servers) ? allowed.failure : []),
+      ...(Result.isFailure(testable) && Result.isSuccess(servers) ? testable.failure : []),
     ]),
   );
 }

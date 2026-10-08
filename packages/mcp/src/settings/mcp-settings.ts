@@ -43,6 +43,7 @@ export type McpServerSettings = HttpServerSettings | StdioServerSettings;
 export interface McpSettings {
   readonly servers: readonly McpServerSettings[];
   readonly allowed: readonly ToolReference[] | null;
+  readonly testable: readonly ToolReference[];
 }
 
 export function isListedFor(server: ServedBy, address: BrainAddress, named: string | undefined): boolean {

@@ -1,4 +1,7 @@
+import { Result } from 'effect';
+
 import type { McpConnection } from '../connections/mcp-connection.ts';
+import { failureOf, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { McpServerSettings } from '../settings/mcp-settings.ts';
 
@@ -12,7 +15,7 @@ export interface ServerSlot {
   readonly release: () => Promise<void>;
 }
 
-export function serverSlot(link: ServerLink, first: McpConnection): ServerSlot {
+function serverSlot(link: ServerLink, first: McpConnection): ServerSlot {
   let current = first;
   let exited = false;
   let reopened = false;
@@ -53,4 +56,11 @@ export function serverSlot(link: ServerLink, first: McpConnection): ServerSlot {
     },
     release: () => link.release(),
   };
+}
+
+export function takenSlot(link: ServerLink): Promise<Result.Result<ServerSlot, ServerFailure>> {
+  return link.take().then(
+    (connection) => Result.succeed(serverSlot(link, connection)),
+    (error: unknown) => Result.fail(failureOf(error)),
+  );
 }

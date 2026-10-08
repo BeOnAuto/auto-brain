@@ -2,6 +2,7 @@ import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Cancelled, Failed, Rejected, RejectionReason } from '../outcome/outcome.ts';
 import type { RejectionKind } from '../outcome/rejection.ts';
 import type { UnavailableBecause } from '../outcome/unavailable.ts';
+import type { Remedies } from './plain-language.ts';
 
 export interface Explanation {
   readonly why: string;
@@ -149,6 +150,8 @@ const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
   mcp_server_not_configured: 'because whoever runs the server has not set up a tool server of that name for this brain',
   tool_not_allowed: 'because it is not among the tools whoever runs the server allows',
   tool_not_listed: 'because the tool server it names does not have that tool',
+  not_testable:
+    "because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test",
   failing: 'because the tool server kept failing',
   rate_limited: 'because the tool server asked it to slow down for longer than a run waits',
   unreachable: 'because the tool server could not be reached in time',
@@ -159,11 +162,18 @@ const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
   no_answer: 'because the model kept calling tools instead of answering',
 };
 
-const remedyByBecause: Readonly<Partial<Record<UnavailableBecause, string>>> = {
+const remedyByBecause: Remedies = {
+  not_testable:
+    'A tool that may change something is called only by a function the person asked to run; whoever runs the server can list it under testable_tools, and list_tool_servers shows which tools can be tested.',
   key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
 };
 
-export function explanationOf({ reason, kind, because }: ExplainedRejection): Explanation {
+const noRemedies: Remedies = {};
+
+export function explanationOf(
+  { reason, kind, because }: ExplainedRejection,
+  remedies: Remedies = noRemedies,
+): Explanation {
   if (kind === undefined) {
     return explanationByReason[reason];
   }
@@ -173,12 +183,17 @@ export function explanationOf({ reason, kind, because }: ExplainedRejection): Ex
     : {
         ...explanation,
         why: `${explanation.why}, ${explanationByBecause[because]}`,
-        remedy: remedyByBecause[because] ?? explanation.remedy,
+        remedy: remedies[because] ?? remedyByBecause[because] ?? explanation.remedy,
       };
 }
 
-function rejectionWords(attempt: string, operationKind: OperationKind, rejection: Rejected): string {
-  const { why, remedy, mayHaveChanged } = explanationOf(rejection);
+function rejectionWords(
+  attempt: string,
+  operationKind: OperationKind,
+  rejection: Rejected,
+  remedies: Remedies,
+): string {
+  const { why, remedy, mayHaveChanged } = explanationOf(rejection, remedies);
   const unchanged = operationKind === 'command' && mayHaveChanged === undefined ? ' Nothing was changed.' : '';
   return `Could not ${attempt}: ${why}.${unchanged} ${remedy}`;
 }
@@ -203,9 +218,10 @@ export function unsuccessfulWords(
   attempt: string,
   kind: OperationKind,
   outcome: Rejected | Failed | Cancelled,
+  remedies: Remedies = noRemedies,
 ): string {
   if (outcome.status === 'rejected') {
-    return rejectionWords(attempt, kind, outcome);
+    return rejectionWords(attempt, kind, outcome, remedies);
   }
   return outcome.status === 'failed' ? failureWords(attempt, outcome) : cancellationWords(attempt, kind);
 }

@@ -20,7 +20,7 @@ interface Session {
 
 export type ToolRecords = Omit<FakeToolState, 'exit'>;
 
-export function fakeSessions(records: ToolRecords): FakeSessions {
+export function fakeSessions(records: ToolRecords, issuesSessionIds = true): FakeSessions {
   const sessions = new Map<string, Session>();
   let ended = 0;
   const closeEvery = (): void => {
@@ -32,7 +32,7 @@ export function fakeSessions(records: ToolRecords): FakeSessions {
     opened: async (request) => {
       const server = fakeToolServer({ ...records, exit: closeEvery });
       const transport = new WebStandardStreamableHTTPServerTransport({
-        sessionIdGenerator: randomUUID,
+        sessionIdGenerator: issuesSessionIds ? randomUUID : undefined,
         onsessioninitialized: (id) => {
           sessions.set(id, { transport, server });
         },

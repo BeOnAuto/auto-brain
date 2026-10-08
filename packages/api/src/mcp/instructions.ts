@@ -115,10 +115,11 @@ const modelsAndTools: Sentences = ({ reasoning, listed }) => {
     return [];
   }
   const tools = 'may name tools that list_tool_servers lists';
+  const testing = listed('test_tool_call') ? '; test_tool_call shows what a tool answers' : '';
   return [
     listed('list_models')
-      ? `A reasoning function names a model that list_models lists and ${tools}.`
-      : `A reasoning function names a model this server can call, as the ${reasoning.guide} guide says, and ${tools}.`,
+      ? `A reasoning function names a model that list_models lists and ${tools}${testing}.`
+      : `A reasoning function names a model this server can call, as the ${reasoning.guide} guide says, and ${tools}${testing}.`,
   ];
 };
 

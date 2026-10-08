@@ -38,6 +38,7 @@ const specTools = [
   'list_brain_events',
   'publish_event',
   'list_tool_servers',
+  'test_tool_call',
   'answer_interaction',
   'list_interactions',
   'send_execution_event',
@@ -111,7 +112,7 @@ describe('a reasoning function definition over MCP, on the endpoint of its brain
 });
 
 describe('the spec tools an agent sees on the endpoint of a brain', () => {
-  it('are the seventeen operations inside a brain and the guide tool, none of them carrying the format of a document', async () => {
+  it('are the eighteen operations inside a brain and the guide tool, none of them carrying the format of a document', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
 
     expect(tools.map(({ name }) => name)).toEqual([...specTools, guideToolName]);
@@ -133,7 +134,7 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const schemas = schemasOf(tools);
 
-    expect(schemas).toHaveLength(35);
+    expect(schemas).toHaveLength(37);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

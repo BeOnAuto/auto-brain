@@ -23,6 +23,11 @@ function namesOf(tools: readonly ServerTool[]): string {
   return listed(others === 0 ? named : [...named, `${plainNumber(others)} more`]);
 }
 
+function testableAmong(tools: readonly ServerTool[]): string {
+  const testable = tools.filter(({ testable: canBe }) => canBe);
+  return testable.length === 0 ? 'none can be tested' : `${namesOf(testable)} can be tested`;
+}
+
 function serverInWords(server: ToolServer): string {
   const name = quoted(server.name);
   if ('unavailable' in server) {
@@ -32,7 +37,7 @@ function serverInWords(server: ToolServer): string {
   }
   return server.tools.length === 0
     ? `${name} offers no tool this brain may use.`
-    : `${name} offers ${counted(server.tools.length, toolNoun)}: ${namesOf(server.tools)}.`;
+    : `${name} offers ${counted(server.tools.length, toolNoun)}: ${namesOf(server.tools)}; ${testableAmong(server.tools)}.`;
 }
 
 const noServer =

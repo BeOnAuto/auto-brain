@@ -17,6 +17,7 @@ const insideABrain = [
   'list_brain_events',
   'publish_event',
   'list_tool_servers',
+  'test_tool_call',
   'list_interactions',
   'answer_interaction',
   'send_execution_event',
@@ -51,9 +52,12 @@ export const definitionTypes: readonly DefinitionType[] = [
 ];
 
 export const recipes: readonly RecipeCalls[] = [
-  { name: 'first-brain', calls: ['list_brains', 'create_brain', 'create_spec', 'execute_spec'] },
+  { name: 'first-brain', calls: ['list_brains', 'create_brain', 'create_spec', 'test_tool_call', 'execute_spec'] },
   { name: 'remember', calls: ['list_specs', 'create_spec', 'update_spec', 'execute_spec'] },
-  { name: 'give-tools', calls: ['list_tool_servers', 'create_spec', 'execute_spec', 'get_execution_history'] },
+  {
+    name: 'give-tools',
+    calls: ['list_tool_servers', 'test_tool_call', 'create_spec', 'execute_spec', 'get_execution_history'],
+  },
   { name: 'schedule', calls: ['list_specs', 'create_spec', 'update_spec', 'list_executions', 'get_execution'] },
 ];
 

@@ -29,8 +29,8 @@ import { deferralAccount, deliveryAccount, type TypedAccount } from '../run-work
 import {
   cutAtCodePoint,
   issuesShown,
-  mostCallerBytes,
   mostContentBytes,
+  mostCallerBytes,
   mostDetailBytes,
   mostDigestBytes,
   mostNameBytes,

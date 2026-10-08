@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { settle } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
-import { giveUp, linger } from '../testing/misbehaving.ts';
+import { breakOnceLeft, giveUp, linger } from '../testing/misbehaving.ts';
 
 const toAlpha = toBrain('acme', 'alpha');
 
@@ -50,5 +50,21 @@ describe('a settled call', () => {
 
     expect(settled).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(reported()).toEqual([{ id: reported()[0]?.id, original: new Error('escaped the call') }]);
+  });
+});
+
+describe('a call whose signal aborts it', () => {
+  it('is cancelled, and a defect the call raises after that is still reported as an incident', async () => {
+    const { dispatcher, reported, settleWithin } = harness();
+    const breaking = dispatcher.dispatchToBrain(breakOnceLeft.registration, toAlpha(acmeAdmin));
+
+    expect(await settleWithin(20, breaking)).toEqual({ status: 'cancelled' });
+    expect(reported()).toEqual([
+      {
+        id: reported()[0]?.id,
+        original: new Error('broken after its caller left'),
+        call: { operation: 'break_once_left', org: 'acme', brain: 'alpha', caller: 'acme-admin' },
+      },
+    ]);
   });
 });

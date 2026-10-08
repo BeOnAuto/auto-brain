@@ -47,7 +47,7 @@ describe('the plain language of create_brain', () => {
 });
 
 const listings: ReadonlyArray<readonly [readonly unknown[], string]> = [
-  [[], 'There are no brains in use yet.'],
+  [[], 'There is no brain in use that this connection may see.'],
   [[sales], 'There is 1 brain: “Sales”.'],
   [[sales, { ...sales, id: 'support', name: 'Support' }], 'There are 2 brains: “Sales” and “Support”.'],
   [[sales, retired], 'There is 1 brain: “Sales”. Also listed, 1 retired brain: “Old”.'],

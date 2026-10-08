@@ -1,8 +1,11 @@
+import { Result } from 'effect';
+
+import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import { bytesOf, cutAtCodePoint } from '../bounds/text-bytes.ts';
-import { serverSlot } from '../calls/server-slot.ts';
+import { deliveryIdKey, executionIdKey } from '../calls/call-meta.ts';
+import { takenSlot } from '../calls/server-slot.ts';
 import { forwarded, type Forwarded } from '../calls/tool-calls.ts';
-import { failureOf } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import {
   deliveryBounds,
@@ -20,7 +23,7 @@ function endedOf(done: Forwarded, { scrub }: Secrets): DeliveryCallEnded {
   const detail = done.message === '' ? shown : scrub(done.message);
   return {
     outcome: done.outcome,
-    detail: cutAtCodePoint(detail, deliveryBounds.detailBytes),
+    detail: cutToFailureBound(detail),
     retryAfterMs: done.retryAfterMs,
   };
 }
@@ -31,21 +34,17 @@ export async function calledOnce(
   access: DeliveryAccess,
   signal: Readonly<AbortSignal>,
 ): Promise<DeliveryCallEnded> {
-  const taken = await link.take().then(
-    (connection) => ({ connection }),
-    (error: unknown) => ({ failure: failureOf(error) }),
-  );
-  if ('failure' in taken) {
-    return failedWith('server_failure', access.secrets.scrub(taken.failure.message));
+  const taken = await takenSlot(link);
+  if (Result.isFailure(taken)) {
+    return failedWith('server_failure', cutToFailureBound(access.secrets.scrub(taken.failure.message)));
   }
-  const slot = serverSlot(link, taken.connection);
+  const slot = taken.success;
   try {
     const done = await forwarded({
       slot,
       tool: call.reference.tool,
       input: call.input,
-      executionId: call.executionId,
-      deliveryId: call.deliveryId,
+      meta: { [executionIdKey]: call.executionId, [deliveryIdKey]: call.deliveryId },
       callMs: Math.min(access.timing.callMs, deliveryBounds.callMs),
       longestRetryWaitMs: 0,
       signal,

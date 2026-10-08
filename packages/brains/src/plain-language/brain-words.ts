@@ -24,7 +24,7 @@ function namesOf(brains: readonly Brain[]): string {
 
 function inUse(brains: readonly Brain[]): string {
   if (brains.length === 0) {
-    return 'There are no brains in use yet.';
+    return 'There is no brain in use that this connection may see.';
   }
   const verb = brains.length === 1 ? 'is' : 'are';
   return `There ${verb} ${counted(brains.length, brainNoun)}: ${namesOf(brains)}.`;

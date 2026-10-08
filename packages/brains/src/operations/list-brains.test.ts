@@ -64,6 +64,19 @@ describe('list_brains', () => {
     expect(await call(listBrains, toAcme(acmeAdmin))).toEqual({ status: 'succeeded', output: { brains: [] } });
   });
 
+  it('says in the same words to an empty org and to a key whose brains are not made yet that it sees no brain', async () => {
+    const { call } = harness();
+    const empty = { status: 'succeeded', output: { brains: [] } };
+
+    expect([await call(listBrains, toAcme(acmeAdmin)), await call(listBrains, toAcme(acmeGammaReader))]).toEqual([
+      empty,
+      empty,
+    ]);
+    expect(listBrains.registration.plainLanguage?.outcome(empty.output, {})).toBe(
+      'There is no brain in use that this connection may see.',
+    );
+  });
+
   it('lists the active brains sorted by id', async () => {
     const { call } = await withGammaAlphaAndRetiredBeta();
 

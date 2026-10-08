@@ -8,6 +8,7 @@ import {
   type OperationKind,
   type RegisteredPlainLanguage,
   type Rejected,
+  type Remedies,
   type Settled,
 } from '@beonauto/operations';
 import type { CallToolResult } from '@modelcontextprotocol/server';
@@ -23,16 +24,21 @@ function textOf(text: string): { readonly type: 'text'; readonly text: string } 
   return { type: 'text', text };
 }
 
+export interface RefusalWords {
+  readonly kind: OperationKind;
+  readonly attempt: string;
+  readonly remedies?: Remedies;
+}
+
 export function unsuccessfulResultOf(
   settled: Rejected | Failed | Cancelled,
   clientClosedRequest: boolean,
-  kind: OperationKind,
-  attempt: string,
+  { kind, attempt, remedies }: RefusalWords,
 ): CallToolResult {
   return {
     isError: true,
     content: [
-      textOf(withinCharacters(unsuccessfulWords(attempt, kind, settled), mostRefusalCharacters)),
+      textOf(withinCharacters(unsuccessfulWords(attempt, kind, settled, remedies), mostRefusalCharacters)),
       textOf(JSON.stringify(problemOfOutcome(settled, clientClosedRequest))),
     ],
   };
@@ -53,5 +59,9 @@ export function toolResultOf(
       structuredContent: settled.output,
     };
   }
-  return unsuccessfulResultOf(settled, clientClosedRequest, kind, plainLanguage.attempt(input));
+  return unsuccessfulResultOf(settled, clientClosedRequest, {
+    kind,
+    attempt: plainLanguage.attempt(input),
+    remedies: plainLanguage.remedies,
+  });
 }

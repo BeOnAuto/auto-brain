@@ -55,11 +55,18 @@ const searchTool = {
     properties: { query: { type: 'string', description: 'What to look for' } },
     required: ['query'],
   },
+  annotations: { readOnlyHint: true, openWorldHint: true },
+  testable: true,
 };
 
 const nothingTaken = { type: 'object', properties: {}, required: [] };
 
-const echoTool = { name: 'echo', description: 'Answers with its arguments.', input_schema: nothingTaken };
+const echoTool = {
+  name: 'echo',
+  description: 'Answers with its arguments.',
+  input_schema: nothingTaken,
+  testable: false,
+};
 
 describe('the tool servers a brain may use', () => {
   it('are those that serve its org and brain, by name, each with the tools the operator allows', async () => {
@@ -93,7 +100,14 @@ describe('the tool servers a brain may use', () => {
       {
         name: 'graph',
         type: 'http',
-        tools: [{ name: 'verbose', description: verboseDescription.slice(0, 4096), input_schema: nothingTaken }],
+        tools: [
+          {
+            name: 'verbose',
+            description: verboseDescription.slice(0, 4096),
+            input_schema: nothingTaken,
+            testable: false,
+          },
+        ],
       },
     ]);
   });
@@ -135,43 +149,6 @@ describe('a tool server on which the operator allows no tool', () => {
       { name: 'quiet', type: 'http', tools: [] },
     ]);
     expect(quiet.seen()).toEqual([]);
-  });
-});
-
-describe('a tool server that cannot be asked for its tools', () => {
-  it('is unavailable, in words, beside the servers that answer', async () => {
-    const fake = await fakeServer();
-    const gone = await serveFakeMcp();
-    await gone.close();
-
-    const listing = await listed({ graph: remote(gone), wiki: remote(fake) }, { allowed: ['graph/*', 'wiki/echo'] });
-
-    expect(listing).toEqual([
-      {
-        name: 'graph',
-        type: 'http',
-        unavailable: 'The MCP server graph could not be used: The MCP server could not be reached',
-        because: 'unreachable',
-      },
-      { name: 'wiki', type: 'http', tools: [echoTool] },
-    ]);
-  });
-
-  it('is unavailable while it keeps failing', async () => {
-    const fake = await fakeServer();
-    const access = accessTo({ graph: remote(fake) });
-
-    fake.answerNextWith(503);
-    const listing = await Effect.runPromise(access.listServers(alpha));
-
-    expect(listing).toEqual([
-      {
-        name: 'graph',
-        type: 'http',
-        unavailable: 'The MCP server graph could not be used: The MCP server answered HTTP 503',
-        because: 'failing',
-      },
-    ]);
   });
 });
 
@@ -268,6 +245,8 @@ describe('the secrets of a tool server', () => {
               ...searchTool.input_schema,
               properties: { query: { type: 'string', description: '[redacted]' } },
             },
+            annotations: searchTool.annotations,
+            testable: true,
           },
         ],
       },

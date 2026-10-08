@@ -2,8 +2,8 @@ import { Result } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
-import { serverSlot } from '../calls/server-slot.ts';
-import { failureOf, type FailureKind } from '../connections/server-failures.ts';
+import { takenSlot } from '../calls/server-slot.ts';
+import { failureOf, type FailureKind, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import { McpServerFailed, type ServerFailedBecause } from './mcp-server-failed.ts';
 import type { Listed } from './tool-naming.ts';
@@ -24,27 +24,32 @@ const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
   key_refused: 'key_refused',
 };
 
+function serverFailed(link: ServerLink, { kind, message }: ServerFailure, { scrub }: Secrets): McpServerFailed {
+  return new McpServerFailed({
+    because: failedBecause[kind],
+    detail: `The MCP server ${link.settings.name} could not be used: ${scrub(message)}`,
+  });
+}
+
 export async function connectedTo(
   link: ServerLink,
   { secrets, timing }: Listing,
 ): Promise<Result.Result<Listed, McpServerFailed>> {
-  try {
-    const connection = await link.take();
-    const slot = serverSlot(link, connection);
-    const tools = await connection.listTools(timing.openMs).catch(async (error: unknown) => {
-      await slot.release();
-      throw error;
-    });
-    return Result.succeed({ slot, tools });
-  } catch (error) {
-    const { kind, message } = failureOf(error);
-    return Result.fail(
-      new McpServerFailed({
-        because: failedBecause[kind],
-        detail: `The MCP server ${link.settings.name} could not be used: ${secrets.scrub(message)}`,
-      }),
-    );
+  const taken = await takenSlot(link);
+  if (Result.isFailure(taken)) {
+    return Result.fail(serverFailed(link, taken.failure, secrets));
   }
+  const slot = taken.success;
+  return slot
+    .connection()
+    .listTools(timing.openMs)
+    .then(
+      (tools) => Result.succeed({ slot, tools }),
+      async (error: unknown) => {
+        await slot.release();
+        return Result.fail(serverFailed(link, failureOf(error), secrets));
+      },
+    );
 }
 
 export async function released(listed: readonly Listed[]): Promise<void> {

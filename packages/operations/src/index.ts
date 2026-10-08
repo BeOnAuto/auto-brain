@@ -101,7 +101,7 @@ export {
   quoted,
   type Noun,
 } from './plain-language/phrasing.ts';
-export type { PlainLanguage, RegisteredPlainLanguage } from './plain-language/plain-language.ts';
+export type { PlainLanguage, RegisteredPlainLanguage, Remedies } from './plain-language/plain-language.ts';
 export { mostOutcomeCharacters, mostRefusalCharacters, withinCharacters } from './plain-language/word-bounds.ts';
 export { OrgContext, type OrgAddress } from './caller/org-context.ts';
 export { OrgWriter } from './ledger/org-writer.ts';

@@ -15,15 +15,25 @@ const ToolResultSchema = Schema.Struct({
   [metaField]: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
 });
 
+export const ToolAnnotationsSchema = Schema.Struct({
+  readOnlyHint: Schema.optionalKey(Schema.Boolean),
+  destructiveHint: Schema.optionalKey(Schema.Boolean),
+  idempotentHint: Schema.optionalKey(Schema.Boolean),
+  openWorldHint: Schema.optionalKey(Schema.Boolean),
+});
+
 const ListedToolSchema = Schema.Struct({
   name: Schema.String,
   description: Schema.optionalKey(Schema.String),
   inputSchema: Schema.JsonObject,
+  annotations: Schema.optionalKey(ToolAnnotationsSchema),
 });
 
 export type ToolResult = typeof ToolResultSchema.Type;
 
 export type ListedTool = typeof ListedToolSchema.Type;
+
+export type ToolAnnotations = typeof ToolAnnotationsSchema.Type;
 
 type ContentBlock = typeof ContentBlockSchema.Type;
 

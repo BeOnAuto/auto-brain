@@ -22,7 +22,7 @@ describe('what the model sees of a tool', () => {
     const [verbose] = tools.offered;
     const description = String(verbose?.description);
 
-    expect(await call('verbose', {})).toEqual({ text: 'Said.', isError: false });
+    expect(await call('verbose', {})).toMatchObject({ text: 'Said.', isError: false });
     expect(Buffer.byteLength(verboseDescription)).toBeGreaterThan(4096);
     expect(Buffer.byteLength(description)).toBe(4096);
     expect(verboseDescription.startsWith(description)).toBe(true);
@@ -31,7 +31,7 @@ describe('what the model sees of a tool', () => {
   it('sees its results scrubbed of the secrets of its server', async () => {
     const { call } = await runWith(['echo']);
 
-    expect(await call('echo', { said: `the key is ${fakeApiKey}` })).toEqual({
+    expect(await call('echo', { said: `the key is ${fakeApiKey}` })).toMatchObject({
       text: '{"said":"the key is [redacted]"}',
       isError: false,
     });

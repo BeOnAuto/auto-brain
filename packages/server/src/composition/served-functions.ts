@@ -40,7 +40,7 @@ export async function functionsServedBy(
     parts: {
       primitives: [reasoning.primitive, interaction.primitive, computation.primitive, recall.primitive],
       orgOperations: [...brainOperations, reasoning.listModels],
-      brainOperations: [reasoning.listToolServers, ...interaction.operations],
+      brainOperations: [reasoning.listToolServers, reasoning.testToolCall, ...interaction.operations],
       dueWork: [interaction.dueWork],
       store: recall.store,
       views: recall.views,

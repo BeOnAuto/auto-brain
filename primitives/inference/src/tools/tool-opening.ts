@@ -1,5 +1,5 @@
 import type { NotOfferedBecause, RunTools, ServerFailedBecause, ToolAccess } from '@beonauto/mcp';
-import { writtenOf, type ToolReference } from '@beonauto/mcp/policy';
+import { executionIdKey, writtenOf, type ToolReference } from '@beonauto/mcp/policy';
 import { Unavailable } from '@beonauto/operations';
 import type { RunContext } from '@beonauto/specs';
 import { Effect } from 'effect';
@@ -25,7 +25,7 @@ function opened(
   references: readonly ToolReference[],
   { id, org, brain, journal }: RunContext,
 ): Effect.Effect<RunTools, Unavailable> {
-  return access.open({ id, org, brain, journal }, references).pipe(
+  return access.open({ id, org, brain, journal, meta: { [executionIdKey]: id } }, references).pipe(
     Effect.catchTags({
       tool_not_offered: ({ because, detail }: Refused<NotOfferedBecause>) =>
         Effect.fail(new Unavailable({ detail, kind: 'tool_not_offered', because })),

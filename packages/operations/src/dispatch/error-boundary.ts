@@ -26,8 +26,10 @@ export function withErrorBoundary<R>(
   pipeline: Effect.Effect<Succeeded, Rejected, R>,
   summary: CallSummary,
 ): Effect.Effect<Outcome, never, R | IncidentReporter> {
-  return pipeline.pipe(
-    Effect.catch((rejection) => Effect.succeed(rejection)),
-    Effect.catchCauseIf(Predicate.not(Cause.hasInterruptsOnly), (cause) => failureOf(cause, summary)),
+  return Effect.uninterruptibleMask((restore) =>
+    restore(pipeline).pipe(
+      Effect.catch((rejection) => Effect.succeed(rejection)),
+      Effect.catchCauseIf(Predicate.not(Cause.hasInterruptsOnly), (cause) => failureOf(cause, summary)),
+    ),
   );
 }
