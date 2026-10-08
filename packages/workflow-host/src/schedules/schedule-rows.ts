@@ -59,7 +59,9 @@ export function nextScheduleDue(database: HostDatabase): Effect.Effect<number | 
   return Effect.orDie(
     rowsOf(
       Schema.Struct({ due: Schema.NullOr(WholeNumber) }),
-      Effect.orDie(database.read(statement`SELECT MIN(next_due) AS due FROM workflow_subscriptions`)),
+      Effect.orDie(
+        database.read(statement`SELECT MIN(next_due) AS due FROM workflow_subscriptions WHERE next_due IS NOT NULL`),
+      ),
     ),
   ).pipe(Effect.map((rows) => rows.reduce<number | null>((_, { due }) => due, null)));
 }
