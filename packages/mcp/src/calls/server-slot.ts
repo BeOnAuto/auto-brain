@@ -15,7 +15,7 @@ export interface ServerSlot {
   readonly release: () => Promise<void>;
 }
 
-export function serverSlot(link: ServerLink, first: McpConnection): ServerSlot {
+function serverSlot(link: ServerLink, first: McpConnection): ServerSlot {
   let current = first;
   let exited = false;
   let reopened = false;
