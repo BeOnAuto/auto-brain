@@ -149,6 +149,8 @@ const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
   mcp_server_not_configured: 'because whoever runs the server has not set up a tool server of that name for this brain',
   tool_not_allowed: 'because it is not among the tools whoever runs the server allows',
   tool_not_listed: 'because the tool server it names does not have that tool',
+  not_testable:
+    "because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test",
   failing: 'because the tool server kept failing',
   rate_limited: 'because the tool server asked it to slow down for longer than a run waits',
   unreachable: 'because the tool server could not be reached in time',
@@ -160,6 +162,8 @@ const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
 };
 
 const remedyByBecause: Readonly<Partial<Record<UnavailableBecause, string>>> = {
+  not_testable:
+    'A tool that may change something is called only by a function the person asked to run; whoever runs the server can list it under testable_tools, and list_tool_servers shows which tools can be tested.',
   key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
 };
 

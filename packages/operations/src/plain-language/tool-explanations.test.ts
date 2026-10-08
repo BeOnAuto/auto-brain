@@ -31,6 +31,12 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
     toolsNamed,
   ],
   [
+    'a tool its server may let change something, which whoever runs the server has not listed as safe to test',
+    { reason: 'unavailable', kind: 'tool_not_offered', because: 'not_testable' },
+    "this server does not offer a tool it names, because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test",
+    'A tool that may change something is called only by a function the person asked to run; whoever runs the server can list it under testable_tools, and list_tool_servers shows which tools can be tested.',
+  ],
+  [
     'a tool server that kept failing before any call',
     { reason: 'unavailable', kind: 'mcp_server_failed', because: 'failing' },
     'a tool server it needs could not be used, because the tool server kept failing',
