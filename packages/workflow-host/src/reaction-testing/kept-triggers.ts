@@ -38,6 +38,13 @@ export function untilTriggersAt(database: HostDatabase, workflow: string, versio
   );
 }
 
+export function untilScheduleRuns(database: HostDatabase, reference: string) {
+  return until(
+    () => triggerRowsOf(database),
+    (rows) => rows.some((row) => row.reference === reference && row.running !== null),
+  );
+}
+
 export function refusalsSaid(database: HostDatabase, count = 1) {
   return until(
     () =>

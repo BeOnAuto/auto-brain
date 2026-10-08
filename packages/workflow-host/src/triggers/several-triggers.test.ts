@@ -13,7 +13,7 @@ import {
   specRecordAt,
   specRecorded,
 } from '../reaction-testing/brain-writes.ts';
-import { startsReaching } from '../reaction-testing/kept-triggers.ts';
+import { startsReaching, untilScheduleRuns } from '../reaction-testing/kept-triggers.ts';
 import { movedClock } from '../reaction-testing/moved-clock.ts';
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
@@ -97,6 +97,7 @@ describe('a due time of a schedule asked for again', () => {
     const { reacting, clock } = await closingAt(activatedAt + 1000);
     clock.moveTo(activatedAt + 15 * aMinute);
     await startsReaching(reacting.reactions.starts, 1);
+    await untilScheduleRuns(reacting.database, '/schedule/every');
 
     await Effect.runPromise(
       reacting.database.write(
