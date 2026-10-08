@@ -11,16 +11,11 @@ export interface OfferedServer {
   readonly name: string;
   readonly org: string;
   readonly brains: readonly string[] | null;
-}
-
-export interface OfferedTool {
-  readonly server: string;
-  readonly tool: string;
+  readonly allowed: readonly string[] | null;
 }
 
 export interface ChannelContext {
   readonly servers: readonly OfferedServer[];
-  readonly allowed: readonly OfferedTool[] | null;
 }
 
 type Checked<A> = Result.Result<A, readonly SettingProblem[]>;
@@ -105,12 +100,6 @@ function webhookOf(
       });
 }
 
-function isAllowed({ server, tool }: McpEntry, allowed: ChannelContext['allowed']): boolean {
-  return (
-    allowed === null || allowed.some((entry) => entry.server === server && (entry.tool === '*' || entry.tool === tool))
-  );
-}
-
 function serverProblems(
   name: string,
   entry: McpEntry,
@@ -133,13 +122,13 @@ function serverProblems(
             'Expected the org and brains of the channel to lie within those of its MCP server',
           ),
         ]),
-    ...(isAllowed(entry, context.allowed)
+    ...(server.allowed === null || server.allowed.includes(entry.tool)
       ? []
       : [
           problem(
             channelsSetting,
             at(name, 'tool'),
-            `Expected a tool that allowed_tools allows; ${entry.server}/${entry.tool} is not`,
+            `Expected a tool among the allowed of ${entry.server}; ${entry.tool} is not`,
           ),
         ]),
   ];

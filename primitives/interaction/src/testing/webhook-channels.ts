@@ -33,7 +33,7 @@ export function webhookChannels(
         PARTNER_API_KEY: 'partner-api-key-7f3a9c',
         PARTNER_WEBHOOK_SECRET: partnerSecret,
       },
-      { servers: [], allowed: null },
+      { servers: [] },
     ),
   );
 }

@@ -20,7 +20,7 @@ function mcpChannels(written: Readonly<Record<string, string>>): ChannelSettings
           approvals: { type: 'mcp', server: 'slack', tool: 'post_message', to: '^[a-z]+$', with: written, org: 'acme' },
         }),
       },
-      { servers: [{ name: 'slack', org: 'acme', brains: null }], allowed: null },
+      { servers: [{ name: 'slack', org: 'acme', brains: null, allowed: null }] },
     ),
   );
 }
@@ -140,7 +140,7 @@ function channelsHoldingSecrets(): ChannelSettings {
         PARTNER_API_KEY: partnerKey,
         PARTNER_WEBHOOK_SECRET: partnerSecret,
       },
-      { servers: [{ name: 'slack', org: 'acme', brains: null }], allowed: null },
+      { servers: [{ name: 'slack', org: 'acme', brains: null, allowed: null }] },
     ),
   );
 }
