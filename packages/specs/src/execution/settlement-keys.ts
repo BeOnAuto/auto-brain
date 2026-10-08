@@ -26,6 +26,10 @@ function digestOf(value: Schema.Json): string {
     .digest('hex');
 }
 
+export function succeedsWith(result: ExecutionResult, output: Schema.Json): boolean {
+  return result.type === 'execution_succeeded' && digestOf(result.output) === digestOf(output);
+}
+
 export function settlementKeyOf(result: ExecutionResult): string {
   if (result.type === 'execution_succeeded') {
     return JSON.stringify([result.type, digestOf(result.output)]);

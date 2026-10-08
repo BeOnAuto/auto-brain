@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
-import { openRequests } from '@beonauto/interaction';
+import { defineAnswerInteraction, noChannels, openRequests } from '@beonauto/interaction';
 import {
+  answeredByDeliveryBeforeSettling,
   askedRunId,
   askedThroughPartner,
   attemptedThenStopped,
@@ -96,6 +97,41 @@ describe.each(stores)(
         output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
       });
       expect(asked.receiver.received()).toHaveLength(1);
+    });
+  },
+);
+
+const approved = {
+  output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+};
+
+describe.each(stores)(
+  'a delivery that ends with its answer while another settlement is under way, on $store',
+  ({ skipped, aLedger }) => {
+    it.skipIf(skipped)('refuses an answer given meanwhile, and the run settles with the delivery’s', async () => {
+      const racing = answeredByDeliveryBeforeSettling(await aLedger(), { choice: 'approve' });
+      const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
+      await racing.started();
+
+      const meanwhile = await asked.brain.call(defineAnswerInteraction(noChannels), {
+        execution_id: askedRunId,
+        answer: { choice: 'reject' },
+      });
+      await asked.brain.performDue(Date.now());
+
+      expect(meanwhile).toMatchObject({ status: 'rejected', reason: 'conflict' });
+      expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+    });
+
+    it.skipIf(skipped)('settles a cancel under way with the delivery’s answer, read again once refused', async () => {
+      const racing = answeredByDeliveryBeforeSettling(await aLedger(), { choice: 'approve' });
+      const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
+      await racing.started();
+
+      await asked.brain.cancel(askedRunId);
+      await racing.cancelSettled(asked.brain.primitive);
+
+      expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
     });
   },
 );

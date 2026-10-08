@@ -6,9 +6,11 @@ import type {
   DeliveryEndedFact,
   DeliveryStartedFact,
   ExecutionCommand,
+  ExecutionResult,
   OutboundCallFact,
 } from '../execution/execution-commands.ts';
 import { executionDecider } from '../execution/execution-decider.ts';
+import { answeredWithinDelivery } from '../execution/execution-decisions.ts';
 import type { ExecutionEvent } from '../execution/execution-events.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -128,6 +130,37 @@ describe('the deliveries of a run asked to cancel', () => {
     expect(decided(recording(ended), started, deferred, attemptStarted, cancelAsked)).toStrictEqual(
       Result.succeed([attemptEnded]),
     );
+  });
+});
+
+describe('a run whose delivery answered', () => {
+  it('leaves the run to be settled with that answer alone, whoever settles it and however', () => {
+    const answered: ExecutionEvent = {
+      ...ended,
+      outcome: 'answered',
+      status: 200,
+      answer: { choice: 'approve' },
+      ...ofApproval,
+      ...during,
+    };
+    const settling = (result: ExecutionResult): ExecutionCommand => ({ type: 'settle', result, ...during });
+    const withTheAnswer = settling({ type: 'execution_succeeded', output: { choice: 'approve' }, record: {} });
+    const history = [started, deferred, attemptStarted, answered];
+
+    expect([
+      decided(settling({ type: 'execution_succeeded', output: { choice: 'reject' }, record: {} }), ...history),
+      decided(
+        settling({ type: 'execution_rejected', rejection: { reason: 'cancelled', kind: 'requested', detail: 'Off' } }),
+        ...history,
+      ),
+      decided(withTheAnswer, ...history),
+      decided(withTheAnswer, started, deferred, attemptStarted, attemptEnded),
+    ]).toMatchObject([
+      Result.fail(answeredWithinDelivery),
+      Result.fail(answeredWithinDelivery),
+      Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
+      Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
+    ]);
   });
 });
 

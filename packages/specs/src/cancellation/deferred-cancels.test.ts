@@ -1,8 +1,8 @@
-import { Conflict } from '@beonauto/operations';
+import { Conflict, type StreamReader, type StreamWriter } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { deferredCanceller, definePrimitive, type Primitive } from '../index.ts';
+import { answeredWithinDelivery, deferredCanceller, definePrimitive, type Primitive } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 import { relay } from '../testing/relay.ts';
@@ -170,6 +170,26 @@ describe('a cancel of a run of another capability that is over', () => {
     expect(await Effect.runPromise(Effect.flip(deferredCanceller([], changedMeanwhile)(relayed, asked, lineage)))).toBe(
       changed,
     );
+  });
+});
+
+describe('a cancel refused because a delivery of the run answered between its read and its settlement', () => {
+  it('reads the run again and lets its capability decide once more', async () => {
+    const { executing, ledger, reading } = await withHandOn();
+    await executing();
+    const turns = { next: (): Effect.Effect<void, Conflict> => Effect.fail(answeredWithinDelivery) };
+    const refusedOnce: StreamReader & StreamWriter = {
+      ...ledger.service,
+      execute: (stream, decider, command, given) => {
+        const turn = turns.next();
+        turns.next = () => Effect.void;
+        return Effect.andThen(turn, ledger.service.execute(stream, decider, command, given));
+      },
+    };
+
+    await Effect.runPromise(deferredCanceller([], refusedOnce)(relayed, asked, lineage));
+
+    expect(await reading()).toMatchObject({ output: { status: 'rejected', rejection: { reason: 'cancelled' } } });
   });
 });
 

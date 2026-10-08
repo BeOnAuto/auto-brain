@@ -86,6 +86,7 @@ export {
   type SettleExecution,
   type Settlement,
 } from './execution/execution-settler.ts';
+export { answeredWithinDelivery } from './execution/execution-decisions.ts';
 export { defineGetExecution, getExecution } from './operations/get-execution.ts';
 export { defineGetExecutionHistory } from './reading/get-execution-history.ts';
 export { defineListExecutions } from './reading/list-executions.ts';

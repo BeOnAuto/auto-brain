@@ -1,8 +1,15 @@
+import { memoryLedger } from '@beonauto/operations/testing';
 import { deferredCanceller } from '@beonauto/specs';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { askedRunId, askedThroughPartner, attemptedThenStopped } from '../testing/index.ts';
+import { openRequests } from '../requests/open-requests.ts';
+import {
+  answeredByDeliveryBeforeSettling,
+  askedRunId,
+  askedThroughPartner,
+  attemptedThenStopped,
+} from '../testing/index.ts';
 import { cancelledRequest } from './request-cancels.ts';
 
 const notification = {
@@ -64,6 +71,21 @@ describe('a cancel asked after a delivery answered and before its run was settle
 
     expect(afterTheCancel).toMatchObject({ standing: 'answered' });
     expect(await delivered.brain.runOf(askedRunId)).toMatchObject({
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+    });
+  });
+});
+
+describe('a cancel whose delivery ends with an answer between its read of the run and its settlement', () => {
+  it('reads the run again once refused, and settles with the answer, as the channel', async () => {
+    const racing = answeredByDeliveryBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
+    const delivering = await askedThroughPartner({ answers: true, ledger: racing.ledger });
+    await racing.started();
+
+    await delivering.brain.cancel(askedRunId);
+    await racing.cancelSettled(delivering.brain.primitive);
+
+    expect(await delivering.brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
     });
   });

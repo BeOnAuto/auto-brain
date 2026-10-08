@@ -7,7 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { noChannels } from '../channels/channel-settings.ts';
 import { defineAnswerInteraction } from '../requests/answer-interaction.ts';
 import { openRequests } from '../requests/open-requests.ts';
-import { askedRunId, askedThroughPartner, attemptedThenStopped } from '../testing/index.ts';
+import {
+  answeredByDeliveryBeforeSettling,
+  askedRunId,
+  askedThroughPartner,
+  attemptedThenStopped,
+} from '../testing/index.ts';
 
 const days = 24 * 60 * 60_000;
 
@@ -88,7 +93,7 @@ describe('an answer within the delivery and another one given meanwhile', () => 
     expect(meanwhile).toMatchObject({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The request was answered within its delivery, and its run is settled with that answer',
+      detail: 'The run was answered within its delivery, so that answer alone settles it',
     });
     expect(await asked.brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
@@ -114,5 +119,21 @@ describe('an answer within the delivery and another one given meanwhile', () => 
     expect(first).toMatchObject({ status: 'succeeded', output: { output: { choice: 'reject' } } });
     expect(await asked.brain.runOf(askedRunId)).toMatchObject({ output: { output: { choice: 'reject' } } });
     expect(records.map(({ type }) => type)).not.toContain('delivery_ended');
+  });
+});
+
+describe('an answer given while the delivery in flight ends with its own', () => {
+  it('refuses the other when the delivery ends with its answer between the read of the request and the settlement', async () => {
+    const racing = answeredByDeliveryBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
+    const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
+    await racing.started();
+
+    const meanwhile = await asked.brain.call(answerOf, { execution_id: askedRunId, answer: { choice: 'reject' } });
+    await asked.brain.performDue(Date.now());
+
+    expect(meanwhile).toMatchObject({ status: 'rejected', reason: 'conflict' });
+    expect(await asked.brain.runOf(askedRunId)).toMatchObject({
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+    });
   });
 });
