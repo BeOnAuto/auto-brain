@@ -36,18 +36,34 @@ describe('the brain an org operation targets', () => {
     const asking = (input: unknown) =>
       run(dispatcher.dispatchToOrg(getBrainLabel.registration, toAcme(acmeAlphaReader, input)));
 
-    expect([await asking({ brain: 'beta' }), await asking({ brain: 7 }), await asking({})]).toEqual([
-      accessDenied,
-      accessDenied,
-      accessDenied,
-    ]);
+    expect([await asking({ brain: 'beta' }), await asking({ brain: 7 })]).toEqual([accessDenied, accessDenied]);
     expect(await asking({ brain: 'alpha' })).toEqual({
       status: 'rejected',
       reason: 'not_found',
       detail: 'The brain alpha has no label',
     });
   });
+});
 
+describe('an org operation that takes a brain, called without one', () => {
+  it('is refused to a caller limited to some brains, saying it may access only some and to name one', async () => {
+    const { dispatcher, run } = harness();
+    const unnamed = {
+      status: 'rejected',
+      reason: 'forbidden',
+      detail: 'The caller may access only some brains of this org; name one of them in brain',
+    };
+
+    expect(await run(dispatcher.dispatchToOrg(getBrainLabel.registration, toAcme(acmeAlphaReader, {})))).toEqual(
+      unnamed,
+    );
+    expect(await run(dispatcher.dispatchToOrg(relabelBrain.registration, toAcme(alphaWriter, { label: 'x' })))).toEqual(
+      unnamed,
+    );
+  });
+});
+
+describe('whether an org operation targets a brain', () => {
   it('is recorded on the registration, and absent for an operation without a brain field', async () => {
     const { dispatcher, run } = harness();
 
