@@ -51,7 +51,7 @@ describe('logUntestableServer', () => {
     const [line] = await linesLoggedBy(logUntestableServer('graph'));
 
     expect(line).toContain(
-      '"message":"Nothing on MCP server graph can be tested, since it marks no tool read-only; its read-only tools go under testable_tools for agents to be able to look","level":"INFO"',
+      '"message":"Nothing on MCP server graph can be tested, since it marks no tool read-only; list its read-only tools under testable_tools so that test_tool_call can try them","level":"INFO"',
     );
     expect(line).toContain('"annotations":{"mcp_server":"graph"}');
   });
