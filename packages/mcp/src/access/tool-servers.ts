@@ -1,41 +1,17 @@
 import type { BrainAddress } from '@beonauto/operations';
-import { Predicate, Result, Schema } from 'effect';
+import { Result } from 'effect';
 
-import { cutToDescriptionBound } from '../bounds/call-bounds.ts';
-import type { ListedTool } from '../bounds/result-text.ts';
+import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import type { ServerTool, ToolServer } from '../listing/tool-server.ts';
-import type { ToolReference } from '../names/tool-reference.ts';
+import { shownTool, type Showing } from '../listing/shown-tools.ts';
+import type { ToolServer } from '../listing/tool-server.ts';
+import { isAllowed } from '../names/tool-reference.ts';
 import { isListedFor } from '../settings/mcp-settings.ts';
 import { connectedTo, type Listing } from './server-listing.ts';
-import { isAllowed, offeredOn } from './tool-naming.ts';
+import { offeredOn } from './tool-naming.ts';
 
-export interface ServersListing extends Listing {
+export interface ServersListing extends Listing, Showing {
   readonly links: ReadonlyMap<string, ServerLink>;
-  readonly allowed: readonly ToolReference[] | null;
-}
-
-type Scrub = (text: string) => string;
-
-const decodeJsonObject = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.JsonObject));
-
-function scrubbing(scrub: Scrub): (key: string, value: unknown) => unknown {
-  return (_key, value) => {
-    if (typeof value === 'string') {
-      return scrub(value);
-    }
-    return Predicate.isObject(value)
-      ? Object.fromEntries(Object.entries(value).map(([key, item]: readonly [string, unknown]) => [scrub(key), item]))
-      : value;
-  };
-}
-
-function shownTool({ name, description = '', inputSchema }: ListedTool, scrub: Scrub): ServerTool {
-  return {
-    name: scrub(name),
-    description: cutToDescriptionBound(scrub(description)),
-    input_schema: decodeJsonObject(JSON.stringify(inputSchema, scrubbing(scrub))),
-  };
 }
 
 async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<ToolServer> {
@@ -47,12 +23,12 @@ async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<
   const connected = await connectedTo(link, listing);
   if (Result.isFailure(connected)) {
     const { detail, because } = connected.failure;
-    return { name, type, unavailable: cutToDescriptionBound(detail), because };
+    return { name, type, unavailable: cutToFailureBound(detail), because };
   }
   const listed = connected.success;
   await listed.slot.release();
   const offered = offeredOn(listed, { references: [everyTool], allowed: listing.allowed });
-  return { name, type, tools: offered.map(({ tool }) => shownTool(tool, listing.secrets.scrub)) };
+  return { name, type, tools: offered.map(({ tool }) => shownTool(tool, name, listing)) };
 }
 
 function byName(first: ServerLink, second: ServerLink): number {

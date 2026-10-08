@@ -12,7 +12,9 @@ export const toolBounds = {
   openMs: 10_000,
   runMs: 600_000,
   descriptionBytes: 4096,
+  failureBytes: 1024,
   recordedContentBytes: 4096,
+  shownContentBytes: 2048,
 } as const;
 
 export interface Timing {
@@ -116,4 +118,8 @@ export function runBoundMs(stepDeadlineMs: number): number {
 
 export function cutToDescriptionBound(text: string): string {
   return cutAtCodePoint(text, toolBounds.descriptionBytes);
+}
+
+export function cutToFailureBound(text: string): string {
+  return cutAtCodePoint(text, toolBounds.failureBytes);
 }

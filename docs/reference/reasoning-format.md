@@ -98,7 +98,7 @@ The date filters are left out, since they read the server's clock and time zone,
 tools: [graph/search, graph/execute, notes/*]
 ```
 
-To find the names, call `list_tool_servers` (`GET /v1/orgs/{org}/brains/{brain}/tool-servers`, or the MCP tool of the same name). It lists the servers set up for the brain, each with the tools the operator allows, asking each server for them as a run does, so an agent can write `tools` without being told the names; see [Tool servers](http.md#tool-servers).
+To find the names, call `list_tool_servers` (`GET /v1/orgs/{org}/brains/{brain}/tool-servers`, or the MCP tool of the same name). It lists the servers set up for the brain, each with the tools the operator allows, asking each server for them as a run does, so an agent can write `tools` without being told the names; see [Tool servers](http.md#tool-servers). To learn what a tool answers before naming it, test it with `test_tool_call`, which calls it once as a run would and answers what the run's model would see, for a tool its server marks read-only or the operator lists as safe to test; see [Testing a tool](http.md#testing-a-tool).
 
 The model receives those tools and can call them before it answers. A run makes at most 25 calls and receives at most 256 KiB of results; a call that would exceed a bound, sends more than 16 KiB of arguments or repeats an earlier call a third time is refused, and the model is told why. Once the calls end, the model answers from what it has, without the tools. Each call appears in the run's history, with the server and tool, the size of its arguments and result, and how it ended.
 

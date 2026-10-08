@@ -1,6 +1,7 @@
+import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import { bytesOf, cutAtCodePoint } from '../bounds/text-bytes.ts';
-import { serverSlot } from '../calls/server-slot.ts';
+import { deliveryIdKey, executionIdKey } from '../calls/call-meta.ts';
 import { forwarded, type Forwarded } from '../calls/tool-calls.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import { boundedSlot, connectionBoundOf, takenWithin } from './connection-bound.ts';
@@ -20,7 +21,7 @@ function endedOf(done: Forwarded, { scrub }: Secrets): DeliveryCallEnded {
   const detail = done.message === '' ? shown : scrub(done.message);
   return {
     outcome: done.outcome,
-    detail: cutAtCodePoint(detail, deliveryBounds.detailBytes),
+    detail: cutToFailureBound(detail),
     retryAfterMs: done.retryAfterMs,
   };
 }
@@ -40,16 +41,15 @@ export async function calledOnce(
     );
   }
   if ('failure' in taken) {
-    return failedWith('server_failure', access.secrets.scrub(taken.failure.message));
+    return failedWith('server_failure', cutToFailureBound(access.secrets.scrub(taken.failure.message)));
   }
-  const slot = boundedSlot(serverSlot(link, taken.connection), connectionMs);
+  const slot = boundedSlot(taken.slot, connectionMs);
   try {
     const done = await forwarded({
       slot,
       tool: call.reference.tool,
       input: call.input,
-      executionId: call.executionId,
-      deliveryId: call.deliveryId,
+      meta: { [executionIdKey]: call.executionId, [deliveryIdKey]: call.deliveryId },
       callMs: Math.min(access.timing.callMs, deliveryBounds.callMs),
       longestRetryWaitMs: 0,
       signal,

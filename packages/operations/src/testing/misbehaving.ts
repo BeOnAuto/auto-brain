@@ -29,6 +29,21 @@ export const breakAndGiveUp = defineQuery('brain', {
     Effect.interrupt.pipe(Effect.ensuring(Effect.die(new Error('broken beside an interruption'))), Effect.as({})),
 });
 
+export const breakOnceLeft = defineQuery('brain', {
+  name: 'break_once_left',
+  title: 'Break once left',
+  description: 'Waits forever, and fails with a defect once its caller has gone.',
+  route: { method: 'GET', path: '/break-once-left' },
+  inputSchema: Empty,
+  outputSchema: Empty,
+  reasons: [],
+  handle: () =>
+    Effect.never.pipe(
+      Effect.onInterrupt(() => Effect.die(new Error('broken after its caller left'))),
+      Effect.as({}),
+    ),
+});
+
 export const giveUp = defineQuery('brain', {
   name: 'give_up',
   title: 'Give up',

@@ -1,3 +1,4 @@
+import { toolTestPresenter } from '@beonauto/mcp';
 import { Result, Schema, SchemaIssue } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -34,6 +35,8 @@ const typesOfTheBrain = [
   'tool_call_answered',
   'delivery_started',
   'delivery_ended',
+  'tool_test_started',
+  'tool_test_answered',
   'interaction_requested',
   'spec_created',
   'spec_updated',
@@ -51,7 +54,9 @@ const typesOfTheBrain = [
 describe('the types and sources of what the brain records itself', () => {
   it('are reserved for the brain: every type its runs and definitions record, and every type its feed shows', () => {
     expect([...reservedEventTypes]).toEqual(typesOfTheBrain);
-    const shown = makeSpecPresenters([echo]).flatMap(({ publicNames }) => Object.values(publicNames).flat());
+    const shown = [...makeSpecPresenters([echo]), toolTestPresenter].flatMap(({ publicNames }) =>
+      Object.values(publicNames).flat(),
+    );
     expect(shown.filter((name) => !reservedEventTypes.has(name))).toEqual([]);
     expect(
       [
@@ -71,10 +76,16 @@ describe('the types and sources of what the brain records itself', () => {
       '/source: Expected a source of your own, not one under /executions/, /specs/ or /callers/, which the brain records itself',
     ]);
     expect(
-      ['execution_deferred', 'tool_call_started', 'event_published', 'workflow_input_applied', 'step_waiting'].map(
-        (type) => refusals({ type }).length,
-      ),
-    ).toEqual([1, 1, 1, 1, 1]);
+      [
+        'execution_deferred',
+        'tool_call_started',
+        'tool_test_started',
+        'tool_test_answered',
+        'event_published',
+        'workflow_input_applied',
+        'step_waiting',
+      ].map((type) => refusals({ type }).length),
+    ).toEqual([1, 1, 1, 1, 1, 1, 1]);
     expect(refusals({ type: 'com.acme.ledger.month-closed', source: '/ledger/eu' })).toEqual([]);
   });
 });

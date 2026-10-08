@@ -87,3 +87,31 @@ describe('the MCP servers of the server', () => {
     );
   });
 });
+
+describe('the tools of the MCP servers that may be tested', () => {
+  it('are read from the environment and from the configuration file', () => {
+    const fromEnvironment = readSettings({
+      MCP_SERVERS: JSON.stringify({ graph }),
+      TESTABLE_TOOLS: JSON.stringify(['graph/execute']),
+      GRAPH_API_KEY: apiKey,
+    });
+    const path = configFile(
+      'mcp_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\nallowed_tools: [graph/search, graph/execute]\ntestable_tools: [graph/execute]\n',
+    );
+
+    expect([fromEnvironment.mcp.testable, readSettings({ CONFIG_FILE: path }).mcp.testable]).toEqual([
+      [{ server: 'graph', tool: 'execute' }],
+      [{ server: 'graph', tool: 'execute' }],
+    ]);
+  });
+
+  it('stop the start when one is not allowed, placed at its line in the configuration file', () => {
+    const path = configFile(
+      'mcp_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\nallowed_tools: [graph/search]\ntestable_tools: [graph/execute]\n',
+    );
+
+    expect(errorFrom({ CONFIG_FILE: path })).toBe(
+      `mcp_settings_invalid: The MCP server settings are invalid. ${path}:6:18 testable_tools[0]: ALLOWED_TOOLS does not allow graph/execute, and a tool a function may not call cannot be tested either`,
+    );
+  });
+});

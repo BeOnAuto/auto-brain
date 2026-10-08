@@ -18,6 +18,7 @@ export const UnavailableBecauseSchema = Schema.Literals([
   'mcp_server_not_configured',
   'tool_not_allowed',
   'tool_not_listed',
+  'not_testable',
   'failing',
   'rate_limited',
   'unreachable',

@@ -75,11 +75,14 @@ const listedForAlpha = {
             properties: { query: { type: 'string', description: 'What to look for' } },
             required: ['query'],
           },
+          annotations: { readOnlyHint: true, openWorldHint: true },
+          testable: true,
         },
         {
           name: 'echo',
           description: 'Answers with its arguments.',
           input_schema: { type: 'object', properties: {}, required: [] },
+          testable: false,
         },
       ],
     },
@@ -93,7 +96,7 @@ const listedForAlpha = {
 };
 
 const listedInWords =
-  "This brain's functions may use 2 tool servers. “graph” offers 2 tools: search and echo. “wiki” could not be asked for its tools just now.";
+  "This brain's functions may use 2 tool servers. “graph” offers 2 tools: search and echo; search can be tested. “wiki” could not be asked for its tools just now.";
 
 function onBrain<T>(server: ReasoningServer, brain: string, use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession(

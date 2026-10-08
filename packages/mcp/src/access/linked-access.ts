@@ -19,17 +19,23 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
     now: options.now ?? Date.now,
     timing,
     reportOutput: (server, message) => {
-      report({ server, message, execution_id: null });
+      report({ server, message, execution_id: null, tool_test_id: null });
     },
   };
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
   return {
     configured: settings.servers.length > 0,
-    open: (execution, references) =>
-      openedRun({ execution, references, links, allowed: settings.allowed, secrets, timing, report }),
+    testing: { allowed: settings.allowed, testable: settings.testable },
+    open: (context, references) =>
+      openedRun({ context, references, links, allowed: settings.allowed, secrets, timing, report }),
     callOnce: (call) => deliveredCall(call, { links, allowed: settings.allowed, secrets, timing }),
     listServers: (address, named) =>
-      Effect.promise(() => toolServersOf({ address, named }, { links, allowed: settings.allowed, secrets, timing })),
+      Effect.promise(() =>
+        toolServersOf(
+          { address, named },
+          { links, allowed: settings.allowed, testable: settings.testable, secrets, timing },
+        ),
+      ),
     close: async () => {
       await Promise.all([...links.values()].map((link) => link.stop()));
     },

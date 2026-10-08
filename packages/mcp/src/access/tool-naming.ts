@@ -1,16 +1,15 @@
 import { servesBrain } from '@beonauto/config';
+import { capitalized, type BrainAddress } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import type { ListedTool } from '../bounds/result-text.ts';
 import type { OfferedOnServer } from '../calls/run-parts.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import { namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
-import type { RunContext } from './run-context.ts';
-import { ToolNotOffered, type NotOfferedBecause } from './tool-not-offered.ts';
+import { isAllowed, namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
+import { ToolNotOffered } from './tool-not-offered.ts';
 
 export interface Naming {
-  readonly execution: RunContext;
   readonly references: readonly ToolReference[];
   readonly links: ReadonlyMap<string, ServerLink>;
   readonly allowed: readonly ToolReference[] | null;
@@ -28,48 +27,50 @@ interface NamedLink {
 
 const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
-function listedOf(references: readonly ToolReference[]): string {
-  return conjunction.format(references.map((reference) => writtenOf(reference)));
-}
+const disjunction = new Intl.ListFormat('en', { style: 'long', type: 'disjunction' });
 
-export function isAllowed(reference: ToolReference, allowed: readonly ToolReference[] | null): boolean {
-  return (
-    allowed === null ||
-    allowed.some(
-      (entry) =>
-        entry.server === reference.server &&
-        (namesEveryTool(entry) || namesEveryTool(reference) || entry.tool === reference.tool),
-    )
-  );
-}
-
-export function notOffered(because: NotOfferedBecause, named: readonly ToolReference[], why: string): ToolNotOffered {
+function notConfigured(named: readonly ToolReference[]): ToolNotOffered {
+  const servers = disjunction.format(new Set(named.map(({ server }) => server)));
   return new ToolNotOffered({
-    because,
-    detail: `The reasoning function names ${listedOf(named)}, ${why}`,
+    because: 'mcp_server_not_configured',
+    detail: `No MCP server named ${servers} is configured for this brain`,
   });
 }
 
-export function namedLinks({
-  execution,
-  references,
-  links,
-  allowed,
-}: Naming): Result.Result<readonly ServerLink[], ToolNotOffered> {
+function notAllowed(named: readonly ToolReference[]): ToolNotOffered {
+  const tools = conjunction.format(named.map((reference) => writtenOf(reference)));
+  return new ToolNotOffered({
+    because: 'tool_not_allowed',
+    detail: `The operator of this server does not allow ${tools}`,
+  });
+}
+
+function toolsNamed(references: readonly ToolReference[]): string {
+  const tools = conjunction.format(references.map(({ tool }) => tool));
+  return references.length === 1 ? `the tool ${tools}` : `the tools ${tools}`;
+}
+
+export function notListed(missing: readonly ToolReference[]): ToolNotOffered {
+  const byServer = Map.groupBy(missing, ({ server }) => server);
+  const unlisted = [...byServer].map(
+    ([server, references]: readonly [string, readonly ToolReference[]]) =>
+      `the MCP server ${server} does not list ${toolsNamed(references)}`,
+  );
+  return new ToolNotOffered({ because: 'tool_not_listed', detail: capitalized(conjunction.format(unlisted)) });
+}
+
+export function namedLinks(
+  address: BrainAddress,
+  { references, links, allowed }: Naming,
+): Result.Result<readonly ServerLink[], ToolNotOffered> {
   const configured = references.map((reference): NamedLink => ({ reference, link: links.get(reference.server) }));
-  const unconfigured = configured.filter(({ link }) => link === undefined || !servesBrain(link.settings, execution));
+  const unconfigured = configured.filter(({ link }) => link === undefined || !servesBrain(link.settings, address));
   if (unconfigured.length > 0) {
-    return Result.fail(
-      notOffered(
-        'mcp_server_not_configured',
-        unconfigured.map(({ reference }) => reference),
-        'but no MCP server of that name is configured for this brain',
-      ),
-    );
+    return Result.fail(notConfigured(unconfigured.map(({ reference }) => reference)));
   }
   const disallowed = references.filter((reference) => !isAllowed(reference, allowed));
   if (disallowed.length > 0) {
-    return Result.fail(notOffered('tool_not_allowed', disallowed, 'which the operator of this server does not allow'));
+    return Result.fail(notAllowed(disallowed));
   }
   return Result.succeed([...new Set(configured.map(({ link }) => link))].filter((link) => link !== undefined));
 }
@@ -95,7 +96,7 @@ export function offeredOn(listed: Listed, naming: Offering): readonly OfferedOnS
     .map((tool) => ({ slot, reference: { server, tool: tool.name }, tool }));
 }
 
-export function unlistedOn(listed: Listed, naming: Naming): readonly ToolReference[] {
+export function unlistedOn(listed: Listed, naming: Offering): readonly ToolReference[] {
   return namedOn(listed, naming).filter(
     (reference) => !namesEveryTool(reference) && !listed.tools.some(({ name }) => name === reference.tool),
   );

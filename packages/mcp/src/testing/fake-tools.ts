@@ -43,8 +43,10 @@ interface CallContext {
 
 interface FakeTool {
   readonly name: string;
+  readonly title?: string;
   readonly description?: string;
   readonly inputSchema: InputSchema;
+  readonly annotations?: Readonly<Record<string, boolean | string>>;
   readonly answer: Answer;
 }
 
@@ -53,6 +55,11 @@ export const fakeRequestIdKey = 'com.example/request_id';
 export const longToolName = 'a_tool_whose_name_is_much_longer_than_the_sixty_four_characters_a_provider_takes';
 
 export const deniedText = 'The field salary is denied by the policy; request access with the token access-7f3a';
+
+export const fakeChannels = [
+  { id: 'C04GNRL7XK', name: 'general' },
+  { id: 'C08RNDM4Q2', name: 'random' },
+];
 
 const anything: InputSchema = { type: 'object', properties: {}, required: [] };
 
@@ -77,17 +84,20 @@ const answeringTools: readonly FakeTool[] = [
     name: 'search',
     description: 'Finds the rows of the graph that match a query.',
     inputSchema: queried,
+    annotations: { readOnlyHint: true, openWorldHint: true },
     answer: (input) => text(`Found 2 rows for ${String(argument(input, 'query'))}.`),
   },
   {
     name: 'profile',
     inputSchema: anything,
+    annotations: { readOnlyHint: true },
     answer: () => ({ content: [], structuredContent: { name: 'Ada', rows: 2 } }),
   },
   {
     name: 'photo',
     description: 'Answers with an image and a sound, and no text.',
     inputSchema: anything,
+    annotations: { readOnlyHint: true },
     answer: () => ({
       content: [
         { type: 'image', data: pixel, mimeType: 'image/png' },
@@ -99,6 +109,7 @@ const answeringTools: readonly FakeTool[] = [
     name: 'denied',
     description: 'Answers as the policy of a gateway denies a field.',
     inputSchema: anything,
+    annotations: { readOnlyHint: true },
     answer: () => ({ isError: true, content: [{ type: 'text', text: deniedText }] }),
   },
   {
@@ -108,9 +119,17 @@ const answeringTools: readonly FakeTool[] = [
     answer: (input) => text(JSON.stringify(input)),
   },
   {
+    name: 'list_channels',
+    description: 'Lists the channels of the workspace, each with its id and name.',
+    inputSchema: anything,
+    annotations: { readOnlyHint: true },
+    answer: () => text(JSON.stringify(fakeChannels)),
+  },
+  {
     name: 'environment',
     description: 'Answers with the names of the environment variables of the server.',
     inputSchema: anything,
+    annotations: { title: 'Environment' },
     answer: () => text(JSON.stringify(Object.keys(process.env).toSorted())),
   },
 ];
@@ -120,6 +139,7 @@ const troubleTools: readonly FakeTool[] = [
     name: 'sleep',
     description: 'Answers after the milliseconds it is given, unless it is cancelled first.',
     inputSchema: { type: 'object', properties: { ms: { type: 'number' } }, required: ['ms'] },
+    annotations: { readOnlyHint: true, idempotentHint: true },
     answer: async (input, { signal }) => {
       await setTimeout(Number(argument(input, 'ms')), undefined, { signal });
       return text('Slept.');
@@ -129,12 +149,14 @@ const troubleTools: readonly FakeTool[] = [
     name: 'large',
     description: 'Answers with as many kibibytes of text as it is given.',
     inputSchema: { type: 'object', properties: { kib: { type: 'number' } }, required: ['kib'] },
+    annotations: { readOnlyHint: true },
     answer: (input) => text('😀'.repeat(Number(argument(input, 'kib')) * 256)),
   },
   {
     name: 'broken',
     description: 'Fails inside the server.',
     inputSchema: anything,
+    annotations: { readOnlyHint: true },
     answer: (input) => {
       throw new Error(`The broken tool broke on ${JSON.stringify(input)}`);
     },
@@ -143,6 +165,7 @@ const troubleTools: readonly FakeTool[] = [
     name: 'exit',
     description: 'Ends the server while it is called.',
     inputSchema: anything,
+    annotations: { destructiveHint: true },
     answer: (_input, { state }) => {
       state.exit();
       return Promise.withResolvers<CallToolResult>().promise;
@@ -155,6 +178,7 @@ export const verboseDescription = 'Answers with nothing worth the words. '.repea
 const namedTools: readonly FakeTool[] = [
   {
     name: 'verbose',
+    title: 'Verbose',
     description: verboseDescription,
     inputSchema: anything,
     answer: () => text('Said.'),
@@ -163,12 +187,14 @@ const namedTools: readonly FakeTool[] = [
     name: 'graph.query.v2',
     description: 'A tool whose name holds dots.',
     inputSchema: queried,
+    annotations: { readOnlyHint: true, destructiveHint: true },
     answer: (input) => text(`Queried ${String(argument(input, 'query'))}.`),
   },
   {
     name: longToolName,
     description: 'A tool whose name is longer than a provider takes.',
     inputSchema: anything,
+    annotations: { destructiveHint: false },
     answer: () => text('Answered from far away.'),
   },
 ];
@@ -186,12 +212,14 @@ export function fakeToolServer(state: FakeToolState): McpServer {
   mcp.server.setRequestHandler('tools/list', () => ({
     tools: listed().map((tool: FakeTool) => ({
       name: tool.name,
+      title: tool.title,
       description: tool.description,
       inputSchema: {
         type: tool.inputSchema.type,
         properties: { ...tool.inputSchema.properties },
         required: [...tool.inputSchema.required],
       },
+      annotations: tool.annotations,
     })),
   }));
   mcp.server.setRequestHandler('tools/call', async ({ params }: CallRequest, { mcpReq }: CallContext) => {

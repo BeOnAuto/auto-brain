@@ -160,16 +160,34 @@ describe('the recipes of a server', () => {
   });
 });
 
+describe('the recipes that give a brain tools', () => {
+  it('test a tool to learn what it answers, and never make a function to look, within the bound of a recipe', () => {
+    const texts = Object.fromEntries(servedGuidesOf(everyType).recipes.map(({ name, text }) => [name, text]));
+
+    expect(String(texts['give-tools'])).toContain(
+      "4. To learn what a tool answers, test it with test_tool_call, with the arguments its input_schema takes, and read the answer: that is what the function's model will see. Never make a function to look. When a prompt needs an id, such as a channel's, test the tool that lists them and take the id from its answer, confirming the choice with the person. A tool that cannot be tested may change something; list_tool_servers says which can.",
+    );
+    expect(String(texts['first-brain'])).toContain(
+      "When it should use a tool server's tools, follow the give-tools recipe: to learn what a tool answers, test it with test_tool_call, and never make a function to look.",
+    );
+    expect([Buffer.byteLength(String(texts['give-tools'])), Buffer.byteLength(String(texts['first-brain']))]).toEqual([
+      2058, 1761,
+    ]);
+  });
+});
+
 const calledWhereListed: ReadonlySet<string> = new Set(['get_guide', 'list_models']);
+
+const fieldsNamed: ReadonlySet<string> = new Set(['input_schema']);
 
 function toolsNamedIn(text: string): readonly string[] {
   return [...new Set(text.replaceAll(/`[^`]*`/gu, '').match(/\b[a-z]+(?:_[a-z]+)+\b/gu))].filter(
-    (name) => !calledWhereListed.has(name),
+    (name) => !calledWhereListed.has(name) && !fieldsNamed.has(name),
   );
 }
 
 describe('the tools a recipe calls', () => {
-  it('are every tool its steps name, but the guide tool, listed on every connection, and list_models, called only where it is listed', () => {
+  it('are every tool its steps name, but the guide tool, listed on every connection, list_models, called only where it is listed, and the fields of a tool they name', () => {
     const { recipes } = servedGuidesOf(everyType);
 
     expect(recipes.map(({ name, text }) => [name, toolsNamedIn(text).toSorted()])).toEqual(

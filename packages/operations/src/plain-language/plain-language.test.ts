@@ -39,6 +39,7 @@ function shelving(kind?: ConflictKind) {
       task: 'make a shelf',
       attempt: ({ title }) => `make the shelf ${quoted(title)}`,
       outcome: ({ title, books }, input) => `Made the shelf ${quoted(title)} for ${input.title}, with ${books} books.`,
+      remedies: { model_not_allowed: 'A shelf of another title can be made.' },
     },
   });
 }
@@ -82,6 +83,27 @@ describe('the plain language of a registration', () => {
     });
 
     expect(bare.registration.plainLanguage).toBeUndefined();
+  });
+});
+
+describe('the remedies of a registration', () => {
+  it('carries the remedies the operation gives of its own, and none when it gives none', () => {
+    const plain = defineCommand('org', {
+      name: 'plain_shelf',
+      title: 'Plain shelf',
+      description: 'Makes nothing.',
+      route: { method: 'POST', path: '/plain' },
+      inputSchema: Schema.Struct({ size: Schema.Int }),
+      outputSchema: Schema.Struct({ made: Schema.Boolean }),
+      reasons: [],
+      handle: () => Effect.succeed({ made: false }),
+      plainLanguage: { task: 'make nothing', attempt: () => 'make nothing', outcome: () => 'Made nothing.' },
+    });
+
+    expect(registration.plainLanguage?.remedies).toEqual({
+      model_not_allowed: 'A shelf of another title can be made.',
+    });
+    expect(plain.registration.plainLanguage?.remedies).toEqual({});
   });
 });
 

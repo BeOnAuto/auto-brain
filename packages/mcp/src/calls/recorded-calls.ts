@@ -4,36 +4,15 @@ import type { Effect } from 'effect';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
 import { bytesOf, cutAsStored } from '../bounds/text-bytes.ts';
+import type { CallAnswered, CallOutcome, CallStarted } from './call-facts.ts';
 
-export type CallOutcome = 'result' | 'tool_error' | 'server_failure' | 'timed_out' | 'cancelled';
+export type NumberedAnswer = CallAnswered & { readonly number: number };
 
-export interface CallStarted {
-  readonly type: 'tool_call_started';
-  readonly call_id: string;
-  readonly server: string;
-  readonly tool: string;
-  readonly arguments_bytes: number;
-  readonly arguments_sha256: string;
-  readonly arguments_json?: string;
-}
-
-export interface CallAnswered {
-  readonly type: 'tool_call_answered';
-  readonly number: number;
-  readonly outcome: CallOutcome;
-  readonly result_bytes: number | null;
-  readonly result_sha256: string | null;
-  readonly duration_ms: number;
-  readonly jsonrpc_id: string | number | null;
-  readonly server_request_id?: string | null;
-  readonly result_json?: string;
-}
-
-export type RecordedCall = (CallStarted & { readonly number: number }) | CallAnswered;
+export type RecordedCall = (CallStarted & { readonly number: number }) | NumberedAnswer;
 
 export interface CallJournal {
   readonly started: (fact: CallStarted) => Effect.Effect<number | undefined>;
-  readonly answered: (fact: CallAnswered) => Effect.Effect<boolean>;
+  readonly answered: (fact: NumberedAnswer) => Effect.Effect<boolean>;
 }
 
 export interface StartedCall {
@@ -88,7 +67,7 @@ function resultOf(resultJson: string | null, recording: Recording) {
       };
 }
 
-export function callAnswered(call: AnsweredCall, recording: Recording): CallAnswered {
+export function callAnswered(call: AnsweredCall, recording: Recording): NumberedAnswer {
   return {
     type: 'tool_call_answered',
     number: call.number,

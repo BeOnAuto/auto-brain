@@ -335,6 +335,14 @@
         "description": "A tool a reasoning function may name, written server/tool, or server/* for every tool of a server"
       },
       "description": "The only tools a reasoning function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it"
+    },
+    "testable_tools": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "A tool test_tool_call may test though its server does not mark it read-only, written server/tool; each tool is named, never server/*"
+      },
+      "description": "The tools test_tool_call may test although their servers do not mark them read-only, each named as server/tool, never server/*, and allowed by allowed_tools; only the tools their servers mark read-only when left out. TESTABLE_TOOLS wins over it"
     }
   },
   "additionalProperties": false,

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Timing } from '../bounds/call-bounds.ts';
-import { deniedText, fakeApiKey, inTurn, openFakeToolRun, toolRunId } from '../testing/index.ts';
+import { deniedText, fakeApiKey, fakeChannels, inTurn, openFakeToolRun, toolRunId } from '../testing/index.ts';
 
 const quick: Timing = { callMs: 2000, openMs: 2000, longestRetryWaitMs: 1000 };
 
@@ -31,16 +31,17 @@ const reportedWithKey: unknown = expect.stringMatching(
 
 describe('the result of a call', () => {
   it('gives the model text as text, structured content without text as JSON, and other content as placeholders', async () => {
-    const { call, tools } = await runWith(['search', 'profile', 'photo']);
+    const { call, tools } = await runWith(['search', 'profile', 'photo', 'list_channels']);
 
-    expect(await call('search', { query: 'acme' })).toEqual({ text: 'Found 2 rows for acme.', isError: false });
-    expect(await call('profile', {})).toEqual({ text: '{"name":"Ada","rows":2}', isError: false });
-    expect(await call('photo', {})).toEqual({
+    expect(await call('search', { query: 'acme' })).toMatchObject({ text: 'Found 2 rows for acme.', isError: false });
+    expect(await call('profile', {})).toMatchObject({ text: '{"name":"Ada","rows":2}', isError: false });
+    expect(await call('photo', {})).toMatchObject({
       text: '[image content (image/png), not shown]\n[audio content (audio/wav), not shown]',
       isError: false,
     });
+    expect(await call('list_channels', {})).toMatchObject({ text: JSON.stringify(fakeChannels), isError: false });
     expect(tools.calledAny()).toBe(true);
-    expect(tools.usedInWords()).toBe('the search, profile, and photo tools of graph');
+    expect(tools.usedInWords()).toBe('the search, profile, photo, and list channels tools of graph');
   });
 
   it('gives the model a denial as a tool error it may recover from, never counted as a failure', async () => {
@@ -48,7 +49,7 @@ describe('the result of a call', () => {
 
     const replies = await inTurn([1, 2, 3, 4, 5, 6], (attempt) => call('denied', { attempt }));
 
-    expect(replies).toEqual(Array.from({ length: 6 }, () => ({ text: deniedText, isError: true })));
+    expect(replies).toMatchObject(Array.from({ length: 6 }, () => ({ text: deniedText, isError: true })));
     expect(tools.ending()).toBeUndefined();
     expect(tools.ended.aborted).toBe(false);
   });
@@ -56,7 +57,7 @@ describe('the result of a call', () => {
   it('cuts a result over 64 KiB at a code point, with the note', async () => {
     const { call } = await runWith(['large']);
 
-    expect(await call('large', { kib: 80 })).toEqual({ text: cutLarge, isError: false });
+    expect(await call('large', { kib: 80 })).toMatchObject({ text: cutLarge, isError: false });
   });
 });
 
@@ -66,7 +67,7 @@ describe('the calls a run may make', () => {
 
     const replies = await Promise.all(Array.from({ length: 10 }, (_, index) => call('sleep', { ms: 50, index })));
 
-    expect(replies).toEqual(Array.from({ length: 10 }, () => ({ text: 'Slept.', isError: false })));
+    expect(replies).toMatchObject(Array.from({ length: 10 }, () => ({ text: 'Slept.', isError: false })));
     expect(journal.facts()).toHaveLength(20);
     expect(new Set(journal.facts().map(({ number }) => number))).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
   });
@@ -81,7 +82,7 @@ describe('the calls a run may make', () => {
     const refused = await call('echo', { number: 26 });
 
     expect(tools.callsEnded()).toBe(true);
-    expect(refused).toEqual({
+    expect(refused).toMatchObject({
       text: 'This run has made all the 25 tool calls it may; answer from what you have.',
       isError: true,
     });
@@ -95,7 +96,7 @@ describe('the calls a run may make', () => {
     await inTurn([1, 2, 3, 4], (page) => call('large', { kib: 64, page }));
 
     expect(tools.callsEnded()).toBe(true);
-    expect(await call('large', { kib: 1, page: 5 })).toEqual({
+    expect(await call('large', { kib: 1, page: 5 })).toMatchObject({
       text: 'This run has received all the 262144 bytes of tool results it may; answer from what you have.',
       isError: true,
     });
@@ -114,11 +115,11 @@ describe('the arguments of a call', () => {
 
     const replies = await inTurn(inputs, (input) => call('echo', input));
 
-    expect(replies[0]).toEqual({
+    expect(replies[0]).toMatchObject({
       text: 'The arguments of this call take 16395 bytes, more than the 16384 a call may send; send less.',
       isError: true,
     });
-    expect(replies[3]).toEqual({
+    expect(replies[3]).toMatchObject({
       text: 'This call repeats, with the same arguments, a call this run already made 2 times; use the answer to the call call-3 instead.',
       isError: true,
     });
@@ -130,8 +131,10 @@ describe('a server that fails a call', () => {
   it('fails a call it cannot answer, scrubbed of secrets, and reports it to the operator', async () => {
     const { call, messages } = await runWith(['broken']);
 
-    expect(await call('broken', { key: fakeApiKey, attempt: 1 })).toEqual({ text: brokenWithKey, isError: true });
-    expect(messages()).toEqual([{ server: 'graph', message: reportedWithKey, execution_id: toolRunId }]);
+    expect(await call('broken', { key: fakeApiKey, attempt: 1 })).toMatchObject({ text: brokenWithKey, isError: true });
+    expect(messages()).toEqual([
+      { server: 'graph', message: reportedWithKey, execution_id: toolRunId, tool_test_id: null },
+    ]);
   });
 
   it('ends the calls after five failures', async () => {
@@ -146,10 +149,24 @@ describe('a server that fails a call', () => {
     expect(tools.ended.aborted).toBe(true);
   });
 
+  it('fails a call its server answers HTTP 403 as a failure of that call, counted as one, and never as a refused key', async () => {
+    const { call, fake, journal, tools } = await runWith(['search']);
+
+    fake.answerNextWith(403, 5);
+    const replies = await inTurn([1, 2, 3, 4, 5], (attempt) => call('search', { query: `denied ${attempt}` }));
+
+    expect(replies[0]).toMatchObject({
+      text: 'The MCP server graph failed: The MCP server answered HTTP 403',
+      isError: true,
+    });
+    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_answered', outcome: 'server_failure' });
+    expect(tools.ending()).toEqual({ because: 'failing' });
+  });
+
   it('fails a call that takes longer than a call may', async () => {
     const { call, journal } = await runWith(['sleep'], { ...quick, callMs: 200 });
 
-    expect(await call('sleep', { ms: 5000 })).toEqual({
+    expect(await call('sleep', { ms: 5000 })).toMatchObject({
       text: 'The MCP server graph failed: The MCP server did not answer within 200 ms',
       isError: true,
     });
@@ -166,8 +183,11 @@ describe('a server that asks to slow down or forgets a session', () => {
     fake.answerNextWith(429, 5, { 'retry-after': '5' });
     const [limited] = await inTurn(['limited', 'b', 'c', 'd', 'e'], (query) => call('search', { query }));
 
-    expect(waited).toEqual({ text: 'Found 2 rows for waited.', isError: false });
-    expect(limited).toEqual({ text: 'The MCP server graph failed: The MCP server answered HTTP 429', isError: true });
+    expect(waited).toMatchObject({ text: 'Found 2 rows for waited.', isError: false });
+    expect(limited).toMatchObject({
+      text: 'The MCP server graph failed: The MCP server answered HTTP 429',
+      isError: true,
+    });
     expect(tools.ending()).toEqual({ because: 'rate_limited' });
   });
 
@@ -179,7 +199,10 @@ describe('a server that asks to slow down or forgets a session', () => {
     fake.forgetSessions();
     const forgotten = await call('search', { query: 'forgotten' });
 
-    expect(reopened).toEqual({ text: 'Found 2 rows for reopened.', isError: false });
-    expect(forgotten).toEqual({ text: 'The MCP server graph failed: The MCP server answered HTTP 404', isError: true });
+    expect(reopened).toMatchObject({ text: 'Found 2 rows for reopened.', isError: false });
+    expect(forgotten).toMatchObject({
+      text: 'The MCP server graph failed: The MCP server answered HTTP 404',
+      isError: true,
+    });
   });
 });

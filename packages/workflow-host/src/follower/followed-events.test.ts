@@ -96,4 +96,14 @@ describe('a fact of a brain, as the follower reads it', () => {
       followedEventOf(recordOf('runs/r-1', { type: 'input_applied' }), 'orchestration'),
     ]).toEqual(['unreadable', 'none', 'none']);
   });
+
+  it('is none for the records of a test of a tool, which no recall function folds and no trigger takes, with no note', () => {
+    const tested = { test_id: 't-1', server: 'graph', tool: 'search', by: 'acme-builder', at };
+
+    expect([
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started', ...tested }), 'orchestration'),
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_answered', ...tested }), 'orchestration'),
+      followedEventOf(recordOf('tool-tests/t-1', { type: 'tool_test_started' }), 'recollection'),
+    ]).toEqual(['none', 'none', 'none']);
+  });
 });

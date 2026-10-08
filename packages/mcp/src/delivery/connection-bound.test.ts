@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultTiming } from '../bounds/call-bounds.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { McpConnection } from '../connections/mcp-connection.ts';
+import type { ServerLink } from '../connections/server-links.ts';
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
 import { boundedSlot, connectionBoundOf, takenWithin } from './connection-bound.ts';
 import { deliveryBounds } from './delivery-bounds.ts';
@@ -18,20 +19,34 @@ const connection: McpConnection = {
 
 const anyMessage: unknown = expect.any(String);
 
-interface Opening {
-  readonly take: () => Promise<McpConnection>;
-  readonly release: () => Promise<void>;
+const settings: StdioServerSettings = {
+  type: 'stdio',
+  name: 'notes',
+  org: 'acme',
+  brains: null,
+  record_content: false,
+  request_id: null,
+  secrets: [],
+  command: '/usr/local/bin/notes-mcp-server',
+  args: [],
+  env: new Map(),
+};
+
+interface Opening extends ServerLink {
   readonly released: () => number;
 }
 
 function opening(take: () => Promise<McpConnection>): Opening {
   const counts = { released: 0 };
   return {
+    settings,
     take,
+    renew: take,
     release: () => {
       counts.released += 1;
       return Promise.resolve();
     },
+    stop: () => Promise.resolve(),
     released: () => counts.released,
   };
 }
@@ -49,7 +64,7 @@ describe('the opening of a connection for a delivery', () => {
     const quick = opening(() => Promise.resolve(connection));
     const failing = opening(() => Promise.reject(new Error('connect ECONNREFUSED 127.0.0.1:1')));
 
-    expect(await takenWithin(quick, 1000)).toEqual({ connection });
+    expect(await takenWithin(quick, 1000)).toMatchObject({ slot: { settings } });
     expect(await takenWithin(failing, 1000)).toMatchObject({ failure: { message: anyMessage } });
     expect([quick.released(), failing.released()]).toEqual([0, 0]);
   });
@@ -73,18 +88,6 @@ describe('the opening of a connection for a delivery', () => {
 });
 
 describe('the session of a delivery, opened again or its process started again', () => {
-  const settings: StdioServerSettings = {
-    type: 'stdio',
-    name: 'notes',
-    org: 'acme',
-    brains: null,
-    record_content: false,
-    request_id: null,
-    secrets: [],
-    command: '/usr/local/bin/notes-mcp-server',
-    args: [],
-    env: new Map(),
-  };
   const hanging: ServerSlot = {
     settings,
     connection: () => connection,

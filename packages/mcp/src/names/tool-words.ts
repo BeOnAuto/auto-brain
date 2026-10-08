@@ -1,4 +1,13 @@
+import type { CallOutcome } from '../calls/call-facts.ts';
 import type { ToolReference } from './tool-reference.ts';
+
+export const answeredInWords: Readonly<Record<CallOutcome, string>> = {
+  result: 'answered',
+  tool_error: 'answered with an error',
+  server_failure: 'failed at its server',
+  timed_out: 'took too long, so it was given up',
+  cancelled: 'was cancelled when the run ended',
+};
 
 const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 

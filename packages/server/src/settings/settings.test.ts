@@ -20,7 +20,7 @@ describe('readSettings', () => {
     const { models, mcp, interaction, ...server } = readSettings({});
 
     expect(models.openai).toEqual({ configured: false, missing: ['OPENAI_API_KEY'] });
-    expect(mcp).toEqual({ servers: [], allowed: null });
+    expect(mcp).toEqual({ servers: [], allowed: null, testable: [] });
     expect(interaction).toEqual({
       channels: { channels: new Map(), secrets: [] },
       mostOpenRequests: 10_000,

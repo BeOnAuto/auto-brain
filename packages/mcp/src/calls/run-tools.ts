@@ -2,10 +2,11 @@ import type { Schema } from 'effect';
 
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
 import { callsEnded, cutToDescriptionBound, noCalls } from '../bounds/call-bounds.ts';
+import type { ToolAnnotations } from '../bounds/result-text.ts';
 import { modelFacingNames } from '../names/model-facing-names.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { toolsInWords } from '../names/tool-words.ts';
-import type { ToolReply } from './call-replies.ts';
+import type { CallReply } from './call-replies.ts';
 import type { CallSignals, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
 import { caller } from './tool-caller.ts';
 
@@ -13,7 +14,8 @@ export interface OfferedTool {
   readonly name: string;
   readonly description: string;
   readonly inputSchema: Schema.JsonObject;
-  readonly call: (request: ToolCallRequest, signals: CallSignals) => Promise<ToolReply>;
+  readonly annotations: ToolAnnotations | undefined;
+  readonly call: (request: ToolCallRequest, signals: CallSignals) => Promise<CallReply>;
 }
 
 export interface ToolsEnding {
@@ -52,6 +54,7 @@ export function runTools(parts: RunToolsParts): RunTools {
     name: tool.name,
     description: cutToDescriptionBound(tool.tool.description ?? ''),
     inputSchema: tool.tool.inputSchema,
+    annotations: tool.tool.annotations,
     call: caller(parts, state, tool),
   }));
   return {

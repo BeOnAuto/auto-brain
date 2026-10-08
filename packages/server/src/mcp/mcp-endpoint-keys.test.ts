@@ -55,6 +55,7 @@ const commands = [
   'execute_spec',
   'cancel_execution',
   'publish_event',
+  'test_tool_call',
   'answer_interaction',
   'send_execution_event',
 ];
@@ -161,7 +162,7 @@ describe('a key that may only read inside brains, on /mcp', () => {
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the twenty-four tools and reads a brain of its org', async () => {
+  it('lists the twenty-five tools and reads a brain of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
@@ -172,7 +173,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
       kind,
     );
 
-    expect(outcome.tools).toBe(24);
+    expect(outcome.tools).toBe(25);
     expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha' });
   });
 });

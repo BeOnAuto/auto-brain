@@ -35,6 +35,7 @@ const specTools = [
   'list_brain_events',
   'publish_event',
   'list_tool_servers',
+  'test_tool_call',
   'answer_interaction',
   'list_interactions',
   'send_execution_event',
@@ -161,6 +162,7 @@ const connections: readonly Connection[] = [
       'execute_spec',
       'get_execution',
       'list_tool_servers',
+      'test_tool_call',
       'answer_interaction',
       'send_execution_event',
     ],
@@ -214,10 +216,15 @@ function reachingOutside(tools: readonly ListedTool[]): readonly string[] {
 }
 
 describe('the open-world hint of the tools of /mcp', () => {
-  it('is set for list_models and execute_spec, which reach model providers, for list_tool_servers, which reaches tool servers, and for no other tool', async () => {
+  it('is set for list_models and execute_spec, which reach model providers, for list_tool_servers and test_tool_call, which reach tool servers, and for no other tool', async () => {
     server = await servingReasoning([]);
 
-    expect(reachingOutside(await listingOn('/mcp'))).toEqual(['list_models', 'execute_spec', 'list_tool_servers']);
+    expect(reachingOutside(await listingOn('/mcp'))).toEqual([
+      'list_models',
+      'execute_spec',
+      'list_tool_servers',
+      'test_tool_call',
+    ]);
   });
 });
 

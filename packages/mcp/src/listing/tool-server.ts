@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import { ToolAnnotationsSchema } from '../bounds/result-text.ts';
+
 const serverFields = {
   name: Schema.String.annotate({
     description: 'The name of the server, which a function writes before the slash, as in graph/search or graph/*',
@@ -16,6 +18,16 @@ const ServerToolSchema = Schema.Struct({
   }),
   input_schema: Schema.JsonObject.annotate({
     description: 'The JSON Schema of the arguments the tool takes, as its server gives it',
+  }),
+  annotations: Schema.optionalKey(
+    ToolAnnotationsSchema.annotate({
+      description:
+        'The hints its server gives the tool, readOnlyHint, destructiveHint, idempotentHint and openWorldHint, as it gives them; absent when it gives none',
+    }),
+  ),
+  testable: Schema.Boolean.annotate({
+    description:
+      'true when test_tool_call may test the tool: its server marks it read-only, or whoever runs this server lists it as safe to test',
   }),
 });
 
