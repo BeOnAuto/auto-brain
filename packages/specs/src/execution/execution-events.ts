@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { StartingTriggerSchema } from '../registry/spec-triggers.ts';
 import { ExecutionRejectionSchema } from './execution.ts';
 
 const fact = { by: Schema.String, at: Schema.String };
@@ -16,6 +17,7 @@ const ofTheChain = {
   depth: Schema.optionalKey(Counted),
   call_depth: Schema.optionalKey(Counted),
   called_by: Schema.optionalKey(CalledBySchema),
+  trigger: Schema.optionalKey(StartingTriggerSchema),
 };
 
 const ExecutionStartedSchema = Schema.Struct({

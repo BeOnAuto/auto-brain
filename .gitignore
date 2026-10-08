@@ -19,3 +19,4 @@ coverage
 /packages/server/data/
 /auto-brain.yaml
 /docs/.vitepress/cache/
+.vitest/

@@ -6,7 +6,7 @@ import { knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { findSpec } from '../registry/registry-lookup.ts';
 import { DefinitionSchema } from '../registry/spec.ts';
-import { loadRegistry, reactingSince } from './registry-access.ts';
+import { loadRegistry, triggersSince } from './registry-access.ts';
 import { SpecNameField } from './spec-fields.ts';
 import { specOf } from './spec-views.ts';
 
@@ -20,6 +20,7 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
       description: [
         'Reads one function or workflow definition with its document and returns it, active or retired, with its version and the input and output its document declares.',
         'For a recall function it also returns the standing of its view: live, rebuilding, waiting or stalled, the events it has folded and how far it lags the brain.',
+        'For a workflow it also returns its triggers, the event trigger and the schedules that start it on its own.',
         'Use it to show the person a definition or to learn the input a run takes; list_specs lists the definitions of a type.',
         "`primitive` is the definition's type and `name` its name.",
       ].join(' '),
@@ -32,8 +33,8 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
         const registry = yield* loadRegistry(primitive.name);
         const stored = yield* findSpec(registry, primitive.name, name);
         const spec =
-          stored.reacts === true && stored.status === 'active'
-            ? { ...specOf(primitive, stored), reacts_since: yield* reactingSince(primitive.name, stored) }
+          (stored.triggers ?? []).length > 0 && stored.status === 'active'
+            ? { ...specOf(primitive, stored), triggers_since: yield* triggersSince(primitive.name, stored) }
             : specOf(primitive, stored);
         const { org, brain } = yield* BrainContext;
         const standing = yield* primitive.standing({ org, brain, name, version: spec.version, status: spec.status });

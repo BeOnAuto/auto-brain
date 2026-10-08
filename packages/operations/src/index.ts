@@ -12,7 +12,13 @@ export {
 export { BrainReader } from './ledger/brain-reader.ts';
 export { isCalendarDay } from './reading/calendar-days.ts';
 export { BrainContext, type BrainAddress } from './caller/brain-context.ts';
-export { CallLineage, type CallLink, type GivenLineage } from './caller/call-lineage.ts';
+export {
+  CallLineage,
+  type CallLink,
+  type GivenLineage,
+  type TriggerKind,
+  type TriggerLink,
+} from './caller/call-lineage.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
 export {
   Caller,

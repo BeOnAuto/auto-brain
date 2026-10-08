@@ -130,5 +130,5 @@ export function servingRecall(
   environment: Readonly<Record<string, string>> = {},
   programPoolOf: ProgramPoolOf = workerPool,
 ): Promise<ReasoningServer> {
-  return servingReasoning(replies, { LOCAL_MODE: 'true', ...environment }, undefined, programPoolOf);
+  return servingReasoning(replies, { LOCAL_MODE: 'true', ...environment }, undefined, { programPoolOf });
 }

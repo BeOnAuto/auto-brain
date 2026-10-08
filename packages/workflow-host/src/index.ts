@@ -26,7 +26,6 @@ export {
   type ReactionOptions,
   type ReactionStart,
   type StartReaction,
-  type Trigger,
 } from './reactions/reaction-options.ts';
 export { StartRejected } from './reactions/start-rejected.ts';
 export { cronRejectionOf } from './schedules/schedule-times.ts';

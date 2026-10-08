@@ -129,7 +129,7 @@ async function passing(
     consumers,
     calls: [],
     primitive: 'orchestration',
-    applySpecRecord: () => Effect.void,
+    applySpecRecord: () => Effect.succeed('applied'),
     unreadable: () => Effect.void,
     passedEarly,
     registered: [],

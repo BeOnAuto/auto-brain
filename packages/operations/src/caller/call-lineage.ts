@@ -8,11 +8,19 @@ export interface CallLink {
   readonly run: number;
 }
 
+export type TriggerKind = 'event' | 'cron' | 'every';
+
+export interface TriggerLink {
+  readonly kind: TriggerKind;
+  readonly reference: string;
+}
+
 export interface GivenLineage {
   readonly lineage: Lineage | null;
   readonly depth: number;
   readonly callDepth: number;
   readonly calledBy: CallLink | null;
+  readonly trigger: TriggerLink | null;
 }
 
 export class CallLineage extends Context.Service<CallLineage, GivenLineage>()('@beonauto/operations/CallLineage') {}

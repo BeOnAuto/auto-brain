@@ -28,6 +28,7 @@ function startNumber(index: number): ReactionStart {
     input: [],
     depth: 1,
     cause: `record-${index}`,
+    trigger: { kind: 'event', reference: '/schedule/on' },
   };
 }
 
@@ -125,7 +126,16 @@ describe('the starts that wait for a later minute', () => {
 
     expect([deferred, events]).toMatchObject([
       mostDeferredStarts,
-      [{ type: 'reaction_refused', workflow: 'close', count: 2, minute: '2026-10-01T09:00:00.000Z' }],
+      [
+        {
+          type: 'reaction_refused',
+          workflow: 'close',
+          count: 2,
+          reason:
+            'The workflow was started by its event trigger 60 times a minute and 1000 starts already waited for a later minute, the most it keeps; this start was refused',
+          minute: '2026-10-01T09:00:00.000Z',
+        },
+      ],
     ]);
   });
 });
@@ -171,7 +181,7 @@ describe('a start the brain refuses', () => {
 
     expect([left, events]).toMatchObject([
       0,
-      [{ type: 'reaction_refused', reason: 'The workflow could not be started for what it reacts to: refused' }],
+      [{ type: 'reaction_refused', reason: 'The workflow could not be started by its event trigger: refused' }],
     ]);
   });
 });
@@ -201,7 +211,7 @@ describe('a start the brain rejects for good', () => {
       [
         {
           count: mostStartsAMinute,
-          reason: 'The workflow could not be started for what it reacts to: The input is not what the workflow takes',
+          reason: 'The workflow could not be started by its event trigger: The input is not what the workflow takes',
         },
         { count: 1 },
       ],

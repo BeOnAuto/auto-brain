@@ -159,7 +159,13 @@ describe('the specs of a primitive', () => {
   });
 });
 
-const reacting: SpecContent = { source: '{"greeting": "Hello", "reacts": true}', reacts: true };
+const threeTriggers: SpecContent['triggers'] = [
+  { kind: 'event', reference: '/schedule/on', filters: [{ reference: '/schedule/on/one', type: 'x', attributes: {} }] },
+  { kind: 'cron', reference: '/schedule/cron', expression: '0 9 * * *' },
+  { kind: 'every', reference: '/schedule/every', milliseconds: 60_000 },
+];
+
+const reacting: SpecContent = { source: '{"greeting": "Hello", "triggers": "three"}', triggers: threeTriggers };
 
 function reactingSpecs(count: number): readonly SpecEvent[] {
   return Array.from({ length: count }, (_, index) => ({
@@ -177,7 +183,7 @@ const beyondTheBound = new Conflict({
 });
 
 describe('the definitions of a brain that start on their own', () => {
-  it('are 1,024 at most: one more is refused, created or made so by an update', () => {
+  it('are 1,024 at most, however many triggers each has: one more is refused, created or made so by an update', () => {
     const full = reactingSpecs(1024);
 
     expect([
@@ -194,7 +200,11 @@ describe('the definitions of a brain that start on their own', () => {
 
     expect([
       Result.isSuccess(
-        decided(updatingGreet({ ...reacting, source: '{"greeting": "Hi", "reacts": true}' }), reactingGreet, ...almost),
+        decided(
+          updatingGreet({ ...reacting, source: '{"greeting": "Hi", "triggers": "three"}' }),
+          reactingGreet,
+          ...almost,
+        ),
       ),
       Result.isSuccess(
         decided({ ...creatingGreet, name: 'other', content: reacting }, ...reactingSpecs(1024), retired),

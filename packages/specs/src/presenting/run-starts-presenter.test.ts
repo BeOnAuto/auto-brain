@@ -100,3 +100,29 @@ describe('the presenter of a cancel request', () => {
     ]);
   });
 });
+
+describe('the presenter of the start of a run a trigger started', () => {
+  it('says which kind of trigger started it, and gives the trigger with its place in the document in the data', () => {
+    const startedBy = (kind: 'event' | 'cron' | 'every', reference: string) =>
+      presented({ type: 'execution_started', ...ofGreet, input: [], trigger: { kind, reference }, ...fact });
+
+    expect(
+      [
+        startedBy('event', '/schedule/on'),
+        startedBy('cron', '/schedule/cron'),
+        startedBy('every', '/schedule/every'),
+      ].map((event) => event?.summary),
+    ).toEqual([
+      'A run of the greeting “greet” was started by its event trigger.',
+      'A run of the greeting “greet” was started by its cron schedule.',
+      'A run of the greeting “greet” was started by its every schedule.',
+    ]);
+    expect(startedBy('every', '/schedule/every')?.data).toEqual({
+      execution_id: executionId,
+      by: 'acme-admin',
+      ...ofGreet,
+      input_bytes: 2,
+      trigger: { kind: 'every', reference: '/schedule/every' },
+    });
+  });
+});

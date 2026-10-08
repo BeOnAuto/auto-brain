@@ -1,7 +1,7 @@
 import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { ApplySpecRecord } from '../reactions/spec-records.ts';
+import type { ApplySpecRecord } from '../triggers/spec-records.ts';
 import { relativeRecord } from './brain-records.ts';
 import {
   boundTo,
@@ -30,7 +30,7 @@ export interface StepParts {
   readonly calls: readonly CallConsumer[];
   readonly primitive: string;
   readonly applySpecRecord: ApplySpecRecord;
-  readonly unreadable: (brainKey: string, record: RecordedEvent) => Effect.Effect<void>;
+  readonly unreadable: (brainKey: string, record: Pick<RecordedEvent, 'id' | 'type'>) => Effect.Effect<void>;
   readonly passedEarly: (brainKey: string, record: RecordedEvent, sweeps: number) => Effect.Effect<void>;
 }
 
@@ -117,9 +117,10 @@ export function stepOf(
     : Effect.succeed({ progress: passedOver(record) });
   if (record.stream === `${brainKey}specs/${parts.primitive}`) {
     const readAgain: Effect.Effect<Step> = Effect.succeed({ progress, end: 'more' });
-    return Effect.andThen(
-      parts.applySpecRecord(brainKey, record.data),
-      Effect.flatMap(stepping.wantsMore(), (more) => (more ? readAgain : step)),
+    return Effect.flatMap(parts.applySpecRecord(brainKey, record), (applied) =>
+      applied === 'unreadable'
+        ? Effect.as(parts.unreadable(brainKey, record), { progress: passedOver(record) })
+        : Effect.flatMap(stepping.wantsMore(), (more) => (more ? readAgain : step)),
     );
   }
   return step;

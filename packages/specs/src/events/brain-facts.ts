@@ -10,6 +10,7 @@ import {
 } from '../execution/execution-events.ts';
 import { jsonBytesOf, nestsWithin } from '../execution/recorded-size.ts';
 import { SpecEventSchema, type SpecEvent } from '../registry/spec-events.ts';
+import type { StartingTrigger } from '../registry/spec-triggers.ts';
 import { mostEventDataDepth, mostPublishedEventBytes, type CloudEvent } from './cloud-event.ts';
 import { EventPublishedSchema } from './published-events.ts';
 import { runSourcePrefix, specSourcePrefix } from './reserved-attributes.ts';
@@ -23,6 +24,7 @@ type RunData = {
   readonly caller: string;
   readonly depth: number;
   readonly called_by?: CalledBy;
+  readonly trigger?: StartingTrigger;
   readonly reason?: string;
   readonly kind?: string;
 };
@@ -64,6 +66,7 @@ function rejectionOf(event: RunFact): Pick<RunData, 'reason' | 'kind'> {
 
 function runFactOf(id: string, execution: string, event: RunFact): CloudEvent {
   const { primitive, name, spec_version: version, by: caller, at: time, depth = 0, called_by: calledBy } = event;
+  const { trigger } = event;
   const data: RunData = {
     primitive,
     name,
@@ -71,6 +74,7 @@ function runFactOf(id: string, execution: string, event: RunFact): CloudEvent {
     caller,
     depth,
     ...(calledBy === undefined ? {} : { called_by: calledBy }),
+    ...(trigger === undefined ? {} : { trigger }),
     ...rejectionOf(event),
   };
   const fact = {

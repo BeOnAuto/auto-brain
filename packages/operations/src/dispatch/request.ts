@@ -1,4 +1,4 @@
-import type { CallLink } from '../caller/call-lineage.ts';
+import type { CallLink, TriggerLink } from '../caller/call-lineage.ts';
 import type { CallerIdentity } from '../caller/caller.ts';
 import type { InputEncoding } from '../definition/registration.ts';
 import type { Lineage } from '../ledger/message-lineage.ts';
@@ -16,4 +16,5 @@ export interface BrainRequest extends OrgRequest {
   readonly depth?: number;
   readonly callDepth?: number;
   readonly calledBy?: CallLink;
+  readonly trigger?: TriggerLink;
 }

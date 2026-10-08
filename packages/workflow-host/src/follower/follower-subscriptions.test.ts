@@ -40,7 +40,7 @@ describe('a workflow whose trigger is an event', () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
     const trigger = eventTrigger({ type: 'com.acme.closed', data: { region: 'eu' } });
-    await specRecorded(store, { name: 'close', version: 1, trigger });
+    await specRecorded(store, { name: 'close', version: 1, triggers: [trigger] });
 
     await published(store, { id: 'e1', type: 'com.acme.closed', data: { region: 'eu' } });
     await published(store, { id: 'e2', type: 'com.acme.closed', data: { region: 'us' } });
@@ -54,12 +54,13 @@ describe('a workflow whose trigger is an event', () => {
         brain: 'alpha',
         workflow: 'close',
         version: 1,
-        executionId: reactionExecutionIdOf('close', 1, cause),
+        executionId: reactionExecutionIdOf('close', 1, '/schedule/on', cause),
         input: [
           { specversion: '1.0', source: '/acme', time: at, id: 'e1', type: 'com.acme.closed', data: { region: 'eu' } },
         ],
         depth: 1,
         cause,
+        trigger: { kind: 'event', reference: '/schedule/on' },
       },
     ]);
   });
@@ -69,9 +70,9 @@ describe('the records a workflow whose trigger is an event reacts to', () => {
   it('are none before the record that activated it, and none after the one that retired it', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'watch', version: 1, trigger: sentinel });
+    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
     await published(store, { id: 'early', type: 'com.acme.closed' });
-    await specRecorded(store, { name: 'close', version: 1, trigger: closed });
+    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
     await published(store, { id: 'between', type: 'com.acme.closed' });
     await specRetired(store, 'close');
     await published(store, { id: 'late', type: 'com.acme.closed' });
@@ -86,12 +87,12 @@ describe('a new version of a workflow whose trigger is an event', () => {
   it('replaces the trigger of the version before, and a version without a trigger reacts to nothing', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'watch', version: 1, trigger: sentinel });
-    await specRecorded(store, { name: 'close', version: 1, trigger: closed });
-    await specRecorded(store, { name: 'close', version: 2, trigger: eventTrigger({ type: 'com.acme.opened' }) });
+    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
+    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+    await specRecorded(store, { name: 'close', version: 2, triggers: [eventTrigger({ type: 'com.acme.opened' })] });
     await published(store, { id: 'closed', type: 'com.acme.closed' });
     await published(store, { id: 'opened', type: 'com.acme.opened' });
-    await specRecorded(store, { name: 'close', version: 3, trigger: undefined });
+    await specRecorded(store, { name: 'close', version: 3, triggers: [] });
     await published(store, { id: 'opened-again', type: 'com.acme.opened' });
 
     await sentinelPassed(reacting, 's1');
@@ -107,8 +108,8 @@ describe('the follower of a brain', () => {
   it('starts nothing again for what it delivered before the host stopped, and goes on after it', async () => {
     const first = await reactingHost();
     const { store } = first.database;
-    await specRecorded(store, { name: 'close', version: 1, trigger: closed });
-    await specRecorded(store, { name: 'watch', version: 1, trigger: sentinel });
+    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
     await published(store, { id: 'e1', type: 'com.acme.closed' });
     await startsReaching(first, 1);
     await first.host.stop();
@@ -129,7 +130,7 @@ describe('a start the brain keeps refusing', () => {
       const refusing = { now: true };
       const reacting = await reactingHost({ failure: refusedWhile(refusing) });
       const { store } = reacting.database;
-      await specRecorded(store, { name: 'close', version: 1, trigger: closed });
+      await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
       await published(store, { id: 'e1', type: 'com.acme.closed' });
 
       const refusals = await until(
@@ -144,7 +145,7 @@ describe('a start the brain keeps refusing', () => {
       const starts = await startsReaching(reacting, 1);
 
       expect([refusals, starts.map(({ cause }) => cause)]).toEqual([
-        [{ reason: 'The workflow could not be started for what it reacts to: The brain refused the start' }],
+        [{ reason: 'The workflow could not be started by its event trigger: The brain refused the start' }],
         [messageIdOf(`${alpha}events/e2`, 1)],
       ]);
     },
@@ -157,9 +158,9 @@ describe('a start the brain rejects for good', () => {
       failure: rejectedFor('close', 'The input is not what the workflow takes'),
     });
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'close', version: 1, trigger: closed });
+    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
     await published(store, { id: 'e1', type: 'com.acme.closed' });
-    await specRecorded(store, { name: 'watch', version: 1, trigger: sentinel });
+    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
 
     await sentinelPassed(reacting, 's1');
     const refusals = await Effect.runPromise(
@@ -167,7 +168,7 @@ describe('a start the brain rejects for good', () => {
     );
 
     expect([refusals, startedWorkflows(reacting)]).toEqual([
-      [{ reason: 'The workflow could not be started for what it reacts to: The input is not what the workflow takes' }],
+      [{ reason: 'The workflow could not be started by its event trigger: The input is not what the workflow takes' }],
       ['watch'],
     ]);
   });

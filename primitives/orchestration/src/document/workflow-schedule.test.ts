@@ -1,8 +1,7 @@
 import type { Json } from '@beonauto/workflow-engine';
 import { describe, expect, it } from 'vitest';
 
-import { triggerOfSource } from './workflow-document.ts';
-import { scheduleRejections, triggerOfDocument } from './workflow-schedule.ts';
+import { mostTriggerFilters, scheduleRejections, triggersOfDocument } from './workflow-schedule.ts';
 
 function refused(schedule: Json): readonly string[] {
   return scheduleRejections(schedule, '/schedule').map(({ pointer, detail }) => `${pointer}: ${detail}`);
@@ -10,25 +9,45 @@ function refused(schedule: Json): readonly string[] {
 
 const typed = { with: { type: 'com.acme.closed' } };
 
-describe('the schedule of a workflow, which names its trigger', () => {
-  it('is a mapping of one of on, cron and every', () => {
+function typedFilters(count: number): readonly Json[] {
+  return Array.from({ length: count }, (_, index) => ({ with: { type: `com.acme.t${index}` } }));
+}
+
+describe('the schedule of a workflow, which names its triggers', () => {
+  it('is a mapping of on, cron and every, any one, two or three of them', () => {
     expect([
       refused('daily'),
       refused({}),
       refused({ every: 'PT1M', cron: '0 9 * * *' }),
+      refused({ on: { one: typed }, cron: '0 9 * * *', every: 'PT15M' }),
       refused({ every: 'PT1M', at: 'noon' }),
       refused({ after: 'PT1M' }),
+      refused({ after: 'PT1M', every: 'PT1M' }),
     ]).toEqual([
-      ['/schedule: schedule is a mapping that names the trigger of the workflow: on, cron or every'],
-      ['/schedule: A workflow has one trigger: its schedule names one of on, cron and every'],
-      ['/schedule: A workflow has one trigger: its schedule names one of on, cron and every'],
-      ['/schedule/at: schedule takes on, cron or every, not at'],
+      ['/schedule: schedule is a mapping that names the triggers of the workflow: on, cron and every'],
+      ['/schedule: A schedule names at least one trigger: on, cron or every, each at most once'],
+      [],
+      [],
+      ['/schedule/at: schedule takes on, cron and every, not at'],
+      [
+        '/schedule/after: A workflow is not started again after its run ends: give it a trigger with on, cron or every instead',
+      ],
       [
         '/schedule/after: A workflow is not started again after its run ends: give it a trigger with on, cron or every instead',
       ],
     ]);
   });
 
+  it('checks each of its triggers on its own', () => {
+    expect(refused({ on: { any: [] }, cron: 5, every: 'PT30S' })).toEqual([
+      '/schedule/on: on takes one, a filter of the events that start the workflow, or any, a list of at least one',
+      '/schedule/cron: cron is text of five fields, minute, hour, day of month, month and day of week',
+      '/schedule/every: A schedule is due at most once a minute, not every 30000 ms',
+    ]);
+  });
+});
+
+describe('the schedule triggers of a workflow', () => {
   it('every is a duration of a minute or more', () => {
     expect([
       refused({ every: 'PT1M' }),
@@ -94,50 +113,72 @@ describe('the events that start a workflow', () => {
   });
 });
 
-describe('the trigger of a saved workflow', () => {
-  it('is read from its schedule: the filters of its events, its cron or its period', () => {
-    expect([
-      triggerOfDocument({ schedule: { on: { any: [typed, { with: {} }] } } }),
-      triggerOfDocument({ schedule: { cron: '0 9 * * *' } }),
-      triggerOfDocument({ schedule: { every: 'PT5M' } }),
-    ]).toEqual([
-      {
-        kind: 'events',
-        filters: [
-          {
-            reference: '/schedule/on/any/0',
-            type: 'com.acme.closed',
-            attributes: { type: 'com.acme.closed' },
-            dataNeedsVariables: false,
-          },
-        ],
-      },
-      { kind: 'cron', expression: '0 9 * * *' },
-      { kind: 'every', milliseconds: 300_000 },
+describe('the filters of an event trigger', () => {
+  it('are each written once: a filter whose type and attributes another has, in any order, is refused', () => {
+    const eu = { with: { type: 'com.acme.closed', data: { region: 'eu', team: 'ledger' } } };
+    const euAgain = { with: { data: { team: 'ledger', region: 'eu' }, type: 'com.acme.closed' } };
+    const us = { with: { type: 'com.acme.closed', data: { region: 'us', team: 'ledger' } } };
+
+    expect([refused({ on: { any: [eu, us, euAgain, typed, typed] } }), refused({ on: { any: [eu, us] } })]).toEqual([
+      [
+        '/schedule/on/any/2: This filter takes the same events as the one at /schedule/on/any/0',
+        '/schedule/on/any/4: This filter takes the same events as the one at /schedule/on/any/3',
+      ],
+      [],
     ]);
   });
 
-  it('is none for a workflow without a schedule that names one, or a source that is no workflow', () => {
+  it(`are ${mostTriggerFilters} at most`, () => {
     expect([
-      triggerOfDocument({ do: [] }),
-      triggerOfDocument({ schedule: { after: 'PT1M' } }),
-      triggerOfSource('schedule: { on: { one: { with: { type: com.acme.closed } } } }'),
-      triggerOfSource('schedule: ['),
+      refused({ on: { any: typedFilters(mostTriggerFilters) } }),
+      refused({ on: { any: typedFilters(mostTriggerFilters + 1) } }),
     ]).toEqual([
-      undefined,
-      undefined,
+      [],
+      [
+        '/schedule/on/any: A trigger takes at most 64 filters, since each is matched against every event of a type it names for as long as its version is active',
+      ],
+    ]);
+  });
+});
+
+describe('the triggers of a saved workflow', () => {
+  it('are read from its schedule in the order it names them, each with its place in the document', () => {
+    expect(
+      triggersOfDocument({
+        schedule: { cron: '0 9 * * *', on: { any: [typed, { with: {} }] }, every: 'PT5M' },
+      }),
+    ).toEqual([
+      { kind: 'cron', reference: '/schedule/cron', expression: '0 9 * * *' },
       {
-        kind: 'events',
+        kind: 'event',
+        reference: '/schedule/on',
         filters: [
-          {
-            reference: '/schedule/on/one',
-            type: 'com.acme.closed',
-            attributes: { type: 'com.acme.closed' },
-            dataNeedsVariables: false,
-          },
+          { reference: '/schedule/on/any/0', type: 'com.acme.closed', attributes: { type: 'com.acme.closed' } },
         ],
       },
-      undefined,
+      { kind: 'every', reference: '/schedule/every', milliseconds: 300_000 },
+    ]);
+  });
+
+  it('are none for a workflow without a schedule, or for what a schedule names that is not a trigger', () => {
+    expect([
+      triggersOfDocument({ do: [] }),
+      triggersOfDocument({ schedule: 'daily' }),
+      triggersOfDocument({ schedule: { after: 'PT1M', on: 'events', cron: 5, every: 'soon' } }),
+      triggersOfDocument({ schedule: { on: { one: typed } } }),
+    ]).toEqual([
+      [],
+      [],
+      [],
+      [
+        {
+          kind: 'event',
+          reference: '/schedule/on',
+          filters: [
+            { reference: '/schedule/on/one', type: 'com.acme.closed', attributes: { type: 'com.acme.closed' } },
+          ],
+        },
+      ],
     ]);
   });
 });

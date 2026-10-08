@@ -41,7 +41,7 @@ function recordedVersionOf(
   );
 }
 
-export const reactingSince = Effect.fnUntraced(function* (primitive: string, { name, version }: StoredDefinition) {
+export const triggersSince = Effect.fnUntraced(function* (primitive: string, { name, version }: StoredDefinition) {
   const { position } = yield* Effect.orDie(recordedVersionOf(primitive, name, version));
   return messageIdOf(`${streamPrefixOfBrain(yield* BrainContext)}${specsStreamOf(primitive)}`, position);
 });

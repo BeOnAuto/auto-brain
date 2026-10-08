@@ -18,7 +18,7 @@ export function listedSpecOf(primitive: Primitive, stored: StoredDefinition): Li
 
 function contentFrom(
   source: string,
-  { description, inputSchema, outputSchema, warnings = [], reacts = false, details }: DefinitionSummary,
+  { description, inputSchema, outputSchema, warnings = [], triggers = [], details }: DefinitionSummary,
 ): SpecContent {
   return {
     source,
@@ -26,7 +26,7 @@ function contentFrom(
     ...(inputSchema === undefined ? {} : { input_schema: inputSchema }),
     ...(outputSchema === undefined ? {} : { output_schema: outputSchema }),
     ...(warnings.length === 0 ? {} : { warnings }),
-    ...(reacts ? { reacts } : {}),
+    ...(triggers.length === 0 ? {} : { triggers }),
     ...(details === undefined ? {} : { details }),
   };
 }

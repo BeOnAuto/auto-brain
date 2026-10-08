@@ -16,7 +16,6 @@ Public documentation explains [workflows and their availability](../../docs/conc
 - `callMarginMs`: the minute a call is given beyond the longest its definition may run.
 - `runPresenter`: the presenter of the run log, for the history of a run and the events of a brain.
 - `definitionRunResultOf`, `RunDefinition`, `DefinitionRunRequest` and `DefinitionRunResult`, for the server, which runs a definition called by a workflow through its operations.
-- `triggerOfSource(source)`: the trigger a saved workflow's source names, which the workflow host reads when a version that reacts is activated (see [Triggers](#triggers)).
 
 ## A run of a workflow
 
@@ -28,13 +27,13 @@ A call of a workflow, `call: execute_spec`, executes the spec it names through t
 
 ## Triggers
 
-A document's `schedule` names its trigger, one of three, checked when the spec is saved by `scheduleRejections` (`src/document/workflow-schedule.ts`), which the policy of the engine calls:
+A document's `schedule` names its triggers ([decision 0015](../../docs/decisions/0015-several-triggers.md)), `on`, `cron` and `every`, any one, two or three of them, each a trigger of its own, checked on its own when the spec is saved by `scheduleRejections` (`src/document/workflow-schedule.ts`), which the policy of the engine calls:
 
-- `on`: `one` filter, or `any` of a list of at least one, each a literal event filter of the engine (`literalFilterOf`): its `with` names the type of the events it takes as text, and its source and subject as text too when it names them; a `data` expression that uses a variable such as `$workflow` is refused, since no run exists when the trigger is matched. `all` and `until` are refused.
+- `on`: `one` filter, or `any` of a list of at least one and at most 64, `mostTriggerFilters`, each a literal event filter of the engine (`literalFilterOf`): its `with` names the type of the events it takes as text, and its source and subject as text too when it names them; a `data` expression that uses a variable such as `$workflow` is refused, since no run exists when the trigger is matched, and so is a filter of `any` whose type and attributes an earlier one has, in any order of keys. `all` and `until` are refused.
 - `cron`: five fields, minute, hour, day of month and month, and day of week, read in UTC by `cronRejectionOf` of `@beonauto/workflow-host`, which refuses an expression that cannot be read or names no time that comes.
 - `every`: a duration of the DSL of at least a minute.
 
-`after` is refused, and so is a schedule that names none or more than one. A document with a schedule is summarized with `reacts: true`, so its version is activated when it is saved, and `triggerOfSource` reads the trigger back from the saved source for the workflow host, which starts the runs (see `@beonauto/workflow-host`).
+`after` is refused, and so is a schedule that names none; two keys of one name cannot be written, since the YAML reader refuses them. `triggersOfDocument` reads the triggers once, at save, in the order the schedule names them, each identified by its kind, `event`, `cron` or `every`, and its reference in the document, `/schedule/on`, `/schedule/cron` or `/schedule/every`: an event trigger with each filter's reference, type and attributes, a cron with its expression and an every with its period in milliseconds. The summary carries them as `triggers`, the `TriggerSchema` of `@beonauto/specs`, so they travel on the definition's record to the workflow host, which keeps one row a trigger and starts the runs (see `@beonauto/workflow-host`); nothing reads a saved source again for them. `cronRejectionOf` stays in the host, which owns the time arithmetic the check must agree with.
 
 ## Emitting an event
 
@@ -52,4 +51,4 @@ It then presents each step entry of the record as an event of its own, in the en
 
 ## Source
 
-`src/document` parses a spec document: YAML, the DSL schema and graph, the policy, the schedule and its trigger, the issues and the summary. `src/primitive` holds the primitive, whose guide is the public reference page, served to agents as `workflow`, `src/events` the event operation, `src/calls` what a call of a workflow does, `src/runs` the machine's options and a run's attributes, `src/presenting` the presenter of a run's log, `src/workflows` the tests of how a workflow runs, `src/input-logs` the recorded paths and their corpus, and `src/testing` what the tests share.
+`src/document` parses a spec document: YAML, the DSL schema and graph, the policy, the schedule and its triggers, the issues and the summary. `src/primitive` holds the primitive, whose guide is the public reference page, served to agents as `workflow`, `src/events` the event operation, `src/calls` what a call of a workflow does, `src/runs` the machine's options and a run's attributes, `src/presenting` the presenter of a run's log, `src/workflows` the tests of how a workflow runs, `src/input-logs` the recorded paths and their corpus, and `src/testing` what the tests share.

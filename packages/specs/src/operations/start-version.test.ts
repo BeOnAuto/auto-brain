@@ -1,4 +1,5 @@
 import { brainCallerOf, messageIdOf } from '@beonauto/operations';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineStartVersion } from '../index.ts';
@@ -55,6 +56,30 @@ describe('a start of one version of a definition, once', () => {
     });
     expect(specs.ledger.streamNames().filter((stream) => stream.endsWith(executionId))).toEqual([
       `brain/acme/alpha/executions/${executionId}`,
+    ]);
+  });
+});
+
+describe('a start of a version that a trigger asked for', () => {
+  it('records the trigger on the start and the ending, while the brain stays who started it', async () => {
+    const specs = await greetAtTwoVersions();
+    const trigger = { kind: 'every' as const, reference: '/schedule/every' };
+
+    const started = await specs.call(startVersion, { ...starting(2), trigger });
+    const { records } = await specs.run(
+      Effect.orDie(
+        specs.ledger.service.readRecorded(
+          { org: 'acme', brain: 'alpha' },
+          { kind: 'run', execution: executionId },
+          { order: 'asc', limit: 10 },
+        ),
+      ),
+    );
+
+    expect(started).toMatchObject({ status: 'succeeded', output: { started_by: 'brain:alpha' } });
+    expect(records.map(({ data }) => data)).toMatchObject([
+      { type: 'execution_started', trigger },
+      { type: 'execution_succeeded', trigger },
     ]);
   });
 });
@@ -144,15 +169,20 @@ describe('the words of a start of a version once', () => {
         input: {},
         execution_id: executionId,
       }),
-    ).toBe('start the greeting “greet” once, for what it reacts to');
+    ).toBe('start the greeting “greet” once, for one of its triggers');
   });
 });
 
+const triggers = [
+  { kind: 'event', reference: '/schedule/on', filters: [{ reference: '/schedule/on/one', type: 'x', attributes: {} }] },
+  { kind: 'every', reference: '/schedule/every', milliseconds: 60_000 },
+];
+
 describe('the definitions of a brain that start on their own', () => {
-  it('say so, and a read of one names the record its current version was made by', async () => {
+  it('show their triggers, and a read of one names the record its current version was made by', async () => {
     const specs = harness();
-    const { getSpec } = specOperationsFor([echo]);
-    const source = '{"greeting": "Hello", "reacts": true}';
+    const { getSpec, listSpecs } = specOperationsFor([echo]);
+    const source = JSON.stringify({ greeting: 'Hello', triggers });
     await specs.call(createSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'greet', source }));
     await specs.call(
       createSpec,
@@ -161,11 +191,16 @@ describe('the definitions of a brain that start on their own', () => {
 
     const read = await specs.call(getSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'greet' }));
     const plain = await specs.call(getSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'plain' }));
+    const listed = await specs.call(listSpecs, toAlpha(acmeAdmin, { primitive: 'echo' }));
 
     expect(read).toMatchObject({
       status: 'succeeded',
-      output: { reacts: true, reacts_since: messageIdOf('brain/acme/alpha/specs/echo', 1) },
+      output: { triggers, triggers_since: messageIdOf('brain/acme/alpha/specs/echo', 1) },
     });
-    expect(plain).not.toMatchObject({ output: { reacts: true } });
+    expect(plain).not.toMatchObject({ output: { triggers } });
+    expect(listed).toMatchObject({
+      status: 'succeeded',
+      output: { specs: [{ name: 'greet', triggers }, { name: 'plain' }] },
+    });
   });
 });

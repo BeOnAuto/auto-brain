@@ -26,7 +26,7 @@ describe('the brains another process writes to, which raises no signal here', ()
       const settings = await onSQLite();
       const { store } = await openedOn(settings);
       await brainCreated(store, 'alpha');
-      await specRecorded(store, { name: 'close', version: 1, trigger: closed });
+      await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
       const reacting = await reactingHost({ settings, appended: streamSignalOf(), sweepEveryMs: 20 });
 
       await published(store, { id: 'after', type: 'com.acme.closed' });
@@ -44,7 +44,7 @@ describe('the brains another process writes to, which raises no signal here', ()
       const { store } = reacting.database;
 
       await brainCreated(store, 'beta');
-      await specRecorded(store, { name: 'close', version: 1, trigger: closed }, beta);
+      await specRecorded(store, { name: 'close', version: 1, triggers: [closed] }, beta);
       await published(store, { id: 'first', type: 'com.acme.closed' }, {}, beta);
       const starts = await startsReaching(reacting, 1);
 
