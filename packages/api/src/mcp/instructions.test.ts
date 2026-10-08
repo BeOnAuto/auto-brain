@@ -170,6 +170,14 @@ describe('the instructions of a key that may only read', () => {
     );
   });
 
+  it('on an org endpoint that lists the models and no tool servers, say which models a reasoning function names', () => {
+    const served = { orgTools: ['list_brains', 'list_models', 'get_guide'], brainTools: [] };
+
+    expect(instructionsFor('org', served, definitionTypes, recipes)).toContain(
+      'list_models lists the models this server can call, which a reasoning function names. get_guide holds',
+    );
+  });
+
   it('on an org endpoint that only creates brains, say that it makes a brain', () => {
     expect(instructionsFor('org', { orgTools: ['create_brain'], brainTools: [] }, definitionTypes, recipes)).toContain(
       "This connection manages the brains of one org: create_brain makes a brain, and a brain's functions and workflows are made on the brain's own connection, /orgs/{org}/brains/{brain}/mcp.",
