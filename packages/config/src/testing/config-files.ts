@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { Result, Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
+import type { RefusedKeys } from '../config-file/config-file.ts';
 import { configurationOf, type Configuration } from '../config-file/configuration.ts';
 import { fileSetting } from '../config-file/file-setting.ts';
 import type { Environment } from '../server-config.ts';
@@ -33,6 +34,10 @@ export const exampleSettings = [
   ),
 ];
 
+export const exampleRefusedKeys: RefusedKeys = new Map([
+  ['example_headers', 'a header is sent on the entry of its server in example_servers, under headers'],
+]);
+
 export function temporaryDirectory(): string {
   const directory = mkdtempSync(join(tmpdir(), 'auto-brain-config-'));
   onTestFinished(() => {
@@ -48,12 +53,15 @@ export function configFileWith(text: string): string {
 }
 
 export function configured(text: string, environment: Environment = {}): Configuration {
-  return Result.getOrThrow(configurationOf({ CONFIG_FILE: configFileWith(text), ...environment }, exampleSettings));
+  return Result.getOrThrow(
+    configurationOf({ CONFIG_FILE: configFileWith(text), ...environment }, exampleSettings, exampleRefusedKeys),
+  );
 }
 
 export function messageOf(path: string, environment: Environment = {}): string {
-  return Result.getOrThrow(Result.flip(configurationOf({ CONFIG_FILE: path, ...environment }, exampleSettings)))
-    .message;
+  return Result.getOrThrow(
+    Result.flip(configurationOf({ CONFIG_FILE: path, ...environment }, exampleSettings, exampleRefusedKeys)),
+  ).message;
 }
 
 export function problemsIn(text: string, environment: Environment = {}): string {

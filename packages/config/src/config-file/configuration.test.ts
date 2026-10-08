@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   configFileWith,
   configured,
+  exampleRefusedKeys,
   exampleSettings,
   messageOf,
   problemsIn,
@@ -27,8 +28,10 @@ describe('the configuration without CONFIG_FILE', () => {
   it('is the environment as it is', () => {
     const environment = { EXAMPLE_ORIGINS: 'https://app.example.com' };
 
-    expect(configurationOf(environment, exampleSettings)).toEqual(Result.succeed({ environment, file: undefined }));
-    expect(configurationOf({ ...environment, CONFIG_FILE: '' }, exampleSettings)).toEqual(
+    expect(configurationOf(environment, exampleSettings, exampleRefusedKeys)).toEqual(
+      Result.succeed({ environment, file: undefined }),
+    );
+    expect(configurationOf({ ...environment, CONFIG_FILE: '' }, exampleSettings, exampleRefusedKeys)).toEqual(
       Result.succeed({ environment: { ...environment, CONFIG_FILE: '' }, file: undefined }),
     );
   });
@@ -72,7 +75,9 @@ describe('a configuration file', () => {
 describe('the place of a setting the file holds', () => {
   it('names where a setting it holds is, by file, line, column and key, or the nearest place it is', () => {
     const path = configFileWith(gateways);
-    const { file } = Result.getOrThrow(configurationOf({ CONFIG_FILE: path, GATEWAY_KEY: 'k' }, exampleSettings));
+    const { file } = Result.getOrThrow(
+      configurationOf({ CONFIG_FILE: path, GATEWAY_KEY: 'k' }, exampleSettings, exampleRefusedKeys),
+    );
 
     expect(file?.place('EXAMPLE_GATEWAYS', '/0/headers/x-tenant')).toBe(
       `${path}:4:26 example_gateways[0].headers.x-tenant`,
@@ -270,5 +275,20 @@ describe('a configuration file that is not one the server reads', () => {
         'auto-brain.yaml:2:39 example_gateways[0].colour: Expected no excess property; ' +
         'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
     );
+  });
+});
+
+describe('a key the file refuses with a sentence of its own', () => {
+  it('is refused with that sentence at its line, beside a key it does not hold, never quoting the value', () => {
+    const message = problemsIn(
+      'example_origins: [https://a.example]\nexample_headers: { x-tenant: acme }\nport: 8080\n',
+    );
+
+    expect(message).toBe(
+      'The configuration file auto-brain.yaml is invalid: ' +
+        'auto-brain.yaml:2:18 example_headers: Not a setting this file holds; a header is sent on the entry of its server in example_servers, under headers; ' +
+        'auto-brain.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
+    );
+    expect(message).not.toContain('acme');
   });
 });

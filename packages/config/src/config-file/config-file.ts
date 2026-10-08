@@ -12,6 +12,13 @@ import { substituted } from './references.ts';
 
 export class ConfigFileInvalid extends Data.TaggedError('ConfigFileInvalid')<{ readonly message: string }> {}
 
+export type RefusedKeys = ReadonlyMap<string, string>;
+
+interface HeldKeys {
+  readonly settings: readonly FileSetting[];
+  readonly refused: RefusedKeys;
+}
+
 export interface ConfigFile {
   readonly path: string;
   readonly settings: ReadonlyMap<string, string>;
@@ -90,16 +97,21 @@ function settingReading(fileSetting: FileSetting, raw: Schema.Json, environment:
   });
 }
 
-function unknownKeyProblems(document: YamlDocument, keys: readonly string[]): readonly FileProblem[] {
+function unknownKeyProblems(
+  document: YamlDocument,
+  keys: readonly string[],
+  refused: RefusedKeys,
+): readonly FileProblem[] {
+  const held = `it holds ${keys.join(', ')}`;
   return Object.keys(document.value)
     .filter((key) => !keys.includes(key))
-    .map((key) => ({ pointer: below('', key), detail: `Not a setting this file holds; it holds ${keys.join(', ')}` }));
+    .map((key) => ({ pointer: below('', key), detail: `Not a setting this file holds; ${refused.get(key) ?? held}` }));
 }
 
 function settingsIn(
   path: string,
   document: YamlDocument,
-  settings: readonly FileSetting[],
+  { settings, refused }: HeldKeys,
   environment: Environment,
 ): Result.Result<ConfigFile, ConfigFileInvalid> {
   const known = new Map(settings.map((fileSetting) => [fileSetting.key, fileSetting]));
@@ -108,7 +120,7 @@ function settingsIn(
     return fileSetting === undefined ? [] : [settingReading(fileSetting, raw, environment)];
   });
   const problems = [
-    ...unknownKeyProblems(document, [...known.keys()]),
+    ...unknownKeyProblems(document, [...known.keys()], refused),
     ...readings.flatMap((reading) => reading.problems),
   ];
   const located = ({ pointer, detail }: FileProblem): Located => {
@@ -134,6 +146,7 @@ function settingsIn(
 export function readConfigFile(
   path: string,
   settings: readonly FileSetting[],
+  refused: RefusedKeys,
   environment: Environment,
 ): Result.Result<ConfigFile, ConfigFileInvalid> {
   return Result.flatMap(sourceOf(path), (source) => {
@@ -146,6 +159,6 @@ export function readConfigFile(
         ),
       );
     }
-    return settingsIn(path, reading.document, settings, environment);
+    return settingsIn(path, reading.document, { settings, refused }, environment);
   });
 }
