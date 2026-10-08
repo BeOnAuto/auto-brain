@@ -92,7 +92,7 @@ The HTTP method decides nothing. The server serves these, which `packages/server
 | `send_execution_event`  | false          | false             | false            | false           |
 | `get_guide`             | true           | false             | true             | false           |
 
-`execute_spec` is destructive while a tool server or a channel of an interaction function is configured, since a reasoning function's tools or an interaction function's channel may then change something outside, and `test_tool_call` while `testable_tools` lists a tool, since a tool its server does not mark read-only may then be tested; the table is the server without either, as the test serves it. `list_models` and `execute_spec` reach model providers, and `list_tool_servers` and `test_tool_call` reach the tool servers.
+`execute_spec` is destructive while a tool server or a channel of an interaction function is configured, since a reasoning function's tools or an interaction function's channel may then change something outside, and `test_tool_call` while an entry of `mcp_servers` marks a tool testable, since a tool its server does not mark read-only may then be tested; the table is the server without either, as the test serves it. `list_models` and `execute_spec` reach model providers, and `list_tool_servers` and `test_tool_call` reach the tool servers.
 
 **Calls.** On a scoped endpoint the org, and the brain of a brain endpoint, come from the URL, and the arguments are the whole input; on `/mcp` the org is the caller's own and the brain an argument. The input is decoded with the `json` encoding. A call goes through the same dispatcher and the same `settle` as an HTTP request, with the caller in the URL's org.
 

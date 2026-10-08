@@ -142,7 +142,7 @@ For a second run and a comparison of the results, continue with [Build your firs
 
 A reasoning function can use the tools of an MCP server, such as a search service. You tell Auto about the server in a settings file, `auto-brain.yaml`, and keep the server's key in `.env`.
 
-1. Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`, and allows its tools with `allowed_tools`:
+1. Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this, with your server's address in place of the example one. It adds the server under `mcp_servers` for the org `local` that a local server uses, with a header that names the environment variable holding its key, written `${NAME}`; every tool of the server is allowed, since its entry leaves `allowed` out:
 
    ```yaml
    mcp_servers:
@@ -151,8 +151,6 @@ A reasoning function can use the tools of an MCP server, such as a search servic
        headers:
          Authorization: Bearer ${SEARCH_API_KEY}
        org: local
-   allowed_tools:
-     - search/*
    ```
 
 2. Put the key in `.env` as `SEARCH_API_KEY=` followed by the key.
@@ -166,10 +164,16 @@ A reasoning function can use the tools of an MCP server, such as a search servic
 
 The key never goes in `auto-brain.yaml`; the file only names the variable that holds it. `auto-brain.example.yaml` at the root of the repository shows every other setting, and the repository's [configuration guide](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) lists every field of a server.
 
-Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that; one that marks none needs its read-only tools named under `testable_tools`, for example a Constellation gateway's search, introspect, validate and dry_run:
+Your agent can try a tool before a function uses it, to see what it answers. A server that marks its read-only tools needs nothing more for that; one that marks none needs its read-only tools named under `testable` on its entry, for example a Constellation gateway's search, introspect, validate and dry_run:
 
 ```yaml
-testable_tools: [search/search, search/introspect, search/validate, search/dry_run]
+mcp_servers:
+  search:
+    url: https://search.example.com/mcp
+    headers:
+      Authorization: Bearer ${SEARCH_API_KEY}
+    org: local
+    testable: [search, introspect, validate, dry_run]
 ```
 
 ## If something does not connect

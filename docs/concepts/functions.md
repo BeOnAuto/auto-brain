@@ -80,7 +80,7 @@ A reasoning function can call the tools of MCP servers that the runtime's operat
 
 A tool may change something outside the brain. A run that called tools and did not succeed is therefore not run again under the same execution id; start a new run once you have checked what its history shows it called. When any MCP server is configured, an agent connected to Auto sees `execute_spec` marked as possibly destructive, so it can ask before running a function.
 
-To learn what a tool answers before a function names it, an agent tests it with `test_tool_call` instead of making a function to look: the brain calls the tool once, as a run would, and answers what the run's model would see. Only a tool its server marks read-only, or that the operator lists as safe to test, can be tested, and each test is recorded in the brain's history, never as a run.
+To learn what a tool answers before a function names it, an agent tests it with `test_tool_call` instead of making a function to look: the brain calls the tool once, as a run would, and answers what the run's model would see. Only a tool its server marks read-only, or that the operator marks testable on its entry, can be tested, and each test is recorded in the brain's history, never as a run.
 
 One of those servers can be an agent services gateway, which fronts the systems an organization connected and applies its own policies to the application whose key the runtime uses. Provider settings called model gateways connect to language models; they do not provide MCP tools.
 
