@@ -164,7 +164,7 @@ const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
 
 const remedyByBecause: Remedies = {
   not_testable:
-    'A tool that may change something is called only by a function the person asked to run; whoever runs the server can list it under testable_tools, and list_tool_servers shows which tools can be tested.',
+    "A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
   key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
 };
 
