@@ -1,4 +1,4 @@
-import { NotFound, type JsonSchemaDocument, type Registration } from '@beonauto/operations';
+import { NotFound, alternatives, articled, type JsonSchemaDocument, type Registration } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import { isPrimitiveName, type Primitive } from './primitive.ts';
@@ -15,7 +15,7 @@ export const PrimitiveField = Schema.String.check(
 
 export interface KnownPrimitives {
   readonly field: typeof PrimitiveField;
-  readonly describe: (sentences: readonly string[]) => string;
+  readonly typesWithGuides: string;
   readonly publish: <Operation extends PublishedOperation>(operation: Operation, meaning?: string) => Operation;
   readonly primitiveNamed: (name: string) => Effect.Effect<Primitive, NotFound>;
 }
@@ -33,24 +33,19 @@ function requireDistinctNames(names: readonly string[]): void {
   }
 }
 
-function guideTo(primitives: readonly Primitive[]): string {
-  return [
-    'This brain supports these definition types, selected by the `primitive` field:',
-    ...primitives.map(
-      ({ name, title, description, mediaType }) =>
-        `- \`${name}\` (${title}), whose definition documents are ${mediaType}: ${description}`,
-    ),
-  ].join('\n');
-}
-
-const primitiveMeaning = 'The API type identifier of the function or workflow definition';
+const primitiveMeaning = "The definition's type";
 
 function withPrimitiveField(
   { schema, definitions }: JsonSchemaDocument,
-  names: readonly string[],
+  primitives: readonly Primitive[],
   meaning: string,
 ): JsonSchemaDocument {
-  const primitive = { type: 'string', enum: [...names], description: `${meaning}: ${names.join(', ')}` };
+  const types = alternatives(primitives.map(({ name, noun }) => `${name} (${noun.one})`));
+  const primitive = {
+    type: 'string',
+    enum: primitives.map(({ name }) => name),
+    description: `${meaning}: ${types}`,
+  };
   return { schema: { ...schema, properties: Object.assign({}, schema['properties'], { primitive }) }, definitions };
 }
 
@@ -59,15 +54,16 @@ export function knownPrimitives(primitives: readonly Primitive[]): KnownPrimitiv
   requireSomePrimitive(names);
   requireDistinctNames(names);
   const byName = new Map(primitives.map((primitive) => [primitive.name, primitive]));
-  const guide = guideTo(primitives);
   return {
     field: PrimitiveField,
-    describe: (sentences) => `${sentences.join(' ')}\n\n${guide}`,
+    typesWithGuides: primitives
+      .map(({ name, noun, guide }) => `${name}, ${articled(noun.one)}, guide ${guide.name}`)
+      .join('; '),
     publish: (operation, meaning = primitiveMeaning) => ({
       ...operation,
       registration: {
         ...operation.registration,
-        input: withPrimitiveField(operation.registration.input, names, meaning),
+        input: withPrimitiveField(operation.registration.input, primitives, meaning),
       },
     }),
     primitiveNamed: (name) => {

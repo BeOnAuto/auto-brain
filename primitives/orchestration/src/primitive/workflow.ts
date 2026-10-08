@@ -8,7 +8,6 @@ import { summaryOf } from '../document/workflow-summary.ts';
 import { longestCallsOf } from '../runs/call-limits.ts';
 import { unavailableUnless } from '../runs/host-refusals.ts';
 import type { RunAttributes } from '../runs/run-attributes.ts';
-import { workflowDescription } from './workflow-description.ts';
 
 export interface WorkflowAdapterDependencies {
   readonly runs: Pick<WorkflowHost, 'start'>;
@@ -67,7 +66,7 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
   return definePrimitive({
     name: 'orchestration',
     title: 'Workflow',
-    description: workflowDescription,
+    guide: { name: 'workflow' },
     noun: { one: 'workflow', other: 'workflows' },
     describeOutput: describeResult,
     mediaType: 'application/yaml',

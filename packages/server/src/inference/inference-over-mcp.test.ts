@@ -1,6 +1,14 @@
-import { danglingReferencesIn, listedTools, problemIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
-import { makeReasoningFunctionAdapter } from '@beonauto/inference';
-import { answers, scriptedLanguageModel, textResult, type ScriptedReply } from '@beonauto/inference/testing';
+import {
+  danglingReferencesIn,
+  guideToolName,
+  listedTools,
+  problemIn,
+  schemasOf,
+  textOf,
+  withMcpSession,
+  type McpSession,
+} from '@beonauto/api/testing';
+import { answers, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -34,11 +42,6 @@ const specTools = [
   'list_interactions',
   'send_execution_event',
 ];
-
-const reasoningDescription = makeReasoningFunctionAdapter({
-  languageModel: scriptedLanguageModel().languageModel,
-  offered: { providers: [], aliases: [] },
-}).description;
 
 const withAnthropicThroughGateway = {
   LOCAL_MODE: 'true',
@@ -108,31 +111,29 @@ describe('a reasoning function definition over MCP, on the endpoint of its brain
 });
 
 describe('the spec tools an agent sees on the endpoint of a brain', () => {
-  it('are the seventeen operations inside a brain, and those that name a primitive describe the document format of inference', async () => {
+  it('are the seventeen operations inside a brain and the guide tool, none of them carrying the format of a document', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
-    const describing = tools.filter(({ description }) => description?.includes(reasoningDescription) === true);
 
-    expect(tools.map(({ name }) => name)).toEqual(specTools);
-    expect(describing.map(({ name }) => name)).toEqual(specTools.slice(0, 6));
+    expect(tools.map(({ name }) => name)).toEqual([...specTools, guideToolName]);
+    expect(tools.filter(({ description = '' }) => description.includes('Front matter'))).toEqual([]);
   });
 
-  it('tell an agent which providers and named models the server calls, before it writes a spec', async () => {
+  it('send an agent to the guide that ends with the providers and named models the server calls', async () => {
     server = await servingReasoning([], withAnthropicThroughGateway);
-    const tools = await withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, (session) =>
-      session.listTools(),
+    const guide = await withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, (session) =>
+      session.callTool(guideToolName, { guide: 'reasoning-function' }),
     );
-    const createSpec = listedTools(tools).find(({ name }) => name === 'create_spec');
 
-    expect(createSpec?.description).toContain(
-      'This server calls models through gateway: write model as <provider>/<model id>, with a model id that provider serves, for example gateway/<model id>. Its operator also named these models, which a reasoning function may give as its model: anthropic/*. In a name that ends in *, the * stands for any model id, so a reasoning function may give anthropic/<model id>.',
+    expect(textOf(guide)).toMatch(
+      /On this server, a reasoning function names its model through gateway, written gateway\/<model id>, or one of the models its operator named: anthropic\/\*, where a name that ends in \* stands for any model id, so anthropic\/<model id> runs; no tool server is configured, so it may name no tools\.\n$/u,
     );
   });
 
   it('have self-contained input and output schemas with an object root', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
-    const schemas = tools.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
+    const schemas = schemasOf(tools);
 
-    expect(schemas).toHaveLength(34);
+    expect(schemas).toHaveLength(35);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

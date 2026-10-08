@@ -26,27 +26,24 @@ import { interactionBounds } from '../run/run-bounds.ts';
 import { answerFor, answererOf } from './answering.ts';
 import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
 
-const ClaimedForField = Schema.String.check(
+const ClaimedForField = Schema.String.annotate({
+  description: `Whom the caller says it answers for, kept with the answer as a claim and never checked, at most ${interactionBounds.claimBytes} bytes`,
+}).check(
   Schema.makeFilter((text: string) => Buffer.byteLength(text, 'utf8') <= interactionBounds.claimBytes, {
     expected: `at most ${interactionBounds.claimBytes} bytes`,
   }),
   refusingForbiddenCharacters,
   refusingBlankText,
-).annotate({
-  description: `Whom the caller says it answers for, kept with the answer as a claim and never checked, at most ${interactionBounds.claimBytes} bytes`,
-});
+);
 
 const description = [
-  'Answers the request of an interaction function, which a run of it is waiting for, and settles the run:',
+  "Answers a request an interaction function's run waits on, and settles the run for good:",
   'the run succeeds with the answer as its output, which reaches the workflow step that waits for it.',
-  '`execution_id` is the run of the request, as list_interactions shows it; `answer` must match the answer schema',
-  'the request names; `claimed_for` is whom the caller says it answers for, kept as a claim.',
-  'It answers the run. The same answer again answers the run as it stands.',
-  'Rejected with invalid_input when the answer does not match the schema, which leaves the request open;',
-  'with conflict when the request has ended with another result, expired or was cancelled, or takes no answer;',
-  'with not_found when the brain has no such run; and with forbidden when an answer token does not answer this request.',
-  'Over HTTP a system that received the request by webhook may answer with its answer token alone, as',
-  '`Authorization: Request <token>`.',
+  'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them;',
+  'a new run asks again and answers nothing, and send_execution_event gives an event to a waiting workflow instead.',
+  '`execution_id` is the run of the request, and `answer` takes the shape of the request\'s answer schema, its function\'s output_schema, such as {"decision": "approve"}.',
+  '`claimed_for` is whom the caller says it answers for, kept as a claim.',
+  'The same answer again answers the run as it stands, and an answer that does not match leaves the request open.',
 ].join(' ');
 
 const answerSchemaOf = Schema.decodeUnknownSync(Schema.Struct({ answer_schema: Schema.JsonObject }));
@@ -105,6 +102,8 @@ export function defineAnswerInteraction(channels: ChannelSettings) {
     description,
     route: { method: 'POST', path: '/executions/{execution_id}/answer' },
     authorizesByToken: true,
+    irreversible: true,
+    repeatable: true,
     inputSchema: Schema.Struct({
       execution_id: ExecutionIdField,
       answer: Schema.Json.annotate({ description: 'The answer, a JSON value the answer schema of the request takes' }),

@@ -38,11 +38,9 @@ const parseGreeting = (source: string) =>
 export const greeting = definePrimitive({
   name: 'greeting',
   title: 'Greeting',
-  description: [
-    'Greets someone by name.',
-    'A spec document of greeting is one line of text with {name} where the name goes,',
-    'for example "Good morning, {name}!". The input is an object with a string name.',
-  ].join(' '),
+  guide: { name: 'greeting' },
+  noun: { one: 'greeting', other: 'greetings' },
+  describeOutput: () => 'It greeted.',
   mediaType: 'text/plain',
   parse: parseGreeting,
   summarize: ({ template }) => ({
@@ -65,7 +63,7 @@ export const greeting = definePrimitive({
 A primitive has:
 
 - `name`: 3 to 32 lowercase letters, digits and hyphens, starting with a letter. It names the primitive in routes, in the `primitive` field and in stream names, so it never changes.
-- `title`, and a `description` written for an AI agent: what a spec of the primitive is and how its document is written. The operation descriptions repeat it, so the catalog documents every primitive without an operation to discover them.
+- `title`, and `guide`: the `name` of the guide that holds its format, which the MCP layer serves through `get_guide` and as the resource `guide://<name>`, so that no operation description carries a format. The server makes the guide from the public reference page of the type, `docs/reference/<name without -function>-format.md`, and refuses to start without it. A guide may carry `onThisServer`, one sentence of what this server's configuration offers, such as the providers a reasoning function names its model through, which the guide ends with. `create_spec` names each type with the kind of definition it is and its guide, from the registered primitives.
 - `mediaType`: the media type of its spec documents, such as `text/markdown`.
 - `parse(source)`: turns the document into the primitive's own value. Parsing is validation: everything that can be checked without running is checked here. It fails with `InvalidInput`, whose issues each say in `detail` where in the document and what is wrong (line and problem). An issue's `pointer` addresses the document as a whole, so it is `''`; the operations answer it under `/source`.
 - `summarize(parsed)`: what the operations show about a spec without knowing the primitive: an optional `description`, optional JSON Schemas of the input an execution takes (`inputSchema`) and the output it gives (`outputSchema`), `reacts`, true for a spec that starts runs on its own, as a workflow with a schedule does, and optional `warnings`: what `parse` found that does not stop the spec from being accepted but may not work everywhere, each a line of text that says where in the document (for inference: a schema some providers reject or do not enforce); and optional `details`, a JSON object the registry stores with the definition's record and keeps in its state, but never in a definition an operation answers, so that code which reads the record without the primitive's parser can act on it (for recollection: the fold, `answer`, the filters, `initial` and the view's schema, which the workflow host folds a view by).
@@ -126,7 +124,7 @@ The ledger's cloud store holds at most 2 MB in a row, so an execution records bo
 - The `input` may nest at most 512 levels deep, `mostInputDepth`, as deep as a workflow holds a value; `nestsWithin` measures it, counting each array and object a level. A deeper input is rejected the same way, for every runtime adapter, so that none is recorded deeper than a store takes: on SQLite an input 3,000 levels deep failed to append, while PostgreSQL took it.
 - The `output` and the `record` of a primitive may take at most 1048576 bytes (1 MiB) together. A primitive that answers with more breaks down: the call fails with an incident and the execution is recorded as `failed`. The same holds for the record of work that finishes later, and for the output and record it is settled with.
 
-JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`, and in the description of `execute_spec`. `mostInputBytes` and `mostResultBytes` export them, so that a primitive can keep what it answers within them.
+JSON Schema has no keyword for the encoded size of any JSON value, so the published schemas state both limits in the descriptions of `input` and `output`. `mostInputBytes` and `mostResultBytes` export them, so that a primitive can keep what it answers within them.
 
 ### Run ids and retries
 

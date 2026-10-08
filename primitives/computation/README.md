@@ -64,4 +64,4 @@ The pool keeps a worker between runs, so a run costs its work and the copies of 
 
 ## Source
 
-`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialect and parsing. `src/run` holds a run: its bounds, the input's checks, the call of the pool and the endings. `src/primitive` holds the primitive and its description for agents. `src/testing` holds the example and what the tests share.
+`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialect and parsing. `src/run` holds a run: its bounds, the input's checks, the call of the pool and the endings. `src/primitive` holds the primitive, whose guide is the public reference page, served to agents as `computation-function`. `src/testing` holds the example and what the tests share.

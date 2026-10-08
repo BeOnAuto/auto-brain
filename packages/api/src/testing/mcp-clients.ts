@@ -25,6 +25,10 @@ export interface McpSession {
   readonly instructions: string | undefined;
   readonly listTools: () => Promise<unknown>;
   readonly callTool: (name: string, input?: Readonly<Record<string, unknown>>) => Promise<ToolResult>;
+  readonly listResources: () => Promise<unknown>;
+  readonly readResource: (uri: string) => Promise<unknown>;
+  readonly listPrompts: () => Promise<unknown>;
+  readonly getPrompt: (name: string, words?: Readonly<Record<string, string>>) => Promise<unknown>;
   readonly close: () => Promise<void>;
 }
 
@@ -65,6 +69,10 @@ function argumentsOf(input: Readonly<Record<string, unknown>> | undefined): Reco
   return input === undefined ? undefined : { ...input };
 }
 
+function wordsOf(words: Readonly<Record<string, string>> | undefined): Record<string, string> {
+  return { ...words };
+}
+
 class PreviousMajorHttpTransport implements Transport {
   onclose?: NonNullable<Transport['onclose']>;
   onerror?: NonNullable<Transport['onerror']>;
@@ -103,6 +111,10 @@ async function connectPreviousMajor(connection: McpConnection): Promise<McpSessi
     instructions: client.getInstructions(),
     listTools: () => client.listTools(),
     callTool: async (name, input) => toolResultOf(await client.callTool({ name, arguments: argumentsOf(input) })),
+    listResources: () => client.listResources(),
+    readResource: (uri) => client.readResource({ uri }),
+    listPrompts: () => client.listPrompts(),
+    getPrompt: (name, words) => client.getPrompt({ name, arguments: wordsOf(words) }),
     close: () => client.close(),
   };
 }
@@ -117,6 +129,10 @@ async function connectCurrentMajor(kind: McpClientKind, { url, headers }: McpCon
     instructions: client.getInstructions(),
     listTools: () => client.listTools(),
     callTool: async (name, input) => toolResultOf(await client.callTool({ name, arguments: argumentsOf(input) })),
+    listResources: () => client.listResources(),
+    readResource: (uri) => client.readResource({ uri }),
+    listPrompts: () => client.listPrompts(),
+    getPrompt: (name, words) => client.getPrompt({ name, arguments: wordsOf(words) }),
     close: () => client.close(),
   };
 }

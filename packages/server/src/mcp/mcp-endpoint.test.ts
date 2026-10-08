@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 import { instructionsFor, type McpEndpoint } from '@beonauto/api';
 import {
   danglingReferencesIn,
+  guideToolName,
   listedTools,
   problemIn,
+  schemasOf,
   takingBrain,
   withMcpSession,
   type ListedTool,
@@ -57,6 +59,10 @@ function onMcp<T>(path: string, use: (session: McpSession) => Promise<T>): Promi
   return withMcpSession('current revision', { url: `${server.origin}${path}`, headers: {} }, use);
 }
 
+function operations(tools: readonly ListedTool[]): readonly ListedTool[] {
+  return tools.filter(({ name }) => name !== guideToolName);
+}
+
 function listingOn(path: string): Promise<readonly ListedTool[]> {
   return onMcp(path, async (session) => listedTools(await session.listTools()));
 }
@@ -95,10 +101,10 @@ describe('the tools of /mcp', () => {
       await listingOn('/orgs/local/mcp'),
       await listingOn('/orgs/local/brains/alpha/mcp'),
     ];
-    const schemas = own.flatMap(({ inputSchema, outputSchema }) => [inputSchema, outputSchema]);
+    const schemas = schemasOf(own);
 
-    expect(own.map(({ name }) => name)).toEqual([...brainTools, 'list_models', ...specTools]);
-    expect(own).toEqual([...org, ...brain.map((tool) => takingBrain(tool))]);
+    expect(own.map(({ name }) => name)).toEqual([...brainTools, 'list_models', ...specTools, guideToolName]);
+    expect(operations(own)).toEqual([...operations(org), ...operations(brain).map((tool) => takingBrain(tool))]);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });
@@ -107,11 +113,18 @@ describe('the tools of /mcp', () => {
 const orgTools = [...brainTools, 'list_models'];
 
 const definitionTypes = [
-  { primitive: 'inference', noun: 'reasoning function' },
-  { primitive: 'interaction', noun: 'interaction function' },
-  { primitive: 'computation', noun: 'computation function' },
-  { primitive: 'recollection', noun: 'recall function' },
-  { primitive: 'orchestration', noun: 'workflow' },
+  { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
+  { primitive: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
+  { primitive: 'computation', noun: 'computation function', guide: 'computation-function' },
+  { primitive: 'recollection', noun: 'recall function', guide: 'recall-function' },
+  { primitive: 'orchestration', noun: 'workflow', guide: 'workflow' },
+];
+
+const recipes = [
+  { name: 'first-brain', calls: ['create_brain', 'create_spec', 'execute_spec'] },
+  { name: 'remember', calls: ['create_spec', 'execute_spec'] },
+  { name: 'give-tools', calls: ['list_tool_servers', 'create_spec'] },
+  { name: 'schedule', calls: ['create_spec', 'list_executions'] },
 ];
 
 const terminology = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
@@ -135,14 +148,14 @@ const connections: readonly Connection[] = [
     path: '/mcp',
     endpoint: 'own org',
     served: { orgTools, brainTools: specTools },
-    sentence: "This connection acts in the caller's own org.",
+    sentence: "This connection acts in the caller's own org: list_brains shows its brains",
     unnamed: [],
   },
   {
     path: '/orgs/acme/mcp',
     endpoint: 'org',
     served: { orgTools, brainTools: [] },
-    sentence: 'This connection manages the brains of one org.',
+    sentence: 'This connection manages the brains of one org: list_brains shows them',
     unnamed: [
       'create_spec',
       'execute_spec',
@@ -170,23 +183,29 @@ describe('the instructions an agent receives when it connects', () => {
 
       const instructions = await onMcp(path, (session) => Promise.resolve(session.instructions));
 
-      expect(instructions).toBe(instructionsFor(endpoint, served, definitionTypes));
+      expect(instructions).toBe(instructionsFor(endpoint, served, definitionTypes, recipes));
       expect(instructions).toContain(sentence);
       expect(unnamed.filter((name) => instructions?.includes(name) === true)).toEqual([]);
     },
   );
 
-  it('name each definition type the server serves by the kind the terminology page gives it', async () => {
+  it('leave each definition type to the tools that take one, which name it by the kind the terminology page gives it', async () => {
     server = await servingReasoning([]);
 
-    const instructions = await onMcp('/mcp', (session) => Promise.resolve(session.instructions));
+    const tools = await onMcp('/mcp', async (session) => listedTools(await session.listTools()));
+    const createSpec = tools.find(({ name }) => name === 'create_spec');
 
     expect(
       definitionTypes.filter(({ noun }: Readonly<{ noun: string }>) => !resourcesOnTheTerminologyPage.has(noun)),
     ).toEqual([]);
-    expect(instructions).toContain(
-      'inference for a reasoning function, interaction for an interaction function, computation for a computation function, recollection for a recall function or orchestration for a workflow;',
-    );
+    expect(createSpec?.inputSchema).toMatchObject({
+      properties: {
+        primitive: {
+          description:
+            "The definition's type: inference (reasoning function), interaction (interaction function), computation (computation function), recollection (recall function), or orchestration (workflow)",
+        },
+      },
+    });
   });
 });
 

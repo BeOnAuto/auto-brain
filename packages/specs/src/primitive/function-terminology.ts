@@ -20,7 +20,7 @@ export const functionDescriptions = {
   reason: 'Use a prompt, skills, and tools to interpret information or produce a response.',
   interact: 'Exchange information with people or systems.',
   predict: 'Create and use an ML model to make predictions.',
-  recall: 'Retrieve or reconstruct relevant information from configured sources.',
+  recall: 'Answer from what the brain keeps of its own history.',
   compute: 'Run defined code or expressions to calculate or transform data.',
 } satisfies Record<BrainFunctionKind, string>;
 

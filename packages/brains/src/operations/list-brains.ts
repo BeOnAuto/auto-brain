@@ -11,12 +11,12 @@ export const listBrains = defineQuery('org', {
   name: 'list_brains',
   title: 'List brains',
   description: [
-    'Lists the brains of the org that the caller may access, sorted by id.',
-    'Retired brains are left out unless `include_retired` is true.',
-    'Each brain carries its id, name, description, status (active or retired), the id of the caller who created it,',
-    'when it was created and last changed, and when it was retired.',
+    'Lists the brains of the org that the caller may access, sorted by id, each with its name, what it is for and whether it is active.',
+    'Use it to find a brain the person names, or to see whether one exists before another is made; get_brain reads one brain by its id.',
+    '`include_retired` adds the retired brains, which are left out otherwise.',
   ].join(' '),
   route: { method: 'GET', path: '/brains' },
+  permittedBy: ['org:read', 'brain:read'],
   inputSchema: Schema.Struct({
     include_retired: Schema.optionalKey(
       Schema.Boolean.annotate({ description: 'Whether to list retired brains as well; false when left out' }),

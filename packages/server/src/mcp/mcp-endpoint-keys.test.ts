@@ -26,9 +26,48 @@ const acmeReader = createApiKey({
 
 const acmeAlpha = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, brains: ['alpha'] });
 
+const acmeBrainReader = createApiKey({
+  id: 'acme-brain-reader',
+  org: 'acme',
+  permissions: ['brain:read'],
+  brains: '*',
+});
+
+const queriesInsideABrain = [
+  'list_specs',
+  'get_spec',
+  'get_execution',
+  'list_executions',
+  'get_execution_history',
+  'get_brain_analytics',
+  'list_brain_events',
+  'list_tool_servers',
+  'list_interactions',
+];
+
+const commands = [
+  'create_brain',
+  'update_brain',
+  'retire_brain',
+  'create_spec',
+  'update_spec',
+  'retire_spec',
+  'execute_spec',
+  'cancel_execution',
+  'publish_event',
+  'answer_interaction',
+  'send_execution_event',
+];
+
 const globexAdmin = createApiKey({ id: 'globex-admin', org: 'globex', permissions: allPermissions, brains: '*' });
 
-const apiKeys = JSON.stringify([acmeAdmin.entry, acmeReader.entry, acmeAlpha.entry, globexAdmin.entry]);
+const apiKeys = JSON.stringify([
+  acmeAdmin.entry,
+  acmeReader.entry,
+  acmeAlpha.entry,
+  acmeBrainReader.entry,
+  globexAdmin.entry,
+]);
 
 let server: ReasoningServer;
 
@@ -87,21 +126,42 @@ describe('a key limited to one brain on /mcp', () => {
 });
 
 describe('a read-only key on /mcp', () => {
-  it('is served its queries and refused its commands', async () => {
+  it('is served its queries and offered no command', async () => {
     const outcome = await asKey(acmeReader.key, async (session) => ({
+      tools: toolNamesIn(await session.listTools()),
       listed: await session.callTool('list_brains', {}),
-      creating: await session.callTool('create_brain', { brain: 'gamma', name: 'Gamma' }),
-      specs: await session.callTool('create_spec', { brain: 'alpha', primitive: 'inference', name: 'x', source: '' }),
     }));
 
+    expect(outcome.tools).toEqual(['list_brains', 'get_brain', 'list_models', ...queriesInsideABrain, 'get_guide']);
     expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
-    expect(problemIn(outcome.creating)).toMatchObject({ detail: 'The caller lacks the org:write permission' });
-    expect(problemIn(outcome.specs)).toMatchObject({ detail: 'The caller lacks the brain:write permission' });
+  });
+
+  it('answers a command it is not offered as a tool the endpoint does not list', async () => {
+    await expect(
+      asKey(acmeReader.key, (session) => session.callTool('create_brain', { brain: 'gamma', name: 'Gamma' })),
+    ).rejects.toThrow('Tool create_brain not found');
+  });
+});
+
+describe('a key that may only read inside brains, on /mcp', () => {
+  it('lists the brains it may read, the queries inside a brain and no command, and its instructions name no command', async () => {
+    const outcome = await asKey(acmeBrainReader.key, async (session) => ({
+      tools: toolNamesIn(await session.listTools()),
+      instructions: String(session.instructions),
+      listed: await session.callTool('list_brains', {}),
+    }));
+
+    expect(outcome.tools).toEqual(['list_brains', ...queriesInsideABrain, 'get_guide']);
+    expect(commands.filter((name) => outcome.instructions.includes(name))).toEqual([]);
+    expect(outcome.instructions).toContain(
+      "This connection acts in the caller's own org: list_brains shows its brains. The tools call a definition",
+    );
+    expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
   });
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the twenty-three tools and reads a brain of its org', async () => {
+  it('lists the twenty-four tools and reads a brain of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
@@ -112,7 +172,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
       kind,
     );
 
-    expect(outcome.tools).toBe(23);
+    expect(outcome.tools).toBe(24);
     expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha' });
   });
 });

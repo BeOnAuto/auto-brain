@@ -84,7 +84,7 @@ export function probe(): Probe {
   const primitive = definePrimitive({
     name: 'probe',
     title: 'Probe',
-    description: 'Answers with its input and the execution it runs in. A spec document of probe is plain text.',
+    guide: { name: 'probe' },
     noun: { one: 'probe', other: 'probes' },
     describeOutput: () => 'It answered.',
     mediaType: 'text/plain',

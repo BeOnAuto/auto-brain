@@ -24,7 +24,7 @@ These routes are relative to `/v1/orgs/{org}`:
 | `update_brain` | `PUT /brains/{brain}`         | `name` and `description`                |
 | `retire_brain` | `POST /brains/{brain}/retire` | Brain id in path                        |
 
-Brain ids contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Names contain 1 to 100 characters and descriptions at most 2,000. Read operations need `org:read`, and writes need `org:write`. Lists include accessible brains, with retired brains excluded unless requested.
+Brain ids contain 3 to 48 lowercase letters, digits and hyphens, beginning with a letter. Names contain 1 to 100 characters and descriptions at most 2,000. Read operations need `org:read`, and writes need `org:write`; `list_brains` also answers a key with `brain:read`, so a key that may only read inside some brains can find them. Lists include accessible brains, with retired brains excluded unless requested.
 
 Retirement is permanent. Brain ids cannot be reused, and a retired brain cannot be restored.
 
@@ -292,18 +292,20 @@ Authorization: Bearer <key>
     {
       "name": "notes",
       "type": "stdio",
-      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached"
+      "unavailable": "The MCP server notes could not be used: The MCP server could not be reached",
+      "because": "unreachable"
     }
   ]
 }
 ```
 
-| Field         | Contents                                                                                                                                                         |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | The server's name, which a function writes before the slash                                                                                                      |
-| `type`        | `http` for a remote server, `stdio` for a process the runtime starts                                                                                             |
-| `tools`       | The tools the server lists that the operator allows, in the server's order, each with its `name`, its `description` cut to 4 KiB and its `input_schema`          |
-| `unavailable` | In place of `tools`, why the server could not be asked for its tools just now, in words; asking again later may work, and the other servers are listed beside it |
+| Field         | Contents                                                                                                                                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | The server's name, which a function writes before the slash                                                                                                                                                       |
+| `type`        | `http` for a remote server, `stdio` for a process the runtime starts                                                                                                                                              |
+| `tools`       | The tools the server lists that the operator allows, in the server's order, each with its `name`, its `description` cut to 4 KiB and its `input_schema`                                                           |
+| `unavailable` | In place of `tools`, why the server could not be asked for its tools, in words; the other servers are listed beside it                                                                                            |
+| `because`     | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can put right; `failing`, `rate_limited` or `unreachable` when asking again later may work |
 
 Servers are sorted by name, and a server set up for another org, or for other brains of the org, is neither listed nor asked. The runtime adds no header, environment value, address, command or credential of a server to the answer. What a server writes, such as its tools' names, descriptions and schemas, is passed on with the values of the operator's `${...}` references and the tokens minted for a server scrubbed out; a referenced value shorter than 8 characters is not scrubbed. A brain that does not exist returns `not_found`; a retired brain answers like any other.
 

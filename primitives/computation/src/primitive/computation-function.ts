@@ -15,7 +15,6 @@ import type { ComputationFunctionDefinitionDocument } from '../document/computat
 import { parseComputationDocument } from '../document/document-parsing.ts';
 import { computationRun } from '../run/computation-run.ts';
 import { computationBounds } from '../run/run-bounds.ts';
-import { computationDescription } from './computation-description.ts';
 
 export interface ComputationFunctionAdapterOptions {
   readonly pool: ProgramPool;
@@ -58,7 +57,7 @@ export function makeComputationFunctionAdapter({
   return definePrimitive({
     name: 'computation',
     title: functionCategoryLabels.compute,
-    description: computationDescription,
+    guide: { name: 'computation-function' },
     noun: { one: functionResourceLabels.compute.singular, other: functionResourceLabels.compute.plural },
     describeOutput: describeResult,
     mediaType: 'text/markdown',

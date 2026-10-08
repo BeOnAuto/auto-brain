@@ -13,7 +13,7 @@ import { Effect, Result, type Schema } from 'effect';
 import type { OfferedModels } from '../model/offered-models.ts';
 import type { ReasoningFunctionDefinitionDocument } from '../spec/reasoning-function-definition.ts';
 import { parseSpecDocument } from '../spec/spec-parsing.ts';
-import { reasoningDescriptionFor } from './reasoning-description.ts';
+import { onThisServer } from './on-this-server.ts';
 import { specExecution, type ExecutionServices } from './spec-execution.ts';
 import { longestRequestMs, longestRunMsOf } from './spec-request.ts';
 
@@ -55,7 +55,10 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
   return definePrimitive({
     name: 'inference',
     title: functionCategoryLabels.reason,
-    description: reasoningDescriptionFor(options.offered, options.tools?.configured === true),
+    guide: {
+      name: 'reasoning-function',
+      onThisServer: onThisServer(options.offered, options.tools?.configured === true),
+    },
     noun: { one: functionResourceLabels.reason.singular, other: functionResourceLabels.reason.plural },
     describeOutput: describeAnswer,
     mediaType: 'text/markdown',

@@ -26,15 +26,15 @@ function attemptOf({ plainLanguage }: Registration, input: unknown): string | un
 }
 
 describe('the plain language of create_brain', () => {
-  it('names the brain it created, says what it is for, and that it is empty', () => {
+  it('names the brain it created, says what it is for, and what comes next', () => {
     expect(outcomeOf(createBrain.registration, sales, { brain: 'sales', name: 'Sales' })).toBe(
-      'Created the brain “Sales”. What it is for: Answers questions about the pipeline. It has nothing in it yet.',
+      'Created the brain “Sales”. What it is for: Answers questions about the pipeline. Its functions and workflows come next.',
     );
   });
 
   it('leaves out what it is for when it has no description', () => {
     expect(outcomeOf(createBrain.registration, undescribed, { brain: 'sales', name: 'Sales' })).toBe(
-      'Created the brain “Sales”. It has nothing in it yet.',
+      'Created the brain “Sales”. Its functions and workflows come next.',
     );
   });
 

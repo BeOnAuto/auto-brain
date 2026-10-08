@@ -2,10 +2,10 @@ import { settle, type DispatcherServices, type Outcome } from '@beonauto/operati
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import { Effect, Schema } from 'effect';
 
+import type { OrgCall } from '../hand-off/caller-hand-off.ts';
+import { withDroppedArgument } from '../hand-off/dropped-arguments.ts';
 import type { RunCall } from '../operations/operation-routes.ts';
 import type { ReportThrown } from '../problem/error-boundary.ts';
-import type { OrgCall } from './caller-hand-off.ts';
-import { withDroppedArgument } from './dropped-arguments.ts';
 import { toolResultOf, type ToolWords } from './tool-result.ts';
 
 export type Arguments = Readonly<Record<string, unknown>>;

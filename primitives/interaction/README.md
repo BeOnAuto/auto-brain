@@ -97,4 +97,4 @@ The capability's run words show the deferral as `interaction_requested`, a type 
 
 ## Source
 
-`src/document` reads the definition, `src/channels` the channels, `src/run` renders and defers a request, `src/requests` holds the projection of open requests and the two operations, `src/delivery` the webhook and MCP deliveries, `src/schedule` the due work and its attempts, `src/primitive` the capability, its description and its words, and `src/testing` what the tests share.
+`src/document` reads the definition, `src/channels` the channels, `src/run` renders and defers a request, `src/requests` holds the projection of open requests and the two operations, `src/delivery` the webhook and MCP deliveries, `src/schedule` the due work and its attempts, `src/primitive` the capability, its guide, the public reference page served to agents as `interaction-function`, and its words, and `src/testing` what the tests share.

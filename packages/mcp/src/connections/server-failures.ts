@@ -1,7 +1,15 @@
 import { codesOf, isUntrustedCertificate } from '@beonauto/outbound';
 import { INVALID_PARAMS, ProtocolError, SdkError, SdkErrorCode, SdkHttpError } from '@modelcontextprotocol/client';
 
-export type FailureKind = 'unreachable' | 'failing' | 'rate_limited' | 'forgotten' | 'closed' | 'timed_out' | 'refused';
+export type FailureKind =
+  | 'unreachable'
+  | 'failing'
+  | 'rate_limited'
+  | 'forgotten'
+  | 'closed'
+  | 'timed_out'
+  | 'refused'
+  | 'key_refused';
 
 export interface ServerFailure {
   readonly kind: FailureKind;
@@ -29,6 +37,7 @@ const closedCodes: ReadonlySet<unknown> = new Set([
 ]);
 
 const httpKinds: ReadonlyMap<number, FailureKind> = new Map([
+  [401, 'key_refused'],
   [404, 'forgotten'],
   [429, 'rate_limited'],
 ]);

@@ -14,6 +14,7 @@ function caused(...codes: readonly unknown[]): Error {
 
 describe('what a server failure is', () => {
   it('reads an HTTP answer by its status', () => {
+    expect(failureOf(answered(401))).toEqual({ kind: 'key_refused', message: 'The MCP server answered HTTP 401' });
     expect(failureOf(answered(404))).toEqual({ kind: 'forgotten', message: 'The MCP server answered HTTP 404' });
     expect(failureOf(answered(429))).toEqual({ kind: 'rate_limited', message: 'The MCP server answered HTTP 429' });
     expect(failureOf(answered(503))).toEqual({ kind: 'failing', message: 'The MCP server answered HTTP 503' });

@@ -35,7 +35,7 @@ describe('brain function terminology', () => {
       'Use a prompt, skills, and tools to interpret information or produce a response.',
       'Exchange information with people or systems.',
       'Create and use an ML model to make predictions.',
-      'Retrieve or reconstruct relevant information from configured sources.',
+      'Answer from what the brain keeps of its own history.',
       'Run defined code or expressions to calculate or transform data.',
     ]);
   });

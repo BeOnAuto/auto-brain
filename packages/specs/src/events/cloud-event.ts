@@ -114,32 +114,38 @@ export const refusingBlankText = Schema.makeFilter(isWorded, {
 });
 
 function boundedText(most: number, description: string) {
-  return Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(most), refusingForbiddenCharacters).annotate({
-    description: `${description}, 1 to ${most} characters`,
-  });
+  return Schema.String.annotate({ description: `${description}, 1 to ${most} characters` }).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(most),
+    refusingForbiddenCharacters,
+  );
 }
 
 function wordedText(most: number, description: string) {
   return boundedText(most, description).check(refusingBlankText);
 }
 
-const TimeField = Schema.String.check(
-  Schema.makeFilter(isTime, {
-    expected:
-      'a time in RFC 3339 on a day that exists, such as 2026-10-05T09:00:00Z, its second 60 only at the end of a day',
-  }),
-).annotate({ description: 'When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z' });
+function timeFieldOf(description: string) {
+  return Schema.String.annotate({ description }).check(
+    Schema.makeFilter(isTime, {
+      expected:
+        'a time in RFC 3339 on a day that exists, such as 2026-10-05T09:00:00Z, its second 60 only at the end of a day',
+    }),
+  );
+}
+
+const TimeField = timeFieldOf('When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z');
 
 const unique = 'The id of the event, unique among the events of its source';
 
-export const EventSourceSchema = Schema.String.check(
+export const EventSourceSchema = Schema.String.annotate({
+  description: `Where the event comes from, a URI reference such as /ledger/eu, 1 to ${mostTextLength} characters`,
+}).check(
   Schema.isMaxLength(mostTextLength),
   Schema.makeFilter((source: string) => uriReference.test(source), {
     expected: 'a URI reference that is not empty, such as /ledger/eu or https://acme.example/ledger',
   }),
-).annotate({
-  description: `Where the event comes from, a URI reference such as /ledger/eu, 1 to ${mostTextLength} characters`,
-});
+);
 
 const contextFields = {
   source: EventSourceSchema,
@@ -184,16 +190,17 @@ export const EventToPublishSchema = Schema.StructWithRest(
     id: Schema.optionalKey(wordedText(mostIdLength, `${unique}; made when left out`)),
     ...contextFields,
     time: Schema.optionalKey(
-      TimeField.annotate({
-        description:
-          'When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z; when the brain records it, if left out',
-      }),
+      timeFieldOf(
+        'When it happened, in RFC 3339, such as 2026-10-05T09:00:00Z; when the brain records it, if left out',
+      ),
     ),
   }),
   [ExtensionsSchema],
 )
-  .check(extensionsCheck)
-  .annotate({ description: `An event in the shape of CloudEvents 1.0. ${extensionsInWords}` });
+  .annotate({
+    description: `A CloudEvents 1.0 event of at most ${mostPublishedEventBytes} bytes as JSON; any other attribute is an extension, its name 1 to ${mostExtensionNameLength} lowercase letters and digits, its value text, a boolean or an integer`,
+  })
+  .check(extensionsCheck);
 
 export type EventToPublish = typeof EventToPublishSchema.Type;
 
