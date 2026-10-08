@@ -1,4 +1,4 @@
-import { quoted } from '@beonauto/operations';
+import { quoted, type Remedies } from '@beonauto/operations';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
 import { serverFailedText } from '../calls/call-replies.ts';
@@ -24,6 +24,15 @@ export const toolTestTask = 'test a tool of a tool server';
 export function toolTestAttempted({ server, tool }: TestAsked): string {
   return `test the tool ${quoted(tool)} of ${quoted(server)}`;
 }
+
+export const toolTestRemedies: Remedies = {
+  mcp_server_not_configured:
+    'This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+  tool_not_allowed:
+    'This can be put right on your side: list_tool_servers shows the tools this brain may use, which whoever runs the server allows, so a test that names one of those can be tried.',
+  tool_not_listed:
+    'This can be put right on your side: list_tool_servers shows the tools each tool server has, so a test that names one of those can be tried.',
+};
 
 function bytesInWords(bytes: number | null): string {
   return bytes === null ? 'nothing' : `${measured.format(bytes)} bytes`;

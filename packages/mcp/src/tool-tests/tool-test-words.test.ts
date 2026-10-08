@@ -1,3 +1,4 @@
+import { unsuccessfulWords, type UnavailableBecause } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -64,6 +65,54 @@ describe('the plain words of test_tool_call', () => {
 
     expect(words?.outcome(failed, asked)).toBe(
       'The tool server “graph” failed to answer the test: Gone away. It may or may not have received the call.',
+    );
+  });
+});
+
+const notOffered = (because: UnavailableBecause) =>
+  ({ status: 'rejected', reason: 'unavailable', detail: 'x', kind: 'tool_not_offered', because }) as const;
+
+const remedies: ReadonlyArray<readonly [UnavailableBecause, string]> = [
+  [
+    'mcp_server_not_configured',
+    'This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
+  ],
+  [
+    'tool_not_allowed',
+    'This can be put right on your side: list_tool_servers shows the tools this brain may use, which whoever runs the server allows, so a test that names one of those can be tried.',
+  ],
+  [
+    'tool_not_listed',
+    'This can be put right on your side: list_tool_servers shows the tools each tool server has, so a test that names one of those can be tried.',
+  ],
+];
+
+describe('the plain words of a test refused a tool it is not offered', () => {
+  it.each(remedies)(
+    'end, for %s, with what list_tool_servers shows, in place of the words for a function',
+    (because, remedy) => {
+      const refused = unsuccessfulWords(
+        'test the tool “search” of “wiki”',
+        'command',
+        notOffered(because),
+        words?.remedies,
+      );
+
+      expect(refused.endsWith(` Nothing was changed. ${remedy}`)).toBe(true);
+      expect(refused).not.toContain('once it names only those');
+    },
+  );
+
+  it('say why and what to do in one message for a tool server not set up for the brain', () => {
+    expect(
+      unsuccessfulWords(
+        'test the tool “search” of “wiki”',
+        'command',
+        notOffered('mcp_server_not_configured'),
+        words?.remedies,
+      ),
+    ).toBe(
+      'Could not test the tool “search” of “wiki”: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. This can be put right on your side: list_tool_servers shows the tool servers this brain may use, so a test that names one of those can be tried.',
     );
   });
 });

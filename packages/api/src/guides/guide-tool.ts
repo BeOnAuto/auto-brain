@@ -52,12 +52,10 @@ function pointerOf(path: readonly unknown[]): string {
 }
 
 function refused(issues: readonly Issue[]): CallToolResult {
-  return unsuccessfulResultOf(
-    rejected('invalid_input', 'The input does not match the input schema', issues),
-    false,
-    'query',
-    'read the guide',
-  );
+  return unsuccessfulResultOf(rejected('invalid_input', 'The input does not match the input schema', issues), false, {
+    kind: 'query',
+    attempt: 'read the guide',
+  });
 }
 
 function guideReader({ named }: GuideShelf): (input: unknown) => CallToolResult {

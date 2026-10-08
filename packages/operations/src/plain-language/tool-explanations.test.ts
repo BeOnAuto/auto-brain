@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { explanationOf, type ExplainedRejection } from '../index.ts';
+import { explanationOf, unsuccessfulWords, type ExplainedRejection, type Remedies } from '../index.ts';
 
 const toolsNamed =
   'This can be put right on your side: whoever runs the server decides which tool servers and tools this brain may use, which list_tool_servers shows, so once it names only those, it can be tried again.';
@@ -96,6 +96,32 @@ describe('explanationOf a run that needs tools', () => {
 
     expect(changing.map(([, rejection]) => rejection.kind)).toEqual(
       Array.from({ length: 4 }, () => 'tools_unfinished'),
+    );
+  });
+});
+
+const serverNamed = 'list_tool_servers shows the tool servers this brain may use.';
+
+const ownRemedies: Remedies = { mcp_server_not_configured: serverNamed };
+
+const notConfigured = {
+  status: 'rejected',
+  reason: 'unavailable',
+  detail: 'x',
+  kind: 'tool_not_offered',
+  because: 'mcp_server_not_configured',
+} as const;
+
+describe('the remedies an operation gives of its own', () => {
+  it('take the place of the shared remedy for their because, and leave it for any other', () => {
+    expect(explanationOf(notConfigured, ownRemedies).remedy).toBe(serverNamed);
+    expect(explanationOf({ ...notConfigured, because: 'tool_not_listed' }, ownRemedies).remedy).toBe(toolsNamed);
+    expect(explanationOf(notConfigured).remedy).toBe(toolsNamed);
+  });
+
+  it('end the words of a refusal for their because', () => {
+    expect(unsuccessfulWords('test the tool', 'command', notConfigured, ownRemedies)).toBe(
+      `Could not test the tool: this server does not offer a tool it names, because whoever runs the server has not set up a tool server of that name for this brain. Nothing was changed. ${serverNamed}`,
     );
   });
 });

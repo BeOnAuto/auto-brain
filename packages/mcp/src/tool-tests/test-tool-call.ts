@@ -8,7 +8,7 @@ import { toolTestIdKey } from '../calls/call-meta.ts';
 import { calledWhenTestable, stopped, testedOutcomeOf } from './test-calling.ts';
 import { toolTestJournal } from './tool-test-journal.ts';
 import { TestToolCallInputSchema, ToolTestedSchema } from './tool-test-schemas.ts';
-import { toolTestAttempted, toolTestTask, toolTested } from './tool-test-words.ts';
+import { toolTestAttempted, toolTestRemedies, toolTestTask, toolTested } from './tool-test-words.ts';
 
 const description = [
   "Calls one tool of a tool server with the arguments it is given, as a run of a reasoning function would call it, and answers what that run's model would see.",
@@ -64,6 +64,7 @@ export function defineTestToolCall(access: Pick<ToolAccess, 'open' | 'testing'>)
       task: toolTestTask,
       attempt: (asked) => toolTestAttempted(asked),
       outcome: (answer) => toolTested(answer),
+      remedies: toolTestRemedies,
     },
   });
 }
