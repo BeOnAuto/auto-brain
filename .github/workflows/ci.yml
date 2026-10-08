@@ -184,17 +184,23 @@ jobs:
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
           key="$(printf '%s\n' "$issued" | sed --quiet 's/^API key, shown only this once: //p')"
           echo "::add-mask::$key"
-          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
+          reading="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo --permissions org:read,brain:read)"
+          read_key="$(printf '%s\n' "$reading" | sed --quiet 's/^API key, shown only this once: //p')"
+          echo "::add-mask::$read_key"
+          API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p'),$(printf '%s\n' "$reading" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
           docker run --detach --name mcp --publish 8080:8080 --env API_KEYS auto-brain:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
           done
-          call_mcp() {
-            curl --silent --fail --header "authorization: Bearer $key" \
+          call_mcp_as() {
+            curl --silent --fail --header "authorization: Bearer $1" \
               --header 'content-type: application/json' --header 'accept: application/json, text/event-stream' \
-              --header 'mcp-protocol-version: 2025-11-25' --data "$2" "http://127.0.0.1:8080$1"
+              --header 'mcp-protocol-version: 2025-11-25' --data "$3" "http://127.0.0.1:8080$2"
+          }
+          call_mcp() {
+            call_mcp_as "$key" "$1" "$2"
           }
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' > tools.txt
           for tool in create_brain list_brains get_brain update_brain retire_brain; do
@@ -205,8 +211,8 @@ jobs:
           call_mcp /orgs/demo/mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_brain","arguments":{"brain":"smoke"}}}' > read.txt
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
-          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 24
-          for tool in list_models list_executions get_execution_history get_brain_analytics list_brain_events publish_event list_tool_servers list_interactions answer_interaction send_execution_event cancel_execution get_guide; do
+          test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 25
+          for tool in list_models list_executions get_execution_history get_brain_analytics list_brain_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_execution_event cancel_execution get_guide; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
           call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_specs","arguments":{"brain":"smoke","primitive":"inference"}}}' > specs.txt
@@ -215,6 +221,16 @@ jobs:
           grep --quiet '"structuredContent":{"executions":\[\],"has_more":false,"next_cursor":null}' executions.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"brain":"smoke"}}}' > tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' tool-servers.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_tool_call","arguments":{"brain":"smoke","server":"graph","tool":"search"}}}' > tested.txt
+          grep --quiet '"isError":true' tested.txt
+          grep --quiet 'mcp_server_not_configured' tested.txt
+          call_mcp_as "$read_key" /mcp '{"jsonrpc":"2.0","id":14,"method":"tools/list"}' > read-tools.txt
+          grep --quiet '"name":"list_tool_servers"' read-tools.txt
+          test "$(grep --count '"name":"test_tool_call"' read-tools.txt)" = 0
+          test "$(curl --silent --output refused.json --write-out '%{http_code}' \
+            --header "authorization: Bearer $read_key" --header 'content-type: application/json' --data '{"arguments":{}}' \
+            http://127.0.0.1:8080/v1/orgs/demo/brains/smoke/tool-servers/graph/tools/search/test)" = 403
+          grep --quiet '"reason":"forbidden"' refused.json
           call_mcp /mcp '{"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' > initialized.txt
           grep --quiet 'Before writing a definition, read its format with get_guide' initialized.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"get_guide","arguments":{"guide":"reasoning-function"}}}' > guide.txt
