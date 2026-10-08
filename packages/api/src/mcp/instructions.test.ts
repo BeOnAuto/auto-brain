@@ -46,6 +46,10 @@ const amendments: readonly (readonly [string, string])[] = [
     "a definition's type its primitive.",
   ],
   [", as a run's id they will return to.", '.'],
+  [
+    'may name tools that list_tool_servers lists.',
+    'may name tools that list_tool_servers lists; test_tool_call shows what a tool answers.',
+  ],
 ];
 
 function asServedWithFourTypes(recordText: string): string {
