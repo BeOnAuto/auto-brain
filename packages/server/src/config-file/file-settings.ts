@@ -1,4 +1,4 @@
-import { fileSetting, type FileSetting } from '@beonauto/config';
+import { fileSetting, type FileSetting, type RefusedKeys } from '@beonauto/config';
 import { ApiKeysSchema } from '@beonauto/identity';
 import {
   AllowedModelsSchema,
@@ -7,7 +7,7 @@ import {
   ModelGatewaysSchema,
 } from '@beonauto/inference';
 import { ChannelsSchema } from '@beonauto/interaction';
-import { AllowedToolsSchema, McpServersSchema, TestableToolsSchema } from '@beonauto/mcp';
+import { McpServersSchema } from '@beonauto/mcp';
 import { Schema } from 'effect';
 
 import { Origin } from '../settings/origin.ts';
@@ -81,20 +81,9 @@ export const fileSettings: readonly FileSetting[] = [
     asJson,
     { references: 'kept' },
   ),
-  fileSetting(
-    'ALLOWED_TOOLS',
-    AllowedToolsSchema.annotate({
-      description:
-        'The only tools a reasoning function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it',
-    }),
-    asJson,
-  ),
-  fileSetting(
-    'TESTABLE_TOOLS',
-    TestableToolsSchema.annotate({
-      description:
-        'The tools test_tool_call may test although their servers do not mark them read-only, each named as server/tool, never server/*, and allowed by allowed_tools; only the tools their servers mark read-only when left out. TESTABLE_TOOLS wins over it',
-    }),
-    asJson,
-  ),
 ];
+
+export const refusedKeys: RefusedKeys = new Map([
+  ['allowed_tools', 'a tool is allowed on the entry of its server in mcp_servers, under allowed'],
+  ['testable_tools', 'a tool is marked testable on the entry of its server in mcp_servers, under testable'],
+]);

@@ -49,12 +49,12 @@ async function serving(): Promise<Serving> {
         url: graph.url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}', 'X-Region': 'production-eu' },
         org: 'acme',
+        allowed: ['search', 'echo'],
       },
       crm: remote(others, { org: 'globex' }),
       sales: remote(others, { org: 'acme', brains: ['sales'] }),
       wiki: { url: gone.url, org: 'acme', brains: ['alpha'] },
     }),
-    ALLOWED_TOOLS: JSON.stringify(['graph/search', 'graph/echo', 'crm/*', 'sales/*', 'wiki/*']),
   });
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });

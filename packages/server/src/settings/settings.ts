@@ -2,7 +2,7 @@ import { configurationOf, readServerConfig, type Environment, type FileUse } fro
 import { readApiKeys, type ApiKey } from '@beonauto/identity';
 import { Effect, Result } from 'effect';
 
-import { fileSettings } from '../config-file/file-settings.ts';
+import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';
 import { readFunctionSettings, type FunctionSettings } from '../function-settings/function-settings.ts';
 import { readAccessSettings, type AccessSettings } from './access-settings.ts';
 import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
@@ -28,7 +28,7 @@ function sourcesOf(file: FileUse | undefined): ConfigFileSources | undefined {
 }
 
 export function readSettings(given: Environment): Settings {
-  const { environment, file } = Result.getOrThrow(configurationOf(given, fileSettings));
+  const { environment, file } = Result.getOrThrow(configurationOf(given, fileSettings, refusedKeys));
   const { host, port } = readServerConfig(environment);
   const { allowedOrigins, localMode, logFormat } = Effect.runSync(readAccessSettings(environment));
   const ledger = Effect.runSync(readLedgerSettings(environment));

@@ -86,10 +86,10 @@ function originOf(
 export function readInteractionSettings(
   environment: Environment,
   file: FileUse | undefined,
-  { servers, allowed }: McpSettings,
+  { servers }: McpSettings,
   listening: Listening,
 ): InteractionSettings {
-  const context = { servers: servers.map(({ name, org, brains }) => ({ name, org, brains })), allowed };
+  const context = { servers: servers.map(({ name, org, brains, allowed }) => ({ name, org, brains, allowed })) };
   return Effect.runSync(
     Effect.gen(function* () {
       const channels = yield* readChannelSettings(environment, context).pipe(

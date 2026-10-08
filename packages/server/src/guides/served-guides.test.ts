@@ -167,11 +167,14 @@ describe('the recipes that give a brain tools', () => {
     expect(String(texts['give-tools'])).toContain(
       "4. To learn what a tool answers, test it with test_tool_call, with the arguments its input_schema takes, and read the answer: that is what the function's model will see. Never make a function to look. When a prompt needs an id, such as a channel's, test the tool that lists them and take the id from its answer, confirming the choice with the person. A tool that cannot be tested may change something; list_tool_servers says which can.",
     );
+    expect(String(texts['give-tools'])).toContain(
+      'the org it serves, with `allowed` naming the tools a function may call. The server reads them when it starts again.',
+    );
     expect(String(texts['first-brain'])).toContain(
       "When it should use a tool server's tools, follow the give-tools recipe: to learn what a tool answers, test it with test_tool_call, and never make a function to look.",
     );
     expect([Buffer.byteLength(String(texts['give-tools'])), Buffer.byteLength(String(texts['first-brain']))]).toEqual([
-      2058, 1761,
+      2052, 1761,
     ]);
   });
 });

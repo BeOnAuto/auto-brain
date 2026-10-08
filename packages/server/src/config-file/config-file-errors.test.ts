@@ -52,7 +52,7 @@ describe('a configuration file the server cannot read as settings', { timeout: s
     [
       'holds the URL of the ledger database, which only the environment holds',
       `database_url: postgresql://brains:${secret}@db.example.com/brains\n`,
-      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases, declared_models, allowed_models, mcp_servers, channels, allowed_tools, testable_tools\n`,
+      `${invalid} auto-brain.yaml:1:15 database_url: Not a setting this file holds; it holds allowed_origins, api_keys, model_gateways, model_aliases, declared_models, allowed_models, mcp_servers, channels\n`,
     ],
   ])('stops the start when it %s, naming the line and the key and never a value', async (_, text, line) => {
     await expect(startupLine(text)).resolves.toBe(line);
@@ -74,6 +74,19 @@ describe('a configuration file the server cannot read as settings', { timeout: s
     );
   });
 });
+
+describe(
+  'tools listed beside the MCP servers rather than on the entry of each',
+  { timeout: spawnedServerTestTimeoutMs },
+  () => {
+    it('stop the start at their line, saying where a tool is allowed or marked testable', async () => {
+      await expect(startupLine('allowed_tools: [graph/search]\ntestable_tools: [graph/search]\n')).resolves.toBe(
+        `${invalid} auto-brain.yaml:1:16 allowed_tools: Not a setting this file holds; a tool is allowed on the entry of its server in mcp_servers, under allowed; ` +
+          'auto-brain.yaml:2:17 testable_tools: Not a setting this file holds; a tool is marked testable on the entry of its server in mcp_servers, under testable\n',
+      );
+    });
+  },
+);
 
 describe('declared and allowed models the server refuses', { timeout: spawnedServerTestTimeoutMs }, () => {
   it('stops the start at the line of a declared or allowed model the model settings refuse', async () => {
