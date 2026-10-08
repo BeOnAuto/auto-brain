@@ -37,25 +37,33 @@ const approvalSchema = {
   properties: { choice: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string', maxLength: 2000 } },
 };
 
-const decodeListed = Schema.decodeUnknownSync(
-  Schema.Struct({
-    interactions: Schema.Array(
-      Schema.Struct({
-        execution_id: Schema.String,
-        standing: Schema.String,
-        answer_schema: Schema.NullOr(Schema.JsonObject),
-      }),
-    ),
-  }),
-);
+const ListedSchema = Schema.Struct({
+  interactions: Schema.Array(
+    Schema.Struct({
+      execution_id: Schema.String,
+      standing: Schema.String,
+      attempts: Schema.Int,
+      answer_schema: Schema.NullOr(Schema.JsonObject),
+    }),
+  ),
+});
 
-async function answerShapesIn(server: InteractionServer): Promise<Readonly<Record<string, unknown>>> {
-  const { interactions } = await until(
-    async () => decodeListed((await server.call('GET', `${alpha}/interactions`)).body),
-    (listed) =>
-      listed.interactions.length === 2 && listed.interactions.every(({ standing }) => standing === 'retrying'),
+type Listed = (typeof ListedSchema.Type)['interactions'];
+
+const decodeListed = Schema.decodeUnknownSync(ListedSchema);
+
+async function listedIn(server: InteractionServer): Promise<Listed> {
+  return decodeListed((await server.call('GET', `${alpha}/interactions`)).body).interactions;
+}
+
+function eachTriedOnce(listed: Listed): boolean {
+  return listed.length === 2 && listed.every(({ standing }) => standing === 'retrying');
+}
+
+function answerShapesOf(listed: Listed): Readonly<Record<string, unknown>> {
+  return Object.fromEntries(
+    listed.map(({ execution_id: id, attempts, answer_schema: schema }) => [id, { attempts, answer_schema: schema }]),
   );
-  return Object.fromEntries(interactions.map(({ execution_id: id, answer_schema: schema }) => [id, schema]));
 }
 
 async function failingPartner(): Promise<Readonly<Record<string, string>>> {
@@ -89,17 +97,23 @@ export function answerShapesOn(stores: readonly ProjectionStoreChoice[]): void {
         const first = await servingInteractions('partner', environment);
         const question = await first.ask('approve-brief');
         const notification = await first.ask('brief-out');
-        const kept = await answerShapesIn(first);
+        const kept = answerShapesOf(await until(() => listedIn(first), eachTriedOnce));
         await first.stop();
         const leftByVersionOne = await versionOneLeftIn(store);
 
         const second = await interactionServerOn(environment);
-        const rebuilt = await answerShapesIn(second);
+        const rebuilt = answerShapesOf(await listedIn(second));
 
         expect(leftByVersionOne).toEqual(['open_requests_1']);
         expect([kept, rebuilt]).toEqual([
-          { [question]: approvalSchema, [notification]: null },
-          { [question]: approvalSchema, [notification]: null },
+          {
+            [question]: { attempts: 1, answer_schema: approvalSchema },
+            [notification]: { attempts: 1, answer_schema: null },
+          },
+          {
+            [question]: { attempts: 1, answer_schema: approvalSchema },
+            [notification]: { attempts: 1, answer_schema: null },
+          },
         ]);
         expect(await store.tablesOf('open_requests')).toEqual(['open_requests_2']);
       },
