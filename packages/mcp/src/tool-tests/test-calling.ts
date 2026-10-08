@@ -4,6 +4,7 @@ import { DateTime, Effect, Schema } from 'effect';
 import type { ToolsNotOpened } from '../access/caller-context.ts';
 import type { CallReply } from '../calls/call-replies.ts';
 import type { OfferedTool, RunTools } from '../calls/run-tools.ts';
+import { ignored } from '../connections/ignored.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { canBeTested, type TestingLists } from './testing-guard.ts';
 import { TestedOutcomeSchema } from './tool-test-schemas.ts';
@@ -60,7 +61,9 @@ async function closedOnceAnswered(tools: RunTools, answering: Promise<CallReply>
 function startedCall(tools: RunTools, offered: OfferedTool, { testId, input }: Tested, testedAt: string): Calling {
   const stop = new AbortController();
   const answering = offered.call({ callId: testId, input }, { signal: stop.signal, cancelled: stop.signal });
-  return { testedAt, replying: closedOnceAnswered(tools, answering), stop };
+  const replying = closedOnceAnswered(tools, answering);
+  replying.catch(ignored);
+  return { testedAt, replying, stop };
 }
 
 export function stopped({ stop }: Calling): Effect.Effect<void> {
