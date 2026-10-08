@@ -58,4 +58,6 @@ One change. `@beonauto/interaction`: the column, the version, the row's schema, 
 
 Built on 2026-10-08.
 
+- **The texts, measured.** The description of `list_interactions` takes 710 of its 800 characters in five sentences, the description of `answer_schema` 171 of 300, and the description of `answer_interaction` 780 of 800, one more than before.
+- **The rebuild, tested on both stores.** The store left by version 1 is made by dropping `open_requests_2` and opening the ledger with the declaration of version 1, which creates `open_requests_1` and fills it by replay as version 1 kept it; the server that then starts fills `open_requests_2` and drops `open_requests_1`. Both requests have had a failed delivery before the first server stops, so the replay goes through the delivery facts as well as the deferral.
 - **A notification lists `null` only through a channel.** A notification to the inbox succeeds at once and makes no request (`interaction-run.ts`, `finishesLater`), so the `null` of §1 is seen for a notification through a webhook or an MCP channel while its delivery is pending or retried. The tests use a webhook channel whose receiver answers 503 to keep it open.
