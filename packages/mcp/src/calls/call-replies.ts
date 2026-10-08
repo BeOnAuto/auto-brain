@@ -1,5 +1,5 @@
+import type { ServerMessage } from '../access/caller-context.ts';
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
-import type { ServerMessage } from '../access/run-context.ts';
 import { failedOnce, failuresEnded, shownResult, type CallTally } from '../bounds/call-bounds.ts';
 import { errorTextForModel, errorTextForOperator, resultText } from '../bounds/result-text.ts';
 import type { Forwarded } from './tool-calls.ts';

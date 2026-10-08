@@ -1,6 +1,7 @@
 import { Effect } from 'effect';
 
-import type { RunContext } from '../access/run-context.ts';
+import type { CallerContext } from '../access/caller-context.ts';
+import { executionIdKey } from '../calls/call-meta.ts';
 import type { CallJournal, CallStarted, RecordedCall } from '../calls/recorded-calls.ts';
 import type { CallSignals } from '../calls/run-parts.ts';
 
@@ -45,8 +46,8 @@ export function recordingCallJournal(): RecordingCallJournal {
   };
 }
 
-export function toolRun(journal: CallJournal, changes: Partial<Omit<RunContext, 'journal'>> = {}): RunContext {
-  return { id: toolRunId, org: 'acme', brain: 'alpha', ...changes, journal };
+export function toolRun(journal: CallJournal, changes: Partial<Omit<CallerContext, 'journal'>> = {}): CallerContext {
+  return { id: toolRunId, org: 'acme', brain: 'alpha', meta: { [executionIdKey]: toolRunId }, ...changes, journal };
 }
 
 export function controlledSignals(): ControlledSignals {

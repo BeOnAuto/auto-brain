@@ -2,6 +2,7 @@ import { Result } from 'effect';
 
 import type { Secrets } from '../bounds/secrets.ts';
 import { bytesOf, cutAtCodePoint } from '../bounds/text-bytes.ts';
+import { deliveryIdKey, executionIdKey } from '../calls/call-meta.ts';
 import { takenSlot } from '../calls/server-slot.ts';
 import { forwarded, type Forwarded } from '../calls/tool-calls.ts';
 import type { ServerLink } from '../connections/server-links.ts';
@@ -42,8 +43,7 @@ export async function calledOnce(
       slot,
       tool: call.reference.tool,
       input: call.input,
-      executionId: call.executionId,
-      deliveryId: call.deliveryId,
+      meta: { [executionIdKey]: call.executionId, [deliveryIdKey]: call.deliveryId },
       callMs: Math.min(access.timing.callMs, deliveryBounds.callMs),
       longestRetryWaitMs: 0,
       signal,

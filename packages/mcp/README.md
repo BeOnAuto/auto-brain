@@ -5,7 +5,7 @@ How a brain reaches the outside world: the MCP servers the operator configures, 
 ## Entry points
 
 - `@beonauto/mcp`: the settings, `makeToolAccess` and `defineListToolServers`. The access loads the MCP client, its OAuth providers and `node:child_process` (`src/access/linked-access.ts`) through a dynamic import when a run first opens its tools or a listing first asks a server, so a server that never does either never loads them: the server's start loaded 55 files and 0.94 MiB more with them (measured 2026-10-06 with a module load hook, 1,241 files against main's 1,186). Without them it loads 20 files and 42 KiB of this package, the operation `list_tool_servers` among them (measured 2026-10-07 with a module load hook over both entries, against 15 files and 32 KiB before the operation).
-- `@beonauto/mcp/policy`: the pure helpers a caller needs without connecting to anything (`toolReferenceOf`, `toolReferenceShape`, `writtenOf` and `runBoundMs`). It loads no transport code, so the reasoning function adapter, which parses a function's `tools` and bounds its run, does not load the MCP client wherever it is bundled; it takes `ToolAccess` as a type only.
+- `@beonauto/mcp/policy`: the pure helpers a caller needs without connecting to anything (`toolReferenceOf`, `toolReferenceShape`, `writtenOf`, `runBoundMs` and `executionIdKey`). It loads no transport code, so the reasoning function adapter, which parses a function's `tools` and bounds its run, does not load the MCP client wherever it is bundled; it takes `ToolAccess` as a type only.
 - `@beonauto/mcp/testing`: the fake server and the helpers of the tests (see Testing).
 
 ## Settings
@@ -38,7 +38,7 @@ Nothing is learned from a server when the settings are read: the server starts w
 `makeToolAccess(settings, { reportServerMessage, fetch?, now?, timing? })` holds one link per configured server and answers:
 
 - `configured`: whether any server is configured, which makes `execute_spec` destructive.
-- `open(execution, references)`: the tools of one run, for the execution's id, org, brain and journal, and the `server/tool` references its reasoning function names.
+- `open(context, references)`: the tools of one caller, for its id, org, brain and journal and the metadata its calls carry, and the `server/tool` references it names. A run gives its execution id as `com.beonauto/execution_id` (`executionIdKey`, which `@beonauto/mcp/policy` exports).
 - `callOnce(call)`: one call of one tool for a delivery (see [One call for a delivery](#one-call-for-a-delivery)).
 - `listServers(brain, named?)`: the servers that serve the brain, or only the one named, with their tools (see [Listing the tool servers](#listing-the-tool-servers)).
 - `close()`: ends every session and stops every process, when the server stops.
@@ -51,7 +51,7 @@ A call of an offered tool:
 
 1. is refused as a tool error, never sent and never recorded, when the run's calls or results are spent, its arguments are too large, or it repeats a call made twice already;
 2. records `tool_call_started` through the run's journal, which answers the number the run's record gave the call, and is not sent if that fails;
-3. is forwarded with the execution id in the request's metadata under `com.beonauto/execution_id`, within its deadline, waiting out a 429 whose `Retry-After` fits the longest wait, opening a session the server forgot once, and restarting a `stdio` process that exited once per run;
+3. is forwarded with the metadata the opener gave, a run's id under `com.beonauto/execution_id`, within its deadline, waiting out a 429 whose `Retry-After` fits the longest wait, opening a session the server forgot once, and restarting a `stdio` process that exited once per run;
 4. records `tool_call_answered`, unless the run was cancelled meanwhile;
 5. answers the model: text content as text, structured content only when there is no text, other content as a one-line placeholder, an `isError` result as a tool error, and a failure as a tool error naming the server, all scrubbed of the entry's secrets and minted tokens. A server's `instructions` never reach the model.
 

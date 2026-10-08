@@ -1,6 +1,6 @@
 import { Effect, Option } from 'effect';
 
-import type { ServerMessage } from '../access/run-context.ts';
+import type { ServerMessage } from '../access/caller-context.ts';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { ToolReply } from '../calls/call-replies.ts';
 import type { RunTools } from '../calls/run-tools.ts';

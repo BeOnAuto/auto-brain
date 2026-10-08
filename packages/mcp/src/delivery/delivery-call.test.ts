@@ -1,7 +1,6 @@
 import { Effect, Result } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { deliveryIdKey, executionIdKey } from '../calls/execution-key.ts';
 import {
   patientTiming,
   recordingCallJournal,
@@ -78,7 +77,7 @@ describe('one call of a tool for a delivery', () => {
       {
         tool: 'echo',
         arguments: delivery.input,
-        meta: { [executionIdKey]: delivery.executionId, [deliveryIdKey]: delivery.deliveryId },
+        meta: { 'com.beonauto/execution_id': delivery.executionId, 'com.beonauto/delivery_id': delivery.deliveryId },
       },
     ]);
     expect(fake.seen().map(({ rpc }) => rpc)).not.toContain('tools/list');

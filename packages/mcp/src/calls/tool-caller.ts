@@ -30,7 +30,7 @@ export function caller(
   const { slot, reference } = offered;
   const { scrub } = parts.secrets;
   const recording = { content: slot.settings.record_content, requestId: slot.settings.request_id !== null, scrub };
-  const replying = { server: reference.server, executionId: parts.execution.id, scrub, report: parts.report };
+  const replying = { server: reference.server, executionId: parts.context.id, scrub, report: parts.report };
   return async ({ callId, input }, signals) => {
     if (signals.signal.aborted) {
       return notSent;
@@ -41,18 +41,18 @@ export function caller(
       return { text: admitted.refusal, isError: true };
     }
     const start = callStarted({ callId, ...reference, argumentsJson: JSON.stringify(input) }, recording);
-    const number = await parts.run(parts.execution.journal.started(start));
+    const number = await parts.run(parts.context.journal.started(start));
     if (number === undefined) {
       return notRecorded;
     }
     state.used(reference);
     const began = performance.now();
-    const { execution, timing } = parts;
-    const forwarding = { slot, tool: offered.tool.name, input, executionId: execution.id, signal: signals.signal };
+    const { context, timing } = parts;
+    const forwarding = { slot, tool: offered.tool.name, input, meta: context.meta, signal: signals.signal };
     const done = await forwarded({ ...forwarding, ...timing });
     if (!signals.cancelled.aborted) {
       const answer = { ...done, number, durationMs: Math.round(performance.now() - began) };
-      await parts.run(execution.journal.answered(callAnswered(answer, recording)));
+      await parts.run(context.journal.answered(callAnswered(answer, recording)));
     }
     return replied(state, done, replying);
   };

@@ -1,7 +1,7 @@
 import type { Effect } from 'effect';
 
+import type { CallerContext, ServerMessage } from '../access/caller-context.ts';
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
-import type { RunContext, ServerMessage } from '../access/run-context.ts';
 import type { CallTally, Timing } from '../bounds/call-bounds.ts';
 import type { ListedTool } from '../bounds/result-text.ts';
 import type { Secrets } from '../bounds/secrets.ts';
@@ -29,7 +29,7 @@ export interface CallSignals {
 }
 
 export interface RunToolsParts {
-  readonly execution: RunContext;
+  readonly context: CallerContext;
   readonly slots: readonly ServerSlot[];
   readonly offered: readonly OfferedOnServer[];
   readonly secrets: Secrets;

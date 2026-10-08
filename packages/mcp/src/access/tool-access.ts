@@ -8,7 +8,7 @@ import type { DeliveryCall, DeliveryCallEnded } from '../delivery/delivery-bound
 import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { isListedFor, type McpSettings } from '../settings/mcp-settings.ts';
-import type { RunContext, ServerMessage, ToolsNotOpened } from './run-context.ts';
+import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
 
 export interface ToolAccessOptions {
   readonly reportServerMessage: (report: ServerMessage) => void;
@@ -20,7 +20,7 @@ export interface ToolAccessOptions {
 export interface ToolAccess {
   readonly configured: boolean;
   readonly open: (
-    execution: RunContext,
+    context: CallerContext,
     references: readonly ToolReference[],
   ) => Effect.Effect<RunTools, ToolsNotOpened>;
   readonly callOnce: (call: DeliveryCall) => Effect.Effect<DeliveryCallEnded>;
@@ -41,8 +41,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
   };
   return {
     configured: settings.servers.length > 0,
-    open: (execution, references) =>
-      Effect.flatMap(Effect.promise(loaded), (access) => access.open(execution, references)),
+    open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
     callOnce: (call) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call)),
     listServers: (address, named) =>
       settings.servers.some((server) => isListedFor(server, address, named))

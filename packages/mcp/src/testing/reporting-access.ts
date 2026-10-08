@@ -1,6 +1,6 @@
 import { Effect } from 'effect';
 
-import type { ServerMessage } from '../access/run-context.ts';
+import type { ServerMessage } from '../access/caller-context.ts';
 import { makeToolAccess, type ToolAccess } from '../access/tool-access.ts';
 import type { Timing } from '../bounds/call-bounds.ts';
 import { readMcpSettings, type Environment } from '../settings/settings-reading.ts';
