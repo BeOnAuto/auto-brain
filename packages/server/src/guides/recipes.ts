@@ -11,7 +11,7 @@ const outlines: readonly RecipeOutline[] = [
     description: 'Creates a brain with a first reasoning function, and runs it once the person has agreed to it.',
     arguments: [],
     formatGuide: 'reasoning-function',
-    calls: ['list_brains', 'create_brain', 'create_spec', 'execute_spec'],
+    calls: ['list_brains', 'create_brain', 'create_spec', 'test_tool_call', 'execute_spec'],
     request: () => 'Create my first brain.',
   },
   {
@@ -41,7 +41,7 @@ const outlines: readonly RecipeOutline[] = [
       },
     ],
     formatGuide: 'reasoning-function',
-    calls: ['list_tool_servers', 'create_spec', 'execute_spec', 'get_execution_history'],
+    calls: ['list_tool_servers', 'test_tool_call', 'create_spec', 'execute_spec', 'get_execution_history'],
     request: ({ server }) =>
       server === undefined ? 'Give the brain tools.' : `Give the brain the tools of the tool server ${server}.`,
   },

@@ -15,7 +15,7 @@ import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { interactionsCalled } from '../testing/servers/interaction-calls.ts';
-import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { servingWithAToolServer, toolTestsCalled } from '../testing/servers/tool-test-calls.ts';
 import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 type Called = readonly (readonly [string, ToolResult])[];
@@ -90,7 +90,7 @@ const unofferedProvider = new ProviderNotConfigured({
   missing: ['ANTHROPIC_API_KEY'],
 });
 
-let server: ReasoningServer;
+let server: Awaited<ReturnType<typeof servingWorkflows>>;
 
 afterEach(async () => {
   await server.stop();
@@ -103,9 +103,7 @@ function onMcp<T>(
   return withMcpSession('current revision', { url: `${server.origin}/mcp`, headers }, use);
 }
 
-function inSales(input: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
-  return { brain: 'sales', ...input };
-}
+const inSales = (input: Readonly<Record<string, unknown>>) => ({ brain: 'sales', ...input });
 
 async function brainsCalled(session: McpSession): Promise<Called> {
   const describing = { brain: 'sales', name: 'Sales', description: 'Answers questions about the pipeline' };
@@ -236,7 +234,7 @@ const audienceWords: Readonly<Record<string, string>> = {
 
 describe('the plain words that lead each result over MCP', { timeout: workflowTestTimeoutMs }, () => {
   it('lead every tool’s success and every kind of error, name no internal term, and come before the details', async () => {
-    server = await servingWorkflows(replies);
+    server = await servingWithAToolServer(replies);
 
     const { tools, successes, errors } = await onMcp(async (session) => ({
       tools: toolNamesIn(await session.listTools()).filter((name) => name !== 'get_guide'),
@@ -245,6 +243,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
         ...(await reasonFunctionsCalled(session)),
         ...(await workflowsCalled(session)),
         ...(await interactionsCalled(session, inSales)),
+        ...(await toolTestsCalled(session, inSales)),
       ],
       errors: await errorsCalled(session),
     }));
@@ -259,7 +258,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
 
   it('say plainly that a connection is not allowed to do what it asked', async () => {
     const limited = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, brains: ['alpha'] });
-    server = await servingReasoning([], { API_KEYS: JSON.stringify([limited.entry]) });
+    server = await servingWorkflows([], { API_KEYS: JSON.stringify([limited.entry]) });
 
     const refused = await onMcp(
       (session) => session.callTool('list_specs', { brain: 'beta', primitive: 'inference' }),
@@ -274,7 +273,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
 
 describe('the plain words for a reasoning function whose prompt names a model the server does not offer', () => {
   it('say that its provider is not set up while others are, and that it can be switched to a model the server lists', async () => {
-    server = await servingReasoning([() => Effect.fail(unofferedProvider)]);
+    server = await servingWorkflows([() => Effect.fail(unofferedProvider)]);
 
     const unoffered = await executedOnce();
 
@@ -286,7 +285,7 @@ describe('the plain words for a reasoning function whose prompt names a model th
   });
 
   it('say that it is outside the models whoever runs the server allows, and that it can be switched', async () => {
-    server = await servingReasoning([() => Effect.fail(disallowedModel)]);
+    server = await servingWorkflows([() => Effect.fail(disallowedModel)]);
 
     const disallowed = await executedOnce();
 

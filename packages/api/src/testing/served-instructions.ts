@@ -52,7 +52,7 @@ export const definitionTypes: readonly DefinitionType[] = [
 ];
 
 export const recipes: readonly RecipeCalls[] = [
-  { name: 'first-brain', calls: ['list_brains', 'create_brain', 'create_spec', 'execute_spec'] },
+  { name: 'first-brain', calls: ['list_brains', 'create_brain', 'create_spec', 'test_tool_call', 'execute_spec'] },
   { name: 'remember', calls: ['list_specs', 'create_spec', 'update_spec', 'execute_spec'] },
   {
     name: 'give-tools',
