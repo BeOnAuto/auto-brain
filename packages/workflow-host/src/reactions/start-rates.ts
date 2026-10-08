@@ -1,10 +1,9 @@
-import { StartingTriggerSchema } from '@beonauto/specs';
+import { StartingTriggerSchema, triggerNamed } from '@beonauto/specs';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { DeliveryFailed, deliverySweeps } from '../follower/consumers.ts';
-import { triggerNamed } from '../triggers/trigger-words.ts';
 import type { ReactionStart, StartReaction } from './reaction-options.ts';
 import type { Refusals } from './refusals.ts';
 

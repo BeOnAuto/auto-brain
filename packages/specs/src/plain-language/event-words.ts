@@ -21,16 +21,20 @@ export function cancelAsked(kind: CancelRequestKind): string {
   return cancelsAsked[kind];
 }
 
-const triggersInWords: Readonly<Record<StartingTrigger['kind'], string>> = {
-  event: 'its event trigger',
-  cron: 'its cron schedule',
-  every: 'its every schedule',
+const triggerNames: Readonly<Record<StartingTrigger['kind'], string>> = {
+  event: 'event trigger',
+  cron: 'cron schedule',
+  every: 'every schedule',
 };
+
+export function triggerNamed(kind: StartingTrigger['kind']): string {
+  return triggerNames[kind];
+}
 
 export function runStarted(words: SpecWords, primitive: string, name: string, trigger?: StartingTrigger): string {
   return trigger === undefined
     ? `A run of ${words.named(primitive, name)} started.`
-    : `A run of ${words.named(primitive, name)} was started by ${triggersInWords[trigger.kind]}.`;
+    : `A run of ${words.named(primitive, name)} was started by its ${triggerNamed(trigger.kind)}.`;
 }
 
 export function runRejected(rejection: ExecutionRejection): string {

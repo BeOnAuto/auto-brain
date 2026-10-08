@@ -136,6 +136,7 @@ export {
 } from './registry/spec-triggers.ts';
 export { runStartedOf, type RunStarted } from './execution/run-starts.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
+export { triggerNamed } from './plain-language/event-words.ts';
 export { mostInputBytes, mostInputDepth, mostResultBytes } from './execution/recorded-size.ts';
 export {
   ListedDefinitionSchema,
