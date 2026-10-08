@@ -28,15 +28,17 @@ type Write = (line: string) => void;
 
 const decodeMeta = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown));
 
-interface OpenSessions {
+interface Bursts {
   readonly most: () => number;
   readonly stop: () => void;
 }
 
-function sampledOpenSessions(tool: FakeMcpServer): OpenSessions {
+function sampledBursts(tool: FakeMcpServer): Bursts {
+  const seen: number[] = [];
   const counts = { most: 0 };
   const sampling = setInterval(() => {
-    counts.most = Math.max(counts.most, tool.openSessions());
+    seen.push(tool.received().length);
+    counts.most = Math.max(counts.most, (seen.at(-1) ?? 0) - (seen.at(-11) ?? 0));
   }, 100);
   return {
     most: () => counts.most,
@@ -78,7 +80,7 @@ export async function hangingOn({ store, aLedger }: MeasuredLedger, requests: nu
   const tool = await serveFakeMcp({ bearer: toolKey });
   const ledger = await aLedger();
   const server = await measuredServer({ ...ledger.environment, ...hangingServerOf(tool.url) });
-  const open = sampledOpenSessions(tool);
+  const bursts = sampledBursts(tool);
   try {
     const plan: TimerPlan = { firstDueAt: Date.now() + 6000, count: 20, spacingMs: 3000, seconds: 5 };
     const askedAt = Date.now();
@@ -88,7 +90,7 @@ export async function hangingOn({ store, aLedger }: MeasuredLedger, requests: nu
     const sorted = late.toSorted((a, b) => a - b);
     const { attempts, requests: tried } = attemptsOf(tool);
     write(
-      `${store}: ${requests} requests through a tool that never answers, asked in ${askedMs} ms; in the ${Math.round(watchedMs / 1000)} s from the first ask it took ${attempts} attempts of ${tried} requests, ${attempts - tried} of them a second attempt of a request whose first timed out, ${open.most()} open at once at most`,
+      `${store}: ${requests} requests through a tool that never answers, asked in ${askedMs} ms; in the ${Math.round(watchedMs / 1000)} s from the first ask it took ${attempts} attempts of ${tried} requests, ${attempts - tried} of them a second attempt of a request whose first timed out, at most ${bursts.most()} of them sent within one second`,
     );
     write(
       `${store}: ${late.length} workflow timers due meanwhile, one every ${plan.spacingMs} ms, late by ${spread(sorted)}; in the order they were due, ${late.join(', ')} ms; p50 ${percentile(sorted, 0.5)} ms`,
@@ -97,7 +99,7 @@ export async function hangingOn({ store, aLedger }: MeasuredLedger, requests: nu
       `${store}: one-minute, five-minute and fifteen-minute load averages every 10 s meanwhile: ${loads.join('; ')}`,
     );
   } finally {
-    open.stop();
+    bursts.stop();
     await server.stop();
     await tool.close();
   }

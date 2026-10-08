@@ -77,12 +77,11 @@ The [recall function adapter](../../reference/recall-format.md) shares those wor
 
 A value outside its range stops the server at start, naming the setting.
 
-The [interaction function adapter](../../reference/interaction-format.md) keeps the open requests in a table of the ledger's database, written in the same transaction as each run's facts, and the server that runs the workflows performs their expiries and delivery attempts with its timers, so a request needs no other storage or schedule. The [channels](configuration.md#channels) come from `channels` in the file or `CHANNELS`, and these settings go with them:
+The [interaction function adapter](../../reference/interaction-format.md) keeps the open requests in a table of the ledger's database, written in the same transaction as each run's facts, and the server that runs the workflows performs their expiries and delivery attempts with its timers, so a request needs no other storage or schedule. A function sends its request through a tool of a server in `mcp_servers`, which it names itself, and this setting goes with it:
 
-| Variable                    | Default                       | Purpose                                                                                                                                                                                                                         |
-| --------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `INTERACTION_OPEN_REQUESTS` | `10000`                       | How many requests a brain may have open at once, from 1 to 1,000,000; a run past it is `unavailable` with the kind `requests_full`                                                                                              |
-| `PUBLIC_ORIGIN`             | `http://localhost` and `PORT` | The origin a delivered request names in its `source` and `answer_url`, such as `https://brains.example.com`; https, or http on a loopback address, and required with a webhook channel, since the image listens beyond loopback |
+| Variable                    | Default | Purpose                                                                                                                            |
+| --------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `INTERACTION_OPEN_REQUESTS` | `10000` | How many requests a brain may have open at once, from 1 to 1,000,000; a run past it is `unavailable` with the kind `requests_full` |
 
 The image is multi-arch (amd64 and arm64), runs as a non-root user that can read but not change its own code, keeps the ledger on the `/data` volume, where that user may write, as it may only in `/tmp`, `/var/tmp`, `/run/lock` and its home `/home/node` besides, and shuts down cleanly on `SIGTERM`, even in its first milliseconds, because `tini` runs as PID 1 and forwards the signal to the server. Its SQLite driver is compiled from source while the image is built. A second `SIGTERM` or `SIGINT` ends the server at once with exit code 1.
 

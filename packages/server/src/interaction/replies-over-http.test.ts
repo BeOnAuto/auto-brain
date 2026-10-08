@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { chatEnvironment, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
 import {
-  channelReading,
+  flatReading,
   interactionsOf,
   readingIn,
   readsOf,
@@ -78,9 +78,9 @@ describe(
   () => {
     it('share one row and one read for their requests', async () => {
       const chat = await chatServer();
-      const server = await servingInteractions([...chatDelivery, ...channelReading], chatEnvironment(chat.url));
+      const server = await servingInteractions([...chatDelivery, ...flatReading], chatEnvironment(chat.url));
       await server.call('POST', `${alpha}/specs/interaction`, {
-        body: { name: 'approve-again', source: approvalDocument([...chatDelivery, ...channelReading]) },
+        body: { name: 'approve-again', source: approvalDocument([...chatDelivery, ...flatReading]) },
       });
       await server.ask('approve-brief');
       await server.ask('approve-again');

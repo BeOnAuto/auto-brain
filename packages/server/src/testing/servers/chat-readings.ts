@@ -23,7 +23,7 @@ export const threadReading: readonly string[] = readingOf(
   ["    ts: '{{ sent.id }}'"],
 );
 
-export const channelReading: readonly string[] = readingOf([], []);
+export const flatReading: readonly string[] = readingOf([], []);
 
 const ListedSchema = Schema.Struct({
   interactions: Schema.Array(

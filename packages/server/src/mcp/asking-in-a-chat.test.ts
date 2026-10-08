@@ -1,4 +1,7 @@
-import { plainTextIn, type McpSession } from '@beonauto/api/testing';
+import { Buffer } from 'node:buffer';
+
+import { mostGuideBytes } from '@beonauto/api';
+import { plainTextIn, textOf, type McpSession } from '@beonauto/api/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { sentenceNaming, servingMeetings, type MeetingsServer } from '../testing/servers/meetings-server.ts';
@@ -67,6 +70,7 @@ afterAll(async () => {
 });
 
 async function askedToSendADraft(session: McpSession) {
+  const guide = textOf(await session.callTool('get_guide', { guide: 'interaction-function' }));
   const sent = await session.callTool('test_tool_call', {
     ...inMeetings,
     server: 'chat',
@@ -86,7 +90,7 @@ async function askedToSendADraft(session: McpSession) {
     source: approvingInTheChat,
   });
   const reasoning = await session.callTool('list_specs', { ...inMeetings, primitive: 'inference' });
-  return { sent, read, saved, reasoning };
+  return { guide, sent, read, saved, reasoning };
 }
 
 async function askedWhereNoToolServerIs(session: McpSession) {
@@ -120,6 +124,8 @@ describe(
         { outcome: 'result', text: namingTheMessage },
         { outcome: 'result', text: listingTheMessages },
       ]);
+      expect(seen.guide).toMatch(/^## Sending through a tool\n[\s\S]*^### Attempts\n[\s\S]*^## Fields$/mu);
+      expect(Buffer.byteLength(seen.guide)).toBeLessThan(mostGuideBytes);
       expect(seen.saved.isError).not.toBe(true);
       expect(seen.reasoning.structuredContent).toEqual({ specs: [] });
     });
