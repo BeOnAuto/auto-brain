@@ -121,17 +121,17 @@ On `/orgs/{org}/mcp` the connection "manages the brains of one org", whose funct
 
 **Bounds.** Each bound of [decision 0016](../../docs/decisions/0016-speaking-to-agents.md#8-bounds) is enforced where it can be reached, and tested at the bound and one over in `src/bounds/served-bounds.test.ts`, `src/bounds/word-bounds.test.ts` and `src/tools/tool-definition.test.ts`:
 
-| Bound                        | Value                                      | When it is reached                                           |
-| ---------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
-| Instructions of a connection | 2,000 characters                           | The server refuses to start                                  |
-| A tool description           | 800 characters, 3 to 8 sentences           | The server refuses to start                                  |
-| An argument's description    | 300 characters, at any depth of the input  | The server refuses to start                                  |
-| Tools on a connection        | 25, `get_guide` included                   | The server refuses to start                                  |
-| A guide                      | 64 KiB                                     | The server refuses to start                                  |
-| A recipe                     | 4 KiB, its format guide embedded beside it | The server refuses to start                                  |
-| Guides                       | one a definition type and the terminology  | The server refuses to start                                  |
-| Recipes, and so prompts      | 4                                          | The server refuses to start                                  |
-| Outcome words; refusal words | 400; 600 characters                        | The rest is said to be in the details, the structured result |
+| Bound                        | Value                                                                                    | When it is reached                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Instructions of a connection | 2,000 characters                                                                         | The server refuses to start                                  |
+| A tool description           | 800 characters, 3 to 8 sentences                                                         | The server refuses to start                                  |
+| An argument's description    | 300 characters, at any depth of the input                                                | The server refuses to start                                  |
+| Tools on a connection        | 25, `get_guide` included, since [0018](../../docs/decisions/0018-testing-a-tool-call.md) | The server refuses to start                                  |
+| A guide                      | 64 KiB                                                                                   | The server refuses to start                                  |
+| A recipe                     | 4 KiB, its format guide embedded beside it                                               | The server refuses to start                                  |
+| Guides                       | one a definition type and the terminology                                                | The server refuses to start                                  |
+| Recipes, and so prompts      | 4                                                                                        | The server refuses to start                                  |
+| Outcome words; refusal words | 400; 600 characters                                                                      | The rest is said to be in the details, the structured result |
 
 **Which errors look how.** An MCP endpoint answers in three shapes:
 
