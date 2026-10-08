@@ -67,3 +67,22 @@ describe('the facts of a run that answers a call of another run', () => {
     ]);
   });
 });
+
+describe('the facts of a run a trigger started', () => {
+  it('name the trigger, by its kind and its place in the document, on the start and on the ending', () => {
+    const trigger = { kind: 'every' as const, reference: '/schedule/every' };
+    const ofTheRun = {
+      primitive: 'orchestration',
+      name: 'check',
+      version: 1,
+      caller: 'brain:alpha',
+      depth: 0,
+      trigger,
+    };
+
+    expect([
+      brainFactOf(ofRun({ type: 'execution_started', ...ofCheck, input: {}, trigger, ...fact }))?.data,
+      brainFactOf(ofRun({ type: 'execution_failed', ...ofCheck, trigger, ...fact }))?.data,
+    ]).toEqual([ofTheRun, ofTheRun]);
+  });
+});

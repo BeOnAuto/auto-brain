@@ -1,5 +1,6 @@
 import type { Schema } from 'effect';
 
+import type { StartingTrigger } from '../registry/spec-triggers.ts';
 import type { ExecutionResult } from './execution-commands.ts';
 import type {
   CalledBy,
@@ -28,6 +29,7 @@ export interface RecordedExecution {
   readonly depth: number;
   readonly callDepth: number;
   readonly calledBy?: CalledBy;
+  readonly trigger?: StartingTrigger;
   readonly record?: Schema.JsonObject;
   readonly result?: ExecutionResult;
 }
@@ -50,7 +52,7 @@ export function cancelBeforeStartOf(state: ExecutionStreamState): AskedCancel | 
 
 function startedExecution(event: ExecutionStarted, earlier: ExecutionState): RecordedExecution {
   const { primitive, name, spec_version, input, calls_tools, finishes_later, depth = 0, by, at } = event;
-  const { call_depth: callDepth = 0, called_by: calledBy } = event;
+  const { call_depth: callDepth = 0, called_by: calledBy, trigger } = event;
   return {
     input,
     execution: { primitive, name, spec_version, status: 'started', started_at: at, started_by: by },
@@ -62,6 +64,7 @@ function startedExecution(event: ExecutionStarted, earlier: ExecutionState): Rec
     depth,
     callDepth,
     ...(calledBy === undefined ? {} : { calledBy }),
+    ...(trigger === undefined ? {} : { trigger }),
   };
 }
 

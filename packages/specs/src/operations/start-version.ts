@@ -12,7 +12,7 @@ import { ExecutionIdField, InputField, SpecNameField } from './spec-fields.ts';
 const description = [
   'Starts a run of one version of a definition under a run id, once: when the brain has a run under that id,',
   'it answers that run as it stands and starts nothing. The workflow host calls it in the process for the runs',
-  'that reactions start, as the brain itself, with their reaction depth and lineage in the request; no transport serves it.',
+  'that triggers start, as the brain itself, with their reaction depth, lineage and trigger in the request; no transport serves it.',
 ].join(' ');
 
 export function defineStartVersion(primitives: readonly Primitive[]) {

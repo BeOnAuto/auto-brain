@@ -19,6 +19,7 @@ function stateAfter(...events: readonly ExecutionEvent[]) {
 interface StartOptions {
   readonly depth?: number;
   readonly createOnly?: true;
+  readonly trigger?: { readonly kind: 'event' | 'cron' | 'every'; readonly reference: string };
 }
 
 function starting(options: StartOptions): ExecutionCommand {
@@ -54,6 +55,31 @@ describe('the reaction depth of a run', () => {
           ...finish,
         },
       ]),
+    ]);
+  });
+});
+
+describe('the trigger that started a run', () => {
+  it('is recorded on its start, and copied from the start onto every ending', () => {
+    const trigger = { kind: 'cron' as const, reference: '/schedule/cron' };
+    const startedByCron: ExecutionEvent = {
+      type: 'execution_started',
+      ...greeting,
+      spec_version: 1,
+      trigger,
+      ...start,
+    };
+    const failing: ExecutionCommand = { type: 'finish', result: { type: 'execution_failed' }, ...finish };
+    const ofTheRun = { primitive: 'echo', name: 'greet', spec_version: 1, trigger, ...finish };
+
+    expect([
+      executionDecider.decide(starting({ trigger }), executionDecider.initialState),
+      executionDecider.decide(finishing, stateAfter(startedByCron)),
+      executionDecider.decide(failing, stateAfter(startedByCron)),
+    ]).toEqual([
+      Result.succeed([startedByCron]),
+      Result.succeed([{ type: 'execution_succeeded', output: 'Hi', record: {}, ...ofTheRun }]),
+      Result.succeed([{ type: 'execution_failed', ...ofTheRun }]),
     ]);
   });
 });

@@ -1,13 +1,14 @@
 import { Option, Schema } from 'effect';
 
 import { SpecEventSchema } from './spec-events.ts';
+import type { Trigger } from './spec-triggers.ts';
 
 export type SpecChange =
   | {
       readonly kind: 'activated';
       readonly name: string;
       readonly version: number;
-      readonly source: string;
+      readonly triggers: readonly Trigger[];
       readonly at: string;
     }
   | { readonly kind: 'deactivated'; readonly name: string }
@@ -26,8 +27,9 @@ export function specChangeOf(data: unknown): SpecChange {
         return { kind: 'deactivated', name: event.name };
       }
       const { name, version, content, at } = event;
-      if (content.reacts === true) {
-        return { kind: 'activated', name, version, source: content.source, at };
+      const { triggers = [] } = content;
+      if (triggers.length > 0) {
+        return { kind: 'activated', name, version, triggers, at };
       }
       return event.type === 'spec_updated' ? { kind: 'deactivated', name } : { kind: 'unchanged' };
     },

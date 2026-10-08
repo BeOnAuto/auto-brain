@@ -123,6 +123,15 @@ export { publishedEventOf, type EventPublished } from './events/published-events
 export { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from './events/reaction-refusals.ts';
 export { mostReactingDefinitions } from './registry/registry-decisions.ts';
 export { specChangeOf, type SpecChange } from './registry/spec-changes.ts';
+export {
+  StartingTriggerSchema,
+  TriggerSchema,
+  type EventTrigger,
+  type ScheduleTrigger,
+  type StartingTrigger,
+  type Trigger,
+  type TriggerFilter,
+} from './registry/spec-triggers.ts';
 export { runStartedOf, type RunStarted } from './execution/run-starts.ts';
 export { inWords, wordsOf } from './plain-language/in-words.ts';
 export { mostInputBytes, mostInputDepth, mostResultBytes } from './execution/recorded-size.ts';
