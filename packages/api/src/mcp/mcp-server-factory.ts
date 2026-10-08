@@ -156,9 +156,21 @@ export function brainServerFactory(serving: ToolServing): McpServerFactory {
   };
 }
 
+function namedInBrainAlone(
+  brainRegistrations: readonly Registration<'brain'>[],
+  orgRegistrations: readonly Registration<'org'>[],
+): readonly Registration<'brain'>[] {
+  const orgNames = new Set(orgRegistrations.map(({ name }) => name));
+  return brainRegistrations.filter(({ name }) => !orgNames.has(name));
+}
+
 export function catalogServerFactory(serving: ToolServing): McpServerFactory {
-  const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
-  const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionTakingBrainOf);
+  const orgRegistrations = serving.catalog.operationsIn('org');
+  const orgOffers = offered(orgRegistrations, toolDefinitionOf);
+  const brainOffers = offered(
+    namedInBrainAlone(serving.catalog.operationsIn('brain'), orgRegistrations),
+    toolDefinitionTakingBrainOf,
+  );
   const connection = connectionOf('own org', serving, servedTools(orgOffers, brainOffers));
   return (context) => {
     const call = orgCallOf(context);

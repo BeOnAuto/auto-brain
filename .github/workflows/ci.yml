@@ -221,6 +221,9 @@ jobs:
           grep --quiet '"structuredContent":{"executions":\[\],"has_more":false,"next_cursor":null}' executions.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"brain":"smoke"}}}' > tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' tool-servers.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{}}}' > org-tool-servers.txt
+          grep --quiet '"structuredContent":{"tool_servers":\[\]}' org-tool-servers.txt
+          test "$(curl --silent --fail --header "authorization: Bearer $read_key" http://127.0.0.1:8080/v1/orgs/demo/tool-servers)" = '{"tool_servers":[]}'
           call_mcp /mcp '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"test_tool_call","arguments":{"brain":"smoke","server":"graph","tool":"search"}}}' > tested.txt
           grep --quiet '"isError":true' tested.txt
           grep --quiet 'mcp_server_not_configured' tested.txt

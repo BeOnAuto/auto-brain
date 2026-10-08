@@ -37,11 +37,16 @@ export const queriesInsideABrain = [
   'get_guide',
 ];
 
-export const orgEndpoint: ServedTools = { orgTools: [...managingBrains, 'list_models', 'get_guide'], brainTools: [] };
+const discovering = ['list_models', 'list_tool_servers'];
+
+export const orgEndpoint: ServedTools = { orgTools: [...managingBrains, ...discovering, 'get_guide'], brainTools: [] };
 
 export const brainEndpoint: ServedTools = { orgTools: [], brainTools: insideABrain };
 
-export const ownOrg: ServedTools = { orgTools: [...managingBrains, 'list_models'], brainTools: insideABrain };
+export const ownOrg: ServedTools = {
+  orgTools: [...managingBrains, ...discovering],
+  brainTools: insideABrain.filter((name) => !discovering.includes(name)),
+};
 
 export const definitionTypes: readonly DefinitionType[] = [
   { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },

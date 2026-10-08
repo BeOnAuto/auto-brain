@@ -33,6 +33,22 @@ const replaceNote = defineCommand('brain', {
   handle: () => Effect.succeed({}),
 });
 
+const getNoteOfOrg = defineQuery('org', {
+  ...probe,
+  name: 'get_note',
+  route: { method: 'GET', path: '/notes/{name}' },
+  inputSchema: Schema.Struct({ brain: Schema.optionalKey(Schema.String), name: Schema.String }),
+  handle: () => Effect.succeed({}),
+});
+
+const addNoteToOrg = defineCommand('org', {
+  ...probe,
+  name: 'add_note',
+  route: { method: 'POST', path: '/notes' },
+  inputSchema: Schema.Struct({ name: Schema.String }),
+  handle: () => Effect.succeed({}),
+});
+
 const getNoteOfBrain = defineQuery('org', {
   ...probe,
   name: 'get_note_of_brain',
@@ -62,9 +78,24 @@ describe('a catalog', () => {
     expect(makeCatalog([]).operations).toEqual([]);
   });
 
-  it('rejects a name used twice, even across scopes', () => {
+  it('rejects a name used twice in one scope', () => {
     expect(() => makeCatalog([addNote, labelBrain, addNote])).toThrow(
       'The operation name add_note is used more than once',
+    );
+  });
+});
+
+describe('a name used at both scopes', () => {
+  it('names an org operation that takes the brain it answers for beside the brain operation, one in each scope', () => {
+    const catalog = makeCatalog([getNote, getNoteOfOrg]);
+
+    expect(catalog.operationsIn('org').map(({ name }) => name)).toEqual(['get_note']);
+    expect(catalog.operationsIn('brain').map(({ name }) => name)).toEqual(['get_note']);
+  });
+
+  it('is refused when the org operation takes no brain, since it could not answer for the brain of the other', () => {
+    expect(() => makeCatalog([addNote, addNoteToOrg])).toThrow(
+      'The operation name add_note is used at both scopes, so the org operation must take the brain it answers for',
     );
   });
 });

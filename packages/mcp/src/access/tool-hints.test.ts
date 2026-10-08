@@ -1,7 +1,13 @@
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { longToolName, reportingAccess, serveFakeMcp, type AccessOptions } from '../testing/index.ts';
+import {
+  longToolName,
+  reportingAccess,
+  serveFakeMcp,
+  type AccessOptions,
+  type FakeMcpOptions,
+} from '../testing/index.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -80,5 +86,32 @@ describe('the tools a listing says can be tested', () => {
     ]);
 
     expect(listing).toMatchObject([{ tools: testedAsListed }]);
+  });
+});
+
+async function notedAfterListing(listings: number, served: FakeMcpOptions, options: AccessOptions = {}) {
+  const fake = await serveFakeMcp({ bearer: apiKey, ...served });
+  closing.push(fake.close);
+  const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' };
+  const wiki = { ...graph, brains: ['beta'] };
+  const reporting = reportingAccess({ graph, wiki }, { ...options, environment: { GRAPH_API_KEY: apiKey } });
+  closing.push(reporting.access.close);
+  const before = reporting.untestable();
+  const listing = reporting.access.listServers({ org: 'acme', brain: 'alpha' });
+  await Effect.runPromise(Effect.all(Array.from({ length: listings }, () => listing)));
+  return { before, after: reporting.untestable() };
+}
+
+describe('a tool server on which nothing can be tested', () => {
+  it('is noted once, where its tools are first listed, when it marks no tool read-only and none is listed as safe to test', async () => {
+    expect(await notedAfterListing(2, { annotated: false })).toEqual({ before: [], after: ['graph'] });
+  });
+
+  it('is not noted when it marks a tool read-only, or when whoever runs the server lists one of its tools as safe to test', async () => {
+    expect(await notedAfterListing(1, {})).toEqual({ before: [], after: [] });
+    expect(await notedAfterListing(1, { annotated: false }, { testable: ['graph/echo'] })).toEqual({
+      before: [],
+      after: [],
+    });
   });
 });

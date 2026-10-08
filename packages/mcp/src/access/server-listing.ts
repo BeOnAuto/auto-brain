@@ -1,6 +1,7 @@
 import { Result } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
+import type { ListedTool } from '../bounds/result-text.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import { takenSlot } from '../calls/server-slot.ts';
 import { failureOf, type FailureKind, type ServerFailure } from '../connections/server-failures.ts';
@@ -11,6 +12,7 @@ import type { Listed } from './tool-naming.ts';
 export interface Listing {
   readonly secrets: Secrets;
   readonly timing: Timing;
+  readonly toolsListed: (server: string, tools: readonly ListedTool[]) => void;
 }
 
 const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
@@ -33,7 +35,7 @@ function serverFailed(link: ServerLink, { kind, message }: ServerFailure, { scru
 
 export async function connectedTo(
   link: ServerLink,
-  { secrets, timing }: Listing,
+  { secrets, timing, toolsListed }: Listing,
 ): Promise<Result.Result<Listed, McpServerFailed>> {
   const taken = await takenSlot(link);
   if (Result.isFailure(taken)) {
@@ -44,7 +46,10 @@ export async function connectedTo(
     .connection()
     .listTools(timing.openMs)
     .then(
-      (tools) => Result.succeed({ slot, tools }),
+      (tools) => {
+        toolsListed(link.settings.name, tools);
+        return Result.succeed({ slot, tools });
+      },
       async (error: unknown) => {
         await slot.release();
         return Result.fail(serverFailed(link, failureOf(error), secrets));

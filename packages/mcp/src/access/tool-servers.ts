@@ -1,4 +1,3 @@
-import type { BrainAddress } from '@beonauto/operations';
 import { Result } from 'effect';
 
 import { cutToFailureBound } from '../bounds/call-bounds.ts';
@@ -6,7 +5,7 @@ import type { ServerLink } from '../connections/server-links.ts';
 import { shownTool, type Showing } from '../listing/shown-tools.ts';
 import type { ToolServer } from '../listing/tool-server.ts';
 import { isAllowed } from '../names/tool-reference.ts';
-import { isListedFor } from '../settings/mcp-settings.ts';
+import { isListedFor, type ServersScope } from '../settings/mcp-settings.ts';
 import { connectedTo, type Listing } from './server-listing.ts';
 import { offeredOn } from './tool-naming.ts';
 
@@ -36,14 +35,11 @@ function byName(first: ServerLink, second: ServerLink): number {
 }
 
 export interface ServersAsked {
-  readonly address: BrainAddress;
+  readonly scope: ServersScope;
   readonly named: string | undefined;
 }
 
-export function toolServersOf(
-  { address, named }: ServersAsked,
-  listing: ServersListing,
-): Promise<readonly ToolServer[]> {
-  const asked = [...listing.links.values()].filter(({ settings }) => isListedFor(settings, address, named));
+export function toolServersOf({ scope, named }: ServersAsked, listing: ServersListing): Promise<readonly ToolServer[]> {
+  const asked = [...listing.links.values()].filter(({ settings }) => isListedFor(settings, scope, named));
   return Promise.all(asked.toSorted(byName).map((link) => toolServerOf(link, listing)));
 }

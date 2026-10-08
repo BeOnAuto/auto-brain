@@ -31,15 +31,13 @@ const ServerToolSchema = Schema.Struct({
   }),
 });
 
-const AvailableServerSchema = Schema.Struct({
-  ...serverFields,
+const availableFields = {
   tools: Schema.Array(ServerToolSchema).annotate({
     description: 'The tools the server lists that the operator allows, in the order the server lists them',
   }),
-});
+};
 
-const UnavailableServerSchema = Schema.Struct({
-  ...serverFields,
+const unavailableFields = {
   unavailable: Schema.String.annotate({
     description: 'Why the server could not be asked for its tools, in words',
   }),
@@ -47,13 +45,32 @@ const UnavailableServerSchema = Schema.Struct({
     description:
       'key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work',
   }),
-});
+};
 
-export const ToolServerSchema = Schema.Union([AvailableServerSchema, UnavailableServerSchema]).annotate({
+const servedBrainsFields = {
+  brains: Schema.Array(Schema.String).annotate({
+    description: "The brains of the org whose functions may use the server, or ['*'] for every brain of the org",
+  }),
+};
+
+export const ToolServerSchema = Schema.Union([
+  Schema.Struct({ ...serverFields, ...availableFields }),
+  Schema.Struct({ ...serverFields, ...unavailableFields }),
+]).annotate({
   identifier: 'ToolServer',
   description: 'A tool server this brain may use, with its tools, or why they could not be listed',
 });
 
+export const OrgToolServerSchema = Schema.Union([
+  Schema.Struct({ ...serverFields, ...servedBrainsFields, ...availableFields }),
+  Schema.Struct({ ...serverFields, ...servedBrainsFields, ...unavailableFields }),
+]).annotate({
+  identifier: 'OrgToolServer',
+  description: 'A tool server of the org, with the brains it serves and its tools, or why they could not be listed',
+});
+
 export type ToolServer = typeof ToolServerSchema.Type;
+
+export type OrgToolServer = typeof OrgToolServerSchema.Type;
 
 export type ServerTool = typeof ServerToolSchema.Type;

@@ -50,6 +50,10 @@ const amendments: readonly (readonly [string, string])[] = [
     'may name tools that list_tool_servers lists.',
     'may name tools that list_tool_servers lists; test_tool_call shows what a tool answers.',
   ],
+  [
+    'list_models lists the models this server can call, which a reasoning function names. get_guide holds what these words mean and how each kind of definition is written.',
+    'get_guide holds what these words mean and how each kind of definition is written. A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists.',
+  ],
 ];
 
 function asServedWithFourTypes(recordText: string): string {
@@ -163,6 +167,14 @@ describe('the instructions of a key that may only read', () => {
 
     expect(reading).toContain(
       'get_guide holds what these words mean and how each kind of definition is written. A reasoning function names a model this server can call, as the reasoning-function guide says,',
+    );
+  });
+
+  it('on an org endpoint that lists the models and no tool servers, say which models a reasoning function names', () => {
+    const served = { orgTools: ['list_brains', 'list_models', 'get_guide'], brainTools: [] };
+
+    expect(instructionsFor('org', served, definitionTypes, recipes)).toContain(
+      'list_models lists the models this server can call, which a reasoning function names. get_guide holds',
     );
   });
 

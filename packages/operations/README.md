@@ -95,7 +95,7 @@ Plain words have bounds: an outcome takes at most `mostOutcomeCharacters`, 400, 
 
 `getLabel.call(input)` runs the handler in process with typed input and output, checking both against their schemas. This is how one operation calls another. The call runs with the authority of the calling operation: it does not check the permission of the operation it calls, nor run the pipeline steps.
 
-`makeCatalog([getLabel, ...])` rejects a name used twice, and two operations with the same method and route once parameter names are ignored, where an org route is under `/orgs/{org}` and a brain route under `/orgs/{org}/brains/{brain}`. It lists the operations of each scope.
+`makeCatalog([getLabel, ...])` rejects a name used twice in one scope, and two operations with the same method and route once parameter names are ignored, where an org route is under `/orgs/{org}` and a brain route under `/orgs/{org}/brains/{brain}`. It lists the operations of each scope. A name may be used once at each scope only when the org operation takes `brain`, so that it answers for the org, or for the brain it names, beside the brain operation that answers for the brain of the call, as `list_tool_servers` of `@beonauto/mcp` does; a transport that serves both scopes on one connection, as the MCP endpoint `/mcp` does, offers the org one there, and a name at both scopes whose org operation takes no `brain` is refused.
 
 ### The brain of an org operation
 

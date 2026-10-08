@@ -1,5 +1,4 @@
 import { servesBrain } from '@beonauto/config';
-import type { BrainAddress } from '@beonauto/operations';
 import type { Redacted } from 'effect';
 
 import type { ToolReference } from '../names/tool-reference.ts';
@@ -46,6 +45,21 @@ export interface McpSettings {
   readonly testable: readonly ToolReference[];
 }
 
-export function isListedFor(server: ServedBy, address: BrainAddress, named: string | undefined): boolean {
-  return servesBrain(server, address) && (named === undefined || server.name === named);
+export interface ServersScope {
+  readonly org: string;
+  readonly brain: string | undefined;
+}
+
+export const everyBrain = '*';
+
+function servesScope(server: ServedBy, { org, brain }: ServersScope): boolean {
+  return brain === undefined ? server.org === org : servesBrain(server, { org, brain });
+}
+
+export function isListedFor(server: ServedBy, scope: ServersScope, named: string | undefined): boolean {
+  return servesScope(server, scope) && (named === undefined || server.name === named);
+}
+
+export function brainsServedBy(servers: readonly McpServerSettings[], name: string): readonly string[] {
+  return servers.filter((server) => server.name === name).flatMap(({ brains }) => brains ?? [everyBrain]);
 }

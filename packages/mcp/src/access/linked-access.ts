@@ -5,11 +5,12 @@ import { secretsOfServers } from '../bounds/secrets.ts';
 import { serverLink, type LinkOptions } from '../connections/server-links.ts';
 import { deliveredCall } from '../delivery/delivery-call.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
+import { untestableNoting } from '../tool-tests/testing-guard.ts';
 import { openedRun } from './run-opening.ts';
-import type { ToolAccess, ToolAccessOptions } from './tool-access.ts';
+import type { LinkedAccess, ToolAccessOptions } from './tool-access.ts';
 import { toolServersOf } from './tool-servers.ts';
 
-export function linkedAccess(settings: McpSettings, options: ToolAccessOptions): ToolAccess {
+export function linkedAccess(settings: McpSettings, options: ToolAccessOptions): LinkedAccess {
   const report = options.reportServerMessage;
   const timing = options.timing ?? defaultTiming;
   const secrets = secretsOfServers(settings.servers);
@@ -23,17 +24,18 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
     },
   };
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
+  const toolsListed = untestableNoting(settings.testable, options.reportUntestable);
   return {
     configured: settings.servers.length > 0,
     testing: { allowed: settings.allowed, testable: settings.testable },
     open: (context, references) =>
-      openedRun({ context, references, links, allowed: settings.allowed, secrets, timing, report }),
+      openedRun({ context, references, links, allowed: settings.allowed, secrets, timing, toolsListed, report }),
     callOnce: (call) => deliveredCall(call, { links, allowed: settings.allowed, secrets, timing }),
-    listServers: (address, named) =>
+    listServers: (scope, named) =>
       Effect.promise(() =>
         toolServersOf(
-          { address, named },
-          { links, allowed: settings.allowed, testable: settings.testable, secrets, timing },
+          { scope, named },
+          { links, allowed: settings.allowed, testable: settings.testable, secrets, timing, toolsListed },
         ),
       ),
     close: async () => {
