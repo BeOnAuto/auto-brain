@@ -50,6 +50,10 @@ const amendments: readonly (readonly [string, string])[] = [
     'may name tools that list_tool_servers lists.',
     'may name tools that list_tool_servers lists; test_tool_call shows what a tool answers.',
   ],
+  [
+    'list_models lists the models this server can call, which a reasoning function names. get_guide holds what these words mean and how each kind of definition is written.',
+    'get_guide holds what these words mean and how each kind of definition is written. A reasoning function names a model that list_models lists and may name tools that list_tool_servers lists.',
+  ],
 ];
 
 function asServedWithFourTypes(recordText: string): string {

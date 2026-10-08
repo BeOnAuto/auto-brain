@@ -11,16 +11,16 @@ import {
 import { instructionsFor } from './instructions.ts';
 
 describe('the length of the instructions with every tool', () => {
-  it('take 1,990 characters on /mcp, 1,473 on the org endpoint and 1,950 on the brain endpoint', () => {
+  it('take 1,990 characters on /mcp, 1,495 on the org endpoint and 1,950 on the brain endpoint', () => {
     expect(
       everyEndpoint.map(([endpoint, served]) => instructionsFor(endpoint, served, definitionTypes, recipes).length),
-    ).toEqual([1473, 1950, 1990]);
+    ).toEqual([1495, 1950, 1990]);
   });
 });
 
 describe('what the instructions say of testing a tool', () => {
   const reading = {
-    orgTools: ['list_brains', 'get_brain', 'list_models', 'get_guide'],
+    orgTools: ['list_brains', 'get_brain', 'list_models', 'list_tool_servers', 'get_guide'],
     brainTools: queriesInsideABrain,
   };
 
@@ -43,12 +43,12 @@ describe('what the instructions say of testing a tool', () => {
     ).toEqual([]);
   });
 
-  it('leave it out for a key that may only read, whose instructions keep their length', () => {
+  it('leave it out for a key that may only read, whose instructions keep their length but where the org endpoint lists the tool servers', () => {
     const lengths = [
       instructionsFor('own org', reading, definitionTypes, recipes),
       instructionsFor(
         'own org',
-        { ...reading, orgTools: ['list_brains', 'get_brain', 'get_guide'] },
+        { ...reading, orgTools: ['list_brains', 'get_brain', 'list_tool_servers', 'get_guide'] },
         definitionTypes,
         recipes,
       ),
@@ -57,6 +57,6 @@ describe('what the instructions say of testing a tool', () => {
     ];
 
     expect(lengths.filter((instructions) => instructions.includes('test_tool_call'))).toEqual([]);
-    expect(lengths.map(({ length }) => length)).toEqual([1673, 1710, 1446, 1673]);
+    expect(lengths.map(({ length }) => length)).toEqual([1673, 1710, 1468, 1673]);
   });
 });
