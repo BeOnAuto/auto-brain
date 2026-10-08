@@ -25,6 +25,10 @@ const InteractionSchema = Schema.Struct({
   channel: Schema.String.annotate({ description: 'The channel the request goes through, or inbox' }),
   message: Schema.String.annotate({ description: 'The message of the request' }),
   takes_answer: Schema.Boolean.annotate({ description: 'true for a question, false for a notification' }),
+  answer_schema: Schema.NullOr(Schema.JsonObject).annotate({
+    description:
+      'The JSON Schema an answer must match, as the request recorded it when asked: the one answer_interaction checks, even once its function has changed; null for a notification',
+  }),
   requested_at: Schema.String.annotate({ description: 'When the request was made, in ISO 8601 UTC' }),
   expires_at: Schema.String.annotate({ description: 'When the request expires unanswered, in ISO 8601 UTC' }),
   attempts: Schema.Int.annotate({ description: 'The delivery attempts made so far' }),
@@ -41,6 +45,8 @@ const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength
 const description = [
   'Lists the open requests of the brain, newest first: what each interaction function asked, of whom, through which channel,',
   'until when and how its delivery stands, with the `execution_id` that answer_interaction takes.',
+  'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked,',
+  'which get_spec may no longer show; null for a notification.',
   'Use it when the person asks what the brain is waiting on, or to find the request they answer.',
   '`to` keeps the requests to one party and `function` those of one interaction function, and `cursor` is the next_cursor of the page before.',
   'Every reader of the brain sees each party and message, as a run’s input is seen.',
@@ -63,6 +69,8 @@ function afterOf(cursor: string | undefined): Effect.Effect<readonly ProjectedVa
   return isCursor(parts) ? Effect.succeed(parts) : Effect.fail(badCursor);
 }
 
+const answerSchemaFrom = Schema.decodeUnknownSync(Schema.NullOr(Schema.fromJsonString(Schema.JsonObject)));
+
 function shownOf({ runId, row }: ProjectedRunRow) {
   const kept = requestRowFrom(row);
   return [
@@ -74,6 +82,7 @@ function shownOf({ runId, row }: ProjectedRunRow) {
       channel: kept.channel,
       message: kept.message,
       takes_answer: kept.answers,
+      answer_schema: answerSchemaFrom(kept.answer_schema),
       requested_at: new Date(kept.requested_at).toISOString(),
       expires_at: new Date(kept.expires_at).toISOString(),
       attempts: kept.attempts,

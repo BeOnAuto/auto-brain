@@ -45,6 +45,7 @@ const interaction = {
   channel: 'inbox',
   message: 'Approve?',
   takes_answer: true,
+  answer_schema: { type: 'object' },
   requested_at: '2026-10-07T09:00:00.000Z',
   expires_at: '2026-10-09T09:00:00.000Z',
   attempts: 0,

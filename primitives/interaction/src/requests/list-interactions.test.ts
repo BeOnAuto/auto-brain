@@ -1,7 +1,10 @@
+import { defineUpdateSpec } from '@beonauto/specs';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { approvalDocument, interactionHarness } from '../testing/index.ts';
+import { noChannels } from '../channels/channel-settings.ts';
+import { approvalDocument, askedThroughPartner, interactionHarness } from '../testing/index.ts';
+import { defineAnswerInteraction } from './answer-interaction.ts';
 import { listInteractions } from './list-interactions.ts';
 
 const runIds = [
@@ -61,6 +64,83 @@ describe('the open requests of a brain', () => {
       status: 'rejected',
       reason: 'invalid_input',
       issues: [{ pointer: '/cursor' }],
+    });
+  });
+});
+
+const approvalSchema = {
+  type: 'object',
+  required: ['choice'],
+  properties: { choice: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string', maxLength: 2000 } },
+};
+
+const decisionDocument = [
+  '---',
+  'description: Ask the campaign owner to decide on a brief',
+  'channel: inbox',
+  "to: '{{ input.owner }}'",
+  'expires: P2D',
+  'input:',
+  '  schema: { type: object, required: [campaign, owner], properties: { campaign: { type: string }, owner: { type: string } } }',
+  'output:',
+  '  schema: { type: object, required: [decision], properties: { decision: { type: string, enum: [approve, revise, skip] } } }',
+  '---',
+  'Please decide on the brief for {{ input.campaign }}.',
+].join('\n');
+
+const ShapesSchema = Schema.Struct({
+  output: Schema.Struct({
+    interactions: Schema.Array(
+      Schema.Struct({
+        version: Schema.Int,
+        takes_answer: Schema.Boolean,
+        answer_schema: Schema.NullOr(Schema.JsonObject),
+      }),
+    ),
+  }),
+});
+
+const decodeShapes = Schema.decodeUnknownSync(ShapesSchema);
+
+async function shapesIn(brain: ReturnType<typeof interactionHarness>) {
+  return decodeShapes(await brain.call(listInteractions, {})).output.interactions;
+}
+
+const answer = defineAnswerInteraction(noChannels);
+
+describe('the answer shape of an open request', () => {
+  it('is the answer schema its request recorded for a question, and null for a notification', async () => {
+    const asking = interactionHarness();
+    await asking.define('approve-brief', approvalDocument());
+    await asking.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
+    const telling = await askedThroughPartner({ notification: true });
+
+    expect([await shapesIn(asking), await shapesIn(telling.brain)]).toEqual([
+      [{ version: 1, takes_answer: true, answer_schema: approvalSchema }],
+      [{ version: 1, takes_answer: false, answer_schema: null }],
+    ]);
+  });
+
+  it('stays the one of the version that asked once its function changes, which is the one an answer is checked against', async () => {
+    const brain = interactionHarness();
+    await brain.define('approve-brief', approvalDocument());
+    await brain.ask('approve-brief', { campaign: 'Spring', owner: 'ada' }, String(runIds[0]));
+    const changed = await brain.call(defineUpdateSpec([brain.primitive]), {
+      primitive: 'interaction',
+      name: 'approve-brief',
+      source: decisionDocument,
+    });
+    const shapes = await shapesIn(brain);
+
+    expect(changed).toMatchObject({ status: 'succeeded', output: { version: 2 } });
+    expect(shapes).toEqual([{ version: 1, takes_answer: true, answer_schema: approvalSchema }]);
+    expect(await brain.call(answer, { execution_id: runIds[0], answer: { decision: 'approve' } })).toMatchObject({
+      status: 'rejected',
+      reason: 'invalid_input',
+    });
+    expect(await brain.call(answer, { execution_id: runIds[0], answer: { choice: 'approve' } })).toMatchObject({
+      status: 'succeeded',
+      output: { status: 'succeeded', output: { choice: 'approve' } },
     });
   });
 });
