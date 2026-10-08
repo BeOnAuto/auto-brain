@@ -128,7 +128,7 @@ A definition sets `authorizesByToken: true` when its handler authorizes the call
 
 The outcome is `succeeded`, `rejected` or `failed`. The error boundary turns any defect into a `failed` outcome with an incident id. The `IncidentReporter` receives the id, the original defect and the call: the operation, the org, the brain when there is one, and the caller's id, never the input. It has two seconds; when it fails or takes longer, the incident id is logged with `Effect.logError`, and the outcome stays `failed`.
 
-A transport runs a call with `settle(call, signal)` and always gets a `Settled` value: the outcome, or `cancelled` when the signal aborts the call or the call interrupts itself. Any other failure settles as `failed` with a reported incident.
+A transport runs a call with `settle(call, signal)` and always gets a `Settled` value: the outcome, or `cancelled` when the signal aborts the call or the call interrupts itself. Any other failure settles as `failed` with a reported incident. A defect the call raises once the signal has aborted it, such as a finalizer whose write the ledger refuses, is reported as an incident too, though the call settles as `cancelled`; `settle` answers once the call's finalizers have run.
 
 The dispatcher needs a `Ledger`, a `BrainRegistry`, which answers the status of a brain, `active`, `retired` or `unknown`, and an `IncidentReporter`. Handlers can see none of them, neither in their types nor at run time. A handler can read any other service present in the runtime's context, so the runtime must expose only these three at its top level, and an adapter must keep its own dependencies, such as a database client, inside its layer.
 
