@@ -1,6 +1,7 @@
 import { Effect, Result } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { toolBounds } from '../bounds/call-bounds.ts';
 import {
   patientTiming,
   recordingCallJournal,
@@ -153,6 +154,24 @@ describe('a server that cannot take a delivery now', () => {
     expect(await calledOnce(accessTo(url))).toEqual({
       outcome: 'server_failure',
       detail: 'The MCP server could not be reached',
+      retryAfterMs: null,
+    });
+  });
+});
+
+describe('the words of a server that fails a delivery', () => {
+  it('are cut at 1 KiB, the bound every reader of a failure shares', async () => {
+    const fake = await fakeServer();
+    const refusal = 'The gateway refused the request. '.repeat(100);
+    const { access } = reportingAccess(
+      { graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' } },
+      { environment: { GRAPH_API_KEY: apiKey }, fetch: () => Promise.reject(new Error(refusal)) },
+    );
+    closing.push(access.close);
+
+    expect(await calledOnce(access)).toEqual({
+      outcome: 'server_failure',
+      detail: refusal.slice(0, toolBounds.failureBytes),
       retryAfterMs: null,
     });
   });

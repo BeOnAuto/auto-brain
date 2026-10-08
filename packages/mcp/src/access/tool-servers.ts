@@ -1,7 +1,7 @@
 import type { BrainAddress } from '@beonauto/operations';
 import { Predicate, Result, Schema } from 'effect';
 
-import { cutToDescriptionBound } from '../bounds/call-bounds.ts';
+import { cutToDescriptionBound, cutToFailureBound } from '../bounds/call-bounds.ts';
 import type { ListedTool } from '../bounds/result-text.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { ServerTool, ToolServer } from '../listing/tool-server.ts';
@@ -47,7 +47,7 @@ async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<
   const connected = await connectedTo(link, listing);
   if (Result.isFailure(connected)) {
     const { detail, because } = connected.failure;
-    return { name, type, unavailable: cutToDescriptionBound(detail), because };
+    return { name, type, unavailable: cutToFailureBound(detail), because };
   }
   const listed = connected.success;
   await listed.slot.release();

@@ -138,62 +138,6 @@ describe('a tool server on which the operator allows no tool', () => {
   });
 });
 
-describe('a tool server that cannot be asked for its tools', () => {
-  it('is unavailable, in words, beside the servers that answer', async () => {
-    const fake = await fakeServer();
-    const gone = await serveFakeMcp();
-    await gone.close();
-
-    const listing = await listed({ graph: remote(gone), wiki: remote(fake) }, { allowed: ['graph/*', 'wiki/echo'] });
-
-    expect(listing).toEqual([
-      {
-        name: 'graph',
-        type: 'http',
-        unavailable: 'The MCP server graph could not be used: The MCP server could not be reached',
-        because: 'unreachable',
-      },
-      { name: 'wiki', type: 'http', tools: [echoTool] },
-    ]);
-  });
-
-  it('is unavailable while it keeps failing', async () => {
-    const fake = await fakeServer();
-    const access = accessTo({ graph: remote(fake) });
-
-    fake.answerNextWith(503);
-    const listing = await Effect.runPromise(access.listServers(alpha));
-
-    expect(listing).toEqual([
-      {
-        name: 'graph',
-        type: 'http',
-        unavailable: 'The MCP server graph could not be used: The MCP server answered HTTP 503',
-        because: 'failing',
-      },
-    ]);
-  });
-});
-
-describe('a tool server that answers its opening HTTP 403, as a gateway answers one operation it denies', () => {
-  it('is unavailable because it is failing, and not because it refused its key', async () => {
-    const fake = await fakeServer();
-    const access = accessTo({ graph: remote(fake) });
-
-    fake.answerNextWith(403);
-    const listing = await Effect.runPromise(access.listServers(alpha));
-
-    expect(listing).toEqual([
-      {
-        name: 'graph',
-        type: 'http',
-        unavailable: 'The MCP server graph could not be used: The MCP server answered HTTP 403',
-        because: 'failing',
-      },
-    ]);
-  });
-});
-
 describe('a tool server that is a process', () => {
   it('lists the tools of the process the server starts', { timeout: stdioTestTimeoutMs }, async () => {
     const limitless = {

@@ -1,5 +1,6 @@
 import { Result } from 'effect';
 
+import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import { bytesOf, cutAtCodePoint } from '../bounds/text-bytes.ts';
 import { deliveryIdKey, executionIdKey } from '../calls/call-meta.ts';
@@ -22,7 +23,7 @@ function endedOf(done: Forwarded, { scrub }: Secrets): DeliveryCallEnded {
   const detail = done.message === '' ? shown : scrub(done.message);
   return {
     outcome: done.outcome,
-    detail: cutAtCodePoint(detail, deliveryBounds.detailBytes),
+    detail: cutToFailureBound(detail),
     retryAfterMs: done.retryAfterMs,
   };
 }
@@ -35,7 +36,7 @@ export async function calledOnce(
 ): Promise<DeliveryCallEnded> {
   const taken = await takenSlot(link);
   if (Result.isFailure(taken)) {
-    return failedWith('server_failure', access.secrets.scrub(taken.failure.message));
+    return failedWith('server_failure', cutToFailureBound(access.secrets.scrub(taken.failure.message)));
   }
   const slot = taken.success;
   try {
