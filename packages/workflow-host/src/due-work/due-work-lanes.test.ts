@@ -98,3 +98,21 @@ describe('a host that stops while due rows are in flight', () => {
     expect(new Set(rows.interrupted())).toEqual(new Set(['delivery', 'expiry']));
   });
 });
+
+describe('a delivery handed out while workflow timers fall due', () => {
+  it('holds none of them, as the tick waits for the rows that call out nowhere alone', async () => {
+    const rows = fakeDueWork(300);
+    for (const key of keysOf(duePerformedAtOnce + 1, 'delivery')) {
+      rows.add(key, Date.now() - 1000);
+    }
+    rows.hanging(`delivery-${duePerformedAtOnce}`);
+    const looping = await dueLooping(rows);
+    const dueAt = Date.now() + 500;
+
+    await looping.armTimer(dueAt);
+    await eventually(looping.order, (order) => order.length === 1);
+
+    expect(Date.now() - dueAt).toBeLessThan(dueAwaitedMs / 4);
+    expect(rows.attempts()).toHaveLength(duePerformedAtOnce + 1);
+  });
+});

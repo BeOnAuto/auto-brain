@@ -31,15 +31,18 @@ describe('the due rows of a projection, in the loop of the host', () => {
     expect([rows.mostAtOnce(), new Set(rows.performed().map(({ at }) => at)).size]).toEqual([duePerformedAtOnce, 1]);
   });
 
-  it('that call out are handed out as many a tick as are performed at once, the rest as places free', async () => {
+  it('that call out are handed out as many a tick as are performed at once, the rest as places free, holding no timer', async () => {
     const now = Date.now();
-    const rows = rowsDueBy(40, now - 1000, { callsOut: true });
+    const rows = fakeDueWork(100);
+    for (const key of keysOf(40, 'row')) {
+      rows.add(key, now - 1000);
+    }
     const looping = await dueLooping(rows, skippingClock(now));
 
     await looping.armTimer(now - 1000);
     await eventually(rows.performed, (performed) => performed.length === 40);
 
-    expect(looping.order()).toEqual([`timer 1 after ${duePerformedAtOnce} rows`]);
+    expect(looping.order()).toEqual(['timer 1 after 0 rows']);
     expect(rows.mostAtOnce()).toBe(duePerformedAtOnce);
   });
 
@@ -139,6 +142,8 @@ describe('a due row that cannot be performed', () => {
     rows.add('stuck', now);
     rows.failing('stuck');
     rows.add('next', now + 1500);
+    rows.local('stuck');
+    rows.local('next');
 
     const looping = await dueLooping(rows, skippingClock(now));
     const attempts = await eventually(rows.attempts, (made) => made.length >= 6);

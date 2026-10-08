@@ -139,9 +139,7 @@ function workPerformer(work: DueWork, parts: DueParts): DuePerformer {
       Effect.zipWith(readOf(now, outbound, true), readOf(now, local, false), (outward, inward) =>
         handedOut([...outward, ...inward], now),
       ).pipe(
-        Effect.flatMap((keys) =>
-          awaitedAtMost(Effect.all([outbound.awaited(keys), local.awaited(keys)], { discard: true })),
-        ),
+        Effect.flatMap((keys) => awaitedAtMost(local.awaited(keys))),
         Effect.catchCause((cause) =>
           parts.trouble(`The due rows of ${work.name} could not be read; the loop tries again`, cause),
         ),
