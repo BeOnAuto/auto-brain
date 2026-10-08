@@ -503,6 +503,12 @@ jobs:
             '[["succeeded","brain:smoke"],["succeeded","brain:smoke"]]'
           for run in $(jq --raw-output '.executions[].execution_id' runs.json); do
             test "$(call "history-$run.json" "$brain/executions/$run/history")" = 200
+            test "$(call "run-$run.json" "$brain/executions/$run")" = 200
+            case "$(jq --raw-output '.events[0].data.trigger.kind' "history-$run.json")" in
+              event) test "$(jq --raw-output '.output.input[0].data.month' "run-$run.json")" = september ;;
+              every) jq --exit-status '.output.input.schedule.due | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")' \
+                "run-$run.json" > /dev/null ;;
+            esac
           done
           test "$(jq --slurp --compact-output 'map(.events[0] | [.data.trigger.kind, .summary]) | sort' history-*.json)" = \
             '[["event","A run of the workflow “closing” was started by its event trigger."],["every","A run of the workflow “closing” was started by its every schedule."]]'
