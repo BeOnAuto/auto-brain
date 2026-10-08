@@ -63,7 +63,7 @@ describe(
 );
 
 describe('a token for a brain that is missing or retired, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
-  it('is refused as a bad token for a brain that exists is, so a token tells nothing of the brains', async () => {
+  it('is refused as a bad token is for a brain that exists, so a token tells nothing of the brains', async () => {
     const server = await servingInteractions('inbox');
     await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'omega', name: 'Omega' } });
     await server.call('POST', '/v1/orgs/acme/brains/omega/retire', { body: {} });
@@ -107,17 +107,20 @@ describe('input that does not fit, with a bad token, over HTTP', { timeout: work
         authorization: 'Request not-a-token-of-any-request',
       });
 
-    const statuses = await Promise.all(
+    const refusals = await Promise.all(
       ['alpha', 'nobody', 'omega'].map((brain) =>
-        Promise.all(malformed.map(async (asked) => (await answered(brain, asked)).status)),
+        Promise.all(
+          malformed.map(async (asked) => {
+            const { status, body } = await answered(brain, asked);
+            return [status, body];
+          }),
+        ),
       ),
     );
+    const [forAlpha] = refusals;
 
-    expect(statuses).toEqual([
-      [422, 422, 422],
-      [422, 422, 422],
-      [422, 422, 422],
-    ]);
+    expect(refusals).toEqual([forAlpha, forAlpha, forAlpha]);
+    expect(forAlpha).toMatchObject(malformed.map(() => [422, { status: 422, reason: 'invalid_input' }]));
   });
 });
 
