@@ -121,10 +121,10 @@ describe('the size a read on PostgreSQL measures', () => {
     expect(asked[1]?.text).toContain('examined::int AS examined, 0 AS size');
     expect(asked[1]?.text).not.toContain('octet_length');
     expect(asked[2]?.text).toContain(
-      "CASE WHEN TRUE AND f.type = ANY($1::text[]) THEN octet_length(f.message_data ->> 'json') ELSE 0 END AS size",
+      "CASE WHEN TRUE AND f.of_the_definition AND f.type = ANY($1::text[]) THEN octet_length(f.message_data ->> 'json') ELSE 0 END AS size",
     );
     expect(asked[2]?.text).toContain(
-      "THEN CASE WHEN TRUE AND latest.message_type = ANY($1::text[]) THEN octet_length(latest.message_data ->> 'json')",
+      "THEN CASE WHEN TRUE AND f.of_the_definition AND latest.message_type = ANY($1::text[]) THEN octet_length(latest.message_data ->> 'json')",
     );
     expect(asked[3]?.text).not.toContain('octet_length');
   });

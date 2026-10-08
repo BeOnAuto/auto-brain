@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 
 import {
   InvalidCursor,
@@ -39,6 +39,15 @@ interface Resumed {
   readonly position: number;
   readonly inclusive: boolean;
 }
+
+type RunsSelection = Extract<RecordedSelection, { readonly kind: 'executions' }>;
+
+const DefinitionHeldSchema = Schema.Struct({
+  primitive: Schema.optionalKey(Schema.Unknown),
+  name: Schema.optionalKey(Schema.Unknown),
+});
+
+const holdsADefinition = Schema.is(DefinitionHeldSchema);
 
 const positionPattern = /^[1-9]\d{0,14}$/u;
 
@@ -132,15 +141,29 @@ function examinedRecords(
   });
 }
 
+function holdsWhatWasAsked(asked: string | undefined, held: unknown): boolean {
+  return asked === undefined || held === asked;
+}
+
+function isOfTheDefinitionAsked({ primitive, name }: RunsSelection, { data }: MemoryRecord): boolean {
+  const asksForNone = primitive === undefined && name === undefined;
+  return (
+    asksForNone ||
+    (holdsADefinition(data) && holdsWhatWasAsked(primitive, data.primitive) && holdsWhatWasAsked(name, data.name))
+  );
+}
+
 function examinedRuns(
   log: readonly MemoryRecord[],
   candidates: readonly MemoryRecord[],
   page: RecordedPageRequest,
+  selection: RunsSelection,
 ): readonly ExaminedRun[] {
   return candidates.slice(0, mostExaminedInAPage + 1).map((first, index) => {
     const latest = log.reduce((last, record) => (record.stream === first.stream ? record : last), first);
     const heads: ExaminedRun['heads'] = latest === first ? [first] : [first, latest];
-    const wanted = page.types === undefined || page.types.includes(latest.type);
+    const wanted =
+      (page.types === undefined || page.types.includes(latest.type)) && isOfTheDefinitionAsked(selection, first);
     const size = heads.reduce((total, head) => total + loadedSizeOf(page, head), 0);
     return { examined: index + 1, wanted, size: wanted ? size : 0, position: first.position, heads };
   });
@@ -192,7 +215,9 @@ function pageOf(
     );
     const cap = page.types === undefined && selection.kind !== 'executions' ? page.limit : mostExaminedInAPage;
     const examined =
-      selection.kind === 'executions' ? examinedRuns(log, candidates, page) : examinedRecords(candidates, page, cap);
+      selection.kind === 'executions'
+        ? examinedRuns(log, candidates, page, selection)
+        : examinedRecords(candidates, page, cap);
     const { delivered, resumeAfter, lastExamined } = boundedPage(examined, page.limit, cap);
     const nextCursor = resumeAfter === undefined ? null : cursorAt(key, resumeAfter.position);
     return {
