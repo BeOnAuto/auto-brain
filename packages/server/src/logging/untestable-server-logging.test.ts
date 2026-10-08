@@ -10,7 +10,8 @@ const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
 const graphKey = 'graph-api-key-4f1d9a7c2b';
 
-const note = '"message":"The MCP server graph marks no tool read-only and its entry marks none testable';
+const note =
+  '"message":"The MCP server graph marks none of its allowed tools read-only and its entry marks none testable';
 
 let ledger: TemporaryLedger;
 
