@@ -3,6 +3,7 @@ export { brainOperations } from './operations/brain-operations.ts';
 export { createBrain } from './operations/create-brain.ts';
 export { defineListBrainEvents } from './feed/list-brain-events.ts';
 export { getBrain } from './operations/get-brain.ts';
+export { foundBrain } from './operations/registry-loading.ts';
 export { listBrains } from './operations/list-brains.ts';
 export { retireBrain } from './operations/retire-brain.ts';
 export { updateBrain } from './operations/update-brain.ts';

@@ -1,4 +1,13 @@
-import { BrainIdSchema, Caller, OrgContext, canAccessBrain, defineQuery, type BrainAccess } from '@beonauto/operations';
+import {
+  BrainIdSchema,
+  Caller,
+  OrgContext,
+  canAccessBrain,
+  defineQuery,
+  type BrainAccess,
+  type NotFound,
+  type OrgReader,
+} from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';
@@ -31,6 +40,8 @@ const OrgToolServersSchema = Schema.Struct({
 
 type ServedBrains = Pick<ToolAccess, 'brainsServedBy'>;
 
+export type BrainLookup = (brain: string) => Effect.Effect<unknown, NotFound, OrgReader>;
+
 function brainsShownTo(access: BrainAccess, brains: readonly string[]): readonly string[] {
   return brains.filter((brain) => brain === everyBrain || canAccessBrain(access, brain));
 }
@@ -39,7 +50,10 @@ function withServedBrains(server: ToolServer, served: ServedBrains, access: Brai
   return { ...server, brains: brainsShownTo(access, served.brainsServedBy(server.name)) };
 }
 
-export function defineListToolServersInOrg(tools: Pick<ToolAccess, 'listServers' | 'brainsServedBy'>) {
+export function defineListToolServersInOrg(
+  tools: Pick<ToolAccess, 'listServers' | 'brainsServedBy'>,
+  lookUpBrain: BrainLookup,
+) {
   return defineQuery('org', {
     name: 'list_tool_servers',
     title: 'List tool servers',
@@ -49,8 +63,11 @@ export function defineListToolServersInOrg(tools: Pick<ToolAccess, 'listServers'
     reachesOutside: true,
     inputSchema: ListToolServersInOrgInputSchema,
     outputSchema: OrgToolServersSchema,
-    reasons: ['invalid_input'],
+    reasons: ['invalid_input', 'not_found'],
     handle: Effect.fnUntraced(function* ({ brain, server }: OrgToolServersAsked) {
+      if (brain !== undefined) {
+        yield* lookUpBrain(brain);
+      }
       const { org } = yield* OrgContext;
       const { brains: access } = yield* Caller;
       const servers = yield* tools.listServers({ org, brain }, server);

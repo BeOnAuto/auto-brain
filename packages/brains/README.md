@@ -74,6 +74,8 @@ There is no read model: each call folds the stream. A pure decider holds the rul
 
 The dispatcher applies the status to every brain-scoped operation. A retired brain stays readable: every query runs on it, so what the brain recorded survives its retirement. Every command on a retired brain is refused with `conflict`, kind `retired`, and the detail `update_brain` gives, such as `The brain gamma is retired and can no longer change`. An unknown brain is `not_found`.
 
+`foundBrain(brain)` is the same lookup for an org operation that takes a `brain` of its own, which the dispatcher checks access to but never looks up: an effect that needs `OrgReader` and answers the brain, active or retired, as `get_brain` does, or fails with `NotFound` and `get_brain`'s detail, `There is no brain nowhere in this org`, the words the dispatcher gives an unknown brain. The server gives it to `list_tool_servers` of the org, so a brain it is given that the org does not have is `not_found` there as at the brain's own route.
+
 ## Source
 
 `src/index.ts` is the only entry point. `src/registry` holds the org's brain registry: a brain, the facts and commands of the `brains` stream, the registry's decider and its rules, the stream's name, and `ledgerBrainRegistry`. `src/operations` holds the five operations and how they load the registry and record in it. `src/feed` holds `list_brain_events`. `src/testing` holds what the tests share. `operations` depends on `registry`, never the other way round.

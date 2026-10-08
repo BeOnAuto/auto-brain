@@ -1,4 +1,4 @@
-import { plainTextIn } from '@beonauto/api/testing';
+import { plainTextIn, problemIn } from '@beonauto/api/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -82,5 +82,26 @@ describe('episode 9: asked for the tool servers on the connection of the whole o
       false,
     ]);
     expect(plainTextIn(inBrain)).toMatch(/^This brain's functions may use 2 tool servers\. /u);
+  });
+});
+
+async function askedForAMissingBrain() {
+  return {
+    onMcp: await meetings.onMcp((session) => session.callTool('list_tool_servers', { brain: 'nowhere' })),
+    onItsEndpoint: await meetings.onBrain('nowhere', (session) => session.callTool('list_tool_servers', {})),
+  };
+}
+
+describe('the tool servers of a brain the org does not have', () => {
+  it('are refused on /mcp as on the brain endpoint, not_found in the same words', async () => {
+    const { onMcp, onItsEndpoint } = await askedForAMissingBrain();
+
+    expect(problemIn(onMcp)).toMatchObject({
+      status: 404,
+      reason: 'not_found',
+      detail: 'There is no brain nowhere in this org',
+    });
+    expect(problemIn(onMcp)).toEqual(problemIn(onItsEndpoint));
+    expect(plainTextIn(onMcp)).toBe(plainTextIn(onItsEndpoint));
   });
 });

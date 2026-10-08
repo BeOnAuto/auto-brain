@@ -1,4 +1,4 @@
-import { makeDispatcher, type CallerIdentity, type Outcome } from '@beonauto/operations';
+import { NotFound, makeDispatcher, type CallerIdentity, type Outcome } from '@beonauto/operations';
 import { memoryBrainRegistry, memoryLedger, recordingReporter } from '@beonauto/operations/testing';
 import { Effect, Layer } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -38,6 +38,14 @@ interface Asking {
   readonly caller?: CallerIdentity;
 }
 
+const brainsOfTheOrg: ReadonlySet<string> = new Set(['alpha', 'beta']);
+
+function lookUpBrain(brain: string): Effect.Effect<void, NotFound> {
+  return brainsOfTheOrg.has(brain)
+    ? Effect.void
+    : Effect.fail(new NotFound({ detail: `There is no brain ${brain} in this org` }));
+}
+
 function remote(fake: FakeMcpServer, scope: Readonly<Record<string, unknown>>) {
   return { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, ...scope };
 }
@@ -53,7 +61,7 @@ function listingOn(fake: FakeMcpServer) {
     { allowed: ['graph/echo', 'notes/search', 'sales/echo', 'crm/echo'], environment: { GRAPH_API_KEY: apiKey } },
   );
   closing.push(access.close);
-  const { registration } = defineListToolServersInOrg(access);
+  const { registration } = defineListToolServersInOrg(access, lookUpBrain);
   return {
     registration,
     listed: ({ input = {}, caller = orgReader }: Asking = {}): Promise<Outcome> =>
@@ -151,7 +159,23 @@ describe('list_tool_servers of the org, refusing', () => {
     });
     expect(fake.seen()).toEqual([]);
   });
+});
 
+describe('list_tool_servers of the org, asked for a brain the org does not have', () => {
+  it('rejects it as the brain itself would be, and asks no server', async () => {
+    const fake = await fakeServer();
+    const { listed } = listingOn(fake);
+
+    expect(await listed({ input: { brain: 'nowhere' } })).toEqual({
+      status: 'rejected',
+      reason: 'not_found',
+      detail: 'There is no brain nowhere in this org',
+    });
+    expect(fake.seen()).toEqual([]);
+  });
+});
+
+describe('list_tool_servers of the org, asked for a server it does not have', () => {
   it('rejects a name no tool server of the org, or of the brain asked for, has, saying which', async () => {
     const fake = await fakeServer();
     const { listed } = listingOn(fake);

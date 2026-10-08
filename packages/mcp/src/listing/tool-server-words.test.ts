@@ -64,8 +64,10 @@ describe('the plain words of list_tool_servers', () => {
   });
 });
 
-const inOrg = defineListToolServersInOrg({ listServers: () => Effect.succeed([]), brainsServedBy: () => [] })
-  .registration.plainLanguage;
+const inOrg = defineListToolServersInOrg(
+  { listServers: () => Effect.succeed([]), brainsServedBy: () => [] },
+  () => Effect.void,
+).registration.plainLanguage;
 
 describe('the plain words of list_tool_servers for the org', () => {
   it('say what it tried to do, for the org or for the brain asked for', () => {
