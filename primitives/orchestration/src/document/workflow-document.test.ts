@@ -133,7 +133,12 @@ describe('the summary of a workflow spec', () => {
     expect(summaryOf({ do: [] })).toEqual({});
   });
 
-  it('says the workflow reacts when its schedule names a trigger', () => {
-    expect(summaryOf({ schedule: { every: 'PT1H' }, do: [] })).toEqual({ reacts: true });
+  it('gives the triggers its schedule names, in the order it names them', () => {
+    expect(summaryOf({ schedule: { every: 'PT1H', cron: '0 9 * * *' }, do: [] })).toEqual({
+      triggers: [
+        { kind: 'every', reference: '/schedule/every', milliseconds: 3_600_000 },
+        { kind: 'cron', reference: '/schedule/cron', expression: '0 9 * * *' },
+      ],
+    });
   });
 });
