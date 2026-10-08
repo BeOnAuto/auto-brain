@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
+import { openRequests } from '@beonauto/interaction';
+import { projectedTableOf } from '@beonauto/operations';
 import { Client } from 'pg';
 
 interface LedgerUse {
@@ -17,7 +19,7 @@ export interface MeasuredLedger {
   readonly removeAll: () => Promise<void>;
 }
 
-const expiring = 'UPDATE open_requests_1 SET expires_at = $1, due_at = $1';
+const expiring = `UPDATE ${projectedTableOf(openRequests)} SET expires_at = $1, due_at = $1`;
 
 async function administered(server: string, statement: string, values: readonly number[] = []): Promise<number> {
   const client = new Client({ connectionString: server });

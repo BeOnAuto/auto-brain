@@ -1,3 +1,4 @@
+import { Struct } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { openRequests } from './open-requests.ts';
@@ -33,6 +34,7 @@ describe('the open request of a run', () => {
         channel: 'partner',
         message: 'Approve?',
         answers: true,
+        answer_schema: '{}',
         requested_at: Date.parse(fact.at),
         expires_at: Date.parse(request.expires_at),
         attempts: 0,
@@ -44,6 +46,19 @@ describe('the open request of a run', () => {
       },
       undefined,
       undefined,
+    ]);
+  });
+
+  it('keeps the answer schema its request recorded as JSON text, and none for a notification', () => {
+    const answerSchema = { type: 'object', required: ['choice'], properties: { choice: { type: 'string' } } };
+    const notification = Struct.omit(request, ['answer_schema']);
+
+    expect([
+      openRequests.rowAfter(undefined, { ...deferral, record: { ...request, answer_schema: answerSchema } }, message),
+      openRequests.rowAfter(undefined, { ...deferral, record: notification }, message),
+    ]).toMatchObject([
+      { answers: true, answer_schema: JSON.stringify(answerSchema) },
+      { answers: false, answer_schema: null },
     ]);
   });
 });
