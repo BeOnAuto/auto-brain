@@ -148,7 +148,11 @@ export function listenerFilterOf(attributes: JsonObject, reference: string): Lit
   };
 }
 
-export function matchEvent(filter: LiteralFilter, event: JsonObject, now: number): FilterVerdict {
+export function matchEvent(
+  filter: Pick<LiteralFilter, 'reference' | 'attributes'>,
+  event: JsonObject,
+  now: number,
+): FilterVerdict {
   const place: Place = { reference: filter.reference, now, meter: meterOf(), mostDuration: noDurations };
   return caughtRaise<FilterVerdict>(
     () =>
