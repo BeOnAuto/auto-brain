@@ -1,72 +1,11 @@
-import type { ArmTimer, WorkflowEngine } from '@beonauto/workflow-engine';
-import { Effect, Function } from 'effect';
-import { describe, expect, it, onTestFinished } from 'vitest';
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
 
-import { skippingClock, systemClock, type HostClock } from '../loop/host-clock.ts';
-import { startLoop } from '../loop/host-loop.ts';
+import { skippingClock, systemClock } from '../loop/host-clock.ts';
 import { eventually } from '../testing/eventually.ts';
-import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
-import { sqlTimers } from '../timers/sql-timers.ts';
+import { dueLooping, keysOf } from './due-looping.ts';
 import { dueAwaitedMs, dueInOneTick, duePerformedAtOnce } from './due-work.ts';
 import { fakeDueWork, type FakeDueWork } from './fake-due-work.ts';
-
-const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
-
-const engine: WorkflowEngine = {
-  submit: () => Effect.die(new Error('The loop submits through the host')),
-  wake: () => Effect.die(new Error('The loop wakes runs through a sweep')),
-  sweep: () => Effect.succeed({ runs: 0, timersArmedAgain: 0 }),
-};
-
-interface DueLooping {
-  readonly order: () => readonly string[];
-  readonly troubles: () => readonly string[];
-  readonly armTimer: (dueAt: number, timerId?: string) => Promise<void>;
-}
-
-async function dueLooping(
-  rows: FakeDueWork,
-  clock: HostClock = systemClock,
-  sweepEveryMs = 3_600_000,
-): Promise<DueLooping> {
-  const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
-  const order: string[] = [];
-  const troubles: string[] = [];
-  const alarm: { armed: (dueAt: number) => void } = { armed: Function.constVoid };
-  const timers = sqlTimers(database, (dueAt) => {
-    alarm.armed(dueAt);
-  });
-  const trouble = (what: string) =>
-    Effect.sync(() => {
-      troubles.push(what);
-    });
-  const loop = startLoop({
-    clock,
-    timers,
-    dueWork: [rows.work('host')],
-    engine,
-    fire: ({ timerId }) => Effect.sync(() => order.push(`timer ${timerId} after ${rows.performed().length} rows`)),
-    resume: () => Effect.succeed(0),
-    trouble,
-    sweepEveryMs,
-  });
-  alarm.armed = loop.armed;
-  onTestFinished(() => loop.stop());
-  return {
-    order: () => order,
-    troubles: () => troubles,
-    armTimer: async (dueAt, timerId = '1') => {
-      const timer: ArmTimer = { kind: 'arm_timer', executionId: runId, timerId, dueAt, purpose: 'wait' };
-      await Effect.runPromise(
-        timers.timers.arm(timer, { executionId: runId, attributes: {} }, { version: 1, lastStep: null }),
-      );
-    },
-  };
-}
-
-function keysOf(count: number, prefix: string): readonly string[] {
-  return Array.from({ length: count }, (_, index) => `${prefix}-${index}`);
-}
 
 function rowsDueBy(count: number, dueAt: number, { callsOut }: { readonly callsOut: boolean }): FakeDueWork {
   const rows = fakeDueWork(1);
@@ -190,47 +129,6 @@ describe('a due row that calls out nowhere, while deliveries hang', () => {
     expect(performed?.key).toBe('expiry');
     expect(Date.now() - now).toBeLessThan(dueAwaitedMs);
     expect(rows.mostAtOnce()).toBe(duePerformedAtOnce + 1);
-  });
-});
-
-describe('a due row that calls out nowhere, behind more deliveries than one read of them takes', () => {
-  it('is performed at once, read apart from the deliveries due before it', async () => {
-    const now = Date.now();
-    const rows = fakeDueWork();
-    for (const key of keysOf(2 * dueInOneTick + 300, 'delivery')) {
-      rows.add(key, now - 2000);
-      rows.hanging(key);
-    }
-    rows.add('expiry', now - 1000);
-    rows.local('expiry');
-
-    await dueLooping(rows);
-    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
-
-    expect(performed?.key).toBe('expiry');
-    expect(Date.now() - now).toBeLessThan(dueAwaitedMs);
-  });
-});
-
-describe('a delivery that waits for a place while deliveries hang', () => {
-  it('is not held, so it ends at once when its ending comes due', async () => {
-    const now = Date.now();
-    const rows = fakeDueWork();
-    for (const key of keysOf(duePerformedAtOnce + 4, 'delivery')) {
-      rows.add(key, now - 1000);
-    }
-    for (const key of keysOf(duePerformedAtOnce, 'delivery')) {
-      rows.hanging(key);
-    }
-    const endsAt = now + dueAwaitedMs + 500;
-    rows.endsAt('delivery-19', endsAt);
-
-    await dueLooping(rows);
-    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
-
-    expect(performed?.key).toBe('delivery-19');
-    expect(Date.now() - endsAt).toBeLessThan(dueAwaitedMs);
-    expect(rows.attempts().filter(({ key }) => key !== 'delivery-19')).toHaveLength(duePerformedAtOnce);
   });
 });
 

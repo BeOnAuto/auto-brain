@@ -19,6 +19,7 @@ export interface FakeDueWork {
   readonly endsAt: (key: string, at: number) => void;
   readonly performed: () => readonly PerformedRow[];
   readonly attempts: () => readonly PerformedRow[];
+  readonly interrupted: () => readonly string[];
   readonly mostAtOnce: () => number;
   readonly failReads: (times: number) => void;
   readonly reads: () => { readonly due: number; readonly next: number };
@@ -57,6 +58,8 @@ interface Flight {
   readonly hanging: (key: string) => void;
   readonly hangs: (key: string) => boolean;
   readonly attempts: () => readonly PerformedRow[];
+  readonly stopped: (key: string) => void;
+  readonly interrupted: () => readonly string[];
   readonly most: () => number;
 }
 
@@ -110,6 +113,7 @@ function flight(): Flight {
   const failing = new Set<string>();
   const hanging = new Set<string>();
   const attempts: PerformedRow[] = [];
+  const interrupted: string[] = [];
   const counts = { now: 0, most: 0 };
   return {
     attempt: async (row, performMs) => {
@@ -128,6 +132,10 @@ function flight(): Flight {
     },
     hangs: (key) => hanging.has(key),
     attempts: () => attempts,
+    stopped: (key) => {
+      interrupted.push(key);
+    },
+    interrupted: () => interrupted,
     most: () => counts.most,
   };
 }
@@ -151,15 +159,24 @@ function itemOf(
                 store.done({ ...row, at });
               }),
         ),
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            flown.stopped(row.key);
+          }),
+        ),
       ),
   };
 }
 
 export interface FakeOptions {
   readonly reportsRowsInFlight?: boolean;
+  readonly nextReadMs?: number;
 }
 
-export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: FakeOptions = {}): FakeDueWork {
+export function fakeDueWork(
+  performMs = 0,
+  { reportsRowsInFlight = false, nextReadMs = 0 }: FakeOptions = {},
+): FakeDueWork {
   const store = rowStore();
   const flown = flight();
   const reads = { failing: 0, due: 0, next: 0 };
@@ -181,10 +198,13 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
             );
         }),
       nextDueAt: (after) =>
-        read(() => {
-          reads.next += 1;
-          return reportsRowsInFlight ? store.soonest() : store.nextAfter(after);
-        }),
+        Effect.andThen(
+          Effect.sleep(nextReadMs),
+          read(() => {
+            reads.next += 1;
+            return reportsRowsInFlight ? store.soonest() : store.nextAfter(after);
+          }),
+        ),
     }),
     add: store.add,
     failing: flown.failing,
@@ -193,6 +213,7 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
     endsAt: store.endsAt,
     performed: store.performed,
     attempts: flown.attempts,
+    interrupted: flown.interrupted,
     mostAtOnce: flown.most,
     failReads: (times) => {
       reads.failing = times;

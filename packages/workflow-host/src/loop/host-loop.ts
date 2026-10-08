@@ -77,6 +77,7 @@ export function startLoop(parts: LoopParts): HostLoop {
     wakeAt: Number.NEGATIVE_INFINITY,
     armedSince: Number.POSITIVE_INFINITY,
     lastSweptAt: Number.NEGATIVE_INFINITY,
+    tickedAt: Number.NEGATIVE_INFINITY,
     signal: Promise.withResolvers<void>(),
   };
   const due = dueOf(parts, () => {
@@ -84,6 +85,7 @@ export function startLoop(parts: LoopParts): HostLoop {
   });
   const tick = Effect.suspend(() => {
     const now = clock.now();
+    plan.tickedAt = now;
     const sweepDue = now >= plan.lastSweptAt + sweepEveryMs;
     if (sweepDue) {
       plan.lastSweptAt = now;
@@ -98,11 +100,11 @@ export function startLoop(parts: LoopParts): HostLoop {
   );
   const wait = Effect.gen(function* () {
     plan.armedSince = Number.POSITIVE_INFINITY;
-    const nextDue = (yield* nextDueOf(parts)) ?? Number.POSITIVE_INFINITY;
-    const dueWorkAt = yield* due.wakeAt(clock.now());
-    plan.wakeAt = Math.min(nextDue, dueWorkAt, plan.lastSweptAt + sweepEveryMs, plan.armedSince);
     plan.signal = Promise.withResolvers<void>();
     const { promise } = plan.signal;
+    const nextDue = (yield* nextDueOf(parts)) ?? Number.POSITIVE_INFINITY;
+    const dueWorkAt = yield* due.wakeAt(plan.tickedAt);
+    plan.wakeAt = Math.min(nextDue, dueWorkAt, plan.lastSweptAt + sweepEveryMs, plan.armedSince);
     yield* Effect.raceFirst(
       clock.sleep(Math.max(0, plan.wakeAt - clock.now())),
       Effect.promise(() => promise),
