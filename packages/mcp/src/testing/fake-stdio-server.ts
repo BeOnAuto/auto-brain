@@ -47,6 +47,7 @@ const received: ReceivedCall[] = [];
 const server = fakeToolServer({
   receive: (call) => received.push(call),
   isRemoved: () => false,
+  annotated: true,
   exit: () => {
     process.exit(exitCode);
   },

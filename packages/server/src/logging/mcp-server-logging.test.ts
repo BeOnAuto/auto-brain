@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
-import { logServerMessage } from './logging.ts';
+import { logServerMessage, logUntestableServer } from './logging.ts';
 
 describe('logServerMessage', () => {
   it('tells a line an MCP server wrote, as information', async () => {
@@ -43,5 +43,16 @@ describe('logServerMessage', () => {
     expect(line).toContain(
       '"annotations":{"mcp_server":"graph","tool_test_id":"0199b7e2-4c1d-7a3e-8f5b-6d2c1e0f9a8b","server_message":"The MCP server answered HTTP 503"}',
     );
+  });
+});
+
+describe('logUntestableServer', () => {
+  it('tells, as information, that nothing on a tool server can be tested and where its read-only tools go', async () => {
+    const [line] = await linesLoggedBy(logUntestableServer('graph'));
+
+    expect(line).toContain(
+      '"message":"Nothing on MCP server graph can be tested, since it marks no tool read-only; its read-only tools go under testable_tools for agents to be able to look","level":"INFO"',
+    );
+    expect(line).toContain('"annotations":{"mcp_server":"graph"}');
   });
 });

@@ -11,6 +11,7 @@ import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-cont
 
 export interface ToolAccessOptions {
   readonly reportServerMessage: (report: ServerMessage) => void;
+  readonly reportUntestable: (server: string) => void;
   readonly fetch?: LinkOptions['fetch'];
   readonly now?: () => number;
   readonly timing?: Timing;

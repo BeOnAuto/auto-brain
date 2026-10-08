@@ -3,7 +3,7 @@ import { makeToolAccess, type ToolAccess } from '@beonauto/mcp';
 import type { DispatcherServices } from '@beonauto/operations';
 
 import type { Served } from '../lifecycle/lifecycle.ts';
-import { logServerMessage } from '../logging/logging.ts';
+import { logServerMessage, logUntestableServer } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
 import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-inference.ts';
 import { interactionServedBy, type ServedInteraction } from './served-interaction.ts';
@@ -18,6 +18,9 @@ function toolAccessOf(runtime: AppRuntime<DispatcherServices>, { mcp }: Pick<Set
   return makeToolAccess(mcp, {
     reportServerMessage: (report) => {
       void runtime.run(logServerMessage(report));
+    },
+    reportUntestable: (server) => {
+      void runtime.run(logUntestableServer(server));
     },
   });
 }

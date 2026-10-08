@@ -251,6 +251,12 @@ function callerOf({ execution_id, tool_test_id }: ServerMessage): Readonly<Recor
   return tool_test_id === null ? undefined : { tool_test_id };
 }
 
+export function logUntestableServer(server: string): Effect.Effect<void> {
+  return Effect.logInfo(
+    `Nothing on MCP server ${server} can be tested, since it marks no tool read-only; its read-only tools go under testable_tools for agents to be able to look`,
+  ).pipe(Effect.annotateLogs({ mcp_server: server }));
+}
+
 export function logServerMessage(report: ServerMessage): Effect.Effect<void> {
   const { server, message } = report;
   const caller = callerOf(report);

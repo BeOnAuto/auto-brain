@@ -16,6 +16,7 @@ export interface AccessOptions {
 export interface ReportingAccess {
   readonly access: ToolAccess;
   readonly messages: () => readonly ServerMessage[];
+  readonly untestable: () => readonly string[];
 }
 
 export function reportingAccess(
@@ -23,6 +24,7 @@ export function reportingAccess(
   { allowed, testable, environment = {}, timing, fetch }: AccessOptions = {},
 ): ReportingAccess {
   const messages: ServerMessage[] = [];
+  const untestable: string[] = [];
   const settings = Effect.runSync(
     readMcpSettings(
       {
@@ -38,8 +40,11 @@ export function reportingAccess(
     reportServerMessage: (message) => {
       messages.push(message);
     },
+    reportUntestable: (server) => {
+      untestable.push(server);
+    },
     ...(timing === undefined ? {} : { timing }),
     ...(fetch === undefined ? {} : { fetch }),
   });
-  return { access, messages: () => [...messages] };
+  return { access, messages: () => [...messages], untestable: () => [...untestable] };
 }

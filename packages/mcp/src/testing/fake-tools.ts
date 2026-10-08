@@ -11,6 +11,7 @@ export interface ReceivedCall {
 export interface FakeToolState {
   readonly receive: (call: ReceivedCall) => number;
   readonly isRemoved: (tool: string) => boolean;
+  readonly annotated: boolean;
   readonly exit: () => void;
 }
 
@@ -219,7 +220,7 @@ export function fakeToolServer(state: FakeToolState): McpServer {
         properties: { ...tool.inputSchema.properties },
         required: [...tool.inputSchema.required],
       },
-      annotations: tool.annotations,
+      annotations: state.annotated ? tool.annotations : undefined,
     })),
   }));
   mcp.server.setRequestHandler('tools/call', async ({ params }: CallRequest, { mcpReq }: CallContext) => {

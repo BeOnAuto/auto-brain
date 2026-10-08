@@ -6,10 +6,10 @@ import { runTools, type RunTools } from '../calls/run-tools.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
 import type { McpServerFailed } from './mcp-server-failed.ts';
-import { listedOn, released } from './server-listing.ts';
+import { listedOn, released, type Listing as ToolsListing } from './server-listing.ts';
 import { namedLinks, notListed, offeredOn, unlistedOn, type Listed, type Naming } from './tool-naming.ts';
 
-export interface Opening extends Naming {
+export interface Opening extends Naming, Pick<ToolsListing, 'toolsListed'> {
   readonly context: CallerContext;
   readonly secrets: Secrets;
   readonly timing: Timing;
