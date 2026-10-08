@@ -2,7 +2,7 @@ import { liesWithin, pointerOf, problem, servedScopeOf, type ServedScope, type S
 import { isDeliverableUrl, webhookSecretProblem } from '@beonauto/outbound';
 import { Redacted, Result } from 'effect';
 
-import { argumentTemplates } from './argument-templates.ts';
+import { argumentTemplates, requestTemplates } from './argument-templates.ts';
 import { channelsSetting, type ChannelEntry, type McpEntry, type WebhookEntry } from './channel-entries.ts';
 import { inboxChannel, isChannelName } from './channel-names.ts';
 import type { Channel, McpChannel, WebhookChannel } from './channel-settings.ts';
@@ -141,7 +141,7 @@ function mcpOf(
   context: ChannelContext,
 ): Checked<McpChannel> {
   const problems = serverProblems(name, entry, base.scope, context);
-  const templates = argumentTemplates(name, entry.with);
+  const templates = argumentTemplates([name, 'with'], entry.with, requestTemplates);
   if (problems.length > 0 || Result.isFailure(templates)) {
     return Result.fail([...problems, ...(Result.isFailure(templates) ? templates.failure : [])]);
   }

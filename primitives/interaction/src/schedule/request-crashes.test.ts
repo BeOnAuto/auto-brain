@@ -93,7 +93,7 @@ describe('an answer within the delivery and another one given meanwhile', () => 
     expect(meanwhile).toMatchObject({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The run was answered within its delivery, so that answer alone settles it',
+      detail: 'The run was answered through its channel, so that answer alone settles it',
     });
     expect(await asked.brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },

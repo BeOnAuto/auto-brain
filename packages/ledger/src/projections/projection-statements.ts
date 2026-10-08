@@ -1,9 +1,10 @@
 import {
+  advancedColumnsOf,
   projectedTableOf,
+  type KeyedProjection,
   type ProjectedIndex,
   type ProjectedRow,
-  type RunProjection,
-  type RunStream,
+  type ProjectedValue,
 } from '@beonauto/operations';
 import { SQL } from '@event-driven-io/dumbo';
 import { Schema } from 'effect';
@@ -11,12 +12,16 @@ import { Schema } from 'effect';
 import type { StatementExecutor } from '../event-store.ts';
 import { boundOf, selectedColumn, valueOf, type ProjectionDialect } from './projection-dialect.ts';
 
-export interface ProjectedRunRowOf {
-  readonly run: RunStream;
+export interface RowPlace {
+  readonly brainKey: string;
+  readonly key: string;
+}
+
+export interface KeptRow extends RowPlace {
   readonly row: ProjectedRow;
 }
 
-const keyColumns = ['brain_key', 'run_id'] as const;
+const keyColumns = ['brain_key', 'row_key'] as const;
 
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 
@@ -26,38 +31,48 @@ const MessageRows = Schema.Array(
   Schema.Struct({ stream: Schema.String, type: Schema.String, data: Schema.Unknown, position: Schema.Number }),
 );
 
+const OrderedMessageRows = Schema.Array(
+  Schema.Struct({
+    point: Schema.String,
+    stream: Schema.String,
+    type: Schema.String,
+    data: Schema.Unknown,
+    position: Schema.Number,
+  }),
+);
+
 const decodeObjects = Schema.decodeUnknownSync(Schema.Array(Schema.Record(Schema.String, Schema.Unknown)));
 
-export function tableOf(projection: RunProjection): SQL {
+export function tableOf(projection: KeyedProjection): SQL {
   return SQL`${SQL.plain(projectedTableOf(projection))}`;
 }
 
-function indexStatement(projection: RunProjection, index: ProjectedIndex): SQL {
+function indexStatement(projection: KeyedProjection, index: ProjectedIndex): SQL {
   const table = projectedTableOf(projection);
   const columns = [...(index.acrossBrains === true ? [] : ['brain_key']), ...index.columns].join(', ');
   const where = index.whereSet === undefined ? '' : ` WHERE ${index.whereSet} IS NOT NULL`;
   return SQL`CREATE INDEX IF NOT EXISTS ${SQL.plain(`${table}_${index.name}`)} ON ${tableOf(projection)} (${SQL.plain(columns)})${SQL.plain(where)}`;
 }
 
-export function createdTable(dialect: ProjectionDialect, projection: RunProjection): readonly SQL[] {
+export function createdTable(dialect: ProjectionDialect, projection: KeyedProjection): readonly SQL[] {
   const columns = projection.columns.map(({ name, kind }) => `${name} ${dialect.columnTypes[kind]}`).join(',\n      ');
   const key = `${dialect.columnTypes.text} NOT NULL`;
   return [
     SQL`CREATE TABLE IF NOT EXISTS ${tableOf(projection)} (
       brain_key ${SQL.plain(key)},
-      run_id ${SQL.plain(key)},
+      row_key ${SQL.plain(key)},
       ${SQL.plain(columns)},
-      PRIMARY KEY (brain_key, run_id)
+      PRIMARY KEY (brain_key, row_key)
     )`,
     ...projection.indexes.map((index) => indexStatement(projection, index)),
   ];
 }
 
-export function selectedColumns(dialect: ProjectionDialect, projection: RunProjection): SQL {
+export function selectedColumns(dialect: ProjectionDialect, projection: KeyedProjection): SQL {
   return SQL`${SQL.plain(projection.columns.map((column) => selectedColumn(dialect, column)).join(', '))}`;
 }
 
-export function rowFrom(projection: RunProjection, stored: Readonly<Record<string, unknown>>): ProjectedRow {
+export function rowFrom(projection: KeyedProjection, stored: Readonly<Record<string, unknown>>): ProjectedRow {
   return Object.fromEntries(projection.columns.map((column) => [column.name, valueOf(column, stored[column.name])]));
 }
 
@@ -68,43 +83,70 @@ export function rowsFrom(rows: readonly unknown[]): readonly Readonly<Record<str
 export async function rowIn(
   execute: StatementExecutor,
   dialect: ProjectionDialect,
-  projection: RunProjection,
-  { brainKey, runId }: RunStream,
+  projection: KeyedProjection,
+  { brainKey, key }: RowPlace,
 ): Promise<ProjectedRow | undefined> {
   const { rows } = await execute.query(
-    SQL`SELECT ${selectedColumns(dialect, projection)} FROM ${tableOf(projection)} WHERE brain_key = ${brainKey} AND run_id = ${runId}`,
+    SQL`SELECT ${selectedColumns(dialect, projection)} FROM ${tableOf(projection)} WHERE brain_key = ${brainKey} AND row_key = ${key}`,
   );
   const [stored] = rowsFrom(rows);
   return stored === undefined ? undefined : rowFrom(projection, stored);
 }
 
-function valuesOf(dialect: ProjectionDialect, projection: RunProjection, { run, row }: ProjectedRunRowOf): SQL {
+function valuesOf(dialect: ProjectionDialect, projection: KeyedProjection, { brainKey, key, row }: KeptRow): SQL {
   const values = projection.columns.map(({ name }) => SQL`${boundOf(dialect, row[name] ?? null)}`);
-  return SQL`(${SQL.merge([SQL`${run.brainKey}`, SQL`${run.runId}`, ...values], ', ')})`;
+  return SQL`(${SQL.merge([SQL`${brainKey}`, SQL`${key}`, ...values], ', ')})`;
+}
+
+export type AdvancedColumnsWritten = 'with_advanced' | 'without_advanced';
+
+function updatedColumns(projection: KeyedProjection, written: AdvancedColumnsWritten): readonly string[] {
+  const advanced = new Set(written === 'with_advanced' ? [] : advancedColumnsOf(projection));
+  return projection.columns.map(({ name }) => name).filter((name) => !advanced.has(name));
 }
 
 export function rowsWrite(
   dialect: ProjectionDialect,
-  projection: RunProjection,
-  kept: readonly ProjectedRunRowOf[],
+  projection: KeyedProjection,
+  kept: readonly KeptRow[],
+  written: AdvancedColumnsWritten = 'with_advanced',
 ): SQL {
   const names = projection.columns.map(({ name }) => name);
   const columns = SQL.plain([...keyColumns, ...names].join(', '));
-  const updates = SQL.plain(names.map((name) => `${name} = excluded.${name}`).join(', '));
+  const updates = SQL.plain(
+    updatedColumns(projection, written)
+      .map((name) => `${name} = excluded.${name}`)
+      .join(', '),
+  );
   const values = SQL.merge(
     kept.map((each) => valuesOf(dialect, projection, each)),
     ', ',
   );
   return SQL`INSERT INTO ${tableOf(projection)} (${columns})
     VALUES ${values}
-    ON CONFLICT (brain_key, run_id) DO UPDATE SET ${updates}`;
+    ON CONFLICT (brain_key, row_key) DO UPDATE SET ${updates}`;
+}
+
+export function rowAdvance(
+  dialect: ProjectionDialect,
+  projection: KeyedProjection,
+  { brainKey, key }: RowPlace,
+  columns: ProjectedRow,
+): SQL {
+  const assignments = SQL.merge(
+    Object.entries(columns).map(
+      ([name, value]: readonly [string, ProjectedValue]) => SQL`${SQL.plain(name)} = ${boundOf(dialect, value)}`,
+    ),
+    ', ',
+  );
+  return SQL`UPDATE ${tableOf(projection)} SET ${assignments} WHERE brain_key = ${brainKey} AND row_key = ${key}`;
 }
 
 export function tableDrop(name: string): SQL {
   return SQL`DROP TABLE IF EXISTS ${SQL.plain(name)}`;
 }
 
-export function tableAnalysis(projection: RunProjection): SQL {
+export function tableAnalysis(projection: KeyedProjection): SQL {
   return SQL`ANALYZE ${tableOf(projection)}`;
 }
 
@@ -126,4 +168,9 @@ export async function streamsIn(execute: StatementExecutor, query: SQL): Promise
 export async function messagesIn(execute: StatementExecutor, query: SQL) {
   const { rows } = await execute.query(query);
   return Schema.decodeUnknownSync(MessageRows)(rows);
+}
+
+export async function orderedMessagesIn(execute: StatementExecutor, query: SQL) {
+  const { rows } = await execute.query(query);
+  return Schema.decodeUnknownSync(OrderedMessageRows)(rows);
 }

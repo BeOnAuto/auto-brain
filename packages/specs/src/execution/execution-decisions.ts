@@ -211,13 +211,12 @@ function decideFinish({ result, by, at }: ExecutionFinish & CommandMetadata, sta
 
 export const endedWithAnotherResult = new Conflict({ detail: 'The run already ended with another result' });
 
-export const answeredWithinDelivery = new Conflict({
-  detail: 'The run was answered within its delivery, so that answer alone settles it',
+export const answeredThroughItsChannel = new Conflict({
+  detail: 'The run was answered through its channel, so that answer alone settles it',
 });
 
-function answeredOtherwise({ lastDelivery }: RecordedExecution, { result }: ExecutionSettlement): boolean {
-  const answer = lastDelivery?.answer;
-  return answer !== undefined && !succeedsWith(result, answer);
+function answeredOtherwise({ channelAnswer }: RecordedExecution, { result }: ExecutionSettlement): boolean {
+  return channelAnswer !== null && !succeedsWith(result, channelAnswer.answer);
 }
 
 function settledAlready(state: RecordedExecution, settlement: ExecutionSettlement): Decision {
@@ -234,7 +233,7 @@ function decideSettlement(settlement: ExecutionSettlement, state: ExecutionState
     return settledAlready(state, settlement);
   }
   if (answeredOtherwise(state, settlement)) {
-    return Result.fail(answeredWithinDelivery);
+    return Result.fail(answeredThroughItsChannel);
   }
   const { result, by, at } = settlement;
   return takesSettlement(state)

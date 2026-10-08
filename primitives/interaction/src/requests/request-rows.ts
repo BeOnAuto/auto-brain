@@ -42,14 +42,14 @@ export function requestRowOf(row: ProjectedRow | undefined): OpenRequestRow | un
   return row === undefined ? undefined : Option.getOrUndefined(decodeRow(row));
 }
 
-export function settlesFromDelivery({ answers, standing }: Pick<OpenRequestRow, 'answers' | 'standing'>): boolean {
+export function settlesFromChannel({ answers, standing }: Pick<OpenRequestRow, 'answers' | 'standing'>): boolean {
   return standing === 'answered' || (!answers && standing === 'delivered');
 }
 
 export type UndueRequestRow = Omit<OpenRequestRow, 'attempt_due_at' | 'ending_due_at'>;
 
 function settlesNow(row: UndueRequestRow): boolean {
-  return settlesFromDelivery(row) || (!row.answers && row.standing === 'undelivered');
+  return settlesFromChannel(row) || (!row.answers && row.standing === 'undelivered');
 }
 
 function stillDue(row: UndueRequestRow): boolean {

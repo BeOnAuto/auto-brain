@@ -32,12 +32,12 @@ const cancelledAsAsked = { status: 'rejected', reason: 'cancelled', kind: 'reque
 describe('the cancel of a request', () => {
   it('settles with the answer its delivery already gave, or as delivered for a notification, and else as asked', () => {
     expect([
-      cancelledRequest({ ...asked, record: question, lastDelivery: { outcome: 'answered', answer: 'yes', at } }),
-      cancelledRequest({ ...asked, record: notification, lastDelivery: { outcome: 'delivered', at } }),
-      cancelledRequest({ ...asked, record: question, lastDelivery: { outcome: 'delivered', at } }),
-      cancelledRequest({ ...asked, record: notification, lastDelivery: { outcome: 'failed', at } }),
-      cancelledRequest({ ...asked, record: question, lastDelivery: null }),
-      cancelledRequest({ ...asked, record: { run: 'x' }, lastDelivery: null }),
+      cancelledRequest({ ...asked, record: question, channelAnswer: { answer: 'yes', at }, deliveredAt: at }),
+      cancelledRequest({ ...asked, record: notification, channelAnswer: null, deliveredAt: at }),
+      cancelledRequest({ ...asked, record: question, channelAnswer: null, deliveredAt: at }),
+      cancelledRequest({ ...asked, record: notification, channelAnswer: null, deliveredAt: null }),
+      cancelledRequest({ ...asked, record: question, channelAnswer: null, deliveredAt: null }),
+      cancelledRequest({ ...asked, record: { run: 'x' }, channelAnswer: { answer: 'yes', at }, deliveredAt: at }),
     ]).toEqual([
       {
         status: 'succeeded',

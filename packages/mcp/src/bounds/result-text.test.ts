@@ -2,6 +2,7 @@ import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import {
+  answerOf,
   decodeListedTools,
   decodeToolResult,
   errorTextForModel,
@@ -113,5 +114,14 @@ describe('text as bytes', () => {
     expect(canonicalJson({ c: 1, a: [{ z: 1, y: 2 }], b: { e: 2, d: 1 } })).toBe(
       '{"a":[{"y":2,"z":1}],"b":{"d":1,"e":2},"c":1}',
     );
+  });
+});
+
+describe('the answer of a tool as its caller reads it', () => {
+  it('is its content and structured content, and no content at all when its JSON cannot be read', () => {
+    expect([
+      answerOf(JSON.stringify({ content: [{ type: 'text', text: 'Posted.' }], structuredContent: { ts: '1.1' } })),
+      answerOf('{[redacted]: []}'),
+    ]).toEqual([{ content: [{ type: 'text', text: 'Posted.' }], structuredContent: { ts: '1.1' } }, { content: [] }]);
   });
 });

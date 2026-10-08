@@ -1,4 +1,4 @@
-import type { ProjectedMessage, ProjectedRow, RunProjection } from '@beonauto/operations';
+import type { ProjectedMessage, ProjectedRow, KeyedProjection } from '@beonauto/operations';
 import { nextAttemptAt, outboundBounds } from '@beonauto/outbound';
 import { executionEventOf, type ExecutionEvent } from '@beonauto/specs';
 
@@ -9,7 +9,7 @@ import {
   attemptDueAtOf,
   endingDueAtOf,
   requestRowOf,
-  settlesFromDelivery,
+  settlesFromChannel,
   type OpenRequestRow,
   type UndueRequestRow,
 } from './request-rows.ts';
@@ -108,7 +108,7 @@ function changed(row: OpenRequestRow, fact: ExecutionEvent): ProjectedRow | unde
     return attemptEnded(row, fact);
   }
   if (fact.type === 'execution_cancel_requested') {
-    return row.open && !settlesFromDelivery(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
+    return row.open && !settlesFromChannel(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
   }
   return fact.type === 'execution_succeeded' || fact.type === 'execution_rejected' || fact.type === 'execution_failed'
     ? closed(row, fact)
@@ -124,9 +124,10 @@ function rowAfter(row: ProjectedRow | undefined, event: unknown, message: Projec
   return kept === undefined || fact === undefined ? undefined : changed(kept, fact);
 }
 
-export const openRequests: RunProjection = {
+export const openRequests: KeyedProjection = {
   name: openRequestsName,
-  version: 3,
+  version: 4,
+  kinds: ['executions'],
   types: [
     'execution_deferred',
     'delivery_started',

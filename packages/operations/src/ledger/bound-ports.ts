@@ -3,7 +3,7 @@ import { Effect } from 'effect';
 import type { BrainAddress } from '../caller/brain-context.ts';
 import type { OrgAddress } from '../caller/org-context.ts';
 import { InvalidInput } from '../outcome/invalid-input.ts';
-import type { BrainProjectionReader, ProjectionReader } from '../projections/run-projection.ts';
+import type { BrainProjectionReader, ProjectionReader } from '../projections/keyed-projection.ts';
 import { isCalendarDay } from '../reading/calendar-days.ts';
 import { mostRecordsInAPage } from '../reading/page-bounds.ts';
 import type {

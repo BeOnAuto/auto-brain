@@ -38,7 +38,7 @@ function accessTo(url: string, changes: Readonly<Record<string, unknown>> = {}, 
         url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' },
         org: 'acme',
-        allowed: ['echo', 'denied', 'sleep', 'large', 'search', 'gone'],
+        allowed: ['echo', 'denied', 'sleep', 'large', 'search', 'gone', 'profile'],
         ...changes,
       },
     },
@@ -48,13 +48,13 @@ function accessTo(url: string, changes: Readonly<Record<string, unknown>> = {}, 
   return access;
 }
 
-const largeAnswer = JSON.stringify({ content: [{ type: 'text', text: '\u{1F600}'.repeat(8 * 256) }] });
+const largeText = '\u{1F600}'.repeat(8 * 256);
 
-const largeAnswerBytes = Buffer.byteLength(largeAnswer);
+const largeAnswerBytes = Buffer.byteLength(JSON.stringify({ content: [{ type: 'text', text: largeText }] }));
 
-const answerOpening = '{"content":[{"type":"text","text":"';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const largeAnswerKept = `${answerOpening}${'\u{1F600}'.repeat(Math.floor((deliveryBounds.resultBytes - answerOpening.length) / 4))}`;
+const deliveryId = '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a';
 
 const toolErrorDetail: unknown = expect.stringContaining('The field salary is denied by the policy');
 
@@ -63,10 +63,9 @@ const toolMissingDetail: unknown = expect.stringContaining('Tool gone not found'
 const delivery: DeliveryCall = {
   org: 'acme',
   brain: 'alpha',
-  executionId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
-  deliveryId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a',
   reference: { server: 'graph', tool: 'echo' },
   input: { channel: '#approvals', text: 'Please approve' },
+  meta: { 'com.beonauto/execution_id': runId, 'com.beonauto/delivery_id': deliveryId },
 };
 
 function calledOnce(access: ReturnType<typeof accessTo>, changes: Partial<DeliveryCall> = {}) {
@@ -74,20 +73,20 @@ function calledOnce(access: ReturnType<typeof accessTo>, changes: Partial<Delive
 }
 
 describe('one call of a tool for a delivery', () => {
-  it('calls the tool with its arguments as they are, naming the run and the delivery so a receiver can deduplicate', async () => {
+  it('calls the tool with its arguments as they are and the metadata its caller gives, so a receiver can deduplicate', async () => {
     const fake = await fakeServer();
     const access = accessTo(fake.url);
 
     expect(await calledOnce(access)).toEqual({
       outcome: 'result',
-      text: JSON.stringify({ content: [{ type: 'text', text: JSON.stringify(delivery.input) }] }),
+      content: [{ type: 'text', text: JSON.stringify(delivery.input) }],
       bytes: 95,
     });
     expect(fake.received()).toEqual([
       {
         tool: 'echo',
         arguments: delivery.input,
-        meta: { 'com.beonauto/execution_id': delivery.executionId, 'com.beonauto/delivery_id': delivery.deliveryId },
+        meta: { 'com.beonauto/execution_id': runId, 'com.beonauto/delivery_id': deliveryId },
       },
     ]);
     expect(fake.seen().map(({ rpc }) => rpc)).not.toContain('tools/list');
@@ -122,16 +121,24 @@ describe('one call of a tool for a delivery', () => {
 });
 
 describe('what a tool answers a delivery', () => {
-  it('is kept to 4 KiB, cut at a character, and counted whole', async () => {
+  it('is carried whole, its content and its structured content, and counted', async () => {
+    const fake = await fakeServer();
+    const access = accessTo(fake.url);
+
+    const large = await calledOnce(access, { reference: { server: 'graph', tool: 'large' }, input: { kib: 8 } });
+    const structured = await calledOnce(access, { reference: { server: 'graph', tool: 'profile' }, input: {} });
+
+    expect(large).toEqual({ outcome: 'result', content: [{ type: 'text', text: largeText }], bytes: largeAnswerBytes });
+    expect(structured).toMatchObject({ outcome: 'result', content: [], structuredContent: { name: 'Ada', rows: 2 } });
+  });
+
+  it('is scrubbed of the secrets of the server before the caller reads it', async () => {
     const fake = await fakeServer();
 
-    const answered = await calledOnce(accessTo(fake.url), {
-      reference: { server: 'graph', tool: 'large' },
-      input: { kib: 8 },
+    expect(await calledOnce(accessTo(fake.url), { input: { token: apiKey } })).toMatchObject({
+      outcome: 'result',
+      content: [{ type: 'text', text: JSON.stringify({ token: '[redacted]' }) }],
     });
-
-    expect(answered).toEqual({ outcome: 'result', text: largeAnswerKept, bytes: largeAnswerBytes });
-    expect(Buffer.byteLength(largeAnswerKept)).toBeLessThanOrEqual(deliveryBounds.resultBytes);
   });
 });
 

@@ -13,7 +13,7 @@ import {
 import {
   ExecutionIdField,
   RunSchema,
-  answeredWithinDelivery,
+  answeredThroughItsChannel,
   brainBoundSettler,
   recordedRunInBrain,
   type RecordedRun,
@@ -85,7 +85,7 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
     return yield* takesNoAnswer;
   }
   if (row.standing === 'answered') {
-    return yield* answeredWithinDelivery;
+    return yield* answeredThroughItsChannel;
   }
   const output = yield* checkedFor(run, answer);
   const at = new Date(yield* Clock.currentTimeMillis).toISOString();

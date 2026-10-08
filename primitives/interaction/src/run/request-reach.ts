@@ -94,7 +94,7 @@ export function checkedArguments(
     expires_at: record.expires_at,
     answer_schema: record.answer_schema ?? null,
   };
-  return Result.match(renderedArguments(channel, fields), {
+  return Result.match(renderedArguments(channel.with, fields), {
     onSuccess: () => Effect.void,
     onFailure: (failure) => Effect.fail(argumentsRefusal(channel.name, failure)),
   });

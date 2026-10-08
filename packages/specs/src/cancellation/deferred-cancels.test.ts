@@ -99,9 +99,9 @@ describe('a cancel its capability settles otherwise', () => {
   it('settles it as its capability decides, by the actor the decision names rather than whoever asked', async () => {
     const { executing, ledger, run } = await withHandOn();
     await executing();
-    const answering = relayDeciding(({ lastDelivery }) => ({
+    const answering = relayDeciding(({ channelAnswer, deliveredAt }) => ({
       status: 'succeeded',
-      output: { delivered: JSON.stringify(lastDelivery) },
+      output: { delivered: JSON.stringify({ channelAnswer, deliveredAt }) },
       record: {},
       by: 'channel:partner',
     }));
@@ -119,7 +119,7 @@ describe('a cancel its capability settles otherwise', () => {
 
     expect(records.at(-1)?.data).toMatchObject({
       type: 'execution_succeeded',
-      output: { delivered: 'null' },
+      output: { delivered: JSON.stringify({ channelAnswer: null, deliveredAt: null }) },
       by: 'channel:partner',
     });
   });
@@ -173,10 +173,10 @@ describe('a cancel of a run of another capability that is over', () => {
   });
 });
 
-const decidingFromDelivery = relayDeciding(({ lastDelivery }) =>
-  lastDelivery === null
+const decidingFromDelivery = relayDeciding(({ deliveredAt }) =>
+  deliveredAt === null
     ? { status: 'rejected', reason: 'cancelled', kind: 'requested', detail: 'Nothing was delivered' }
-    : { status: 'succeeded', output: { delivered: lastDelivery.outcome } },
+    : { status: 'succeeded', output: { delivered: 'delivered' } },
 );
 
 describe('a cancel whose run changes between its read and its settlement', () => {

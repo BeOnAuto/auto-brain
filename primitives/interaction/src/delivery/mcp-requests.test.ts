@@ -57,7 +57,7 @@ function toolsAnswering(...answers: readonly DeliveryCallEnded[]): Tools {
     callOnce: (call) =>
       Effect.sync(() => {
         calls.push(call);
-        return queued.shift() ?? { outcome: 'result', text: '{}', bytes: 2 };
+        return queued.shift() ?? { outcome: 'result', content: [], bytes: 2 };
       }),
   };
 }
@@ -80,8 +80,6 @@ describe('a request delivered by a tool', () => {
       {
         org: 'acme',
         brain: 'alpha',
-        executionId: askedRunId,
-        deliveryId: anyText,
         reference: { server: 'slack', tool: 'post_message' },
         input: {
           channel: '#approvals-ada',
@@ -91,6 +89,7 @@ describe('a request delivered by a tool', () => {
           until: anyText,
           schema: choiceSchema,
         },
+        meta: { 'com.beonauto/execution_id': askedRunId, 'com.beonauto/delivery_id': anyText },
       },
     ]);
     expect(await brain.firstOpen()).toMatchObject({ attempts: 1, standing: 'delivered' });

@@ -74,7 +74,7 @@ const lastEnded: RecordedPageRequest = {
   dataOf: ['delivery_ended'],
 };
 
-export function settledFromDelivery(ledger: RequestLedger, { address, row, lineage }: DueRequest): Effect.Effect<void> {
+export function settledFromChannel(ledger: RequestLedger, { address, row, lineage }: DueRequest): Effect.Effect<void> {
   return ledger.readRecorded(address, { kind: 'run', execution: address.id }, lastEnded).pipe(
     Effect.orDie,
     Effect.flatMap(({ records }) => {

@@ -192,7 +192,8 @@ describe('the cancelling of a run', () => {
       record: { step: 1 },
       kind: 'deadline',
       reason: 'The step ran out of time',
-      lastDelivery: null,
+      channelAnswer: null,
+      deliveredAt: null,
     } as const;
     const deciding = definePrimitive({
       ...words,

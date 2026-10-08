@@ -1,4 +1,4 @@
-import type { ProjectionReader, RunOutcomeMapping, RunProjection } from '@beonauto/operations';
+import type { KeyedProjection, ProjectionAdvancer, ProjectionReader, RunOutcomeMapping } from '@beonauto/operations';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { keptProjections } from '../outcomes/run-outcome-projection.ts';
@@ -6,17 +6,17 @@ import type { InlineRegistration } from './inline-projection.ts';
 import type { ProjectionDialect } from './projection-dialect.ts';
 import { preparedProjections, type InTransaction } from './projection-fill.ts';
 import { projectionRegistrations } from './projection-keeping.ts';
-import { projectionReader, type ReadQuery } from './projection-reads.ts';
+import { projectionReader, type ProjectionStatements } from './projection-reads.ts';
 
 export interface KeptTables {
   readonly runOutcomes?: RunOutcomeMapping | undefined;
-  readonly projections?: readonly RunProjection[] | undefined;
+  readonly projections?: readonly KeyedProjection[] | undefined;
 }
 
 export interface ProjectionParts {
   readonly registrations: readonly InlineRegistration[];
   readonly prepare: (execute: StatementExecutor, inTransaction: InTransaction) => Promise<void>;
-  readonly readerOn: (query: ReadQuery) => ProjectionReader;
+  readonly readerOn: (statements: ProjectionStatements) => ProjectionReader & ProjectionAdvancer;
 }
 
 export function projectionPartsOf(
@@ -32,6 +32,6 @@ export function projectionPartsOf(
         execute,
         inTransaction,
       ),
-    readerOn: (query) => projectionReader(dialect, kept, query),
+    readerOn: (statements) => projectionReader(dialect, kept, statements),
   };
 }

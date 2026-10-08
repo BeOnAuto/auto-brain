@@ -1,10 +1,18 @@
 import { messageIdOf, type ProjectedRowsQuery } from '@beonauto/operations';
-import { runFacts, runTallyRows, tallyRowsOf, type RunFact } from '@beonauto/operations/testing';
+import {
+  runFacts,
+  runTallyRows,
+  tallyRowsOf,
+  topicFacts,
+  topicRows,
+  type RunFact,
+  type TopicFact,
+} from '@beonauto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { aLedger, type LedgerEntry } from '../testing/ledger-entry.ts';
-import { projectionsBehaviour } from './projections-behaviour.ts';
+import { projectionsBehaviour, topicsOf } from './projections-behaviour.ts';
 
 const alpha = { org: 'acme', brain: 'alpha' };
 
@@ -51,7 +59,7 @@ function aTableNotThereYet(entry: LedgerEntry): void {
       const next = await aLedger(entry, database, undefined, [tallyRowsOf(2)]);
 
       expect(await Effect.runPromise(next.readProjectedRows('run_tallies', alpha, everyRow))).toMatchObject([
-        { runId: 'r1', row: { facts: 2, last_message: messageIdOf('brain/acme/alpha/executions/r1', 2) } },
+        { key: 'r1', row: { facts: 2, last_message: messageIdOf('brain/acme/alpha/executions/r1', 2) } },
       ]);
       expect(await entry.queried(database, entry.projectionTables)).toEqual([{ name: 'run_tallies_2' }]);
       expect(await entry.queried(database, entry.projectionIndexes)).toEqual([
@@ -63,7 +71,7 @@ function aTableNotThereYet(entry: LedgerEntry): void {
     it('is left as it is by a ledger that finds it', async () => {
       const database = await entry.aDatabase();
       await noting(await aLedger(entry, database, undefined, [runTallyRows]), 'brain/acme/alpha/executions/r1', began);
-      await entry.queried(database, "DELETE FROM run_tallies_1 WHERE run_id = 'r1'");
+      await entry.queried(database, "DELETE FROM run_tallies_1 WHERE row_key = 'r1'");
 
       const reopened = await aLedger(entry, database, undefined, [runTallyRows]);
 
@@ -72,8 +80,55 @@ function aTableNotThereYet(entry: LedgerEntry): void {
   });
 }
 
+function topics(ledger: Awaited<ReturnType<typeof aLedger>>, stream: string, ...facts: readonly TopicFact[]) {
+  return Effect.runPromise(ledger.execute(stream, topicFacts, facts));
+}
+
+const notesInAnAppend = 8;
+
+const manyNotes = 40 * notesInAnAppend;
+
+function notedMany(ledger: Awaited<ReturnType<typeof aLedger>>, stream: string) {
+  const appends = Array.from({ length: manyNotes / notesInAnAppend }, (_, append) =>
+    Array.from({ length: notesInAnAppend }, (__, index): TopicFact => ({
+      type: 'topic_noted',
+      topic: 'autumn',
+      note: `note ${append * notesInAnAppend + index}`,
+    })),
+  );
+  return Effect.runPromise(
+    Effect.forEach(appends, (facts: readonly TopicFact[]) => ledger.execute(stream, topicFacts, facts), {
+      discard: true,
+    }),
+  );
+}
+
+function aKeyedTableNotThereYet(entry: LedgerEntry): void {
+  describe('the table of a projection keyed by its mapping that is not there yet', () => {
+    it('is filled from the facts of every stream of its kinds in the order they were appended', async () => {
+      const database = await entry.aDatabase();
+      const first = await aLedger(entry, database);
+      await topics(first, 'brain/acme/alpha/notes/w1', { type: 'topic_noted', topic: 'winter', note: 'never opened' });
+      await topics(first, 'brain/acme/alpha/executions/r9', { type: 'topic_opened', topic: 'spring', at: 1000 });
+      await topics(first, 'brain/acme/alpha/notes/z9', { type: 'topic_noted', topic: 'spring', note: 'first' });
+      await topics(first, 'brain/acme/alpha/notes/a1', { type: 'topic_noted', topic: 'spring', note: 'second' });
+      await topics(first, 'brain/acme/alpha/others/o1', { type: 'topic_noted', topic: 'spring', note: 'other' });
+      await topics(first, 'brain/acme/alpha/executions/r8', { type: 'topic_opened', topic: 'autumn', at: 2000 });
+      await notedMany(first, 'brain/acme/alpha/notes/n1');
+
+      const next = await aLedger(entry, database, undefined, [topicRows]);
+
+      expect((await topicsOf(next)).map(({ key, row }) => [key, row['note'], row['open'], row['next_at']])).toEqual([
+        ['autumn', `note ${manyNotes - 1}`, true, 7000],
+        ['spring', 'second', true, 6000],
+      ]);
+    });
+  });
+}
+
 export function projectionTableBehaviour(entry: LedgerEntry): void {
   projectionsBehaviour((projections) => aLedger(entry, undefined, undefined, projections));
   anAppendThatBreaksDown(entry);
   aTableNotThereYet(entry);
+  aKeyedTableNotThereYet(entry);
 }

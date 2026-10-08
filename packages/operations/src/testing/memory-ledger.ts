@@ -9,7 +9,7 @@ import {
   type DeclarableReason,
   type Lineage,
   type RunOutcomeMapping,
-  type RunProjection,
+  type KeyedProjection,
   type StreamState,
   type TypedEvent,
 } from '../index.ts';
@@ -100,7 +100,7 @@ function executedOn(kept: Kept): Ledger['Service']['execute'] {
 
 export function memoryLedger(
   runOutcomes?: RunOutcomeMapping,
-  projections: readonly RunProjection[] = [],
+  projections: readonly KeyedProjection[] = [],
 ): MemoryLedger {
   const log: MemoryRecord[] = [];
   const kept: Kept = {
@@ -122,6 +122,7 @@ export function memoryLedger(
     countProjectedRows: projected.countProjectedRows,
     readDueRows: projected.readDueRows,
     nextDueOf: projected.nextDueOf,
+    advanceRow: projected.advanceRow,
   });
   return { service, layer: Layer.succeed(Ledger, service), streamNames: () => [...kept.streams.keys()] };
 }

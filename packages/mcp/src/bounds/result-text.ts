@@ -1,4 +1,4 @@
-import { Schema } from 'effect';
+import { Option, Schema } from 'effect';
 
 const metaField = '_meta';
 
@@ -6,6 +6,11 @@ const ContentBlockSchema = Schema.Struct({
   type: Schema.String,
   text: Schema.optionalKey(Schema.String),
   mimeType: Schema.optionalKey(Schema.String),
+});
+
+const AnswerSchema = Schema.Struct({
+  content: Schema.Array(ContentBlockSchema),
+  structuredContent: Schema.optionalKey(Schema.Json),
 });
 
 const ToolResultSchema = Schema.Struct({
@@ -36,6 +41,18 @@ export type ListedTool = typeof ListedToolSchema.Type;
 export type ToolAnnotations = typeof ToolAnnotationsSchema.Type;
 
 type ContentBlock = typeof ContentBlockSchema.Type;
+
+export type AnswerBlock = ContentBlock;
+
+export type ToolAnswer = typeof AnswerSchema.Type;
+
+const decodeAnswer = Schema.decodeUnknownOption(Schema.fromJsonString(AnswerSchema));
+
+const noAnswer: ToolAnswer = { content: [] };
+
+export function answerOf(resultJson: string): ToolAnswer {
+  return Option.getOrElse(decodeAnswer(resultJson), () => noAnswer);
+}
 
 export const decodeToolResult = Schema.decodeUnknownSync(ToolResultSchema);
 

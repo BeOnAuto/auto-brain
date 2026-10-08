@@ -74,7 +74,7 @@ const decodeRows = Schema.decodeUnknownSync(
 async function requestIdOf(brain: InteractionHarness): Promise<string> {
   const rows = await Effect.runPromise(
     brain.ledger.service.readProjectedRows(openRequestsName, alpha, {
-      where: [{ column: 'run_id', equals: runId }],
+      where: [{ column: 'row_key', equals: runId }],
       orderBy: [],
       order: 'asc',
       limit: 1,

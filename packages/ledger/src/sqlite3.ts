@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import type { Ledger, RunOutcomeMapping, RunProjection } from '@beonauto/operations';
+import type { Ledger, RunOutcomeMapping, KeyedProjection } from '@beonauto/operations';
 import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3';
 import type { Layer } from 'effect';
 
@@ -11,7 +11,7 @@ import { sqliteLedgerLayer } from './sqlite-event-store.ts';
 export interface LedgerOptions {
   readonly fileName: string;
   readonly runOutcomes?: RunOutcomeMapping;
-  readonly projections?: readonly RunProjection[];
+  readonly projections?: readonly KeyedProjection[];
   readonly appends?: AppendSignal;
 }
 

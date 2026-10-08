@@ -7,7 +7,12 @@ export { CallAnsweredSchema, CallStartedSchema, type CallOutcome } from './calls
 export type { CallJournal, RecordedCall } from './calls/recorded-calls.ts';
 export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
 export type { OfferedTool, RunTools, ToolsEnding } from './calls/run-tools.ts';
-export { deliveryBounds, type DeliveryCall, type DeliveryCallEnded } from './delivery/delivery-bounds.ts';
+export {
+  deliveryBounds,
+  type CallAnswer,
+  type DeliveryCall,
+  type DeliveryCallEnded,
+} from './delivery/delivery-bounds.ts';
 export { defineListToolServers } from './listing/list-tool-servers.ts';
 export { defineListToolServersInOrg, type BrainLookup } from './listing/list-tool-servers-in-org.ts';
 export { answeredInWords } from './names/tool-words.ts';

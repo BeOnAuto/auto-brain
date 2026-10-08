@@ -176,7 +176,7 @@ describe('an MCP channel the server refuses at start', () => {
       ['/approvals/with/text: Expected no ${ in a template, which never holds a secret; write $$ for a $'],
       [expect.stringContaining('/approvals/with/text: ')],
       [
-        '/approvals/with/text: Reads secret, which a template of a channel does not have; it reads to, message, run_id, function, expires_at and answer_schema',
+        '/approvals/with/text: Reads secret, which this template of a channel does not have; it reads to, message, run_id, function, expires_at and answer_schema',
       ],
       [
         '/approvals/with/text: Renders a value that is not text; write | json after a structured value such as answer_schema',

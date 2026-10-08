@@ -1,4 +1,4 @@
-import { projectedTableOf, runStreamOf } from '@beonauto/operations';
+import { brainStreamOf, projectedTableOf, rowKeyOf, type ProjectedRow } from '@beonauto/operations';
 
 import type { StatementExecutor } from '../event-store.ts';
 import { inTurn } from './inline-projection.ts';
@@ -7,17 +7,22 @@ import {
   createdTable,
   messagesIn,
   namesIn,
+  orderedMessagesIn,
+  rowIn,
   rowsWrite,
   streamsIn,
   tableAnalysis,
   tableDrop,
-  type ProjectedRunRowOf,
+  type KeptRow,
+  type RowPlace,
   type SizedStream,
 } from './projection-statements.ts';
 
 export type InTransaction = (work: (execute: StatementExecutor) => Promise<void>) => Promise<void>;
 
-const runStreamsInABatch = 100;
+const streamsInABatch = 100;
+
+const messagesInABatch = 256;
 
 const mostBytesInABatch = 16 * 1024 * 1024;
 
@@ -32,16 +37,23 @@ function chunksOf<Item>(items: readonly Item[], size: number): readonly (readonl
   );
 }
 
+function writtenInChunks(keeping: ProjectionKeeping, execute: StatementExecutor, kept: readonly KeptRow[]) {
+  const { dialect, projection } = keeping;
+  return inTurn(chunksOf(kept, dialect.rowsInAWrite(projection.columns.length)), (rows) =>
+    execute.command(rowsWrite(dialect, projection, rows)),
+  );
+}
+
 function replayedRows(
   keeping: ProjectionKeeping,
   streams: readonly string[],
   messages: readonly ReplayedMessage[],
-): readonly ProjectedRunRowOf[] {
+): readonly KeptRow[] {
   const byStream = Map.groupBy(messages, ({ stream }) => stream);
   return streams.flatMap((stream) => {
-    const run = runStreamOf(stream);
-    const row = run === undefined ? undefined : replayedRow(keeping, byStream.get(stream) ?? []);
-    return run === undefined || row === undefined ? [] : [{ run, row }];
+    const named = brainStreamOf(stream);
+    const row = named === undefined ? undefined : replayedRow(keeping, byStream.get(stream) ?? []);
+    return named === undefined || row === undefined ? [] : [{ brainKey: named.brainKey, key: named.id, row }];
   });
 }
 
@@ -70,7 +82,7 @@ function batchAfter({ listing }: Batch, listed: readonly SizedStream[], taken: r
   }
   const takenBytes = listed.slice(0, taken.length).reduce((total, { size }) => total + size, 0);
   const fitting = Math.floor((mostBytesInABatch * taken.length) / takenBytes);
-  return { after: last, listing: Math.max(1, Math.min(runStreamsInABatch, 2 * listing, fitting)) };
+  return { after: last, listing: Math.max(1, Math.min(streamsInABatch, 2 * listing, fitting)) };
 }
 
 async function batchFilled(
@@ -79,21 +91,88 @@ async function batchFilled(
   batch: Batch,
 ): Promise<Batch | undefined> {
   const { dialect, projection } = keeping;
-  const listed = await streamsIn(execute, dialect.runStreamsAfter(batch.after, batch.listing, projection.types));
+  const listed = await streamsIn(
+    execute,
+    dialect.streamsAfter(batch.after, batch.listing, projection.kinds, projection.types),
+  );
   const streams = withinBytes(listed);
   const messages = streams.length === 0 ? [] : await messagesIn(execute, dialect.messagesOf(streams, projection.types));
-  const kept = replayedRows(keeping, streams, messages);
-  await inTurn(chunksOf(kept, dialect.rowsInAWrite(projection.columns.length)), (rows) =>
-    execute.command(rowsWrite(dialect, projection, rows)),
-  );
+  await writtenInChunks(keeping, execute, replayedRows(keeping, streams, messages));
   return batchAfter(batch, listed, streams);
 }
 
-async function filledFrom(keeping: ProjectionKeeping, execute: StatementExecutor, batch: Batch): Promise<void> {
+async function filledByStream(keeping: ProjectionKeeping, execute: StatementExecutor, batch: Batch): Promise<void> {
   const next = await batchFilled(keeping, execute, batch);
   if (next !== undefined) {
-    await filledFrom(keeping, execute, next);
+    await filledByStream(keeping, execute, next);
   }
+}
+
+type Ordered = Awaited<ReturnType<typeof orderedMessagesIn>>[number];
+
+interface PlacedMessage {
+  readonly message: Ordered;
+  readonly place: RowPlace;
+  readonly stored: string;
+}
+
+function placedMessages({ dialect, projection }: ProjectionKeeping, messages: readonly Ordered[]) {
+  return messages.flatMap((message): readonly PlacedMessage[] => {
+    const named = brainStreamOf(message.stream);
+    const key = named === undefined ? undefined : rowKeyOf(projection, dialect.filledData(message.data), named);
+    return named === undefined || key === undefined
+      ? []
+      : [{ message, place: { brainKey: named.brainKey, key }, stored: `${named.brainKey}${key}` }];
+  });
+}
+
+async function rowsBefore(
+  { dialect, projection }: ProjectionKeeping,
+  execute: StatementExecutor,
+  placed: readonly PlacedMessage[],
+): Promise<ReadonlyMap<string, ProjectedRow | undefined>> {
+  const places = new Map(placed.map(({ stored, place }) => [stored, place]));
+  const before = new Map<string, ProjectedRow | undefined>();
+  await inTurn([...places], async ([stored, place]: readonly [string, RowPlace]) => {
+    before.set(stored, await rowIn(execute, dialect, projection, place));
+  });
+  return before;
+}
+
+async function keyedRowsAfter(
+  keeping: ProjectionKeeping,
+  execute: StatementExecutor,
+  messages: readonly Ordered[],
+): Promise<readonly KeptRow[]> {
+  const placed = placedMessages(keeping, messages);
+  const before = await rowsBefore(keeping, execute, placed);
+  const changed = new Map<string, KeptRow>();
+  for (const { message, place, stored } of placed) {
+    const row = replayedRow(keeping, [message], changed.get(stored)?.row ?? before.get(stored));
+    if (row !== undefined) {
+      changed.set(stored, { ...place, row });
+    }
+  }
+  return [...changed.values()];
+}
+
+async function filledInOrder(keeping: ProjectionKeeping, execute: StatementExecutor, after?: string): Promise<void> {
+  const { dialect, projection } = keeping;
+  const messages = await orderedMessagesIn(
+    execute,
+    dialect.messagesInOrderAfter(after, messagesInABatch, projection.kinds, projection.types),
+  );
+  await writtenInChunks(keeping, execute, await keyedRowsAfter(keeping, execute, messages));
+  const last = messages.at(-1);
+  if (last !== undefined && messages.length === messagesInABatch) {
+    await filledInOrder(keeping, execute, last.point);
+  }
+}
+
+function filled(keeping: ProjectionKeeping, execute: StatementExecutor): Promise<void> {
+  return keeping.projection.keyOf === undefined
+    ? filledByStream(keeping, execute, { after: '', listing: 1 })
+    : filledInOrder(keeping, execute);
 }
 
 async function created(
@@ -103,7 +182,7 @@ async function created(
 ): Promise<void> {
   const { dialect, projection } = keeping;
   await inTurn(createdTable(dialect, projection), (statement) => execute.command(statement));
-  await filledFrom(keeping, execute, { after: '', listing: 1 });
+  await filled(keeping, execute);
   await inTurn(
     tables.filter((name) => isEarlierVersion(keeping, name)),
     (name) => execute.command(tableDrop(name)),

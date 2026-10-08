@@ -1,10 +1,14 @@
 import { Buffer } from 'node:buffer';
 
+import type { ParsedTemplate } from '@beonauto/specs/template';
 import { Result, type Schema } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';
 import { renderedText, type TextFailure } from '../run/text-rendering.ts';
-import type { McpChannel } from './channel-settings.ts';
+
+export type TemplateFields = Readonly<Record<string, Schema.Json>>;
+
+export type ArgumentTemplates = ReadonlyMap<string, ParsedTemplate>;
 
 export interface RequestFields {
   readonly to: string;
@@ -33,17 +37,13 @@ export interface RenderedArguments {
   readonly bytes: number;
 }
 
-function variablesOf(fields: RequestFields): Readonly<Record<string, Schema.Json>> {
-  return { ...fields };
-}
-
 export function renderedArguments(
-  channel: Pick<McpChannel, 'with'>,
-  fields: RequestFields,
+  templates: ArgumentTemplates,
+  fields: TemplateFields,
 ): Result.Result<RenderedArguments, ArgumentsFailure> {
   const input: Record<string, string> = {};
-  for (const [argument, template] of channel.with) {
-    const rendered = renderedText(template, variablesOf(fields), interactionBounds.argumentBytes + 1);
+  for (const [argument, template] of templates) {
+    const rendered = renderedText(template, fields, interactionBounds.argumentBytes + 1);
     if (Result.isFailure(rendered)) {
       return Result.fail({ reason: 'argument', argument, failure: rendered.failure });
     }

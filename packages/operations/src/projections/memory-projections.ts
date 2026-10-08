@@ -1,20 +1,28 @@
 import { Effect } from 'effect';
 
+import type { BrainAddress } from '../caller/brain-context.ts';
 import { streamPrefixOfBrain } from '../ledger/bound-ports.ts';
 import type { TypedEvent } from '../ledger/decider.ts';
 import { messageIdOf } from '../ledger/message-lineage.ts';
-import { runStreamOf } from '../run-outcomes/run-outcomes.ts';
 import {
+  brainStreamOf,
   checkedProjection,
+  requireAdvancedColumns,
+  rowKeyColumn,
+  rowKeyOf,
+  type BrainStream,
+  type DueRowsQuery,
+  type KeyedProjection,
   type ProjectedCondition,
+  type ProjectedKeyedRow,
   type ProjectedRow,
-  type ProjectedRunRow,
+  type ProjectedRowsQuery,
   type ProjectedValue,
+  type ProjectionAdvancer,
   type ProjectionReader,
-  type RunProjection,
-} from './run-projection.ts';
+} from './keyed-projection.ts';
 
-export interface MemoryProjections extends ProjectionReader {
+export interface MemoryProjections extends ProjectionReader, ProjectionAdvancer {
   readonly project: (
     stream: string,
     events: readonly TypedEvent[],
@@ -24,19 +32,23 @@ export interface MemoryProjections extends ProjectionReader {
 }
 
 interface Table {
-  readonly projection: RunProjection;
-  readonly rows: Map<string, ProjectedRunRow>;
+  readonly projection: KeyedProjection;
+  readonly rows: Map<string, ProjectedKeyedRow>;
 }
 
-type Fact = readonly [TypedEvent, unknown, number];
+interface Fact {
+  readonly type: string;
+  readonly data: unknown;
+  readonly position: number;
+}
 
 const brainKey = /^brain\/(?<org>[^/]+)\/(?<brain>[^/]+)\/$/u;
 
-const nothingKept: ReadonlyMap<string, ProjectedRunRow> = new Map();
+const nothingKept: ReadonlyMap<string, ProjectedKeyedRow> = new Map();
 
-function runRowOf(key: string, runId: string, row: ProjectedRow): ProjectedRunRow {
-  const groups = brainKey.exec(key)?.groups;
-  return { org: String(groups?.['org']), brain: String(groups?.['brain']), runId, row };
+function keyedRowOf(prefix: string, key: string, row: ProjectedRow): ProjectedKeyedRow {
+  const groups = brainKey.exec(prefix)?.groups;
+  return { org: String(groups?.['org']), brain: String(groups?.['brain']), key, row };
 }
 
 type Ordered = ProjectedValue | undefined;
@@ -64,98 +76,130 @@ function tupleCompared(left: readonly Ordered[], right: readonly Ordered[]): num
   return 0;
 }
 
-function matches({ row, runId }: ProjectedRunRow, where: readonly ProjectedCondition[]): boolean {
-  return where.every(({ column, equals }) => (column === 'run_id' ? runId : row[column]) === equals);
+function matches({ row, key }: ProjectedKeyedRow, where: readonly ProjectedCondition[]): boolean {
+  return where.every(({ column, equals }) => (column === rowKeyColumn ? key : row[column]) === equals);
 }
 
 function brainOf(
-  rows: ReadonlyMap<string, ProjectedRunRow>,
+  rows: ReadonlyMap<string, ProjectedKeyedRow>,
   brain: { readonly org: string; readonly brain: string },
-): readonly ProjectedRunRow[] {
+): readonly ProjectedKeyedRow[] {
   return [...rows.values()].filter((kept) => kept.org === brain.org && kept.brain === brain.brain);
 }
 
-function rowAfterFacts(
-  projection: RunProjection,
-  kept: ProjectedRow | undefined,
-  stream: string,
-  facts: readonly Fact[],
-): ProjectedRow | undefined {
-  let row = kept;
-  let changed = false;
-  for (const [, data, position] of facts.filter(([{ type }]) => projection.types.includes(type))) {
-    const next = projection.rowAfter(row, data, { id: messageIdOf(stream, position), position });
-    changed ||= next !== undefined;
-    row = next ?? row;
-  }
-  return changed ? row : undefined;
-}
-
 interface Staged {
-  readonly rows: Map<string, ProjectedRunRow>;
-  readonly key: string;
-  readonly row: ProjectedRunRow;
+  readonly rows: Map<string, ProjectedKeyedRow>;
+  readonly stored: string;
+  readonly kept: ProjectedKeyedRow;
 }
 
-function staged({ projection, rows }: Table, stream: string, facts: readonly Fact[]): readonly Staged[] {
-  const run = runStreamOf(stream);
-  if (run === undefined) {
-    return [];
+function keyedFacts(projection: KeyedProjection, named: BrainStream, facts: readonly Fact[]) {
+  return facts
+    .filter(({ type }) => projection.types.includes(type))
+    .flatMap((fact) => {
+      const key = rowKeyOf(projection, fact.data, named);
+      return key === undefined ? [] : [{ ...fact, key }];
+    });
+}
+
+function staged({ projection, rows }: Table, stream: string, named: BrainStream, facts: readonly Fact[]) {
+  const changed = new Map<string, ProjectedKeyedRow>();
+  for (const { data, position, key } of keyedFacts(projection, named, facts)) {
+    const stored = `${named.brainKey}${key}`;
+    const row = (changed.get(stored) ?? rows.get(stored))?.row;
+    const next = projection.rowAfter(row, data, { id: messageIdOf(stream, position), position });
+    if (next !== undefined) {
+      changed.set(stored, keyedRowOf(named.brainKey, key, next));
+    }
   }
-  const key = `${run.brainKey}${run.runId}`;
-  const row = rowAfterFacts(projection, rows.get(key)?.row, stream, facts);
-  return row === undefined ? [] : [{ rows, key, row: runRowOf(run.brainKey, run.runId, row) }];
+  return [...changed].map(([stored, kept]: readonly [string, ProjectedKeyedRow]): Staged => ({ rows, stored, kept }));
 }
 
-function dueOf({ row }: ProjectedRunRow, column: string): readonly number[] {
+function dueOf({ row }: ProjectedKeyedRow, column: string): readonly number[] {
   const due = row[column];
   return typeof due === 'number' ? [due] : [];
 }
 
-function keyOf(orderBy: readonly string[], { row, runId }: ProjectedRunRow): readonly Ordered[] {
-  return [...orderBy.map((column) => row[column]), runId];
+function orderedKeyOf(orderBy: readonly string[], { row, key }: ProjectedKeyedRow): readonly Ordered[] {
+  return [...orderBy.map((column) => row[column]), key];
 }
 
-export function memoryProjections(projections: readonly RunProjection[]): MemoryProjections {
+function projectedOn(tables: readonly Table[]): MemoryProjections['project'] {
+  return (stream, events, encoded, firstPosition) => {
+    const named = brainStreamOf(stream);
+    if (named === undefined) {
+      return;
+    }
+    const facts = events.map(({ type }, index): Fact => ({
+      type,
+      data: encoded[index],
+      position: firstPosition + index,
+    }));
+    const changes = tables.flatMap((table) => staged(table, stream, named, facts));
+    for (const { rows, stored, kept } of changes) {
+      rows.set(stored, kept);
+    }
+  };
+}
+
+interface Advance {
+  readonly brain: BrainAddress;
+  readonly key: string;
+  readonly columns: ProjectedRow;
+}
+
+function advancedIn(table: Table | undefined, { brain, key, columns }: Advance): Effect.Effect<void> {
+  return Effect.sync(() => {
+    if (table === undefined) {
+      return;
+    }
+    requireAdvancedColumns(table.projection, columns);
+    const stored = `${streamPrefixOfBrain(brain)}${key}`;
+    const kept = table.rows.get(stored);
+    if (kept !== undefined) {
+      table.rows.set(stored, { ...kept, row: { ...kept.row, ...columns } });
+    }
+  });
+}
+
+function dueRowsIn(rows: ReadonlyMap<string, ProjectedKeyedRow>, { column, through, limit }: DueRowsQuery) {
+  return [...rows.values()]
+    .flatMap((kept) => dueOf(kept, column).map((due): readonly [number, ProjectedKeyedRow] => [due, kept]))
+    .filter(([due]) => due <= through)
+    .toSorted(([leftDue, left], [rightDue, right]) =>
+      tupleCompared([leftDue, streamPrefixOfBrain(left), left.key], [rightDue, streamPrefixOfBrain(right), right.key]),
+    )
+    .slice(0, limit)
+    .map(([, kept]) => kept);
+}
+
+function pageIn(
+  rows: readonly ProjectedKeyedRow[],
+  { where, orderBy, order, after, limit }: ProjectedRowsQuery,
+): readonly ProjectedKeyedRow[] {
+  const sign = order === 'asc' ? 1 : -1;
+  return rows
+    .filter((kept) => matches(kept, where))
+    .filter((kept) => after === undefined || sign * tupleCompared(orderedKeyOf(orderBy, kept), after) > 0)
+    .toSorted((left, right) => sign * tupleCompared(orderedKeyOf(orderBy, left), orderedKeyOf(orderBy, right)))
+    .slice(0, limit);
+}
+
+export function memoryProjections(projections: readonly KeyedProjection[]): MemoryProjections {
   const tables: readonly Table[] = projections.map((projection) => ({
     projection: checkedProjection(projection),
     rows: new Map(),
   }));
-  const rowsOf = (name: string): ReadonlyMap<string, ProjectedRunRow> =>
-    tables.find(({ projection }) => projection.name === name)?.rows ?? nothingKept;
+  const tableNamed = (name: string): Table | undefined => tables.find(({ projection }) => projection.name === name);
+  const rowsOf = (name: string): ReadonlyMap<string, ProjectedKeyedRow> => tableNamed(name)?.rows ?? nothingKept;
   return {
-    project: (stream, events, encoded, firstPosition) => {
-      const facts = events.map((event, index): Fact => [event, encoded[index], firstPosition + index]);
-      const changes = tables.flatMap((table) => staged(table, stream, facts));
-      for (const { rows, key, row } of changes) {
-        rows.set(key, row);
-      }
-    },
-    readProjectedRows: (projection, brain, { where, orderBy, order, after, limit }) =>
-      Effect.sync(() => {
-        const sign = order === 'asc' ? 1 : -1;
-        return brainOf(rowsOf(projection), brain)
-          .filter((kept) => matches(kept, where))
-          .filter((kept) => after === undefined || sign * tupleCompared(keyOf(orderBy, kept), after) > 0)
-          .toSorted((left, right) => sign * tupleCompared(keyOf(orderBy, left), keyOf(orderBy, right)))
-          .slice(0, limit);
-      }),
+    project: projectedOn(tables),
+    advanceRow: (projection, brain, key, columns) => advancedIn(tableNamed(projection), { brain, key, columns }),
+    readProjectedRows: (projection, brain, query) =>
+      Effect.sync(() => pageIn(brainOf(rowsOf(projection), brain), query)),
     countProjectedRows: (projection, brain, where) =>
       Effect.sync(() => brainOf(rowsOf(projection), brain).filter((kept) => matches(kept, where)).length),
-    readDueRows: (projection, { column, through, limit }) =>
-      Effect.sync(() =>
-        [...rowsOf(projection).values()]
-          .flatMap((kept) => dueOf(kept, column).map((due): readonly [number, ProjectedRunRow] => [due, kept]))
-          .filter(([due]) => due <= through)
-          .toSorted(([leftDue, left], [rightDue, right]) =>
-            tupleCompared(
-              [leftDue, streamPrefixOfBrain(left), left.runId],
-              [rightDue, streamPrefixOfBrain(right), right.runId],
-            ),
-          )
-          .slice(0, limit)
-          .map(([, kept]) => kept),
-      ),
+    readDueRows: (projection, query) => Effect.sync(() => dueRowsIn(rowsOf(projection), query)),
     nextDueOf: (projection, column, after) =>
       Effect.sync(() => {
         const due = [...rowsOf(projection).values()].flatMap((kept) => dueOf(kept, column)).filter((at) => at > after);

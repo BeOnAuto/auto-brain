@@ -35,23 +35,33 @@ export { Conflict, ConflictKindSchema, type ConflictKind } from './outcome/confl
 export { Forbidden } from './outcome/forbidden.ts';
 export { RunUnanswered, UnansweredKindSchema, type UnansweredKind } from './outcome/unanswered-run.ts';
 export {
+  advancedColumnsOf,
+  brainStreamOf,
   checkedProjection,
   projectedTableOf,
+  requireAdvancedColumns,
+  rowKeyColumn,
+  rowKeyOf,
+  setsAdvancedColumns,
+  type AdvancedColumns,
   type BrainProjectionReader,
+  type BrainStream,
   type DueRowsQuery,
+  type KeyedProjection,
   type ProjectedColumn,
   type ProjectedColumnKind,
   type ProjectedCondition,
   type ProjectedIndex,
+  type ProjectedKeyedRow,
   type ProjectedMessage,
   type ProjectedOrder,
   type ProjectedRow,
   type ProjectedRowsQuery,
-  type ProjectedRunRow,
+  type ProjectedStream,
   type ProjectedValue,
+  type ProjectionAdvancer,
   type ProjectionReader,
-  type RunProjection,
-} from './projections/run-projection.ts';
+} from './projections/keyed-projection.ts';
 export {
   isKindWithType,
   kindsWithTypes,

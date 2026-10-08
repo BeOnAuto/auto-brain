@@ -58,7 +58,8 @@ export function deferredCanceller(
         record: state.record ?? {},
         kind,
         reason,
-        lastDelivery: state.lastDelivery,
+        channelAnswer: state.channelAnswer,
+        deliveredAt: state.deliveredAt,
       });
       const actor = settlement.by ?? by ?? brainCallerOf(execution).id;
       yield* settle(execution, { ...settlement, by: actor }, read.version, lineage).pipe(

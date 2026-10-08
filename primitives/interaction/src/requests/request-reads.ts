@@ -7,7 +7,7 @@ import { requestRowOf, type OpenRequestRow } from './request-rows.ts';
 export function openRequestRowIn(id: string): Effect.Effect<OpenRequestRow | undefined, never, BrainReader> {
   return BrainReader.use((reader) =>
     reader.readProjectedRows(openRequestsName, {
-      where: [{ column: 'run_id', equals: id }],
+      where: [{ column: 'row_key', equals: id }],
       orderBy: [],
       order: 'asc',
       limit: 1,

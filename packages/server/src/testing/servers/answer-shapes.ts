@@ -1,6 +1,6 @@
 import { openRequests } from '@beonauto/interaction';
 import { partnerSecret } from '@beonauto/interaction/testing';
-import { Ledger, projectedTableOf, type RunProjection } from '@beonauto/operations';
+import { Ledger, projectedTableOf, type KeyedProjection } from '@beonauto/operations';
 import { serveFakeReceiver } from '@beonauto/outbound/testing';
 import { ManagedRuntime, Schema, type Layer } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -12,7 +12,7 @@ import { workflowTestTimeoutMs } from './workflow-server.ts';
 
 export interface ProjectionStore {
   readonly environment: Readonly<Record<string, string>>;
-  readonly ledgerKeeping: (projection: RunProjection) => Layer.Layer<Ledger>;
+  readonly ledgerKeeping: (projection: KeyedProjection) => Layer.Layer<Ledger>;
   readonly tablesOf: (projection: string) => Promise<readonly string[]>;
   readonly dropTable: (table: string) => Promise<void>;
 }
@@ -23,7 +23,7 @@ export interface ProjectionStoreChoice {
   readonly aStore: () => Promise<ProjectionStore>;
 }
 
-const versionOne: RunProjection = {
+const versionOne: KeyedProjection = {
   ...openRequests,
   version: 1,
   columns: openRequests.columns.filter(({ name }) => name !== 'answer_schema'),

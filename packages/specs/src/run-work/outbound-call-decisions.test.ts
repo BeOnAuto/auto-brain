@@ -10,7 +10,7 @@ import type {
   OutboundCallFact,
 } from '../execution/execution-commands.ts';
 import { executionDecider } from '../execution/execution-decider.ts';
-import { answeredWithinDelivery } from '../execution/execution-decisions.ts';
+import { answeredThroughItsChannel } from '../execution/execution-decisions.ts';
 import type { ExecutionEvent } from '../execution/execution-events.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -110,7 +110,8 @@ describe('the end of a delivery', () => {
     expect(stateAfter(started, deferred, attemptStarted)).toMatchObject({ deliveryInFlight: 1 });
     expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({
       deliveryInFlight: null,
-      lastDelivery: { outcome: 'failed', at: during.at },
+      channelAnswer: null,
+      deliveredAt: null,
     });
   });
 });
@@ -156,8 +157,8 @@ describe('a run whose delivery answered', () => {
       decided(withTheAnswer, ...history),
       decided(withTheAnswer, started, deferred, attemptStarted, attemptEnded),
     ]).toMatchObject([
-      Result.fail(answeredWithinDelivery),
-      Result.fail(answeredWithinDelivery),
+      Result.fail(answeredThroughItsChannel),
+      Result.fail(answeredThroughItsChannel),
       Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
       Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
     ]);
@@ -173,7 +174,7 @@ describe('the end of a delivery that answered', () => {
     );
   });
 
-  it('is kept by the run as its last delivery, with the answer, for a cancel to settle from', () => {
+  it('is kept by the run as the answer its channel brought back, for a cancel to settle from', () => {
     const answered: ExecutionEvent = {
       ...ended,
       outcome: 'answered',
@@ -184,10 +185,22 @@ describe('the end of a delivery that answered', () => {
     };
 
     expect(stateAfter(started, deferred, attemptStarted, answered)).toMatchObject({
-      lastDelivery: { outcome: 'answered', answer: { choice: 'approve' }, at: during.at },
+      channelAnswer: { answer: { choice: 'approve' }, at: during.at },
+      deliveredAt: null,
     });
   });
 
+  it('is kept by the run as when it was delivered, without an answer, for a cancel of a notification', () => {
+    const delivered: ExecutionEvent = { ...ended, outcome: 'delivered', ...ofApproval, ...during };
+
+    expect(stateAfter(started, deferred, attemptStarted, delivered)).toMatchObject({
+      channelAnswer: null,
+      deliveredAt: during.at,
+    });
+  });
+});
+
+describe('the end of a delivery of a run that ended or starts again', () => {
   it('is refused once the run has ended, and of a run there is not', () => {
     expect(decided(recording(ended), started, deferred, attemptStarted, succeeded)).toEqual(Result.fail(noMoreWork));
     expect(decided(recording(attempt))).toEqual(Result.fail(noMoreWork));

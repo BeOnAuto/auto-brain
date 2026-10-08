@@ -9,7 +9,7 @@ import {
   defineQuery,
   partsOfCursor,
   type ProjectedCondition,
-  type ProjectedRunRow,
+  type ProjectedKeyedRow,
   type ProjectedValue,
 } from '@beonauto/operations';
 import { Effect, Option, Schema } from 'effect';
@@ -34,7 +34,7 @@ const InteractionSchema = Schema.Struct({
   attempts: Schema.Int.annotate({ description: 'The delivery attempts made so far' }),
   standing: StandingSchema.annotate({
     description:
-      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered within its delivery while its run is settled, or cancelling once a cancel was asked',
+      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered through its channel while its run is settled, or cancelling once a cancel was asked',
   }),
 }).annotate({ identifier: 'Interaction', description: 'An open request of an interaction function' });
 
@@ -71,11 +71,11 @@ function afterOf(cursor: string | undefined): Effect.Effect<readonly ProjectedVa
 
 const answerSchemaFrom = Schema.decodeUnknownSync(Schema.NullOr(Schema.fromJsonString(Schema.JsonObject)));
 
-function shownOf({ runId, row }: ProjectedRunRow) {
+function shownOf({ key, row }: ProjectedKeyedRow) {
   const kept = requestRowFrom(row);
   return [
     {
-      execution_id: runId,
+      execution_id: key,
       function: kept.function,
       version: kept.version,
       to: kept.party,
@@ -120,7 +120,7 @@ const listed = Effect.fnUntraced(function* ({ to, function: name, limit = defaul
   return {
     interactions: page.flatMap((kept) => shownOf(kept)),
     has_more: hasMore,
-    next_cursor: hasMore ? cursorOfParts([Number(last.row['requested_at']), last.runId]) : null,
+    next_cursor: hasMore ? cursorOfParts([Number(last.row['requested_at']), last.key]) : null,
   };
 });
 

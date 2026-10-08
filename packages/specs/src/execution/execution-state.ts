@@ -5,7 +5,7 @@ import type { ExecutionResult } from './execution-commands.ts';
 import type {
   CalledBy,
   CancelRequestKind,
-  DeliveryOutcome,
+  DeliveryEnded,
   ExecutionEvent,
   ExecutionFinished,
   ExecutionStarted,
@@ -18,9 +18,8 @@ export interface AskedCancel {
   readonly by: string;
 }
 
-export interface EndedDelivery {
-  readonly outcome: DeliveryOutcome;
-  readonly answer?: Schema.Json;
+export interface ChannelAnswer {
+  readonly answer: Schema.Json;
   readonly at: string;
 }
 
@@ -33,7 +32,8 @@ export interface RecordedExecution {
   readonly lastCall: number;
   readonly mayHaveChanged: boolean;
   readonly deliveryInFlight: number | null;
-  readonly lastDelivery: EndedDelivery | null;
+  readonly channelAnswer: ChannelAnswer | null;
+  readonly deliveredAt: string | null;
   readonly cancel?: AskedCancel;
   readonly depth: number;
   readonly callDepth: number;
@@ -71,7 +71,8 @@ function startedExecution(event: ExecutionStarted, earlier: ExecutionState): Rec
     lastCall: earlier?.lastCall ?? 0,
     mayHaveChanged: earlier?.mayHaveChanged ?? false,
     deliveryInFlight: null,
-    lastDelivery: null,
+    channelAnswer: null,
+    deliveredAt: null,
     depth,
     callDepth,
     ...(calledBy === undefined ? {} : { calledBy }),
@@ -115,6 +116,14 @@ function finishedExecution(state: RecordedExecution, event: ExecutionFinished): 
   return record === undefined ? finished : { ...finished, record };
 }
 
+function endedDelivery(state: RecordedExecution, { outcome, answer, at }: DeliveryEnded): RecordedExecution {
+  const ended = { ...state, deliveryInFlight: null };
+  if (answer !== undefined) {
+    return { ...ended, channelAnswer: { answer, at } };
+  }
+  return outcome === 'delivered' ? { ...ended, deliveredAt: at } : ended;
+}
+
 function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, ExecutionStarted>): RecordedExecution {
   if (event.type === 'tool_call_started') {
     return { ...state, lastCall: event.number, mayHaveChanged: true };
@@ -123,12 +132,7 @@ function evolveStarted(state: RecordedExecution, event: Exclude<ExecutionEvent, 
     return { ...state, lastCall: event.number, deliveryInFlight: event.number };
   }
   if (event.type === 'delivery_ended') {
-    const { outcome, answer, at } = event;
-    return {
-      ...state,
-      deliveryInFlight: null,
-      lastDelivery: answer === undefined ? { outcome, at } : { outcome, answer, at },
-    };
+    return endedDelivery(state, event);
   }
   if (event.type === 'tool_call_answered') {
     return state;
