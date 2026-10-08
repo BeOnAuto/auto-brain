@@ -40,5 +40,8 @@ export function writtenOf({ server, tool }: ToolReference): string {
   return `${server}/${tool}`;
 }
 
-export const toolReferenceShape =
-  'server/tool, or server/* for every tool of a server: a server name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter, and a tool name of 1 to 128 letters, digits, underscores, hyphens and dots';
+export const serverNameShape = 'a server name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter';
+
+export const toolNameShape = 'a tool name of 1 to 128 letters, digits, underscores, hyphens and dots';
+
+export const toolReferenceShape = `server/tool, or server/* for every tool of a server: ${serverNameShape}, and ${toolNameShape}`;

@@ -9,7 +9,7 @@ import { cancelledRequest } from './request-cancels.ts';
 
 export function makeInteractionFunctionAdapter(ports: InteractionPorts): Primitive {
   const run = interactionRun(ports);
-  const reachesOutside = ports.channels.channels.size > 0;
+  const reachesOutside = ports.tools.configured;
   return definePrimitive({
     name: interactionPrimitive,
     title: functionCategoryLabels.interact,

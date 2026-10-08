@@ -14,19 +14,21 @@ function documentWith(frontMatter: readonly string[], body = 'Approve {{ input.c
   return ['---', ...frontMatter, '---', body].join('\n');
 }
 
-const essentials = ['channel: approvals', "to: '{{ input.owner }}'", 'expires: P2D'];
+const essentials = ["to: '{{ input.owner }}'", 'expires: P2D'];
+
+const keys = 'description, to, expires, deliver, replies, input, output';
 
 describe('an interaction function definition', () => {
-  it('reads its channel, party, expiry, schemas and message', () => {
-    const parsed = Result.getOrThrow(parseInteractionDocument(approvalDocument('approvals')));
+  it('reads its party, expiry, schemas and message, and waits in the inbox without deliver', () => {
+    const parsed = Result.getOrThrow(parseInteractionDocument(approvalDocument()));
 
     expect(parsed).toMatchObject({
       description: 'Ask the campaign owner to approve a brief',
-      channel: 'approvals',
       expires: 'P2D',
       expiresMs: 172_800_000,
       output: { schema: { document: { required: ['choice'] } } },
     });
+    expect(parsed.route).toBeUndefined();
     expect(parsed.to.variables.map(({ path }) => path)).toEqual([['input', 'owner']]);
     expect(parsed.message.variables.map(({ path }) => path)).toEqual([['input', 'campaign']]);
   });
@@ -35,70 +37,59 @@ describe('an interaction function definition', () => {
     expect(Result.getOrThrow(parseInteractionDocument(notificationDocument())).output).toEqual({});
   });
 
-  it.each(['model', 'tools', 'language', 'config'])(
-    'refuses %s, which only other functions take, with its line',
+  it.each(['channel', 'model', 'tools', 'language', 'config'])(
+    'refuses %s, a key it does not take, with its line',
     (key) => {
       expect(problemsOf(documentWith([...essentials, `${key}: x`]))).toEqual([
-        `Line 5, /${key}: ${key} is not a key of the front matter; it takes description, channel, to, expires, input, output`,
+        `Line 4, /${key}: ${key} is not a key of the front matter; it takes ${keys}`,
       ]);
     },
   );
 });
 
 function expiresOf(expires: string): number {
-  return Result.getOrThrow(parseInteractionDocument(documentWith(['channel: inbox', "to: 'x'", `expires: ${expires}`])))
-    .expiresMs;
+  return Result.getOrThrow(parseInteractionDocument(documentWith(["to: 'x'", `expires: ${expires}`]))).expiresMs;
 }
 
 describe('the expiry of a definition', () => {
   it('takes one minute and thirty days exactly, the bounds of a request', () => {
     expect([expiresOf('PT1M'), expiresOf('P30D')]).toEqual([60_000, 2_592_000_000]);
   });
+
+  it('refuses an expiry outside its bounds or not a duration', () => {
+    const bounds = 'A request expires after a duration from one minute to thirty days, such as P2D or PT4H';
+
+    expect([
+      problemsOf(documentWith(["to: 'x'", 'expires: PT30S'])),
+      problemsOf(documentWith(["to: 'x'", 'expires: P31D'])),
+      problemsOf(documentWith(["to: 'x'", 'expires: two days'])),
+    ]).toEqual([
+      [`Line 3, /expires: PT30S is not a time a request may wait. ${bounds}`],
+      [`Line 3, /expires: P31D is not a time a request may wait. ${bounds}`],
+      [`Line 3, /expires: two days is not an ISO 8601 duration. ${bounds}`],
+    ]);
+  });
 });
 
 describe('the refusals of a definition', () => {
-  it('refuse a channel name that is not one, and an expiry outside its bounds or not a duration', () => {
-    expect([
-      problemsOf(documentWith(['channel: Approvals!', "to: 'x'", 'expires: P2D'])),
-      problemsOf(documentWith(['channel: inbox', "to: 'x'", 'expires: PT30S'])),
-      problemsOf(documentWith(['channel: inbox', "to: 'x'", 'expires: P31D'])),
-      problemsOf(documentWith(['channel: inbox', "to: 'x'", 'expires: two days'])),
-    ]).toEqual([
-      [
-        'Line 2, /channel: Approvals! is not a channel name: inbox, or 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
-      ],
-      [
-        'Line 4, /expires: PT30S is not a time a request may wait. A request expires after a duration from one minute to thirty days, such as P2D or PT4H',
-      ],
-      [
-        'Line 4, /expires: P31D is not a time a request may wait. A request expires after a duration from one minute to thirty days, such as P2D or PT4H',
-      ],
-      [
-        'Line 4, /expires: two days is not an ISO 8601 duration. A request expires after a duration from one minute to thirty days, such as P2D or PT4H',
-      ],
-    ]);
-  });
-
   it('refuse a party or a message that does not compile, or reads what a request does not have', () => {
     expect([
-      problemsOf(documentWith(['channel: inbox', "to: '{{ input.owner'", 'expires: P2D'])),
-      problemsOf(documentWith(['channel: inbox', "to: '{{ owner }}'", 'expires: P2D'])),
+      problemsOf(documentWith(["to: '{{ input.owner'", 'expires: P2D'])),
+      problemsOf(documentWith(["to: '{{ owner }}'", 'expires: P2D'])),
       problemsOf(documentWith(essentials, 'Hello {{ person }}')),
       problemsOf(documentWith(essentials, 'Hello {% if %}')),
     ]).toEqual([
-      [expect.stringMatching(/^Line 3, \/to: /u)],
+      [expect.stringMatching(/^Line 2, \/to: /u)],
       [
-        'Line 3, /to: owner is not a variable of the party of a request, which reads input, today and now; assign it first',
+        'Line 2, /to: owner is not a variable of the party of a request, which reads input, today and now; assign it first',
       ],
       [
-        'Line 6: person is not a variable of the message of a request, which reads input, today and now; assign it first',
+        'Line 5: person is not a variable of the message of a request, which reads input, today and now; assign it first',
       ],
-      [expect.stringMatching(/^Line 6: /u)],
+      [expect.stringMatching(/^Line 5: /u)],
     ]);
   });
-});
 
-describe('the refusals of what a definition reads', () => {
   it('refuse a property a closed input schema does not have, in the party and in the message', () => {
     const closed = [
       'input:',
@@ -106,45 +97,37 @@ describe('the refusals of what a definition reads', () => {
     ];
 
     expect(problemsOf(documentWith([...essentials, ...closed], 'For {{ input.campaign }}'))).toEqual([
-      'Line 8: input.campaign is not a property of the input schema, which allows no others',
-    ]);
-  });
-
-  it('refuse a definition without a message, a schema that is not one, and front matter of the wrong types', () => {
-    expect([
-      problemsOf(documentWith(essentials, '  ')),
-      problemsOf(documentWith([...essentials, 'output:', '  schema: { type: thing }'])),
-      problemsOf(documentWith(['channel: 3', "to: 'x'", 'expires: P2D'], '')),
-      problemsOf('channel: inbox'),
-      problemsOf('---\n---\nHello'),
-    ]).toEqual([
-      ['Line 6: The definition has no message: write it after the front matter'],
-      [expect.stringMatching(/^Line 6, \/output\/schema/u)],
-      ['Line 2, /channel: Expected string', 'Line 6: The definition has no message: write it after the front matter'],
-      [
-        'Line 1: An interaction function definition starts with a line of three dashes (---) that opens its front matter of YAML',
-      ],
-      [expect.stringContaining('the channel, the party it goes to and when it expires')],
+      'Line 7: input.campaign is not a property of the input schema, which allows no others',
     ]);
   });
 });
 
-describe('a definition past the bounds of a template, or with an input schema that is not one', () => {
+describe('the refusals of the form of a definition', () => {
+  it('refuse a definition without a message, a schema that is not one, and front matter of the wrong types', () => {
+    expect([
+      problemsOf(documentWith(essentials, '  ')),
+      problemsOf(documentWith([...essentials, 'output:', '  schema: { type: thing }'])),
+      problemsOf(documentWith(['to: 3', 'expires: P2D'], '')),
+      problemsOf("to: 'x'"),
+      problemsOf('---\n---\nHello'),
+    ]).toEqual([
+      ['Line 5: The definition has no message: write it after the front matter'],
+      [expect.stringMatching(/^Line 5, \/output\/schema/u)],
+      ['Line 2, /to: Expected string', 'Line 5: The definition has no message: write it after the front matter'],
+      [
+        'Line 1: An interaction function definition starts with a line of three dashes (---) that opens its front matter of YAML',
+      ],
+      [expect.stringContaining('the party it goes to and when it expires')],
+    ]);
+  });
+
   it('refuses a message of more than 1,000 names, and an input schema it cannot compile', () => {
     expect([
       problemsOf(documentWith(essentials, '{{ input.a }}'.repeat(600))),
-      problemsOf(
-        documentWith([
-          'channel: inbox',
-          "to: '{{ input.owner }}'",
-          'expires: P2D',
-          'input:',
-          '  schema: { type: thing }',
-        ]),
-      ),
+      problemsOf(documentWith([...essentials, 'input:', '  schema: { type: thing }'])),
     ]).toEqual([
       [expect.stringContaining('A template may use at most 1000 names')],
-      [expect.stringMatching(/^Line 6, \/input\/schema/u)],
+      [expect.stringMatching(/^Line 5, \/input\/schema/u)],
     ]);
   });
 });

@@ -1,7 +1,7 @@
 import { Conflict, NotFound, RunCancelled, type Rejection } from '@beonauto/operations';
 import { Equal, Result } from 'effect';
 
-import { decideOutboundCall, decideToolCall, ofTheDefinition } from '../run-work/work-decisions.ts';
+import { decideOutboundCall, decideReply, decideToolCall, ofTheDefinition } from '../run-work/work-decisions.ts';
 import type {
   CommandMetadata,
   ExecutionCancel,
@@ -211,12 +211,12 @@ function decideFinish({ result, by, at }: ExecutionFinish & CommandMetadata, sta
 
 export const endedWithAnotherResult = new Conflict({ detail: 'The run already ended with another result' });
 
-export const answeredThroughItsChannel = new Conflict({
-  detail: 'The run was answered through its channel, so that answer alone settles it',
+export const answeredByAReply = new Conflict({
+  detail: 'The run was answered by a reply, so that answer alone settles it',
 });
 
-function answeredOtherwise({ channelAnswer }: RecordedExecution, { result }: ExecutionSettlement): boolean {
-  return channelAnswer !== null && !succeedsWith(result, channelAnswer.answer);
+function answeredOtherwise({ broughtAnswer }: RecordedExecution, { result }: ExecutionSettlement): boolean {
+  return broughtAnswer !== null && !succeedsWith(result, broughtAnswer.answer);
 }
 
 function settledAlready(state: RecordedExecution, settlement: ExecutionSettlement): Decision {
@@ -233,7 +233,7 @@ function decideSettlement(settlement: ExecutionSettlement, state: ExecutionState
     return settledAlready(state, settlement);
   }
   if (answeredOtherwise(state, settlement)) {
-    return Result.fail(answeredThroughItsChannel);
+    return Result.fail(answeredByAReply);
   }
   const { result, by, at } = settlement;
   return takesSettlement(state)
@@ -284,6 +284,9 @@ export function decideOnExecution(command: ExecutionCommand, state: ExecutionStr
   }
   if (command.type === 'outbound_call') {
     return decideOutboundCall(command, run);
+  }
+  if (command.type === 'reply') {
+    return decideReply(command, run);
   }
   return command.type === 'finish' ? decideFinish(command, run) : decideSettlement(command, run);
 }

@@ -68,23 +68,15 @@ export function renderedPart(
   });
 }
 
-export interface PartyRule {
-  readonly channel: string;
-  readonly allowsParty: (party: string) => boolean;
-}
-
-export function checkedParty(party: string, rule: PartyRule): Effect.Effect<string, Conflict> {
+export function checkedParty(party: string): Effect.Effect<string, Conflict> {
   if (party.trim() === '') {
     return Effect.fail(unworkable('/to', 'The party the request goes to renders to nothing'));
   }
-  if (!isPartyText(party)) {
-    return Effect.fail(
-      unworkable('/to', 'The party the request goes to holds a control character, or another a party may not hold'),
-    );
-  }
-  return rule.allowsParty(party)
+  return isPartyText(party)
     ? Effect.succeed(party)
-    : Effect.fail(unworkable('/to', `The party the request goes to is not one the channel “${rule.channel}” allows`));
+    : Effect.fail(
+        unworkable('/to', 'The party the request goes to holds a control character, or another a party may not hold'),
+      );
 }
 
 export const toPart = { pointer: '/to', what: 'The party the request goes to', mostBytes: interactionBounds.toBytes };

@@ -55,10 +55,11 @@ export function deferredCanceller(
       }
       const primitive = primitives.find(({ name }) => name === state.execution.primitive);
       const settlement = yield* decided(primitive, {
+        execution,
         record: state.record ?? {},
         kind,
         reason,
-        channelAnswer: state.channelAnswer,
+        broughtAnswer: state.broughtAnswer,
         deliveredAt: state.deliveredAt,
       });
       const actor = settlement.by ?? by ?? brainCallerOf(execution).id;

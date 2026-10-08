@@ -1,0 +1,73 @@
+import { chatDelivery } from '@beonauto/interaction/testing';
+import { Schema } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { chatEnvironment, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
+import { brief, servingInteractions } from '../testing/servers/interaction-server.ts';
+import { alpha } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/servers/workflow-calls.ts';
+import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+
+const decodeHistory = Schema.decodeUnknownSync(
+  Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),
+);
+
+const namingTheTool: unknown = expect.stringContaining('post_message');
+
+function asked(server: Awaited<ReturnType<typeof servingInteractions>>) {
+  return server.call('POST', `${alpha}/specs/interaction/approve-brief/execute`, {
+    body: { input: brief, execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
+  });
+}
+
+async function refusedThrough(environment: Readonly<Record<string, string>>) {
+  const server = await servingInteractions(chatDelivery, environment);
+  const refusal = await asked(server);
+  const history = await server.call('GET', `${alpha}/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/history`);
+  return { refusal: refusal.body, types: decodeHistory(history.body).events.map(({ type }) => type) };
+}
+
+describe('a delivery through a tool this brain may not use, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+  it('ends its run unavailable at the start, before anything is asked, in the words of the tool servers', async () => {
+    const chat = await chatServer();
+
+    const refusals = await Promise.all([
+      refusedThrough({}),
+      refusedThrough(chatEnvironment(chat.url, { org: 'globex' })),
+      refusedThrough(chatEnvironment(chat.url, { allowed: ['echo'] })),
+    ]);
+
+    expect(refusals).toMatchObject([
+      {
+        refusal: { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
+        types: ['execution_started', 'execution_rejected'],
+      },
+      { refusal: { detail: 'No MCP server named chat is configured for this brain' } },
+      {
+        refusal: {
+          because: 'tool_not_allowed',
+          detail: 'The operator of this server does not allow chat/post_message',
+        },
+        types: ['execution_started', 'execution_rejected'],
+      },
+    ]);
+    expect(chat.received()).toEqual([]);
+  });
+
+  it('fails an attempt as a tool error when the server no longer lists the tool, and tries again', async () => {
+    const chat = await chatServer();
+    chat.removeTool('post_message');
+    const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
+    const runId = await server.ask('approve-brief');
+
+    const facts = await until(
+      () => deliveryHistoryOf(server, runId),
+      (seen) => seen.length >= 2,
+    );
+
+    expect(facts.at(-1)).toMatchObject({ outcome: 'failed', because: 'tool_error', detail: namingTheTool });
+    expect((await server.call('GET', `${alpha}/interactions`)).body).toMatchObject({
+      interactions: [{ standing: 'retrying' }],
+    });
+  });
+});

@@ -15,14 +15,17 @@ import {
 import { Effect, Option, Schema } from 'effect';
 
 import { openRequestsName } from './open-requests.ts';
-import { StandingSchema, requestRowFrom } from './request-rows.ts';
+import { StandingSchema, requestRowFrom, routeOfRow, type OpenRequestRow } from './request-rows.ts';
 
 const InteractionSchema = Schema.Struct({
   execution_id: Schema.String.annotate({ description: 'The run of the request, to answer with answer_interaction' }),
   function: Schema.String.annotate({ description: 'The interaction function that asked' }),
   version: Schema.Int.annotate({ description: 'The version of the function that asked' }),
   to: Schema.String.annotate({ description: 'The party the request goes to' }),
-  channel: Schema.String.annotate({ description: 'The channel the request goes through, or inbox' }),
+  delivery: Schema.NullOr(Schema.Struct({ server: Schema.String, tool: Schema.String })).annotate({
+    description:
+      'The tool the function delivers the request through, as its deliver names it, or null for a request waiting in the inbox',
+  }),
   message: Schema.String.annotate({ description: 'The message of the request' }),
   takes_answer: Schema.Boolean.annotate({ description: 'true for a question, false for a notification' }),
   answer_schema: Schema.NullOr(Schema.JsonObject).annotate({
@@ -34,7 +37,7 @@ const InteractionSchema = Schema.Struct({
   attempts: Schema.Int.annotate({ description: 'The delivery attempts made so far' }),
   standing: StandingSchema.annotate({
     description:
-      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered through its channel while its run is settled, or cancelling once a cancel was asked',
+      'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered by a reply while its run is settled, or cancelling once a cancel was asked',
   }),
 }).annotate({ identifier: 'Interaction', description: 'An open request of an interaction function' });
 
@@ -43,7 +46,7 @@ const requestNoun = { one: 'request', other: 'requests' };
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
 const description = [
-  'Lists the open requests of the brain, newest first: what each interaction function asked, of whom, through which channel,',
+  'Lists the open requests of the brain, newest first: what each interaction function asked, of whom, through which tool, or in the inbox,',
   'until when and how its delivery stands, with the `execution_id` that answer_interaction takes.',
   'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked,',
   'which get_spec may no longer show; null for a notification.',
@@ -71,6 +74,11 @@ function afterOf(cursor: string | undefined): Effect.Effect<readonly ProjectedVa
 
 const answerSchemaFrom = Schema.decodeUnknownSync(Schema.NullOr(Schema.fromJsonString(Schema.JsonObject)));
 
+function deliveryShown(kept: OpenRequestRow) {
+  const route = routeOfRow(kept);
+  return route.kind === 'inbox' ? null : route.delivery;
+}
+
 function shownOf({ key, row }: ProjectedKeyedRow) {
   const kept = requestRowFrom(row);
   return [
@@ -79,7 +87,7 @@ function shownOf({ key, row }: ProjectedKeyedRow) {
       function: kept.function,
       version: kept.version,
       to: kept.party,
-      channel: kept.channel,
+      delivery: deliveryShown(kept),
       message: kept.message,
       takes_answer: kept.answers,
       answer_schema: answerSchemaFrom(kept.answer_schema),

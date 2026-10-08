@@ -1,13 +1,7 @@
 import { Schema } from 'effect';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import {
-  CallerIdentitySchema,
-  brainCallerOf,
-  canAccessBrain,
-  requestTokenCallerOf,
-  type CallerIdentity,
-} from '../index.ts';
+import { CallerIdentitySchema, brainCallerOf, canAccessBrain, type CallerIdentity } from '../index.ts';
 
 const isCallerIdentity = Schema.is(CallerIdentitySchema);
 
@@ -30,18 +24,6 @@ describe('a caller identity', () => {
 
   it.each(malformed)('rejects %s', (_case, identity) => {
     expect(isCallerIdentity(identity)).toBe(false);
-  });
-
-  it('carries the token of a request it presented, which no stored caller schema keeps', () => {
-    const holder = requestTokenCallerOf('acme', 'abc');
-
-    expect(holder).toEqual({ id: 'request-token', org: 'acme', permissions: [], brains: [], requestToken: 'abc' });
-    expect(Schema.decodeUnknownSync(CallerIdentitySchema)(holder)).toEqual({
-      id: 'request-token',
-      org: 'acme',
-      permissions: [],
-      brains: [],
-    });
   });
 });
 

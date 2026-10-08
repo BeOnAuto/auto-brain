@@ -63,13 +63,34 @@ const outlines: readonly RecipeOutline[] = [
   },
 ];
 
-function textOf({ name }: RecipeOutline): string {
-  return readFileSync(new URL(`recipes/${name}.md`, import.meta.url), 'utf8');
+interface Insertion {
+  readonly after: string;
+  readonly words: string;
+}
+
+const interactionGuide = 'interaction-function';
+
+const whereInteractionIsServed: Readonly<Record<string, Insertion>> = {
+  'give-tools': {
+    after: 'and which of them it needs.',
+    words:
+      ' When the brain should send a person a message through a tool and take their answer, write an interaction function instead: the interaction-function guide says how it names the tool it sends through and the tool it reads replies with, each tested the same way.',
+  },
+  'first-brain': {
+    after: 'give it tools with the give-tools recipe',
+    words: ', send someone a message through a tool and take their answer with an interaction function',
+  },
+};
+
+function textOf({ name }: RecipeOutline, carried: ReadonlySet<string>): string {
+  const text = readFileSync(new URL(`recipes/${name}.md`, import.meta.url), 'utf8');
+  const insertion = carried.has(interactionGuide) ? whereInteractionIsServed[name] : undefined;
+  return insertion === undefined ? text : text.replace(insertion.after, `${insertion.after}${insertion.words}`);
 }
 
 export function recipesFor(guides: readonly Guide[]): readonly Recipe[] {
   const carried = new Set(guides.map(({ name }) => name));
   return outlines
     .filter(({ formatGuide }) => carried.has(formatGuide))
-    .map((outline) => Object.assign({ text: textOf(outline) }, outline));
+    .map((outline) => Object.assign({ text: textOf(outline, carried) }, outline));
 }

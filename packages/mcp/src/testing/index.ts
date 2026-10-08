@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defaultTiming, type Timing } from '../bounds/call-bounds.ts';
 
 export { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer, type SeenRequest } from './fake-mcp-server.ts';
+export { chatBot, type ChatMessage, type FakeChat } from './fake-chat.ts';
 export type { ClientRegistration } from './fake-authorization.ts';
 export {
   deniedText,

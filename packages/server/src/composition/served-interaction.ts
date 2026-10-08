@@ -1,6 +1,6 @@
 import type { AppRuntime } from '@beonauto/api';
 import {
-  defineAnswerInteraction,
+  answerInteraction,
   listInteractions,
   makeInteractionFunctionAdapter,
   openRequestsName,
@@ -23,17 +23,16 @@ export interface ServedInteraction {
 export function interactionServedBy(
   runtime: AppRuntime<DispatcherServices>,
   { interaction }: Pick<Settings, 'interaction'>,
-  tools: Pick<ToolAccess, 'callOnce'>,
+  tools: Pick<ToolAccess, 'named' | 'configured' | 'startOf' | 'callOnce'>,
 ): ServedInteraction {
   const ledger = runtimeLedger(runtime);
-  const { channels, mostOpenRequests, origin } = interaction;
   return {
     primitive: makeInteractionFunctionAdapter({
-      channels,
+      tools,
       openRequests: (brain) => ledger.countProjectedRows(openRequestsName, brain, [{ column: 'open', equals: true }]),
-      mostOpenRequests,
+      mostOpenRequests: interaction.mostOpenRequests,
     }),
-    operations: [defineAnswerInteraction(channels), listInteractions],
-    dueWork: requestsDue({ ledger, channels, tools, origin }),
+    operations: [answerInteraction, listInteractions],
+    dueWork: requestsDue({ ledger, tools }),
   };
 }

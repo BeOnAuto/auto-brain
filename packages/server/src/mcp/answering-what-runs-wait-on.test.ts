@@ -18,9 +18,14 @@ const inMeetings = { brain: 'meetings' };
 const approvingTheDraft = [
   '---',
   "description: Asks the owner to approve the month's draft",
-  'channel: team-chat',
   "to: '{{ input.owner }}'",
   'expires: P2D',
+  'deliver:',
+  '  server: chat',
+  '  tool: post_message',
+  '  with:',
+  "    channel: '#drafts'",
+  "    text: '{{ message }}'",
   'input:',
   '  schema:',
   '    type: object',
@@ -52,7 +57,7 @@ const draftingEachMonth = workflowSource(
 );
 
 beforeAll(async () => {
-  meetings = await servingMeetings([]);
+  meetings = await servingMeetings([], { chat: true });
   await meetings.onMcp(async (session) => {
     await session.callTool('create_brain', { ...inMeetings, name: 'Meetings' });
     await session.callTool('create_spec', {
@@ -78,7 +83,7 @@ const OpenRequestsSchema = Schema.Struct({
   interactions: Schema.Array(
     Schema.Struct({
       execution_id: Schema.String,
-      channel: Schema.String,
+      delivery: Schema.NullOr(Schema.Struct({ server: Schema.String, tool: Schema.String })),
       message: Schema.String,
       standing: Schema.String,
       answer_schema: Schema.NullOr(Schema.JsonObject),
@@ -92,11 +97,13 @@ const draftAnswerSchema = {
   properties: { decision: { type: 'string', enum: ['approve', 'revise', 'skip'] }, note: { type: 'string' } },
 };
 
-const decodeAnswerSchemaField = Schema.decodeUnknownSync(
+const Described = Schema.Struct({ description: Schema.String });
+
+const decodeListedFields = Schema.decodeUnknownSync(
   Schema.Struct({
     $defs: Schema.Struct({
       Interaction: Schema.Struct({
-        properties: Schema.Struct({ answer_schema: Schema.Struct({ description: Schema.String }) }),
+        properties: Schema.Struct({ answer_schema: Described, delivery: Described }),
       }),
     }),
   }),
@@ -157,7 +164,7 @@ async function approvedThenNextMonth(session: McpSession) {
 }
 
 describe(
-  'episode 7: the person approves, in the chat, a draft a workflow sent through a channel',
+  'episode 7: the person approves, in the chat, a draft a workflow sent through a tool',
   { timeout: workflowTestTimeoutMs },
   () => {
     it('finds in the instructions, answer_interaction and the guide that the answer goes to the waiting request, and nothing that says to wait in a loop', async () => {
@@ -182,8 +189,8 @@ describe(
     it('answers the request the person approved, which ends the run that waited, and starts a new run only for the next month', async () => {
       const outcome = await meetings.onMcp(approvedThenNextMonth);
 
-      expect([outcome.asked?.channel, outcome.asked?.message, outcome.asked?.answer_schema]).toEqual([
-        'team-chat',
+      expect([outcome.asked?.delivery, outcome.asked?.message, outcome.asked?.answer_schema]).toEqual([
+        { server: 'chat', tool: 'post_message' },
         'Here is the draft for September: approve, revise or skip?',
         draftAnswerSchema,
       ]);
@@ -196,6 +203,10 @@ describe(
       expect(outcome.openForOctober.map(({ message }) => message)).toEqual([
         'Here is the draft for October: approve, revise or skip?',
       ]);
+      expect(meetings.chat?.chat.posted().map(({ text }) => text)).toEqual([
+        'Here is the draft for September: approve, revise or skip?',
+        'Here is the draft for October: approve, revise or skip?',
+      ]);
     });
   },
 );
@@ -204,7 +215,7 @@ describe('the shape of the answer an open request takes, as the agent reads it',
   it('is on each listed request, described within the bounds the server holds texts to', () => {
     const description = descriptionIn(meetings.surfaces, 'list_interactions');
     const listing = meetings.surfaces.tools.find(({ name }) => name === 'list_interactions');
-    const field = decodeAnswerSchemaField(listing?.outputSchema).$defs.Interaction.properties.answer_schema;
+    const fields = decodeListedFields(listing?.outputSchema).$defs.Interaction.properties;
 
     expect(sentenceNaming(description, 'answer_schema')).toBe(
       'Each carries its `answer_schema`, the shape answer_interaction checks an answer against, as recorded when it was asked, which get_spec may no longer show; null for a notification.',
@@ -212,10 +223,14 @@ describe('the shape of the answer an open request takes, as the agent reads it',
     expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
       "`answer` takes the shape of the request's answer_schema, which list_interactions shows,",
     );
-    expect([description.length < 800, sentencesOf(description).length, field.description.length < 300]).toEqual([
-      true,
-      5,
-      true,
-    ]);
+    expect([
+      description.length,
+      sentencesOf(description).length,
+      fields.answer_schema.description.length < 300,
+    ]).toEqual([724, 5, true]);
+    expect(fields.delivery.description).toBe(
+      'The tool the function delivers the request through, as its deliver names it, or null for a request waiting in the inbox',
+    );
+    expect(fields.delivery.description).toHaveLength(119);
   });
 });

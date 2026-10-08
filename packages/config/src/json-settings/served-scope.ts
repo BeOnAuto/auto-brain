@@ -30,14 +30,6 @@ export function servesBrain({ org, brains }: ServedScope, address: ServedAddress
   return org === address.org && (brains === null || brains.includes(address.brain));
 }
 
-export function liesWithin(inner: ServedScope, outer: ServedScope): boolean {
-  if (inner.org !== outer.org) {
-    return false;
-  }
-  const { brains } = outer;
-  return brains === null || (inner.brains !== null && inner.brains.every((brain) => brains.includes(brain)));
-}
-
 function orgProblems(
   setting: string,
   entry: string,

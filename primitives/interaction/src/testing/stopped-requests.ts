@@ -1,8 +1,8 @@
 import { Effect, Exit, Schema } from 'effect';
 
 import type { RequestLedger } from '../schedule/request-ledger.ts';
+import type { AskedRequest } from './asked-requests.ts';
 import { dueInBothLanes } from './harness-parts.ts';
-import type { AskedRequest } from './webhook-requests.ts';
 
 const isOutboundCall = Schema.is(Schema.Struct({ type: Schema.Literal('outbound_call') }));
 

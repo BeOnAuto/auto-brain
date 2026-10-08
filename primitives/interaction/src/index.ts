@@ -1,14 +1,10 @@
 export type { InteractionFunctionDefinitionDocument } from './document/interaction-document.ts';
-export { ChannelSettingsInvalid, readChannelSettings } from './channels/channels-reading.ts';
-export type { ChannelContext, OfferedServer } from './channels/channel-checks.ts';
-export { ChannelsSchema } from './channels/channel-entries.ts';
-export { noChannels, type Channel, type ChannelSettings } from './channels/channel-settings.ts';
 export { requestsDue, type RequestsDue } from './schedule/due-requests.ts';
 export type { DeliveryParts } from './schedule/delivery-parts.ts';
 export type { RequestLedger } from './schedule/request-ledger.ts';
 export { makeInteractionFunctionAdapter } from './primitive/interaction-function.ts';
 export { interactionPrimitive } from './primitive/primitive-name.ts';
-export { defineAnswerInteraction } from './requests/answer-interaction.ts';
+export { answerInteraction } from './requests/answer-interaction.ts';
 export { listInteractions } from './requests/list-interactions.ts';
 export { openRequests, openRequestsName } from './requests/open-requests.ts';
 export type { InteractionPorts } from './run/request-reach.ts';

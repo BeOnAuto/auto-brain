@@ -18,13 +18,25 @@ const inputSchema = [
   '      owner: { type: string }',
 ];
 
-export function approvalDocument(channel = 'inbox', expires = 'P2D'): string {
+export const chatDelivery: readonly string[] = [
+  'deliver:',
+  '  server: chat',
+  '  tool: post_message',
+  '  with:',
+  "    channel: '#approvals-{{ to }}'",
+  "    text: '{{ message }}'",
+  '  sent:',
+  '    conversation: /channel',
+  '    id: /ts',
+];
+
+export function approvalDocument(delivery: readonly string[] = [], expires = 'P2D'): string {
   return [
     '---',
     'description: Ask the campaign owner to approve a brief',
-    `channel: ${channel}`,
     "to: '{{ input.owner }}'",
     `expires: ${expires}`,
+    ...delivery,
     ...inputSchema,
     ...answerSchema,
     '---',
@@ -32,12 +44,12 @@ export function approvalDocument(channel = 'inbox', expires = 'P2D'): string {
   ].join('\n');
 }
 
-export function notificationDocument(channel = 'inbox', expires = 'PT1H'): string {
+export function notificationDocument(delivery: readonly string[] = [], expires = 'PT1H'): string {
   return [
     '---',
-    `channel: ${channel}`,
     "to: '{{ input.owner }}'",
     `expires: ${expires}`,
+    ...delivery,
     ...inputSchema,
     '---',
     'The brief for {{ input.campaign }} is out.',

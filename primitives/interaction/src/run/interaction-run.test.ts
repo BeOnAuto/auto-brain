@@ -5,11 +5,13 @@ import { Effect, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { listInteractions } from '../requests/list-interactions.ts';
-import { approvalDocument, interactionHarness, notificationDocument, webhookChannels } from '../testing/index.ts';
+import { approvalDocument, interactionHarness, notificationDocument } from '../testing/index.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const otherRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
+
+const anyText: unknown = expect.any(String);
 
 function containing(text: string): unknown {
   return expect.stringContaining(text);
@@ -28,23 +30,12 @@ const aRun: RunContext = {
   longestRunOf: noLongestRuns,
 };
 
-function openDocument(to: string, message: string, channel = 'inbox'): string {
-  return [
-    '---',
-    `channel: ${channel}`,
-    `to: '${to}'`,
-    'expires: P1D',
-    'output:',
-    '  schema: { type: object }',
-    '---',
-    message,
-  ].join('\n');
+function openDocument(to: string, message: string): string {
+  return ['---', `to: '${to}'`, 'expires: P1D', 'output:', '  schema: { type: object }', '---', message].join('\n');
 }
 
-async function askedWith(source: string, input: unknown, channel?: string) {
-  const brain = interactionHarness(
-    channel === undefined ? {} : { channels: webhookChannels('https://partner.example.com/requests') },
-  );
+async function askedWith(source: string, input: unknown) {
+  const brain = interactionHarness();
   await brain.define('ask', source);
   return brain.ask('ask', input, runId);
 }
@@ -59,32 +50,23 @@ describe('a notification to the inbox', () => {
       output: { status: 'succeeded', output: {} },
     });
     expect(await brain.runOf(runId)).toMatchObject({
-      output: { record: { channel: 'inbox', to: 'ada', message: 'The brief for Spring is out.' } },
+      output: { record: { to: 'ada', message: 'The brief for Spring is out.', requested_at: anyText } },
     });
     expect(await brain.call(listInteractions, {})).toMatchObject({ output: { interactions: [] } });
   });
 });
 
 describe('a run that cannot ask now', () => {
-  it('is unavailable through a channel the server does not offer, or when the brain holds all the requests it may', async () => {
+  it('is unavailable when the brain holds all the requests it may', async () => {
     const brain = interactionHarness({ mostOpenRequests: 1 });
     await brain.define('approve', approvalDocument());
-    await brain.define('elsewhere', approvalDocument('partner'));
     await brain.ask('approve', { campaign: 'Spring', owner: 'ada' }, runId);
 
-    expect([
-      await brain.ask('approve', { campaign: 'Autumn', owner: 'ada' }, otherRunId),
-      await brain.ask('elsewhere', { campaign: 'Autumn', owner: 'ada' }, '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7c'),
-    ]).toMatchObject([
-      { status: 'rejected', reason: 'unavailable', kind: 'requests_full' },
-      {
-        status: 'rejected',
-        reason: 'unavailable',
-        kind: 'channel_not_offered',
-        detail:
-          'The interaction function asks through the channel “partner”, which this server does not offer to this brain',
-      },
-    ]);
+    expect(await brain.ask('approve', { campaign: 'Autumn', owner: 'ada' }, otherRunId)).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      kind: 'requests_full',
+    });
   });
 });
 
@@ -93,7 +75,7 @@ describe('a party the request cannot go to', () => {
     [
       'not text',
       { owner: { name: 'ada' } },
-      'The party the request goes to renders a value that is not text on line 3',
+      'The party the request goes to renders a value that is not text on line 2',
     ],
     ['nothing', { owner: '  ' }, 'The party the request goes to renders to nothing'],
     ['a control character', { owner: 'ada\u0007' }, 'The party the request goes to holds a control character'],
@@ -108,15 +90,6 @@ describe('a party the request cannot go to', () => {
       reason: 'conflict',
       kind: 'unworkable',
       detail: containing(detail),
-    });
-  });
-
-  it('ends the run as unworkable when the channel does not allow the party', async () => {
-    expect(
-      await askedWith(openDocument('{{ input.owner }}', 'Approve?', 'partner'), { owner: 'Ada' }, 'partner'),
-    ).toMatchObject({
-      reason: 'conflict',
-      detail: 'The party the request goes to is not one the channel “partner” allows',
     });
   });
 });

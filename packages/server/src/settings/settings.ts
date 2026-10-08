@@ -32,7 +32,7 @@ export function readSettings(given: Environment): Settings {
   const { host, port } = readServerConfig(environment);
   const { allowedOrigins, localMode, logFormat } = Effect.runSync(readAccessSettings(environment));
   const ledger = Effect.runSync(readLedgerSettings(environment));
-  const functions = readFunctionSettings(environment, file, { host, port });
+  const functions = readFunctionSettings(environment, file);
   const workflows = Effect.runSync(readWorkflowSettings(environment));
   return {
     host,

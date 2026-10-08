@@ -10,7 +10,6 @@ const dueAfterRestartMs = 40_000;
 
 const approval = [
   '---',
-  'channel: inbox',
   "to: '{{ input.owner }}'",
   'expires: P1D',
   'output:',

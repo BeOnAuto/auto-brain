@@ -7,26 +7,33 @@ import type { OfferedOnServer } from '../calls/run-parts.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import { allowsTool, isAllowed, namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
+import type { McpServerSettings } from '../settings/mcp-settings.ts';
 import { ToolNotOffered } from './tool-not-offered.ts';
 
-export interface Naming {
-  readonly references: readonly ToolReference[];
-  readonly links: ReadonlyMap<string, ServerLink>;
+export interface Settled {
+  readonly settings: Pick<McpServerSettings, 'org' | 'brains' | 'allowed'>;
 }
+
+export interface NamingOn<Link extends Settled> {
+  readonly references: readonly ToolReference[];
+  readonly links: ReadonlyMap<string, Link>;
+}
+
+export type Naming = NamingOn<ServerLink>;
 
 export interface Listed {
   readonly slot: ServerSlot;
   readonly tools: readonly ListedTool[];
 }
 
-interface NamedLink {
+interface NamedLink<Link extends Settled> {
   readonly reference: ToolReference;
-  readonly link: ServerLink | undefined;
+  readonly link: Link | undefined;
 }
 
-interface ServingLink {
+interface ServingLink<Link extends Settled> {
   readonly reference: ToolReference;
-  readonly link: ServerLink;
+  readonly link: Link;
 }
 
 const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
@@ -63,15 +70,15 @@ export function notListed(missing: readonly ToolReference[]): ToolNotOffered {
   return new ToolNotOffered({ because: 'tool_not_listed', detail: capitalized(conjunction.format(unlisted)) });
 }
 
-function isServing(named: NamedLink, address: BrainAddress): named is ServingLink {
+function isServing<Link extends Settled>(named: NamedLink<Link>, address: BrainAddress): named is ServingLink<Link> {
   return named.link !== undefined && servesBrain(named.link.settings, address);
 }
 
-export function namedLinks(
+export function namedLinks<Link extends Settled>(
   address: BrainAddress,
-  { references, links }: Naming,
-): Result.Result<readonly ServerLink[], ToolNotOffered> {
-  const named = references.map((reference): NamedLink => ({ reference, link: links.get(reference.server) }));
+  { references, links }: NamingOn<Link>,
+): Result.Result<readonly Link[], ToolNotOffered> {
+  const named = references.map((reference): NamedLink<Link> => ({ reference, link: links.get(reference.server) }));
   const unconfigured = named.filter((each) => !isServing(each, address));
   if (unconfigured.length > 0) {
     return Result.fail(notConfigured(unconfigured.map(({ reference }) => reference)));

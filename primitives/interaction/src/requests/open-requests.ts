@@ -1,15 +1,14 @@
 import type { ProjectedMessage, ProjectedRow, KeyedProjection } from '@beonauto/operations';
-import { nextAttemptAt, outboundBounds } from '@beonauto/outbound';
 import { executionEventOf, type ExecutionEvent } from '@beonauto/specs';
 
-import { inboxChannel } from '../channels/channel-names.ts';
 import { interactionPrimitive } from '../primitive/primitive-name.ts';
 import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
+import { attemptSchedule, nextAttemptAt } from '../schedule/attempt-schedule.ts';
 import {
   attemptDueAtOf,
   endingDueAtOf,
   requestRowOf,
-  settlesFromChannel,
+  settlesFromBroughtAnswer,
   type OpenRequestRow,
   type UndueRequestRow,
 } from './request-rows.ts';
@@ -30,13 +29,15 @@ function requested(fact: Fact<'execution_deferred'>, message: ProjectedMessage):
     return undefined;
   }
   const at = Date.parse(fact.at);
-  const inInbox = request.channel === inboxChannel;
+  const { deliver, replies } = request;
+  const inInbox = deliver === undefined;
   return rowOf({
     request_id: message.id,
     function: fact.name,
     version: fact.spec_version,
     party: request.to,
-    channel: request.channel,
+    delivery: inInbox ? null : JSON.stringify({ server: deliver.server, tool: deliver.tool }),
+    replies: replies === undefined ? null : JSON.stringify(replies),
     message: request.message,
     answers: takesAnswer(request),
     answer_schema: request.answer_schema === undefined ? null : JSON.stringify(request.answer_schema),
@@ -65,7 +66,7 @@ function attemptStarted(row: OpenRequestRow, fact: Fact<'delivery_started'>): Pr
 
 function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: number): UndueRequestRow {
   const next =
-    fact.outcome === 'failed' && fact.number < outboundBounds.attempts
+    fact.outcome === 'failed' && fact.number < attemptSchedule.attempts
       ? nextAttemptAt({ attempt: fact.number, endedAt: at, retryAfterMs: fact.retry_after_ms })
       : undefined;
   return next === undefined
@@ -75,9 +76,8 @@ function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: num
 
 function attemptEnded(row: OpenRequestRow, fact: Fact<'delivery_ended'>): ProjectedRow {
   const at = Date.parse(fact.at);
-  if (fact.outcome === 'delivered' || fact.outcome === 'answered') {
-    const standing = fact.answer === undefined ? 'delivered' : 'answered';
-    return rowOf({ ...row, next_attempt_at: null, standing: standingUnlessCancelling(row, standing) });
+  if (fact.outcome === 'delivered') {
+    return rowOf({ ...row, next_attempt_at: null, standing: standingUnlessCancelling(row, 'delivered') });
   }
   return rowOf(afterFailure(row, fact, at));
 }
@@ -100,19 +100,25 @@ function closed(
   return row.open ? rowOf({ ...row, open: false, next_attempt_at: null, ended: endingOf(fact) }) : undefined;
 }
 
-function changed(row: OpenRequestRow, fact: ExecutionEvent): ProjectedRow | undefined {
+function worked(row: OpenRequestRow, fact: ExecutionEvent): ProjectedRow | undefined {
   if (fact.type === 'delivery_started') {
     return attemptStarted(row, fact);
   }
   if (fact.type === 'delivery_ended') {
     return attemptEnded(row, fact);
   }
+  return fact.type === 'reply_taken'
+    ? rowOf({ ...row, standing: standingUnlessCancelling(row, 'answered') })
+    : undefined;
+}
+
+function changed(row: OpenRequestRow, fact: ExecutionEvent): ProjectedRow | undefined {
   if (fact.type === 'execution_cancel_requested') {
-    return row.open && !settlesFromChannel(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
+    return row.open && !settlesFromBroughtAnswer(row) ? rowOf({ ...row, standing: 'cancelling' }) : undefined;
   }
   return fact.type === 'execution_succeeded' || fact.type === 'execution_rejected' || fact.type === 'execution_failed'
     ? closed(row, fact)
-    : undefined;
+    : worked(row, fact);
 }
 
 function rowAfter(row: ProjectedRow | undefined, event: unknown, message: ProjectedMessage): ProjectedRow | undefined {
@@ -132,6 +138,7 @@ export const openRequests: KeyedProjection = {
     'execution_deferred',
     'delivery_started',
     'delivery_ended',
+    'reply_taken',
     'execution_cancel_requested',
     'execution_succeeded',
     'execution_rejected',
@@ -142,7 +149,8 @@ export const openRequests: KeyedProjection = {
     { name: 'function', kind: 'text' },
     { name: 'version', kind: 'integer' },
     { name: 'party', kind: 'text' },
-    { name: 'channel', kind: 'text' },
+    { name: 'delivery', kind: 'text' },
+    { name: 'replies', kind: 'text' },
     { name: 'message', kind: 'text' },
     { name: 'answers', kind: 'boolean' },
     { name: 'answer_schema', kind: 'text' },

@@ -1,4 +1,3 @@
-import { requestTokenCallerOf } from '@beonauto/operations';
 import { deferredCanceller } from '@beonauto/specs';
 import { Effect, Result, Schema, SchemaTransformation } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -7,19 +6,19 @@ import {
   acmeAdmin,
   approvalDocument,
   askedRunId,
-  askedThroughPartner,
+  askedThroughChat,
   interactionHarness,
   notificationDocument,
 } from '../testing/index.ts';
 import { checkedAnswer } from './answer-check.ts';
-import { defineAnswerInteraction } from './answer-interaction.ts';
+import { answerInteraction } from './answer-interaction.ts';
 import { listInteractions } from './list-interactions.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const otherRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b';
 
-const answer = defineAnswerInteraction({ channels: new Map(), secrets: [] });
+const answer = answerInteraction;
 
 const someText: unknown = expect.any(String);
 
@@ -42,7 +41,7 @@ const interaction = {
   function: 'approve-brief',
   version: 1,
   to: 'ada',
-  channel: 'inbox',
+  delivery: null,
   message: 'Approve?',
   takes_answer: true,
   answer_schema: { type: 'object' },
@@ -73,7 +72,7 @@ describe('a request asked through the inbox', () => {
             function: 'approve-brief',
             version: 1,
             to: 'ada',
-            channel: 'inbox',
+            delivery: null,
             message: 'Please review the brief for Spring.',
             takes_answer: true,
             attempts: 0,
@@ -140,7 +139,7 @@ describe('an answer the request does not take', () => {
 
   it('is refused for a run there is not, a run that asks nothing, and a notification', async () => {
     const brain = interactionHarness();
-    await brain.define('tell', notificationDocument('inbox'));
+    await brain.define('tell', notificationDocument());
     await brain.ask('tell', { campaign: 'Spring', owner: 'ada' }, otherRunId);
 
     expect([
@@ -158,17 +157,14 @@ describe('an answer the request does not take', () => {
 });
 
 describe('an answer that is refused before it is checked', () => {
-  it('is a conflict for a notification that waits for its delivery, and forbidden with a token for a run without a request', async () => {
-    const { brain } = await askedThroughPartner({ notification: true });
-    const inbox = interactionHarness();
+  it('is a conflict for a notification that waits for its delivery', async () => {
+    const { brain } = await askedThroughChat({ notification: true });
 
-    expect([
-      await brain.call(answer, { execution_id: askedRunId, answer: {} }),
-      await inbox.call(answer, { execution_id: askedRunId, answer: {} }, requestTokenCallerOf('acme', 'AAAA')),
-    ]).toMatchObject([
-      { status: 'rejected', reason: 'conflict', detail: 'The request is a notification, which takes no answer' },
-      { status: 'rejected', reason: 'forbidden' },
-    ]);
+    expect(await brain.call(answer, { execution_id: askedRunId, answer: {} })).toMatchObject({
+      status: 'rejected',
+      reason: 'conflict',
+      detail: 'The request is a notification, which takes no answer',
+    });
   });
 
   it('is invalid input past 64 KiB, and the answer schema of a request that cannot be read is no answer', async () => {

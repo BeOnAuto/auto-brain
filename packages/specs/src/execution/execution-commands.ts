@@ -8,6 +8,8 @@ import type {
   DeliveryStarted,
   ExecutionDeferred,
   ExecutionFinished,
+  ReplyRefused,
+  ReplyTaken,
   ToolCallAnswered,
   ToolCallStarted,
 } from './execution-events.ts';
@@ -61,6 +63,12 @@ export type DeliveryEndedFact = Omit<DeliveryEnded, OfTheRun>;
 
 export type OutboundCallFact = DeliveryStartedFact | DeliveryEndedFact;
 
+export type ReplyTakenFact = Omit<ReplyTaken, OfTheRun>;
+
+export type ReplyRefusedFact = Omit<ReplyRefused, OfTheRun>;
+
+export type ReplyFact = ReplyTakenFact | ReplyRefusedFact;
+
 export interface InterruptedAttempt {
   readonly type: 'execution_interrupted';
 }
@@ -78,6 +86,11 @@ export interface ExecutionToolCall {
 export interface ExecutionOutboundCall {
   readonly type: 'outbound_call';
   readonly fact: OutboundCallFact;
+}
+
+export interface ExecutionReply {
+  readonly type: 'reply';
+  readonly fact: ReplyFact;
 }
 
 export interface CommandMetadata {
@@ -98,6 +111,6 @@ export interface ExecutionCancel extends CommandMetadata {
 }
 
 export type ExecutionCommand =
-  | ((ExecutionStart | ExecutionFinish | ExecutionToolCall | ExecutionOutboundCall) & CommandMetadata)
+  | ((ExecutionStart | ExecutionFinish | ExecutionToolCall | ExecutionOutboundCall | ExecutionReply) & CommandMetadata)
   | ExecutionSettlement
   | ExecutionCancel;

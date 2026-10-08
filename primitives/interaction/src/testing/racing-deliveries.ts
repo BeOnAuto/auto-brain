@@ -1,9 +1,15 @@
 import { Ledger } from '@beonauto/operations';
-import { deferredCanceller, outboundCallRecorder, type DeliveryEndedFact, type Primitive } from '@beonauto/specs';
+import {
+  deferredCanceller,
+  outboundCallRecorder,
+  replyRecorder,
+  type Primitive,
+  type RecordedOutboundCall,
+} from '@beonauto/specs';
 import { Effect, Layer, Schema } from 'effect';
 
+import { askedRunId } from './asked-requests.ts';
 import type { HarnessLedger } from './interaction-harness.ts';
-import { askedRunId } from './webhook-requests.ts';
 
 const Settle = Schema.Struct({ type: Schema.Literal('settle') });
 
@@ -13,31 +19,51 @@ const address = { org: 'acme', brain: 'alpha', id: askedRunId };
 
 const lineage = { causationId: null, correlationId: askedRunId };
 
+export const takenReply = { id: '1699.2', sender: 'ada' };
+
 export interface RacingDelivery {
   readonly ledger: HarnessLedger;
   readonly started: () => Promise<void>;
   readonly cancelSettled: (primitive: Primitive) => Promise<void>;
 }
 
-function endingOf(answer: Schema.Json | undefined): DeliveryEndedFact {
-  return answer === undefined
-    ? { type: 'delivery_ended', number: 1, outcome: 'delivered', status: 200, duration_ms: 3 }
-    : { type: 'delivery_ended', number: 1, outcome: 'answered', status: 200, answer, duration_ms: 3 };
+function replyTakenIn(ledger: HarnessLedger, answer: Schema.Json): Effect.Effect<RecordedOutboundCall, unknown> {
+  return replyRecorder(ledger.service)(
+    address,
+    { type: 'reply_taken', server: 'chat', tool: 'thread_replies', reply: takenReply, answer },
+    lineage,
+  );
 }
 
-export function deliveryEndedBeforeSettling(ledger: HarnessLedger, answer?: Schema.Json): RacingDelivery {
-  const recorded = outboundCallRecorder(ledger.service);
-  const ended = recorded(address, endingOf(answer), lineage);
-  const pending = { ending: true };
+export function recordedReply(ledger: HarnessLedger, answer: Schema.Json): Promise<unknown> {
+  return Effect.runPromise(replyTakenIn(ledger, answer));
+}
+
+function broughtOf(
+  ledger: HarnessLedger,
+  answer: Schema.Json | undefined,
+): Effect.Effect<RecordedOutboundCall, unknown> {
+  return answer === undefined
+    ? outboundCallRecorder(ledger.service)(
+        address,
+        { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 },
+        lineage,
+      )
+    : replyTakenIn(ledger, answer);
+}
+
+export function broughtBeforeSettling(ledger: HarnessLedger, answer?: Schema.Json): RacingDelivery {
+  const brought = broughtOf(ledger, answer);
+  const pending = { bringing: true };
   const service: Ledger['Service'] = {
     ...ledger.service,
     execute: (stream, decider, command, given) => {
       const settling = ledger.service.execute(stream, decider, command, given);
-      if (!isSettlement(command) || !pending.ending) {
+      if (!isSettlement(command) || !pending.bringing) {
         return settling;
       }
-      pending.ending = false;
-      return Effect.andThen(Effect.orDie(ended), settling);
+      pending.bringing = false;
+      return Effect.andThen(Effect.orDie(brought), settling);
     },
   };
   return {
@@ -53,7 +79,11 @@ export function deliveryEndedBeforeSettling(ledger: HarnessLedger, answer?: Sche
     started: () =>
       Effect.runPromise(
         Effect.asVoid(
-          recorded(address, { type: 'delivery_started', number: 1, channel: 'partner', target: 'ada' }, lineage),
+          outboundCallRecorder(ledger.service)(
+            address,
+            { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+            lineage,
+          ),
         ),
       ),
   };

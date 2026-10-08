@@ -13,7 +13,7 @@ import {
 import {
   ExecutionIdField,
   RunSchema,
-  answeredThroughItsChannel,
+  answeredByAReply,
   brainBoundSettler,
   recordedRunInBrain,
   type RecordedRun,
@@ -22,9 +22,8 @@ import {
 } from '@beonauto/specs';
 import { Clock, Effect, Schema } from 'effect';
 
-import type { ChannelSettings } from '../channels/channel-settings.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
-import { answerFor, answererOf, signedByAChannel, tokenHolderOf } from './answering.ts';
+import { answerFor } from './answering.ts';
 import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
 
 const ClaimedForField = Schema.String.annotate({
@@ -68,12 +67,10 @@ function checkedFor(run: RecordedRun, answer: Schema.Json): Effect.Effect<Schema
   return answerFor(answer, answerSchemaOf(run.run.record).answer_schema);
 }
 
-const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering, channels: ChannelSettings) {
+const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answering) {
   const brain = yield* BrainContext;
-  const caller = yield* Caller;
-  const holder = yield* tokenHolderOf(caller, channels, brain);
+  const { id: answeredBy } = yield* Caller;
   const row = yield* openRequestRowIn(id);
-  const answeredBy = yield* answererOf(caller, holder, row);
   const run = yield* recordedRunInBrain(yield* BrainReader, id);
   if (run === undefined) {
     return yield* new NotFound({ detail: 'There is no such run in this brain' });
@@ -85,7 +82,7 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
     return yield* takesNoAnswer;
   }
   if (row.standing === 'answered') {
-    return yield* answeredThroughItsChannel;
+    return yield* answeredByAReply;
   }
   const output = yield* checkedFor(run, answer);
   const at = new Date(yield* Clock.currentTimeMillis).toISOString();
@@ -101,27 +98,24 @@ const answered = Effect.fnUntraced(function* ({ id, answer, claimedFor }: Answer
   ).pipe(Effect.catchTag('not_found', Effect.die));
 });
 
-export function defineAnswerInteraction(channels: ChannelSettings) {
-  return defineCommand('brain', {
-    name: 'answer_interaction',
-    title: 'Answer a request',
-    description,
-    route: { method: 'POST', path: '/executions/{execution_id}/answer' },
-    authorizesByToken: signedByAChannel(channels),
-    irreversible: true,
-    repeatable: true,
-    inputSchema: Schema.Struct({
-      execution_id: ExecutionIdField,
-      answer: Schema.Json.annotate({ description: 'The answer, a JSON value the answer schema of the request takes' }),
-      claimed_for: Schema.optionalKey(ClaimedForField),
-    }),
-    outputSchema: RunSchema,
-    reasons: ['invalid_input', 'not_found', 'conflict', 'forbidden'],
-    handle: ({ execution_id: id, answer, claimed_for: claimedFor }) => answered({ id, answer, claimedFor }, channels),
-    plainLanguage: {
-      task: 'answer a request',
-      attempt: () => 'answer the request',
-      outcome: () => 'The request is answered: the run that asked it succeeded, with the answer as its output.',
-    },
-  });
-}
+export const answerInteraction = defineCommand('brain', {
+  name: 'answer_interaction',
+  title: 'Answer a request',
+  description,
+  route: { method: 'POST', path: '/executions/{execution_id}/answer' },
+  irreversible: true,
+  repeatable: true,
+  inputSchema: Schema.Struct({
+    execution_id: ExecutionIdField,
+    answer: Schema.Json.annotate({ description: 'The answer, a JSON value the answer schema of the request takes' }),
+    claimed_for: Schema.optionalKey(ClaimedForField),
+  }),
+  outputSchema: RunSchema,
+  reasons: ['invalid_input', 'not_found', 'conflict'],
+  handle: ({ execution_id: id, answer, claimed_for: claimedFor }) => answered({ id, answer, claimedFor }),
+  plainLanguage: {
+    task: 'answer a request',
+    attempt: () => 'answer the request',
+    outcome: () => 'The request is answered: the run that asked it succeeded, with the answer as its output.',
+  },
+});

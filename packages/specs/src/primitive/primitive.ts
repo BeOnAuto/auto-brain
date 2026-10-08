@@ -3,7 +3,7 @@ import { Effect, type Schema } from 'effect';
 
 import type { CallAnsweredFact, CallStartedFact } from '../execution/execution-commands.ts';
 import type { CancelRequestKind, DeliveryEvent } from '../execution/execution-events.ts';
-import type { ChannelAnswer } from '../execution/execution-state.ts';
+import type { BroughtAnswer } from '../execution/execution-state.ts';
 import type { Trigger } from '../registry/spec-triggers.ts';
 import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
 
@@ -64,10 +64,11 @@ export type Executed = Finished | FinishesLater;
 export type PrimitiveRejection = InvalidInput | Unavailable | Conflict;
 
 export interface CancelledRun {
+  readonly execution: { readonly org: string; readonly brain: string; readonly id: string };
   readonly record: Schema.JsonObject;
   readonly kind: CancelRequestKind;
   readonly reason: string;
-  readonly channelAnswer: ChannelAnswer | null;
+  readonly broughtAnswer: BroughtAnswer | null;
   readonly deliveredAt: string | null;
 }
 
@@ -138,7 +139,7 @@ function noDeferralShown(): undefined {
 }
 
 function deliveryInWords(fact: DeliveryEvent): string {
-  return fact.type === 'delivery_started' ? deliveryStarted(fact.number, fact.channel) : deliveryEnded(fact);
+  return fact.type === 'delivery_started' ? deliveryStarted(fact) : deliveryEnded(fact);
 }
 
 export const defaultRunWords: RunWords = {

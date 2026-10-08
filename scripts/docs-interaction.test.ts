@@ -41,7 +41,7 @@ await test('the words of interaction are on the terminology page, and the first 
     assert.match(terminology, new RegExp(`^\\| ${term} +\\| `, 'mu'), `The terminology page needs ${term}`);
   }
   assert.ok(terminology.includes('An interaction function asks a person or a system and takes the answer later'));
-  assert.ok(tutorial.includes('channel: inbox'));
+  assert.ok(!tutorial.includes('deliver:'));
   assert.ok(tutorial.includes('answer_interaction'));
   assert.ok(workflows.includes('An approval is an interaction function'));
 });

@@ -7,12 +7,21 @@ const message = { id: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', position: 2 };
 
 const fact = { by: 'brain:alpha', at: '2026-10-07T09:00:00.000Z', name: 'approve-brief', spec_version: 1 };
 
+const deliver = { server: 'chat', tool: 'post_message', with: { text: '{{ message }}' } };
+
+const replies = {
+  tool: 'thread_replies',
+  with: { ts: '{{ sent.id }}' },
+  read: { list: '/messages', order: 'oldest_first', each: { id: '/ts', sender: '/user', text: '/text' } },
+};
+
 const request = {
-  channel: 'partner',
   to: 'ada',
   message: 'Approve?',
   answer_schema: {},
   expires_at: '2026-10-09T09:00:00.000Z',
+  requested_at: '2026-10-07T09:00:00.000Z',
+  deliver,
 };
 
 const deferral = { type: 'execution_deferred', record: request, primitive: 'interaction', ...fact };
@@ -31,7 +40,8 @@ describe('the open request of a run', () => {
         function: 'approve-brief',
         version: 1,
         party: 'ada',
-        channel: 'partner',
+        delivery: JSON.stringify({ server: 'chat', tool: 'post_message' }),
+        replies: null,
         message: 'Approve?',
         answers: true,
         answer_schema: '{}',
@@ -47,6 +57,20 @@ describe('the open request of a run', () => {
       },
       undefined,
       undefined,
+    ]);
+  });
+});
+
+describe('the open request of a run, as its request recorded it', () => {
+  it('keeps the tool it delivers through and how it reads replies as JSON text, and neither in the inbox', () => {
+    const inbox = Struct.omit(request, ['deliver']);
+
+    expect([
+      openRequests.rowAfter(undefined, { ...deferral, record: { ...request, replies } }, message),
+      openRequests.rowAfter(undefined, { ...deferral, record: inbox }, message),
+    ]).toMatchObject([
+      { delivery: JSON.stringify({ server: 'chat', tool: 'post_message' }), replies: JSON.stringify(replies) },
+      { delivery: null, replies: null, standing: 'in_inbox', attempt_due_at: null },
     ]);
   });
 
@@ -109,38 +133,58 @@ describe('the open request of a run that ends', () => {
   });
 });
 
-describe('the open request of a run asked to cancel', () => {
-  const cancelAsked = { type: 'execution_cancel_requested', kind: 'requested', reason: 'Off', ...fact };
-  const ofTheRun = { primitive: 'interaction', ...fact };
-  const attempt = { type: 'delivery_started', number: 1, channel: 'partner', target: 'ada', ...ofTheRun };
-  const answered = {
-    type: 'delivery_ended',
-    number: 1,
-    outcome: 'answered',
-    status: 200,
-    answer: { choice: 'approve' },
-    duration_ms: 40,
-    ...ofTheRun,
-  };
+const cancelAsked = { type: 'execution_cancel_requested', kind: 'requested', reason: 'Off', ...fact };
+const ofTheRun = { primitive: 'interaction', ...fact };
+const attempt = {
+  type: 'delivery_started',
+  number: 1,
+  target: 'ada',
+  server: 'chat',
+  tool: 'post_message',
+  ...ofTheRun,
+};
+const delivered = { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 40, ...ofTheRun };
+const taken = {
+  type: 'reply_taken',
+  server: 'chat',
+  tool: 'thread_replies',
+  reply: { id: '1699.2', sender: 'ada' },
+  answer: { choice: 'approve' },
+  ...ofTheRun,
+};
 
+describe('the open request of a run asked to cancel', () => {
   it('stands cancelling and falls due no more, whatever its attempt in flight does', () => {
     const delivering = openRequests.rowAfter(open, attempt, message);
     const cancelling = openRequests.rowAfter(delivering, cancelAsked, message);
-    const afterTheAttempt = openRequests.rowAfter(cancelling, answered, message);
+    const afterTheAttempt = openRequests.rowAfter(cancelling, delivered, message);
     const failedAfter = openRequests.rowAfter(
       cancelling,
-      { type: 'delivery_ended', number: 1, outcome: 'failed', status: 503, duration_ms: 40, ...ofTheRun },
+      { type: 'delivery_ended', number: 1, outcome: 'failed', because: 'server_failure', duration_ms: 40, ...ofTheRun },
       message,
     );
+    const takenAfter = openRequests.rowAfter(cancelling, taken, message);
 
-    expect([cancelling, afterTheAttempt, failedAfter]).toMatchObject([
+    expect([cancelling, afterTheAttempt, failedAfter, takenAfter]).toMatchObject([
       { standing: 'cancelling', attempt_due_at: null, ending_due_at: null, open: true },
       { standing: 'cancelling', attempt_due_at: null, ending_due_at: null, attempts: 1 },
+      { standing: 'cancelling', attempt_due_at: null, ending_due_at: null },
       { standing: 'cancelling', attempt_due_at: null, ending_due_at: null },
     ]);
     expect(
       openRequests.rowAfter(openRequests.rowAfter(cancelling, attempt, message), cancelAsked, message),
     ).toMatchObject({ standing: 'cancelling' });
+  });
+});
+
+describe('the open request of a run a reply answered', () => {
+  it('stands answered once a reply answered it, due at once, and a cancel asked after leaves it so', () => {
+    const answered = openRequests.rowAfter(open, taken, message);
+
+    expect([answered, openRequests.rowAfter(answered, cancelAsked, message)]).toMatchObject([
+      { standing: 'answered', ending_due_at: Date.parse(fact.at), attempt_due_at: null },
+      undefined,
+    ]);
   });
 
   it('is left alone once its run has ended', () => {

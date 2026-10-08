@@ -2,22 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { interactionBounds } from '../run/run-bounds.ts';
 import { interactionHarness } from '../testing/index.ts';
-import { defineAnswerInteraction } from './answer-interaction.ts';
+import { answerInteraction } from './answer-interaction.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const answer = defineAnswerInteraction({ channels: new Map(), secrets: [] });
+const answer = answerInteraction;
 
-const anyAnswer = [
-  '---',
-  'channel: inbox',
-  "to: 'ada'",
-  'expires: P2D',
-  'output:',
-  '  schema: {}',
-  '---',
-  'Anything?',
-].join('\n');
+const anyAnswer = ['---', "to: 'ada'", 'expires: P2D', 'output:', '  schema: {}', '---', 'Anything?'].join('\n');
 
 type Nested = readonly Nested[] | string;
 

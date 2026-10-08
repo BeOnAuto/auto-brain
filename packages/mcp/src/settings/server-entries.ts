@@ -67,7 +67,7 @@ export const McpServerEntrySchema = Schema.Struct({
   allowed: Schema.optionalKey(
     Schema.Array(Schema.String).annotate({
       description:
-        'The tools of this server a reasoning function may name and a channel may call, each named as the server lists it; every tool of the server when left out',
+        'The tools of this server a function may name, each named as the server lists it; every tool of the server when left out',
     }),
   ),
   testable: Schema.optionalKey(

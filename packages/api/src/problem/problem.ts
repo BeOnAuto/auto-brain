@@ -89,7 +89,6 @@ const resolvedOnlyByChange: ReadonlySet<RejectionKind> = new Set<UnavailableKind
   'tools_unfinished',
   'tool_not_offered',
   'model_not_offered',
-  'channel_not_offered',
 ]);
 
 function isWorthRetrying({ reason, kind }: Problem): boolean {

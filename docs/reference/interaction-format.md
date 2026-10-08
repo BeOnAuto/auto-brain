@@ -12,7 +12,6 @@ The source is Markdown with YAML front matter followed by the message. This exam
 ```markdown
 ---
 description: Ask the campaign's owner to approve a brief
-channel: inbox
 to: '{{ input.owner }}'
 expires: P2D
 input:

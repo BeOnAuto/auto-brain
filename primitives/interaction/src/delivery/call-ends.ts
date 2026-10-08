@@ -1,31 +1,25 @@
-import type { CallAnswer, DeliveryCallEnded } from '@beonauto/mcp';
+import type { AnsweredOnce, CallAnswer } from '@beonauto/mcp';
+import type { DeliveryBecause } from '@beonauto/specs';
 
 const becauseOf = {
   tool_error: 'tool_error',
   server_failure: 'server_failure',
   timed_out: 'timed_out',
   cancelled: 'lost',
-  not_offered: 'channel_not_offered',
-} as const;
-
-type CallFailure = Exclude<DeliveryCallEnded, { readonly outcome: 'result' }>;
+} as const satisfies Readonly<Record<Exclude<AnsweredOnce['outcome'], 'result'>, DeliveryBecause>>;
 
 interface CallFailed {
-  readonly because: (typeof becauseOf)[CallFailure['outcome']];
+  readonly because: (typeof becauseOf)[keyof typeof becauseOf];
   readonly retryAfterMs: number | null;
   readonly detail: string;
 }
 
-interface CallAnswered extends CallAnswer {
-  readonly bytes: number;
-}
+export type CallEnd = { readonly answered: CallAnswer } | { readonly failed: CallFailed };
 
-export type CallEnd = { readonly answered: CallAnswered } | { readonly failed: CallFailed };
-
-export function endOfCall(ended: DeliveryCallEnded): CallEnd {
-  if (ended.outcome === 'result') {
-    const { content, structuredContent, bytes } = ended;
-    return { answered: { content, bytes, ...(structuredContent === undefined ? {} : { structuredContent }) } };
+export function endOfCall(called: AnsweredOnce): CallEnd {
+  if (called.outcome === 'result') {
+    return { answered: called.answer };
   }
-  return { failed: { because: becauseOf[ended.outcome], retryAfterMs: ended.retryAfterMs, detail: ended.detail } };
+  const { outcome, retryAfterMs, detail } = called;
+  return { failed: { because: becauseOf[outcome], retryAfterMs, detail } };
 }

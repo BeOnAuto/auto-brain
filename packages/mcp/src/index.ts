@@ -7,12 +7,38 @@ export { CallAnsweredSchema, CallStartedSchema, type CallOutcome } from './calls
 export type { CallJournal, RecordedCall } from './calls/recorded-calls.ts';
 export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
 export type { OfferedTool, RunTools, ToolsEnding } from './calls/run-tools.ts';
+export type { AnsweredFields, StartedFields } from './calls/recorded-calls.ts';
 export {
   deliveryBounds,
+  type AnsweredOnce,
   type CallAnswer,
+  type CalledOnce,
   type DeliveryCall,
-  type DeliveryCallEnded,
+  type UnopenedOnce,
 } from './delivery/delivery-bounds.ts';
+export type { NamingCheck, StartOf } from './access/entry-reads.ts';
+export {
+  ConversationCallEventSchema,
+  conversationCallStreamOf,
+  conversationCallsKind,
+  type ConversationCallEvent,
+  type ReadOutcome,
+  type RepliesRead,
+  type TellingEnded,
+  type TellingOutcome,
+  type TellingStarted,
+} from './own-calls/conversation-call-events.ts';
+export {
+  conversationCallDecider,
+  repliesReadOf,
+  tellingEndedOf,
+  tellingStartedOf,
+  type CallEnd,
+  type CallStart,
+  type Reading,
+  type Recorded,
+  type Telling,
+} from './own-calls/conversation-calls.ts';
 export { defineListToolServers } from './listing/list-tool-servers.ts';
 export { defineListToolServersInOrg, type BrainLookup } from './listing/list-tool-servers-in-org.ts';
 export { answeredInWords } from './names/tool-words.ts';

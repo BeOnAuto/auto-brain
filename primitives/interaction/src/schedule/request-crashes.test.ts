@@ -1,51 +1,47 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { memoryLedger } from '@beonauto/operations/testing';
-import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { noChannels } from '../channels/channel-settings.ts';
-import { defineAnswerInteraction } from '../requests/answer-interaction.ts';
+import { answerInteraction } from '../requests/answer-interaction.ts';
 import { openRequests } from '../requests/open-requests.ts';
 import {
-  deliveryEndedBeforeSettling,
   askedRunId,
-  askedThroughPartner,
+  askedThroughChat,
   attemptedThenStopped,
+  broughtBeforeSettling,
+  recordedReply,
+  takenReply,
 } from '../testing/index.ts';
 
 const days = 24 * 60 * 60_000;
 
-const answerOf = defineAnswerInteraction(noChannels);
-
 const anyTime: unknown = expect.any(String);
 
-describe('an answer given within the delivery, whose settlement the server stopped before', () => {
-  it('is settled from the ended delivery after a restart, with no attempt made again', async () => {
-    const asked = await askedThroughPartner({ answers: true, ledger: memoryLedger(undefined, [openRequests]) });
-    asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'approve' }) });
+const answeredByTheReply = { answered_by: 'brain:alpha', reply: takenReply };
 
-    const stopped = await attemptedThenStopped(asked);
-    const afterStop = await asked.brain.firstOpen();
-    const performed = await asked.brain.performDue(Date.now());
+describe('an answer a reply brought, whose settlement the server stopped before', () => {
+  it('is settled from the reply after a restart, as the brain, with no attempt made again', async () => {
+    const { brain, tools, askedAt } = await askedThroughChat();
+    await brain.performDue(askedAt);
+    await recordedReply(brain.ledger, { choice: 'approve' });
 
-    expect([stopped, performed]).toEqual([true, 1]);
-    expect(afterStop).toMatchObject({ attempts: 1, standing: 'answered' });
-    expect(await asked.brain.runOf(askedRunId)).toMatchObject({
+    const afterStop = await brain.firstOpen();
+    const performed = await brain.performDue(Date.now());
+
+    expect([afterStop, performed]).toMatchObject([{ attempts: 1, standing: 'answered' }, 1]);
+    expect(await brain.runOf(askedRunId)).toMatchObject({
       status: 'succeeded',
-      output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: answeredByTheReply },
     });
-    expect(asked.receiver.received()).toHaveLength(1);
+    expect(tools.calls()).toHaveLength(1);
   });
 
   it('is settled with the answer even when the restart comes after the request would have expired', async () => {
-    const asked = await askedThroughPartner({ answers: true });
-    asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'reject' }) });
+    const { brain, askedAt } = await askedThroughChat();
+    await recordedReply(brain.ledger, { choice: 'reject' });
 
-    await attemptedThenStopped(asked);
-    await asked.brain.performDue(asked.askedAt + 3 * days);
+    await brain.performDue(askedAt + 3 * days);
 
-    expect(await asked.brain.runOf(askedRunId)).toMatchObject({
+    expect(await brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'reject' } },
     });
   });
@@ -53,23 +49,23 @@ describe('an answer given within the delivery, whose settlement the server stopp
 
 describe('a notification delivered, whose settlement the server stopped before', () => {
   it('succeeds from the ended delivery after a restart, and is not delivered again', async () => {
-    const asked = await askedThroughPartner({ notification: true });
+    const asked = await askedThroughChat({ notification: true });
 
-    await attemptedThenStopped(asked);
+    const stopped = await attemptedThenStopped(asked);
     const afterStop = await asked.brain.firstOpen();
     await asked.brain.performDue(Date.now());
 
-    expect(afterStop).toMatchObject({ attempts: 1, standing: 'delivered' });
+    expect([stopped, afterStop]).toMatchObject([true, { attempts: 1, standing: 'delivered' }]);
     expect(await asked.brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
     });
-    expect(asked.receiver.received()).toHaveLength(1);
+    expect(asked.tools.calls()).toHaveLength(1);
   });
 });
 
 describe('a due request, as the host sees it', () => {
   it('calls out for an attempt, and not for an expiry, a settlement or an attempt lost', async () => {
-    const { brain, askedAt } = await askedThroughPartner();
+    const { brain, askedAt } = await askedThroughChat();
 
     const toAttempt = await brain.dueItems(askedAt);
     const toExpire = await brain.dueItems(askedAt + 3 * days);
@@ -81,59 +77,38 @@ describe('a due request, as the host sees it', () => {
   });
 });
 
-describe('an answer within the delivery and another one given meanwhile', () => {
-  it('keeps the answer the delivery recorded first, and refuses the other as a conflict', async () => {
-    const asked = await askedThroughPartner({ answers: true });
-    asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'approve' }) });
+describe('an answer a reply brought and another one given meanwhile', () => {
+  it('keeps the answer of the reply, and refuses the other as a conflict', async () => {
+    const { brain } = await askedThroughChat();
+    await recordedReply(brain.ledger, { choice: 'approve' });
 
-    await attemptedThenStopped(asked);
-    const meanwhile = await asked.brain.call(answerOf, { execution_id: askedRunId, answer: { choice: 'reject' } });
-    await asked.brain.performDue(Date.now());
+    const meanwhile = await brain.call(answerInteraction, { execution_id: askedRunId, answer: { choice: 'reject' } });
+    await brain.performDue(Date.now());
 
     expect(meanwhile).toMatchObject({
       status: 'rejected',
       reason: 'conflict',
-      detail: 'The run was answered through its channel, so that answer alone settles it',
+      detail: 'The run was answered by a reply, so that answer alone settles it',
     });
-    expect(await asked.brain.runOf(askedRunId)).toMatchObject({
-      output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+    expect(await brain.runOf(askedRunId)).toMatchObject({
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: answeredByTheReply },
     });
   });
 
-  it('keeps the answer given first while the delivery is in flight, and records no end of that delivery', async () => {
-    const asked = await askedThroughPartner({ answers: true });
-    asked.receiver.answerWith({ status: 200, body: JSON.stringify({ choice: 'approve' }), delayMs: 300 });
-
-    const delivering = asked.brain.performDue(asked.askedAt);
-    await setTimeout(100);
-    const first = await asked.brain.call(answerOf, { execution_id: askedRunId, answer: { choice: 'reject' } });
-    await delivering;
-    const { records } = await Effect.runPromise(
-      asked.brain.ledger.service.readRecorded(
-        { org: 'acme', brain: 'alpha' },
-        { kind: 'run', execution: askedRunId },
-        { order: 'asc', limit: 20 },
-      ),
-    );
-
-    expect(first).toMatchObject({ status: 'succeeded', output: { output: { choice: 'reject' } } });
-    expect(await asked.brain.runOf(askedRunId)).toMatchObject({ output: { output: { choice: 'reject' } } });
-    expect(records.map(({ type }) => type)).not.toContain('delivery_ended');
-  });
-});
-
-describe('an answer given while the delivery in flight ends with its own', () => {
-  it('refuses the other when the delivery ends with its answer between the read of the request and the settlement', async () => {
-    const racing = deliveryEndedBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
-    const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
+  it('refuses the other when a reply is taken between the read of the request and the settlement', async () => {
+    const racing = broughtBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
+    const asked = await askedThroughChat({ ledger: racing.ledger });
     await racing.started();
 
-    const meanwhile = await asked.brain.call(answerOf, { execution_id: askedRunId, answer: { choice: 'reject' } });
+    const meanwhile = await asked.brain.call(answerInteraction, {
+      execution_id: askedRunId,
+      answer: { choice: 'reject' },
+    });
     await asked.brain.performDue(Date.now());
 
     expect(meanwhile).toMatchObject({ status: 'rejected', reason: 'conflict' });
     expect(await asked.brain.runOf(askedRunId)).toMatchObject({
-      output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+      output: { status: 'succeeded', output: { choice: 'approve' }, record: answeredByTheReply },
     });
   });
 });

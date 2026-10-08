@@ -24,15 +24,19 @@ export interface RequestLedger
 
 const decodeFirst = Schema.decodeUnknownSync(Schema.NonEmptyArray(Schema.Struct({ correlationId: Schema.String })));
 
-const decodeLastEnded = Schema.decodeUnknownSync(
+const decodeLastBrought = Schema.decodeUnknownSync(
   Schema.NonEmptyArray(
     Schema.Struct({
       id: Schema.String,
-      data: Schema.Struct({
-        type: Schema.Literal('delivery_ended'),
-        answer: Schema.optionalKey(Schema.Json),
-        at: Schema.String,
-      }),
+      data: Schema.Union([
+        Schema.Struct({ type: Schema.Literal('delivery_ended'), at: Schema.String }),
+        Schema.Struct({
+          type: Schema.Literal('reply_taken'),
+          answer: Schema.Json,
+          reply: Schema.Struct({ id: Schema.String, sender: Schema.String }),
+          at: Schema.String,
+        }),
+      ]),
     }),
   ),
 );
@@ -67,22 +71,19 @@ export function recordedCall(
   return outboundCallRecorder(ledger)(address, fact, lineage).pipe(Effect.catchTag('conflict', () => Effect.undefined));
 }
 
-const lastEnded: RecordedPageRequest = {
+const lastBrought: RecordedPageRequest = {
   order: 'desc',
   limit: 1,
-  types: ['delivery_ended'],
-  dataOf: ['delivery_ended'],
+  types: ['delivery_ended', 'reply_taken'],
+  dataOf: ['delivery_ended', 'reply_taken'],
 };
 
-export function settledFromChannel(ledger: RequestLedger, { address, row, lineage }: DueRequest): Effect.Effect<void> {
-  return ledger.readRecorded(address, { kind: 'run', execution: address.id }, lastEnded).pipe(
+export function settledFromBroughtAnswer(ledger: RequestLedger, { address, lineage }: DueRequest): Effect.Effect<void> {
+  return ledger.readRecorded(address, { kind: 'run', execution: address.id }, lastBrought).pipe(
     Effect.orDie,
     Effect.flatMap(({ records }) => {
-      const [{ id, data }] = decodeLastEnded(records);
-      const settlement =
-        data.answer === undefined
-          ? deliveredSettlement(data.at)
-          : answeredSettlement(row.channel, data.answer, data.at);
+      const [{ id, data }] = decodeLastBrought(records);
+      const settlement = data.type === 'reply_taken' ? answeredSettlement(address, data) : deliveredSettlement(data.at);
       return settled(ledger, address, settlement, { ...lineage, causationId: id });
     }),
   );

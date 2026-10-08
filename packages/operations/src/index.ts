@@ -20,14 +20,7 @@ export {
   type TriggerLink,
 } from './caller/call-lineage.ts';
 export { BrainWriter } from './ledger/brain-writer.ts';
-export {
-  Caller,
-  CallerIdentitySchema,
-  brainCallerOf,
-  requestTokenCallerOf,
-  requestTokenRefused,
-  type CallerIdentity,
-} from './caller/caller.ts';
+export { Caller, CallerIdentitySchema, brainCallerOf, type CallerIdentity } from './caller/caller.ts';
 export { CallResultSchema, invalidArguments, type CallResult, type CallStatus } from './outcome/call-result.ts';
 export { makeCatalog, type Catalog } from './catalog/catalog.ts';
 export { CancelledKindSchema, RunCancelled, type CancelledKind } from './outcome/cancelled-run.ts';

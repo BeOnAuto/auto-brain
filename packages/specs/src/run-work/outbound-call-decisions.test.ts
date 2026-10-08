@@ -10,7 +10,7 @@ import type {
   OutboundCallFact,
 } from '../execution/execution-commands.ts';
 import { executionDecider } from '../execution/execution-decider.ts';
-import { answeredThroughItsChannel } from '../execution/execution-decisions.ts';
+import { answeredByAReply } from '../execution/execution-decisions.ts';
 import type { ExecutionEvent } from '../execution/execution-events.ts';
 
 const start = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
@@ -40,9 +40,21 @@ const unavailable: ExecutionEvent = {
   ...during,
 };
 
-const attempt: DeliveryStartedFact = { type: 'delivery_started', number: 1, channel: 'partner', target: 'ada' };
+const attempt: DeliveryStartedFact = {
+  type: 'delivery_started',
+  number: 1,
+  target: 'ada',
+  server: 'chat',
+  tool: 'post_message',
+};
 
-const ended: DeliveryEndedFact = { type: 'delivery_ended', number: 1, outcome: 'failed', status: 503, duration_ms: 40 };
+const ended: DeliveryEndedFact = {
+  type: 'delivery_ended',
+  number: 1,
+  outcome: 'failed',
+  because: 'server_failure',
+  duration_ms: 40,
+};
 
 const attemptStarted: ExecutionEvent = { ...attempt, ...ofApproval, ...during };
 
@@ -110,7 +122,7 @@ describe('the end of a delivery', () => {
     expect(stateAfter(started, deferred, attemptStarted)).toMatchObject({ deliveryInFlight: 1 });
     expect(stateAfter(started, deferred, attemptStarted, attemptEnded)).toMatchObject({
       deliveryInFlight: null,
-      channelAnswer: null,
+      broughtAnswer: null,
       deliveredAt: null,
     });
   });
@@ -134,19 +146,20 @@ describe('the deliveries of a run asked to cancel', () => {
   });
 });
 
-describe('a run whose delivery answered', () => {
+describe('a run a reply answered', () => {
   it('leaves the run to be settled with that answer alone, whoever settles it and however', () => {
-    const answered: ExecutionEvent = {
-      ...ended,
-      outcome: 'answered',
-      status: 200,
+    const taken: ExecutionEvent = {
+      type: 'reply_taken',
+      server: 'chat',
+      tool: 'thread_replies',
+      reply: { id: '1699.2', sender: 'ada' },
       answer: { choice: 'approve' },
       ...ofApproval,
       ...during,
     };
     const settling = (result: ExecutionResult): ExecutionCommand => ({ type: 'settle', result, ...during });
     const withTheAnswer = settling({ type: 'execution_succeeded', output: { choice: 'approve' }, record: {} });
-    const history = [started, deferred, attemptStarted, answered];
+    const history = [started, deferred, attemptStarted, taken];
 
     expect([
       decided(settling({ type: 'execution_succeeded', output: { choice: 'reject' }, record: {} }), ...history),
@@ -157,44 +170,20 @@ describe('a run whose delivery answered', () => {
       decided(withTheAnswer, ...history),
       decided(withTheAnswer, started, deferred, attemptStarted, attemptEnded),
     ]).toMatchObject([
-      Result.fail(answeredThroughItsChannel),
-      Result.fail(answeredThroughItsChannel),
+      Result.fail(answeredByAReply),
+      Result.fail(answeredByAReply),
       Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
       Result.succeed([{ type: 'execution_succeeded', output: { choice: 'approve' } }]),
     ]);
   });
 });
 
-describe('the end of a delivery that answered', () => {
-  it('carries the answer a receiver gave within the delivery', () => {
-    const answered: DeliveryEndedFact = { ...ended, outcome: 'answered', status: 200, answer: { choice: 'approve' } };
-
-    expect(decided(recording(answered), started, deferred, attemptStarted)).toStrictEqual(
-      Result.succeed([{ ...answered, ...ofApproval, ...during }]),
-    );
-  });
-
-  it('is kept by the run as the answer its channel brought back, for a cancel to settle from', () => {
-    const answered: ExecutionEvent = {
-      ...ended,
-      outcome: 'answered',
-      status: 200,
-      answer: { choice: 'approve' },
-      ...ofApproval,
-      ...during,
-    };
-
-    expect(stateAfter(started, deferred, attemptStarted, answered)).toMatchObject({
-      channelAnswer: { answer: { choice: 'approve' }, at: during.at },
-      deliveredAt: null,
-    });
-  });
-
-  it('is kept by the run as when it was delivered, without an answer, for a cancel of a notification', () => {
+describe('the end of a delivery that delivered', () => {
+  it('is kept by the run as when it was delivered, for a cancel of a notification, and brings no answer', () => {
     const delivered: ExecutionEvent = { ...ended, outcome: 'delivered', ...ofApproval, ...during };
 
     expect(stateAfter(started, deferred, attemptStarted, delivered)).toMatchObject({
-      channelAnswer: null,
+      broughtAnswer: null,
       deliveredAt: during.at,
     });
   });

@@ -13,11 +13,12 @@ import type { ParsedTemplate } from '@beonauto/specs/template';
 import { mostValueDepth } from '@beonauto/workflow-engine/dsl';
 import { Result, type Schema } from 'effect';
 
-import { isChannelName } from '../channels/channel-names.ts';
+import type { WrittenRoute } from '../route/compiled-route.ts';
 import { expiryOf } from './expiry.ts';
 import { decodeFrontMatter, interactionFrontMatter, type InteractionFrontMatter } from './front-matter.ts';
 import type { InteractionFunctionDefinitionDocument, ValueContract } from './interaction-document.ts';
 import { compiledTemplate } from './request-templates.ts';
+import { routeIn } from './route-parts.ts';
 
 type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
 
@@ -48,24 +49,12 @@ function contractOf(section: ValueSection, name: 'input' | 'output', lines: Sour
   });
 }
 
-function channelOf(written: string, lines: SourceLines): Checked<string> {
-  return isChannelName(written)
-    ? Result.succeed(written)
-    : Result.fail([
-        issueAt(
-          lines,
-          '/channel',
-          `${written} is not a channel name: inbox, or 1 to 32 lowercase letters, digits and hyphens, starting with a letter`,
-        ),
-      ]);
-}
-
 function expiresOf(written: string, lines: SourceLines): Checked<number> {
   return Result.mapError(expiryOf(written), (detail) => [issueAt(lines, '/expires', detail)]);
 }
 
 interface CheckedParts {
-  readonly channel: Checked<string>;
+  readonly route: Checked<WrittenRoute | null>;
   readonly expires: Checked<number>;
   readonly input: Checked<ValueContract>;
   readonly output: Checked<ValueContract>;
@@ -78,7 +67,7 @@ function partsOf(written: InteractionFrontMatter, { lines }: ReadFrontMatter, pa
   const inputSchema = Result.isSuccess(input) ? input.success.schema?.document : undefined;
   const toLine = issueAt(lines, '/to', '').line;
   return {
-    channel: channelOf(written.channel, lines),
+    route: routeIn(written, lines, inputSchema),
     expires: expiresOf(written.expires, lines),
     input,
     output: contractOf(written.output, 'output', lines),
@@ -95,7 +84,7 @@ function documentFrom(reading: ReadFrontMatter, parts: DocumentParts): Checked<I
   const written = decoded.success;
   const checked = partsOf(written, reading, parts);
   const found = [
-    ...issuesOf(() => checked.channel),
+    ...issuesOf(() => checked.route),
     ...issuesOf(() => checked.expires),
     ...issuesOf(() => checked.input),
     ...issuesOf(() => checked.output),
@@ -106,16 +95,16 @@ function documentFrom(reading: ReadFrontMatter, parts: DocumentParts): Checked<I
     ? Result.fail(found)
     : Result.map(
         Result.all({
-          channel: checked.channel,
+          route: checked.route,
           expires: checked.expires,
           input: checked.input,
           output: checked.output,
           to: checked.to,
           message: checked.message,
         }),
-        ({ channel, expires, input, output, to, message }) => ({
+        ({ route, expires, input, output, to, message }) => ({
           ...(written.description === undefined ? {} : { description: written.description }),
-          channel,
+          ...(route === null ? {} : { route }),
           to,
           expires: written.expires,
           expiresMs: expires,

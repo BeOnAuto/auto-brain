@@ -40,7 +40,6 @@ The interaction function asks one person for a decision. Its run renders the mes
 ```markdown
 ---
 description: Asks the campaign owner to approve a reviewed brief
-channel: inbox
 to: '{{ input.owner }}'
 expires: P2D
 input:

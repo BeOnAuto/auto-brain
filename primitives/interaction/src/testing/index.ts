@@ -4,10 +4,12 @@ export {
   interactionHarness,
   type HarnessLedger,
   type HarnessOptions,
+  type HarnessTools,
   type InteractionHarness,
 } from './interaction-harness.ts';
-export { approvalDocument, notificationDocument } from './documents.ts';
-export { partnerSecret, webhookChannels, type WebhookChannelOptions } from './webhook-channels.ts';
-export { askedRunId, askedThroughPartner, type AskedRequest, type AskingOptions } from './webhook-requests.ts';
+export { approvalDocument, chatDelivery, notificationDocument } from './documents.ts';
+export { askedRunId, askedThroughChat, type AskedRequest, type AskingOptions } from './asked-requests.ts';
 export { attemptedThenStopped } from './stopped-requests.ts';
-export { deliveryEndedBeforeSettling, type RacingDelivery } from './racing-deliveries.ts';
+export { broughtBeforeSettling, recordedReply, takenReply, type RacingDelivery } from './racing-deliveries.ts';
+export { fakeTools, noTools, type FakeAnswer, type FakeTools } from './fake-tools.ts';
+export { answered, brainUser, type ChatMessage } from './chat-board.ts';

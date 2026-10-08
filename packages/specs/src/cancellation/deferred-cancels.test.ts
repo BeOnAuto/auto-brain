@@ -99,11 +99,11 @@ describe('a cancel its capability settles otherwise', () => {
   it('settles it as its capability decides, by the actor the decision names rather than whoever asked', async () => {
     const { executing, ledger, run } = await withHandOn();
     await executing();
-    const answering = relayDeciding(({ channelAnswer, deliveredAt }) => ({
+    const answering = relayDeciding(({ broughtAnswer, deliveredAt }) => ({
       status: 'succeeded',
-      output: { delivered: JSON.stringify({ channelAnswer, deliveredAt }) },
+      output: { delivered: JSON.stringify({ broughtAnswer, deliveredAt }) },
       record: {},
-      by: 'channel:partner',
+      by: 'ada',
     }));
 
     await Effect.runPromise(deferredCanceller([answering], ledger.service)(relayed, asked, lineage));
@@ -119,8 +119,8 @@ describe('a cancel its capability settles otherwise', () => {
 
     expect(records.at(-1)?.data).toMatchObject({
       type: 'execution_succeeded',
-      output: { delivered: JSON.stringify({ channelAnswer: null, deliveredAt: null }) },
-      by: 'channel:partner',
+      output: { delivered: JSON.stringify({ broughtAnswer: null, deliveredAt: null }) },
+      by: 'ada',
     });
   });
 });
@@ -185,7 +185,11 @@ describe('a cancel whose run changes between its read and its settlement', () =>
     await executing();
     const record = outboundCallRecorder(ledger.service);
     const delivered = Effect.all([
-      record(relayed, { type: 'delivery_started', number: 1, channel: 'partner', target: 'ada' }, lineage),
+      record(
+        relayed,
+        { type: 'delivery_started', number: 1, target: 'ada', server: 'chat', tool: 'post_message' },
+        lineage,
+      ),
       record(relayed, { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 }, lineage),
     ]);
     const turns = { next: (): Effect.Effect<unknown, unknown> => delivered };

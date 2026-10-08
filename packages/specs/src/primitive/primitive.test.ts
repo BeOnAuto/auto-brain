@@ -31,8 +31,9 @@ const words: PrimitiveDefinition<{ readonly words: readonly string[] }> = {
 const deliveryOfWords: DeliveryEvent = {
   type: 'delivery_started',
   number: 1,
-  channel: 'approvals',
   target: 'ada',
+  server: 'chat',
+  tool: 'post_message',
   primitive: 'words',
   name: 'count',
   spec_version: 1,
@@ -181,7 +182,7 @@ describe('what a primitive decides of each document and says of its runs', () =>
       { summary: 'Waiting.', data: { to: 'ada' } },
     ]);
     expect(own.runWords.delivery(deliveryOfWords)).toBe(
-      'Delivery attempt 1 of the request started, through the channel “approvals”.',
+      'Delivery attempt 1 of the request started, through the tool post_message of chat.',
     );
   });
 });
@@ -189,10 +190,11 @@ describe('what a primitive decides of each document and says of its runs', () =>
 describe('the cancelling of a run', () => {
   it('cancels a run by settling it as cancelled with the kind and reason asked, unless it decides otherwise', () => {
     const asked = {
+      execution: { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
       record: { step: 1 },
       kind: 'deadline',
       reason: 'The step ran out of time',
-      channelAnswer: null,
+      broughtAnswer: null,
       deliveredAt: null,
     } as const;
     const deciding = definePrimitive({
