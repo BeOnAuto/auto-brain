@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 const ReferenceField = Schema.String.annotate({
-  description: 'Where the document names it, such as /schedule/on, /schedule/cron or /schedule/every',
+  description: 'Where the document names it, as a JSON pointer, which no later version renumbers',
 });
 
 const TriggerFilterSchema = Schema.Struct({

@@ -20,6 +20,7 @@ export function defineGetSpec(primitives: readonly Primitive[]) {
       description: [
         'Reads one function or workflow definition with its document and returns it, active or retired, with its version and the input and output its document declares.',
         'For a recall function it also returns the standing of its view: live, rebuilding, waiting or stalled, the events it has folded and how far it lags the brain.',
+        'For a workflow it also returns its triggers, the event trigger and the schedules that start it on its own.',
         'Use it to show the person a definition or to learn the input a run takes; list_specs lists the definitions of a type.',
         "`primitive` is the definition's type and `name` its name.",
       ].join(' '),
