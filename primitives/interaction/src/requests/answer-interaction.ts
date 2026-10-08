@@ -24,7 +24,7 @@ import { Clock, Effect, Schema } from 'effect';
 
 import type { ChannelSettings } from '../channels/channel-settings.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
-import { answerFor, answererOf, tokenHolderOf } from './answering.ts';
+import { answerFor, answererOf, signedByAChannel, tokenHolderOf } from './answering.ts';
 import { correlationOfRun, openRequestRowIn } from './request-reads.ts';
 
 const ClaimedForField = Schema.String.annotate({
@@ -107,7 +107,7 @@ export function defineAnswerInteraction(channels: ChannelSettings) {
     title: 'Answer a request',
     description,
     route: { method: 'POST', path: '/executions/{execution_id}/answer' },
-    authorizesByToken: true,
+    authorizesByToken: signedByAChannel(channels),
     irreversible: true,
     repeatable: true,
     inputSchema: Schema.Struct({

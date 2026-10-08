@@ -1,7 +1,14 @@
-import { Effect, Schema } from 'effect';
+import { Effect, Layer, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { Caller, defineCommand, requestTokenCallerOf, requestTokenRefused } from '../index.ts';
+import {
+  BrainRegistry,
+  Caller,
+  defineCommand,
+  requestTokenCallerOf,
+  requestTokenRefused,
+  type BrainAddress,
+} from '../index.ts';
 import { acmeAlphaReader } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 import { addNote } from '../testing/notes.ts';
@@ -16,7 +23,7 @@ const answerNote = defineCommand('brain', {
   inputSchema: Schema.Struct({ name: Schema.String }),
   outputSchema: Schema.Struct({ by: Schema.String, token: Schema.NullOr(Schema.String) }),
   reasons: [],
-  authorizesByToken: true,
+  authorizesByToken: (token) => token.startsWith('a-token-'),
   handle: () => Caller.use(({ id, requestToken }) => Effect.succeed({ by: id, token: requestToken ?? null })),
 });
 
@@ -40,8 +47,8 @@ describe('a caller who presents a request token', () => {
       status: 'succeeded',
       output: { by: 'request-token', token: 'a-token-of-a-request' },
     });
-    expect(answerNote.registration.authorizesByToken).toBe(true);
-    expect(addNote.registration.authorizesByToken).toBe(false);
+    expect(answerNote.registration.authorizesByToken).toBeTypeOf('function');
+    expect(addNote.registration.authorizesByToken).toBeUndefined();
   });
 
   it('is refused by every other operation, since it holds no permission', async () => {
@@ -91,6 +98,50 @@ describe('a caller who presents a request token, at a brain the org may not have
       { status: 'rejected', reason: 'invalid_input' },
       { status: 'rejected', reason: 'invalid_input' },
     ]);
+  });
+});
+
+describe('a caller who presents a token the operation finds signed by nobody', () => {
+  const forger = requestTokenCallerOf('acme', 'forged');
+  const unread = Layer.succeed(BrainRegistry, {
+    status: () => Effect.die(new Error('A token signed by nobody reaches no brain')),
+  });
+
+  it('is refused as a bad token before any brain is looked up, whether the brain or the org exists or not', async () => {
+    const { dispatcher, run } = harness({ retiredBrains: [{ org: 'acme', brain: 'omega' }] });
+    const tokenRefused = { status: 'rejected', reason: 'forbidden', detail: requestTokenRefused };
+    const targets: readonly BrainAddress[] = [
+      { org: 'acme', brain: 'alpha' },
+      { org: 'acme', brain: 'nobody' },
+      { org: 'acme', brain: 'omega' },
+      { org: 'acme', brain: 'Not A Brain' },
+      { org: 'initech', brain: 'alpha' },
+      { org: 'initech', brain: 'nobody' },
+    ];
+
+    const answers = await Promise.all(
+      targets.map(({ org, brain }) =>
+        run(
+          dispatcher
+            .dispatchToBrain(answerNote.registration, toBrain(org, brain)({ ...forger, org }, { name: 'n1' }))
+            .pipe(Effect.provide(unread)),
+        ),
+      ),
+    );
+
+    expect(answers).toEqual(targets.map(() => tokenRefused));
+  });
+
+  it('is still told of input that does not fit first, as at every brain', async () => {
+    const { dispatcher, run } = harness();
+
+    expect(
+      await run(
+        dispatcher
+          .dispatchToBrain(answerNote.registration, toBrain('acme', 'nobody')(forger, { name: 7 }))
+          .pipe(Effect.provide(unread)),
+      ),
+    ).toMatchObject({ status: 'rejected', reason: 'invalid_input' });
   });
 });
 

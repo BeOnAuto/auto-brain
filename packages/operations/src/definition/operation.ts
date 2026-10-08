@@ -107,7 +107,7 @@ function defineOperation<
       mayChangeOutside: definition.mayChangeOutside ?? false,
       irreversible: definition.irreversible ?? false,
       repeatable: definition.repeatable ?? false,
-      authorizesByToken: definition.authorizesByToken ?? false,
+      authorizesByToken: definition.authorizesByToken,
       permissions,
       reasons,
       input: jsonSchemaDocumentOf(inputSchema),

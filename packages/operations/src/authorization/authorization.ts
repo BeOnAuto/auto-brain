@@ -11,7 +11,7 @@ import { rejected, type Rejected } from '../outcome/outcome.ts';
 import { alternatives } from '../plain-language/phrasing.ts';
 
 function authorizesItself({ authorizesByToken }: Registration, { requestToken }: CallerIdentity): boolean {
-  return authorizesByToken && requestToken !== undefined;
+  return authorizesByToken !== undefined && requestToken !== undefined;
 }
 
 function rejectionOfCaller(registration: Registration, { caller, org }: OrgRequest): Rejected | undefined {
@@ -91,13 +91,19 @@ const brainTakesCall = Effect.fnUntraced(function* ({ kind }: Registration<'brai
   return yield* failWith(rejectionOfBrainStatus(status, kind, brain));
 });
 
+const tokenRefused = rejected('forbidden', requestTokenRefused);
+
 export function confirmBrainTakesCall(registration: Registration<'brain'>, request: BrainRequest) {
   const confirmed = brainTakesCall(registration, request);
-  if (!authorizesItself(registration, request.caller)) {
+  const { authorizesByToken } = registration;
+  const { requestToken } = request.caller;
+  if (authorizesByToken === undefined || requestToken === undefined) {
     return confirmed;
   }
-  return Effect.andThen(
-    registration.checkInput(request.input, request.encoding),
-    Effect.mapError(confirmed, () => rejected('forbidden', requestTokenRefused)),
-  );
+  return registration
+    .checkInput(request.input, request.encoding)
+    .pipe(
+      Effect.andThen(failWith(authorizesByToken(requestToken) ? undefined : tokenRefused)),
+      Effect.andThen(Effect.mapError(confirmed, () => tokenRefused)),
+    );
 }

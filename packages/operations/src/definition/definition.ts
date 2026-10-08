@@ -49,7 +49,7 @@ export interface Definition<
   readonly mayChangeOutside?: boolean;
   readonly irreversible?: boolean;
   readonly repeatable?: boolean;
-  readonly authorizesByToken?: boolean;
+  readonly authorizesByToken?: (token: string) => boolean;
   readonly permittedBy?: readonly Permission[];
   readonly inputSchema: In;
   readonly outputSchema: Out;

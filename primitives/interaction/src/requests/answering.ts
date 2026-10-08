@@ -23,6 +23,17 @@ function signedBy(channel: Channel | undefined, requestId: string, token: string
   return channel?.type === 'webhook' && answersRequest(channel.secret, requestId, token);
 }
 
+function requestIdIn(token: string): string {
+  return requestOfAnswerToken(token) ?? '';
+}
+
+export function signedByAChannel(channels: ChannelSettings): (token: string) => boolean {
+  return (token) => {
+    const requestId = requestIdIn(token);
+    return [...channels.channels.values()].some((channel) => signedBy(channel, requestId, token));
+  };
+}
+
 export function tokenHolderOf(
   { requestToken }: CallerIdentity,
   channels: ChannelSettings,
@@ -31,7 +42,7 @@ export function tokenHolderOf(
   if (requestToken === undefined) {
     return Effect.undefined;
   }
-  const requestId = requestOfAnswerToken(requestToken) ?? '';
+  const requestId = requestIdIn(requestToken);
   const signedThrough = (channel: string) => signedBy(channelFor(channels, channel, brain), requestId, requestToken);
   return [...channels.channels.keys()].some((channel) => signedThrough(channel))
     ? Effect.succeed({ requestId, signedThrough })
