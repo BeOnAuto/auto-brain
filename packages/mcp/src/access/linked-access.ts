@@ -6,10 +6,10 @@ import { serverLink, type LinkOptions } from '../connections/server-links.ts';
 import { deliveredCall } from '../delivery/delivery-call.ts';
 import type { McpSettings } from '../settings/mcp-settings.ts';
 import { openedRun } from './run-opening.ts';
-import type { ToolAccess, ToolAccessOptions } from './tool-access.ts';
+import type { LinkedAccess, ToolAccessOptions } from './tool-access.ts';
 import { toolServersOf } from './tool-servers.ts';
 
-export function linkedAccess(settings: McpSettings, options: ToolAccessOptions): ToolAccess {
+export function linkedAccess(settings: McpSettings, options: ToolAccessOptions): LinkedAccess {
   const report = options.reportServerMessage;
   const timing = options.timing ?? defaultTiming;
   const secrets = secretsOfServers(settings.servers);
@@ -29,10 +29,10 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
     open: (context, references) =>
       openedRun({ context, references, links, allowed: settings.allowed, secrets, timing, report }),
     callOnce: (call) => deliveredCall(call, { links, allowed: settings.allowed, secrets, timing }),
-    listServers: (address, named) =>
+    listServers: (scope, named) =>
       Effect.promise(() =>
         toolServersOf(
-          { address, named },
+          { scope, named },
           { links, allowed: settings.allowed, testable: settings.testable, secrets, timing },
         ),
       ),

@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { defineListToolServers } from '../index.ts';
+import { defineListToolServers, defineListToolServersInOrg } from '../index.ts';
 
 const { registration } = defineListToolServers({ listServers: () => Effect.succeed([]) });
 
@@ -60,6 +60,50 @@ describe('the plain words of list_tool_servers', () => {
   it('name the tools of a server that can be tested, as a gateway marks its readers', () => {
     expect(words?.outcome({ tool_servers: [{ name: 'graph', type: 'http', tools: gateway }] }, {})).toBe(
       "This brain's functions may use 1 tool server. “graph” offers 5 tools: search, introspect, execute, validate, and dry run; search and introspect can be tested.",
+    );
+  });
+});
+
+const inOrg = defineListToolServersInOrg({ listServers: () => Effect.succeed([]), brainsServedBy: () => [] })
+  .registration.plainLanguage;
+
+describe('the plain words of list_tool_servers for the org', () => {
+  it('say what it tried to do, for the org or for the brain asked for', () => {
+    expect(inOrg?.attempt({})).toBe('list the tool servers the brains of this org may use');
+    expect(inOrg?.attempt({ brain: 'alpha' })).toBe("list the tool servers this brain's functions may use");
+    expect(inOrg?.attempt({ server: 'graph' })).toBe('list the tools of the tool server “graph”');
+  });
+
+  it('say that no tool server is set up for the org, who can set one up and where it says what they need', () => {
+    expect(inOrg?.outcome({ tool_servers: [] }, {})).toBe(
+      'Whoever runs this server has set up no tool server for this org, so the functions of its brains can call no tools until they set one up; the give-tools guide says what they need.',
+    );
+  });
+
+  it('name each server with the brains it serves, its tools, and say which could not be asked', () => {
+    const inTheOrg = [
+      { name: 'graph', type: 'http', brains: ['*'], tools: [tool('search', true)] },
+      { name: 'notes', type: 'http', brains: ['alpha'], tools: [] },
+      { name: 'vault', type: 'http', brains: ['alpha', 'beta'], unavailable: 'Refused', because: 'key_refused' },
+      { name: 'wiki', type: 'stdio', brains: [], unavailable: 'Gone', because: 'unreachable' },
+    ];
+
+    expect(inOrg?.outcome({ tool_servers: inTheOrg }, {})).toBe(
+      [
+        'The brains of this org may use 4 tool servers.',
+        '“graph”, for every brain, offers 1 tool: search; search can be tested.',
+        '“notes”, for the brain “alpha”, offers no tool a function may use.',
+        '“vault”, for the brains “alpha” and “beta”, did not accept the key this server gives it, so whoever runs this server can check that key.',
+        '“wiki”, for no brain, could not be asked for its tools just now.',
+      ].join(' '),
+    );
+  });
+
+  it('speak of the brain asked for as the brain itself does', () => {
+    const forTheBrain = [{ name: 'graph', type: 'http', brains: ['*'], tools: [tool('search', true)] }];
+
+    expect(inOrg?.outcome({ tool_servers: forTheBrain }, { brain: 'alpha' })).toBe(
+      "This brain's functions may use 1 tool server. “graph” offers 1 tool: search; search can be tested.",
     );
   });
 });
