@@ -25,12 +25,15 @@ const note = defineCommand('brain', {
     depth: Schema.Int,
     callDepth: Schema.Int,
     calledBy: Schema.NullOr(Schema.Struct({ execution_id: Schema.String, reference: Schema.String, run: Schema.Int })),
+    trigger: Schema.NullOr(
+      Schema.Struct({ kind: Schema.Literals(['event', 'cron', 'every']), reference: Schema.String }),
+    ),
   }),
   reasons: ['conflict'],
   handle: Effect.fnUntraced(function* () {
-    const { lineage, depth, callDepth, calledBy } = yield* CallLineage;
+    const { lineage, depth, callDepth, calledBy, trigger } = yield* CallLineage;
     const { version } = yield* (yield* BrainWriter).execute('notes', notes, null, lineage ?? undefined);
-    return { version, depth, callDepth, calledBy };
+    return { version, depth, callDepth, calledBy, trigger };
   }),
 });
 
@@ -77,8 +80,25 @@ describe('the lineage of a call', () => {
     ];
 
     expect(outcomes).toEqual([
-      { status: 'succeeded', output: { version: 1, depth: 0, callDepth: 2, calledBy } },
-      { status: 'succeeded', output: { version: 2, depth: 0, callDepth: 0, calledBy: null } },
+      { status: 'succeeded', output: { version: 1, depth: 0, callDepth: 2, calledBy, trigger: null } },
+      { status: 'succeeded', output: { version: 2, depth: 0, callDepth: 0, calledBy: null, trigger: null } },
+    ]);
+  });
+});
+
+describe('the lineage of a run a trigger started', () => {
+  it('carries the trigger that started the run, and none for a request that gave none', async () => {
+    const { dispatcher, run } = harness();
+    const trigger = { kind: 'every' as const, reference: '/schedule/every' };
+
+    const outcomes = [
+      await run(dispatcher.dispatchToBrain(note.registration, { ...toAlpha(acmeAdmin), trigger })),
+      await run(dispatcher.dispatchToBrain(note.registration, toAlpha(acmeAdmin))),
+    ];
+
+    expect(outcomes).toMatchObject([
+      { status: 'succeeded', output: { version: 1, trigger } },
+      { status: 'succeeded', output: { version: 2, trigger: null } },
     ]);
   });
 });
