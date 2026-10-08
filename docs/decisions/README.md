@@ -18,3 +18,4 @@ Use a numbered Markdown filename for each decision and link to it from the affec
 | [11. Waiting calls: a workflow waits for a run that finishes later, and a run can be cancelled](0011-waiting-calls.md)                      | accepted 2026-10-07                     |
 | [14. A warm worker pool: a run costs its own work, in a worker kept between jobs and let go of after any bad one](0014-warm-worker-pool.md) | proposed 2026-10-06, built 2026-10-07   |
 | [16. Speaking to agents: what the brain says when an agent connects](0016-speaking-to-agents.md)                                            | accepted 2026-10-07                     |
+| [18. Testing a tool call: an agent tries one tool of a tool server through the brain, as a run would call it](0018-testing-a-tool-call.md)  | accepted 2026-10-08                     |
