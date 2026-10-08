@@ -105,6 +105,35 @@ describe('the words of an interaction run', () => {
   });
 });
 
+describe('the words of a request answered by reply', () => {
+  it('name its answerer where it is not the party the request goes to', () => {
+    expect(
+      interactionRunWords.deferral({
+        to: '#approvals-sales',
+        message: 'Approve?',
+        answer_schema: {},
+        answerer: 'U024BE7LH',
+        expires_at: '2026-10-09T09:00:00.000Z',
+        requested_at: '2026-10-07T09:00:00.000Z',
+      }),
+    ).toMatchObject({
+      summary:
+        'A request is waiting for an answer, in the brain’s inbox, until 2026-10-09T09:00:00.000Z; a reply counts from its answerer alone.',
+      data: { to: '#approvals-sales', answerer: 'U024BE7LH' },
+    });
+    expect(
+      interactionRunWords.deferral({
+        to: 'ada',
+        message: 'Approve?',
+        answer_schema: {},
+        answerer: 'ada',
+        expires_at: '2026-10-09T09:00:00.000Z',
+        requested_at: '2026-10-07T09:00:00.000Z',
+      })?.data,
+    ).not.toHaveProperty('answerer');
+  });
+});
+
 describe('the words of an answer', () => {
   it('say what the answer was, or that a notification was delivered', () => {
     expect([

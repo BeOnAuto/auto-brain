@@ -217,6 +217,16 @@ const posting: InputSchema = {
   required: ['channel', 'text'],
 };
 
+const reading: InputSchema = {
+  type: 'object',
+  properties: {
+    channel: { type: 'string', description: 'The conversation to read' },
+    ts: { type: 'string', description: 'The message whose thread to read, or the whole conversation when left out' },
+    oldest: { type: 'string', description: 'Only the messages after this one' },
+  },
+  required: ['channel'],
+};
+
 function chatTools(chat: FakeChat): readonly FakeTool[] {
   return [
     {
@@ -227,6 +237,13 @@ function chatTools(chat: FakeChat): readonly FakeTool[] {
         const { channel, ts } = chat.post(input);
         return text(JSON.stringify({ ok: true, channel, ts }));
       },
+    },
+    {
+      name: 'thread_replies',
+      description: 'Lists the messages of a conversation, or of one thread of it, oldest first.',
+      inputSchema: reading,
+      annotations: { readOnlyHint: true },
+      answer: (input) => text(JSON.stringify({ messages: chat.read(input) })),
     },
   ];
 }

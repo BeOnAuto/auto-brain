@@ -8,12 +8,14 @@ import {
   defaultPageLimit,
   defineQuery,
   partsOfCursor,
+  plainNumber,
   type ProjectedCondition,
   type ProjectedKeyedRow,
   type ProjectedValue,
 } from '@beonauto/operations';
 import { Effect, Option, Schema } from 'effect';
 
+import { readingKeyOf } from '../conversations/conversation-keys.ts';
 import { openRequestsName } from './open-requests.ts';
 import { StandingSchema, requestRowFrom, routeOfRow, type OpenRequestRow } from './request-rows.ts';
 
@@ -35,6 +37,18 @@ const InteractionSchema = Schema.Struct({
   requested_at: Schema.String.annotate({ description: 'When the request was made, in ISO 8601 UTC' }),
   expires_at: Schema.String.annotate({ description: 'When the request expires unanswered, in ISO 8601 UTC' }),
   attempts: Schema.Int.annotate({ description: 'The delivery attempts made so far' }),
+  conversation: Schema.NullOr(Schema.String).annotate({
+    description:
+      'The conversation the brain reads replies in, as its delivery keys it, while the request takes an answer and its delivery reads replies; null for a request answered through answer_interaction alone.',
+  }),
+  answerer: Schema.NullOr(Schema.String).annotate({
+    description:
+      "The party whose reply the brain takes as the answer, the function's from, or its to when it gives no from; null for a request that takes no reply.",
+  }),
+  reply_refusals: Schema.Int.annotate({
+    description:
+      'How many replies from the answerer the brain refused because they were not an answer the function takes, each told how to answer where its reading tells.',
+  }),
   standing: StandingSchema.annotate({
     description:
       'How its delivery stands: in_inbox, to_deliver, delivering, delivered, retrying, undelivered once every attempt failed, answered by a reply while its run is settled, or cancelling once a cancel was asked',
@@ -42,6 +56,16 @@ const InteractionSchema = Schema.Struct({
 }).annotate({ identifier: 'Interaction', description: 'An open request of an interaction function' });
 
 const requestNoun = { one: 'request', other: 'requests' };
+
+function refusedInWords(interactions: readonly { readonly reply_refusals: number }[]): string {
+  const refused = interactions.filter(({ reply_refusals: refusals }) => refusals > 0).length;
+  if (refused === 0) {
+    return '';
+  }
+  return refused === 1
+    ? ' A reply to one of them was refused.'
+    : ` Replies to ${plainNumber(refused)} of them were refused.`;
+}
 
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
@@ -94,6 +118,9 @@ function shownOf({ key, row }: ProjectedKeyedRow) {
       requested_at: new Date(kept.requested_at).toISOString(),
       expires_at: new Date(kept.expires_at).toISOString(),
       attempts: kept.attempts,
+      conversation: kept.conversation === null ? null : readingKeyOf(kept.conversation),
+      answerer: kept.conversation === null ? null : kept.answerer,
+      reply_refusals: kept.reply_refusals,
       standing: kept.standing,
     },
   ];
@@ -154,6 +181,6 @@ export const listInteractions = defineQuery('brain', {
     outcome: ({ interactions }) =>
       interactions.length === 0
         ? 'No request is waiting.'
-        : `Found ${counted(interactions.length, requestNoun)} waiting on this page.`,
+        : `Found ${counted(interactions.length, requestNoun)} waiting on this page.${refusedInWords(interactions)}`,
   },
 });

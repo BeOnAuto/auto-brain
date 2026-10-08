@@ -1,4 +1,4 @@
-import type { AnsweredOnce, CalledOnce, DeliveryCall, StartedFields } from '@beonauto/mcp';
+import type { DeliveryCall, StartedFields } from '@beonauto/mcp';
 import { deliveryIdKey, executionIdKey } from '@beonauto/mcp/policy';
 import { Effect, Result, type Schema } from 'effect';
 
@@ -6,9 +6,8 @@ import { deliveryVariablesOf, renderedArguments } from '../route/rendered-argume
 import type { DeliveringRecord } from '../run/request-record.ts';
 import type { DeliveryParts, DueRequest } from '../schedule/delivery-parts.ts';
 import { recordedCall } from '../schedule/request-ledger.ts';
-import type { AttemptEnd } from './attempt-end.ts';
+import { endOf, type AttemptEnd } from './attempt-end.ts';
 import { startedFact, type Attempting } from './attempt-facts.ts';
-import { endOfCall } from './call-ends.ts';
 
 export interface Delivered {
   readonly startedId: string;
@@ -20,35 +19,6 @@ export interface DeliveryPlan {
   readonly record: DeliveringRecord;
   readonly input: Schema.Json;
   readonly attempting: Attempting;
-}
-
-function detailOf(detail: string) {
-  return detail === '' ? {} : { detail };
-}
-
-function endOfAnswer(called: AnsweredOnce): AttemptEnd {
-  const end = endOfCall(called);
-  if ('answered' in end) {
-    return { outcome: 'delivered', ...called.fields };
-  }
-  const { because, retryAfterMs, detail } = end.failed;
-  return {
-    outcome: 'failed',
-    because,
-    ...(retryAfterMs === null ? {} : { retry_after_ms: retryAfterMs }),
-    ...detailOf(detail),
-    ...called.fields,
-  };
-}
-
-function endOf(called: CalledOnce): AttemptEnd {
-  if (called.kind === 'not_offered') {
-    return { outcome: 'failed', because: 'tool_not_offered', ...detailOf(called.detail) };
-  }
-  if (called.kind === 'unopened') {
-    return { outcome: 'failed', because: 'server_failure', ...detailOf(called.detail) };
-  }
-  return endOfAnswer(called);
 }
 
 function recordedStart(
@@ -86,6 +56,6 @@ export function deliveredOnce(parts: DeliveryParts, plan: DeliveryPlan): Effect.
   return Effect.flatMap(recordedStart(parts, plan, parts.tools.startOf(call)), (startedId) =>
     startedId === undefined
       ? Effect.undefined
-      : Effect.map(parts.tools.callOnce(call), (called): Delivered => ({ startedId, end: endOf(called) })),
+      : Effect.map(parts.tools.callOnce(call), (called): Delivered => ({ startedId, end: endOf(called, record) })),
   );
 }

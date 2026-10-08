@@ -1,6 +1,7 @@
 import type { FrontMatterSection, FrontMatterShape } from '@beonauto/specs/document';
 import { Schema } from 'effect';
 
+import { WrittenRuleSchema } from '../replies/reply-rule.ts';
 import {
   EachSchema,
   ReadSchema,
@@ -17,11 +18,13 @@ const SectionSchema = Schema.Struct({ schema: Schema.optionalKey(Schema.JsonObje
 const FrontMatterSchema = Schema.Struct({
   description: Schema.optionalKey(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(descriptionLength))),
   to: Schema.String,
+  from: Schema.optionalKey(Schema.String),
   expires: Schema.String,
   deliver: Schema.optionalKey(ToolDeliverySchema),
   replies: Schema.optionalKey(RepliesSchema),
   input: Schema.optionalKey(SectionSchema),
   output: Schema.optionalKey(SectionSchema),
+  reply: Schema.optionalKey(WrittenRuleSchema),
 });
 
 export type InteractionFrontMatter = typeof FrontMatterSchema.Type;

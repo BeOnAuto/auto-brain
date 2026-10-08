@@ -51,6 +51,7 @@ describe('an interaction function that delivers through a tool, over HTTP', { ti
         result_sha256: aDigest,
         jsonrpc_id: aNumber,
         duration_ms: aNumber,
+        delivered_as: { conversation: '#approvals-ada', id: '1699.000001' },
       },
     ]);
     expect(listed.body).toMatchObject({

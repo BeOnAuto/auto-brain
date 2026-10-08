@@ -81,4 +81,21 @@ export function checkedParty(party: string): Effect.Effect<string, Conflict> {
 
 export const toPart = { pointer: '/to', what: 'The party the request goes to', mostBytes: interactionBounds.toBytes };
 
+export const fromPart = {
+  pointer: '/from',
+  what: 'The party whose reply counts',
+  mostBytes: interactionBounds.toBytes,
+};
+
+export function checkedAnswerer(answerer: string): Effect.Effect<string, Conflict> {
+  if (answerer.trim() === '') {
+    return Effect.fail(unworkable('/from', 'The party whose reply counts renders to nothing'));
+  }
+  return isPartyText(answerer)
+    ? Effect.succeed(answerer)
+    : Effect.fail(
+        unworkable('/from', 'The party whose reply counts holds a control character, or another a party may not hold'),
+      );
+}
+
 export const messagePart = { pointer: '', what: 'The message', mostBytes: interactionBounds.messageBytes };

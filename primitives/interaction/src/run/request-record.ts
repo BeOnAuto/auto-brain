@@ -1,11 +1,14 @@
 import { Option, Schema } from 'effect';
 
+import { ReplyRuleSchema } from '../replies/reply-rule.ts';
 import { RepliesSchema, ToolDeliverySchema } from '../route/route-schemas.ts';
 
 const RequestRecordSchema = Schema.Struct({
   to: Schema.String,
   message: Schema.String,
   answer_schema: Schema.optionalKey(Schema.JsonObject),
+  answerer: Schema.optionalKey(Schema.String),
+  reply: Schema.optionalKey(ReplyRuleSchema),
   expires_at: Schema.String,
   requested_at: Schema.String,
   deliver: Schema.optionalKey(ToolDeliverySchema),

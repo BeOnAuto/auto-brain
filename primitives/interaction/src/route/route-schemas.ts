@@ -16,7 +16,7 @@ export const ToolDeliverySchema = Schema.Struct({
   tool: Schema.String.annotate({ description: 'The tool of that server that sends the request' }),
   with: Templates.annotate({
     description:
-      'The arguments of the call over input, today, now, to, message, run_id, function, expires_at and answer_schema; a number, boolean, list or object is sent as written, with the Liquid templates in its strings rendered; a string that is one {{ expression }} alone is sent as the value it reads; any other string is rendered as text',
+      'The arguments of the call over input, today, now, to, message, run_id, function, expires_at and answer_schema; a number, boolean, null, list or object is sent as written, with the Liquid templates in its strings rendered; a string that is one {{ expression }} alone is sent as the value it reads; any other string is rendered as text',
   }),
   sent: Schema.optionalKey(
     SentSchema.annotate({ description: 'Where, in what the tool answered, the message that was sent is named' }),

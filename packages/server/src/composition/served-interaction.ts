@@ -1,6 +1,7 @@
 import type { AppRuntime } from '@beonauto/api';
 import {
   answerInteraction,
+  conversationsDue,
   listInteractions,
   makeInteractionFunctionAdapter,
   openRequestsName,
@@ -17,7 +18,7 @@ import { runtimeLedger } from './runtime-ledger.ts';
 export interface ServedInteraction {
   readonly primitive: Primitive;
   readonly operations: readonly BrainOperation[];
-  readonly dueWork: RequestsDue;
+  readonly dueWork: readonly RequestsDue[];
 }
 
 export function interactionServedBy(
@@ -33,6 +34,6 @@ export function interactionServedBy(
       mostOpenRequests: interaction.mostOpenRequests,
     }),
     operations: [answerInteraction, listInteractions],
-    dueWork: requestsDue({ ledger, tools }),
+    dueWork: [requestsDue({ ledger, tools }), conversationsDue({ ledger, tools })],
   };
 }

@@ -1,3 +1,6 @@
+export type { ConversationLedger, ConversationParts } from './conversations/conversation-parts.ts';
+export { conversations, conversationsName } from './conversations/conversation-rows.ts';
+export { conversationsDue } from './conversations/conversations-due.ts';
 export type { InteractionFunctionDefinitionDocument } from './document/interaction-document.ts';
 export { requestsDue, type RequestsDue } from './schedule/due-requests.ts';
 export type { DeliveryParts } from './schedule/delivery-parts.ts';

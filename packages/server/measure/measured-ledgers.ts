@@ -4,13 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { openRequests } from '@beonauto/interaction';
+import { conversations, openRequests } from '@beonauto/interaction';
 import { projectedTableOf } from '@beonauto/operations';
 import { Client } from 'pg';
 
 interface LedgerUse {
   readonly environment: Readonly<Record<string, string>>;
   readonly expireEveryRequestAt: (at: number) => Promise<number>;
+  readonly readEveryConversationAt: (at: number) => Promise<number>;
 }
 
 export interface MeasuredLedger {
@@ -20,6 +21,15 @@ export interface MeasuredLedger {
 }
 
 const expiring = `UPDATE ${projectedTableOf(openRequests)} SET expires_at = $1, ending_due_at = $1`;
+
+const reading = `UPDATE ${projectedTableOf(conversations)} SET next_read_at = $1, due_at = $1, reads = 1`;
+
+function sqliteRun(file: string, statement: string, at: number): Promise<number> {
+  const database = new DatabaseSync(file);
+  const { changes } = database.prepare(statement.replaceAll('$1', '?')).run(at, at);
+  database.close();
+  return Promise.resolve(Number(changes));
+}
 
 async function administered(server: string, statement: string, values: readonly number[] = []): Promise<number> {
   const client = new Client({ connectionString: server });
@@ -41,12 +51,8 @@ function onSQLite(): MeasuredLedger {
       const file = join(directory, 'ledger.db');
       return Promise.resolve({
         environment: { LEDGER_FILE: file },
-        expireEveryRequestAt: (at) => {
-          const database = new DatabaseSync(file);
-          const { changes } = database.prepare(expiring.replaceAll('$1', '?')).run(at, at);
-          database.close();
-          return Promise.resolve(Number(changes));
-        },
+        expireEveryRequestAt: (at) => sqliteRun(file, expiring, at),
+        readEveryConversationAt: (at) => sqliteRun(file, reading, at),
       });
     },
     removeAll: () => {
@@ -71,6 +77,7 @@ function onPostgreSQL(server: string): MeasuredLedger {
       return {
         environment: { DATABASE_URL: database.href },
         expireEveryRequestAt: (at) => administered(database.href, expiring, [at]),
+        readEveryConversationAt: (at) => administered(database.href, reading, [at]),
       };
     },
     removeAll: async () => {

@@ -103,7 +103,13 @@ const decodeListedFields = Schema.decodeUnknownSync(
   Schema.Struct({
     $defs: Schema.Struct({
       Interaction: Schema.Struct({
-        properties: Schema.Struct({ answer_schema: Described, delivery: Described }),
+        properties: Schema.Struct({
+          answer_schema: Described,
+          delivery: Described,
+          conversation: Described,
+          answerer: Described,
+          reply_refusals: Described,
+        }),
       }),
     }),
   }),
@@ -232,5 +238,8 @@ describe('the shape of the answer an open request takes, as the agent reads it',
       'The tool the function delivers the request through, as its deliver names it, or null for a request waiting in the inbox',
     );
     expect(fields.delivery.description).toHaveLength(119);
+    expect(
+      [fields.conversation, fields.answerer, fields.reply_refusals].map(({ description: words }) => words.length < 300),
+    ).toEqual([true, true, true]);
   });
 });

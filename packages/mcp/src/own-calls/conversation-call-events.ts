@@ -9,8 +9,8 @@ const ofTheBrain = { by: Schema.String, at: Schema.String };
 const theTool = { server: Schema.String, tool: Schema.String };
 
 const startedFields = {
-  arguments_bytes: Schema.optionalKey(Schema.Int),
-  arguments_sha256: Schema.optionalKey(Schema.String),
+  arguments_bytes: Schema.Int,
+  arguments_sha256: Schema.String,
   arguments_json: Schema.optionalKey(Schema.String),
 };
 

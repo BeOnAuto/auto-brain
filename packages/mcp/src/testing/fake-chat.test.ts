@@ -33,7 +33,33 @@ describe('the chat of the fake MCP server', () => {
       { ts: '1699.000002', channel: '#approvals', user: 'brain', text: 'Thanks', thread_ts: '1699.000001' },
     ]);
   });
+});
 
+describe('the replies in the chat of the fake MCP server', () => {
+  it('are listed for a thread after a point, or for the whole conversation, oldest first', async () => {
+    const fake = await chatServer();
+    const access = deliveryAccess(fake.url, { allowed: ['post_message', 'thread_replies'] });
+    await calledOnce(access, { ...posting, input: { channel: '#approvals', text: 'Approve?' } });
+    fake.chat.reply({ channel: '#approvals', thread: '1699.000001', user: 'ada', text: 'approve' });
+    fake.chat.reply({ channel: '#approvals', user: 'ada', text: 'Thanks' });
+    const reading = { reference: { server: 'graph', tool: 'thread_replies' } };
+
+    const [thread, after, whole] = await Promise.all([
+      calledOnce(access, { ...reading, input: { channel: '#approvals', ts: '1699.000001' } }),
+      calledOnce(access, { ...reading, input: { channel: '#approvals', ts: '1699.000001', oldest: '1699.000001' } }),
+      calledOnce(access, { ...reading, input: { channel: '#approvals' } }),
+    ]);
+
+    expect([thread, after, whole].map((called) => JSON.stringify(called))).toEqual([
+      expect.stringContaining('1699.000002'),
+      expect.not.stringContaining('Approve?'),
+      expect.stringContaining('Thanks'),
+    ]);
+    expect(JSON.stringify(thread)).not.toContain('Thanks');
+  });
+});
+
+describe('the chat tools of the fake MCP server', () => {
   it('is offered only by a server asked to hold one', async () => {
     const plain = await serveFakeMcp({ bearer: deliveryKey });
     closedAfter(plain.close);

@@ -23,11 +23,14 @@ function requestAccount(record: Schema.JsonObject): RunAccount | undefined {
   const answers = takesAnswer(request);
   const route = routeOf(request);
   const what = answers ? 'A request is waiting for an answer' : 'A notification is waiting to be delivered';
+  const answerer = request.answerer === request.to ? undefined : request.answerer;
+  const from = answerer === undefined ? '' : '; a reply counts from its answerer alone';
   return {
-    summary: `${what}, ${throughWords(route)}, until ${request.expires_at}.`,
+    summary: `${what}, ${throughWords(route)}, until ${request.expires_at}${from}.`,
     data: {
       delivery: route.kind === 'inbox' ? null : { server: route.delivery.server, tool: route.delivery.tool },
       to: cutParty(request.to),
+      ...(answerer === undefined ? {} : { answerer: cutParty(answerer) }),
       message_bytes: Buffer.byteLength(request.message, 'utf8'),
       takes_answer: answers,
       expires_at: request.expires_at,

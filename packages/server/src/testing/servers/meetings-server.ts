@@ -42,7 +42,13 @@ async function chatServing(options: MeetingsOptions) {
     return { chat: undefined, servers: {} };
   }
   const chat = await serveFakeMcp({ bearer: chatKey, chat: true });
-  const entry = { url: chat.url, headers: { Authorization: 'Bearer ${CHAT_KEY}' }, org: 'local', brains: ['meetings'] };
+  const entry = {
+    url: chat.url,
+    headers: { Authorization: 'Bearer ${CHAT_KEY}' },
+    org: 'local',
+    brains: ['meetings'],
+    testable: ['post_message'],
+  };
   return { chat, servers: { chat: entry } };
 }
 

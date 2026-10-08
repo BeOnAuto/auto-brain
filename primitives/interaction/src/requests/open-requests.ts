@@ -1,6 +1,7 @@
 import type { ProjectedMessage, ProjectedRow, KeyedProjection } from '@beonauto/operations';
 import { executionEventOf, type ExecutionEvent } from '@beonauto/specs';
 
+import { conversationKeyOf } from '../conversations/conversation-keys.ts';
 import { interactionPrimitive } from '../primitive/primitive-name.ts';
 import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
 import { attemptSchedule, nextAttemptAt } from '../schedule/attempt-schedule.ts';
@@ -48,6 +49,13 @@ function requested(fact: Fact<'execution_deferred'>, message: ProjectedMessage):
     standing: inInbox ? 'in_inbox' : 'to_deliver',
     open: true,
     ended: null,
+    conversation: null,
+    sent_conversation: null,
+    sent_id: null,
+    answerer: request.answerer ?? null,
+    reply: request.reply === undefined ? null : JSON.stringify(request.reply),
+    reply_refusals: 0,
+    refusals_told: 0,
   });
 }
 
@@ -74,10 +82,22 @@ function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: num
     : { ...row, next_attempt_at: next, standing: standingUnlessCancelling(row, 'retrying') };
 }
 
+function keptConversation({ delivered_as: deliveredAs, replies_in: repliesIn }: Fact<'delivery_ended'>) {
+  return {
+    ...(deliveredAs === undefined ? {} : { sent_conversation: deliveredAs.conversation, sent_id: deliveredAs.id }),
+    ...(repliesIn === undefined ? {} : { conversation: conversationKeyOf(repliesIn) }),
+  };
+}
+
 function attemptEnded(row: OpenRequestRow, fact: Fact<'delivery_ended'>): ProjectedRow {
   const at = Date.parse(fact.at);
   if (fact.outcome === 'delivered') {
-    return rowOf({ ...row, next_attempt_at: null, standing: standingUnlessCancelling(row, 'delivered') });
+    return rowOf({
+      ...row,
+      ...keptConversation(fact),
+      next_attempt_at: null,
+      standing: standingUnlessCancelling(row, 'delivered'),
+    });
   }
   return rowOf(afterFailure(row, fact, at));
 }
@@ -106,6 +126,13 @@ function worked(row: OpenRequestRow, fact: ExecutionEvent): ProjectedRow | undef
   }
   if (fact.type === 'delivery_ended') {
     return attemptEnded(row, fact);
+  }
+  if (fact.type === 'reply_refused') {
+    return rowOf({
+      ...row,
+      reply_refusals: row.reply_refusals + 1,
+      refusals_told: row.refusals_told + (fact.told ? 1 : 0),
+    });
   }
   return fact.type === 'reply_taken'
     ? rowOf({ ...row, standing: standingUnlessCancelling(row, 'answered') })
@@ -139,6 +166,7 @@ export const openRequests: KeyedProjection = {
     'delivery_started',
     'delivery_ended',
     'reply_taken',
+    'reply_refused',
     'execution_cancel_requested',
     'execution_succeeded',
     'execution_rejected',
@@ -163,11 +191,19 @@ export const openRequests: KeyedProjection = {
     { name: 'attempt_due_at', kind: 'integer' },
     { name: 'ending_due_at', kind: 'integer' },
     { name: 'ended', kind: 'text' },
+    { name: 'conversation', kind: 'text' },
+    { name: 'sent_conversation', kind: 'text' },
+    { name: 'sent_id', kind: 'text' },
+    { name: 'answerer', kind: 'text' },
+    { name: 'reply', kind: 'text' },
+    { name: 'reply_refusals', kind: 'integer' },
+    { name: 'refusals_told', kind: 'integer' },
   ],
   indexes: [
     { name: 'by_open', columns: ['open', 'requested_at'] },
     { name: 'by_party', columns: ['party', 'requested_at'] },
     { name: 'by_function', columns: ['function', 'requested_at'] },
+    { name: 'by_conversation', columns: ['open', 'conversation', 'requested_at'] },
     { name: 'attempts_due', columns: ['attempt_due_at'], acrossBrains: true, whereSet: 'attempt_due_at' },
     { name: 'endings_due', columns: ['ending_due_at'], acrossBrains: true, whereSet: 'ending_due_at' },
   ],

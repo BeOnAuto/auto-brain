@@ -1,5 +1,6 @@
 import { availableParallelism } from 'node:os';
 
+import { conversationsOn } from './measure/conversations.ts';
 import { expiriesOn } from './measure/expiries.ts';
 import { hangingOn } from './measure/hanging.ts';
 import { measuredLedgers, type MeasuredLedger } from './measure/measured-ledgers.ts';
@@ -15,13 +16,16 @@ function write(line: string): void {
 }
 
 async function measuredOn(ledger: MeasuredLedger): Promise<void> {
-  if (only !== 'hanging') {
+  if (only === '' || only === 'expiries') {
     await expiriesOn(ledger, requests, write);
     await expiriesOn(ledger, 0, write);
   }
-  if (only !== 'expiries') {
+  if (only === '' || only === 'hanging') {
     await hangingOn(ledger, 32, write);
     await hangingOn(ledger, 256, write);
+  }
+  if (only === '' || only === 'conversations') {
+    await conversationsOn(ledger, 1000, write);
   }
 }
 

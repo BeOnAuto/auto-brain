@@ -48,8 +48,13 @@ const interaction = {
   requested_at: '2026-10-07T09:00:00.000Z',
   expires_at: '2026-10-09T09:00:00.000Z',
   attempts: 0,
+  conversation: null,
+  answerer: null,
+  reply_refusals: 0,
   standing: 'in_inbox',
 };
+
+const refused = { ...interaction, conversation: 'C0123/1699.1', answerer: 'U024BE7LH', reply_refusals: 2 };
 
 async function askedApproval() {
   const brain = interactionHarness();
@@ -200,12 +205,22 @@ describe('the words of answers and requests', () => {
         { interactions: [interaction], has_more: false, next_cursor: null },
         {},
       ),
+      listInteractions.registration.plainLanguage?.outcome(
+        { interactions: [interaction, refused], has_more: false, next_cursor: null },
+        {},
+      ),
+      listInteractions.registration.plainLanguage?.outcome(
+        { interactions: [refused, refused], has_more: false, next_cursor: null },
+        {},
+      ),
     ]).toEqual([
       'answer the request',
       'The request is answered: the run that asked it succeeded, with the answer as its output.',
       'list the open requests',
       'No request is waiting.',
       'Found 1 request waiting on this page.',
+      'Found 2 requests waiting on this page. A reply to one of them was refused.',
+      'Found 2 requests waiting on this page. Replies to 2 of them were refused.',
     ]);
   });
 });

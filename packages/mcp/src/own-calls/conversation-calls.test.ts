@@ -21,6 +21,8 @@ const answered: AnsweredOnce = {
   retryAfterMs: null,
 };
 
+const notOffered = { kind: 'not_offered', because: 'tool_not_allowed', detail: 'Not allowed' } as const;
+
 const reading = {
   callId: 'call-1',
   start: started,
@@ -61,13 +63,13 @@ describe('a telling the brain makes in a conversation', () => {
     });
   });
 
-  it('records the tool alone and the end as not offered when the server no longer offers the tool', () => {
+  it('records no answer when the server no longer offers the tool, or its connection could not be opened', () => {
     expect([
-      tellingStartedOf({ callId: 'call-3', executionId: 'run-1' }, reference, recorded),
-      tellingEndedOf('call-3', { kind: 'not_offered' }, recorded),
+      tellingEndedOf('call-3', notOffered, recorded),
+      tellingEndedOf('call-4', { kind: 'unopened', because: 'mcp_server_failed', detail: 'Unreachable' }, recorded),
     ]).toEqual([
-      { type: 'telling_started', call_id: 'call-3', execution_id: 'run-1', ...reference, ...recorded },
       { type: 'telling_ended', call_id: 'call-3', outcome: 'tool_not_offered', ...recorded },
+      { type: 'telling_ended', call_id: 'call-4', outcome: 'server_failure', ...recorded },
     ]);
   });
 });
@@ -91,16 +93,11 @@ describe('a read the brain makes in a conversation', () => {
     });
   });
 
-  it('names the tool alone when the server no longer offers it', () => {
-    expect(
-      repliesReadOf(
-        { ...reading, start: reference, end: { kind: 'not_offered' }, outcome: 'tool_not_offered', replies: 0 },
-        recorded,
-      ),
-    ).toEqual({
+  it('carries no answer when the server no longer offers the tool', () => {
+    expect(repliesReadOf({ ...reading, end: notOffered, outcome: 'tool_not_offered', replies: 0 }, recorded)).toEqual({
       type: 'replies_read',
       call_id: 'call-1',
-      ...reference,
+      ...started,
       outcome: 'tool_not_offered',
       conversation: 'C0123/1699.1',
       since: '1699.3',

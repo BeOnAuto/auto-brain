@@ -1,0 +1,95 @@
+import { approvalDocument, chatDelivery } from '@beonauto/interaction/testing';
+import { describe, expect, it } from 'vitest';
+
+import { chatEnvironment, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
+import {
+  channelReading,
+  interactionsOf,
+  readingIn,
+  readsOf,
+  someRead,
+  threadReading,
+} from '../testing/servers/chat-readings.ts';
+import { servingInteractions } from '../testing/servers/interaction-server.ts';
+import { alpha } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/servers/workflow-calls.ts';
+import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+
+const threaded = [...chatDelivery, ...threadReading];
+
+describe(
+  'a request whose function reads the replies to its message, over HTTP',
+  { timeout: workflowTestTimeoutMs },
+  () => {
+    it('is answered by the reply of its party in the thread, read through the tool the function names', async () => {
+      const chat = await chatServer();
+      const server = await servingInteractions(threaded, chatEnvironment(chat.url));
+      const runId = await server.ask('approve-brief');
+      const [listed] = await until(() => interactionsOf(server), readingIn(1));
+      const [question] = chat.chat.posted();
+      chat.chat.reply({ channel: '#approvals-ada', thread: question?.ts, user: 'ada', text: 'Approve, ready to ship' });
+
+      const settled = await server.settled(runId);
+      const events = await server.call('GET', `${alpha}/events`);
+
+      expect(listed).toMatchObject({ conversation: '#approvals-ada/1699.000001', answerer: 'ada', reply_refusals: 0 });
+      expect(settled).toMatchObject({
+        status: 'succeeded',
+        output: { choice: 'approve' },
+        record: { answered_by: 'brain:alpha', reply: { id: '1699.000002', sender: 'ada' } },
+      });
+      expect(await deliveryHistoryOf(server, runId)).toMatchObject([
+        { type: 'delivery_started' },
+        {
+          type: 'delivery_ended',
+          delivered_as: { conversation: '#approvals-ada', id: '1699.000001' },
+          replies_in: { server: 'chat', tool: 'thread_replies', key: '#approvals-ada/1699.000001' },
+        },
+      ]);
+      expect(JSON.stringify(events.body)).toContain(
+        'The brain looked for new replies in the conversation “#approvals-ada/1699.000001” through the tool thread_replies of chat and found 2, took 1 as an answer and refused 0.',
+      );
+    });
+
+    it('is read as it was asked, though its function changed since', async () => {
+      const chat = await chatServer();
+      const server = await servingInteractions(threaded, chatEnvironment(chat.url));
+      const runId = await server.ask('approve-brief');
+      await until(() => interactionsOf(server), readingIn(1));
+      const changed = approvalDocument([...chatDelivery, ...threadReading]).replace(
+        'tool: thread_replies',
+        'tool: echo',
+      );
+      const updated = await server.call('PUT', `${alpha}/specs/interaction/approve-brief`, {
+        body: { source: changed },
+      });
+      chat.chat.reply({ channel: '#approvals-ada', thread: chat.chat.posted()[0]?.ts, user: 'ada', text: 'reject' });
+
+      expect(updated.status).toBe(200);
+      expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: { choice: 'reject' } });
+      expect(chat.received().map(({ tool }) => tool)).not.toContain('echo');
+    });
+  },
+);
+
+describe(
+  'two functions that read one conversation with one tool, over HTTP',
+  { timeout: workflowTestTimeoutMs },
+  () => {
+    it('share one row and one read for their requests', async () => {
+      const chat = await chatServer();
+      const server = await servingInteractions([...chatDelivery, ...channelReading], chatEnvironment(chat.url));
+      await server.call('POST', `${alpha}/specs/interaction`, {
+        body: { name: 'approve-again', source: approvalDocument([...chatDelivery, ...channelReading]) },
+      });
+      await server.ask('approve-brief');
+      await server.ask('approve-again');
+
+      const listed = await until(() => interactionsOf(server), readingIn(2));
+      const reads = await until(() => readsOf(chat), someRead);
+
+      expect(listed.map(({ conversation }) => conversation)).toEqual(['#approvals-ada', '#approvals-ada']);
+      expect(reads).toHaveLength(1);
+    });
+  },
+);

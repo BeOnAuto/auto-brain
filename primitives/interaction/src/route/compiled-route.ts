@@ -15,7 +15,8 @@ export interface WrittenRoute {
 
 const replyWaitBounds = { leastMs: 5000, mostMs: 3_600_000 } as const;
 
-const pointerWords = 'Expected a JSON Pointer, such as /ts, or empty for the whole';
+const pointerWords =
+  'Expected a JSON Pointer such as /messages: it starts with a slash, writes ~ as ~0 and a slash within a name as ~1';
 
 const waitWords = 'Expected an ISO 8601 duration from PT5S to PT1H, such as PT1M';
 
@@ -34,9 +35,13 @@ function nameIssues(
     .map(([pointer]) => issueAt(lines, pointer, `Expected ${shape}`));
 }
 
+function isPointerIntoAnswer(pointer: string): boolean {
+  return pointer !== '' && isJsonPointer(pointer);
+}
+
 function pointerIssues(lines: SourceLines, pointers: readonly (readonly [string, string | undefined])[]) {
   return pointers
-    .filter(([, pointer]) => pointer !== undefined && !isJsonPointer(pointer))
+    .filter(([, pointer]) => pointer !== undefined && !isPointerIntoAnswer(pointer))
     .map(([place]) => issueAt(lines, place, pointerWords));
 }
 

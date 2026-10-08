@@ -33,8 +33,6 @@ export {
   repliesReadOf,
   tellingEndedOf,
   tellingStartedOf,
-  type CallEnd,
-  type CallStart,
   type Reading,
   type Recorded,
   type Telling,
@@ -45,6 +43,7 @@ export { answeredInWords } from './names/tool-words.ts';
 export { defineTestToolCall } from './tool-tests/test-tool-call.ts';
 export { type ToolTestEvent } from './tool-tests/tool-test-events.ts';
 export { toolTestPresenter } from './tool-tests/tool-test-presenter.ts';
+export { conversationCallPresenter } from './own-calls/conversation-call-presenter.ts';
 export { defaultTiming, runBoundMs, toolBounds, type Timing } from './bounds/call-bounds.ts';
 export { secretsOf, type Secrets } from './bounds/secrets.ts';
 export { toolReferenceOf, toolReferenceShape, writtenOf, type ToolReference } from './names/tool-reference.ts';

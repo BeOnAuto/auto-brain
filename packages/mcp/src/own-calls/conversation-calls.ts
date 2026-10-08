@@ -1,12 +1,12 @@
 import type { StartedFields } from '../calls/recorded-calls.ts';
-import type { AnsweredOnce } from '../delivery/delivery-bounds.ts';
-import type { ToolReference } from '../names/tool-reference.ts';
+import type { CalledOnce } from '../delivery/delivery-bounds.ts';
 import {
   ConversationCallEventSchema,
   type ConversationCallEvent,
   type ReadOutcome,
   type RepliesRead,
   type TellingEnded,
+  type TellingOutcome,
   type TellingStarted,
 } from './conversation-call-events.ts';
 import { ownCallDecider } from './own-call-decider.ts';
@@ -24,12 +24,15 @@ export interface Recorded {
   readonly at: string;
 }
 
-export type CallStart = StartedFields | ToolReference;
-
-export type CallEnd = AnsweredOnce | { readonly kind: 'not_offered' };
-
-function answeredOf(end: CallEnd) {
+function answeredOf(end: CalledOnce) {
   return end.kind === 'answered' ? { ...end.fields, duration_ms: end.durationMs } : {};
+}
+
+function tellingOutcomeOf(end: CalledOnce): TellingOutcome {
+  if (end.kind === 'answered') {
+    return end.outcome;
+  }
+  return end.kind === 'unopened' ? 'server_failure' : 'tool_not_offered';
 }
 
 export interface Telling {
@@ -39,17 +42,17 @@ export interface Telling {
 
 export function tellingStartedOf(
   { callId, executionId }: Telling,
-  start: CallStart,
+  start: StartedFields,
   recorded: Recorded,
 ): TellingStarted {
   return { type: 'telling_started', call_id: callId, execution_id: executionId, ...start, ...recorded };
 }
 
-export function tellingEndedOf(callId: string, end: CallEnd, recorded: Recorded): TellingEnded {
+export function tellingEndedOf(callId: string, end: CalledOnce, recorded: Recorded): TellingEnded {
   return {
     type: 'telling_ended',
     call_id: callId,
-    outcome: end.kind === 'answered' ? end.outcome : 'tool_not_offered',
+    outcome: tellingOutcomeOf(end),
     ...answeredOf(end),
     ...recorded,
   };
@@ -57,8 +60,8 @@ export function tellingEndedOf(callId: string, end: CallEnd, recorded: Recorded)
 
 export interface Reading {
   readonly callId: string;
-  readonly start: CallStart;
-  readonly end: CallEnd;
+  readonly start: StartedFields;
+  readonly end: CalledOnce;
   readonly outcome: ReadOutcome;
   readonly conversation: string;
   readonly since: string | null;

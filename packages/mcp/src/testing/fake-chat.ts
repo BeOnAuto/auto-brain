@@ -6,8 +6,17 @@ export interface ChatMessage {
   readonly thread_ts?: string;
 }
 
+export interface ChatReply {
+  readonly channel: string;
+  readonly thread?: string | undefined;
+  readonly user: string;
+  readonly text: string;
+}
+
 export interface FakeChat {
   readonly post: (input: unknown) => ChatMessage;
+  readonly read: (input: unknown) => readonly ChatMessage[];
+  readonly reply: (reply: ChatReply) => string;
   readonly posted: () => readonly ChatMessage[];
 }
 
@@ -18,25 +27,39 @@ function argument(input: unknown, name: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-function threadOf(input: unknown) {
-  const thread = argument(input, 'thread_ts');
+function threadOf(thread: string) {
   return thread === '' ? {} : { thread_ts: thread };
+}
+
+function inThreadOf(thread: string) {
+  return (message: ChatMessage) => thread === '' || message.ts === thread || message.thread_ts === thread;
 }
 
 export function fakeChat(): FakeChat {
   const messages: ChatMessage[] = [];
+  const nextTs = () => `1699.${String(messages.length + 1).padStart(6, '0')}`;
+  const kept = (message: ChatMessage) => {
+    messages.push(message);
+    return message;
+  };
   return {
-    post: (input) => {
-      const message = {
-        ts: `1699.${String(messages.length + 1).padStart(6, '0')}`,
+    post: (input) =>
+      kept({
+        ts: nextTs(),
         channel: argument(input, 'channel'),
         user: chatBot,
         text: argument(input, 'text'),
-        ...threadOf(input),
-      };
-      messages.push(message);
-      return message;
+        ...threadOf(argument(input, 'thread_ts')),
+      }),
+    read: (input) => {
+      const inThread = inThreadOf(argument(input, 'ts'));
+      const oldest = Number(argument(input, 'oldest'));
+      return messages.filter(
+        (message) => message.channel === argument(input, 'channel') && inThread(message) && Number(message.ts) > oldest,
+      );
     },
+    reply: ({ channel, thread, user, text }) =>
+      kept({ ts: nextTs(), channel, user, text, ...threadOf(thread ?? '') }).ts,
     posted: () => messages.filter(({ user }) => user === chatBot),
   };
 }

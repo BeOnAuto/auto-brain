@@ -13,7 +13,7 @@ export type FakeAnswer =
 
 export type ToolPorts = Pick<ToolAccess, 'named' | 'configured' | 'startOf' | 'callOnce'>;
 
-export interface FakeTools extends ToolPorts, Pick<ChatBoard, 'posted'> {
+export interface FakeTools extends ToolPorts, Pick<ChatBoard, 'posted' | 'reply'> {
   readonly calls: () => readonly DeliveryCall[];
   readonly answerNext: (...answers: readonly FakeAnswer[]) => void;
   readonly disallow: (tool: string) => void;
@@ -95,6 +95,7 @@ export function fakeTools(duringCall: () => Effect.Effect<unknown> = () => Effec
     callOnce: sent,
     calls: () => [...calls],
     posted: board.posted,
+    reply: board.reply,
     answerNext: (...answers) => {
       queued.push(...answers);
     },

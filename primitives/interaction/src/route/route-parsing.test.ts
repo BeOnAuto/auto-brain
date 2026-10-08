@@ -106,20 +106,38 @@ describe('the names a delivery and its reading give', () => {
     ]);
   });
 
-  it('refuse a pointer that is not one, and an order of reading that is neither', () => {
-    const pointer = 'Expected a JSON Pointer, such as /ts, or empty for the whole';
-    const pointed = replacing(delivering, '    id: /ts', '    id: ts');
-    const listed = replacing(reading, '    list: /messages', '    list: messages');
+  it('refuse an order of reading that is neither', () => {
     const ordered = replacing(reading, '    order: oldest_first', '    order: oldest');
 
-    expect([
-      problemsOf(documentOf(pointed)),
-      problemsOf(documentOf(delivering, listed, answering)),
-      problemsOf(documentOf(delivering, ordered, answering)),
-    ]).toEqual([
-      [`Line 12, /deliver/sent/id: ${pointer}`],
-      [`Line 22, /replies/read/list: ${pointer}`],
-      [expect.stringMatching(/^Line 23, \/replies\/read\/order: /u)],
+    expect(problemsOf(documentOf(delivering, ordered, answering))).toEqual([
+      expect.stringMatching(/^Line 23, \/replies\/read\/order: /u),
+    ]);
+  });
+});
+
+describe('the pointers into what a tool answered', () => {
+  it('refuse at each place, in one sentence, a pointer that is empty or is not a JSON Pointer', () => {
+    const pointer =
+      'Expected a JSON Pointer such as /messages: it starts with a slash, writes ~ as ~0 and a slash within a name as ~1';
+    const sent = replacing(
+      replacing(delivering, '    conversation: /channel', "    conversation: ''"),
+      '    id: /ts',
+      '    id: ts',
+    );
+    const read = replacing(
+      replacing(reading, '    list: /messages', '    list: messages'),
+      '    each: { id: /ts, sender: /user, text: /text, to: /thread_ts }',
+      "    each: { id: '', sender: user, text: /a~2, to: '' }",
+    );
+
+    expect(problemsOf(documentOf(sent, read, answering))).toEqual([
+      `Line 11, /deliver/sent/conversation: ${pointer}`,
+      `Line 12, /deliver/sent/id: ${pointer}`,
+      `Line 22, /replies/read/list: ${pointer}`,
+      `Line 24, /replies/read/each/id: ${pointer}`,
+      `Line 24, /replies/read/each/sender: ${pointer}`,
+      `Line 24, /replies/read/each/text: ${pointer}`,
+      `Line 24, /replies/read/each/to: ${pointer}`,
     ]);
   });
 });
