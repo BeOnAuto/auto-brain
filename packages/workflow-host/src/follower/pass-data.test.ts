@@ -75,7 +75,7 @@ async function passing(counted: CountedRecords) {
     consumers: [],
     calls: [],
     primitive: 'orchestration',
-    applySpecRecord: () => Effect.void,
+    applySpecRecord: () => Effect.succeed('applied'),
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
     registered: [],

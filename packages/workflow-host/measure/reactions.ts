@@ -96,7 +96,7 @@ export async function reactionLatencyOn(database: DatabaseSettings, measured: La
         specRecorded(opened.store, {
           name: `w${index}`,
           version: 1,
-          trigger: eventTrigger({ type: typeOf(index, measured.workflows) }),
+          triggers: [eventTrigger({ type: typeOf(index, measured.workflows) })],
         }),
       ),
     Promise.resolve(),

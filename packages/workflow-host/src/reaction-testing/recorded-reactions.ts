@@ -1,9 +1,8 @@
 import type { Emission } from '@beonauto/specs';
 import { Effect } from 'effect';
 
-import { StartRefused, type ReactionOptions, type ReactionStart, type Trigger } from '../reactions/reaction-options.ts';
+import { StartRefused, type ReactionOptions, type ReactionStart } from '../reactions/reaction-options.ts';
 import { StartRejected } from '../reactions/start-rejected.ts';
-import { triggerOfSource } from './brain-writes.ts';
 
 export interface RecordedReactions {
   readonly options: ReactionOptions;
@@ -12,7 +11,6 @@ export interface RecordedReactions {
 }
 
 export interface ReactionBehaviour {
-  readonly triggerOf?: (source: string) => Trigger | undefined;
   readonly failure?: FailingStart;
 }
 
@@ -34,7 +32,6 @@ export function recordedReactions(behaviour: ReactionBehaviour = {}): RecordedRe
   return {
     options: {
       primitive: 'orchestration',
-      triggerOf: behaviour.triggerOf ?? triggerOfSource,
       start: (start) =>
         Effect.suspend(() => {
           const failure = behaviour.failure?.(start) ?? null;

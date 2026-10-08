@@ -7,7 +7,7 @@ import type { BrainRecords } from './brain-records.ts';
 import { followedBrainsOn } from './followed-brains.ts';
 import type { FollowerHost } from './follower-host.ts';
 import { startFollower, type Follower, type FollowerParts } from './follower-loop.ts';
-import { brainOfKey } from './record-steps.ts';
+import { brainOfKey, type StepParts } from './record-steps.ts';
 
 export interface FollowerAssembly extends ReactionUse {
   readonly records: BrainRecords;
@@ -21,6 +21,8 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
   const { database, clock, reports } = host;
   const brains = followedBrainsOn(database);
   const reacting = reactingOn(host, assembly);
+  const unreadable: StepParts['unreadable'] = (brainKey, { id, type }) =>
+    reports.note({ kind: 'record_unreadable', ...brainOfKey(brainKey), recordId: id, type });
   const pass = passOf({
     database,
     records: assembly.records,
@@ -30,8 +32,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     calls: assembly.calls,
     primitive: assembly.options.primitive,
     applySpecRecord: reacting.applySpecRecord,
-    unreadable: (brainKey, record) =>
-      reports.note({ kind: 'record_unreadable', ...brainOfKey(brainKey), recordId: record.id, type: record.type }),
+    unreadable,
     passedEarly: (brainKey, { stream, version }, sweeps) =>
       reports.note({
         kind: 'run_record_passed',
@@ -45,6 +46,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     brains,
     records: assembly.records,
     applySpecRecord: reacting.applySpecRecord,
+    unreadable,
     primitive: assembly.options.primitive,
   });
   return startFollower({

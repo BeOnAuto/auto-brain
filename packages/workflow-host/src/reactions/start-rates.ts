@@ -1,8 +1,10 @@
+import { StartingTriggerSchema } from '@beonauto/specs';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { DeliveryFailed, deliverySweeps } from '../follower/consumers.ts';
+import { triggerNamed } from '../triggers/trigger-words.ts';
 import type { ReactionStart, StartReaction } from './reaction-options.ts';
 import type { Refusals } from './refusals.ts';
 
@@ -12,7 +14,9 @@ export const mostDeferredStarts = 1000;
 
 const aMinute = 60_000;
 
-const unstarted = 'The workflow could not be started for what it reacts to: ';
+function unstarted({ trigger }: ReactionStart, detail: string): string {
+  return `The workflow could not be started by its ${triggerNamed(trigger.kind)}: ${detail}`;
+}
 
 export interface Starting {
   readonly start: (brainKey: string, start: ReactionStart) => Effect.Effect<void, DeliveryFailed>;
@@ -33,7 +37,8 @@ const ReactionStartSchema = Schema.Struct({
   executionId: Schema.String,
   input: Schema.Json,
   depth: Schema.Int,
-  cause: Schema.NullOr(Schema.String),
+  cause: Schema.String,
+  trigger: StartingTriggerSchema,
 });
 
 const DeferredRow = Schema.Struct({
@@ -84,7 +89,7 @@ function started(
 ): Effect.Effect<void, DeliveryFailed> {
   return startReaction(start).pipe(
     Effect.catchTag('start_rejected', ({ detail }: Readonly<{ detail: string }>) =>
-      refusals.refuse(brainKey, start.workflow, `${unstarted}${detail}`),
+      refusals.refuse(brainKey, start.workflow, unstarted(start, detail)),
     ),
     Effect.mapError(({ detail }: Readonly<{ detail: string }>) => new DeliveryFailed({ detail })),
   );
@@ -96,7 +101,7 @@ function deferredStart({ database, refusals }: StartingParts, brainKey: string, 
       ? refusals.refuse(
           brainKey,
           start.workflow,
-          `The workflow was started by its trigger ${mostStartsAMinute} times a minute and ${mostDeferredStarts} starts already waited for a later minute, the most it keeps; this start was refused`,
+          `The workflow was started by its ${triggerNamed(start.trigger.kind)} ${mostStartsAMinute} times a minute and ${mostDeferredStarts} starts already waited for a later minute, the most it keeps; this start was refused`,
         )
       : Effect.asVoid(
           Effect.orDie(
@@ -137,7 +142,7 @@ function failedWhenDue(parts: StartingParts, deferred: Deferred, minute: number,
   return attempts < deliverySweeps
     ? deferredAgain(parts, deferred, minute, attempts)
     : Effect.andThen(
-        parts.refusals.refuse(deferred.brain_key, deferred.start.workflow, `${unstarted}${detail}`),
+        parts.refusals.refuse(deferred.brain_key, deferred.start.workflow, unstarted(deferred.start, detail)),
         withoutDeferred(parts.database, deferred),
       );
 }

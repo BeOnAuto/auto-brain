@@ -49,7 +49,7 @@ async function reactingWorkflows(database: DatabaseSettings, count: number): Pro
         specRecorded(opened.store, {
           name: `w${index}`,
           version: 1,
-          trigger: eventTrigger({ type: `com.measure.t${index}` }),
+          triggers: [eventTrigger({ type: `com.measure.t${index}` })],
         }),
       ),
     Promise.resolve(),

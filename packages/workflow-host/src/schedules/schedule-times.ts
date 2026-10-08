@@ -1,8 +1,5 @@
+import type { ScheduleTrigger } from '@beonauto/specs';
 import { Cron } from 'croner';
-
-export type Timing =
-  | { readonly kind: 'cron'; readonly expression: string }
-  | { readonly kind: 'every'; readonly milliseconds: number };
 
 const fieldsOfACron = 5;
 
@@ -25,14 +22,14 @@ export function cronRejectionOf(expression: string): string | undefined {
   }
 }
 
-export function nextAfter(timing: Timing, anchor: number, after: number): number | null {
+export function nextAfter(timing: ScheduleTrigger, anchor: number, after: number): number | null {
   if (timing.kind === 'every') {
     return anchor + (Math.floor((after - anchor) / timing.milliseconds) + 1) * timing.milliseconds;
   }
   return cronOf(timing.expression).nextRun(new Date(after))?.getTime() ?? null;
 }
 
-export function latestDue(timing: Timing, anchor: number, due: number, now: number): number {
+export function latestDue(timing: ScheduleTrigger, anchor: number, due: number, now: number): number {
   if (timing.kind === 'every') {
     return anchor + Math.floor((now - anchor) / timing.milliseconds) * timing.milliseconds;
   }

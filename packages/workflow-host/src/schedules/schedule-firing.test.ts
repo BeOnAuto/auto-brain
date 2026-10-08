@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsOf } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { at, specRecorded } from '../reaction-testing/brain-writes.ts';
+import { at, cronTrigger, everyTrigger, specRecordAt, specRecorded } from '../reaction-testing/brain-writes.ts';
 import { movedClock, type MovedClock } from '../reaction-testing/moved-clock.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { refusedWhile, type FailingStart } from '../reaction-testing/recorded-reactions.ts';
@@ -31,7 +31,7 @@ async function ticking(failure?: FailingStart): Promise<Ticking> {
   await specRecorded(reacting.database.store, {
     name: 'tick',
     version: 1,
-    trigger: { kind: 'every', milliseconds: aMinute },
+    triggers: [everyTrigger(aMinute)],
   });
   return { reacting, clock };
 }
@@ -54,8 +54,8 @@ function refusalsOf(reacting: ReactingHost) {
   );
 }
 
-describe('a workflow whose trigger is a schedule every minute', () => {
-  it('is started at each due time, anchored at its activation, under an id of its due time, with the schedule as input', async () => {
+describe('a workflow whose every schedule is due every minute', () => {
+  it('is started at each due time, anchored at its activation, under an id of its due time, caused by its activation', async () => {
     const { reacting, clock } = await ticking();
 
     clock.moveTo(activatedAt + aMinute);
@@ -69,10 +69,11 @@ describe('a workflow whose trigger is a schedule every minute', () => {
         brain: 'alpha',
         workflow: 'tick',
         version: 1,
-        executionId: reactionExecutionIdOf('tick', 1, isoAt(1)),
+        executionId: reactionExecutionIdOf('tick', 1, '/schedule/every', isoAt(1)),
         input: { schedule: { due: isoAt(1) } },
         depth: 1,
-        cause: null,
+        cause: specRecordAt(1),
+        trigger: { kind: 'every', reference: '/schedule/every' },
       },
     ]);
     expect(both.map(({ input }) => input)).toEqual([{ schedule: { due: isoAt(1) } }, { schedule: { due: isoAt(2) } }]);
@@ -84,7 +85,7 @@ describe('the due times of a schedule', () => {
     const { reacting, clock } = await ticking();
     clock.moveTo(activatedAt + aMinute);
     await startsReaching(reacting, 1);
-    const running = `acme/alpha/${reactionExecutionIdOf('tick', 1, isoAt(1))}`;
+    const running = `acme/alpha/${reactionExecutionIdOf('tick', 1, '/schedule/every', isoAt(1))}`;
     await Effect.runPromise(
       reacting.database.write(statement`INSERT INTO workflow_runs (run_id, stream_id) VALUES (${running}, ${'s'})`),
     );
@@ -100,7 +101,11 @@ describe('the due times of a schedule', () => {
 
     expect([starts.map(({ input }) => input), refusals]).toEqual([
       [{ schedule: { due: isoAt(1) } }, { schedule: { due: isoAt(3) } }],
-      [{ reason: `The run due at ${isoAt(2)} was skipped: the run of the time before still runs` }],
+      [
+        {
+          reason: `The run its every schedule had due at ${isoAt(2)} was skipped: the run its every schedule started before still runs`,
+        },
+      ],
     ]);
   });
 });
@@ -117,7 +122,11 @@ describe('a due time of a schedule', () => {
     const starts = await startsReaching(reacting, 1);
 
     expect([refusals, starts.map(({ input }) => input)]).toEqual([
-      [{ reason: `The run due at ${isoAt(1)} could not be started: The brain refused the start` }],
+      [
+        {
+          reason: `The run its every schedule had due at ${isoAt(1)} could not be started: The brain refused the start`,
+        },
+      ],
       [{ schedule: { due: isoAt(2) } }],
     ]);
   });
@@ -133,21 +142,21 @@ describe('a due time of a schedule', () => {
       [{ schedule: { due: isoAt(5) } }],
       [
         {
-          reason: `The runs due from ${isoAt(1)} to ${isoAt(5)} came while the server was down, and only the latest ran`,
+          reason: `The runs its every schedule had due from ${isoAt(1)} to ${isoAt(5)} came while the server was down, and only the latest ran`,
         },
       ],
     ]);
   });
 });
 
-describe('a workflow whose trigger is a cron schedule', () => {
+describe('a workflow with a cron schedule', () => {
   it('is started at the times of its five fields, in UTC', async () => {
     const clock = movedClock(activatedAt + 1000);
     const reacting = await reactingHost({ clock });
     await specRecorded(reacting.database.store, {
       name: 'nightly',
       version: 1,
-      trigger: { kind: 'cron', expression: '30 2 * * *' },
+      triggers: [cronTrigger('30 2 * * *')],
     });
 
     clock.moveTo(Date.parse('2026-10-02T02:30:00.000Z'));

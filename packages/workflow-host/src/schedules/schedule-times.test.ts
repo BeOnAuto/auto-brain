@@ -1,6 +1,7 @@
+import type { ScheduleTrigger } from '@beonauto/specs';
 import { describe, expect, it } from 'vitest';
 
-import { cronRejectionOf, latestDue, nextAfter, type Timing } from './schedule-times.ts';
+import { cronRejectionOf, latestDue, nextAfter } from './schedule-times.ts';
 
 const anchor = Date.parse('2026-10-01T09:00:00.000Z');
 
@@ -31,18 +32,18 @@ describe('a cron expression', () => {
 describe('the next time a schedule is due', () => {
   it('is the next multiple of its period after its anchor, or the next time its cron names, in UTC', () => {
     expect([
-      nextAfter({ kind: 'every', milliseconds: aMinute }, anchor, anchor),
-      nextAfter({ kind: 'every', milliseconds: aMinute }, anchor, anchor + 90_000),
-      nextAfter({ kind: 'cron', expression: '30 2 * * *' }, anchor, anchor),
-      nextAfter({ kind: 'cron', expression: '0 0 30 2 *' }, anchor, anchor),
+      nextAfter({ kind: 'every', reference: '/schedule/every', milliseconds: aMinute }, anchor, anchor),
+      nextAfter({ kind: 'every', reference: '/schedule/every', milliseconds: aMinute }, anchor, anchor + 90_000),
+      nextAfter({ kind: 'cron', reference: '/schedule/cron', expression: '30 2 * * *' }, anchor, anchor),
+      nextAfter({ kind: 'cron', reference: '/schedule/cron', expression: '0 0 30 2 *' }, anchor, anchor),
     ]).toEqual([anchor + aMinute, anchor + 2 * aMinute, at('2026-10-02T02:30:00.000Z'), null]);
   });
 });
 
 describe('the latest time a schedule was due', () => {
   it('is the last due time at or before now', () => {
-    const every: Timing = { kind: 'every', milliseconds: aMinute };
-    const nightly: Timing = { kind: 'cron', expression: '30 2 * * *' };
+    const every: ScheduleTrigger = { kind: 'every', reference: '/schedule/every', milliseconds: aMinute };
+    const nightly: ScheduleTrigger = { kind: 'cron', reference: '/schedule/cron', expression: '30 2 * * *' };
     const due = at('2026-10-02T02:30:00.000Z');
 
     expect([

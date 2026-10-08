@@ -3,11 +3,11 @@ import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { deliverySweeps, type RecordConsumer, type Delivery, type FollowedRecord } from '../follower/consumers.ts';
+import { eventSubscriptionsOf, type EventSubscription } from '../triggers/trigger-rows.ts';
 import { reactionExecutionIdOf } from './reaction-ids.ts';
 import type { RefuseReaction } from './refusals.ts';
 import type { WorkflowOfRun } from './run-workflows.ts';
 import type { Starting } from './start-rates.ts';
-import { eventSubscriptionsOf, type EventSubscription } from './subscriptions.ts';
 
 export const mostReactionDepth = 8;
 
@@ -41,7 +41,7 @@ function isOwn(parts: StartParts, workflow: string, { brainKey, event }: Followe
 
 function startOf(parts: StartParts, subscription: EventSubscription, followed: FollowedRecord): Delivery {
   const { brain, brainKey, record, event } = followed;
-  const { workflow, version } = subscription;
+  const { workflow, version, reference } = subscription;
   return {
     key: workflow,
     workflow,
@@ -50,31 +50,32 @@ function startOf(parts: StartParts, subscription: EventSubscription, followed: F
         ? parts.refusals.refuse(
             brainKey,
             workflow,
-            `An event matched the trigger of the workflow at reaction depth ${event.depth}, past the ${mostReactionDepth} a chain of reactions may reach`,
+            `An event matched the event trigger of the workflow at reaction depth ${event.depth}, past the ${mostReactionDepth} a chain of reactions may reach`,
           )
         : parts.starting.start(brainKey, {
             ...brain,
             workflow,
             version,
-            executionId: reactionExecutionIdOf(workflow, version, record.id),
+            executionId: reactionExecutionIdOf(workflow, version, reference, record.id),
             input: [event.event],
             depth: event.depth,
             cause: record.id,
+            trigger: { kind: 'event', reference },
           }),
   };
 }
 
 export function subscriptionStarts(parts: StartParts): RecordConsumer {
   const reported = new Set<string>();
-  const reportedOnce = (brainKey: string, { workflow, version }: EventSubscription, error: string) => {
-    const key = JSON.stringify([brainKey, workflow, version]);
+  const reportedOnce = (brainKey: string, { workflow, version, reference }: EventSubscription, error: string) => {
+    const key = JSON.stringify([brainKey, workflow, reference, version]);
     const fresh = !reported.has(key);
     reported.add(key);
     return fresh
       ? parts.refusals.refuse(
           brainKey,
           workflow,
-          `The filter of the workflow's trigger failed on an event, so it did not match: ${error}`,
+          `The filter of the workflow's event trigger failed on an event, so it did not match: ${error}`,
         )
       : Effect.void;
   };
@@ -110,6 +111,6 @@ export function subscriptionStarts(parts: StartParts): RecordConsumer {
         };
       }),
     skipped: ({ brainKey }, { workflow }, detail) =>
-      parts.refusals.refuse(brainKey, workflow, `The workflow could not be started for what it reacts to: ${detail}`),
+      parts.refusals.refuse(brainKey, workflow, `The workflow could not be started by its event trigger: ${detail}`),
   };
 }
