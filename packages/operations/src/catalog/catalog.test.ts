@@ -49,6 +49,14 @@ const addNoteToOrg = defineCommand('org', {
   handle: () => Effect.succeed({}),
 });
 
+const replaceNoteInOrg = defineCommand('org', {
+  ...probe,
+  name: 'get_note',
+  route: { method: 'POST', path: '/notes/{name}/replacing' },
+  inputSchema: Schema.Struct({ brain: Schema.optionalKey(Schema.String), name: Schema.String }),
+  handle: () => Effect.succeed({}),
+});
+
 const getNoteOfBrain = defineQuery('org', {
   ...probe,
   name: 'get_note_of_brain',
@@ -96,6 +104,12 @@ describe('a name used at both scopes', () => {
   it('is refused when the org operation takes no brain, since it could not answer for the brain of the other', () => {
     expect(() => makeCatalog([addNote, addNoteToOrg])).toThrow(
       'The operation name add_note is used at both scopes, so the org operation must take the brain it answers for',
+    );
+  });
+
+  it('is refused when the two are not of one kind, so a command never takes the place of a query on /mcp', () => {
+    expect(() => makeCatalog([getNote, replaceNoteInOrg])).toThrow(
+      'The operation name get_note is used at both scopes, so both must be of one kind, and the org one is a command',
     );
   });
 });
