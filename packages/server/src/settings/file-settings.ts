@@ -7,7 +7,7 @@ import {
   ModelGatewaysSchema,
 } from '@beonauto/inference';
 import { ChannelsSchema } from '@beonauto/interaction';
-import { AllowedToolsSchema, McpServersSchema } from '@beonauto/mcp';
+import { AllowedToolsSchema, McpServersSchema, TestableToolsSchema } from '@beonauto/mcp';
 import { Schema } from 'effect';
 
 import { Origin } from './origin.ts';
@@ -86,6 +86,14 @@ export const fileSettings: readonly FileSetting[] = [
     AllowedToolsSchema.annotate({
       description:
         'The only tools a reasoning function may name, each server/tool or server/* for every tool of a server; every tool when left out. ALLOWED_TOOLS wins over it',
+    }),
+    asJson,
+  ),
+  fileSetting(
+    'TESTABLE_TOOLS',
+    TestableToolsSchema.annotate({
+      description:
+        'The tools test_tool_call may test although their servers do not mark them read-only, each server/tool or server/* and each allowed by allowed_tools; only the tools their servers mark read-only when left out. TESTABLE_TOOLS wins over it',
     }),
     asJson,
   ),

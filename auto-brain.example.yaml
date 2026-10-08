@@ -60,6 +60,12 @@ model_aliases:
 #   - graph/search
 #   - notes/*
 
+# The tools test_tool_call may test although their servers do not mark them
+# read-only, each also allowed by allowed_tools; only the tools their servers
+# mark read-only can be tested when left out.
+# testable_tools:
+#   - notes/list_channels
+
 # The channels an interaction function may send its request through, beside the
 # brain's own inbox: a signed webhook, or one call of a tool of an MCP server.
 # Each names the parties it may reach in to and is bound to an org and,
