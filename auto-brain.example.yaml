@@ -57,14 +57,20 @@ model_aliases:
 # The only tools a reasoning function may name, each server/tool or server/*;
 # every tool when left out.
 # allowed_tools:
-#   - graph/search
+#   - graph/*
 #   - notes/*
 
 # The tools test_tool_call may test although their servers do not mark them
 # read-only, each also allowed by allowed_tools; only the tools their servers
-# mark read-only can be tested when left out.
+# mark read-only can be tested when left out. A server that marks its read-only
+# tools needs nothing here; one that marks none, as a gateway may, needs its
+# read-only tools named here, such as the gateway's search, introspect,
+# validate and dry_run.
 # testable_tools:
-#   - notes/list_channels
+#   - graph/search
+#   - graph/introspect
+#   - graph/validate
+#   - graph/dry_run
 
 # The channels an interaction function may send its request through, beside the
 # brain's own inbox: a signed webhook, or one call of a tool of an MCP server.
