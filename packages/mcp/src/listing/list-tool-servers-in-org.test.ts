@@ -21,9 +21,11 @@ const alphaReader: CallerIdentity = {
 
 const writerOnly: CallerIdentity = { id: 'acme-writer', org: 'acme', permissions: ['brain:write'], brains: '*' };
 
+const brainsOfTheOrg: readonly string[] = ['alpha', 'beta'];
+
 const services = Layer.mergeAll(
   memoryLedger().layer,
-  memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }]),
+  memoryBrainRegistry(brainsOfTheOrg.map((brain) => ({ org: 'acme', brain }))),
   recordingReporter().layer,
 );
 
@@ -38,10 +40,8 @@ interface Asking {
   readonly caller?: CallerIdentity;
 }
 
-const brainsOfTheOrg: ReadonlySet<string> = new Set(['alpha', 'beta']);
-
 function lookUpBrain(brain: string): Effect.Effect<void, NotFound> {
-  return brainsOfTheOrg.has(brain)
+  return brainsOfTheOrg.includes(brain)
     ? Effect.void
     : Effect.fail(new NotFound({ detail: `There is no brain ${brain} in this org` }));
 }
