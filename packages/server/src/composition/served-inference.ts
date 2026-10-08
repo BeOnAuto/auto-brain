@@ -6,7 +6,7 @@ import {
   type ModelAccess,
   type ModelSettings,
 } from '@beonauto/inference';
-import { defineListToolServers, defineTestToolCall, type ToolAccess } from '@beonauto/mcp';
+import { defineListToolServers, defineListToolServersInOrg, defineTestToolCall, type ToolAccess } from '@beonauto/mcp';
 import type { DispatcherServices } from '@beonauto/operations';
 import { Effect } from 'effect';
 
@@ -19,6 +19,7 @@ export interface ServedReasoning {
   readonly primitive: ReturnType<typeof makeReasoningFunctionAdapter>;
   readonly listModels: ReturnType<typeof defineListModels>;
   readonly listToolServers: ReturnType<typeof defineListToolServers>;
+  readonly listToolServersInOrg: ReturnType<typeof defineListToolServersInOrg>;
   readonly testToolCall: ReturnType<typeof defineTestToolCall>;
 }
 
@@ -37,6 +38,7 @@ export async function reasoningServedBy(
     primitive: makeReasoningFunctionAdapter({ languageModel, offered, tools }),
     listModels: defineListModels(catalog),
     listToolServers: defineListToolServers(tools),
+    listToolServersInOrg: defineListToolServersInOrg(tools),
     testToolCall: defineTestToolCall(tools),
   };
 }

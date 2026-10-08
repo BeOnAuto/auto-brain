@@ -41,7 +41,6 @@ const queriesInsideABrain = [
   'get_execution_history',
   'get_brain_analytics',
   'list_brain_events',
-  'list_tool_servers',
   'list_interactions',
 ];
 
@@ -126,6 +125,21 @@ describe('a key limited to one brain on /mcp', () => {
   });
 });
 
+describe('the tool servers on /mcp, for a key limited to one brain', () => {
+  it('are those of its brain, and those of the whole org are refused it with forbidden', async () => {
+    const outcome = await asKey(acmeAlpha.key, async (session) => ({
+      own: await session.callTool('list_tool_servers', { brain: 'alpha' }),
+      org: await session.callTool('list_tool_servers', {}),
+    }));
+
+    expect(outcome.own.structuredContent).toEqual({ tool_servers: [] });
+    expect(problemIn(outcome.org)).toMatchObject({
+      reason: 'forbidden',
+      detail: 'The caller may not access this brain',
+    });
+  });
+});
+
 describe('a read-only key on /mcp', () => {
   it('is served its queries and offered no command', async () => {
     const outcome = await asKey(acmeReader.key, async (session) => ({
@@ -133,7 +147,14 @@ describe('a read-only key on /mcp', () => {
       listed: await session.callTool('list_brains', {}),
     }));
 
-    expect(outcome.tools).toEqual(['list_brains', 'get_brain', 'list_models', ...queriesInsideABrain, 'get_guide']);
+    expect(outcome.tools).toEqual([
+      'list_brains',
+      'get_brain',
+      'list_models',
+      'list_tool_servers',
+      ...queriesInsideABrain,
+      'get_guide',
+    ]);
     expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
   });
 
@@ -152,7 +173,7 @@ describe('a key that may only read inside brains, on /mcp', () => {
       listed: await session.callTool('list_brains', {}),
     }));
 
-    expect(outcome.tools).toEqual(['list_brains', ...queriesInsideABrain, 'get_guide']);
+    expect(outcome.tools).toEqual(['list_brains', 'list_tool_servers', ...queriesInsideABrain, 'get_guide']);
     expect(commands.filter((name) => outcome.instructions.includes(name))).toEqual([]);
     expect(outcome.instructions).toContain(
       "This connection acts in the caller's own org: list_brains shows its brains. The tools call a definition",

@@ -73,7 +73,7 @@ function postInitialize(path: string, headers: Readonly<Record<string, string>>)
 }
 
 describe('the org endpoint of the server', () => {
-  it('names the release and lists the five brain tools and list_models', async () => {
+  it('names the release and lists the five brain tools, list_models and list_tool_servers', async () => {
     const connected = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
@@ -83,7 +83,10 @@ describe('the org endpoint of the server', () => {
       }),
     );
 
-    expect(connected).toEqual({ serverVersion: release, tools: [...brainTools, 'list_models', 'get_guide'] });
+    expect(connected).toEqual({
+      serverVersion: release,
+      tools: [...brainTools, 'list_models', 'list_tool_servers', 'get_guide'],
+    });
   });
 
   it('answers a brain the org lacks as isError with a not_found problem', async () => {
@@ -160,7 +163,7 @@ describe('the permissions and brains of a key over MCP', () => {
       }),
     );
 
-    expect(outcome.tools).toEqual(['list_brains', 'get_brain', 'list_models', 'get_guide']);
+    expect(outcome.tools).toEqual(['list_brains', 'get_brain', 'list_models', 'list_tool_servers', 'get_guide']);
     expect(outcome.listed.structuredContent).toEqual({ brains: [] });
   });
 

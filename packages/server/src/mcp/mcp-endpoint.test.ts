@@ -41,6 +41,10 @@ const specTools = [
   'send_execution_event',
 ];
 
+const orgTools = [...brainTools, 'list_models', 'list_tool_servers'];
+
+const insideABrainAlone = specTools.filter((name) => !orgTools.includes(name));
+
 const summary = [
   '---',
   'model: anthropic/claude-sonnet-4-5',
@@ -76,10 +80,10 @@ const brainArgumentIn = Schema.decodeUnknownSync(
 );
 
 describe('the brain argument of the spec tools on /mcp', () => {
-  it('is required in every one of them, as a string with the brain id pattern', async () => {
+  it('is required in every one of them that only a brain answers, as a string with the brain id pattern', async () => {
     server = await servingReasoning([]);
 
-    const spec = (await listingOn('/mcp')).filter(({ name }) => specTools.includes(name));
+    const spec = (await listingOn('/mcp')).filter(({ name }) => insideABrainAlone.includes(name));
     const brainArguments = spec.map(({ inputSchema }) => {
       const { required, properties } = brainArgumentIn(inputSchema);
       const { type, pattern } = properties.brain;
@@ -87,13 +91,13 @@ describe('the brain argument of the spec tools on /mcp', () => {
     });
 
     expect(brainArguments).toEqual(
-      specTools.map(() => ({ required: true, type: 'string', pattern: '^[a-z][a-z0-9-]{2,47}$' })),
+      insideABrainAlone.map(() => ({ required: true, type: 'string', pattern: '^[a-z][a-z0-9-]{2,47}$' })),
     );
   });
 });
 
 describe('the tools of /mcp', () => {
-  it('are the brain tools, list_models and the spec tools, the spec tools taking a brain, with self-contained schemas', async () => {
+  it('are the brain tools, list_models, list_tool_servers and the spec tools, the spec tools taking a brain, with self-contained schemas', async () => {
     server = await servingReasoning([]);
     await server.call('POST', '/v1/orgs/local/brains', { body: { brain: 'alpha', name: 'Alpha' } });
 
@@ -103,15 +107,14 @@ describe('the tools of /mcp', () => {
       await listingOn('/orgs/local/brains/alpha/mcp'),
     ];
     const schemas = schemasOf(own);
+    const onlyInBrain = operations(brain).filter(({ name }) => insideABrainAlone.includes(name));
 
-    expect(own.map(({ name }) => name)).toEqual([...brainTools, 'list_models', ...specTools, guideToolName]);
-    expect(operations(own)).toEqual([...operations(org), ...operations(brain).map((tool) => takingBrain(tool))]);
+    expect(own.map(({ name }) => name)).toEqual([...orgTools, ...insideABrainAlone, guideToolName]);
+    expect(operations(own)).toEqual([...operations(org), ...onlyInBrain.map((tool) => takingBrain(tool))]);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });
 });
-
-const orgTools = [...brainTools, 'list_models'];
 
 const definitionTypes = [
   { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
@@ -148,7 +151,7 @@ const connections: readonly Connection[] = [
   {
     path: '/mcp',
     endpoint: 'own org',
-    served: { orgTools, brainTools: specTools },
+    served: { orgTools, brainTools: insideABrainAlone },
     sentence: "This connection acts in the caller's own org: list_brains shows its brains",
     unnamed: [],
   },
@@ -161,7 +164,6 @@ const connections: readonly Connection[] = [
       'create_spec',
       'execute_spec',
       'get_execution',
-      'list_tool_servers',
       'test_tool_call',
       'answer_interaction',
       'send_execution_event',
@@ -221,8 +223,8 @@ describe('the open-world hint of the tools of /mcp', () => {
 
     expect(reachingOutside(await listingOn('/mcp'))).toEqual([
       'list_models',
-      'execute_spec',
       'list_tool_servers',
+      'execute_spec',
       'test_tool_call',
     ]);
   });

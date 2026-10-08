@@ -205,3 +205,56 @@ describe('list_tool_servers over MCP', () => {
     expect(retired.structuredContent).toEqual(listedForAlpha);
   });
 });
+
+const [graphOfAlpha, wikiOfAlpha] = listedForAlpha.tool_servers;
+
+const graphInTheOrg = { ...graphOfAlpha, brains: ['*'] };
+
+const wikiInTheOrg = { ...wikiOfAlpha, brains: ['alpha'] };
+
+const salesInTheOrg = { name: 'sales', type: 'http', brains: ['sales'] };
+
+describe('list_tool_servers of the org over HTTP', () => {
+  it('lists every server of the org with the brains it serves, or those that serve the brain asked for', async () => {
+    const { server } = await serving();
+
+    const listed = await server.call('GET', '/v1/orgs/acme/tool-servers');
+    const forAlpha = await server.call('GET', '/v1/orgs/acme/tool-servers?brain=alpha');
+
+    expect(listed).toMatchObject({
+      status: 200,
+      body: { tool_servers: [graphInTheOrg, salesInTheOrg, wikiInTheOrg] },
+    });
+    expect(forAlpha).toMatchObject({ status: 200, body: { tool_servers: [graphInTheOrg, wikiInTheOrg] } });
+  });
+});
+
+function listedOnTheOrgEndpoint(server: ReasoningServer) {
+  return withMcpSession(
+    'current revision',
+    { url: `${server.origin}/orgs/acme/mcp`, headers: {} },
+    async (session) => ({
+      tools: await session.listTools(),
+      inOrg: await session.callTool('list_tool_servers', {}),
+      inAlpha: await session.callTool('list_tool_servers', { brain: 'alpha' }),
+    }),
+  );
+}
+
+describe('list_tool_servers on the org endpoint, without a brain and with one', () => {
+  it('answers for the org and for the brain, each answer in the shape the tool lists', async () => {
+    const { server } = await serving();
+
+    const { tools, inOrg, inAlpha } = await listedOnTheOrgEndpoint(server);
+
+    expect(inOrg.structuredContent).toMatchObject({ tool_servers: [graphInTheOrg, salesInTheOrg, wikiInTheOrg] });
+    expect(inAlpha.structuredContent).toEqual({ tool_servers: [graphInTheOrg, wikiInTheOrg] });
+    expect(
+      [inOrg, inAlpha].map(({ structuredContent }) => outputConformsTo(tools, 'list_tool_servers', structuredContent)),
+    ).toEqual([true, true]);
+    expect(plainTextIn(inAlpha)).toBe(listedInWords);
+    expect(plainTextIn(inOrg)).toMatch(
+      /^The brains of this org may use 3 tool servers\. “graph”, for every brain, offers 2 tools: search and echo;/u,
+    );
+  });
+});

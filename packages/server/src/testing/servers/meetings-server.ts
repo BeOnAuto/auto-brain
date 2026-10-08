@@ -14,6 +14,7 @@ export interface Surfaces {
 export interface MeetingsServer {
   readonly surfaces: Surfaces;
   readonly onMcp: <T>(use: (session: McpSession) => Promise<T>) => Promise<T>;
+  readonly onBrain: <T>(brain: string, use: (session: McpSession) => Promise<T>) => Promise<T>;
   readonly stop: () => Promise<void>;
 }
 
@@ -61,6 +62,8 @@ export async function servingMeetings(replies: readonly ScriptedReply[]): Promis
   return {
     surfaces,
     onMcp,
+    onBrain: (brain, use) =>
+      withMcpSession('current revision', { url: `${server.origin}/orgs/local/brains/${brain}/mcp`, headers: {} }, use),
     stop: async () => {
       await server.stop();
       await slack.close();
