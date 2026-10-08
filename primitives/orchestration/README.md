@@ -27,7 +27,7 @@ A call of a workflow, `call: execute_spec`, executes the spec it names through t
 
 ## Triggers
 
-A document's `schedule` names its triggers, `on`, `cron` and `every`, any one, two or three of them, each a trigger of its own, checked on its own when the spec is saved by `scheduleRejections` (`src/document/workflow-schedule.ts`), which the policy of the engine calls:
+A document's `schedule` names its triggers ([decision 0015](../../docs/decisions/0015-several-triggers.md)), `on`, `cron` and `every`, any one, two or three of them, each a trigger of its own, checked on its own when the spec is saved by `scheduleRejections` (`src/document/workflow-schedule.ts`), which the policy of the engine calls:
 
 - `on`: `one` filter, or `any` of a list of at least one and at most 64, `mostTriggerFilters`, each a literal event filter of the engine (`literalFilterOf`): its `with` names the type of the events it takes as text, and its source and subject as text too when it names them; a `data` expression that uses a variable such as `$workflow` is refused, since no run exists when the trigger is matched, and so is a filter of `any` whose type and attributes an earlier one has, in any order of keys. `all` and `until` are refused.
 - `cron`: five fields, minute, hour, day of month and month, and day of week, read in UTC by `cronRejectionOf` of `@beonauto/workflow-host`, which refuses an expression that cannot be read or names no time that comes.

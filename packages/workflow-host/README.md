@@ -1,6 +1,6 @@
 # @beonauto/workflow-host
 
-The workflow engine of [`@beonauto/workflow-engine`](../workflow-engine) on Node: its ports over the ledger and a few tables of the host's own beside it, and the loop the server runs. The engine knows no brains and no database; this package is where a run meets both. [Decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why workflows run on an engine on the ledger, and [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) how a run's history is read, and [decision 0011](../../docs/decisions/0011-waiting-calls.md) how a call waits for a run that finishes later and how a run is cancelled.
+The workflow engine of [`@beonauto/workflow-engine`](../workflow-engine) on Node: its ports over the ledger and a few tables of the host's own beside it, and the loop the server runs. The engine knows no brains and no database; this package is where a run meets both. [Decision 0001](../../docs/decisions/0001-workflow-engine-on-the-ledger.md) says why workflows run on an engine on the ledger, and [decision 0002](../../docs/decisions/0002-reading-runs-and-brain-events.md) how a run's history is read, [decision 0011](../../docs/decisions/0011-waiting-calls.md) how a call waits for a run that finishes later and how a run is cancelled, and [decision 0015](../../docs/decisions/0015-several-triggers.md) how a workflow has several triggers, each kept and matched on its own.
 
 ## Entry
 
