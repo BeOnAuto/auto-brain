@@ -1,6 +1,7 @@
 import type { CallerIdentity } from '@beonauto/operations';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { toolBounds } from '../bounds/call-bounds.ts';
 import {
   fakeApiKey,
   longToolName,
@@ -135,6 +136,23 @@ describe('a tool server that cannot be used', () => {
       })),
     );
     expect(fake.received()).toEqual([]);
+  });
+});
+
+describe('the words of a tool server that cannot be used for a test', () => {
+  it('are cut at 1 KiB, the bound the listing and a delivery cut the same failure at', async () => {
+    const fake = await fakeServer();
+    const refusal = 'The gateway refused the request. '.repeat(100);
+    const { test } = testsOn(fake, {}, { fetch: () => Promise.reject(new Error(refusal)) });
+
+    const refused = await test({ server: 'graph', tool: 'search', arguments: { query: 'acme' } });
+
+    expect(refused).toMatchObject({
+      reason: 'unavailable',
+      kind: 'mcp_server_failed',
+      because: 'failing',
+      detail: `The MCP server graph could not be used: ${refusal}`.slice(0, toolBounds.failureBytes),
+    });
   });
 });
 

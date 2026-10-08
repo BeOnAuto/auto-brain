@@ -1,9 +1,11 @@
-import { BrainContext, defineCommand, randomUUIDv7 } from '@beonauto/operations';
+import { BrainContext, Unavailable, defineCommand, randomUUIDv7 } from '@beonauto/operations';
 import { Effect } from 'effect';
 
+import type { ToolsNotOpened } from '../access/caller-context.ts';
 import type { ToolAccess } from '../access/tool-access.ts';
+import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import { toolTestIdKey } from '../calls/call-meta.ts';
-import { calledWhenTestable, stopped, testedOutcomeOf, unavailableOf } from './test-calling.ts';
+import { calledWhenTestable, stopped, testedOutcomeOf } from './test-calling.ts';
 import { toolTestJournal } from './tool-test-journal.ts';
 import { TestToolCallInputSchema, ToolTestedSchema } from './tool-test-schemas.ts';
 import { toolTestAttempted, toolTestTask, toolTested } from './tool-test-words.ts';
@@ -15,6 +17,10 @@ const description = [
   '`server` and `tool` name the tool as list_tool_servers lists it, and `arguments` is the object its input_schema takes.',
   "The call is recorded in the brain's history, with its content where the server's entry records it, and it is live: a tool listed as safe to test may still change something.",
 ].join(' ');
+
+function unavailableOf({ _tag: kind, because, detail }: Pick<ToolsNotOpened, '_tag' | 'because' | 'detail'>) {
+  return new Unavailable({ detail: cutToFailureBound(detail), kind, because });
+}
 
 export function defineTestToolCall(access: Pick<ToolAccess, 'open' | 'testing'>) {
   return defineCommand('brain', {

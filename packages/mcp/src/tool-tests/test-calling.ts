@@ -1,7 +1,6 @@
 import { Unavailable } from '@beonauto/operations';
 import { DateTime, Effect, Schema } from 'effect';
 
-import type { ToolsNotOpened } from '../access/caller-context.ts';
 import type { CallReply } from '../calls/call-replies.ts';
 import type { OfferedTool, RunTools } from '../calls/run-tools.ts';
 import { ignored } from '../connections/ignored.ts';
@@ -23,10 +22,6 @@ export interface Calling {
 }
 
 const isTestedOutcome = Schema.is(TestedOutcomeSchema);
-
-export function unavailableOf({ _tag: kind, because, detail }: Pick<ToolsNotOpened, '_tag' | 'because' | 'detail'>) {
-  return new Unavailable({ detail, kind, because });
-}
 
 function notTestable({ server, tool }: ToolReference): Unavailable {
   return new Unavailable({
