@@ -1,6 +1,6 @@
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
-import type { CallOutcome } from '../calls/recorded-calls.ts';
+import type { CallOutcome } from '../calls/call-facts.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 

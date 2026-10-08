@@ -4,7 +4,7 @@ import { metaValueOf, type ToolResult } from '../bounds/result-text.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { Observed } from '../connections/observed-requests.ts';
 import { failureOf, type FailureKind } from '../connections/server-failures.ts';
-import type { CallOutcome } from './recorded-calls.ts';
+import type { CallOutcome } from './call-facts.ts';
 import type { ServerSlot } from './server-slot.ts';
 
 export interface Forwarding {

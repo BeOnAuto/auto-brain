@@ -1,8 +1,9 @@
 import { Effect } from 'effect';
 
 import type { CallerContext } from '../access/caller-context.ts';
+import type { CallStarted } from '../calls/call-facts.ts';
 import { executionIdKey } from '../calls/call-meta.ts';
-import type { CallJournal, CallStarted, RecordedCall } from '../calls/recorded-calls.ts';
+import type { CallJournal, RecordedCall } from '../calls/recorded-calls.ts';
 import type { CallSignals } from '../calls/run-parts.ts';
 
 export const toolRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';

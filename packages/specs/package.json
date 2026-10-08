@@ -18,6 +18,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@beonauto/mcp": "workspace:*",
     "@beonauto/operations": "workspace:*",
     "@beonauto/workflow-engine": "workspace:*",
     "effect": "catalog:",

@@ -515,6 +515,9 @@ importers:
 
   packages/specs:
     dependencies:
+      '@beonauto/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@beonauto/operations':
         specifier: workspace:*
         version: link:../operations

@@ -1,3 +1,4 @@
+import { CallAnsweredSchema, CallStartedSchema } from '@beonauto/mcp';
 import { Schema } from 'effect';
 
 import { ExecutionRejectionSchema } from './execution.ts';
@@ -75,32 +76,13 @@ const ExecutionCancelRequestedSchema = Schema.Struct({
   ...fact,
 });
 
-const ToolCallOutcomeSchema = Schema.Literals(['result', 'tool_error', 'server_failure', 'timed_out', 'cancelled']);
+const { type: callStarted, ...startedFields } = CallStartedSchema.fields;
 
-const ToolCallStartedSchema = Schema.Struct({
-  type: Schema.Literal('tool_call_started'),
-  number: Schema.Int,
-  call_id: Schema.String,
-  server: Schema.String,
-  tool: Schema.String,
-  arguments_bytes: Schema.Int,
-  arguments_sha256: Schema.String,
-  arguments_json: Schema.optionalKey(Schema.String),
-  ...fact,
-});
+const ToolCallStartedSchema = Schema.Struct({ type: callStarted, number: Schema.Int, ...startedFields, ...fact });
 
-const ToolCallAnsweredSchema = Schema.Struct({
-  type: Schema.Literal('tool_call_answered'),
-  number: Schema.Int,
-  outcome: ToolCallOutcomeSchema,
-  result_bytes: Schema.NullOr(Schema.Int),
-  result_sha256: Schema.NullOr(Schema.String),
-  duration_ms: Schema.Int,
-  jsonrpc_id: Schema.NullOr(Schema.Union([Schema.String, Schema.Int])),
-  server_request_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  result_json: Schema.optionalKey(Schema.String),
-  ...fact,
-});
+const { type: callAnswered, ...answeredFields } = CallAnsweredSchema.fields;
+
+const ToolCallAnsweredSchema = Schema.Struct({ type: callAnswered, number: Schema.Int, ...answeredFields, ...fact });
 
 const DeliveryStartedSchema = Schema.Struct({
   type: Schema.Literal('delivery_started'),

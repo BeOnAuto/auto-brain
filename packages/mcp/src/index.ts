@@ -3,7 +3,8 @@ export { McpServerFailed, type CallsEndedBecause, type ServerFailedBecause } fro
 export { ToolNotOffered, type NotOfferedBecause } from './access/tool-not-offered.ts';
 export type { CallerContext, ServerMessage, ToolsNotOpened } from './access/caller-context.ts';
 export type { ToolReply } from './calls/call-replies.ts';
-export type { CallJournal, CallOutcome, RecordedCall } from './calls/recorded-calls.ts';
+export { CallAnsweredSchema, CallStartedSchema, type CallOutcome } from './calls/call-facts.ts';
+export type { CallJournal, RecordedCall } from './calls/recorded-calls.ts';
 export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
 export type { OfferedTool, RunTools, ToolsEnding } from './calls/run-tools.ts';
 export { deliveryBounds, type DeliveryCall, type DeliveryCallEnded } from './delivery/delivery-bounds.ts';
