@@ -1,16 +1,16 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { streamSignalOf } from '@beonauto/ledger';
-import { messageIdOf } from '@beonauto/operations';
 import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openHostDatabase } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
-import { alpha, brainCreated, eventTrigger, published, specRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { brainCreated, eventRecordOf, published, specRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
+import { anEventTrigger, savedNow, type TriggersOf } from './trigger-sets.ts';
 
 export interface ReactionLatency {
   readonly events: number;
@@ -24,6 +24,7 @@ export interface LatencyCase {
   readonly workflows: number;
   readonly events: number;
   readonly signalled: boolean;
+  readonly triggersOf?: TriggersOf;
 }
 
 const quiet = {
@@ -58,10 +59,25 @@ async function publishedInTurn(
       before
         .then(() => published(store, { id: `e${index}`, type: typeOf(index, workflows) }))
         .then(() => {
-          publishedAt.set(messageIdOf(`${alpha}events/e${index}`, 1), Date.now());
+          publishedAt.set(eventRecordOf(`e${index}`), Date.now());
           return index;
         })
         .then(Function.constVoid),
+    Promise.resolve(),
+  );
+}
+
+function workflowsSaved(store: Parameters<typeof specRecorded>[0], measured: LatencyCase): Promise<void> {
+  return Array.from({ length: measured.workflows }, (_, index) => index).reduce<Promise<void>>(
+    (before, index) =>
+      before.then(() =>
+        specRecorded(store, {
+          name: `w${index}`,
+          version: 1,
+          triggers: (measured.triggersOf ?? anEventTrigger)(typeOf(index, measured.workflows)),
+          when: savedNow(),
+        }),
+      ),
     Promise.resolve(),
   );
 }
@@ -84,23 +100,13 @@ export async function reactionLatencyOn(database: DatabaseSettings, measured: La
       ...reactions.options,
       start: (start) =>
         Effect.sync(() => {
-          startedAt.set(start.cause ?? '', Date.now());
+          startedAt.set(start.cause, Date.now());
         }),
       ...(measured.signalled ? {} : { appended: streamSignalOf() }),
     },
     waiting: recordedWaiting().options,
   });
-  await Array.from({ length: measured.workflows }, (_, index) => index).reduce<Promise<void>>(
-    (before, index) =>
-      before.then(() =>
-        specRecorded(opened.store, {
-          name: `w${index}`,
-          version: 1,
-          triggers: [eventTrigger({ type: typeOf(index, measured.workflows) })],
-        }),
-      ),
-    Promise.resolve(),
-  );
+  await workflowsSaved(opened.store, measured);
   await publishedInTurn(opened.store, measured, publishedAt);
   await untilStarted(() => startedAt.size, measured.events);
   await host.stop();

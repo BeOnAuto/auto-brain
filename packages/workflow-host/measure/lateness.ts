@@ -2,10 +2,11 @@ import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openHostDatabase } from '../src/database/host-databases.ts';
-import { brainCreated, eventTrigger, specRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { brainCreated, specRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { ledgerRunStore } from '../src/runs/ledger-run-store.ts';
 import { runIdOf } from '../src/runs/run-address.ts';
 import { header, measuredHost, runAt, startOf } from './measured-host.ts';
+import { anEventTrigger, savedNow, type TriggersOf } from './trigger-sets.ts';
 
 export interface Lateness {
   readonly timers: number;
@@ -40,7 +41,7 @@ async function latenessOf(database: DatabaseSettings, runs: number): Promise<rea
   return late;
 }
 
-async function reactingWorkflows(database: DatabaseSettings, count: number): Promise<void> {
+async function reactingWorkflows(database: DatabaseSettings, count: number, triggersOf: TriggersOf): Promise<void> {
   const opened = await openHostDatabase(database, Function.constVoid);
   await brainCreated(opened.store, 'alpha');
   await Array.from({ length: count }, (_, index) => index).reduce<Promise<void>>(
@@ -49,7 +50,8 @@ async function reactingWorkflows(database: DatabaseSettings, count: number): Pro
         specRecorded(opened.store, {
           name: `w${index}`,
           version: 1,
-          triggers: [eventTrigger({ type: `com.measure.t${index}` })],
+          triggers: triggersOf(`com.measure.t${index}`),
+          when: savedNow(),
         }),
       ),
     Promise.resolve(),
@@ -57,8 +59,13 @@ async function reactingWorkflows(database: DatabaseSettings, count: number): Pro
   await opened.close();
 }
 
-export async function timerLatenessOn(database: DatabaseSettings, timers: number, reacting = 0): Promise<Lateness> {
-  await reactingWorkflows(database, reacting);
+export async function timerLatenessOn(
+  database: DatabaseSettings,
+  timers: number,
+  reacting = 0,
+  triggersOf: TriggersOf = anEventTrigger,
+): Promise<Lateness> {
+  await reactingWorkflows(database, reacting, triggersOf);
   const measured = await measuredHost(database);
   await Effect.runPromise(
     Effect.forEach(
