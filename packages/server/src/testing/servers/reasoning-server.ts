@@ -1,5 +1,6 @@
 import { makeModelAccess } from '@beonauto/inference';
 import { scriptedLanguageModel, type ScriptedReply } from '@beonauto/inference/testing';
+import type { HostClock } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
 import { compositionRootWith } from '../../composition/composition-root.ts';
@@ -16,6 +17,11 @@ export interface ReasoningServer {
   readonly stop: () => Promise<void>;
 }
 
+export interface ServedParts {
+  readonly programPoolOf?: ProgramPoolOf;
+  readonly clock?: HostClock;
+}
+
 export const alpha = '/v1/orgs/acme/brains/alpha';
 
 const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
@@ -28,7 +34,7 @@ export async function servingReasoning(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
   fetch: Fetch = noNetwork,
-  programPoolOf: ProgramPoolOf = workerPool,
+  { programPoolOf = workerPool, clock }: ServedParts = {},
 ): Promise<ReasoningServer> {
   const ledger = temporaryLedger();
   const scripted = scriptedLanguageModel(...replies);
@@ -41,6 +47,7 @@ export async function servingReasoning(
           languageModel: scripted.languageModel,
         })),
       programPoolOf,
+      clock,
     ),
   );
   return {

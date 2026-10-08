@@ -1,13 +1,14 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { internalTermsIn, withMcpSession } from '@beonauto/api/testing';
+import { movedClock } from '@beonauto/workflow-host/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
-const aWhile = 150_000;
+const aMinuteAndASecond = 61_000;
 
 const closing = workflowSource(
   'close-the-month',
@@ -74,15 +75,15 @@ let server: ReasoningServer;
 
 let seen: Seen;
 
-async function endedRuns(attempts = 1200): Promise<typeof ListedRuns.Type> {
+async function endedRuns(count: number, attempts = 300): Promise<typeof ListedRuns.Type> {
   const listed = runsIn(
     (await server.call('GET', `${alpha}/executions?primitive=orchestration&name=close-the-month`)).body,
   );
-  if (listed.executions.filter(({ status }) => status !== 'started').length >= 3 || attempts <= 1) {
+  if (listed.executions.filter(({ status }) => status !== 'started').length >= count || attempts <= 1) {
     return listed;
   }
   await setTimeout(100);
-  return endedRuns(attempts - 1);
+  return endedRuns(count, attempts - 1);
 }
 
 async function startOf(executionId: string): Promise<Start> {
@@ -94,16 +95,20 @@ function startByKind(kind: string): Start | undefined {
 }
 
 async function triggeredThreeTimes(): Promise<Seen> {
-  server = await servingWorkflows([]);
+  const clock = movedClock(Date.now());
+  server = await servingWorkflows([], { LOCAL_MODE: 'true' }, undefined, clock);
   const mcp = { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} };
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   await withMcpSession('current revision', mcp, (session) =>
     session.callTool('create_spec', { primitive: 'orchestration', name: 'close-the-month', source: closing }),
   );
+  const savedBy = Date.now();
   await server.call('POST', `${alpha}/events`, {
     body: { event: { source: '/ledger', type: 'com.acme.ledger.closed', data: { month: 'september' } } },
   });
-  const runs = await endedRuns();
+  await endedRuns(1);
+  clock.moveTo(savedBy + aMinuteAndASecond);
+  const runs = await endedRuns(3);
   const starts = await Promise.all(runs.executions.map(({ execution_id: executionId }) => startOf(executionId)));
   const newest = runs.executions[0]?.execution_id ?? '';
   const overMcp = await withMcpSession('current revision', mcp, async (session) => ({
@@ -122,7 +127,7 @@ async function triggeredThreeTimes(): Promise<Seen> {
 
 beforeAll(async () => {
   seen = await triggeredThreeTimes();
-}, aWhile);
+}, workflowTestTimeoutMs);
 
 afterAll(async () => {
   await server.stop();

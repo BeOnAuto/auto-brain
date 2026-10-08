@@ -1,5 +1,6 @@
 import { ledgerBrainRegistry } from '@beonauto/brains';
 import { IncidentReporter, type DispatcherServices, type Ledger } from '@beonauto/operations';
+import type { HostClock } from '@beonauto/workflow-host';
 import { Layer } from 'effect';
 
 import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';
@@ -18,6 +19,7 @@ export function applicationLayer(ledger: Layer.Layer<Ledger>): Layer.Layer<Dispa
 export function compositionRootWith(
   modelAccessOf: FunctionWiring['modelAccessOf'],
   programPoolOf?: FunctionWiring['programPoolOf'],
+  clock?: HostClock,
 ): ServerOptions<DispatcherServices> {
   const wiring = functionWiringOf(modelAccessOf, programPoolOf);
   return {
@@ -27,7 +29,8 @@ export function compositionRootWith(
       const { ledger, workflows } = settings;
       await runtime.run(logLedger(ledger));
       const functions = await functionsServedBy(runtime, settings, wiring);
-      return functions.closing(await serveWorkflows(runtime, { ledger, workflows, ...functions.parts }));
+      const parts = { ledger, workflows, ...functions.parts, ...(clock === undefined ? {} : { clock }) };
+      return functions.closing(await serveWorkflows(runtime, parts));
     },
   };
 }

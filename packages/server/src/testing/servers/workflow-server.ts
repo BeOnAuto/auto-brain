@@ -2,6 +2,7 @@ import { setTimeout } from 'node:timers/promises';
 
 import type { McpSession, ToolResult } from '@beonauto/api/testing';
 import type { ScriptedReply } from '@beonauto/inference/testing';
+import type { HostClock } from '@beonauto/workflow-host';
 import { Option, Schema } from 'effect';
 
 import type { ProgramPoolOf } from '../../composition/served-computation.ts';
@@ -20,8 +21,12 @@ export function servingWorkflows(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
   programPoolOf?: ProgramPoolOf,
+  clock?: HostClock,
 ): Promise<ReasoningServer> {
-  return servingReasoning(replies, environment, undefined, programPoolOf);
+  return servingReasoning(replies, environment, undefined, {
+    ...(programPoolOf === undefined ? {} : { programPoolOf }),
+    ...(clock === undefined ? {} : { clock }),
+  });
 }
 
 export function workflowSource(name: string, steps: string): string {
