@@ -175,6 +175,25 @@ describe('a tool server that cannot be asked for its tools', () => {
   });
 });
 
+describe('a tool server that answers its opening HTTP 403, as a gateway answers one operation it denies', () => {
+  it('is unavailable because it is failing, and not because it refused its key', async () => {
+    const fake = await fakeServer();
+    const access = accessTo({ graph: remote(fake) });
+
+    fake.answerNextWith(403);
+    const listing = await Effect.runPromise(access.listServers(alpha));
+
+    expect(listing).toEqual([
+      {
+        name: 'graph',
+        type: 'http',
+        unavailable: 'The MCP server graph could not be used: The MCP server answered HTTP 403',
+        because: 'failing',
+      },
+    ]);
+  });
+});
+
 describe('a tool server that is a process', () => {
   it('lists the tools of the process the server starts', { timeout: stdioTestTimeoutMs }, async () => {
     const limitless = {

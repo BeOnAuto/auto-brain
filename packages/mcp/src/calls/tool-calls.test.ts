@@ -146,6 +146,20 @@ describe('a server that fails a call', () => {
     expect(tools.ended.aborted).toBe(true);
   });
 
+  it('fails a call its server answers HTTP 403 as a failure of that call, counted as one, and never as a refused key', async () => {
+    const { call, fake, journal, tools } = await runWith(['search']);
+
+    fake.answerNextWith(403, 5);
+    const replies = await inTurn([1, 2, 3, 4, 5], (attempt) => call('search', { query: `denied ${attempt}` }));
+
+    expect(replies[0]).toEqual({
+      text: 'The MCP server graph failed: The MCP server answered HTTP 403',
+      isError: true,
+    });
+    expect(journal.facts().at(-1)).toMatchObject({ type: 'tool_call_answered', outcome: 'server_failure' });
+    expect(tools.ending()).toEqual({ because: 'failing' });
+  });
+
   it('fails a call that takes longer than a call may', async () => {
     const { call, journal } = await runWith(['sleep'], { ...quick, callMs: 200 });
 
