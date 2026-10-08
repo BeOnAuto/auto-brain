@@ -217,13 +217,15 @@ describe('the records that are no facts of the brain', () => {
     expect(unreadable.map((record) => brainFactOf(record))).toEqual([undefined, undefined, undefined]);
   });
 
-  it('are the run logs and every other stream kind', () => {
+  it('are the run logs and every other stream kind, the tests of a tool among them', () => {
+    const tested = { type: 'tool_test_started', test_id: '0199b7e2', server: 'graph', tool: 'search', at: fact.at };
     const others: readonly RecordedEvent[] = [
       { ...about, stream: `runs/${executionId}`, type: 'input_applied', data: {} },
       { ...about, stream: 'events/0199a3c4', type: 'event_published', data: {} },
+      { ...about, stream: 'tool-tests/0199b7e2', type: 'tool_test_started', data: tested },
     ];
 
-    expect(others.map((record) => brainFactOf(record))).toEqual([undefined, undefined]);
+    expect(others.map((record) => brainFactOf(record))).toEqual([undefined, undefined, undefined]);
   });
 });
 

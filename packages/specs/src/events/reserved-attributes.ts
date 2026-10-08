@@ -1,3 +1,4 @@
+import type { ToolTestEvent } from '@beonauto/mcp';
 import { lineageAttributeNames } from '@beonauto/operations';
 import { Schema } from 'effect';
 
@@ -24,6 +25,7 @@ type WorkflowEventType =
 
 type FeedType =
   | ExecutionEvent['type']
+  | ToolTestEvent['type']
   | SpecEvent['type']
   | EventPublished['type']
   | CapabilityEventType
@@ -40,6 +42,8 @@ const brainTypes: Readonly<Record<FeedType, true>> = {
   tool_call_answered: true,
   delivery_started: true,
   delivery_ended: true,
+  tool_test_started: true,
+  tool_test_answered: true,
   interaction_requested: true,
   spec_created: true,
   spec_updated: true,
