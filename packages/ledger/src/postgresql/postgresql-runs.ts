@@ -1,12 +1,20 @@
 import { Schema } from 'effect';
 
-import type { ExaminationScope, ExaminedItem, RecordedStatements } from '../recorded/recorded-statements.ts';
+import {
+  fieldsAskedOf,
+  type ExaminationScope,
+  type ExaminedItem,
+  type FieldAsked,
+  type RecordedStatements,
+  type RunsSelected,
+} from '../recorded/recorded-statements.ts';
 import { kindKeyOfStream } from './brain-indexes.ts';
 import {
   binding,
   bounds,
   defaultPartition,
   direction,
+  eventAsJsonb,
   HeadFields,
   headOf,
   horizonOf,
@@ -40,22 +48,30 @@ function notOfTypes(bind: Bind, types: readonly string[]): string {
   return types.length === 0 ? '' : ` AND NOT ${ofTypes(bind, 'message_type', types)}`;
 }
 
-function firstMessagesOfRuns(
-  bind: Bind,
-  partition: string,
-  scope: ExaminationScope,
-  leftOut: readonly string[],
-): string {
+function heldAsAsked(bind: Bind, asked: readonly FieldAsked[]): string {
+  const written = asked.map(({ asWritten }) => `strpos(message_data ->> 'json', ${bind(asWritten)}) > 0`);
+  const held = JSON.stringify(Object.fromEntries(asked.map(({ field, value }) => [field, value])));
+  return `CASE WHEN ${written.join(' AND ')} THEN ${eventAsJsonb(bind, 'message_data')} @> ${bind(held)}::jsonb
+    ELSE FALSE END`;
+}
+
+function ofTheDefinitionAsked(bind: Bind, runs: RunsSelected): string {
+  const asked = fieldsAskedOf(runs);
+  return asked.length === 0 ? 'TRUE' : heldAsAsked(bind, asked);
+}
+
+function firstMessagesOfRuns(bind: Bind, partition: string, scope: ExaminationScope, runs: RunsSelected): string {
   return `SELECT scanned.*, row_number() OVER (
       ORDER BY scanned.transaction_id ${direction(scope)}, scanned.global_position ${direction(scope)}
     ) AS examined, count(*) OVER () AS scanned_count
     FROM (
       SELECT transaction_id, global_position, transaction_id::text AS transaction,
         global_position::text AS position, stream_id AS stream, stream_position::int AS version,
-        message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns}, message_data
+        message_type AS type, ${timeOf('created')} AS recorded, ${lineageColumns}, message_data,
+        ${ofTheDefinitionAsked(bind, runs)} AS of_the_definition
       FROM emt_messages
       WHERE ${matchedThroughItsIndex(bind, kindKeyOfStream, `${scope.brainKey}executions/`)} AND stream_position = 1
-        AND partition = ${partition} AND is_archived = FALSE${notOfTypes(bind, leftOut)}
+        AND partition = ${partition} AND is_archived = FALSE${notOfTypes(bind, runs.notBeginningWith ?? [])}
         ${horizonOf(scope)}${bounds(bind, scope)}
       ORDER BY ${orderedThroughItsIndex(kindKeyOfStream, scope)}
       LIMIT ${bind(scope.examineAtMost + 1)}
@@ -87,9 +103,9 @@ function examinedRunOf(row: typeof ExaminedRunRow.Type): ExaminedItem {
 }
 
 export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
-  return async (scope, notBeginningWith) => {
+  return async (scope, runs) => {
     const { values, bind } = binding();
-    const wanted = ofTypes(bind, 'latest.message_type', scope.types);
+    const wanted = `${ofTypes(bind, 'latest.message_type', scope.types)} AND f.of_the_definition`;
     const sized = { wanted, types: sizedTypesOf(bind, scope) };
     const partition = bind(defaultPartition);
     const rows = await query(
@@ -103,7 +119,7 @@ export function examineRuns(query: Query): RecordedStatements['examineRuns'] {
           ${sizeOf(sized, scope, 'f', 'f.type')} AS size,
           CASE WHEN latest.stream_position <> 1 THEN ${sizeOf(sized, scope, 'latest', 'latest.message_type')}
           ELSE 0 END AS latest_size
-        FROM (${firstMessagesOfRuns(bind, partition, scope, notBeginningWith)}) AS f
+        FROM (${firstMessagesOfRuns(bind, partition, scope, runs)}) AS f
         CROSS JOIN LATERAL (
           SELECT transaction_id, global_position, stream_position, message_type, created, message_data,
             message_id, message_metadata

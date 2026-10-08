@@ -107,38 +107,58 @@ describe('the bounds of a page of runs', { timeout: 30_000 }, () => {
     ]);
   });
 
-  it('end a page filtered by status after looking at a thousand runs, though none matched', async () => {
-    const { ledger, listing, run } = await brainWithEchoes(0);
-    const starting = Array.from({ length: mostExaminedInAPage + 1 }, (_, index) =>
-      ledger.service.execute(`brain/acme/alpha/executions/${idOf(index)}`, executionDecider, {
-        type: 'start',
-        primitive: 'echo',
-        name: 'greet',
-        spec_version: 1,
-        calls_tools: false,
-        input: {},
-        by: 'acme-admin',
-        at: '2026-10-01T09:00:00.000Z',
-      }),
-    );
-    await run(Effect.orDie(Effect.all(starting)));
+  it.each([[{ status: 'failed' }], [{ primitive: 'relay' }], [{ name: 'wave' }]] as const)(
+    'end a page filtered by %j after looking at a thousand runs, though none matched',
+    async (filter) => {
+      const { ledger, listing, run } = await brainWithEchoes(0);
+      const starting = Array.from({ length: mostExaminedInAPage + 1 }, (_, index) =>
+        ledger.service.execute(`brain/acme/alpha/executions/${idOf(index)}`, executionDecider, {
+          type: 'start',
+          primitive: 'echo',
+          name: 'greet',
+          spec_version: 1,
+          calls_tools: false,
+          input: {},
+          by: 'acme-admin',
+          at: '2026-10-01T09:00:00.000Z',
+        }),
+      );
+      await run(Effect.orDie(Effect.all(starting)));
 
-    const pages = await everyPage((cursor) => listing({ status: 'failed', ...withCursor(cursor) }));
+      const pages = await everyPage((cursor) => listing({ ...filter, ...withCursor(cursor) }));
 
-    expect(
-      pages.map(({ executions, has_more: hasMore, next_cursor: next }) => [executions, hasMore, next === null]),
-    ).toEqual([
-      [[], true, false],
-      [[], false, true],
+      expect(
+        pages.map(({ executions, has_more: hasMore, next_cursor: next }) => [executions, hasMore, next === null]),
+      ).toEqual([
+        [[], true, false],
+        [[], false, true],
+      ]);
+    },
+  );
+});
+
+describe('paging through the runs of one definition', () => {
+  it('fills a page of one name from the runs behind newer runs of another, and has no more after the last', async () => {
+    const { call, createSpec, executeSpec, listing } = await brainWithEchoes(3);
+    await call(createSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'wave', source: '{"greeting":"Hey"}' }));
+    await call(executeSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'wave', execution_id: idOf(4) }));
+    await call(executeSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'greet', execution_id: idOf(5) }));
+    await call(executeSpec, toAlpha(acmeAdmin, { primitive: 'echo', name: 'greet', execution_id: idOf(6) }));
+
+    const pages = await everyPage((cursor) => listing({ name: 'greet', limit: 2, ...withCursor(cursor) }));
+    const { output: wave } = pageOf(await listing({ name: 'wave', limit: 2 }));
+
+    expect(pages.map(({ executions = [] }) => executions.map(({ execution_id: id }) => id))).toEqual([
+      [idOf(6), idOf(5)],
+      [idOf(3), idOf(2)],
+      [idOf(1)],
     ]);
-  });
-
-  it('carries a cursor on a page its name filter emptied', async () => {
-    const { listing } = await brainWithEchoes(3);
-
-    const { output } = pageOf(await listing({ name: 'wave', limit: 2 }));
-
-    expect([output.executions, output.has_more, output.next_cursor === null]).toEqual([[], true, false]);
+    expect(pages.map(({ has_more: hasMore }) => hasMore)).toEqual([true, true, false]);
+    expect([wave.executions?.map(({ execution_id: id }) => id), wave.has_more, wave.next_cursor]).toEqual([
+      [idOf(4)],
+      false,
+      null,
+    ]);
   });
 });
 
