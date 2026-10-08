@@ -12,7 +12,7 @@ const TriggerFilterSchema = Schema.Struct({
   }),
 });
 
-const EventTriggerSchema = Schema.Struct({
+export const EventTriggerSchema = Schema.Struct({
   kind: Schema.Literal('event'),
   reference: ReferenceField,
   filters: Schema.Array(TriggerFilterSchema).annotate({
@@ -31,6 +31,8 @@ const EveryTriggerSchema = Schema.Struct({
   reference: ReferenceField,
   milliseconds: Schema.Int.annotate({ description: 'Its period, counted from when the trigger was saved as it is' }),
 });
+
+export const ScheduleTriggerSchema = Schema.Union([CronTriggerSchema, EveryTriggerSchema]);
 
 export const TriggerSchema = Schema.Union([EventTriggerSchema, CronTriggerSchema, EveryTriggerSchema]).annotate({
   description: 'A condition that starts a run on its own: an event trigger, or a cron or every schedule',

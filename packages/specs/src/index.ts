@@ -124,6 +124,8 @@ export { ReactionRefusedSchema, reactionsStreamKind, type ReactionRefused } from
 export { mostReactingDefinitions } from './registry/registry-decisions.ts';
 export { specChangeOf, type SpecChange } from './registry/spec-changes.ts';
 export {
+  EventTriggerSchema,
+  ScheduleTriggerSchema,
   StartingTriggerSchema,
   TriggerSchema,
   type EventTrigger,
