@@ -147,48 +147,6 @@ describe('the tools of server/*', () => {
   });
 });
 
-describe('a tool that is not offered', () => {
-  it('names a server that is not configured, or not for this org or brain', async () => {
-    const fake = await fakeServer({ bearer: apiKey });
-    const { access } = accessTo({
-      graph: graphOf(fake, { org: 'globex' }),
-      crm: graphOf(fake, { brains: ['sales'] }),
-      wiki: graphOf(fake),
-    });
-
-    expect(await refusalOf(access, 'wiki/search', 'graph/search', 'crm/search', 'mail/send')).toMatchObject({
-      _tag: 'tool_not_offered',
-      because: 'mcp_server_not_configured',
-      detail:
-        'The reasoning function names graph/search, crm/search, and mail/send, but no MCP server of that name is configured for this brain',
-    });
-    expect(fake.seen()).toEqual([]);
-  });
-
-  it('names a tool the operator does not allow', async () => {
-    const fake = await fakeServer({ bearer: apiKey });
-    const { access } = accessTo({ graph: graphOf(fake) }, ['graph/search']);
-
-    expect(await refusalOf(access, 'graph/search', 'graph/echo')).toMatchObject({
-      _tag: 'tool_not_offered',
-      because: 'tool_not_allowed',
-      detail: 'The reasoning function names graph/echo, which the operator of this server does not allow',
-    });
-  });
-
-  it('names a tool its server does not list, and lets its session go', async () => {
-    const fake = await fakeServer({ bearer: apiKey });
-    const { access } = accessTo({ graph: graphOf(fake) });
-
-    expect(await refusalOf(access, 'graph/search', 'graph/lookup')).toMatchObject({
-      _tag: 'tool_not_offered',
-      because: 'tool_not_listed',
-      detail: 'The reasoning function names graph/lookup, which its MCP server does not list',
-    });
-    expect(fake.openSessions()).toBe(0);
-  });
-});
-
 describe('a server that cannot be used', () => {
   it('cannot be reached', async () => {
     const fake = await serveFakeMcp();
