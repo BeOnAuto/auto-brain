@@ -1,14 +1,8 @@
 import type { StreamSignal } from '@beonauto/ledger';
-import type { EmitEvent } from '@beonauto/specs';
-import type { LiteralFilter } from '@beonauto/workflow-engine';
+import type { EmitEvent, StartingTrigger } from '@beonauto/specs';
 import { Data, type Effect, type Schema } from 'effect';
 
 import type { StartRejected } from './start-rejected.ts';
-
-export type Trigger =
-  | { readonly kind: 'events'; readonly filters: readonly LiteralFilter[] }
-  | { readonly kind: 'cron'; readonly expression: string }
-  | { readonly kind: 'every'; readonly milliseconds: number };
 
 export interface ReactionStart {
   readonly org: string;
@@ -18,7 +12,8 @@ export interface ReactionStart {
   readonly executionId: string;
   readonly input: Schema.Json;
   readonly depth: number;
-  readonly cause: string | null;
+  readonly cause: string;
+  readonly trigger: StartingTrigger;
 }
 
 export class StartRefused extends Data.TaggedError('start_refused')<{ readonly detail: string }> {}
@@ -27,7 +22,6 @@ export type StartReaction = (start: ReactionStart) => Effect.Effect<void, StartR
 
 export interface ReactionOptions {
   readonly primitive: string;
-  readonly triggerOf: (source: string) => Trigger | undefined;
   readonly start: StartReaction;
   readonly emit: EmitEvent;
   readonly appended?: StreamSignal;

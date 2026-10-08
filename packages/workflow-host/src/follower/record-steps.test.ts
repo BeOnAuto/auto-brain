@@ -10,7 +10,7 @@ const brainKey = 'brain/acme/alpha/';
 const parts: StepParts = {
   consumers: [],
   primitive: 'orchestration',
-  applySpecRecord: () => Effect.void,
+  applySpecRecord: () => Effect.succeed('applied'),
   unreadable: () => Effect.void,
   passedEarly: () => Effect.void,
   registered: [],

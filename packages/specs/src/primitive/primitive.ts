@@ -3,6 +3,7 @@ import { Effect, type Schema } from 'effect';
 
 import type { CallAnsweredFact, CallStartedFact } from '../execution/execution-commands.ts';
 import type { CancelRequestKind, DeliveryEvent } from '../execution/execution-events.ts';
+import type { Trigger } from '../registry/spec-triggers.ts';
 import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
 
 export interface DefinitionSummary {
@@ -10,7 +11,7 @@ export interface DefinitionSummary {
   readonly inputSchema?: Schema.JsonObject;
   readonly outputSchema?: Schema.JsonObject;
   readonly warnings?: readonly string[];
-  readonly reacts?: boolean;
+  readonly triggers?: readonly Trigger[];
   readonly details?: Schema.JsonObject;
 }
 

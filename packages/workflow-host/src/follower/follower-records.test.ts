@@ -42,7 +42,7 @@ describe('a record of a brain the follower cannot read', () => {
       { type: 'execution_started' },
       { type: 'spec_created' },
     );
-    await specRecorded(store, { name: 'watch', version: 1, trigger });
+    await specRecorded(store, { name: 'watch', version: 1, triggers: [trigger] });
     await recorded(store, `${alpha}events/bad`, { type: 'event_published', event: 'not an event' });
     await recorded(store, `${alpha}executions/r-bad`, { type: 'execution_started', name: 7 });
     await recorded(store, `${alpha}specs/orchestration`, { type: 'spec_created', name: 7 });

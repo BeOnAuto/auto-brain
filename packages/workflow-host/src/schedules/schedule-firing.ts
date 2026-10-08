@@ -1,9 +1,10 @@
+import { triggerNamed } from '@beonauto/specs';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { reactionExecutionIdOf } from '../reactions/reaction-ids.ts';
-import type { StartReaction } from '../reactions/reaction-options.ts';
+import type { ReactionStart, StartReaction } from '../reactions/reaction-options.ts';
 import type { Refusals } from '../reactions/refusals.ts';
 import { dueSchedules, nextScheduleDue, scheduleMovedOn, type Schedule } from './schedule-rows.ts';
 import { latestDue, nextAfter } from './schedule-times.ts';
@@ -39,6 +40,10 @@ function dueAtOf({ latest }: Firing): string {
   return new Date(latest).toISOString();
 }
 
+function namedOf({ subscription }: Firing): string {
+  return triggerNamed(subscription.trigger.kind);
+}
+
 function stillRuns(database: HostDatabase, brainKey: string, running: string | null): Effect.Effect<boolean> {
   if (running === null) {
     return Effect.succeed(false);
@@ -58,7 +63,7 @@ function skipped({ database, refusals }: FiringParts, firing: Firing) {
     refusals.refuse(
       subscription.brainKey,
       subscription.workflow,
-      `The run due at ${dueAtOf(firing)} was skipped: the run of the time before still runs`,
+      `The run its ${namedOf(firing)} had due at ${dueAtOf(firing)} was skipped: the run its ${namedOf(firing)} started before still runs`,
     ),
     scheduleMovedOn(database, subscription, next, subscription.running),
   );
@@ -70,26 +75,43 @@ function missedSaid({ refusals }: FiringParts, firing: Firing) {
     ? refusals.refuse(
         subscription.brainKey,
         subscription.workflow,
-        `The runs due from ${new Date(subscription.nextDue).toISOString()} to ${dueAtOf(firing)} came while the server was down, and only the latest ran`,
+        `The runs its ${namedOf(firing)} had due from ${new Date(subscription.nextDue).toISOString()} to ${dueAtOf(firing)} came while the server was down, and only the latest ran`,
       )
     : Effect.void;
 }
 
-function ran(parts: FiringParts, firing: Firing) {
-  const { brainKey, workflow, version } = firing.subscription;
+function startOf(firing: Firing): ReactionStart {
+  const { brainKey, workflow, version, trigger, activatedBy } = firing.subscription;
   const due = dueAtOf(firing);
-  const executionId = reactionExecutionIdOf(workflow, version, due);
-  const input = { schedule: { due } };
-  return parts.start({ ...brainOf(brainKey), workflow, version, executionId, input, depth: 1, cause: null }).pipe(
+  return {
+    ...brainOf(brainKey),
+    workflow,
+    version,
+    executionId: reactionExecutionIdOf(workflow, version, trigger.reference, due),
+    input: { schedule: { due } },
+    depth: 1,
+    cause: activatedBy,
+    trigger: { kind: trigger.kind, reference: trigger.reference },
+  };
+}
+
+function ran(parts: FiringParts, firing: Firing) {
+  const { brainKey, workflow } = firing.subscription;
+  const start = startOf(firing);
+  return parts.start(start).pipe(
     Effect.andThen(
       Effect.andThen(
-        scheduleMovedOn(parts.database, firing.subscription, firing.next, executionId),
+        scheduleMovedOn(parts.database, firing.subscription, firing.next, start.executionId),
         missedSaid(parts, firing),
       ),
     ),
     Effect.catch(({ detail }: Readonly<{ detail: string }>) =>
       Effect.andThen(
-        parts.refusals.refuse(brainKey, workflow, `The run due at ${due} could not be started: ${detail}`),
+        parts.refusals.refuse(
+          brainKey,
+          workflow,
+          `The run its ${namedOf(firing)} had due at ${dueAtOf(firing)} could not be started: ${detail}`,
+        ),
         scheduleMovedOn(parts.database, firing.subscription, firing.next, null),
       ),
     ),
@@ -98,11 +120,11 @@ function ran(parts: FiringParts, firing: Firing) {
 
 function fired(parts: FiringParts, subscription: Schedule) {
   const at = parts.now();
-  const { timing, activatedAt, nextDue } = subscription;
+  const { trigger, activatedAt, nextDue } = subscription;
   const firing: Firing = {
     subscription,
-    next: nextAfter(timing, activatedAt, at),
-    latest: latestDue(timing, activatedAt, nextDue, at),
+    next: nextAfter(trigger, activatedAt, at),
+    latest: latestDue(trigger, activatedAt, nextDue, at),
   };
   return Effect.flatMap(stillRuns(parts.database, subscription.brainKey, subscription.running), (runs) =>
     runs ? skipped(parts, firing) : ran(parts, firing),

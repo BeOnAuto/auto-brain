@@ -109,7 +109,7 @@ A `listen` task matches each event against its filters with the run's variables 
 
 A `listen` filter reaches events beyond its run when its `with` names a `type` written out, text that is not an expression and not empty: `brainWideFilterOf(filter)` answers its `with`, or nothing. `listenerFilterOf(with, pointer)` reads such a `with` for a reader that matches without a run, keeping its attributes written out and its expressions that read no variable they do not bind, leaving out those that need the run's variables, and saying so with `dataNeedsVariables`; any attribute may be such an expression, not only `data`.
 
-`matchEvent(filter, event, now)` answers whether the event has the filter's attributes, by the comparison a `listen` task makes, `hasAttributes`: `true`, `false`, or `{ error }`, the `DslError` a run would raise, for a `data` expression that fails or does more than the 8,000,000 units of work one expression may. It evaluates with no variables, under a meter of its own, and gives jq's `now` the time it is given.
+`matchEvent(filter, event, now)` answers whether the event has the filter's attributes, given the filter's `reference` and `attributes` alone, so a trigger keeps no more of a filter than it matches, by the comparison a `listen` task makes, `hasAttributes`: `true`, `false`, or `{ error }`, the `DslError` a run would raise, for a `data` expression that fails or does more than the 8,000,000 units of work one expression may. It evaluates with no variables, under a meter of its own, and gives jq's `now` the time it is given.
 
 ## Inputs
 

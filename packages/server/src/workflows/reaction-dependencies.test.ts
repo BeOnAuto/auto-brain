@@ -19,7 +19,8 @@ const start = {
   input: [{ type: 'com.acme.ledger.closed' }],
   depth: 3,
   cause: 'record-1',
-};
+  trigger: { kind: 'event', reference: '/schedule/on' },
+} as const;
 
 async function reactingWith(answers: readonly Outcome[]) {
   const runtime = await makeAppRuntime(applicationLayer(ledgerLayer({ fileName: ':memory:' })));
@@ -37,7 +38,7 @@ async function reactingWith(answers: readonly Outcome[]) {
 }
 
 describe('a start of a workflow its trigger matched', () => {
-  it('is asked of the brain as the brain itself, once under the id it was given, caused by what it matched', async () => {
+  it('is asked of the brain as the brain itself, once under the id it was given, caused by what it matched, with its trigger', async () => {
     const { reactions, requests } = await reactingWith([]);
 
     await Effect.runPromise(reactions.start(start));
@@ -57,6 +58,7 @@ describe('a start of a workflow its trigger matched', () => {
         encoding: 'json',
         lineage: { causationId: 'record-1', correlationId: start.executionId },
         depth: 3,
+        trigger: { kind: 'event', reference: '/schedule/on' },
       },
     ]);
   });

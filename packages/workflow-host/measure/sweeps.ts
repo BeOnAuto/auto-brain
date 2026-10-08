@@ -4,9 +4,9 @@ import { openHostDatabase, type DatabaseSettings } from '../src/database/host-da
 import { passOf } from '../src/follower/brain-pass.ts';
 import { brainRecordsOf } from '../src/follower/brain-records.ts';
 import { followedBrainsOn } from '../src/follower/followed-brains.ts';
-import { eventTrigger, published, specRecorded, triggerOfSource } from '../src/reaction-testing/brain-writes.ts';
-import { specRecordsOn } from '../src/reactions/spec-records.ts';
+import { eventTrigger, published, specRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { brainSweepsOn, type BrainSweeps } from '../src/sweeps/brain-sweeps.ts';
+import { specRecordsOn } from '../src/triggers/spec-records.ts';
 import { resultOfEnding } from '../src/waiting-testing/recorded-waiting.ts';
 import { servedWaitingOf } from '../src/waiting/waiting-parts.ts';
 
@@ -65,7 +65,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
   await inTurn(reacting, (index) =>
     specRecorded(
       opened.store,
-      { name: 'react', version: 1, trigger: eventTrigger({ type: 'com.measure.wanted' }) },
+      { name: 'react', version: 1, triggers: [eventTrigger({ type: 'com.measure.wanted' })] },
       brainKeyOf(index),
     ),
   );
@@ -84,7 +84,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
       trouble: () => Effect.void,
     }).calls,
     primitive: 'orchestration',
-    applySpecRecord: specRecordsOn(opened, triggerOfSource),
+    applySpecRecord: specRecordsOn(opened),
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
     registered: [],

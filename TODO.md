@@ -34,6 +34,10 @@ Setup work that couldn't be finished yet, and why.
 
 - [ ] **Make the GHCR package public.** v1.0.0 published `ghcr.io/beonauto/auto-brain`, but new packages start private, so anonymous pulls fail. Change it in the package settings on GitHub.
 
+## Local databases
+
+- [ ] **Delete every local ledger made before several triggers.** The host keeps one row a trigger now, in a `workflow_subscriptions` keyed by brain, workflow and trigger, and does not migrate the old table, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database fails every round of the host's follower: no trigger starts a run, no listening run is offered an event and no waiting call is answered.
+
 ## Tests
 
 - [ ] **Run `pnpm exec vitest doctor` again as the suite grows.** On 2026-09-30 it recommended keeping the defaults (forks, isolated), because no alternative was more than 10% faster.

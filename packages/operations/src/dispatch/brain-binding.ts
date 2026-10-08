@@ -19,7 +19,7 @@ import type { BrainRequest } from './request.ts';
 
 export function runInBrain(
   registration: Registration<'brain'>,
-  { caller, org, brain, input, encoding, lineage, depth, callDepth, calledBy }: BrainRequest,
+  { caller, org, brain, input, encoding, lineage, depth, callDepth, calledBy, trigger }: BrainRequest,
   ledger: LedgerPorts,
 ) {
   const prefix = streamPrefixOfBrain({ org, brain });
@@ -39,6 +39,7 @@ export function runInBrain(
       depth: depth ?? 0,
       callDepth: callDepth ?? 0,
       calledBy: calledBy ?? null,
+      trigger: trigger ?? null,
     }),
   );
   return registration.kind === 'query'

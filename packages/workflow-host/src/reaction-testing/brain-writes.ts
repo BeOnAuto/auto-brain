@@ -1,11 +1,9 @@
 import { brainsStreamOfOrg } from '@beonauto/brains';
 import { eventAppenderOf, type EventStore } from '@beonauto/ledger';
-import { noLineage, type Lineage } from '@beonauto/operations';
+import { messageIdOf, noLineage, type Lineage } from '@beonauto/operations';
+import type { Trigger } from '@beonauto/specs';
 import type { Json } from '@beonauto/workflow-engine';
-import { Effect, Option, Schema } from 'effect';
-
-import type { Trigger } from '../reactions/reaction-options.ts';
-import { TriggerSchema } from '../reactions/subscriptions.ts';
+import { Effect, Schema } from 'effect';
 
 export const alpha = 'brain/acme/alpha/';
 
@@ -26,7 +24,7 @@ export interface PublishedEvent {
 export interface SpecVersion {
   readonly name: string;
   readonly version: number;
-  readonly trigger: Trigger | undefined;
+  readonly triggers: readonly Trigger[];
   readonly when?: string;
 }
 
@@ -55,28 +53,30 @@ export function publishedInTurn(store: EventStore, events: readonly PublishedEve
   return events.reduce<Promise<void>>((before, event) => before.then(() => published(store, event)), Promise.resolve());
 }
 
-const decodeTrigger = Schema.decodeUnknownOption(Schema.fromJsonString(TriggerSchema));
-
-export function triggerOfSource(source: string): Trigger | undefined {
-  return Option.getOrUndefined(decodeTrigger(source));
-}
-
 export type TriggerFilter = Readonly<Record<string, Json>> & { readonly type: string };
 
 export function eventTrigger(...filters: readonly TriggerFilter[]): Trigger {
   return {
-    kind: 'events',
+    kind: 'event',
+    reference: '/schedule/on',
     filters: filters.map((attributes, index) => ({
       reference: `/schedule/on/any/${index}`,
       type: attributes.type,
       attributes,
-      dataNeedsVariables: false,
     })),
   };
 }
 
-export function specRecorded(store: EventStore, { name, version, trigger, when = at }: SpecVersion, brainKey = alpha) {
-  const content = trigger === undefined ? { source: 'do: []' } : { source: JSON.stringify(trigger), reacts: true };
+export function cronTrigger(expression: string): Trigger {
+  return { kind: 'cron', reference: '/schedule/cron', expression };
+}
+
+export function everyTrigger(milliseconds: number): Trigger {
+  return { kind: 'every', reference: '/schedule/every', milliseconds };
+}
+
+export function specRecorded(store: EventStore, { name, version, triggers, when = at }: SpecVersion, brainKey = alpha) {
+  const content = triggers.length === 0 ? { source: 'do: []' } : { source: 'schedule: {}', triggers };
   return recorded(store, `${brainKey}specs/orchestration`, {
     type: version === 1 ? 'spec_created' : 'spec_updated',
     name,
@@ -85,6 +85,14 @@ export function specRecorded(store: EventStore, { name, version, trigger, when =
     by: 'acme-admin',
     at: when,
   });
+}
+
+export function specRecordAt(position: number, brainKey = alpha): string {
+  return messageIdOf(`${brainKey}specs/orchestration`, position);
+}
+
+export function eventRecordOf(id: string, brainKey = alpha): string {
+  return messageIdOf(`${brainKey}events/${id}`, 1);
 }
 
 export function specRetired(store: EventStore, name: string) {
