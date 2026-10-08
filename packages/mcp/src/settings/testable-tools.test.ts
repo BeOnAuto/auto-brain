@@ -36,12 +36,12 @@ function problemsOf(environment: Environment): readonly string[] {
 }
 
 describe('reading the tools that may be tested', () => {
-  it('reads them beside the allowed tools, in the shape of the allowed tools', () => {
+  it('reads them beside the allowed tools, each named as server/tool', () => {
     expect(
-      testableOf({ allowed: ['graph/search', 'graph/execute', 'notes/*'], testable: ['graph/execute', 'notes/*'] }),
+      testableOf({ allowed: ['graph/search', 'graph/execute', 'notes/*'], testable: ['graph/execute', 'notes/list'] }),
     ).toEqual([
       { server: 'graph', tool: 'execute' },
-      { server: 'notes', tool: '*' },
+      { server: 'notes', tool: 'list' },
     ]);
   });
 
@@ -66,11 +66,11 @@ describe('the tools that may be tested, refused at start', () => {
     ]);
   });
 
-  it('refuses a tool that is malformed, listed twice, of no configured server, or not allowed, never printing a value', () => {
+  it('refuses a tool that is malformed, listed twice, of no configured server, not allowed, or every tool of a server, never printing a value', () => {
     const problems = problemsOf(
       environmentOf({
         allowed: ['graph/search', 'notes/*'],
-        testable: ['graph', 'notes/write', 'notes/write', 'crm/find', 'graph/execute'],
+        testable: ['graph', 'notes/write', 'notes/write', 'crm/find', 'graph/execute', 'notes/*'],
       }),
     );
 
@@ -79,6 +79,7 @@ describe('the tools that may be tested, refused at start', () => {
       'TESTABLE_TOOLS /2: notes/write is listed twice',
       'TESTABLE_TOOLS /3: There is no MCP server named crm',
       'TESTABLE_TOOLS /4: ALLOWED_TOOLS does not allow graph/execute, and a tool a function may not call cannot be tested either',
+      'TESTABLE_TOOLS /5: notes/* would vouch for every tool of the server, those it adds later among them; name each tool that is safe to test',
     ]);
     expect(problems.join(' ')).not.toContain(key);
   });

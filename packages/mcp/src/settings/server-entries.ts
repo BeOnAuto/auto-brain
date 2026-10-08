@@ -95,6 +95,6 @@ export const AllowedToolsSchema = Schema.Array(
 export const TestableToolsSchema = Schema.Array(
   Schema.String.annotate({
     description:
-      'A tool test_tool_call may test though its server does not mark it read-only, written server/tool, or server/* for every tool of a server',
+      'A tool test_tool_call may test though its server does not mark it read-only, written server/tool; each tool is named, never server/*',
   }),
 );

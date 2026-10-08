@@ -93,7 +93,7 @@ export const fileSettings: readonly FileSetting[] = [
     'TESTABLE_TOOLS',
     TestableToolsSchema.annotate({
       description:
-        'The tools test_tool_call may test although their servers do not mark them read-only, each server/tool or server/* and each allowed by allowed_tools; only the tools their servers mark read-only when left out. TESTABLE_TOOLS wins over it',
+        'The tools test_tool_call may test although their servers do not mark them read-only, each named as server/tool, never server/*, and allowed by allowed_tools; only the tools their servers mark read-only when left out. TESTABLE_TOOLS wins over it',
     }),
     asJson,
   ),

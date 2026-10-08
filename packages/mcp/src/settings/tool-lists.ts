@@ -1,7 +1,13 @@
 import { decodedJsonSetting, problem, type SettingProblem } from '@beonauto/config';
 import { Result } from 'effect';
 
-import { isAllowed, toolReferenceOf, toolReferenceShape, type ToolReference } from '../names/tool-reference.ts';
+import {
+  isAllowed,
+  namesEveryTool,
+  toolReferenceOf,
+  toolReferenceShape,
+  type ToolReference,
+} from '../names/tool-reference.ts';
 import { AllowedToolsSchema, TestableToolsSchema } from './server-entries.ts';
 
 export const allowedToolsSetting = 'ALLOWED_TOOLS';
@@ -82,11 +88,15 @@ export function allowedToolsOf(
   );
 }
 
-function notAllowedBy(allowed: readonly ToolReference[] | null): FurtherProblem {
-  return (reference, written) =>
-    isAllowed(reference, allowed)
+function untestableIn(allowed: readonly ToolReference[] | null): FurtherProblem {
+  return (reference, written) => {
+    if (namesEveryTool(reference)) {
+      return `${written} would vouch for every tool of the server, those it adds later among them; name each tool that is safe to test`;
+    }
+    return isAllowed(reference, allowed)
       ? undefined
       : `${allowedToolsSetting} does not allow ${written}, and a tool a function may not call cannot be tested either`;
+  };
 }
 
 export function testableToolsOf(
@@ -99,7 +109,7 @@ export function testableToolsOf(
       setting: testableToolsSetting,
       schema: TestableToolsSchema,
       leftOut: 'to test only the tools their servers mark read-only',
-      furtherProblem: notAllowedBy(allowed),
+      furtherProblem: untestableIn(allowed),
     },
     text,
     servers,

@@ -21,11 +21,9 @@ describe('whether a tool can be tested', () => {
     expect(canBeTested(execute, { destructiveHint: false }, everyTool)).toBe(false);
   });
 
-  it('is yes for a tool whoever runs the server lists as safe to test, by name or by its server', () => {
+  it('is yes for a tool whoever runs the server lists as safe to test by name, whatever its server marks it', () => {
     expect(canBeTested(execute, undefined, { allowed: null, testable: [execute] })).toBe(true);
-    expect(
-      canBeTested(execute, { destructiveHint: true }, { allowed: null, testable: [{ ...execute, tool: '*' }] }),
-    ).toBe(true);
+    expect(canBeTested(execute, { destructiveHint: true }, { allowed: null, testable: [execute] })).toBe(true);
     expect(canBeTested(execute, undefined, { allowed: null, testable: [search] })).toBe(false);
   });
 
