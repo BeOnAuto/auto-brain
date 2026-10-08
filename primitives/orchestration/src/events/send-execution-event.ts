@@ -9,18 +9,8 @@ import {
   refusingBlankText,
   refusingForbiddenCharacters,
   refusingTheBrainsOwnAttributes,
-  reservedEventTypes,
-  reservedSourcesInWords,
 } from '@beonauto/specs';
-import {
-  jsonBytesOf,
-  measureOf,
-  mostReceivedEventBytes,
-  mostReceivedEvents,
-  mostValueDepth,
-  mostWaitingEventBytes,
-  mostWaitingEvents,
-} from '@beonauto/workflow-engine';
+import { jsonBytesOf, measureOf, mostValueDepth } from '@beonauto/workflow-engine';
 import type { WorkflowHost } from '@beonauto/workflow-host';
 import { DateTime, Effect, Schema, SchemaTransformation } from 'effect';
 
@@ -45,9 +35,10 @@ const ExecutionIdField = Schema.String.annotate({
   .pipe(Schema.decodeTo(Schema.String, SchemaTransformation.toLowerCase()));
 
 function text(most: number, description: string) {
-  return Schema.String.check(Schema.isMaxLength(most), refusingForbiddenCharacters).annotate({
-    description: `${description}, at most ${most} characters`,
-  });
+  return Schema.String.annotate({ description: `${description}, at most ${most} characters` }).check(
+    Schema.isMaxLength(most),
+    refusingForbiddenCharacters,
+  );
 }
 
 function wordedText(most: number, description: string) {
@@ -78,15 +69,15 @@ const EventSchema = Schema.Struct({
     ),
   ),
 })
+  .annotate({
+    description: `An event for a workflow to listen to, after the CloudEvents attributes, at most ${mostEventBytes} bytes as JSON in UTF-8`,
+  })
   .check(
     Schema.makeFilter((event: Schema.Json) => jsonBytesOf(event) <= mostEventBytes, {
       expected: `an event of at most ${mostEventBytes} bytes as JSON in UTF-8`,
     }),
     refusingTheBrainsOwnAttributes,
-  )
-  .annotate({
-    description: `An event for a workflow to listen to, after the CloudEvents attributes, at most ${mostEventBytes} bytes as JSON in UTF-8`,
-  });
+  );
 
 const DeliveredEventSchema = Schema.Struct({
   ...EventFields,
@@ -98,24 +89,12 @@ const DeliveredEventSchema = Schema.Struct({
 }).annotate({ identifier: 'DeliveredEvent', description: 'The event as the workflow received it' });
 
 const description = [
-  'Sends an event to an existing workflow run, for its listen steps, and returns the event',
-  'with its id and the time it was sent.',
-  '`execution_id` names the workflow run that is still started. This resumes waiting work; it does not start a new run.',
-  `\`event\` has a \`type\` and an optional \`id\` (each at most ${mostNameLength} characters), \`source\`, a URI reference`,
-  `such as /ledger/eu, or ${callerSourcePrefix} and the id of the caller when it is left out, and \`subject\` (each at most ${mostTextLength} characters; no text may hold a control character, a lone surrogate or a`,
-  'noncharacter, and type, id and subject need a character that is not a space) and `data` (any JSON value that nests at most',
-  `${mostDataDepth} levels deep); the whole event takes at most ${mostEventBytes} bytes as JSON.`,
-  'A listen task consumes an event whose attributes match its filter; an event no task consumes yet waits',
-  'in the workflow, and an event with an id the workflow already received is ignored, so a call can be',
-  'retried safely with the same id.',
-  `The types ${[...reservedEventTypes].join(', ')} and sources under ${reservedSourcesInWords}`,
-  "are the brain's own, for what it records itself, and are refused with invalid_input, and so are the",
-  'extension attributes causationid and correlationid, the lineage the brain gives its own records.',
-  `A workflow holds at most ${mostWaitingEvents} events it has not consumed (${mostWaitingEventBytes} bytes), and takes`,
-  `at most ${mostReceivedEvents} events (${mostReceivedEventBytes} bytes as JSON) over its life; one more fails it, and`,
-  'its run settles rejected.',
-  'Rejected with not_found when the brain has no active workflow run with that id,',
-  'and with unavailable when the workflow cannot take the event at that moment, in which case try again.',
+  'Gives an event to one workflow run that is still going, for a step that listens for it, such as an approval, and returns the event with its id.',
+  'Use it when the person answers what a run waits for; it does not start a run, and publish_event gives an event to the brain as a whole.',
+  "`execution_id` is the workflow run's id and `event` has a `type` and an optional `source`, `subject`, `data` and `id`;",
+  'an event whose id the run already received is ignored, so a call can be retried with its id.',
+  'An event no step takes yet waits in the run.',
+  "The brain's own types and sources, and the lineage attributes it gives its own records, are refused.",
 ].join(' ');
 
 export function defineSendExecutionEvent(runs: Pick<WorkflowHost, 'deliver'>) {

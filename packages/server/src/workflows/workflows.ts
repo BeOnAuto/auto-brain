@@ -50,6 +50,5 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     ...parts.brainOperations,
     defineSendExecutionEvent(host),
   ]);
-  const definitionTypes = primitives.map(({ name, noun }) => ({ primitive: name, noun: noun.one }));
-  return { routes: routesFor(runtime, catalog, dispatcher, definitionTypes), stopWork: host.stop };
+  return { routes: routesFor(runtime, catalog, dispatcher, primitives), stopWork: host.stop };
 }

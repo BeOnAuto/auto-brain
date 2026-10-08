@@ -86,6 +86,7 @@ export {
 } from './plain-language/explanation.ts';
 export {
   alternatives,
+  articled,
   asSentence,
   capitalized,
   counted,
@@ -95,6 +96,7 @@ export {
   type Noun,
 } from './plain-language/phrasing.ts';
 export type { PlainLanguage, RegisteredPlainLanguage } from './plain-language/plain-language.ts';
+export { mostOutcomeCharacters, mostRefusalCharacters, withinCharacters } from './plain-language/word-bounds.ts';
 export { OrgContext, type OrgAddress } from './caller/org-context.ts';
 export { OrgWriter } from './ledger/org-writer.ts';
 export {

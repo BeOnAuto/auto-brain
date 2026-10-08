@@ -2,9 +2,9 @@
 
 The implementation of recall functions. A recall function keeps a view of its brain's own history: its fold, a program in jq, folds each event its filters name into the view, the host keeps the view as the brain records events, and a run answers from the view as it stands, applying the function's `answer` to it with the run's input. Its API identifier and package name are `recollection`; in text a user reads it is a recall function, and what it keeps its view.
 
-A recall function retrieves or reconstructs relevant information from configured sources, as [Brain terminology](../../docs/concepts/terminology.md) says. This package implements the source that exists today, the brain's own history; documents, files and other connected sources are not implemented, and neither is semantic search over text.
+A recall function answers from what the brain keeps of its own history, as [Brain terminology](../../docs/concepts/terminology.md) says. Documents, files and other connected sources are not implemented, and neither is semantic search over text.
 
-User documentation is [Recall function format](../../docs/reference/recall-format.md), published at [on.auto/docs](https://on.auto/docs/): the document, the events, the fold's contract, how the view is kept, the endings and the bounds. Update it alongside behaviour changes; `src/document/reference-example.test.ts` checks that its example is the document the tests run, folds to the view it shows and answers the output it shows.
+User documentation is [Recall function format](../../docs/reference/recall-format.md), published at [on.auto/docs](https://on.auto/docs/): the document, the events, the fold's contract, how the view is kept, the endings and the bounds. Update it alongside behaviour changes; `src/document/reference-example.test.ts` checks that its example is the document the tests run, folds to the view it shows and answers the output it shows, and runs its example of the common case, the outputs of one function's runs in a list, within the bound on a view.
 
 ## The document
 
@@ -39,4 +39,4 @@ The hosted runtime does not offer recall functions until its adapter bounds the 
 
 ## Source
 
-`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialects, the filters and parsing. `src/run` holds a run and the folding settings: the bounds, the input's checks, the answer, its endings and the words of a view not ready. `src/primitive` holds the primitive, its parsing and summary, its standing and its description for agents. `src/testing` holds the example and what the tests share.
+`src/index.ts` is the entry point and `src/testing/index.ts` the entry point of the test support. `src/document` holds the document: its type, the front matter's keys, the dialects, the filters and parsing. `src/run` holds a run and the folding settings: the bounds, the input's checks, the answer, its endings and the words of a view not ready. `src/primitive` holds the primitive, its parsing and summary, its standing, and its guide, the public reference page, served to agents as `recall-function`. `src/testing` holds the example and what the tests share.

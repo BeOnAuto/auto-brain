@@ -21,6 +21,7 @@ const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
   failing: 'failing',
   forgotten: 'failing',
   refused: 'failing',
+  key_refused: 'key_refused',
 };
 
 export async function connectedTo(

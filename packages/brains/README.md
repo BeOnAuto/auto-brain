@@ -39,7 +39,7 @@ All five are org operations, so their routes are relative to the org. `brainOper
 - Every command also meets `conflict` when the org's brains changed while it decided.
 - `list_brains` lists only the brains the caller may access, and leaves out the retired ones unless `include_retired` is true. `include_retired` decodes from a JSON boolean and from the strings `true` and `false` of a query string.
 
-Before a handler runs, the dispatcher rejects with `forbidden` a caller of another org, a caller without `org:read` for the queries or `org:write` for the commands, and a caller that may not access the brain named by the `brain` field of `create_brain`, `get_brain`, `update_brain` or `retire_brain`. So a caller limited to a list of brains creates, reads, updates and retires only those. The dispatcher rejects with `invalid_input` input that breaks the schema, including fields the operation does not know.
+Before a handler runs, the dispatcher rejects with `forbidden` a caller of another org, a caller without `org:read` for the queries or `org:write` for the commands, though `list_brains` is permitted by `brain:read` as well, since it answers only the brains its caller may access, and a caller that may not access the brain named by the `brain` field of `create_brain`, `get_brain`, `update_brain` or `retire_brain`. So a caller limited to a list of brains creates, reads, updates and retires only those. The dispatcher rejects with `invalid_input` input that breaks the schema, including fields the operation does not know.
 
 ## What happened in a brain
 

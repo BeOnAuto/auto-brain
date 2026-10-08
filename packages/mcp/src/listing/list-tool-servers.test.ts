@@ -74,7 +74,7 @@ describe('list_tool_servers', () => {
       mayChangeOutside: false,
     });
     expect(registration.description).toMatch(
-      /^Lists the tool servers this brain's functions may use, with the tools each offers, so a function can name them in `tools` as server\/tool or server\/\*\./u,
+      /^Lists the tool servers this brain's functions may use, with the tools each offers, so a reasoning function names them in its tools as server\/tool or server\/\*\./u,
     );
   });
 

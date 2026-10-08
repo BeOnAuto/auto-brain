@@ -152,10 +152,15 @@ const explanationByBecause: Readonly<Record<UnavailableBecause, string>> = {
   failing: 'because the tool server kept failing',
   rate_limited: 'because the tool server asked it to slow down for longer than a run waits',
   unreachable: 'because the tool server could not be reached in time',
+  key_refused: 'because the tool server did not accept the key this server gives it',
   server_failed: 'because a tool server kept failing',
   model_unavailable: 'because the model stopped answering',
   run_bound: 'because it ran out of time',
   no_answer: 'because the model kept calling tools instead of answering',
+};
+
+const remedyByBecause: Readonly<Partial<Record<UnavailableBecause, string>>> = {
+  key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
 };
 
 export function explanationOf({ reason, kind, because }: ExplainedRejection): Explanation {
@@ -165,7 +170,11 @@ export function explanationOf({ reason, kind, because }: ExplainedRejection): Ex
   const explanation = explanationByKind[kind];
   return because === undefined
     ? explanation
-    : { ...explanation, why: `${explanation.why}, ${explanationByBecause[because]}` };
+    : {
+        ...explanation,
+        why: `${explanation.why}, ${explanationByBecause[because]}`,
+        remedy: remedyByBecause[because] ?? explanation.remedy,
+      };
 }
 
 function rejectionWords(attempt: string, operationKind: OperationKind, rejection: Rejected): string {

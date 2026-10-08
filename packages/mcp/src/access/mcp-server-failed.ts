@@ -1,8 +1,8 @@
 import { Data } from 'effect';
 
-export type ServerFailedBecause = 'failing' | 'rate_limited' | 'unreachable';
+export type ServerFailedBecause = 'failing' | 'rate_limited' | 'unreachable' | 'key_refused';
 
-export type CallsEndedBecause = Exclude<ServerFailedBecause, 'unreachable'>;
+export type CallsEndedBecause = Exclude<ServerFailedBecause, 'unreachable' | 'key_refused'>;
 
 export class McpServerFailed extends Data.TaggedError('mcp_server_failed')<{
   readonly because: ServerFailedBecause;

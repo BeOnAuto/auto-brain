@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { answers, jsonResult, textResult } from '../testing/index.ts';
 import { reasoningWith } from '../testing/reasoning-runs.ts';
-import { documentOf } from '../testing/spec-documents.ts';
-import { reasoningExample } from './reasoning-description.ts';
+import { documentOf, reasoningExample } from '../testing/spec-documents.ts';
 
 const summarizing = documentOf(
   [

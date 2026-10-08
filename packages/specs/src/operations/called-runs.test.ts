@@ -16,7 +16,7 @@ const calledBy = { execution_id: '0199a3c4-7d2e-7c1a-9b3f-000000000001', referen
 const measuring = definePrimitive({
   name: 'measuring',
   title: 'Measuring',
-  description: 'Answers with how long the runs of definitions it names may take, and how deep it was called.',
+  guide: { name: 'measuring' },
   noun: { one: 'measure', other: 'measures' },
   describeOutput: () => 'It measured.',
   mediaType: 'text/plain',

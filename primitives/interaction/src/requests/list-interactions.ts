@@ -39,11 +39,11 @@ const requestNoun = { one: 'request', other: 'requests' };
 const FilterText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 
 const description = [
-  'Lists the open requests of the brain, newest first: what each interaction function asked, of whom,',
-  'through which channel, until when, and how its delivery stands, with the `execution_id` to answer with',
-  'answer_interaction. `to` keeps the requests to one party and `function` those of one interaction function.',
-  `\`limit\` is 1 to 100, ${defaultPageLimit} when left out; \`next_cursor\` reads the next page.`,
-  'Every reader of the brain sees each party, as a run’s input is seen.',
+  'Lists the open requests of the brain, newest first: what each interaction function asked, of whom, through which channel,',
+  'until when and how its delivery stands, with the `execution_id` that answer_interaction takes.',
+  'Use it when the person asks what the brain is waiting on, or to find the request they answer.',
+  '`to` keeps the requests to one party and `function` those of one interaction function, and `cursor` is the next_cursor of the page before.',
+  'Every reader of the brain sees each party and message, as a run’s input is seen.',
 ].join(' ');
 
 const CursorSchema = Schema.Tuple([Schema.Int, Schema.String]);

@@ -215,3 +215,33 @@ describe('the declared reasons', () => {
     ).toEqual(['not_found']);
   });
 });
+
+describe('the permissions that let a caller call an operation', () => {
+  it('are the one of its kind and scope, or the ones it is permitted by', () => {
+    const reading = defineQuery('org', { ...probe, route: get, inputSchema: Empty, outputSchema: Empty });
+    const readingInsideABrain = defineQuery('org', {
+      ...probe,
+      route: get,
+      inputSchema: Empty,
+      outputSchema: Empty,
+      permittedBy: ['org:read', 'brain:read'],
+    });
+
+    expect([reading.registration.permissions, readingInsideABrain.registration.permissions]).toEqual([
+      ['org:read'],
+      ['org:read', 'brain:read'],
+    ]);
+  });
+
+  it('must be at least one', () => {
+    expect(() =>
+      defineCommand('org', {
+        ...probe,
+        route: { method: 'POST', path: '/probe' },
+        inputSchema: Empty,
+        outputSchema: Empty,
+        permittedBy: [],
+      }),
+    ).toThrow('The operation probe is permitted by no permission');
+  });
+});

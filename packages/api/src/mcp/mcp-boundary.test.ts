@@ -17,6 +17,8 @@ const brokenRuntime = mcpRoutes({
   runCall: () => Promise.reject(new Error('the runtime broke while holding database password hunter2')),
   serverInfo: testServerInfo,
   definitionTypes: [],
+  guides: [],
+  recipes: [],
   reportError: (error) => {
     sdkErrors.push(error.message);
   },
@@ -79,7 +81,7 @@ describe('an operation without plain language', () => {
     const bare = defineQuery('brain', {
       name: 'bare_query',
       title: 'Bare query',
-      description: 'Answers without plain language.',
+      description: 'Answers without plain language. Use it in tests. It answers nothing.',
       route: { method: 'GET', path: '/bare' },
       inputSchema: Schema.Struct({ size: Schema.Int }),
       outputSchema: Schema.Struct({ size: Schema.Int }),
@@ -92,6 +94,8 @@ describe('an operation without plain language', () => {
       runCall: () => Promise.reject(new Error('not called')),
       serverInfo: testServerInfo,
       definitionTypes: [],
+      guides: [],
+      recipes: [],
       reportError: () => {
         sdkErrors.push('unexpected');
       },

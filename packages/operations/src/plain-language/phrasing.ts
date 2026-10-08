@@ -74,6 +74,10 @@ export function counted(count: number, noun: Noun): string {
   return `${plainNumber(count)} ${plurals.select(count) === 'one' ? noun.one : noun.other}`;
 }
 
+export function articled(noun: string): string {
+  return /^[aeiou]/u.test(noun) ? `an ${noun}` : `a ${noun}`;
+}
+
 export function capitalized(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
