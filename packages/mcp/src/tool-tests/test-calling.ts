@@ -17,6 +17,7 @@ export interface Tested {
 
 export interface Calling {
   readonly testedAt: string;
+  readonly answering: Promise<CallReply>;
   readonly replying: Promise<CallReply>;
   readonly stop: AbortController;
 }
@@ -58,13 +59,13 @@ function startedCall(tools: RunTools, offered: OfferedTool, { testId, input }: T
   const answering = offered.call({ callId: testId, input }, { signal: stop.signal, cancelled: stop.signal });
   const replying = closedOnceAnswered(tools, answering);
   replying.catch(ignored);
-  return { testedAt, replying, stop };
+  return { testedAt, answering, replying, stop };
 }
 
-export function stopped({ stop, replying }: Calling): Effect.Effect<void> {
+export function stopped({ stop, answering }: Calling): Effect.Effect<void> {
   return Effect.sync(() => {
     stop.abort();
-  }).pipe(Effect.andThen(Effect.promise(() => replying)), Effect.asVoid);
+  }).pipe(Effect.andThen(Effect.promise(() => answering)), Effect.asVoid);
 }
 
 export const calledWhenTestable = Effect.fnUntraced(function* (testing: TestingLists, tools: RunTools, tested: Tested) {

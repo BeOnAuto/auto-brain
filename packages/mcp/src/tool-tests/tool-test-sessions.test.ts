@@ -9,11 +9,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   fakeApiKey,
   fakeStdioServerPath,
+  fetchWithDeletion,
   patientTiming,
   reportingAccess,
   serveFakeMcp,
   stdioTestTimeoutMs,
   toolTests,
+  type AccessOptions,
   type FakeMcpOptions,
   type FakeMcpServer,
 } from '../testing/index.ts';
@@ -30,8 +32,9 @@ async function fakeServer(options: FakeMcpOptions = {}): Promise<FakeMcpServer> 
   return fake;
 }
 
-function accessTo(servers: Readonly<Record<string, unknown>>) {
+function accessTo(servers: Readonly<Record<string, unknown>>, fetching: AccessOptions = {}) {
   const { access } = reportingAccess(servers, {
+    ...fetching,
     timing: patientTiming,
     environment: { GRAPH_API_KEY: fakeApiKey, NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] },
   });
@@ -109,6 +112,34 @@ describe('a test whose caller goes away while the tool is called', () => {
     expect(fake.received()).toHaveLength(1);
     await toolTests(access).test(searching);
     expect([fake.endedSessions(), fake.openSessions()]).toEqual([2, 0]);
+  });
+});
+
+describe('a test whose caller goes away while its server is slow to end the session', () => {
+  it('answers cancelled without waiting for the session to end, and the session still ends', async () => {
+    const fake = await fakeServer();
+    const deleting = Promise.withResolvers<void>();
+    const letGo = Promise.withResolvers<void>();
+    const slowToEnd = fetchWithDeletion(fetch, async (_request, sent) => {
+      deleting.resolve();
+      await letGo.promise;
+      return sent();
+    });
+    const { test } = toolTests(accessTo(graphOn(fake), { fetch: slowToEnd }));
+    const leaving = new AbortController();
+
+    const settling = test({ server: 'graph', tool: 'sleep', arguments: { ms: 5000 } }, { signal: leaving.signal });
+    await until(() => fake.received().length === 1);
+    const left = performance.now();
+    leaving.abort();
+    const settled = await settling;
+    const answeredWithinMs = performance.now() - left;
+    await deleting.promise;
+    letGo.resolve();
+
+    expect(settled).toEqual({ status: 'cancelled' });
+    expect(answeredWithinMs).toBeLessThan(1000);
+    expect(await until(() => fake.endedSessions() === 1)).toBe(true);
   });
 });
 
