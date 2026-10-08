@@ -14,7 +14,7 @@ export function canBeTested(
   return isAllowed(reference, allowed) && (annotations?.readOnlyHint === true || isAllowed(reference, testable));
 }
 
-export function offersNothingTestable(
+function offersNothingTestable(
   server: string,
   tools: readonly ListedTool[],
   testable: readonly ToolReference[],
