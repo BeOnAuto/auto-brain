@@ -7,7 +7,7 @@ import {
 } from '@beonauto/config';
 import type { Redacted } from 'effect';
 
-import { mcpServersSetting } from './entry-checks.ts';
+import { mcpServersSetting } from './server-entries.ts';
 
 const misplaced =
   'Holds a reference to an environment variable, which only headers, env and auth may hold: an argument shows in the listing of the processes of the machine, and a URL is not a header';

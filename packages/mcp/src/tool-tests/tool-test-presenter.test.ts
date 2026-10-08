@@ -23,10 +23,16 @@ afterEach(async () => {
 async function recordedTests(entry: Readonly<Record<string, unknown>>, ...tested: readonly unknown[]) {
   const fake = await serveFakeMcp({ bearer: fakeApiKey });
   closing.push(fake.close);
-  const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry };
+  const graph = {
+    url: fake.url,
+    headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' },
+    org: 'acme',
+    testable: ['echo'],
+    ...entry,
+  };
   const { access } = reportingAccess(
     { graph },
-    { timing: { ...patientTiming, callMs: 300 }, testable: ['graph/echo'], environment: { GRAPH_API_KEY: fakeApiKey } },
+    { timing: { ...patientTiming, callMs: 300 }, environment: { GRAPH_API_KEY: fakeApiKey } },
   );
   closing.push(access.close);
   const { test, recorded } = toolTests(access);

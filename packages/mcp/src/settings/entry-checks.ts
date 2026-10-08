@@ -9,19 +9,18 @@ import type {
   McpServerSettings,
   StdioServerSettings,
 } from './mcp-settings.ts';
-import type { McpServerEntryFields } from './server-entries.ts';
+import { mcpServersSetting, type McpServerEntryFields } from './server-entries.ts';
+import { toolListsOf } from './tool-lists.ts';
 
 type Checked<A> =
   | { readonly ok: true; readonly value: A }
   | { readonly ok: false; readonly problems: readonly SettingProblem[] };
 
 type Transport<S extends McpServerSettings> = S extends McpServerSettings
-  ? Omit<S, 'name' | 'org' | 'brains' | 'record_content' | 'request_id' | 'secrets'>
+  ? Omit<S, 'name' | 'org' | 'brains' | 'allowed' | 'testable' | 'record_content' | 'request_id' | 'secrets'>
   : never;
 
 type Auth = NonNullable<McpServerEntryFields['auth']>;
-
-export const mcpServersSetting = 'MCP_SERVERS';
 
 const headerName = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
 
@@ -227,11 +226,13 @@ export function checkedEntry(
   const named = checkedName(name, providers);
   const scope = servedScopeOf(mcpServersSetting, name, fields, 'server');
   const transport = checkedTransport(name, fields);
-  if (Result.isFailure(scope) || !transport.ok) {
+  const tools = toolListsOf(name, fields);
+  if (Result.isFailure(scope) || !transport.ok || Result.isFailure(tools)) {
     return Result.fail([
       ...problemsOf(named),
       ...(Result.isFailure(scope) ? scope.failure : []),
       ...problemsOf(transport),
+      ...(Result.isFailure(tools) ? tools.failure : []),
     ]);
   }
   const problems = problemsOf(named);
@@ -242,6 +243,7 @@ export function checkedEntry(
         name,
         org: scope.success.org,
         brains: scope.success.brains,
+        ...tools.success,
         record_content: fields.record_content ?? false,
         request_id: fields.request_id ?? null,
         secrets,

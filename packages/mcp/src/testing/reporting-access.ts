@@ -6,8 +6,6 @@ import type { Timing } from '../bounds/call-bounds.ts';
 import { readMcpSettings, type Environment } from '../settings/settings-reading.ts';
 
 export interface AccessOptions {
-  readonly allowed?: readonly string[];
-  readonly testable?: readonly string[];
   readonly environment?: Environment;
   readonly timing?: Timing;
   readonly fetch?: ToolAccessOptions['fetch'];
@@ -21,20 +19,12 @@ export interface ReportingAccess {
 
 export function reportingAccess(
   servers: Readonly<Record<string, unknown>>,
-  { allowed, testable, environment = {}, timing, fetch }: AccessOptions = {},
+  { environment = {}, timing, fetch }: AccessOptions = {},
 ): ReportingAccess {
   const messages: ServerMessage[] = [];
   const untestable: string[] = [];
   const settings = Effect.runSync(
-    readMcpSettings(
-      {
-        ...environment,
-        MCP_SERVERS: JSON.stringify(servers),
-        ...(allowed === undefined ? {} : { ALLOWED_TOOLS: JSON.stringify(allowed) }),
-        ...(testable === undefined ? {} : { TESTABLE_TOOLS: JSON.stringify(testable) }),
-      },
-      { modelProviders: [] },
-    ),
+    readMcpSettings({ ...environment, MCP_SERVERS: JSON.stringify(servers) }, { modelProviders: [] }),
   );
   const access = makeToolAccess(settings, {
     reportServerMessage: (message) => {

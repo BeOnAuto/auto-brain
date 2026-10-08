@@ -45,8 +45,8 @@ function secretValuesOf(server: McpServerSettings | undefined): Readonly<Record<
 }
 
 describe('reading an http server', () => {
-  it('reads no server, allows every tool and lists none as safe to test when no setting is set', () => {
-    expect(Effect.runSync(readMcpSettings({}, context))).toEqual({ servers: [], allowed: null, testable: [] });
+  it('reads no server when no setting is set', () => {
+    expect(Effect.runSync(readMcpSettings({}, context))).toEqual({ servers: [] });
   });
 
   it('reads an http entry with its headers resolved and redacted, and its org and brains', () => {
@@ -67,6 +67,8 @@ describe('reading an http server', () => {
       auth: null,
       org: 'acme',
       brains: ['sales', 'support'],
+      allowed: null,
+      testable: [],
       record_content: true,
       request_id: 'x-request-id',
     });

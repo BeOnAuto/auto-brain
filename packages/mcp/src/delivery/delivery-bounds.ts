@@ -23,7 +23,6 @@ export type DeliveryCallEnded =
 
 export interface DeliveryAccess {
   readonly links: ReadonlyMap<string, ServerLink>;
-  readonly allowed: readonly ToolReference[] | null;
   readonly secrets: Secrets;
   readonly timing: Timing;
 }

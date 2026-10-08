@@ -33,12 +33,16 @@ async function fakeServer(): Promise<FakeMcpServer> {
 
 function accessTo(url: string, changes: Readonly<Record<string, unknown>> = {}, callMs = patientTiming.callMs) {
   const { access } = reportingAccess(
-    { graph: { url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...changes } },
     {
-      environment: { GRAPH_API_KEY: apiKey },
-      timing: { ...patientTiming, callMs },
-      allowed: ['graph/echo', 'graph/denied', 'graph/sleep', 'graph/large', 'graph/search', 'graph/gone'],
+      graph: {
+        url,
+        headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' },
+        org: 'acme',
+        allowed: ['echo', 'denied', 'sleep', 'large', 'search', 'gone'],
+        ...changes,
+      },
     },
+    { environment: { GRAPH_API_KEY: apiKey }, timing: { ...patientTiming, callMs } },
   );
   closing.push(access.close);
   return access;

@@ -29,7 +29,7 @@ export function defineTestToolCall(access: Pick<ToolAccess, 'open' | 'testing'>)
     description,
     route: { method: 'POST', path: '/tool-servers/{server}/tools/{tool}/test' },
     reachesOutside: true,
-    mayChangeOutside: access.testing.testable.length > 0,
+    mayChangeOutside: access.testing.some(({ testable }) => testable.length > 0),
     inputSchema: TestToolCallInputSchema,
     outputSchema: ToolTestedSchema,
     reasons: ['invalid_input', 'unavailable'],

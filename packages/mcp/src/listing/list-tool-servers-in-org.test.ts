@@ -53,12 +53,12 @@ function remote(fake: FakeMcpServer, scope: Readonly<Record<string, unknown>>) {
 function listingOn(fake: FakeMcpServer) {
   const { access } = reportingAccess(
     {
-      graph: remote(fake, { org: 'acme' }),
-      notes: remote(fake, { org: 'acme', brains: ['beta', 'alpha'] }),
-      sales: remote(fake, { org: 'acme', brains: ['beta'] }),
-      crm: remote(fake, { org: 'globex' }),
+      graph: remote(fake, { org: 'acme', allowed: ['echo'] }),
+      notes: remote(fake, { org: 'acme', brains: ['beta', 'alpha'], allowed: ['search'] }),
+      sales: remote(fake, { org: 'acme', brains: ['beta'], allowed: ['echo'] }),
+      crm: remote(fake, { org: 'globex', allowed: ['echo'] }),
     },
-    { allowed: ['graph/echo', 'notes/search', 'sales/echo', 'crm/echo'], environment: { GRAPH_API_KEY: apiKey } },
+    { environment: { GRAPH_API_KEY: apiKey } },
   );
   closing.push(access.close);
   const { registration } = defineListToolServersInOrg(access, lookUpBrain);

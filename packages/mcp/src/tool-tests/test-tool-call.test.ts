@@ -10,7 +10,6 @@ import {
   serveFakeMcp,
   toolRun,
   toolTests,
-  type AccessOptions,
   type FakeMcpServer,
 } from '../testing/index.ts';
 
@@ -38,26 +37,23 @@ async function fakeServer(): Promise<FakeMcpServer> {
   return fake;
 }
 
-function accessTo(fake: FakeMcpServer, options: AccessOptions = {}) {
-  const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' };
-  const reporting = reportingAccess(
-    { graph },
-    { timing: patientTiming, ...options, environment: { GRAPH_API_KEY: fakeApiKey } },
-  );
+function accessTo(fake: FakeMcpServer, entry: Readonly<Record<string, unknown>> = {}) {
+  const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry };
+  const reporting = reportingAccess({ graph }, { timing: patientTiming, environment: { GRAPH_API_KEY: fakeApiKey } });
   closing.push(reporting.access.close);
   return reporting.access;
 }
 
-async function testerOf(options: AccessOptions = {}) {
+async function testerOf(entry: Readonly<Record<string, unknown>> = {}) {
   const fake = await fakeServer();
-  const access = accessTo(fake, options);
+  const access = accessTo(fake, entry);
   return { fake, access, ...toolTests(access) };
 }
 
 describe('test_tool_call', () => {
   it('is a command of the brain at POST /tool-servers/{server}/tools/{tool}/test that reaches outside', async () => {
     const { registration } = await testerOf();
-    const listing = await testerOf({ testable: ['graph/echo'] });
+    const listing = await testerOf({ testable: ['echo'] });
 
     expect(registration).toMatchObject({
       scope: 'brain',

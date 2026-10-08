@@ -8,70 +8,25 @@ const context = { modelProviders: ['openai'] };
 
 const graph = { url: 'https://graph.example.com/mcp', org: 'acme' };
 
-const limitless = { command: '/usr/local/bin/limitless-mcp-server', org: 'acme' };
-
 const secret = { GRAPH_CLIENT_SECRET: 'graph-client-secret-81c2' };
 
-function environmentOf(servers: unknown, allowed?: unknown): Environment {
-  return {
-    ...secret,
-    MCP_SERVERS: JSON.stringify(servers),
-    ...(allowed === undefined ? {} : { ALLOWED_TOOLS: JSON.stringify(allowed) }),
-  };
+function environmentOf(servers: unknown): Environment {
+  return { ...secret, MCP_SERVERS: JSON.stringify(servers) };
 }
 
-function settingsOf(servers: unknown, allowed?: unknown) {
-  return Effect.runSync(readMcpSettings(environmentOf(servers, allowed), context));
+function settingsOf(servers: unknown) {
+  return Effect.runSync(readMcpSettings(environmentOf(servers), context));
 }
 
-function problemsIn(environment: Environment): readonly string[] {
-  return Effect.runSync(Effect.flip(readMcpSettings(environment, context))).problems.map(
+function problemsOf(servers: unknown): readonly string[] {
+  return Effect.runSync(Effect.flip(readMcpSettings(environmentOf(servers), context))).problems.map(
     ({ setting, detail }) => `${setting} ${detail}`,
   );
-}
-
-function problemsOf(servers: unknown, allowed?: unknown): readonly string[] {
-  return problemsIn(environmentOf(servers, allowed));
 }
 
 function served(server: McpServerSettings | undefined, org: string, brain: string): boolean {
   return server !== undefined && servesBrain(server, { org, brain });
 }
-
-describe('reading the allowed tools', () => {
-  it('reads the tools a reasoning function may name', () => {
-    expect(settingsOf({ graph, limitless }, ['graph/search', 'limitless/*']).allowed).toEqual([
-      { server: 'graph', tool: 'search' },
-      { server: 'limitless', tool: '*' },
-    ]);
-  });
-
-  it('refuses a list that is not JSON, not a list, or empty', () => {
-    expect(problemsOf({ graph }, 'graph/search')).toEqual([
-      expect.stringMatching(/^ALLOWED_TOOLS \/: Expected array/u),
-    ]);
-    expect(problemsIn({ ...environmentOf({ graph }), ALLOWED_TOOLS: '[graph' })).toEqual([
-      'ALLOWED_TOOLS /: Expected JSON',
-    ]);
-    expect(problemsOf({ graph }, [])).toEqual([
-      'ALLOWED_TOOLS /: Expected at least one tool; leave ALLOWED_TOOLS out to allow every tool',
-    ]);
-  });
-
-  it('refuses a tool that is malformed, repeated or of no configured server', () => {
-    expect(problemsOf({ graph }, ['graph', 'graph/search', 'graph/search', 'crm/search'])).toEqual([
-      expect.stringMatching(/^ALLOWED_TOOLS \/0: Expected server\/tool, or server\/\* for every tool of a server/u),
-      'ALLOWED_TOOLS /2: graph/search is listed twice',
-      'ALLOWED_TOOLS /3: There is no MCP server named crm',
-    ]);
-  });
-
-  it('reports only the problems of the servers while the servers cannot be read', () => {
-    expect(problemsOf({ graph: { org: 'acme' } }, ['graph/search'])).toEqual([
-      'MCP_SERVERS /graph: Expected url for an http server or command for a stdio server, one of the two',
-    ]);
-  });
-});
 
 describe('an auth block', () => {
   it('reads a client secret, or a private key with its algorithm, its issuer pinned', () => {

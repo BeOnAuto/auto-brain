@@ -33,10 +33,10 @@ interface Asking {
 function listingOn(fake: FakeMcpServer) {
   const { access } = reportingAccess(
     {
-      graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
-      wiki: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
+      graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', allowed: ['echo'] },
+      wiki: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', allowed: ['search'] },
     },
-    { allowed: ['graph/echo', 'wiki/search'], environment: { GRAPH_API_KEY: apiKey } },
+    { environment: { GRAPH_API_KEY: apiKey } },
   );
   closing.push(access.close);
   const { registration } = defineListToolServers(access);

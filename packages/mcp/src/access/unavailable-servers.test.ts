@@ -47,7 +47,7 @@ describe('a tool server that cannot be asked for its tools', () => {
     const gone = await serveFakeMcp();
     await gone.close();
 
-    const listing = await listed({ graph: remote(gone), wiki: remote(fake) }, { allowed: ['graph/*', 'wiki/echo'] });
+    const listing = await listed({ graph: remote(gone), wiki: remote(fake, { allowed: ['echo'] }) });
 
     expect(listing).toEqual([
       {

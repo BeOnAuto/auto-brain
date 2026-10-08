@@ -33,6 +33,8 @@ function stdioSettings(args: readonly string[], changes: Partial<StdioServerSett
     args: [fakeStdioServerPath, ...args],
     env: environment,
     org: 'acme',
+    allowed: null,
+    testable: [],
     brains: null,
     record_content: false,
     request_id: null,
