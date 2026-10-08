@@ -61,10 +61,10 @@ function startedCall(tools: RunTools, offered: OfferedTool, { testId, input }: T
   return { testedAt, replying, stop };
 }
 
-export function stopped({ stop }: Calling): Effect.Effect<void> {
+export function stopped({ stop, replying }: Calling): Effect.Effect<void> {
   return Effect.sync(() => {
     stop.abort();
-  });
+  }).pipe(Effect.andThen(Effect.promise(() => replying)), Effect.asVoid);
 }
 
 export const calledWhenTestable = Effect.fnUntraced(function* (testing: TestingLists, tools: RunTools, tested: Tested) {

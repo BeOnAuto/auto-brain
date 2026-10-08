@@ -35,27 +35,42 @@ export interface ToolTests {
   readonly test: (input: unknown, asking?: TestAsking) => Promise<Settled>;
   readonly recorded: () => Promise<readonly RecordedEvent[]>;
   readonly incidents: () => readonly ReportedIncident[];
+  readonly writesAttempted: () => number;
 }
 
 export interface ToolTestsOptions {
   readonly writesRefused?: boolean;
+  readonly writesHeldUntil?: Promise<void>;
 }
 
-function refusingWrites(ledger: Ledger['Service']): Layer.Layer<Ledger> {
-  return Layer.succeed(
-    Ledger,
-    Ledger.of({ ...ledger, execute: () => Effect.die(new Error('The ledger refused the write')) }),
+interface Refusing {
+  readonly held: Promise<void>;
+  readonly attempted: () => void;
+}
+
+function refusingWrites(ledger: Ledger['Service'], { held, attempted }: Refusing): Layer.Layer<Ledger> {
+  const refused = Effect.sync(attempted).pipe(
+    Effect.andThen(Effect.promise(() => held)),
+    Effect.andThen(Effect.die(new Error('The ledger refused the write'))),
   );
+  return Layer.succeed(Ledger, Ledger.of({ ...ledger, execute: () => refused }));
 }
 
 export function toolTests(
   access: Pick<ToolAccess, 'open' | 'testing'>,
-  { writesRefused = false }: ToolTestsOptions = {},
+  { writesRefused = false, writesHeldUntil = Promise.resolve() }: ToolTestsOptions = {},
 ): ToolTests {
   const ledger = memoryLedger();
   const reporter = recordingReporter();
+  const writes = { attempted: 0 };
+  const refusing = {
+    held: writesHeldUntil,
+    attempted: () => {
+      writes.attempted += 1;
+    },
+  };
   const services = Layer.mergeAll(
-    writesRefused ? refusingWrites(ledger.service) : ledger.layer,
+    writesRefused ? refusingWrites(ledger.service, refusing) : ledger.layer,
     memoryBrainRegistry([{ org: 'acme', brain: 'alpha' }], [{ org: 'acme', brain: 'old' }]),
     reporter.layer,
   );
@@ -81,5 +96,6 @@ export function toolTests(
       return page.records;
     },
     incidents: reporter.reported,
+    writesAttempted: () => writes.attempted,
   };
 }

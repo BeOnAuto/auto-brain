@@ -124,6 +124,33 @@ describe('a test the ledger cannot record', () => {
   });
 });
 
+describe('a test the ledger cannot record once its caller has gone', () => {
+  it('is reported as an incident naming the test, as a failure the caller saw would be, and sends no call', async () => {
+    const fake = await fakeServer();
+    const leaving = new AbortController();
+    const recording = Promise.withResolvers<void>();
+    const { test, incidents, writesAttempted } = toolTests(accessTo(graphOn(fake)), {
+      writesRefused: true,
+      writesHeldUntil: recording.promise,
+    });
+
+    const settling = test(searching, { signal: leaving.signal });
+    await until(() => writesAttempted() === 1);
+    leaving.abort();
+    recording.resolve();
+    const settled = await settling;
+
+    expect(settled).toEqual({ status: 'cancelled' });
+    expect(incidents()).toHaveLength(1);
+    expect(incidents()[0]).toMatchObject({
+      original: { message: 'The ledger refused the write' },
+      call: { operation: 'test_tool_call', org: 'acme', brain: 'alpha', caller: 'acme-builder' },
+    });
+    expect(fake.received()).toEqual([]);
+    expect(await until(() => fake.endedSessions() === 1)).toBe(true);
+  });
+});
+
 describe('a test of a stdio server', { timeout: stdioTestTimeoutMs }, () => {
   it('starts its process once, and keeps it for the next test', async () => {
     const folder = mkdtempSync(join(tmpdir(), 'tool-tests-'));
