@@ -18,7 +18,7 @@ const parseWords = (source: string) =>
 const words: PrimitiveDefinition<{ readonly words: readonly string[] }> = {
   name: 'words',
   title: 'Words',
-  description: 'Counts the words of its document.',
+  guide: { name: 'words' },
   noun: { one: 'count', other: 'counts' },
   describeOutput: () => 'It counted the words.',
   mediaType: 'text/plain',
@@ -60,7 +60,7 @@ describe('a primitive', () => {
     expect(primitive).toMatchObject({
       name: 'words',
       title: 'Words',
-      description: 'Counts the words of its document.',
+      guide: { name: 'words' },
       noun: { one: 'count', other: 'counts' },
       mediaType: 'text/plain',
     });

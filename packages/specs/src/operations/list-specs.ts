@@ -16,15 +16,11 @@ export function defineListSpecs(primitives: readonly Primitive[]) {
     defineQuery('brain', {
       name: 'list_specs',
       title: 'List definitions',
-      description: known.describe([
-        'Lists definitions of one type in the brain, sorted by name, without their documents.',
-        '`primitive` selects the API type identifier. Retired definitions are left out unless `include_retired` is true.',
-        'Each definition carries its name, version, status (active or retired), the media type of its document,',
-        'what its document says it does and the JSON Schemas of its input and output when the document gives them,',
-        'the id of the caller who created it, and when it was created, last changed and retired.',
-        'Read one definition with its document with get_spec.',
-        'Rejected with not_found when that definition type is unavailable.',
-      ]),
+      description: [
+        'Lists the definitions of one type in the brain, sorted by name, each with its version, its status and what its document says it does, without the document.',
+        'Use it to find a function or workflow the person names, or to see which exist before one is made; get_spec reads one with its document.',
+        '`primitive` is the type to list, and `include_retired` adds the retired definitions, which are left out otherwise.',
+      ].join(' '),
       route: { method: 'GET', path: '/specs/{primitive}' },
       inputSchema: Schema.Struct({
         primitive: known.field,

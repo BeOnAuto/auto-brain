@@ -1,6 +1,7 @@
+import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import type { CallerIdentity } from '../index.ts';
+import { defineQuery, type CallerIdentity } from '../index.ts';
 import { labelBrain, listBrainLabels } from '../testing/brain-labels.ts';
 import { acmeAdmin, acmeAlphaReader } from '../testing/callers.ts';
 import { harness, toBrain, toOrg } from '../testing/harness.ts';
@@ -58,6 +59,33 @@ describe('authorization of a caller', () => {
     });
     expect(await run(dispatcher.dispatchToBrain(addNote.registration, toAlpha(holding('brain:read'))))).toMatchObject({
       detail: 'The caller lacks the brain:write permission',
+    });
+  });
+});
+
+const countBrains = defineQuery('org', {
+  name: 'count_brains',
+  title: 'Count brains',
+  description: 'Counts the brains the caller may read.',
+  route: { method: 'GET', path: '/brain-count' },
+  inputSchema: Schema.Record(Schema.String, Schema.Never),
+  outputSchema: Schema.Struct({ counted: Schema.Boolean }),
+  reasons: [],
+  permittedBy: ['org:read', 'brain:read'],
+  handle: () => Effect.succeed({ counted: true }),
+});
+
+describe('an operation permitted by more than one permission', () => {
+  it('reaches a caller that holds any one of them, and refuses one that holds none, naming each', async () => {
+    const { dispatcher, run } = harness();
+
+    expect(await run(dispatcher.dispatchToOrg(countBrains.registration, toAcme(holding('brain:read'))))).toEqual({
+      status: 'succeeded',
+      output: { counted: true },
+    });
+    expect(await run(dispatcher.dispatchToOrg(countBrains.registration, toAcme(holding('org:write'))))).toMatchObject({
+      reason: 'forbidden',
+      detail: 'The caller lacks the org:read or brain:read permission',
     });
   });
 });

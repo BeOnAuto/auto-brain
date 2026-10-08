@@ -4,6 +4,7 @@ import { text } from 'node:stream/consumers';
 import { setTimeout } from 'node:timers/promises';
 
 import { withMcpSession, type McpSession, type ToolResult } from '@beonauto/api/testing';
+import { Schema } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { tcpPort } from '../lifecycle/lifecycle.ts';
@@ -222,6 +223,49 @@ describe('the workflow requests of the quick start, over /mcp', { timeout: devel
       started: { status: 'started' },
       sent: { isError: false },
       settled: { status: 'succeeded', output: { refund: 'ticket-4711', approved_by: 'dana' } },
+    });
+  });
+});
+
+const FirstBrainSchema = Schema.Struct({
+  messages: Schema.Tuple([
+    Schema.Struct({ content: Schema.Struct({ text: Schema.String }) }),
+    Schema.Struct({ content: Schema.Struct({ resource: Schema.Struct({ uri: Schema.String, text: Schema.String }) }) }),
+  ]),
+});
+
+function inTheirOrder(steps: string, names: readonly string[]): boolean {
+  const places = names.map((name) => steps.indexOf(name));
+  return places.every((place, index) => place >= 0 && (index === 0 || place > Number(places[index - 1])));
+}
+
+describe('the first-brain prompt of the quick start, over /mcp', { timeout: developmentTestTimeoutMs }, () => {
+  it('is served by the brain, and an agent that follows its steps creates a brain, saves a reasoning function and runs it', async () => {
+    const outcome = await onPnpmDev(async (session) => {
+      const {
+        messages: [asked, embedded],
+      } = Schema.decodeUnknownSync(FirstBrainSchema)(await session.getPrompt('first-brain'));
+      return {
+        recipe: asked.content.text,
+        guide: embedded.content.resource,
+        brains: structured(await session.callTool('list_brains', {})),
+        brain: structured(
+          await session.callTool('create_brain', { brain, name: 'Support', description: 'Classifies support tickets' }),
+        ),
+        stored: await stored(session, 'inference', 'classify-ticket', classifyingPrompt('Answer as JSON.')),
+        run: await executed(session, 'classify-ticket', { ticket: charged }),
+      };
+    });
+
+    expect(outcome.recipe).toMatch(/^Create my first brain\.\n\n# Create your first brain\n/u);
+    expect(inTheirOrder(outcome.recipe, ['list_brains', 'create_brain', 'create_spec', 'execute_spec'])).toBe(true);
+    expect(outcome.guide.uri).toBe('guide://reasoning-function');
+    expect(outcome.guide.text).toContain('# Reasoning function format');
+    expect(outcome).toMatchObject({
+      brains: { isError: false, brains: [] },
+      brain: { isError: false, id: brain, status: 'active' },
+      stored: { isError: false, name: 'classify-ticket', version: 1 },
+      run: { status: 'succeeded', output: { category: 'billing', urgency: 'high' } },
     });
   });
 });

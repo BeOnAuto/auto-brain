@@ -36,13 +36,7 @@ const notAnObject = new InvalidInput({
 export const echo = definePrimitive({
   name: 'echo',
   title: 'Echo',
-  description: [
-    'Answers every execution with the greeting its spec declares and the input it was given.',
-    'A spec document of echo is a JSON object with a string `greeting`, an optional string `description`',
-    'optional `warnings`, a list of strings the spec is accepted with, and an optional boolean `reacts`,',
-    'for example {"greeting": "Hello", "description": "Greets the caller"}.',
-    'The input of an execution must be a JSON object.',
-  ].join(' '),
+  guide: { name: 'echo' },
   noun: { one: 'greeting', other: 'greetings' },
   describeOutput: () => 'It answered with its greeting.',
   mediaType: 'application/json',

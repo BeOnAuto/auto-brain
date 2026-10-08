@@ -1,14 +1,14 @@
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/ajv';
 import { Schema } from 'effect';
 
-import { withBrainArgument } from '../mcp/brain-argument.ts';
+import { withBrainArgument } from '../tools/brain-argument.ts';
 
 const ListedToolSchema = Schema.Struct({
   name: Schema.String,
   description: Schema.optionalKey(Schema.String),
   annotations: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
   inputSchema: Schema.Record(Schema.String, Schema.Unknown),
-  outputSchema: Schema.Record(Schema.String, Schema.Unknown),
+  outputSchema: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
 });
 
 export type ListedTool = typeof ListedToolSchema.Type;
@@ -25,12 +25,20 @@ export function toolNamesIn(listing: unknown): readonly string[] {
   return listedTools(listing).map(({ name }) => name);
 }
 
-export function takingBrain({ description = '', inputSchema, ...tool }: ListedTool): ListedTool {
-  return {
-    ...tool,
-    description: `${description} \`brain\` is the id of the brain to act in.`,
-    inputSchema: withBrainArgument(inputSchema),
-  };
+export const guideToolName = 'get_guide';
+
+export function operationToolsIn(listing: unknown): readonly ListedTool[] {
+  return listedTools(listing).filter(({ name }) => name !== guideToolName);
+}
+
+export function takingBrain({ inputSchema, ...tool }: ListedTool): ListedTool {
+  return { ...tool, inputSchema: withBrainArgument(inputSchema) };
+}
+
+export function schemasOf(tools: readonly ListedTool[]): readonly Readonly<Record<string, unknown>>[] {
+  return tools.flatMap(({ inputSchema, outputSchema }) =>
+    outputSchema === undefined ? [inputSchema] : [inputSchema, outputSchema],
+  );
 }
 
 export function outputConformsTo(listing: unknown, name: string, value: unknown): boolean {

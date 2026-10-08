@@ -4,6 +4,7 @@ export {
   plainTextIn,
   problemIn,
   technicalTextIn,
+  textOf,
   withMcpSession,
   type McpClientKind,
   type McpConnection,
@@ -13,4 +14,13 @@ export {
 export { internalTerms, internalTermsIn } from './internal-terms.ts';
 export { waitForever } from './notebook.ts';
 export { danglingReferencesIn } from './self-contained.ts';
-export { listedTools, outputConformsTo, takingBrain, toolNamesIn, type ListedTool } from './tool-listing.ts';
+export {
+  guideToolName,
+  listedTools,
+  operationToolsIn,
+  outputConformsTo,
+  schemasOf,
+  takingBrain,
+  toolNamesIn,
+  type ListedTool,
+} from './tool-listing.ts';

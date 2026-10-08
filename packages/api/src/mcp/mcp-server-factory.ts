@@ -1,27 +1,19 @@
-import type { Catalog, Dispatcher, RegisteredPlainLanguage, Registration } from '@beonauto/operations';
-import { McpServer } from '@modelcontextprotocol/server';
+import {
+  type CallerIdentity,
+  type RegisteredPlainLanguage,
+  type Registration,
+  type Dispatcher,
+} from '@beonauto/operations';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { Effect, Result } from 'effect';
 
-import type { RunCall } from '../operations/operation-routes.ts';
+import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import type { ReportThrown } from '../problem/error-boundary.ts';
-import { brainArgumentOf, withoutBrain } from './brain-argument.ts';
-import { brainCallOf, orgCallOf, type BrainCall, type HandedOff, type OrgCall } from './caller-hand-off.ts';
-import { instructionsFor, type DefinitionType } from './instructions.ts';
-import { callbackFor, type Arguments, type CalledTool, type Dispatch } from './tool-callback.ts';
-import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from './tool-definition.ts';
-
-export interface ServerInfo {
-  readonly name: string;
-  readonly version: string;
-}
-
-export interface McpServing {
-  readonly catalog: Catalog;
-  readonly dispatcher: Dispatcher;
-  readonly runCall: RunCall;
-  readonly serverInfo: ServerInfo;
-  readonly definitionTypes: readonly DefinitionType[];
-}
+import { brainArgumentOf, withoutBrain } from '../tools/brain-argument.ts';
+import { callbackFor, type Arguments, type CalledTool, type Dispatch } from '../tools/tool-callback.ts';
+import { toolDefinitionOf, toolDefinitionTakingBrainOf, type ToolDefinition } from '../tools/tool-definition.ts';
+import type { ServedTools } from './instructions.ts';
+import { connectionOf, serverOf, type Connection, type McpServing } from './mcp-connection.ts';
 
 export interface ToolServing extends McpServing {
   readonly reportThrown: ReportThrown;
@@ -38,17 +30,6 @@ interface Offered<R extends Registration> {
 interface Tool extends CalledTool {
   readonly name: string;
   readonly definition: ToolDefinition;
-}
-
-function serverWithTools(serving: ToolServing, instructions: string, call: OrgCall, tools: readonly Tool[]): McpServer {
-  const server = new McpServer(
-    { ...serving.serverInfo },
-    { capabilities: { tools: { listChanged: false } }, instructions },
-  );
-  for (const tool of tools) {
-    server.registerTool(tool.name, tool.definition, callbackFor(serving, call, tool));
-  }
-  return server;
 }
 
 function plainLanguageOf({ name, plainLanguage }: Registration): RegisteredPlainLanguage {
@@ -69,8 +50,24 @@ function offered<R extends Registration>(
   }));
 }
 
+function permittedTo<R extends Registration>(
+  { permissions }: CallerIdentity,
+  offers: readonly Offered<R>[],
+): readonly Offered<R>[] {
+  return offers.filter(({ registration }) =>
+    registration.permissions.some((permission) => permissions.includes(permission)),
+  );
+}
+
 function namesOf(offers: readonly Offered<Registration>[]): readonly string[] {
   return offers.map(({ registration }) => registration.name);
+}
+
+function servedTools(
+  orgOffers: readonly Offered<Registration>[],
+  brainOffers: readonly Offered<Registration>[],
+): ServedTools {
+  return { orgTools: namesOf(orgOffers), brainTools: namesOf(brainOffers) };
 }
 
 function asGiven(input: Arguments): Arguments {
@@ -90,6 +87,24 @@ function toolsOf<R extends Registration>(
     dispatch: dispatchOf(registration),
     operationInputOf,
   }));
+}
+
+interface ConnectedCall {
+  readonly connection: Connection;
+  readonly serving: ToolServing;
+  readonly call: OrgCall;
+}
+
+function serverWithTools(
+  { connection, serving, call }: ConnectedCall,
+  served: ServedTools,
+  tools: readonly Tool[],
+): McpServer {
+  return serverOf(connection, served, (server) => {
+    for (const tool of tools) {
+      server.registerTool(tool.name, tool.definition, callbackFor(serving, call, tool));
+    }
+  });
 }
 
 function orgDispatchOf(
@@ -121,46 +136,38 @@ function brainArgumentDispatchOf(
 
 export function orgServerFactory(serving: ToolServing): McpServerFactory {
   const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
-  const instructions = instructionsFor(
-    'org',
-    { orgTools: namesOf(orgOffers), brainTools: [] },
-    serving.definitionTypes,
-  );
+  const connection = connectionOf('org', serving, servedTools(orgOffers, []));
   return (context) => {
     const call = orgCallOf(context);
-    const tools = toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call));
-    return serverWithTools(serving, instructions, call, tools);
+    const listed = permittedTo(call.caller, orgOffers);
+    const tools = toolsOf(listed, orgDispatchOf(serving.dispatcher, call));
+    return serverWithTools({ connection, serving, call }, servedTools(listed, []), tools);
   };
 }
 
 export function brainServerFactory(serving: ToolServing): McpServerFactory {
   const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionOf);
-  const instructions = instructionsFor(
-    'brain',
-    { orgTools: [], brainTools: namesOf(brainOffers) },
-    serving.definitionTypes,
-  );
+  const connection = connectionOf('brain', serving, servedTools([], brainOffers));
   return (context) => {
     const call = brainCallOf(context);
-    const tools = toolsOf(brainOffers, brainDispatchOf(serving.dispatcher, call));
-    return serverWithTools(serving, instructions, call, tools);
+    const listed = permittedTo(call.caller, brainOffers);
+    const tools = toolsOf(listed, brainDispatchOf(serving.dispatcher, call));
+    return serverWithTools({ connection, serving, call }, servedTools([], listed), tools);
   };
 }
 
 export function catalogServerFactory(serving: ToolServing): McpServerFactory {
   const orgOffers = offered(serving.catalog.operationsIn('org'), toolDefinitionOf);
   const brainOffers = offered(serving.catalog.operationsIn('brain'), toolDefinitionTakingBrainOf);
-  const instructions = instructionsFor(
-    'own org',
-    { orgTools: namesOf(orgOffers), brainTools: namesOf(brainOffers) },
-    serving.definitionTypes,
-  );
+  const connection = connectionOf('own org', serving, servedTools(orgOffers, brainOffers));
   return (context) => {
     const call = orgCallOf(context);
+    const listedInOrg = permittedTo(call.caller, orgOffers);
+    const listedInBrain = permittedTo(call.caller, brainOffers);
     const tools = [
-      ...toolsOf(orgOffers, orgDispatchOf(serving.dispatcher, call)),
-      ...toolsOf(brainOffers, brainArgumentDispatchOf(serving.dispatcher, call), withoutBrain),
+      ...toolsOf(listedInOrg, orgDispatchOf(serving.dispatcher, call)),
+      ...toolsOf(listedInBrain, brainArgumentDispatchOf(serving.dispatcher, call), withoutBrain),
     ];
-    return serverWithTools(serving, instructions, call, tools);
+    return serverWithTools({ connection, serving, call }, servedTools(listedInOrg, listedInBrain), tools);
   };
 }

@@ -13,7 +13,7 @@ const description = [
   'Starts a run of one version of a definition under a run id, once: when the brain has a run under that id,',
   'it answers that run as it stands and starts nothing. The workflow host calls it in the process for the runs',
   'that reactions start, as the brain itself, with their reaction depth and lineage in the request; no transport serves it.',
-];
+].join(' ');
 
 export function defineStartVersion(primitives: readonly Primitive[]) {
   const known = knownPrimitives(primitives);
@@ -23,7 +23,7 @@ export function defineStartVersion(primitives: readonly Primitive[]) {
     defineCommand('brain', {
       name: 'start_definition_version',
       title: 'Start a version once',
-      description: known.describe(description),
+      description,
       route: { method: 'POST', path: '/specs/{primitive}/{name}/start-once' },
       inputSchema: Schema.Struct({
         primitive: known.field,

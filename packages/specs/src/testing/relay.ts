@@ -16,8 +16,7 @@ export function relay(): Relay {
   const primitive = definePrimitive({
     name: 'relay',
     title: 'Relay',
-    description:
-      'Hands its input on to work that finishes after the call returns. A spec document of relay is plain text.',
+    guide: { name: 'relay' },
     noun: { one: 'relay', other: 'relays' },
     describeOutput: () => 'It handed its input on.',
     mediaType: 'text/plain',

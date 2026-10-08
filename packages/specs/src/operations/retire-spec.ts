@@ -16,16 +16,13 @@ export function defineRetireSpec(primitives: readonly Primitive[]) {
     defineCommand('brain', {
       name: 'retire_spec',
       title: 'Retire definition',
-      description: known.describe([
-        'Retires a function or workflow definition for good and returns it. There is no way to restore it.',
-        '`primitive` selects the API type identifier and `name` the definition.',
-        'A retired definition can still be read with get_spec and listed with include_retired,',
-        'but it can no longer be updated or executed, and its name is never reused.',
-        'Retiring a definition that is already retired succeeds and changes nothing.',
-        'Rejected with not_found when the type or definition is unavailable,',
-        'and with conflict when another change to definitions of that type landed at the same moment,',
-        'in which case try again.',
-      ]),
+      description: [
+        'Retires a function or workflow definition for good and returns it: it can still be read and listed, but it can no longer run or change, its name is not used again in the brain, and there is no way to restore it.',
+        'Use it only when the person asks to retire that definition; update_spec changes it instead.',
+        '`primitive` and `name` say which definition, and retiring one already retired changes nothing.',
+      ].join(' '),
+      irreversible: true,
+      repeatable: true,
       route: { method: 'POST', path: '/specs/{primitive}/{name}/retire' },
       inputSchema: Schema.Struct({ primitive: known.field, name: SpecNameField }),
       outputSchema: DefinitionSchema,

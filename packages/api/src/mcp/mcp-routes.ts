@@ -1,17 +1,17 @@
 import { canAccessBrain, type CallerIdentity, type OperationScope } from '@beonauto/operations';
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
 
+import { authInfoFor, type BrainCall, type OrgCall } from '../hand-off/caller-hand-off.ts';
+import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
 import { problemOf, problemResponse, type Problem } from '../problem/problem.ts';
 import type { RegisterRoutes, RouteHandler } from '../routes.ts';
-import { authInfoFor, type BrainCall, type OrgCall } from './caller-hand-off.ts';
-import { droppedArgumentsOf } from './dropped-arguments.ts';
+import type { McpServing } from './mcp-connection.ts';
 import {
   brainServerFactory,
   catalogServerFactory,
   orgServerFactory,
   type McpServerFactory,
-  type McpServing,
 } from './mcp-server-factory.ts';
 
 export interface McpRoutesOptions extends McpServing {

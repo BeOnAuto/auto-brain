@@ -6,6 +6,8 @@ The API stores a recall function as a `recollection` spec. Its source document n
 
 The view is a function of the brain's events alone. Nothing a run passes in is kept, no run changes it, and the same history folds to the same view on every server and either store.
 
+The brain's history already holds every run of each function and workflow, its start and its ending, with its output when it succeeded and fit its event, the definitions saved and every event published to the brain. So nothing has to write into a recall function: a view over a function's runs folds each of them, whoever started it. A run's input is on no event, and neither is a tool call a reasoning function makes, so a view holds what a run answered, never what it was given or what it called: for a view to keep what a function posted, the function answers what it posted.
+
 ## A function document
 
 The source is Markdown with YAML front matter followed by the fold. This example keeps the reviews that the reasoning function `review-brief` wrote, for each campaign, and answers the last few reviews of the campaign a run names:
@@ -98,6 +100,27 @@ the run succeeds with this output:
   }
 ]
 ```
+
+The common case keeps what one function answered. This document keeps the output of each run of the reasoning function `post-announcement` that succeeds, the last 50, oldest first:
+
+<!-- prettier-ignore -->
+```markdown
+---
+description: What the post-announcement function answered, oldest first, the last 50
+language: jq
+source:
+  events:
+    - type: execution_succeeded
+      subject: inference/post-announcement
+view:
+  initial: []
+  schema: { type: array, maxItems: 50 }
+---
+. + [{ at: $event.time, run: $event.source, output: (if ($event.data.output | tojson | utf8bytelength) <= 8192 then $event.data.output else null end) }]
+| .[-50:]
+```
+
+The filter writes out the type and the subject, `inference/post-announcement` for the runs of that reasoning function. An output larger than 8 KiB as JSON, or too large for its event, is kept as `null`, so 50 entries stay under the 512 KiB a view may take, and `get_execution` of the run an entry names reads the whole output. Every run of `post-announcement` is in the brain's history whoever started it, so this view misses none, where a log that workflows write into misses each run that does not write to it.
 
 ## Fields
 

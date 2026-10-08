@@ -29,7 +29,11 @@ const AvailableServerSchema = Schema.Struct({
 const UnavailableServerSchema = Schema.Struct({
   ...serverFields,
   unavailable: Schema.String.annotate({
-    description: 'Why the server could not be asked for its tools just now, in words; asking again later may work',
+    description: 'Why the server could not be asked for its tools, in words',
+  }),
+  because: Schema.Literals(['failing', 'rate_limited', 'unreachable', 'key_refused']).annotate({
+    description:
+      'key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work',
   }),
 });
 

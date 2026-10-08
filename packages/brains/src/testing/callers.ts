@@ -9,6 +9,13 @@ export const acmeAlphaKeeper: CallerIdentity = {
   brains: ['alpha'],
 };
 
+export const acmeGammaReader: CallerIdentity = {
+  id: 'acme-gamma-reader',
+  org: 'acme',
+  permissions: ['brain:read'],
+  brains: ['gamma'],
+};
+
 export const acmeReader: CallerIdentity = { id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' };
 
 export const globexAdmin: CallerIdentity = { ...acmeAdmin, id: 'globex-admin', org: 'globex' };

@@ -1,6 +1,7 @@
 import type { Effect } from 'effect';
 
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
+import type { Permission } from '../caller/permission.ts';
 import type { Succeeded, Rejected } from '../outcome/outcome.ts';
 import type { DeclarableReason } from '../outcome/rejection.ts';
 import type { RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
@@ -23,7 +24,10 @@ export interface RegistrationOf<S extends OperationScope, K extends OperationKin
   readonly successStatus: SuccessStatusByKind[K];
   readonly reachesOutside: boolean;
   readonly mayChangeOutside: boolean;
+  readonly irreversible: boolean;
+  readonly repeatable: boolean;
   readonly authorizesByToken: boolean;
+  readonly permissions: readonly Permission[];
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly output: JsonSchemaDocument;

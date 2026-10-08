@@ -3,7 +3,6 @@ import { definePrimitive, functionCategoryLabels, functionResourceLabels, type P
 import { finishesLater, interactionRun } from '../run/interaction-run.ts';
 import type { InteractionPorts } from '../run/request-reach.ts';
 import { parse, summarize } from './definition-reading.ts';
-import { interactionDescription } from './interaction-description.ts';
 import { describeAnswer, interactionRunWords } from './interaction-words.ts';
 import { interactionPrimitive } from './primitive-name.ts';
 import { cancelledRequest } from './request-cancels.ts';
@@ -14,7 +13,7 @@ export function makeInteractionFunctionAdapter(ports: InteractionPorts): Primiti
   return definePrimitive({
     name: interactionPrimitive,
     title: functionCategoryLabels.interact,
-    description: interactionDescription,
+    guide: { name: 'interaction-function' },
     noun: { one: functionResourceLabels.interact.singular, other: functionResourceLabels.interact.plural },
     describeOutput: describeAnswer,
     mediaType: 'text/markdown',

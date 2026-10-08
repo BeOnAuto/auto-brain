@@ -4,11 +4,11 @@ import { canAccessBrain } from '../caller/brain-access.ts';
 import { requestTokenRefused, type CallerIdentity } from '../caller/caller.ts';
 import { isBrainId, isOrgId } from '../caller/identifiers.ts';
 import type { OperationKind } from '../caller/operation-scope.ts';
-import { permissionFor } from '../caller/permission.ts';
 import type { Registration } from '../definition/registration.ts';
 import type { BrainRequest, OrgRequest } from '../dispatch/request.ts';
 import { BrainRegistry, type BrainStatus } from '../ledger/brain-registry.ts';
 import { rejected, type Rejected } from '../outcome/outcome.ts';
+import { alternatives } from '../plain-language/phrasing.ts';
 
 function authorizesItself({ authorizesByToken }: Registration, { requestToken }: CallerIdentity): boolean {
   return authorizesByToken && requestToken !== undefined;
@@ -18,10 +18,11 @@ function rejectionOfCaller(registration: Registration, { caller, org }: OrgReque
   if (caller.org !== org) {
     return rejected('forbidden', 'The caller does not belong to this org');
   }
-  const permission = permissionFor(registration.kind, registration.scope);
-  return authorizesItself(registration, caller) || caller.permissions.includes(permission)
+  const { permissions } = registration;
+  return authorizesItself(registration, caller) ||
+    permissions.some((permission) => caller.permissions.includes(permission))
     ? undefined
-    : rejected('forbidden', `The caller lacks the ${permission} permission`);
+    : rejected('forbidden', `The caller lacks the ${alternatives(permissions)} permission`);
 }
 
 function rejectionOfBrainAccess(

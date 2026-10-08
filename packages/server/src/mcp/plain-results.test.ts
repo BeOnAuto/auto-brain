@@ -10,6 +10,7 @@ import {
 import { createApiKey } from '@beonauto/identity';
 import { ModelNotAllowed, ProviderNotConfigured, SpecInvalid } from '@beonauto/inference';
 import { answers, textResult, type ScriptedReply } from '@beonauto/inference/testing';
+import { allPermissions } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -238,7 +239,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
     server = await servingWorkflows(replies);
 
     const { tools, successes, errors } = await onMcp(async (session) => ({
-      tools: toolNamesIn(await session.listTools()),
+      tools: toolNamesIn(await session.listTools()).filter((name) => name !== 'get_guide'),
       successes: [
         ...(await brainsCalled(session)),
         ...(await reasonFunctionsCalled(session)),
@@ -257,15 +258,16 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
   });
 
   it('say plainly that a connection is not allowed to do what it asked', async () => {
-    const reader = createApiKey({ id: 'acme-reader', org: 'acme', permissions: ['org:read'], brains: '*' });
-    server = await servingReasoning([], { API_KEYS: JSON.stringify([reader.entry]) });
+    const limited = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, brains: ['alpha'] });
+    server = await servingReasoning([], { API_KEYS: JSON.stringify([limited.entry]) });
 
-    const refused = await onMcp((session) => session.callTool('create_brain', { brain: 'sales', name: 'Sales' }), {
-      authorization: `Bearer ${reader.key}`,
-    });
+    const refused = await onMcp(
+      (session) => session.callTool('list_specs', { brain: 'beta', primitive: 'inference' }),
+      { authorization: `Bearer ${limited.key}` },
+    );
 
     expect(plainTextIn(refused)).toBe(
-      'Could not create the brain “sales”: this connection is not allowed to do that. Nothing was changed. Whoever set up this connection can allow it.',
+      'Could not list the reasoning functions: this connection is not allowed to do that. Whoever set up this connection can allow it.',
     );
   });
 });

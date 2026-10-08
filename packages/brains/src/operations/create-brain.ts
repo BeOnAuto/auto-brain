@@ -10,10 +10,10 @@ export const createBrain = defineCommand('org', {
   name: 'create_brain',
   title: 'Create brain',
   description: [
-    'Creates a brain in the org and returns it, active.',
-    '`brain` is the id of the new brain: 3 to 48 lowercase letters, digits and hyphens, starting with a letter.',
-    '`name` is the display name, 1 to 100 characters and not all whitespace.',
-    '`description` is optional text on what the brain is for, up to 2000 characters; it defaults to empty.',
+    "Creates a brain in the org for one business responsibility, such as reviewing campaign briefs or keeping a team's meeting notes,",
+    'and returns it, active and empty: its functions and workflows come next.',
+    'Use it when the person wants a new brain; list_brains shows the brains that exist, and an id that is taken or retired is refused.',
+    "`brain` is the id every tool inside the brain takes, `name` is what people call it, and `description` says what the brain is for, in the person's words.",
   ].join(' '),
   route: { method: 'POST', path: '/brains' },
   successStatus: 201,
@@ -29,6 +29,6 @@ export const createBrain = defineCommand('org', {
   plainLanguage: {
     task: 'create a brain',
     attempt: ({ brain }) => `create the brain ${quoted(brain)}`,
-    outcome: (brain) => `Created ${brainNamed(brain)}.${purposeOf(brain)} It has nothing in it yet.`,
+    outcome: (brain) => `Created ${brainNamed(brain)}.${purposeOf(brain)} Its functions and workflows come next.`,
   },
 });

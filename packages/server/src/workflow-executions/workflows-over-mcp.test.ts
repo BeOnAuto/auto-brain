@@ -96,7 +96,7 @@ describe('workflows over MCP', { timeout: workflowTestTimeoutMs }, () => {
   it('lists seventeen tools on the endpoint of a brain, and every primitive in the spec tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
-    expect(toolNamesIn(listing)).toEqual(brainTools);
+    expect(toolNamesIn(listing)).toEqual([...brainTools, 'get_guide']);
     expect(primitivesOfCreateSpec(listing)).toEqual([
       'inference',
       'interaction',

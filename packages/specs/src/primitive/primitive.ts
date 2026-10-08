@@ -71,6 +71,11 @@ export interface CancelledRun {
 
 export type CancelDecision = (run: CancelledRun) => Settlement;
 
+export interface PrimitiveGuide {
+  readonly name: string;
+  readonly onThisServer?: string;
+}
+
 export interface RunAccount {
   readonly summary: string;
   readonly data: { readonly [field: string]: Schema.Json };
@@ -89,7 +94,7 @@ const defaultLongestExecutionMs = 600_000;
 export interface PrimitiveDefinition<Parsed> {
   readonly name: string;
   readonly title: string;
-  readonly description: string;
+  readonly guide: PrimitiveGuide;
   readonly noun: Noun;
   readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
@@ -151,7 +156,7 @@ function standsAsSaved(): Effect.Effect<Schema.JsonObject | undefined> {
 export interface Primitive {
   readonly name: string;
   readonly title: string;
-  readonly description: string;
+  readonly guide: PrimitiveGuide;
   readonly noun: Noun;
   readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
@@ -197,7 +202,7 @@ function declaredRuns<Parsed>(definition: PrimitiveDefinition<Parsed>, longestEx
 }
 
 export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>): Primitive {
-  const { name, title, description, noun, describeOutput, mediaType, parse, summarize, execute } = definition;
+  const { name, title, guide, noun, describeOutput, mediaType, parse, summarize, execute } = definition;
   const bounds = declaredBounds(definition);
   const { whenCancelled, callsTools, finishesLater, longestRunOf } = declaredRuns(
     definition,
@@ -209,7 +214,7 @@ export function definePrimitive<Parsed>(definition: PrimitiveDefinition<Parsed>)
   return {
     name,
     title,
-    description,
+    guide,
     noun,
     describeOutput,
     mediaType,

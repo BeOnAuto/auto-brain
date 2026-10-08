@@ -7,21 +7,17 @@ import { toolServersAsked, toolServersFound, type ToolServersAsked } from './too
 import { ToolServerSchema } from './tool-server.ts';
 
 const description = [
-  "Lists the tool servers this brain's functions may use, with the tools each offers, so a function can name them in `tools` as server/tool or server/*.",
-  'Each server is asked for its tools when this is called, as a run asks it, with as long to connect and to list,',
-  'unless the operator allows none of its tools, as then no run could reach it either;',
-  'its tools are those the operator allows, each with its name, its description cut to 4 KiB and its input_schema.',
-  'A server that cannot be asked just now has unavailable, saying why in words, in place of its tools.',
-  '`server` lists only the server of that name, and asks no other; a name no server of this brain has is rejected with invalid_input.',
-  'The runtime adds no header, environment value, URL, command or credential of a server to the answer;',
-  'what a server writes is passed on with the values of its references to the environment and the tokens minted for it scrubbed out.',
+  "Lists the tool servers this brain's functions may use, with the tools each offers, so a reasoning function names them in its tools as server/tool or server/*.",
+  'Each server is asked for its tools when this is called, and one that cannot be asked just now says why in place of its tools.',
+  'Use it before a reasoning function names a tool, or when the person asks which tools the brain can use; whoever runs the server sets the servers up.',
+  '`server` lists the tools of one server alone.',
 ].join(' ');
 
 const ListToolServersInputSchema = Schema.Struct({
   server: Schema.optionalKey(
-    Schema.String.check(Schema.isPattern(serverNamePattern)).annotate({
+    Schema.String.annotate({
       description: 'Lists only the tool server of this name, as a function writes it before the slash',
-    }),
+    }).check(Schema.isPattern(serverNamePattern)),
   ),
 });
 

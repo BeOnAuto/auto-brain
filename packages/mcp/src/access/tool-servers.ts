@@ -46,7 +46,8 @@ async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<
   }
   const connected = await connectedTo(link, listing);
   if (Result.isFailure(connected)) {
-    return { name, type, unavailable: cutToDescriptionBound(connected.failure.detail) };
+    const { detail, because } = connected.failure;
+    return { name, type, unavailable: cutToDescriptionBound(detail), because };
   }
   const listed = connected.success;
   await listed.slot.release();

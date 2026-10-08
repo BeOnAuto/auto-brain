@@ -26,7 +26,9 @@ function namesOf(tools: readonly ServerTool[]): string {
 function serverInWords(server: ToolServer): string {
   const name = quoted(server.name);
   if ('unavailable' in server) {
-    return `${name} could not be asked for its tools just now.`;
+    return server.because === 'key_refused'
+      ? `${name} did not accept the key this server gives it, so whoever runs this server can check that key.`
+      : `${name} could not be asked for its tools just now.`;
   }
   return server.tools.length === 0
     ? `${name} offers no tool this brain may use.`
@@ -34,7 +36,7 @@ function serverInWords(server: ToolServer): string {
 }
 
 const noServer =
-  'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools.';
+  'Whoever runs this server has set up no tool server for this brain, so its functions can call no tools until they set one up; the give-tools guide says what they need.';
 
 export function toolServersAsked({ server }: ToolServersAsked): string {
   return server === undefined
