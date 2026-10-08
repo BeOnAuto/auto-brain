@@ -169,7 +169,7 @@ describe('the words of a start of a version once', () => {
         input: {},
         execution_id: executionId,
       }),
-    ).toBe('start the greeting “greet” once, for what it reacts to');
+    ).toBe('start the greeting “greet” once, for one of its triggers');
   });
 });
 

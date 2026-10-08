@@ -40,7 +40,7 @@ export function defineStartVersion(primitives: readonly Primitive[]) {
       }),
       plainLanguage: {
         ...words,
-        attempt: ({ primitive, name }) => `start ${specWords.named(primitive, name)} once, for what it reacts to`,
+        attempt: ({ primitive, name }) => `start ${specWords.named(primitive, name)} once, for one of its triggers`,
       },
     }),
   );
