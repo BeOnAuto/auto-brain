@@ -22,7 +22,7 @@ import { noChannels, type ChannelSettings } from '../channels/channel-settings.t
 import { makeInteractionFunctionAdapter } from '../primitive/interaction-function.ts';
 import { openRequests, openRequestsName } from '../requests/open-requests.ts';
 import { requestsDue, type DueRequestItem, type RequestsDue } from '../schedule/due-requests.ts';
-import { firstOpenOf, noTools, performedAll, performedEach } from './harness-parts.ts';
+import { dueInBothLanes, firstOpenOf, noTools, performedAll, performedEach } from './harness-parts.ts';
 
 export const acmeAdmin: CallerIdentity = { id: 'acme-admin', org: 'acme', permissions: allPermissions, brains: '*' };
 
@@ -88,7 +88,7 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
   const due = dueWith(channels);
   const primitives = [primitive];
   const performDue = async (now: number): Promise<number> => {
-    const items = await Effect.runPromise(due.due(now, 256));
+    const items = await dueInBothLanes(due, now);
     await performedAll(items, now);
     return items.length;
   };
@@ -105,7 +105,7 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
     performDue,
     dueWith,
     dueOver: (over) => dueOn(over, channels),
-    dueItems: (now, from = due) => Effect.runPromise(from.due(now, 256)),
+    dueItems: (now, from = due) => dueInBothLanes(from, now),
     performAll: performedAll,
     performEach: (times) => performedEach(times, performDue),
     firstOpen: () => firstOpenOf(call),

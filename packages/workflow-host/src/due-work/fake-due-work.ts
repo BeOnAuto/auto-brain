@@ -16,6 +16,7 @@ export interface FakeDueWork {
   readonly failing: (key: string) => void;
   readonly hanging: (key: string) => void;
   readonly local: (key: string) => void;
+  readonly endsAt: (key: string, at: number) => void;
   readonly performed: () => readonly PerformedRow[];
   readonly attempts: () => readonly PerformedRow[];
   readonly mostAtOnce: () => number;
@@ -23,10 +24,28 @@ export interface FakeDueWork {
   readonly reads: () => { readonly due: number; readonly next: number };
 }
 
+interface StoredRow {
+  readonly key: string;
+  readonly attemptAt: number | null;
+  readonly endsAt: number | null;
+}
+
+interface AddedRow {
+  readonly key: string;
+  readonly dueAt: number;
+}
+
+interface DueRow {
+  readonly row: StoredRow;
+  readonly dueAt: number;
+}
+
 interface RowStore {
   readonly add: (key: string, dueAt: number) => void;
+  readonly local: (key: string) => void;
+  readonly endsAt: (key: string, at: number) => void;
   readonly done: (row: PerformedRow) => void;
-  readonly dueBy: (now: number, most: number) => readonly string[];
+  readonly dueBy: (now: number, most: number, callsOut: boolean) => readonly StoredRow[];
   readonly nextAfter: (after: number) => number | null;
   readonly soonest: () => number;
   readonly performed: () => readonly PerformedRow[];
@@ -42,30 +61,47 @@ interface Flight {
 }
 
 function rowStore(): RowStore {
-  const rows = new Map<string, { readonly key: string; readonly dueAt: number }>();
+  const added = new Map<string, AddedRow>();
+  const locals = new Set<string>();
+  const endings = new Map<string, number>();
   const performed: PerformedRow[] = [];
-  const listed = () => [...rows.values()];
+  const rowOf = ({ key, dueAt }: AddedRow): StoredRow =>
+    locals.has(key)
+      ? { key, attemptAt: null, endsAt: dueAt }
+      : { key, attemptAt: dueAt, endsAt: endings.get(key) ?? null };
+  const rows = () => [...added.values()].map((row) => rowOf(row));
+  const times = () =>
+    rows()
+      .flatMap(({ attemptAt, endsAt }) => [attemptAt, endsAt])
+      .filter((at) => at !== null);
   return {
     add: (key, dueAt) => {
-      rows.set(key, { key, dueAt });
+      added.set(key, { key, dueAt });
+    },
+    local: (key) => {
+      locals.add(key);
+    },
+    endsAt: (key, at) => {
+      endings.set(key, at);
     },
     done: (row) => {
-      rows.delete(row.key);
+      added.delete(row.key);
       performed.push(row);
     },
-    dueBy: (now, most) =>
-      listed()
-        .filter(({ dueAt }) => dueAt <= now)
+    dueBy: (now, most, callsOut) =>
+      rows()
+        .flatMap((row): readonly DueRow[] => {
+          const dueAt = callsOut ? row.attemptAt : row.endsAt;
+          return dueAt !== null && dueAt <= now ? [{ row, dueAt }] : [];
+        })
         .toSorted((one, other) => one.dueAt - other.dueAt)
         .slice(0, most)
-        .map(({ key }) => key),
+        .map(({ row }) => row),
     nextAfter: (after) => {
-      const later = listed()
-        .map(({ dueAt }) => dueAt)
-        .filter((dueAt) => dueAt > after);
+      const later = times().filter((dueAt) => dueAt > after);
       return later.length === 0 ? null : Math.min(...later);
     },
-    soonest: () => Math.min(Number.POSITIVE_INFINITY, ...listed().map(({ dueAt }) => dueAt)),
+    soonest: () => Math.min(Number.POSITIVE_INFINITY, ...times()),
     performed: () => performed,
   };
 }
@@ -127,7 +163,6 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
   const store = rowStore();
   const flown = flight();
   const reads = { failing: 0, due: 0, next: 0 };
-  const locals = new Set<string>();
   const read = <A>(answer: () => A): Effect.Effect<A, Error> =>
     Effect.suspend(() => {
       reads.failing -= 1;
@@ -136,12 +171,14 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
   return {
     work: (by) => ({
       name: 'the fake rows',
-      due: (now, most) =>
+      due: (now, most, callsOut) =>
         read(() => {
           reads.due += 1;
           return store
-            .dueBy(now, most)
-            .map((key) => itemOf(store, flown, { key, by }, { performMs, callsOut: !locals.has(key) }));
+            .dueBy(now, most, callsOut)
+            .map(({ key, endsAt }) =>
+              itemOf(store, flown, { key, by }, { performMs, callsOut: endsAt === null || endsAt > now }),
+            );
         }),
       nextDueAt: (after) =>
         read(() => {
@@ -152,9 +189,8 @@ export function fakeDueWork(performMs = 0, { reportsRowsInFlight = false }: Fake
     add: store.add,
     failing: flown.failing,
     hanging: flown.hanging,
-    local: (key) => {
-      locals.add(key);
-    },
+    local: store.local,
+    endsAt: store.endsAt,
     performed: store.performed,
     attempts: flown.attempts,
     mostAtOnce: flown.most,

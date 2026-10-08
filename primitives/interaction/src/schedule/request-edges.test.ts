@@ -65,6 +65,26 @@ describe('a notification whose attempts fail', () => {
   });
 });
 
+describe('an expiry due behind attempts', () => {
+  it('is read apart from the attempts due before it, as an item that calls out nowhere', async () => {
+    const otherRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7c';
+    const { brain, askedAt } = await askedThroughPartner();
+    await brain.define('ask-in-inbox', approvalDocument('inbox', 'PT1M'));
+    await brain.ask('ask-in-inbox', { campaign: 'Spring', owner: 'ada' }, otherRunId);
+    const now = askedAt + 2 * minute;
+
+    const attempts = await Effect.runPromise(brain.due.due(now, 1, true));
+    const endings = await Effect.runPromise(brain.due.due(now, 1, false));
+
+    expect([attempts, endings]).toMatchObject([
+      [{ key: `acme/alpha/${askedRunId}`, callsOut: true }],
+      [{ key: `acme/alpha/${otherRunId}`, callsOut: false }],
+    ]);
+    expect(await Effect.runPromise(brain.due.nextDueAt(askedAt - minute))).toBeLessThanOrEqual(askedAt);
+    expect(await Effect.runPromise(brain.due.nextDueAt(askedAt + 3 * 24 * 60 * minute))).toBeNull();
+  });
+});
+
 describe('a due request performed out of turn', () => {
   it('does nothing when performed before it is due, and nothing more when its run ended since', async () => {
     const { brain, receiver, askedAt } = await askedThroughPartner({ expires: 'PT1H' });

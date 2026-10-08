@@ -39,7 +39,8 @@ describe('the open request of a run', () => {
         next_attempt_at: Date.parse(fact.at),
         standing: 'to_deliver',
         open: true,
-        due_at: Date.parse(fact.at),
+        attempt_due_at: Date.parse(fact.at),
+        ending_due_at: Date.parse(request.expires_at),
         ended: null,
       },
       undefined,
@@ -66,7 +67,11 @@ describe('the open request of a run that ends', () => {
       cancelled,
       openRequests.rowAfter(open, { type: 'execution_failed', primitive: 'interaction', ...fact }, message),
       openRequests.rowAfter(cancelled, { type: 'execution_failed', primitive: 'interaction', ...fact }, message),
-    ]).toMatchObject([{ open: false, due_at: null, ended: 'cancelled' }, { open: false, ended: 'failed' }, undefined]);
+    ]).toMatchObject([
+      { open: false, attempt_due_at: null, ending_due_at: null, ended: 'cancelled' },
+      { open: false, ended: 'failed' },
+      undefined,
+    ]);
   });
 
   it('is unchanged by a fact it does not keep, by what does not read as a fact, and by facts of a run without one', () => {
@@ -114,9 +119,9 @@ describe('the open request of a run asked to cancel', () => {
     );
 
     expect([cancelling, afterTheAttempt, failedAfter]).toMatchObject([
-      { standing: 'cancelling', due_at: null, open: true },
-      { standing: 'cancelling', due_at: null, attempts: 1 },
-      { standing: 'cancelling', due_at: null },
+      { standing: 'cancelling', attempt_due_at: null, ending_due_at: null, open: true },
+      { standing: 'cancelling', attempt_due_at: null, ending_due_at: null, attempts: 1 },
+      { standing: 'cancelling', attempt_due_at: null, ending_due_at: null },
     ]);
     expect(
       openRequests.rowAfter(openRequests.rowAfter(cancelling, attempt, message), cancelAsked, message),

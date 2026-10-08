@@ -5,7 +5,14 @@ import { executionEventOf, type ExecutionEvent } from '@beonauto/specs';
 import { inboxChannel } from '../channels/channel-names.ts';
 import { interactionPrimitive } from '../primitive/primitive-name.ts';
 import { requestRecordOf, takesAnswer } from '../run/request-record.ts';
-import { dueAtOf, requestRowOf, settlesFromDelivery, type OpenRequestRow } from './request-rows.ts';
+import {
+  attemptDueAtOf,
+  endingDueAtOf,
+  requestRowOf,
+  settlesFromDelivery,
+  type OpenRequestRow,
+  type UndueRequestRow,
+} from './request-rows.ts';
 
 export const openRequestsName = 'open_requests';
 
@@ -13,8 +20,8 @@ export const attemptInFlightMs = 60_000;
 
 type Fact<Type extends ExecutionEvent['type']> = Extract<ExecutionEvent, { readonly type: Type }>;
 
-function rowOf(row: Omit<OpenRequestRow, 'due_at'>): ProjectedRow {
-  return { ...row, due_at: dueAtOf(row) };
+function rowOf(row: UndueRequestRow): ProjectedRow {
+  return { ...row, attempt_due_at: attemptDueAtOf(row), ending_due_at: endingDueAtOf(row) };
 }
 
 function requested(fact: Fact<'execution_deferred'>, message: ProjectedMessage): ProjectedRow | undefined {
@@ -55,7 +62,7 @@ function attemptStarted(row: OpenRequestRow, fact: Fact<'delivery_started'>): Pr
   });
 }
 
-function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: number): Omit<OpenRequestRow, 'due_at'> {
+function afterFailure(row: OpenRequestRow, fact: Fact<'delivery_ended'>, at: number): UndueRequestRow {
   const next =
     fact.outcome === 'failed' && fact.number < outboundBounds.attempts
       ? nextAttemptAt({ attempt: fact.number, endedAt: at, retryAfterMs: fact.retry_after_ms })
@@ -118,7 +125,7 @@ function rowAfter(row: ProjectedRow | undefined, event: unknown, message: Projec
 
 export const openRequests: RunProjection = {
   name: openRequestsName,
-  version: 1,
+  version: 2,
   types: [
     'execution_deferred',
     'delivery_started',
@@ -142,14 +149,16 @@ export const openRequests: RunProjection = {
     { name: 'next_attempt_at', kind: 'integer' },
     { name: 'standing', kind: 'text' },
     { name: 'open', kind: 'boolean' },
-    { name: 'due_at', kind: 'integer' },
+    { name: 'attempt_due_at', kind: 'integer' },
+    { name: 'ending_due_at', kind: 'integer' },
     { name: 'ended', kind: 'text' },
   ],
   indexes: [
     { name: 'by_open', columns: ['open', 'requested_at'] },
     { name: 'by_party', columns: ['party', 'requested_at'] },
     { name: 'by_function', columns: ['function', 'requested_at'] },
-    { name: 'due', columns: ['due_at'], acrossBrains: true, whereSet: 'due_at' },
+    { name: 'attempts_due', columns: ['attempt_due_at'], acrossBrains: true, whereSet: 'attempt_due_at' },
+    { name: 'endings_due', columns: ['ending_due_at'], acrossBrains: true, whereSet: 'ending_due_at' },
   ],
   rowAfter,
 };

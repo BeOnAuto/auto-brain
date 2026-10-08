@@ -34,7 +34,7 @@ function dueActionOf(row: OpenRequestRow, now: number): DueAction {
 
 export interface RequestsDue {
   readonly name: string;
-  readonly due: (now: number, most: number) => Effect.Effect<readonly DueRequestItem[]>;
+  readonly due: (now: number, most: number, callsOut: boolean) => Effect.Effect<readonly DueRequestItem[]>;
   readonly nextDueAt: (after: number) => Effect.Effect<number | null>;
 }
 
@@ -67,13 +67,29 @@ function itemOf(parts: DeliveryParts, kept: ProjectedRunRow, dueAt: number): Due
   };
 }
 
+const dueColumns = ['attempt_due_at', 'ending_due_at'];
+
+function soonestOf(times: readonly (number | null)[]): number | null {
+  const set = times.filter((time) => time !== null);
+  return set.length === 0 ? null : Math.min(...set);
+}
+
 export function requestsDue(parts: DeliveryParts): RequestsDue {
   return {
     name: 'the open requests of interaction functions',
-    due: (now, most) =>
-      Effect.map(parts.ledger.readDueRows(openRequestsName, { column: 'due_at', through: now, limit: most }), (rows) =>
-        rows.map((kept) => itemOf(parts, kept, now)),
+    due: (now, most, callsOut) =>
+      Effect.map(
+        parts.ledger.readDueRows(openRequestsName, {
+          column: callsOut ? 'attempt_due_at' : 'ending_due_at',
+          through: now,
+          limit: most,
+        }),
+        (rows) => rows.map((kept) => itemOf(parts, kept, now)),
       ),
-    nextDueAt: (after) => parts.ledger.nextDueOf(openRequestsName, 'due_at', after),
+    nextDueAt: (after) =>
+      Effect.map(
+        Effect.forEach(dueColumns, (column) => parts.ledger.nextDueOf(openRequestsName, column, after)),
+        soonestOf,
+      ),
   };
 }

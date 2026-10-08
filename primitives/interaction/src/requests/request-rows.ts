@@ -26,7 +26,8 @@ const OpenRequestRowSchema = Schema.Struct({
   next_attempt_at: Schema.NullOr(Schema.Int),
   standing: StandingSchema,
   open: Schema.Boolean,
-  due_at: Schema.NullOr(Schema.Int),
+  attempt_due_at: Schema.NullOr(Schema.Int),
+  ending_due_at: Schema.NullOr(Schema.Int),
   ended: Schema.NullOr(Schema.String),
 });
 
@@ -44,11 +45,28 @@ export function settlesFromDelivery({ answers, standing }: Pick<OpenRequestRow, 
   return standing === 'answered' || (!answers && standing === 'delivered');
 }
 
-export function dueAtOf(row: Omit<OpenRequestRow, 'due_at'>): number | null {
-  if (!row.open || row.standing === 'cancelling') {
+export type UndueRequestRow = Omit<OpenRequestRow, 'attempt_due_at' | 'ending_due_at'>;
+
+function settlesNow(row: UndueRequestRow): boolean {
+  return settlesFromDelivery(row) || (!row.answers && row.standing === 'undelivered');
+}
+
+function stillDue(row: UndueRequestRow): boolean {
+  return row.open && row.standing !== 'cancelling';
+}
+
+export function attemptDueAtOf(row: UndueRequestRow): number | null {
+  const awaitsAttempt = row.standing === 'to_deliver' || row.standing === 'retrying';
+  return stillDue(row) && awaitsAttempt ? row.next_attempt_at : null;
+}
+
+export function endingDueAtOf(row: UndueRequestRow): number | null {
+  if (!stillDue(row)) {
     return null;
   }
-  const settlesNow = settlesFromDelivery(row) || (!row.answers && row.standing === 'undelivered');
-  const attempt = row.next_attempt_at ?? Number.POSITIVE_INFINITY;
-  return Math.min(row.expires_at, settlesNow ? row.requested_at : attempt);
+  if (settlesNow(row)) {
+    return row.requested_at;
+  }
+  const lostAt = row.standing === 'delivering' ? row.next_attempt_at : null;
+  return Math.min(row.expires_at, lostAt ?? Number.POSITIVE_INFINITY);
 }
