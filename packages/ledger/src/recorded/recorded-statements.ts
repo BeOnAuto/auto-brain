@@ -44,11 +44,24 @@ export interface ExaminationScope {
 export interface RecordedStatements {
   readonly firstPointSince: (brainKey: string, since: string) => Promise<RecordedPoint | undefined>;
   readonly examineRecords: (records: RecordsSelected, scope: ExaminationScope) => Promise<readonly ExaminedItem[]>;
-  readonly examineRuns: (
-    scope: ExaminationScope,
-    notBeginningWith: readonly string[],
-  ) => Promise<readonly ExaminedItem[]>;
+  readonly examineRuns: (scope: ExaminationScope, runs: RunsSelected) => Promise<readonly ExaminedItem[]>;
   readonly dataAt: (points: readonly RecordedPoint[]) => Promise<ReadonlyMap<string, unknown>>;
+}
+
+export type RunsSelected = Extract<RecordedSelection, { readonly kind: 'executions' }>;
+
+export interface FieldAsked {
+  readonly field: 'primitive' | 'name';
+  readonly value: string;
+  readonly asWritten: string;
+}
+
+function fieldAsked(field: FieldAsked['field'], value: string | undefined): readonly FieldAsked[] {
+  return value === undefined ? [] : [{ field, value, asWritten: `"${field}":${JSON.stringify(value)}` }];
+}
+
+export function fieldsAskedOf({ name, primitive }: RunsSelected): readonly FieldAsked[] {
+  return [...fieldAsked('name', name), ...fieldAsked('primitive', primitive)];
 }
 
 export type RecordsSelected =
@@ -60,8 +73,16 @@ export function pointKey(point: RecordedPoint): string {
   return point.join(':');
 }
 
-function scopeOf(brainKey: string, { order, limit, types, dataOf, after, at }: StoredPageRequest): ExaminationScope {
-  const filtering = types !== undefined;
+function asksForOneDefinition(selection: RecordedSelection): boolean {
+  return selection.kind === 'executions' && fieldsAskedOf(selection).length > 0;
+}
+
+function scopeOf(
+  brainKey: string,
+  selection: RecordedSelection,
+  { order, limit, types, dataOf, after, at }: StoredPageRequest,
+): ExaminationScope {
+  const filtering = types !== undefined || asksForOneDefinition(selection);
   return {
     brainKey,
     order,
@@ -93,7 +114,7 @@ function examine(
   scope: ExaminationScope,
 ): Promise<readonly ExaminedItem[]> {
   if (selection.kind === 'executions') {
-    return statements.examineRuns(scope, selection.notBeginningWith ?? []);
+    return statements.examineRuns(scope, selection);
   }
   return statements.examineRecords(selectedOf(scope.brainKey, selection), scope);
 }
@@ -147,7 +168,7 @@ async function pageWithin(
 
 export function recordedReadingOver(statements: RecordedStatements): RecordedStore['readRecorded'] {
   return async (brainKey, selection, page) => {
-    const scope = scopeOf(brainKey, page);
+    const scope = scopeOf(brainKey, selection, page);
     if (page.since === undefined) {
       return pageWithin(statements, selection, page, scope);
     }

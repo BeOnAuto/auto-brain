@@ -18,6 +18,7 @@ const OpenRequestRowSchema = Schema.Struct({
   channel: Schema.String,
   message: Schema.String,
   answers: Schema.Boolean,
+  answer_schema: Schema.NullOr(Schema.String),
   requested_at: Schema.Int,
   expires_at: Schema.Int,
   attempts: Schema.Int,

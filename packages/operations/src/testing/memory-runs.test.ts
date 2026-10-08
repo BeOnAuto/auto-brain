@@ -2,8 +2,9 @@ import { Effect, Result, Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 import { describe, expect, it } from 'vitest';
 
-import type { Decider, RecordedPageRequest, RecordedSelection } from '../index.ts';
+import type { Decider, InvalidCursor, RecordedPageRequest, RecordedSelection } from '../index.ts';
 import { memoryLedger, type MemoryLedger } from './memory-ledger.ts';
+import { memoryRecordedReader } from './memory-recorded.ts';
 
 const HappenedSchema = Schema.Struct({ type: Schema.String });
 
@@ -57,5 +58,121 @@ describe('the in-memory read of runs that leaves out the streams beginning with 
       [100, true],
     ]);
     expect(pages[0]?.records.map(({ type }) => type)).not.toContain('execution_cancel_requested');
+  });
+});
+
+const StartSchema = Schema.Struct({ type: Schema.String, primitive: Schema.String, name: Schema.String });
+
+type Start = typeof StartSchema.Type;
+
+const starts: Decider<null, Start, Start> = {
+  initialState: null,
+  evolve: () => null,
+  decide: (start) => Result.succeed([start]),
+  eventSchema: StartSchema,
+};
+
+function runsWithOneInFourOfEachDefinition(ledger: MemoryLedger) {
+  return Effect.forEach(
+    Array.from({ length: 28 }, (_, index) => index),
+    (index) =>
+      ledger.service.execute(`brain/acme/alpha/executions/r${index}`, starts, {
+        type: 'execution_started',
+        primitive: index % 4 === 0 ? 'orchestration' : 'inference',
+        name: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
+      }),
+    { discard: true },
+  );
+}
+
+type PageFigures = readonly [records: number, hasMore: boolean];
+
+function everyPageOf(
+  ledger: MemoryLedger,
+  selection: RecordedSelection,
+  page: RecordedPageRequest,
+): Effect.Effect<readonly PageFigures[], InvalidCursor> {
+  return Effect.gen(function* () {
+    const { records, hasMore, nextCursor } = yield* ledger.service.readRecorded(
+      { org: 'acme', brain: 'alpha' },
+      selection,
+      page,
+    );
+    const figures: PageFigures = [records.length, hasMore];
+    return nextCursor === null
+      ? [figures]
+      : [figures, ...(yield* everyPageOf(ledger, selection, { ...page, cursor: nextCursor }))];
+  });
+}
+
+describe('the in-memory read of the runs of one definition', () => {
+  it('fills every page from the runs of the primitive or the name asked for, and has no more after the last', async () => {
+    const ledger = memoryLedger();
+
+    const pages = await Effect.runPromise(
+      runsWithOneInFourOfEachDefinition(ledger).pipe(
+        Effect.andThen(
+          Effect.all([
+            everyPageOf(ledger, { kind: 'executions', primitive: 'orchestration' }, { order: 'desc', limit: 5 }),
+            everyPageOf(ledger, { kind: 'executions', name: 'qualify-enquiry' }, { order: 'desc', limit: 2 }),
+            everyPageOf(ledger, { kind: 'executions', primitive: 'inference', name: 'qualify-enquiry' }, newestHundred),
+            everyPageOf(ledger, { kind: 'executions', primitive: 'orchestration', name: 'summary' }, newestHundred),
+            everyPageOf(
+              ledger,
+              { kind: 'executions', primitive: 'orchestration', name: 'qualify-enquiry' },
+              newestHundred,
+            ),
+          ]),
+        ),
+      ),
+    );
+
+    expect(pages).toEqual([
+      [
+        [5, true],
+        [2, false],
+      ],
+      [
+        [2, true],
+        [2, true],
+        [2, true],
+        [1, false],
+      ],
+      [[7, false]],
+      [[7, false]],
+      [[0, false]],
+    ]);
+  });
+});
+
+describe('the in-memory read of the runs of one definition, over a first record that is not an object', () => {
+  it('lists the run when no definition is asked, and finds it of none when one is', async () => {
+    const readOneRecord = memoryRecordedReader([
+      {
+        position: 1,
+        id: 'message-1',
+        causationId: null,
+        correlationId: null,
+        stream: 'brain/acme/alpha/executions/r1',
+        streamPosition: 1,
+        type: 'execution_started',
+        data: 'orchestration',
+        recordedAt: '2026-10-07T09:00:00.000Z',
+      },
+    ]);
+    const reading = (selection: RecordedSelection) =>
+      readOneRecord({ org: 'acme', brain: 'alpha' }, selection, newestHundred).pipe(
+        Effect.map(({ records }) => records.map(({ data }) => data)),
+      );
+
+    const pages = await Effect.runPromise(
+      Effect.all([
+        reading({ kind: 'executions' }),
+        reading({ kind: 'executions', primitive: 'orchestration' }),
+        reading({ kind: 'executions', name: 'orchestration' }),
+      ]),
+    );
+
+    expect(pages).toEqual([['orchestration'], [], []]);
   });
 });

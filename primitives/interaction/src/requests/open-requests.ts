@@ -32,6 +32,7 @@ function requested(fact: Fact<'execution_deferred'>, message: ProjectedMessage):
     channel: request.channel,
     message: request.message,
     answers: takesAnswer(request),
+    answer_schema: request.answer_schema === undefined ? null : JSON.stringify(request.answer_schema),
     requested_at: at,
     expires_at: Date.parse(request.expires_at),
     attempts: 0,
@@ -110,7 +111,7 @@ function rowAfter(row: ProjectedRow | undefined, event: unknown, message: Projec
 
 export const openRequests: RunProjection = {
   name: openRequestsName,
-  version: 1,
+  version: 2,
   types: [
     'execution_deferred',
     'delivery_started',
@@ -127,6 +128,7 @@ export const openRequests: RunProjection = {
     { name: 'channel', kind: 'text' },
     { name: 'message', kind: 'text' },
     { name: 'answers', kind: 'boolean' },
+    { name: 'answer_schema', kind: 'text' },
     { name: 'requested_at', kind: 'integer' },
     { name: 'expires_at', kind: 'integer' },
     { name: 'attempts', kind: 'integer' },

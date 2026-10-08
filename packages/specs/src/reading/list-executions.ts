@@ -4,6 +4,7 @@ import {
   PagingOutputFields,
   defaultPageLimit,
   defineQuery,
+  mostExaminedInAPage,
   type RecordedSelection,
 } from '@beonauto/operations';
 import { Effect, Schema } from 'effect';
@@ -15,13 +16,13 @@ import { specWordsFor } from '../plain-language/spec-words.ts';
 import { PrimitiveField, knownPrimitives } from '../primitive/known-primitives.ts';
 import type { Primitive } from '../primitive/primitive.ts';
 import { storedTypesByStatus } from './execution-status.ts';
-import { ListedRunSchema, listedExecutionsOf, type ListedRun } from './listed-execution.ts';
+import { ListedRunSchema, listedExecutionsOf } from './listed-execution.ts';
 
 const description = [
   'Lists the runs of the brain a page at a time, newest first, each with its definition, its status, who started it and when it ended, without its output.',
   'Use it to find a run the person means, such as the runs of a scheduled workflow; get_execution reads one run in full.',
-  '`primitive` and `name` keep the runs of one definition and `status` those in one status,',
-  'so a page may hold fewer runs than `limit`, or none, while has_more is true.',
+  '`primitive` and `name` keep the runs of one definition and `status` those in one status.',
+  `A filtered page looks at up to ${mostExaminedInAPage} runs, so it may hold fewer runs than \`limit\`, or none, while has_more is true.`,
   '`cursor` is the next_cursor of the page before.',
 ].join(' ');
 
@@ -42,17 +43,13 @@ const ListedExecutionsPage = Schema.Struct({
   ...PagingOutputFields,
 });
 
-const streamsOfRuns: RecordedSelection = { kind: 'executions', notBeginningWith: ['execution_cancel_requested'] };
-
-interface SpecFilter {
-  readonly primitive: string | undefined;
-  readonly name: string | undefined;
-}
-
-function isOfSpec(execution: ListedRun, { primitive, name }: SpecFilter): boolean {
-  return (
-    (primitive === undefined || execution.primitive === primitive) && (name === undefined || execution.name === name)
-  );
+function streamsOfRuns(primitive: string | undefined, name: string | undefined): RecordedSelection {
+  return {
+    kind: 'executions',
+    notBeginningWith: ['execution_cancel_requested'],
+    ...(primitive === undefined ? {} : { primitive }),
+    ...(name === undefined ? {} : { name }),
+  };
 }
 
 const listExecutions = Effect.fnUntraced(function* ({
@@ -62,15 +59,14 @@ const listExecutions = Effect.fnUntraced(function* ({
   limit = defaultPageLimit,
   cursor,
 }: typeof ListExecutionsInput.Type) {
-  const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns, {
+  const page = yield* (yield* BrainReader).readRecorded(streamsOfRuns(primitive, name), {
     order: 'desc',
     limit,
     ...(cursor === undefined ? {} : { cursor }),
     ...(status === undefined ? {} : { types: storedTypesByStatus[status] }),
   });
-  const listed = yield* listedExecutionsOf(page.records);
   return {
-    executions: listed.filter((execution) => isOfSpec(execution, { primitive, name })),
+    executions: yield* listedExecutionsOf(page.records),
     has_more: page.hasMore,
     next_cursor: page.nextCursor,
   };
