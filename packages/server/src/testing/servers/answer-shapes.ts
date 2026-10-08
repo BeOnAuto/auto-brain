@@ -1,6 +1,6 @@
 import { openRequests } from '@beonauto/interaction';
 import { partnerSecret } from '@beonauto/interaction/testing';
-import { Ledger, type RunProjection } from '@beonauto/operations';
+import { Ledger, projectedTableOf, type RunProjection } from '@beonauto/operations';
 import { serveFakeReceiver } from '@beonauto/outbound/testing';
 import { ManagedRuntime, Schema, type Layer } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -79,11 +79,11 @@ async function failingPartner(): Promise<Readonly<Record<string, string>>> {
 }
 
 async function versionOneLeftIn(store: ProjectionStore): Promise<readonly string[]> {
-  await store.dropTable('open_requests_2');
+  await store.dropTable(projectedTableOf(openRequests));
   const runtime = ManagedRuntime.make(store.ledgerKeeping(versionOne));
   await runtime.runPromise(Ledger);
   await runtime.dispose();
-  return store.tablesOf('open_requests');
+  return store.tablesOf(openRequests.name);
 }
 
 export function answerShapesOn(stores: readonly ProjectionStoreChoice[]): void {
@@ -104,7 +104,7 @@ export function answerShapesOn(stores: readonly ProjectionStoreChoice[]): void {
         const second = await interactionServerOn(environment);
         const rebuilt = answerShapesOf(await listedIn(second));
 
-        expect(leftByVersionOne).toEqual(['open_requests_1']);
+        expect(leftByVersionOne).toEqual([projectedTableOf(versionOne)]);
         expect([kept, rebuilt]).toEqual([
           {
             [question]: { attempts: 1, answer_schema: approvalSchema },
@@ -115,7 +115,7 @@ export function answerShapesOn(stores: readonly ProjectionStoreChoice[]): void {
             [notification]: { attempts: 1, answer_schema: null },
           },
         ]);
-        expect(await store.tablesOf('open_requests')).toEqual(['open_requests_2']);
+        expect(await store.tablesOf(openRequests.name)).toEqual([projectedTableOf(openRequests)]);
       },
     );
   });

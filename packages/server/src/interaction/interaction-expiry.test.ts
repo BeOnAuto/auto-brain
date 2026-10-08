@@ -1,5 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 
+import { openRequests } from '@beonauto/interaction';
+import { projectedTableOf } from '@beonauto/operations';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
@@ -22,7 +24,7 @@ function ledgerFile(): string {
 function expiredAgo(file: string, milliseconds: number): void {
   const database = new DatabaseSync(file);
   const past = Date.now() - milliseconds;
-  database.prepare('UPDATE open_requests_2 SET expires_at = ?, due_at = ?').run(past, past);
+  database.prepare(`UPDATE ${projectedTableOf(openRequests)} SET expires_at = ?, due_at = ?`).run(past, past);
   database.close();
 }
 
