@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { defineAnswerInteraction, noChannels, openRequests } from '@beonauto/interaction';
 import {
-  answeredByDeliveryBeforeSettling,
+  deliveryEndedBeforeSettling,
   askedRunId,
   askedThroughPartner,
   attemptedThenStopped,
@@ -109,7 +109,7 @@ describe.each(stores)(
   'a delivery that ends with its answer while another settlement is under way, on $store',
   ({ skipped, aLedger }) => {
     it.skipIf(skipped)('refuses an answer given meanwhile, and the run settles with the delivery’s', async () => {
-      const racing = answeredByDeliveryBeforeSettling(await aLedger(), { choice: 'approve' });
+      const racing = deliveryEndedBeforeSettling(await aLedger(), { choice: 'approve' });
       const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
       await racing.started();
 
@@ -124,7 +124,7 @@ describe.each(stores)(
     });
 
     it.skipIf(skipped)('settles a cancel under way with the delivery’s answer, read again once refused', async () => {
-      const racing = answeredByDeliveryBeforeSettling(await aLedger(), { choice: 'approve' });
+      const racing = deliveryEndedBeforeSettling(await aLedger(), { choice: 'approve' });
       const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
       await racing.started();
 
@@ -132,6 +132,24 @@ describe.each(stores)(
       await racing.cancelSettled(asked.brain.primitive);
 
       expect(await asked.brain.runOf(askedRunId)).toMatchObject(approved);
+    });
+  },
+);
+
+describe.each(stores)(
+  'a notification delivered while a cancel of its run is under way, on $store',
+  ({ skipped, aLedger }) => {
+    it.skipIf(skipped)('succeeds as delivered, the cancel reading the run again once it changed', async () => {
+      const racing = deliveryEndedBeforeSettling(await aLedger());
+      const asked = await askedThroughPartner({ notification: true, ledger: racing.ledger });
+      await racing.started();
+
+      await asked.brain.cancel(askedRunId);
+      await racing.cancelSettled(asked.brain.primitive);
+
+      expect(await asked.brain.runOf(askedRunId)).toMatchObject({
+        output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
+      });
     });
   },
 );

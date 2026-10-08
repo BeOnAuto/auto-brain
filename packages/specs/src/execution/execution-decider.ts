@@ -1,4 +1,5 @@
-import type { Decider } from '@beonauto/operations';
+import { Conflict, type Decider } from '@beonauto/operations';
+import { Result } from 'effect';
 
 import type { ExecutionCommand } from './execution-commands.ts';
 import { decideOnExecution } from './execution-decisions.ts';
@@ -14,6 +15,34 @@ export const executionDecider: Decider<
   initialState: undefined,
   evolve: evolveExecution,
   decide: decideOnExecution,
+  eventSchema: ExecutionEventSchema,
+};
+
+interface ExecutionAsRead {
+  readonly state: ExecutionStreamState;
+  readonly version: number;
+}
+
+interface CommandAsRead {
+  readonly readAt: number;
+  readonly command: ExecutionCommand;
+}
+
+export const changedSinceRead = new Conflict({
+  detail: 'The run changed since it was read, so it is read again',
+  kind: 'concurrent_change',
+});
+
+export const executionDeciderAsRead: Decider<
+  ExecutionAsRead,
+  CommandAsRead,
+  ExecutionEvent,
+  'not_found' | 'conflict' | 'cancelled'
+> = {
+  initialState: { state: undefined, version: 0 },
+  evolve: ({ state, version }, event) => ({ state: evolveExecution(state, event), version: version + 1 }),
+  decide: ({ readAt, command }, { state, version }) =>
+    readAt === version ? decideOnExecution(command, state) : Result.fail(changedSinceRead),
   eventSchema: ExecutionEventSchema,
 };
 

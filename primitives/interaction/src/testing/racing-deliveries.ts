@@ -1,11 +1,13 @@
 import { Ledger } from '@beonauto/operations';
-import { deferredCanceller, outboundCallRecorder, type Primitive } from '@beonauto/specs';
+import { deferredCanceller, outboundCallRecorder, type DeliveryEndedFact, type Primitive } from '@beonauto/specs';
 import { Effect, Layer, Schema } from 'effect';
 
 import type { HarnessLedger } from './interaction-harness.ts';
 import { askedRunId } from './webhook-requests.ts';
 
-const isSettlement = Schema.is(Schema.Struct({ type: Schema.Literal('settle') }));
+const Settle = Schema.Struct({ type: Schema.Literal('settle') });
+
+const isSettlement = Schema.is(Schema.Union([Settle, Schema.Struct({ command: Settle })]));
 
 const address = { org: 'acme', brain: 'alpha', id: askedRunId };
 
@@ -17,13 +19,15 @@ export interface RacingDelivery {
   readonly cancelSettled: (primitive: Primitive) => Promise<void>;
 }
 
-export function answeredByDeliveryBeforeSettling(ledger: HarnessLedger, answer: Schema.Json): RacingDelivery {
+function endingOf(answer: Schema.Json | undefined): DeliveryEndedFact {
+  return answer === undefined
+    ? { type: 'delivery_ended', number: 1, outcome: 'delivered', status: 200, duration_ms: 3 }
+    : { type: 'delivery_ended', number: 1, outcome: 'answered', status: 200, answer, duration_ms: 3 };
+}
+
+export function deliveryEndedBeforeSettling(ledger: HarnessLedger, answer?: Schema.Json): RacingDelivery {
   const recorded = outboundCallRecorder(ledger.service);
-  const ended = recorded(
-    address,
-    { type: 'delivery_ended', number: 1, outcome: 'answered', status: 200, answer, duration_ms: 3 },
-    lineage,
-  );
+  const ended = recorded(address, endingOf(answer), lineage);
   const pending = { ending: true };
   const service: Ledger['Service'] = {
     ...ledger.service,

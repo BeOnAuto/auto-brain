@@ -8,7 +8,7 @@ import { noChannels } from '../channels/channel-settings.ts';
 import { defineAnswerInteraction } from '../requests/answer-interaction.ts';
 import { openRequests } from '../requests/open-requests.ts';
 import {
-  answeredByDeliveryBeforeSettling,
+  deliveryEndedBeforeSettling,
   askedRunId,
   askedThroughPartner,
   attemptedThenStopped,
@@ -124,7 +124,7 @@ describe('an answer within the delivery and another one given meanwhile', () => 
 
 describe('an answer given while the delivery in flight ends with its own', () => {
   it('refuses the other when the delivery ends with its answer between the read of the request and the settlement', async () => {
-    const racing = answeredByDeliveryBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
+    const racing = deliveryEndedBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
     const asked = await askedThroughPartner({ answers: true, ledger: racing.ledger });
     await racing.started();
 

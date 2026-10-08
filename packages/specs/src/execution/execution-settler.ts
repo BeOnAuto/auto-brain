@@ -6,15 +6,18 @@ import {
   streamPrefixOfBrain,
   type Conflict,
   type Lineage,
+  type Rejection,
   type SettledRejection,
   type Settlement,
+  type StreamState,
   type StreamWriter,
 } from '@beonauto/operations';
 import { DateTime, Effect, Schema } from 'effect';
 
-import type { ExecutionResult } from './execution-commands.ts';
-import { executionDecider, executionStreamOf } from './execution-decider.ts';
+import type { ExecutionResult, ExecutionSettlement } from './execution-commands.ts';
+import { executionDecider, executionDeciderAsRead, executionStreamOf } from './execution-decider.ts';
 import { executionOf } from './execution-lookup.ts';
+import type { ExecutionStreamState } from './execution-state.ts';
 import type { ExecutionRejection, Run } from './execution.ts';
 import { withinResultLimit } from './recorded-size.ts';
 
@@ -31,6 +34,19 @@ export type SettleExecution = (
   settlement: Settlement,
   lineage?: Lineage,
 ) => Effect.Effect<Run, NotFound | Conflict>;
+
+type SettleAsRead = (
+  execution: ExecutionAddress,
+  settlement: Settlement,
+  readAt: number,
+  lineage?: Lineage,
+) => Effect.Effect<Run, NotFound | Conflict>;
+
+type SettledOn = (
+  stream: string,
+  command: ExecutionSettlement,
+  lineage: Lineage | undefined,
+) => Effect.Effect<StreamState<ExecutionStreamState>, Rejection<'not_found' | 'conflict' | 'cancelled'>>;
 
 const isWellFormed = Schema.is(
   Schema.Struct({ org: OrgIdSchema, brain: BrainIdSchema, id: Schema.String.check(Schema.isUUID()) }),
@@ -95,15 +111,27 @@ function resultOf(settlement: Settlement): Effect.Effect<ExecutionResult> {
   return Effect.succeed(incident === undefined ? failure : { type: 'execution_failed', incident });
 }
 
+function settledOnLatest(ledger: StreamWriter): SettledOn {
+  return (stream, command, lineage) => ledger.execute(stream, executionDecider, command, lineage);
+}
+
+function settledOnRead(ledger: StreamWriter, readAt: number): SettledOn {
+  return (stream, command, lineage) =>
+    Effect.map(ledger.execute(stream, executionDeciderAsRead, { readAt, command }, lineage), ({ state, version }) => ({
+      state: state.state,
+      version,
+    }));
+}
+
 function settlerOver(
-  ledger: StreamWriter,
+  settledOn: SettledOn,
   streamNamed: (address: ExecutionAddress) => Effect.Effect<string, NotFound>,
 ): SettleExecution {
   const settle = Effect.fnUntraced(function* (stream: string, result: ExecutionResult, by: string, lineage?: Lineage) {
     const at = DateTime.formatIso(yield* DateTime.now);
-    return yield* ledger
-      .execute(stream, executionDecider, { type: 'settle', result, by, at }, lineage)
-      .pipe(Effect.catchTag('cancelled', Effect.die));
+    return yield* settledOn(stream, { type: 'settle', result, by, at }, lineage).pipe(
+      Effect.catchTag('cancelled', Effect.die),
+    );
   });
   return (execution, settlement, lineage) =>
     Effect.gen(function* () {
@@ -118,9 +146,14 @@ function settlerOver(
 }
 
 export function executionSettler(ledger: StreamWriter): SettleExecution {
-  return settlerOver(ledger, streamOf);
+  return settlerOver(settledOnLatest(ledger), streamOf);
+}
+
+export function executionSettlerAsRead(ledger: StreamWriter): SettleAsRead {
+  return (execution, settlement, readAt, lineage) =>
+    settlerOver(settledOnRead(ledger, readAt), streamOf)(execution, settlement, lineage);
 }
 
 export function brainBoundSettler(writer: StreamWriter): SettleExecution {
-  return settlerOver(writer, brainStreamOf);
+  return settlerOver(settledOnLatest(writer), brainStreamOf);
 }

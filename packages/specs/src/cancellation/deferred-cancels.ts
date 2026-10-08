@@ -10,9 +10,9 @@ import {
 } from '@beonauto/operations';
 import { Effect, Equal } from 'effect';
 
-import { executionDecider, executionStreamOf } from '../execution/execution-decider.ts';
-import { answeredWithinDelivery, endedWithAnotherResult } from '../execution/execution-decisions.ts';
-import { executionSettler, type ExecutionAddress } from '../execution/execution-settler.ts';
+import { changedSinceRead, executionDeciderAsRead, executionStreamOf } from '../execution/execution-decider.ts';
+import { endedWithAnotherResult } from '../execution/execution-decisions.ts';
+import { executionSettlerAsRead, type ExecutionAddress } from '../execution/execution-settler.ts';
 import { runOf, takesSettlement } from '../execution/execution-state.ts';
 import { cancelledAsAsked, type CancelledRun, type Primitive } from '../primitive/primitive.ts';
 import type { CancelRequest } from './run-cancels.ts';
@@ -25,12 +25,14 @@ export type SettleCancelled = (
 
 const brokeDown: Settlement = { status: 'failed' };
 
+const readsAgainAtMost = 3;
+
 function endedOtherwise(error: unknown): boolean {
   return Equal.equals(error, endedWithAnotherResult);
 }
 
-function answeredMeanwhile(error: unknown): boolean {
-  return Equal.equals(error, answeredWithinDelivery);
+function changedMeanwhile(error: unknown): boolean {
+  return Equal.equals(error, changedSinceRead);
 }
 
 function decided(primitive: Primitive | undefined, run: CancelledRun): Effect.Effect<Settlement> {
@@ -42,11 +44,12 @@ export function deferredCanceller(
   primitives: readonly Primitive[],
   ledger: StreamReader & StreamWriter,
 ): SettleCancelled {
-  const settle = executionSettler(ledger);
-  const settledOnce: SettleCancelled = (execution, { kind, reason, by }, lineage) =>
+  const settle = executionSettlerAsRead(ledger);
+  const settledAsRead: SettleCancelled = (execution, { kind, reason, by }, lineage) =>
     Effect.gen(function* () {
       const stream = `${streamPrefixOfBrain(execution)}${executionStreamOf(execution.id.toLowerCase())}`;
-      const state = runOf((yield* ledger.load(stream, executionDecider)).state);
+      const read = (yield* ledger.load(stream, executionDeciderAsRead)).state;
+      const state = runOf(read.state);
       if (state === undefined || !takesSettlement(state)) {
         return;
       }
@@ -57,13 +60,12 @@ export function deferredCanceller(
         reason,
         lastDelivery: state.lastDelivery,
       });
-      yield* settle(execution, { ...settlement, by: settlement.by ?? by ?? brainCallerOf(execution).id }, lineage).pipe(
+      const actor = settlement.by ?? by ?? brainCallerOf(execution).id;
+      yield* settle(execution, { ...settlement, by: actor }, read.version, lineage).pipe(
         Effect.asVoid,
         Effect.catchIf(endedOtherwise, () => Effect.void),
       );
     });
   return (execution, request, lineage) =>
-    settledOnce(execution, request, lineage).pipe(
-      Effect.catchIf(answeredMeanwhile, () => settledOnce(execution, request, lineage)),
-    );
+    settledAsRead(execution, request, lineage).pipe(Effect.retry({ times: readsAgainAtMost, while: changedMeanwhile }));
 }

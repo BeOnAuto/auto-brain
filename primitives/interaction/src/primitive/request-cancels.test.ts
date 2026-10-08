@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { openRequests } from '../requests/open-requests.ts';
 import {
-  answeredByDeliveryBeforeSettling,
+  deliveryEndedBeforeSettling,
   askedRunId,
   askedThroughPartner,
   attemptedThenStopped,
@@ -22,6 +22,8 @@ const notification = {
 const question = { ...notification, answer_schema: { type: 'object' } };
 
 const at = '2026-10-07T09:00:00.000Z';
+
+const anyTime: unknown = expect.any(String);
 
 const asked = { kind: 'requested', reason: 'Not needed any more' } as const;
 
@@ -78,7 +80,7 @@ describe('a cancel asked after a delivery answered and before its run was settle
 
 describe('a cancel whose delivery ends with an answer between its read of the run and its settlement', () => {
   it('reads the run again once refused, and settles with the answer, as the channel', async () => {
-    const racing = answeredByDeliveryBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
+    const racing = deliveryEndedBeforeSettling(memoryLedger(undefined, [openRequests]), { choice: 'approve' });
     const delivering = await askedThroughPartner({ answers: true, ledger: racing.ledger });
     await racing.started();
 
@@ -87,6 +89,21 @@ describe('a cancel whose delivery ends with an answer between its read of the ru
 
     expect(await delivering.brain.runOf(askedRunId)).toMatchObject({
       output: { status: 'succeeded', output: { choice: 'approve' }, record: { answered_by: 'channel:partner' } },
+    });
+  });
+});
+
+describe('a cancel whose notification is delivered between its read of the run and its settlement', () => {
+  it('reads the run again, as it changed, and succeeds it as delivered', async () => {
+    const racing = deliveryEndedBeforeSettling(memoryLedger(undefined, [openRequests]));
+    const delivering = await askedThroughPartner({ notification: true, ledger: racing.ledger });
+    await racing.started();
+
+    await delivering.brain.cancel(askedRunId);
+    await racing.cancelSettled(delivering.brain.primitive);
+
+    expect(await delivering.brain.runOf(askedRunId)).toMatchObject({
+      output: { status: 'succeeded', output: {}, record: { delivered_at: anyTime } },
     });
   });
 });

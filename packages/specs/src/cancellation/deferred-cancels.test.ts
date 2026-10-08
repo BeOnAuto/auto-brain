@@ -2,7 +2,7 @@ import { Conflict, type StreamReader, type StreamWriter } from '@beonauto/operat
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { answeredWithinDelivery, deferredCanceller, definePrimitive, type Primitive } from '../index.ts';
+import { deferredCanceller, definePrimitive, outboundCallRecorder, type Primitive } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toBrain } from '../testing/harness.ts';
 import { relay } from '../testing/relay.ts';
@@ -173,23 +173,33 @@ describe('a cancel of a run of another capability that is over', () => {
   });
 });
 
-describe('a cancel refused because a delivery of the run answered between its read and its settlement', () => {
-  it('reads the run again and lets its capability decide once more', async () => {
+const decidingFromDelivery = relayDeciding(({ lastDelivery }) =>
+  lastDelivery === null
+    ? { status: 'rejected', reason: 'cancelled', kind: 'requested', detail: 'Nothing was delivered' }
+    : { status: 'succeeded', output: { delivered: lastDelivery.outcome } },
+);
+
+describe('a cancel whose run changes between its read and its settlement', () => {
+  it('reads the run again and lets its capability decide from what the run holds now', async () => {
     const { executing, ledger, reading } = await withHandOn();
     await executing();
-    const turns = { next: (): Effect.Effect<void, Conflict> => Effect.fail(answeredWithinDelivery) };
-    const refusedOnce: StreamReader & StreamWriter = {
+    const record = outboundCallRecorder(ledger.service);
+    const delivered = Effect.all([
+      record(relayed, { type: 'delivery_started', number: 1, channel: 'partner', target: 'ada' }, lineage),
+      record(relayed, { type: 'delivery_ended', number: 1, outcome: 'delivered', duration_ms: 3 }, lineage),
+    ]);
+    const turns = { next: (): Effect.Effect<unknown, unknown> => delivered };
+    const changedOnce: StreamReader & StreamWriter = {
       ...ledger.service,
       execute: (stream, decider, command, given) => {
-        const turn = turns.next();
+        const turn = Effect.orDie(turns.next());
         turns.next = () => Effect.void;
         return Effect.andThen(turn, ledger.service.execute(stream, decider, command, given));
       },
     };
+    await Effect.runPromise(deferredCanceller([decidingFromDelivery], changedOnce)(relayed, asked, lineage));
 
-    await Effect.runPromise(deferredCanceller([], refusedOnce)(relayed, asked, lineage));
-
-    expect(await reading()).toMatchObject({ output: { status: 'rejected', rejection: { reason: 'cancelled' } } });
+    expect(await reading()).toMatchObject({ output: { status: 'succeeded', output: { delivered: 'delivered' } } });
   });
 });
 
