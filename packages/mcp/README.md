@@ -56,7 +56,9 @@ A call of an offered tool:
 4. records `tool_call_answered`, unless the run was cancelled meanwhile;
 5. answers the model: text content as text, structured content only when there is no text, other content as a one-line placeholder, an `isError` result as a tool error, and a failure as a tool error naming the server, all scrubbed of the entry's secrets and minted tokens. A server's `instructions` never reach the model.
 
-A server failure is also reported to the operator through `reportServerMessage`, bounded and scrubbed, and the fifth ends the run's calls, with `ending()` saying `failing` or `rate_limited`.
+The call answers a `CallReply`: the model reads its `text` and `isError`, and beside them it carries what was recorded, the `outcome`, `resultBytes`, the size of the whole result before the cut, `durationMs` and `serverRequestId`, with `not_sent` as the outcome of a call refused inside the brain or whose start could not be recorded.
+
+A server failure is also reported to the operator through `reportServerMessage`, bounded and scrubbed, naming the run by `execution_id` or a test by `tool_test_id`, whichever the opener's metadata gives, and the fifth ends the run's calls, with `ending()` saying `failing` or `rate_limited`.
 
 ## One call for a delivery
 

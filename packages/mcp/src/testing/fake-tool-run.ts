@@ -2,7 +2,7 @@ import { Effect, Option } from 'effect';
 
 import type { ServerMessage } from '../access/caller-context.ts';
 import type { Timing } from '../bounds/call-bounds.ts';
-import type { ToolReply } from '../calls/call-replies.ts';
+import type { CallReply } from '../calls/call-replies.ts';
 import type { RunTools } from '../calls/run-tools.ts';
 import { serveFakeMcp, type FakeMcpServer } from './fake-mcp-server.ts';
 import { reportingAccess } from './reporting-access.ts';
@@ -25,7 +25,7 @@ export interface FakeToolRun {
     tool: string,
     input: Readonly<Record<string, unknown>>,
     signals?: ControlledSignals,
-  ) => Promise<ToolReply>;
+  ) => Promise<CallReply>;
   readonly close: () => Promise<void>;
 }
 

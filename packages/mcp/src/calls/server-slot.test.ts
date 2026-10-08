@@ -64,9 +64,9 @@ describe('a stdio server that exits during a run', { timeout: stdioTestTimeoutMs
     await run.exit(2);
     const exitedAgain = await run.search('again');
 
-    expect(exited).toEqual(closed);
-    expect(restarted).toEqual({ text: 'Found 2 rows for restarted.', isError: false });
-    expect(exitedAgain).toEqual({
+    expect(exited).toMatchObject(closed);
+    expect(restarted).toMatchObject({ text: 'Found 2 rows for restarted.', isError: false });
+    expect(exitedAgain).toMatchObject({
       text: 'The MCP server limitless failed: The MCP server process exited again after its restart in this run',
       isError: true,
     });
@@ -79,6 +79,6 @@ describe('a stdio server that exits during a run', { timeout: stdioTestTimeoutMs
 
     await run.exit(1);
 
-    expect(await run.search('again')).toEqual(closed);
+    expect(await run.search('again')).toMatchObject(closed);
   });
 });

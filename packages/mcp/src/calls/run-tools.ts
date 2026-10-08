@@ -5,7 +5,7 @@ import { callsEnded, cutToDescriptionBound, noCalls } from '../bounds/call-bound
 import { modelFacingNames } from '../names/model-facing-names.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { toolsInWords } from '../names/tool-words.ts';
-import type { ToolReply } from './call-replies.ts';
+import type { CallReply } from './call-replies.ts';
 import type { CallSignals, RunState, RunToolsParts, ToolCallRequest } from './run-parts.ts';
 import { caller } from './tool-caller.ts';
 
@@ -13,7 +13,7 @@ export interface OfferedTool {
   readonly name: string;
   readonly description: string;
   readonly inputSchema: Schema.JsonObject;
-  readonly call: (request: ToolCallRequest, signals: CallSignals) => Promise<ToolReply>;
+  readonly call: (request: ToolCallRequest, signals: CallSignals) => Promise<CallReply>;
 }
 
 export interface ToolsEnding {

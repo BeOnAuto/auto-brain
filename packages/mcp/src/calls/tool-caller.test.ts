@@ -35,6 +35,10 @@ describe('a run that has ended', () => {
     expect(await call('search', { query: 'late' }, signals)).toEqual({
       text: 'The run has ended, so this call was not sent.',
       isError: true,
+      outcome: 'not_sent',
+      resultBytes: null,
+      durationMs: 0,
+      serverRequestId: null,
     });
     expect(fake.received()).toEqual([]);
     expect(journal.facts()).toEqual([]);
@@ -45,9 +49,10 @@ describe('a run that has ended', () => {
 
     journal.refuseStartsFromNowOn();
 
-    expect(await call('search', { query: 'unrecorded' })).toEqual({
+    expect(await call('search', { query: 'unrecorded' })).toMatchObject({
       text: 'This call could not be recorded on its run, so it was not sent; answer without it.',
       isError: true,
+      outcome: 'not_sent',
     });
     expect(fake.received()).toEqual([]);
   });
@@ -62,7 +67,7 @@ describe('a run that ends while it calls', () => {
     await setTimeout(100);
     signals.end();
 
-    expect(await replied).toEqual({
+    expect(await replied).toMatchObject({
       text: 'The MCP server graph failed: The call was cancelled because the run ended',
       isError: true,
     });
@@ -130,7 +135,7 @@ describe('a run cancelled between recording the start of a call and sending it',
 
     const replied = await search?.call({ callId: 'call-1', input: { query: 'late' } }, signals);
 
-    expect(replied).toEqual({
+    expect(replied).toMatchObject({
       text: 'The MCP server graph failed: The call was cancelled because the run ended',
       isError: true,
     });

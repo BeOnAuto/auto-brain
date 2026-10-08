@@ -116,7 +116,7 @@ describe('the tools a run is offered', () => {
     ];
 
     expect(dotted?.name).toBe('mcp__graph__graph_query_v2');
-    expect(replies).toEqual([
+    expect(replies).toMatchObject([
       { text: 'Queried acme.', isError: false },
       { text: 'Answered from far away.', isError: false },
     ]);
@@ -186,7 +186,7 @@ describe('a server that cannot be used', () => {
     const reply = await holding.offered[0]?.call({ callId: 'call-1', input: { query: 'acme' } }, controlledSignals());
 
     expect(failing).toMatchObject({ _tag: 'mcp_server_failed', because: 'failing' });
-    expect(reply).toEqual({ text: 'Found 2 rows for acme.', isError: false });
+    expect(reply).toMatchObject({ text: 'Found 2 rows for acme.', isError: false });
   });
 });
 
@@ -216,7 +216,7 @@ describe('the sessions of runs', () => {
     const reply = await tools.offered[0]?.call({ callId: 'call-1', input: { query: 'acme' } }, controlledSignals());
 
     expect(tools.offered).toHaveLength(fakeToolNames.length);
-    expect(reply).toEqual({ text: 'Tool search not found', isError: true });
+    expect(reply).toMatchObject({ text: 'Tool search not found', isError: true });
   });
 });
 
@@ -231,11 +231,12 @@ describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, (
     await second.close();
     await access.close();
 
-    expect(reply).toEqual({ text: '{"said":"hello"}', isError: false });
+    expect(reply).toMatchObject({ text: '{"said":"hello"}', isError: false });
     expect(messages()).toContainEqual({
       server: 'limitless',
       message: 'The fake MCP server says line 1 on stderr',
       execution_id: null,
+      tool_test_id: null,
     });
   });
 
@@ -251,6 +252,7 @@ describe('a stdio server and the MCP client', { timeout: stdioTestTimeoutMs }, (
       server: 'limitless',
       message: 'The MCP server wrote a message that is not JSON-RPC',
       execution_id: null,
+      tool_test_id: null,
     });
   });
 });

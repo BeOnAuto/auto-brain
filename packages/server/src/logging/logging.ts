@@ -244,10 +244,19 @@ export function logOperatorHint({ provider, model, hint, execution_id }: Operato
   );
 }
 
-export function logServerMessage({ server, message, execution_id }: ServerMessage): Effect.Effect<void> {
-  return execution_id === null
+function callerOf({ execution_id, tool_test_id }: ServerMessage): Readonly<Record<string, string>> | undefined {
+  if (execution_id !== null) {
+    return { execution_id };
+  }
+  return tool_test_id === null ? undefined : { tool_test_id };
+}
+
+export function logServerMessage(report: ServerMessage): Effect.Effect<void> {
+  const { server, message } = report;
+  const caller = callerOf(report);
+  return caller === undefined
     ? Effect.logInfo(`MCP server ${server} wrote: ${message}`).pipe(Effect.annotateLogs({ mcp_server: server }))
     : Effect.logWarning(`MCP server ${server} failed a call`).pipe(
-        Effect.annotateLogs({ mcp_server: server, execution_id, server_message: message }),
+        Effect.annotateLogs({ mcp_server: server, ...caller, server_message: message }),
       );
 }

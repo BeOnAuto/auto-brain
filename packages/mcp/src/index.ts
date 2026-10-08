@@ -2,7 +2,7 @@ export { makeToolAccess, type ToolAccess, type ToolAccessOptions } from './acces
 export { McpServerFailed, type CallsEndedBecause, type ServerFailedBecause } from './access/mcp-server-failed.ts';
 export { ToolNotOffered, type NotOfferedBecause } from './access/tool-not-offered.ts';
 export type { CallerContext, ServerMessage, ToolsNotOpened } from './access/caller-context.ts';
-export type { ToolReply } from './calls/call-replies.ts';
+export type { CallReply, ReplyOutcome } from './calls/call-replies.ts';
 export { CallAnsweredSchema, CallStartedSchema, type CallOutcome } from './calls/call-facts.ts';
 export type { CallJournal, RecordedCall } from './calls/recorded-calls.ts';
 export type { CallSignals, ToolCallRequest } from './calls/run-parts.ts';
