@@ -124,4 +124,12 @@ describe('a tool server on which nothing can be tested', () => {
       after: [],
     });
   });
+
+  it('is noted when the only tools it marks read-only lie outside its entry allowed, and not when one lies inside', async () => {
+    expect(await notedAfterListing(1, {}, { allowed: ['echo', 'environment'] })).toEqual({
+      before: [],
+      after: ['graph'],
+    });
+    expect(await notedAfterListing(1, {}, { allowed: ['echo', 'search'] })).toEqual({ before: [], after: [] });
+  });
 });
