@@ -331,6 +331,7 @@ Several triggers were measured on 2026-10-08 on the same machine with Node 22.23
 | ------------------------------------------------------------------------------- | -------------------- | ---------------------------------- | ---------------------- | ---------------------------------- |
 | timer lateness at p99, an event trigger each                                    | 417 ms; load 67.8    | 3 and 354 ms; load 3.8, 80.9       | 20 ms; load 6.4        | 173 and 22 ms; load 6.9, 20.2      |
 | timer lateness at p99, an event trigger, a cron and an every each               | 3 ms; load 23.3      | 2 and 2 ms; load 4.6, 68.9         | 30 ms; load 28.5       | 23 and 22 ms; load 6.6, 14.9       |
+| timer lateness at most, an event trigger, a cron and an every each              | 5 ms; load 23.3      | 3 and 3 ms; load 4.6, 68.9         | 52 ms; load 28.5       | 67 and 56 ms; load 6.6, 14.9       |
 | reaction latency at the median, an event trigger each, with the append signal   | 15,912 ms; load 42.3 | 767 and 819 ms; load 4.0, 74.5     | 21,942 ms; load 72.5   | 157 and 130 ms; load 6.9, 19.0     |
 | reaction latency at the median, an event trigger each, woken by the sweep alone | 14,558 ms; load 24.9 | 793 and 790 ms; load 4.0, 74.5     | 22,142 ms; load 34.1   | 327 and 356 ms; load 7.0, 18.2     |
 | reaction latency at the median, three triggers each, with the append signal     | 17,548 ms; load 14.6 | 1,049 and 1,258 ms; load 4.6, 63.7 | 22,609 ms; load 14.5   | 316 and 324 ms; load 6.4, 14.3     |
