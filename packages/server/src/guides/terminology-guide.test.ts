@@ -46,7 +46,7 @@ describe('the terminology guide', () => {
 
     expect(text).not.toContain('Language model');
     expect(text).not.toContain('Predictive model');
-    expect(text).toContain('- Run: One run of a workflow or function against particular inputs.');
+    expect(text).toContain('- Run: A workflow or function carried out once against particular inputs.');
   });
 
   it('cannot be made from a page without the tables it reads', () => {
