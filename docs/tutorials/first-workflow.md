@@ -18,7 +18,7 @@ Ask your connected agent:
 
 > List the Auto tools you can call. Tell me whether `list_interactions` and `answer_interaction` are among them, and which values the `type` field of `create_definition` accepts.
 
-The agent should report `list_interactions` and `answer_interaction` among the tools, and `reasoning`, `interaction` and `workflow` among the accepted values of `type`. These are the API identifiers for reasoning functions, interaction functions and workflows. The tools also include `send_run_event`, which sends a waiting run an event that is not the answer to a question.
+The agent should report `list_interactions` and `answer_interaction` among the tools, and `reasoning`, `interaction` and `workflow` among the accepted values of `type`, the types of reasoning functions, interaction functions and workflows. The tools also include `send_run_event`, which sends a waiting run an event that is not the answer to a question.
 
 If neither `create_definition` nor `list_interactions` is listed, the connection uses an organization endpoint, which offers brain management and model discovery only. Connect your agent to the runtime's `/mcp` endpoint or to the brain's own endpoint before continuing; [MCP endpoint scope](../reference/mcp.md#endpoint-scope) lists them.
 
@@ -34,7 +34,7 @@ You should see `review-campaign-brief`, its version, and `brief` as its required
 
 The interaction function asks one person for a decision. Its run renders the message from its input, leaves the request in the brain's inbox for the party named in `to`, and waits until someone answers, the request expires after two days, or the run is cancelled. The answer must match `output.schema`, and the answer is the run's output.
 
-> In `campaign-review-tutorial`, create an interaction function named `approve-campaign-brief` from the document below. Use the document unchanged as the source, with the capability `interaction`. If a function with that name already exists, show it to me instead of changing it. Then show me the saved function's version and description.
+> In `campaign-review-tutorial`, create an interaction function named `approve-campaign-brief` from the document below. Use the document unchanged as the source, with the type `interaction`. If a function with that name already exists, show it to me instead of changing it. Then show me the saved function's version and description.
 
 <!-- prettier-ignore -->
 ```markdown
@@ -70,7 +70,7 @@ The agent should confirm the interaction function `approve-campaign-brief` at ve
 
 The workflow has two steps. `review-brief` runs the reasoning function on the brief the run starts with and keeps the owner beside the review. `ask-for-approval` runs the interaction function with the owner and the review, and waits for its answer. The run's output keeps the review and the approval.
 
-> In `campaign-review-tutorial`, create a workflow named `review-and-approve` from the document below. Use the document unchanged as the source, with the capability `workflow`. If a workflow with that name already exists, show it to me instead of changing it. Then show me the saved workflow's version, description and required input.
+> In `campaign-review-tutorial`, create a workflow named `review-and-approve` from the document below. Use the document unchanged as the source, with the type `workflow`. If a workflow with that name already exists, show it to me instead of changing it. Then show me the saved workflow's version, description and required input.
 
 ```yaml
 document:
@@ -126,9 +126,9 @@ Total budget: USD 8,000
 Success measure: Generate interest in the product
 ```
 
-> Run the workflow `review-and-approve` in `campaign-review-tutorial` with the brief above as its `brief` input and `ada@example.com` as its `owner`. Show me the run's run id and status, and keep the run id for later.
+> Run the workflow `review-and-approve` in `campaign-review-tutorial` with the brief above as its `brief` input and `ada@example.com` as its `owner`. Show me the run's id and status, and keep the id for later.
 
-The run should answer with an `run_id` and `status: started`. The tool's summary reads: The workflow “review-and-approve” has started and is still running. It carries on by itself, and how it ends can be looked up later.
+The run should answer with a `run_id` and `status: started`. The tool's summary reads: The workflow “review-and-approve” has started and is still running. It carries on by itself, and how it ends can be looked up later.
 
 The run reviews the brief, then asks for the approval and waits. Check it:
 
@@ -142,7 +142,7 @@ It should still show `status: started`, and the tool's summary reads: The workfl
 
 The agent should show one request, to `ada@example.com`, waiting in the inbox with no `delivery`, with the standing `in_inbox`, an `expires_at` two days ahead, and the message rendered from the review. The tool's summary reads: Found 1 request waiting on this page.
 
-The request has an `run_id` of its own: it is the run of the interaction function that the workflow started, and it is the id to answer.
+The request has a `run_id` of its own: it is the run of the interaction function that the workflow started, and it is the id to answer.
 
 ## 7. Answer the request
 

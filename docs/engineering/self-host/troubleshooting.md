@@ -22,4 +22,4 @@ The ledger lives on `/data`. Reuse the named persistent volume across container 
 
 ## A run stays started
 
-A waiting workflow can legitimately remain `started`. Its history, `get_run_history`, shows the steps each input moved, and the last one shows what the run waits for. A run whose run the ledger would not settle yet also leaves it `started` until a later attempt settles it; the server warns once when such a run backs off to an attempt a minute, and once when it is settled. [Workflow operations](workflows.md) explains how a run ends.
+A waiting workflow can legitimately remain `started`. Its history, `get_run_history`, shows the steps each input moved, and the last one shows what the run waits for. A run the ledger would not settle yet also stays `started` until a later attempt settles it; the server warns once when such a run backs off to an attempt a minute, and once when it is settled. [Workflow operations](workflows.md) explains how a run ends.

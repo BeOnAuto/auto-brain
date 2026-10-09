@@ -1,6 +1,6 @@
 # Model providers and gateways
 
-These are settings for the runtime's implemented reasoning functions, identified as `reasoning` in the API. Model availability depends on your provider account.
+These are settings for the runtime's reasoning functions. Model availability depends on your provider account.
 
 ## How a model reference is resolved
 
@@ -356,7 +356,7 @@ With `retries: 'adapter'`, the default, a call that fails with HTTP 408, 409, 42
 
 ## What is recorded, and what is never logged
 
-A result carries `text`; `json` when JSON was asked for; `finish_reason` (`stop`, `length`, `content_filter`, `tool_calls`, `error` or `other`) and the provider's `raw_finish_reason`; `usage` (input tokens, of which uncached, cache read and cache write; output tokens, of which text and reasoning; and the total, each `null` when the provider did not say); the `model` as requested, as resolved and as answered; the provider's `response_id` (Bedrock's request id); `warnings` from the provider, such as a setting a model ignores; and `duration_ms`. The run that runs a definition records the result.
+A result carries `text`; `json` when JSON was asked for; `finish_reason` (`stop`, `length`, `content_filter`, `tool_calls`, `error` or `other`) and the provider's `raw_finish_reason`; `usage` (input tokens, of which uncached, cache read and cache write; output tokens, of which text and reasoning; and the total, each `null` when the provider did not say); the `model` as requested, as resolved and as answered; the provider's `response_id` (Bedrock's request id); `warnings` from the provider, such as a setting a model ignores; and `duration_ms`. The run records the result.
 
 This package logs nothing itself. It never returns, and no failure or defect carries:
 

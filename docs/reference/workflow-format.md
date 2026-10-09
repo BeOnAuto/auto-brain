@@ -2,7 +2,7 @@
 
 # Workflow format
 
-The API stores a workflow as an `workflow` definition. Its source document is YAML written in the [Open Workflow Specification](https://github.com/open-workflow-specification/specification) DSL 1.0, within the rules and limits on this page. [Build your first workflow](../tutorials/first-workflow.md) provides a guided example, and [Workflows and runs](../concepts/workflows.md) explains how a run starts, waits and ends.
+The API stores a workflow as a definition of the type `workflow`. Its source document is YAML written in the [Open Workflow Specification](https://github.com/open-workflow-specification/specification) DSL 1.0, within the rules and limits on this page. [Build your first workflow](../tutorials/first-workflow.md) provides a guided example, and [Workflows and runs](../concepts/workflows.md) explains how a run starts, waits and ends.
 
 ## A workflow document
 
@@ -91,7 +91,7 @@ do:
         review: ${ .review }
 ```
 
-For this document, `create_definition` takes `type: "workflow"`, a workflow `name` and the document as `source`. `run_definition` takes the same capability and name, with `brief` in the `input` object. The run reviews the brief, then waits. Sending it the event `com.example.brief.decided` with `data` of `{"approved": true}` ends it with `approved: true` and the review. A decision of `{"approved": false, "reason": "..."}` ends it with that reason, and no decision within seven days ends it with the reason `No decision within a week`.
+For this document, `create_definition` takes `type: "workflow"`, a workflow `name` and the document as `source`. `run_definition` takes the same type and name, with `brief` in the `input` object. The run reviews the brief, then waits. Sending it the event `com.example.brief.decided` with `data` of `{"approved": true}` ends it with `approved: true` and the review. A decision of `{"approved": false, "reason": "..."}` ends it with that reason, and no decision within seven days ends it with the reason `No decision within a week`.
 
 ## Document fields
 

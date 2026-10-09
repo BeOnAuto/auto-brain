@@ -2,7 +2,7 @@
 
 # Computation function format
 
-The API stores a computation function as a `computation` definition. Its source document declares the input and output contracts and holds a program, written in jq, that computes the output from the input. A run applies the program to its input and answers with exactly one output, the same output for the same input every time. Use one for the arithmetic and data shaping a language model should not do: totals, paces, projections and transformations of rows of figures.
+The API stores a computation function as a definition of the type `computation`. Its source document declares the input and output contracts and holds a program, written in jq, that computes the output from the input. A run applies the program to its input and answers with exactly one output, the same output for the same input every time. Use one for the arithmetic and data shaping a language model should not do: totals, paces, projections and transformations of rows of figures.
 
 Numbers are double-precision floating point. Integers are exact up to 2^53, there is no decimal type and nothing rounds to decimal places, so compute money in whole minor units, such as cents, as the example below does. See [Numbers](#numbers).
 
@@ -41,7 +41,7 @@ output:
 | { campaigns: ., total_spend_cents: (map(.spend_cents) | add) }
 ```
 
-For this document, `create_definition` takes `type: "computation"`, a function `name` such as `campaign-pace`, and the document as `source`. `run_definition` takes the same capability and name, with `rows` and `period` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
+For this document, `create_definition` takes `type: "computation"`, a function `name` such as `campaign-pace`, and the document as `source`. `run_definition` takes the same type and name, with `rows` and `period` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
 
 Given this input:
 

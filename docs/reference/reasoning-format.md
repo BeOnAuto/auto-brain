@@ -2,7 +2,7 @@
 
 # Reasoning function format
 
-The API stores a reasoning function as an `reasoning` definition. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
+The API stores a reasoning function as a definition of the type `reasoning`. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
 
 ## A function document
 
@@ -28,7 +28,7 @@ Brief: {{ input.brief }}
 Criteria: {{ input.criteria }}
 ```
 
-For this document, `create_definition` takes `type: "reasoning"`, a function `name` and the document as `source`. `run_definition` takes the same capability and name, with `brief` and `criteria` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
+For this document, `create_definition` takes `type: "reasoning"`, a function `name` and the document as `source`. `run_definition` takes the same type and name, with `brief` and `criteria` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
 
 ## Fields
 

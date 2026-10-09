@@ -36,8 +36,7 @@ Setup work that couldn't be finished yet, and why.
 
 ## Local databases
 
-- [ ] **Delete every local ledger made before several triggers.** The host keeps one row a trigger now, in a `workflow_subscriptions` keyed by brain, workflow and trigger, and does not migrate the old table, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database fails every round of the host's follower: no trigger starts a run, no listening run is offered an event and no waiting call is answered.
-- [ ] **Delete every local ledger made before an interaction function named the tool it sends through.** A request's record and its delivery facts changed shape, the open requests moved to `open_requests_4` and the conversations the brain reads have a table of their own, and nothing reads the old shape, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database holds runs that wait on requests no attempt delivers and no listing shows.
+- [ ] **Delete every local ledger made before the one vocabulary.** The streams, event types and fields of definitions, runs and run logs took the product's words, the projections of runs took their next versions, and the host's tables key a run by `run_key` and its reaction backlog by `run_id`, and nothing reads the old names, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database shows no definition and reads its run logs as runs; every write to the reaction backlog fails, and the host's sweep of deferred starts dies on every pass.
 
 ## Tests
 

@@ -16,15 +16,15 @@ A budget-review workflow could assess the options with a reasoning function, the
 
 Keep the saved work separate from what happens when it executes:
 
-| Term       | Meaning                                              |
-| ---------- | ---------------------------------------------------- |
-| Definition | The reusable function or workflow someone creates    |
-| Version    | A particular revision of that definition             |
-| Run        | One run against particular inputs                    |
-| Result     | The output of that run                               |
-| Step       | One task of a workflow, such as a call to a function |
-| Step run   | Run of a particular step within a workflow run       |
-| Attempt    | One try at a step's work; a retry is another attempt |
+| Term       | Meaning                                                 |
+| ---------- | ------------------------------------------------------- |
+| Definition | The reusable function or workflow someone creates       |
+| Version    | A particular revision of that definition                |
+| Run        | A definition carried out once against particular inputs |
+| Result     | The output of that run                                  |
+| Step       | One task of a workflow, such as a call to a function    |
+| Step run   | One step carried out once within a workflow run         |
+| Attempt    | One try at a step's work; a retry is another attempt    |
 
 Saving a workflow creates its definition at version 1, and each change to its document adds a version. A run uses the active latest version when it starts and keeps that version until it ends; the run records it as `definition_version`. A step that calls a function runs the function's active latest version at the time of the call.
 
@@ -32,7 +32,7 @@ Each call to a function starts a run of that function, recorded under its own ru
 
 ## Starting a run
 
-A run starts when a caller executes the workflow with `run_definition`, giving its input. The call answers at once with the run's run id and the status `started`; the run then carries on by itself. Executing again with the same run id and input returns that run as it stands rather than starting another. A workflow runs once for each run id: executing again with the id of a run that ended without a result, `rejected` as `unavailable` or `failed`, is refused with `conflict`, so start a new run under a new run id.
+A run starts when a caller executes the workflow with `run_definition`, giving its input. The call answers at once with the `run_id` of the run and the status `started`; the run then carries on by itself. Executing again with the same run id and input returns that run as it stands rather than starting another. A workflow runs once for each run id: executing again with the id of a run that ended without a result, `rejected` as `unavailable` or `failed`, is refused with `conflict`, so start a new run under a new run id.
 
 A run also starts when a trigger of the workflow fires, as the next section describes.
 
@@ -57,7 +57,7 @@ A workflow can also announce something with an `emit` step, which records an eve
 
 A run waits while a step's function runs, while a timer or a retry delay passes, and while a step listens for an event. It shows the status `started` throughout.
 
-An event answers a waiting run. A caller sends it with `send_run_event`, naming the run's run id and giving the event a `type` and, usually, `data`. The event belongs to that run: it does not start another one. An event that arrives before the run listens for it is kept until a step takes it, and an event repeated with the same id is taken once, so a sender can retry safely. A run that has ended refuses events.
+An event answers a waiting run. A caller sends it with `send_run_event`, naming the `run_id` of the run and giving the event a `type` and, usually, `data`. The event belongs to that run: it does not start another one. An event that arrives before the run listens for it is kept until a step takes it, and an event repeated with the same id is taken once, so a sender can retry safely. A run that has ended refuses events.
 
 A step that listens for an event whose type it names also hears the events of the whole brain while it listens: one published with `publish_event`, emitted by another workflow, or one of the brain's facts. The run checks the event against its own filter, so it can take only the event about the case it handles. An event published before the step listened, or after it stopped, does not reach it; send the event to the run itself when it must not be missed.
 
@@ -89,7 +89,7 @@ A call waits as long as the function it names may take, plus a minute; past that
 
 ## Inspecting a run
 
-`get_run` reads a run by its run id. For a workflow it returns the workflow's name, the version that ran, who started it and when, its status and, once it ends, when it finished and its output or rejection.
+`get_run` reads a run by its `run_id`. For a workflow it returns the workflow's name, the version that ran, who started it and when, its status and, once it ends, when it finished and its output or rejection.
 
 `get_run_history` reads what happened in the run, oldest first: its start, its end and, for each input the run took (its start, a function's answer, a timer or an event), a `workflow_input_applied` event. That event names the input and lists the steps it moved, each with how it ended, such as `waiting` or `completed`, so the latest one shows what the run is waiting for; an event for each step follows it, named for how the step ended that input, such as `step_waiting` or `step_finished`. Every event names the event that led to it, so the history draws as a graph: the branch a `switch` took, the branches of a `fork`, a retry and a wait. A step that calls a function shows the run id of the function's run on its `step_waiting` event, and `list_brain_events` with the workflow's `run_id` reads the workflow and every function run it started together. It shows neither the data the run holds nor the events' data. Each function run a step started is recorded in the brain under its own run id, which `list_runs` lists.
 

@@ -2,7 +2,7 @@
 
 # Interaction function format
 
-The API stores an interaction function as an `interaction` definition. Its source document names a party and an expiry, holds the message, and may name the tool of a tool server its request is sent through. A run renders the request from its input, sends it through that tool or, for a function that names none, leaves it in the brain's inbox, and waits, holding nothing of the server, until the request is answered, expires or is cancelled. The answer, checked against the answer schema the document gives, is the run's output. Use one wherever a brain asks a person or a system and takes the answer later: an approval, a choice, a figure only someone else has, or a notification that needs no answer.
+The API stores an interaction function as a definition of the type `interaction`. Its source document names a party and an expiry, holds the message, and may name the tool of a tool server its request is sent through. A run renders the request from its input, sends it through that tool or, for a function that names none, leaves it in the brain's inbox, and waits, holding nothing of the server, until the request is answered, expires or is cancelled. The answer, checked against the answer schema the document gives, is the run's output. Use one wherever a brain asks a person or a system and takes the answer later: an approval, a choice, a figure only someone else has, or a notification that needs no answer.
 
 ## A function document
 
@@ -35,7 +35,7 @@ Please review the brief for {{ input.campaign }}.
 {{ input.summary }}
 ```
 
-For this document, `create_definition` takes `type: "interaction"`, a function `name` such as `approve-brief`, and the document as `source`. `run_definition` takes the same capability and name, with `campaign`, `owner` and `summary` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain. The run answers `status: started` with its `run_id`, and the request waits in the brain's inbox until it is answered, since the function names no `deliver`.
+For this document, `create_definition` takes `type: "interaction"`, a function `name` such as `approve-brief`, and the document as `source`. `run_definition` takes the same type and name, with `campaign`, `owner` and `summary` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain. The run answers `status: started` with its `run_id`, and the request waits in the brain's inbox until it is answered, since the function names no `deliver`.
 
 ## Sending through a tool
 
