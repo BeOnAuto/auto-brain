@@ -152,3 +152,16 @@ describe('the remedies an operation gives of its own', () => {
     );
   });
 });
+
+const calledTools = { status: 'rejected', reason: 'conflict', detail: 'x', kind: 'tools_called' } as const;
+
+const calledOnlyReading = { ...calledTools, because: 'only_read' } as const;
+
+describe('a run not made again under its id after calling tools that only read', () => {
+  it('says that nothing was changed, which a run whose tools may have changed something never says', () => {
+    expect(unsuccessfulWords('run the function', 'command', calledOnlyReading)).toBe(
+      "Could not run the function: an attempt of this run under the same id did not succeed, and every tool it called only reads, by its server's own account. Nothing was changed. So it was not run again under its id: start a new run instead; its history shows what it called.",
+    );
+    expect(unsuccessfulWords('run the function', 'command', calledTools)).not.toContain('Nothing was changed.');
+  });
+});

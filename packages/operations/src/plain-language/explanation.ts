@@ -161,12 +161,24 @@ const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
   model_unavailable: 'because the model stopped answering',
   run_bound: 'because it ran out of time',
   no_answer: 'because the model kept calling tools instead of answering',
+  only_read: "because every tool it called only reads, by its server's own account",
 };
 
 const remedyByBecause: Remedies = {
   not_testable:
     "A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
   key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
+};
+
+const explanationByKindAndBecause: Readonly<
+  Partial<Record<RejectionKind, Partial<Record<RejectionBecause, Explanation>>>>
+> = {
+  tools_called: {
+    only_read: {
+      why: "an attempt of this run under the same id did not succeed, and every tool it called only reads, by its server's own account",
+      remedy: 'So it was not run again under its id: start a new run instead; its history shows what it called.',
+    },
+  },
 };
 
 const noRemedies: Remedies = {};
@@ -179,6 +191,10 @@ export function explanationOf(
     return explanationByReason[reason];
   }
   const explanation = explanationByKind[kind];
+  const ofBoth = because === undefined ? undefined : explanationByKindAndBecause[kind]?.[because];
+  if (ofBoth !== undefined) {
+    return ofBoth;
+  }
   return because === undefined
     ? explanation
     : {
