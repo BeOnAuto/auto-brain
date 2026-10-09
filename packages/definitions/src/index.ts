@@ -29,6 +29,13 @@ export {
   type StandingRequest,
   type ToolCallJournal,
 } from './capability/capability.ts';
+export {
+  changedExpressions,
+  noStrippedForms,
+  runnableAttributes,
+  runnableExpression,
+  type StrippedForms,
+} from './capability/stripped-forms.ts';
 export type {
   CallAnsweredFact,
   CallStartedFact,

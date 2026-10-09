@@ -31,10 +31,10 @@ function checkedCapability() {
               issues: [{ pointer: '', detail: 'Line 1: wrong is not a word this capability takes' }],
             }),
           )
-        : Effect.void;
+        : Effect.succeed({ module: text.toUpperCase() });
     },
     summarize: ({ text }) => ({ description: text }),
-    run: ({ text }) => Effect.succeed({ output: text, record: {} }),
+    run: ({ text }, _input, _run, { module = text }) => Effect.succeed({ output: module, record: {} }),
   });
   return { capability, checked: () => checked };
 }
@@ -78,16 +78,16 @@ describe('the check of a document when it is saved', () => {
     expect(await update('greet', 'slow')).toEqual(unavailable);
   });
 
-  it('never runs when a definition is read or run', async () => {
+  it('never runs when a definition is read or run, whose run takes what the check stripped at its save, which no read shows', async () => {
     const { call, operations, create, checked } = saving();
     await create('greet', 'right');
 
-    expect(await call(operations.getDefinition, toAlpha(acmeAdmin, { type: 'checked', name: 'greet' }))).toMatchObject({
-      status: 'succeeded',
-    });
+    const read = await call(operations.getDefinition, toAlpha(acmeAdmin, { type: 'checked', name: 'greet' }));
+    expect(read).toMatchObject({ status: 'succeeded', output: { source: 'right' } });
+    expect(JSON.stringify(read)).not.toContain('RIGHT');
     expect(
       await call(operations.runDefinition, toAlpha(acmeAdmin, { type: 'checked', name: 'greet', input: {} })),
-    ).toMatchObject({ status: 'succeeded', output: { output: 'right' } });
+    ).toMatchObject({ status: 'succeeded', output: { output: 'RIGHT' } });
     expect(checked()).toEqual(['right']);
   });
 });

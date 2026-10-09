@@ -7,7 +7,7 @@ import { counting, detailsOf, foldOf, foldedAll, isLive, liveWith, viewTestTimeo
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 
 function countingRunsOf(subject: string) {
-  return detailsOf(foldOf('return view + 1;', 'number'), [{ type: 'run_succeeded', subject }], { initial: 0 });
+  return detailsOf(foldOf('return view + 1;'), [{ type: 'run_succeeded', subject }], { initial: 0 });
 }
 
 async function readsWhile(views: ViewHarness, work: () => Promise<unknown>): Promise<number> {

@@ -33,6 +33,7 @@ export interface RecallRuns extends KeptViews {
   readonly capability: Capability;
   readonly prepared: (source: string) => PreparedDefinition;
   readonly running: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly runningUnsaved: (source: string, input?: Schema.Json) => Promise<Run>;
 }
 
 const pools: ProgramPool[] = [];
@@ -78,10 +79,14 @@ export function recallWith(pool: ProgramPool = poolOf(), bounds: AnswerBounds = 
   const views = keptViews();
   const capability = makeRecallFunctionAdapter({ pool, views: views.views, ...bounds });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(capability.prepare(source));
+  const saved = (source: string) =>
+    Effect.flatMap(prepared(source).check, (stripped) => capability.prepare(source, stripped));
   return {
     ...views,
     capability,
     prepared,
-    running: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, reviewsRun)),
+    running: (source, input = {}) =>
+      Effect.runPromiseExit(Effect.flatMap(saved(source), (definition) => definition.run(input, reviewsRun))),
+    runningUnsaved: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, reviewsRun)),
   };
 }

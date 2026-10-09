@@ -1,3 +1,4 @@
+import type { StrippedForms } from '@beonauto/definitions';
 import { checkedAtSave } from '@beonauto/definitions/check';
 import { issueText, reportedIssues, type DocumentIssue } from '@beonauto/definitions/document';
 import { InvalidInput, type Unavailable } from '@beonauto/operations';
@@ -8,7 +9,7 @@ import type { ComputationFunctionDefinitionDocument } from './computation-docume
 
 export type DocumentCheck = (
   document: ComputationFunctionDefinitionDocument,
-) => Effect.Effect<void, InvalidInput | Unavailable>;
+) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
 
 export function invalidDefinition(issues: readonly DocumentIssue[]): InvalidInput {
   return new InvalidInput({
@@ -33,10 +34,10 @@ export function documentCheck(pool: ProgramPool): DocumentCheck {
       expressions: [],
     };
     return checkedAtSave(pool, job).pipe(
-      Effect.flatMap((issues) =>
-        issues.length === 0
-          ? Effect.void
-          : Effect.fail(invalidDefinition(reportedIssues(issues.map((issue) => placed(document, issue))))),
+      Effect.flatMap((checked) =>
+        'stripped' in checked
+          ? Effect.succeed(checked.stripped)
+          : Effect.fail(invalidDefinition(reportedIssues(checked.issues.map((issue) => placed(document, issue))))),
       ),
     );
   };

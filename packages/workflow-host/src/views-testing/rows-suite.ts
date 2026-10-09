@@ -229,7 +229,7 @@ function racingTests(settingsOf: SettingsOf): void {
   it('let a page go whose row another host renewed while it folded, and fold the newer version from the start', async () => {
     const views = await viewHarness(await settingsOf());
     const elsewhere = reconciling(views, 4);
-    await views.saved('runs', detailsOf(foldOf('return view + 100;', 'number'), succeeded, { initial: 0 }));
+    await views.saved('runs', detailsOf(foldOf('return view + 100;'), succeeded, { initial: 0 }));
     await views.ranEach('reasoning/runs', [1, 2]);
     const renewedElsewhere = async (): Promise<void> => {
       await views.saved('runs', counting);

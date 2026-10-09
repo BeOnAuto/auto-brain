@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest';
 
 import { expressionUnitOf } from '../programs/expression-units.ts';
 import { threadStackBytes } from '../programs/sandbox-bounds.ts';
-import { cachedStripping } from '../programs/type-stripping.ts';
 import { freshInstance, pageBytes } from './fresh-instances.ts';
 import { instanceStock } from './instance-stock.ts';
 
@@ -13,13 +12,13 @@ const evaluation = { budget: 1_000_000, deadlineAt: Number.POSITIVE_INFINITY, mo
 
 function allocated(memoryBytes: number, megabytes: number): Promise<unknown> {
   return freshInstance(memoryBytes).then((instance) => {
-    const unit = expressionUnitOf(
-      () => instance,
-      { stackBytes: threadStackBytes, mostAnswerBytes: 1024, clock: () => 0 },
-      cachedStripping(),
-    );
+    const unit = expressionUnitOf(() => instance, {
+      stackBytes: threadStackBytes,
+      mostAnswerBytes: 1024,
+      clock: () => 0,
+    });
     const run = unit.evaluate(
-      `(() => { const kept: string[] = []; for (let index = 0; index < ${megabytes}; index++) kept.push("y".repeat(1048576) + index); return kept.length })()`,
+      `(() => { const kept = []; for (let index = 0; index < ${megabytes}; index++) kept.push("y".repeat(1048576) + index); return kept.length })()`,
       {},
       evaluation,
     );

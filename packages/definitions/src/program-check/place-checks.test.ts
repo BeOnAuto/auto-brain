@@ -87,6 +87,12 @@ describe('a recall function checked when it is saved', () => {
 });
 
 describe('expressions checked when a document is saved', () => {
+  it('answers each expression a passing document holds stripped of its types, in their order', () => {
+    expect(
+      check(expressions({ source: '$data.n as number', names: overData }, { source: '$data.n + 1', names: overData })),
+    ).toEqual({ ran: 'checked', issues: [], stripped: { expressions: ['$data.n          ', '$data.n + 1'] } });
+  });
+
   it('checks every expression of a document as one file, naming each issue by its expression and its line', () => {
     const many = Array.from({ length: 100 }, (_, index) => ({
       source: ` ({ ...$context, n: $data.n + ${index} }) `,

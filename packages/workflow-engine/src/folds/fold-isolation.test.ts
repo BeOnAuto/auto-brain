@@ -24,8 +24,8 @@ async function inPagesOf(size: number, fold: string, view: Json, start = 0): Pro
 
 function writingTo(holder: string): string {
   return [
-    'export function fold(view: { counts: number[] }): { counts: number[] } {',
-    `  const holder: any = ${holder};`,
+    'export function fold(view) {',
+    `  const holder = ${holder};`,
     '  holder.seen = (holder.seen ?? 0) + 1;',
     '  return { counts: [...view.counts, holder.seen] };',
     '}',
@@ -67,8 +67,8 @@ describe('the intrinsics of a page that no global names', () => {
 describe('a fold in a frozen page', () => {
   it('still iterates with helpers, generators, matchAll and the iterators of a Map and a Set', async () => {
     const iterating = [
-      'export function fold(view: number[]): number[] {',
-      '  function* twice(values: number[]) {',
+      'export function fold(view) {',
+      '  function* twice(values) {',
       '    for (const value of values) yield value * 2;',
       '  }',
       '  const doubled = [...twice([1, 2])];',
@@ -90,7 +90,7 @@ const droppedByJson: readonly (readonly [string, string, Json])[] = [
   [
     'two members that are one object',
     [
-      'export function fold(view: any): any {',
+      'export function fold(view) {',
       '  if (view.a === undefined) {',
       '    const shared = { n: 0 };',
       '    return { a: shared, b: shared, aliased: 0 };',
@@ -104,7 +104,7 @@ const droppedByJson: readonly (readonly [string, string, Json])[] = [
   [
     'a negative zero',
     [
-      'export function fold(view: any): any {',
+      'export function fold(view) {',
       '  return { zero: -0, sign: view.zero === undefined ? null : String(1 / view.zero) };',
       '}',
     ].join('\n'),
@@ -113,7 +113,7 @@ const droppedByJson: readonly (readonly [string, string, Json])[] = [
   [
     'a member keyed by a symbol',
     [
-      'export function fold(view: any): any {',
+      'export function fold(view) {',
       '  const seen = (view[Symbol.for("seen")] ?? 0) + 1;',
       '  return { [Symbol.for("seen")]: seen, seen };',
       '}',

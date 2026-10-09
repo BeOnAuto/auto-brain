@@ -226,6 +226,16 @@ describe('the bounds a run asks its sandbox for', { timeout: workerTestTimeoutMs
   });
 });
 
+describe('a run of a program its save did not strip', () => {
+  it('ends in conflict, unworkable, rather than run the author’s TypeScript', async () => {
+    expect(await computationWith().runningUnsaved(programDocument(functionOf('return 1;')), null)).toEqual(
+      unworkable(
+        'The computation function was saved without the program its check strips for the sandbox; update it to save it again',
+      ),
+    );
+  });
+});
+
 describe('a run of the server that cannot finish', { timeout: workerTestTimeoutMs }, () => {
   it('is unavailable when it runs past its deadline, though its native work spends few checkpoints', async () => {
     const slow = computationWith(poolOf(), { deadlineMs: 500 });

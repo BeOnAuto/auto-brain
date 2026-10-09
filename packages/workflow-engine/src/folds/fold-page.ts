@@ -5,7 +5,6 @@ import { mostIssueBytes, textWithin, utf8BytesWithin } from '../programs/byte-si
 import { foldingUnitOf, type Fold } from '../programs/kept-contexts.ts';
 import type { Evaluation, ProgramFailure, ProgramRun } from '../programs/program-run.ts';
 import type { SandboxInstance } from '../programs/sandbox-session.ts';
-import type { Stripping } from '../programs/type-stripping.ts';
 import { matchingOf, preparedFilters, type PreparedFilter, type Stopped } from './fold-filters.ts';
 
 export type StallKind = 'raised' | 'work' | 'memory' | 'unfit' | 'size' | 'schema' | 'refused';
@@ -58,7 +57,6 @@ export interface FoldHost {
   readonly folding: (event: number, view: number) => void;
   readonly checkOf: (schema: JsonObject) => ViewCheck;
   readonly instances: readonly SandboxInstance[];
-  readonly stripping: Stripping;
 }
 
 type Ready = { readonly fold: Fold; readonly filters: readonly PreparedFilter[] } | { readonly failed: ProgramFailure };
@@ -112,7 +110,7 @@ function readyOf(
     instance,
     { stackBytes: page.stackBytes, mostAnswerBytes: page.mostViewBytes, clock: host.now },
     { fold: view.fold, view: JSON.stringify(view.view) },
-    { stripping: host.stripping, evaluation },
+    evaluation,
   );
   if ('refused' in unit) {
     return { ready: { failed: unit.refused }, close: unit.close };

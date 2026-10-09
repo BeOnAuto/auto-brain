@@ -27,13 +27,13 @@ export function detailsOf(fold: string, filters: ViewDetails['filters'], more: P
   return { language: 'typescript', fold, foldLine: 30, filters, initial: {}, ...more };
 }
 
-export function foldOf(body: string, view = 'unknown'): string {
-  return `export function fold(view: ${view}, event: any): ${view} {\n  ${body}\n}`;
+export function foldOf(body: string): string {
+  return `export function fold(view, event) {\n  ${body}\n}`;
 }
 
-export const counting = detailsOf(foldOf('return view + 1;', 'number'), succeeded, { initial: 0 });
+export const counting = detailsOf(foldOf('return view + 1;'), succeeded, { initial: 0 });
 
-export const collecting = detailsOf(foldOf('return [...view, event.data.output];', 'unknown[]'), succeeded, {
+export const collecting = detailsOf(foldOf('return [...view, event.data.output];'), succeeded, {
   initial: [],
 });
 

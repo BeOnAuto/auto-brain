@@ -25,7 +25,7 @@ export type {
   ProgramPool,
   ProgramRequest,
 } from './jobs/pool-contract.ts';
-export type { CheckAnswer, CheckIssue, CheckJob } from './jobs/check-messages.ts';
+export type { CheckAnswer, CheckIssue, CheckJob, StrippedSources } from './jobs/check-messages.ts';
 export { checkPermits, programPool } from './program-pool/program-pool.ts';
 export { idleWorkerMs, jobsBeforeRecycling } from './program-pool/pool-workers.ts';
 export { workerStackMegabytes } from './program-pool/pool-threads.ts';

@@ -1,18 +1,15 @@
 import { detailsOf } from './view-documents.ts';
 
 export const reviewsFold = [
-  'type Review = { at: string; verdict: string; run: string };',
-  'type Reviews = { [campaign: string]: Review[] };',
-  '',
-  'function fieldOf(value: unknown, name: string): unknown {',
+  'function fieldOf(value, name) {',
   "  return typeof value === 'object' && value !== null && !Array.isArray(value) ? Reflect.get(value, name) : undefined;",
   '}',
   '',
-  'function lastAt(reviews: Review[]): string {',
+  'function lastAt(reviews) {',
   "  return reviews.at(-1)?.at ?? '';",
   '}',
   '',
-  'export function fold(view: Reviews, event: { time?: string; source: string; data: unknown }): Reviews {',
+  'export function fold(view, event) {',
   "  const output = fieldOf(event.data, 'output');",
   "  const named = fieldOf(output, 'campaign');",
   "  const campaign = typeof named === 'string' ? named : 'unknown';",
@@ -24,7 +21,7 @@ export const reviewsFold = [
   '  return Object.fromEntries(latest);',
   '}',
   '',
-  'export function answer(view: Reviews, input: { campaign: string; last?: number }): Review[] {',
+  'export function answer(view, input) {',
   '  return (view[input.campaign] ?? []).slice(-(input.last ?? 5));',
   '}',
 ].join('\n');

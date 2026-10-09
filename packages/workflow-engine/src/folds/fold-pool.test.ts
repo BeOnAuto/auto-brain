@@ -18,11 +18,11 @@ const noSchemaChecked: unknown = expect.stringContaining('checks no view schema'
 
 const noted = { type: 'noted' };
 
-const adding = 'export function fold(view: number, event: any): number {\n  return view + event.data.n;\n}';
+const adding = 'export function fold(view, event) {\n  return view + event.data.n;\n}';
 
-const listing = 'export function fold(view: unknown, event: any): unknown {\n  return [view, event.data.n];\n}';
+const listing = 'export function fold(view, event) {\n  return [view, event.data.n];\n}';
 
-const keeping = 'export function fold(view: unknown): unknown {\n  return view;\n}';
+const keeping = 'export function fold(view) {\n  return view;\n}';
 
 const events: readonly JsonObject[] = [
   { ...noted, data: { n: 1 } },
@@ -101,7 +101,7 @@ describe('a page of folds in a worker of the pool', { timeout: poolTestTimeoutMs
   });
 
   it('stalls a fold that overflows the stack of a fixed size every worker gives the sandbox', async () => {
-    const recursion = 'export function fold(view: number): number {\n  return fold(view + 1);\n}';
+    const recursion = 'export function fold(view) {\n  return fold(view + 1);\n}';
 
     expect(await poolOf().fold(request([viewOf(recursion)]))).toMatchObject({
       views: [{ stall: { at: 0, kind: 'raised', message: 'InternalError: stack overflow' } }],

@@ -9,7 +9,13 @@ const at = { by: 'acme-admin', at: '2026-10-01T09:00:00.000Z' };
 const history: readonly DefinitionEvent[] = [
   { type: 'definition_created', name: 'greet', version: 1, content: { source: 'one' }, ...at },
   { type: 'definition_created', name: 'other', version: 1, content: { source: 'else' }, ...at },
-  { type: 'definition_updated', name: 'greet', version: 2, content: { source: 'two' }, ...at },
+  {
+    type: 'definition_updated',
+    name: 'greet',
+    version: 2,
+    content: { source: 'two', stripped: { module: 'TWO' } },
+    ...at,
+  },
   { type: 'definition_retired', name: 'greet', ...at },
 ];
 
@@ -19,8 +25,14 @@ describe('a search for one version of a definition', () => {
 
     expect(history.reduce((found, event) => search.evolve(found, event), search.initialState)).toEqual({
       position: 4,
-      found: { source: 'two', position: 3 },
+      found: { source: 'two', stripped: { module: 'TWO' }, position: 3 },
     });
     expect(search.decide(null, search.initialState)).toEqual(Result.succeed([]));
+    expect(
+      history.reduce(
+        (found, event) => definitionVersionDecider('greet', 1).evolve(found, event),
+        definitionVersionDecider('greet', 1).initialState,
+      ),
+    ).toEqual({ position: 4, found: { source: 'one', position: 1 } });
   });
 });

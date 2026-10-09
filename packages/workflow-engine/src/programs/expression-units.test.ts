@@ -5,13 +5,10 @@ import { expressionUnitOf } from './expression-units.ts';
 import type { Evaluation } from './program-run.ts';
 import { threadStackBytes, unitMemoryBytes, workerStackBytes } from './sandbox-bounds.ts';
 import type { SandboxInstance } from './sandbox-session.ts';
-import { cachedStripping, notErasable } from './type-stripping.ts';
 
 const evaluation: Evaluation = { budget: 250, deadlineAt: Number.POSITIVE_INFINITY, moment: 0 };
 
 const settings = { stackBytes: threadStackBytes, mostAnswerBytes: unitMemoryBytes, clock: () => 0 };
-
-const stripping = cachedStripping();
 
 function countedInstances(instance: SandboxInstance): {
   readonly instances: () => SandboxInstance;
@@ -30,7 +27,7 @@ function countedInstances(instance: SandboxInstance): {
 describe('a unit of expressions', () => {
   it('takes an instance only when it first evaluates, and keeps it for every expression after', async () => {
     const counted = countedInstances(await freshInstance(unitMemoryBytes));
-    const unit = expressionUnitOf(counted.instances, settings, stripping);
+    const unit = expressionUnitOf(counted.instances, settings);
 
     const untouched = [unit.took(), counted.taken()];
     const runs = [
@@ -49,7 +46,7 @@ describe('a unit of expressions', () => {
 
   it('gives each expression a context of its own, so nothing one keeps reaches the next', async () => {
     const instance = await freshInstance(unitMemoryBytes);
-    const unit = expressionUnitOf(() => instance, settings, stripping);
+    const unit = expressionUnitOf(() => instance, settings);
 
     const kept = unit.evaluate('Reflect.set(globalThis, "seen", true)', {}, evaluation);
     const later = unit.evaluate('typeof Reflect.get(globalThis, "seen")', {}, evaluation);
@@ -60,7 +57,7 @@ describe('a unit of expressions', () => {
 
   it('passes only the names an expression uses', async () => {
     const instance = await freshInstance(unitMemoryBytes);
-    const unit = expressionUnitOf(() => instance, settings, stripping);
+    const unit = expressionUnitOf(() => instance, settings);
 
     const run = unit.evaluate(
       'typeof $context',
@@ -74,27 +71,9 @@ describe('a unit of expressions', () => {
 });
 
 describe('an expression a unit refuses', () => {
-  it('raises an expression whose syntax is not erasable, with its line, before taking an instance', () => {
-    const unit = expressionUnitOf(
-      () => {
-        throw new Error('no instance is needed');
-      },
-      settings,
-      stripping,
-    );
-
-    expect(unit.evaluate('[\n  <number>$data,\n]', { data: 1 }, evaluation)).toEqual({
-      ran: 'raised',
-      issue: { detail: notErasable, line: 2 },
-      work: 0,
-    });
-    expect(unit.took()).toBe(false);
-    unit.close();
-  });
-
   it('raises an expression that does not parse, with its line', async () => {
     const instance = await freshInstance(unitMemoryBytes);
-    const unit = expressionUnitOf(() => instance, settings, stripping);
+    const unit = expressionUnitOf(() => instance, settings);
 
     const run = unit.evaluate('$data +\n  * 2', { data: 1 }, evaluation);
     unit.close();
@@ -110,24 +89,20 @@ describe('an expression a unit refuses', () => {
 describe('a unit whose instance broke', () => {
   it('answers every expression after its instance refused memory as out of memory, and after its stack broke as out of stack', async () => {
     const refusing = await freshInstance(unitMemoryBytes);
-    const growing = expressionUnitOf(() => refusing, settings, stripping);
+    const growing = expressionUnitOf(() => refusing, settings);
     const breaking = await freshInstance(unitMemoryBytes);
-    const deep = expressionUnitOf(() => breaking, { ...settings, stackBytes: workerStackBytes }, stripping);
+    const deep = expressionUnitOf(() => breaking, { ...settings, stackBytes: workerStackBytes });
 
     const memory = [
       growing.evaluate(
-        '(() => { const kept: string[] = []; for (;;) kept.push("y".repeat(1048576) + kept.length) })()',
+        '(() => { const kept = []; for (;;) kept.push("y".repeat(1048576) + kept.length) })()',
         {},
         evaluation,
       ),
       growing.evaluate('1 + 1', {}, evaluation),
     ];
     const stack = [
-      deep.evaluate(
-        '(() => { const down = (depth: number): number => down(depth + 1); return down(0) })()',
-        {},
-        evaluation,
-      ),
+      deep.evaluate('(() => { const down = (depth) => down(depth + 1); return down(0) })()', {}, evaluation),
       deep.evaluate('1 + 1', {}, evaluation),
     ];
     growing.close();

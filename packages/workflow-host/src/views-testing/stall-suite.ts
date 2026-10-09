@@ -20,11 +20,10 @@ import { viewHarness, type ViewHarness } from './view-harness.ts';
 
 const raisingWithTheEvent = foldOf(
   'if (event.data.output === "bad") throw new Error(`cannot take ${event.data.output}`);\n  return view + 1;',
-  'number',
 );
 
 function badFold(whenBad: string): string {
-  return foldOf(`if (event.data.output === "bad") ${whenBad}\n  return view + 1;`, 'number');
+  return foldOf(`if (event.data.output === "bad") ${whenBad}\n  return view + 1;`);
 }
 
 const anyText: unknown = expect.any(String);
@@ -37,13 +36,13 @@ const stallingFolds: readonly (readonly [string, string, Readonly<Record<string,
   ['does too much work', badFold('for (;;) {}'), { kind: 'work', line: null }],
   [
     'uses more memory than a page may',
-    badFold('{\n    const kept: string[] = [];\n    for (;;) kept.push("y".repeat(1048576) + kept.length);\n  }'),
+    badFold('{\n    const kept = [];\n    for (;;) kept.push("y".repeat(1048576) + kept.length);\n  }'),
     { kind: 'memory', line: null },
   ],
   [
     'nests too deep',
     badFold(
-      '{\n    let value: unknown = 0;\n    for (let level = 0; level < 600; level++) value = [value];\n    return value;\n  }',
+      '{\n    let value = 0;\n    for (let level = 0; level < 600; level++) value = [value];\n    return value;\n  }',
     ),
     { kind: 'unfit', line: null },
   ],
@@ -76,7 +75,7 @@ function stoppingTests(settingsOf: SettingsOf): void {
     const schema = { type: 'array', maxItems: 1 };
     await views.saved(
       'runs',
-      detailsOf(foldOf('return [...view, event.data.output];', 'unknown[]'), succeeded, { initial: [], schema }),
+      detailsOf(foldOf('return [...view, event.data.output];'), succeeded, { initial: [], schema }),
     );
     await threeRuns(views);
     views.start();

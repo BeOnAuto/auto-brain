@@ -213,6 +213,19 @@ describe('the bounds an answer asks its sandbox for', { timeout: workerTestTimeo
   });
 });
 
+describe('a run of an answer its save did not strip', () => {
+  it('ends in conflict, unworkable, rather than run the author’s TypeScript', async () => {
+    const run = recallWith();
+    run.keep(liveView(springWithoutReviews));
+
+    expect(await run.runningUnsaved(answering('return view;'), noInput)).toEqual(
+      unworkable(
+        'The recall function was saved without the module its check strips for the sandbox; update it to save it again',
+      ),
+    );
+  });
+});
+
 describe('a run whose answer the server cannot finish', { timeout: workerTestTimeoutMs }, () => {
   it('is unavailable when it runs past its deadline', async () => {
     const slow = recallWith(poolOf(), { deadlineMs: 300 });

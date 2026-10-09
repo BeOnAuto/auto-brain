@@ -5,7 +5,6 @@ import { freshInstance } from '../instances/fresh-instances.ts';
 import { filterContextOf } from '../programs/kept-contexts.ts';
 import type { Evaluation } from '../programs/program-run.ts';
 import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
-import { cachedStripping } from '../programs/type-stripping.ts';
 import { matchingOf, preparedFilters, type Matching } from './fold-filters.ts';
 
 const reviewed = { type: 'run_succeeded', subject: 'reasoning/review-brief' };
@@ -15,7 +14,7 @@ const evaluation: Evaluation = { budget: 500, deadlineAt: Number.POSITIVE_INFINI
 const context = filterContextOf(
   await freshInstance(unitMemoryBytes),
   { stackBytes: threadStackBytes, mostAnswerBytes: 1000, clock: () => 0 },
-  { stripping: cachedStripping(), evaluation },
+  evaluation,
 );
 
 function succeeded(verdict: Json): JsonObject {

@@ -13,20 +13,17 @@ import { filterContextOf } from '../src/programs/kept-contexts.ts';
 import { moduleRun } from '../src/programs/module-runs.ts';
 import type { Evaluation } from '../src/programs/program-run.ts';
 import { sandboxRuntimeOf } from '../src/programs/sandbox-session.ts';
-import { cachedStripping, strippedModule } from '../src/programs/type-stripping.ts';
 import { medianMillisecondsOf, millisecondsOf } from './common.ts';
 
 const unbounded: Evaluation = { budget: Number.POSITIVE_INFINITY, deadlineAt: Number.POSITIVE_INFINITY, moment: 0 };
 
 const settings = { stackBytes: threadStackBytes, mostAnswerBytes: 16_777_216, clock: () => performance.now() };
 
-const stripping = cachedStripping();
-
 const decision = { decision: { decision: 'approve', reason: 'the budget is stated' } };
 
 const branching = [
-  'export default function (): unknown {',
-  '  const fib = (n: number): number => (n < 2 ? n : fib(n - 1) + fib(n - 2));',
+  'export default function () {',
+  '  const fib = (n) => (n < 2 ? n : fib(n - 1) + fib(n - 2));',
   '  const sorted = Array.from({ length: 5000 }, (_, index) => (index * 7919) % 1000).toSorted((a, b) => a - b);',
   '  return [fib(22), sorted[2500]];',
   '}',
@@ -53,12 +50,12 @@ async function ranModule(
   args: readonly string[],
   evaluation: Evaluation = unbounded,
 ): Promise<ProgramRun> {
-  const run = moduleRun(
-    await freshInstance(unitMemoryBytes),
-    settings,
-    { source, entry: 'default', arguments: args, evaluation },
-    stripping,
-  );
+  const run = moduleRun(await freshInstance(unitMemoryBytes), settings, {
+    source,
+    entry: 'default',
+    arguments: args,
+    evaluation,
+  });
   if (run.ran === 'refused') {
     throw new Error(run.issue.detail);
   }
@@ -88,13 +85,13 @@ async function instanceLines(): Promise<readonly string[]> {
 }
 
 async function checkpointLines(): Promise<readonly string[]> {
-  const loop = await ranModule('export default function (): never {\n  for (;;) {}\n}', [], {
+  const loop = await ranModule('export default function () {\n  for (;;) {}\n}', [], {
     ...unbounded,
     budget: 200,
   });
   const timed = async (body: string, budget: number): Promise<number> => {
     const started = performance.now();
-    await ranModule(`export default function (): unknown {\n  ${body}\n}`, [], { ...unbounded, budget });
+    await ranModule(`export default function () {\n  ${body}\n}`, [], { ...unbounded, budget });
     return performance.now() - started;
   };
   const answering = await medianAsync(9, () => timed('return 0;', 200));
@@ -103,26 +100,26 @@ async function checkpointLines(): Promise<readonly string[]> {
   const counts = await Promise.all([ranModule(branching, []), ranModule(branching, []), ranModule(branching, [])]);
   const regex = performance.now();
   const backtracking = await ranModule(
-    'export default function (): boolean {\n  return /^(a+)+$/.test("a".repeat(30) + "b");\n}',
+    'export default function () {\n  return /^(a+)+$/.test("a".repeat(30) + "b");\n}',
     [],
     { ...unbounded, budget: 200 },
   );
   const regexMs = performance.now() - regex;
   return [
     `checkpoints of a program with branching and recursion, three runs: ${counts.map(({ work }) => work).join(', ')}; a loop stopped at its budget of 200: ${loop.work}`,
-    `one checkpoint of a tight loop: ${formatted(await perCheckpoint('for (;;) {}'), 3)} ms; of a loop of calls: ${formatted(await perCheckpoint('const step = (): number => 0;\n  for (;;) step();'), 3)} ms, at the median of 9 runs of 200, less a run that answers at once`,
+    `one checkpoint of a tight loop: ${formatted(await perCheckpoint('for (;;) {}'), 3)} ms; of a loop of calls: ${formatted(await perCheckpoint('const step = () => 0;\n  for (;;) step();'), 3)} ms, at the median of 9 runs of 200, less a run that answers at once`,
     `the catastrophic pattern over 30 a's and a b: ${backtracking.ran} by ${backtracking.ran === 'exhausted' ? backtracking.limit : 'nothing'} after ${backtracking.work} checkpoints, ${formatted(regexMs, 1)} ms`,
   ];
 }
 
 async function expressionLines(): Promise<readonly string[]> {
   const instance = await freshInstance(unitMemoryBytes);
-  const unit = expressionUnitOf(() => instance, settings, stripping);
+  const unit = expressionUnitOf(() => instance, settings);
   const fresh = medianMillisecondsOf(201, () => {
     unit.evaluate('$context.decision.decision == "approve"', { context: decision }, unbounded);
   });
   unit.close();
-  const filters = filterContextOf(await freshInstance(unitMemoryBytes), settings, { stripping, evaluation: unbounded });
+  const filters = filterContextOf(await freshInstance(unitMemoryBytes), settings, unbounded);
   const test = filters.define(' $data.decision.decision == "approve" ');
   const freezing = millisecondsOf(() => {
     filters.freeze();
@@ -138,7 +135,7 @@ async function expressionLines(): Promise<readonly string[]> {
 }
 
 function building(answer: string): string {
-  return `export default function (input: unknown[]): unknown {\n  const value = input.map((row) => ({ row }));\n  return ${answer};\n}`;
+  return `export default function (input) {\n  const value = input.map((row) => ({ row }));\n  return ${answer};\n}`;
 }
 
 async function valueLines(): Promise<readonly string[]> {
@@ -149,7 +146,7 @@ async function valueLines(): Promise<readonly string[]> {
     note: 'x'.repeat(40),
   }));
   const input = JSON.stringify(rows);
-  const echo = 'export default function (input: unknown): unknown {\n  return input;\n}';
+  const echo = 'export default function (input) {\n  return input;\n}';
   const started = performance.now();
   const echoed = await ranModule(echo, [input]);
   const crossing = performance.now() - started;
@@ -172,7 +169,7 @@ async function valueLines(): Promise<readonly string[]> {
 async function stackLines(): Promise<readonly string[]> {
   const pool = programPool({ workers: 1, heapMegabytes: 256 });
   const deepest =
-    'export default function (): number {\n  let deepest = 0;\n  const down = (depth: number): number => {\n    deepest = depth;\n    return down(depth + 1);\n  };\n  try {\n    down(0);\n  } catch {\n    return deepest;\n  }\n  return -1;\n}';
+    'export default function () {\n  let deepest = 0;\n  const down = (depth) => {\n    deepest = depth;\n    return down(depth + 1);\n  };\n  try {\n    down(0);\n  } catch {\n    return deepest;\n  }\n  return -1;\n}';
   const depthAt = async (stackBytes: number): Promise<string> => {
     const outcome = await pool.run({
       source: deepest,
@@ -195,16 +192,6 @@ async function stackLines(): Promise<readonly string[]> {
   return [`the depth at which the stack overflows, in a worker of the pool, twice each: ${depths.join('; ')}`];
 }
 
-function strippingLines(): readonly string[] {
-  const source = branching;
-  const median = medianMillisecondsOf(201, () => {
-    strippedModule(source);
-  });
-  return [
-    `the types stripped from a program of ${source.length} characters: ${formatted(median, 3)} ms at the median of 201`,
-  ];
-}
-
 export async function sandboxMeasured(): Promise<readonly string[]> {
   return [
     ...(await instanceLines()),
@@ -212,6 +199,5 @@ export async function sandboxMeasured(): Promise<readonly string[]> {
     ...(await expressionLines()),
     ...(await valueLines()),
     ...(await stackLines()),
-    ...strippingLines(),
   ];
 }

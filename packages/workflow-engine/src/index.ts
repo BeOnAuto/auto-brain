@@ -27,7 +27,9 @@ export type { CallFunctions, ChildCall } from './dsl/call-functions.ts';
 export { durationLimitRejections } from './dsl/duration-limits.ts';
 export { readDuration } from './dsl/durations.ts';
 export {
+  entriesOf,
   field,
+  isList,
   isObject,
   valueAtPointer,
   jsonBytesOf,
@@ -36,10 +38,12 @@ export {
   objectField,
   textField,
   type Json,
+  type JsonEntry,
   type JsonObject,
 } from './dsl/json.ts';
 export { nestingRejections } from './dsl/nesting.ts';
 export { mostInputMs } from './dsl/evaluation.ts';
+export { enclosedBody } from './dsl/expressions.ts';
 export { oneLanguage, policyOf } from './dsl/policy.ts';
 export { forbidden, rejection, type Rejection } from './dsl/policy-checks.ts';
 export { runtimeNames } from './dsl/task-policy.ts';

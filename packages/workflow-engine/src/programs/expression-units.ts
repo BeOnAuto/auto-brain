@@ -1,4 +1,5 @@
 import type { Json } from '../dsl/json.ts';
+import { expressionScript } from './expression-script.ts';
 import { exhaustedBy, type Evaluation, type ProgramRun } from './program-run.ts';
 import {
   sandboxRuntimeOf,
@@ -6,7 +7,6 @@ import {
   type SandboxRuntime,
   type SandboxSettings,
 } from './sandbox-session.ts';
-import type { Stripping } from './type-stripping.ts';
 
 export type Arguments = Readonly<Record<string, Json>>;
 
@@ -32,11 +32,7 @@ function namedIn(source: string, values: Arguments): readonly string[] {
   return Object.keys(values).filter((name) => named.has(`$${name}`));
 }
 
-export function expressionUnitOf(
-  instances: () => SandboxInstance,
-  settings: SandboxSettings,
-  stripping: Stripping,
-): ExpressionUnit {
+export function expressionUnitOf(instances: () => SandboxInstance, settings: SandboxSettings): ExpressionUnit {
   const opened: { current?: Opened } = {};
   const openedNow = (): Opened => {
     if (opened.current === undefined) {
@@ -48,20 +44,19 @@ export function expressionUnitOf(
   return {
     evaluate: (source, values, evaluation) => {
       const names = namedIn(source, values);
-      const stripped = stripping.expression(
-        source,
-        names.map((name) => `$${name}`),
-      );
-      if ('issue' in stripped) {
-        return { ran: 'raised', issue: stripped.issue, work: 0 };
-      }
       const { instance, runtime } = openedNow();
       if (instance.refusedGrowth() || runtime.broken()) {
         return exhaustedBy(instance.refusedGrowth() ? 'memory' : 'stack', 0);
       }
       const context = runtime.context();
       try {
-        const loaded = context.expression(stripped.javascript, evaluation);
+        const loaded = context.expression(
+          expressionScript(
+            source,
+            names.map((name) => `$${name}`),
+          ),
+          evaluation,
+        );
         const args = names.map((name) => JSON.stringify(values[name]));
         return 'failed' in loaded
           ? loaded.failed

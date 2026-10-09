@@ -4,14 +4,13 @@ import { jsonBytesOf } from '@beonauto/workflow-engine/dsl';
 import type { KeptView, ViewsPort } from '@beonauto/workflow-host';
 import { Effect, type Schema } from 'effect';
 
-import type { RecallFunctionDefinitionDocument } from '../document/recall-document.ts';
 import type { Answered } from './answer-endings.ts';
 import { preparedInput } from './run-input.ts';
-import { answerOf, type RecallRunOptions } from './view-answer.ts';
+import { answerOf, type RecallRunOptions, type RunnableRecall } from './view-answer.ts';
 import { rebuildingDetail, stalledDetail } from './view-words.ts';
 
 export type RecallRun = (
-  document: RecallFunctionDefinitionDocument,
+  runnable: RunnableRecall,
   input: Schema.Json,
   run: RunContext,
 ) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
@@ -48,21 +47,16 @@ function recordOf(kept: KeptView, answered: Answered, input: Schema.Json): Schem
 
 function answeredFrom(
   options: RecallRunOptions,
-  document: RecallFunctionDefinitionDocument,
+  runnable: RunnableRecall,
   kept: KeptView,
   input: Schema.Json,
 ): Effect.Effect<CapabilityAnswer, Conflict | Unavailable> {
-  return answerOf(options, document, kept.view, input).pipe(
+  return answerOf(options, runnable, kept.view, input).pipe(
     Effect.map((answered) => ({ output: answered.output, record: recordOf(kept, answered, input) })),
   );
 }
 
-function ranOn(
-  options: RecallRunOptions,
-  document: RecallFunctionDefinitionDocument,
-  run: RunContext,
-  input: Schema.Json,
-) {
+function ranOn(options: RecallRunOptions, runnable: RunnableRecall, run: RunContext, input: Schema.Json) {
   return (kept: KeptView | undefined): Effect.Effect<CapabilityAnswer, Conflict | Unavailable> => {
     if (kept?.version !== run.definition.version || kept.phase === 'rebuilding' || kept.phase === 'waiting') {
       return rebuilding(options.views, run, kept);
@@ -70,17 +64,17 @@ function ranOn(
     if (kept.stall !== undefined) {
       return Effect.fail(new Conflict({ detail: stalledDetail(run.definition.name, kept.stall), kind: 'stalled' }));
     }
-    return answeredFrom(options, document, kept, input);
+    return answeredFrom(options, runnable, kept, input);
   };
 }
 
 export function recallRun(options: RecallRunOptions): RecallRun {
-  return (document, input, run) =>
-    preparedInput(input, document.input).pipe(
+  return (runnable, input, run) =>
+    preparedInput(input, runnable.document.input).pipe(
       Effect.flatMap((admitted): Effect.Effect<CapabilityAnswer, CapabilityRejection | InvalidInput> =>
         options.views
           .viewOf({ org: run.org, brain: run.brain }, run.definition.name)
-          .pipe(Effect.flatMap(ranOn(options, document, run, admitted))),
+          .pipe(Effect.flatMap(ranOn(options, runnable, run, admitted))),
       ),
     );
 }

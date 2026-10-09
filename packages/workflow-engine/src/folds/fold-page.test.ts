@@ -27,7 +27,7 @@ function foldsTaking(stepMs: number, mark: (text: string) => void): Timing {
 }
 
 const counting = [
-  'export function fold(view: Record<string, number>, event: any): Record<string, number> {',
+  'export function fold(view, event) {',
   '  let spent = 0;',
   '  for (let index = 0; index < 30000 + event.time.length; index++) spent += index;',
   '  const campaign = event.data.output.campaign;',
@@ -95,8 +95,7 @@ describe('a page of folds', () => {
   });
 
   it('gives a fold the time of its event as the moment of Date, and none to an event without a time', async () => {
-    const stamping =
-      'export function fold(view: string[]): string[] {\n  return [...view, new Date().toISOString()];\n}';
+    const stamping = 'export function fold(view) {\n  return [...view, new Date().toISOString()];\n}';
     const timeless = { ...springApproved, time: 7 };
 
     const page = await folded(pageOf([viewOf(stamping, { view: [] })], { events: [springApproved, timeless] }));

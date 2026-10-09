@@ -1,6 +1,5 @@
 import type { Arguments, ExpressionUnit } from '../programs/expression-units.ts';
 import type { Limit, ProgramIssue, ProgramRun } from '../programs/program-run.ts';
-import { cachedStripping, type Stripping } from '../programs/type-stripping.ts';
 import { jsonOfText, type Json } from './json.ts';
 
 export interface Budget {
@@ -19,8 +18,6 @@ export type Bound = Exclude<Limit, 'stack'>;
 const enclosedExpression = /^\s*\$\{(?<body>[\s\S]*)\}\s*$/u;
 
 const longestProblem = 1000;
-
-export const expressionStripping: Stripping = cachedStripping();
 
 export function enclosedBody(value: Json | undefined): string | undefined {
   return typeof value === 'string' ? enclosedExpression.exec(value)?.groups?.['body'] : undefined;

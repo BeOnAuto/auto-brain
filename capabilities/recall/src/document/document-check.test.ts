@@ -37,8 +37,10 @@ describe('the filter expressions of a recall function', () => {
 });
 
 describe('the check of a recall function when it is saved', { timeout: workerTestTimeoutMs }, () => {
-  it('accepts the example of the reference', async () => {
-    expect(await checking(campaignReviews)).toEqual(Exit.void);
+  it('accepts the example of the reference, answering its module stripped of its types', async () => {
+    const strippedFold: unknown = expect.stringContaining('export function fold(view      , event       )       {');
+
+    expect(await checking(campaignReviews)).toEqual(Exit.succeed({ module: strippedFold }));
   });
 
   it('refuses a filter that names more than $data, and a module that keeps state, at their lines', async () => {

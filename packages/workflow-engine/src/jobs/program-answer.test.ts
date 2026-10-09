@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { freshInstance } from '../instances/fresh-instances.ts';
 import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
-import { cachedStripping, type Stripping } from '../programs/type-stripping.ts';
 import { answerOf, unchecked, type OutputIssue, type ProgramHost } from './program-answer.ts';
 import type { ProgramJob } from './program-messages.ts';
 
@@ -10,14 +9,13 @@ async function hostOf(more: Partial<ProgramHost> = {}): Promise<ProgramHost> {
   return {
     now: () => 0,
     instance: await freshInstance(unitMemoryBytes),
-    stripping: cachedStripping(),
     check: unchecked,
     ...more,
   };
 }
 
 const request: ProgramJob = {
-  source: 'export default function (input: number[]): number[] {\n  return input.map((item) => item + 1);\n}',
+  source: 'export default function (input) {\n  return input.map((item) => item + 1);\n}',
   entry: 'default',
   arguments: ['[1, 2]'],
   moment: 0,
@@ -30,7 +28,7 @@ const request: ProgramJob = {
 };
 
 function answeringAtMostTen(body: string): ProgramJob {
-  return { ...request, source: `export default function (): string {\n  return ${body};\n}`, mostOutputBytes: 10 };
+  return { ...request, source: `export default function () {\n  return ${body};\n}`, mostOutputBytes: 10 };
 }
 
 describe('the answer of a worker', () => {
@@ -45,7 +43,7 @@ describe('the answer of a worker', () => {
     });
     expect(
       answerOf(
-        { ...request, source: 'export default function (): never {\n  throw new Error("x".repeat(3000));\n}' },
+        { ...request, source: 'export default function () {\n  throw new Error("x".repeat(3000));\n}' },
         await hostOf(),
       ),
     ).toEqual({ ran: 'raised', issue: { detail: `Error: ${'x'.repeat(1017)}…`, line: 2 }, work: 0 });
@@ -54,22 +52,6 @@ describe('the answer of a worker', () => {
   it('answers an output larger than it may give as oversized, in characters in the sandbox and in bytes outside it', async () => {
     expect(answerOf(answeringAtMostTen('"x".repeat(20)'), await hostOf())).toEqual({ ran: 'oversized', work: 0 });
     expect(answerOf(answeringAtMostTen('"é".repeat(5)'), await hostOf())).toEqual({ ran: 'oversized', work: 0 });
-  });
-
-  it('strips the program with the stripping its host gives, so a worker can keep what it stripped', async () => {
-    const stripped: string[] = [];
-    const kept = cachedStripping();
-    const counting: Stripping = {
-      module: (source) => {
-        stripped.push(source);
-        return kept.module(source);
-      },
-      expression: kept.expression,
-    };
-
-    answerOf(request, await hostOf({ stripping: counting }));
-
-    expect(stripped).toEqual([request.source]);
   });
 });
 

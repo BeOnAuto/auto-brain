@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 import { freshInstance } from '../instances/fresh-instances.ts';
 import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
-import { cachedStripping, type Stripping } from '../programs/type-stripping.ts';
 import { foldAnswerOf, foldPageData } from './fold-answer.ts';
 import type { FoldHost } from './fold-page.ts';
 import { foldProgress, progressOf } from './fold-progress.ts';
@@ -15,7 +14,6 @@ async function hostOf(views: number, more: Partial<FoldHost> = {}): Promise<Fold
     folding: Function.constVoid,
     checkOf: () => passing,
     instances,
-    stripping: cachedStripping(),
     ...more,
   };
 }
@@ -27,7 +25,7 @@ function passing(): undefined {
 }
 
 const adding = {
-  fold: 'export function fold(view: number, event: { data: number }): number {\n  return view + event.data;\n}',
+  fold: 'export function fold(view, event) {\n  return view + event.data;\n}',
   filters: [{ type: 'noted' }],
   view: 1,
   events: [0],
@@ -64,31 +62,6 @@ describe('the answer of a worker that folds a page', () => {
       foldAnswerOf({ ...data, events: tooDeep }, host),
       foldAnswerOf({ ...data, views: [{ ...adding, view: 'not JSON' }] }, host),
     ]).toEqual([{ ran: 'unreadable' }, { ran: 'unreadable' }, { ran: 'unreadable' }, { ran: 'unreadable' }]);
-  });
-
-  it('strips the types of each fold and each test of a filter once a page, with the stripping its host gives', async () => {
-    const stripped: string[] = [];
-    const kept = cachedStripping();
-    const counting: Stripping = {
-      module: (source) => {
-        stripped.push('module');
-        return kept.module(source);
-      },
-      expression: (source, names) => {
-        stripped.push(source);
-        return kept.expression(source, names);
-      },
-    };
-    const tested = {
-      ...page,
-      events: [...page.events, ...page.events],
-      views: [{ ...adding, filters: [{ type: 'noted', data: '${ $data > 1 }' }], events: [0, 1] }],
-    };
-
-    expect(foldAnswerOf(foldPageData(tested), await hostOf(1, { stripping: counting }))).toMatchObject({
-      views: [{ view: '5', folded: 2 }],
-    });
-    expect(stripped).toEqual(['module', ' $data > 1 ']);
   });
 });
 

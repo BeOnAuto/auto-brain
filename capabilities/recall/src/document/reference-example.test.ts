@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { recallFolding } from '../run/recall-bounds.ts';
 import { campaignReviews } from '../testing/campaign-reviews.ts';
 import { liveView, poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { runnableDetailsOf } from '../testing/runnable-details.ts';
 import { parseRecallDocument } from './document-parsing.ts';
 
 const referencePage = readFileSync(new URL('../../../../docs/reference/recall-format.md', import.meta.url), 'utf8');
@@ -55,8 +56,8 @@ function keptAs(index: number, output: Schema.Json): Schema.JsonObject {
   return { at: time, run: source, output };
 }
 
-function foldedOver(source: string, foldedEvents: readonly Schema.JsonObject[]) {
-  const { fold, filters, initial, schema = {} } = Result.getOrThrow(parseRecallDocument(source)).details;
+async function foldedOver(source: string, foldedEvents: readonly Schema.JsonObject[]) {
+  const { fold, filters, initial, schema = {} } = await runnableDetailsOf(source);
   return poolOf().fold({
     ...recallFolding,
     pageBudgetMs: 20_000,

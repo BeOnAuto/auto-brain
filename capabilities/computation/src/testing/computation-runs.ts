@@ -35,6 +35,7 @@ export interface ComputationRuns {
   readonly capability: Capability;
   readonly prepared: (source: string) => PreparedDefinition;
   readonly running: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly runningUnsaved: (source: string, input?: Schema.Json) => Promise<Run>;
   readonly runningAt: (moment: number, source: string, input?: Schema.Json) => Promise<Run>;
 }
 
@@ -66,15 +67,18 @@ export type RunBounds = Omit<ComputationFunctionAdapterOptions, 'pool'>;
 export function computationWith(pool: ProgramPool = poolOf(), bounds: RunBounds = {}): ComputationRuns {
   const capability = makeComputationFunctionAdapter({ pool, ...bounds });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(capability.prepare(source));
+  const saved = (source: string) =>
+    Effect.flatMap(prepared(source).check, (stripped) => capability.prepare(source, stripped));
   return {
     capability,
     prepared,
-    running: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, run)),
+    running: (source, input = {}) =>
+      Effect.runPromiseExit(Effect.flatMap(saved(source), (definition) => definition.run(input, run))),
+    runningUnsaved: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, run)),
     runningAt: (moment, source, input = {}) =>
       Effect.runPromiseExit(
-        TestClock.setTime(moment).pipe(
-          Effect.andThen(prepared(source).run(input, run)),
-          Effect.provide(TestClock.layer()),
+        Effect.flatMap(saved(source), (definition) =>
+          TestClock.setTime(moment).pipe(Effect.andThen(definition.run(input, run)), Effect.provide(TestClock.layer())),
         ),
       ),
   };

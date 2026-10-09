@@ -1,1 +1,1 @@
-export { checkedAtSave } from './program-check/save-check.ts';
+export { checkedAtSave, type CheckedDocument } from './program-check/save-check.ts';

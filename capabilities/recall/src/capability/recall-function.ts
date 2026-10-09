@@ -51,7 +51,7 @@ export function makeRecallFunctionAdapter({
     parse,
     check: documentCheck(pool),
     summarize,
-    run: (document, input, context) => run(document, input, context),
+    run: (document, input, context, stripped) => run({ document, program: stripped.module }, input, context),
     longestAnyRunMs: deadlineMs,
     mostActive: mostFunctions,
     standing: recallStanding(views),

@@ -44,7 +44,7 @@ function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
 }
 
 function program(body: string): string {
-  return `export default function (input: any): unknown {\n  ${body}\n}`;
+  return `export default function (input) {\n  ${body}\n}`;
 }
 
 function request(source: string, input: Json = null, more: Partial<ProgramRequest> = {}): ProgramRequest {
@@ -76,26 +76,26 @@ const endings: readonly (readonly [string, string, Partial<ProgramRequest>, Read
   ['does too much work', program('for (;;) {}'), { budget: 50 }, { ran: 'exhausted', limit: 'work', work: 51 }],
   [
     'uses more memory than its sandbox has',
-    program('const kept: string[] = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);'),
+    program('const kept = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);'),
     { memoryBytes: unitMemoryBytes },
     { ran: 'exhausted', limit: 'memory' },
   ],
   [
     'answers a value too deep',
-    program('let value: unknown = 0;\n  for (let level = 0; level < 600; level++) value = [value];\n  return value;'),
+    program('let value = 0;\n  for (let level = 0; level < 600; level++) value = [value];\n  return value;'),
     {},
     { ran: 'unfit' },
   ],
   ['gives a number JSON cannot carry', program('return 0 / 0;'), {}, { ran: 'unfit' }],
   [
     'exports no function the request names',
-    'export function other(): number {\n  return 1;\n}',
+    'export function other() {\n  return 1;\n}',
     {},
     { ran: 'refused', issue: { detail: 'The program exports no function default' } },
   ],
   [
     'does not load',
-    'export default function (input: number) {\n  return input +;\n}',
+    'export default function (input) {\n  return input +;\n}',
     {},
     { ran: 'refused', issue: { line: 2 } },
   ],
@@ -104,7 +104,7 @@ const endings: readonly (readonly [string, string, Partial<ProgramRequest>, Read
 describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }, () => {
   it('answers its output as JSON with its size and the work it did, and how long the run took', async () => {
     const outcome = await poolOf().run(
-      request(program('return input.rows.map((row: number) => row * 2);'), { rows: [1, 2, 3] }),
+      request(program('return input.rows.map((row) => row * 2);'), { rows: [1, 2, 3] }),
     );
 
     expect(outcome).toMatchObject({ ran: 'answered', output: [2, 4, 6], bytes: 7, work: 0 });
@@ -112,8 +112,7 @@ describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }
   });
 
   it('calls the function its entry names with the arguments it is given, at the moment it is given', async () => {
-    const answering =
-      'export function answer(view: number, input: { add: number }) {\n  return [view + input.add, Date.now()];\n}';
+    const answering = 'export function answer(view, input) {\n  return [view + input.add, Date.now()];\n}';
 
     expect(await poolOf().run(request(answering, null, { entry: 'answer', arguments: [1, { add: 2 }] }))).toMatchObject(
       { ran: 'answered', output: [3, Date.UTC(2026, 3, 1)] },
@@ -129,9 +128,9 @@ describe('a program that would depend on the stack of its worker', { timeout: po
   it('overflows its stack of a fixed size at the same depth every time, which it may catch', async () => {
     const pool = poolOf();
     const deepest = program(
-      'let deepest = 0;\n  const down = (depth: number): number => {\n    deepest = depth;\n    return down(depth + 1);\n  };\n  try {\n    down(0);\n  } catch {\n    return deepest;\n  }\n  return -1;',
+      'let deepest = 0;\n  const down = (depth) => {\n    deepest = depth;\n    return down(depth + 1);\n  };\n  try {\n    down(0);\n  } catch {\n    return deepest;\n  }\n  return -1;',
     );
-    const uncaught = program('const down = (depth: number): number => down(depth + 1);\n  return down(0);');
+    const uncaught = program('const down = (depth) => down(depth + 1);\n  return down(0);');
 
     const first = await pool.run(request(deepest));
     const second = await pool.run(request(deepest));
@@ -162,7 +161,7 @@ describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, ()
     expect(await pool.run(request(program('return "é".repeat(40);'), null, { mostOutputBytes: 50 }))).toMatchObject({
       ran: 'oversized',
     });
-    expect(await pool.run(request(program('return input.map((item: number) => item + 1);'), [1, 2]))).toMatchObject({
+    expect(await pool.run(request(program('return input.map((item) => item + 1);'), [1, 2]))).toMatchObject({
       ran: 'answered',
       output: [2, 3],
     });

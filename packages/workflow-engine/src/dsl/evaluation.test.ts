@@ -53,7 +53,7 @@ describe('a value an expression of a task builds', () => {
   it('nested deeper than 512 levels raises an expression error that names where', () => {
     const run = drivenRun(
       workflow(
-        "do:\n  - deep: { set: '${ (() => { let value: unknown = null; for (let level = 0; level < 600; level++) value = [value]; return value })() }' }",
+        "do:\n  - deep: { set: '${ (() => { let value = null; for (let level = 0; level < 600; level++) value = [value]; return value })() }' }",
       ),
     );
 

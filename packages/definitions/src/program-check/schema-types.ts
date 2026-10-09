@@ -1,4 +1,7 @@
+import type { CheckJob } from '@beonauto/workflow-engine/dsl';
 import { Predicate, type Schema } from 'effect';
+
+import type { Place } from './module-rules.ts';
 
 type Json = Schema.Json;
 
@@ -6,9 +9,9 @@ type JsonObject = Schema.JsonObject;
 
 type Named = (definition: string) => string;
 
-export const jsonType = 'type Json = null | boolean | number | string | Json[] | { [key: string]: Json };';
+const jsonType = 'type Json = null | boolean | number | string | Json[] | { [key: string]: Json };';
 
-export const eventDeclaration = [
+const eventDeclaration = [
   'interface Event {',
   '  specversion?: string;',
   '  id: string;',
@@ -174,4 +177,22 @@ export function declarationOf(root: string, schema?: JsonObject): string {
     ([name, definition]) => `type ${named(name)} = ${typeOf(definition, named)};`,
   );
   return [...definitions, `type ${root} = ${typeOf(schema, named)};`].join('\n');
+}
+
+const placeTypes: Readonly<Record<Place, readonly (keyof CheckJob['schemas'])[]>> = {
+  computation: ['input', 'output'],
+  recall: ['view', 'input', 'output'],
+};
+
+const typeNames: Readonly<Record<keyof CheckJob['schemas'], string>> = {
+  input: 'Input',
+  output: 'Output',
+  view: 'View',
+};
+
+export function declarationsOf({ module, schemas }: CheckJob): string {
+  const types =
+    module === undefined ? [] : placeTypes[module.place].map((name) => declarationOf(typeNames[name], schemas[name]));
+  const event = module?.place === 'recall' ? [eventDeclaration] : [];
+  return [jsonType, ...types, ...event].join('\n');
 }

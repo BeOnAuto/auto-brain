@@ -4,7 +4,7 @@ import { freshInstance } from '../instances/fresh-instances.ts';
 import { mostEventBytes } from '../machine/limits.ts';
 import { expressionUnitOf, type ExpressionUnit } from '../programs/expression-units.ts';
 import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
-import { enclosedBody, expressionSource, expressionStripping, runExpression } from './expressions.ts';
+import { enclosedBody, expressionSource, runExpression } from './expressions.ts';
 import type { Json } from './json.ts';
 
 const now = Date.parse('2026-10-01T09:00:00.000Z');
@@ -13,11 +13,7 @@ const budget = { now, mostWork: 250, deadlineAt: Number.POSITIVE_INFINITY };
 
 async function unitOf(clock: () => number = () => 0): Promise<ExpressionUnit> {
   const instance = await freshInstance(unitMemoryBytes);
-  return expressionUnitOf(
-    () => instance,
-    { stackBytes: threadStackBytes, mostAnswerBytes: mostEventBytes, clock },
-    expressionStripping,
-  );
+  return expressionUnitOf(() => instance, { stackBytes: threadStackBytes, mostAnswerBytes: mostEventBytes, clock });
 }
 
 const unit = await unitOf();
@@ -44,7 +40,7 @@ describe('an expression', () => {
     expect(runExpression(unit, '{ total: $data.length }', { data: [4, 5] }, budget)).toMatchObject({
       value: { total: 2 },
     });
-    expect(runExpression(unit, '($data.a as number) * 2', { data: { a: 4 } }, budget)).toMatchObject({ value: 8 });
+    expect(runExpression(unit, '($data.a) * 2', { data: { a: 4 } }, budget)).toMatchObject({ value: 8 });
   });
 
   it('answers null for what is undefined, at its top or as a member', () => {
@@ -123,9 +119,9 @@ describe('an expression that answers what it may not', () => {
   });
 
   it('raises a stack overflow, which the expression may catch, at the same depth every time', () => {
-    const recursing = '(() => { const down = (depth: number): number => down(depth + 1); return down(0) })()';
+    const recursing = '(() => { const down = (depth) => down(depth + 1); return down(0) })()';
     const caught =
-      '(() => { let deepest = 0; const down = (depth: number): number => { deepest = depth; return down(depth + 1) }; try { down(0) } catch { return deepest } return -1 })()';
+      '(() => { let deepest = 0; const down = (depth) => { deepest = depth; return down(depth + 1) }; try { down(0) } catch { return deepest } return -1 })()';
 
     expect(runExpression(unit, recursing, { data: null }, budget)).toMatchObject({
       problem: `${recursing}: InternalError: stack overflow`,
@@ -161,7 +157,7 @@ describe('an expression that runs out of what it may use', () => {
 
   it('is exhausted by the memory of its sandbox, and the sandbox answers so after it', async () => {
     const bounded = await unitOf();
-    const bomb = '(() => { const kept: string[] = []; for (;;) kept.push("y".repeat(1048576) + kept.length) })()';
+    const bomb = '(() => { const kept = []; for (;;) kept.push("y".repeat(1048576) + kept.length) })()';
 
     expect(runExpression(bounded, bomb, { data: null }, budget)).toMatchObject({ exhausted: true, limit: 'memory' });
     expect(runExpression(bounded, '1', { data: null }, budget)).toMatchObject({ exhausted: true, limit: 'memory' });

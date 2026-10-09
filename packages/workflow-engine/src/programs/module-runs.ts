@@ -1,6 +1,5 @@
 import type { Evaluation, ProgramFailure, ProgramIssue, ProgramRun } from './program-run.ts';
 import { sandboxRuntimeOf, type SandboxInstance, type SandboxSettings } from './sandbox-session.ts';
-import type { Stripping } from './type-stripping.ts';
 
 export interface ModuleRequest {
   readonly source: string;
@@ -15,20 +14,11 @@ function loadFailure(failed: ProgramFailure): ModuleRun {
   return failed.ran === 'raised' ? { ran: 'refused', issue: failed.issue } : failed;
 }
 
-export function moduleRun(
-  instance: SandboxInstance,
-  settings: SandboxSettings,
-  request: ModuleRequest,
-  stripping: Stripping,
-): ModuleRun {
-  const stripped = stripping.module(request.source);
-  if ('issue' in stripped) {
-    return { ran: 'refused', issue: stripped.issue };
-  }
+export function moduleRun(instance: SandboxInstance, settings: SandboxSettings, request: ModuleRequest): ModuleRun {
   const runtime = sandboxRuntimeOf(instance, settings);
   const context = runtime.context();
   try {
-    const loaded = context.module(stripped.javascript, request.evaluation);
+    const loaded = context.module(request.source, request.evaluation);
     if ('failed' in loaded) {
       return loadFailure(loaded.failed);
     }

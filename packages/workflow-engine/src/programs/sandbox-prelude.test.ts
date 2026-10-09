@@ -7,7 +7,6 @@ import { moduleRun, type ModuleRun } from './module-runs.ts';
 import type { Evaluation, ProgramRun } from './program-run.ts';
 import { threadStackBytes, unitMemoryBytes } from './sandbox-bounds.ts';
 import { sandboxRemovals } from './sandbox-names.ts';
-import { cachedStripping } from './type-stripping.ts';
 
 const moment = Date.UTC(2026, 3, 1, 9, 30);
 
@@ -15,11 +14,9 @@ const evaluation: Evaluation = { budget: 500, deadlineAt: Number.POSITIVE_INFINI
 
 const settings = { stackBytes: threadStackBytes, mostAnswerBytes: 1_048_576, clock: () => 0 };
 
-const stripping = cachedStripping();
-
 const instance = await freshInstance(unitMemoryBytes);
 
-const unit = expressionUnitOf(() => instance, settings, stripping);
+const unit = expressionUnitOf(() => instance, settings);
 
 function valueOf(source: string): ProgramRun {
   return unit.evaluate(source, {}, evaluation);
@@ -27,7 +24,7 @@ function valueOf(source: string): ProgramRun {
 
 function attempted(source: string): unknown {
   const run = valueOf(
-    `(() => { try { const value: unknown = (${source}); return value instanceof Date ? 'Date ' + value.toISOString() : value } catch (error) { return 'threw ' + String(error) } })()`,
+    `(() => { try { const value = (${source}); return value instanceof Date ? 'Date ' + value.toISOString() : value } catch (error) { return 'threw ' + String(error) } })()`,
   );
   if (run.ran !== 'answered') {
     return run.issue.detail;
@@ -37,7 +34,7 @@ function attempted(source: string): unknown {
 }
 
 function nestedBody(levels: number): string {
-  return `let value: unknown = 0;\n  for (let level = 0; level < ${levels}; level++) value = [value];\n  return value;`;
+  return `let value = 0;\n  for (let level = 0; level < ${levels}; level++) value = [value];\n  return value;`;
 }
 
 function foldOf(folding: FoldingUnit): FilterContext & { readonly fold: Fold } {
@@ -48,12 +45,12 @@ function foldOf(folding: FoldingUnit): FilterContext & { readonly fold: Fold } {
 }
 
 async function returned(body: string): Promise<ModuleRun> {
-  return moduleRun(
-    await freshInstance(unitMemoryBytes),
-    settings,
-    { source: `export default function (): unknown {\n  ${body}\n}`, entry: 'default', arguments: [], evaluation },
-    stripping,
-  );
+  return moduleRun(await freshInstance(unitMemoryBytes), settings, {
+    source: `export default function () {\n  ${body}\n}`,
+    entry: 'default',
+    arguments: [],
+    evaluation,
+  });
 }
 
 describe('the Date of the sandbox', () => {
@@ -180,7 +177,7 @@ const refusedAnswers: readonly (readonly [string, string, string])[] = [
   ['an empty place', 'return [1, , 3];', 'an empty place in a list at $[1]'],
   [
     'a cycle',
-    'const looped: Record<string, unknown> = { inner: {} };\n  Reflect.set(Object(looped.inner), "back", looped);\n  return looped;',
+    'const looped = { inner: {} };\n  Reflect.set(Object(looped.inner), "back", looped);\n  return looped;',
     'a cycle at $.inner.back',
   ],
   [
@@ -191,7 +188,7 @@ const refusedAnswers: readonly (readonly [string, string, string])[] = [
   ['a member that writes itself with toJSON', 'return { at: { toJSON: () => 1 } };', 'a function at $.at.toJSON'],
   [
     'a member that changes as it is read',
-    'return { get fresh(): object { return {}; } };',
+    'return { get fresh() { return {}; } };',
     'a member that changes as it is read',
   ],
 ];
@@ -244,7 +241,7 @@ describe('the answer a program may give', () => {
   });
 
   it('raises what a getter of the answer throws, as the program raised it', async () => {
-    expect(await returned('return { get broken(): number { throw new RangeError("no") } };')).toMatchObject({
+    expect(await returned('return { get broken() { throw new RangeError("no") } };')).toMatchObject({
       ran: 'unfit',
       issue: { detail: 'RangeError: no' },
     });
@@ -260,12 +257,12 @@ describe('a context the sandbox freezes', () => {
         {
           fold: [
             'class Refusal extends Error {',
-            '  constructor(message: string) {',
+            '  constructor(message) {',
             '    super(message);',
             '    this.name = "Refusal";',
             '  }',
             '}',
-            'export function fold(view: Record<string, unknown>, event: { key: string }): Record<string, unknown> {',
+            'export function fold(view, event) {',
             '  const next = { ...view };',
             '  next[event.key] = true;',
             '  next["name"] = new Refusal("kept").name;',
@@ -274,7 +271,7 @@ describe('a context the sandbox freezes', () => {
           ].join('\n'),
           view: '{}',
         },
-        { stripping, evaluation },
+        evaluation,
       ),
     );
     const frozen = folding.freeze();

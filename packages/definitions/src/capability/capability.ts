@@ -6,6 +6,7 @@ import { deliveryEnded, deliveryStarted } from '../run-work/delivery-words.ts';
 import type { CallAnsweredFact, CallStartedFact } from '../runs/run-commands.ts';
 import type { CancelRequestKind, DeliveryEvent } from '../runs/run-events.ts';
 import type { BroughtAnswer } from '../runs/run-state.ts';
+import { noStrippedForms, type StrippedForms } from './stripped-forms.ts';
 
 export interface DefinitionSummary {
   readonly description?: string;
@@ -102,12 +103,16 @@ export interface CapabilityDeclaration<Parsed> {
   readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
   readonly parse: (source: string) => Effect.Effect<Parsed, InvalidInput>;
-  readonly check?: (parsed: NoInfer<Parsed>, source: string) => Effect.Effect<void, InvalidInput | Unavailable>;
+  readonly check?: (
+    parsed: NoInfer<Parsed>,
+    source: string,
+  ) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly summarize: (parsed: NoInfer<Parsed>) => DefinitionSummary;
   readonly run: (
     parsed: NoInfer<Parsed>,
     input: Schema.Json,
     context: RunContext,
+    stripped: StrippedForms,
   ) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled?: WhenCancelled;
   readonly longestAnyRunMs?: number;
@@ -124,7 +129,7 @@ export interface CapabilityDeclaration<Parsed> {
 
 export interface PreparedDefinition {
   readonly summary: DefinitionSummary;
-  readonly check: Effect.Effect<void, InvalidInput | Unavailable>;
+  readonly check: Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
   readonly run: (input: Schema.Json, context: RunContext) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
@@ -158,8 +163,8 @@ function standsAsSaved(): Effect.Effect<Schema.JsonObject | undefined> {
   return Effect.undefined;
 }
 
-function needsNoCheck(): Effect.Effect<void> {
-  return Effect.void;
+function needsNoCheck(): Effect.Effect<StrippedForms> {
+  return Effect.succeed(noStrippedForms);
 }
 
 export interface Capability {
@@ -176,7 +181,7 @@ export interface Capability {
   readonly standing: Standing;
   readonly cancel: CancelDecision;
   readonly runWords: RunWords;
-  readonly prepare: (source: string) => Effect.Effect<PreparedDefinition, InvalidInput>;
+  readonly prepare: (source: string, stripped?: StrippedForms) => Effect.Effect<PreparedDefinition, InvalidInput>;
 }
 
 const definitionTypePattern = /^[a-z][a-z0-9-]{2,31}$/u;
@@ -229,12 +234,12 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
     describeOutput,
     mediaType,
     ...bounds,
-    prepare: (source) =>
+    prepare: (source, stripped = noStrippedForms) =>
       parse(source).pipe(
         Effect.map((parsed) => ({
           summary: summarize(parsed),
           check: Effect.suspend(() => check(parsed, source)),
-          run: (input, context) => run(parsed, input, context),
+          run: (input, context) => run(parsed, input, context, stripped),
           whenCancelled,
           callsTools: callsTools(parsed),
           finishesLater: finishesLater(parsed),

@@ -33,9 +33,9 @@ const decodeRan = Schema.decodeUnknownSync(Schema.Struct({ jobs: Schema.Number, 
 
 const noted = { type: 'noted' };
 
-const adding = 'export function fold(view: number, event: any): number {\n  return view + event.data.n;\n}';
+const adding = 'export function fold(view, event) {\n  return view + event.data.n;\n}';
 
-const endless = 'export default function (): never {\n  for (;;) {}\n}';
+const endless = 'export default function () {\n  for (;;) {}\n}';
 
 afterEach(async () => {
   await Promise.all(pools.splice(0).map((pool) => pool.close()));
@@ -238,7 +238,7 @@ describe(
       ['it could not read', { mostViewBytes: 0 }, { ran: 'unreadable' }],
     ])('is let go of after a page %s', async (_why, more, ended) => {
       const pool = poolOf();
-      const slow = { fold: 'export function fold(view: number): number {\n  for (;;) {}\n}' };
+      const slow = { fold: 'export function fold(view) {\n  for (;;) {}\n}' };
 
       const ran = [
         await counted(pool, countingOnTheLoop),
@@ -254,14 +254,14 @@ describe(
       const views = [
         {},
         {
-          fold: 'export function fold(view: unknown, event: any): unknown {\n  return [view, event.data.n];\n}',
+          fold: 'export function fold(view, event) {\n  return [view, event.data.n];\n}',
           view: [],
         },
       ];
 
       const stalled = await foldOf(warm, [
         {
-          fold: 'export function fold(view: unknown, event: any): never {\n  throw new Error(`stop ${event.data.n}`);\n}',
+          fold: 'export function fold(view, event) {\n  throw new Error(`stop ${event.data.n}`);\n}',
         },
       ]);
       const afterTheStall = await foldOf(warm, views);

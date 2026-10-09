@@ -39,7 +39,7 @@ export interface VersionToRun {
 export const preparedDefinition = Effect.fnUntraced(function* (capability: Capability, name: string) {
   const definition = yield* activeDefinition(capability.type, name);
   const prepared = yield* capability
-    .prepare(definition.source)
+    .prepare(definition.source, definition.stripped)
     .pipe(Effect.mapError(unparseable(capability.type, definition)));
   return { definition, prepared };
 });
@@ -47,7 +47,7 @@ export const preparedDefinition = Effect.fnUntraced(function* (capability: Capab
 export const preparedVersion = Effect.fnUntraced(function* (capability: Capability, name: string, version: number) {
   const definition = yield* versionOf(capability.type, name, version);
   const prepared = yield* capability
-    .prepare(definition.source)
+    .prepare(definition.source, definition.stripped)
     .pipe(Effect.mapError(unparseable(capability.type, definition)));
   return { definition, prepared };
 });

@@ -27,11 +27,17 @@ function checking(source: string) {
 }
 
 describe('the check of a computation function when it is saved', { timeout: workerTestTimeoutMs }, () => {
-  it('accepts the example of the reference, and a program over any JSON when the document has no schemas', async () => {
-    expect(await checking(campaignPace)).toEqual(Exit.void);
-    expect(await checking(programDocument(functionOf('return input;')))).toEqual(Exit.void);
-  });
+  it('accepts the example of the reference, and a program over any JSON when the document has no schemas, answering each stripped of its types', async () => {
+    const strippedExample: unknown = expect.stringContaining('export default function (input       )         {');
 
+    expect(await checking(campaignPace)).toEqual(Exit.succeed({ module: strippedExample }));
+    expect(await checking(programDocument(functionOf('return input;')))).toEqual(
+      Exit.succeed({ module: 'export default function (input     )      {\n  return input;\n}' }),
+    );
+  });
+});
+
+describe('the check of a computation function that has problems', { timeout: workerTestTimeoutMs }, () => {
   it('refuses its program’s problems at their lines in the document, with the compiler’s words', async () => {
     const program = [
       'export default function (input: Input): Output {',

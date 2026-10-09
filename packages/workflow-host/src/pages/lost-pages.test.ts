@@ -140,7 +140,6 @@ describe('a projector stopped while it folds', { timeout: viewTestTimeoutMs }, (
       ...collecting,
       fold: foldOf(
         'let spent = 0;\n  for (let index = 0; index < 10_000_000; index++) spent += index;\n  return [...view, event.data.output];',
-        'unknown[]',
       ),
     };
     const lifted = { folding: { ...foldingOf(), budget: 1_000_000, foldDeadlineMs: 2 * viewTestTimeoutMs } };

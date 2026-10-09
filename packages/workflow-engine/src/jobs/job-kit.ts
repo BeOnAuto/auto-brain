@@ -2,7 +2,6 @@ import { boundedCacheOf, type BoundedCache } from '../dsl/bounded-cache.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import type { FoldAnswerData } from '../folds/fold-answer.ts';
 import type { FoldHost, ViewCheck } from '../folds/fold-page.ts';
-import { cachedStripping, mostStrippedCharacters, type Stripping } from '../programs/type-stripping.ts';
 import type { CheckAnswer, CheckJob } from './check-messages.ts';
 import type { FoldJob } from './fold-messages.ts';
 import { unchecked, type OutputCheck, type ProgramAnswerData, type ProgramHost } from './program-answer.ts';
@@ -27,10 +26,11 @@ export interface JobHandlers {
 }
 
 export interface Kept {
-  readonly stripping: Stripping;
   readonly outputCheck: (schema: Json) => OutputCheck;
   readonly viewCheck: (schema: JsonObject) => ViewCheck;
 }
+
+const mostCachedSchemaCharacters = 262_144;
 
 const noViewSchemaChecked = 'This worker checks no view schema; a page whose views keep one names a worker that does';
 
@@ -45,10 +45,9 @@ function remembered<Value>(cache: BoundedCache<Value>, key: string, make: () => 
 }
 
 export function keptFor(checks: ValueChecks | undefined): Kept {
-  const outputs = boundedCacheOf<OutputCheck>(mostStrippedCharacters);
-  const views = boundedCacheOf<ViewCheck>(mostStrippedCharacters);
+  const outputs = boundedCacheOf<OutputCheck>(mostCachedSchemaCharacters);
+  const views = boundedCacheOf<ViewCheck>(mostCachedSchemaCharacters);
   return {
-    stripping: cachedStripping(),
     outputCheck: (schema) =>
       checks === undefined || schema === null
         ? unchecked

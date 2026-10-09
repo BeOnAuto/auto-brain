@@ -6,6 +6,7 @@ import { Effect, Random, type Schema } from 'effect';
 import { checkedExpressions, type ExpressionCheck } from '../document/expression-check.ts';
 import {
   readWorkflowDocument,
+  runnableDocument,
   type ReadWorkflow,
   type WorkflowDefinitionDocument,
 } from '../document/workflow-document.ts';
@@ -80,7 +81,8 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
       readWorkflowDocument(source, dependencies.mostDurationMs),
     check: checkedExpressions(dependencies.check),
     summarize: ({ document }) => summaryOf(document),
-    run: ({ document }, input, run) => started(dependencies, document, input, run),
+    run: ({ document }, input, run, stripped) =>
+      started(dependencies, runnableDocument(document, stripped), input, run),
     whenCancelled: 'finish',
     finishesLater: true,
     longestRunOf: () => dependencies.mostDurationMs,

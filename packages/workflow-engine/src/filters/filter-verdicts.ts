@@ -1,5 +1,5 @@
 import { mostInputMs, testedOrRaised } from '../dsl/evaluation.ts';
-import { enclosedBody, expressionStripping } from '../dsl/expressions.ts';
+import { enclosedBody } from '../dsl/expressions.ts';
 import { entriesOf, field, isTruthy, jsonEquals, type Json, type JsonEntry, type JsonObject } from '../dsl/json.ts';
 import { caughtRaise } from '../dsl/raised-error.ts';
 import { filterContextOf, type FilterContext, type FilterTest } from '../programs/kept-contexts.ts';
@@ -78,7 +78,7 @@ export function filterVerdictsOf(
   const context = filterContextOf(
     instance,
     { stackBytes: threadStackBytes, mostAnswerBytes: unitMemoryBytes, clock },
-    { stripping: expressionStripping, evaluation: { budget: Number.POSITIVE_INFINITY, deadlineAt, moment: now } },
+    { budget: Number.POSITIVE_INFINITY, deadlineAt, moment: now },
   );
   try {
     const prepared = filters.map((filter) => preparedOf(filter, context.define));

@@ -1,13 +1,20 @@
 import type { Json, PoolOutcome, ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
-import { Result } from 'effect';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { parseComputationDocument } from '../document/document-parsing.ts';
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import { functionOf, poolOf, workerTestTimeoutMs } from '../testing/computation-runs.ts';
+import { computationWith, poolOf, workerTestTimeoutMs } from '../testing/computation-runs.ts';
 import { computationBounds, mostOutputBytes } from './run-bounds.ts';
 
-const example = Result.getOrThrow(parseComputationDocument(campaignPace)).program;
+const checking = poolOf();
+
+const { module: example = '' } = await Effect.runPromise(computationWith(checking).prepared(campaignPace).check);
+
+await checking.close();
+
+function functionOf(body: string): string {
+  return `export default function (input) {\n  ${body}\n}`;
+}
 
 function ran(
   pool: ProgramPool,
@@ -54,8 +61,8 @@ const endingBadly = [
   functionOf('throw new Error("raised on purpose");'),
   functionOf('for (;;) {}'),
   functionOf('return "x".repeat(1048576);'),
-  functionOf('const kept: string[] = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);'),
-  functionOf('const down = (depth: number): number => down(depth + 1);\n  return down(0);'),
+  functionOf('const kept = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);'),
+  functionOf('const down = (depth) => down(depth + 1);\n  return down(0);'),
 ];
 
 const writingOutside = [

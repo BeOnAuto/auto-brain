@@ -30,8 +30,19 @@ const CheckIssueSchema = Schema.Struct({
 
 export type CheckIssue = typeof CheckIssueSchema.Type;
 
+const StrippedSourcesSchema = Schema.Struct({
+  module: Schema.optionalKey(Schema.String),
+  expressions: Schema.Array(Schema.String),
+});
+
+export type StrippedSources = typeof StrippedSourcesSchema.Type;
+
 export const CheckAnswerSchema = Schema.Union([
-  Schema.Struct({ ran: Schema.Literal('checked'), issues: Schema.Array(CheckIssueSchema) }),
+  Schema.Struct({
+    ran: Schema.Literal('checked'),
+    issues: Schema.Array(CheckIssueSchema),
+    stripped: Schema.optionalKey(StrippedSourcesSchema),
+  }),
   Schema.Struct({ ran: Schema.Literal('unreadable') }),
 ]);
 

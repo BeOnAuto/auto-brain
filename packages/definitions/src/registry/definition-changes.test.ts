@@ -38,3 +38,35 @@ describe('the change a record of a definition makes to what starts on its own', 
     ]);
   });
 });
+
+describe('the triggers a version activates', () => {
+  it('match by the expressions its check stripped, keeping every other trigger and attribute as written', () => {
+    const eventTriggers: DefinitionContent['triggers'] = [
+      {
+        kind: 'event',
+        reference: '/schedule/on/one',
+        filters: [
+          {
+            reference: '/schedule/on/one/filters/0',
+            type: 'noted',
+            attributes: { type: 'noted', data: '${ $data.total as number > 1 }' },
+          },
+        ],
+      },
+      { kind: 'cron', reference: '/schedule/cron', expression: '0 9 * * 1-5' },
+    ];
+    const content: DefinitionContent = {
+      source: 'schedule: ...',
+      triggers: eventTriggers,
+      stripped: { expressions: { ' $data.total as number > 1 ': ' $data.total           > 1 ' } },
+    };
+
+    expect(changeOf({ type: 'definition_created', name: 'close', version: 1, content, ...at })).toMatchObject({
+      kind: 'activated',
+      triggers: [
+        { kind: 'event', filters: [{ attributes: { type: 'noted', data: '${ $data.total           > 1 }' } }] },
+        { kind: 'cron' },
+      ],
+    });
+  });
+});

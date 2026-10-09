@@ -15,7 +15,7 @@ const source = fileURLToPath(new URL('..', import.meta.url));
 
 const importedEverywhere: ReadonlySet<string> = new Set(['effect', '@beonauto/operations', '@beonauto/ledger']);
 
-const importedInTheEvaluator: ReadonlySet<string> = new Set(['quickjs-emscripten-core', 'ts-blank-space']);
+const importedInTheEvaluator: ReadonlySet<string> = new Set(['quickjs-emscripten-core']);
 
 const importedInThePool: ReadonlySet<string> = new Set(['node:worker_threads']);
 
@@ -255,7 +255,6 @@ describe('the checks of imports', () => {
       'machine/m.ts: ../../../ledger/src/w.ts',
       'machine/m.ts: yaml',
     ]);
-    expect(importsOutsideTheAllowList('programs/p.ts', "import tsBlankSpace from 'ts-blank-space';")).toEqual([]);
     expect(
       importsOutsideTheAllowList('programs/p.ts', "import variant from '@jitl/quickjs-wasmfile-release-sync';"),
     ).toEqual(['programs/p.ts: @jitl/quickjs-wasmfile-release-sync']);

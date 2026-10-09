@@ -1,3 +1,4 @@
+import type { StrippedForms } from '@beonauto/definitions';
 import { checkedAtSave } from '@beonauto/definitions/check';
 import { issueText, reportedIssues, type DocumentIssue } from '@beonauto/definitions/document';
 import { InvalidInput, type Unavailable } from '@beonauto/operations';
@@ -8,7 +9,7 @@ import type { RecallFunctionDefinitionDocument } from './recall-document.ts';
 
 export type DocumentCheck = (
   document: RecallFunctionDefinitionDocument,
-) => Effect.Effect<void, InvalidInput | Unavailable>;
+) => Effect.Effect<StrippedForms, InvalidInput | Unavailable>;
 
 const filterNames = ['$data'];
 
@@ -47,10 +48,10 @@ function placedIssues(
 export function documentCheck(pool: ProgramPool): DocumentCheck {
   return (document) =>
     checkedAtSave(pool, jobOf(document)).pipe(
-      Effect.flatMap((issues) =>
-        issues.length === 0
-          ? Effect.void
-          : Effect.fail(invalidDefinition(reportedIssues(placedIssues(document, issues)))),
+      Effect.flatMap((checked) =>
+        'stripped' in checked
+          ? Effect.succeed(checked.stripped)
+          : Effect.fail(invalidDefinition(reportedIssues(placedIssues(document, checked.issues)))),
       ),
     );
 }

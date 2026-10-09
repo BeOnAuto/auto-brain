@@ -34,10 +34,14 @@ function program(...body: readonly string[]): string {
 }
 
 describe('a computation function checked when it is saved', () => {
-  it('accepts a module whose default export answers the output from the input', () => {
+  it('accepts a module whose default export answers the output from the input, and answers it stripped of its types', () => {
     expect(check(computation(program('  return { total: input.period.days * 2 };')))).toEqual({
       ran: 'checked',
       issues: [],
+      stripped: {
+        module: 'export default function (input       )         {\n  return { total: input.period.days * 2 };\n}',
+        expressions: [],
+      },
     });
   });
 

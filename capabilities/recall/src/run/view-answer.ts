@@ -1,5 +1,5 @@
 import { checkedWorker } from '@beonauto/definitions/json-schema';
-import type { Conflict, Unavailable } from '@beonauto/operations';
+import { Conflict, type Unavailable } from '@beonauto/operations';
 import type { ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import type { ViewsPort } from '@beonauto/workflow-host';
 import { Clock, Effect, type Schema } from 'effect';
@@ -8,7 +8,7 @@ import type { RecallFunctionDefinitionDocument } from '../document/recall-docume
 import { answerEndingOf, viewAnswered, type Answered } from './answer-endings.ts';
 import { mostOutputBytes, recallBounds } from './recall-bounds.ts';
 
-export interface AnswerBounds {
+interface AnswerBounds {
   readonly deadlineMs: number;
   readonly budget: number;
   readonly memoryBytes: number;
@@ -27,13 +27,24 @@ interface Asked {
 
 type Answering = Effect.Effect<Answered, Conflict | Unavailable>;
 
+export interface RunnableRecall {
+  readonly document: RecallFunctionDefinitionDocument;
+  readonly program: string | undefined;
+}
+
+const notCompiled = new Conflict({
+  detail:
+    'The recall function was saved without the module its check strips for the sandbox; update it to save it again',
+  kind: 'unworkable',
+});
+
 function requestOf(
-  document: RecallFunctionDefinitionDocument,
+  { document, program }: Readonly<{ document: RecallFunctionDefinitionDocument; program: string }>,
   { view, input, moment }: Asked,
   { deadlineMs, budget, memoryBytes }: AnswerBounds,
 ): ProgramRequest {
   return {
-    source: document.details.fold,
+    source: program,
     entry: 'answer',
     arguments: [view, input],
     moment,
@@ -49,11 +60,11 @@ function requestOf(
 
 function answeredBy(
   { pool, deadlineMs, budget, memoryBytes }: RecallRunOptions,
-  document: RecallFunctionDefinitionDocument,
+  { document, program }: Readonly<{ document: RecallFunctionDefinitionDocument; program: string }>,
   asked: Asked,
 ): Answering {
   const bounds = { deadlineMs, budget, memoryBytes };
-  return Effect.promise((signal) => pool.run(requestOf(document, asked, bounds), signal)).pipe(
+  return Effect.promise((signal) => pool.run(requestOf({ document, program }, asked, bounds), signal)).pipe(
     Effect.flatMap((outcome) =>
       answerEndingOf(outcome, {
         foldLine: document.details.foldLine,
@@ -67,11 +78,16 @@ function answeredBy(
 
 export function answerOf(
   options: RecallRunOptions,
-  document: RecallFunctionDefinitionDocument,
+  { document, program }: RunnableRecall,
   view: Schema.Json,
   input: Schema.Json,
 ): Answering {
-  return document.answers
-    ? Effect.flatMap(Clock.currentTimeMillis, (moment) => answeredBy(options, document, { view, input, moment }))
-    : viewAnswered(view, document.output.schema);
+  if (!document.answers) {
+    return viewAnswered(view, document.output.schema);
+  }
+  return program === undefined
+    ? Effect.fail(notCompiled)
+    : Effect.flatMap(Clock.currentTimeMillis, (moment) =>
+        answeredBy(options, { document, program }, { view, input, moment }),
+      );
 }

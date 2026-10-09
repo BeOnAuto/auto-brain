@@ -48,7 +48,6 @@ async function programAnswer(
   const answer = handlers.program(request, {
     now,
     instance,
-    stripping: kept.stripping,
     check: kept.outputCheck(request.context),
   });
   return { job, answer, keep: keepsAfterProgram(answer) };
@@ -68,7 +67,6 @@ async function foldAnswer(
     folding: mark,
     checkOf: kept.viewCheck,
     instances: prepared,
-    stripping: kept.stripping,
   });
   return { job, answer, keep: keepsAfterFold(answer) };
 }

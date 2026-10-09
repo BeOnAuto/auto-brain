@@ -32,17 +32,45 @@ function checked(on: ProgramPool, deadlineMs?: number) {
 describe('the check of a document when it is saved', () => {
   it('runs in the pool’s check worker and answers the compiler’s issues', { timeout: 60_000 }, async () => {
     expect(await checked(pool, 50_000)).toEqual(
-      Exit.succeed([
-        {
-          at: 'module',
-          line: 2,
-          detail: "Property 'redy' does not exist on type 'Input'. Did you mean 'ready'?",
-        },
-      ]),
+      Exit.succeed({
+        issues: [
+          {
+            at: 'module',
+            line: 2,
+            detail: "Property 'redy' does not exist on type 'Input'. Did you mean 'ready'?",
+          },
+        ],
+      }),
     );
     expect(checkDeadlineMs).toBe(2000);
     expect(checkWorker.pathname).toMatch(/\/program-check\/check-worker\.ts$/u);
     expect(Object.keys(checkWorkerModule)).toEqual([]);
+  });
+});
+
+describe('a check that passes', () => {
+  it('answers the module and the expressions it changed stripped of their types, which a save keeps', async () => {
+    const passing: CheckJob = {
+      module: {
+        place: 'computation',
+        source: 'export default function (input: Input): Output {\n  return input.ready;\n}',
+      },
+      schemas: job.schemas,
+      expressions: [
+        { source: '$data.ready as boolean', names: ['$data'] },
+        { source: '$data.ready', names: ['$data'] },
+      ],
+    };
+
+    expect(await Effect.runPromise(checkedAtSave(pool, passing, 50_000))).toEqual({
+      stripped: {
+        module: 'export default function (input       )         {\n  return input.ready;\n}',
+        expressions: { '$data.ready as boolean': '$data.ready           ' },
+      },
+    });
+    expect(
+      await Effect.runPromise(checkedAtSave(answering({ ran: 'checked', issues: [], milliseconds: 1 }), job)),
+    ).toEqual({ stripped: {} });
   });
 });
 

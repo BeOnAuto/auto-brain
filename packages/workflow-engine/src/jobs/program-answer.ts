@@ -3,7 +3,6 @@ import { mostIssueBytes, textWithin, utf8BytesWithin } from '../programs/byte-si
 import { moduleRun, type ModuleRun } from '../programs/module-runs.ts';
 import type { ProgramIssue } from '../programs/program-run.ts';
 import type { SandboxInstance } from '../programs/sandbox-session.ts';
-import type { Stripping } from '../programs/type-stripping.ts';
 import type { ProgramAnswerSchema, ProgramJob } from './program-messages.ts';
 
 export type ProgramAnswerData = typeof ProgramAnswerSchema.Encoded;
@@ -18,7 +17,6 @@ export type OutputCheck = (output: Json) => readonly OutputIssue[];
 export interface ProgramHost {
   readonly now: () => number;
   readonly instance: SandboxInstance;
-  readonly stripping: Stripping;
   readonly check: OutputCheck;
 }
 
@@ -58,7 +56,7 @@ function answerFrom(run: ModuleRun, mostOutputBytes: number, check: OutputCheck)
     : checkedAnswer(run.text, bytes, run.work, check);
 }
 
-export function answerOf(request: ProgramJob, { now, instance, stripping, check }: ProgramHost): ProgramAnswerData {
+export function answerOf(request: ProgramJob, { now, instance, check }: ProgramHost): ProgramAnswerData {
   const run = moduleRun(
     instance,
     { stackBytes: request.stackBytes, mostAnswerBytes: request.mostOutputBytes, clock: now },
@@ -68,7 +66,6 @@ export function answerOf(request: ProgramJob, { now, instance, stripping, check 
       arguments: request.arguments,
       evaluation: { budget: request.budget, deadlineAt: request.deadlineAt, moment: request.moment },
     },
-    stripping,
   );
   return answerFrom(run, request.mostOutputBytes, check);
 }

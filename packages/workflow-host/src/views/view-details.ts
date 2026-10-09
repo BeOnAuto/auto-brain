@@ -1,3 +1,4 @@
+import { noStrippedForms, runnableAttributes, type StrippedForms } from '@beonauto/definitions';
 import { Option, Schema } from 'effect';
 
 export const ViewFilterSchema = Schema.StructWithRest(Schema.Struct({ type: Schema.String }), [
@@ -21,6 +22,17 @@ const decodeDetails = Schema.decodeUnknownOption(ViewDetailsSchema);
 
 export function viewDetailsOf(details: unknown): ViewDetails | undefined {
   return Option.getOrUndefined(decodeDetails(details));
+}
+
+export function runnableDetailsOf(details: unknown, stripped: StrippedForms = noStrippedForms): unknown {
+  return Option.match(decodeDetails(details), {
+    onNone: () => details,
+    onSome: (decoded): ViewDetails => ({
+      ...decoded,
+      fold: stripped.module ?? decoded.fold,
+      filters: decoded.filters.map((filter) => ({ ...runnableAttributes(filter, stripped), type: filter.type })),
+    }),
+  });
 }
 
 export function lineInDocument({ foldLine }: ViewDetails, line: number): number {

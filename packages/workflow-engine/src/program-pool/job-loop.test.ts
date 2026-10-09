@@ -6,7 +6,7 @@ import type { FoldPage } from '../folds/fold-page.ts';
 import { foldProgress, type FoldProgress } from '../folds/fold-progress.ts';
 import type { CheckJob } from '../jobs/check-messages.ts';
 import type { JobHandlers } from '../jobs/job-kit.ts';
-import { answerOf, type OutputCheck, type ProgramAnswerData } from '../jobs/program-answer.ts';
+import { answerOf, type OutputCheck } from '../jobs/program-answer.ts';
 import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
 import { serveJobs } from './job-loop.ts';
 
@@ -55,7 +55,7 @@ async function keptAfter(ask: Ask, messages: readonly unknown[]): Promise<readon
 }
 
 function program(body: string): string {
-  return `export default function (input: any): unknown {\n  ${body}\n}`;
+  return `export default function (input) {\n  ${body}\n}`;
 }
 
 function programJob(job: number, source: string, more: Readonly<Record<string, Json>> = {}): unknown {
@@ -75,7 +75,7 @@ function programJob(job: number, source: string, more: Readonly<Record<string, J
   return { job, kind: 'program', request: { ...request, ...more } };
 }
 
-const adding = 'export function fold(view: number, event: { data: number }): number {\n  return view + event.data;\n}';
+const adding = 'export function fold(view, event) {\n  return view + event.data;\n}';
 
 function foldJob(job: number, views: readonly JsonObject[], parts: FoldJobParts = {}): unknown {
   const request = foldPageData({
@@ -155,7 +155,7 @@ describe('the worker of a loop that serves jobs', () => {
   it('is kept after every program but one its deadline ended, and after every page but one with a view past its deadline', async () => {
     const ask = served({ program: answerOf, fold: foldAnswerOf });
     const pastItsDeadline = { deadlineAt: performance.timeOrigin + performance.now() - 1 };
-    const endless = 'export function fold(view: number): number {\n  for (;;) {}\n}';
+    const endless = 'export function fold(view) {\n  for (;;) {}\n}';
 
     expect(
       await keptAfter(ask, [
@@ -163,7 +163,7 @@ describe('the worker of a loop that serves jobs', () => {
         programJob(2, program('for (;;) {}')),
         programJob(3, program('return 0 / 0;')),
         programJob(4, program('for (;;) {}'), pastItsDeadline),
-        foldJob(5, [{ fold: 'export function fold(): never {\n  throw new Error("stop");\n}' }]),
+        foldJob(5, [{ fold: 'export function fold() {\n  throw new Error("stop");\n}' }]),
         foldJob(6, [{ fold: endless }, {}], { page: { foldDeadlineMs: 1 } }),
       ]),
     ).toEqual([true, true, true, false, true, false]);
@@ -193,24 +193,6 @@ describe('a loop given a job it cannot serve', () => {
       { job: 10, answer: { ran: 'unreadable' }, keep: false },
       { job: 11, answer: { ran: 'unreadable' }, keep: false },
     ]);
-  });
-});
-
-describe('the programs a loop keeps between jobs', () => {
-  it('strips the types of a program once for each source, and gives the same text to every job that runs it', async () => {
-    const seen: unknown[] = [];
-    const ask = served({
-      program: (request, host): ProgramAnswerData => {
-        seen.push(host.stripping.module(request.source));
-        return answerOf(request, host);
-      },
-    });
-    const once = program('return (input as number) + 1;');
-
-    await inTurn(ask, [programJob(1, once), programJob(2, once), programJob(3, program('return input;'))]);
-
-    const [first, again, other] = seen;
-    expect([again === first, other === first]).toEqual([true, false]);
   });
 });
 

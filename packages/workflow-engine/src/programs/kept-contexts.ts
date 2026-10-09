@@ -1,3 +1,4 @@
+import { expressionScript } from './expression-script.ts';
 import type { Evaluation, ProgramFailure, ProgramRun } from './program-run.ts';
 import {
   sandboxRuntimeOf,
@@ -6,7 +7,6 @@ import {
   type SandboxSettings,
   type Settled,
 } from './sandbox-session.ts';
-import type { Stripping } from './type-stripping.ts';
 
 export type FilterTest = (value: string, evaluation: Evaluation) => ProgramRun;
 
@@ -27,11 +27,6 @@ export interface FoldingSource {
   readonly view: string;
 }
 
-export interface Preparing {
-  readonly stripping: Stripping;
-  readonly evaluation: Evaluation;
-}
-
 const filterArgument = '$data';
 
 const foldEntry = 'fold';
@@ -47,7 +42,11 @@ function closing(context: SandboxContext, close: () => void): () => void {
   };
 }
 
-function keptOn(context: SandboxContext, preparing: Preparing, roots: readonly number[]): Omit<FilterContext, 'close'> {
+function keptOn(
+  context: SandboxContext,
+  evaluation: Evaluation,
+  roots: readonly number[],
+): Omit<FilterContext, 'close'> {
   const defined: number[] = [...roots];
   const state: { frozen: ProgramFailure | undefined } = { frozen: undefined };
   const definedTest = (settled: Settled): FilterTest => {
@@ -55,20 +54,13 @@ function keptOn(context: SandboxContext, preparing: Preparing, roots: readonly n
       return () => settled.failed;
     }
     defined.push(settled.kept);
-    return (value, evaluation) =>
-      state.frozen ?? context.call({ fn: settled.kept, args: [value], form: 'expression' }, evaluation);
+    return (value, testing) =>
+      state.frozen ?? context.call({ fn: settled.kept, args: [value], form: 'expression' }, testing);
   };
   return {
-    define: (source) => {
-      const stripped = preparing.stripping.expression(source, [filterArgument]);
-      return definedTest(
-        'issue' in stripped
-          ? { failed: raisedWith(stripped.issue.detail, stripped.issue.line) }
-          : context.expression(stripped.javascript, preparing.evaluation),
-      );
-    },
+    define: (source) => definedTest(context.expression(expressionScript(source, [filterArgument]), evaluation)),
     freeze: () => {
-      const frozen = context.freeze(defined, preparing.evaluation);
+      const frozen = context.freeze(defined, evaluation);
       state.frozen = 'failed' in frozen ? frozen.failed : state.frozen;
       return state.frozen;
     },
@@ -78,21 +70,17 @@ function keptOn(context: SandboxContext, preparing: Preparing, roots: readonly n
 export function filterContextOf(
   instance: SandboxInstance,
   settings: SandboxSettings,
-  preparing: Preparing,
+  evaluation: Evaluation,
 ): FilterContext {
   const runtime = sandboxRuntimeOf(instance, settings);
   const context = runtime.context(true);
-  return { ...keptOn(context, preparing, []), close: closing(context, runtime.close) };
+  return { ...keptOn(context, evaluation, []), close: closing(context, runtime.close) };
 }
 
 type LoadedFold = { readonly namespace: number; readonly fold: number } | { readonly failed: ProgramFailure };
 
-function loadedFold(context: SandboxContext, source: string, preparing: Preparing): LoadedFold {
-  const stripped = preparing.stripping.module(source);
-  if ('issue' in stripped) {
-    return { failed: raisedWith(stripped.issue.detail, stripped.issue.line) };
-  }
-  const namespace = context.module(stripped.javascript, preparing.evaluation);
+function loadedFold(context: SandboxContext, source: string, evaluation: Evaluation): LoadedFold {
+  const namespace = context.module(source, evaluation);
   if ('failed' in namespace) {
     return namespace;
   }
@@ -123,18 +111,22 @@ export function foldingUnitOf(
   instance: SandboxInstance,
   settings: SandboxSettings,
   source: FoldingSource,
-  preparing: Preparing,
+  evaluation: Evaluation,
 ): FoldingUnit {
   const runtime = sandboxRuntimeOf(instance, settings);
   const context = runtime.context(true);
   const close = closing(context, runtime.close);
-  const loaded = loadedFold(context, source.fold, preparing);
+  const loaded = loadedFold(context, source.fold, evaluation);
   if ('failed' in loaded) {
     return { refused: loaded.failed, close };
   }
-  const view = context.parsed(source.view, preparing.evaluation);
+  const view = context.parsed(source.view, evaluation);
   if ('failed' in view) {
     return { refused: view.failed, close };
   }
-  return { ...keptOn(context, preparing, [loaded.namespace]), fold: foldingOf(context, loaded.fold, view.kept), close };
+  return {
+    ...keptOn(context, evaluation, [loaded.namespace]),
+    fold: foldingOf(context, loaded.fold, view.kept),
+    close,
+  };
 }

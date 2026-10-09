@@ -247,7 +247,7 @@ describe('a pool that closes', { timeout: poolTestTimeoutMs }, () => {
     const script = [
       `const { programPool } = await import('${new URL('program-pool.ts', import.meta.url).href}');`,
       'const pool = programPool({ workers: 2, heapMegabytes: 64 });',
-      "const source = 'export default function (input: number): number { return input + 1; }';",
+      "const source = 'export default function (input) { return input + 1; }';",
       "const outcome = await pool.run({ source, arguments: [1], entry: 'default', moment: 0, budget: 500, memoryBytes: 67108864, stackBytes: 1048576, deadlineMs: 10000, mostOutputBytes: 100 });",
       closing,
       'process.stdout.write(JSON.stringify(outcome));',

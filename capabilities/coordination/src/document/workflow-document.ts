@@ -1,10 +1,18 @@
 import { readYaml, type LocatedProblem, type Position, type YamlKind } from '@beonauto/config';
+import { runnableExpression, type StrippedForms } from '@beonauto/definitions';
 import { InvalidInput, type Issue } from '@beonauto/operations';
 import {
   durationLimitRejections,
-  type JsonObject,
+  entriesOf,
+  isList,
+  isObject,
   mostValueDepth,
   nestingRejections,
+  pointerTo,
+  workflowExpressionsOf,
+  type Json,
+  type JsonEntry,
+  type JsonObject,
   type Rejection,
 } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
@@ -95,4 +103,36 @@ export function invalidDocument(detail: string, problems: readonly (LocatedProbl
       pointer: '',
     }));
   return new InvalidInput({ detail, issues });
+}
+
+type Replacements = ReadonlyMap<string, (text: string) => string>;
+
+function runnableObject(object: JsonObject, pointer: string, replacements: Replacements): JsonObject {
+  return Object.fromEntries(
+    entriesOf(object).map(([key, item]: JsonEntry) => [key, runnableAt(item, pointerTo(pointer, key), replacements)]),
+  );
+}
+
+function runnableAt(value: Json, pointer: string, replacements: Replacements): Json {
+  const replace = replacements.get(pointer);
+  if (replace !== undefined && typeof value === 'string') {
+    return replace(value);
+  }
+  if (isList(value)) {
+    return value.map((item, index) => runnableAt(item, pointerTo(pointer, index), replacements));
+  }
+  return isObject(value) ? runnableObject(value, pointer, replacements) : value;
+}
+
+export function runnableDocument(
+  document: WorkflowDefinitionDocument,
+  stripped: StrippedForms,
+): WorkflowDefinitionDocument {
+  const replacements: Replacements = new Map(
+    workflowExpressionsOf(document).flatMap(({ pointer, source }) => {
+      const javascript = runnableExpression(stripped, source);
+      return javascript === source ? [] : [[pointer, (text: string) => text.replace(source, javascript)] as const];
+    }),
+  );
+  return replacements.size === 0 ? document : runnableObject(document, '', replacements);
 }

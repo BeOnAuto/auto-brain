@@ -11,7 +11,6 @@ import {
 } from '../folds/fold-page.ts';
 import { freshInstance } from '../instances/fresh-instances.ts';
 import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
-import { cachedStripping } from '../programs/type-stripping.ts';
 
 export type Timing = Pick<FoldHost, 'now' | 'folding'>;
 
@@ -31,16 +30,13 @@ const reviewEvents: readonly JsonObject[] = [
 ];
 
 export const byCampaign = [
-  'type Review = { at: string; verdict: string };',
-  'export function fold(view: Record<string, Review[]>, event: any): Record<string, Review[]> {',
+  'export function fold(view, event) {',
   '  const { campaign, verdict } = event.data.output;',
   '  return { ...view, [campaign]: [...(view[campaign] ?? []), { at: event.time, verdict }] };',
   '}',
 ].join('\n');
 
-export const adding = 'export function fold(view: number): number {\n  return view + 1;\n}';
-
-const stripping = cachedStripping();
+export const adding = 'export function fold(view) {\n  return view + 1;\n}';
 
 export function viewOf(fold: string, more: Partial<FoldingView> = {}): FoldingView {
   return { fold, filters: [reviewed], view: {}, events: [0, 1, 2, 3], ...more };
@@ -103,5 +99,5 @@ export function slowFirstFold(stepMs: number): Timing {
 
 export async function folded(page: FoldPage, timing: Timing = stillTiming()): Promise<FoldedPage> {
   const instances = await Promise.all(page.views.map(() => freshInstance(page.memoryBytes)));
-  return foldPage(page, { ...timing, checkOf: entriesAtMost, instances, stripping });
+  return foldPage(page, { ...timing, checkOf: entriesAtMost, instances });
 }

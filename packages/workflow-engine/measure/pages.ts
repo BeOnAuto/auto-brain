@@ -10,22 +10,18 @@ import {
   type ProgramPool,
 } from '../src/dsl.ts';
 import { foldPage } from '../src/folds/fold-page.ts';
-import { cachedStripping } from '../src/programs/type-stripping.ts';
 import { millisecondsOf } from './common.ts';
 
 const reviewsFold = [
-  'type Review = { at: string; verdict: string; run: string };',
-  'type Reviews = { [campaign: string]: Review[] };',
-  '',
-  'function fieldOf(value: unknown, name: string): unknown {',
+  'function fieldOf(value, name) {',
   "  return typeof value === 'object' && value !== null && !Array.isArray(value) ? Reflect.get(value, name) : undefined;",
   '}',
   '',
-  'function lastAt(reviews: Review[]): string {',
+  'function lastAt(reviews) {',
   "  return reviews.at(-1)?.at ?? '';",
   '}',
   '',
-  'export function fold(view: Reviews, event: { time?: string; source: string; data: unknown }): Reviews {',
+  'export function fold(view, event) {',
   "  const output = fieldOf(event.data, 'output');",
   "  const named = fieldOf(output, 'campaign');",
   "  const campaign = typeof named === 'string' ? named : 'unknown';",
@@ -110,8 +106,6 @@ async function onAFreshPool(page: FoldRequest): Promise<number> {
   return milliseconds;
 }
 
-const stripping = cachedStripping();
-
 async function foldedOnThisThread(
   page: FoldRequest,
 ): Promise<{ readonly milliseconds: number; readonly views: string }> {
@@ -122,7 +116,6 @@ async function foldedOnThisThread(
     folding: Function.constVoid,
     checkOf: () => passing,
     instances,
-    stripping,
   };
   const milliseconds = millisecondsOf(() => {
     folded.views = JSON.stringify(foldPage(page, host).views);
