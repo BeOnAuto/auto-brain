@@ -4,20 +4,20 @@ import { dirname, resolve } from 'node:path';
 import {
   functionCategoryLabels,
   functionDescriptions,
-  functionKindOrder,
+  functionTypeOrder,
   functionResourceLabels,
 } from '@beonauto/definitions';
 
 export const functionTaxonomyDocument = `${JSON.stringify(
   {
-    schema: 1,
+    schema: 2,
     source: '@beonauto/definitions',
-    functions: functionKindOrder.map((kind) => ({
-      kind,
-      label: functionCategoryLabels[kind],
-      singular: functionResourceLabels[kind].singular,
-      plural: functionResourceLabels[kind].plural,
-      description: functionDescriptions[kind],
+    functions: functionTypeOrder.map((type) => ({
+      type,
+      label: functionCategoryLabels[type],
+      singular: functionResourceLabels[type].singular,
+      plural: functionResourceLabels[type].plural,
+      description: functionDescriptions[type],
     })),
   },
   null,

@@ -56,9 +56,9 @@ export function makeComputationFunctionAdapter({
   const run = computationRun({ pool, deadlineMs });
   return defineCapability({
     type: 'computation',
-    title: functionCategoryLabels.compute,
+    title: functionCategoryLabels.computation,
     guide: { name: 'computation-function' },
-    noun: { one: functionResourceLabels.compute.singular, other: functionResourceLabels.compute.plural },
+    noun: { one: functionResourceLabels.computation.singular, other: functionResourceLabels.computation.plural },
     describeOutput: describeResult,
     mediaType: 'text/markdown',
     parse,

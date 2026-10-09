@@ -17,9 +17,9 @@ export function makeInteractionFunctionAdapter(ports: InteractionPorts): Capabil
   const reachesOutside = ports.tools.configured;
   return defineCapability({
     type: interactionType,
-    title: functionCategoryLabels.interact,
+    title: functionCategoryLabels.interaction,
     guide: { name: 'interaction-function' },
-    noun: { one: functionResourceLabels.interact.singular, other: functionResourceLabels.interact.plural },
+    noun: { one: functionResourceLabels.interaction.singular, other: functionResourceLabels.interaction.plural },
     describeOutput: describeAnswer,
     mediaType: 'text/markdown',
     parse,

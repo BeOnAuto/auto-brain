@@ -33,7 +33,7 @@ const runLog: Decider<null, StandInLogEvent, StandInLogEvent> = {
 const decodeRunLogEvent = Schema.decodeUnknownSync(StandInLogEventSchema);
 
 const runLogPresenter: Presenter = {
-  streamKind: 'runs',
+  streamKind: 'run-logs',
   publicNames: { input_applied: ['input_applied'], state_patched: [] },
   present: ({ id, cursor, causationId, data }) => {
     const { key, at } = decodeRunLogEvent(data);

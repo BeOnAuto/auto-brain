@@ -158,7 +158,7 @@ function decideStart(start: RunStart & CommandMetadata, state: RunStreamState): 
 function ofTheStart({ run, depth, callDepth, calledBy, trigger }: RecordedRunState) {
   const { type, name, definition_version } = run;
   return {
-    type,
+    definition_type: type,
     name,
     definition_version,
     ...counted('depth', depth),

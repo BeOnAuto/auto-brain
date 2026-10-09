@@ -1,36 +1,39 @@
-export type BrainFunctionKind = 'reason' | 'interact' | 'predict' | 'recall' | 'compute';
+export type FunctionType = 'reasoning' | 'interaction' | 'prediction' | 'recall' | 'computation';
 
 export const functionCategoryLabels = {
-  reason: 'Reasoning',
-  interact: 'Interaction',
-  predict: 'Prediction',
+  reasoning: 'Reasoning',
+  interaction: 'Interaction',
+  prediction: 'Prediction',
   recall: 'Recall',
-  compute: 'Computation',
-} satisfies Record<BrainFunctionKind, string>;
+  computation: 'Computation',
+} satisfies Record<FunctionType, string>;
 
 export const functionResourceLabels = {
-  reason: { singular: 'reasoning function', plural: 'reasoning functions' },
-  interact: { singular: 'interaction function', plural: 'interaction functions' },
-  predict: { singular: 'prediction function', plural: 'prediction functions' },
+  reasoning: { singular: 'reasoning function', plural: 'reasoning functions' },
+  interaction: { singular: 'interaction function', plural: 'interaction functions' },
+  prediction: { singular: 'prediction function', plural: 'prediction functions' },
   recall: { singular: 'recall function', plural: 'recall functions' },
-  compute: { singular: 'computation function', plural: 'computation functions' },
-} satisfies Record<BrainFunctionKind, { readonly singular: string; readonly plural: string }>;
+  computation: { singular: 'computation function', plural: 'computation functions' },
+} satisfies Record<FunctionType, { readonly singular: string; readonly plural: string }>;
 
 export const functionDescriptions = {
-  reason: 'Use a prompt, skills, and tools to interpret information or produce a response.',
-  interact: 'Exchange information with people or systems.',
-  predict: 'Create and use an ML model to make predictions.',
+  reasoning: 'Use a prompt, skills, and tools to interpret information or produce a response.',
+  interaction: 'Exchange information with people or systems.',
+  prediction: 'Create and use an ML model to make predictions.',
   recall: 'Answer from what the brain keeps of its own history.',
-  compute: 'Run defined code or expressions to calculate or transform data.',
-} satisfies Record<BrainFunctionKind, string>;
+  computation: 'Run defined code or expressions to calculate or transform data.',
+} satisfies Record<FunctionType, string>;
 
-export const functionKindOrder: readonly BrainFunctionKind[] = ['reason', 'interact', 'predict', 'recall', 'compute'];
+export const functionTypeOrder: readonly FunctionType[] = [
+  'reasoning',
+  'interaction',
+  'prediction',
+  'recall',
+  'computation',
+];
 
 const resourceLabels: ReadonlyMap<string, string> = new Map([
-  ['reasoning', functionResourceLabels.reason.singular],
-  ['interaction', functionResourceLabels.interact.singular],
-  ['computation', functionResourceLabels.compute.singular],
-  ['recall', functionResourceLabels.recall.singular],
+  ...functionTypeOrder.map((type): [string, string] => [type, functionResourceLabels[type].singular]),
   ['workflow', 'workflow'],
 ]);
 

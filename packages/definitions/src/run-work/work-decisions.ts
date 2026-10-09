@@ -11,7 +11,7 @@ const runEnded = new Conflict({ detail: 'The run has ended, so it records no mor
 
 export function ofTheDefinition({ run }: RecordedRunState) {
   const { type, name, definition_version } = run;
-  return { type, name, definition_version };
+  return { definition_type: type, name, definition_version };
 }
 
 function nextCallOf(state: RecordedRunState, number: number | undefined): Result.Result<number, Conflict> {

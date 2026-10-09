@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import {
   functionCategoryLabels,
   functionDescriptions,
-  functionKindOrder,
+  functionTypeOrder,
   functionResourceLabels,
 } from '@beonauto/definitions';
 
@@ -31,17 +31,17 @@ function withTemporaryAsset(verify: (path: string) => void): void {
 await test('the published taxonomy comes from the runtime metadata in canonical order', () => {
   const document: unknown = JSON.parse(functionTaxonomyDocument);
   assert.deepEqual(document, {
-    schema: 1,
+    schema: 2,
     source: '@beonauto/definitions',
-    functions: functionKindOrder.map((kind) => ({
-      kind,
-      label: functionCategoryLabels[kind],
-      singular: functionResourceLabels[kind].singular,
-      plural: functionResourceLabels[kind].plural,
-      description: functionDescriptions[kind],
+    functions: functionTypeOrder.map((type) => ({
+      type,
+      label: functionCategoryLabels[type],
+      singular: functionResourceLabels[type].singular,
+      plural: functionResourceLabels[type].plural,
+      description: functionDescriptions[type],
     })),
   });
-  assert.deepEqual(functionKindOrder, ['reason', 'interact', 'predict', 'recall', 'compute']);
+  assert.deepEqual(functionTypeOrder, ['reasoning', 'interaction', 'prediction', 'recall', 'computation']);
   assert.ok(functionTaxonomyDocument.endsWith('\n'));
 });
 

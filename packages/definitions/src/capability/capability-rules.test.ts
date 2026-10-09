@@ -101,7 +101,7 @@ const rejected: Readonly<Record<string, Rejection>> = {
   },
 };
 
-const fixtureDirectory = fileURLToPath(new URL('../../node_modules/.cache/primitive-rules/', import.meta.url));
+const fixtureDirectory = fileURLToPath(new URL('../../node_modules/.cache/capability-rules/', import.meta.url));
 
 function compiledErrors(): readonly string[] {
   rmSync(fixtureDirectory, { recursive: true, force: true });

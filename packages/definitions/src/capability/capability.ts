@@ -223,7 +223,7 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
       parse(source).pipe(
         Effect.map((parsed) => ({
           summary: summarize(parsed),
-          execute: (input, context) => run(parsed, input, context),
+          run: (input, context) => run(parsed, input, context),
           whenCancelled,
           callsTools: callsTools(parsed),
           finishesLater: finishesLater(parsed),

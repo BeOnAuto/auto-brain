@@ -18,9 +18,9 @@ const mostKeyBytes = 256;
 
 const mostReferenceBytes = 256;
 
-const runLogsKind = 'runs';
+const runLogsKind = 'run-logs';
 
-const decodeRunEvent = Schema.decodeUnknownSync(Schema.toCodecJson(RunLogEventSchema));
+const decodeRunLogEvent = Schema.decodeUnknownSync(Schema.toCodecJson(RunLogEventSchema));
 
 type Rejection = NonNullable<Extract<InputReceipt, { readonly kind: 'call_answered' }>['rejection']>;
 
@@ -73,7 +73,7 @@ export const runPresenter: Presenter = {
   streamKind: runLogsKind,
   publicNames: { input_applied: ['workflow_input_applied', ...stepEventTypes] },
   present: (recorded) => {
-    const event = decodeRunEvent(recorded.data);
+    const event = decodeRunLogEvent(recorded.data);
     const runId = recorded.stream.slice(runLogsKind.length + 1);
     const record = {
       id: recorded.id,

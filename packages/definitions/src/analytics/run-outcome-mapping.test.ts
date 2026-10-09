@@ -29,7 +29,7 @@ const firstStart = {
   startedDay: '2026-10-01',
   startedAt: '2026-10-01T09:00:00.000Z',
   lastStartedAt: '2026-10-01T09:00:00.000Z',
-  type: 'reasoning',
+  definitionType: 'reasoning',
   name: 'triage',
 };
 

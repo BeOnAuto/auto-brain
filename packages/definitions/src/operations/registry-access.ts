@@ -53,7 +53,7 @@ export function versionOf(type: string, name: string, version: number) {
 }
 
 export const recordInRegistry = Effect.fnUntraced(function* (
-  { name: type, mostActive }: { readonly name: string; readonly mostActive: number },
+  { type, mostActive }: { readonly type: string; readonly mostActive: number },
   data: DefinitionCommandData,
 ) {
   const metadata = yield* commandMetadata;

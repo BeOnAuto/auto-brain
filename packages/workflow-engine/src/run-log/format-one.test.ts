@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { stateFormats, stateInCurrentFormat } from '../index.ts';
-import { at, executionId } from '../testing/runs.ts';
+import { at, runId } from '../testing/runs.ts';
 
 const toJson = Schema.decodeUnknownSync(Schema.Json);
 
@@ -21,7 +21,7 @@ const askingOfFormatOne = {
   timeout: null,
   body: {
     kind: 'call',
-    key: { executionId, reference: '/do/0/race/fork/branches/3/ask', run: 1 },
+    key: { executionId: runId, reference: '/do/0/race/fork/branches/3/ask', run: 1 },
     function: 'notify',
     arguments: 0,
     label: 'notify',
@@ -49,7 +49,7 @@ const frameOfFormatOne = {
           input: 0,
           variables: {},
           timeout: null,
-          body: { kind: 'wait', timer: `${executionId}/timers/1` },
+          body: { kind: 'wait', timer: `${runId}/timers/1` },
         },
       },
       { state: 'failed', error: { type: 'runtime', status: 500, instance: '/c' } },
@@ -65,7 +65,7 @@ const askDeadline = { purpose: 'call_deadline', reference: askingOfFormatOne.ref
 function runningOfFormatOne(root: unknown, armed: Readonly<Record<string, unknown>>): Schema.Json {
   return toJson({
     ...initialOfFormatOne,
-    executionId,
+    executionId: runId,
     status: 'running',
     lastInputAt: at,
     timers: { next: 3, armed },
@@ -74,8 +74,8 @@ function runningOfFormatOne(root: unknown, armed: Readonly<Record<string, unknow
 }
 
 const stateOfFormatOne = runningOfFormatOne(frameOfFormatOne, {
-  [`${executionId}/timers/1`]: waitTimer,
-  [`${executionId}/timers/2`]: askDeadline,
+  [`${runId}/timers/1`]: waitTimer,
+  [`${runId}/timers/2`]: askDeadline,
 });
 
 describe('a state of format 1', () => {
@@ -83,8 +83,8 @@ describe('a state of format 1', () => {
     const upcast = stateInCurrentFormat(1, stateOfFormatOne);
 
     expect(upcast.timers.armed).toEqual({
-      [`${executionId}/timers/1`]: { ...waitTimer, armedAt: at },
-      [`${executionId}/timers/2`]: { ...askDeadline, armedAt: at },
+      [`${runId}/timers/1`]: { ...waitTimer, armedAt: at },
+      [`${runId}/timers/2`]: { ...askDeadline, armedAt: at },
     });
     expect(upcast.machine.root).toMatchObject({
       startedAt: at,
@@ -94,7 +94,7 @@ describe('a state of format 1', () => {
           { state: 'failed', order: 0 },
           { state: 'running', task: { startedAt: at, context: 0 } },
           { state: 'failed', order: 2 },
-          { state: 'running', task: { body: { kind: 'call', deadline: `${executionId}/timers/2` } } },
+          { state: 'running', task: { body: { kind: 'call', deadline: `${runId}/timers/2` } } },
         ],
       },
     });
@@ -127,7 +127,7 @@ describe('the inbox of a state of format 1', () => {
 
   it('does not load when a call in it has no deadline armed, which every call of format 1 armed', () => {
     expect(() =>
-      stateInCurrentFormat(1, runningOfFormatOne(frameOfFormatOne, { [`${executionId}/timers/1`]: waitTimer })),
+      stateInCurrentFormat(1, runningOfFormatOne(frameOfFormatOne, { [`${runId}/timers/1`]: waitTimer })),
     ).toThrow(/deadline/u);
   });
 });

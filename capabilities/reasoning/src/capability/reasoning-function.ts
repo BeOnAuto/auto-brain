@@ -54,12 +54,12 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
   const execute = definitionRun(options);
   return defineCapability({
     type: 'reasoning',
-    title: functionCategoryLabels.reason,
+    title: functionCategoryLabels.reasoning,
     guide: {
       name: 'reasoning-function',
       onThisServer: onThisServer(options.offered, options.tools?.configured === true),
     },
-    noun: { one: functionResourceLabels.reason.singular, other: functionResourceLabels.reason.plural },
+    noun: { one: functionResourceLabels.reasoning.singular, other: functionResourceLabels.reasoning.plural },
     describeOutput: describeAnswer,
     mediaType: 'text/markdown',
     parse,

@@ -168,7 +168,7 @@ describe('list_runs', () => {
   });
 });
 
-describe('a run listed after it started again or did not go through', () => {
+describe('a run listed after it started again', () => {
   it('shows a run started again and still running by its latest start, in the place of its first', async () => {
     const { callCancelledWhen, runDefinition, executing, listing, prober, call, updateDefinition } =
       await brainWithRuns();
@@ -195,7 +195,9 @@ describe('a run listed after it started again or did not go through', () => {
       },
     });
   });
+});
 
+describe('a run listed after it did not go through', () => {
   it('shows the reason, kind and because of a rejection, and never its detail', async () => {
     const { executing, listing, prober } = await brainWithRuns();
     prober.sufferOnNextRun('unoffered');

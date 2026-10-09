@@ -30,7 +30,7 @@ describe('a state of format 4', () => {
     expect([upcast.inbox.offeredIds, upcast.emitted, Object.values(upcast.listeners)]).toEqual([
       [],
       { count: 0, bytes: 0 },
-      [{ executionId: upcast.executionId, reference: listening, run: 1 }],
+      [{ runId: upcast.runId, reference: listening, run: 1 }],
     ]);
   });
 

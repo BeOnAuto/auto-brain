@@ -109,7 +109,7 @@ export function stepOf(
   record: RecordedEvent,
 ): Effect.Effect<Step> {
   const { brainKey, delivers } = stepping;
-  if (streamKindOf(record.stream.slice(brainKey.length)) === 'runs') {
+  if (streamKindOf(record.stream.slice(brainKey.length)) === 'run-logs') {
     return runRecordStep(parts, stepping, progress, record);
   }
   const step: Effect.Effect<Step> = delivers.has(record.type)

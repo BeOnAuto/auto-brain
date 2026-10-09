@@ -78,7 +78,7 @@ function started(row: RunOutcome | undefined, { definition_type: type, name, at 
 function finished(row: RunOutcome | undefined, { type, at, record }: Finished): RunOutcome {
   const status = statusOf[type];
   if (row === undefined) {
-    const notStarted = { startedDay: dayOf(at), startedAt: at, lastStartedAt: at, type: '', name: '' };
+    const notStarted = { startedDay: dayOf(at), startedAt: at, lastStartedAt: at, definitionType: '', name: '' };
     return { ...notStarted, status, durationMs: null, ...tokensAfter(noTokens, record) };
   }
   const durationMs = status === 'rejected' ? null : durationBetween(row.lastStartedAt, at);

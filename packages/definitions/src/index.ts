@@ -171,7 +171,7 @@ export {
   definitionResourceLabel,
   functionCategoryLabels,
   functionDescriptions,
-  functionKindOrder,
+  functionTypeOrder,
   functionResourceLabels,
-  type BrainFunctionKind,
+  type FunctionType,
 } from './capability/function-terminology.ts';

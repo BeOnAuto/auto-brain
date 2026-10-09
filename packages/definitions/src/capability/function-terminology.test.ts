@@ -4,34 +4,34 @@ import {
   definitionResourceLabel,
   functionCategoryLabels,
   functionDescriptions,
-  functionKindOrder,
+  functionTypeOrder,
   functionResourceLabels,
 } from '../index.ts';
 
 describe('brain function terminology', () => {
   it('keeps the five function types in product order, without coordination or Dream', () => {
-    expect(functionKindOrder).toEqual(['reason', 'interact', 'predict', 'recall', 'compute']);
-    expect(functionKindOrder.map((kind) => functionCategoryLabels[kind])).toEqual([
+    expect(functionTypeOrder).toEqual(['reasoning', 'interaction', 'prediction', 'recall', 'computation']);
+    expect(functionTypeOrder.map((type) => functionCategoryLabels[type])).toEqual([
       'Reasoning',
       'Interaction',
       'Prediction',
       'Recall',
       'Computation',
     ]);
-    expect(Object.keys(functionCategoryLabels)).toEqual(functionKindOrder);
-    expect(Object.keys(functionResourceLabels)).toEqual(functionKindOrder);
-    expect(Object.keys(functionDescriptions)).toEqual(functionKindOrder);
+    expect(Object.keys(functionCategoryLabels)).toEqual(functionTypeOrder);
+    expect(Object.keys(functionResourceLabels)).toEqual(functionTypeOrder);
+    expect(Object.keys(functionDescriptions)).toEqual(functionTypeOrder);
   });
 
   it('uses countable resource names and describes each declared responsibility', () => {
-    expect(functionKindOrder.map((kind) => functionResourceLabels[kind])).toEqual([
+    expect(functionTypeOrder.map((type) => functionResourceLabels[type])).toEqual([
       { singular: 'reasoning function', plural: 'reasoning functions' },
       { singular: 'interaction function', plural: 'interaction functions' },
       { singular: 'prediction function', plural: 'prediction functions' },
       { singular: 'recall function', plural: 'recall functions' },
       { singular: 'computation function', plural: 'computation functions' },
     ]);
-    expect(functionKindOrder.map((kind) => functionDescriptions[kind])).toEqual([
+    expect(functionTypeOrder.map((type) => functionDescriptions[type])).toEqual([
       'Use a prompt, skills, and tools to interpret information or produce a response.',
       'Exchange information with people or systems.',
       'Create and use an ML model to make predictions.',
@@ -45,6 +45,7 @@ describe('brain function terminology', () => {
     expect(definitionResourceLabel('interaction')).toBe('interaction function');
     expect(definitionResourceLabel('computation')).toBe('computation function');
     expect(definitionResourceLabel('recall')).toBe('recall function');
+    expect(definitionResourceLabel('prediction')).toBe('prediction function');
     expect(definitionResourceLabel('workflow')).toBe('workflow');
     expect(definitionResourceLabel('echo')).toBe('echo definition');
     expect(definitionResourceLabel('agent')).toBe('agent definition');

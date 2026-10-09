@@ -49,7 +49,7 @@ export interface RunStream {
   readonly runId: string;
 }
 
-const runStream = /^(?<brainKey>[^/]+\/[^/]+\/[^/]+\/)executions\/(?<runId>[^/]+)$/u;
+const runStream = /^(?<brainKey>[^/]+\/[^/]+\/[^/]+\/)runs\/(?<runId>[^/]+)$/u;
 
 export function runStreamOf(stream: string): RunStream | undefined {
   const groups = runStream.exec(stream)?.groups;
