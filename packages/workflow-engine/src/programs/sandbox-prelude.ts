@@ -23,8 +23,8 @@ const dates = String.raw`
     try { return apply(getTime, value, []); } catch { throw new Refusal('A Date is made from no argument, one number, one string or one Date'); }
   };
   const SandboxDate = function Date(...values) {
-    if (new.target === undefined) throw new Refusal('Date is called with new, as a constructor');
-    if (values.length > 1) throw new Refusal('A Date made from several numbers reads the time zone of the server; make it from Date.UTC(...) instead');
+    if (!${sandboxRemovals.dateConstructor.called} && new.target === undefined) throw new Refusal('Date is called with new, as a constructor');
+    if (values.length > ${sandboxRemovals.dateConstructor.mostArguments}) throw new Refusal('A Date made from several numbers reads the time zone of the server; make it from Date.UTC(...) instead');
     return construct(OriginalDate, [values.length === 0 ? moment : instantOf(values[0])], new.target);
   };
   const local = () => { throw new Refusal('A Date is written as text with toISOString, which reads no time zone'); };

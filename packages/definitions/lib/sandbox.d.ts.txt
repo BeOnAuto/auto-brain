@@ -1501,8 +1501,6 @@ interface WeakSetConstructor {
 interface Promise<T> {
 }
 interface PromiseConstructor {
-    all<T>(values: Iterable<T | PromiseLike<T>>): Promise<Awaited<T>[]>;
-    race<T>(values: Iterable<T | PromiseLike<T>>): Promise<Awaited<T>>;
 }
 interface StringIterator<T> extends IteratorObject<T, BuiltinIteratorReturn, unknown> {
     [Symbol.iterator](): StringIterator<T>;
@@ -1662,20 +1660,8 @@ interface GeneratorFunctionConstructor {
 }
 
 interface PromiseConstructor {
-    readonly prototype: Promise<any>;
     new <T>(executor: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): Promise<T>;
-    all<T extends readonly unknown[] | [
-    ]>(values: T): Promise<{
-        -readonly [P in keyof T]: Awaited<T[P]>;
-    }>;
-    race<T extends readonly unknown[] | [
-    ]>(values: T): Promise<Awaited<T[number]>>;
-    reject<T = never>(reason?: any): Promise<T>;
-    resolve(): Promise<void>;
-    resolve<T>(value: T): Promise<Awaited<T>>;
-    resolve<T>(value: T | PromiseLike<T>): Promise<Awaited<T>>;
 }
-declare var Promise: PromiseConstructor;
 
 interface ProxyHandler<T extends object> {
     apply?(target: T, thisArg: any, argArray: any[]): any;
@@ -1780,7 +1766,6 @@ interface Promise<T> {
     readonly [Symbol.toStringTag]: string;
 }
 interface PromiseConstructor {
-    readonly [Symbol.species]: PromiseConstructor;
 }
 interface RegExp {
     [Symbol.match](string: string): RegExpMatchArray | null;
@@ -2265,11 +2250,6 @@ interface PromiseRejectedResult {
 }
 type PromiseSettledResult<T> = PromiseFulfilledResult<T> | PromiseRejectedResult;
 interface PromiseConstructor {
-    allSettled<T extends readonly unknown[] | [
-    ]>(values: T): Promise<{
-        -readonly [P in keyof T]: PromiseSettledResult<Awaited<T[P]>>;
-    }>;
-    allSettled<T>(values: Iterable<T | PromiseLike<T>>): Promise<PromiseSettledResult<Awaited<T>>[]>;
 }
 
 interface Atomics {
@@ -2303,9 +2283,6 @@ interface AggregateErrorConstructor {
 }
 declare var AggregateError: AggregateErrorConstructor;
 interface PromiseConstructor {
-    any<T extends readonly unknown[] | [
-    ]>(values: T): Promise<Awaited<T[number]>>;
-    any<T>(values: Iterable<T | PromiseLike<T>>): Promise<Awaited<T>>;
 }
 
 interface String {
@@ -2565,7 +2542,6 @@ interface PromiseWithResolvers<T> {
     reject: (reason?: any) => void;
 }
 interface PromiseConstructor {
-    withResolvers<T>(): PromiseWithResolvers<T>;
 }
 
 interface RegExp {
@@ -2689,7 +2665,6 @@ interface DataView<TArrayBuffer extends ArrayBufferLike> {
 }
 
 interface PromiseConstructor {
-    try<T, U extends unknown[]>(callbackFn: (...args: U) => T | PromiseLike<T>, ...args: U): Promise<Awaited<T>>;
 }
 
 interface RegExpConstructor {

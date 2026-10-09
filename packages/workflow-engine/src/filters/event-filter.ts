@@ -1,19 +1,12 @@
+import { Function } from 'effect';
+
 import { enclosedBody } from '../dsl/expressions.ts';
-import {
-  entriesOf,
-  field,
-  isObject,
-  isTruthy,
-  jsonEquals,
-  objectField,
-  type Json,
-  type JsonEntry,
-  type JsonObject,
-} from '../dsl/json.ts';
+import { field, isObject, objectField, type Json, type JsonObject } from '../dsl/json.ts';
 import { forbidden, rejection, type Rejection } from '../dsl/policy-checks.ts';
 import { eventFilterRejections, eventFiltersOf, type LocatedFilter } from '../dsl/task-policy.ts';
 import { pointerTo } from '../dsl/tasks.ts';
 import type { DslError } from '../machine/dsl-error.ts';
+import { attributeHolds, filterAttributesOf } from './attribute-match.ts';
 
 type ExpressionVerdict = (expression: string, value: Json) => Json;
 
@@ -33,14 +26,9 @@ const literalAttributes: readonly string[] = ['type', 'source', 'subject'];
 
 const testedAttributes: ReadonlySet<string> = new Set([...literalAttributes, 'data']);
 
-function attributeMatches(expected: Json, actual: Json, verdictOf: ExpressionVerdict): boolean {
-  const expression = enclosedBody(expected);
-  return expression === undefined ? jsonEquals(expected, actual) : isTruthy(verdictOf(expression, actual));
-}
-
 export function hasAttributes(event: JsonObject, attributes: JsonObject, verdictOf: ExpressionVerdict): boolean {
-  return entriesOf(attributes).every(([name, expected]: JsonEntry) =>
-    attributeMatches(expected, field(event, name) ?? null, verdictOf),
+  return filterAttributesOf(attributes, Function.identity).every((attribute) =>
+    attributeHolds(attribute, event, (expression, actual) => verdictOf(expression, actual)),
   );
 }
 

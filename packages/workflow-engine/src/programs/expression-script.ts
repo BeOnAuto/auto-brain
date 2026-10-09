@@ -1,3 +1,3 @@
 export function expressionScript(body: string, names: readonly string[]): string {
-  return `((${names.join(', ')}) => (\n${body}\n))`;
+  return `'use strict';\n((${names.join(', ')}) => (\n${body}\n))`;
 }

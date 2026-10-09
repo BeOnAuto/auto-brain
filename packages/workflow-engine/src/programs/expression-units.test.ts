@@ -71,6 +71,25 @@ describe('a unit of expressions', () => {
 });
 
 describe('an expression a unit refuses', () => {
+  it('raises what strict code raises, as the check compiles an expression: a write to a name never declared or to a frozen object', async () => {
+    const instance = await freshInstance(unitMemoryBytes);
+    const unit = expressionUnitOf(() => instance, settings);
+
+    const runs = [
+      unit.evaluate('(() => { undeclared = 1; return 1 })()', {}, evaluation),
+      unit.evaluate('(() => { const kept = Object.freeze({ n: 1 }); kept.n = 2; return kept.n })()', {}, evaluation),
+    ];
+    unit.close();
+
+    const referenceError: unknown = expect.stringContaining('ReferenceError');
+    const typeError: unknown = expect.stringContaining('TypeError');
+
+    expect(runs).toMatchObject([
+      { ran: 'raised', issue: { detail: referenceError } },
+      { ran: 'raised', issue: { detail: typeError } },
+    ]);
+  });
+
   it('raises an expression that does not parse, with its line', async () => {
     const instance = await freshInstance(unitMemoryBytes);
     const unit = expressionUnitOf(() => instance, settings);

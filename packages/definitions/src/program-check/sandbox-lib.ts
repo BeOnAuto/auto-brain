@@ -123,10 +123,11 @@ function removedByThePrelude(holder: string, name: string | undefined): boolean 
 }
 
 function readsLocalTime(holder: string, member: ts.Node): boolean {
+  const { called, mostArguments } = sandboxRemovals.dateConstructor;
   return (
     holder === 'DateConstructor' &&
-    (ts.isCallSignatureDeclaration(member) ||
-      (ts.isConstructSignatureDeclaration(member) && member.parameters.length > 1))
+    ((!called && ts.isCallSignatureDeclaration(member)) ||
+      (ts.isConstructSignatureDeclaration(member) && member.parameters.length > mostArguments))
   );
 }
 

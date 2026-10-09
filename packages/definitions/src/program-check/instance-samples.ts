@@ -19,7 +19,6 @@ export const instanceSamples: Readonly<Record<string, string>> = {
   ReadonlySet: 'new Set()',
   WeakMap: 'new WeakMap()',
   WeakSet: 'new WeakSet()',
-  Promise: 'Promise.resolve()',
   ArrayBuffer: 'new ArrayBuffer(8)',
   SharedArrayBuffer: 'new SharedArrayBuffer(8)',
   DataView: 'new DataView(new ArrayBuffer(8))',

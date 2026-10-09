@@ -194,6 +194,7 @@ describe('the names a program meets', () => {
           '  const zone = Intl.DateTimeFormat;',
           '  const kept = new WeakRef({});',
           '  return { total: random + local + Date().length };',
+          '  Promise.resolve(1).then(() => kept);',
         ),
       ),
     ).toEqual([
@@ -207,6 +208,7 @@ describe('the names a program meets', () => {
       [7, "Cannot use namespace 'Intl' as a value."],
       [8, "Cannot find name 'WeakRef'."],
       [9, "Value of type 'DateConstructor' is not callable. Did you mean to include 'new'?"],
+      [10, "'Promise' only refers to a type, but is being used as a value here."],
     ]);
   });
 

@@ -13,7 +13,7 @@ export const programFile = 'program.ts';
 
 export const expressionFile = 'expression.ts';
 
-const expressionPrefixLines = 1;
+const expressionPrefixLines = 2;
 
 const unreadable: Described = { text: 'an error that could not be read', stack: '' };
 

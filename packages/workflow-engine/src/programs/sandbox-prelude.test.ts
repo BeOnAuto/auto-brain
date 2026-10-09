@@ -146,9 +146,10 @@ describe('the original constructor of Date', () => {
 
 describe('the names the sandbox removes', () => {
   it('are absent, and so is every constructor of functions from text', () => {
-    expect(
-      [...sandboxRemovals.globals, 'Intl', 'console', 'fetch', 'setTimeout'].map((name) => attempted(`typeof ${name}`)),
-    ).toEqual(Array.from({ length: 8 }, () => 'undefined'));
+    const absent = [...sandboxRemovals.globals, 'Intl', 'console', 'fetch', 'setTimeout'];
+
+    expect(absent).toContain('Promise');
+    expect(absent.map((name) => attempted(`typeof ${name}`))).toEqual(absent.map(() => 'undefined'));
     expect(attempted('typeof Math.random')).toBe('undefined');
     expect(
       [

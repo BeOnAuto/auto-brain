@@ -159,8 +159,10 @@ function recordTests(settingsOf: SettingsOf): void {
     expect(kept.view).toEqual([{ id: anyText, causationid: null, correlationid: null }]);
     expect(kept.lastEvent?.id).not.toContain(run);
   });
+}
 
-  it('passes over a record it cannot read and an event nested deeper than a fold may read, reporting each, and folds the rest', async () => {
+function passedOverTests(settingsOf: SettingsOf): void {
+  it('passes over a record it cannot read, an event nested deeper than a fold may read and one at a leap second, which gives a fold no moment, reporting each, and folds the rest', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved(
       'count',
@@ -179,14 +181,23 @@ function recordTests(settingsOf: SettingsOf): void {
       time: '2026-10-01T09:00:00Z',
       data: deep,
     });
+    await views.published({
+      specversion: '1.0',
+      id: 'leap',
+      source: '/acme',
+      type: 'com.acme.deep',
+      time: '2016-12-31T23:59:60Z',
+      data: 1,
+    });
     await views.ran('reasoning/count', 'two');
     views.start();
 
     const kept = await views.until('count', foldedAll(2));
-    await views.until('count', () => views.reports.notes().length >= 2);
+    await views.until('count', () => views.reports.notes().length >= 3);
 
     expect(kept.view).toBe(2);
     expect(views.reports.notes()).toEqual([
+      { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
       { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
       { kind: 'record_passed_over', brain: 'brain/acme/alpha/', record: anyText, reason: 'unreadable' },
     ]);
@@ -199,5 +210,6 @@ export function foldingSuite(settingsOf: SettingsOf): void {
     checkpointTests(settingsOf);
     sourceTests(settingsOf);
     recordTests(settingsOf);
+    passedOverTests(settingsOf);
   });
 }
