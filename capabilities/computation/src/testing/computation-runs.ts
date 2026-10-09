@@ -3,6 +3,7 @@ import { noLongestRuns, recordingJournal } from '@beonauto/definitions/testing';
 import { allPermissions, type Conflict, type InvalidInput, type Unavailable } from '@beonauto/operations';
 import { programPool, type PoolSettings, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Effect, type Exit, type Schema } from 'effect';
+import { TestClock } from 'effect/testing';
 import { afterEach } from 'vitest';
 
 import { makeComputationFunctionAdapter } from '../capability/computation-function.ts';
@@ -29,6 +30,7 @@ export interface ComputationRuns {
   readonly capability: Capability;
   readonly prepared: (source: string) => PreparedDefinition;
   readonly running: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly runningAt: (moment: number, source: string, input?: Schema.Json) => Promise<Run>;
 }
 
 const pools: ProgramPool[] = [];
@@ -61,9 +63,20 @@ export function computationWith(pool: ProgramPool = poolOf(), deadlineMs?: numbe
     capability,
     prepared,
     running: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, run)),
+    runningAt: (moment, source, input = {}) =>
+      Effect.runPromiseExit(
+        TestClock.setTime(moment).pipe(
+          Effect.andThen(prepared(source).run(input, run)),
+          Effect.provide(TestClock.layer()),
+        ),
+      ),
   };
 }
 
-export function programDocument(program: string, frontMatter = 'language: jq'): string {
+export function programDocument(program: string, frontMatter = 'language: typescript'): string {
   return `---\n${frontMatter}\n---\n${program}`;
+}
+
+export function functionOf(body: string): string {
+  return `export default function (input: any): unknown {\n  ${body}\n}`;
 }

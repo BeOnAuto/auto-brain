@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
 import {
   computationWith,
+  functionOf,
   poolOf,
   programDocument,
   workerTestTimeoutMs,
@@ -25,7 +26,7 @@ const decodeFinished = Schema.decodeUnknownSync(
       total_spend_cents: Schema.Number,
     }),
     record: Schema.Struct({
-      language: Schema.Literal('jq'),
+      language: Schema.Literal('typescript'),
       work: Schema.Number,
       duration_ms: Schema.Number,
       input_bytes: Schema.Number,
@@ -82,19 +83,23 @@ describe('a run of a computation function', { timeout: workerTestTimeoutMs }, ()
     expect(output.campaigns.map(({ spend_cents }) => spend_cents)).toEqual([
       1_346_500, 1_346_750, 1_347_000, 1_347_250,
     ]);
-    expect(record).toMatchObject({ language: 'jq', input_bytes: JSON.stringify(input).length });
+    expect(record).toMatchObject({ language: 'typescript', input_bytes: JSON.stringify(input).length });
     expect(record.output_bytes).toBe(JSON.stringify(output).length);
-    expect(record.work).toBeGreaterThan(0);
+    expect(record.work).toBe(0);
     expect(record.duration_ms).toBeGreaterThanOrEqual(0);
   });
 
   it('computes with doubles: integers exactly, and decimal fractions as doubles do', async () => {
     const run = computationWith();
 
-    expect(await succeeded(() => run.running(programDocument('[0.1, 0.2, 0.3] | add')))).toMatchObject({
-      output: 0.6000000000000001,
-    });
-    expect(await succeeded(() => run.running(programDocument('9007199254740992 + 1')))).toMatchObject({
+    expect(
+      await succeeded(() =>
+        run.running(programDocument(functionOf('return [0.1, 0.2, 0.3].reduce((sum, each) => sum + each, 0);'))),
+      ),
+    ).toMatchObject({ output: 0.6000000000000001 });
+    expect(
+      await succeeded(() => run.running(programDocument(functionOf('return 9007199254740992 + 1;')))),
+    ).toMatchObject({
       output: 9_007_199_254_740_992,
     });
   });
@@ -120,7 +125,7 @@ describe('the summary of a computation function', () => {
       inputSchema: { type: 'object', required: ['rows', 'period'] },
       outputSchema: { type: 'object', required: ['campaigns', 'total_spend_cents'] },
     });
-    expect(prepared(programDocument('.')).summary).toEqual({});
+    expect(prepared(programDocument(functionOf('return input;'))).summary).toEqual({});
     expect(capability).toMatchObject({
       type: 'computation',
       title: 'Computation',
@@ -132,28 +137,38 @@ describe('the summary of a computation function', () => {
     });
     expect(prepared(campaignPace).callsTools).toBe(false);
   });
+});
 
-  it('refuses a definition with its problems, each with its line', async () => {
+describe('a computation function definition that is refused', () => {
+  it('is refused with its problems, each with its line', async () => {
     const { capability } = computationWith(poolOf({ workers: 1 }));
 
     expect(
-      await Effect.runPromise(Effect.flip(capability.prepare(programDocument('now', 'language: python')))),
+      await Effect.runPromise(Effect.flip(capability.prepare(programDocument('\n', 'language: python\nmodel: big')))),
     ).toMatchObject({
       detail: 'The computation function definition has 2 problems',
       issues: [
         {
           pointer: '',
-          detail: 'Line 2, /language: python is not a language of a computation function; it is written in jq',
+          detail:
+            'Line 3, /model: model is not a key of the front matter; it takes description, language, input, output',
         },
+        { pointer: '', detail: 'Line 5: The definition has no program: write it after the front matter' },
+      ],
+    });
+    expect(
+      await Effect.runPromise(
+        Effect.flip(capability.prepare(programDocument(functionOf('return 1;'), 'language: python'))),
+      ),
+    ).toMatchObject({
+      detail: 'The computation function definition has a problem',
+      issues: [
         {
           pointer: '',
           detail:
-            'Line 4: now reads the clock, so the same input would not give the same output; pass the time in the input',
+            "Line 2, /language: The brain's one language is TypeScript; write the program as a TypeScript function",
         },
       ],
-    });
-    expect(await Effect.runPromise(Effect.flip(capability.prepare(programDocument('.a +'))))).toMatchObject({
-      detail: 'The computation function definition has a problem',
     });
   });
 });

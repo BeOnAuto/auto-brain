@@ -3,7 +3,13 @@ import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import { computationWith, poolOf, programDocument, workerTestTimeoutMs } from '../testing/computation-runs.ts';
+import {
+  computationWith,
+  functionOf,
+  poolOf,
+  programDocument,
+  workerTestTimeoutMs,
+} from '../testing/computation-runs.ts';
 
 function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly requests: ProgramRequest[] } {
   const requests: ProgramRequest[] = [];
@@ -13,6 +19,7 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
       workers: pool.workers,
       heapMegabytes: pool.heapMegabytes,
       fold: pool.fold,
+      check: pool.check,
       close: pool.close,
       run: (request, signal) => {
         requests.push(request);
@@ -22,7 +29,7 @@ function recording(pool: ProgramPool): { readonly pool: ProgramPool; readonly re
   };
 }
 
-const outputSchema = 'language: jq\noutput:\n  schema: {type: array, items: {type: string}}';
+const outputSchema = 'language: typescript\noutput:\n  schema: {type: array, items: {type: string}}';
 
 describe('the check of an output against the output schema', { timeout: workerTestTimeoutMs }, () => {
   it('runs in the checked worker that runs the program, under its deadline, never on the thread that asked, the one module every run names', async () => {
@@ -30,7 +37,9 @@ describe('the check of an output against the output schema', { timeout: workerTe
     const run = computationWith(pool);
 
     expect(await run.running(campaignPace, campaignRows(10))).toMatchObject(Exit.succeed({}));
-    expect(await run.running(programDocument('.'), 1)).toMatchObject(Exit.succeed({ output: 1 }));
+    expect(await run.running(programDocument(functionOf('return input;')), 1)).toMatchObject(
+      Exit.succeed({ output: 1 }),
+    );
     expect(requests.map(({ worker, context }) => ({ worker: worker?.pathname.split('/').at(-1), context }))).toEqual([
       { worker: 'checked-worker.ts', context: run.prepared(campaignPace).summary.outputSchema },
       { worker: 'checked-worker.ts', context: null },
@@ -40,7 +49,7 @@ describe('the check of an output against the output schema', { timeout: workerTe
   it('refuses an output the schema refuses, naming at most three of its issues in the one wording of them', async () => {
     const run = computationWith();
 
-    expect(await run.running(programDocument('[1, 2, 3, 4]', outputSchema))).toMatchObject(
+    expect(await run.running(programDocument(functionOf('return [1, 2, 3, 4];'), outputSchema))).toMatchObject(
       Exit.fail({
         kind: 'unworkable',
         detail:

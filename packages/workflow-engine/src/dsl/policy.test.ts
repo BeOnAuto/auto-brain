@@ -47,7 +47,7 @@ describe('the policy of a document', () => {
 
   it('evaluates its expressions as TypeScript in strict mode, the defaults, and refuses another language or mode', () => {
     expect(rejectionsOf(workflow('evaluate: { language: typescript, mode: strict }\ndo: []'))).toEqual([]);
-    expect(rejectionsOf(workflow('evaluate: { language: jq, mode: loose }\ndo: []'))).toEqual([
+    expect(rejectionsOf(workflow('evaluate: { language: python, mode: loose }\ndo: []'))).toEqual([
       {
         pointer: '/evaluate/language',
         detail: "The brain's one language is TypeScript; write the program as a TypeScript function",

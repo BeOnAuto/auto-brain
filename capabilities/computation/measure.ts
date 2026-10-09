@@ -10,8 +10,8 @@ const [cpu] = cpus();
 
 const measured = [
   `Node ${process.version} on ${cpu?.model ?? 'an unknown processor'}, ${cpus().length} cores, ${Math.round(totalmem() / 1_073_741_824)} GiB`,
-  ...exampleMeasured(),
-  ...constructsMeasured(),
+  ...(await exampleMeasured()),
+  ...(await constructsMeasured()),
   ...(await runsMeasured()),
   await burstMeasured(),
   await idleMeasured(),

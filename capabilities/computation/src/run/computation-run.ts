@@ -2,11 +2,10 @@ import type { CapabilityAnswer, CapabilityRejection } from '@beonauto/definition
 import { checkedWorker } from '@beonauto/definitions/json-schema';
 import type { InvalidInput } from '@beonauto/operations';
 import { jsonBytesOf, type ProgramPool, type ProgramRequest } from '@beonauto/workflow-engine/dsl';
-import { Effect, type Schema } from 'effect';
+import { Clock, Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
-import { computationDialect } from '../document/program-dialect.ts';
-import { computationLimits, mostOutputBytes } from './run-bounds.ts';
+import { computationBounds, mostOutputBytes } from './run-bounds.ts';
 import { preparedInput } from './run-input.ts';
 import { endingOf } from './run-outcome.ts';
 
@@ -24,34 +23,45 @@ function checkedBy({ output }: ComputationFunctionDefinitionDocument): Pick<Prog
   return { worker: checkedWorker, context: output.schema?.document ?? null };
 }
 
+function requestOf(
+  document: ComputationFunctionDefinitionDocument,
+  input: Schema.Json,
+  moment: number,
+  deadlineMs: number,
+): ProgramRequest {
+  return {
+    source: document.program,
+    entry: 'default',
+    arguments: [input],
+    moment,
+    budget: computationBounds.budget,
+    memoryBytes: computationBounds.memoryBytes,
+    stackBytes: computationBounds.stackBytes,
+    deadlineMs,
+    mostOutputBytes,
+    ...checkedBy(document),
+  };
+}
+
 export function computationRun({ pool, deadlineMs }: ComputationRunOptions): ComputationRun {
   return (document, input) =>
-    preparedInput(input, document.input).pipe(
-      Effect.flatMap((admitted): Effect.Effect<CapabilityAnswer, CapabilityRejection | InvalidInput> =>
-        Effect.promise((signal) =>
-          pool.run(
-            {
-              source: document.program,
-              input: admitted,
-              dialect: computationDialect,
-              limits: computationLimits,
-              deadlineMs,
-              mostOutputBytes,
-              ...checkedBy(document),
-            },
-            signal,
+    Effect.all([preparedInput(input, document.input), Clock.currentTimeMillis]).pipe(
+      Effect.flatMap(
+        ([admitted, moment]: readonly [Schema.Json, number]): Effect.Effect<
+          CapabilityAnswer,
+          CapabilityRejection | InvalidInput
+        > =>
+          Effect.promise((signal) => pool.run(requestOf(document, admitted, moment, deadlineMs), signal)).pipe(
+            Effect.flatMap((outcome) =>
+              endingOf(outcome, {
+                document,
+                inputBytes: jsonBytesOf(admitted),
+                workers: pool.workers,
+                heapMegabytes: pool.heapMegabytes,
+                deadlineMs,
+              }),
+            ),
           ),
-        ).pipe(
-          Effect.flatMap((outcome) =>
-            endingOf(outcome, {
-              document,
-              inputBytes: jsonBytesOf(admitted),
-              workers: pool.workers,
-              heapMegabytes: pool.heapMegabytes,
-              deadlineMs,
-            }),
-          ),
-        ),
       ),
     );
 }

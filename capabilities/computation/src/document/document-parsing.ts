@@ -9,12 +9,12 @@ import {
   type ReadFrontMatter,
   type SourceLines,
 } from '@beonauto/definitions/document';
-import { compileProgram, lineOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
+import { oneLanguage } from '@beonauto/workflow-engine';
+import { mostValueDepth } from '@beonauto/workflow-engine/dsl';
 import { Result, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument, ValueContract } from './computation-document.ts';
 import { computationFrontMatter, decodeFrontMatter } from './front-matter.ts';
-import { computationDialect } from './program-dialect.ts';
 
 type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
 
@@ -25,7 +25,7 @@ interface ProgramPart {
 
 type ValueSection = { readonly schema?: Schema.JsonObject } | undefined;
 
-const language = 'jq';
+const language = 'typescript';
 
 function issuesOf(check: () => Checked<unknown>): readonly DocumentIssue[] {
   const checked = check();
@@ -38,24 +38,11 @@ function programOf({ body, bodyLine }: DocumentParts): Checked<ProgramPart> {
       { line: bodyLine, pointer: '', detail: 'The definition has no program: write it after the front matter' },
     ]);
   }
-  const compiled = compileProgram(body, computationDialect);
-  return 'issues' in compiled
-    ? Result.fail(
-        compiled.issues.map(({ detail, span }) => ({
-          line: bodyLine + lineOf(body, span.start) - 1,
-          pointer: '',
-          detail,
-        })),
-      )
-    : Result.succeed({ program: body, programLine: bodyLine });
+  return Result.succeed({ program: body, programLine: bodyLine });
 }
 
 function languageOf(written: string, lines: SourceLines): Checked<typeof language> {
-  return written === language
-    ? Result.succeed(language)
-    : Result.fail([
-        issueAt(lines, '/language', `${written} is not a language of a computation function; it is written in jq`),
-      ]);
+  return written === language ? Result.succeed(language) : Result.fail([issueAt(lines, '/language', oneLanguage)]);
 }
 
 function contractOf(section: ValueSection, name: 'input' | 'output', lines: SourceLines): Checked<ValueContract> {
