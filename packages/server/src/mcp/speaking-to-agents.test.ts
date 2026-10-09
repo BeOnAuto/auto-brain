@@ -30,8 +30,6 @@ afterAll(async () => {
   await meetings.stop();
 });
 
-const mappingOfTheWireNames = /The tools call a definition a spec[^.]*\./u;
-
 function descriptionOf(tool: string): string {
   return descriptionIn(surfaces, tool);
 }
@@ -180,7 +178,7 @@ describe('episode 4: asked to make the brain remember what it posted today', { t
 });
 
 describe('episode 5: quoting the tools to a person who does not code', () => {
-  it('finds only the words of the terminology in the instructions, but the sentence that maps the wire names, and in the words of the results', async () => {
+  it('finds only the words of the terminology in the instructions and in the words of the results', async () => {
     const words = await onMcp(async (session) => {
       await session.callTool('create_brain', { brain: 'standups', name: 'Standups' });
       const results = [
@@ -196,7 +194,7 @@ describe('episode 5: quoting the tools to a person who does not code', () => {
       return results.map((result) => plainTextIn(result));
     });
 
-    expect(internalTermsIn(surfaces.instructions.replace(mappingOfTheWireNames, ''))).toEqual([]);
+    expect(internalTermsIn(surfaces.instructions)).toEqual([]);
     expect(words.flatMap((text) => internalTermsIn(text))).toEqual([]);
   });
 });

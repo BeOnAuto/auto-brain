@@ -64,6 +64,10 @@ function isOutsideTheSentenceBound({ description = '' }: ListedTool): boolean {
   return sentencesOf(description) < 3 || sentencesOf(description) > 8;
 }
 
+function descriptionOf(name: string): string {
+  return tools.find((tool) => tool.name === name)?.description ?? '';
+}
+
 function isAddressedToTheAgent({ description = '' }: ListedTool): boolean {
   return addressedToTheAgent.some((pattern: Readonly<RegExp>) => pattern.test(description));
 }
@@ -90,12 +94,16 @@ describe('the descriptions of the tools of /mcp', () => {
     expect(tools.filter((tool) => isAddressedToTheAgent(tool)).map(({ name }) => name)).toEqual([]);
   });
 
-  it('name each type of definition with the kind it is and its guide, in create_definition', () => {
-    const createDefinition = tools.find(({ name }) => name === 'create_definition');
+  it('name each type of definition with the kind it is and its guide, in create_definition, the longest description, at 788 characters in five sentences', () => {
+    const description = descriptionOf('create_definition');
 
-    expect(createDefinition?.description).toContain(
+    expect(description).toContain(
       'reasoning, a reasoning function, guide reasoning-function; interaction, an interaction function, guide interaction-function; computation, a computation function, guide computation-function; recall, a recall function, guide recall-function; workflow, a workflow, guide workflow.',
     );
+    expect([description.length, sentencesOf(description)]).toEqual([788, 5]);
+    expect(
+      tools.filter((tool) => descriptionOf(tool.name).length > description.length).map(({ name }) => name),
+    ).toEqual([]);
   });
 });
 
