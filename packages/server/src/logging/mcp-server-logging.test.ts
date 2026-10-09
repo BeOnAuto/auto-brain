@@ -50,9 +50,9 @@ describe('logUntestableServer', () => {
   it('tells, as information, that nothing on a tool server can be tested and where its entry names the tools that can', async () => {
     const [line] = await linesLoggedBy(logUntestableServer('graph'));
     const note =
-      'The MCP server graph marks no tool read-only and its entry marks none testable, so test_tool_call can test none of its tools; name the tools that are safe to test under testable';
+      'The MCP server graph marks none of its allowed tools read-only and its entry marks none testable, so test_tool_call can test none of its tools; name the tools that are safe to test under testable';
 
-    expect(note).toHaveLength(177);
+    expect(note).toHaveLength(195);
     expect(line).toContain(`"message":"${note}","level":"INFO"`);
     expect(line).toContain('"annotations":{"mcp_server":"graph"}');
   });

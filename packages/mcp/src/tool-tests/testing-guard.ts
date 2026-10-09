@@ -6,8 +6,11 @@ export function canBeTested(tool: string, annotations: ToolAnnotations | undefin
   return allowsTool(lists.allowed, tool) && (annotations?.readOnlyHint === true || lists.testable.includes(tool));
 }
 
-function offersNothingTestable({ testable }: ToolLists, tools: readonly ListedTool[]): boolean {
-  return testable.length === 0 && !tools.some(({ annotations }) => annotations?.readOnlyHint === true);
+function offersNothingTestable({ allowed, testable }: ToolLists, tools: readonly ListedTool[]): boolean {
+  return (
+    testable.length === 0 &&
+    !tools.some(({ name, annotations }) => allowsTool(allowed, name) && annotations?.readOnlyHint === true)
+  );
 }
 
 export function untestableNoting(

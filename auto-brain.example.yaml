@@ -56,7 +56,7 @@ model_aliases:
 #       Authorization: Bearer ${GRAPH_API_KEY}
 #     org: acme
 #     brains: [sales]
-#     allowed: [search, introspect, validate, dry_run, execute]
+#     allowed: [search, introspect, validate, dry_run, execute, post_message]
 #     testable: [search, introspect, validate, dry_run]
 #   notes:
 #     command: /usr/local/bin/notes-mcp-server
