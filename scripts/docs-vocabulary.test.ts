@@ -25,8 +25,10 @@ const frozenFormats: readonly string[] = [
   ...['one', 'two', 'three', 'four', 'five', 'six'].map(
     (format) => `packages/workflow-engine/src/run-log/format-${format}.ts`,
   ),
-  'packages/workflow-engine/src/run-log/format-one.test.ts',
-  'packages/workflow-engine/src/run-log/format-four.test.ts',
+  'packages/workflow-engine/src/run-log/format-six-records.ts',
+  ...['one', 'two', 'four', 'six', 'six-records'].map(
+    (format) => `packages/workflow-engine/src/run-log/format-${format}.test.ts`,
+  ),
 ];
 
 const keptFiles: readonly string[] = ['pnpm-lock.yaml', 'scripts/docs-vocabulary.test.ts', ...frozenFormats];
