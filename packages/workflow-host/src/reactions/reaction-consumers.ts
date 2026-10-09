@@ -31,7 +31,7 @@ export function reactionConsumersOf(
     database,
     starting,
     refusals,
-    workflowOfRun: workflowsOfRuns((stream) => database.store.read(stream, 0), options.type),
+    workflowOfRun: workflowsOfRuns((stream) => database.store.read(stream, 0), options.definitionType),
     now: clock.now,
   });
   return [offers, starts];

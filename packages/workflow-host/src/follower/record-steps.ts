@@ -28,7 +28,7 @@ export interface StepParts {
   readonly consumers: readonly RecordConsumer[];
   readonly registered: readonly Consumer[];
   readonly calls: readonly CallConsumer[];
-  readonly type: string;
+  readonly definitionType: string;
   readonly applyDefinitionRecord: ApplyDefinitionRecord;
   readonly unreadable: (brainKey: string, record: Pick<RecordedEvent, 'id' | 'type'>) => Effect.Effect<void>;
   readonly passedEarly: (brainKey: string, record: RecordedEvent, sweeps: number) => Effect.Effect<void>;
@@ -52,7 +52,7 @@ function passedOver(record: RecordedEvent): Progress {
 }
 
 function followedOf(parts: StepParts, brainKey: string, relative: RecordedEvent): Effect.Effect<FollowedRecord | null> {
-  const event = followedEventOf(relative, parts.type);
+  const event = followedEventOf(relative, parts.definitionType);
   if (event === 'unreadable') {
     return Effect.as(parts.unreadable(brainKey, relative), null);
   }
@@ -115,7 +115,7 @@ export function stepOf(
   const step: Effect.Effect<Step> = delivers.has(record.type)
     ? deliveredStep(parts, stepping, progress, record)
     : Effect.succeed({ progress: passedOver(record) });
-  if (record.stream === `${brainKey}definitions/${parts.type}`) {
+  if (record.stream === `${brainKey}definitions/${parts.definitionType}`) {
     const readAgain: Effect.Effect<Step> = Effect.succeed({ progress, end: 'more' });
     return Effect.flatMap(parts.applyDefinitionRecord(brainKey, record), (applied) =>
       applied === 'unreadable'

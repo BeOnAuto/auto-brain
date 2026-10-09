@@ -9,7 +9,7 @@ const brainKey = 'brain/acme/alpha/';
 
 const parts: StepParts = {
   consumers: [],
-  type: 'workflow',
+  definitionType: 'workflow',
   applyDefinitionRecord: () => Effect.succeed('applied'),
   unreadable: () => Effect.void,
   passedEarly: () => Effect.void,

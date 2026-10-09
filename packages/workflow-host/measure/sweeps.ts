@@ -83,7 +83,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
       now: Date.now,
       trouble: () => Effect.void,
     }).calls,
-    type: 'workflow',
+    definitionType: 'workflow',
     applyDefinitionRecord: definitionRecordsOn(opened),
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,

@@ -24,7 +24,7 @@ export interface DiscoveryParts {
   readonly records: BrainRecords;
   readonly applyDefinitionRecord: ApplyDefinitionRecord;
   readonly unreadable: (brainKey: string, record: DefinitionRecord) => Effect.Effect<void>;
-  readonly type: string;
+  readonly definitionType: string;
 }
 
 const OrgStreamRow = Schema.Struct({ stream_id: Schema.String, stream_position: WholeNumber });
@@ -67,7 +67,14 @@ function brainKeyOf(stream: string, brain: string): string {
   return stream.replace(orgRegistry, (_, org: string) => `brain/${org}/${brain}/`);
 }
 
-function followedAtTailOn({ database, brains, records, applyDefinitionRecord, unreadable, type }: DiscoveryParts) {
+function followedAtTailOn({
+  database,
+  brains,
+  records,
+  applyDefinitionRecord,
+  unreadable,
+  definitionType,
+}: DiscoveryParts) {
   const applied = (brainKey: string, record: DefinitionRecord) =>
     Effect.flatMap(applyDefinitionRecord(brainKey, record), (outcome) =>
       outcome === 'unreadable' ? unreadable(brainKey, record) : Effect.void,
@@ -76,7 +83,7 @@ function followedAtTailOn({ database, brains, records, applyDefinitionRecord, un
     Effect.gen(function* () {
       const [, org = '', brain = ''] = brainKey.split('/');
       yield* brains.follow(brainKey, yield* records.tail({ org, brain }));
-      const recorded = yield* Effect.promise(() => database.store.read(`${brainKey}definitions/${type}`, 0));
+      const recorded = yield* Effect.promise(() => database.store.read(`${brainKey}definitions/${definitionType}`, 0));
       yield* Effect.forEach(definitionRecordsIn(recorded), (record) => applied(brainKey, record), { discard: true });
     });
 }

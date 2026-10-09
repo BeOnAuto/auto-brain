@@ -31,7 +31,7 @@ export function recordedReactions(behaviour: ReactionBehaviour = {}): RecordedRe
   const emissions: Emission[] = [];
   return {
     options: {
-      type: 'workflow',
+      definitionType: 'workflow',
       start: (start) =>
         Effect.suspend(() => {
           const failure = behaviour.failure?.(start) ?? null;

@@ -46,7 +46,7 @@ function servedOf(database: HostDatabase, options: ServingOptions, engine: HostE
     submitted: engine.submitted,
     resultOf: options.waiting.resultOf,
     cancelDeferred: options.waiting.cancelDeferred,
-    workflows: options.reactions.type,
+    workflows: options.reactions.definitionType,
     now: options.clock.now,
     trouble: options.reports.trouble,
   });

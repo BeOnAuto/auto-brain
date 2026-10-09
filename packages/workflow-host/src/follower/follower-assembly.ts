@@ -30,7 +30,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     consumers: reacting.consumers,
     registered: assembly.consumers,
     calls: assembly.calls,
-    type: assembly.options.type,
+    definitionType: assembly.options.definitionType,
     applyDefinitionRecord: reacting.applyDefinitionRecord,
     unreadable,
     passedEarly: (brainKey, { stream, version }, sweeps) =>
@@ -47,7 +47,7 @@ export function followerOn(host: FollowerHost, assembly: FollowerAssembly): Foll
     records: assembly.records,
     applyDefinitionRecord: reacting.applyDefinitionRecord,
     unreadable,
-    type: assembly.options.type,
+    definitionType: assembly.options.definitionType,
   });
   return startFollower({
     pass,

@@ -21,7 +21,7 @@ export class StartRefused extends Data.TaggedError('start_refused')<{ readonly d
 export type StartReaction = (start: ReactionStart) => Effect.Effect<void, StartRefused | StartRejected>;
 
 export interface ReactionOptions {
-  readonly type: string;
+  readonly definitionType: string;
   readonly start: StartReaction;
   readonly emit: EmitEvent;
   readonly appended?: StreamSignal;

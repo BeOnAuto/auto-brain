@@ -128,7 +128,7 @@ async function passing(
     brains,
     consumers,
     calls: [],
-    type: 'workflow',
+    definitionType: 'workflow',
     applyDefinitionRecord: () => Effect.succeed('applied'),
     unreadable: () => Effect.void,
     passedEarly,

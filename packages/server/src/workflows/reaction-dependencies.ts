@@ -56,7 +56,7 @@ export function reactionsOf(
   startVersion: BrainOperation,
 ): ReactionOptions {
   return {
-    type: workflows,
+    definitionType: workflows,
     start: (start) =>
       Effect.flatMap(
         inRuntime(runtime, dispatcher.dispatchToBrain(startVersion.registration, requestOf(start))),
