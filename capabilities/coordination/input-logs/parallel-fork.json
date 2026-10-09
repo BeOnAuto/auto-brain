@@ -3,7 +3,7 @@
   "inputs": [
     {
       "kind": "started",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
       "at": 1790845200000,
       "document": {
         "document": {
@@ -19,18 +19,18 @@
                 "branches": [
                   {
                     "left": {
-                      "call": "execute_spec",
+                      "call": "run_definition",
                       "with": {
-                        "primitive": "inference",
+                        "type": "reasoning",
                         "name": "left"
                       }
                     }
                   },
                   {
                     "right": {
-                      "call": "execute_spec",
+                      "call": "run_definition",
                       "with": {
-                        "primitive": "inference",
+                        "type": "reasoning",
                         "name": "right"
                       }
                     }
@@ -51,10 +51,10 @@
     },
     {
       "kind": "call_answered",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
       "at": 1790845200050,
       "key": {
-        "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+        "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
         "reference": "/do/0/both/fork/branches/0/left",
         "run": 1
       },
@@ -67,10 +67,10 @@
     },
     {
       "kind": "call_answered",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
       "at": 1790845200050,
       "key": {
-        "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+        "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
         "reference": "/do/0/both/fork/branches/1/right",
         "run": 1
       },
@@ -85,7 +85,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
@@ -133,7 +133,7 @@
       "patch": [
         {
           "op": "replace",
-          "path": "/executionId",
+          "path": "/runId",
           "value": "0199a3c4-7d2e-7c1a-9b3f-000000000306"
         },
         {
@@ -159,18 +159,18 @@
                       "branches": [
                         {
                           "left": {
-                            "call": "execute_spec",
+                            "call": "run_definition",
                             "with": {
-                              "primitive": "inference",
+                              "type": "reasoning",
                               "name": "left"
                             }
                           }
                         },
                         {
                           "right": {
-                            "call": "execute_spec",
+                            "call": "run_definition",
                             "with": {
-                              "primitive": "inference",
+                              "type": "reasoning",
                               "name": "right"
                             }
                           }
@@ -268,7 +268,7 @@
           "op": "add",
           "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000306\",\"~1do~10~1both~1fork~1branches~10~1left\",1]",
           "value": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
             "reference": "/do/0/both/fork/branches/0/left",
             "run": 1
           }
@@ -277,7 +277,7 @@
           "op": "add",
           "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000306\",\"~1do~10~1both~1fork~1branches~11~1right\",1]",
           "value": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
             "reference": "/do/0/both/fork/branches/1/right",
             "run": 1
           }
@@ -285,7 +285,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 16748
+          "value": 16732
         },
         {
           "op": "add",
@@ -300,10 +300,10 @@
           "path": "/machine/values/2",
           "value": {
             "value": {
-              "primitive": "inference",
+              "type": "reasoning",
               "name": "left"
             },
-            "bytes": 39
+            "bytes": 34
           }
         },
         {
@@ -311,10 +311,10 @@
           "path": "/machine/values/3",
           "value": {
             "value": {
-              "primitive": "inference",
+              "type": "reasoning",
               "name": "right"
             },
-            "bytes": 40
+            "bytes": 35
           }
         },
         {
@@ -370,11 +370,11 @@
                             "body": {
                               "kind": "call",
                               "key": {
-                                "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+                                "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
                                 "reference": "/do/0/both/fork/branches/0/left",
                                 "run": 1
                               },
-                              "function": "execute_spec",
+                              "function": "run_definition",
                               "arguments": 2,
                               "label": "the reasoning function left",
                               "deadline": "2"
@@ -395,11 +395,11 @@
                             "body": {
                               "kind": "call",
                               "key": {
-                                "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+                                "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
                                 "reference": "/do/0/both/fork/branches/1/right",
                                 "run": 1
                               },
-                              "function": "execute_spec",
+                              "function": "run_definition",
                               "arguments": 3,
                               "label": "the reasoning function right",
                               "deadline": "3"
@@ -417,13 +417,13 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 5431
+          "value": 5353
         }
       ],
       "outputs": [
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
           "timerId": "1",
           "dueAt": 1793437200000,
           "purpose": "deadline",
@@ -432,20 +432,20 @@
         {
           "kind": "start_call",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
             "reference": "/do/0/both/fork/branches/0/left",
             "run": 1
           },
-          "function": "execute_spec",
+          "function": "run_definition",
           "arguments": {
-            "primitive": "inference",
+            "type": "reasoning",
             "name": "left"
           },
           "longestMs": 600000
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
           "timerId": "2",
           "dueAt": 1790845800000,
           "purpose": "call_deadline",
@@ -454,20 +454,20 @@
         {
           "kind": "start_call",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
             "reference": "/do/0/both/fork/branches/1/right",
             "run": 1
           },
-          "function": "execute_spec",
+          "function": "run_definition",
           "arguments": {
-            "primitive": "inference",
+            "type": "reasoning",
             "name": "right"
           },
           "longestMs": 600000
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
           "timerId": "3",
           "dueAt": 1790845800000,
           "purpose": "call_deadline",
@@ -477,7 +477,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000306\",\"/do/0/both/fork/branches/0/left\",1]",
@@ -526,7 +526,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 12637
+          "value": 12626
         },
         {
           "op": "remove",
@@ -569,20 +569,20 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6969
+          "value": 6885
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
           "timerId": "2"
         }
       ]
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000306\",\"/do/0/both/fork/branches/1/right\",1]",
@@ -648,7 +648,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 285
+          "value": 279
         },
         {
           "op": "remove",
@@ -686,23 +686,23 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8709
+          "value": 8607
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
           "timerId": "3"
         },
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
           "timerId": "1"
         },
         {
           "kind": "settle",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000306",
           "settlement": {
             "status": "succeeded",
             "output": [

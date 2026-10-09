@@ -3,7 +3,7 @@
   "inputs": [
     {
       "kind": "started",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
       "at": 1790845200000,
       "document": {
         "document": {
@@ -38,7 +38,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
@@ -62,7 +62,7 @@
       "patch": [
         {
           "op": "replace",
-          "path": "/executionId",
+          "path": "/runId",
           "value": "0199a3c4-7d2e-7c1a-9b3f-000000000313"
         },
         {
@@ -177,13 +177,13 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1763
+          "value": 1751
         }
       ],
       "outputs": [
         {
           "kind": "settle",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000313",
           "settlement": {
             "status": "rejected",
             "detail": "No (at /do/0/reject)",

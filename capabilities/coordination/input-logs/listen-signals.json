@@ -3,7 +3,7 @@
   "inputs": [
     {
       "kind": "started",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
       "at": 1790845200000,
       "document": {
         "document": {
@@ -38,7 +38,7 @@
     },
     {
       "kind": "event_received",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
       "at": 1790845200000,
       "event": {
         "id": "e1",
@@ -48,7 +48,7 @@
     },
     {
       "kind": "event_received",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
       "at": 1790845200000,
       "event": {
         "id": "e2",
@@ -60,7 +60,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
@@ -81,7 +81,7 @@
       "patch": [
         {
           "op": "replace",
-          "path": "/executionId",
+          "path": "/runId",
           "value": "0199a3c4-7d2e-7c1a-9b3f-000000000305"
         },
         {
@@ -173,7 +173,7 @@
           "op": "add",
           "path": "/listeners/[\"0199a3c4-7d2e-7c1a-9b3f-000000000305\",\"~1do~10~1await\",1]",
           "value": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
             "reference": "/do/0/await",
             "run": 1
           }
@@ -240,13 +240,13 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2438
+          "value": 2414
         }
       ],
       "outputs": [
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
           "timerId": "1",
           "dueAt": 1793437200000,
           "purpose": "deadline",
@@ -255,7 +255,7 @@
         {
           "kind": "arm_listener",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
             "reference": "/do/0/await",
             "run": 1
           },
@@ -269,7 +269,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "event_received",
         "key": "e1",
@@ -319,14 +319,14 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3041
+          "value": 3017
         }
       ],
       "outputs": []
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "event_received",
         "key": "e2",
@@ -423,26 +423,26 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4551
+          "value": 4509
         }
       ],
       "outputs": [
         {
           "kind": "cancel_listener",
           "key": {
-            "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
             "reference": "/do/0/await",
             "run": 1
           }
         },
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
           "timerId": "1"
         },
         {
           "kind": "settle",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000305",
           "settlement": {
             "status": "succeeded",
             "output": ["yes"]

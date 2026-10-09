@@ -3,7 +3,7 @@
   "inputs": [
     {
       "kind": "started",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
       "at": 1790845200000,
       "document": {
         "document": {
@@ -30,7 +30,7 @@
     },
     {
       "kind": "cancel_requested",
-      "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
+      "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
       "at": 1790845200010,
       "cancel": {
         "by": "tester",
@@ -42,7 +42,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
@@ -63,7 +63,7 @@
       "patch": [
         {
           "op": "replace",
-          "path": "/executionId",
+          "path": "/runId",
           "value": "0199a3c4-7d2e-7c1a-9b3f-000000000300"
         },
         {
@@ -214,13 +214,13 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2325
+          "value": 2307
         }
       ],
       "outputs": [
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
           "timerId": "1",
           "dueAt": 1793437200000,
           "purpose": "deadline",
@@ -228,7 +228,7 @@
         },
         {
           "kind": "arm_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
           "timerId": "2",
           "dueAt": 1790848800000,
           "purpose": "wait",
@@ -238,7 +238,7 @@
     },
     {
       "type": "input_applied",
-      "format": 6,
+      "format": 7,
       "receipt": {
         "kind": "cancel_requested",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
@@ -304,23 +304,23 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3528
+          "value": 3492
         }
       ],
       "outputs": [
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
           "timerId": "1"
         },
         {
           "kind": "cancel_timer",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
           "timerId": "2"
         },
         {
           "kind": "settle",
-          "executionId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
+          "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000300",
           "settlement": {
             "status": "rejected",
             "detail": "The test cancelled the run",
