@@ -115,7 +115,7 @@ describe('the history of a run', () => {
             data: {
               run_id: runId,
               by: 'acme-admin',
-              type: 'echo',
+              definition_type: 'echo',
               name: 'greet',
               definition_version: 1,
               input_bytes: 2,
