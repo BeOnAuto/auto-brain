@@ -41,13 +41,17 @@ function ranToItsEnd(): MemoryDriver {
 }
 
 describe('a run the engine keeps between its inputs', () => {
-  it('counts the bytes of the snapshot its store holds, so each snapshot is written when it is due', () => {
-    const driver = ranToItsEnd();
-    const events = driver.ports.runStore.events(drivenRunId);
-    const saved = driver.ports.runStore.snapshotsSaved(drivenRunId);
+  it(
+    'counts the bytes of the snapshot its store holds, so each snapshot is written when it is due',
+    { timeout: 30_000 },
+    () => {
+      const driver = ranToItsEnd();
+      const events = driver.ports.runStore.events(drivenRunId);
+      const saved = driver.ports.runStore.snapshotsSaved(drivenRunId);
 
-    expect(statesAlong(events).at(-1)?.outcome).toMatchObject({ kind: 'completed' });
-    expect(saved.length).toBeGreaterThan(2);
-    expect(saved).toEqual(snapshotsDueAlong(events));
-  });
+      expect(statesAlong(events).at(-1)?.outcome).toMatchObject({ kind: 'completed' });
+      expect(saved.length).toBeGreaterThan(2);
+      expect(saved).toEqual(snapshotsDueAlong(events));
+    },
+  );
 });

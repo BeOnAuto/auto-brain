@@ -169,6 +169,8 @@ describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, ()
 
 describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs }, () => {
   it('terminate a worker at the deadline, while the server goes on answering others', async () => {
+    const answering = poolOf();
+    await answering.run(request(program('return input;'), 0));
     const settled = { stuck: false };
     const stuck = poolOf({ worker: blocking })
       .run(request(program('return input;'), null, { deadlineMs: 1500 }))
@@ -177,7 +179,7 @@ describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs
         return outcome;
       });
 
-    const meanwhile = await poolOf().run(request(program('return input + 1;'), 1));
+    const meanwhile = await answering.run(request(program('return input + 1;'), 1));
 
     expect(meanwhile).toMatchObject({ ran: 'answered', output: 2 });
     expect(settled.stuck).toBe(false);
