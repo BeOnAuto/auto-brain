@@ -138,6 +138,22 @@ const writing = String.raw`
 `;
 
 const freezing = String.raw`
+  const generatorFunction = getPrototypeOf(function* () {});
+  const asyncGeneratorFunction = getPrototypeOf(async function* () {});
+  const reachedByNoName = [
+    getPrototypeOf([][Symbol.iterator]()),
+    getPrototypeOf(new Map()[Symbol.iterator]()),
+    getPrototypeOf(new Set()[Symbol.iterator]()),
+    getPrototypeOf(''[Symbol.iterator]()),
+    getPrototypeOf(apply(String.prototype.matchAll, '', [/x/g])),
+    generatorFunction,
+    generatorFunction.prototype,
+    asyncGeneratorFunction,
+    asyncGeneratorFunction.prototype,
+    getPrototypeOf(async function () {}),
+    getPrototypeOf(apply(Iterator.prototype.map, [][Symbol.iterator](), [(each) => each])),
+    getPrototypeOf(Iterator.from({ next: () => ({ done: true, value: undefined }) })),
+  ];
   const tame = (object, name) => {
     const described = getOwnPropertyDescriptor(object, name);
     if (described === undefined || !hasOwn(described, 'value') || !described.writable || !described.configurable) return;
@@ -166,7 +182,7 @@ const freezing = String.raw`
   };
   const freezeAll = (...roots) => {
     const seen = new Seen();
-    const pending = [global, ...roots];
+    const pending = [global, ...reachedByNoName, ...roots];
     while (pending.length > 0) {
       const object = apply(pop, pending, []);
       if (!isHeld(object) || apply(setHas, seen, [object])) continue;
