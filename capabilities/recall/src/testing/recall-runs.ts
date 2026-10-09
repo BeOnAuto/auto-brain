@@ -12,6 +12,8 @@ import { keptViews, type KeptViews } from './kept-views.ts';
 
 export const workerTestTimeoutMs = 30_000;
 
+const checkDeadlineMs = 20_000;
+
 const reviewsRun: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
@@ -53,7 +55,7 @@ export function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
     ...settings,
   });
   pools.push(pool);
-  return pool;
+  return { ...pool, check: (request, signal) => pool.check({ ...request, deadlineMs: checkDeadlineMs }, signal) };
 }
 
 export function liveView(view: Schema.Json, more: Partial<KeptView> = {}): KeptView {

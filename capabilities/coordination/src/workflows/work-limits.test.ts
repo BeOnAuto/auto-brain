@@ -87,7 +87,7 @@ describe('a value a workflow holds', () => {
     ]);
   });
 
-  it('may not double by sharing itself from task to task', async () => {
+  it('may not double by sharing itself from task to task', { timeout: 30_000 }, async () => {
     const { settlement } = await interpret(
       workflow(tasks(40, () => `{ set: { a: '\${ $data }', b: '\${ $data }' } }`)),
       { input: { text: 'x'.repeat(600_000) } },

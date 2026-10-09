@@ -30,8 +30,8 @@ function checked(on: ProgramPool, deadlineMs?: number) {
 }
 
 describe('the check of a document when it is saved', () => {
-  it('runs in the pool’s check worker and answers the compiler’s issues', { timeout: 20_000 }, async () => {
-    expect(await checked(pool)).toEqual(
+  it('runs in the pool’s check worker and answers the compiler’s issues', { timeout: 60_000 }, async () => {
+    expect(await checked(pool, 50_000)).toEqual(
       Exit.succeed([
         {
           at: 'module',

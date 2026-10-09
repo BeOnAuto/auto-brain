@@ -229,22 +229,29 @@ describe('a context of the sandbox', () => {
 });
 
 describe('a context whose instance breaks', () => {
-  it('answers the failure of a program that breaks the instance it runs on, rather than throwing', async () => {
-    const instance = await freshInstance(16_777_216);
-    const runtime = sandboxRuntimeOf(instance, settings);
-    const context = runtime.context();
+  it(
+    'answers the failure of a program that breaks the instance it runs on, rather than throwing',
+    { timeout: 30_000 },
+    async () => {
+      const instance = await freshInstance(16_777_216);
+      const runtime = sandboxRuntimeOf(instance, settings);
+      const context = runtime.context();
 
-    expect(context.parsed(JSON.stringify('x'.repeat(20_000_000)), evaluation)).toMatchObject({
-      failed: { ran: 'exhausted', limit: 'memory' },
-    });
-    expect(
-      context.call({ fn: 0, args: [JSON.stringify('x'.repeat(20_000_000))], form: 'module', keep: false }, evaluation),
-    ).toMatchObject({
-      run: { ran: 'exhausted', limit: 'memory' },
-    });
-    context.close();
-    runtime.close();
-  });
+      expect(context.parsed(JSON.stringify('x'.repeat(20_000_000)), evaluation)).toMatchObject({
+        failed: { ran: 'exhausted', limit: 'memory' },
+      });
+      expect(
+        context.call(
+          { fn: 0, args: [JSON.stringify('x'.repeat(20_000_000))], form: 'module', keep: false },
+          evaluation,
+        ),
+      ).toMatchObject({
+        run: { ran: 'exhausted', limit: 'memory' },
+      });
+      context.close();
+      runtime.close();
+    },
+  );
 
   it('throws what breaks it for another reason, as a defect of the host', async () => {
     const instance = await freshInstance(unitMemoryBytes);

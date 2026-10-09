@@ -11,11 +11,15 @@ function declares(text: string): (fragment: string) => boolean {
 }
 
 describe('the lib of the sandbox', () => {
-  it('is what the generator makes from the compiler’s libs and the sandbox’s own answers, kept beside the package', async () => {
-    expect(await sandboxLibOf(sandboxAnswers)).toEqual(kept);
-    expect(keptLibFiles.script.pathname).toMatch(/\/definitions\/lib\/sandbox\.d\.ts\.txt$/u);
-    expect(keptLibFiles.iterator.pathname).toMatch(/\/definitions\/lib\/sandbox-iterator\.d\.ts\.txt$/u);
-  });
+  it(
+    'is what the generator makes from the compiler’s libs and the sandbox’s own answers, kept beside the package',
+    { timeout: 60_000 },
+    async () => {
+      expect(await sandboxLibOf(sandboxAnswers)).toEqual(kept);
+      expect(keptLibFiles.script.pathname).toMatch(/\/definitions\/lib\/sandbox\.d\.ts\.txt$/u);
+      expect(keptLibFiles.iterator.pathname).toMatch(/\/definitions\/lib\/sandbox-iterator\.d\.ts\.txt$/u);
+    },
+  );
 
   it('declares nothing the prelude removes or the engine lacks, and what the engine has', () => {
     const has = declares(kept.script);

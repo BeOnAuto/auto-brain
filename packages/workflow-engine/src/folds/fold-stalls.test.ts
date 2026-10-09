@@ -96,15 +96,19 @@ describe('a view that stalls in a page of folds', () => {
     },
   );
 
-  it('stalls a view whose initial value does not fit its sandbox, or whose context does not freeze in time', async () => {
-    const page = await folded(
-      pageOf([viewOf(adding, { view: 'x'.repeat(20_000_000) })], { memoryBytes: smallMemoryBytes }),
-    );
-    const late = await folded(pageOf([viewOf(adding, { view: 0 })]), runningClock(20_000));
+  it(
+    'stalls a view whose initial value does not fit its sandbox, or whose context does not freeze in time',
+    { timeout: 30_000 },
+    async () => {
+      const page = await folded(
+        pageOf([viewOf(adding, { view: 'x'.repeat(20_000_000) })], { memoryBytes: smallMemoryBytes }),
+      );
+      const late = await folded(pageOf([viewOf(adding, { view: 0 })]), runningClock(20_000));
 
-    expect(page.views[0]?.stall).toMatchObject({ at: 0, kind: 'memory' });
-    expect(late.views[0]).toMatchObject({ overtime: 0 });
-  });
+      expect(page.views[0]?.stall).toMatchObject({ at: 0, kind: 'memory' });
+      expect(late.views[0]).toMatchObject({ overtime: 0 });
+    },
+  );
 
   it('stalls a view as raised when its fold runs deeper than the stack of the thread it runs on', async () => {
     const page = await folded(

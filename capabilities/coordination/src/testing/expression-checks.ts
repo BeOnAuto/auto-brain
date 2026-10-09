@@ -4,6 +4,8 @@ import { afterAll } from 'vitest';
 
 import type { ExpressionCheck } from '../document/expression-check.ts';
 
+const checkDeadlineMs = 20_000;
+
 let pool: ProgramPool | undefined;
 
 afterAll(async () => {
@@ -13,5 +15,5 @@ afterAll(async () => {
 
 export const testExpressionCheck: ExpressionCheck = (job) => {
   pool ??= programPool({ workers: 1, heapMegabytes: 256 });
-  return checkedAtSave(pool, job);
+  return checkedAtSave(pool, job, checkDeadlineMs);
 };

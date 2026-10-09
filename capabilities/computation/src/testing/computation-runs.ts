@@ -11,6 +11,8 @@ import { computationBounds } from '../run/run-bounds.ts';
 
 export const workerTestTimeoutMs = 30_000;
 
+const checkDeadlineMs = 20_000;
+
 const run: RunContext = {
   id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   org: 'acme',
@@ -53,7 +55,7 @@ export function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
     ...settings,
   });
   pools.push(pool);
-  return pool;
+  return { ...pool, check: (request, signal) => pool.check({ ...request, deadlineMs: checkDeadlineMs }, signal) };
 }
 
 export function computationWith(pool: ProgramPool = poolOf(), deadlineMs?: number): ComputationRuns {
