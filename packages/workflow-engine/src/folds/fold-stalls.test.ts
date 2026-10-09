@@ -130,7 +130,7 @@ describe('a view that stalls on what its fold answers', () => {
     const keeping = [
       'const kept: unknown[] = [];',
       'export function fold(): unknown[][] {',
-      '  const next = Array.from({ length: 100_000 }, (): unknown[] => []);',
+      '  const next = Array.from({ length: 80_000 }, (): unknown[] => []);',
       '  kept.push(next);',
       '  return next;',
       '}',

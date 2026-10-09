@@ -28,6 +28,8 @@ export const pageBytes = 65_536;
 
 const initialPages = 256;
 
+const attemptsOfOneGrowth = 3;
+
 const WebAssemblySchema = Schema.Struct({
   Memory: Schema.declare((value: unknown): value is MemoryConstructor => typeof value === 'function'),
   compile: Schema.declare((value: unknown): value is Compile => typeof value === 'function'),
@@ -49,20 +51,23 @@ function compiled(): Promise<WebAssembly.Module> {
 }
 
 function boundedMemory(memoryBytes: number): Bounded {
-  const refused = { growth: false };
+  const growth = { failedInARow: 0, refused: false };
   const memory = new webAssembly.Memory({ initial: initialPages, maximum: Math.ceil(memoryBytes / pageBytes) });
   const grow = memory.grow.bind(memory);
   Object.defineProperty(memory, 'grow', {
     value: (pages: number): number => {
       try {
-        return grow(pages);
+        const grown = grow(pages);
+        growth.failedInARow = 0;
+        return grown;
       } catch (error) {
-        refused.growth = true;
+        growth.failedInARow += 1;
+        growth.refused = growth.refused || growth.failedInARow === attemptsOfOneGrowth;
         throw error;
       }
     },
   });
-  return { memory, refusedGrowth: () => refused.growth };
+  return { memory, refusedGrowth: () => growth.refused };
 }
 
 export async function freshInstance(memoryBytes: number): Promise<SandboxInstance> {

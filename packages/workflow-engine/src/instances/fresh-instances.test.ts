@@ -1,3 +1,6 @@
+import * as releaseSync from '@jitl/quickjs-wasmfile-release-sync';
+import { Schema } from 'effect';
+import { newQuickJSWASMModuleFromVariant, newVariant, type QuickJSSyncVariant } from 'quickjs-emscripten-core';
 import { describe, expect, it } from 'vitest';
 
 import { expressionUnitOf } from '../programs/expression-units.ts';
@@ -25,7 +28,45 @@ function allocated(memoryBytes: number, megabytes: number): Promise<unknown> {
   });
 }
 
+const variant = Schema.decodeUnknownSync(
+  Schema.declare((value: unknown): value is QuickJSSyncVariant => Reflect.get(new Object(value), 'type') === 'sync'),
+)(releaseSync.default);
+
+type MemoryConstructor = new (limits: { readonly initial: number; readonly maximum: number }) => object;
+
+const { Memory } = Schema.decodeUnknownSync(
+  Schema.Struct({
+    Memory: Schema.declare((value: unknown): value is MemoryConstructor => typeof value === 'function'),
+  }),
+)(Reflect.get(globalThis, 'WebAssembly'));
+
+const keepingStrings =
+  '(() => { const kept: string[] = []; try { for (;;) kept.push("y".repeat(1048576) + kept.length); } catch { return kept.length; } })()';
+
+async function mostKeptInRawMemory(memoryBytes: number): Promise<number> {
+  const wasmMemory = new Memory({ initial: 256, maximum: memoryBytes / pageBytes });
+  const module = await newQuickJSWASMModuleFromVariant(newVariant(variant, { wasmMemory }));
+  const runtime = module.newRuntime();
+  const context = runtime.newContext();
+  const most = context.getNumber(context.unwrapResult(context.evalCode(keepingStrings.replaceAll(': string[]', ''))));
+  context.dispose();
+  runtime.dispose();
+  return most;
+}
+
 describe('a fresh instance', () => {
+  it('holds whatever raw memory of the same maximum holds, since the glue retries a refused growth smaller', async () => {
+    const memoryBytes = 64 * pageBytes * 16;
+    const most = await mostKeptInRawMemory(memoryBytes);
+
+    expect(most).toBeGreaterThan(54);
+    expect(await allocated(memoryBytes, most)).toMatchObject({
+      run: { ran: 'answered', text: String(most) },
+      refused: false,
+    });
+    expect(await allocated(memoryBytes, most + 1)).toMatchObject({ run: { ran: 'exhausted', limit: 'memory' } });
+  });
+
   it('grows its memory up to the maximum it was made with, and refuses to grow past it', async () => {
     expect(await allocated(64 * pageBytes * 16, 40)).toMatchObject({
       run: { ran: 'answered', text: '40' },

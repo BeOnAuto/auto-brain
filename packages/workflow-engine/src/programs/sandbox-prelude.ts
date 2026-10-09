@@ -72,7 +72,7 @@ const writing = String.raw`
     }
   };
   const rawOf = (holder, key) => ({ present: hasOwn(holder, key), raw: holder[key] });
-  const replacerOf = (form) => function (key, given) {
+  const replacerOf = (form, depths) => function (key, given) {
     if (this[key] !== given) throw refusal;
     switch (typeof given) {
       case 'string':
@@ -81,9 +81,14 @@ const writing = String.raw`
       case 'number':
         if (given !== given || given === Infinity || given === -Infinity) throw refusal;
         return given;
-      case 'object':
-        if (given === null || isPlain(given)) return given;
-        throw refusal;
+      case 'object': {
+        if (given === null) return given;
+        if (!isPlain(given)) throw refusal;
+        const depth = (apply(mapGet, depths, [this]) ?? 0) + 1;
+        if (depth > mostDepth) throw refusal;
+        apply(mapSet, depths, [given, depth]);
+        return given;
+      }
       case 'undefined':
         if (form === 'expression' && hasOwn(this, key)) return null;
         throw refusal;
@@ -91,7 +96,6 @@ const writing = String.raw`
         throw refusal;
     }
   };
-  const isStackOverflow = (error) => error instanceof StackOverflow && error.message === 'stack overflow';
   const kindOf = (raw, present) => {
     if (!present) return 'an empty place in a list';
     if (typeof raw === 'number') return TextOf(raw);
@@ -134,10 +138,10 @@ const writing = String.raw`
   };
   const write = (value, form, most) => {
     try {
-      const text = stringify(value, replacerOf(form));
+      const text = stringify(value, replacerOf(form, new Depths()));
       return text.length > most ? text.length : text;
     } catch (error) {
-      const refusing = error === refusal || error instanceof Refusal || isStackOverflow(error);
+      const refusing = error === refusal || error instanceof Refusal;
       const refused = refusing ? refusedIn(value, form) ?? (error === refusal ? 'a member that changes as it is read' : undefined) : undefined;
       if (refused === undefined) throw error;
       throw new Refusal('The answer holds ' + refused + ', which JSON cannot carry');
@@ -243,7 +247,9 @@ function preludeWith(frozen: string, exported: string): string {
   const setHas = Seen.prototype.has;
   const setAdd = Seen.prototype.add;
   const setSize = getOwnPropertyDescriptor(Seen.prototype, 'size').get;
-  const StackOverflow = InternalError;
+  const Depths = Map;
+  const mapGet = Depths.prototype.get;
+  const mapSet = Depths.prototype.set;
   const push = Array.prototype.push;
   const pop = Array.prototype.pop;
   const slice = String.prototype.slice;

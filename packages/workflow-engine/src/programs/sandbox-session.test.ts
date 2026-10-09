@@ -95,11 +95,13 @@ describe('the memory of a program', () => {
   });
 
   it('ends a program that catches the refusal of its memory, by memory, whether it then goes on or answers', async () => {
-    expect(
-      await ran(
-        'let caught = "";\n  try {\n    "x".repeat(2 ** 27).length;\n  } catch (error) {\n    caught = String(error);\n  }\n  return caught;',
-      ),
-    ).toMatchObject({ ran: 'exhausted', limit: 'memory' });
+    const catching =
+      'let caught = "";\n  try {\n    "x".repeat(2 ** 27).length;\n  } catch (error) {\n    caught = String(error);\n  }';
+
+    expect([await ran(`${catching}\n  return caught;`), await ran(`${catching}\n  for (;;) {}`)]).toMatchObject([
+      { ran: 'exhausted', limit: 'memory' },
+      { ran: 'exhausted', limit: 'memory' },
+    ]);
   });
 });
 

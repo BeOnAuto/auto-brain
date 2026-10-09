@@ -1,7 +1,5 @@
 import type { QuickJSRuntime, QuickJSWASMModule } from 'quickjs-emscripten-core';
 
-import { mostValueDepth } from '../dsl/json.ts';
-import { tooDeepIn } from './answer-depth.ts';
 import { oversizedBy, type Evaluation, type Form, type ProgramFailure, type ProgramRun } from './program-run.ts';
 import { counterOf, type Counter } from './sandbox-counter.ts';
 import { freezingPreludeSource, preludeSource } from './sandbox-prelude.ts';
@@ -143,20 +141,6 @@ function parsedArguments(session: Session, args: readonly Argument[]): readonly 
   return made;
 }
 
-function checkedDepth(text: string, work: number): ProgramRun {
-  const deep = tooDeepIn(text);
-  return deep === undefined
-    ? { ran: 'answered', text, work }
-    : {
-        ran: 'unfit',
-        issue: {
-          detail: `The answer holds a value deeper than ${mostValueDepth} levels at ${deep}, which JSON cannot carry`,
-          line: null,
-        },
-        work,
-      };
-}
-
 function written(session: Session, value: number, form: Form): ProgramRun {
   const { vm, counter, prelude, mostAnswerBytes } = session;
   const formText = vm.text(form);
@@ -171,7 +155,7 @@ function written(session: Session, value: number, form: Form): ProgramRun {
     vm.forget(outcome.kept);
     return oversizedBy(mostAnswerBytes, counter.checkpoints());
   }
-  return checkedDepth(vm.takeText(outcome.kept), counter.checkpoints());
+  return { ran: 'answered', text: vm.takeText(outcome.kept), work: counter.checkpoints() };
 }
 
 function answered(session: Session, kept: number, form: Form): ProgramRun {

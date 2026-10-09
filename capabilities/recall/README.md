@@ -43,7 +43,7 @@ The hosted runtime does not offer recall functions until its adapter bounds the 
 | the checkpoints of those folds                                            | 0 in all: each fold makes fewer than 10,000 of the engine's polls            |
 | 3,000 of them in pages of 7 and in pages of 1,000                         | the same view and the same checkpoints                                       |
 
-A fold writes its view out after it, through the refusing replacer, over the whole view each time, and the next fold is handed that text parsed again: measured by hand the same day over a view of 6,024 bytes shaped like this example's, 1,000 writes took 78 ms, where `JSON.stringify` alone took 45 ms and the replacer before it was made lean 231 ms, the 1,000 parses 40 ms, and the host's reading of the text's depth 15 ms. The same 100,000 folds took 48.5 s, at the same load, before those changes. Checking the view against its schema added about 50 ms a page. A page of 1,000 of the example's folds took about 0.4 s against its budget of 2 s, so a page never ended early here.
+A fold writes its view out after it, through the refusing replacer, over the whole view each time, and the next fold is handed that text parsed again: measured by hand the same day over a view of 6,024 bytes shaped like this example's, 1,000 writes took 113 ms, where `JSON.stringify` alone took 45 ms and the replacer before it was made lean 231 ms, and the 1,000 parses 40 ms. The same 100,000 folds took 48.5 s before those changes. Checking the view against its schema added about 50 ms a page. A page of 1,000 of the example's folds took about 0.4 s against its budget of 2 s, so a page never ended early here.
 
 ## Testing
 
