@@ -75,7 +75,7 @@ async function serving(fake: FakeMcpServer, ...replies: readonly ScriptedReply[]
   return server;
 }
 
-function executing(server: ReasoningServer, name: string) {
+function running(server: ReasoningServer, name: string) {
   return server.call('POST', `${alpha}/definitions/reasoning/${name}/run`, {
     body: { input: {}, run_id: runId },
   });
@@ -100,7 +100,7 @@ describe('a reasoning function that calls tools, over HTTP', () => {
     const fake = await fakeGraph();
     const server = await serving(fake, searched('graph'));
 
-    expect(await executing(server, 'graph')).toMatchObject({
+    expect(await running(server, 'graph')).toMatchObject({
       status: 200,
       body: { status: 'succeeded', output: 'Acme has 2 rows.' },
     });
@@ -114,7 +114,7 @@ describe('a reasoning function that calls tools, over HTTP', () => {
   it('runs with a tool of a process the server starts', { timeout: stdioTestTimeoutMs }, async () => {
     const server = await serving(await fakeGraph(), searched('limitless'));
 
-    expect(await executing(server, 'limitless')).toMatchObject({ status: 200, body: { output: 'Acme has 2 rows.' } });
+    expect(await running(server, 'limitless')).toMatchObject({ status: 200, body: { output: 'Acme has 2 rows.' } });
     expect(await historyOf(server)).toEqual(toolRun);
   });
 });
@@ -124,8 +124,8 @@ describe('running again a run that called tools, over HTTP', () => {
     const fake = await fakeGraph();
     const server = await serving(fake, searched('graph'));
 
-    const first = await executing(server, 'graph');
-    const again = await executing(server, 'graph');
+    const first = await running(server, 'graph');
+    const again = await running(server, 'graph');
 
     expect(again).toMatchObject({ status: 200, body: first.body });
     expect(fake.received()).toHaveLength(1);
@@ -136,8 +136,8 @@ describe('running again a run that called tools, over HTTP', () => {
     const fake = await fakeGraph();
     const server = await serving(fake, callingTools([['mcp__graph__search', { query: 'acme' }]], timedOut));
 
-    const first = await executing(server, 'graph');
-    const again = await executing(server, 'graph');
+    const first = await running(server, 'graph');
+    const again = await running(server, 'graph');
 
     expect(first).toMatchObject({
       status: 503,
@@ -171,7 +171,7 @@ describe('a server bound to another org, over HTTP', () => {
     const fake = await fakeGraph();
     const server = await serving(fake);
 
-    const refused = await executing(server, 'crm');
+    const refused = await running(server, 'crm');
 
     expect(refused).toMatchObject({
       status: 503,
@@ -191,7 +191,7 @@ describe('the secrets of a server, over HTTP', () => {
     );
     const server = await serving(await fakeGraph(), echoed);
 
-    await executing(server, 'echo');
+    await running(server, 'echo');
     const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
 
     expect(JSON.stringify(history.body)).not.toContain(apiKey);
@@ -203,7 +203,7 @@ describe('a retired brain whose functions called tools, over HTTP', () => {
   it('keeps the calls readable in the history of its runs, and runs nothing more', async () => {
     const fake = await fakeGraph();
     const server = await serving(fake, searched('graph'));
-    await executing(server, 'graph');
+    await running(server, 'graph');
     await server.call('POST', `${alpha}/retire`);
 
     const again = await server.call('POST', `${alpha}/definitions/reasoning/graph/run`, { body: { input: {} } });

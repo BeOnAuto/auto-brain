@@ -58,7 +58,7 @@ async function brainWithRun(presenters: readonly Presenter[] = makeDefinitionPre
     operations.createDefinition,
     toAlpha(acmeAdmin, { type: 'echo', name: 'greet', source: '{"greeting":"Hi"}' }),
   );
-  const executing = (id: string, at: string) =>
+  const running = (id: string, at: string) =>
     definitions.call(operations.runDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet', run_id: id }), at);
   const reading = (input: object) =>
     definitions.call(operations.getRunHistory, toAlpha(acmeAdmin, { run_id: runId, ...input }));
@@ -67,7 +67,7 @@ async function brainWithRun(presenters: readonly Presenter[] = makeDefinitionPre
       Effect.orDie(definitions.ledger.service.execute(`brain/acme/alpha/run-logs/${runId}`, runLog, event)),
       recordedAt,
     );
-  return { ...definitions, ...operations, executing, reading, logging };
+  return { ...definitions, ...operations, running, reading, logging };
 }
 
 function withCursor(cursor: string | undefined): object {
@@ -101,8 +101,8 @@ describe('get_run_history', () => {
 
 describe('the history of a run', () => {
   it('holds the facts of the run oldest first, each at its own time', async () => {
-    const { executing, reading } = await brainWithRun();
-    await executing(runId, '2026-10-01T09:00:10.000Z');
+    const { running, reading } = await brainWithRun();
+    await running(runId, '2026-10-01T09:00:10.000Z');
 
     expect(await reading({})).toMatchObject({
       status: 'succeeded',
@@ -135,8 +135,8 @@ describe('the history of a run', () => {
   });
 
   it('reads a run that finished later, newest first, from a query string with its id in any case, without its deferral', async () => {
-    const { call, executing, getRunHistory, settling } = await withHandOn();
-    await executing();
+    const { call, running, getRunHistory, settling } = await withHandOn();
+    await running();
     await settling({ status: 'succeeded', output: 'done', record: {} });
 
     const read = await call(
@@ -151,7 +151,7 @@ describe('the history of a run', () => {
 
 async function runWithLog(presenters?: readonly Presenter[]) {
   const brain = await brainWithRun(presenters);
-  await brain.executing(runId, '2026-10-01T09:00:10.000Z');
+  await brain.running(runId, '2026-10-01T09:00:10.000Z');
   await brain.logging(
     { type: 'input_applied', key: 'early', at: '2026-10-01T09:00:05.000Z' },
     '2026-10-01T09:00:11.000Z',
@@ -247,8 +247,8 @@ const emptyAndEnded = { status: 'succeeded', output: { events: [], has_more: fal
 
 describe('get_run_history rejecting', () => {
   it('a run the brain does not have, with a cursor or without', async () => {
-    const { executing, reading } = await brainWithRun();
-    await executing(otherId, '2026-10-01T09:00:10.000Z');
+    const { running, reading } = await brainWithRun();
+    await running(otherId, '2026-10-01T09:00:10.000Z');
     const notFound = {
       status: 'rejected',
       reason: 'not_found',
@@ -261,8 +261,8 @@ describe('get_run_history rejecting', () => {
   });
 
   it('a cursor that does not decode', async () => {
-    const { executing, reading } = await brainWithRun();
-    await executing(runId, '2026-10-01T09:00:10.000Z');
+    const { running, reading } = await brainWithRun();
+    await running(runId, '2026-10-01T09:00:10.000Z');
 
     expect(await reading({ cursor: 'not-a-cursor' })).toMatchObject({
       status: 'rejected',
@@ -274,8 +274,8 @@ describe('get_run_history rejecting', () => {
 
 describe('the end of the history of a run', () => {
   it('is an empty page without a cursor', async () => {
-    const { executing, reading } = await brainWithRun();
-    await executing(runId, '2026-10-01T09:00:10.000Z');
+    const { running, reading } = await brainWithRun();
+    await running(runId, '2026-10-01T09:00:10.000Z');
     const [, last] = cursorsIn(await reading({}));
 
     expect(await reading({ cursor: String(last) })).toEqual(emptyAndEnded);
@@ -284,8 +284,8 @@ describe('the end of the history of a run', () => {
 
 describe('a page of the history of a run whose records are all hidden', () => {
   it('is empty, and the run is found', async () => {
-    const { executing, reading } = await brainWithRun([]);
-    await executing(runId, '2026-10-01T09:00:10.000Z');
+    const { running, reading } = await brainWithRun([]);
+    await running(runId, '2026-10-01T09:00:10.000Z');
 
     expect(await reading({})).toEqual(emptyAndEnded);
   });

@@ -32,7 +32,7 @@ Each call to a function starts a run of that function, recorded under its own ru
 
 ## Starting a run
 
-A run starts when a caller executes the workflow with `run_definition`, giving its input. The call answers at once with the `run_id` of the run and the status `started`; the run then carries on by itself. Executing again with the same run id and input returns that run as it stands rather than starting another. A workflow runs once for each run id: executing again with the id of a run that ended without a result, `rejected` as `unavailable` or `failed`, is refused with `conflict`, so start a new run under a new run id.
+A run starts when a caller runs the workflow with `run_definition`, giving its input. The call answers at once with the `run_id` of the run and the status `started`; the run then carries on by itself. Executing again with the same run id and input returns that run as it stands rather than starting another. A workflow runs once for each run id: executing again with the id of a run that ended without a result, `rejected` as `unavailable` or `failed`, is refused with `conflict`, so start a new run under a new run id.
 
 A run also starts when a trigger of the workflow fires, as the next section describes.
 

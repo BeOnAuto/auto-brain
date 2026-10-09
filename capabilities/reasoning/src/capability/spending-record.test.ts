@@ -31,10 +31,10 @@ const usage = {
 
 describe('the record of a run', () => {
   it('keeps the whole prompt when it fits with the answer', async () => {
-    const { executing } = reasoningWith(answers(textResult('Short')));
+    const { running } = reasoningWith(answers(textResult('Short')));
     const text = 'é'.repeat(150_000);
 
-    expect(await executing(withInstructions, { rules: 'Be brief.', text })).toMatchObject(
+    expect(await running(withInstructions, { rules: 'Be brief.', text })).toMatchObject(
       Exit.succeed({
         output: 'Short',
         record: { prompt: { instructions: 'Be brief.', message: text, truncated: false } },
@@ -43,8 +43,8 @@ describe('the record of a run', () => {
   });
 
   it('cuts the prompt so that the answer and the record take at most 1 MiB', async () => {
-    const { executing } = reasoningWith(answers(textResult('a'.repeat(700_000))));
-    const run = await executing(withInstructions, { rules: 'r'.repeat(199_000), text: 't'.repeat(199_000) });
+    const { running } = reasoningWith(answers(textResult('a'.repeat(700_000))));
+    const run = await running(withInstructions, { rules: 'r'.repeat(199_000), text: 't'.repeat(199_000) });
 
     expect(run).toMatchObject(Exit.succeed({ output: 'a'.repeat(700_000), record: { prompt: { truncated: true } } }));
     expect(Exit.match(run, measuring)).toBeLessThanOrEqual(oneMebibyte);
@@ -52,8 +52,8 @@ describe('the record of a run', () => {
   });
 
   it('gives the message all the room when there are no instructions', async () => {
-    const { executing } = reasoningWith(answers(textResult('a'.repeat(900_000))));
-    const run = await executing(withoutInstructions, { text: 't'.repeat(199_000) });
+    const { running } = reasoningWith(answers(textResult('a'.repeat(900_000))));
+    const run = await running(withoutInstructions, { text: 't'.repeat(199_000) });
 
     expect(run).toMatchObject(Exit.succeed({ record: { prompt: { truncated: true } } }));
     expect(Exit.match(run, measuring)).toBeLessThanOrEqual(oneMebibyte);
@@ -61,9 +61,9 @@ describe('the record of a run', () => {
   });
 
   it('cannot hold an answer that leaves no room for the prompt: the definition must ask for less', async () => {
-    const { executing } = reasoningWith(answers(textResult('a'.repeat(oneMebibyte), { usage, duration_ms: 1500 })));
+    const { running } = reasoningWith(answers(textResult('a'.repeat(oneMebibyte), { usage, duration_ms: 1500 })));
 
-    expect(await executing(withoutInstructions, { text: 'Go' })).toEqual(
+    expect(await running(withoutInstructions, { text: 'Go' })).toEqual(
       Exit.fail(
         new Conflict({
           detail:

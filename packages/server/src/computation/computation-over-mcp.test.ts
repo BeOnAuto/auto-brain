@@ -40,13 +40,13 @@ describe('a computation function over MCP, on the endpoint of its brain', { time
         name: 'pace',
         source: campaignPace,
       });
-      const executing = await session.callTool('run_definition', {
+      const running = await session.callTool('run_definition', {
         type: 'computation',
         name: 'pace',
         input: campaignRows(4),
       });
       const reading = await session.callTool('get_run', {
-        run_id: String(executing.structuredContent?.['run_id']),
+        run_id: String(running.structuredContent?.['run_id']),
       });
       await session.callTool('create_definition', { type: 'computation', name: 'total', source: total });
       const summing = await session.callTool('run_definition', {
@@ -54,7 +54,7 @@ describe('a computation function over MCP, on the endpoint of its brain', { time
         name: 'total',
         input: campaignRows(4),
       });
-      return { created: creating, ran: executing, run: reading, summed: summing };
+      return { created: creating, ran: running, run: reading, summed: summing };
     });
 
     expect(created.structuredContent).toMatchObject({ type: 'computation', name: 'pace', version: 1 });

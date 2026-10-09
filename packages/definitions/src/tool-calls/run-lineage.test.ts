@@ -50,18 +50,18 @@ async function aToolUser() {
     operations.createDefinition,
     toAlpha(acmeAdmin, { type: 'tool-user', name: 'caller', source: 'x' }),
   );
-  const executing = (input: object, lineage?: Lineage) =>
+  const running = (input: object, lineage?: Lineage) =>
     definitions.call(operations.runDefinition, {
       ...toAlpha(acmeAdmin, { type: 'tool-user', name: 'caller', input, run_id: runId }),
       ...(lineage === undefined ? {} : { lineage }),
     });
-  return { ...definitions, executing };
+  return { ...definitions, running };
 }
 
 describe('the lineage of a run that calls tools', () => {
   it('starts with no cause, links each call to the answer before it and each answer to its call, and the finish to the last answer', async () => {
     const definitions = await aToolUser();
-    await definitions.executing({ calls: 2 });
+    await definitions.running({ calls: 2 });
 
     expect(await linksIn(definitions)).toEqual([
       { type: 'run_started', id: idAt(1), causationId: null, correlationId: runId },
@@ -75,7 +75,7 @@ describe('the lineage of a run that calls tools', () => {
 
   it('finishes caused by its start when it called no tool, and a failure too', async () => {
     const definitions = await aToolUser();
-    await definitions.executing({ calls: 0, ending: 'unavailable' });
+    await definitions.running({ calls: 0, ending: 'unavailable' });
 
     expect((await linksIn(definitions)).map(({ type, causationId }) => [type, causationId])).toEqual([
       ['run_started', null],
@@ -86,7 +86,7 @@ describe('the lineage of a run that calls tools', () => {
   it('started by another run, is caused by what it was given and belongs to the run it was given', async () => {
     const definitions = await aToolUser();
     const lineage = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: 'root' };
-    await definitions.executing({ calls: 0 }, lineage);
+    await definitions.running({ calls: 0 }, lineage);
 
     expect((await linksIn(definitions)).map(({ causationId, correlationId }) => [causationId, correlationId])).toEqual([
       [lineage.causationId, 'root'],
@@ -98,7 +98,7 @@ describe('the lineage of a run that calls tools', () => {
     const definitions = await aToolUser();
     const lineage = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: 'root' };
 
-    expect(await definitions.executing({ calls: 0, lineage })).toMatchObject({ status: 'succeeded' });
+    expect(await definitions.running({ calls: 0, lineage })).toMatchObject({ status: 'succeeded' });
     expect(
       await definitions.call(
         definitionOperationsFor([toolUser().capability]).runDefinition,
@@ -146,7 +146,7 @@ describe('the journal of a run, given an answer to a call it has no start of', (
 describe('the lineage of a run that finishes later', () => {
   it('defers caused by its start, and settles caused by what settled it', async () => {
     const definitions = await withHandOn();
-    await definitions.executing();
+    await definitions.running();
     const settledBy = { causationId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: relayedId };
     await definitions.settling({ status: 'succeeded', output: 'done', record: {} }, undefined, settledBy);
 
@@ -159,8 +159,8 @@ describe('the lineage of a run that finishes later', () => {
 
   it('started again after it was rejected, is caused by its latest start from then on', async () => {
     const definitions = await aToolUser();
-    await definitions.executing({ calls: 0, ending: 'unavailable' });
-    await definitions.executing({ calls: 0, ending: 'unavailable' });
+    await definitions.running({ calls: 0, ending: 'unavailable' });
+    await definitions.running({ calls: 0, ending: 'unavailable' });
 
     expect((await linksIn(definitions)).map(({ type, causationId }) => [type, causationId])).toEqual([
       ['run_started', null],

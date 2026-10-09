@@ -71,15 +71,15 @@ describe('a reasoning function definition over MCP, on the endpoint of its brain
         name: 'summary',
         source: summary,
       });
-      const executing = await session.callTool('run_definition', {
+      const running = await session.callTool('run_definition', {
         type: 'reasoning',
         name: 'summary',
         input: { text: 'the quarter' },
       });
       const reading = await session.callTool('get_run', {
-        run_id: String(executing.structuredContent?.['run_id']),
+        run_id: String(running.structuredContent?.['run_id']),
       });
-      return { created: creating, ran: executing, run: reading };
+      return { created: creating, ran: running, run: reading };
     });
 
     expect(created.structuredContent).toMatchObject({ type: 'reasoning', name: 'summary', version: 1 });

@@ -63,7 +63,7 @@ describe('the definitions and runs of a brain', () => {
 });
 
 describe('a caller that may only read', () => {
-  it('reads definitions and runs, and is rejected for the commands, executing included', async () => {
+  it('reads definitions and runs, and is rejected for the commands, running included', async () => {
     const { call } = harness();
     await call(createDefinition, toAlpha(acmeAdmin, hello));
     await call(runDefinition, toAlpha(acmeAdmin, { ...greet, run_id: runId }));

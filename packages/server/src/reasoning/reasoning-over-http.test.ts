@@ -34,7 +34,7 @@ async function serving(...replies: readonly ScriptedReply[]): Promise<ReasoningS
   return server;
 }
 
-function executing(name: string, body: object) {
+function running(name: string, body: object) {
   return server.call('POST', `${alpha}/definitions/reasoning/${name}/run`, { body });
 }
 
@@ -42,11 +42,11 @@ afterEach(async () => {
   await server.stop();
 });
 
-describe('executing a reasoning function definition over HTTP', () => {
+describe('running a reasoning function definition over HTTP', () => {
   it('answers with the run and the text of the model', async () => {
     await serving(answers(textResult('Profits rose.')));
 
-    expect(await executing('summary', { input: { text: 'the quarter' } })).toMatchObject({
+    expect(await running('summary', { input: { text: 'the quarter' } })).toMatchObject({
       status: 200,
       body: { type: 'reasoning', name: 'summary', definition_version: 1, status: 'succeeded', output: 'Profits rose.' },
     });
@@ -55,7 +55,7 @@ describe('executing a reasoning function definition over HTTP', () => {
   it('answers with the JSON value of a JSON definition', async () => {
     await serving(answers(jsonResult({ approve: true })));
 
-    expect(await executing('verdict', { input: { expense: 'a dinner' } })).toMatchObject({
+    expect(await running('verdict', { input: { expense: 'a dinner' } })).toMatchObject({
       status: 200,
       body: { status: 'succeeded', output: { approve: true } },
     });
@@ -66,7 +66,7 @@ describe('the runs of a reasoning function definition over HTTP', () => {
   it('rejects an input that does not match the input schema with 422, under /input', async () => {
     await serving();
 
-    expect(await executing('summary', { input: { text: 7 } })).toMatchObject({
+    expect(await running('summary', { input: { text: 7 } })).toMatchObject({
       status: 422,
       body: { reason: 'invalid_input', errors: [{ pointer: '/input/text', detail: 'Expected string' }] },
     });
@@ -75,8 +75,8 @@ describe('the runs of a reasoning function definition over HTTP', () => {
 
   it('answers a retry with the same run id from the record, without calling the model again', async () => {
     await serving(answers(textResult('Profits rose.')));
-    const first = await executing('summary', { input: { text: 'the quarter' }, run_id: runId });
-    const retried = await executing('summary', { input: { text: 'the quarter' }, run_id: runId });
+    const first = await running('summary', { input: { text: 'the quarter' }, run_id: runId });
+    const retried = await running('summary', { input: { text: 'the quarter' }, run_id: runId });
 
     expect(first).toMatchObject({ status: 200, body: { run_id: runId, output: 'Profits rose.' } });
     expect(retried.body).toEqual(first.body);
@@ -85,7 +85,7 @@ describe('the runs of a reasoning function definition over HTTP', () => {
 
   it('shows the record of the run with get_run', async () => {
     await serving(answers(textResult('Profits rose.', { response_id: 'msg_01', duration_ms: 420 })));
-    await executing('summary', { input: { text: 'the quarter' }, run_id: runId });
+    await running('summary', { input: { text: 'the quarter' }, run_id: runId });
 
     expect(await server.call('GET', `${alpha}/runs/${runId}`)).toMatchObject({
       status: 200,

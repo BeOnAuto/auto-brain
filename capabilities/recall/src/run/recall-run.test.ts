@@ -28,7 +28,7 @@ describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
     const run = recallWith();
     run.keep(liveView(reviews));
 
-    const answered = await run.executing(campaignReviews, { campaign: 'spring', last: 1 });
+    const answered = await run.running(campaignReviews, { campaign: 'spring', last: 1 });
 
     expect(answered).toMatchObject(
       Exit.succeed({
@@ -53,9 +53,9 @@ describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
     const run = recallWith();
     run.keep(liveView({ count: 3 }));
 
-    const answered = await run.executing(recallDocument('. + 1'));
+    const answered = await run.running(recallDocument('. + 1'));
     run.keep(liveView(null, { folded: 0, lastEvent: null }));
-    const initial = await run.executing(recallDocument('. + 1'));
+    const initial = await run.running(recallDocument('. + 1'));
 
     expect(answered).toMatchObject(Exit.succeed({ output: { count: 3 }, record: { work: 0, output_bytes: 11 } }));
     expect(initial).toMatchObject(Exit.succeed({ output: null, record: { view: { folded: 0, last_event: null } } }));
@@ -68,7 +68,7 @@ describe('the input of a run of a recall function', { timeout: workerTestTimeout
     run.keep(liveView(reviews));
     const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], null);
 
-    expect(await run.executing(campaignReviews, { last: 1 })).toEqual(
+    expect(await run.running(campaignReviews, { last: 1 })).toEqual(
       Exit.fail(
         new InvalidInput({
           detail: 'The input does not match the recall function’s input schema',
@@ -76,7 +76,7 @@ describe('the input of a run of a recall function', { timeout: workerTestTimeout
         }),
       ),
     );
-    expect(await run.executing(campaignReviews, deep)).toMatchObject(
+    expect(await run.running(campaignReviews, deep)).toMatchObject(
       Exit.fail({ detail: 'The input nests more than the 512 levels a recall function takes' }),
     );
   });
@@ -85,14 +85,14 @@ describe('the input of a run of a recall function', { timeout: workerTestTimeout
 describe('a run of a recall function whose view is not ready', { timeout: workerTestTimeoutMs }, () => {
   it('is unavailable, rebuilding, while its view is missing, of an older version, waiting or being built', async () => {
     const run = recallWith();
-    const notBegun = await run.executing(campaignReviews, { campaign: 'spring' });
+    const notBegun = await run.running(campaignReviews, { campaign: 'spring' });
     run.keep(liveView(reviews, { version: 0 }));
-    const older = await run.executing(campaignReviews, { campaign: 'spring' });
+    const older = await run.running(campaignReviews, { campaign: 'spring' });
     run.keep(liveView(reviews, { phase: 'waiting' }));
-    const waiting = await run.executing(campaignReviews, { campaign: 'spring' });
+    const waiting = await run.running(campaignReviews, { campaign: 'spring' });
     run.keep(liveView(reviews, { phase: 'rebuilding', folded: 40 }));
     run.newest('2026-10-06T10:00:35.000Z');
-    const building = await run.executing(campaignReviews, { campaign: 'spring' });
+    const building = await run.running(campaignReviews, { campaign: 'spring' });
 
     expect(notBegun).toMatchObject(Exit.fail({ kind: 'rebuilding' }));
     expect(older).toEqual(notBegun);
@@ -112,7 +112,7 @@ describe('a run of a recall function whose view is not ready', { timeout: worker
     const run = recallWith();
     run.keep(liveView(reviews, { phase: 'stalled', stall }));
 
-    expect(await run.executing(campaignReviews, { campaign: 'spring' })).toEqual(
+    expect(await run.running(campaignReviews, { campaign: 'spring' })).toEqual(
       Exit.fail(
         new Conflict({
           detail:

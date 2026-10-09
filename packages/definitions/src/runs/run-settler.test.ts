@@ -23,8 +23,8 @@ const noSuchRun = Result.fail(new NotFound({ detail: 'There is no such run in th
 
 describe('settling a deferred run', () => {
   it('records its success, which a read and a call with its id then answer, without running it again', async () => {
-    const { executing, reading, relayer, settling } = await withHandOn();
-    await executing();
+    const { running, reading, relayer, settling } = await withHandOn();
+    await running();
 
     expect(await settling(success)).toStrictEqual(
       Result.succeed({ ...settled, status: 'succeeded', output: 'handed on' }),
@@ -33,7 +33,7 @@ describe('settling a deferred run', () => {
       status: 'succeeded',
       output: { ...settled, status: 'succeeded', output: 'handed on', record: { steps: 3 } },
     });
-    expect(await executing()).toStrictEqual({
+    expect(await running()).toStrictEqual({
       status: 'succeeded',
       output: { ...settled, status: 'succeeded', output: 'handed on' },
     });
@@ -41,8 +41,8 @@ describe('settling a deferred run', () => {
   });
 
   it('is quiet when it is settled again the same way, and a conflict when settled another way', async () => {
-    const { executing, settling } = await withHandOn();
-    await executing();
+    const { running, settling } = await withHandOn();
+    await running();
     const first = await settling(success);
 
     expect(await settling(success)).toStrictEqual(first);
@@ -54,8 +54,8 @@ describe('settling a deferred run', () => {
 
 describe('settling a deferred run as rejected or failed', () => {
   it('records a rejection of its input, which a call with its id answers again', async () => {
-    const { executing, relayer, settling } = await withHandOn();
-    await executing();
+    const { running, relayer, settling } = await withHandOn();
+    await running();
 
     expect(await settling({ status: 'rejected', reason: 'invalid_input', detail: 'No such customer' })).toMatchObject(
       Result.succeed({
@@ -63,7 +63,7 @@ describe('settling a deferred run as rejected or failed', () => {
         rejection: { reason: 'invalid_input', detail: 'No such customer', issues: [] },
       }),
     );
-    expect(await executing()).toEqual({
+    expect(await running()).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
       detail: 'No such customer',
@@ -73,21 +73,21 @@ describe('settling a deferred run as rejected or failed', () => {
   });
 
   it('as unavailable or failed lets a call with its id run it again', async () => {
-    const { executing, relayer, settling } = await withHandOn();
-    await executing();
+    const { running, relayer, settling } = await withHandOn();
+    await running();
     await settling({ status: 'rejected', reason: 'unavailable', detail: 'The worker is gone' });
-    await executing();
+    await running();
     await settling({ status: 'failed' });
 
-    expect(await executing()).toMatchObject({ output: { status: 'started' } });
+    expect(await running()).toMatchObject({ output: { status: 'started' } });
     expect(relayer.runs()).toBe(3);
   });
 });
 
 describe('settling a run', () => {
   it('reaches only the run of its own org, brain and id', async () => {
-    const { executing, settling } = await withHandOn();
-    await executing();
+    const { running, settling } = await withHandOn();
+    await running();
 
     expect(await settling(success, { org: 'acme', brain: 'beta', id: relayedId })).toEqual(noSuchRun);
     expect(await settling(success, { org: 'globex', brain: 'alpha', id: relayedId })).toEqual(noSuchRun);
@@ -119,8 +119,8 @@ describe('settling a run', () => {
 
 describe('a settlement whose output is too large or is not JSON', () => {
   it('is a breakdown of the capability that fails the run', async () => {
-    const { breakingDown, executing, reading } = await withHandOn();
-    await executing();
+    const { breakingDown, running, reading } = await withHandOn();
+    await running();
 
     expect(await breakingDown({ status: 'succeeded', output: 'x'.repeat(1_048_576), record: {} })).toEqual(
       new Error('The capability answered with 1048580 bytes to record, more than the 1048576 allowed'),
@@ -129,8 +129,8 @@ describe('a settlement whose output is too large or is not JSON', () => {
   });
 
   it('is a breakdown as well when the output is not JSON', async () => {
-    const { breakingDown, executing, reading } = await withHandOn();
-    await executing();
+    const { breakingDown, running, reading } = await withHandOn();
+    await running();
 
     expect(Schema.isSchemaError(await breakingDown({ status: 'succeeded', output: Number.NaN, record: {} }))).toBe(
       true,
@@ -147,8 +147,8 @@ const everything = { kind: 'everything' } as const;
 
 describe('a settlement', () => {
   it('carries every kind and because of an unavailable run, those of a step included', async () => {
-    const { executing, settling } = await withHandOn();
-    await executing();
+    const { running, settling } = await withHandOn();
+    await running();
     const detail = 'A tool server could not be used';
 
     expect(
@@ -169,8 +169,8 @@ describe('a settlement', () => {
   });
 
   it('carries the issues of a rejected input and the record of a rejection', async () => {
-    const { executing, reading, settling } = await withHandOn();
-    await executing();
+    const { running, reading, settling } = await withHandOn();
+    await running();
     const issues = [{ detail: 'Expected a customer', pointer: '/input/customer' }];
 
     await settling({
@@ -193,12 +193,12 @@ describe('a settlement', () => {
 
 describe('a settlement of a conflict or a cancellation', () => {
   it('records a conflict with its kind as given, and one without a kind without one', async () => {
-    const { executing, reading, settling } = await withHandOn();
-    await executing();
+    const { running, reading, settling } = await withHandOn();
+    await running();
     const detail = 'The output takes more than a run records';
     await settling({ status: 'rejected', reason: 'conflict', detail, kind: 'oversized' });
     const withKind = await reading();
-    await executing();
+    await running();
     await settling({ status: 'rejected', reason: 'conflict', detail: 'Clashed' });
 
     expect([withKind, await reading()]).toMatchObject([
@@ -209,34 +209,34 @@ describe('a settlement of a conflict or a cancellation', () => {
   });
 
   it('records a cancellation with its kind, a final result a call with its id answers again', async () => {
-    const { executing, relayer, settling } = await withHandOn();
-    await executing();
+    const { running, relayer, settling } = await withHandOn();
+    await running();
     const detail = 'The step that waited for it ran out of time';
 
     expect(await settling({ status: 'rejected', reason: 'cancelled', detail, kind: 'deadline' })).toStrictEqual(
       Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'cancelled', detail, kind: 'deadline' } }),
     );
-    expect(await executing()).toEqual({ status: 'rejected', reason: 'cancelled', detail, kind: 'deadline' });
+    expect(await running()).toEqual({ status: 'rejected', reason: 'cancelled', detail, kind: 'deadline' });
     expect(relayer.runs()).toBe(1);
   });
 
   it('records a request nobody answered with its kind, a final result a call with its id answers again', async () => {
-    const { executing, relayer, settling } = await withHandOn();
-    await executing();
+    const { running, relayer, settling } = await withHandOn();
+    await running();
     const detail = 'Nobody answered before the request expired';
 
     expect(await settling({ status: 'rejected', reason: 'unanswered', detail, kind: 'expired' })).toStrictEqual(
       Result.succeed({ ...settled, status: 'rejected', rejection: { reason: 'unanswered', detail, kind: 'expired' } }),
     );
-    expect(await executing()).toEqual({ status: 'rejected', reason: 'unanswered', detail, kind: 'expired' });
+    expect(await running()).toEqual({ status: 'rejected', reason: 'unanswered', detail, kind: 'expired' });
     expect(relayer.runs()).toBe(1);
   });
 });
 
 describe('what a settlement records', () => {
   it('is an empty record for a success that names none, as the workflow host settles a run', async () => {
-    const { executing, reading, settling } = await withHandOn();
-    await executing();
+    const { running, reading, settling } = await withHandOn();
+    await running();
 
     await settling({ status: 'succeeded', output: 'handed on' });
 
@@ -244,8 +244,8 @@ describe('what a settlement records', () => {
   });
 
   it('records a failure with its incident', async () => {
-    const { executing, ledger, run, settling } = await withHandOn();
-    await executing();
+    const { running, ledger, run, settling } = await withHandOn();
+    await running();
 
     await settling({ status: 'failed', incident: 'incident-1' });
     const page = await run(
@@ -258,17 +258,17 @@ describe('what a settlement records', () => {
   });
 
   it('records the actor who settled it, the brain itself when none is named', async () => {
-    const { executing, ledger, run, settling } = await withHandOn();
+    const { running, ledger, run, settling } = await withHandOn();
     const read = () =>
       run(
         Effect.orDie(
           ledger.service.readRecorded({ org: 'acme', brain: 'alpha' }, everything, { order: 'asc', limit: 20 }),
         ),
       );
-    await executing();
+    await running();
     await settling({ status: 'rejected', reason: 'unavailable', detail: 'Gone' });
     const bySelf = finishIn(await read());
-    await executing();
+    await running();
     await settling({ ...success, by: 'acme-admin' });
 
     expect([bySelf, finishIn(await read())]).toMatchObject([{ by: 'brain:alpha' }, { by: 'acme-admin' }]);

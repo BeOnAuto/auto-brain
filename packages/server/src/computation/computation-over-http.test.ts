@@ -44,7 +44,7 @@ async function serving(programPoolOf: ProgramPoolOf = workerPool): Promise<Reaso
   return server;
 }
 
-function executing(name: string, body: object) {
+function running(name: string, body: object) {
   return server.call('POST', `${alpha}/definitions/computation/${name}/run`, { body });
 }
 
@@ -52,7 +52,7 @@ describe('a computation function over HTTP', { timeout: computationTestTimeoutMs
   it('runs its program on the input and answers the output, recorded with the work, the time and the sizes', async () => {
     await serving();
 
-    const ran = await executing('pace', { input: campaignRows(100), run_id: runId });
+    const ran = await running('pace', { input: campaignRows(100), run_id: runId });
     const read = await server.call('GET', `${alpha}/runs/${runId}`);
 
     expect(ran).toMatchObject({
@@ -97,7 +97,7 @@ describe(
       await serving();
       const detail = 'The program raised an error on line 6: no budget for 2 rows';
 
-      const ran = await executing('raising', { input: campaignRows(2), run_id: runId });
+      const ran = await running('raising', { input: campaignRows(2), run_id: runId });
       const read = await server.call('GET', `${alpha}/runs/${runId}`);
       const listed = await server.call('GET', `${alpha}/runs?type=computation`);
       const { events } = decodeHistory((await server.call('GET', `${alpha}/runs/${runId}/history`)).body);
@@ -121,8 +121,8 @@ describe(
     it('runs again under its id, ending the same way, since the same input gives the same result', async () => {
       await serving();
 
-      const first = await executing('raising', { input: campaignRows(2), run_id: runId });
-      const again = await executing('raising', { input: campaignRows(2), run_id: runId });
+      const first = await running('raising', { input: campaignRows(2), run_id: runId });
+      const again = await running('raising', { input: campaignRows(2), run_id: runId });
 
       expect(again.body).toEqual(first.body);
     });
@@ -135,7 +135,7 @@ describe('an output too large to record, over HTTP', { timeout: computationTestT
     const doubled = ['---', 'language: jq', '---', '("\\u0001Ā" * 15000000) | [., .]'].join('\n');
     await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'doubled', source: doubled } });
 
-    expect(await executing('doubled', { input: null })).toMatchObject({
+    expect(await running('doubled', { input: null })).toMatchObject({
       status: 409,
       body: {
         reason: 'conflict',
@@ -143,7 +143,7 @@ describe('an output too large to record, over HTTP', { timeout: computationTestT
         detail: "The program's output takes more than the 1048320 bytes as JSON a run can record",
       },
     });
-    expect(await executing('pace', { input: campaignRows(2) })).toMatchObject({ status: 200 });
+    expect(await running('pace', { input: campaignRows(2) })).toMatchObject({ status: 200 });
   });
 });
 
@@ -154,7 +154,7 @@ describe('a long error, over HTTP', { timeout: computationTestTimeoutMs }, () =>
     await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'shouting', source: shouting } });
     const detail = `The program raised an error on line 4: ${'x'.repeat(1024)}…`;
 
-    const ran = await executing('shouting', { input: null, run_id: runId });
+    const ran = await running('shouting', { input: null, run_id: runId });
     const read = await server.call('GET', `${alpha}/runs/${runId}`);
 
     expect(ran).toMatchObject({ status: 409, body: { reason: 'conflict', kind: 'unworkable', detail } });
@@ -170,12 +170,12 @@ describe(
     it('rejects an input the input schema refuses, under /input', async () => {
       await serving();
 
-      expect(
-        await executing('pace', { input: { rows: [], period: { days_elapsed: 0, days_total: 30 } } }),
-      ).toMatchObject({
-        status: 422,
-        body: { reason: 'invalid_input', errors: [{ pointer: '/input/period/days_elapsed' }] },
-      });
+      expect(await running('pace', { input: { rows: [], period: { days_elapsed: 0, days_total: 30 } } })).toMatchObject(
+        {
+          status: 422,
+          body: { reason: 'invalid_input', errors: [{ pointer: '/input/period/days_elapsed' }] },
+        },
+      );
     });
 
     it('refuses a definition with each problem and its line, under /source, and a document over 64 KiB', async () => {
@@ -218,7 +218,7 @@ describe(
     it('is unavailable when no worker is free within its deadline', async () => {
       await serving(scripted({ ran: 'stopped', because: 'busy', milliseconds: 10_000 }));
 
-      expect(await executing('pace', { input: campaignRows(2) })).toMatchObject({
+      expect(await running('pace', { input: campaignRows(2) })).toMatchObject({
         status: 503,
         body: {
           reason: 'unavailable',
@@ -232,7 +232,7 @@ describe(
         scripted({ ran: 'crashed', detail: 'The worker ended with code 1 before it answered', milliseconds: 5 }),
       );
 
-      const ran = await executing('pace', { input: campaignRows(2), run_id: runId });
+      const ran = await running('pace', { input: campaignRows(2), run_id: runId });
 
       expect(ran).toMatchObject({ status: 500 });
       expect(await server.call('GET', `${alpha}/runs/${runId}`)).toMatchObject({

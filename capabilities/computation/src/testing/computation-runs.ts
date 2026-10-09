@@ -28,7 +28,7 @@ export type Run = Exit.Exit<CapabilityAnswer, InvalidInput | Unavailable | Confl
 export interface ComputationRuns {
   readonly capability: Capability;
   readonly prepared: (source: string) => PreparedDefinition;
-  readonly executing: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly running: (source: string, input?: Schema.Json) => Promise<Run>;
 }
 
 const pools: ProgramPool[] = [];
@@ -60,7 +60,7 @@ export function computationWith(pool: ProgramPool = poolOf(), deadlineMs?: numbe
   return {
     capability,
     prepared,
-    executing: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, run)),
+    running: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, run)),
   };
 }
 

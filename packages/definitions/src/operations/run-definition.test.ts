@@ -41,7 +41,7 @@ async function withGreetAndPlain() {
   return definitions;
 }
 
-function executing(name: string, input?: object) {
+function running(name: string, input?: object) {
   const type = name === 'greet' ? 'echo' : 'probe';
   return toAlpha(acmeAdmin, input === undefined ? { type, name } : { type, name, ...input });
 }
@@ -62,7 +62,7 @@ describe('run_definition', () => {
   it('runs a definition with an input and answers with the run it recorded under a new id', async () => {
     const { call, ledger } = await withGreetAndPlain();
 
-    const outcome = await call(runDefinition, executing('greet', { input: { who: 'Ada' } }), later);
+    const outcome = await call(runDefinition, running('greet', { input: { who: 'Ada' } }), later);
     const [, , runStream] = ledger.streamNames();
     const id = String(runStream).replace('brain/acme/alpha/runs/', '');
 
@@ -86,7 +86,7 @@ describe('run_definition', () => {
   it('answers with the run that get_run reads, without the record that get_run adds', async () => {
     const { call } = await withGreetAndPlain();
 
-    expect(await call(runDefinition, executing('greet', { run_id: runId }))).toStrictEqual({
+    expect(await call(runDefinition, running('greet', { run_id: runId }))).toStrictEqual({
       status: 'succeeded',
       output: greeted,
     });
@@ -101,7 +101,7 @@ describe('the run that run_definition runs', () => {
   it('gives the capability an empty object when the input is left out', async () => {
     const { call } = await withGreetAndPlain();
 
-    expect(await call(runDefinition, executing('greet'))).toMatchObject({
+    expect(await call(runDefinition, running('greet'))).toMatchObject({
       output: { output: { greeting: 'Hello', input: {} } },
     });
   });
@@ -109,7 +109,7 @@ describe('the run that run_definition runs', () => {
   it('tells the capability the run id, the org, the brain, the caller and the definition it runs', async () => {
     const { call } = await withGreetAndPlain();
 
-    expect(await call(runDefinition, executing('plain', { input: 7, run_id: runId }))).toMatchObject({
+    expect(await call(runDefinition, running('plain', { input: 7, run_id: runId }))).toMatchObject({
       output: {
         output: {
           input: 7,
@@ -129,7 +129,7 @@ describe('the run that run_definition runs', () => {
     const { call } = await withGreetAndPlain();
     await call(updateDefinition, toAlpha(acmeAdmin, { type: 'echo', name: 'greet', source: '{"greeting": "Howdy"}' }));
 
-    expect(await call(runDefinition, executing('greet'))).toMatchObject({
+    expect(await call(runDefinition, running('greet'))).toMatchObject({
       output: { definition_version: 2, output: { greeting: 'Howdy' } },
     });
   });
@@ -137,7 +137,7 @@ describe('the run that run_definition runs', () => {
   it('keeps the run id it is given, in lowercase', async () => {
     const { call } = await withGreetAndPlain();
 
-    expect(await call(runDefinition, executing('greet', { run_id: runId.toUpperCase() }))).toMatchObject({
+    expect(await call(runDefinition, running('greet', { run_id: runId.toUpperCase() }))).toMatchObject({
       output: { run_id: runId },
     });
   });
@@ -147,7 +147,7 @@ describe('run_definition rejected by the capability', () => {
   it('for invalid input, with the issues under /input, and records the rejection', async () => {
     const { call } = await withGreetAndPlain();
 
-    expect(await call(runDefinition, executing('plain', { input: { reject: true }, run_id: runId }))).toEqual({
+    expect(await call(runDefinition, running('plain', { input: { reject: true }, run_id: runId }))).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
       detail: 'The probe rejects the input',
@@ -182,7 +182,7 @@ describe('run_definition rejected by the capability', () => {
       issues: [{ detail: 'Expected a JSON object', pointer: '/input' }],
     };
 
-    expect(await call(runDefinition, executing('greet', { input: 'Ada' }))).toEqual(notAnObject);
-    expect(await call(runDefinition, executing('greet', { input: ['Ada'] }))).toEqual(notAnObject);
+    expect(await call(runDefinition, running('greet', { input: 'Ada' }))).toEqual(notAnObject);
+    expect(await call(runDefinition, running('greet', { input: ['Ada'] }))).toEqual(notAnObject);
   });
 });

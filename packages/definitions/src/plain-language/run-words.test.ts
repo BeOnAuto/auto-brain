@@ -32,10 +32,10 @@ const run = {
   finished_at: '2026-10-02T09:00:01.000Z',
 };
 
-const executing = { type: 'echo', name: 'greet' };
+const running = { type: 'echo', name: 'greet' };
 
 function ran(answer: Readonly<Record<string, unknown>>): string | undefined {
-  return registrationOf('run_definition').plainLanguage?.outcome(answer, executing);
+  return registrationOf('run_definition').plainLanguage?.outcome(answer, running);
 }
 
 function lookedUp(answer: Readonly<Record<string, unknown>>): string | undefined {
@@ -59,7 +59,7 @@ describe('the plain language of run_definition', () => {
 
   it('names the definition it tried to run, or what it tried', () => {
     expect([
-      registrationOf('run_definition').plainLanguage?.attempt(executing),
+      registrationOf('run_definition').plainLanguage?.attempt(running),
       registrationOf('run_definition').plainLanguage?.attempt({}),
     ]).toEqual(['run the greeting “greet”', 'run a greeting, probe, or relay']);
   });

@@ -41,7 +41,7 @@ export async function withHandOn() {
     ...operations,
     relayer,
     prober,
-    executing: (input: unknown = {}) => definitions.call(operations.runDefinition, handingOn(input)),
+    running: (input: unknown = {}) => definitions.call(operations.runDefinition, handingOn(input)),
     executingCancelledOnceStarted: (input: unknown) =>
       definitions.callCancelledWhen(relayer.started, operations.runDefinition, handingOn(input)),
     reading: () => definitions.call(operations.getRun, toAlpha(acmeAdmin, { run_id: relayedId })),

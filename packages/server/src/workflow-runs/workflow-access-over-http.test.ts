@@ -112,7 +112,7 @@ describe('a key without access to the brain of a workflow', { timeout: workflowT
     const runId = await startedBy(admin.key);
     const asOutsider = { key: outsider.key };
 
-    const executing = await server.call('POST', `${alpha}/definitions/workflow/approval/run`, {
+    const running = await server.call('POST', `${alpha}/definitions/workflow/approval/run`, {
       ...asOutsider,
       body: { input: { expense: 'a yacht' } },
     });
@@ -126,7 +126,7 @@ describe('a key without access to the brain of a workflow', { timeout: workflowT
       body: { event: decided },
     });
 
-    expect([executing.status, reading.status, sending.status]).toEqual([403, 403, 403]);
+    expect([running.status, reading.status, sending.status]).toEqual([403, 403, 403]);
     expect(await settledRun(server, `${alpha}/runs/${runId}`, { key: admin.key })).toMatchObject({
       body: { status: 'succeeded', output: [{ approved: true }] },
     });
@@ -136,7 +136,7 @@ describe('a key without access to the brain of a workflow', { timeout: workflowT
     const runId = await startedBy(admin.key);
     const asReader = { key: reader.key };
 
-    const executing = await server.call('POST', `${alpha}/definitions/workflow/approval/run`, {
+    const running = await server.call('POST', `${alpha}/definitions/workflow/approval/run`, {
       ...asReader,
       body: { input: { expense: 'a yacht' } },
     });
@@ -150,6 +150,6 @@ describe('a key without access to the brain of a workflow', { timeout: workflowT
       body: { event: decided },
     });
 
-    expect([executing.status, sending.status, reading.status]).toEqual([403, 403, 200]);
+    expect([running.status, sending.status, reading.status]).toEqual([403, 403, 200]);
   });
 });

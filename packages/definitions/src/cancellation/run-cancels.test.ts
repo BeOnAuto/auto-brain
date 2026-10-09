@@ -17,8 +17,8 @@ const everything = { kind: 'everything' } as const;
 
 describe('a cancel request the workflow host records on a run', () => {
   it('is requested on a run that finishes later, by the brain itself unless an actor is named, with the lineage given', async () => {
-    const { executing, ledger, run } = await withHandOn();
-    await executing();
+    const { running, ledger, run } = await withHandOn();
+    await running();
     const cancel = runCanceller(ledger.service);
 
     const receipt = await Effect.runPromise(cancel(relayed, deadline, lineage));
@@ -37,8 +37,8 @@ describe('a cancel request the workflow host records on a run', () => {
   });
 
   it('answers that the run has ended, and records the request on a run within its call, on a run not started yet, but not at an ill-formed address', async () => {
-    const { call, runDefinition, executing, ledger, prober, settling } = await withHandOn();
-    await executing();
+    const { call, runDefinition, running, ledger, prober, settling } = await withHandOn();
+    await running();
     await settling({ status: 'failed' });
     const plain = '0199a3c4-7d2e-7c1a-9b3f-000000000001';
     prober.sufferOnNextRun('stall');

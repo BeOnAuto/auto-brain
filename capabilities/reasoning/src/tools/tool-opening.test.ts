@@ -54,7 +54,7 @@ describe('a reasoning function that names tools', () => {
       callingTools([['mcp__graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.'))),
     );
 
-    const ran = await run.executing(naming('graph/search'));
+    const ran = await run.running(naming('graph/search'));
 
     expect(ran).toMatchObject({ _tag: 'Success', value: { output: 'Acme has 2 rows.' } });
     expect(run.requests()[0]?.tools).toMatchObject({
@@ -80,7 +80,7 @@ describe('a tool a reasoning function names that is not offered', () => {
   it('rejects the run as unavailable when no server of that name is configured for its brain', async () => {
     const run = reasoningWithTools(accessTo(await graphServer(), 'globex'));
 
-    expect(await run.executing(naming('graph/search'))).toEqual(
+    expect(await run.running(naming('graph/search'))).toEqual(
       Exit.fail(
         expect.objectContaining({
           _tag: 'unavailable',
@@ -92,7 +92,7 @@ describe('a tool a reasoning function names that is not offered', () => {
   });
 
   it('rejects the run as unavailable when no MCP server is configured at all', async () => {
-    expect(await reasoningWith().executing(naming('graph/search', 'crm/find'))).toEqual(
+    expect(await reasoningWith().running(naming('graph/search', 'crm/find'))).toEqual(
       Exit.fail(
         expect.objectContaining({
           kind: 'tool_not_offered',
@@ -109,7 +109,7 @@ describe('a tool a reasoning function names that is not offered', () => {
     await fake.close();
     const run = reasoningWithTools(accessTo(fake));
 
-    expect(await run.executing(naming('graph/search'))).toEqual(
+    expect(await run.running(naming('graph/search'))).toEqual(
       Exit.fail(expect.objectContaining({ kind: 'mcp_server_failed', because: 'unreachable' })),
     );
   });

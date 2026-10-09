@@ -52,7 +52,7 @@ describe('a run rejected after its model answered', () => {
 
     const runs = await Promise.all(
       [invalidAnswer('stop'), invalidAnswer('length'), refused, stopped].map((failureOf) =>
-        reasoningWith(answeredAfter(1500, failureOf)).executing(jsonDefinition, { text: 'x' }),
+        reasoningWith(answeredAfter(1500, failureOf)).running(jsonDefinition, { text: 'x' }),
       ),
     );
 

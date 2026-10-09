@@ -24,7 +24,7 @@ const noInput = {};
 function ended(source: string, view: Schema.Json = springWithoutReviews, input: Schema.Json = noInput) {
   const run = recallWith();
   run.keep(liveView(view));
-  return run.executing(source, input);
+  return run.running(source, input);
 }
 
 describe('a run whose answer cannot work as written', { timeout: workerTestTimeoutMs }, () => {
@@ -98,10 +98,10 @@ describe('a run whose answer reaches a bound', { timeout: workerTestTimeoutMs },
     const run = recallWith(scriptedPool([overflowing], poolOf()));
     run.keep(liveView({}));
 
-    expect(await run.executing(answering('.'))).toEqual(
+    expect(await run.running(answering('.'))).toEqual(
       unworkable('The answer went deeper than the 64 MiB stack of a run allows'),
     );
-    expect(await run.executing(answering('.'))).toMatchObject(Exit.succeed({ output: {} }));
+    expect(await run.running(answering('.'))).toMatchObject(Exit.succeed({ output: {} }));
   });
 });
 
@@ -110,7 +110,7 @@ describe('a run whose answer the server cannot finish', { timeout: workerTestTim
     const slow = recallWith(poolOf(), 50);
     slow.keep(liveView({}));
 
-    expect(await slow.executing(answering('[range(100000000)] | length'))).toEqual(
+    expect(await slow.running(answering('[range(100000000)] | length'))).toEqual(
       Exit.fail(
         new Unavailable({ detail: 'The answer took longer than the 50 ms a recall function may run, and was stopped' }),
       ),
@@ -148,7 +148,7 @@ describe('a run whose answer the pool stops', { timeout: workerTestTimeoutMs }, 
     const run = recallWith(scriptedPool([outcome], poolOf()));
     run.keep(liveView({}));
 
-    expect(await run.executing(answering('.'))).toEqual(Exit.fail(new Unavailable({ detail })));
+    expect(await run.running(answering('.'))).toEqual(Exit.fail(new Unavailable({ detail })));
   });
 
   it.each<readonly [PoolOutcome, string]>([
@@ -157,7 +157,7 @@ describe('a run whose answer the pool stops', { timeout: workerTestTimeoutMs }, 
   ])('fails, as the server breaks, when the pool answers %j', async (outcome, defect) => {
     const run = recallWith(scriptedPool([outcome], poolOf()));
     run.keep(liveView({}));
-    const exit = await run.executing(answering('.'));
+    const exit = await run.running(answering('.'));
 
     expect(Exit.hasDies(exit)).toBe(true);
     expect(String(Exit.findDefect(exit))).toContain(defect);

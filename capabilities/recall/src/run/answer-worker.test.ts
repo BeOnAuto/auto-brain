@@ -32,7 +32,7 @@ describe('the worker an answer runs in', { timeout: workerTestTimeoutMs }, () =>
       `${succeeded}\noutput:\n  schema: {type: integer}\nanswer: '.spring | length'`,
     );
 
-    const answered = [await run.executing(withoutASchema), await run.executing(withASchema)];
+    const answered = [await run.running(withoutASchema), await run.running(withASchema)];
 
     expect(answered).toMatchObject([Exit.succeed({ output: 2 }), Exit.succeed({ output: 2 })]);
     expect(requests.map(({ worker, context }) => ({ worker: worker?.pathname.split('/').at(-1), context }))).toEqual([

@@ -18,9 +18,9 @@ const waiting = {
 
 describe('a run whose capability finishes it after the call returns', () => {
   it('is answered as started, and read as started until it is settled', async () => {
-    const { executing, reading } = await withHandOn();
+    const { running, reading } = await withHandOn();
 
-    expect(await executing()).toStrictEqual(waiting);
+    expect(await running()).toStrictEqual(waiting);
     expect(await reading()).toStrictEqual({
       status: 'succeeded',
       output: { ...waiting.output, record: { handed_on: relayedId } },
@@ -28,10 +28,10 @@ describe('a run whose capability finishes it after the call returns', () => {
   });
 
   it('is not started a second time by a call with its id while it waits to be settled', async () => {
-    const { executing, relayer } = await withHandOn();
-    await executing();
+    const { running, relayer } = await withHandOn();
+    await running();
 
-    expect(await executing()).toStrictEqual(waiting);
+    expect(await running()).toStrictEqual(waiting);
     expect(relayer.runs()).toBe(1);
   });
 
@@ -47,9 +47,9 @@ describe('a run whose capability finishes it after the call returns', () => {
   });
 
   it('fails when what the capability started takes more than a run may record', async () => {
-    const { executing, reading, reported } = await withHandOn();
+    const { running, reading, reported } = await withHandOn();
 
-    expect(await executing(1_048_576)).toEqual({ status: 'failed', incident: reported()[0]?.id });
+    expect(await running(1_048_576)).toEqual({ status: 'failed', incident: reported()[0]?.id });
     expect(await reading()).toMatchObject({ output: { status: 'failed' } });
   });
 });

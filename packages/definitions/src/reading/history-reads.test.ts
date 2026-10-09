@@ -27,7 +27,7 @@ async function readsOf<A>(ledgerReads: () => readonly LedgerRead[], read: () => 
 describe('a page of the history of a run', () => {
   it('reads the page alone, however large the run, and never the whole run', async () => {
     const handed = await withHandOn();
-    await handed.executing(262_000);
+    await handed.running(262_000);
 
     const { answer, reads } = await readsOf(handed.ledgerReads, handed.history);
 
@@ -37,7 +37,7 @@ describe('a page of the history of a run', () => {
 
   it('that holds nothing but a cancel reads the newest head of the run, without its data, to tell it holds a run', async () => {
     const handed = await withHandOn();
-    await handed.executing();
+    await handed.running();
     await handed.cancelling({ reason: 'Not needed' });
 
     const { answer, reads } = await readsOf(handed.ledgerReads, () =>

@@ -23,7 +23,7 @@ const jsonDefinition = documentOf(
 );
 
 function failingWith(failure: () => ModelFailure): Promise<Run> {
-  return reasoningWith(() => Effect.fail(failure())).executing(jsonDefinition, { text: 'x' });
+  return reasoningWith(() => Effect.fail(failure())).running(jsonDefinition, { text: 'x' });
 }
 
 describe('a provider that rejects the definition', () => {

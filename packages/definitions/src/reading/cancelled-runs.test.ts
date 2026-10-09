@@ -8,8 +8,8 @@ import { relayedId, withHandOn } from '../testing/relaying.ts';
 
 describe('a cancelled run in the list of runs', () => {
   it('shows the reason cancelled with its kind, as rejected, and is kept by the status rejected', async () => {
-    const { call, executing, ledger, listRuns, run } = await withHandOn();
-    await executing();
+    const { call, running, ledger, listRuns, run } = await withHandOn();
+    await running();
     await run(
       Effect.orDie(
         runSettler(ledger.service)(

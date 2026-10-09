@@ -32,8 +32,8 @@ function relayDeciding(cancel: Capability['cancel']): Capability {
 
 describe('a cancel of a run of another capability that finishes later', () => {
   it('settles the run as its capability decides from what the run recorded, by whoever asked', async () => {
-    const { executing, ledger, reading } = await withHandOn();
-    await executing();
+    const { running, ledger, reading } = await withHandOn();
+    await running();
     const deciding = relayDeciding(({ record, kind }) => ({
       status: 'rejected',
       reason: 'cancelled',
@@ -57,9 +57,9 @@ describe('a cancel of a run of another capability that finishes later', () => {
 
   it('settles it as cancelled with the kind and reason asked when its capability has no hook of its own, or is not served', async () => {
     const served = await withHandOn();
-    await served.executing();
+    await served.running();
     const gone = await withHandOn();
-    await gone.executing();
+    await gone.running();
 
     await Effect.runPromise(deferredCanceller([relay().capability], served.ledger.service)(relayed, asked, lineage));
     await Effect.runPromise(
@@ -75,8 +75,8 @@ describe('a cancel of a run of another capability that finishes later', () => {
 
 describe('a cancel of a run of another capability, as asked', () => {
   it('settles it by the brain itself when the request names no actor', async () => {
-    const { executing, ledger, run } = await withHandOn();
-    await executing();
+    const { running, ledger, run } = await withHandOn();
+    await running();
 
     await Effect.runPromise(
       deferredCanceller([], ledger.service)(relayed, { kind: 'deadline', reason: 'Out of time' }, lineage),
@@ -97,8 +97,8 @@ describe('a cancel of a run of another capability, as asked', () => {
 
 describe('a cancel its capability settles otherwise', () => {
   it('settles it as its capability decides, by the actor the decision names rather than whoever asked', async () => {
-    const { executing, ledger, run } = await withHandOn();
-    await executing();
+    const { running, ledger, run } = await withHandOn();
+    await running();
     const answering = relayDeciding(({ broughtAnswer, deliveredAt }) => ({
       status: 'succeeded',
       output: { delivered: JSON.stringify({ broughtAnswer, deliveredAt }) },
@@ -127,8 +127,8 @@ describe('a cancel its capability settles otherwise', () => {
 
 describe('a cancel of a run of another capability, as asked, when its hook breaks', () => {
   it('fails the run when its capability’s hook throws', async () => {
-    const { executing, ledger, reading } = await withHandOn();
-    await executing();
+    const { running, ledger, reading } = await withHandOn();
+    await running();
     const throwing = relayDeciding(() => {
       throw new Error('The hook broke');
     });
@@ -141,8 +141,8 @@ describe('a cancel of a run of another capability, as asked, when its hook break
 
 describe('a cancel of a run of another capability that is over', () => {
   it('does nothing for a run that has ended, and for one the brain does not have', async () => {
-    const { executing, ledger, reading, settling } = await withHandOn();
-    await executing();
+    const { running, ledger, reading, settling } = await withHandOn();
+    await running();
     await settling({ status: 'succeeded', output: 'handed on', record: {} });
     const cancel = deferredCanceller([relay().capability], ledger.service);
 
@@ -153,8 +153,8 @@ describe('a cancel of a run of another capability that is over', () => {
   });
 
   it('takes a run that ended between the read and the settlement as done, and fails on any other conflict', async () => {
-    const { executing, ledger } = await withHandOn();
-    await executing();
+    const { running, ledger } = await withHandOn();
+    await running();
     const changed = new Conflict({
       detail: 'The state changed while the command was decided',
       kind: 'concurrent_change',
@@ -181,8 +181,8 @@ const decidingFromDelivery = relayDeciding(({ deliveredAt }) =>
 
 describe('a cancel whose run changes between its read and its settlement', () => {
   it('reads the run again and lets its capability decide from what the run holds now', async () => {
-    const { executing, ledger, reading } = await withHandOn();
-    await executing();
+    const { running, ledger, reading } = await withHandOn();
+    await running();
     const record = outboundCallRecorder(ledger.service);
     const delivered = Effect.all([
       record(

@@ -19,15 +19,15 @@ function nested(depth: number): Json {
   return depth === 0 ? 'bottom' : [nested(depth - 1)];
 }
 
-async function executing(input: Json) {
+async function running(input: Json) {
   const brain = brainOn(memoryLedger(), [makeWorkflowAdapter(neverStarted)]);
   await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
   return brain.call(brain.runDefinition, { type: 'workflow', name: 'flow', input });
 }
 
-describe('executing a workflow definition with an input a workflow may not hold', () => {
+describe('running a workflow definition with an input a workflow may not hold', () => {
   it('is rejected for an input that nests more than 512 levels deep, before a workflow starts', async () => {
-    expect(await executing({ deep: nested(512) })).toMatchObject({
+    expect(await running({ deep: nested(512) })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
       issues: [{ detail: 'Expected an input that nests at most 512 levels deep', pointer: '/input' }],
@@ -50,11 +50,11 @@ describe('executing a workflow definition with an input a workflow may not hold'
   });
 
   it('starts a workflow for an input that nests 512 levels deep', async () => {
-    expect(await executing({ deep: nested(511) })).toMatchObject({ status: 'failed' });
+    expect(await running({ deep: nested(511) })).toMatchObject({ status: 'failed' });
   });
 });
 
-describe('executing a workflow definition while another server runs the workflows of the database', () => {
+describe('running a workflow definition while another server runs the workflows of the database', () => {
   it('is rejected as unavailable with the words of the host', async () => {
     const detail = 'The workflows of this database run in another server';
     const elsewhere = makeWorkflowAdapter({

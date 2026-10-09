@@ -51,7 +51,7 @@ function describeAnswer(output: Schema.Json): string {
 }
 
 export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOptions): Capability {
-  const execute = definitionRun(options);
+  const run = definitionRun(options);
   return defineCapability({
     type: 'reasoning',
     title: functionCategoryLabels.reasoning,
@@ -64,7 +64,7 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
     mediaType: 'text/markdown',
     parse,
     summarize,
-    run: (definition, input, run) => execute(definition, input, run),
+    run: (definition, input, context) => run(definition, input, context),
     longestAnyRunMs: longestRequestMs,
     longestRunOf: longestRunMsOf,
     reachesOutside: true,

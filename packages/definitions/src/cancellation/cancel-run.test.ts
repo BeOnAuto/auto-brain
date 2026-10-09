@@ -21,8 +21,8 @@ const everything = { kind: 'everything' } as const;
 
 describe('cancel_run', () => {
   it('records the request on a run that finishes later, with its caller and reason, and answers the run as it stands', async () => {
-    const { cancelling, executing, history } = await withHandOn();
-    await executing();
+    const { cancelling, running, history } = await withHandOn();
+    await running();
 
     expect(await cancelling({ reason: 'Not needed any more' })).toStrictEqual({
       status: 'succeeded',
@@ -44,8 +44,8 @@ describe('cancel_run', () => {
   });
 
   it('says who asked when no reason is given, and records nothing more when asked again before the run ended', async () => {
-    const { cancelling, executing, ledger, run } = await withHandOn();
-    await executing();
+    const { cancelling, running, ledger, run } = await withHandOn();
+    await running();
     await cancelling();
     await cancelling({ reason: 'Asked again' });
 
@@ -72,8 +72,8 @@ describe('cancel_run', () => {
 
 describe('a cancel request on a run', () => {
   it('is put in the tree of the run, caused by nothing, as a request from outside is', async () => {
-    const { cancelling, executing, ledger, run } = await withHandOn();
-    await executing();
+    const { cancelling, running, ledger, run } = await withHandOn();
+    await running();
     await cancelling();
 
     const { records } = await run(
@@ -90,8 +90,8 @@ describe('a cancel request on a run', () => {
   });
 
   it('is a conflict for a run that has ended, and for one that runs within its call', async () => {
-    const { call, cancelling, runDefinition, executing, prober, settling } = await withHandOn();
-    await executing();
+    const { call, cancelling, runDefinition, running, prober, settling } = await withHandOn();
+    await running();
     await settling({ status: 'succeeded', output: 'handed on', record: {} });
     const plain = '0199a3c4-7d2e-7c1a-9b3f-000000000001';
     prober.sufferOnNextRun('stall');
@@ -126,8 +126,8 @@ describe('cancel_run of a run the brain does not have, or with a reason it canno
   });
 
   it('refuses a reason that is blank, too long or holds a control character', async () => {
-    const { cancelling, executing } = await withHandOn();
-    await executing();
+    const { cancelling, running } = await withHandOn();
+    await running();
 
     const refusals = [
       await cancelling({ reason: '   ' }),

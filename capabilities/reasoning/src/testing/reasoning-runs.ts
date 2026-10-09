@@ -32,7 +32,7 @@ export interface ReasoningRun {
   readonly capability: Capability;
   readonly requests: () => readonly ModelRequest[];
   readonly prepared: (source: string) => PreparedDefinition;
-  readonly executing: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly running: (source: string, input?: Schema.Json) => Promise<Run>;
 }
 
 export interface ToolRun extends ReasoningRun {
@@ -55,7 +55,7 @@ function reasoningOf(
     capability,
     requests: scripted.requests,
     prepared,
-    executing: (source, input = {}) =>
+    running: (source, input = {}) =>
       Effect.runPromiseExit(
         TestClock.setTime(DateTime.toEpochMillis(DateTime.makeUnsafe(moment))).pipe(
           Effect.andThen(prepared(source).run(input, context)),

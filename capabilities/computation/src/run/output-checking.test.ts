@@ -29,8 +29,8 @@ describe('the check of an output against the output schema', { timeout: workerTe
     const { pool, requests } = recording(poolOf());
     const run = computationWith(pool);
 
-    expect(await run.executing(campaignPace, campaignRows(10))).toMatchObject(Exit.succeed({}));
-    expect(await run.executing(programDocument('.'), 1)).toMatchObject(Exit.succeed({ output: 1 }));
+    expect(await run.running(campaignPace, campaignRows(10))).toMatchObject(Exit.succeed({}));
+    expect(await run.running(programDocument('.'), 1)).toMatchObject(Exit.succeed({ output: 1 }));
     expect(requests.map(({ worker, context }) => ({ worker: worker?.pathname.split('/').at(-1), context }))).toEqual([
       { worker: 'checked-worker.ts', context: run.prepared(campaignPace).summary.outputSchema },
       { worker: 'checked-worker.ts', context: null },
@@ -40,7 +40,7 @@ describe('the check of an output against the output schema', { timeout: workerTe
   it('refuses an output the schema refuses, naming at most three of its issues in the one wording of them', async () => {
     const run = computationWith();
 
-    expect(await run.executing(programDocument('[1, 2, 3, 4]', outputSchema))).toMatchObject(
+    expect(await run.running(programDocument('[1, 2, 3, 4]', outputSchema))).toMatchObject(
       Exit.fail({
         kind: 'unworkable',
         detail:

@@ -30,7 +30,7 @@ function ending(fake: FakeMcpServer, reply: ScriptedReply) {
   );
   closing.push(access.close);
   const source = documentOf('model: anthropic/claude-sonnet-4-5\ntools: [graph/*]', 'Summarize acme.');
-  return reasoningWithTools(access, reply).executing(source);
+  return reasoningWithTools(access, reply).running(source);
 }
 
 const stoppedBy =

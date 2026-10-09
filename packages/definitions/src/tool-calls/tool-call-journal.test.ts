@@ -26,7 +26,7 @@ async function brainWithToolUser() {
     operations.createDefinition,
     toAlpha(acmeAdmin, { type: 'tool-user', name: 'caller', source: 'x' }),
   );
-  const executing = (input: object) =>
+  const running = (input: object) =>
     definitions.call(
       operations.runDefinition,
       toAlpha(acmeAdmin, { type: 'tool-user', name: 'caller', input, run_id: runId }),
@@ -43,16 +43,16 @@ async function brainWithToolUser() {
         ),
       ),
     );
-  return { ...definitions, ...operations, user, executing, history, recordedDirectly };
+  return { ...definitions, ...operations, user, running, history, recordedDirectly };
 }
 
 const calls = (count: number, type: string): readonly string[] => Array.from({ length: count }, () => type);
 
 describe('the journal of a run', () => {
   it('records ten calls made at once, one append at a time, each start before its answer', async () => {
-    const { executing, history, user } = await brainWithToolUser();
+    const { running, history, user } = await brainWithToolUser();
 
-    expect(await executing({ calls: 10 })).toMatchObject({
+    expect(await running({ calls: 10 })).toMatchObject({
       status: 'succeeded',
       output: { output: { recorded: Array.from({ length: 20 }, () => true) } },
     });
@@ -66,8 +66,8 @@ describe('the journal of a run', () => {
   });
 
   it('numbers the calls made at once in the order their starts land, each from the run, never twice', async () => {
-    const { call, executing, getRunHistory } = await brainWithToolUser();
-    await executing({ calls: 10 });
+    const { call, running, getRunHistory } = await brainWithToolUser();
+    await running({ calls: 10 });
 
     const read = await call(getRunHistory, toAlpha(acmeAdmin, { run_id: runId, limit: 100 }));
     const { events } = Schema.decodeUnknownSync(
@@ -88,8 +88,8 @@ describe('the journal of a run', () => {
 
 describe('the journal of a run that has finished', () => {
   it('records nothing more', async () => {
-    const { executing, history, user } = await brainWithToolUser();
-    await executing({ calls: 1 });
+    const { running, history, user } = await brainWithToolUser();
+    await running({ calls: 1 });
 
     expect(await user.recordedLate()).toEqual([false]);
     expect(await user.startedLate()).toEqual([undefined]);
@@ -115,10 +115,10 @@ describe('a run that called tools', () => {
   it.each(['unavailable', 'conflict'])(
     'is not run again under its id after it ended %s, and says to start a new run',
     async (ending) => {
-      const { executing, user } = await brainWithToolUser();
-      await executing({ calls: 1, ending });
+      const { running, user } = await brainWithToolUser();
+      await running({ calls: 1, ending });
 
-      expect(await executing({ calls: 1, ending })).toMatchObject({
+      expect(await running({ calls: 1, ending })).toMatchObject({
         status: 'rejected',
         reason: 'conflict',
         kind: 'tools_called',
@@ -128,15 +128,15 @@ describe('a run that called tools', () => {
   );
 
   it('is answered again when it succeeded', async () => {
-    const { executing, user } = await brainWithToolUser();
-    const first = await executing({ calls: 2 });
+    const { running, user } = await brainWithToolUser();
+    const first = await running({ calls: 2 });
 
-    expect(await executing({ calls: 2 })).toEqual(first);
+    expect(await running({ calls: 2 })).toEqual(first);
     expect(await user.recordedLate()).toEqual([false]);
   });
 
   it('left started by a server that died stays started, is listed as running, and is not run again', async () => {
-    const { call, executing, getRun, listRuns, recordedDirectly } = await brainWithToolUser();
+    const { call, running, getRun, listRuns, recordedDirectly } = await brainWithToolUser();
     await recordedDirectly(
       {
         type: 'start',
@@ -150,7 +150,7 @@ describe('a run that called tools', () => {
       { type: 'tool_call', fact: startOfCall(1), ...at },
     );
 
-    expect(await executing({})).toMatchObject({ status: 'rejected', reason: 'conflict', kind: 'tools_called' });
+    expect(await running({})).toMatchObject({ status: 'rejected', reason: 'conflict', kind: 'tools_called' });
     expect(await call(getRun, toAlpha(acmeAdmin, { run_id: runId }))).toMatchObject({
       output: { status: 'started' },
     });
@@ -162,14 +162,14 @@ describe('a run that called tools', () => {
 
 describe('a run of a definition that calls tools, still in progress', () => {
   it('is not run again under its id while an earlier call still runs it, before any tool was called', async () => {
-    const { callCancelledWhen, runDefinition, executing, history, user } = await brainWithToolUser();
+    const { callCancelledWhen, runDefinition, running, history, user } = await brainWithToolUser();
     const first = toAlpha(acmeAdmin, {
       type: 'tool-user',
       name: 'caller',
       input: { calls: 0, ending: 'stall' },
       run_id: runId,
     });
-    const retried = user.stalled.then(() => executing({ calls: 0, ending: 'stall' }));
+    const retried = user.stalled.then(() => running({ calls: 0, ending: 'stall' }));
 
     expect(await callCancelledWhen(retried, runDefinition, first)).toEqual({ status: 'cancelled' });
     expect(await retried).toMatchObject({ status: 'rejected', reason: 'conflict', kind: 'tools_called' });

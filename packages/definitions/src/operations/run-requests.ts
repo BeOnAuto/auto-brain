@@ -115,8 +115,8 @@ const runPrepared = Effect.fnUntraced(function* (
         correlationId,
       });
       const context = yield* contextOf(id, run, { startId: messageId, correlationId }, given);
-      const executing = run.prepared.run(request.input, context);
-      const result = yield* attempt(run.prepared.whenCancelled === 'finish' ? executing : restore(executing)).pipe(
+      const running = run.prepared.run(request.input, context);
+      const result = yield* attempt(run.prepared.whenCancelled === 'finish' ? running : restore(running)).pipe(
         Effect.onError((cause) =>
           Effect.ignore(finishedBy(id, context, Cause.hasInterruptsOnly(cause) ? interruptedAttempt : failedAttempt)),
         ),

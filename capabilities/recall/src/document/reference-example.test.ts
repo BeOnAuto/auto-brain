@@ -93,7 +93,7 @@ describe('the example on the reference page of recall functions', { timeout: wor
     run.keep(liveView(decodeJson(view?.body)));
 
     expect([input?.language, output?.language]).toEqual(['json', 'json']);
-    expect(await run.executing(campaignReviews, decodeJson(input?.body))).toMatchObject(
+    expect(await run.running(campaignReviews, decodeJson(input?.body))).toMatchObject(
       Exit.succeed({ output: decodeJson(output?.body) }),
     );
   });

@@ -85,8 +85,8 @@ function rejectedAsConflict(rejection: Clash): Effect.Effect<RunResult> {
   return rejectedWith({ reason: 'conflict', detail, ...(kind === undefined ? {} : { kind }) }, rejection);
 }
 
-export function attempt(executing: Effect.Effect<CapabilityAnswer, CapabilityRejection>): Effect.Effect<RunOutcome> {
-  return executing.pipe(
+export function attempt(running: Effect.Effect<CapabilityAnswer, CapabilityRejection>): Effect.Effect<RunOutcome> {
+  return running.pipe(
     Effect.flatMap(outcomeOf),
     Effect.catchTags({
       invalid_input: rejectedForInput,

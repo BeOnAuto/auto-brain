@@ -59,10 +59,10 @@ const answeredRecord = {
   },
 };
 
-describe('executing a reasoning function definition', () => {
+describe('running a reasoning function definition', () => {
   it('sends the rendered instructions and message with the settings, the provider options and a timeout', async () => {
-    const { executing, requests } = reasoningWith(answers(answered));
-    await executing(summarizing, { text: 'the quarter' });
+    const { running, requests } = reasoningWith(answers(answered));
+    await running(summarizing, { text: 'the quarter' });
 
     expect(requests()).toEqual([
       {
@@ -84,9 +84,9 @@ describe('executing a reasoning function definition', () => {
   });
 
   it('answers with the text and records what happened', async () => {
-    const { executing } = reasoningWith(answers(answered));
+    const { running } = reasoningWith(answers(answered));
 
-    expect(await executing(summarizing, { text: 'the quarter', tone: 'warm' })).toEqual(
+    expect(await running(summarizing, { text: 'the quarter', tone: 'warm' })).toEqual(
       Exit.succeed({ output: 'A short summary.', record: answeredRecord }),
     );
   });
@@ -94,9 +94,9 @@ describe('executing a reasoning function definition', () => {
 
 describe('the output of a run', () => {
   it('is the JSON value for a JSON definition, which sends its schema', async () => {
-    const { executing, requests } = reasoningWith(answers(jsonResult({ summary: 'Globex grew.' })));
+    const { running, requests } = reasoningWith(answers(jsonResult({ summary: 'Globex grew.' })));
 
-    expect(await executing(reasoningExample, { account: 'Globex' })).toMatchObject(
+    expect(await running(reasoningExample, { account: 'Globex' })).toMatchObject(
       Exit.succeed({ output: { summary: 'Globex grew.' }, record: { output_format: 'json' } }),
     );
     expect(requests()[0]).toMatchObject({
@@ -108,23 +108,23 @@ describe('the output of a run', () => {
 
   it('is a JSON value that is not an object when the schema allows it', async () => {
     const source = documentOf('model: openai/gpt-5\noutput:\n  format: json\n  schema: {type: [string, "null"]}');
-    const { executing } = reasoningWith(answers(jsonResult(null)));
+    const { running } = reasoningWith(answers(jsonResult(null)));
 
-    expect(await executing(source, { text: 'x' })).toMatchObject(Exit.succeed({ output: null }));
+    expect(await running(source, { text: 'x' })).toMatchObject(Exit.succeed({ output: null }));
   });
 
   it('is a text answer cut off at the token limit, with why it stopped in the record', async () => {
-    const { executing } = reasoningWith(answers(textResult('A summary that stops', { finish_reason: 'length' })));
+    const { running } = reasoningWith(answers(textResult('A summary that stops', { finish_reason: 'length' })));
 
-    expect(await executing(documentOf('model: openai/gpt-5'), { text: 'x' })).toMatchObject(
+    expect(await running(documentOf('model: openai/gpt-5'), { text: 'x' })).toMatchObject(
       Exit.succeed({ output: 'A summary that stops', record: { finish_reason: 'length' } }),
     );
   });
 
   it('records no instructions when the template has no system block', async () => {
-    const { executing } = reasoningWith(answers(textResult('Hi')));
+    const { running } = reasoningWith(answers(textResult('Hi')));
 
-    expect(await executing(documentOf('model: openai/gpt-5'), { text: 'x' })).toMatchObject(
+    expect(await running(documentOf('model: openai/gpt-5'), { text: 'x' })).toMatchObject(
       Exit.succeed({ record: { prompt: { message: 'Summarize x', truncated: false } } }),
     );
   });

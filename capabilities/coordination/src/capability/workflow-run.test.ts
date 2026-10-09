@@ -40,7 +40,7 @@ afterAll(async () => {
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-3333333333a1';
 
-function executing(name = 'slow-greeting', id = runId) {
+function running(name = 'slow-greeting', id = runId) {
   return brain.call(brain.runDefinition, {
     type: 'workflow',
     name,
@@ -49,9 +49,9 @@ function executing(name = 'slow-greeting', id = runId) {
   });
 }
 
-describe('executing a workflow definition', () => {
+describe('running a workflow definition', () => {
   it('starts its run and answers started, recording that it finishes later', async () => {
-    expect(await executing()).toMatchObject({
+    expect(await running()).toMatchObject({
       status: 'succeeded',
       output: { run_id: runId, status: 'started' },
     });
@@ -61,7 +61,7 @@ describe('executing a workflow definition', () => {
   });
 
   it('answers the run as it stands when the call is retried while the run goes on', async () => {
-    expect(await executing()).toMatchObject({ output: { status: 'started' } });
+    expect(await running()).toMatchObject({ output: { status: 'started' } });
   });
 
   it('is settled with the output when the run ends, which a retry then answers', async () => {
@@ -71,18 +71,18 @@ describe('executing a workflow definition', () => {
     };
 
     expect(await brain.settled(runId)).toMatchObject(settled);
-    expect(await executing()).toMatchObject(settled);
+    expect(await running()).toMatchObject(settled);
   });
 });
 
-describe('executing again a workflow whose run ended without a final result', () => {
+describe('running again a workflow whose run ended without a final result', () => {
   it('is rejected as a conflict, since a workflow runs once for a run ID, and the rejection is recorded', async () => {
     const failed = '0199a3c4-7d2e-7c1a-9b3f-3333333333a2';
-    await executing('failing', failed);
+    await running('failing', failed);
     const ended = await brain.settled(failed);
 
     expect(ended).toMatchObject({ output: { status: 'rejected', rejection: { reason: 'unavailable' } } });
-    expect(await executing('failing', failed)).toMatchObject({
+    expect(await running('failing', failed)).toMatchObject({
       status: 'rejected',
       reason: 'conflict',
       detail:
@@ -91,7 +91,7 @@ describe('executing again a workflow whose run ended without a final result', ()
   });
 });
 
-describe('executing a workflow definition while the server stops', () => {
+describe('running a workflow definition while the server stops', () => {
   it('is rejected as unavailable, and the rejection is recorded', async () => {
     const stopping = await workflowBrain();
     await stopping.call(stopping.createDefinition, { type: 'workflow', name: 'failing', source: failing });

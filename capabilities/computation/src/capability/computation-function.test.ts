@@ -76,7 +76,7 @@ describe('a run of a computation function', { timeout: workerTestTimeoutMs }, ()
   it('applies its program to its input and answers its output exactly, in cents, with what the run took', async () => {
     const input = campaignRows(1000);
 
-    const { output, record } = decodeFinished(await succeeded(() => computationWith().executing(campaignPace, input)));
+    const { output, record } = decodeFinished(await succeeded(() => computationWith().running(campaignPace, input)));
 
     expect(output).toEqual(paceInBigIntegers(input));
     expect(output.campaigns.map(({ spend_cents }) => spend_cents)).toEqual([
@@ -91,10 +91,10 @@ describe('a run of a computation function', { timeout: workerTestTimeoutMs }, ()
   it('computes with doubles: integers exactly, and decimal fractions as doubles do', async () => {
     const run = computationWith();
 
-    expect(await succeeded(() => run.executing(programDocument('[0.1, 0.2, 0.3] | add')))).toMatchObject({
+    expect(await succeeded(() => run.running(programDocument('[0.1, 0.2, 0.3] | add')))).toMatchObject({
       output: 0.6000000000000001,
     });
-    expect(await succeeded(() => run.executing(programDocument('9007199254740992 + 1')))).toMatchObject({
+    expect(await succeeded(() => run.running(programDocument('9007199254740992 + 1')))).toMatchObject({
       output: 9_007_199_254_740_992,
     });
   });

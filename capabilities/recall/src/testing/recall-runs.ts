@@ -30,7 +30,7 @@ type Run = Exit.Exit<CapabilityAnswer, InvalidInput | Unavailable | Conflict>;
 export interface RecallRuns extends KeptViews {
   readonly capability: Capability;
   readonly prepared: (source: string) => PreparedDefinition;
-  readonly executing: (source: string, input?: Schema.Json) => Promise<Run>;
+  readonly running: (source: string, input?: Schema.Json) => Promise<Run>;
 }
 
 const pools: ProgramPool[] = [];
@@ -82,6 +82,6 @@ export function recallWith(pool: ProgramPool = poolOf(), deadlineMs?: number): R
     ...views,
     capability,
     prepared,
-    executing: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, reviewsRun)),
+    running: (source, input = {}) => Effect.runPromiseExit(prepared(source).run(input, reviewsRun)),
   };
 }

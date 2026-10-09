@@ -30,7 +30,7 @@ describe('the example on the reference page of computation functions', { timeout
 
     expect([input?.language, output?.language]).toEqual(['json', 'json']);
     expect(referencePage).toContain('spent 19,756 units of work');
-    expect(await computationWith().executing(campaignPace, decodeJson(input?.body))).toMatchObject(
+    expect(await computationWith().running(campaignPace, decodeJson(input?.body))).toMatchObject(
       Exit.succeed({ output: decodeJson(output?.body), record: { work: 19_756 } }),
     );
   });

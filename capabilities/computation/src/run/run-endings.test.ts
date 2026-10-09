@@ -16,7 +16,7 @@ function unworkable(detail: string): Exit.Exit<never, Conflict> {
 }
 
 function ended(program: string, frontMatter?: string) {
-  return computationWith().executing(programDocument(program, frontMatter), null);
+  return computationWith().running(programDocument(program, frontMatter), null);
 }
 
 describe('a run whose program cannot work as written', { timeout: workerTestTimeoutMs }, () => {
@@ -59,10 +59,10 @@ describe('a run whose program cannot work as written', { timeout: workerTestTime
   it('measures an output before writing it, so one that would take 240 MB as JSON ends in conflict and the pool runs on', async () => {
     const run = computationWith();
 
-    expect(await run.executing(programDocument('("\\u0001Ā" * 15000000) | [., .]'), null)).toEqual(
+    expect(await run.running(programDocument('("\\u0001Ā" * 15000000) | [., .]'), null)).toEqual(
       unworkable("The program's output takes more than the 1048320 bytes as JSON a run can record"),
     );
-    expect(await run.executing(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
+    expect(await run.running(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
   });
 });
 
@@ -116,11 +116,11 @@ describe('a run that reaches a bound of its program', { timeout: workerTestTimeo
     const recursion = 'def g: if . == 0 then 0 else (. - 1 | g) end; g';
     const run = computationWith();
 
-    expect(await run.executing(programDocument(recursion), 500)).toMatchObject(Exit.succeed({ output: 0 }));
-    expect(await run.executing(programDocument(recursion), 3000)).toEqual(
+    expect(await run.running(programDocument(recursion), 500)).toMatchObject(Exit.succeed({ output: 0 }));
+    expect(await run.running(programDocument(recursion), 3000)).toEqual(
       unworkable('The program recursed deeper than the 10000 levels of evaluation a run may nest, on line 4'),
     );
-    expect(await run.executing(programDocument('error("Max depth exceeded")'), null)).toEqual(
+    expect(await run.running(programDocument('error("Max depth exceeded")'), null)).toEqual(
       unworkable('The program raised an error on line 4: Max depth exceeded'),
     );
   });
@@ -152,7 +152,7 @@ describe('a run that would depend on the stack of its host', { timeout: workerTe
       poolOf(),
     );
 
-    expect(await computationWith(overflowing).executing(programDocument('.'), null)).toEqual(
+    expect(await computationWith(overflowing).running(programDocument('.'), null)).toEqual(
       unworkable('The program went deeper than the 64 MiB stack of a run allows'),
     );
   });
@@ -162,7 +162,7 @@ describe('a run of the server that cannot finish', { timeout: workerTestTimeoutM
   it('is unavailable when it runs past its deadline', async () => {
     const slow = computationWith(poolOf(), 50);
 
-    expect(await slow.executing(programDocument('[range(100000000)] | length'), null)).toEqual(
+    expect(await slow.running(programDocument('[range(100000000)] | length'), null)).toEqual(
       Exit.fail(
         new Unavailable({
           detail: 'The run took longer than the 50 ms a computation function may run, and was stopped',
@@ -174,7 +174,7 @@ describe('a run of the server that cannot finish', { timeout: workerTestTimeoutM
   it('is unavailable when it takes more memory than its worker has', async () => {
     const small = computationWith(poolOf({ heapMegabytes: 16 }));
 
-    expect(await small.executing(programDocument('[range(1000000) | {a: .}] | length'), null)).toEqual(
+    expect(await small.running(programDocument('[range(1000000) | {a: .}] | length'), null)).toEqual(
       Exit.fail(
         new Unavailable({
           detail: 'The run took more than the 16 MiB of memory a computation function may use, and was stopped',
@@ -209,7 +209,7 @@ describe('a run that the pool stops', { timeout: workerTestTimeoutMs }, () => {
   ])('is unavailable when the pool answers %j', async (outcome, detail) => {
     const run = computationWith(scriptedPool([outcome], poolOf()));
 
-    expect(await run.executing(programDocument('.'), null)).toEqual(Exit.fail(new Unavailable({ detail })));
+    expect(await run.running(programDocument('.'), null)).toEqual(Exit.fail(new Unavailable({ detail })));
   });
 
   it.each<readonly [PoolOutcome, string]>([
@@ -217,7 +217,7 @@ describe('a run that the pool stops', { timeout: workerTestTimeoutMs }, () => {
     [{ ran: 'refused', issues: [], milliseconds: 1 }, 'The worker refused a program the definition was accepted with'],
   ])('fails, as the server breaks, when the pool answers %j', async (outcome, defect) => {
     const run = computationWith(scriptedPool([outcome], poolOf()));
-    const exit = await run.executing(programDocument('.'), null);
+    const exit = await run.running(programDocument('.'), null);
 
     expect(Exit.hasDies(exit)).toBe(true);
     expect(String(Exit.findDefect(exit))).toContain(defect);
@@ -228,15 +228,15 @@ describe('a run that was unavailable', { timeout: workerTestTimeoutMs }, () => {
   it('runs when it is tried again, since nothing in it changed', async () => {
     const run = computationWith(scriptedPool([{ ran: 'stopped', because: 'busy', milliseconds: 10_000 }], poolOf()));
 
-    expect(await run.executing(programDocument('. + 1'), 1)).toMatchObject(Exit.fail({ _tag: 'unavailable' }));
-    expect(await run.executing(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
+    expect(await run.running(programDocument('. + 1'), 1)).toMatchObject(Exit.fail({ _tag: 'unavailable' }));
+    expect(await run.running(programDocument('. + 1'), 1)).toMatchObject(Exit.succeed({ output: 2 }));
   });
 });
 
 describe('the input of a run', { timeout: workerTestTimeoutMs }, () => {
   it('is checked against the input schema, with a pointer to what does not fit', async () => {
     expect(
-      await computationWith().executing(campaignPace, {
+      await computationWith().running(campaignPace, {
         period: { days_elapsed: 12, days_total: 31 },
         rows: [{ campaign: 'a', cost_cents: 'ten', budget_cents: 1 }],
       }),
@@ -253,7 +253,7 @@ describe('the input of a run', { timeout: workerTestTimeoutMs }, () => {
   it('nests at most 512 levels', async () => {
     const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], null);
 
-    expect(await computationWith().executing(programDocument('.'), deep)).toMatchObject(
+    expect(await computationWith().running(programDocument('.'), deep)).toMatchObject(
       Exit.fail({
         _tag: 'invalid_input',
         detail: 'The input nests more than the 512 levels a computation function takes',
@@ -268,7 +268,7 @@ describe('the output of a run', { timeout: workerTestTimeoutMs }, () => {
 
     const [first, second] = await Promise.all(
       [poolOf(), poolOf()].map(async (pool) =>
-        decodeRun(Option.getOrThrow(Exit.getSuccess(await computationWith(pool).executing(campaignPace, input)))),
+        decodeRun(Option.getOrThrow(Exit.getSuccess(await computationWith(pool).running(campaignPace, input)))),
       ),
     );
 
