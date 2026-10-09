@@ -6,7 +6,7 @@ import { defineTestToolCall } from '../index.ts';
 
 const { registration } = defineTestToolCall({
   open: () => Effect.die(new Error('A test of the words opens nothing')),
-  testing: { allowed: null, testable: [] },
+  testing: [],
 });
 
 const words = registration.plainLanguage;

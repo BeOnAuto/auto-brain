@@ -1,6 +1,6 @@
 export type { InteractionFunctionDefinitionDocument } from './document/interaction-document.ts';
 export { ChannelSettingsInvalid, readChannelSettings } from './channels/channels-reading.ts';
-export type { ChannelContext, OfferedServer, OfferedTool } from './channels/channel-checks.ts';
+export type { ChannelContext, OfferedServer } from './channels/channel-checks.ts';
 export { ChannelsSchema } from './channels/channel-entries.ts';
 export { noChannels, type Channel, type ChannelSettings } from './channels/channel-settings.ts';
 export { requestsDue, type RequestsDue } from './schedule/due-requests.ts';

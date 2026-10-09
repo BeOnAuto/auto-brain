@@ -253,7 +253,7 @@ function callerOf({ execution_id, tool_test_id }: ServerMessage): Readonly<Recor
 
 export function logUntestableServer(server: string): Effect.Effect<void> {
   return Effect.logInfo(
-    `Nothing on MCP server ${server} can be tested, since it marks no tool read-only; list its read-only tools under testable_tools so that test_tool_call can try them`,
+    `The MCP server ${server} marks none of its allowed tools read-only and its entry marks none testable, so test_tool_call can test none of its tools; name the tools that are safe to test under testable`,
   ).pipe(Effect.annotateLogs({ mcp_server: server }));
 }
 

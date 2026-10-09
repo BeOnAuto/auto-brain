@@ -34,7 +34,7 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
     'a tool its server may let change something, which whoever runs the server has not listed as safe to test',
     { reason: 'unavailable', kind: 'tool_not_offered', because: 'not_testable' },
     "this server does not offer a tool it names, because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test",
-    'A tool that may change something is called only by a function the person asked to run; whoever runs the server can list it under testable_tools, and list_tool_servers shows which tools can be tested.',
+    "A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
   ],
   [
     'a tool server that kept failing before any call',
@@ -89,6 +89,13 @@ const toolEndings: ReadonlyArray<readonly [string, ExplainedRejection, string, s
 describe('explanationOf a run that needs tools', () => {
   it.each(toolEndings)('explains %s', (_case, rejection, why, remedy) => {
     expect(explanationOf(rejection)).toMatchObject({ why, remedy });
+  });
+
+  it('says in 214 characters where whoever runs the server marks a tool testable', () => {
+    const { remedy } = explanationOf({ reason: 'unavailable', kind: 'tool_not_offered', because: 'not_testable' });
+
+    expect(remedy).toContain("whoever runs the server can mark it testable on its tool server's entry");
+    expect(remedy).toHaveLength(214);
   });
 
   it('says only of tool calls that could not finish that something may have changed', () => {

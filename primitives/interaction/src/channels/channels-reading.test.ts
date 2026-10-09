@@ -6,9 +6,9 @@ import type { ChannelContext } from './channel-checks.ts';
 import { channelFor, noChannels } from './channel-settings.ts';
 import { readChannelSettings } from './channels-reading.ts';
 
-const slack = { name: 'slack', org: 'acme', brains: null };
+const slack = { name: 'slack', org: 'acme', brains: null, allowed: null };
 
-const context: ChannelContext = { servers: [slack], allowed: null };
+const context: ChannelContext = { servers: [slack] };
 
 const environment = {
   PARTNER_API_KEY: 'partner-api-key-7f3a9c',
@@ -147,16 +147,20 @@ describe('the secrets and the size of the channels', () => {
 });
 
 describe('an MCP channel the server refuses at start', () => {
-  it('refuses a server that is not configured, a channel wider than its server, and a tool not allowed', () => {
+  it('refuses a server that is not configured, a channel wider than its server, and a tool its server does not allow', () => {
+    const teams = { name: 'teams', org: 'acme', brains: null, allowed: ['post_message'] };
+
     expect([
       problemsOf({ approvals: { ...approvals, server: 'teams' } }),
-      problemsOf({ approvals }, { servers: [{ ...slack, brains: ['sales'] }], allowed: null }),
-      problemsOf({ approvals }, { servers: [slack], allowed: [{ server: 'slack', tool: 'search' }] }),
-      problemsOf({ approvals }, { servers: [slack], allowed: [{ server: 'slack', tool: '*' }] }),
+      problemsOf({ approvals }, { servers: [{ ...slack, brains: ['sales'] }] }),
+      problemsOf({ approvals }, { servers: [{ ...slack, allowed: ['search'] }, teams] }),
+      problemsOf({ approvals }, { servers: [{ ...slack, allowed: ['search', 'post_message'] }] }),
+      problemsOf({ approvals }, { servers: [slack] }),
     ]).toEqual([
       ['/approvals/server: Expected an MCP server of mcp_servers; teams is not one'],
       ['/approvals: Expected the org and brains of the channel to lie within those of its MCP server'],
-      ['/approvals/tool: Expected a tool that allowed_tools allows; slack/post_message is not'],
+      ['/approvals/tool: Expected a tool among the allowed of slack; post_message is not'],
+      [],
       [],
     ]);
   });

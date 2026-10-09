@@ -44,7 +44,7 @@ export const WebhookEntrySchema = Schema.Struct({
 export const McpEntrySchema = Schema.Struct({
   type: Schema.Literal('mcp').annotate({ description: 'mcp: one call of a tool of a configured MCP server' }),
   server: Schema.String.annotate({ description: 'The MCP server of mcp_servers whose tool delivers the request' }),
-  tool: Schema.String.annotate({ description: 'The tool of that server, which allowed_tools must allow' }),
+  tool: Schema.String.annotate({ description: "The tool of that server, which the server's allowed must name" }),
   with: Schema.Record(Schema.String, Schema.String).annotate({
     description:
       'The arguments of the call, each a Liquid template over to, message, run_id, function, expires_at and answer_schema; | json for a structured value',

@@ -24,20 +24,14 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
     },
   };
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
-  const toolsListed = untestableNoting(settings.testable, options.reportUntestable);
+  const toolsListed = untestableNoting(options.reportUntestable);
   return {
     configured: settings.servers.length > 0,
-    testing: { allowed: settings.allowed, testable: settings.testable },
-    open: (context, references) =>
-      openedRun({ context, references, links, allowed: settings.allowed, secrets, timing, toolsListed, report }),
-    callOnce: (call) => deliveredCall(call, { links, allowed: settings.allowed, secrets, timing }),
+    testing: settings.servers,
+    open: (context, references) => openedRun({ context, references, links, secrets, timing, toolsListed, report }),
+    callOnce: (call) => deliveredCall(call, { links, secrets, timing }),
     listServers: (scope, named) =>
-      Effect.promise(() =>
-        toolServersOf(
-          { scope, named },
-          { links, allowed: settings.allowed, testable: settings.testable, secrets, timing, toolsListed },
-        ),
-      ),
+      Effect.promise(() => toolServersOf({ scope, named }, { links, secrets, timing, toolsListed })),
     close: async () => {
       await Promise.all([...links.values()].map((link) => link.stop()));
     },

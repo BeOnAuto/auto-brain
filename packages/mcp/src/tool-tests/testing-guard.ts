@@ -1,39 +1,26 @@
 import type { ListedTool, ToolAnnotations } from '../bounds/result-text.ts';
-import { isAllowed, type ToolReference } from '../names/tool-reference.ts';
+import { allowsTool } from '../names/tool-reference.ts';
+import type { McpServerSettings, ToolLists } from '../settings/mcp-settings.ts';
 
-export interface TestingLists {
-  readonly allowed: readonly ToolReference[] | null;
-  readonly testable: readonly ToolReference[];
+export function canBeTested(tool: string, annotations: ToolAnnotations | undefined, lists: ToolLists): boolean {
+  return allowsTool(lists.allowed, tool) && (annotations?.readOnlyHint === true || lists.testable.includes(tool));
 }
 
-export function canBeTested(
-  reference: ToolReference,
-  annotations: ToolAnnotations | undefined,
-  { allowed, testable }: TestingLists,
-): boolean {
-  return isAllowed(reference, allowed) && (annotations?.readOnlyHint === true || isAllowed(reference, testable));
-}
-
-function offersNothingTestable(
-  server: string,
-  tools: readonly ListedTool[],
-  testable: readonly ToolReference[],
-): boolean {
+function offersNothingTestable({ allowed, testable }: ToolLists, tools: readonly ListedTool[]): boolean {
   return (
-    !tools.some(({ annotations }) => annotations?.readOnlyHint === true) &&
-    !testable.some((reference) => reference.server === server)
+    testable.length === 0 &&
+    !tools.some(({ name, annotations }) => allowsTool(allowed, name) && annotations?.readOnlyHint === true)
   );
 }
 
 export function untestableNoting(
-  testable: readonly ToolReference[],
   report: (server: string) => void,
-): (server: string, tools: readonly ListedTool[]) => void {
+): (server: McpServerSettings, tools: readonly ListedTool[]) => void {
   const noted = new Set<string>();
   return (server, tools) => {
-    if (!noted.has(server) && offersNothingTestable(server, tools, testable)) {
-      noted.add(server);
-      report(server);
+    if (!noted.has(server.name) && offersNothingTestable(server, tools)) {
+      noted.add(server.name);
+      report(server.name);
     }
   };
 }

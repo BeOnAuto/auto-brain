@@ -69,18 +69,18 @@ const echoTool = {
 };
 
 describe('the tool servers a brain may use', () => {
-  it('are those that serve its org and brain, by name, each with the tools the operator allows', async () => {
+  it('are those that serve its org and brain, by name, each with the tools its entry allows', async () => {
     const fake = await fakeServer();
     const servers = {
-      wiki: remote(fake),
+      wiki: remote(fake, { allowed: ['unlisted'] }),
       notes: remote(fake),
-      graph: remote(fake),
+      graph: remote(fake, { allowed: ['search', 'echo'] }),
       crm: remote(fake, { org: 'globex' }),
       sales: remote(fake, { brains: ['sales'] }),
-      support: remote(fake, { brains: ['alpha', 'support'] }),
+      support: remote(fake, { brains: ['alpha', 'support'], allowed: ['profile'] }),
     };
 
-    const listing = await listed(servers, { allowed: ['graph/search', 'graph/echo', 'notes/*', 'support/profile'] });
+    const listing = await listed(servers);
 
     expect(listing).toMatchObject([
       { name: 'graph', type: 'http', tools: [searchTool, echoTool] },
@@ -93,7 +93,7 @@ describe('the tool servers a brain may use', () => {
   it('have the descriptions of their tools cut as a run cuts them', async () => {
     const fake = await fakeServer();
 
-    const listing = await listed({ graph: remote(fake) }, { allowed: ['graph/verbose'] });
+    const listing = await listed({ graph: remote(fake, { allowed: ['verbose'] }) });
 
     expect(verboseDescription.length).toBeGreaterThan(4096);
     expect(listing).toEqual([
@@ -117,9 +117,9 @@ describe('the tool servers a listing asks', () => {
   it('are only the server asked for, when one is, and no other is asked', async () => {
     const fake = await fakeServer();
     const other = await fakeServer();
-    const servers = { graph: remote(fake), wiki: remote(other) };
+    const servers = { graph: remote(fake, { allowed: ['echo'] }), wiki: remote(other) };
 
-    const listing = await listed(servers, { allowed: ['graph/echo'] }, 'graph');
+    const listing = await listed(servers, {}, 'graph');
     const unknown = await listed(servers, {}, 'mail');
 
     expect(listing).toEqual([{ name: 'graph', type: 'http', tools: [echoTool] }]);
@@ -137,18 +137,18 @@ describe('the tool servers a listing asks', () => {
   });
 });
 
-describe('a tool server on which the operator allows no tool', () => {
-  it('is listed with no tools and is never asked, as no run could reach it', async () => {
+describe('a tool server whose entry leaves allowed out', () => {
+  it('is asked, as every server serving the brain is, and lists every tool it has', async () => {
     const fake = await fakeServer();
-    const quiet = await fakeServer();
+    const open = await fakeServer();
 
-    const listing = await listed({ graph: remote(fake), quiet: remote(quiet) }, { allowed: ['graph/echo'] });
+    const listing = await listed({ graph: remote(fake, { allowed: ['echo'] }), open: remote(open) });
 
     expect(listing).toEqual([
       { name: 'graph', type: 'http', tools: [echoTool] },
-      { name: 'quiet', type: 'http', tools: [] },
+      { name: 'open', type: 'http', tools: fakeToolNames.map((name): unknown => expect.objectContaining({ name })) },
     ]);
-    expect(quiet.seen()).toEqual([]);
+    expect(open.seen().filter(({ rpc }) => rpc === 'tools/list')).toHaveLength(1);
   });
 });
 
@@ -159,9 +159,10 @@ describe('a tool server that is a process', () => {
       args: [fakeStdioServerPath],
       env: { NODE_V8_COVERAGE: '${NODE_V8_COVERAGE:-}' },
       org: 'acme',
+      allowed: ['search'],
     };
 
-    const listing = await listed({ limitless }, { allowed: ['limitless/search'] });
+    const listing = await listed({ limitless });
 
     expect(listing).toEqual([{ name: 'limitless', type: 'stdio', tools: [searchTool] }]);
   });
@@ -228,8 +229,8 @@ describe('the secrets of a tool server', () => {
     const environment = { GRAPH_KEY: 'rows of the graph', GRAPH_LOOK: 'What to look for' };
 
     const listing = await listed(
-      { graph: { url: fake.url, headers, org: 'acme' } },
-      { allowed: ['graph/search'], environment },
+      { graph: { url: fake.url, headers, org: 'acme', allowed: ['search'] } },
+      { environment },
     );
     const text = JSON.stringify(listing);
 

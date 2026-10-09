@@ -6,13 +6,12 @@ import type { ListedTool } from '../bounds/result-text.ts';
 import type { OfferedOnServer } from '../calls/run-parts.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import { isAllowed, namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
+import { allowsTool, isAllowed, namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
 import { ToolNotOffered } from './tool-not-offered.ts';
 
 export interface Naming {
   readonly references: readonly ToolReference[];
   readonly links: ReadonlyMap<string, ServerLink>;
-  readonly allowed: readonly ToolReference[] | null;
 }
 
 export interface Listed {
@@ -23,6 +22,11 @@ export interface Listed {
 interface NamedLink {
   readonly reference: ToolReference;
   readonly link: ServerLink | undefined;
+}
+
+interface ServingLink {
+  readonly reference: ToolReference;
+  readonly link: ServerLink;
 }
 
 const conjunction = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
@@ -59,23 +63,28 @@ export function notListed(missing: readonly ToolReference[]): ToolNotOffered {
   return new ToolNotOffered({ because: 'tool_not_listed', detail: capitalized(conjunction.format(unlisted)) });
 }
 
+function isServing(named: NamedLink, address: BrainAddress): named is ServingLink {
+  return named.link !== undefined && servesBrain(named.link.settings, address);
+}
+
 export function namedLinks(
   address: BrainAddress,
-  { references, links, allowed }: Naming,
+  { references, links }: Naming,
 ): Result.Result<readonly ServerLink[], ToolNotOffered> {
-  const configured = references.map((reference): NamedLink => ({ reference, link: links.get(reference.server) }));
-  const unconfigured = configured.filter(({ link }) => link === undefined || !servesBrain(link.settings, address));
+  const named = references.map((reference): NamedLink => ({ reference, link: links.get(reference.server) }));
+  const unconfigured = named.filter((each) => !isServing(each, address));
   if (unconfigured.length > 0) {
     return Result.fail(notConfigured(unconfigured.map(({ reference }) => reference)));
   }
-  const disallowed = references.filter((reference) => !isAllowed(reference, allowed));
+  const serving = named.filter((each) => isServing(each, address));
+  const disallowed = serving.filter(({ reference, link }) => !isAllowed(reference, link.settings.allowed));
   if (disallowed.length > 0) {
-    return Result.fail(notAllowed(disallowed));
+    return Result.fail(notAllowed(disallowed.map(({ reference }) => reference)));
   }
-  return Result.succeed([...new Set(configured.map(({ link }) => link))].filter((link) => link !== undefined));
+  return Result.succeed([...new Set(serving.map(({ link }) => link))]);
 }
 
-type Offering = Pick<Naming, 'references' | 'allowed'>;
+type Offering = Pick<Naming, 'references'>;
 
 function namedOn({ slot }: Listed, naming: Offering): readonly ToolReference[] {
   return naming.references.filter((reference) => reference.server === slot.settings.name);
@@ -88,9 +97,7 @@ export function offeredOn(listed: Listed, naming: Offering): readonly OfferedOnS
   return listed.tools
     .filter((tool) =>
       named.some((reference) =>
-        namesEveryTool(reference)
-          ? isAllowed({ server, tool: tool.name }, naming.allowed)
-          : reference.tool === tool.name,
+        namesEveryTool(reference) ? allowsTool(slot.settings.allowed, tool.name) : reference.tool === tool.name,
       ),
     )
     .map((tool) => ({ slot, reference: { server, tool: tool.name }, tool }));

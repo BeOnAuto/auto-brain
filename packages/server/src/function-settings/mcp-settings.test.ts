@@ -41,16 +41,16 @@ function authorizationOf(settings: ReturnType<typeof readSettings>): string | un
 }
 
 describe('the MCP servers of the server', () => {
-  it('reads the servers and the allowed tools from the environment', () => {
+  it('reads the servers, each with its allowed and testable tools, from the environment', () => {
     const settings = readSettings({
-      MCP_SERVERS: JSON.stringify({ graph }),
-      ALLOWED_TOOLS: JSON.stringify(['graph/search']),
+      MCP_SERVERS: JSON.stringify({ graph: { ...graph, allowed: ['search', 'execute'], testable: ['execute'] } }),
       GRAPH_API_KEY: apiKey,
     });
 
-    expect(settings.mcp).toMatchObject({
-      servers: [{ name: 'graph', org: 'acme' }],
-      allowed: [{ server: 'graph', tool: 'search' }],
+    expect(settings.mcp).toEqual({
+      servers: [
+        expect.objectContaining({ name: 'graph', org: 'acme', allowed: ['search', 'execute'], testable: ['execute'] }),
+      ],
     });
     expect(authorizationOf(settings)).toBe(`Bearer ${apiKey}`);
   });
@@ -88,30 +88,89 @@ describe('the MCP servers of the server', () => {
   });
 });
 
-describe('the tools of the MCP servers that may be tested', () => {
-  it('are read from the environment and from the configuration file', () => {
-    const fromEnvironment = readSettings({
-      MCP_SERVERS: JSON.stringify({ graph }),
-      TESTABLE_TOOLS: JSON.stringify(['graph/execute']),
-      GRAPH_API_KEY: apiKey,
-    });
+const refusedLists = [
+  'mcp_servers:',
+  '  graph:',
+  '    url: https://graph.example.com/mcp',
+  '    org: acme',
+  '    allowed: [search, graph/search, search]',
+  '  notes:',
+  '    command: /usr/local/bin/notes-mcp-server',
+  '    org: acme',
+  '    allowed: [search]',
+  '    testable: [execute, "*"]',
+  '  wiki:',
+  '    command: /usr/local/bin/wiki-mcp-server',
+  '    org: acme',
+  '    allowed: []',
+  '    testable: []',
+  '',
+].join('\n');
+
+describe('the tools of an MCP server in the configuration file', () => {
+  it('are read from the entry of the server', () => {
     const path = configFile(
-      'mcp_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\nallowed_tools: [graph/search, graph/execute]\ntestable_tools: [graph/execute]\n',
+      'mcp_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\n    allowed: [search, execute]\n    testable: [execute]\n  notes:\n    command: /usr/local/bin/notes-mcp-server\n    org: acme\n',
     );
 
-    expect([fromEnvironment.mcp.testable, readSettings({ CONFIG_FILE: path }).mcp.testable]).toEqual([
-      [{ server: 'graph', tool: 'execute' }],
-      [{ server: 'graph', tool: 'execute' }],
+    expect(
+      readSettings({ CONFIG_FILE: path }).mcp.servers.map(({ name, allowed, testable }) => ({
+        name,
+        allowed,
+        testable,
+      })),
+    ).toEqual([
+      { name: 'graph', allowed: ['search', 'execute'], testable: ['execute'] },
+      { name: 'notes', allowed: null, testable: [] },
     ]);
   });
 
-  it('stop the start when one is not allowed, placed at its line in the configuration file', () => {
+  it('stop the start at the line of each one refused, never with a value', () => {
+    const path = configFile(refusedLists);
+
+    expect(errorFrom({ CONFIG_FILE: path })).toBe(
+      'mcp_settings_invalid: The MCP server settings are invalid. ' +
+        `${path}:5:23 mcp_servers.graph.allowed[1]: Expected a tool name of 1 to 128 letters, digits, underscores, hyphens and dots; ` +
+        `${path}:5:37 mcp_servers.graph.allowed[2]: search is listed twice; ` +
+        `${path}:10:16 mcp_servers.notes.testable[0]: allowed does not name execute, and a tool a function may not call cannot be tested either; ` +
+        `${path}:10:25 mcp_servers.notes.testable[1]: * would vouch for every tool of the server, those it adds later among them; name each tool that is safe to test; ` +
+        `${path}:14:14 mcp_servers.wiki.allowed: Expected at least one tool; leave allowed out to allow every tool; ` +
+        `${path}:15:15 mcp_servers.wiki.testable: Expected at least one tool; leave testable out to test only the tools the server marks read-only`,
+    );
+  });
+});
+
+describe('tools listed beside the MCP servers in the configuration file', () => {
+  it('stop the start at the line of allowed_tools or testable_tools, saying where a tool is allowed or marked testable', () => {
     const path = configFile(
-      'mcp_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\nallowed_tools: [graph/search]\ntestable_tools: [graph/execute]\n',
+      'mcp_servers:\n  graph:\n    url: https://graph.example.com/mcp\n    org: acme\nallowed_tools: [graph/search]\ntestable_tools: [graph/search]\n',
     );
 
     expect(errorFrom({ CONFIG_FILE: path })).toBe(
-      `mcp_settings_invalid: The MCP server settings are invalid. ${path}:6:18 testable_tools[0]: ALLOWED_TOOLS does not allow graph/execute, and a tool a function may not call cannot be tested either`,
+      `ConfigFileInvalid: The configuration file ${path} is invalid: ` +
+        `${path}:5:16 allowed_tools: Not a setting this file holds; a tool is allowed on the entry of its server in mcp_servers, under allowed; ` +
+        `${path}:6:17 testable_tools: Not a setting this file holds; a tool is marked testable on the entry of its server in mcp_servers, under testable`,
     );
+  });
+});
+
+describe('the tools of an MCP server in the environment', () => {
+  it('are refused at start with the pointer of each, never with a value', () => {
+    const error = errorFrom({
+      MCP_SERVERS: JSON.stringify({
+        graph: { ...graph, allowed: ['search', '*'] },
+        notes: { ...graph, testable: ['execute', 'execute'] },
+        wiki: { ...graph, allowed: ['search'], testable: ['execute'] },
+      }),
+      GRAPH_API_KEY: apiKey,
+    });
+
+    expect(error).toBe(
+      'mcp_settings_invalid: The MCP server settings are invalid. ' +
+        'MCP_SERVERS: /graph/allowed/1: Every tool of the server is allowed when allowed is left out; name the tools to allow, or leave it out; ' +
+        'MCP_SERVERS: /notes/testable/1: execute is listed twice; ' +
+        'MCP_SERVERS: /wiki/testable/0: allowed does not name execute, and a tool a function may not call cannot be tested either',
+    );
+    expect(error).not.toContain(apiKey);
   });
 });

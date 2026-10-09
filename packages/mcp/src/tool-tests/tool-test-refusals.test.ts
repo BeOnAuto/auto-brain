@@ -26,10 +26,13 @@ async function fakeServer(): Promise<FakeMcpServer> {
   return fake;
 }
 
+function entryOn(fake: FakeMcpServer, entry: Readonly<Record<string, unknown>> = {}) {
+  return { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry };
+}
+
 function testsOn(fake: FakeMcpServer, entry: Readonly<Record<string, unknown>> = {}, options: AccessOptions = {}) {
-  const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry };
   const { access } = reportingAccess(
-    { graph },
+    { graph: entryOn(fake, entry), wiki: entryOn(fake, { testable: ['echo'] }) },
     { timing: patientTiming, ...options, environment: { GRAPH_API_KEY: fakeApiKey } },
   );
   closing.push(access.close);
@@ -51,7 +54,7 @@ describe('a tool that cannot be tested', () => {
       {
         ...notTestable,
         detail:
-          'The MCP server graph does not mark the tool echo read-only, and the operator of this server does not list it in testable_tools',
+          'The MCP server graph does not mark the tool echo read-only, and the operator of this server does not mark it testable',
       },
       notTestable,
       notTestable,
@@ -60,21 +63,32 @@ describe('a tool that cannot be tested', () => {
     expect(fake.openSessions()).toBe(0);
   });
 
-  it('is tested once whoever runs the server lists it as safe to test', async () => {
+  it('is tested once the entry of its server marks it testable', async () => {
     const fake = await fakeServer();
-    const { test } = testsOn(fake, {}, { testable: ['graph/echo'] });
+    const { test } = testsOn(fake, { testable: ['echo'] });
 
     expect(await test({ server: 'graph', tool: 'echo', arguments: { said: 'hello' } })).toMatchObject({
       status: 'succeeded',
       output: { outcome: 'result', text: '{"said":"hello"}' },
     });
   });
+
+  it('is refused when only the entry of another server marks a tool of its name testable', async () => {
+    const fake = await fakeServer();
+    const { test } = testsOn(fake);
+
+    expect([
+      await test({ server: 'graph', tool: 'echo', arguments: { said: 'hello' } }),
+      await test({ server: 'wiki', tool: 'echo', arguments: { said: 'hello' } }),
+    ]).toMatchObject([notTestable, { status: 'succeeded' }]);
+    expect(fake.received()).toHaveLength(1);
+  });
 });
 
 describe('a tool this brain is not offered', () => {
-  it('is refused before any connection when the operator does not allow it or no server of the name serves the brain', async () => {
+  it('is refused before any connection when its entry does not allow it or no server of the name serves the brain', async () => {
     const fake = await fakeServer();
-    const narrowed = testsOn(fake, {}, { allowed: ['graph/echo'] });
+    const narrowed = testsOn(fake, { allowed: ['echo'] });
     const elsewhere = testsOn(fake, { org: 'globex' });
     const otherBrains = testsOn(fake, { brains: ['sales'] });
 
@@ -82,7 +96,7 @@ describe('a tool this brain is not offered', () => {
       await narrowed.test({ server: 'graph', tool: 'search', arguments: { query: 'acme' } }),
       await elsewhere.test({ server: 'graph', tool: 'search' }),
       await otherBrains.test({ server: 'graph', tool: 'search' }),
-      await narrowed.test({ server: 'wiki', tool: 'search' }),
+      await narrowed.test({ server: 'mail', tool: 'search' }),
     ]).toMatchObject([
       {
         reason: 'unavailable',
@@ -92,7 +106,7 @@ describe('a tool this brain is not offered', () => {
       },
       { kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
       { kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
-      { because: 'mcp_server_not_configured', detail: 'No MCP server named wiki is configured for this brain' },
+      { because: 'mcp_server_not_configured', detail: 'No MCP server named mail is configured for this brain' },
     ]);
     expect(fake.seen()).toEqual([]);
   });

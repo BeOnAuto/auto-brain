@@ -6,7 +6,13 @@ import type { LinkOptions } from '../connections/server-links.ts';
 import type { DeliveryCall, DeliveryCallEnded } from '../delivery/delivery-bounds.ts';
 import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
-import { brainsServedBy, isListedFor, type McpSettings, type ServersScope } from '../settings/mcp-settings.ts';
+import {
+  brainsServedBy,
+  isListedFor,
+  type McpSettings,
+  type ServersScope,
+  type ServerToolLists,
+} from '../settings/mcp-settings.ts';
 import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
 
 export interface ToolAccessOptions {
@@ -19,7 +25,7 @@ export interface ToolAccessOptions {
 
 export interface ToolAccess {
   readonly configured: boolean;
-  readonly testing: Pick<McpSettings, 'allowed' | 'testable'>;
+  readonly testing: readonly ServerToolLists[];
   readonly open: (
     context: CallerContext,
     references: readonly ToolReference[],
@@ -45,7 +51,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
   };
   return {
     configured: settings.servers.length > 0,
-    testing: { allowed: settings.allowed, testable: settings.testable },
+    testing: settings.servers,
     open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
     callOnce: (call) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call)),
     listServers: (scope, named) =>

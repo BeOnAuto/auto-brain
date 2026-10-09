@@ -6,13 +6,14 @@ import type { Secrets } from '../bounds/secrets.ts';
 import { takenSlot } from '../calls/server-slot.ts';
 import { failureOf, type FailureKind, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
+import type { McpServerSettings } from '../settings/mcp-settings.ts';
 import { McpServerFailed, type ServerFailedBecause } from './mcp-server-failed.ts';
 import type { Listed } from './tool-naming.ts';
 
 export interface Listing {
   readonly secrets: Secrets;
   readonly timing: Timing;
-  readonly toolsListed: (server: string, tools: readonly ListedTool[]) => void;
+  readonly toolsListed: (server: McpServerSettings, tools: readonly ListedTool[]) => void;
 }
 
 const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
@@ -47,7 +48,7 @@ export async function connectedTo(
     .listTools(timing.openMs)
     .then(
       (tools) => {
-        toolsListed(link.settings.name, tools);
+        toolsListed(link.settings, tools);
         return Result.succeed({ slot, tools });
       },
       async (error: unknown) => {

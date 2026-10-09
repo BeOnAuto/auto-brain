@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+export const mcpServersSetting = 'MCP_SERVERS';
+
 const secretValues =
   'their values treated as secrets: in the configuration file a credential is a reference such as ${GRAPH_API_KEY}';
 
@@ -62,6 +64,18 @@ export const McpServerEntrySchema = Schema.Struct({
       description: 'The brains of the org this server serves; every brain of the org when left out',
     }),
   ),
+  allowed: Schema.optionalKey(
+    Schema.Array(Schema.String).annotate({
+      description:
+        'The tools of this server a reasoning function may name and a channel may call, each named as the server lists it; every tool of the server when left out',
+    }),
+  ),
+  testable: Schema.optionalKey(
+    Schema.Array(Schema.String).annotate({
+      description:
+        'The tools of this server test_tool_call may test although the server does not mark them read-only, each named as the server lists it and among allowed; only the tools the server marks read-only when left out',
+    }),
+  ),
   record_content: Schema.optionalKey(
     Schema.Boolean.annotate({
       description:
@@ -84,17 +98,4 @@ export const McpServersSchema = Schema.Record(
       'The name a reasoning function gives the server in server/tool: 1 to 32 lowercase letters, digits and hyphens, starting with a letter, and not the name of a model provider or gateway',
   }),
   McpServerEntrySchema,
-);
-
-export const AllowedToolsSchema = Schema.Array(
-  Schema.String.annotate({
-    description: 'A tool a reasoning function may name, written server/tool, or server/* for every tool of a server',
-  }),
-);
-
-export const TestableToolsSchema = Schema.Array(
-  Schema.String.annotate({
-    description:
-      'A tool test_tool_call may test though its server does not mark it read-only, written server/tool; each tool is named, never server/*',
-  }),
 );

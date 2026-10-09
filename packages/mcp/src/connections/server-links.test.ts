@@ -41,6 +41,8 @@ function httpSettings(url: string, changes: Partial<HttpServerSettings> = {}): H
     auth: null,
     org: 'acme',
     brains: null,
+    allowed: null,
+    testable: [],
     record_content: false,
     request_id: null,
     secrets: [],

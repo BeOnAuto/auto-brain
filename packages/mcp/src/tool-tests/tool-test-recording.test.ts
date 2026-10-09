@@ -4,14 +4,7 @@ import { createHash } from 'node:crypto';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  fakeApiKey,
-  patientTiming,
-  reportingAccess,
-  serveFakeMcp,
-  toolTests,
-  type AccessOptions,
-} from '../testing/index.ts';
+import { fakeApiKey, patientTiming, reportingAccess, serveFakeMcp, toolTests } from '../testing/index.ts';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -33,14 +26,11 @@ const scrubbedArguments: unknown = expect.stringMatching(/^\{"said":"the key is 
 
 const scrubbedResult: unknown = expect.stringMatching(/^\{"content":\[\{"type":"text","text":".*\[redacted\]/u);
 
-async function testsOn(entry: Readonly<Record<string, unknown>> = {}, options: AccessOptions = {}) {
+async function testsOn(entry: Readonly<Record<string, unknown>> = {}) {
   const fake = await serveFakeMcp({ bearer: fakeApiKey });
   closing.push(fake.close);
   const graph = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry };
-  const { access } = reportingAccess(
-    { graph },
-    { timing: patientTiming, ...options, environment: { GRAPH_API_KEY: fakeApiKey } },
-  );
+  const { access } = reportingAccess({ graph }, { timing: patientTiming, environment: { GRAPH_API_KEY: fakeApiKey } });
   closing.push(access.close);
   return { fake, ...toolTests(access) };
 }
@@ -93,7 +83,7 @@ describe('what a test records', () => {
 
 describe('the content a test records', () => {
   it('is held only where the entry records content, scrubbed and cut to 4 KiB as stored', async () => {
-    const { test, recorded } = await testsOn({ record_content: true }, { testable: ['graph/echo'] });
+    const { test, recorded } = await testsOn({ record_content: true, testable: ['echo'] });
 
     await test({ server: 'graph', tool: 'echo', arguments: { said: `the key is ${fakeApiKey} ${'x'.repeat(6000)}` } });
     const records = await recorded();

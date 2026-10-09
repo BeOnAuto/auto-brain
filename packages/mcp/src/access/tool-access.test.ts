@@ -31,11 +31,10 @@ async function fakeServer(options?: FakeMcpOptions): Promise<FakeMcpServer> {
   return fake;
 }
 
-function accessTo(servers: Readonly<Record<string, unknown>>, allowed?: readonly string[]) {
+function accessTo(servers: Readonly<Record<string, unknown>>) {
   const reporting = reportingAccess(servers, {
     environment: { GRAPH_API_KEY: apiKey, NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] },
     timing: patientTiming,
-    ...(allowed === undefined ? {} : { allowed }),
   });
   closing.push(reporting.access.close);
   return reporting;
@@ -128,10 +127,10 @@ describe('the tools a run is offered', () => {
 });
 
 describe('the tools of server/*', () => {
-  it('offers every tool of a server for server/*, or every tool the operator allows', async () => {
+  it('offers every tool of a server for server/*, or every tool its entry allows', async () => {
     const fake = await fakeServer({ bearer: apiKey });
     const { access } = accessTo({ graph: graphOf(fake) });
-    const { access: narrowed } = accessTo({ graph: graphOf(fake) }, ['graph/search', 'graph/echo']);
+    const { access: narrowed } = accessTo({ graph: graphOf(fake, { allowed: ['search', 'echo'] }) });
 
     const every = await offeredBy(access, 'graph/*', 'graph/search');
     const allowed = await offeredBy(narrowed, 'graph/*');

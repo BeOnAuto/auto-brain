@@ -50,7 +50,6 @@ export async function servingMeetings(replies: readonly ScriptedReply[]): Promis
       slack: { url: slack.url, headers: { Authorization: 'Bearer ${SLACK_KEY}' }, org: 'local', brains: ['meetings'] },
       notes: { url: slack.url, headers: { Authorization: 'Bearer ${NOTES_KEY}' }, org: 'local', brains: ['meetings'] },
     }),
-    ALLOWED_TOOLS: JSON.stringify(['slack/*', 'notes/*']),
     CHANNELS: JSON.stringify({ 'team-chat': teamChat }),
   });
   const onMcp = <T>(use: (session: McpSession) => Promise<T>): Promise<T> =>

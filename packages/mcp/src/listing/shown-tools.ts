@@ -3,10 +3,11 @@ import { Predicate, Schema } from 'effect';
 import { cutToDescriptionBound } from '../bounds/call-bounds.ts';
 import type { ListedTool } from '../bounds/result-text.ts';
 import type { Secrets } from '../bounds/secrets.ts';
-import { canBeTested, type TestingLists } from '../tool-tests/testing-guard.ts';
+import type { ToolLists } from '../settings/mcp-settings.ts';
+import { canBeTested } from '../tool-tests/testing-guard.ts';
 import type { ServerTool } from './tool-server.ts';
 
-export interface Showing extends TestingLists {
+export interface Showing {
   readonly secrets: Secrets;
 }
 
@@ -29,7 +30,7 @@ function annotationsOf({ annotations }: ListedTool) {
   return annotations === undefined || Object.keys(annotations).length === 0 ? {} : { annotations };
 }
 
-export function shownTool(tool: ListedTool, server: string, showing: Showing): ServerTool {
+export function shownTool(tool: ListedTool, lists: ToolLists, showing: Showing): ServerTool {
   const { name, description = '', inputSchema } = tool;
   const { scrub } = showing.secrets;
   return {
@@ -37,6 +38,6 @@ export function shownTool(tool: ListedTool, server: string, showing: Showing): S
     description: cutToDescriptionBound(scrub(description)),
     input_schema: decodeJsonObject(JSON.stringify(inputSchema, scrubbing(scrub))),
     ...annotationsOf(tool),
-    testable: canBeTested({ server, tool: name }, tool.annotations, showing),
+    testable: canBeTested(name, tool.annotations, lists),
   };
 }

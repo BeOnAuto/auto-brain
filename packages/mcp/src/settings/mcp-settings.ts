@@ -1,8 +1,6 @@
 import { servesBrain } from '@beonauto/config';
 import type { Redacted } from 'effect';
 
-import type { ToolReference } from '../names/tool-reference.ts';
-
 export type AuthCredential =
   | { readonly kind: 'client_secret'; readonly client_secret: Redacted.Redacted }
   | { readonly kind: 'private_key'; readonly private_key: Redacted.Redacted; readonly algorithm: string };
@@ -14,7 +12,12 @@ export interface AuthSettings {
   readonly credential: AuthCredential;
 }
 
-interface ServedBy {
+export interface ToolLists {
+  readonly allowed: readonly string[] | null;
+  readonly testable: readonly string[];
+}
+
+interface ServedBy extends ToolLists {
   readonly name: string;
   readonly org: string;
   readonly brains: readonly string[] | null;
@@ -39,10 +42,10 @@ export interface StdioServerSettings extends ServedBy {
 
 export type McpServerSettings = HttpServerSettings | StdioServerSettings;
 
+export type ServerToolLists = Pick<McpServerSettings, 'name' | 'allowed' | 'testable'>;
+
 export interface McpSettings {
   readonly servers: readonly McpServerSettings[];
-  readonly allowed: readonly ToolReference[] | null;
-  readonly testable: readonly ToolReference[];
 }
 
 export interface ServersScope {

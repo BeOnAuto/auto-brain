@@ -24,6 +24,8 @@ const settings: StdioServerSettings = {
   name: 'notes',
   org: 'acme',
   brains: null,
+  allowed: null,
+  testable: [],
   record_content: false,
   request_id: null,
   secrets: [],

@@ -58,7 +58,7 @@ function channelsOf(
         OTHER_WEBHOOK_SECRET: otherSecret,
         ...secrets,
       },
-      { servers: [{ name: 'slack', org: 'acme', brains: null }], allowed: null },
+      { servers: [{ name: 'slack', org: 'acme', brains: null, allowed: null }] },
     ),
   );
 }

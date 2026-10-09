@@ -24,12 +24,8 @@ async function fakeServer(): Promise<FakeMcpServer> {
   return fake;
 }
 
-function accessTo(servers: Readonly<Record<string, unknown>>, allowed?: readonly string[]) {
-  const { access } = reportingAccess(servers, {
-    environment: { GRAPH_API_KEY: apiKey },
-    timing: patientTiming,
-    ...(allowed === undefined ? {} : { allowed }),
-  });
+function accessTo(servers: Readonly<Record<string, unknown>>) {
+  const { access } = reportingAccess(servers, { environment: { GRAPH_API_KEY: apiKey }, timing: patientTiming });
   closing.push(access.close);
   return { access };
 }
@@ -67,9 +63,9 @@ describe('a tool that is not offered', () => {
     expect(fake.seen()).toEqual([]);
   });
 
-  it('names a tool the operator does not allow', async () => {
+  it('names a tool the entry of its server does not allow', async () => {
     const fake = await fakeServer();
-    const { access } = accessTo({ graph: graphOf(fake) }, ['graph/search']);
+    const { access } = accessTo({ graph: graphOf(fake, { allowed: ['search'] }) });
 
     expect(await refusalOf(access, 'graph/search', 'graph/echo')).toMatchObject({
       _tag: 'tool_not_offered',
@@ -92,9 +88,9 @@ describe('a tool its server does not list', () => {
     expect(fake.openSessions()).toBe(0);
   });
 
-  it('names every tool its servers do not list, by server, and every tool the operator does not allow', async () => {
+  it('names every tool its servers do not list, by server, and every tool their entries do not allow', async () => {
     const fake = await fakeServer();
-    const { access } = accessTo({ graph: graphOf(fake), wiki: graphOf(fake) }, ['graph/*', 'wiki/seek']);
+    const { access } = accessTo({ graph: graphOf(fake), wiki: graphOf(fake, { allowed: ['seek'] }) });
 
     expect([
       await refusalOf(access, 'graph/lookup', 'wiki/seek', 'graph/find'),

@@ -21,15 +21,12 @@ export function namesEveryTool({ tool }: ToolReference): boolean {
   return tool === everyTool;
 }
 
-export function isAllowed(reference: ToolReference, allowed: readonly ToolReference[] | null): boolean {
-  return (
-    allowed === null ||
-    allowed.some(
-      (entry) =>
-        entry.server === reference.server &&
-        (namesEveryTool(entry) || namesEveryTool(reference) || entry.tool === reference.tool),
-    )
-  );
+export function allowsTool(allowed: readonly string[] | null, tool: string): boolean {
+  return allowed === null || allowed.includes(tool);
+}
+
+export function isAllowed(reference: ToolReference, allowed: readonly string[] | null): boolean {
+  return namesEveryTool(reference) || allowsTool(allowed, reference.tool);
 }
 
 export function toolReferenceOf(written: string): ToolReference | undefined {

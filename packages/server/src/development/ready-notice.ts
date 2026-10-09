@@ -2,13 +2,13 @@ import { configurationOf, type Environment } from '@beonauto/config';
 import { providerStatus, readModelSettings } from '@beonauto/inference';
 import { Effect, Function, Result } from 'effect';
 
-import { fileSettings } from '../config-file/file-settings.ts';
+import { fileSettings, refusedKeys } from '../config-file/file-settings.ts';
 
 const noModelYet = 'none configured; copy .env.example to .env and put a key in it';
 
 function modelsIn(settings: Environment): string {
   const { environment } = Result.getOrElse(
-    configurationOf(settings, fileSettings),
+    configurationOf(settings, fileSettings, refusedKeys),
     Function.constant({ environment: settings, file: undefined }),
   );
   const { configured } = providerStatus(Effect.runSync(readModelSettings(environment)), { entraId: false });

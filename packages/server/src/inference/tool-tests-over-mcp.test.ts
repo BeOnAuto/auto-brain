@@ -32,16 +32,15 @@ interface Serving {
   readonly graph: FakeMcpServer;
 }
 
-async function serving(settings: Readonly<Record<string, string>> = {}): Promise<Serving> {
+async function serving(entry: Readonly<Record<string, unknown>> = {}): Promise<Serving> {
   const graph = await serveFakeMcp({ bearer: apiKey });
   closing.push(graph.close);
   const server = await servingReasoning([], {
     API_KEYS: JSON.stringify([builder.entry, reader.entry]),
     GRAPH_API_KEY: apiKey,
     MCP_SERVERS: JSON.stringify({
-      graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' },
+      graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme', ...entry },
     }),
-    ...settings,
   });
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/brains', { key: builder.key, body: { brain: 'alpha', name: 'Alpha' } });
@@ -87,9 +86,9 @@ describe('test_tool_call over MCP', () => {
     expect(listedTools(onTheOrg).map(({ name }) => name)).not.toContain('test_tool_call');
   });
 
-  it('says whether a test may change something by whether whoever runs the server lists a tool as safe to test', async () => {
+  it('says whether a test may change something by whether the entry of a server marks a tool testable', async () => {
     const plain = await serving();
-    const listing = await serving({ TESTABLE_TOOLS: JSON.stringify(['graph/echo']) });
+    const listing = await serving({ testable: ['echo'] });
     expect([await annotationsOn(plain.server), await annotationsOn(listing.server)]).toMatchObject([
       {
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -114,7 +113,7 @@ describe('test_tool_call refused over MCP', () => {
       because: 'not_testable',
     });
     expect(plainTextIn(refused)).toBe(
-      "Could not test the tool “echo” of “graph”: this server does not offer a tool it names, because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test. Nothing was changed. A tool that may change something is called only by a function the person asked to run; whoever runs the server can list it under testable_tools, and list_tool_servers shows which tools can be tested.",
+      "Could not test the tool “echo” of “graph”: this server does not offer a tool it names, because by its server's own account it may change something, and whoever runs the server has not listed it as safe to test. Nothing was changed. A tool that may change something is called only by a function the person asked to run; whoever runs the server can mark it testable on its tool server's entry, and list_tool_servers shows which tools can be tested.",
     );
     expect(graph.received()).toEqual([]);
   });

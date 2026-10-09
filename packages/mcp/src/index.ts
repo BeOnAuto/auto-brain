@@ -17,7 +17,7 @@ export { toolTestPresenter } from './tool-tests/tool-test-presenter.ts';
 export { defaultTiming, runBoundMs, toolBounds, type Timing } from './bounds/call-bounds.ts';
 export { secretsOf, type Secrets } from './bounds/secrets.ts';
 export { toolReferenceOf, toolReferenceShape, writtenOf, type ToolReference } from './names/tool-reference.ts';
-export { AllowedToolsSchema, McpServersSchema, TestableToolsSchema } from './settings/server-entries.ts';
+export { McpServersSchema } from './settings/server-entries.ts';
 export type { McpServerSettings, McpSettings } from './settings/mcp-settings.ts';
 export {
   McpSettingsInvalid,

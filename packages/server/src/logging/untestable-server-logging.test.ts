@@ -10,7 +10,8 @@ const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
 
 const graphKey = 'graph-api-key-4f1d9a7c2b';
 
-const note = '"message":"Nothing on MCP server graph can be tested';
+const note =
+  '"message":"The MCP server graph marks none of its allowed tools read-only and its entry marks none testable';
 
 let ledger: TemporaryLedger;
 
@@ -22,7 +23,10 @@ afterEach(() => {
   ledger.remove();
 });
 
-async function notesAfterTwoListings(served: FakeMcpOptions): Promise<number> {
+async function notesAfterTwoListings(
+  served: FakeMcpOptions,
+  entry: Readonly<Record<string, unknown>> = {},
+): Promise<number> {
   const graph = await serveFakeMcp({ bearer: graphKey, ...served });
   const child = spawnServer(mainModule, {
     HOST: '127.0.0.1',
@@ -31,7 +35,7 @@ async function notesAfterTwoListings(served: FakeMcpOptions): Promise<number> {
     LOCAL_MODE: 'true',
     GRAPH_API_KEY: graphKey,
     MCP_SERVERS: JSON.stringify({
-      graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'local' },
+      graph: { url: graph.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'local', ...entry },
     }),
   });
   const tools = `http://127.0.0.1:${await child.port}/v1/orgs/local/tool-servers`;
@@ -41,16 +45,18 @@ async function notesAfterTwoListings(served: FakeMcpOptions): Promise<number> {
   child.signal('SIGTERM');
   await child.exited;
   await graph.close();
-  expect(before).not.toContain(note);
-  return child.output().stderr.split(note).length - 1;
+  const { stderr } = child.output();
+  expect([before.includes(note), stderr.includes(graphKey)]).toEqual([false, false]);
+  return stderr.split(note).length - 1;
 }
 
 describe('the note on a tool server on which nothing can be tested', { timeout: spawnedServerTestTimeoutMs }, () => {
-  it('is logged once, where its tools are first listed, when it marks no tool read-only', async () => {
+  it('is logged once, where its tools are first listed, when it marks no tool read-only and its entry marks none testable', async () => {
     expect(await notesAfterTwoListings({ annotated: false })).toBe(1);
   });
 
-  it('is not logged when it marks a tool read-only', async () => {
+  it('is not logged when it marks a tool read-only, or when its entry marks one testable', async () => {
     expect(await notesAfterTwoListings({})).toBe(0);
+    expect(await notesAfterTwoListings({ annotated: false }, { testable: ['echo'] })).toBe(0);
   });
 });

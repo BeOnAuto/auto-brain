@@ -5,7 +5,8 @@ import type { CallReply } from '../calls/call-replies.ts';
 import type { OfferedTool, RunTools } from '../calls/run-tools.ts';
 import { ignored } from '../connections/ignored.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
-import { canBeTested, type TestingLists } from './testing-guard.ts';
+import type { ServerToolLists } from '../settings/mcp-settings.ts';
+import { canBeTested } from './testing-guard.ts';
 import { TestedOutcomeSchema } from './tool-test-schemas.ts';
 import type { TestedOutcome } from './tool-test-words.ts';
 
@@ -26,7 +27,7 @@ const isTestedOutcome = Schema.is(TestedOutcomeSchema);
 
 function notTestable({ server, tool }: ToolReference): Unavailable {
   return new Unavailable({
-    detail: `The MCP server ${server} does not mark the tool ${tool} read-only, and the operator of this server does not list it in testable_tools`,
+    detail: `The MCP server ${server} does not mark the tool ${tool} read-only, and the operator of this server does not mark it testable`,
     kind: 'tool_not_offered',
     because: 'not_testable',
   });
@@ -68,10 +69,23 @@ export function stopped({ stop, answering }: Calling): Effect.Effect<void> {
   }).pipe(Effect.andThen(Effect.promise(() => answering)), Effect.asVoid);
 }
 
-export const calledWhenTestable = Effect.fnUntraced(function* (testing: TestingLists, tools: RunTools, tested: Tested) {
+function isTestable(
+  testing: readonly ServerToolLists[],
+  { server, tool }: ToolReference,
+  offered: OfferedTool,
+): boolean {
+  const lists = testing.find(({ name }) => name === server);
+  return lists !== undefined && canBeTested(tool, offered.annotations, lists);
+}
+
+export const calledWhenTestable = Effect.fnUntraced(function* (
+  testing: readonly ServerToolLists[],
+  tools: RunTools,
+  tested: Tested,
+) {
   const [offered] = tools.offered;
   const { reference } = tested;
-  if (offered === undefined || !canBeTested(reference, offered.annotations, testing)) {
+  if (offered === undefined || !isTestable(testing, reference, offered)) {
     yield* Effect.promise(() => tools.close());
     return yield* Effect.fail(offered === undefined ? notListed(reference) : notTestable(reference));
   }

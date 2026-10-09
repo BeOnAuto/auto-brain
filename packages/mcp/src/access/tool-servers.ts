@@ -4,7 +4,6 @@ import { cutToFailureBound } from '../bounds/call-bounds.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import { shownTool, type Showing } from '../listing/shown-tools.ts';
 import type { ToolServer } from '../listing/tool-server.ts';
-import { isAllowed } from '../names/tool-reference.ts';
 import { isListedFor, type ServersScope } from '../settings/mcp-settings.ts';
 import { connectedTo, type Listing } from './server-listing.ts';
 import { offeredOn } from './tool-naming.ts';
@@ -15,10 +14,6 @@ export interface ServersListing extends Listing, Showing {
 
 async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<ToolServer> {
   const { name, type } = link.settings;
-  const everyTool = { server: name, tool: '*' };
-  if (!isAllowed(everyTool, listing.allowed)) {
-    return { name, type, tools: [] };
-  }
   const connected = await connectedTo(link, listing);
   if (Result.isFailure(connected)) {
     const { detail, because } = connected.failure;
@@ -26,8 +21,8 @@ async function toolServerOf(link: ServerLink, listing: ServersListing): Promise<
   }
   const listed = connected.success;
   await listed.slot.release();
-  const offered = offeredOn(listed, { references: [everyTool], allowed: listing.allowed });
-  return { name, type, tools: offered.map(({ tool }) => shownTool(tool, name, listing)) };
+  const offered = offeredOn(listed, { references: [{ server: name, tool: '*' }] });
+  return { name, type, tools: offered.map(({ tool }) => shownTool(tool, link.settings, listing)) };
 }
 
 function byName(first: ServerLink, second: ServerLink): number {
