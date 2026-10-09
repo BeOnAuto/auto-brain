@@ -46,6 +46,7 @@ export function scriptedTools({
         },
       ],
       callsEnded: () => calls.length >= endAfter,
+      calledAny: () => calls.length > 0,
       ended: ending.signal,
       runBoundMs,
     },
