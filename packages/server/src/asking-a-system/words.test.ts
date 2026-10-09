@@ -2,14 +2,16 @@ import { internalTermsIn, plainTextIn, withMcpSession, type McpSession } from '@
 import { describe, expect, it } from 'vitest';
 
 import { chatKey } from '../testing/servers/chat-deliveries.ts';
-import { askingASystem, systemRunId, threadInput, type SystemServer } from '../testing/servers/system-calls.ts';
+import {
+  askingASystem,
+  calling,
+  systemRunId,
+  threadInput,
+  type SystemServer,
+} from '../testing/servers/system-calls.ts';
 import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const longestName = `thread-${'x'.repeat(41)}`;
-
-const anyOutput = ['output:', '  schema: {}'];
-
-const open = ['input:', '  schema: { type: object }'];
 
 function onAlpha<T>(server: SystemServer, use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession('current revision', { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} }, use);
@@ -35,7 +37,7 @@ describe('the words of a run that asks a system, over MCP', { timeout: workflowT
 
   it('say why a run whose tool may have changed something did not go through, whole, with the longest name', async () => {
     const server = await askingASystem({ hints: { denied: { readOnlyHint: false } } });
-    await server.define(longestName, { tool: 'denied', read: null, with: [], input: open, output: anyOutput });
+    await server.define(longestName, calling('denied'));
 
     const { ran, read } = await saidOf(server, longestName);
 
@@ -53,14 +55,8 @@ describe('the words of a run that asks a system, kept plain', { timeout: workflo
   it('name no internal term, and an output carries no secret of the server', async () => {
     const server = await askingASystem({ hints: { denied: { readOnlyHint: false } } });
     await server.define('thread-replies');
-    await server.define('denying', { tool: 'denied', read: null, with: [], input: open, output: anyOutput });
-    await server.define('echoing', {
-      tool: 'echo',
-      read: '/said',
-      with: ["    said: '{{ input.said }}'"],
-      input: open,
-      output: anyOutput,
-    });
+    await server.define('denying', calling('denied'));
+    await server.define('echoing', { ...calling('echo', ["    said: '{{ input.said }}'"]), read: '/said' });
     const said = await saidOf(server, 'thread-replies', threadInput);
     const refused = await onAlpha(server, (session) =>
       session.callTool('run_definition', { type: 'interaction', name: 'denying', input: {} }),
@@ -81,7 +77,7 @@ describe('the words of a run that asks a system, kept plain', { timeout: workflo
 
   it('say that running again is safe for a run whose tools only read, and that nothing was changed', async () => {
     const server = await askingASystem();
-    await server.define(longestName, { tool: 'denied', read: null, with: [], input: open, output: anyOutput });
+    await server.define(longestName, calling('denied'));
 
     const { ran, read } = await saidOf(server, longestName);
 

@@ -1,3 +1,4 @@
+import type { Timing } from '@beonauto/mcp';
 import { makeModelAccess } from '@beonauto/reasoning';
 import { scriptedLanguageModel, type ScriptedReply } from '@beonauto/reasoning/testing';
 import type { HostClock } from '@beonauto/workflow-host';
@@ -20,6 +21,7 @@ export interface ReasoningServer {
 export interface ServedParts {
   readonly programPoolOf?: ProgramPoolOf;
   readonly clock?: HostClock;
+  readonly toolTiming?: Timing;
 }
 
 export const alpha = '/v1/orgs/acme/brains/alpha';
@@ -28,13 +30,13 @@ const localMode: Readonly<Record<string, string>> = { LOCAL_MODE: 'true' };
 
 type Fetch = typeof globalThis.fetch;
 
-const noNetwork: Fetch = () => Promise.reject(new TypeError('fetch failed: the tests reach no network'));
+export const noNetwork: Fetch = () => Promise.reject(new TypeError('fetch failed: the tests reach no network'));
 
 export async function servingReasoning(
   replies: readonly ScriptedReply[],
   environment: Readonly<Record<string, string>> = localMode,
   fetch: Fetch = noNetwork,
-  { programPoolOf = workerPool, clock }: ServedParts = {},
+  { programPoolOf = workerPool, clock, toolTiming }: ServedParts = {},
 ): Promise<ReasoningServer> {
   const ledger = temporaryLedger();
   const scripted = scriptedLanguageModel(...replies);
@@ -48,6 +50,7 @@ export async function servingReasoning(
         })),
       programPoolOf,
       clock,
+      toolTiming,
     ),
   );
   return {

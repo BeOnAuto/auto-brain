@@ -20,8 +20,9 @@ export function compositionRootWith(
   modelAccessOf: FunctionWiring['modelAccessOf'],
   programPoolOf?: FunctionWiring['programPoolOf'],
   clock?: HostClock,
+  toolTiming?: FunctionWiring['toolTiming'],
 ): ServerOptions<DispatcherServices> {
-  const wiring = functionWiringOf(modelAccessOf, programPoolOf);
+  const wiring = functionWiringOf(modelAccessOf, programPoolOf, toolTiming);
   return {
     ...defaultServerOptions,
     runtimeLayer: ({ ledger }) => applicationLayer(ledgerLayerOf(ledger, wiring.recall.appends)),

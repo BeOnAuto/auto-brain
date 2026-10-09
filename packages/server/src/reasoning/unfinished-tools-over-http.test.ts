@@ -70,6 +70,13 @@ describe('a reasoning run that called only tools that read and could not finish,
   });
 });
 
+async function untilCalled(calledAny: () => boolean): Promise<void> {
+  if (!calledAny()) {
+    await setTimeout(10);
+    await untilCalled(calledAny);
+  }
+}
+
 const unanswered: ScriptedReply = (request) =>
   Effect.promise(async () => {
     const sleeping = request.tools?.offered.find(({ name }) => name === 'mcp__graph__sleep');
@@ -77,7 +84,7 @@ const unanswered: ScriptedReply = (request) =>
       { callId: 'call-1', input: { ms: 5000 } },
       { signal: AbortSignal.timeout(10_000), cancelled: new AbortController().signal },
     );
-    await setTimeout(300);
+    await untilCalled(() => request.tools?.calledAny() !== false);
   }).pipe(Effect.andThen(stoppedBy('run_bound')(request)));
 
 const mayChange: ReadonlyArray<readonly [string, ScriptedReply, string, FakeHints]> = [

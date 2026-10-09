@@ -2,7 +2,7 @@ import { approvalDocument, notificationDocument } from '@beonauto/interaction/te
 import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import { alpha, servingReasoning, type ReasoningServer } from './reasoning-server.ts';
+import { alpha, noNetwork, servingReasoning, type ReasoningServer, type ServedParts } from './reasoning-server.ts';
 import { until } from './workflow-calls.ts';
 import { runIdIn, settledRun, workflowSource } from './workflow-server.ts';
 
@@ -45,8 +45,11 @@ function once(stop: () => Promise<void>): () => Promise<void> {
   };
 }
 
-export async function interactionServerOn(environment: Readonly<Record<string, string>>): Promise<InteractionServer> {
-  const server = await servingReasoning([], { LOCAL_MODE: 'true', ...environment });
+export async function interactionServerOn(
+  environment: Readonly<Record<string, string>>,
+  parts: ServedParts = {},
+): Promise<InteractionServer> {
+  const server = await servingReasoning([], { LOCAL_MODE: 'true', ...environment }, noNetwork, parts);
   const stop = once(server.stop);
   onTestFinished(stop);
   return {

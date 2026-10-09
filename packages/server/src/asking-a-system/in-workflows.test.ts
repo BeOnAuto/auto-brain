@@ -4,20 +4,8 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { chatKey } from '../testing/servers/chat-deliveries.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { askingASystem, threadInput, type SystemServer } from '../testing/servers/system-calls.ts';
+import { askingASystem, calling, threadInput, type SystemServer } from '../testing/servers/system-calls.ts';
 import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
-
-const anyOutput = ['output:', '  schema: {}'];
-
-const open = ['input:', '  schema: { type: object }'];
-
-const calling = (tool: string, written: readonly string[] = []) => ({
-  tool,
-  read: null,
-  with: written,
-  input: open,
-  output: anyOutput,
-});
 
 const decodeRuns = Schema.decodeUnknownSync(Schema.Struct({ runs: Schema.Array(Schema.Unknown) }));
 

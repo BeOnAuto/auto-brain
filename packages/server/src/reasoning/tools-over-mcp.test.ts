@@ -147,8 +147,8 @@ describe('the words of a reasoning run over MCP that could not finish after call
     expect(plainTextIn(first)).toBe(
       "Could not run the reasoning function “summary”: it called tools but could not finish, because the model stopped answering. Nothing was changed. Every tool it called only reads, by its server's own account, so running it again is safe: a new run, or a workflow's retry, may make it; its history shows what it called.",
     );
-    expect(plainTextIn(again)).toMatch(
-      /^Could not run the reasoning function “summary”: this run calls tools, and an attempt of it under the same id may still be in progress or did not succeed, so its tools may have changed something\. So it was not run again/u,
+    expect(plainTextIn(again)).toBe(
+      "Could not run the reasoning function “summary”: an attempt of this run under the same id did not succeed, and every tool it called only reads, by its server's own account. Nothing was changed. So it was not run again under its id: start a new run instead; its history shows what it called.",
     );
     expect(fake.received()).toHaveLength(1);
   });

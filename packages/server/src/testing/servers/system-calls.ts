@@ -1,7 +1,8 @@
 import { callDocument, type CallOptions } from '@beonauto/interaction/testing';
+import type { Timing } from '@beonauto/mcp';
 import { serveFakeMcp, type FakeHints, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { Schema } from 'effect';
-import { onTestFinished } from 'vitest';
+import { expect, onTestFinished } from 'vitest';
 
 import { chatKey } from './chat-deliveries.ts';
 import type { TestResponse } from './http-client.ts';
@@ -12,10 +13,24 @@ export const threadInput = { channel: 'C0123', thread: '1728379900.000050' };
 
 export const systemRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
+const anyOutput: readonly string[] = ['output:', '  schema: {}'];
+
+export const openInput: readonly string[] = ['input:', '  schema: { type: object }'];
+
+export function calling(tool: string, written: readonly string[] = []): CallOptions {
+  return { tool, read: null, with: written, input: openInput, output: anyOutput };
+}
+
+export function problemWith(fields: Readonly<Record<string, unknown>>): unknown {
+  return expect.objectContaining(fields);
+}
+
 export interface SystemOptions {
   readonly hints?: FakeHints;
   readonly entry?: Readonly<Record<string, unknown>>;
   readonly servers?: Readonly<Record<string, unknown>>;
+  readonly timing?: Timing;
+  readonly environment?: Readonly<Record<string, string>>;
 }
 
 export interface SystemServer extends InteractionServer {
@@ -39,14 +54,16 @@ export async function askingASystem({
   hints = {},
   entry = {},
   servers = {},
+  timing,
+  environment = {},
 }: SystemOptions = {}): Promise<SystemServer> {
   const fake = await serveFakeMcp({ bearer: chatKey, data: true, hints });
   onTestFinished(fake.close);
   const chat = { url: fake.url, headers: { Authorization: 'Bearer ${CHAT_KEY}' }, org: 'acme', ...entry };
-  const server = await interactionServerOn({
-    CHAT_KEY: chatKey,
-    MCP_SERVERS: JSON.stringify({ chat, ...servers }),
-  });
+  const server = await interactionServerOn(
+    { CHAT_KEY: chatKey, MCP_SERVERS: JSON.stringify({ chat, ...servers }), ...environment },
+    timing === undefined ? {} : { toolTiming: timing },
+  );
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   return {
     ...server,
