@@ -62,6 +62,7 @@ const allowances: readonly Allowance[] = [
     "['The execution started.', 'execution']",
     "['It ran an inference.', 'inference']",
     "['An orchestration started.', 'orchestration']",
+    "['It folds a recollection.', 'recollection']",
   ].map((leak) => ({ text: leak, in: internalTermsTest })),
   { text: "**inference** names a model call and its provider's terms", in: 'CLAUDE.md' },
 ];
