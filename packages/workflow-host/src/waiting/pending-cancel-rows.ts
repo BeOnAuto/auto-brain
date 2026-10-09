@@ -11,7 +11,7 @@ export interface PendingCancelRow {
 }
 
 const PendingRow = Schema.Struct({
-  run_id: Schema.String,
+  run_key: Schema.String,
   cause: Schema.String,
   cancelled_by: CancelOrderSchema.fields.by,
   kind: CancelOrderSchema.fields.kind,
@@ -19,7 +19,7 @@ const PendingRow = Schema.Struct({
 });
 
 function pendingOf({
-  run_id: runKey,
+  run_key: runKey,
   cause,
   cancelled_by: by,
   kind,

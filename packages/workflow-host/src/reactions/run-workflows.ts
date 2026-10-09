@@ -11,7 +11,7 @@ export function workflowsOfRuns(read: ReadStream, type: string, mostRemembered =
   const remembered = new Map<string, string | undefined>();
   const workflowOf = (events: readonly unknown[]): string | undefined => {
     const started = runStartedOf(events[0]);
-    return started?.type === type ? started.name : undefined;
+    return started?.definitionType === type ? started.name : undefined;
   };
   return (brainKey, runId) => {
     const stream = `${brainKey}runs/${runId}`;

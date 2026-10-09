@@ -249,7 +249,10 @@ describe('the read of the outcomes of runs, bound to a call', () => {
       dispatcher.dispatchToBrain(readRunTallies.registration, toAlpha(acmeAdmin, { ...window, name: 'draft' })),
     );
 
-    expect(read).toMatchObject({ status: 'succeeded', output: { groups: [{ name: 'triage', runs: 1 }] } });
+    expect(read).toMatchObject({
+      status: 'succeeded',
+      output: { groups: [{ type: 'tally', name: 'triage', runs: 1 }] },
+    });
     expect(named).toEqual({ status: 'succeeded', output: { groups: [] } });
   });
 

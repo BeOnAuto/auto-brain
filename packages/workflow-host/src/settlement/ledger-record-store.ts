@@ -30,7 +30,7 @@ const SettlementRow = Schema.Struct({
   last_attempt_at: Schema.NullOr(WholeNumber),
 });
 
-const RunRow = Schema.Struct({ run_id: Schema.String });
+const RunRow = Schema.Struct({ run_key: Schema.String });
 
 type Receipt = Effect.Effect<SettleReceipt, DatabaseFailed | DispatchFailed>;
 
@@ -153,6 +153,6 @@ export function ledgerRecordStore(database: HostDatabase, parts: RecordStorePart
               ORDER BY next_due_at LIMIT ${mostDueRunsInOneSweep}`,
           ),
         ),
-      ).pipe(Effect.map((rows) => rows.map(({ run_id: runKey }) => runKey))),
+      ).pipe(Effect.map((rows) => rows.map(({ run_key: runKey }) => runKey))),
   };
 }

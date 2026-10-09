@@ -23,7 +23,7 @@ const alpha = 'brain/acme/alpha/';
 describe('a read of the runs of one definition on PostgreSQL', () => {
   it('reads the name and the definition type at the top of the first message, as jsonb without the escapes jsonb refuses, once its text holds both as written, among a thousand runs', async () => {
     const { query, asked } = answeringNothing();
-    const ofOneDefinition = { kind: 'runs', type: 'workflow', name: 'qualify-enquiry' } as const;
+    const ofOneDefinition = { kind: 'runs', definitionType: 'workflow', name: 'qualify-enquiry' } as const;
 
     await postgresqlRecordedStore(query).readRecorded(alpha, ofOneDefinition, { order: 'desc', limit: 5 });
 

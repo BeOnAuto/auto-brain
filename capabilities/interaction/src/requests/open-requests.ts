@@ -159,7 +159,7 @@ function rowAfter(row: ProjectedRow | undefined, event: unknown, message: Projec
 
 export const openRequests: KeyedProjection = {
   name: openRequestsName,
-  version: 4,
+  version: 5,
   kinds: ['runs'],
   types: [
     'run_deferred',

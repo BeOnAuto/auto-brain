@@ -43,7 +43,7 @@ interface Resumed {
 type RunsSelection = Extract<RecordedSelection, { readonly kind: 'runs' }>;
 
 const DefinitionHeldSchema = Schema.Struct({
-  type: Schema.optionalKey(Schema.Unknown),
+  definition_type: Schema.optionalKey(Schema.Unknown),
   name: Schema.optionalKey(Schema.Unknown),
 });
 
@@ -145,10 +145,13 @@ function holdsWhatWasAsked(asked: string | undefined, held: unknown): boolean {
   return asked === undefined || held === asked;
 }
 
-function isOfTheDefinitionAsked({ definitionType: type, name }: RunsSelection, { data }: MemoryRecord): boolean {
-  const asksForNone = type === undefined && name === undefined;
+function isOfTheDefinitionAsked({ definitionType, name }: RunsSelection, { data }: MemoryRecord): boolean {
+  const asksForNone = definitionType === undefined && name === undefined;
   return (
-    asksForNone || (holdsADefinition(data) && holdsWhatWasAsked(type, data.type) && holdsWhatWasAsked(name, data.name))
+    asksForNone ||
+    (holdsADefinition(data) &&
+      holdsWhatWasAsked(definitionType, data.definition_type) &&
+      holdsWhatWasAsked(name, data.name))
   );
 }
 

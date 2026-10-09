@@ -110,6 +110,8 @@ const onPostgreSQL: LedgerEntry = {
     "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_tallies_[0-9]+$' ORDER BY relname",
   projectionIndexes:
     "SELECT indexname AS name FROM pg_indexes WHERE indexname ~ '^run_tallies_[0-9]+_' AND indexname !~ '_pkey$' ORDER BY indexname",
+  topicTables:
+    "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^topics_[0-9]+$' ORDER BY relname",
 };
 
 const skipped = server === '';

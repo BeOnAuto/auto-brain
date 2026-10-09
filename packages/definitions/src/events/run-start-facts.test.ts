@@ -52,9 +52,9 @@ describe('the facts of a run that answers a call of another run', () => {
         }),
       )?.data,
     ]).toEqual([
-      { type: 'workflow', name: 'check', version: 1, caller: 'brain:alpha', depth: 0, called_by: calledBy },
+      { definition_type: 'workflow', name: 'check', version: 1, caller: 'brain:alpha', depth: 0, called_by: calledBy },
       {
-        type: 'workflow',
+        definition_type: 'workflow',
         name: 'check',
         version: 1,
         caller: 'brain:alpha',
@@ -63,7 +63,7 @@ describe('the facts of a run that answers a call of another run', () => {
         reason: 'cancelled',
         kind: 'deadline',
       },
-      { type: 'workflow', name: 'check', version: 1, caller: 'brain:alpha', depth: 0, reason: 'conflict' },
+      { definition_type: 'workflow', name: 'check', version: 1, caller: 'brain:alpha', depth: 0, reason: 'conflict' },
     ]);
   });
 });
@@ -72,7 +72,7 @@ describe('the facts of a run a trigger started', () => {
   it('name the trigger, by its kind and its place in the document, on the start and on the ending', () => {
     const trigger = { kind: 'every' as const, reference: '/schedule/every' };
     const ofTheRun = {
-      type: 'workflow',
+      definition_type: 'workflow',
       name: 'check',
       version: 1,
       caller: 'brain:alpha',

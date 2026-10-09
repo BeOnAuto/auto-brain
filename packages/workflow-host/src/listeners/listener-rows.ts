@@ -20,7 +20,7 @@ export interface ListenerPlace {
 }
 
 const MatchedRow = Schema.Struct({
-  run_id: Schema.String,
+  run_key: Schema.String,
   listener: Schema.String,
   filters: Schema.String,
   workflow: Schema.String,

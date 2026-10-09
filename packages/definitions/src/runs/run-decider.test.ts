@@ -96,8 +96,8 @@ describe('starting a run', () => {
     );
   });
 
-  it('is rejected for another capability, another definition or another input under the same id', () => {
-    expect(decided(starting({ type: 'probe' }), started)).toEqual(Result.fail(anotherRequest));
+  it('is rejected for another type, another definition or another input under the same id', () => {
+    expect(decided(starting({ definition_type: 'probe' }), started)).toEqual(Result.fail(anotherRequest));
     expect(decided(starting({ name: 'wave' }), started, succeeded)).toEqual(Result.fail(anotherRequest));
     expect(decided(starting({ input: { who: 'Bob' } }), started, failed)).toEqual(Result.fail(anotherRequest));
     expect(decided(starting({ input: { who: 'Ada', tags: ['b', 'a'] } }), started)).toEqual(
@@ -114,7 +114,7 @@ describe('finishing a run', () => {
     expect(decided(finishing({ type: 'run_failed' }), started)).toStrictEqual(Result.succeed([failed]));
   });
 
-  it('records the capability, the name and the version of the definition the latest attempt ran', () => {
+  it('records the type, the name and the version of the definition the latest attempt ran', () => {
     expect(
       decided(finishing({ type: 'run_failed' }), started, unavailable, { ...started, definition_version: 2 }),
     ).toStrictEqual(Result.succeed([{ ...failed, definition_version: 2 }]));

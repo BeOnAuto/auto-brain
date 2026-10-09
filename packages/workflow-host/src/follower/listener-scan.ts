@@ -9,7 +9,7 @@ import { reactionOfRun } from '../reactions/run-attributes.ts';
 import { ledgerRunLogStore } from '../runs/ledger-run-store.ts';
 import { addressOfRun, runLogStreamOf } from '../runs/run-address.ts';
 
-const RunRow = Schema.Struct({ run_id: Schema.String });
+const RunRow = Schema.Struct({ run_key: Schema.String });
 
 const scanOfListeners = 'listeners';
 
@@ -49,7 +49,7 @@ export function scannedListeners(database: HostDatabase): Effect.Effect<number> 
         RunRow,
         database.read(statement`SELECT run_key FROM workflow_runs WHERE ended_at IS NULL`),
       );
-      yield* Effect.forEach(live, ({ run_id: runKey }) => listenersOfRun(database, runKey), { discard: true });
+      yield* Effect.forEach(live, ({ run_key: runKey }) => listenersOfRun(database, runKey), { discard: true });
       yield* database.write(statement`INSERT INTO workflow_followed_scans (name) VALUES (${scanOfListeners})`);
       return live.length;
     }),

@@ -8,7 +8,7 @@ import { runLogStreamOf } from '../runs/run-address.ts';
 
 const WatermarkRow = Schema.Struct({ dispatched_through: WholeNumber });
 
-const RunRow = Schema.Struct({ run_id: Schema.String });
+const RunRow = Schema.Struct({ run_key: Schema.String });
 
 export function sqlWatermark(database: HostDatabase): DispatchWatermark {
   return {
@@ -49,6 +49,6 @@ export function sqlWatermark(database: HostDatabase): DispatchWatermark {
               RETURNING run_key`,
           ),
         ),
-      ).pipe(Effect.map((rows) => rows.map(({ run_id: runKey }) => runKey))),
+      ).pipe(Effect.map((rows) => rows.map(({ run_key: runKey }) => runKey))),
   };
 }

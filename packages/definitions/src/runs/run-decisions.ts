@@ -108,11 +108,11 @@ function counted(name: 'depth' | 'call_depth', count: number): Readonly<Record<s
 }
 
 function startedEvent(start: RunStart & CommandMetadata): RunEvent {
-  const { definition_type: type, name, definition_version, input, calls_tools, finishes_later, by, at } = start;
+  const { definition_type, name, definition_version, input, calls_tools, finishes_later, by, at } = start;
   const { depth = 0, call_depth: callDepth = 0, called_by: calledBy, trigger } = start;
   return {
     type: 'run_started',
-    definition_type: type,
+    definition_type,
     name,
     definition_version,
     input,
@@ -156,9 +156,9 @@ function decideStart(start: RunStart & CommandMetadata, state: RunStreamState): 
 }
 
 function ofTheStart({ run, depth, callDepth, calledBy, trigger }: RecordedRunState) {
-  const { type, name, definition_version } = run;
+  const { type: definitionType, name, definition_version } = run;
   return {
-    definition_type: type,
+    definition_type: definitionType,
     name,
     definition_version,
     ...counted('depth', depth),
@@ -239,10 +239,19 @@ function cancelOfARun(cancel: RunCancel, run: RecordedRunState): Decision {
     return Result.fail(runsWithinItsCall);
   }
   const { kind, reason, by, at } = cancel;
-  const { type, name, definition_version } = run.run;
+  const { type: definitionType, name, definition_version } = run.run;
   return run.cancel === undefined
     ? Result.succeed([
-        { type: 'run_cancel_requested', kind, reason, definition_type: type, name, definition_version, by, at },
+        {
+          type: 'run_cancel_requested',
+          kind,
+          reason,
+          definition_type: definitionType,
+          name,
+          definition_version,
+          by,
+          at,
+        },
       ])
     : nothingToRecord;
 }

@@ -100,7 +100,7 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
 
 describe('an append to a run of which a projection keeps a row, in the in-memory ledger', () => {
   it('keeps nothing of an append whose projection breaks down, and records nothing of it', async () => {
-    const breaking: KeyedProjection = tallyRowsOf(1, (row) => row['status'] !== 'started');
+    const breaking: KeyedProjection = tallyRowsOf(2, (row) => row['status'] !== 'started');
     const ledger = memoryLedger(undefined, [breaking]);
     await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'));
 
@@ -138,9 +138,9 @@ describe('an append to a run of which a projection keeps a row, in the in-memory
 
 describe('the table of a projection', () => {
   it('is named for the projection and its version, so a new version is a new table', () => {
-    expect([projectedTableOf(runTallyRows), projectedTableOf(tallyRowsOf(2))]).toEqual([
-      'run_tallies_1',
+    expect([projectedTableOf(runTallyRows), projectedTableOf(tallyRowsOf(3))]).toEqual([
       'run_tallies_2',
+      'run_tallies_3',
     ]);
   });
 });

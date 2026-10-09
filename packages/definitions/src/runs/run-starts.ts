@@ -3,7 +3,7 @@ import { Option, Schema } from 'effect';
 import { RunEventSchema } from './run-events.ts';
 
 export interface StartedRun {
-  readonly type: string;
+  readonly definitionType: string;
   readonly name: string;
   readonly depth: number;
 }
@@ -14,7 +14,7 @@ export function runStartedOf(data: unknown): StartedRun | undefined {
   return Option.getOrUndefined(
     Option.flatMap(decodeRunEvent(data), (event) =>
       event.type === 'run_started'
-        ? Option.some({ type: event.definition_type, name: event.name, depth: event.depth ?? 0 })
+        ? Option.some({ definitionType: event.definition_type, name: event.name, depth: event.depth ?? 0 })
         : Option.none(),
     ),
   );
