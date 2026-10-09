@@ -12,7 +12,9 @@ import { viewHarness, type ViewHarness } from './view-harness.ts';
 
 const NameRow = Schema.Struct({ name: Schema.String });
 
-function phasesOf(rows: readonly ViewRow[]): Readonly<Record<string, string>> {
+type PhasedRows = readonly Pick<ViewRow, 'name' | 'phase'>[];
+
+function phasesOf(rows: PhasedRows): Readonly<Record<string, string>> {
   return Object.fromEntries(rows.map(({ name, phase }) => [name, phase]));
 }
 
@@ -50,15 +52,15 @@ function rowNamed(views: ViewHarness, name: string): Promise<ViewRow> {
   return Effect.runPromise(Effect.map(read, (row) => viewRowOf(row)));
 }
 
-function phasesAfterEachWrite(views: ViewHarness, name: string) {
+function rowsAfterEachWrite(views: ViewHarness) {
   const { database } = views.store;
-  const seen: string[] = [];
-  const phaseRead = Effect.map(rowsOf(ViewRowSchema, database.read(viewNamed(alphaKey, name))), (rows) => {
-    seen.push(...rows.map(({ phase }) => phase));
+  const seen: PhasedRows[] = [];
+  const rowsRead = Effect.map(rowsOfBrain(database, alphaKey), (rows) => {
+    seen.push(rows.map(({ name, phase }) => ({ name, phase })));
   });
   const watched: HostDatabase = {
     ...database,
-    write: (statement) => Effect.tap(database.write(statement), () => phaseRead),
+    write: (statement) => Effect.tap(database.write(statement), () => rowsRead),
   };
   return { database: watched, seen: () => seen };
 }
@@ -116,15 +118,79 @@ function slotTests(settingsOf: SettingsOf): void {
 function loneViewTests(settingsOf: SettingsOf): void {
   it('write a view built alone as rebuilding from its first write, new or renewed, and never as waiting', async () => {
     const views = await viewHarness(await settingsOf());
-    const phases = phasesAfterEachWrite(views, 'runs');
-    const reconcile = reconciling(views, 1, phases.database);
+    const watched = rowsAfterEachWrite(views);
+    const reconcile = reconciling(views, 1, watched.database);
 
     await views.saved('runs', counting);
     await reconcile();
     await views.saved('runs', counting);
     const [renewed] = await reconcile();
 
-    expect([phases.seen(), renewed?.version]).toEqual([['rebuilding', 'rebuilding'], 2]);
+    expect([watched.seen().map((rows) => phasesOf(rows)), renewed?.version]).toEqual([
+      [{ runs: 'rebuilding' }, { runs: 'rebuilding' }],
+      2,
+    ]);
+  });
+}
+
+function handOverTests(settingsOf: SettingsOf): void {
+  it('hand the slot of a retired view to the view waiting, as another is saved, never leaving one waiting beside a free slot', async () => {
+    const views = await viewHarness(await settingsOf());
+    const watched = rowsAfterEachWrite(views);
+    const reconcile = reconciling(views, 1, watched.database);
+    await views.saved('first', counting);
+    await views.saved('second', counting);
+    await reconcile();
+
+    await views.retired('first');
+    await views.saved('third', counting);
+    const rows = await reconcile();
+
+    expect(watched.seen().map((seen) => phasesOf(seen))).toEqual([
+      { first: 'rebuilding' },
+      { first: 'rebuilding', second: 'waiting' },
+      { first: 'rebuilding', second: 'rebuilding' },
+      { second: 'rebuilding' },
+      { second: 'rebuilding', third: 'waiting' },
+    ]);
+    expect(phasesOf(rows)).toEqual({ second: 'rebuilding', third: 'waiting' });
+  });
+
+  it('hand the slot of a renewed view to the view waiting, never leaving one waiting beside a free slot', async () => {
+    const views = await viewHarness(await settingsOf());
+    const watched = rowsAfterEachWrite(views);
+    const reconcile = reconciling(views, 1, watched.database);
+    await views.saved('first', counting);
+    await views.saved('second', counting);
+    await reconcile();
+
+    await views.saved('first', counting);
+    const rows = await reconcile();
+
+    expect(watched.seen().map((seen) => phasesOf(seen))).toEqual([
+      { first: 'rebuilding' },
+      { first: 'rebuilding', second: 'waiting' },
+      { first: 'rebuilding', second: 'rebuilding' },
+      { second: 'rebuilding', first: 'waiting' },
+    ]);
+    expect(phasesOf(rows)).toEqual({ second: 'rebuilding', first: 'waiting' });
+  });
+}
+
+function fewerSlotsTests(settingsOf: SettingsOf): void {
+  it('move back to waiting the views past the slots when the brain may build fewer at once', async () => {
+    const views = await viewHarness(await settingsOf());
+    await views.saved('first', counting);
+    await views.saved('second', counting);
+    await reconciling(views, 2)();
+
+    const rows = await reconciling(views, 1)();
+    const kept = await rowsOfAlpha(views);
+
+    expect([phasesOf(rows), phasesOf(kept)]).toEqual([
+      { first: 'rebuilding', second: 'waiting' },
+      { first: 'rebuilding', second: 'waiting' },
+    ]);
   });
 }
 
@@ -181,6 +247,8 @@ export function rowsSuite(settingsOf: SettingsOf): void {
   describe('the rows of the views', { timeout: viewTestTimeoutMs }, () => {
     slotTests(settingsOf);
     loneViewTests(settingsOf);
+    handOverTests(settingsOf);
+    fewerSlotsTests(settingsOf);
     conditionalWriteTests(settingsOf);
     racingTests(settingsOf);
   });

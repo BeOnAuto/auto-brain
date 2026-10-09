@@ -93,12 +93,15 @@ function changesOf(
   const freshNames = new Set(fresh.map(({ name }) => name));
   const stillBuilding = rows.filter((row) => isBuilding(row) && functions.has(row.name) && !freshNames.has(row.name));
   const slots = slotsOf([...stillBuilding, ...fresh], rebuildsAtOnce);
+  const promoted = stillBuilding
+    .filter((row) => row.phase === 'waiting' && slots.has(row.name))
+    .map((row) => phaseSet(row, 'rebuilding'));
   const dropped = rows.filter(({ name }) => !functions.has(name)).map(({ name }) => viewDropped(brain, name));
   const written = fresh.map((function_) => {
     const view = newViewOf(brain, function_, phaseIn(slots, function_.name));
     return byName.has(view.name) ? viewRenewed(view) : viewAdded(view);
   });
-  return [...dropped, ...written];
+  return [...promoted, ...dropped, ...written];
 }
 
 function phasesOf(rows: readonly ViewRow[], rebuildsAtOnce: number): readonly ViewRow[] {
