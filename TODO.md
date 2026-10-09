@@ -36,7 +36,7 @@ Setup work that couldn't be finished yet, and why.
 
 ## Local databases
 
-- [ ] **Delete every local ledger made before the one vocabulary.** The streams, event types and fields of definitions, runs and run logs took the product's words, the projections of runs took their next versions, and the host's tables key a run by `run_key` and its reaction backlog by `run_id`, and nothing reads the old names, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database shows no definition and reads its run logs as runs; every write to the reaction backlog fails, and the host's sweep of deferred starts dies on every pass.
+- [ ] **Delete every local ledger made before the one vocabulary.** The streams, event types and fields of definitions, runs and run logs took the product's words, the projections of runs took their next versions, and the host's tables key a run by `run_key` and its reaction backlog by `run_id`, and nothing reads the old names, since nothing is live. Delete `packages/server/.data/ledger.db` for `pnpm dev`, or the file `LEDGER_FILE` names, or the PostgreSQL database `DATABASE_URL` names. Kept, such a database shows no definition and reads its run logs as runs; the host's tables, made with `CREATE TABLE IF NOT EXISTS`, keep their old `run_id` columns, so the server starts and then every read and write of the host's run tables fails and no workflow run can be recorded, and the due, timer and deferred-start sweeps die on every pass.
 
 ## Tests
 

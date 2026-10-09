@@ -95,7 +95,7 @@ The date filters are left out, since they read the server's clock and time zone,
 `tools` lists the tools of the MCP servers configured for the brain that a run may call, each written `server/tool`, or `server/*` for every tool of a server that the operator allows:
 
 ```yaml
-tools: [graph/search, graph/execute, notes/*]
+tools: [graph/search, graph/query, notes/*]
 ```
 
 To find the names, call `list_tool_servers` (`GET /v1/orgs/{org}/brains/{brain}/tool-servers`, or the MCP tool of the same name). It lists the servers set up for the brain, each with the tools the operator allows, asking each server for them as a run does, so an agent can write `tools` without being told the names; see [Tool servers](http.md#tool-servers). To learn what a tool answers before naming it, test it with `test_tool_call`, which calls it once as a run would and answers what the run's model would see, for a tool its server marks read-only or the operator marks testable on its entry; see [Testing a tool](http.md#testing-a-tool).

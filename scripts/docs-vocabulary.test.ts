@@ -35,27 +35,62 @@ const keptFiles: readonly string[] = ['pnpm-lock.yaml', 'scripts/docs-vocabulary
 
 interface Allowance {
   readonly text: string;
-  readonly in?: string;
+  readonly in: readonly string[];
 }
 
 const internalTerms = 'packages/api/src/testing/internal-terms.ts';
 
 const internalTermsTest = 'packages/api/src/testing/internal-terms.test.ts';
 
+const reasoningReference = 'docs/engineering/reference/reasoning-format.md';
+
 const allowances: readonly Allowance[] = [
-  { text: 'https://open-workflow-specification.org/spec/1.0.0/errors' },
-  { text: 'https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md' },
-  { text: 'inferenceConfig' },
-  { text: 'inferenceGeo' },
-  { text: 'inference-profile' },
-  { text: 'application inference profile' },
-  { text: 'toolSpec' },
-  { text: 'code_execution' },
-  { text: 'execution-denied' },
-  { text: 'graph/execute', in: 'docs/reference/reasoning-format.md' },
+  {
+    text: 'https://open-workflow-specification.org/spec/1.0.0/errors',
+    in: [
+      'capabilities/coordination/input-logs/retry-with-backoff.json',
+      'capabilities/coordination/input-logs/timeout-fires.json',
+      'capabilities/coordination/src/workflows/call-results.test.ts',
+      'capabilities/coordination/src/workflows/error-tasks.test.ts',
+      'docs/reference/workflow-format.md',
+      'packages/server/src/computation/computation-workflows.test.ts',
+      'packages/workflow-engine/corpus/format-7.json',
+      'packages/workflow-engine/src/decider/open-calls.test.ts',
+      'packages/workflow-engine/src/dsl/raised-error.test.ts',
+      'packages/workflow-engine/src/dsl/raised-error.ts',
+      'packages/workflow-engine/src/filters/event-filter.test.ts',
+      'packages/workflow-engine/src/steps/step-causes.test.ts',
+    ],
+  },
+  {
+    text: 'https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md',
+    in: ['docs/reference/http.md', 'packages/definitions/README.md'],
+  },
+  {
+    text: 'inferenceConfig',
+    in: [
+      'capabilities/reasoning/src/adapter/cloud-providers.test.ts',
+      'capabilities/reasoning/src/definition/definition-settings.test.ts',
+      reasoningReference,
+    ],
+  },
+  { text: 'inferenceGeo', in: ['capabilities/reasoning/src/model/offered-provider-options.ts', reasoningReference] },
+  {
+    text: 'inference-profile',
+    in: [
+      'capabilities/reasoning/src/catalog/catalog-leaks.test.ts',
+      'capabilities/reasoning/src/catalog/catalog-listing.test.ts',
+      'capabilities/reasoning/src/definition/definition-settings.test.ts',
+      'capabilities/reasoning/src/settings/catalog-settings.test.ts',
+    ],
+  },
+  { text: 'application inference profile', in: ['docs/engineering/self-host/models.md'] },
+  { text: 'toolSpec', in: ['capabilities/reasoning/src/adapter/cloud-providers.test.ts'] },
+  { text: 'code_execution', in: ['capabilities/reasoning/src/testing/model-lists.ts'] },
+  { text: 'execution-denied', in: ['capabilities/reasoning/src/tools/final-step.test.ts'] },
   ...['primitives?', 'executions?', 'inference', 'orchestration', 'recollection'].map((term) => ({
     text: String.raw`/\b${term}\b/iu`,
-    in: internalTerms,
+    in: [internalTerms],
   })),
   ...[
     "['Created the inference spec.', 'spec']",
@@ -65,8 +100,8 @@ const allowances: readonly Allowance[] = [
     "['It ran an inference.', 'inference']",
     "['An orchestration started.', 'orchestration']",
     "['It folds a recollection.', 'recollection']",
-  ].map((leak) => ({ text: leak, in: internalTermsTest })),
-  { text: "**inference** names a model call and its provider's terms", in: 'CLAUDE.md' },
+  ].map((leak) => ({ text: leak, in: [internalTermsTest] })),
+  { text: "**inference** names a model call and its provider's terms", in: ['CLAUDE.md'] },
 ];
 
 const textOnly = new TextDecoder('utf-8', { fatal: true });
@@ -91,14 +126,19 @@ const searched = tracked.filter(
     !lstatSync(join(root, path)).isSymbolicLink(),
 );
 
-const allowedOccurrences = new Map<Allowance, number>(allowances.map((allowance) => [allowance, 0]));
+function placeOf(allowance: Allowance, path: string): string {
+  return `${path}: ${allowance.text}`;
+}
+
+const allowedOccurrences = new Map<string, number>();
 
 function maskedAllowances(path: string, text: string): string {
   return allowances
-    .filter((allowance) => allowance.in === undefined || allowance.in === path)
+    .filter((allowance) => allowance.in.includes(path))
     .reduce((masked, allowance) => {
       const pieces = masked.split(allowance.text);
-      allowedOccurrences.set(allowance, (allowedOccurrences.get(allowance) ?? 0) + pieces.length - 1);
+      const place = placeOf(allowance, path);
+      allowedOccurrences.set(place, (allowedOccurrences.get(place) ?? 0) + pieces.length - 1);
       return pieces.join(' '.repeat(allowance.text.length));
     }, text);
 }
@@ -134,13 +174,9 @@ const findings = searched.flatMap((path) => {
   return text === undefined ? [] : oldWordsIn(path, text);
 });
 
-function placeOf(allowance: Allowance): string {
-  return allowance.in === undefined ? allowance.text : `${allowance.in}: ${allowance.text}`;
-}
-
 const allowedButAbsent = allowances
-  .filter((allowance) => allowedOccurrences.get(allowance) === 0)
-  .map((allowance) => placeOf(allowance));
+  .flatMap((allowance) => allowance.in.map((path) => placeOf(allowance, path)))
+  .filter((place) => (allowedOccurrences.get(place) ?? 0) === 0);
 
 const leftOutButUntracked = keptFiles.filter((path) => !tracked.includes(path));
 
@@ -148,6 +184,6 @@ await test('no tracked file says an old word, outside the records, the lockfile,
   assert.deepEqual(findings, []);
 });
 
-await test('every text the search allows still occurs where it is allowed, and every file it leaves out is still tracked', () => {
+await test('every text the search allows still occurs in each file it is allowed in, and every file it leaves out is still tracked', () => {
   assert.deepEqual([...allowedButAbsent, ...leftOutButUntracked], []);
 });
