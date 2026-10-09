@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { changesTimers, isTroubling, nextDueAtOf, runDueOf } from '../index.ts';
-import { at, executionId, runningState } from '../testing/runs.ts';
+import { at, runId, runningState } from '../testing/runs.ts';
 import { exampleStream, streamOf } from '../testing/streams.ts';
 
 describe('the next time a run is due', () => {
@@ -11,15 +11,15 @@ describe('the next time a run is due', () => {
   });
 
   it('is noted in the record by version', () => {
-    expect(runDueOf(runningState, 7)).toEqual({ executionId, version: 7, nextDueAt: at + 60_000 });
+    expect(runDueOf(runningState, 7)).toEqual({ runId, version: 7, nextDueAt: at + 60_000 });
   });
 
   it('changes only with an event that arms, cancels or fires a timer', () => {
     const cancelling = streamOf([
       {
-        receipt: { kind: 'cancel_requested', key: executionId, at },
+        receipt: { kind: 'cancel_requested', key: runId, at },
         patch: [],
-        outputs: [{ kind: 'cancel_timer', executionId, timerId: '1' }],
+        outputs: [{ kind: 'cancel_timer', runId, timerId: '1' }],
       },
     ]);
 
@@ -28,9 +28,9 @@ describe('the next time a run is due', () => {
 });
 
 describe('a settle receipt', () => {
-  it('is troubling when the record was settled otherwise or names no execution, and is then reported', () => {
+  it('is troubling when the record was settled otherwise or names no run, and is then reported', () => {
     expect(
-      (['recorded', 'already_recorded', 'settled_otherwise', 'unknown_execution'] as const).map((receipt) =>
+      (['recorded', 'already_recorded', 'settled_otherwise', 'unknown_run'] as const).map((receipt) =>
         isTroubling(receipt),
       ),
     ).toEqual([false, false, true, true]);

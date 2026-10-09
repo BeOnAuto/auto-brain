@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
 import { internalTermsIn } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/inference/testing';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
@@ -67,12 +67,12 @@ const EventsSchema = Schema.Struct({
 
 const eventsOf = Schema.decodeUnknownSync(EventsSchema);
 
-const ExecutionsSchema = Schema.Struct({
-  executions: Schema.Array(Schema.Struct({ execution_id: Schema.String })),
+const RunsSchema = Schema.Struct({
+  runs: Schema.Array(Schema.Struct({ run_id: Schema.String })),
   next_cursor: Schema.NullOr(Schema.String),
 });
 
-const executionsOf = Schema.decodeUnknownSync(ExecutionsSchema);
+const runsOf = Schema.decodeUnknownSync(RunsSchema);
 
 let server: ReasoningServer;
 
@@ -95,50 +95,50 @@ async function eventually(
 
 function holding(count: number): (response: TestResponse) => boolean {
   return ({ status, body }) =>
-    status === 200 &&
-    (Schema.is(EventsSchema)(body) ? body.events.length : executionsOf(body).executions.length) === count;
+    status === 200 && (Schema.is(EventsSchema)(body) ? body.events.length : runsOf(body).runs.length) === count;
 }
 
 async function brainWithTwoRuns(environment: Readonly<Record<string, string>>): Promise<void> {
   server = await servingReasoning([answers(textResult('Profits\u0000rose.'))], environment);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-  await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
-  await server.call('POST', `${alpha}/specs/inference/summary/execute`, {
-    body: { input: { text: 'the\u0000quarter' }, execution_id: succeeded },
+  await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
+  await server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
+    body: { input: { text: 'the\u0000quarter' }, run_id: succeeded },
   });
-  await server.call('POST', `${alpha}/specs/inference/summary/execute`, {
-    body: { input: { text: 7 }, execution_id: rejected },
+  await server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
+    body: { input: { text: 7 }, run_id: rejected },
   });
 }
 
 function nextPageOf({ body }: TestResponse): string {
-  return `${alpha}/executions?cursor=${String(executionsOf(body).next_cursor)}`;
+  return `${alpha}/runs?cursor=${String(runsOf(body).next_cursor)}`;
 }
 
 describe.each(stores)('the runs of a brain over HTTP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)('are listed newest first, filtered, and paged through', async () => {
     await brainWithTwoRuns(await environment());
 
-    const listed = await eventually(`${alpha}/executions`, holding(2));
-    const filtered = await server.call('GET', `${alpha}/executions?status=succeeded&primitive=inference&name=summary`);
-    const first = await server.call('GET', `${alpha}/executions?limit=1`);
+    const listed = await eventually(`${alpha}/runs`, holding(2));
+    const filtered = await server.call('GET', `${alpha}/runs?status=succeeded&type=reasoning&name=summary`);
+    const first = await server.call('GET', `${alpha}/runs?limit=1`);
     const next = await server.call('GET', nextPageOf(first));
 
     expect(listed).toMatchObject({
       status: 200,
       body: {
-        executions: [
-          { execution_id: rejected, status: 'rejected', rejection: { reason: 'invalid_input' } },
-          { execution_id: succeeded, status: 'succeeded', primitive: 'inference', name: 'summary', spec_version: 1 },
+        runs: [
+          { run_id: rejected, status: 'rejected', rejection: { reason: 'invalid_input' } },
+          { run_id: succeeded, status: 'succeeded', type: 'reasoning', name: 'summary', definition_version: 1 },
         ],
         has_more: false,
         next_cursor: null,
       },
     });
-    expect(listed.body).not.toHaveProperty('executions.1.output');
-    expect([filtered, next].map(({ body }) => executionsOf(body).executions.map(({ execution_id: id }) => id))).toEqual(
-      [[succeeded], [succeeded]],
-    );
+    expect(listed.body).not.toHaveProperty('runs.1.output');
+    expect([filtered, next].map(({ body }) => runsOf(body).runs.map(({ run_id: id }) => id))).toEqual([
+      [succeeded],
+      [succeeded],
+    ]);
   });
 });
 
@@ -146,18 +146,18 @@ describe.each(stores)('the history of a run over HTTP, on $store', ({ skipped, e
   it.skipIf(skipped)('reads a run whose input and output hold U+0000', async () => {
     await brainWithTwoRuns(await environment());
 
-    expect(await eventually(`${alpha}/executions/${succeeded}/history`, holding(2))).toMatchObject({
+    expect(await eventually(`${alpha}/runs/${succeeded}/history`, holding(2))).toMatchObject({
       status: 200,
       body: {
         events: [
-          { type: 'execution_started', data: { execution_id: succeeded, input_bytes: 27 } },
-          { type: 'execution_succeeded', data: { execution_id: succeeded, output_bytes: 20 } },
+          { type: 'run_started', data: { run_id: succeeded, input_bytes: 27 } },
+          { type: 'run_succeeded', data: { run_id: succeeded, output_bytes: 20 } },
         ],
         has_more: false,
         next_cursor: null,
       },
     });
-    expect(await server.call('GET', `${alpha}/executions/0199a3c4-7d2e-7c1a-9b3f-000000000000/history`)).toMatchObject({
+    expect(await server.call('GET', `${alpha}/runs/0199a3c4-7d2e-7c1a-9b3f-000000000000/history`)).toMatchObject({
       status: 404,
       body: { reason: 'not_found' },
     });
@@ -169,14 +169,14 @@ describe.each(stores)('the events of a brain over HTTP, on $store', ({ skipped, 
     await brainWithTwoRuns(await environment());
 
     const feed = eventsOf((await eventually(`${alpha}/events`, holding(5))).body);
-    const created = eventsOf((await server.call('GET', `${alpha}/events?type=spec_created`)).body);
+    const created = eventsOf((await server.call('GET', `${alpha}/events?type=definition_created`)).body);
 
     expect(feed.events.map(({ type }) => type)).toEqual([
-      'execution_rejected',
-      'execution_started',
-      'execution_succeeded',
-      'execution_started',
-      'spec_created',
+      'run_rejected',
+      'run_started',
+      'run_succeeded',
+      'run_started',
+      'definition_created',
     ]);
     expect(feed.events.flatMap(({ summary: words }) => internalTermsIn(words))).toEqual([]);
     expect(created.events.map(({ summary: words }) => words)).toEqual([
@@ -201,7 +201,7 @@ describe.each(stores)('the events published to a brain over HTTP, on $store', ({
     const published = await publishing(monthClosed);
     const again = await publishing(monthClosed);
     const clash = await publishing({ ...monthClosed, data: 'us' });
-    const reserved = await publishing({ source: '/specs/inference/summary', type: 'spec_created' });
+    const reserved = await publishing({ source: '/definitions/reasoning/summary', type: 'definition_created' });
     const feed = await eventually(`${alpha}/events?type=event_published`, holding(1));
 
     expect([published.status, again.body, clash.status, reserved.body]).toMatchObject([
@@ -232,11 +232,13 @@ describe.each(stores)('a retired brain over HTTP, on $store', ({ skipped, enviro
     await server.call('POST', '/v1/orgs/acme/brains/alpha/retire');
 
     const reads = await Promise.all(
-      [`${alpha}/executions`, `${alpha}/executions/${succeeded}/history`, `${alpha}/events`].map((path) =>
+      [`${alpha}/runs`, `${alpha}/runs/${succeeded}/history`, `${alpha}/events`].map((path) =>
         server.call('GET', path),
       ),
     );
-    const change = await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'other', source: summary } });
+    const change = await server.call('POST', `${alpha}/definitions/reasoning`, {
+      body: { name: 'other', source: summary },
+    });
 
     expect(reads.map(({ status }) => status)).toEqual([200, 200, 200]);
     expect(change).toMatchObject({
@@ -276,25 +278,22 @@ describe.skipIf(postgresql === '')(
       const environment = await onADatabaseOfItsOwn();
       server = await servingReasoning([answers(textResult('Profits rose.'))], environment);
       await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
-      await server.call('POST', `${alpha}/specs/inference`, { body: { name: 'summary', source: summary } });
+      await server.call('POST', `${alpha}/definitions/reasoning`, { body: { name: 'summary', source: summary } });
       const open = await anAppendLeftOpen(String(environment['DATABASE_URL']));
-      await server.call('POST', `${alpha}/specs/inference/summary/execute`, {
-        body: { input: { text: 'the quarter' }, execution_id: succeeded },
+      await server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
+        body: { input: { text: 'the quarter' }, run_id: succeeded },
       });
 
-      const execution = await server.call('GET', `${alpha}/executions/${succeeded}`);
-      const behind = await server.call('GET', `${alpha}/executions/${succeeded}/history`);
-      const newestFirst = await server.call('GET', `${alpha}/executions/${succeeded}/history?order=desc`);
+      const run = await server.call('GET', `${alpha}/runs/${succeeded}`);
+      const behind = await server.call('GET', `${alpha}/runs/${succeeded}/history`);
+      const newestFirst = await server.call('GET', `${alpha}/runs/${succeeded}/history?order=desc`);
       await open.query('COMMIT');
-      const after = await eventually(`${alpha}/executions/${succeeded}/history`, holding(2));
+      const after = await eventually(`${alpha}/runs/${succeeded}/history`, holding(2));
 
-      expect(execution).toMatchObject({ status: 200, body: { status: 'succeeded' } });
+      expect(run).toMatchObject({ status: 200, body: { status: 'succeeded' } });
       expect(behind).toMatchObject({ status: 200, body: { events: [], has_more: false, next_cursor: null } });
-      expect(eventsOf(newestFirst.body).events.map(({ type }) => type)).toEqual([
-        'execution_succeeded',
-        'execution_started',
-      ]);
-      expect(eventsOf(after.body).events.map(({ type }) => type)).toEqual(['execution_started', 'execution_succeeded']);
+      expect(eventsOf(newestFirst.body).events.map(({ type }) => type)).toEqual(['run_succeeded', 'run_started']);
+      expect(eventsOf(after.body).events.map(({ type }) => type)).toEqual(['run_started', 'run_succeeded']);
     });
   },
 );

@@ -18,10 +18,10 @@ export interface EmitterSubject {
 
 const armedBy: OutputOrigin = { version: 2, lastStep: null };
 
-function listenerOf({ executionId }: RunContext, reference: string): ArmListener {
+function listenerOf({ runId }: RunContext, reference: string): ArmListener {
   return {
     kind: 'arm_listener',
-    key: { executionId, reference, run: 1 },
+    key: { runId, reference, run: 1 },
     filters: [{ type: 'com.acme.closed', data: { region: 'eu' } }],
   };
 }
@@ -59,10 +59,10 @@ export const listenerProbes: readonly Probe<ListenerSubject>[] = [
   },
 ];
 
-function emissionOf({ executionId }: RunContext): EmitEvent {
+function emissionOf({ runId }: RunContext): EmitEvent {
   return {
     kind: 'emit_event',
-    key: { executionId, reference: '/do/0/announce', run: 1 },
+    key: { runId, reference: '/do/0/announce', run: 1 },
     event: {
       specversion: '1.0',
       id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',

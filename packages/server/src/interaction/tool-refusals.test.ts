@@ -15,15 +15,15 @@ const decodeHistory = Schema.decodeUnknownSync(
 const namingTheTool: unknown = expect.stringContaining('post_message');
 
 function asked(server: Awaited<ReturnType<typeof servingInteractions>>) {
-  return server.call('POST', `${alpha}/specs/interaction/approve-brief/execute`, {
-    body: { input: brief, execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
+  return server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
+    body: { input: brief, run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
   });
 }
 
 async function refusedThrough(environment: Readonly<Record<string, string>>) {
   const server = await servingInteractions(chatDelivery, environment);
   const refusal = await asked(server);
-  const history = await server.call('GET', `${alpha}/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/history`);
+  const history = await server.call('GET', `${alpha}/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/history`);
   return { refusal: refusal.body, types: decodeHistory(history.body).events.map(({ type }) => type) };
 }
 
@@ -40,7 +40,7 @@ describe('a delivery through a tool this brain may not use, over HTTP', { timeou
     expect(refusals).toMatchObject([
       {
         refusal: { reason: 'unavailable', kind: 'tool_not_offered', because: 'mcp_server_not_configured' },
-        types: ['execution_started', 'execution_rejected'],
+        types: ['run_started', 'run_rejected'],
       },
       { refusal: { detail: 'No MCP server named chat is configured for this brain' } },
       {
@@ -48,7 +48,7 @@ describe('a delivery through a tool this brain may not use, over HTTP', { timeou
           because: 'tool_not_allowed',
           detail: 'The operator of this server does not allow chat/post_message',
         },
-        types: ['execution_started', 'execution_rejected'],
+        types: ['run_started', 'run_rejected'],
       },
     ]);
     expect(chat.received()).toEqual([]);

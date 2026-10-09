@@ -12,7 +12,7 @@ const largeEvery = 200;
 
 export const longRunId = 'long-running';
 
-export const longRun = `brain/o1/big/runs/${longRunId}`;
+export const longRun = `brain/o1/big/run-logs/${longRunId}`;
 
 const statuses: readonly (readonly [number, number, string])[] = [
   [largeEvery, 13, 'succeeded'],
@@ -38,8 +38,8 @@ export function runIdOf(run: number): string {
   return String(run).padStart(8, '0');
 }
 
-export function executions(run: number): string {
-  return `brain/o1/big/executions/${runIdOf(run)}`;
+export function datasetRunStream(run: number): string {
+  return `brain/o1/big/runs/${runIdOf(run)}`;
 }
 
 function metadataOf(correlation: string | undefined): string {
@@ -63,23 +63,29 @@ function finishOf(run: number, at: string): readonly Row[] {
     deferred: { record: {} },
     succeeded: { output: { text: text(run % largeEvery === 13 ? 1_048_576 : 640) }, record: {} },
   };
-  const finished = { type: `execution_${status}`, ...facts[status], by: 'user-1', at };
-  return run < 0 || status === 'running' ? [] : [row(executions(run), 2, finished, runIdOf(run))];
+  const finished = { type: `run_${status}`, ...facts[status], by: 'user-1', at };
+  return run < 0 || status === 'running' ? [] : [row(datasetRunStream(run), 2, finished, runIdOf(run))];
 }
 
 export function tick(t: number): readonly Row[] {
   const at = timeOf(t);
   const input = { text: text(t % largeEvery === 13 ? 262_144 : 320) };
-  const start = { type: 'execution_started', primitive: 'inference', name: `spec-${t % 50}`, spec_version: 1, input };
+  const start = {
+    type: 'run_started',
+    definition_type: 'reasoning',
+    name: `definition-${t % 50}`,
+    definition_version: 1,
+    input,
+  };
   const inputs = Array.from({ length: t % 10 === 0 ? 20 : 0 }, (_, index) =>
-    row(`brain/o1/big/runs/${runIdOf(t)}`, index + 1, { type: 'input_applied', patch: text(2048) }, runIdOf(t)),
+    row(`brain/o1/big/run-logs/${runIdOf(t)}`, index + 1, { type: 'input_applied', patch: text(2048) }, runIdOf(t)),
   );
   const others = Array.from({ length: 7 }, (_, index) =>
-    row(`brain/o2/other-${t % 99}/executions/${t}-${index}`, 1, { type: 'execution_started', input: text(512) }),
+    row(`brain/o2/other-${t % 99}/runs/${t}-${index}`, 1, { type: 'run_started', input: text(512) }),
   );
-  const started = row(executions(t), 1, { ...start, by: 'user-1', at }, runIdOf(t));
+  const started = row(datasetRunStream(t), 1, { ...start, by: 'user-1', at }, runIdOf(t));
   const longStart =
-    t === 0 ? [{ ...started, stream: `brain/o1/big/executions/${longRunId}`, metadata: metadataOf(longRunId) }] : [];
+    t === 0 ? [{ ...started, stream: `brain/o1/big/runs/${longRunId}`, metadata: metadataOf(longRunId) }] : [];
   return [
     started,
     ...finishOf(t - 1, at),
@@ -93,11 +99,11 @@ export function tick(t: number): readonly Row[] {
 export const othersInSQLite = `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 1000000)
   INSERT INTO emt_messages (stream_id, stream_position, partition, message_data, message_metadata,
     message_schema_version, message_type, message_id)
-  SELECT 'brain/o3/other-' || (i % 50) || '/executions/' || i, 1, 'emt:default', '{"type":"execution_started"}', '{}',
-    '1', 'execution_started', 'later-' || i FROM n`;
+  SELECT 'brain/o3/other-' || (i % 50) || '/runs/' || i, 1, 'emt:default', '{"type":"run_started"}', '{}',
+    '1', 'run_started', 'later-' || i FROM n`;
 
 export const othersInPostgreSQL = `INSERT INTO emt_messages (stream_id, stream_position, message_data, message_metadata,
     message_schema_version, message_type, message_id, transaction_id)
-  SELECT 'brain/o3/other-' || (i % 50) || '/executions/' || i, 1, jsonb_build_object('json', '{"type":"execution_started"}'),
-    '{}', '1', 'execution_started', 'later-' || i, pg_current_xact_id()
+  SELECT 'brain/o3/other-' || (i % 50) || '/runs/' || i, 1, jsonb_build_object('json', '{"type":"run_started"}'),
+    '{}', '1', 'run_started', 'later-' || i, pg_current_xact_id()
   FROM generate_series(1, 1000000) AS i`;

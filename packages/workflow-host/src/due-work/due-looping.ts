@@ -8,7 +8,7 @@ import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { sqlTimers } from '../timers/sql-timers.ts';
 import type { FakeDueWork } from './fake-due-work.ts';
 
-const runId = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runKey = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const engine: WorkflowEngine = {
   submit: Function.constant(Effect.die(new Error('The loop submits through the host'))),
@@ -56,9 +56,9 @@ export async function dueLooping(
     order: () => order,
     troubles: () => troubles,
     armTimer: async (dueAt, timerId = '1') => {
-      const timer: ArmTimer = { kind: 'arm_timer', executionId: runId, timerId, dueAt, purpose: 'wait' };
+      const timer: ArmTimer = { kind: 'arm_timer', runId: runKey, timerId, dueAt, purpose: 'wait' };
       await Effect.runPromise(
-        timers.timers.arm(timer, { executionId: runId, attributes: {} }, { version: 1, lastStep: null }),
+        timers.timers.arm(timer, { runId: runKey, attributes: {} }, { version: 1, lastStep: null }),
       );
     },
   };

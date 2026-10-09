@@ -49,7 +49,7 @@ const stallingFolds: readonly (readonly [string, string, Readonly<Record<string,
 ];
 
 async function threeRuns(views: ViewHarness): Promise<void> {
-  await views.ranEach('inference/runs', ['good', 'bad', 'later']);
+  await views.ranEach('reasoning/runs', ['good', 'bad', 'later']);
 }
 
 function stoppingTests(settingsOf: SettingsOf): void {
@@ -63,7 +63,7 @@ function stoppingTests(settingsOf: SettingsOf): void {
 
       const kept = await views.until('runs', isStalled);
 
-      expect(kept).toMatchObject({ view: 1, folded: 1, stall: { ...stall, event: { type: 'execution_succeeded' } } });
+      expect(kept).toMatchObject({ view: 1, folded: 1, stall: { ...stall, event: { type: 'run_succeeded' } } });
       expect(kept.stall?.event.id).toEqual(anyText);
       expect(kept.stall?.event.time).toBe('2026-10-06T10:00:00.000Z');
     },
@@ -92,7 +92,7 @@ function afterTheStallTests(settingsOf: SettingsOf): void {
     views.start();
 
     await views.until('stalling', isStalled);
-    await views.ran('inference/runs', 'after the stall');
+    await views.ran('reasoning/runs', 'after the stall');
     const kept = await views.until('counting', foldedAll(4));
     const stalling = await views.viewOf('stalling');
 
@@ -117,7 +117,7 @@ function lostPageTests(settingsOf: SettingsOf): void {
   it('keeps what it folded before the event its worker broke on, counting each try there, and then stalls', async () => {
     const views = await viewHarness(await settingsOf(), { foldWorker: breakingFoldWorker });
     await views.saved('outputs', collecting);
-    await views.ranEach('inference/runs', [1, 2, breaksTheWorker]);
+    await views.ranEach('reasoning/runs', [1, 2, breaksTheWorker]);
     views.start({ overtimesBeforeStall: 2, sweepEveryMs: 20 });
 
     const kept = await views.until('outputs', isStalled);
@@ -128,7 +128,7 @@ function lostPageTests(settingsOf: SettingsOf): void {
       stall: {
         kind: 'crash',
         message: 'The fold was stopped by its crash 2 times',
-        event: { type: 'execution_succeeded' },
+        event: { type: 'run_succeeded' },
       },
     });
   });
@@ -136,7 +136,7 @@ function lostPageTests(settingsOf: SettingsOf): void {
   it('keeps every event it folded before the one its worker broke on, when folding up to it ends early', async () => {
     const views = await viewHarness(await settingsOf(), { foldWorker: breakingFoldWorker });
     await views.saved('outputs', collecting);
-    await views.ranEach('inference/runs', [1, 2, breaksTheWorker]);
+    await views.ranEach('reasoning/runs', [1, 2, breaksTheWorker]);
     const pool = secondFoldWithBudget(views.pool, 0);
     views.start({ pool, overtimesBeforeStall: 2, sweepEveryMs: 20 });
 
@@ -161,7 +161,7 @@ function neighbourTests(settingsOf: SettingsOf): void {
     views.start({ folding: { ...foldingOf(), foldDeadlineMs: 1000, pageBudgetMs: 1 }, overtimesBeforeStall: 1 });
     await Promise.all(names.map((name) => views.until(name, isLive)));
 
-    await views.ran('inference/runs', sleepsBeforeItIsFolded);
+    await views.ran('reasoning/runs', sleepsBeforeItIsFolded);
     const kept = await Promise.all(names.map((name) => views.until(name, liveWith(1))));
 
     expect(kept.map(({ phase, view }) => [phase, view])).toEqual(names.map(() => ['live', 1]));

@@ -34,7 +34,7 @@ model_aliases:
 | Tools that functions may call                        | `mcp_servers` in the file, each entry's `allowed` to allow only some of its tools       | [MCP servers](#mcp-servers)                                                             |
 | The requests interaction functions may keep open     | `INTERACTION_OPEN_REQUESTS`                                                             | [Interaction functions](#interaction-functions)                                         |
 
-`list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases whose target's provider is configured, and leaves out what `allowed_models` does not allow. A spec that names a model outside `allowed_models`, by its own name or the alias it is sent through, cannot run, and its run says the model is not offered and that `list_models` shows those that are.
+`list_models` (`GET /v1/orgs/{org}/models`, and the MCP tool of the same name) lists the models the server can call: it asks Anthropic, OpenAI, Google and each gateway for their models with the server's own credentials, keeps each list for five minutes, adds the models `declared_models` names and the aliases whose target's provider is configured, and leaves out what `allowed_models` does not allow. A definition that names a model outside `allowed_models`, by its own name or the alias it is sent through, cannot run, and its run says the model is not offered and that `list_models` shows those that are.
 
 ```yaml
 declared_models:

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { recallDocument } from '@beonauto/recollection/testing';
+import { recallDocument } from '@beonauto/recall/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -46,8 +46,7 @@ function secondEnvironment(): Promise<Readonly<Record<string, string>>> {
   return postgresql === '' ? Promise.resolve({}) : onADatabaseOfItsOwn();
 }
 
-const reviewRuns =
-  'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief';
+const reviewRuns = 'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief';
 
 const byCampaign = recallDocument(
   [
@@ -87,23 +86,23 @@ const decodeStanding = Schema.decodeUnknownSync(
 
 const decodeOutput = Schema.decodeUnknownSync(Schema.Struct({ output: Schema.Json }));
 
-const decodeRun = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
+const decodeRun = Schema.decodeUnknownSync(Schema.Struct({ run_id: Schema.String }));
 
 const decodeRecord = Schema.decodeUnknownSync(
   Schema.Struct({ output: Schema.Json, record: Schema.Struct({ work: Schema.Number }) }),
 );
 
 async function answeredBy(server: ReasoningServer, name: string) {
-  const run = decodeRun((await recalled(server, name, {})).body).execution_id;
-  const { output, record } = decodeRecord((await server.call('GET', `${alpha}/executions/${run}`)).body);
+  const run = decodeRun((await recalled(server, name, {})).body).run_id;
+  const { output, record } = decodeRecord((await server.call('GET', `${alpha}/runs/${run}`)).body);
   return { output, work: record.work };
 }
 
 async function viewsOn(server: ReasoningServer) {
   await brainWithReviews(server, outputs.length);
-  await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'campaigns', source: byCampaign } });
-  await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'depths', source: depths } });
-  await server.call('POST', `${alpha}/specs/recollection`, { body: { name: 'counted', source: counted } });
+  await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'campaigns', source: byCampaign } });
+  await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'depths', source: depths } });
+  await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'counted', source: counted } });
   await standingUntil(server, 'campaigns', liveWith(outputs.length));
   await standingUntil(server, 'counted', liveWith(outputs.length));
   const answers = { cold: await answeredBy(server, 'counted'), warm: await answeredBy(server, 'counted') };

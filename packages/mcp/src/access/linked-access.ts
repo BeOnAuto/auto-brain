@@ -20,7 +20,7 @@ export function linkedAccess(settings: McpSettings, options: ToolAccessOptions):
     now: options.now ?? Date.now,
     timing,
     reportOutput: (server, message) => {
-      report({ server, message, execution_id: null, tool_test_id: null });
+      report({ server, message, run_id: null, tool_test_id: null });
     },
   };
   const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));

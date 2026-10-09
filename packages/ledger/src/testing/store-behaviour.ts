@@ -84,7 +84,7 @@ function readingWhatWasAppended(entry: LedgerEntry): void {
       const before = await store.readAppended(undefined, 100);
       await store.append('brain/acme/alpha/events/e1', numbered(1, 1), 0);
       await store.append('brain/acme/alpha/events/e2', numbered(1, 2), 0);
-      await store.append('brain/acme/alpha/runs/r1', numbered(1, 1), 0);
+      await store.append('brain/acme/alpha/run-logs/r1', numbered(1, 1), 0);
       await store.append('org/acme/brains', numbered(2, 1), 1);
       await readable();
 
@@ -93,7 +93,7 @@ function readingWhatWasAppended(entry: LedgerEntry): void {
 
       expect(appended.streams.toSorted()).toEqual([
         'brain/acme/alpha/events/',
-        'brain/acme/alpha/runs/',
+        'brain/acme/alpha/run-logs/',
         'org/acme/brains',
       ]);
       expect(appended.more).toBe(false);

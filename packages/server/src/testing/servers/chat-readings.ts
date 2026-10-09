@@ -37,7 +37,7 @@ export const flatReading: readonly string[] = readingOf([], []);
 const ListedSchema = Schema.Struct({
   interactions: Schema.Array(
     Schema.Struct({
-      execution_id: Schema.String,
+      run_id: Schema.String,
       function: Schema.String,
       conversation: Schema.NullOr(Schema.String),
       answerer: Schema.NullOr(Schema.String),

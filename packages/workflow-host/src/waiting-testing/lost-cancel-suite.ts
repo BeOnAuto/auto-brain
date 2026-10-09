@@ -11,8 +11,8 @@ import { followedThroughTheLatest, settledIn, untilFollowed } from './followed-h
 import {
   askedCancel,
   lostCancelId,
-  lostExecutionId,
   lostRunId,
+  lostRunKey,
   lostStart,
   lostStream,
   startedThenCancelled,
@@ -22,17 +22,17 @@ const aWhile = 30_000;
 
 const attempts = 2000;
 
-const ofTheRun = { primitive: 'orchestration', name: 'pause', spec_version: 1, by: 'brain:alpha', at };
+const ofTheRun = { definition_type: 'workflow', name: 'pause', definition_version: 1, by: 'brain:alpha', at };
 
 const rejectedUnstarted = {
-  type: 'execution_rejected',
+  type: 'run_rejected',
   rejection: { reason: 'unavailable', detail: 'The workflow could not be started' },
   ...ofTheRun,
 };
 
 const strandedId = '0199a3c4-7d2e-7c1a-9b3f-0000000000e1';
 
-const strandedCancel = { type: 'execution_cancel_requested', kind: 'requested', reason: 'Gone', ...ofTheRun };
+const strandedCancel = { type: 'run_cancel_requested', kind: 'requested', reason: 'Gone', ...ofTheRun };
 
 function diedAfterTheStart(settingsOf: SettingsOf): void {
   describe('a host that died after it started a run and before it read the cancel its follower had passed over', () => {
@@ -48,11 +48,11 @@ function diedAfterTheStart(settingsOf: SettingsOf): void {
         await startedThenCancelled(database);
         await followedThroughTheLatest(database, attempts);
         await first.host.stop();
-        await startedByAHostThatDied(database, lostRunId, lostStart);
+        await startedByAHostThatDied(database, lostRunKey, lostStart);
 
         const next = await hostedOn(settings);
-        next.know(lostExecutionId);
-        const settlement = await settledIn(next, attempts)(lostExecutionId);
+        next.know(lostRunId);
+        const settlement = await settledIn(next, attempts)(lostRunId);
 
         expect(settlement).toEqual({
           status: 'rejected',
@@ -79,7 +79,7 @@ function endedWithoutStarting(settingsOf: SettingsOf): void {
         await untilFollowed(database, attempts);
         const pending = () => Effect.runPromise(pendingCancelRowsAfter(database, '', 10));
         await startedThenCancelled(database);
-        await recorded(database.store, `${alpha}executions/${strandedId}`, strandedCancel);
+        await recorded(database.store, `${alpha}runs/${strandedId}`, strandedCancel);
         const kept = await until(pending, (rows) => rows.length === 2, attempts);
         await recorded(database.store, lostStream, rejectedUnstarted);
         await followedThroughTheLatest(database, attempts);
@@ -89,13 +89,13 @@ function endedWithoutStarting(settingsOf: SettingsOf): void {
         await hostedOn(settings);
         const left = await until(pending, (rows) => rows.length === 1, attempts);
 
-        expect(kept.find(({ runId }) => runId === lostRunId)).toEqual({
-          runId: lostRunId,
+        expect(kept.find(({ runKey }) => runKey === lostRunKey)).toEqual({
+          runKey: lostRunKey,
           cause: lostCancelId,
           cancel: askedCancel,
         });
         expect(keptAfterTheEnding).toHaveLength(2);
-        expect(left.map(({ runId }) => runId)).toEqual([`acme/alpha/${strandedId}`]);
+        expect(left.map(({ runKey }) => runKey)).toEqual([`acme/alpha/${strandedId}`]);
       },
     );
   });

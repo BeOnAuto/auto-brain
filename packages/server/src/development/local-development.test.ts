@@ -23,8 +23,8 @@ describe('the local development setup', () => {
       'packages/server',
       'packages/api',
       'packages/workflow-host',
-      'primitives/orchestration',
-      'primitives/inference',
+      'capabilities/coordination',
+      'capabilities/reasoning',
     ]
       .map((workspace) => join(repository, workspace, 'src'))
       .filter((directory) => !watched.includes(directory));

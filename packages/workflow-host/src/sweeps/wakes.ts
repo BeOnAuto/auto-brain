@@ -16,7 +16,7 @@ export interface Wakes {
 
 export function followedBrainOf(stream: string): string | undefined {
   const brainKey = brainKeyOfStream(stream);
-  return brainKey === undefined || !brainKey.startsWith('brain/') || stream.startsWith(`${brainKey}runs/`)
+  return brainKey === undefined || !brainKey.startsWith('brain/') || stream.startsWith(`${brainKey}run-logs/`)
     ? undefined
     : brainKey;
 }

@@ -7,9 +7,9 @@ import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { requestTo, settledOver, workflowProcess, type Answer } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { until, workflows } from '../testing/servers/workflow-calls.ts';
-import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
-const Listed = Schema.Struct({ executions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) });
+const Listed = Schema.Struct({ runs: Schema.Array(Schema.Struct({ run_id: Schema.String })) });
 
 const decodeListed = Schema.decodeUnknownSync(Listed);
 
@@ -27,8 +27,8 @@ function sourceOf(name: string): string {
 
 async function definedOn(port: number): Promise<void> {
   await requestTo(port, 'POST', '', { brain: 'beta', name: 'Beta' });
-  await requestTo(port, 'POST', '/beta/specs/orchestration', { name: 'pending', source: sourceOf('pending') });
-  await requestTo(port, 'POST', '/beta/specs/orchestration', { name: 'waiting', source: sourceOf('waiting') });
+  await requestTo(port, 'POST', '/beta/definitions/workflow', { name: 'pending', source: sourceOf('pending') });
+  await requestTo(port, 'POST', '/beta/definitions/workflow', { name: 'waiting', source: sourceOf('waiting') });
 }
 
 function callStatesIn(file: string): () => Promise<readonly unknown[]> {
@@ -46,10 +46,10 @@ function waitingOnce(states: readonly unknown[]): boolean {
 
 async function waitingOn(port: number, file: string): Promise<{ readonly parent: string; readonly child: string }> {
   await definedOn(port);
-  const started = await requestTo(port, 'POST', '/beta/specs/orchestration/waiting/execute', { input: {} });
+  const started = await requestTo(port, 'POST', '/beta/definitions/workflow/waiting/run', { input: {} });
   await until(callStatesIn(file), waitingOnce);
-  const listed = await requestTo(port, 'GET', '/beta/executions?name=pending');
-  return { parent: executionIdIn(started.body), child: String(decodeListed(listed.body).executions[0]?.execution_id) };
+  const listed = await requestTo(port, 'GET', '/beta/runs?name=pending');
+  return { parent: runIdIn(started.body), child: String(decodeListed(listed.body).runs[0]?.run_id) };
 }
 
 function accepted(answer: Answer): boolean {
@@ -75,10 +75,10 @@ describe(
       const port = await second.port;
       const afterRestart = await callStatesIn(file)();
       await until(
-        () => requestTo(port, 'POST', `/beta/executions/${child}/events`, { event: { type: 'com.acme.go', data: 1 } }),
+        () => requestTo(port, 'POST', `/beta/runs/${child}/events`, { event: { type: 'com.acme.go', data: 1 } }),
         accepted,
       );
-      const settled = await settledOver(port, `/beta/executions/${parent}`);
+      const settled = await settledOver(port, `/beta/runs/${parent}`);
 
       expect(afterRestart).toEqual([{ state: 'waiting' }]);
       expect(settled).toMatchObject({ status: 'succeeded', output: [1] });
@@ -94,11 +94,11 @@ describe('a cancel that lands on a server that does not hold the lease', { timeo
     const { parent, child } = await waitingOn(await holder.port, file);
     const standby = workflowProcess(file);
 
-    const cancelled = await requestTo(await standby.port, 'POST', `/beta/executions/${child}/cancel`, {
+    const cancelled = await requestTo(await standby.port, 'POST', `/beta/runs/${child}/cancel`, {
       reason: 'Cancelled elsewhere',
     });
-    const settled = await settledOver(await holder.port, `/beta/executions/${parent}`);
-    const ofTheChild = await settledOver(await holder.port, `/beta/executions/${child}`);
+    const settled = await settledOver(await holder.port, `/beta/runs/${parent}`);
+    const ofTheChild = await settledOver(await holder.port, `/beta/runs/${child}`);
 
     expect(cancelled.status).toBe(200);
     expect(ofTheChild).toMatchObject({
@@ -117,8 +117,8 @@ describe('a cancel that lands on a server that does not hold the lease', { timeo
 
     const second = workflowProcess(file);
     const port = await second.port;
-    const cancelled = await requestTo(port, 'POST', `/beta/executions/${parent}/cancel`, {});
-    const settled = await settledOver(port, `/beta/executions/${parent}`);
+    const cancelled = await requestTo(port, 'POST', `/beta/runs/${parent}/cancel`, {});
+    const settled = await settledOver(port, `/beta/runs/${parent}`);
 
     expect(cancelled.status).toBe(200);
     expect(settled).toMatchObject({ status: 'rejected', rejection: { reason: 'cancelled', kind: 'requested' } });

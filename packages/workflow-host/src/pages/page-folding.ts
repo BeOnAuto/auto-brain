@@ -40,7 +40,7 @@ type Lost = Extract<FoldOutcome, { readonly ran: 'stopped' | 'crashed' }>;
 
 type Folded = Extract<FoldOutcome, { readonly ran: 'folded' }>;
 
-const runSourcePrefix = '/executions/';
+const runSourcePrefix = '/runs/';
 
 const stoppedBy = { deadline: 'time', memory: 'memory' } as const satisfies Readonly<Record<string, StallCause>>;
 

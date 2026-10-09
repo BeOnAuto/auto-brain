@@ -3,7 +3,7 @@ import { Context } from 'effect';
 import type { Lineage } from '../ledger/message-lineage.ts';
 
 export interface CallLink {
-  readonly execution_id: string;
+  readonly run_id: string;
   readonly reference: string;
   readonly run: number;
 }

@@ -3,7 +3,6 @@ import { setTimeout } from 'node:timers/promises';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { CallJournal, RecordedCall } from '../calls/recorded-calls.ts';
 import {
   controlledSignals,
   fakeApiKey,
@@ -12,6 +11,7 @@ import {
   serveFakeMcp,
   toolRun,
 } from '../testing/index.ts';
+import type { CallJournal, RecordedCall } from './recorded-calls.ts';
 
 const closing: (() => Promise<void>)[] = [];
 

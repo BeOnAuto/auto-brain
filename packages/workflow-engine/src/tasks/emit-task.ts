@@ -73,7 +73,7 @@ export function startEmit(invocation: Invocation): BodyAdvance {
   const { session } = machine;
   const attributes = attributesOf(invocation);
   checked(attributes, entry.reference);
-  const key = { executionId: session.executionId(), reference: entry.reference, run: frame.run };
+  const key = { runId: session.runId(), reference: entry.reference, run: frame.run };
   const bound = session.emissions.emit(key, eventOf(invocation, attributes, key));
   if (bound !== undefined) {
     throw new RaisedError(bound);

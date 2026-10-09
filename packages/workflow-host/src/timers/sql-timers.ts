@@ -12,7 +12,7 @@ import { oneRowOf, rowsOf, WholeNumber, type DatabaseFailed, type HostDatabase }
 import { statement } from '../database/statement.ts';
 
 export interface DueTimer {
-  readonly runId: string;
+  readonly runKey: string;
   readonly timerId: string;
 }
 
@@ -28,7 +28,7 @@ type TimerState = 'armed' | 'fired' | 'cancelled';
 
 const StateRow = Schema.Struct({ state: Schema.Literals(['armed', 'fired', 'cancelled']) });
 
-const DueRow = Schema.Struct({ run_id: Schema.String, timer_id: Schema.String });
+const DueRow = Schema.Struct({ run_key: Schema.String, timer_id: Schema.String });
 
 const NextRow = Schema.Struct({ due: Schema.NullOr(WholeNumber) });
 
@@ -56,45 +56,47 @@ function changed(rows: Effect.Effect<readonly unknown[], DatabaseFailed>): Effec
 
 function inserted(
   database: HostDatabase,
-  runId: string,
+  runKey: string,
   timer: ArmTimer,
   armedBy: number | null,
 ): Effect.Effect<boolean, DatabaseFailed> {
   return changed(
     database.write(
-      statement`INSERT INTO workflow_timers (run_id, timer_id, state, due_at, armed_by)
-        VALUES (${runId}, ${timer.timerId}, 'armed', ${timer.dueAt}, ${armedBy})
-        ON CONFLICT (run_id, timer_id) DO NOTHING RETURNING state`,
+      statement`INSERT INTO workflow_timers (run_key, timer_id, state, due_at, armed_by)
+        VALUES (${runKey}, ${timer.timerId}, 'armed', ${timer.dueAt}, ${armedBy})
+        ON CONFLICT (run_key, timer_id) DO NOTHING RETURNING state`,
     ),
   );
 }
 
-export function armedByOf(database: HostDatabase, runId: string, timerId: string): Effect.Effect<number | null> {
+export function armedByOf(database: HostDatabase, runKey: string, timerId: string): Effect.Effect<number | null> {
   return Effect.orDie(
     rowsOf(
       ArmedByRows,
-      database.read(statement`SELECT armed_by FROM workflow_timers WHERE run_id = ${runId} AND timer_id = ${timerId}`),
+      database.read(
+        statement`SELECT armed_by FROM workflow_timers WHERE run_key = ${runKey} AND timer_id = ${timerId}`,
+      ),
     ),
   ).pipe(Effect.map((rows) => rows[0]?.armed_by ?? null));
 }
 
-function stateOf(database: HostDatabase, runId: string, timerId: string): Effect.Effect<TimerState, DatabaseFailed> {
+function stateOf(database: HostDatabase, runKey: string, timerId: string): Effect.Effect<TimerState, DatabaseFailed> {
   return oneRowOf(
     StateRow,
-    database.read(statement`SELECT state FROM workflow_timers WHERE run_id = ${runId} AND timer_id = ${timerId}`),
+    database.read(statement`SELECT state FROM workflow_timers WHERE run_key = ${runKey} AND timer_id = ${timerId}`),
   ).pipe(Effect.map(({ state }) => state));
 }
 
 function cancelledFor(
   database: HostDatabase,
-  runId: string,
+  runKey: string,
   timerId: string,
 ): Effect.Effect<TimerCancelReceipt, DatabaseFailed> {
   return Effect.gen(function* () {
     const disarmed = yield* changed(
       database.write(
         statement`UPDATE workflow_timers SET state = 'cancelled'
-          WHERE run_id = ${runId} AND timer_id = ${timerId} AND state = 'armed' RETURNING state`,
+          WHERE run_key = ${runKey} AND timer_id = ${timerId} AND state = 'armed' RETURNING state`,
       ),
     );
     if (disarmed) {
@@ -102,17 +104,17 @@ function cancelledFor(
     }
     const tombstoned = yield* changed(
       database.write(
-        statement`INSERT INTO workflow_timers (run_id, timer_id, state) VALUES (${runId}, ${timerId}, 'cancelled')
-          ON CONFLICT (run_id, timer_id) DO NOTHING RETURNING state`,
+        statement`INSERT INTO workflow_timers (run_key, timer_id, state) VALUES (${runKey}, ${timerId}, 'cancelled')
+          ON CONFLICT (run_key, timer_id) DO NOTHING RETURNING state`,
       ),
     );
-    return tombstoned ? 'tombstoned' : cancelReceipts[yield* stateOf(database, runId, timerId)];
+    return tombstoned ? 'tombstoned' : cancelReceipts[yield* stateOf(database, runKey, timerId)];
   });
 }
 
 function timerPort(database: HostDatabase, armed: (dueAt: number) => void): Timers {
-  const armedFor = (runId: string, timer: ArmTimer, armedBy: number | null): Effect.Effect<boolean, DatabaseFailed> =>
-    Effect.tap(inserted(database, runId, timer, armedBy), (fresh) =>
+  const armedFor = (runKey: string, timer: ArmTimer, armedBy: number | null): Effect.Effect<boolean, DatabaseFailed> =>
+    Effect.tap(inserted(database, runKey, timer, armedBy), (fresh) =>
       Effect.sync(() => {
         if (fresh) {
           armed(timer.dueAt);
@@ -122,15 +124,15 @@ function timerPort(database: HostDatabase, armed: (dueAt: number) => void): Time
   return {
     arm: (timer, run, origin: OutputOrigin) =>
       Effect.gen(function* () {
-        if (yield* armedFor(run.executionId, timer, origin.version)) {
+        if (yield* armedFor(run.runId, timer, origin.version)) {
           return 'armed';
         }
-        return armReceipts[yield* stateOf(database, run.executionId, timer.timerId)];
+        return armReceipts[yield* stateOf(database, run.runId, timer.timerId)];
       }).pipe(Effect.mapError(failedTo('arm_timer'))),
     cancel: (timer, run) =>
-      cancelledFor(database, run.executionId, timer.timerId).pipe(Effect.mapError(failedTo('cancel_timer'))),
+      cancelledFor(database, run.runId, timer.timerId).pipe(Effect.mapError(failedTo('cancel_timer'))),
     sweep: (run, timers) =>
-      Effect.forEach(timers, (timer) => armedFor(run.executionId, timer, null)).pipe(
+      Effect.forEach(timers, (timer) => armedFor(run.runId, timer, null)).pipe(
         Effect.map((armedAgain: readonly boolean[]) => armedAgain.filter(Boolean).length),
         Effect.mapError(failedTo('arm_timer')),
       ),
@@ -145,11 +147,11 @@ export function sqlTimers(database: HostDatabase, armed: (dueAt: number) => void
         rowsOf(
           DueRow,
           database.read(
-            statement`SELECT run_id, timer_id FROM workflow_timers
+            statement`SELECT run_key, timer_id FROM workflow_timers
               WHERE state = 'armed' AND due_at <= ${now} ORDER BY due_at LIMIT ${limit}`,
           ),
         ),
-      ).pipe(Effect.map((rows) => rows.map(({ run_id: runId, timer_id: timerId }) => ({ runId, timerId })))),
+      ).pipe(Effect.map((rows) => rows.map(({ run_key: runKey, timer_id: timerId }) => ({ runKey, timerId })))),
     nextDueAt: () =>
       Effect.orDie(
         oneRowOf(
@@ -157,21 +159,21 @@ export function sqlTimers(database: HostDatabase, armed: (dueAt: number) => void
           database.read(statement`SELECT MIN(due_at) AS due FROM workflow_timers WHERE state = 'armed'`),
         ),
       ).pipe(Effect.map(({ due }) => due)),
-    fired: ({ runId, timerId }) =>
+    fired: ({ runKey, timerId }) =>
       Effect.asVoid(
         Effect.orDie(
           database.write(
             statement`UPDATE workflow_timers SET state = 'fired'
-              WHERE run_id = ${runId} AND timer_id = ${timerId} AND state = 'armed'`,
+              WHERE run_key = ${runKey} AND timer_id = ${timerId} AND state = 'armed'`,
           ),
         ),
       ),
-    postponed: ({ runId, timerId }, until) =>
+    postponed: ({ runKey, timerId }, until) =>
       Effect.asVoid(
         Effect.orDie(
           database.write(
             statement`UPDATE workflow_timers SET due_at = ${until}
-              WHERE run_id = ${runId} AND timer_id = ${timerId} AND state = 'armed'`,
+              WHERE run_key = ${runKey} AND timer_id = ${timerId} AND state = 'armed'`,
           ),
         ),
       ),

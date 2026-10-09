@@ -8,9 +8,9 @@ import {
   type ToolResult,
 } from '@beonauto/api/testing';
 import { createApiKey } from '@beonauto/identity';
-import { ModelNotAllowed, ProviderNotConfigured, SpecInvalid } from '@beonauto/inference';
-import { answers, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { allPermissions } from '@beonauto/operations';
+import { ModelNotAllowed, ProviderNotConfigured, DefinitionInvalid } from '@beonauto/reasoning';
+import { answers, textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -56,7 +56,7 @@ const replies: readonly ScriptedReply[] = [
     ),
   () =>
     Effect.fail(
-      new SpecInvalid({
+      new DefinitionInvalid({
         detail: 'anthropic answered HTTP 400',
         provider: 'anthropic',
         status: 400,
@@ -75,11 +75,11 @@ const switchable =
   'Nothing was changed. This can be put right on your side: once its prompt names one of the models this server can call, which list_models shows, it can be tried again.';
 
 function executedOnce(): Promise<ToolResult> {
-  const reasonFunction = { primitive: 'inference', name: 'summary' };
+  const reasonFunction = { type: 'reasoning', name: 'summary' };
   return onMcp(async (session) => {
     await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
-    await session.callTool('create_spec', inSales({ ...reasonFunction, source: summary }));
-    return session.callTool('execute_spec', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
+    await session.callTool('create_definition', inSales({ ...reasonFunction, source: summary }));
+    return session.callTool('run_definition', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
   });
 }
 
@@ -120,23 +120,20 @@ async function brainsCalled(session: McpSession): Promise<Called> {
 }
 
 async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
-  const reasonFunction = { primitive: 'inference', name: 'summary' };
-  const created = await session.callTool('create_spec', inSales({ ...reasonFunction, source: summary }));
-  const executed = await session.callTool(
-    'execute_spec',
-    inSales({ ...reasonFunction, input: { text: 'the quarter' } }),
-  );
-  const executionId = String(executed.structuredContent?.['execution_id']);
+  const reasonFunction = { type: 'reasoning', name: 'summary' };
+  const created = await session.callTool('create_definition', inSales({ ...reasonFunction, source: summary }));
+  const ran = await session.callTool('run_definition', inSales({ ...reasonFunction, input: { text: 'the quarter' } }));
+  const runId = String(ran.structuredContent?.['run_id']);
   const revised = summary.replace('Summarize: ', 'Sum up: ');
   return [
-    ['create_spec', created],
-    ['list_specs', await session.callTool('list_specs', inSales({ primitive: 'inference' }))],
-    ['get_spec', await session.callTool('get_spec', inSales(reasonFunction))],
-    ['update_spec', await session.callTool('update_spec', inSales({ ...reasonFunction, source: revised }))],
-    ['execute_spec', executed],
-    ['get_execution', await session.callTool('get_execution', inSales({ execution_id: executionId }))],
-    ['list_executions', await session.callTool('list_executions', inSales({}))],
-    ['get_execution_history', await session.callTool('get_execution_history', inSales({ execution_id: executionId }))],
+    ['create_definition', created],
+    ['list_definitions', await session.callTool('list_definitions', inSales({ type: 'reasoning' }))],
+    ['get_definition', await session.callTool('get_definition', inSales(reasonFunction))],
+    ['update_definition', await session.callTool('update_definition', inSales({ ...reasonFunction, source: revised }))],
+    ['run_definition', ran],
+    ['get_run', await session.callTool('get_run', inSales({ run_id: runId }))],
+    ['list_runs', await session.callTool('list_runs', inSales({}))],
+    ['get_run_history', await session.callTool('get_run_history', inSales({ run_id: runId }))],
     [
       'publish_event',
       await session.callTool('publish_event', inSales({ event: { source: '/crm', type: 'com.acme.deal.won' } })),
@@ -149,54 +146,48 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
 }
 
 async function workflowsCalled(session: McpSession): Promise<Called> {
-  const workflow = { primitive: 'orchestration', name: 'approval' };
-  await session.callTool('create_spec', inSales({ ...workflow, source: approval }));
-  const started = await session.callTool('execute_spec', inSales(workflow));
-  const executionId = String(started.structuredContent?.['execution_id']);
+  const workflow = { type: 'workflow', name: 'approval' };
+  await session.callTool('create_definition', inSales({ ...workflow, source: approval }));
+  const started = await session.callTool('run_definition', inSales(workflow));
+  const runId = String(started.structuredContent?.['run_id']);
   const event = { type: 'com.acme.approval.decided', data: 'yes' };
   return [
-    ['execute_spec', started],
-    ['get_execution', await session.callTool('get_execution', inSales({ execution_id: executionId }))],
-    [
-      'send_execution_event',
-      await session.callTool('send_execution_event', inSales({ execution_id: executionId, event })),
-    ],
-    ['cancel_execution', await cancelled(session, await session.callTool('execute_spec', inSales(workflow)))],
-    ['retire_spec', await session.callTool('retire_spec', inSales(workflow))],
+    ['run_definition', started],
+    ['get_run', await session.callTool('get_run', inSales({ run_id: runId }))],
+    ['send_run_event', await session.callTool('send_run_event', inSales({ run_id: runId, event }))],
+    ['cancel_run', await cancelled(session, await session.callTool('run_definition', inSales(workflow)))],
+    ['retire_definition', await session.callTool('retire_definition', inSales(workflow))],
   ];
 }
 
 function cancelled(session: McpSession, { structuredContent }: ToolResult): Promise<ToolResult> {
-  return session.callTool('cancel_execution', inSales({ execution_id: String(structuredContent?.['execution_id']) }));
+  return session.callTool('cancel_run', inSales({ run_id: String(structuredContent?.['run_id']) }));
 }
 
 async function errorsCalled(session: McpSession): Promise<Called> {
   const run = (input: Readonly<Record<string, unknown>>) =>
-    session.callTool('execute_spec', inSales({ primitive: 'inference', name: 'summary', ...input }));
-  const broken = { primitive: 'inference', name: 'broken', source: '---\nmodel: [\n---\nHi' };
-  const retired = { primitive: 'orchestration', name: 'approval', source: approval };
+    session.callTool('run_definition', inSales({ type: 'reasoning', name: 'summary', ...input }));
+  const broken = { type: 'reasoning', name: 'broken', source: '---\nmodel: [\n---\nHi' };
+  const retired = { type: 'workflow', name: 'approval', source: approval };
   return [
-    ['an unconnected provider', await run({ input: { text: 'the quarter' }, execution_id: unconnectedRun })],
+    ['an unconnected provider', await run({ input: { text: 'the quarter' }, run_id: unconnectedRun })],
     ['a document the provider refuses', await run({ input: { text: 'the year' } })],
     ['an unexpected failure', await run({ input: { text: 'the decade' } })],
     ['input that does not fit', await run({ input: { text: 7 } })],
-    ['a document that does not parse', await session.callTool('create_spec', inSales(broken))],
+    ['a document that does not parse', await session.callTool('create_definition', inSales(broken))],
     ['a name already taken', await session.callTool('create_brain', { brain: 'sales', name: 'Sales again' })],
-    ['a retired thing', await session.callTool('update_spec', inSales(retired))],
+    ['a retired thing', await session.callTool('update_definition', inSales(retired))],
     [
       'a retired brain',
-      await session.callTool('create_spec', {
+      await session.callTool('create_definition', {
         brain: 'old-sales',
-        primitive: 'inference',
+        type: 'reasoning',
         name: 'summary',
         source: summary,
       }),
     ],
     ['something missing', await session.callTool('get_brain', { brain: 'nowhere' })],
-    [
-      'a run that did not go through',
-      await session.callTool('get_execution', inSales({ execution_id: unconnectedRun })),
-    ],
+    ['a run that did not go through', await session.callTool('get_run', inSales({ run_id: unconnectedRun }))],
   ];
 }
 
@@ -261,7 +252,7 @@ describe('the plain words that lead each result over MCP', { timeout: workflowTe
     server = await servingWorkflows([], { API_KEYS: JSON.stringify([limited.entry]) });
 
     const refused = await onMcp(
-      (session) => session.callTool('list_specs', { brain: 'beta', primitive: 'inference' }),
+      (session) => session.callTool('list_definitions', { brain: 'beta', type: 'reasoning' }),
       { authorization: `Bearer ${limited.key}` },
     );
 

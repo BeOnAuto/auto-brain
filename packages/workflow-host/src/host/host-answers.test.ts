@@ -7,9 +7,9 @@ import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
 import { HostStopped } from './host-gate.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const run = runAt(executionId);
+const run = runAt(runId);
 
 const listening = workflow('do:\n  - approval: { listen: { to: { one: { with: { type: com.acme.approved } } } } }');
 
@@ -55,14 +55,14 @@ describe('the host given an event', () => {
 });
 
 describe('the host reporting to its operator', () => {
-  it('reports a run whose execution the brain does not know, once it ends', async () => {
+  it('reports a run whose run the brain does not know, once it ends', async () => {
     const hosted = await hostedOn({ store: 'sqlite', file: aSQLiteFile() });
 
     await Effect.runPromise(hosted.host.start(run, startOf(listening)));
     await Effect.runPromise(hosted.host.deliver(run, approved));
     const troubles = await eventually(hosted.troubles, (reported) => reported.length > 0);
 
-    expect(troubles).toEqual([`${executionId} unknown_execution`]);
+    expect(troubles).toEqual([`${runId} unknown_run`]);
   });
 
   it('reports a call that broke down before it could answer', async () => {

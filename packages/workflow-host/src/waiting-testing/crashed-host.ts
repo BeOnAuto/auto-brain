@@ -27,8 +27,8 @@ export function bareEngineOn(database: HostDatabase): HostEngine {
   );
 }
 
-export async function startedByAHostThatDied(database: HostDatabase, runId: string, start: RunStart): Promise<void> {
+export async function startedByAHostThatDied(database: HostDatabase, runKey: string, start: RunStart): Promise<void> {
   await Effect.runPromise(
-    bareEngineOn(database).submitted({ ...start, kind: 'started', executionId: runId, at: Date.now() }),
+    bareEngineOn(database).submitted({ ...start, kind: 'started', runId: runKey, at: Date.now() }),
   );
 }

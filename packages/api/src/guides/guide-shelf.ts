@@ -64,8 +64,8 @@ export function guideShelfOf(
   const everyGuide = [...guides, ...recipes];
   const names = everyGuide.map(({ name }) => name);
   requireDistinctNames(names);
-  for (const { primitive, guide } of definitionTypes) {
-    guideNamed(guides, `The definition type ${primitive}`, guide);
+  for (const { type, guide } of definitionTypes) {
+    guideNamed(guides, `The definition type ${type}`, guide);
   }
   const shelved = recipes.map((recipe) => ({
     ...recipe,

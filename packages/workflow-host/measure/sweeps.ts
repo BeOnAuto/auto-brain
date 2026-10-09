@@ -4,9 +4,9 @@ import { openHostDatabase, type DatabaseSettings } from '../src/database/host-da
 import { passOf } from '../src/follower/brain-pass.ts';
 import { brainRecordsOf } from '../src/follower/brain-records.ts';
 import { followedBrainsOn } from '../src/follower/followed-brains.ts';
-import { eventTrigger, published, specRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { eventTrigger, published, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { brainSweepsOn, type BrainSweeps } from '../src/sweeps/brain-sweeps.ts';
-import { specRecordsOn } from '../src/triggers/spec-records.ts';
+import { definitionRecordsOn } from '../src/triggers/definition-records.ts';
 import { resultOfEnding } from '../src/waiting-testing/recorded-waiting.ts';
 import { servedWaitingOf } from '../src/waiting/waiting-parts.ts';
 
@@ -63,7 +63,7 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
     await Effect.runPromise(followed.follow(brainKeyOf(index), null));
   });
   await inTurn(reacting, (index) =>
-    specRecorded(
+    definitionRecorded(
       opened.store,
       { name: 'react', version: 1, triggers: [eventTrigger({ type: 'com.measure.wanted' })] },
       brainKeyOf(index),
@@ -79,12 +79,12 @@ export async function sweepCostOn(database: DatabaseSettings, brains: number, re
       submitted: Effect.die,
       resultOf: resultOfEnding,
       cancelDeferred: () => Effect.void,
-      workflows: 'orchestration',
+      workflows: 'workflow',
       now: Date.now,
       trouble: () => Effect.void,
     }).calls,
-    primitive: 'orchestration',
-    applySpecRecord: specRecordsOn(opened),
+    definitionType: 'workflow',
+    applyDefinitionRecord: definitionRecordsOn(opened),
     unreadable: () => Effect.void,
     passedEarly: () => Effect.void,
     registered: [],

@@ -7,14 +7,14 @@ import { logLostWorkflowConnection, logUnsettled, logWorkflowTrouble } from '../
 import { inRuntime } from './in-runtime.ts';
 
 const unsettledBecause = {
-  unknown_execution: 'The ledger has no such execution',
-  settled_otherwise: 'The execution was settled otherwise before',
+  unknown_run: 'The ledger has no such run',
+  settled_otherwise: 'The run was settled otherwise before',
 } as const;
 
 export function hostReports(runtime: AppRuntime<DispatcherServices>): HostReports {
   return {
-    unsettled: ({ org, brain, executionId, receipt }) =>
-      inRuntime(runtime, logUnsettled({ org, brain, executionId, reason: unsettledBecause[receipt] })),
+    unsettled: ({ org, brain, runId, receipt }) =>
+      inRuntime(runtime, logUnsettled({ org, brain, runId, reason: unsettledBecause[receipt] })),
     trouble: (what, cause) => inRuntime(runtime, logWorkflowTrouble(what, cause)),
     lostConnection: (error) => {
       void runtime.run(logLostWorkflowConnection(error));

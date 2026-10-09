@@ -6,7 +6,7 @@ import type { RunInput } from '../src/machine/run-input.ts';
 import { memoryPorts } from '../src/memory/memory-ports.ts';
 import { virtualClock } from '../src/memory/virtual-clock.ts';
 import { startedOf, testMachine } from '../src/testing/driver-inputs.ts';
-import { executionId, looping, millisecondsOf } from './common.ts';
+import { runId, looping, millisecondsOf } from './common.ts';
 
 function throughTheEngine(inputs: number, cache: RunCache): number {
   const clock = virtualClock();
@@ -21,9 +21,9 @@ function throughTheEngine(inputs: number, cache: RunCache): number {
   function submitted(input: RunInput): void {
     Effect.runSync(engine.submit(input));
   }
-  ports.recordStore.known(executionId);
+  ports.recordStore.known(runId);
   return millisecondsOf(() => {
-    submitted(startedOf({ executionId, document: looping(inputs) }, clock.now()));
+    submitted(startedOf({ runId, document: looping(inputs) }, clock.now()));
     let advancing = true;
     while (advancing) {
       advancing = clock.advance();

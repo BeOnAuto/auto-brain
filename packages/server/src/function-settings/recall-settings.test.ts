@@ -20,9 +20,9 @@ describe('the recall function settings', () => {
   it('read each of the three', () => {
     expect(
       readSettings({
-        RECOLLECTION_MAX_FUNCTIONS: ' 100 ',
-        RECOLLECTION_MAX_REBUILDS: '2',
-        RECOLLECTION_BRAINS_AT_ONCE: '8',
+        RECALL_MAX_FUNCTIONS: ' 100 ',
+        RECALL_MAX_REBUILDS: '2',
+        RECALL_BRAINS_AT_ONCE: '8',
       }).recall,
     ).toEqual({ mostFunctions: 100, rebuildsAtOnce: 2, brainsAtOnce: 8 });
   });
@@ -31,13 +31,13 @@ describe('the recall function settings', () => {
     expect(
       String(
         errorFrom({
-          RECOLLECTION_MAX_FUNCTIONS: '0',
-          RECOLLECTION_MAX_REBUILDS: '65',
-          RECOLLECTION_BRAINS_AT_ONCE: 'many',
+          RECALL_MAX_FUNCTIONS: '0',
+          RECALL_MAX_REBUILDS: '65',
+          RECALL_BRAINS_AT_ONCE: 'many',
         }),
       ),
     ).toBe(
-      'InvalidSettingsError: The recall function settings are invalid. RECOLLECTION_MAX_FUNCTIONS: Expected a whole number from 1 to 1000, such as 32; RECOLLECTION_MAX_REBUILDS: Expected a whole number from 1 to 64, such as 4; RECOLLECTION_BRAINS_AT_ONCE: Expected a whole number from 1 to 64, such as 4',
+      'InvalidSettingsError: The recall function settings are invalid. RECALL_MAX_FUNCTIONS: Expected a whole number from 1 to 1000, such as 32; RECALL_MAX_REBUILDS: Expected a whole number from 1 to 64, such as 4; RECALL_BRAINS_AT_ONCE: Expected a whole number from 1 to 64, such as 4',
     );
   });
 });

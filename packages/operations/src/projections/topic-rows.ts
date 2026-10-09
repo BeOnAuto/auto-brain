@@ -43,8 +43,8 @@ function rowAfterFact(
 
 export const topicRows: KeyedProjection = {
   name: 'topics',
-  version: 1,
-  kinds: ['executions', 'notes'],
+  version: 2,
+  kinds: ['runs', 'notes'],
   types: ['topic_opened', 'topic_noted'],
   columns: [
     { name: 'topic', kind: 'text' },

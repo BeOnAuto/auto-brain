@@ -117,7 +117,7 @@ describe('the follower of the brains', () => {
     const watched = followerWith({ passEnds: ['more', 'more', 'caught_up'] });
     await logReaching(watched, 3);
 
-    watched.raise('brain/acme/beta/runs/r-1');
+    watched.raise('brain/acme/beta/run-logs/r-1');
     watched.raise('brain/acme/alpha/events/e1');
     watched.raise('workflow/elsewhere');
     const log = await logReaching(watched, 6);

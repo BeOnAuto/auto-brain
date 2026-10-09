@@ -111,8 +111,8 @@ describe('the size a read on PostgreSQL measures', () => {
 
     await store.readRecorded(alpha, { kind: 'everything' }, { order: 'asc', limit: 5, dataOf: ['noted'] });
     await store.readRecorded(alpha, { kind: 'everything' }, { order: 'asc', limit: 5, dataOf: [] });
-    await store.readRecorded(alpha, { kind: 'executions' }, { order: 'desc', limit: 5, dataOf: ['noted'] });
-    await store.readRecorded(alpha, { kind: 'executions' }, { order: 'desc', limit: 5, dataOf: [] });
+    await store.readRecorded(alpha, { kind: 'runs' }, { order: 'desc', limit: 5, dataOf: ['noted'] });
+    await store.readRecorded(alpha, { kind: 'runs' }, { order: 'desc', limit: 5, dataOf: [] });
 
     expect(asked[0]?.text).toContain(
       "CASE WHEN wanted AND type = ANY($3::text[]) THEN octet_length(numbered.message_data ->> 'json') ELSE 0 END AS size",
@@ -140,7 +140,7 @@ describe('a read of one run on PostgreSQL, newest first', () => {
 
     const page = await postgresqlRecordedStore(query).readRecorded(
       alpha,
-      { kind: 'run', execution: 'r1' },
+      { kind: 'run', run: 'r1' },
       { order: 'desc', limit: 5, since: at, after: ['30', '40'] },
     );
 
@@ -160,8 +160,8 @@ describe('a read of one run on PostgreSQL, newest first', () => {
       '7',
       '8',
       6,
-      [`${alpha}executions/r1`],
       [`${alpha}runs/r1`],
+      [`${alpha}run-logs/r1`],
       5,
       6,
     ]);
@@ -214,25 +214,22 @@ describe('a read on PostgreSQL from a time', () => {
 describe('a read of runs on PostgreSQL', () => {
   it('gives the first and the latest message of each run, and the first alone for a run of one message', async () => {
     const { query, asked } = answering(
-      [
-        run('3', '4', ['3', '4', 'execution_started']),
-        { ...run('1', '2', ['5', '6', 'execution_succeeded']), examined: 2 },
-      ],
+      [run('3', '4', ['3', '4', 'run_started']), { ...run('1', '2', ['5', '6', 'run_succeeded']), examined: 2 }],
       [stored('3', '4', 'r2'), stored('1', '2', 'r1'), stored('5', '6', 'r1 done')],
     );
 
-    const runsOnly = { kind: 'executions', notBeginningWith: ['execution_cancel_requested'] } as const;
+    const runsOnly = { kind: 'runs', notBeginningWith: ['run_cancel_requested'] } as const;
     const page = await postgresqlRecordedStore(query).readRecorded(alpha, runsOnly, { order: 'desc', limit: 5 });
 
     expect(page.records.map(({ type, data, id, causationId }) => [type, data, id, causationId])).toEqual([
       ['noted', { type: 'noted', detail: 'r2' }, 'message-4', null],
       ['noted', { type: 'noted', detail: 'r1' }, 'message-2', null],
-      ['execution_succeeded', { type: 'noted', detail: 'r1 done' }, 'message-6', 'message-2'],
+      ['run_succeeded', { type: 'noted', detail: 'r1 done' }, 'message-6', 'message-2'],
     ]);
     expect(asked[0]?.text).toContain(`WHERE ${kindKey} = ANY($2::text[]) AND stream_position = 1`);
     expect([asked[0]?.text.includes('AND NOT message_type = ANY($3::text[])'), asked[0]?.values[2]]).toEqual([
       true,
-      ['execution_cancel_requested'],
+      ['run_cancel_requested'],
     ]);
     expect(asked[0]?.text).toContain(`ORDER BY ${kindKey} DESC, transaction_id DESC, global_position DESC`);
   });
@@ -264,7 +261,7 @@ describe("the brain's indexes on PostgreSQL", () => {
       'CREATE INDEX IF NOT EXISTS ledger_messages_by_stream ON emt_messages (stream_id, transaction_id, global_position)',
       "CREATE INDEX IF NOT EXISTS ledger_first_messages_by_kind ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){4}')), stream_position, transaction_id, global_position)",
       "CREATE INDEX IF NOT EXISTS ledger_messages_by_brain_and_correlation ON emt_messages ((substring(stream_id FROM '^(?:[^/]*/){3}')), (message_metadata ->> 'correlationId'), transaction_id, global_position)",
-      "CREATE INDEX IF NOT EXISTS ledger_definition_streams ON emt_streams ((substring(stream_id FROM '^(?:[^/]*/){3}specs/([^/]+)$'))) WHERE (substring(stream_id FROM '^(?:[^/]*/){3}specs/([^/]+)$')) IS NOT NULL",
+      "CREATE INDEX IF NOT EXISTS ledger_definition_streams ON emt_streams ((substring(stream_id FROM '^(?:[^/]*/){3}definitions/([^/]+)$'))) WHERE (substring(stream_id FROM '^(?:[^/]*/){3}definitions/([^/]+)$')) IS NOT NULL",
       'ANALYZE emt_messages, emt_streams',
     ]);
   });

@@ -25,7 +25,7 @@ function reconciling(
 ): () => Promise<readonly ViewRow[]> {
   const parts: Reconciling = {
     database,
-    definitionType: 'recollection',
+    definitionType: 'recall',
     rebuildsAtOnce,
     definitions: new Map(),
   };
@@ -99,14 +99,14 @@ function slotTests(settingsOf: SettingsOf): void {
     const views = await viewHarness(await settingsOf());
     const content = { source: 'a document saved before views were kept' };
     const event = {
-      type: 'spec_created',
+      type: 'definition_created',
       name: 'older',
       version: 1,
       content,
       by: 'acme-admin',
       at: '2026-10-06T09:00:00.000Z',
     };
-    await views.append(`${alphaKey}specs/recollection`, [{ type: 'spec_created', data: event }]);
+    await views.append(`${alphaKey}definitions/recall`, [{ type: 'definition_created', data: event }]);
     await views.saved('runs', counting);
 
     const rows = await reconciling(views, 4)();
@@ -230,7 +230,7 @@ function racingTests(settingsOf: SettingsOf): void {
     const views = await viewHarness(await settingsOf());
     const elsewhere = reconciling(views, 4);
     await views.saved('runs', detailsOf('. + 100', succeeded, { initial: 0 }));
-    await views.ranEach('inference/runs', [1, 2]);
+    await views.ranEach('reasoning/runs', [1, 2]);
     const renewedElsewhere = async (): Promise<void> => {
       await views.saved('runs', counting);
       await elsewhere();

@@ -7,7 +7,7 @@ import {
   mostWaitingEvents,
 } from '../machine/limits.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
-import { drivenExecutionId, drivenRun } from '../testing/run-history.ts';
+import { drivenRunId, drivenRun } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 const waitingForever = workflow('do:\n  - await: { listen: { to: { one: { with: { type: never } } } } }');
@@ -15,10 +15,10 @@ const waitingForever = workflow('do:\n  - await: { listen: { to: { one: { with: 
 const consumingForever = workflow('do:\n  - await: { listen: { to: { one: { with: { type: tick } } } }, then: await }');
 
 function flooding(count: number, type: string, data = '') {
-  return (driver: MemoryDriver, executionId: string): void => {
+  return (driver: MemoryDriver, runId: string): void => {
     driver.at(1, () => {
       for (let index = 0; index < count; index += 1) {
-        driver.deliver(executionId, { id: `e${index}`, type, data });
+        driver.deliver(runId, { id: `e${index}`, type, data });
       }
     });
   };
@@ -48,13 +48,13 @@ describe('the events a run has not consumed', () => {
 describe('the events a run receives over its life', () => {
   it(`may number ${mostReceivedEvents}, consumed or not; one more ends the run, which keeps the ids of the ${mostReceivedEvents} it took`, () => {
     const driver = memoryDriver();
-    driver.start({ executionId: drivenExecutionId, document: consumingForever });
+    driver.start({ runId: drivenRunId, document: consumingForever });
     for (let index = 0; index < mostReceivedEvents; index += 1) {
-      driver.deliver(drivenExecutionId, { id: index.toString(36), type: 'tick' });
+      driver.deliver(drivenRunId, { id: index.toString(36), type: 'tick' });
     }
-    const atTheLimit = driver.state(drivenExecutionId);
-    driver.deliver(drivenExecutionId, { id: 'past', type: 'tick' });
-    const pastIt = driver.state(drivenExecutionId);
+    const atTheLimit = driver.state(drivenRunId);
+    driver.deliver(drivenRunId, { id: 'past', type: 'tick' });
+    const pastIt = driver.state(drivenRunId);
 
     expect(atTheLimit.status).toBe('running');
     expect(atTheLimit.inbox.receivedIds).toHaveLength(mostReceivedEvents);

@@ -12,7 +12,7 @@ export interface MachineOptions {
 }
 
 export interface Descriptors {
-  readonly executionId: () => string;
+  readonly runId: () => string;
   readonly attributes: () => JsonObject;
   readonly document: () => JsonObject;
   readonly limits: () => RunLimits;
@@ -27,7 +27,7 @@ function documentOf(cell: RunCell): JsonObject {
 
 export function descriptorsOf(cell: RunCell, values: ValueTable): Descriptors {
   return {
-    executionId: () => cell.get().state.executionId,
+    runId: () => cell.get().state.runId,
     attributes: () => cell.get().state.attributes,
     document: () => documentOf(cell),
     limits: () => cell.get().state.limits,
@@ -43,7 +43,7 @@ export function descriptorsOf(cell: RunCell, values: ValueTable): Descriptors {
     workflow: () => {
       const { state } = cell.get();
       const input: Json = state.workflow === null ? null : values.valueOf(state.workflow.input);
-      return { id: state.executionId, definition: documentOf(cell), input, startedAt: dateTimeOf(state.startedAt) };
+      return { id: state.runId, definition: documentOf(cell), input, startedAt: dateTimeOf(state.startedAt) };
     },
   };
 }

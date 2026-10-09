@@ -30,13 +30,13 @@ describe('the rejection of an uncaught error of a kind with a type of its own', 
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The function notify rejected the execution with conflict: Called before (at /do/0/ask)',
+        detail: 'The function notify rejected the run with conflict: Called before (at /do/0/ask)',
         kind: 'tools_called',
       },
       {
         status: 'rejected',
         reason: 'unavailable',
-        detail: 'The function notify rejected the execution with unavailable: Stopped (at /do/0/ask)',
+        detail: 'The function notify rejected the run with unavailable: Stopped (at /do/0/ask)',
         kind: 'tools_unfinished',
         because: 'run_bound',
       },
@@ -54,7 +54,7 @@ describe('the error of a call that did not succeed', () => {
     expect(callErrorOf({ status: 'rejected', reason: 'teapot', detail: 'short and stout' }, site)).toEqual({
       type: errorType('runtime'),
       status: 500,
-      title: 'The function notify rejected the execution with teapot',
+      title: 'The function notify rejected the run with teapot',
       detail: 'short and stout',
       instance: '/do/0/ask',
     });
@@ -72,7 +72,7 @@ describe('the error of a call that did not succeed', () => {
     expect(errorAsJson(callErrorOf(rejected, site))).toEqual({
       type: 'https://on.auto/problems/tools_unfinished',
       status: 503,
-      title: 'The function notify rejected the execution with unavailable',
+      title: 'The function notify rejected the run with unavailable',
       detail: 'A tool server kept failing',
       instance: '/do/0/ask',
       kind: 'tools_unfinished',
@@ -100,7 +100,7 @@ describe('the type of the error of a call rejected with a kind', () => {
       {
         type: 'https://on.auto/problems/tools_called',
         status: 409,
-        title: 'The function notify rejected the execution with conflict',
+        title: 'The function notify rejected the run with conflict',
         detail: 'No',
         instance: '/do/0/ask',
         kind: 'tools_called',
@@ -118,7 +118,7 @@ describe('the error of a call whose run was cancelled', () => {
     ).toEqual({
       type: 'https://on.auto/problems/cancelled',
       status: 409,
-      title: 'The function notify rejected the execution with cancelled',
+      title: 'The function notify rejected the run with cancelled',
       detail: 'Out of time',
       instance: '/do/0/ask',
       kind: 'deadline',
@@ -131,12 +131,12 @@ describe('the error of a call whose run was cancelled', () => {
     expect(settlementOf({ kind: 'raised', error })).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The function notify rejected the execution with cancelled: Out (at /do/0/ask)',
+      detail: 'The function notify rejected the run with cancelled: Out (at /do/0/ask)',
     });
     expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'overrun' } })).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The function notify rejected the execution with cancelled: Out (at /do/0/ask)',
+      detail: 'The function notify rejected the run with cancelled: Out (at /do/0/ask)',
     });
   });
 });
@@ -152,7 +152,7 @@ describe('the error of a call whose request went unanswered', () => {
     expect(expired).toEqual({
       type: 'https://on.auto/problems/unanswered',
       status: 410,
-      title: 'The function approve rejected the execution with unanswered',
+      title: 'The function approve rejected the run with unanswered',
       detail: 'Nobody answered',
       instance: '/do/0/ask',
       kind: 'expired',
@@ -169,18 +169,18 @@ describe('the error of a call whose request went unanswered', () => {
         status: 'rejected',
         reason: 'unanswered',
         kind: 'expired',
-        detail: 'The function approve rejected the execution with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
       },
       {
         status: 'rejected',
         reason: 'unanswered',
         kind: 'undelivered',
-        detail: 'The function approve rejected the execution with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
       },
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'The function approve rejected the execution with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
       },
     ]);
   });
@@ -239,7 +239,7 @@ describe('the settlement of a workflow whose output or run broke', () => {
     expect(settlementOf({ kind: 'raised', error: rebuilding })).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'The function notify rejected the execution with unavailable: Still building (at /do/0/ask)',
+      detail: 'The function notify rejected the run with unavailable: Still building (at /do/0/ask)',
       kind: 'rebuilding',
     });
   });

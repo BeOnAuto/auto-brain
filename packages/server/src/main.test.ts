@@ -36,8 +36,8 @@ const invalidSettings: ReadonlyArray<readonly [Readonly<Record<string, string>>,
     'InvalidLocalModeError: LOCAL_MODE is on, but HOST 0.0.0.0 is not a loopback address',
   ],
   [
-    { ORCHESTRATION_SWEEP_INTERVAL: 'PT2M' },
-    'InvalidSettingsError: The workflow settings are invalid. ORCHESTRATION_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
+    { WORKFLOW_SWEEP_INTERVAL: 'PT2M' },
+    'InvalidSettingsError: The workflow settings are invalid. WORKFLOW_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
   ],
   [
     { MODEL_ALIASES: '{"fast":"gemini"}' },

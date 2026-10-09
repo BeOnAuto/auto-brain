@@ -11,7 +11,7 @@ import {
   type ListedTool,
   type McpSession,
 } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/inference/testing';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -19,17 +19,17 @@ import { servingReasoning, type ReasoningServer } from '../testing/servers/reaso
 
 const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
 
-const specTools = [
-  'create_spec',
-  'list_specs',
-  'get_spec',
-  'update_spec',
-  'retire_spec',
-  'execute_spec',
-  'get_execution',
-  'cancel_execution',
-  'list_executions',
-  'get_execution_history',
+const definitionTools = [
+  'create_definition',
+  'list_definitions',
+  'get_definition',
+  'update_definition',
+  'retire_definition',
+  'run_definition',
+  'get_run',
+  'cancel_run',
+  'list_runs',
+  'get_run_history',
   'get_brain_analytics',
   'list_brain_events',
   'publish_event',
@@ -37,12 +37,12 @@ const specTools = [
   'test_tool_call',
   'answer_interaction',
   'list_interactions',
-  'send_execution_event',
+  'send_run_event',
 ];
 
 const orgTools = [...brainTools, 'list_models', 'list_tool_servers'];
 
-const insideABrainAlone = specTools.filter((name) => !orgTools.includes(name));
+const insideABrainAlone = definitionTools.filter((name) => !orgTools.includes(name));
 
 const summary = [
   '---',
@@ -78,12 +78,12 @@ const brainArgumentIn = Schema.decodeUnknownSync(
   }),
 );
 
-describe('the brain argument of the spec tools on /mcp', () => {
+describe('the brain argument of the definition tools on /mcp', () => {
   it('is required in every one of them that only a brain answers, as a string with the brain id pattern', async () => {
     server = await servingReasoning([]);
 
-    const spec = (await listingOn('/mcp')).filter(({ name }) => insideABrainAlone.includes(name));
-    const brainArguments = spec.map(({ inputSchema }) => {
+    const definition = (await listingOn('/mcp')).filter(({ name }) => insideABrainAlone.includes(name));
+    const brainArguments = definition.map(({ inputSchema }) => {
       const { required, properties } = brainArgumentIn(inputSchema);
       const { type, pattern } = properties.brain;
       return { required: required.includes('brain'), type, pattern };
@@ -96,7 +96,7 @@ describe('the brain argument of the spec tools on /mcp', () => {
 });
 
 describe('the tools of /mcp', () => {
-  it('are the brain tools, list_models, list_tool_servers and the spec tools, the spec tools taking a brain, with self-contained input schemas', async () => {
+  it('are the brain tools, list_models, list_tool_servers and the definition tools, the definition tools taking a brain, with self-contained input schemas', async () => {
     server = await servingReasoning([]);
     await server.call('POST', '/v1/orgs/local/brains', { body: { brain: 'alpha', name: 'Alpha' } });
 
@@ -116,18 +116,18 @@ describe('the tools of /mcp', () => {
 });
 
 const definitionTypes = [
-  { primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' },
-  { primitive: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
-  { primitive: 'computation', noun: 'computation function', guide: 'computation-function' },
-  { primitive: 'recollection', noun: 'recall function', guide: 'recall-function' },
-  { primitive: 'orchestration', noun: 'workflow', guide: 'workflow' },
+  { type: 'reasoning', noun: 'reasoning function', guide: 'reasoning-function' },
+  { type: 'interaction', noun: 'interaction function', guide: 'interaction-function' },
+  { type: 'computation', noun: 'computation function', guide: 'computation-function' },
+  { type: 'recall', noun: 'recall function', guide: 'recall-function' },
+  { type: 'workflow', noun: 'workflow', guide: 'workflow' },
 ];
 
 const recipes = [
-  { name: 'first-brain', calls: ['create_brain', 'create_spec', 'execute_spec'] },
-  { name: 'remember', calls: ['create_spec', 'execute_spec'] },
-  { name: 'give-tools', calls: ['list_tool_servers', 'create_spec'] },
-  { name: 'schedule', calls: ['create_spec', 'list_executions'] },
+  { name: 'first-brain', calls: ['create_brain', 'create_definition', 'run_definition'] },
+  { name: 'remember', calls: ['create_definition', 'run_definition'] },
+  { name: 'give-tools', calls: ['list_tool_servers', 'create_definition'] },
+  { name: 'schedule', calls: ['create_definition', 'list_runs'] },
 ];
 
 const terminology = readFileSync(new URL('../../../../docs/concepts/terminology.md', import.meta.url), 'utf8');
@@ -160,18 +160,18 @@ const connections: readonly Connection[] = [
     served: { orgTools, brainTools: [] },
     sentence: 'This connection manages the brains of one org: list_brains shows them',
     unnamed: [
-      'create_spec',
-      'execute_spec',
-      'get_execution',
+      'create_definition',
+      'run_definition',
+      'get_run',
       'test_tool_call',
       'answer_interaction',
-      'send_execution_event',
+      'send_run_event',
     ],
   },
   {
     path: '/orgs/acme/brains/alpha/mcp',
     endpoint: 'brain',
-    served: { orgTools: [], brainTools: specTools },
+    served: { orgTools: [], brainTools: definitionTools },
     sentence: 'This connection acts inside one brain.',
     unnamed: ['create_brain', 'list_brains', 'list_models'],
   },
@@ -196,16 +196,15 @@ describe('the instructions an agent receives when it connects', () => {
     server = await servingReasoning([]);
 
     const tools = await onMcp('/mcp', async (session) => listedTools(await session.listTools()));
-    const createSpec = tools.find(({ name }) => name === 'create_spec');
+    const createDefinition = tools.find(({ name }) => name === 'create_definition');
 
     expect(
       definitionTypes.filter(({ noun }: Readonly<{ noun: string }>) => !resourcesOnTheTerminologyPage.has(noun)),
     ).toEqual([]);
-    expect(createSpec?.inputSchema).toMatchObject({
+    expect(createDefinition?.inputSchema).toMatchObject({
       properties: {
-        primitive: {
-          description:
-            "The definition's type: inference (reasoning function), interaction (interaction function), computation (computation function), recollection (recall function), or orchestration (workflow)",
+        type: {
+          description: "The definition's type: reasoning, interaction, computation, recall, or workflow",
         },
       },
     });
@@ -217,13 +216,13 @@ function reachingOutside(tools: readonly ListedTool[]): readonly string[] {
 }
 
 describe('the open-world hint of the tools of /mcp', () => {
-  it('is set for list_models and execute_spec, which reach model providers, for list_tool_servers and test_tool_call, which reach tool servers, and for no other tool', async () => {
+  it('is set for list_models and run_definition, which reach model providers, for list_tool_servers and test_tool_call, which reach tool servers, and for no other tool', async () => {
     server = await servingReasoning([]);
 
     expect(reachingOutside(await listingOn('/mcp'))).toEqual([
       'list_models',
       'list_tool_servers',
-      'execute_spec',
+      'run_definition',
       'test_tool_call',
     ]);
   });
@@ -235,30 +234,30 @@ describe('one connection to /mcp', () => {
 
     const outcome = await onMcp('/mcp', async (session) => {
       const brain = await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' });
-      const spec = await session.callTool('create_spec', {
+      const definition = await session.callTool('create_definition', {
         brain: 'alpha',
-        primitive: 'inference',
+        type: 'reasoning',
         name: 'summary',
         source: summary,
       });
-      const executed = await session.callTool('execute_spec', {
+      const ran = await session.callTool('run_definition', {
         brain: 'alpha',
-        primitive: 'inference',
+        type: 'reasoning',
         name: 'summary',
         input: { text: 'the quarter' },
       });
-      const execution = await session.callTool('get_execution', {
+      const run = await session.callTool('get_run', {
         brain: 'alpha',
-        execution_id: String(executed.structuredContent?.['execution_id']),
+        run_id: String(ran.structuredContent?.['run_id']),
       });
-      return { brain, spec, executed, execution };
+      return { brain, definition, ran, run };
     });
 
     expect(outcome.brain.structuredContent).toMatchObject({ id: 'alpha', status: 'active' });
-    expect(outcome.spec.structuredContent).toMatchObject({ primitive: 'inference', name: 'summary', version: 1 });
-    expect(outcome.executed.structuredContent).toMatchObject({ status: 'succeeded', output: 'Profits rose.' });
-    expect(outcome.execution.structuredContent).toMatchObject({
-      execution_id: outcome.executed.structuredContent?.['execution_id'],
+    expect(outcome.definition.structuredContent).toMatchObject({ type: 'reasoning', name: 'summary', version: 1 });
+    expect(outcome.ran.structuredContent).toMatchObject({ status: 'succeeded', output: 'Profits rose.' });
+    expect(outcome.run.structuredContent).toMatchObject({
+      run_id: outcome.ran.structuredContent?.['run_id'],
       status: 'succeeded',
       output: 'Profits rose.',
       record: { prompt: { instructions: 'Be brief.', message: 'Summarize: the quarter' } },
@@ -267,13 +266,13 @@ describe('one connection to /mcp', () => {
   });
 });
 
-describe('a spec tool on /mcp', () => {
+describe('a definition tool on /mcp', () => {
   it('answers a call without a brain, and with an unknown brain, as isError', async () => {
     server = await servingReasoning([]);
 
     const outcome = await onMcp('/mcp', async (session) => ({
-      without: await session.callTool('list_specs', { primitive: 'inference' }),
-      unknown: await session.callTool('list_specs', { brain: 'nowhere', primitive: 'inference' }),
+      without: await session.callTool('list_definitions', { type: 'reasoning' }),
+      unknown: await session.callTool('list_definitions', { brain: 'nowhere', type: 'reasoning' }),
     }));
 
     expect(problemIn(outcome.without)).toMatchObject({

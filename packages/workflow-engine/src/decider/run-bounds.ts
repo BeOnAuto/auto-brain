@@ -2,14 +2,14 @@ import { raised } from '../dsl/raised-error.ts';
 import type { DslError } from '../machine/dsl-error.ts';
 import { mostEventBytes, mostHeldBytes, mostHistoryBytes, mostInputs } from '../machine/limits.ts';
 import type { RunState } from '../machine/run-state.ts';
-import { eventBytesOf, type RunEvent } from '../run-log/run-event.ts';
+import { eventBytesOf, type RunLogEvent } from '../run-log/run-event.ts';
 import type { SessionResult } from '../runner/session.ts';
 
 function boundError(title: string): DslError {
   return raised('runtime', 500, title, '/').error;
 }
 
-export function brokenBound(state: RunState, event: RunEvent, result: SessionResult): DslError | undefined {
+export function brokenBound(state: RunState, event: RunLogEvent, result: SessionResult): DslError | undefined {
   const bytes = eventBytesOf(event);
   if (bytes > mostEventBytes) {
     return boundError(`An input changed the run by ${bytes} bytes, more than the ${mostEventBytes} one event holds`);

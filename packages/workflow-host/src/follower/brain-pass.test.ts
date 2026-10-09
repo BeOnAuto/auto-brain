@@ -96,10 +96,10 @@ function deliveringEach(delivered: (id: string) => void): RecordConsumer {
 
 function listenerFor(type: string) {
   return {
-    runId: 'acme/alpha/r-1',
+    runKey: 'acme/alpha/r-1',
     listener: 'wait',
     brainKey,
-    streamId: `${brainKey}runs/r-1`,
+    streamId: `${brainKey}run-logs/r-1`,
     armedBy: 1,
     filters: JSON.stringify([{ type }]),
     workflow: 'wait',
@@ -108,7 +108,7 @@ function listenerFor(type: string) {
 }
 
 function undispatchedRun(): CountedRecords {
-  return countedRecords(() => Effect.succeed([recordAt('runs/r-1', 1), recordAt('notes/n2', 2)]));
+  return countedRecords(() => Effect.succeed([recordAt('run-logs/r-1', 1), recordAt('notes/n2', 2)]));
 }
 
 function endlessNotes(): CountedRecords {
@@ -128,8 +128,8 @@ async function passing(
     brains,
     consumers,
     calls: [],
-    primitive: 'orchestration',
-    applySpecRecord: () => Effect.succeed('applied'),
+    definitionType: 'workflow',
+    applyDefinitionRecord: () => Effect.succeed('applied'),
     unreadable: () => Effect.void,
     passedEarly,
     registered: [],

@@ -1,5 +1,5 @@
 import { internalTermsIn, plainTextIn, type McpSession } from '@beonauto/api/testing';
-import { answers, jsonResult } from '@beonauto/inference/testing';
+import { answers, jsonResult } from '@beonauto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -29,8 +29,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await meetings.stop();
 });
-
-const mappingOfTheWireNames = /The tools call a definition a spec[^.]*\./u;
 
 function descriptionOf(tool: string): string {
   return descriptionIn(surfaces, tool);
@@ -110,8 +108,8 @@ const rememberingWhatWasPosted = [
   'language: jq',
   'source:',
   '  events:',
-  '    - type: execution_succeeded',
-  '      subject: inference/post-notes',
+  '    - type: run_succeeded',
+  '      subject: reasoning/post-notes',
   'view:',
   '  initial: []',
   '---',
@@ -123,7 +121,7 @@ const inPosts = { brain: 'posts' };
 function standingOf(session: McpSession): Promise<unknown> {
   return vi.waitFor(
     async () => {
-      const read = await session.callTool('get_spec', { ...inPosts, primitive: 'recollection', name: 'posted' });
+      const read = await session.callTool('get_definition', { ...inPosts, type: 'recall', name: 'posted' });
       expect(read.structuredContent).toMatchObject({ standing: { state: 'live', folded: 1 } });
       return read.structuredContent;
     },
@@ -133,26 +131,26 @@ function standingOf(session: McpSession): Promise<unknown> {
 
 async function rememberedOverMcp(session: McpSession) {
   await session.callTool('create_brain', { ...inPosts, name: 'Posts' });
-  await session.callTool('create_spec', {
+  await session.callTool('create_definition', {
     ...inPosts,
-    primitive: 'inference',
+    type: 'reasoning',
     name: 'post-notes',
     source: postingWhatItPosted,
   });
-  await session.callTool('execute_spec', {
+  await session.callTool('run_definition', {
     ...inPosts,
-    primitive: 'inference',
+    type: 'reasoning',
     name: 'post-notes',
     input: { meeting: 'the standup' },
   });
-  await session.callTool('create_spec', {
+  await session.callTool('create_definition', {
     ...inPosts,
-    primitive: 'recollection',
+    type: 'recall',
     name: 'posted',
     source: rememberingWhatWasPosted,
   });
   await standingOf(session);
-  return session.callTool('execute_spec', { ...inPosts, primitive: 'recollection', name: 'posted' });
+  return session.callTool('run_definition', { ...inPosts, type: 'recall', name: 'posted' });
 }
 
 describe('episode 4: asked to make the brain remember what it posted today', { timeout: recallTestTimeoutMs }, () => {
@@ -180,23 +178,23 @@ describe('episode 4: asked to make the brain remember what it posted today', { t
 });
 
 describe('episode 5: quoting the tools to a person who does not code', () => {
-  it('finds only the words of the terminology in the instructions, but the sentence that maps the wire names, and in the words of the results', async () => {
+  it('finds only the words of the terminology in the instructions and in the words of the results', async () => {
     const words = await onMcp(async (session) => {
       await session.callTool('create_brain', { brain: 'standups', name: 'Standups' });
       const results = [
-        await session.callTool('create_spec', {
+        await session.callTool('create_definition', {
           brain: 'standups',
-          primitive: 'inference',
+          type: 'reasoning',
           name: 'post-notes',
           source: posting,
         }),
-        await session.callTool('list_specs', { brain: 'standups', primitive: 'inference' }),
-        await session.callTool('list_executions', { brain: 'standups' }),
+        await session.callTool('list_definitions', { brain: 'standups', type: 'reasoning' }),
+        await session.callTool('list_runs', { brain: 'standups' }),
       ];
       return results.map((result) => plainTextIn(result));
     });
 
-    expect(internalTermsIn(surfaces.instructions.replace(mappingOfTheWireNames, ''))).toEqual([]);
+    expect(internalTermsIn(surfaces.instructions)).toEqual([]);
     expect(words.flatMap((text) => internalTermsIn(text))).toEqual([]);
   });
 });
@@ -204,16 +202,16 @@ describe('episode 5: quoting the tools to a person who does not code', () => {
 describe('episode 6: a tool server that refuses its key, and a brain with no tool server', () => {
   it('says the key was not accepted and that trying again will not help until it is checked, and what to do in the words of an empty listing', async () => {
     const outcome = await onMcp(async (session) => {
-      await session.callTool('create_spec', {
+      await session.callTool('create_definition', {
         brain: 'meetings',
-        primitive: 'inference',
+        type: 'reasoning',
         name: 'post-notes',
         source: posting,
       });
       return {
-        refused: await session.callTool('execute_spec', {
+        refused: await session.callTool('run_definition', {
           brain: 'meetings',
-          primitive: 'inference',
+          type: 'reasoning',
           name: 'post-notes',
           input: { meeting: 'the standup' },
         }),
@@ -243,7 +241,7 @@ function channelsIn(tested: unknown) {
 const searchTestable: unknown = expect.arrayContaining([expect.objectContaining({ name: 'search', testable: true })]);
 
 async function lookedAtOverMcp(session: McpSession) {
-  const before = await session.callTool('list_specs', { brain: 'meetings', primitive: 'inference' });
+  const before = await session.callTool('list_definitions', { brain: 'meetings', type: 'reasoning' });
   const listed = await session.callTool('list_tool_servers', { brain: 'meetings', server: 'slack' });
   const tested = await session.callTool('test_tool_call', {
     brain: 'meetings',
@@ -251,7 +249,7 @@ async function lookedAtOverMcp(session: McpSession) {
     tool: 'search',
     arguments: { query: 'standups' },
   });
-  const after = await session.callTool('list_specs', { brain: 'meetings', primitive: 'inference' });
+  const after = await session.callTool('list_definitions', { brain: 'meetings', type: 'reasoning' });
   return { before, listed, tested, after };
 }
 

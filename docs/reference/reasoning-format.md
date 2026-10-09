@@ -2,7 +2,7 @@
 
 # Reasoning function format
 
-The API stores a reasoning function as an `inference` spec. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
+The API stores a reasoning function as a definition of the type `reasoning`. Its source document defines the model, input and output contracts, settings and prompt template. This reference describes that format; [Build your first brain](../tutorials/first-brain.md) provides a guided example using an agent.
 
 ## A function document
 
@@ -28,7 +28,7 @@ Brief: {{ input.brief }}
 Criteria: {{ input.criteria }}
 ```
 
-For this document, `create_spec` takes `primitive: "inference"`, a function `name` and the document as `source`. `execute_spec` takes the same primitive and name, with `brief` and `criteria` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
+For this document, `create_definition` takes `type: "reasoning"`, a function `name` and the document as `source`. `run_definition` takes the same type and name, with `brief` and `criteria` in the `input` object. Both operations also require the brain id unless the MCP connection is scoped to that brain.
 
 ## Fields
 
@@ -54,7 +54,7 @@ The Liquid template reads supplied values through `input`. An optional `{% syste
 
 A run invokes the model and records its output and usage. When the function names tools, the model can use them in a bounded loop before answering. An external agent can also pass evidence it collected through its own connections as input.
 
-Changing the document creates a version. A run uses the active latest version and records `spec_version`; the current API does not select an arbitrary historical version to execute. See the [HTTP reference](http.md) for input limits and retry behavior.
+Changing the document creates a version. A run uses the active latest version and records `definition_version`; the current API does not select an arbitrary historical version to execute. See the [HTTP reference](http.md) for input limits and retry behavior.
 
 ## The template
 
@@ -95,14 +95,14 @@ The date filters are left out, since they read the server's clock and time zone,
 `tools` lists the tools of the MCP servers configured for the brain that a run may call, each written `server/tool`, or `server/*` for every tool of a server that the operator allows:
 
 ```yaml
-tools: [graph/search, graph/execute, notes/*]
+tools: [graph/search, graph/query, notes/*]
 ```
 
 To find the names, call `list_tool_servers` (`GET /v1/orgs/{org}/brains/{brain}/tool-servers`, or the MCP tool of the same name). It lists the servers set up for the brain, each with the tools the operator allows, asking each server for them as a run does, so an agent can write `tools` without being told the names; see [Tool servers](http.md#tool-servers). To learn what a tool answers before naming it, test it with `test_tool_call`, which calls it once as a run would and answers what the run's model would see, for a tool its server marks read-only or the operator marks testable on its entry; see [Testing a tool](http.md#testing-a-tool).
 
 The model receives those tools and can call them before it answers. A run makes at most 25 calls and receives at most 256 KiB of results; a call that would exceed a bound, sends more than 16 KiB of arguments or repeats an earlier call a third time is refused, and the model is told why. Once the calls end, the model answers from what it has, without the tools. Each call appears in the run's history, with the server and tool, the size of its arguments and result, and how it ended.
 
-A run whose function names a tool the brain's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. After a tool call, an `unavailable` ending has the kind `tools_unfinished`: a tool may already have changed an external system. The same execution id cannot run that work again and returns `tools_called`. A tool-using run still marked `started` also cannot restart under its id, even before its first recorded call. Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
+A run whose function names a tool the brain's servers do not offer, or whose server cannot be reached, is `unavailable` before the model is called. After a tool call, an `unavailable` ending has the kind `tools_unfinished`: a tool may already have changed an external system. The same run id cannot run that work again and returns `tools_called`. A tool-using run still marked `started` also cannot restart under its id, even before its first recorded call. Inspect its history and any external effects before deliberately starting a new run with a new id. Retrying a successful run returns its recorded result without calling tools again.
 
 Tool access is available in a self-hosted runtime whose operator configures MCP servers; Auto Cloud does not offer it yet. The operator configures the servers with `mcp_servers` and narrows the tools of each with its `allowed`, as the repository's [configuration guide](https://github.com/BeOnAuto/auto-brain/blob/main/docs/engineering/self-host/configuration.md#mcp-servers) describes. See [Tool access inside a reasoning function](../concepts/functions.md#tool-access-inside-a-reasoning-function).
 

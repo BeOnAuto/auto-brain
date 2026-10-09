@@ -50,9 +50,9 @@ function childCancelled(
   if (child === null) {
     return Effect.void;
   }
-  const { org, brain } = addressOfRun(run.executionId);
+  const { org, brain } = addressOfRun(run.runId);
   return cancelChild({
-    child: { org, brain, executionId: child },
+    child: { org, brain, runId: child },
     reason: call.reason ?? 'parent_ended',
     lineage: lineageOfSettlement(run, origin),
   }).pipe(
@@ -92,7 +92,7 @@ export function cancelledCall(
     if (row !== undefined) {
       return yield* cancelledAs(parts, row, cancelling);
     }
-    yield* tombstonedRow(parts.database, key, cancelling.run.executionId);
+    yield* tombstonedRow(parts.database, key, cancelling.run.runId);
     return 'tombstoned';
   });
 }

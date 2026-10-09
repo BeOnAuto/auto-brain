@@ -212,13 +212,13 @@ jobs:
           grep --quiet '"structuredContent":{"id":"smoke","name":"Smoke test"' read.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":4,"method":"tools/list"}' > all-tools.txt
           test "$(grep --only-matching '"name":"[a-z_]*","title"' all-tools.txt | wc -l)" -eq 25
-          for tool in list_models list_executions get_execution_history get_brain_analytics list_brain_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_execution_event cancel_execution get_guide; do
+          for tool in list_models list_runs get_run_history get_brain_analytics list_brain_events publish_event list_tool_servers test_tool_call list_interactions answer_interaction send_run_event cancel_run get_guide; do
             grep --quiet "\"name\":\"$tool\"" all-tools.txt
           done
-          call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_specs","arguments":{"brain":"smoke","primitive":"inference"}}}' > specs.txt
-          grep --quiet '"structuredContent":{"specs":\[\]}' specs.txt
-          call_mcp /mcp '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_executions","arguments":{"brain":"smoke"}}}' > executions.txt
-          grep --quiet '"structuredContent":{"executions":\[\],"has_more":false,"next_cursor":null}' executions.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_definitions","arguments":{"brain":"smoke","type":"reasoning"}}}' > definitions.txt
+          grep --quiet '"structuredContent":{"definitions":\[\]}' definitions.txt
+          call_mcp /mcp '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_runs","arguments":{"brain":"smoke"}}}' > runs.txt
+          grep --quiet '"structuredContent":{"runs":\[\],"has_more":false,"next_cursor":null}' runs.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{"brain":"smoke"}}}' > tool-servers.txt
           grep --quiet '"structuredContent":{"tool_servers":\[\]}' tool-servers.txt
           call_mcp /mcp '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_tool_servers","arguments":{}}}' > org-tool-servers.txt
@@ -256,7 +256,7 @@ jobs:
           echo "::add-mask::$key"
           API_KEYS="[$(printf '%s\n' "$issued" | sed --quiet 's/^API_KEYS entry: //p')]"
           export API_KEYS
-          docker run --detach --name inference --publish 8080:8080 --env API_KEYS auto-brain:ci
+          docker run --detach --name reasoning --publish 8080:8080 --env API_KEYS auto-brain:ci
           for attempt in $(seq 1 30); do
             curl --silent --fail http://127.0.0.1:8080/health > /dev/null && break
             sleep 1
@@ -267,17 +267,17 @@ jobs:
           }
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
-          spec="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
+          definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
           test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          test "$(call created.json --data "$spec" "$brain/specs/inference")" = 201
-          test "$(call read.json "$brain/specs/inference/hello")" = 200
+          test "$(call created.json --data "$definition" "$brain/definitions/reasoning")" = 201
+          test "$(call read.json "$brain/definitions/reasoning/hello")" = 200
           test "$(jq --raw-output .source read.json)" = "$source"
-          test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/specs/inference/hello/execute")" = 503
-          test "$(jq --raw-output .reason executed.json)" = unavailable
-          test "$(jq --raw-output .detail executed.json)" = \
+          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
+          test "$(jq --raw-output .reason ran.json)" = unavailable
+          test "$(jq --raw-output .detail ran.json)" = \
             'anthropic is not configured. No model provider is configured'
-          docker stop inference
-          test "$(docker inspect inference --format '{{.State.ExitCode}}')" = 0
+          docker stop reasoning
+          test "$(docker inspect reasoning --format '{{.State.ExitCode}}')" = 0
       - name: Run a computation function
         run: |
           issued="$(docker run --rm auto-brain:ci node packages/identity/src/key-command.ts --org demo)"
@@ -300,13 +300,13 @@ jobs:
           raising="$(printf '%s\n' '---' 'language: jq' '---' 'error("no rows")')"
           test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
           for name in total raising; do
-            spec="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
-            test "$(call created.json --data "$spec" "$brain/specs/computation")" = 201
+            definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
+            test "$(call created.json --data "$definition" "$brain/definitions/computation")" = 201
           done
           test "$(call totalled.json --data '{"input":{"rows":[{"cost_cents":1050},{"cost_cents":2075}]}}' \
-            "$brain/specs/computation/total/execute")" = 200
+            "$brain/definitions/computation/total/run")" = 200
           test "$(jq --compact-output '[.status, .output]' totalled.json)" = '["succeeded",{"total_cents":3125,"rows":2}]'
-          test "$(call raised.json --data '{"input":{}}' "$brain/specs/computation/raising/execute")" = 409
+          test "$(call raised.json --data '{"input":{}}' "$brain/definitions/computation/raising/run")" = 409
           test "$(jq --compact-output '[.reason, .kind, .detail]' raised.json)" = \
             '["conflict","unworkable","The program raised an error on line 4: no rows"]'
           docker stop computation
@@ -332,20 +332,20 @@ jobs:
           source="$(printf '%s\n' '---' "to: '{{ input.owner }}'" 'expires: P1D' 'output:' \
             '  schema: {type: object, required: [choice], properties: {choice: {type: string, enum: [approve, reject]}}}' \
             '---' 'Approve the brief for {{ input.campaign }}?')"
-          spec="$(jq --null-input --arg source "$source" '{name: "approve-brief", source: $source}')"
+          definition="$(jq --null-input --arg source "$source" '{name: "approve-brief", source: $source}')"
           test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          test "$(call created.json --data "$spec" "$brain/specs/interaction")" = 201
+          test "$(call created.json --data "$definition" "$brain/definitions/interaction")" = 201
           test "$(call asked.json --data '{"input":{"owner":"ada","campaign":"Spring"}}' \
-            "$brain/specs/interaction/approve-brief/execute")" = 200
+            "$brain/definitions/interaction/approve-brief/run")" = 200
           test "$(jq --raw-output .status asked.json)" = started
-          asked="$(jq --raw-output .execution_id asked.json)"
+          asked="$(jq --raw-output .run_id asked.json)"
           test "$(call inbox.json "$brain/interactions?to=ada")" = 200
-          test "$(jq --compact-output '[.interactions[] | [.execution_id, .message]]' inbox.json)" = \
+          test "$(jq --compact-output '[.interactions[] | [.run_id, .message]]' inbox.json)" = \
             "[[\"$asked\",\"Approve the brief for Spring?\"]]"
-          test "$(call answered.json --data '{"answer":{"choice":"approve"}}' "$brain/executions/$asked/answer")" = 200
-          test "$(call run.json "$brain/executions/$asked")" = 200
+          test "$(call answered.json --data '{"answer":{"choice":"approve"}}' "$brain/runs/$asked/answer")" = 200
+          test "$(call run.json "$brain/runs/$asked")" = 200
           test "$(jq --compact-output '[.status, .output]' run.json)" = '["succeeded",{"choice":"approve"}]'
-          test "$(call again.json --data '{"answer":{"choice":"reject"}}' "$brain/executions/$asked/answer")" = 409
+          test "$(call again.json --data '{"answer":{"choice":"reject"}}' "$brain/runs/$asked/answer")" = 409
           docker stop interaction
           test "$(docker inspect interaction --format '{{.State.ExitCode}}')" = 0
       - name: Run workflows across a restart, and read the steps of a run and their causes
@@ -378,7 +378,7 @@ jobs:
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
           settled() {
             for attempt in $(seq 1 30); do
-              test "$(call "$1" "$brain/executions/$2")" = 200
+              test "$(call "$1" "$brain/runs/$2")" = 200
               test "$(jq --raw-output .status "$1")" != started && return 0
               sleep 1
             done
@@ -393,27 +393,27 @@ jobs:
           test "$(docker logs workflows-first 2>&1 | grep --count '"message":"Workflows run in this server: ')" = 1
           test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
           for name in greet approval; do
-            spec="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
-            test "$(call created.json --data "$spec" "$brain/specs/orchestration")" = 201
+            definition="$(jq --null-input --arg name "$name" --arg source "${!name}" '{name: $name, source: $source}')"
+            test "$(call created.json --data "$definition" "$brain/definitions/workflow")" = 201
           done
-          test "$(call greeting.json --data '{"input":{"name":"CI"}}' "$brain/specs/orchestration/greet/execute")" = 200
-          settled greeted.json "$(jq --raw-output .execution_id greeting.json)"
+          test "$(call greeting.json --data '{"input":{"name":"CI"}}' "$brain/definitions/workflow/greet/run")" = 200
+          settled greeted.json "$(jq --raw-output .run_id greeting.json)"
           test "$(jq --compact-output '[.status, .output]' greeted.json)" = '["succeeded",{"greeting":"Hello, CI"}]'
-          test "$(call waiting.json --data '{}' "$brain/specs/orchestration/approval/execute")" = 200
-          waiting="$(jq --raw-output .execution_id waiting.json)"
+          test "$(call waiting.json --data '{}' "$brain/definitions/workflow/approval/run")" = 200
+          waiting="$(jq --raw-output .run_id waiting.json)"
           stop_server workflows-first
           start_server workflows-second
           test "$(call sent.json --data '{"event":{"type":"com.example.approval.decided","data":{"approved":true}}}' \
-            "$brain/executions/$waiting/events")" = 200
+            "$brain/runs/$waiting/events")" = 200
           settled approved.json "$waiting"
           test "$(jq --compact-output '[.status, .output]' approved.json)" = '["succeeded",[{"approved":true}]]'
-          test "$(call history.json "$brain/executions/$waiting/history")" = 200
+          test "$(call history.json "$brain/runs/$waiting/history")" = 200
           jq --exit-status '(.events | INDEX(.id) as $by
             | [.[] | [.type, (.data.name // .data.input.kind), $by[.causation_id // ""].type]] | sort) == [
-              ["execution_started", "approval", null], ["execution_succeeded", null, "step_finished"],
+              ["run_started", "approval", null], ["run_succeeded", null, "step_finished"],
               ["step_finished", "decide", "step_waiting"], ["step_waiting", "decide", "workflow_input_applied"],
               ["workflow_input_applied", "event_received", "step_waiting"],
-              ["workflow_input_applied", "started", "execution_started"]]' history.json
+              ["workflow_input_applied", "started", "run_started"]]' history.json
           stop_server workflows-second
       - name: Read the analytics of a brain
         timeout-minutes: 2
@@ -434,14 +434,14 @@ jobs:
           }
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
           source="$(printf '%s\n' '---' 'model: anthropic/claude-sonnet-4-5' '---' 'Say hello to {{ input.name }}.')"
-          spec="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
-          test "$(call created.json --data "$spec" "$brain/specs/inference")" = 201
-          test "$(call executed.json --data '{"input":{"name":"CI"}}' "$brain/specs/inference/hello/execute")" = 503
+          definition="$(jq --null-input --arg source "$source" '{name: "hello", source: $source}')"
+          test "$(call created.json --data "$definition" "$brain/definitions/reasoning")" = 201
+          test "$(call ran.json --data '{"input":{"name":"CI"}}' "$brain/definitions/reasoning/hello/run")" = 503
           test "$(call analytics.json "$brain/analytics")" = 200
           test "$(jq --compact-output '[.days, .runs.succeeded, .runs.rejected, .by_day[-1].day, .by_day[-1].runs.total]' \
             analytics.json)" = "[7,2,1,\"$(date --utc +%F)\",3]"
-          test "$(jq --compact-output '[.by_function[] | [.primitive, .name, .runs]]' analytics.json)" = \
-            '[["inference","hello",1],["orchestration","approval",1],["orchestration","greet",1]]'
+          test "$(jq --compact-output '[.by_function[] | [.type, .name, .runs]]' analytics.json)" = \
+            '[["reasoning","hello",1],["workflow","approval",1],["workflow","greet",1]]'
           docker stop analytics
           test "$(docker inspect analytics --format '{{.State.ExitCode}}')" = 0
       - name: Recall what the smoke workflows answered
@@ -462,19 +462,19 @@ jobs:
               --header "authorization: Bearer $key" --header 'content-type: application/json' "${@:2}"
           }
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
-          source="$(printf '%s\n' '---' 'language: jq' 'source:' '  events:' '    - type: execution_succeeded' \
-            '      subject: orchestration/greet' 'view:' '  initial: []' '---' '. + [$event.data.output.greeting? // "none"]')"
-          spec="$(jq --null-input --arg source "$source" '{name: "greetings", source: $source}')"
-          test "$(call created.json --data "$spec" "$brain/specs/recollection")" = 201
+          source="$(printf '%s\n' '---' 'language: jq' 'source:' '  events:' '    - type: run_succeeded' \
+            '      subject: workflow/greet' 'view:' '  initial: []' '---' '. + [$event.data.output.greeting? // "none"]')"
+          definition="$(jq --null-input --arg source "$source" '{name: "greetings", source: $source}')"
+          test "$(call created.json --data "$definition" "$brain/definitions/recall")" = 201
           for attempt in $(seq 1 30); do
-            test "$(call standing.json "$brain/specs/recollection/greetings")" = 200
+            test "$(call standing.json "$brain/definitions/recall/greetings")" = 200
             test "$(jq --compact-output '[.standing.state, .standing.folded]' standing.json)" = '["live",1]' && break
             sleep 1
           done
           test "$(jq --compact-output '[.standing.state, .standing.folded]' standing.json)" = '["live",1]'
-          test "$(call recalled.json --data '{}' "$brain/specs/recollection/greetings/execute")" = 200
+          test "$(call recalled.json --data '{}' "$brain/definitions/recall/greetings/run")" = 200
           test "$(jq --compact-output '[.status, .output]' recalled.json)" = '["succeeded",["Hello, CI"]]'
-          test "$(call run.json "$brain/executions/$(jq --raw-output .execution_id recalled.json)")" = 200
+          test "$(call run.json "$brain/runs/$(jq --raw-output .run_id recalled.json)")" = 200
           test "$(jq --compact-output '[.record.view.version, .record.view.folded]' run.json)" = '[1,1]'
           docker stop recall
           test "$(docker inspect recall --format '{{.State.ExitCode}}')" = 0
@@ -499,8 +499,8 @@ jobs:
           brain=http://127.0.0.1:8080/v1/orgs/demo/brains/smoke
           ended_runs() {
             for attempt in $(seq 1 "$3"); do
-              test "$(call runs.json "$brain/executions?primitive=orchestration&name=$1")" = 200
-              jq --exit-status --argjson count "$2" '[.executions[] | select(.status != "started")] | length >= $count' \
+              test "$(call runs.json "$brain/runs?type=workflow&name=$1")" = 200
+              jq --exit-status --argjson count "$2" '[.runs[] | select(.status != "started")] | length >= $count' \
                 runs.json > /dev/null && return 0
               sleep 1
             done
@@ -510,19 +510,19 @@ jobs:
             'schedule: { on: { one: { with: { type: com.example.ledger.closed } } }, every: PT1M }' 'do:' \
             "  - total: { set: { input: '\${ . }' } }")"
           test "$(call brain.json --data '{"brain":"smoke","name":"Smoke test"}' http://127.0.0.1:8080/v1/orgs/demo/brains)" = 201
-          spec="$(jq --null-input --arg source "$closing" '{name: "closing", source: $source}')"
-          test "$(call created.json --data "$spec" "$brain/specs/orchestration")" = 201
+          definition="$(jq --null-input --arg source "$closing" '{name: "closing", source: $source}')"
+          test "$(call created.json --data "$definition" "$brain/definitions/workflow")" = 201
           test "$(jq --compact-output '[.triggers[] | [.kind, .reference]]' created.json)" = \
             '[["event","/schedule/on"],["every","/schedule/every"]]'
           test "$(call published.json \
             --data '{"event":{"source":"/ledger","type":"com.example.ledger.closed","data":{"month":"september"}}}' \
             "$brain/events")" = 200
           ended_runs closing 2 150
-          test "$(jq --compact-output '[.executions[] | [.status, .started_by]]' runs.json)" = \
+          test "$(jq --compact-output '[.runs[] | [.status, .started_by]]' runs.json)" = \
             '[["succeeded","brain:smoke"],["succeeded","brain:smoke"]]'
-          for run in $(jq --raw-output '.executions[].execution_id' runs.json); do
-            test "$(call "history-$run.json" "$brain/executions/$run/history")" = 200
-            test "$(call "run-$run.json" "$brain/executions/$run")" = 200
+          for run in $(jq --raw-output '.runs[].run_id' runs.json); do
+            test "$(call "history-$run.json" "$brain/runs/$run/history")" = 200
+            test "$(call "run-$run.json" "$brain/runs/$run")" = 200
             case "$(jq --raw-output '.events[0].data.trigger.kind' "history-$run.json")" in
               event) test "$(jq --raw-output '.output.input[0].data.month' "run-$run.json")" = september ;;
               every) jq --exit-status '.output.input.schedule.due | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T")' \

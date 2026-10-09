@@ -17,22 +17,20 @@ const happenings: Decider<null, Happened, Happened> = {
   eventSchema: HappenedSchema,
 };
 
-const runsOnly: RecordedSelection = { kind: 'executions', notBeginningWith: ['execution_cancel_requested'] };
+const runsOnly: RecordedSelection = { kind: 'runs', notBeginningWith: ['run_cancel_requested'] };
 
 const newestHundred: RecordedPageRequest = { order: 'desc', limit: 100 };
 
 function streamsBeginningWith(ledger: MemoryLedger, firstTypes: readonly string[]) {
   return Effect.forEach(firstTypes, (type, index) =>
     TestClock.setTime(1000 + index).pipe(
-      Effect.andThen(ledger.service.execute(`brain/acme/alpha/executions/s${index}`, happenings, { type })),
+      Effect.andThen(ledger.service.execute(`brain/acme/alpha/runs/s${index}`, happenings, { type })),
     ),
   );
 }
 
 function runsWithOneLeftOutEvery(every: number, count: number): readonly string[] {
-  return Array.from({ length: count }, (_, index) =>
-    index % every === 0 ? 'execution_cancel_requested' : 'execution_started',
-  );
+  return Array.from({ length: count }, (_, index) => (index % every === 0 ? 'run_cancel_requested' : 'run_started'));
 }
 
 function read(ledger: MemoryLedger, selection: RecordedSelection) {
@@ -48,7 +46,7 @@ describe('the in-memory read of runs that leaves out the streams beginning with 
       Effect.gen(function* () {
         yield* streamsBeginningWith(among, runsWithOneLeftOutEvery(21, 105));
         yield* streamsBeginningWith(oldest, runsWithOneLeftOutEvery(101, 101));
-        return yield* Effect.all([read(among, runsOnly), read(oldest, runsOnly), read(oldest, { kind: 'executions' })]);
+        return yield* Effect.all([read(among, runsOnly), read(oldest, runsOnly), read(oldest, { kind: 'runs' })]);
       }).pipe(Effect.provide(TestClock.layer())),
     );
 
@@ -57,11 +55,11 @@ describe('the in-memory read of runs that leaves out the streams beginning with 
       [100, false],
       [100, true],
     ]);
-    expect(pages[0]?.records.map(({ type }) => type)).not.toContain('execution_cancel_requested');
+    expect(pages[0]?.records.map(({ type }) => type)).not.toContain('run_cancel_requested');
   });
 });
 
-const StartSchema = Schema.Struct({ type: Schema.String, primitive: Schema.String, name: Schema.String });
+const StartSchema = Schema.Struct({ type: Schema.String, definition_type: Schema.String, name: Schema.String });
 
 type Start = typeof StartSchema.Type;
 
@@ -76,9 +74,9 @@ function runsWithOneInFourOfEachDefinition(ledger: MemoryLedger) {
   return Effect.forEach(
     Array.from({ length: 28 }, (_, index) => index),
     (index) =>
-      ledger.service.execute(`brain/acme/alpha/executions/r${index}`, starts, {
-        type: 'execution_started',
-        primitive: index % 4 === 0 ? 'orchestration' : 'inference',
+      ledger.service.execute(`brain/acme/alpha/runs/r${index}`, starts, {
+        type: 'run_started',
+        definition_type: index % 4 === 0 ? 'workflow' : 'reasoning',
         name: index % 4 === 1 ? 'qualify-enquiry' : 'summary',
       }),
     { discard: true },
@@ -106,22 +104,18 @@ function everyPageOf(
 }
 
 describe('the in-memory read of the runs of one definition', () => {
-  it('fills every page from the runs of the primitive or the name asked for, and has no more after the last', async () => {
+  it('fills every page from the runs of the definition type or the name asked for, and has no more after the last', async () => {
     const ledger = memoryLedger();
 
     const pages = await Effect.runPromise(
       runsWithOneInFourOfEachDefinition(ledger).pipe(
         Effect.andThen(
           Effect.all([
-            everyPageOf(ledger, { kind: 'executions', primitive: 'orchestration' }, { order: 'desc', limit: 5 }),
-            everyPageOf(ledger, { kind: 'executions', name: 'qualify-enquiry' }, { order: 'desc', limit: 2 }),
-            everyPageOf(ledger, { kind: 'executions', primitive: 'inference', name: 'qualify-enquiry' }, newestHundred),
-            everyPageOf(ledger, { kind: 'executions', primitive: 'orchestration', name: 'summary' }, newestHundred),
-            everyPageOf(
-              ledger,
-              { kind: 'executions', primitive: 'orchestration', name: 'qualify-enquiry' },
-              newestHundred,
-            ),
+            everyPageOf(ledger, { kind: 'runs', definitionType: 'workflow' }, { order: 'desc', limit: 5 }),
+            everyPageOf(ledger, { kind: 'runs', name: 'qualify-enquiry' }, { order: 'desc', limit: 2 }),
+            everyPageOf(ledger, { kind: 'runs', definitionType: 'reasoning', name: 'qualify-enquiry' }, newestHundred),
+            everyPageOf(ledger, { kind: 'runs', definitionType: 'workflow', name: 'summary' }, newestHundred),
+            everyPageOf(ledger, { kind: 'runs', definitionType: 'workflow', name: 'qualify-enquiry' }, newestHundred),
           ]),
         ),
       ),
@@ -153,10 +147,10 @@ describe('the in-memory read of the runs of one definition, over a first record 
         id: 'message-1',
         causationId: null,
         correlationId: null,
-        stream: 'brain/acme/alpha/executions/r1',
+        stream: 'brain/acme/alpha/runs/r1',
         streamPosition: 1,
-        type: 'execution_started',
-        data: 'orchestration',
+        type: 'run_started',
+        data: 'workflow',
         recordedAt: '2026-10-07T09:00:00.000Z',
       },
     ]);
@@ -167,12 +161,12 @@ describe('the in-memory read of the runs of one definition, over a first record 
 
     const pages = await Effect.runPromise(
       Effect.all([
-        reading({ kind: 'executions' }),
-        reading({ kind: 'executions', primitive: 'orchestration' }),
-        reading({ kind: 'executions', name: 'orchestration' }),
+        reading({ kind: 'runs' }),
+        reading({ kind: 'runs', definitionType: 'workflow' }),
+        reading({ kind: 'runs', name: 'workflow' }),
       ]),
     );
 
-    expect(pages).toEqual([['orchestration'], [], []]);
+    expect(pages).toEqual([['workflow'], [], []]);
   });
 });

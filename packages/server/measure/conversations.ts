@@ -4,7 +4,7 @@ import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
 
 import type { MeasuredLedger } from './measured-ledgers.ts';
 import { brain, inTurns, measuredServer, percentile, type MeasuredServer } from './measured-server.ts';
-import { executionIdOf, pauseSource, spread, timersMeasured, type TimerPlan } from './timer-runs.ts';
+import { runIdOf, pauseSource, spread, timersMeasured, type TimerPlan } from './timer-runs.ts';
 
 const chatKey = 'measure-chat-key-41c7a9e2';
 
@@ -80,12 +80,14 @@ function readsCounted(chat: FakeMcpServer, count: number): ReadCount {
 
 async function askedOn(server: MeasuredServer, chat: FakeMcpServer, count: number): Promise<number> {
   await server.call('POST', '/v1/orgs/local/brains', { brain: 'measure', name: 'Measure' });
-  await server.call('POST', `${brain}/specs/interaction`, { name: 'approval', source: approval });
-  await server.call('POST', `${brain}/specs/orchestration`, { name: 'pause', source: pauseSource(30) });
+  await server.call('POST', `${brain}/definitions/interaction`, { name: 'approval', source: approval });
+  await server.call('POST', `${brain}/definitions/workflow`, { name: 'pause', source: pauseSource(30) });
   const from = Date.now();
   await inTurns(count, 32, async (index) => {
-    executionIdOf(
-      await server.call('POST', `${brain}/specs/interaction/approval/execute`, { input: { owner: `owner-${index}` } }),
+    runIdOf(
+      await server.call('POST', `${brain}/definitions/interaction/approval/run`, {
+        input: { owner: `owner-${index}` },
+      }),
     );
   });
   await deliveredTo(chat, count);

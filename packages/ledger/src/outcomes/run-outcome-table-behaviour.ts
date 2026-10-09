@@ -38,7 +38,7 @@ async function manyRuns(entry: LedgerEntry, database: string, count: number): Pr
   await Effect.runPromise(
     Effect.forEach(
       Array.from({ length: count }, (_, index) => index),
-      (index) => ledger.execute(`brain/acme/alpha/executions/many-${index}`, runFacts, [began('many')]),
+      (index) => ledger.execute(`brain/acme/alpha/runs/many-${index}`, runFacts, [began('many')]),
       { concurrency: 8, discard: true },
     ),
   );
@@ -48,17 +48,17 @@ function aProjectionThatBreaksDown(entry: LedgerEntry): void {
   describe('a projection that breaks down inside an append', () => {
     it('fails the append, which keeps nothing, the row it changed before included', async () => {
       const ledger = await aLedger(entry, undefined, failingOnAFailure);
-      await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage'));
+      await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'));
 
       await expect(
-        noting(ledger, 'brain/acme/alpha/executions/r1', ended('succeeded', 1), ended('failed', 2)),
+        noting(ledger, 'brain/acme/alpha/runs/r1', ended('succeeded', 1), ended('failed', 2)),
       ).rejects.toThrow(breakingDown);
-      await expect(
-        noting(ledger, 'brain/acme/alpha/executions/r2', began('triage'), ended('failed', 2)),
-      ).rejects.toThrow(breakingDown);
+      await expect(noting(ledger, 'brain/acme/alpha/runs/r2', began('triage'), ended('failed', 2))).rejects.toThrow(
+        breakingDown,
+      );
 
       expect(runsOf(await reading(ledger))).toEqual(['2026-10-01 triage started 1']);
-      expect(await Effect.runPromise(ledger.load('brain/acme/alpha/executions/r2', runFacts))).toEqual({
+      expect(await Effect.runPromise(ledger.load('brain/acme/alpha/runs/r2', runFacts))).toEqual({
         state: null,
         version: 0,
       });
@@ -71,13 +71,13 @@ function aStoreWithoutTheProjection(entry: LedgerEntry): void {
     it('neither creates the table nor changes it, and reads no outcomes', async () => {
       const database = await entry.aDatabase();
       const keeping = await aLedger(entry, database, runTallies);
-      await noting(keeping, 'brain/acme/alpha/executions/r1', began('triage'));
+      await noting(keeping, 'brain/acme/alpha/runs/r1', began('triage'));
       const fresh = await entry.aDatabase();
       const freshWithout = await aLedger(entry, fresh);
-      await noting(freshWithout, 'brain/acme/alpha/executions/r2', began('triage'));
+      await noting(freshWithout, 'brain/acme/alpha/runs/r2', began('triage'));
 
       const without = await aLedger(entry, database);
-      await noting(without, 'brain/acme/alpha/executions/r1', ended('succeeded', 5));
+      await noting(without, 'brain/acme/alpha/runs/r1', ended('succeeded', 5));
 
       expect(runsOf(await reading(keeping))).toEqual(['2026-10-01 triage started 1']);
       expect([await reading(without), await reading(freshWithout)]).toEqual([[], []]);
@@ -95,11 +95,11 @@ function aNewTableVersion(entry: LedgerEntry): void {
         const database = await entry.aDatabase();
         const writing = await aLedger(entry, database);
         await fourRuns(writing);
-        await noting(writing, 'brain/acme/alpha/executions/r6', ended('failed', 1), { type: 'run_noted' });
-        await noting(writing, 'brain/acme/alpha/executions/r7/nested', began('triage'));
-        await noting(writing, 'brain/acme/alpha/executions/r8', { type: 'run_noted' });
+        await noting(writing, 'brain/acme/alpha/runs/r6', ended('failed', 1), { type: 'run_noted' });
+        await noting(writing, 'brain/acme/alpha/runs/r7/nested', began('triage'));
+        await noting(writing, 'brain/acme/alpha/runs/r8', { type: 'run_noted' });
         await manyRuns(entry, database, 1000);
-        await entry.queried(database, 'CREATE TABLE run_outcomes_1 (brain_key text, run_id text)');
+        await entry.queried(database, 'CREATE TABLE run_outcomes_2 (brain_key text, row_key text)');
 
         const filled = await aLedger(entry, database, runTallies);
 
@@ -108,7 +108,7 @@ function aNewTableVersion(entry: LedgerEntry): void {
           { runs: 1000 },
         ]);
         expect((await reading(filled)).filter(({ name }) => name !== 'many')).toEqual(fourRunsKept);
-        expect(await tablesIn(entry, database)).toEqual([{ name: 'run_outcomes_2' }]);
+        expect(await tablesIn(entry, database)).toEqual([{ name: 'run_outcomes_3' }]);
       },
     );
   });
@@ -119,12 +119,7 @@ function aFillInterruptedOrDone(entry: LedgerEntry): void {
     it('is done again at the next open when it was interrupted, which left nothing behind', async () => {
       const database = await entry.aDatabase();
       await fourRuns(await aLedger(entry, database));
-      await noting(
-        await aLedger(entry, database),
-        'brain/acme/alpha/executions/r5',
-        began('triage'),
-        ended('failed', 1),
-      );
+      await noting(await aLedger(entry, database), 'brain/acme/alpha/runs/r5', began('triage'), ended('failed', 1));
 
       await expect(openLedgerWith(entry.ledgerOn(database, failingOnAFailure))).rejects.toThrow(breakingDown);
       const tablesAfterTheInterruption = await tablesIn(entry, database);
@@ -142,7 +137,7 @@ function aFillInterruptedOrDone(entry: LedgerEntry): void {
     it('is not done again by a ledger that finds the table', async () => {
       const database = await entry.aDatabase();
       await fourRuns(await aLedger(entry, database, runTallies));
-      await entry.queried(database, "DELETE FROM run_outcomes_2 WHERE row_key = 'r4'");
+      await entry.queried(database, "DELETE FROM run_outcomes_3 WHERE row_key = 'r4'");
 
       const reopened = await aLedger(entry, database, runTallies);
 
@@ -171,7 +166,7 @@ function aFillOfLargeRecords(entry: LedgerEntry): void {
           notes,
           (note, index) =>
             Effect.promise(() =>
-              noting(writing, `brain/acme/alpha/executions/large-${index}`, began('large'), largeEnd(index, note)),
+              noting(writing, `brain/acme/alpha/runs/large-${index}`, began('large'), largeEnd(index, note)),
             ),
           { concurrency: 4, discard: true },
         ),
@@ -190,17 +185,17 @@ function aFillOfAnOversizedRun(entry: LedgerEntry): void {
       const database = await entry.aDatabase();
       const writing = await aLedger(entry, database);
       const note = 'x'.repeat(6 * mebibyte);
-      await noting(writing, 'brain/acme/alpha/executions/over-0', began('over'), largeEnd(0, 'small'));
+      await noting(writing, 'brain/acme/alpha/runs/over-0', began('over'), largeEnd(0, 'small'));
       await noting(
         writing,
-        'brain/acme/alpha/executions/over-1',
+        'brain/acme/alpha/runs/over-1',
         began('over'),
         largeEnd(1, note),
         largeEnd(2, note),
         largeEnd(3, note),
       );
-      await noting(writing, 'brain/acme/alpha/executions/over-2', began('over'), largeEnd(4, 'small'));
-      await noting(writing, 'brain/acme/alpha/executions/over-3', began('over'), largeEnd(5, 'small'));
+      await noting(writing, 'brain/acme/alpha/runs/over-2', began('over'), largeEnd(4, 'small'));
+      await noting(writing, 'brain/acme/alpha/runs/over-3', began('over'), largeEnd(5, 'small'));
 
       const filled = await aLedger(entry, database, runTallies);
 

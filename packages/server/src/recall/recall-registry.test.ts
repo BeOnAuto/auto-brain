@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { recallDocument } from '@beonauto/recollection/testing';
+import { recallDocument } from '@beonauto/recall/testing';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -17,7 +17,7 @@ import {
   verdicts,
 } from '../testing/servers/recall-server.ts';
 
-const runs = 'language: jq\nsource:\n  events:\n    - type: execution_succeeded\nview:\n  initial: 0';
+const runs = 'language: jq\nsource:\n  events:\n    - type: run_succeeded\nview:\n  initial: 0';
 
 const counting = recallDocument('. + 1', runs);
 
@@ -37,7 +37,7 @@ async function serving(environment: Readonly<Record<string, string>> = {}): Prom
 }
 
 function created(server: ReasoningServer, name: string) {
-  return server.call('POST', `${alpha}/specs/recollection`, { body: { name, source: counting } });
+  return server.call('POST', `${alpha}/definitions/recall`, { body: { name, source: counting } });
 }
 
 function createdInTurn(server: ReasoningServer, names: readonly string[]): Promise<unknown> {
@@ -53,10 +53,10 @@ describe('the recall functions a brain keeps', { timeout: recallTestTimeoutMs },
     );
 
     const thirtyThird = await created(server, 'one-too-many');
-    const anotherVersion = await server.call('PUT', `${alpha}/specs/recollection/count-0`, {
+    const anotherVersion = await server.call('PUT', `${alpha}/definitions/recall/count-0`, {
       body: { source: countingTwice },
     });
-    await server.call('POST', `${alpha}/specs/recollection/count-1/retire`);
+    await server.call('POST', `${alpha}/definitions/recall/count-1/retire`);
     const afterRetiring = await created(server, 'one-too-many');
 
     expect(thirtyThird).toMatchObject({
@@ -78,14 +78,14 @@ describe('the bound on the recall functions a brain keeps', { timeout: recallTes
       rmSync(directory, { recursive: true, force: true });
     });
     const ledger = { LEDGER_FILE: join(directory, 'ledger.db') };
-    const first = await serving({ ...ledger, RECOLLECTION_MAX_FUNCTIONS: '2' });
+    const first = await serving({ ...ledger, RECALL_MAX_FUNCTIONS: '2' });
     await created(first, 'count');
     const third = await created(first, 'more');
     await first.stop();
 
-    const lowered = await servingRecall([], { ...ledger, RECOLLECTION_MAX_FUNCTIONS: '1' });
+    const lowered = await servingRecall([], { ...ledger, RECALL_MAX_FUNCTIONS: '1' });
     closing.push(lowered.stop);
-    const anotherVersion = await lowered.call('PUT', `${alpha}/specs/recollection/count`, {
+    const anotherVersion = await lowered.call('PUT', `${alpha}/definitions/recall/count`, {
       body: { source: countingTwice },
     });
     await standingUntil(lowered, 'count', liveWith(0));
@@ -109,8 +109,8 @@ describe('a retired recall function', { timeout: recallTestTimeoutMs }, () => {
     await reviewed(server, 1);
     await standingUntil(server, 'reviews', liveWith(1));
 
-    const retired = await server.call('POST', `${alpha}/specs/recollection/reviews/retire`);
-    const read = await server.call('GET', `${alpha}/specs/recollection/reviews`);
+    const retired = await server.call('POST', `${alpha}/definitions/recall/reviews/retire`);
+    const read = await server.call('GET', `${alpha}/definitions/recall/reviews`);
     const ran = await recalled(server, 'reviews', { campaign: 'spring' });
 
     expect(retired.status).toBe(200);

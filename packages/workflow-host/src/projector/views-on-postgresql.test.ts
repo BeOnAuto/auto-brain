@@ -44,20 +44,20 @@ async function aRunLeftOpen(connectionString: string, output: string): Promise<C
   const client = new Client({ connectionString });
   await client.connect();
   onTestFinished(() => client.end());
-  const stream = `brain/acme/alpha/executions/${randomUUID()}`;
+  const stream = `brain/acme/alpha/runs/${randomUUID()}`;
   const definition = {
-    primitive: 'inference',
+    definition_type: 'reasoning',
     name: 'late',
-    spec_version: 1,
+    definition_version: 1,
     by: 'acme-admin',
     at: '2026-10-06T10:00:00.000Z',
   };
-  const event = { type: 'execution_succeeded', ...definition, output, record: {} };
+  const event = { type: 'run_succeeded', ...definition, output, record: {} };
   const metadata = { messageId: messageIdOf(stream, 1), causationId: null, correlationId: null };
   await client.query('BEGIN');
   await client.query(
     `SELECT success FROM emt_append_to_stream(
-      ARRAY[$4], ARRAY[$1::jsonb], ARRAY[$5::jsonb], ARRAY['1'], ARRAY['execution_succeeded'], ARRAY['E'], $2, 'brain', $3, 'emt:default')`,
+      ARRAY[$4], ARRAY[$1::jsonb], ARRAY[$5::jsonb], ARRAY['1'], ARRAY['run_succeeded'], ARRAY['E'], $2, 'brain', $3, 'emt:default')`,
     [{ json: JSON.stringify(event) }, stream, 0, metadata.messageId, metadata],
   );
   return client;
@@ -75,7 +75,7 @@ describe.skipIf(skipped)(`the views of recall functions on PostgreSQL${notice}`,
       await views.until('outputs', isLive);
       const open = await aRunLeftOpen(connectionString, 'late');
 
-      await views.ran('inference/after', 'after');
+      await views.ran('reasoning/after', 'after');
       await setTimeout(500);
       const held = await views.viewOf('outputs');
       await open.query('COMMIT');

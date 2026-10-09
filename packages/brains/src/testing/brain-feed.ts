@@ -48,7 +48,7 @@ const notes = presenterOf('notes', { added: 'note_added', hidden: null, kept: 'n
 const shelves = presenterOf('shelves', { added: 'shelf_filled' });
 
 const steps: Presenter = {
-  streamKind: 'runs',
+  streamKind: 'run-logs',
   publicNames: { moved: ['run_moved', 'run_stepped'] },
   present: (recorded) => {
     const { text, at } = decodeFact(recorded.data);

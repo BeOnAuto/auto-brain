@@ -32,7 +32,7 @@ const details = {
   language: 'jq',
   fold: reviewsFold,
   foldLine: 15,
-  filters: [{ type: 'execution_succeeded', subject: 'inference/review-brief' }],
+  filters: [{ type: 'run_succeeded', subject: 'reasoning/review-brief' }],
   initial: {},
 };
 
@@ -40,16 +40,16 @@ function succeeded(index: number) {
   const at = new Date(Date.UTC(2026, 9, 6) + index * 1000).toISOString();
   const output = { campaign: `campaign-${index % 100}`, verdict: index % 3 === 0 ? 'reject' : 'approve' };
   const data = {
-    type: 'execution_succeeded',
-    primitive: 'inference',
+    type: 'run_succeeded',
+    definition_type: 'reasoning',
     name: 'review-brief',
-    spec_version: 1,
+    definition_version: 1,
     output,
     record: {},
     by: 'acme-admin',
     at,
   };
-  return { type: 'execution_succeeded', data };
+  return { type: 'run_succeeded', data };
 }
 
 async function recorded(database: HostDatabase, events: number): Promise<void> {
@@ -58,7 +58,7 @@ async function recorded(database: HostDatabase, events: number): Promise<void> {
     (before, stream) =>
       before.then(() =>
         database.store.append(
-          `${brain}executions/0199a3c4-7d2e-7c1a-9b3f-${String(stream).padStart(12, '0')}`,
+          `${brain}runs/0199a3c4-7d2e-7c1a-9b3f-${String(stream).padStart(12, '0')}`,
           Array.from({ length: runsInAStream }, (_, run) => succeeded(stream * runsInAStream + run)),
           0,
         ),
@@ -66,14 +66,14 @@ async function recorded(database: HostDatabase, events: number): Promise<void> {
     Promise.resolve(),
   );
   const saved = {
-    type: 'spec_created',
+    type: 'definition_created',
     name: 'reviews',
     version: 1,
     content: { source: 'reviews', details },
     by: 'acme-admin',
     at: '2026-10-06T09:00:00.000Z',
   };
-  await database.store.append(`${brain}specs/recollection`, [{ type: 'spec_created', data: saved }], 0);
+  await database.store.append(`${brain}definitions/recall`, [{ type: 'definition_created', data: saved }], 0);
 }
 
 interface Counted {
@@ -113,7 +113,7 @@ export async function rebuildOn(settings: DatabaseSettings, events: number): Pro
   const projector = startProjector({
     database: counting.database,
     settings: {
-      definitionType: 'recollection',
+      definitionType: 'recall',
       pool,
       folding: {
         dialect: { refused: [], variables: ['event'] },

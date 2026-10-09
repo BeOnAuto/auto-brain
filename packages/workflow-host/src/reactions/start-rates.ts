@@ -1,4 +1,4 @@
-import { StartingTriggerSchema, triggerNamed } from '@beonauto/specs';
+import { StartingTriggerSchema, triggerNamed } from '@beonauto/definitions';
 import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
@@ -33,7 +33,7 @@ const ReactionStartSchema = Schema.Struct({
   brain: Schema.String,
   workflow: Schema.String,
   version: Schema.Int,
-  executionId: Schema.String,
+  runId: Schema.String,
   input: Schema.Json,
   depth: Schema.Int,
   cause: Schema.String,
@@ -105,9 +105,9 @@ function deferredStart({ database, refusals }: StartingParts, brainKey: string, 
       : Effect.asVoid(
           Effect.orDie(
             database.write(
-              statement`INSERT INTO workflow_reaction_backlog (brain_key, workflow, execution_id, start, due)
-                VALUES (${brainKey}, ${start.workflow}, ${start.executionId}, ${JSON.stringify(start)}, ${minute + aMinute})
-                ON CONFLICT (brain_key, execution_id) DO NOTHING`,
+              statement`INSERT INTO workflow_reaction_backlog (brain_key, workflow, run_id, start, due)
+                VALUES (${brainKey}, ${start.workflow}, ${start.runId}, ${JSON.stringify(start)}, ${minute + aMinute})
+                ON CONFLICT (brain_key, run_id) DO NOTHING`,
             ),
           ),
         ),
@@ -119,7 +119,7 @@ function withoutDeferred(database: HostDatabase, { brain_key: brainKey, start }:
     Effect.orDie(
       database.write(
         statement`DELETE FROM workflow_reaction_backlog
-          WHERE brain_key = ${brainKey} AND execution_id = ${start.executionId}`,
+          WHERE brain_key = ${brainKey} AND run_id = ${start.runId}`,
       ),
     ),
   );
@@ -130,7 +130,7 @@ function deferredAgain({ database }: StartingParts, deferred: Deferred, minute: 
     Effect.orDie(
       database.write(
         statement`UPDATE workflow_reaction_backlog SET due = ${minute + aMinute}, attempts = ${attempts}
-          WHERE brain_key = ${deferred.brain_key} AND execution_id = ${deferred.start.executionId}`,
+          WHERE brain_key = ${deferred.brain_key} AND run_id = ${deferred.start.runId}`,
       ),
     ),
   );
@@ -180,7 +180,7 @@ export function startingOn(
             DeferredRow,
             database.read(
               statement`SELECT brain_key, start, attempts FROM workflow_reaction_backlog WHERE due <= ${now()}
-                ORDER BY due, execution_id LIMIT ${mostStartsAMinute}`,
+                ORDER BY due, run_id LIMIT ${mostStartsAMinute}`,
             ),
           ),
         );

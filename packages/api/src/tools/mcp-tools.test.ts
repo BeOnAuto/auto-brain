@@ -1,5 +1,5 @@
-import { makeSpecOperations } from '@beonauto/specs';
-import { echo } from '@beonauto/specs/testing';
+import { makeDefinitionOperations } from '@beonauto/definitions';
+import { echo } from '@beonauto/definitions/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
@@ -15,7 +15,7 @@ let server: OperationServer;
 let listening: Listening;
 
 beforeAll(async () => {
-  server = await operationServer({ operations: [...orgOperations, ...makeSpecOperations([echo])] });
+  server = await operationServer({ operations: [...orgOperations, ...makeDefinitionOperations([echo])] });
   listening = await listenOnLoopback(server.handler);
 });
 
@@ -32,17 +32,17 @@ function onAlpha<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession('current revision', endpoint('/orgs/acme/brains/alpha/mcp'), use);
 }
 
-const specTools = [
-  'create_spec',
-  'list_specs',
-  'get_spec',
-  'update_spec',
-  'retire_spec',
-  'execute_spec',
-  'get_execution',
-  'cancel_execution',
-  'list_executions',
-  'get_execution_history',
+const definitionTools = [
+  'create_definition',
+  'list_definitions',
+  'get_definition',
+  'update_definition',
+  'retire_definition',
+  'run_definition',
+  'get_run',
+  'cancel_run',
+  'list_runs',
+  'get_run_history',
   'get_brain_analytics',
 ];
 
@@ -55,70 +55,70 @@ describe('the tools of each endpoint', () => {
     expect(listedTools(listing).map(({ name }) => name)).toEqual(['label_brain', 'list_labels', guideToolName]);
   });
 
-  it('lists the eleven spec operations on a brain endpoint and no org operation', async () => {
+  it('lists the eleven definition operations on a brain endpoint and no org operation', async () => {
     expect(listedTools(await onAlpha((session) => session.listTools())).map(({ name }) => name)).toEqual([
-      ...specTools,
+      ...definitionTools,
       guideToolName,
     ]);
   });
 
-  it('publishes self-contained input schemas with an object root, the primitive as a plain enum, and no output schema', async () => {
+  it('publishes self-contained input schemas with an object root, the type as a plain enum, and no output schema', async () => {
     const tools = listedTools(await onAlpha((session) => session.listTools()));
     const schemas = tools.map(({ inputSchema }) => inputSchema);
 
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
     expect(tools.filter(({ outputSchema }) => outputSchema !== undefined)).toEqual([]);
-    expect(tools.find(({ name }) => name === 'create_spec')?.inputSchema).toMatchObject({
-      properties: { primitive: { type: 'string', enum: ['echo'] } },
+    expect(tools.find(({ name }) => name === 'create_definition')?.inputSchema).toMatchObject({
+      properties: { type: { type: 'string', enum: ['echo'] } },
     });
   });
 });
 
 const echoRecord = { record: { greeting: 'Hello' } };
 
-describe('the spec tools on a brain endpoint', () => {
-  it('create a spec, execute it and read the execution back', async () => {
+describe('the definition tools on a brain endpoint', () => {
+  it('create a definition, execute it and read the run back', async () => {
     const outcome = await onAlpha(async (session) => {
-      const created = await session.callTool('create_spec', {
-        primitive: 'echo',
+      const created = await session.callTool('create_definition', {
+        type: 'echo',
         name: 'greeter',
         source: '{"greeting":"Hello"}',
       });
-      const executed = await session.callTool('execute_spec', {
-        primitive: 'echo',
+      const ran = await session.callTool('run_definition', {
+        type: 'echo',
         name: 'greeter',
         input: { who: 'Ada' },
       });
-      const execution = await session.callTool('get_execution', {
-        execution_id: String(executed.structuredContent?.['execution_id']),
+      const run = await session.callTool('get_run', {
+        run_id: String(ran.structuredContent?.['run_id']),
       });
-      return { created, executed, execution };
+      return { created, ran, run };
     });
 
-    expect(outcome.created.structuredContent).toMatchObject({ primitive: 'echo', name: 'greeter', version: 1 });
-    expect(outcome.executed.structuredContent).toMatchObject({
+    expect(outcome.created.structuredContent).toMatchObject({ type: 'echo', name: 'greeter', version: 1 });
+    expect(outcome.ran.structuredContent).toMatchObject({
       status: 'succeeded',
       output: { greeting: 'Hello', input: { who: 'Ada' } },
     });
-    expect(outcome.execution.structuredContent).toEqual({ ...outcome.executed.structuredContent, ...echoRecord });
+    expect(outcome.run.structuredContent).toEqual({ ...outcome.ran.structuredContent, ...echoRecord });
   });
 
-  it('list, read, update and retire a spec', async () => {
+  it('list, read, update and retire a definition', async () => {
     const outcome = await onAlpha(async (session) => {
-      await session.callTool('create_spec', { primitive: 'echo', name: 'welcomer', source: '{"greeting":"Hi"}' });
-      const listed = await session.callTool('list_specs', { primitive: 'echo' });
-      const read = await session.callTool('get_spec', { primitive: 'echo', name: 'welcomer' });
-      const updated = await session.callTool('update_spec', {
-        primitive: 'echo',
+      await session.callTool('create_definition', { type: 'echo', name: 'welcomer', source: '{"greeting":"Hi"}' });
+      const listed = await session.callTool('list_definitions', { type: 'echo' });
+      const read = await session.callTool('get_definition', { type: 'echo', name: 'welcomer' });
+      const updated = await session.callTool('update_definition', {
+        type: 'echo',
         name: 'welcomer',
         source: '{"greeting":"Welcome"}',
       });
-      const retired = await session.callTool('retire_spec', { primitive: 'echo', name: 'welcomer' });
+      const retired = await session.callTool('retire_definition', { type: 'echo', name: 'welcomer' });
       return { listed, read, updated, retired };
     });
 
-    expect(outcome.listed.structuredContent?.['specs']).toContainEqual(
+    expect(outcome.listed.structuredContent?.['definitions']).toContainEqual(
       expect.objectContaining({ name: 'welcomer', version: 1 }),
     );
     expect(outcome.read.structuredContent).toMatchObject({ name: 'welcomer', version: 1, status: 'active' });
@@ -135,12 +135,12 @@ describe('the annotations of a tool', () => {
     );
 
     expect(annotationsByName).toMatchObject({
-      create_spec: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
-      list_specs: { readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false },
-      update_spec: { readOnlyHint: false, idempotentHint: true, destructiveHint: false, openWorldHint: false },
-      retire_spec: { readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false },
-      execute_spec: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
-      cancel_execution: { readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false },
+      create_definition: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
+      list_definitions: { readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false },
+      update_definition: { readOnlyHint: false, idempotentHint: true, destructiveHint: false, openWorldHint: false },
+      retire_definition: { readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false },
+      run_definition: { readOnlyHint: false, idempotentHint: false, destructiveHint: false, openWorldHint: false },
+      cancel_run: { readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false },
     });
   });
 });

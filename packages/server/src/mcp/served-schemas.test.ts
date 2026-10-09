@@ -8,7 +8,7 @@ import {
   type ListedTool,
   type ToolResult,
 } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/inference/testing';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { Option, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -29,7 +29,12 @@ beforeAll(async () => {
   server = await servingReasoning(mcpClientKinds.map(() => answers(textResult('Profits rose.'))));
   await withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, async (session) => {
     await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' });
-    await session.callTool('create_spec', { brain: 'alpha', primitive: 'inference', name: 'summary', source: summary });
+    await session.callTool('create_definition', {
+      brain: 'alpha',
+      type: 'reasoning',
+      name: 'summary',
+      source: summary,
+    });
   });
 });
 
@@ -117,15 +122,15 @@ function outputIn(result: ToolResult): unknown {
 }
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the tools, then accepts the results of list_tool_servers, list_brains and execute_spec without compiling an output validator', async () => {
+  it('lists the tools, then accepts the results of list_tool_servers, list_brains and run_definition without compiling an output validator', async () => {
     const outcome = await withMcpSession(kind, { url: `${server.origin}/mcp`, headers: {} }, async (session) => {
       await session.listTools();
       const results = [
         await session.callTool('list_tool_servers', {}),
         await session.callTool('list_brains', {}),
-        await session.callTool('execute_spec', {
+        await session.callTool('run_definition', {
           brain: 'alpha',
-          primitive: 'inference',
+          type: 'reasoning',
           name: 'summary',
           input: { text: 'the quarter' },
         }),

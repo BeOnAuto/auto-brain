@@ -7,7 +7,7 @@ import { counting, detailsOf, foldedAll, isLive, liveWith, viewTestTimeoutMs } f
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 
 function countingRunsOf(subject: string) {
-  return detailsOf('. + 1', [{ type: 'execution_succeeded', subject }], { initial: 0 });
+  return detailsOf('. + 1', [{ type: 'run_succeeded', subject }], { initial: 0 });
 }
 
 async function readsWhile(views: ViewHarness, work: () => Promise<unknown>): Promise<number> {
@@ -21,22 +21,22 @@ async function readsWhile(views: ViewHarness, work: () => Promise<unknown>): Pro
 function joiningTests(settingsOf: SettingsOf): void {
   it('share one read a wake once caught up, and a rebuilding view joins them without folding an event twice', async () => {
     const views = await viewHarness(await settingsOf());
-    await views.saved('a', countingRunsOf('inference/a'));
-    await views.saved('b', countingRunsOf('inference/b'));
-    await views.ran('inference/a', 1);
-    await views.ran('inference/b', 1);
+    await views.saved('a', countingRunsOf('reasoning/a'));
+    await views.saved('b', countingRunsOf('reasoning/b'));
+    await views.ran('reasoning/a', 1);
+    await views.ran('reasoning/b', 1);
     views.start({ sweepEveryMs: 60_000 });
     await views.until('a', liveWith(1));
     await views.until('b', liveWith(1));
 
     const sharedRead = await readsWhile(views, async () => {
-      await views.ran('inference/a', 2);
+      await views.ran('reasoning/a', 2);
       await views.until('a', foldedAll(2));
     });
-    await views.saved('c', countingRunsOf('inference/a'));
+    await views.saved('c', countingRunsOf('reasoning/a'));
     await views.until('c', isLive);
     const afterJoining = await readsWhile(views, async () => {
-      await views.ran('inference/b', 2);
+      await views.ran('reasoning/b', 2);
       await views.until('b', foldedAll(2));
     });
     const folded = await Promise.all(['a', 'b', 'c'].map(async (name) => (await views.viewOf(name))?.view));
@@ -51,7 +51,7 @@ function slotTests(settingsOf: SettingsOf): void {
     const views = await viewHarness(await settingsOf());
     await views.saved('live', counting);
     await views.ranInOneStream(
-      'inference/runs',
+      'reasoning/runs',
       Array.from({ length: 1500 }, (_, run) => run),
     );
     views.start({ pagesPerWake: 2, rebuildsAtOnce: 2 });

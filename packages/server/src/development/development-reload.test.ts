@@ -62,13 +62,13 @@ describe('a server crash under pnpm dev', { timeout: developmentTestTimeoutMs },
   it('keeps running when the server dies while a workflow waits on a function, and on the next save the run goes on', async () => {
     const gateway = await gatewayThatHangsFirst();
     const development = startDevelopment(developmentFiles(), { environment: { MODEL_GATEWAYS: gateway.gateways } });
-    const executionId = await welcomingStarted(await untilListening(development), 'delta');
+    const runId = await welcomingStarted(await untilListening(development), 'delta');
     await gateway.firstHeard;
 
     development.signal('SIGUSR2');
     await untilWritten(development.stderr, /The server stopped \(signal SIGKILL\)/u);
     appendFileSync(development.files.envFile, '# saved\n');
-    const settled = await settledOver(await untilListening(development, 2), `/delta/executions/${executionId}`);
+    const settled = await settledOver(await untilListening(development, 2), `/delta/runs/${runId}`);
     development.signal('SIGTERM');
 
     expect(settled).toMatchObject({ status: 'succeeded', output: 'Welcome, Ada.' });

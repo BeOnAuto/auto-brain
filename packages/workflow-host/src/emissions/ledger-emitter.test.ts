@@ -1,20 +1,20 @@
+import { eventEmitter, publishedEventOf } from '@beonauto/definitions';
 import { Conflict, messageIdOf } from '@beonauto/operations';
 import { memoryLedger } from '@beonauto/operations/testing';
-import { eventEmitter, publishedEventOf } from '@beonauto/specs';
 import type { EmitEvent } from '@beonauto/workflow-engine';
 import { emitterProbes } from '@beonauto/workflow-engine/testing';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { streamOfRun } from '../runs/run-address.ts';
+import { runLogStreamOf } from '../runs/run-address.ts';
 import { ledgerEmitter } from './ledger-emitter.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const run = {
-  executionId: `acme/alpha/${executionId}`,
+  runId: `acme/alpha/${runId}`,
   attributes: {
-    spec: { name: 'close-the-month', version: 2 },
+    definition: { name: 'close-the-month', version: 2 },
     caller: { id: 'acme-admin' },
     depth: 1,
     lineage: { correlation: 'r-top' },
@@ -47,7 +47,7 @@ const event = {
 
 const emission: EmitEvent = {
   kind: 'emit_event',
-  key: { executionId: run.executionId, reference: '/do/0/x', run: 1 },
+  key: { runId: run.runId, reference: '/do/0/x', run: 1 },
   event,
 };
 
@@ -67,13 +67,13 @@ describe('an event a run of the host emits', () => {
       records.map(({ causationId, correlationId, data }) => [causationId, correlationId, publishedEventOf(data)]),
     ).toEqual([
       [
-        messageIdOf(streamOfRun(run.executionId), 4),
+        messageIdOf(runLogStreamOf(run.runId), 4),
         'r-top',
         {
           type: 'event_published',
           event,
           filled: [],
-          emitted_by: { execution_id: executionId, workflow: 'close-the-month', version: 2 },
+          emitted_by: { run_id: runId, workflow: 'close-the-month', version: 2 },
           depth: 2,
           by: 'acme-admin',
           at: '2026-10-01T09:00:01.000Z',

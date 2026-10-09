@@ -7,7 +7,7 @@ import {
 } from '@beonauto/operations';
 import { Schema } from 'effect';
 
-const runOutcomesVersion = 2;
+const runOutcomesVersion = 3;
 
 export const runOutcomesTable = `run_outcomes_${runOutcomesVersion}`;
 
@@ -15,7 +15,7 @@ const KeptOutcomeSchema = Schema.Struct({
   started_day: Schema.String,
   started_at: Schema.String,
   last_started_at: Schema.String,
-  primitive: Schema.String,
+  definition_type: Schema.String,
   name: Schema.String,
   status: RunOutcomeStatusSchema,
   duration_ms: Schema.NullOr(Schema.Number),
@@ -32,7 +32,7 @@ function outcomeOf(row: ProjectedRow): RunOutcome {
     startedDay: kept.started_day,
     startedAt: kept.started_at,
     lastStartedAt: kept.last_started_at,
-    primitive: kept.primitive,
+    definitionType: kept.definition_type,
     name: kept.name,
     status: kept.status,
     durationMs: kept.duration_ms,
@@ -47,7 +47,7 @@ function rowOf(outcome: RunOutcome): ProjectedRow {
     started_day: outcome.startedDay,
     started_at: outcome.startedAt,
     last_started_at: outcome.lastStartedAt,
-    primitive: outcome.primitive,
+    definition_type: outcome.definitionType,
     name: outcome.name,
     status: outcome.status,
     duration_ms: outcome.durationMs,
@@ -61,13 +61,13 @@ function runOutcomeProjectionOf({ types, rowAfter }: RunOutcomeMapping): KeyedPr
   return {
     name: 'run_outcomes',
     version: runOutcomesVersion,
-    kinds: ['executions'],
+    kinds: ['runs'],
     types,
     columns: [
       { name: 'started_day', kind: 'text' },
       { name: 'started_at', kind: 'text' },
       { name: 'last_started_at', kind: 'text' },
-      { name: 'primitive', kind: 'text' },
+      { name: 'definition_type', kind: 'text' },
       { name: 'name', kind: 'text' },
       { name: 'status', kind: 'text' },
       { name: 'duration_ms', kind: 'integer' },

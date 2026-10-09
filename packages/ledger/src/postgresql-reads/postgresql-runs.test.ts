@@ -21,9 +21,9 @@ function answeringNothing(): { readonly query: Query; readonly asked: Asked[] } 
 const alpha = 'brain/acme/alpha/';
 
 describe('a read of the runs of one definition on PostgreSQL', () => {
-  it('reads the name and the primitive at the top of the first message, as jsonb without the escapes jsonb refuses, once its text holds both as written, among a thousand runs', async () => {
+  it('reads the name and the definition type at the top of the first message, as jsonb without the escapes jsonb refuses, once its text holds both as written, among a thousand runs', async () => {
     const { query, asked } = answeringNothing();
-    const ofOneDefinition = { kind: 'executions', primitive: 'orchestration', name: 'qualify-enquiry' } as const;
+    const ofOneDefinition = { kind: 'runs', definitionType: 'workflow', name: 'qualify-enquiry' } as const;
 
     await postgresqlRecordedStore(query).readRecorded(alpha, ofOneDefinition, { order: 'desc', limit: 5 });
 
@@ -36,11 +36,11 @@ describe('a read of the runs of one definition on PostgreSQL', () => {
     expect(asked[0]?.values).toEqual([
       'emt:default',
       '"name":"qualify-enquiry"',
-      '"primitive":"orchestration"',
+      '"definition_type":"workflow"',
       String.raw`(\\\\)|\\u(?:0000|d[89a-f][0-9a-f]{2})`,
       String.raw`\1`,
-      '{"name":"qualify-enquiry","primitive":"orchestration"}',
-      [`${alpha}executions/`],
+      '{"name":"qualify-enquiry","definition_type":"workflow"}',
+      [`${alpha}runs/`],
       1001,
       1000,
       7,

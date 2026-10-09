@@ -194,10 +194,10 @@ function theLastRecordExamined(aLedger: LedgerMaker): void {
     it('is the record a page that is cut short reads on after', async () => {
       const ledger = await aLedger();
       await happen(ledger, inAlpha('notes'), noted('noted', 1), noted('noted', 2), noted('noted', 3));
-      await happen(ledger, inAlpha('executions/run-1'), noted('execution_started'));
+      await happen(ledger, inAlpha('runs/run-1'), noted('run_started'));
 
       const cut = await reading(ledger, everything, { order: 'asc', limit: 2 });
-      const runs = await reading(ledger, { kind: 'executions' }, { order: 'asc', limit: 10 });
+      const runs = await reading(ledger, { kind: 'runs' }, { order: 'asc', limit: 10 });
 
       expect([cut.lastExamined?.cursor, runs.lastExamined?.cursor]).toEqual([cut.nextCursor, runs.records[0]?.cursor]);
     });

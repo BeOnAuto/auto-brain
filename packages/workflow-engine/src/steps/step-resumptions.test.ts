@@ -8,8 +8,8 @@ function resumedAlong({ events }: DrivenRun): readonly unknown[] {
   return events.map(({ event }) => event.resumed);
 }
 
-function causesAlong({ driver }: DrivenRun, executionId: string): readonly unknown[] {
-  return driver.ports.runStore.lineages(executionId).map(({ cause }) => cause);
+function causesAlong({ driver }: DrivenRun, runId: string): readonly unknown[] {
+  return driver.ports.runStore.lineages(runId).map(({ cause }) => cause);
 }
 
 const waited = (reference: string, times = 1) => ({ reference, run: 1, times });
@@ -33,12 +33,12 @@ describe('the waiting entry an input resumed', () => {
         limits: { longestCallMs: 1000 },
       }),
       drivenRun(workflow('do:\n  - hear: { listen: { to: { one: { with: { type: go } } } } }'), {
-        meanwhile: (driver, executionId) => {
+        meanwhile: (driver, runId) => {
           driver.at(10, () => {
-            driver.deliver(executionId, { id: 'n', type: 'other' });
+            driver.deliver(runId, { id: 'n', type: 'other' });
           });
           driver.at(20, () => {
-            driver.deliver(executionId, { id: 'g', type: 'go' });
+            driver.deliver(runId, { id: 'g', type: 'go' });
           });
         },
       }),
@@ -57,8 +57,8 @@ describe('the waiting entry an input resumed', () => {
       drivenRun(workflow('do:\n  - slow: { timeout: { after: PT1S }, wait: PT1H }')),
       drivenRun(workflow("do:\n  - each: { for: { in: '${ [range(0; 120)] }' }, do: [{ one: { set: {} } }] }")),
       drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
-        meanwhile: (driver, executionId) => {
-          driver.cancel(executionId);
+        meanwhile: (driver, runId) => {
+          driver.cancel(runId);
         },
       }),
     ];
@@ -76,20 +76,20 @@ describe('the cause the engine gives the run store with each record', () => {
     const run = drivenRun(
       workflow('do:\n  - pause: { wait: PT1S }\n  - slow: { timeout: { after: PT1S }, wait: PT1H }'),
     );
-    const executionId = run.ended.executionId;
+    const runId = run.ended.runId;
     const cancelled = drivenRun(workflow('do:\n  - slow: { wait: PT1H }'), {
       meanwhile: (driver, running) => {
         driver.cancel(running);
       },
     });
 
-    expect(causesAlong(run, executionId)).toEqual([
+    expect(causesAlong(run, runId)).toEqual([
       { kind: 'start' },
       { kind: 'resumed', step: { reference: '/do/0/pause', run: 1, outcome: 'waiting', times: 1 } },
       { kind: 'timer', timerId: timersArmedIn(run.events, 'timeout')[0]?.timerId },
     ]);
-    expect(causesAlong(cancelled, executionId)).toEqual([{ kind: 'start' }, { kind: 'none' }]);
-    expect(run.driver.ports.runStore.lineages(executionId).map(({ attributes }) => attributes)).toEqual([{}, {}, {}]);
+    expect(causesAlong(cancelled, runId)).toEqual([{ kind: 'start' }, { kind: 'none' }]);
+    expect(run.driver.ports.runStore.lineages(runId).map(({ attributes }) => attributes)).toEqual([{}, {}, {}]);
     expect(run.driver.ports.runStore.lineages('no run')).toEqual([]);
   });
 
@@ -98,7 +98,7 @@ describe('the cause the engine gives the run store with each record', () => {
       meanwhile: (driver, running) => {
         driver.submit({
           kind: 'cancel_requested',
-          executionId: running,
+          runId: running,
           at: driver.clock.now(),
           cancel: { by: 'acme-admin', kind: 'requested', reason: 'Not needed' },
           cause: 'a-cancel-request',
@@ -106,7 +106,7 @@ describe('the cause the engine gives the run store with each record', () => {
       },
     });
 
-    expect(causesAlong(cancelled, cancelled.ended.executionId)).toEqual([
+    expect(causesAlong(cancelled, cancelled.ended.runId)).toEqual([
       { kind: 'start' },
       { kind: 'given', id: 'a-cancel-request' },
     ]);
@@ -121,9 +121,9 @@ describe('what a waiting step waits for', () => {
       ),
       {
         respond: () => ({ result: { status: 'succeeded', output: null } }),
-        meanwhile: (driver, executionId) => {
+        meanwhile: (driver, runId) => {
           driver.at(2000, () => {
-            driver.deliver(executionId, { id: 'g', type: 'go' });
+            driver.deliver(runId, { id: 'g', type: 'go' });
           });
         },
       },

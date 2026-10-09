@@ -1,6 +1,13 @@
 import { Effect, Option, Result, Schema } from 'effect';
 
-import { BrainReader, defineQuery, type Decider, type RunOutcome, type RunOutcomeMapping } from '../index.ts';
+import {
+  BrainReader,
+  defineQuery,
+  type Decider,
+  type RunOutcome,
+  type RunOutcomeGroup,
+  type RunOutcomeMapping,
+} from '../index.ts';
 
 const BeganSchema = Schema.Struct({ type: Schema.Literal('run_began'), at: Schema.String, fn: Schema.String });
 
@@ -30,7 +37,13 @@ const decodeFact = Schema.decodeUnknownOption(TalliedSchema);
 function tallied(row: RunOutcome | undefined, fact: typeof TalliedSchema.Type): RunOutcome | undefined {
   if (fact.type === 'run_began') {
     const { at, fn } = fact;
-    const started = { startedDay: at.slice(0, 10), startedAt: at, lastStartedAt: at, primitive: 'tally', name: fn };
+    const started = {
+      startedDay: at.slice(0, 10),
+      startedAt: at,
+      lastStartedAt: at,
+      definitionType: 'tally',
+      name: fn,
+    };
     return {
       ...started,
       status: 'started',
@@ -55,7 +68,7 @@ export const runTallies: RunOutcomeMapping = {
 
 const GroupSchema = Schema.Struct({
   day: Schema.String,
-  primitive: Schema.String,
+  type: Schema.String,
   name: Schema.String,
   status: Schema.String,
   runs: Schema.Int,
@@ -64,6 +77,20 @@ const GroupSchema = Schema.Struct({
   cachedTokens: Schema.Int,
   durations: Schema.Array(Schema.Int),
 });
+
+function talliedGroupOf(group: RunOutcomeGroup): typeof GroupSchema.Type {
+  return {
+    day: group.day,
+    type: group.definitionType,
+    name: group.name,
+    status: group.status,
+    runs: group.runs,
+    inputTokens: group.inputTokens,
+    outputTokens: group.outputTokens,
+    cachedTokens: group.cachedTokens,
+    durations: group.durations,
+  };
+}
 
 export const readRunTallies = defineQuery('brain', {
   name: 'read_run_tallies',
@@ -75,6 +102,7 @@ export const readRunTallies = defineQuery('brain', {
   reasons: [],
   handle: Effect.fnUntraced(function* ({ from, to, name }) {
     const selection = name === undefined ? {} : { name };
-    return { groups: yield* (yield* BrainReader).readRunOutcomes({ from, to }, selection) };
+    const groups = yield* (yield* BrainReader).readRunOutcomes({ from, to }, selection);
+    return { groups: groups.map((group) => talliedGroupOf(group)) };
   }),
 });

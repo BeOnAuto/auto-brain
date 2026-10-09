@@ -23,7 +23,7 @@ function queried(fileName: string, statement: string): Promise<readonly unknown[
 async function definitionStreamsIndexed(fileName: string): Promise<boolean> {
   const pool = dumbo(sqlite3EventStoreDriver.mapToDumboOptions({ fileName }));
   try {
-    const { rows } = await pool.execute.query(SQL`EXPLAIN QUERY PLAN ${definitionStreamsQuery('recollection')}`);
+    const { rows } = await pool.execute.query(SQL`EXPLAIN QUERY PLAN ${definitionStreamsQuery('recall')}`);
     return JSON.stringify(rows).includes('USING INDEX ledger_definition_streams');
   } finally {
     await pool.close();
@@ -48,6 +48,7 @@ const onSQLite: LedgerEntry = {
   outcomeTables: "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'run_outcomes_*' ORDER BY name",
   projectionTables: "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'run_tallies_*' ORDER BY name",
   projectionIndexes: "SELECT name FROM sqlite_master WHERE type = 'index' AND name GLOB 'run_tallies_*' ORDER BY name",
+  topicTables: "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB 'topics_*' ORDER BY name",
 };
 
 describe('The ledger on SQLite', () => {

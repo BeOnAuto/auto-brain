@@ -4,7 +4,7 @@ import { Schema } from 'effect';
 
 import type { MeasuredLedger } from './measured-ledgers.ts';
 import { brain, inTurns, measuredServer, percentile, type MeasuredServer } from './measured-server.ts';
-import { executionIdOf, pauseSource, spread, timersMeasured, type TimerPlan } from './timer-runs.ts';
+import { runIdOf, pauseSource, spread, timersMeasured, type TimerPlan } from './timer-runs.ts';
 
 const toolKey = 'measure-tool-key-6d02b8f1';
 
@@ -59,12 +59,14 @@ function hangingServerOf(url: string): Readonly<Record<string, string>> {
 
 async function askedOn(server: MeasuredServer, requests: number, plan: TimerPlan): Promise<number> {
   await server.call('POST', '/v1/orgs/local/brains', { brain: 'measure', name: 'Measure' });
-  await server.call('POST', `${brain}/specs/interaction`, { name: 'approval', source: approval });
-  await server.call('POST', `${brain}/specs/orchestration`, { name: 'pause', source: pauseSource(plan.seconds) });
+  await server.call('POST', `${brain}/definitions/interaction`, { name: 'approval', source: approval });
+  await server.call('POST', `${brain}/definitions/workflow`, { name: 'pause', source: pauseSource(plan.seconds) });
   const from = Date.now();
   await inTurns(requests, 32, async (index) => {
-    executionIdOf(
-      await server.call('POST', `${brain}/specs/interaction/approval/execute`, { input: { owner: `owner-${index}` } }),
+    runIdOf(
+      await server.call('POST', `${brain}/definitions/interaction/approval/run`, {
+        input: { owner: `owner-${index}` },
+      }),
     );
   });
   return Date.now() - from;

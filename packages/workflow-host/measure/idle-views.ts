@@ -29,14 +29,14 @@ const details = {
 function saved(index: number) {
   const name = `view-${index}`;
   const data = {
-    type: 'spec_created',
+    type: 'definition_created',
     name,
     version: 1,
     content: { source: name, details },
     by: 'acme-admin',
     at: '2026-10-06T09:00:00.000Z',
   };
-  return { type: 'spec_created', data };
+  return { type: 'definition_created', data };
 }
 
 async function allLive(store: WorkflowStore, views: number): Promise<void> {
@@ -55,7 +55,7 @@ async function allLive(store: WorkflowStore, views: number): Promise<void> {
 export async function idleViewsOn(settings: DatabaseSettings, views: number, seconds: number): Promise<IdleViews> {
   const store = await openWorkflowStore(settings, Function.constVoid);
   await store.database.store.append(
-    `${brain}specs/recollection`,
+    `${brain}definitions/recall`,
     Array.from({ length: views }, (_, index) => saved(index)),
     0,
   );
@@ -63,7 +63,7 @@ export async function idleViewsOn(settings: DatabaseSettings, views: number, sec
   const projector = startProjector({
     database: store.database,
     settings: {
-      definitionType: 'recollection',
+      definitionType: 'recall',
       pool,
       folding: {
         dialect: { refused: [], variables: ['event'] },

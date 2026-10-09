@@ -178,7 +178,7 @@ await test('the first-brain tutorial supplies inputs and observable checks for t
   assert.ok(tutorial.includes('review-campaign-brief'));
   assert.ok(tutorial.includes('USD 10,000'));
   assert.ok(tutorial.includes('status: succeeded'));
-  assert.ok(tutorial.includes('different execution ids'));
+  assert.ok(tutorial.includes('different run ids'));
   assert.ok(tutorial.includes('same definition version'));
   assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
 });
@@ -253,7 +253,7 @@ await test('public workflows are available and link their format and tutorial, w
   assert.ok(markdownDestinations(workflows).includes('../tutorials/first-workflow.md'));
   assert.ok(routes.includes('/reference/workflow-format'));
   assert.ok(routes.includes('/tutorials/first-workflow'));
-  assert.ok(tutorial.includes('send_execution_event'));
+  assert.ok(tutorial.includes('send_run_event'));
   assert.ok(tutorial.includes('status: succeeded'));
   assert.doesNotMatch(tutorial, /localhost|127\.0\.0\.1|claude-|gpt-/u);
   const removedPages = ['get-started/self-hosted', 'reference/http-tutorial'];

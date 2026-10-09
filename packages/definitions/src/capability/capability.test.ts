@@ -1,0 +1,209 @@
+import { InvalidInput } from '@beonauto/operations';
+import { Effect } from 'effect';
+import { describe, expect, it } from 'vitest';
+
+import { defineRunDefinition, defineCapability, type RunContext, type CapabilityDeclaration } from '../index.ts';
+import type { DeliveryEvent } from '../runs/run-events.ts';
+import { noLongestRuns } from '../testing/longest-runs.ts';
+import { recordingJournal } from '../testing/recording-journal.ts';
+import { answerOfCall, startOfCall } from '../testing/tool-user.ts';
+
+const parseWords = (source: string) =>
+  source.trim() === ''
+    ? Effect.fail(
+        new InvalidInput({ detail: 'The document is empty', issues: [{ detail: 'Line 1 is empty', pointer: '' }] }),
+      )
+    : Effect.succeed({ words: source.trim().split(/\s+/u) });
+
+const words: CapabilityDeclaration<{ readonly words: readonly string[] }> = {
+  type: 'words',
+  title: 'Words',
+  guide: { name: 'words' },
+  noun: { one: 'count', other: 'counts' },
+  describeOutput: () => 'It counted the words.',
+  mediaType: 'text/plain',
+  parse: parseWords,
+  summarize: (parsed) => ({ description: `${parsed.words.length} words` }),
+  run: (parsed, input, run) => Effect.succeed({ output: { words: parsed.words, input }, record: { run: run.id } }),
+};
+
+const deliveryOfWords: DeliveryEvent = {
+  type: 'delivery_started',
+  number: 1,
+  target: 'ada',
+  server: 'chat',
+  tool: 'post_message',
+  definition_type: 'words',
+  name: 'count',
+  definition_version: 1,
+  by: 'brain:alpha',
+  at: '2026-10-01T09:00:00.000Z',
+};
+
+const run: RunContext = {
+  id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+  org: 'acme',
+  brain: 'alpha',
+  caller: { id: 'acme-admin', org: 'acme', permissions: ['brain:write'], brains: '*' },
+  definition: { name: 'count', version: 3 },
+  journal: recordingJournal(),
+  lineage: { startId: '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a', correlationId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
+  depth: 0,
+  callDepth: 0,
+  longestRunOf: noLongestRuns,
+};
+
+describe('a capability', () => {
+  it('keeps its type, title, description, noun, words for an output and media type', () => {
+    const capability = defineCapability(words);
+
+    expect(capability).toMatchObject({
+      type: 'words',
+      title: 'Words',
+      guide: { name: 'words' },
+      noun: { one: 'count', other: 'counts' },
+      mediaType: 'text/plain',
+    });
+    expect(capability.describeOutput({ words: [] })).toBe('It counted the words.');
+  });
+
+  it('runs a run for at most the time it states, or 10 minutes when it states none', () => {
+    expect([defineCapability(words), defineCapability({ ...words, longestAnyRunMs: 1_660_000 })]).toMatchObject([
+      { longestAnyRunMs: 600_000 },
+      { longestAnyRunMs: 1_660_000 },
+    ]);
+  });
+
+  it.each(['ab', 'Words', '1words', 'word_s', `w${'o'.repeat(32)}`])('may not be named %j', (name) => {
+    expect(() => defineCapability({ ...words, type: name })).toThrow(`The type ${name} is malformed`);
+  });
+
+  it('prepares a document by parsing it once, and summarizes and executes what it parsed', async () => {
+    const prepared = await Effect.runPromise(defineCapability(words).prepare(' one two  three '));
+
+    expect(prepared.summary).toEqual({ description: '3 words' });
+    expect(await Effect.runPromise(prepared.run({ shout: true }, run))).toEqual({
+      output: { words: ['one', 'two', 'three'], input: { shout: true } },
+      record: { run: run.id },
+    });
+  });
+
+  it('fails to prepare a document its parser rejects, with the issues the parser found', async () => {
+    expect(await Effect.runPromise(Effect.flip(defineCapability(words).prepare('  ')))).toEqual(
+      new InvalidInput({ detail: 'The document is empty', issues: [{ detail: 'Line 1 is empty', pointer: '' }] }),
+    );
+  });
+});
+
+describe('the reach of a capability', () => {
+  it('reaches systems outside the server only when it says so, and so does run_definition when one of its capabilities does', () => {
+    const local = defineCapability(words);
+    const outside = defineCapability({ ...words, type: 'lookup', reachesOutside: true });
+
+    expect([local.reachesOutside, outside.reachesOutside]).toEqual([false, true]);
+    expect([
+      defineRunDefinition([local]).registration.reachesOutside,
+      defineRunDefinition([local, outside]).registration.reachesOutside,
+    ]).toEqual([false, true]);
+  });
+});
+
+describe('the change a capability may make outside the server', () => {
+  it('is none unless it says so, and run_definition may change the outside when one of its capabilities may', () => {
+    const local = defineCapability(words);
+    const acting = defineCapability({ ...words, type: 'acting', reachesOutside: true, mayChangeOutside: true });
+
+    expect([local.mayChangeOutside, acting.mayChangeOutside]).toEqual([false, true]);
+    expect([
+      defineRunDefinition([local]).registration.mayChangeOutside,
+      defineRunDefinition([local, acting]).registration.mayChangeOutside,
+    ]).toEqual([false, true]);
+  });
+});
+
+describe('a journal that records in memory, for tests', () => {
+  it('keeps what it records, numbering the calls it starts, and refuses what it is told to', async () => {
+    const journal = recordingJournal(({ type }) => type === 'tool_call_answered');
+    const refusingStarts = recordingJournal(({ type }) => type === 'tool_call_started');
+
+    expect(await Effect.runPromise(journal.started(startOfCall(1)))).toBe(1);
+    expect(await Effect.runPromise(journal.started(startOfCall(2)))).toBe(2);
+    expect(await Effect.runPromise(journal.answered(answerOfCall(1)))).toBe(false);
+    expect(journal.recorded()).toEqual([
+      { ...startOfCall(1), number: 1 },
+      { ...startOfCall(2), number: 2 },
+    ]);
+    expect(await Effect.runPromise(recordingJournal().answered(answerOfCall(2)))).toBe(true);
+    expect(await Effect.runPromise(refusingStarts.started(startOfCall(1)))).toBeUndefined();
+  });
+});
+
+describe('what a capability declares of its runs', () => {
+  it('is known to a run in a test by none of the definitions it might call', async () => {
+    expect(await Effect.runPromise(run.longestRunOf('probe', 'plain'))).toBeUndefined();
+  });
+
+  it('is that they end within their call, within its longest run, unless it says otherwise', async () => {
+    const plain = await Effect.runPromise(defineCapability(words).prepare('one two'));
+    const later = await Effect.runPromise(
+      defineCapability({
+        ...words,
+        finishesLater: true,
+        longestRunOf: ({ words: given }) => given.length * 1000,
+      }).prepare('one two'),
+    );
+
+    expect([plain, later]).toMatchObject([
+      { finishesLater: false, longestRunMs: 600_000 },
+      { finishesLater: true, longestRunMs: 2000 },
+    ]);
+  });
+});
+
+describe('what a capability decides of each document and says of its runs', () => {
+  it('finishes later for the documents it says do, when it decides by what it parsed', async () => {
+    const deciding = defineCapability({ ...words, finishesLater: ({ words: given }) => given.includes('later') });
+
+    expect([
+      (await Effect.runPromise(deciding.prepare('now'))).finishesLater,
+      (await Effect.runPromise(deciding.prepare('answer later'))).finishesLater,
+    ]).toEqual([false, true]);
+  });
+
+  it('gives no words of a deferral and the words of every capability for a delivery, unless it gives its own', () => {
+    const own = defineCapability({
+      ...words,
+      runWords: { deferral: (record) => ({ summary: 'Waiting.', data: record }) },
+    });
+
+    expect([defineCapability(words).runWords.deferral({}), own.runWords.deferral({ to: 'ada' })]).toEqual([
+      undefined,
+      { summary: 'Waiting.', data: { to: 'ada' } },
+    ]);
+    expect(own.runWords.delivery(deliveryOfWords)).toBe(
+      'Delivery attempt 1 of the request started, through the tool post_message of chat.',
+    );
+  });
+});
+
+describe('the cancelling of a run', () => {
+  it('cancels a run by settling it as cancelled with the kind and reason asked, unless it decides otherwise', () => {
+    const asked = {
+      run: { org: 'acme', brain: 'alpha', id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
+      record: { step: 1 },
+      kind: 'deadline',
+      reason: 'The step ran out of time',
+      broughtAnswer: null,
+      deliveredAt: null,
+    } as const;
+    const deciding = defineCapability({
+      ...words,
+      cancel: ({ record }) => ({ status: 'rejected', reason: 'conflict', detail: `At step ${JSON.stringify(record)}` }),
+    });
+
+    expect([defineCapability(words).cancel(asked), deciding.cancel(asked)]).toEqual([
+      { status: 'rejected', reason: 'cancelled', kind: 'deadline', detail: 'The step ran out of time' },
+      { status: 'rejected', reason: 'conflict', detail: 'At step {"step":1}' },
+    ]);
+  });
+});

@@ -109,7 +109,7 @@ export function startRun(machine: Machine, started: Started): void {
   const { session } = machine;
   const input = session.hold(started.input);
   session.begin({
-    executionId: started.executionId,
+    runId: started.runId,
     document: started.document,
     input,
     limits: started.limits,

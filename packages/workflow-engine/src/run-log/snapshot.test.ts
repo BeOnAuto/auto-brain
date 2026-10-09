@@ -39,7 +39,7 @@ describe('a snapshot', () => {
 
     expect(snapshot).toMatchObject({
       format: stateFormat,
-      executionId: runningState.executionId,
+      runId: runningState.runId,
       version: 1000,
       historyBytes: 9000,
     });

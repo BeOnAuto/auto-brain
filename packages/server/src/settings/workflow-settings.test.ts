@@ -24,10 +24,10 @@ describe('the workflow settings', () => {
 
   it('read how long a run may last, how many calls run at once, how many stay open and how often the runs are swept', () => {
     const workflows = readSettings({
-      ORCHESTRATION_MAX_DURATION: 'P7D',
-      ORCHESTRATION_NESTED_EXECUTIONS: '8',
-      ORCHESTRATION_MAX_OPEN_CALLS: '50',
-      ORCHESTRATION_SWEEP_INTERVAL: 'PT0.25S',
+      WORKFLOW_MAX_DURATION: 'P7D',
+      WORKFLOW_NESTED_RUNS: '8',
+      WORKFLOW_MAX_OPEN_CALLS: '50',
+      WORKFLOW_SWEEP_INTERVAL: 'PT0.25S',
     }).workflows;
 
     expect(workflows).toEqual({
@@ -40,14 +40,14 @@ describe('the workflow settings', () => {
 
   it('stop the server from starting when one is malformed or out of bounds, naming each and never its value', () => {
     const error = errorFrom({
-      ORCHESTRATION_MAX_DURATION: 'secret-forever',
-      ORCHESTRATION_NESTED_EXECUTIONS: '1001',
-      ORCHESTRATION_MAX_OPEN_CALLS: '0',
-      ORCHESTRATION_SWEEP_INTERVAL: 'PT2M',
+      WORKFLOW_MAX_DURATION: 'secret-forever',
+      WORKFLOW_NESTED_RUNS: '1001',
+      WORKFLOW_MAX_OPEN_CALLS: '0',
+      WORKFLOW_SWEEP_INTERVAL: 'PT2M',
     });
 
     expect(String(error)).toBe(
-      'InvalidSettingsError: The workflow settings are invalid. ORCHESTRATION_MAX_DURATION: Expected an ISO 8601 duration from PT2H to P365D, such as P30D; ORCHESTRATION_NESTED_EXECUTIONS: Expected a whole number from 1 to 1000, such as 32; ORCHESTRATION_MAX_OPEN_CALLS: Expected a whole number from 1 to 9999, such as 1000; ORCHESTRATION_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
+      'InvalidSettingsError: The workflow settings are invalid. WORKFLOW_MAX_DURATION: Expected an ISO 8601 duration from PT2H to P365D, such as P30D; WORKFLOW_NESTED_RUNS: Expected a whole number from 1 to 1000, such as 32; WORKFLOW_MAX_OPEN_CALLS: Expected a whole number from 1 to 9999, such as 1000; WORKFLOW_SWEEP_INTERVAL: Expected an ISO 8601 duration from PT0.01S to PT1M, such as PT1S',
     );
   });
 });
@@ -55,19 +55,19 @@ describe('the workflow settings', () => {
 describe('the most calls open under one run', () => {
   it('take from 1 to 9999, and refuse 10000', () => {
     expect([
-      readSettings({ ORCHESTRATION_MAX_OPEN_CALLS: '1' }).workflows.mostOpenCalls,
-      readSettings({ ORCHESTRATION_MAX_OPEN_CALLS: '9999' }).workflows.mostOpenCalls,
+      readSettings({ WORKFLOW_MAX_OPEN_CALLS: '1' }).workflows.mostOpenCalls,
+      readSettings({ WORKFLOW_MAX_OPEN_CALLS: '9999' }).workflows.mostOpenCalls,
     ]).toEqual([1, 9999]);
-    expect(String(errorFrom({ ORCHESTRATION_MAX_OPEN_CALLS: '10000' }))).toContain(
-      'ORCHESTRATION_MAX_OPEN_CALLS: Expected a whole number from 1 to 9999',
+    expect(String(errorFrom({ WORKFLOW_MAX_OPEN_CALLS: '10000' }))).toContain(
+      'WORKFLOW_MAX_OPEN_CALLS: Expected a whole number from 1 to 9999',
     );
   });
 });
 
 describe('a count of calls in the workflow settings', () => {
   it('is refused when it is not a whole number', () => {
-    expect(String(errorFrom({ ORCHESTRATION_NESTED_EXECUTIONS: 'many' }))).toContain(
-      'ORCHESTRATION_NESTED_EXECUTIONS: Expected a whole number from 1 to 1000',
+    expect(String(errorFrom({ WORKFLOW_NESTED_RUNS: 'many' }))).toContain(
+      'WORKFLOW_NESTED_RUNS: Expected a whole number from 1 to 1000',
     );
   });
 });

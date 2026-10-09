@@ -6,7 +6,7 @@ import { eventTrigger, type TriggerFilter } from '../reaction-testing/brain-writ
 import { followedRecordOf, saidRefusals } from '../reaction-testing/followed-records.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { triggersActivated } from '../triggers/trigger-rows.ts';
-import { reactionExecutionIdOf } from './reaction-ids.ts';
+import { reactionRunIdOf } from './reaction-ids.ts';
 import type { ReactionStart } from './reaction-options.ts';
 import { mostReactionDepth, subscriptionStarts } from './subscription-starts.ts';
 
@@ -25,7 +25,7 @@ async function subscribedAt(
   name: string,
   ...filters: readonly TriggerFilter[]
 ) {
-  const activation = { workflow: name, version, activatedBy: `spec-${version}`, activatedAt: Date.parse(at) };
+  const activation = { workflow: name, version, activatedBy: `definition-${version}`, activatedAt: Date.parse(at) };
   await Effect.runPromise(
     triggersActivated(database, brainKey, { ...activation, triggers: [eventTrigger(...filters)] }),
   );
@@ -49,7 +49,7 @@ async function starting() {
       startDeferred: () => Effect.succeed(0),
     },
     refusals,
-    workflowOfRun: (_brainKey, executionId) => Effect.succeed(topRuns.get(executionId)),
+    workflowOfRun: (_brainKey, runId) => Effect.succeed(topRuns.get(runId)),
     now: () => 0,
   });
   const delivered = (followed: ReturnType<typeof followedRecordOf>) =>
@@ -75,7 +75,7 @@ describe('the starts of the workflows whose trigger an event matches', () => {
         brain: 'alpha',
         workflow: 'close',
         version: 1,
-        executionId: reactionExecutionIdOf('close', 1, '/schedule/on', 'record-1'),
+        runId: reactionRunIdOf('close', 1, '/schedule/on', 'record-1'),
         input: [{ specversion: '1.0', id: 'e1', source: '/acme', type: 'go', time: at, data: { region: 'eu' } }],
         depth: 1,
         cause: 'record-1',

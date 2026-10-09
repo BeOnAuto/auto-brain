@@ -1,11 +1,11 @@
+import { cancelRequestOf } from '@beonauto/definitions';
 import { recordedReaderOf } from '@beonauto/ledger';
 import { messageIdOf, streamPrefixOfBrain, type Conflict } from '@beonauto/operations';
-import { cancelRequestOf } from '@beonauto/specs';
 import type { CancelOrder, RunInput, Submission } from '@beonauto/workflow-engine';
 import { Effect, Schema, type Cause } from 'effect';
 
 import type { DatabaseFailed, HostDatabase } from '../database/host-database.ts';
-import { addressOfRun, runIdOf, type RunAddress } from '../runs/run-address.ts';
+import { addressOfRun, runKeyOf, type RunAddress } from '../runs/run-address.ts';
 import { clearedPendingRow, pendingCancelRowsAfter, type PendingCancelRow } from './pending-cancel-rows.ts';
 
 interface PendingCancel {
@@ -13,14 +13,14 @@ interface PendingCancel {
   readonly cause: string;
 }
 
-const isStart = Schema.is(Schema.Struct({ type: Schema.Literal('execution_started') }));
+const isStart = Schema.is(Schema.Struct({ type: Schema.Literal('run_started') }));
 
 function isCancelRequest(data: unknown): boolean {
   return cancelRequestOf(data) !== undefined;
 }
 
 function pendingCancelOf(database: HostDatabase, run: RunAddress): Effect.Effect<PendingCancel | undefined> {
-  const stream = `${streamPrefixOfBrain(run)}executions/${run.executionId}`;
+  const stream = `${streamPrefixOfBrain(run)}runs/${run.runId}`;
   return Effect.map(
     Effect.promise(() => database.store.read(stream, 0)),
     ({ events }): PendingCancel | undefined => {
@@ -47,9 +47,7 @@ export function cancelledIfAsked(parts: PendingParts, run: RunAddress): Effect.E
   return Effect.flatMap(pendingCancelOf(parts.database, run), (pending) =>
     pending === undefined
       ? Effect.void
-      : Effect.asVoid(
-          parts.submitted({ kind: 'cancel_requested', executionId: runIdOf(run), at: parts.now(), ...pending }),
-        ),
+      : Effect.asVoid(parts.submitted({ kind: 'cancel_requested', runId: runKeyOf(run), at: parts.now(), ...pending })),
   );
 }
 
@@ -59,13 +57,13 @@ const pendingRowsInAPage = 100;
 
 const cancelsGivenAtOnce = 4;
 
-const finishTypes: ReadonlySet<string> = new Set(['execution_succeeded', 'execution_rejected', 'execution_failed']);
+const finishTypes: ReadonlySet<string> = new Set(['run_succeeded', 'run_rejected', 'run_failed']);
 
-function hasEnded(database: HostDatabase, runId: string): Effect.Effect<boolean> {
-  const { org, brain, executionId } = addressOfRun(runId);
+function hasEnded(database: HostDatabase, runKey: string): Effect.Effect<boolean> {
+  const { org, brain, runId } = addressOfRun(runKey);
   return recordedReaderOf(database.store)(
     { org, brain },
-    { kind: 'run', execution: executionId },
+    { kind: 'run', run: runId },
     { order: 'desc', limit: 1, dataOf: [] },
   ).pipe(
     Effect.orDie,
@@ -73,21 +71,21 @@ function hasEnded(database: HostDatabase, runId: string): Effect.Effect<boolean>
   );
 }
 
-function givenToItsRun(parts: PendingParts, { runId, cause, cancel }: PendingCancelRow) {
+function givenToItsRun(parts: PendingParts, { runKey, cause, cancel }: PendingCancelRow) {
   return Effect.flatMap(
-    parts.submitted({ kind: 'cancel_requested', executionId: runId, at: parts.now(), cause, cancel }),
-    ({ outcome }) => (outcome === 'not_started' ? Effect.void : clearedPendingRow(parts.database, runId)),
+    parts.submitted({ kind: 'cancel_requested', runId: runKey, at: parts.now(), cause, cancel }),
+    ({ outcome }) => (outcome === 'not_started' ? Effect.void : clearedPendingRow(parts.database, runKey)),
   );
 }
 
 function givenOrKept(parts: PendingParts, trouble: Trouble, row: PendingCancelRow) {
-  return Effect.flatMap(hasEnded(parts.database, row.runId), (ended) =>
-    ended ? clearedPendingRow(parts.database, row.runId) : givenToItsRun(parts, row),
+  return Effect.flatMap(hasEnded(parts.database, row.runKey), (ended) =>
+    ended ? clearedPendingRow(parts.database, row.runKey) : givenToItsRun(parts, row),
   ).pipe(
     Effect.as(true),
     Effect.catchCause((failure: Cause.Cause<unknown>) =>
       Effect.as(
-        trouble(`The cancel asked of ${row.runId} could not be given; the next sweep gives it again`, failure),
+        trouble(`The cancel asked of ${row.runKey} could not be given; the next sweep gives it again`, failure),
         false,
       ),
     ),
@@ -103,7 +101,7 @@ function pagesGiven(parts: PendingParts, trouble: Trouble, after: string): Effec
         const last = rows.at(-1);
         return last === undefined || rows.length < pendingRowsInAPage
           ? Effect.succeed(allGiven)
-          : Effect.map(pagesGiven(parts, trouble, last.runId), (rest) => allGiven && rest);
+          : Effect.map(pagesGiven(parts, trouble, last.runKey), (rest) => allGiven && rest);
       },
     ),
   );

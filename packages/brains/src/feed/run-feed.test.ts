@@ -15,19 +15,19 @@ describe('the events of one run and the runs it started', () => {
     await feed.recordingWith('shelves/red', { type: 'added', text: 'c' }, ofRoot);
 
     expect([
-      textsIn(await feed.reading({ execution_id: root })),
-      textsIn(await feed.reading({ execution_id: root, order: 'asc', type: 'note_added' })),
-      textsIn(await feed.reading({ execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b' })),
+      textsIn(await feed.reading({ run_id: root })),
+      textsIn(await feed.reading({ run_id: root, order: 'asc', type: 'note_added' })),
+      textsIn(await feed.reading({ run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7b' })),
     ]).toEqual([['c', 'a'], ['a'], []]);
   });
 
   it('are refused for an id that is not a UUID', async () => {
     const { reading } = brainFeed();
 
-    expect(await reading({ execution_id: 'not-a-run' })).toMatchObject({
+    expect(await reading({ run_id: 'not-a-run' })).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
-      issues: [{ pointer: '/execution_id' }],
+      issues: [{ pointer: '/run_id' }],
     });
   });
 });
@@ -35,8 +35,8 @@ describe('the events of one run and the runs it started', () => {
 describe('a page of the events of a brain', () => {
   it('counts the events it answers, ends inside a record, and reads on from there in either order', async () => {
     const feed = brainFeed();
-    await feed.recording('runs/r1', 'moved', 'x');
-    await feed.recording('runs/r1', 'moved', 'y');
+    await feed.recording('run-logs/r1', 'moved', 'x');
+    await feed.recording('run-logs/r1', 'moved', 'y');
     const read = (order: 'asc' | 'desc') => (cursor: string | undefined) =>
       feed.reading({ order, limit: 2, ...withCursor(cursor) });
 
@@ -51,7 +51,7 @@ describe('a page of the events of a brain', () => {
 
   it('of one type keeps only the events of that type a record shows', async () => {
     const feed = brainFeed();
-    await feed.recording('runs/r1', 'moved', 'x');
+    await feed.recording('run-logs/r1', 'moved', 'x');
 
     expect(textsIn(await feed.reading({ type: 'run_stepped', order: 'asc' }))).toEqual(['x1', 'x2']);
   });

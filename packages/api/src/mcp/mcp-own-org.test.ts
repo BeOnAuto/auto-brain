@@ -94,7 +94,7 @@ describe('the tools of /mcp', () => {
       instructionsFor(
         'own org',
         { orgTools, brainTools },
-        [{ primitive: 'notes', noun: 'note', guide: 'notebook' }],
+        [{ type: 'notes', noun: 'note', guide: 'notebook' }],
         [{ name: 'take-a-note', calls: ['add_note'] }],
       ),
     );

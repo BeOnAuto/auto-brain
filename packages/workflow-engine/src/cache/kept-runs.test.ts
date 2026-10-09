@@ -7,12 +7,12 @@ import type { RunInput } from '../machine/run-input.ts';
 import { memoryRunStore } from '../memory/run-store.ts';
 import { countingDecider } from '../testing/counting-decider.ts';
 import { deeplyFrozen, frozenRuns } from '../testing/frozen-runs.ts';
-import { at, executionId, runningState, started } from '../testing/runs.ts';
+import { at, runId, runningState, started } from '../testing/runs.ts';
 import { runCacheOf } from './run-cache.ts';
 
 const cancelled: RunInput = {
   kind: 'cancel_requested',
-  executionId,
+  runId,
   at: at + 1,
   cancel: { by: 'tester', kind: 'requested', reason: 'The test cancelled the run' },
 };
@@ -30,37 +30,35 @@ describe('a run the cache keeps', () => {
     const store = memoryRunStore();
     const cache = runCacheOf();
     const loop = runLoopOf(store, countingDecider, cache);
-    Effect.runSync(loop(executionId, started));
+    Effect.runSync(loop(runId, started));
     store.failNextAppend('unknown_outcome');
 
-    const lost = Effect.runSyncExit(loop(executionId, cancelled));
-    const kept = cache.get(executionId);
-    const next = Effect.runSync(loop(executionId, { ...cancelled, at: at + 2 }));
+    const lost = Effect.runSyncExit(loop(runId, cancelled));
+    const kept = cache.get(runId);
+    const next = Effect.runSync(loop(runId, { ...cancelled, at: at + 2 }));
 
     expect(Exit.isFailure(lost)).toBe(true);
     expect(kept).toBeUndefined();
     expect([next.loaded.version, next.events.length]).toEqual([2, 0]);
-    expect(store.loads(executionId)).toBe(2);
+    expect(store.loads(runId)).toBe(2);
   });
 
   it('is let go of when its append meets a conflict, so the retry loads the run from the store', () => {
     const store = memoryRunStore();
     const cache = runCacheOf();
     const loop = runLoopOf(store, countingDecider, cache);
-    Effect.runSync(loop(executionId, started));
+    Effect.runSync(loop(runId, started));
     store.failNextAppend('conflict');
 
-    const decided = Effect.runSync(loop(executionId, cancelled));
+    const decided = Effect.runSync(loop(runId, cancelled));
 
-    expect([decided.version, cache.get(executionId)?.version]).toEqual([2, 2]);
-    expect(store.loads(executionId)).toBe(2);
+    expect([decided.version, cache.get(runId)?.version]).toEqual([2, 2]);
+    expect(store.loads(runId)).toBe(2);
   });
 
   it('is frozen to its leaves under the memory driver, so a machine that wrote to a state in place would fail', () => {
-    const unfrozen = Effect.runSyncExit(runLoopOf(memoryRunStore(), writing, runCacheOf())(executionId, started));
-    const frozen = Effect.runSyncExit(
-      runLoopOf(memoryRunStore(), writing, frozenRuns(runCacheOf()))(executionId, started),
-    );
+    const unfrozen = Effect.runSyncExit(runLoopOf(memoryRunStore(), writing, runCacheOf())(runId, started));
+    const frozen = Effect.runSyncExit(runLoopOf(memoryRunStore(), writing, frozenRuns(runCacheOf()))(runId, started));
     const state = deeplyFrozen(structuredClone(runningState));
 
     expect([Exit.isSuccess(unfrozen), Exit.isFailure(frozen)]).toEqual([true, true]);

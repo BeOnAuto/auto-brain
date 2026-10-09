@@ -21,11 +21,11 @@ call() {
 }
 
 settled() {
-  local execution
+  local run
   for _ in $(seq 1 60); do
-    execution="$(call "$brains/$brain/executions/$1")"
-    if [ "$(jq --raw-output .status <<< "$execution")" != started ]; then
-      printf '%s\n' "$execution"
+    run="$(call "$brains/$brain/runs/$1")"
+    if [ "$(jq --raw-output .status <<< "$run")" != started ]; then
+      printf '%s\n' "$run"
       return 0
     fi
     sleep 1
@@ -39,7 +39,7 @@ call --data "{\"brain\": \"$brain\", \"name\": \"Trying workflows\"}" "$brains" 
 greeting="$(printf '%s\n' '---' "model: $model" 'config: {max_output_tokens: 200}' '---' \
   '{% system %}Answer in one sentence.{% endsystem %}Greet {{ input.name }} and name today, {{ today }}.')"
 call --data "$(jq --null-input --arg source "$greeting" '{name: "greeting", source: $source}')" \
-  "$brains/$brain/specs/inference" > /dev/null
+  "$brains/$brain/definitions/reasoning" > /dev/null
 welcome="$(cat << 'YAML'
 document:
   dsl: '1.0.3'
@@ -49,9 +49,9 @@ document:
   summary: Greets a customer, then waits for their reply.
 do:
   - greet:
-      call: execute_spec
+      call: run_definition
       with:
-        primitive: inference
+        type: reasoning
         name: greeting
         input:
           name: ${ .name }
@@ -67,13 +67,13 @@ do:
 YAML
 )"
 call --data "$(jq --null-input --arg source "$welcome" '{name: "welcome", source: $source}')" \
-  "$brains/$brain/specs/orchestration" > /dev/null
-started="$(call --data '{"input": {"name": "Ada"}}' "$brains/$brain/specs/orchestration/welcome/execute")"
-execution_id="$(jq --raw-output .execution_id <<< "$started")"
+  "$brains/$brain/definitions/workflow" > /dev/null
+started="$(call --data '{"input": {"name": "Ada"}}' "$brains/$brain/definitions/workflow/welcome/run")"
+run_id="$(jq --raw-output .run_id <<< "$started")"
 if ! call --data '{"event": {"type": "com.example.customer.replied", "data": "Thank you!"}}' \
-  "$brains/$brain/executions/$execution_id/events" > /dev/null; then
+  "$brains/$brain/runs/$run_id/events" > /dev/null; then
   printf 'The workflow ended before it could take the reply; it ended so:\n' >&2
 fi
-execution="$(settled "$execution_id")"
-jq . <<< "$execution"
-test "$(jq --raw-output .status <<< "$execution")" = succeeded
+run="$(settled "$run_id")"
+jq . <<< "$run"
+test "$(jq --raw-output .status <<< "$run")" = succeeded

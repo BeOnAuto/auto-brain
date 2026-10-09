@@ -48,8 +48,8 @@ describe('requests past their expiry while the server was stopped', { timeout: w
     expect(await second.settled(uncaught)).toMatchObject(unansweredAsExpired);
     expect(await second.openRequests(0)).toEqual([]);
     expect(
-      await second.call('POST', `${alpha}/specs/interaction/approve-brief/execute`, {
-        body: { input: brief, execution_id: asked },
+      await second.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
+        body: { input: brief, run_id: asked },
       }),
     ).toMatchObject({ status: 410, body: { type: 'https://on.auto/problems/unanswered', kind: 'expired' } });
   });

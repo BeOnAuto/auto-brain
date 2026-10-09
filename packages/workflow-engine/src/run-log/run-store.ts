@@ -2,7 +2,7 @@ import type { VersionConflict } from '@beonauto/ledger';
 import type { Effect, Schema } from 'effect';
 
 import type { StepKey } from '../steps/step-entry.ts';
-import type { PositionedEvent, RunEvent } from './run-event.ts';
+import type { PositionedEvent, RunLogEvent } from './run-event.ts';
 import type { Snapshot } from './snapshot.ts';
 
 export interface StoredSnapshot {
@@ -27,14 +27,14 @@ export interface RecordLineage {
   readonly attributes: Schema.JsonObject;
 }
 
-export interface RunStore {
-  readonly load: (executionId: string) => Effect.Effect<StoredRun>;
+export interface RunLogStore {
+  readonly load: (runId: string) => Effect.Effect<StoredRun>;
   readonly append: (
-    executionId: string,
-    event: RunEvent,
+    runId: string,
+    event: RunLogEvent,
     expectedVersion: number,
     lineage: RecordLineage,
   ) => Effect.Effect<void, VersionConflict>;
-  readonly eventsAfter: (executionId: string, version: number) => Effect.Effect<readonly PositionedEvent[]>;
+  readonly eventsAfter: (runId: string, version: number) => Effect.Effect<readonly PositionedEvent[]>;
   readonly saveSnapshot: (snapshot: Snapshot) => Effect.Effect<void>;
 }

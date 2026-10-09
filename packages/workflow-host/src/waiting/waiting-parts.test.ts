@@ -9,12 +9,12 @@ import { recordedWaiting } from '../waiting-testing/recorded-waiting.ts';
 import { mostOpenCallsOfATree } from './waiting-options.ts';
 import { executorWaitingOf } from './waiting-parts.ts';
 
-const run = { executionId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
+const run = { runId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes: {} };
 
 function callWith(arguments_: StartCall['arguments']): StartCall {
   return {
     kind: 'start_call',
-    key: { executionId: run.executionId, reference: '/do/0/ask', run: 1 },
+    key: { runId: run.runId, reference: '/do/0/ask', run: 1 },
     function: 'notify',
     arguments: arguments_,
     longestMs: 60_000,
@@ -52,24 +52,24 @@ describe('the answer of a run a call waits for', () => {
     const { options } = recordedWaiting();
     const database = await openedOn({ store: 'sqlite', file: aSQLiteFile() });
     const { childAnswerOf } = executorWaitingOf(database, testMachine, options);
-    const ofTheChild = { primitive: 'orchestration', name: 'check', spec_version: 1, by: 'brain:alpha', at };
-    const calledBy = { execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 1 };
-    await recorded(database.store, `${alpha}executions/answered`, {
-      type: 'execution_succeeded',
+    const ofTheChild = { definition_type: 'workflow', name: 'check', definition_version: 1, by: 'brain:alpha', at };
+    const calledBy = { run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', reference: '/do/0/ask', run: 1 };
+    await recorded(database.store, `${alpha}runs/answered`, {
+      type: 'run_succeeded',
       output: 'checked',
       record: {},
       ...ofTheChild,
       called_by: calledBy,
     });
-    await recorded(database.store, `${alpha}executions/uncalled`, {
-      type: 'execution_succeeded',
+    await recorded(database.store, `${alpha}runs/uncalled`, {
+      type: 'run_succeeded',
       output: 'checked',
       record: {},
       ...ofTheChild,
     });
 
     const answers = await Effect.runPromise(
-      Effect.all(['answered', 'uncalled', 'running'].map((child) => childAnswerOf(run.executionId, child))),
+      Effect.all(['answered', 'uncalled', 'running'].map((child) => childAnswerOf(run.runId, child))),
     );
 
     expect(answers).toEqual([{ status: 'succeeded', output: 'checked' }, undefined, undefined]);

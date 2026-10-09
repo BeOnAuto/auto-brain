@@ -30,9 +30,9 @@ function read(ledger: MemoryLedger, query: ProjectedRowsQuery = newestFirst) {
 describe('a projection of runs in the in-memory ledger', () => {
   it('keeps one row a run from the facts of its types, with the id of the message it last took', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
-    await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage'), { type: 'run_noted' });
-    await noting(ledger, 'brain/acme/alpha/executions/r1', ended);
-    await noting(ledger, 'brain/acme/alpha/runs/r1', began('ignored'));
+    await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'), { type: 'run_noted' });
+    await noting(ledger, 'brain/acme/alpha/runs/r1', ended);
+    await noting(ledger, 'brain/acme/alpha/run-logs/r1', began('ignored'));
 
     expect(await read(ledger)).toEqual([
       {
@@ -46,7 +46,7 @@ describe('a projection of runs in the in-memory ledger', () => {
           facts: 3,
           open: false,
           due_at: null,
-          last_message: messageIdOf('brain/acme/alpha/executions/r1', 3),
+          last_message: messageIdOf('brain/acme/alpha/runs/r1', 3),
         },
       },
     ]);
@@ -56,10 +56,10 @@ describe('a projection of runs in the in-memory ledger', () => {
 describe('a read of the rows of a projection in the in-memory ledger', () => {
   it('reads the rows of one brain by their columns, in order, from where a page ended', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
-    await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage', 0));
-    await noting(ledger, 'brain/acme/alpha/executions/r2', began('triage', 1), ended);
-    await noting(ledger, 'brain/acme/alpha/executions/r3', began('review', 2));
-    await noting(ledger, 'brain/acme/beta/executions/r4', began('triage', 3));
+    await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', 0));
+    await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage', 1), ended);
+    await noting(ledger, 'brain/acme/alpha/runs/r3', began('review', 2));
+    await noting(ledger, 'brain/acme/beta/runs/r4', began('triage', 3));
 
     const runsOf = async (query: ProjectedRowsQuery) => (await read(ledger, query)).map(({ key }) => key);
     const open = { column: 'open', equals: true };
@@ -77,9 +77,9 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
 
   it('reads the rows due by a time across brains, the soonest first, and the next due time', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
-    await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage', 2));
-    await noting(ledger, 'brain/globex/gamma/executions/r2', began('triage', 0));
-    await noting(ledger, 'brain/acme/beta/executions/r3', began('triage', 1), ended);
+    await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', 2));
+    await noting(ledger, 'brain/globex/gamma/runs/r2', began('triage', 0));
+    await noting(ledger, 'brain/acme/beta/runs/r3', began('triage', 1), ended);
     const due = (through: number, limit = 10) =>
       Effect.runPromise(ledger.service.readDueRows('run_tallies', { column: 'due_at', through, limit }));
 
@@ -100,37 +100,35 @@ describe('a read of the rows of a projection in the in-memory ledger', () => {
 
 describe('an append to a run of which a projection keeps a row, in the in-memory ledger', () => {
   it('keeps nothing of an append whose projection breaks down, and records nothing of it', async () => {
-    const breaking: KeyedProjection = tallyRowsOf(1, (row) => row['status'] !== 'started');
+    const breaking: KeyedProjection = tallyRowsOf(2, (row) => row['status'] !== 'started');
     const ledger = memoryLedger(undefined, [breaking]);
-    await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage'));
+    await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'));
 
-    const failed = await Effect.runPromiseExit(
-      ledger.service.execute('brain/acme/alpha/executions/r1', runFacts, [ended]),
-    );
+    const failed = await Effect.runPromiseExit(ledger.service.execute('brain/acme/alpha/runs/r1', runFacts, [ended]));
 
     expect(Exit.isFailure(failed)).toBe(true);
     expect((await read(ledger)).map(({ row }) => row['status'])).toEqual(['started']);
-    expect((await Effect.runPromise(ledger.service.load('brain/acme/alpha/executions/r1', runFacts))).version).toBe(1);
+    expect((await Effect.runPromise(ledger.service.load('brain/acme/alpha/runs/r1', runFacts))).version).toBe(1);
   });
 
   it('keeps nothing for a run whose facts its mapping does not take', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
-    await noting(ledger, 'brain/acme/alpha/executions/r1', ended, { type: 'run_noted' });
+    await noting(ledger, 'brain/acme/alpha/runs/r1', ended, { type: 'run_noted' });
 
     expect(await read(ledger)).toEqual([]);
   });
 
   it('hands its mapping only the facts of the types it names', async () => {
     const ledger = memoryLedger(undefined, [{ ...runTallyRows, types: ['run_began', 'run_ended'] }]);
-    await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage'), { type: 'run_noted' });
+    await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage'), { type: 'run_noted' });
 
     expect((await read(ledger)).map(({ row }) => row['facts'])).toEqual([1]);
   });
 
   it('orders a column that is not set before every value that is', async () => {
     const ledger = memoryLedger(undefined, [runTallyRows]);
-    await noting(ledger, 'brain/acme/alpha/executions/r1', began('triage', 0));
-    await noting(ledger, 'brain/acme/alpha/executions/r2', began('triage', 1), ended);
+    await noting(ledger, 'brain/acme/alpha/runs/r1', began('triage', 0));
+    await noting(ledger, 'brain/acme/alpha/runs/r2', began('triage', 1), ended);
     const byDue = { where: [], orderBy: ['due_at'], limit: 10 };
 
     expect((await read(ledger, { ...byDue, order: 'asc' })).map(({ key }) => key)).toEqual(['r2', 'r1']);
@@ -140,9 +138,9 @@ describe('an append to a run of which a projection keeps a row, in the in-memory
 
 describe('the table of a projection', () => {
   it('is named for the projection and its version, so a new version is a new table', () => {
-    expect([projectedTableOf(runTallyRows), projectedTableOf(tallyRowsOf(2))]).toEqual([
-      'run_tallies_1',
+    expect([projectedTableOf(runTallyRows), projectedTableOf(tallyRowsOf(3))]).toEqual([
       'run_tallies_2',
+      'run_tallies_3',
     ]);
   });
 });
@@ -169,7 +167,7 @@ describe('a projection declared with names a table cannot hold', () => {
       { ...runTallyRows, indexes: [{ name: 'due', columns: ['due_at'], whereSet: 'due' }] },
     ],
     ['The projection run_tallies names no stream kind it folds', { ...runTallyRows, kinds: [] }],
-    ['The stream kind name Executions is malformed', { ...runTallyRows, kinds: ['Executions'] }],
+    ['The stream kind name Runs is malformed', { ...runTallyRows, kinds: ['Runs'] }],
     [
       'The projection topics has no column closed',
       { ...topicRows, advanced: { columns: ['closed'], setBy: ['topic_opened'] } },
@@ -198,7 +196,7 @@ function topicsOf(ledger: MemoryLedger) {
 describe('a projection keyed by what its mapping says, over the stream kinds it names', () => {
   it('keeps one row a key from the facts of every stream of its kinds, and none of another kind', async () => {
     const ledger = memoryLedger(undefined, [topicRows]);
-    await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
+    await topics(ledger, 'brain/acme/alpha/runs/r1', { type: 'topic_opened', topic: 'spring', at: nine });
     await topics(ledger, 'brain/acme/alpha/notes/n1', { type: 'topic_noted', topic: 'spring', note: 'first' });
     await topics(ledger, 'brain/acme/alpha/notes/n2', { type: 'topic_noted', topic: 'autumn', note: 'none' });
     await topics(ledger, 'brain/acme/alpha/others/o1', { type: 'topic_noted', topic: 'spring', note: 'ignored' });
@@ -223,7 +221,7 @@ describe('a projection keyed by what its mapping says, over the stream kinds it 
 
   it('lets its reader advance the columns it declares on one row, and no other column', async () => {
     const ledger = memoryLedger(undefined, [topicRows]);
-    await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
+    await topics(ledger, 'brain/acme/alpha/runs/r1', { type: 'topic_opened', topic: 'spring', at: nine });
 
     await Effect.runPromise(
       ledger.service.advanceRow('topics', alpha, 'spring', {
@@ -248,8 +246,8 @@ describe('a projection keyed by what its mapping says, over the stream kinds it 
 describe('the advance of a row of the in-memory ledger that its fold changed since its reader read it', () => {
   it('advances a row only while the columns it is told to compare still hold what its reader read', async () => {
     const ledger = memoryLedger(undefined, [topicRows]);
-    await topics(ledger, 'brain/acme/alpha/executions/r1', { type: 'topic_opened', topic: 'spring', at: nine });
-    const readAt = messageIdOf('brain/acme/alpha/executions/r1', 1);
+    await topics(ledger, 'brain/acme/alpha/runs/r1', { type: 'topic_opened', topic: 'spring', at: nine });
+    const readAt = messageIdOf('brain/acme/alpha/runs/r1', 1);
     await topics(ledger, 'brain/acme/alpha/notes/n1', { type: 'topic_noted', topic: 'spring', note: 'meanwhile' });
 
     await Effect.runPromise(

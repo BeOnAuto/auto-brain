@@ -10,7 +10,7 @@ import { testServerInfo } from '../testing/operation-server.ts';
 
 const reportedErrors: string[] = [];
 
-const notebookTypes: readonly DefinitionType[] = [{ primitive: 'notes', noun: 'note', guide: 'notebook' }];
+const notebookTypes: readonly DefinitionType[] = [{ type: 'notes', noun: 'note', guide: 'notebook' }];
 
 interface Serving {
   readonly operations?: readonly { readonly registration: Registration }[];
@@ -45,7 +45,7 @@ function guideOf(name: string, text = '# A guide\n'): Guide {
 }
 
 function typeOf(noun: string, guide = 'asking'): DefinitionType {
-  return { primitive: 'asking', noun, guide };
+  return { type: 'asking', noun, guide };
 }
 
 const twoSentences = 'Asks. It answers. ';
@@ -63,21 +63,21 @@ describe('a tool description', () => {
     expect(describedIn(800)).toHaveLength(800);
     expect(starting({ operations: [asking({ description: describedIn(800) })] })).not.toThrow();
     expect(starting({ operations: [asking({ description: describedIn(801) })] })).toThrow(
-      'The description of ask_spec: 801 characters, more than the 800 allowed',
+      'The description of ask_definition: 801 characters, more than the 800 allowed',
     );
   });
 
   it('starts the server at three sentences, and refuses to start it at two', () => {
     expect(starting({ operations: [asking({ description: sentencesNumbering(3) })] })).not.toThrow();
     expect(starting({ operations: [asking({ description: sentencesNumbering(2) })] })).toThrow(
-      'The description of ask_spec: 2 sentences, fewer than the 3 required',
+      'The description of ask_definition: 2 sentences, fewer than the 3 required',
     );
   });
 
   it('starts the server at eight sentences, and refuses to start it at nine', () => {
     expect(starting({ operations: [asking({ description: sentencesNumbering(8) })] })).not.toThrow();
     expect(starting({ operations: [asking({ description: sentencesNumbering(9) })] })).toThrow(
-      'The description of ask_spec: 9 sentences, more than the 8 allowed',
+      'The description of ask_definition: 9 sentences, more than the 8 allowed',
     );
   });
 });
@@ -86,7 +86,7 @@ describe('the description of an argument', () => {
   it('starts the server at 300 characters, and refuses to start it at 301', () => {
     expect(starting({ operations: [asking({ argument: 'q'.repeat(300) })] })).not.toThrow();
     expect(starting({ operations: [asking({ argument: 'q'.repeat(301) })] })).toThrow(
-      'The description of question of ask_spec: 301 characters, more than the 300 allowed',
+      'The description of question of ask_definition: 301 characters, more than the 300 allowed',
     );
   });
 });
@@ -98,7 +98,7 @@ function askingTools(count: number) {
 describe('the description of an argument of one shape of a union input', () => {
   it('refuses to start the server over 300 characters', () => {
     const shaped = defineQuery('brain', {
-      name: 'shape_spec',
+      name: 'shape_definition',
       title: 'Shape',
       description: 'Shapes. Use it to shape. It answers.',
       route: { method: 'GET', path: '/shape' },
@@ -113,7 +113,7 @@ describe('the description of an argument of one shape of a union input', () => {
     });
 
     expect(starting({ operations: [shaped] })).toThrow(
-      'The description of square of shape_spec: 301 characters, more than the 300 allowed',
+      'The description of square of shape_definition: 301 characters, more than the 300 allowed',
     );
   });
 });
@@ -128,16 +128,16 @@ describe('the tools on a connection', () => {
 });
 
 function workflowCalled(noun: string): DefinitionType {
-  return { primitive: 'orchestration', noun, guide: 'asking' };
+  return { type: 'workflow', noun, guide: 'asking' };
 }
 
 function instructionLengthWith(noun: string): number {
-  return instructionsFor('own org', { orgTools: [], brainTools: ['get_execution'] }, [workflowCalled(noun)], []).length;
+  return instructionsFor('own org', { orgTools: [], brainTools: ['get_run'] }, [workflowCalled(noun)], []).length;
 }
 
 function servingTypeOf(noun: string): Serving {
   return {
-    operations: [asking({ name: 'get_execution' })],
+    operations: [asking({ name: 'get_run' })],
     guides: [guideOf('asking')],
     definitionTypes: [workflowCalled(noun)],
   };
@@ -218,9 +218,9 @@ describe('a server without the guides it names', () => {
     expect(
       starting({
         guides: [wordsGuide],
-        definitionTypes: [{ primitive: 'inference', noun: 'reasoning function', guide: 'reasoning-function' }],
+        definitionTypes: [{ type: 'reasoning', noun: 'reasoning function', guide: 'reasoning-function' }],
       }),
-    ).toThrow('The definition type inference names the guide reasoning-function, which the server does not carry');
+    ).toThrow('The definition type reasoning names the guide reasoning-function, which the server does not carry');
   });
 
   it('refuses to start without the format guide a recipe embeds', () => {

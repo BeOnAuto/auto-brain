@@ -7,7 +7,7 @@ import { Effect, Function } from 'effect';
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openHostDatabase } from '../src/database/host-databases.ts';
 import { openWorkflowHost } from '../src/host/workflow-host.ts';
-import { brainCreated, eventRecordOf, published, specRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { brainCreated, eventRecordOf, published, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
 import { anEventTrigger, savedNow, type TriggersOf } from './trigger-sets.ts';
@@ -67,11 +67,11 @@ async function publishedInTurn(
   );
 }
 
-function workflowsSaved(store: Parameters<typeof specRecorded>[0], measured: LatencyCase): Promise<void> {
+function workflowsSaved(store: Parameters<typeof definitionRecorded>[0], measured: LatencyCase): Promise<void> {
   return Array.from({ length: measured.workflows }, (_, index) => index).reduce<Promise<void>>(
     (before, index) =>
       before.then(() =>
-        specRecorded(store, {
+        definitionRecorded(store, {
           name: `w${index}`,
           version: 1,
           triggers: (measured.triggersOf ?? anEventTrigger)(typeOf(index, measured.workflows)),

@@ -5,8 +5,8 @@ import type { DispatcherServices } from '@beonauto/operations';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { logServerMessage, logUntestableServer } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
-import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-inference.ts';
 import { interactionServedBy, type ServedInteraction } from './served-interaction.ts';
+import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-reasoning.ts';
 
 export interface ServedToolUsers {
   readonly reasoning: ServedReasoning;

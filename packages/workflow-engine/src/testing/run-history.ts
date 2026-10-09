@@ -9,14 +9,14 @@ import type { EarlierStep, Step } from '../steps/step-entry.ts';
 import type { TimerPurpose } from '../timers/timer-id.ts';
 import { memoryDriver, type MemoryDriver } from './memory-driver.ts';
 
-export const drivenExecutionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+export const drivenRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 export interface DriveOptions {
   readonly input?: Json;
   readonly respond?: Responder;
   readonly limits?: Partial<RunLimits>;
   readonly seed?: number;
-  readonly meanwhile?: (driver: MemoryDriver, executionId: string) => void;
+  readonly meanwhile?: (driver: MemoryDriver, runId: string) => void;
 }
 
 export interface DrivenRun {
@@ -29,17 +29,17 @@ export interface DrivenRun {
 export function drivenRun(document: JsonObject, options: DriveOptions = {}): DrivenRun {
   const { input, respond, limits, seed, meanwhile } = options;
   const driver = memoryDriver(respond === undefined ? {} : { respond });
-  const executionId = drivenExecutionId;
+  const runId = drivenRunId;
   driver.start({
-    executionId,
+    runId,
     document,
     ...(input === undefined ? {} : { input }),
     ...(limits === undefined ? {} : { limits }),
     ...(seed === undefined ? {} : { seed }),
   });
-  meanwhile?.(driver, executionId);
-  const ended = driver.runUntilEnded(executionId);
-  return { driver, ended, outcome: ended.outcome, events: driver.ports.runStore.events(executionId) };
+  meanwhile?.(driver, runId);
+  const ended = driver.runUntilEnded(runId);
+  return { driver, ended, outcome: ended.outcome, events: driver.ports.runStore.events(runId) };
 }
 
 export function statesAlong(events: readonly PositionedEvent[]): readonly RunState[] {

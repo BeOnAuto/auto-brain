@@ -1,5 +1,5 @@
 import { internalTermsIn } from '@beonauto/api/testing';
-import { recallDocument } from '@beonauto/recollection/testing';
+import { recallDocument } from '@beonauto/recall/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -21,7 +21,7 @@ import {
 } from '../testing/servers/recall-server.ts';
 
 const reviewRuns =
-  'language: jq\nsource:\n  events:\n    - type: execution_succeeded\n      subject: inference/review-brief\nview:\n  initial: 0';
+  'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief\nview:\n  initial: 0';
 
 const decodeDetail = Schema.decodeUnknownSync(Schema.Struct({ detail: Schema.String }));
 
@@ -50,13 +50,13 @@ async function serving(): Promise<ReasoningServer> {
 }
 
 function saved(server: ReasoningServer, name: string, fold: string) {
-  return server.call('POST', `${alpha}/specs/recollection`, {
+  return server.call('POST', `${alpha}/definitions/recall`, {
     body: { name, source: recallDocument(fold, reviewRuns) },
   });
 }
 
 function updated(server: ReasoningServer, name: string, fold: string) {
-  return server.call('PUT', `${alpha}/specs/recollection/${name}`, {
+  return server.call('PUT', `${alpha}/definitions/recall/${name}`, {
     body: { source: recallDocument(fold, reviewRuns) },
   });
 }
@@ -100,8 +100,8 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
     const after = await recalled(server, 'count', {});
 
     expect([before.body, after.body]).toMatchObject([
-      { output: 2, spec_version: 1 },
-      { output: 20, spec_version: 2 },
+      { output: 2, definition_version: 1 },
+      { output: 20, definition_version: 2 },
     ]);
     expect(rebuilt).toMatchObject({ standing: { folded: 2 } });
   });
@@ -110,7 +110,7 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
 describe('a recall function waiting for its view to be built', { timeout: recallTestTimeoutMs }, () => {
   it('waits behind the views being built when its brain builds as many as it may at once', async () => {
     const gate = foldsHeldUntilOpened();
-    const server = await servingWith({ RECOLLECTION_MAX_REBUILDS: '1', RECOLLECTION_BRAINS_AT_ONCE: '1' }, gate);
+    const server = await servingWith({ RECALL_MAX_REBUILDS: '1', RECALL_BRAINS_AT_ONCE: '1' }, gate);
     await brainWithReviews(server, 1, 'beta');
     await foldsHeld(gate, 1);
     await brainWithReviews(server, 1);

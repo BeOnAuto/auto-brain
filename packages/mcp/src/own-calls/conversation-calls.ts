@@ -38,15 +38,11 @@ function tellingOutcomeOf(end: CalledOnce): TellingOutcome {
 
 export interface Telling {
   readonly callId: string;
-  readonly executionId: string;
+  readonly runId: string;
 }
 
-export function tellingStartedOf(
-  { callId, executionId }: Telling,
-  start: StartedFields,
-  recorded: Recorded,
-): TellingStarted {
-  return { type: 'telling_started', call_id: callId, execution_id: executionId, ...start, ...recorded };
+export function tellingStartedOf({ callId, runId }: Telling, start: StartedFields, recorded: Recorded): TellingStarted {
+  return { type: 'telling_started', call_id: callId, run_id: runId, ...start, ...recorded };
 }
 
 export function tellingEndedOf(callId: string, end: CalledOnce, recorded: Recorded): TellingEnded {

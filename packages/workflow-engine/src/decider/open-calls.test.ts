@@ -134,9 +134,9 @@ function openCallsAlong(states: readonly RunState[]): readonly Opened[] {
   );
 }
 
-function endedRun(driver: MemoryDriver, executionId: string, document: Case['document']): RunState {
-  driver.start({ executionId, document, limits: { longestCallMs } });
-  return driver.runUntilEnded(executionId);
+function endedRun(driver: MemoryDriver, runId: string, document: Case['document']): RunState {
+  driver.start({ runId, document, limits: { longestCallMs } });
+  return driver.runUntilEnded(runId);
 }
 
 function hostThatDiesOnce(): DyingHost {
@@ -163,9 +163,9 @@ describe('every open call', () => {
     'has an armed call deadline no later than its start and the longest a call runs, and leaves none once it closes: $shape, $answer',
     ({ document, respond }) => {
       const driver = memoryDriver({ respond });
-      const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000000033';
-      const ended = endedRun(driver, executionId, document);
-      const states = statesAlong(driver.ports.runStore.events(executionId));
+      const runId = '0199a3c4-7d2e-7c1a-9b3f-000000000033';
+      const ended = endedRun(driver, runId, document);
+      const states = statesAlong(driver.ports.runStore.events(runId));
 
       expect(ended.status).toBe('ended');
       expect(openCallsAlong(states).filter((open) => isUnguarded(open))).toEqual([]);
@@ -177,8 +177,8 @@ describe('every open call', () => {
 
   it('is answered by its deadline when the executor never answers, as a timeout that cancels it', () => {
     const driver = memoryDriver({ respond: () => 'never' });
-    const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000000034';
-    const ended = endedRun(driver, executionId, aCall);
+    const runId = '0199a3c4-7d2e-7c1a-9b3f-000000000034';
+    const ended = endedRun(driver, runId, aCall);
 
     expect(driver.clock.now() - ended.startedAt).toBe(longestCallMs);
     expect(ended.outcome).toEqual({
@@ -191,7 +191,7 @@ describe('every open call', () => {
       },
     });
     expect(driver.ports.executor.cancelled()).toEqual([
-      { kind: 'cancel_call', key: { executionId, reference: '/do/0/ask', run: 1 }, reason: 'deadline' },
+      { kind: 'cancel_call', key: { runId, reference: '/do/0/ask', run: 1 }, reason: 'deadline' },
     ]);
   });
 });
@@ -203,15 +203,15 @@ describe('a call whose host died before the dispatch of its start finished', () 
     host.onDeath(() => {
       driver.ports.faults.failNext('arm_timer');
     });
-    const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000000035';
-    driver.start({ executionId, document: aCall, limits: { longestCallMs } });
+    const runId = '0199a3c4-7d2e-7c1a-9b3f-000000000035';
+    driver.start({ runId, document: aCall, limits: { longestCallMs } });
 
-    const wake = Effect.runSync(driver.engine.wake(executionId));
+    const wake = Effect.runSync(driver.engine.wake(runId));
     const [key] = host.started();
 
     expect(wake).toEqual({ version: 1, dispatchedThrough: 1 });
     expect(host.started()).toEqual([key, key]);
-    expect(driver.runUntilEnded(executionId).outcome).toEqual({ kind: 'completed', output: 'again' });
-    expect(driver.ports.recordStore.settlementOf(executionId)).toEqual({ status: 'succeeded', output: 'again' });
+    expect(driver.runUntilEnded(runId).outcome).toEqual({ kind: 'completed', output: 'again' });
+    expect(driver.ports.recordStore.settlementOf(runId)).toEqual({ status: 'succeeded', output: 'again' });
   });
 });

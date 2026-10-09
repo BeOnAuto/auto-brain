@@ -2,33 +2,33 @@ import { describe, expect, it } from 'vitest';
 
 import { asking, brief, servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { executionIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 describe('an interaction function through the inbox, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
   it('leaves its request in the inbox and takes a checked answer as the output, once', async () => {
     const server = await servingInteractions();
-    const started = await server.call('POST', `${alpha}/specs/interaction/approve-brief/execute`, {
+    const started = await server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
       body: { input: brief },
     });
-    const runId = executionIdIn(started.body);
+    const runId = runIdIn(started.body);
 
     const listed = await server.call('GET', `${alpha}/interactions?to=ada&function=approve-brief`);
     const invalid = await server.answer(runId, { answer: { choice: 'maybe' } });
     const answered = await server.answer(runId, { answer: { choice: 'approve' }, claimed_for: 'the campaign team' });
     const again = await server.answer(runId, { answer: { choice: 'approve' } });
     const another = await server.answer(runId, { answer: { choice: 'reject' } });
-    const history = await server.call('GET', `${alpha}/executions/${runId}/history`);
-    const analytics = await server.call('GET', `${alpha}/analytics?primitive=interaction`);
+    const history = await server.call('GET', `${alpha}/runs/${runId}/history`);
+    const analytics = await server.call('GET', `${alpha}/analytics?type=interaction`);
 
     expect(started).toMatchObject({ status: 200, body: { status: 'started' } });
-    expect(listed).toMatchObject({ status: 200, body: { interactions: [{ execution_id: runId }] } });
+    expect(listed).toMatchObject({ status: 200, body: { interactions: [{ run_id: runId }] } });
     expect([invalid.status, answered.status, again.status, another.status]).toEqual([422, 200, 200, 409]);
     expect(invalid.body).toMatchObject({ errors: [{ pointer: '/answer/choice' }] });
     expect(await server.settled(runId)).toMatchObject({ status: 'succeeded', output: { choice: 'approve' } });
     expect(history.text).not.toContain('approve"');
     expect(analytics.body).toMatchObject({
       runs: { succeeded: 1 },
-      by_function: [{ primitive: 'interaction', name: 'approve-brief', runs: 1 }],
+      by_function: [{ type: 'interaction', name: 'approve-brief', runs: 1 }],
     });
   });
 });
@@ -41,7 +41,7 @@ describe(
       const server = await servingInteractions();
       const runId = await server.ask('approve-brief');
 
-      await server.call('POST', `${alpha}/executions/${runId}/cancel`, { body: { reason: 'The brief was withdrawn' } });
+      await server.call('POST', `${alpha}/runs/${runId}/cancel`, { body: { reason: 'The brief was withdrawn' } });
       const settled = await server.settled(runId);
       const late = await server.answer(runId, { answer: { choice: 'approve' } });
 
@@ -65,7 +65,7 @@ describe(
 describe('an Authorization header that holds no Bearer key, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
   it('is refused as malformed, in the one sentence that names Bearer, before any brain is read', async () => {
     const server = await servingInteractions();
-    const answered = await server.call('POST', `${alpha}/executions/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/answer`, {
+    const answered = await server.call('POST', `${alpha}/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a/answer`, {
       body: { answer: { choice: 'approve' } },
       authorization: 'Request not-a-token-of-any-request',
     });

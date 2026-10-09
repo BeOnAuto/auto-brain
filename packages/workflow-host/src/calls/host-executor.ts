@@ -51,7 +51,7 @@ export interface ExecutorParts {
   readonly mostAtOnce: number;
   readonly mostOpen: number;
   readonly childOf: (call: StartCall, run: RunContext) => string | null;
-  readonly childAnswerOf: (runId: string, child: string) => Effect.Effect<CallResult | undefined>;
+  readonly childAnswerOf: (runKey: string, child: string) => Effect.Effect<CallResult | undefined>;
   readonly cancelChild: CancelChild;
 }
 
@@ -117,7 +117,7 @@ function callsOf(parts: ExecutorParts, running: Background): Calls {
       written ? delivered(key, call.key, result) : Effect.void,
     );
   const answeredIfEnded = ({ key, call, child }: WaitingCall): Effect.Effect<void, DatabaseFailed> =>
-    Effect.flatMap(parts.childAnswerOf(call.key.executionId, child), (ended) =>
+    Effect.flatMap(parts.childAnswerOf(call.key.runId, child), (ended) =>
       ended === undefined ? Effect.void : settled(key, call, ended),
     );
   const waited = (key: string, call: StartCall, child: string): Effect.Effect<void, DatabaseFailed> =>
@@ -155,7 +155,7 @@ function startedOnce(
 ): Effect.Effect<boolean, DatabaseFailed> {
   return Effect.gen(function* () {
     const key = callKeyText(call.key);
-    const root = correlationOfRun(run.executionId, run.attributes);
+    const root = correlationOfRun(run.runId, run.attributes);
     const open = yield* openCallsUnder(database, root);
     if (open >= mostOpen) {
       const refusal = tooManyOpen(mostOpen);
@@ -170,7 +170,7 @@ function startedOnce(
       calls.begin(key, call, run);
     }
     return inserted;
-  }).pipe((counted) => calls.underItsRoot(correlationOfRun(run.executionId, run.attributes), counted));
+  }).pipe((counted) => calls.underItsRoot(correlationOfRun(run.runId, run.attributes), counted));
 }
 
 function startedAgain(calls: Calls, call: StartCall, run: RunContext, { state, result }: CallRow): StartReceipt {

@@ -22,12 +22,12 @@ function completeVersions(rows: readonly (typeof VersionRow.Type)[]): readonly n
   return rows.filter(({ present, chunks }) => present === chunks).map(({ version }) => version);
 }
 
-function latestCompleteVersion(database: HostDatabase, runId: string): Effect.Effect<number, DatabaseFailed> {
+function latestCompleteVersion(database: HostDatabase, runKey: string): Effect.Effect<number, DatabaseFailed> {
   return rowsOf(
     VersionRow,
     database.read(
       statement`SELECT version, COUNT(*) AS present, MAX(chunks) AS chunks
-        FROM workflow_snapshot_chunks WHERE run_id = ${runId} GROUP BY version`,
+        FROM workflow_snapshot_chunks WHERE run_key = ${runKey} GROUP BY version`,
     ),
   ).pipe(Effect.map((rows) => Math.max(0, ...completeVersions(rows))));
 }
@@ -40,10 +40,10 @@ function storedSnapshotOf(chunks: readonly Chunk[]): StoredSnapshot {
   return { snapshot: decoded.success, bytes: chunks.reduce((sum, { bytes }) => sum + bytes, 0) };
 }
 
-export function latestSnapshotOf(database: HostDatabase, runId: string): Effect.Effect<StoredSnapshot | null> {
+export function latestSnapshotOf(database: HostDatabase, runKey: string): Effect.Effect<StoredSnapshot | null> {
   return Effect.orDie(
     Effect.gen(function* () {
-      const version = yield* latestCompleteVersion(database, runId);
+      const version = yield* latestCompleteVersion(database, runKey);
       if (version === 0) {
         return null;
       }
@@ -51,7 +51,7 @@ export function latestSnapshotOf(database: HostDatabase, runId: string): Effect.
         ChunkRow,
         database.read(
           statement`SELECT version, chunks, bytes, text FROM workflow_snapshot_chunks
-            WHERE run_id = ${runId} AND version = ${version} ORDER BY chunk`,
+            WHERE run_key = ${runKey} AND version = ${version} ORDER BY chunk`,
         ),
       );
       return storedSnapshotOf(chunks);
@@ -60,10 +60,10 @@ export function latestSnapshotOf(database: HostDatabase, runId: string): Effect.
 }
 
 export function savedSnapshot(database: HostDatabase, snapshot: Snapshot): Effect.Effect<void> {
-  const { executionId: runId, version } = snapshot;
+  const { runId: runKey, version } = snapshot;
   return Effect.orDie(
     Effect.gen(function* () {
-      if ((yield* latestCompleteVersion(database, runId)) >= version) {
+      if ((yield* latestCompleteVersion(database, runKey)) >= version) {
         return;
       }
       const chunks = snapshotChunks(snapshot);
@@ -71,14 +71,14 @@ export function savedSnapshot(database: HostDatabase, snapshot: Snapshot): Effec
         chunks,
         (text, chunk) =>
           database.write(
-            statement`INSERT INTO workflow_snapshot_chunks (run_id, version, chunk, chunks, bytes, text)
-              VALUES (${runId}, ${version}, ${chunk}, ${chunks.length}, ${utf8.encode(text).byteLength}, ${text})
-              ON CONFLICT (run_id, version, chunk) DO NOTHING`,
+            statement`INSERT INTO workflow_snapshot_chunks (run_key, version, chunk, chunks, bytes, text)
+              VALUES (${runKey}, ${version}, ${chunk}, ${chunks.length}, ${utf8.encode(text).byteLength}, ${text})
+              ON CONFLICT (run_key, version, chunk) DO NOTHING`,
           ),
         { discard: true },
       );
       yield* database.write(
-        statement`DELETE FROM workflow_snapshot_chunks WHERE run_id = ${runId} AND version <> ${version}`,
+        statement`DELETE FROM workflow_snapshot_chunks WHERE run_key = ${runKey} AND version <> ${version}`,
       );
     }),
   );

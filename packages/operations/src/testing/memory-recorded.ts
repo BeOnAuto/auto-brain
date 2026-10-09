@@ -40,10 +40,10 @@ interface Resumed {
   readonly inclusive: boolean;
 }
 
-type RunsSelection = Extract<RecordedSelection, { readonly kind: 'executions' }>;
+type RunsSelection = Extract<RecordedSelection, { readonly kind: 'runs' }>;
 
 const DefinitionHeldSchema = Schema.Struct({
-  primitive: Schema.optionalKey(Schema.Unknown),
+  definition_type: Schema.optionalKey(Schema.Unknown),
   name: Schema.optionalKey(Schema.Unknown),
 });
 
@@ -97,13 +97,13 @@ function loadedSizeOf(page: RecordedPageRequest, record: MemoryRecord): number {
 
 function inSelection(key: string, selection: RecordedSelection): (record: MemoryRecord) => boolean {
   if (selection.kind === 'run') {
-    const streams = new Set([`${key}executions/${selection.execution}`, `${key}runs/${selection.execution}`]);
+    const streams = new Set([`${key}runs/${selection.run}`, `${key}run-logs/${selection.run}`]);
     return ({ stream }) => streams.has(stream);
   }
-  if (selection.kind === 'executions') {
+  if (selection.kind === 'runs') {
     const leftOut = new Set(selection.notBeginningWith);
     return ({ stream, streamPosition, type }) =>
-      streamPosition === 1 && stream.startsWith(`${key}executions/`) && !leftOut.has(type);
+      streamPosition === 1 && stream.startsWith(`${key}runs/`) && !leftOut.has(type);
   }
   return selection.kind === 'correlated' ? ({ correlationId }) => correlationId === selection.correlation : () => true;
 }
@@ -145,11 +145,13 @@ function holdsWhatWasAsked(asked: string | undefined, held: unknown): boolean {
   return asked === undefined || held === asked;
 }
 
-function isOfTheDefinitionAsked({ primitive, name }: RunsSelection, { data }: MemoryRecord): boolean {
-  const asksForNone = primitive === undefined && name === undefined;
+function isOfTheDefinitionAsked({ definitionType, name }: RunsSelection, { data }: MemoryRecord): boolean {
+  const asksForNone = definitionType === undefined && name === undefined;
   return (
     asksForNone ||
-    (holdsADefinition(data) && holdsWhatWasAsked(primitive, data.primitive) && holdsWhatWasAsked(name, data.name))
+    (holdsADefinition(data) &&
+      holdsWhatWasAsked(definitionType, data.definition_type) &&
+      holdsWhatWasAsked(name, data.name))
   );
 }
 
@@ -213,9 +215,9 @@ function pageOf(
     const candidates = inOrder.filter(
       (record) => inSelection(key, selection)(record) && record.position >= from && isBeyond(record.position),
     );
-    const cap = page.types === undefined && selection.kind !== 'executions' ? page.limit : mostExaminedInAPage;
+    const cap = page.types === undefined && selection.kind !== 'runs' ? page.limit : mostExaminedInAPage;
     const examined =
-      selection.kind === 'executions'
+      selection.kind === 'runs'
         ? examinedRuns(log, candidates, page, selection)
         : examinedRecords(candidates, page, cap);
     const { delivered, resumeAfter, lastExamined } = boundedPage(examined, page.limit, cap);

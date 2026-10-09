@@ -57,7 +57,7 @@ export const delivery: DeliveryCall = {
   brain: 'alpha',
   reference: { server: 'graph', tool: 'echo' },
   input: { channel: '#approvals', text: 'Please approve' },
-  meta: { 'com.beonauto/execution_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
+  meta: { 'com.beonauto/run_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
 };
 
 export function calledOnce(

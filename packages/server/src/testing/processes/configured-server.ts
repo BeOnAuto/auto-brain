@@ -48,11 +48,14 @@ export function configuredServer(
   return { child, configFile };
 }
 
-export async function rejectedExecution(port: number, key?: string): Promise<TestResponse> {
+export async function rejectedRun(port: number, key?: string): Promise<TestResponse> {
   const caller = key === undefined ? {} : { key };
   await request(port, 'POST', '/v1/orgs/acme/brains', { ...caller, body: { brain: 'alpha', name: 'Alpha' } });
-  await request(port, 'POST', `${alpha}/specs/inference`, { ...caller, body: { name: 'verdict', source: verdict } });
-  return request(port, 'POST', `${alpha}/specs/inference/verdict/execute`, {
+  await request(port, 'POST', `${alpha}/definitions/reasoning`, {
+    ...caller,
+    body: { name: 'verdict', source: verdict },
+  });
+  return request(port, 'POST', `${alpha}/definitions/reasoning/verdict/run`, {
     ...caller,
     body: { input: { expense: 'a dinner' } },
   });

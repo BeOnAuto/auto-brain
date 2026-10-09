@@ -132,7 +132,7 @@ After you approve the definition, ask it to run the saved function on:
 Promote our reporting tool to finance teams with a USD 5,000 budget.
 ```
 
-Ask for the result and the recorded run, including its execution id. The review should identify the missing measurable goal. A concrete model or configured alias is required; a wildcard such as `provider/*` is not a model to run.
+Ask for the result and the recorded run, including its run id. The review should identify the missing measurable goal. A concrete model or configured alias is required; a wildcard such as `provider/*` is not a model to run.
 
 A client that shows MCP prompts also offers the brain's own recipes: `first-brain` makes a first brain this way, and `remember`, `give-tools` and `schedule` make a brain remember what its functions answered, give a function tools and run a workflow on a schedule. The agent reads the same recipes, and the format of each kind of definition, with `get_guide`.
 

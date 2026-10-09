@@ -48,7 +48,7 @@ describe('one call of a tool for a delivery', () => {
       {
         tool: 'echo',
         arguments: delivery.input,
-        meta: { 'com.beonauto/execution_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
+        meta: { 'com.beonauto/run_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
       },
     ]);
     expect(fake.seen().map(({ rpc }) => rpc)).not.toContain('tools/list');

@@ -1,4 +1,4 @@
-import type { Emission } from '@beonauto/specs';
+import type { Emission } from '@beonauto/definitions';
 import { Effect } from 'effect';
 
 import { StartRefused, type ReactionOptions, type ReactionStart } from '../reactions/reaction-options.ts';
@@ -31,7 +31,7 @@ export function recordedReactions(behaviour: ReactionBehaviour = {}): RecordedRe
   const emissions: Emission[] = [];
   return {
     options: {
-      primitive: 'orchestration',
+      definitionType: 'workflow',
       start: (start) =>
         Effect.suspend(() => {
           const failure = behaviour.failure?.(start) ?? null;

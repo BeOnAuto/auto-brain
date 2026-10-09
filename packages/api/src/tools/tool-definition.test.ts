@@ -43,7 +43,7 @@ function eventTaking(
   inputSchema = Schema.Struct({ id: Schema.String.annotate({ description: idDescription }) }),
 ) {
   return defineQuery('brain', {
-    name: 'nest_spec',
+    name: 'nest_definition',
     title: 'Nest',
     description: 'Nests. Use it to nest. It answers.',
     route: { method: 'GET', path: '/nest' },
@@ -63,7 +63,7 @@ describe('the description of an argument at any depth of the input', () => {
   it('is served at 300 characters, and refused at 301, naming the path to the argument', () => {
     expect(() => toolDefinitionOf(eventTaking('i'.repeat(300)).registration)).not.toThrow();
     expect(() => toolDefinitionOf(eventTaking('i'.repeat(301)).registration)).toThrow(
-      'The description of event.id of nest_spec: 301 characters, more than the 300 allowed',
+      'The description of event.id of nest_definition: 301 characters, more than the 300 allowed',
     );
   });
 
@@ -73,7 +73,7 @@ describe('the description of an argument at any depth of the input', () => {
     });
 
     expect(() => toolDefinitionOf(eventTaking('', Event).registration)).toThrow(
-      'The description of Event.id of nest_spec: 301 characters, more than the 300 allowed',
+      'The description of Event.id of nest_definition: 301 characters, more than the 300 allowed',
     );
   });
 });

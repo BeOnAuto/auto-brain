@@ -1,8 +1,8 @@
 import type { AppRuntime } from '@beonauto/api';
+import type { Capability } from '@beonauto/definitions';
 import { appendSignal, type AppendSignal } from '@beonauto/ledger';
 import type { DispatcherServices } from '@beonauto/operations';
-import { makeRecallFunctionAdapter, recallBounds, recallDefinitionType, recallFolding } from '@beonauto/recollection';
-import type { Primitive } from '@beonauto/specs';
+import { makeRecallFunctionAdapter, recallBounds, recallDefinitionType, recallFolding } from '@beonauto/recall';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { openWorkflowStore, type ProjectorSettings, type WorkflowStore } from '@beonauto/workflow-host';
 
@@ -11,7 +11,7 @@ import { hostDatabaseOf } from '../workflows/host-dependencies.ts';
 import { hostReports } from '../workflows/host-reports.ts';
 
 interface ServedRecall {
-  readonly primitive: Primitive;
+  readonly capability: Capability;
   readonly store: WorkflowStore;
   readonly views: ProjectorSettings;
 }
@@ -32,7 +32,7 @@ export function recallWiring(): RecallWiring {
     served: async (runtime, { ledger, recall }, pool) => {
       const store = await openWorkflowStore(hostDatabaseOf(ledger), hostReports(runtime).lostConnection);
       return {
-        primitive: makeRecallFunctionAdapter({ pool, views: store.views, mostFunctions: recall.mostFunctions }),
+        capability: makeRecallFunctionAdapter({ pool, views: store.views, mostFunctions: recall.mostFunctions }),
         store,
         views: {
           definitionType: recallDefinitionType,

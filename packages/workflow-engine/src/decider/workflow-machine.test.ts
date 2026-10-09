@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { newRun } from '../machine/run-state.ts';
 import { evolveRun, stateInCurrentFormat } from '../run-log/run-fold.ts';
 import { startedOf, testMachine } from '../testing/driver-inputs.ts';
-import { drivenExecutionId as executionId } from '../testing/run-history.ts';
+import { drivenRunId as runId } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowMachine } from './workflow-machine.ts';
 
@@ -24,7 +24,7 @@ const corpusState = stateInCurrentFormat(
 describe('the workflow machine', () => {
   it('decides the same events for the same state and input', () => {
     const machine = workflowMachine(testMachine);
-    const input = startedOf({ executionId, document: calling }, 1_790_845_200_000);
+    const input = startedOf({ runId, document: calling }, 1_790_845_200_000);
 
     expect(machine.decide(input, newRun)).toEqual(machine.decide(input, newRun));
   });
@@ -40,16 +40,14 @@ describe('the workflow machine', () => {
       },
     });
 
-    expect(() => machine.decide(startedOf({ executionId, document: calling }, 0), newRun)).toThrow(
-      'The description broke',
-    );
+    expect(() => machine.decide(startedOf({ runId, document: calling }, 0), newRun)).toThrow('The description broke');
   });
 
   it('applies an input to a run upcast from the format-1 corpus, which has no frame, without stepping a task', () => {
     const machine = workflowMachine(testMachine);
     const input = {
       kind: 'event_received',
-      executionId: corpusState.executionId,
+      runId: corpusState.runId,
       at: corpusState.lastInputAt + 1,
       event: { id: 'corpus-event', type: 'com.acme.tick' },
     } as const;

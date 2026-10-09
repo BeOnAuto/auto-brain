@@ -1,6 +1,6 @@
 packages:
   - packages/*
-  - primitives/*
+  - capabilities/*
 
 catalog:
   vitest: 5.0.2

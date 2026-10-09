@@ -20,7 +20,7 @@ export function afterTheWaits(state: RunState, milliseconds: number): RunState {
   return armedTimerIds(state, 'wait')
     .map((timerId): RunInput => ({
       kind: 'timer_fired',
-      executionId: state.executionId,
+      runId: state.runId,
       at: state.lastInputAt + milliseconds,
       timerId,
     }))

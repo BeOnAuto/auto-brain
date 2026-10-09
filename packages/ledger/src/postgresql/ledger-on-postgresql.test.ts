@@ -110,6 +110,8 @@ const onPostgreSQL: LedgerEntry = {
     "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^run_tallies_[0-9]+$' ORDER BY relname",
   projectionIndexes:
     "SELECT indexname AS name FROM pg_indexes WHERE indexname ~ '^run_tallies_[0-9]+_' AND indexname !~ '_pkey$' ORDER BY indexname",
+  topicTables:
+    "SELECT relname AS name FROM pg_class WHERE relkind IN ('r', 'p') AND relname ~ '^topics_[0-9]+$' ORDER BY relname",
 };
 
 const skipped = server === '';
@@ -160,7 +162,7 @@ function noting(ledger: OpenLedger['ledger'], stream: string, type: string, deta
   return Effect.runPromise(ledger.execute(`brain/acme/alpha/${stream}`, happenings, [{ type, detail }]));
 }
 
-const root = 'brain/acme/alpha/executions/root';
+const root = 'brain/acme/alpha/runs/root';
 const ofTheRoot = { causationId: null, correlationId: 'root' };
 
 function notingOfRoot(ledger: OpenLedger['ledger'], type: string, detail: string): Promise<unknown> {
@@ -178,7 +180,7 @@ async function aLedgerOnItsOwnDatabase(): Promise<OwnLedger> {
 
 const everything: RecordedSelection = { kind: 'everything' };
 
-const runs: RecordedSelection = { kind: 'executions' };
+const runs: RecordedSelection = { kind: 'runs' };
 
 describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${notice}`, { timeout: 30_000 }, () => {
   it('oldest first, stays behind it, and delivers every message once after it commits', async () => {
@@ -215,11 +217,11 @@ describe.skipIf(skipped)(`A read on PostgreSQL while an append is still open${no
   it('by correlation, stays behind it oldest first, and delivers the message committed late once after', async () => {
     const { database, ledger } = await aLedgerOnItsOwnDatabase();
     const correlated: RecordedSelection = { kind: 'correlated', correlation: 'root' };
-    await notingOfRoot(ledger, 'execution_started', 'before');
+    await notingOfRoot(ledger, 'run_started', 'before');
     await untilReadable(database);
-    const child = 'brain/acme/alpha/executions/child';
-    const open = await anAppendLeftOpen(database, child, 'execution_started', { correlationId: 'root' });
-    await notingOfRoot(ledger, 'execution_succeeded', 'after');
+    const child = 'brain/acme/alpha/runs/child';
+    const open = await anAppendLeftOpen(database, child, 'run_started', { correlationId: 'root' });
+    await notingOfRoot(ledger, 'run_succeeded', 'after');
 
     const whileOpen = await reading(ledger, correlated, 'asc');
     await open.query('COMMIT');
@@ -236,10 +238,10 @@ describe.skipIf(skipped)(
   () => {
     it('lists runs oldest first behind it, and every run once after it commits', async () => {
       const { database, ledger } = await aLedgerOnItsOwnDatabase();
-      await noting(ledger, 'executions/r-before', 'execution_started', 'before');
+      await noting(ledger, 'runs/r-before', 'run_started', 'before');
       await untilReadable(database);
-      const open = await anAppendLeftOpen(database, 'brain/acme/alpha/executions/r-late', 'execution_started');
-      await noting(ledger, 'executions/r-after', 'execution_started', 'after');
+      const open = await anAppendLeftOpen(database, 'brain/acme/alpha/runs/r-late', 'run_started');
+      await noting(ledger, 'runs/r-after', 'run_started', 'after');
 
       const whileOpen = await reading(ledger, runs, 'asc');
       await open.query('COMMIT');

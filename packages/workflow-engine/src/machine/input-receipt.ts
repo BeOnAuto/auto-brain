@@ -75,7 +75,7 @@ export function receiptOf(input: RunInput, at: number): InputReceipt {
   }
   if (input.kind === 'cancel_requested') {
     const { by, kind } = input.cancel;
-    return { kind: input.kind, key: input.executionId, at, cancel: { by, kind } };
+    return { kind: input.kind, key: input.runId, at, cancel: { by, kind } };
   }
-  return { kind: input.kind, key: input.executionId, at };
+  return { kind: input.kind, key: input.runId, at };
 }

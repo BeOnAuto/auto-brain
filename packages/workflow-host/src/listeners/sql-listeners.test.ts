@@ -9,14 +9,14 @@ import { faultyDatabase } from '../testing/faulty-database.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { mostListenersInABrain, sqlListeners } from './sql-listeners.ts';
 
-const attributes = { spec: { name: 'await-approval', version: 1 }, caller: { id: 'acme-admin' } };
+const attributes = { definition: { name: 'await-approval', version: 1 }, caller: { id: 'acme-admin' } };
 
-const run = { executionId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes };
+const run = { runId: 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a', attributes };
 
 const armedBy = { version: 3, lastStep: null };
 
 function listenerAt(reference: string): ArmListener {
-  return { kind: 'arm_listener', key: { executionId: run.executionId, reference, run: 1 }, filters: [{ type: 'go' }] };
+  return { kind: 'arm_listener', key: { runId: run.runId, reference, run: 1 }, filters: [{ type: 'go' }] };
 }
 
 const RefusalRow = Schema.Struct({ workflow: Schema.String, reason: Schema.String });
@@ -30,8 +30,8 @@ describe('the listeners of a brain', () => {
         statement`WITH RECURSIVE listening (at) AS (
             SELECT 1 UNION ALL SELECT at + 1 FROM listening WHERE at < ${mostListenersInABrain - 1}
           )
-          INSERT INTO workflow_listeners (run_id, listener, brain_key, stream_id, armed_by, filters, workflow, passed)
-          SELECT 'acme/alpha/r' || at, 'listener', 'brain/acme/alpha/', 'brain/acme/alpha/runs/r' || at, 1, '[]',
+          INSERT INTO workflow_listeners (run_key, listener, brain_key, stream_id, armed_by, filters, workflow, passed)
+          SELECT 'acme/alpha/r' || at, 'listener', 'brain/acme/alpha/', 'brain/acme/alpha/run-logs/r' || at, 1, '[]',
             'other', 1
           FROM listening`,
       ),

@@ -8,7 +8,7 @@ import { logIncident, logLedger } from '../logging/logging.ts';
 import { serveWorkflows } from '../workflows/workflows.ts';
 import { ledgerLayerOf } from './ledger-store.ts';
 import { functionWiringOf, functionsServedBy, type FunctionWiring } from './served-functions.ts';
-import { loggedModelAccess } from './served-inference.ts';
+import { loggedModelAccess } from './served-reasoning.ts';
 
 const loggingIncidentReporter = Layer.succeed(IncidentReporter, IncidentReporter.of({ report: logIncident }));
 

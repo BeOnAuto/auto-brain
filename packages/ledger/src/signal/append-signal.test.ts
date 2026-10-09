@@ -35,9 +35,9 @@ describe('the signal an append raises', () => {
 
     await store.append('brain/acme/alpha/events/e1', one, 0);
     await store.append('org/acme/brains', one, 0);
-    await store.append('brain/acme/Beta_2/runs/r1', one, 0);
+    await store.append('brain/acme/Beta_2/run-logs/r1', one, 0);
 
-    expect(heard).toEqual(['brain/acme/alpha/events/e1', 'org/acme/brains', 'brain/acme/Beta_2/runs/r1']);
+    expect(heard).toEqual(['brain/acme/alpha/events/e1', 'org/acme/brains', 'brain/acme/Beta_2/run-logs/r1']);
   });
 
   it('is not raised by an append that met a version conflict, nor heard once a listener has stopped', async () => {

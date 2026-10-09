@@ -7,9 +7,9 @@ import { memoryEmitter, memoryListeners } from './memory-reactions.ts';
 import { faultsOf } from './memory-timers.ts';
 import { virtualClock } from './virtual-clock.ts';
 
-const run = { executionId: 'acme/alpha/r1', attributes: {} };
+const run = { runId: 'acme/alpha/r1', attributes: {} };
 
-const otherRun = { executionId: 'acme/alpha/r2', attributes: {} };
+const otherRun = { runId: 'acme/alpha/r2', attributes: {} };
 
 describe('the listeners kept in memory', () => {
   it.each(listenerProbes)('$title', async (probe) => {
@@ -22,7 +22,7 @@ describe('the listeners kept in memory', () => {
     const listeners = memoryListeners(faultsOf(virtualClock()), 1);
     const listener = (reference: string): ArmListener => ({
       kind: 'arm_listener',
-      key: { executionId: run.executionId, reference, run: 1 },
+      key: { runId: run.runId, reference, run: 1 },
       filters: [],
     });
 

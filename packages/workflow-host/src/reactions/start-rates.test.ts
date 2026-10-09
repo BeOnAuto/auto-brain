@@ -24,7 +24,7 @@ function startNumber(index: number): ReactionStart {
     brain: 'alpha',
     workflow: 'close',
     version: 1,
-    executionId: `run-${index}`,
+    runId: `run-${index}`,
     input: [],
     depth: 1,
     cause: `record-${index}`,
@@ -42,7 +42,7 @@ async function startingAt(time: Readonly<{ now: number }>, refuses = () => false
       refuses()
         ? Effect.fail(new StartRefused({ detail: 'refused' }))
         : Effect.sync(() => {
-            started.push(start.executionId);
+            started.push(start.runId);
           }),
     refusals,
     () => time.now,
@@ -113,7 +113,7 @@ describe('the starts that wait for a later minute', () => {
         statement`WITH RECURSIVE waiting (at) AS (
             SELECT 1 UNION ALL SELECT at + 1 FROM waiting WHERE at < ${mostDeferredStarts - 1}
           )
-          INSERT INTO workflow_reaction_backlog (brain_key, workflow, execution_id, start, due)
+          INSERT INTO workflow_reaction_backlog (brain_key, workflow, run_id, start, due)
           SELECT ${brainKey}, 'close', 'waiting-' || at, '{}', ${minute + aMinute} FROM waiting`,
       ),
     );

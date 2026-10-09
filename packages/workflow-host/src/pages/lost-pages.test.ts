@@ -76,7 +76,7 @@ describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs 
     async (_way, source, kind, message) => {
       const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(source), heapMegabytes: 16 });
       await views.saved('runs', counting);
-      await views.ran('inference/runs', 1);
+      await views.ran('reasoning/runs', 1);
       views.start(quick);
 
       const kept = await views.until('runs', isStalled);
@@ -90,7 +90,7 @@ describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs 
     async (_way, source, trouble) => {
       const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(source) });
       await views.saved('runs', counting);
-      await views.ran('inference/runs', 1);
+      await views.ran('reasoning/runs', 1);
       views.start(quick);
 
       const troubles = await eventually(views.reports.troubles, (reported) => reported.length > 1, 3000);
@@ -104,7 +104,7 @@ describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs 
   it('is tried again, with nothing reported, when the pool has no worker free for it', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     const busy = busyOnce(views.pool);
     views.start({ pool: busy.pool });
 
@@ -119,7 +119,7 @@ describe('a page of folds lost twice', { timeout: viewTestTimeoutMs }, () => {
     const atTheSecondRun = markingThen(2, 'throw new Error("broken on purpose");');
     const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(atTheSecondRun) });
     await views.saved('runs', counting);
-    await views.ranEach('inference/runs', [1, 2]);
+    await views.ranEach('reasoning/runs', [1, 2]);
     views.start(quick);
 
     const kept = await views.until('runs', isStalled);
@@ -140,7 +140,7 @@ describe('a projector stopped while it folds', { timeout: viewTestTimeoutMs }, (
     const lifted = { folding: { ...foldingOf(), limits: liftedLimits(400_000_000) } };
     const first = await viewHarness(settings);
     await first.saved('outputs', slow);
-    await first.ranEach('inference/runs', [1, 2, 3]);
+    await first.ranEach('reasoning/runs', [1, 2, 3]);
     const stopping = first.start(lifted);
     await setTimeout(150);
     await stopping.stop();

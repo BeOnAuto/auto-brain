@@ -23,11 +23,11 @@ export interface MemoryDriver extends RunWatch {
   readonly clock: VirtualClock;
   readonly start: (request: StartRequest) => Submission;
   readonly submit: (input: RunInput) => Submission;
-  readonly deliver: (executionId: string, event: EventReceived['event']) => Submission;
+  readonly deliver: (runId: string, event: EventReceived['event']) => Submission;
   readonly offer: (offer: Omit<EventOffered, 'kind' | 'at'>) => Submission;
-  readonly cancel: (executionId: string, order?: CancelOrder) => Submission;
+  readonly cancel: (runId: string, order?: CancelOrder) => Submission;
   readonly at: (milliseconds: number, action: () => void) => void;
-  readonly inputsOf: (executionId: string) => readonly RunInput[];
+  readonly inputsOf: (runId: string) => readonly RunInput[];
 }
 
 const succeedWithNull: Responder = () => ({ result: { status: 'succeeded', output: null } });
@@ -53,18 +53,17 @@ export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
     engine,
     clock,
     start: (request) => {
-      ports.recordStore.known(request.executionId);
+      ports.recordStore.known(request.runId);
       return submit(startedOf(request, clock.now()));
     },
     submit,
-    deliver: (executionId, event) => submit({ kind: 'event_received', executionId, at: clock.now(), event }),
+    deliver: (runId, event) => submit({ kind: 'event_received', runId, at: clock.now(), event }),
     offer: (offer) => submit({ ...offer, kind: 'event_offered', at: clock.now() }),
-    cancel: (executionId, order = testCancel) =>
-      submit({ kind: 'cancel_requested', executionId, at: clock.now(), cancel: order }),
+    cancel: (runId, order = testCancel) => submit({ kind: 'cancel_requested', runId, at: clock.now(), cancel: order }),
     at: (milliseconds, action) => {
       const due = clock.now() + milliseconds;
       clock.schedule(due, `scheduled ${due} ${clock.pending()}`, action);
     },
-    inputsOf: (executionId) => given.filter((input) => input.executionId === executionId),
+    inputsOf: (runId) => given.filter((input) => input.runId === runId),
   };
 }

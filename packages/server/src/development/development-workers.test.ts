@@ -17,7 +17,7 @@ const saidSoFar = [
   'language: jq',
   'source:',
   '  events:',
-  '    - type: execution_succeeded',
+  '    - type: run_succeeded',
   '      subject: computation/echo',
   'view:',
   '  initial: []',
@@ -34,13 +34,13 @@ describe('the functions pnpm dev serves in worker threads', { timeout: developme
       request(port, method, path, { body });
 
     await call('POST', '/v1/orgs/local/brains', { brain: 'meetings', name: 'Meetings' });
-    await call('POST', `${meetings}/specs/computation`, { name: 'echo', source: echo });
-    const echoed = await call('POST', `${meetings}/specs/computation/echo/execute`, { input: { said: 'hello' } });
+    await call('POST', `${meetings}/definitions/computation`, { name: 'echo', source: echo });
+    const echoed = await call('POST', `${meetings}/definitions/computation/echo/run`, { input: { said: 'hello' } });
     expect(echoed.body).toMatchObject({ status: 'succeeded', output: { said: 'hello' } });
-    await call('POST', `${meetings}/specs/recollection`, { name: 'said', source: saidSoFar });
+    await call('POST', `${meetings}/definitions/recall`, { name: 'said', source: saidSoFar });
     const recalled = await vi.waitFor(
       async () => {
-        const answered = await call('POST', `${meetings}/specs/recollection/said/execute`, { input: {} });
+        const answered = await call('POST', `${meetings}/definitions/recall/said/run`, { input: {} });
         expect(answered.status).toBe(200);
         return answered;
       },

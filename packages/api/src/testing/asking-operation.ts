@@ -10,7 +10,7 @@ export interface Asking {
 }
 
 export function asking({
-  name = 'ask_spec',
+  name = 'ask_definition',
   description = 'Asks. Use it to ask. It answers.',
   argument = 'What to ask',
   outcome = 'Asked.',

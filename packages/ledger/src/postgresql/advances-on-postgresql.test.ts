@@ -74,13 +74,11 @@ describe.skipIf(skipped)(`A fold beside an advance of the same row on PostgreSQL
     );
     onTestFinished(dispose);
     await Effect.runPromise(
-      ledger.execute('brain/acme/alpha/executions/r1', topicFacts, [
-        { type: 'topic_opened', topic: 'spring', at: 1000 },
-      ]),
+      ledger.execute('brain/acme/alpha/runs/r1', topicFacts, [{ type: 'topic_opened', topic: 'spring', at: 1000 }]),
     );
     const advancing = await connected(database);
     await advancing.query('BEGIN');
-    await advancing.query("UPDATE topics_1 SET open = false, next_at = NULL, due_at = NULL WHERE row_key = 'spring'");
+    await advancing.query("UPDATE topics_2 SET open = false, next_at = NULL, due_at = NULL WHERE row_key = 'spring'");
 
     const folding = Effect.runPromise(
       ledger.execute('brain/acme/alpha/notes/n1', topicFacts, [
@@ -92,7 +90,7 @@ describe.skipIf(skipped)(`A fold beside an advance of the same row on PostgreSQL
     await folding;
 
     expect(
-      await queried(database, "SELECT note, open, next_at, due_at FROM topics_1 WHERE row_key = 'spring'"),
+      await queried(database, "SELECT note, open, next_at, due_at FROM topics_2 WHERE row_key = 'spring'"),
     ).toEqual([{ note: 'during', open: false, next_at: null, due_at: null }]);
   });
 });

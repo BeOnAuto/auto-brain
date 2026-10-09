@@ -10,7 +10,7 @@ const jobLoop = import.meta.resolve('@beonauto/workflow-engine/job-loop');
 
 const answerers = import.meta.resolve('@beonauto/workflow-engine/worker');
 
-const schemaChecks = import.meta.resolve('@beonauto/specs/json-schema');
+const schemaChecks = import.meta.resolve('@beonauto/definitions/json-schema');
 
 interface Folding {
   readonly prelude: readonly string[];

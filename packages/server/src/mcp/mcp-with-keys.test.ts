@@ -18,17 +18,17 @@ const apiKeys = JSON.stringify([acmeAdmin.entry, acmeReader.entry, acmeAlpha.ent
 
 const brainTools = ['create_brain', 'list_brains', 'get_brain', 'update_brain', 'retire_brain'];
 
-const specTools = [
-  'create_spec',
-  'list_specs',
-  'get_spec',
-  'update_spec',
-  'retire_spec',
-  'execute_spec',
-  'get_execution',
-  'cancel_execution',
-  'list_executions',
-  'get_execution_history',
+const definitionTools = [
+  'create_definition',
+  'list_definitions',
+  'get_definition',
+  'update_definition',
+  'retire_definition',
+  'run_definition',
+  'get_run',
+  'cancel_run',
+  'list_runs',
+  'get_run_history',
   'get_brain_analytics',
   'list_brain_events',
   'publish_event',
@@ -36,7 +36,7 @@ const specTools = [
   'test_tool_call',
   'answer_interaction',
   'list_interactions',
-  'send_execution_event',
+  'send_run_event',
 ];
 
 let ledger: TemporaryLedger;
@@ -169,20 +169,20 @@ describe('the permissions and brains of a key over MCP', () => {
       status: 403,
       body: { detail: 'The caller may not access this brain' },
     });
-    expect(toolNamesIn(own)).toEqual([...specTools, 'get_guide']);
+    expect(toolNamesIn(own)).toEqual([...definitionTools, 'get_guide']);
   });
 
-  it('lists the spec tools on the brain endpoint of a brain that does not exist, whose calls find no brain', async () => {
+  it('lists the definition tools on the brain endpoint of a brain that does not exist, whose calls find no brain', async () => {
     const { tools, listed } = await withMcpSession(
       'previous major',
       endpoint('/orgs/acme/brains/nowhere/mcp', acmeAdmin.key),
       async (session) => ({
         tools: await session.listTools(),
-        listed: await session.callTool('list_specs', { primitive: 'inference' }),
+        listed: await session.callTool('list_definitions', { type: 'reasoning' }),
       }),
     );
 
-    expect(toolNamesIn(tools)).toEqual([...specTools, 'get_guide']);
+    expect(toolNamesIn(tools)).toEqual([...definitionTools, 'get_guide']);
     expect({ isError: listed.isError, problem: problemIn(listed) }).toMatchObject({
       isError: true,
       problem: { reason: 'not_found' },

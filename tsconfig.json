@@ -4,9 +4,9 @@
     "*.ts",
     "packages/*/*.ts",
     "packages/*/measure",
-    "primitives/*/measure",
+    "capabilities/*/measure",
     "packages/*/src",
-    "primitives/*/*.ts",
-    "primitives/*/src"
+    "capabilities/*/*.ts",
+    "capabilities/*/src"
   ]
 }

@@ -8,7 +8,7 @@ import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
 import { tcpPort } from '../../lifecycle/lifecycle.ts';
-import { executionIdIn, isStarted, workflowSource } from '../servers/workflow-server.ts';
+import { runIdIn, isStarted, workflowSource } from '../servers/workflow-server.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
 
 export interface LogLine {
@@ -83,7 +83,7 @@ const welcome = ['---', 'model: stub/writer', '---', 'Welcome {{ input.name }}.'
 
 const welcoming = workflowSource(
   'welcoming',
-  "do:\n  - welcome: { call: execute_spec, with: { primitive: inference, name: welcome, input: { name: '${ .name }' } } }\n",
+  "do:\n  - welcome: { call: run_definition, with: { type: reasoning, name: welcome, input: { name: '${ .name }' } } }\n",
 );
 
 export interface StubGateway {
@@ -132,10 +132,10 @@ export async function gatewayThatHangsFirst(): Promise<StubGateway> {
 
 export async function welcomingStarted(port: number, brain: string): Promise<string> {
   await requestTo(port, 'POST', '', { brain, name: 'Welcoming' });
-  await requestTo(port, 'POST', `/${brain}/specs/inference`, { name: 'welcome', source: welcome });
-  await requestTo(port, 'POST', `/${brain}/specs/orchestration`, { name: 'welcoming', source: welcoming });
-  const started = await requestTo(port, 'POST', `/${brain}/specs/orchestration/welcoming/execute`, {
+  await requestTo(port, 'POST', `/${brain}/definitions/reasoning`, { name: 'welcome', source: welcome });
+  await requestTo(port, 'POST', `/${brain}/definitions/workflow`, { name: 'welcoming', source: welcoming });
+  const started = await requestTo(port, 'POST', `/${brain}/definitions/workflow/welcoming/run`, {
     input: { name: 'Ada' },
   });
-  return executionIdIn(started.body);
+  return runIdIn(started.body);
 }

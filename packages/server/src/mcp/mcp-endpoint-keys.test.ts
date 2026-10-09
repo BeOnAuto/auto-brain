@@ -34,11 +34,11 @@ const acmeBrainReader = createApiKey({
 });
 
 const queriesInsideABrain = [
-  'list_specs',
-  'get_spec',
-  'get_execution',
-  'list_executions',
-  'get_execution_history',
+  'list_definitions',
+  'get_definition',
+  'get_run',
+  'list_runs',
+  'get_run_history',
   'get_brain_analytics',
   'list_brain_events',
   'list_interactions',
@@ -48,15 +48,15 @@ const commands = [
   'create_brain',
   'update_brain',
   'retire_brain',
-  'create_spec',
-  'update_spec',
-  'retire_spec',
-  'execute_spec',
-  'cancel_execution',
+  'create_definition',
+  'update_definition',
+  'retire_definition',
+  'run_definition',
+  'cancel_run',
   'publish_event',
   'test_tool_call',
   'answer_interaction',
-  'send_execution_event',
+  'send_run_event',
 ];
 
 const globexAdmin = createApiKey({ id: 'globex-admin', org: 'globex', permissions: allPermissions, brains: '*' });
@@ -94,13 +94,13 @@ describe('the org of a key on /mcp', () => {
     const outcome = await asKey(globexAdmin.key, async (session) => ({
       listed: await session.callTool('list_brains', {}),
       read: await session.callTool('get_brain', { brain: 'alpha' }),
-      specs: await session.callTool('list_specs', { brain: 'alpha', primitive: 'inference' }),
+      definitions: await session.callTool('list_definitions', { brain: 'alpha', type: 'reasoning' }),
       named: await session.callTool('list_brains', { org: 'acme' }),
     }));
 
     expect(outcome.listed.structuredContent).toEqual({ brains: [] });
     expect(problemIn(outcome.read)).toMatchObject({ reason: 'not_found' });
-    expect(problemIn(outcome.specs)).toMatchObject({
+    expect(problemIn(outcome.definitions)).toMatchObject({
       reason: 'not_found',
       detail: 'There is no brain alpha in this org',
     });
@@ -112,12 +112,12 @@ describe('a key limited to one brain on /mcp', () => {
   it('lists only that brain and is refused every other with forbidden', async () => {
     const outcome = await asKey(acmeAlpha.key, async (session) => ({
       listed: await session.callTool('list_brains', {}),
-      own: await session.callTool('list_specs', { brain: 'alpha', primitive: 'inference' }),
-      other: await session.callTool('list_specs', { brain: 'beta', primitive: 'inference' }),
+      own: await session.callTool('list_definitions', { brain: 'alpha', type: 'reasoning' }),
+      other: await session.callTool('list_definitions', { brain: 'beta', type: 'reasoning' }),
     }));
 
     expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }] });
-    expect(outcome.own.structuredContent).toEqual({ specs: [] });
+    expect(outcome.own.structuredContent).toEqual({ definitions: [] });
     expect(problemIn(outcome.other)).toMatchObject({
       reason: 'forbidden',
       detail: 'The caller may not access this brain',
@@ -176,7 +176,7 @@ describe('a key that may only read inside brains, on /mcp', () => {
     expect(outcome.tools).toEqual(['list_brains', 'list_tool_servers', ...queriesInsideABrain, 'get_guide']);
     expect(commands.filter((name) => outcome.instructions.includes(name))).toEqual([]);
     expect(outcome.instructions).toContain(
-      "This connection acts in the caller's own org: list_brains shows its brains. The tools call a definition",
+      "This connection acts in the caller's own org: list_brains shows its brains. get_guide holds what these words mean",
     );
     expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }, { id: 'beta' }] });
   });

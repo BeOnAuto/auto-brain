@@ -32,7 +32,7 @@ export interface ExecutorSubject {
 function timerOf({ run, now }: Pick<TimerSubject, 'run' | 'now'>, sequence: number): ArmTimer {
   return {
     kind: 'arm_timer',
-    executionId: run.executionId,
+    runId: run.runId,
     timerId: String(sequence),
     dueAt: now() + 1000,
     purpose: 'wait',
@@ -41,12 +41,12 @@ function timerOf({ run, now }: Pick<TimerSubject, 'run' | 'now'>, sequence: numb
 
 const armedBy: OutputOrigin = { version: 1, lastStep: null };
 
-function cancelOf({ executionId, timerId }: ArmTimer): {
+function cancelOf({ runId, timerId }: ArmTimer): {
   readonly kind: 'cancel_timer';
-  readonly executionId: string;
+  readonly runId: string;
   readonly timerId: string;
 } {
-  return { kind: 'cancel_timer', executionId, timerId };
+  return { kind: 'cancel_timer', runId, timerId };
 }
 
 function firedOf(timerIds: readonly string[]): string {
@@ -125,7 +125,7 @@ export const timerProbes: readonly Probe<TimerSubject>[] = [
 function callOf({ run }: ExecutorSubject, reference: string): StartCall {
   return {
     kind: 'start_call',
-    key: { executionId: run.executionId, reference, run: 1 },
+    key: { runId: run.runId, reference, run: 1 },
     function: 'notify',
     arguments: { to: 'ada' },
     longestMs: 60_000,

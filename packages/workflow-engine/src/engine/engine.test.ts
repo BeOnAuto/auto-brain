@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { loadedRunOf } from '../run-log/run-fold.ts';
 import { startedOf } from '../testing/driver-inputs.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
-import { drivenExecutionId as executionId, outputKindsIn, statesAlong } from '../testing/run-history.ts';
+import { drivenRunId as runId, outputKindsIn, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 const answeringLarge = () => ({ after: 1000, result: { status: 'succeeded', output: 'x'.repeat(300_000) } }) as const;
@@ -19,7 +19,7 @@ do:
 `);
 
 function snapshotVersionOf(driver: MemoryDriver): number {
-  return driver.ports.runStore.snapshotOf(executionId)?.snapshot.version ?? 0;
+  return driver.ports.runStore.snapshotOf(runId)?.snapshot.version ?? 0;
 }
 
 function untilTheFirstSnapshot(driver: MemoryDriver): number {
@@ -31,11 +31,11 @@ function untilTheFirstSnapshot(driver: MemoryDriver): number {
 describe('the snapshots of a run', () => {
   it('are saved once the events since the last take as many bytes, and give the state its whole stream gives', () => {
     const driver = memoryDriver({ respond: answeringLarge });
-    driver.start({ executionId, document: callingInALoop });
+    driver.start({ runId, document: callingInALoop });
 
-    const ended = driver.runUntilEnded(executionId);
-    const events = driver.ports.runStore.events(executionId);
-    const fromSnapshot = loadedRunOf(Effect.runSync(driver.ports.runStore.load(executionId)));
+    const ended = driver.runUntilEnded(runId);
+    const events = driver.ports.runStore.events(runId);
+    const fromSnapshot = loadedRunOf(Effect.runSync(driver.ports.runStore.load(runId)));
 
     expect(ended.outcome).toEqual({ kind: 'completed', output: { done: true } });
     expect(snapshotVersionOf(driver)).toBeGreaterThan(1);
@@ -46,12 +46,12 @@ describe('the snapshots of a run', () => {
 
   it('let the input that follows one be decided from it alone', () => {
     const driver = memoryDriver({ respond: answeringLarge });
-    driver.start({ executionId, document: callingInALoop });
+    driver.start({ runId, document: callingInALoop });
     const snapshotAt = untilTheFirstSnapshot(driver);
 
-    expect(Effect.runSync(driver.ports.runStore.load(executionId)).tail).toEqual([]);
-    expect(driver.runUntilEnded(executionId).outcome).toEqual({ kind: 'completed', output: { done: true } });
-    expect(driver.ports.runStore.events(executionId).length).toBeGreaterThan(snapshotAt);
+    expect(Effect.runSync(driver.ports.runStore.load(runId)).tail).toEqual([]);
+    expect(driver.runUntilEnded(runId).outcome).toEqual({ kind: 'completed', output: { done: true } });
+    expect(driver.ports.runStore.events(runId).length).toBeGreaterThan(snapshotAt);
   });
 });
 
@@ -67,34 +67,32 @@ do:
 `);
     const driver = memoryDriver();
     driver.ports.faults.failNext('arm_timer');
-    driver.start({ executionId, document });
+    driver.start({ runId, document });
     const dispatchedBefore = driver.ports.faults.dispatched().length;
-    driver.deliver(executionId, { id: 'e1', type: 'go' });
+    driver.deliver(runId, { id: 'e1', type: 'go' });
 
     expect(dispatchedBefore).toBe(0);
-    expect(driver.runUntilEnded(executionId).outcome).toEqual({ kind: 'completed', output: [{}, [null]] });
+    expect(driver.runUntilEnded(runId).outcome).toEqual({ kind: 'completed', output: [{}, [null]] });
   });
 
   it('settles again, when woken, a settlement whose dispatch failed', () => {
     const driver = memoryDriver();
     driver.ports.faults.failNext('settle');
-    driver.start({ executionId, document: workflow('do:\n  - greet: { set: { done: true } }') });
-    const before = driver.ports.recordStore.settlementOf(executionId);
+    driver.start({ runId, document: workflow('do:\n  - greet: { set: { done: true } }') });
+    const before = driver.ports.recordStore.settlementOf(runId);
 
-    const woken = Effect.runSync(driver.engine.wake(executionId));
+    const woken = Effect.runSync(driver.engine.wake(runId));
 
     expect(before).toBeUndefined();
     expect(woken).toEqual({ version: 1, dispatchedThrough: 1 });
-    expect(driver.ports.recordStore.settlementOf(executionId)).toEqual({ status: 'succeeded', output: { done: true } });
+    expect(driver.ports.recordStore.settlementOf(runId)).toEqual({ status: 'succeeded', output: { done: true } });
   });
 
   it('reports a settle receipt that troubles, and does not drop it', () => {
     const driver = memoryDriver();
-    driver.submit(startedOf({ executionId, document: workflow('do:\n  - greet: { set: { done: true } }') }, 0));
+    driver.submit(startedOf({ runId, document: workflow('do:\n  - greet: { set: { done: true } }') }, 0));
 
-    expect(driver.ports.reporter.reports()).toEqual([
-      { run: { executionId, attributes: {} }, receipt: 'unknown_execution' },
-    ]);
-    expect(outputKindsIn(driver.ports.runStore.events(executionId))).toEqual(['settle']);
+    expect(driver.ports.reporter.reports()).toEqual([{ run: { runId, attributes: {} }, receipt: 'unknown_run' }]);
+    expect(outputKindsIn(driver.ports.runStore.events(runId))).toEqual(['settle']);
   });
 });

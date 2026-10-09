@@ -64,7 +64,7 @@ describe(
         'tool: thread_replies',
         'tool: echo',
       );
-      const updated = await server.call('PUT', `${alpha}/specs/interaction/approve-brief`, {
+      const updated = await server.call('PUT', `${alpha}/definitions/interaction/approve-brief`, {
         body: { source: changed },
       });
       chat.chat.reply({ channel: '#approvals-ada', thread: chat.chat.posted()[0]?.ts, user: 'ada', text: 'reject' });
@@ -83,7 +83,7 @@ describe(
     it('share one row and one read for their requests', async () => {
       const chat = await chatServer();
       const server = await servingInteractions([...chatDelivery, ...flatReading], chatEnvironment(chat.url));
-      await server.call('POST', `${alpha}/specs/interaction`, {
+      await server.call('POST', `${alpha}/definitions/interaction`, {
         body: { name: 'approve-again', source: approvalDocument([...chatDelivery, ...flatReading]) },
       });
       await server.ask('approve-brief');
@@ -120,7 +120,7 @@ describe(
 
       const events = await until(() => brainEventsOf(server), readAndTold);
       const listing = JSON.stringify((await server.call('GET', `${alpha}/interactions`)).body);
-      const history = JSON.stringify((await server.call('GET', `${alpha}/executions/${runId}/history`)).body);
+      const history = JSON.stringify((await server.call('GET', `${alpha}/runs/${runId}/history`)).body);
 
       expect(events).toContain('[redacted]');
       expect(events).toContain('telling_started');

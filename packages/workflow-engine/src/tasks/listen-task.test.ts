@@ -7,10 +7,10 @@ import { workflow } from '../testing/workflows.ts';
 type Delivery = readonly [number, { readonly id: string; readonly type: string; readonly data?: number | string }];
 
 function delivering(...deliveries: readonly Delivery[]) {
-  return (driver: MemoryDriver, executionId: string): void => {
+  return (driver: MemoryDriver, runId: string): void => {
     for (const [milliseconds, event] of deliveries) {
       driver.at(milliseconds, () => {
-        driver.deliver(executionId, event);
+        driver.deliver(runId, event);
       });
     }
   };

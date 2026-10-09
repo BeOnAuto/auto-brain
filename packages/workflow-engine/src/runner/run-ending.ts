@@ -8,7 +8,7 @@ import type { Journal } from './run-tables.ts';
 import type { CallTable, ListenerTable, TimerTable } from './run-timers.ts';
 
 interface RunStart {
-  readonly executionId: string;
+  readonly runId: string;
   readonly document: JsonObject;
   readonly input: ValueId;
   readonly limits: RunLimits;
@@ -32,12 +32,12 @@ export interface Ending {
 
 export function lifecycleOf(cell: RunCell, ending: Ending, now: number): Lifecycle {
   return {
-    begin: ({ executionId, document, input, limits, attributes, seed }) => {
+    begin: ({ runId, document, input, limits, attributes, seed }) => {
       const { state } = cell.get();
       cell.update({
         state: {
           ...state,
-          executionId,
+          runId,
           status: 'running',
           workflow: { document, input },
           attributes,
@@ -57,7 +57,7 @@ export function lifecycleOf(cell: RunCell, ending: Ending, now: number): Lifecyc
       ending.inbox.clear();
       const { state } = cell.get();
       cell.update({ state: { ...state, status: 'ended', outcome }, root: null });
-      ending.journal.emit({ kind: 'settle', executionId: state.executionId, settlement: settlementOf(outcome) });
+      ending.journal.emit({ kind: 'settle', runId: state.runId, settlement: settlementOf(outcome) });
     },
   };
 }

@@ -1,5 +1,5 @@
+import { brainEventOf, definitionTypeStreamOf, type CloudEvent } from '@beonauto/definitions';
 import type { EventStore, StoredPage, StoredPlace } from '@beonauto/ledger';
-import { brainEventOf, specsStreamOf, type CloudEvent } from '@beonauto/specs';
 
 import { recordsInAPage } from '../projector/projector-settings.ts';
 import type { Point } from '../views/view-points.ts';
@@ -33,13 +33,13 @@ interface PageRead {
 
 type StoredRecord = StoredPage['records'][number];
 
-const definitionTypes = ['spec_created', 'spec_updated', 'spec_retired'];
+const definitionTypes = ['definition_created', 'definition_updated', 'definition_retired'];
 
 const factTypes: ReadonlySet<string> = new Set([
-  'execution_started',
-  'execution_succeeded',
-  'execution_rejected',
-  'execution_failed',
+  'run_started',
+  'run_succeeded',
+  'run_rejected',
+  'run_failed',
   ...definitionTypes,
 ]);
 
@@ -80,7 +80,7 @@ export async function readPage(
     { order: 'asc', limit: recordsInAPage, types, ...(after === undefined ? {} : { after }) },
   );
   const placed = page.records.map((record) => placedOf(brainKey, record));
-  const definitions = `${brainKey}${specsStreamOf(definitionType)}`;
+  const definitions = `${brainKey}${definitionTypeStreamOf(definitionType)}`;
   return {
     events: placed.filter((each) => isPageEvent(each)),
     definitionsSeen: page.records.some(({ stream }) => stream === definitions),

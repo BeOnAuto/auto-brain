@@ -5,11 +5,11 @@ import { CallKeySchema } from '../executor/call-key.ts';
 import { InstantSchema } from '../machine/instant.ts';
 import { TimerPurposeSchema } from '../timers/timer-id.ts';
 
-const ExecutionIdSchema = Schema.NonEmptyString;
+const RunIdSchema = Schema.NonEmptyString;
 
 const ArmTimerSchema = Schema.Struct({
   kind: Schema.Literal('arm_timer'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   timerId: Schema.NonEmptyString,
   dueAt: InstantSchema,
   purpose: TimerPurposeSchema,
@@ -18,7 +18,7 @@ const ArmTimerSchema = Schema.Struct({
 
 const CancelTimerSchema = Schema.Struct({
   kind: Schema.Literal('cancel_timer'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   timerId: Schema.NonEmptyString,
 });
 
@@ -57,7 +57,7 @@ const EmitEventSchema = Schema.Struct({
 
 const SettleSchema = Schema.Struct({
   kind: Schema.Literal('settle'),
-  executionId: ExecutionIdSchema,
+  runId: RunIdSchema,
   settlement: SettlementSchema,
 });
 

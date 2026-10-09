@@ -7,12 +7,12 @@ import { statement } from '../database/statement.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
-import { ledgerRunStore } from './ledger-run-store.ts';
-import { runIdOf } from './run-address.ts';
+import { ledgerRunLogStore } from './ledger-run-store.ts';
+import { runKeyOf } from './run-address.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const run = runAt(executionId);
+const run = runAt(runId);
 
 const waiting = workflow('do:\n  - pause: { wait: PT1H }');
 
@@ -30,13 +30,13 @@ describe('the run store of the host, ending a run', () => {
     const database = await openedOn({ store: 'sqlite', file });
     await Effect.runPromise(
       database.write(
-        statement`INSERT INTO workflow_passed_runs (run_id, passed_through) VALUES (${runIdOf(run)}, ${1000})`,
+        statement`INSERT INTO workflow_passed_runs (run_key, passed_through) VALUES (${runKeyOf(run)}, ${1000})`,
       ),
     );
     const hosted = await hostedOn({ store: 'sqlite', file });
 
     await Effect.runPromise(hosted.host.start(run, startOf(workflow('do:\n  - done: { set: { done: true } }'))));
-    const left = await Effect.runPromise(database.read(statement`SELECT run_id FROM workflow_passed_runs`));
+    const left = await Effect.runPromise(database.read(statement`SELECT run_key FROM workflow_passed_runs`));
 
     expect([(await Effect.runPromise(hosted.host.stateOf(run))).status, left]).toEqual(['ended', []]);
   });
@@ -50,15 +50,11 @@ describe('the run store of the host, keeping a run', () => {
     const ledger = await ledgerOn(file);
 
     const history = await Effect.runPromise(
-      ledger.readRecorded(
-        { org: 'acme', brain: 'alpha' },
-        { kind: 'run', execution: executionId },
-        { order: 'asc', limit: 10 },
-      ),
+      ledger.readRecorded({ org: 'acme', brain: 'alpha' }, { kind: 'run', run: runId }, { order: 'asc', limit: 10 }),
     );
 
     expect(history.records.map(({ stream, type }) => [stream, type])).toEqual([
-      [`brain/acme/alpha/runs/${executionId}`, 'input_applied'],
+      [`brain/acme/alpha/run-logs/${runId}`, 'input_applied'],
     ]);
   });
 
@@ -72,7 +68,7 @@ describe('the run store of the host, keeping a run', () => {
     );
     const messages = await Effect.runPromise(database.read(statement`SELECT COUNT(*) AS messages FROM emt_messages`));
 
-    const stored = await Effect.runPromise(ledgerRunStore(database).load(runIdOf(run)));
+    const stored = await Effect.runPromise(ledgerRunLogStore(database).load(runKeyOf(run)));
 
     expect(chunks).toEqual([
       { version: 1, chunk: 0, chunks: 2 },

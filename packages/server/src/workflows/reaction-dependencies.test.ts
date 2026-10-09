@@ -1,8 +1,8 @@
 import { makeAppRuntime } from '@beonauto/api';
+import { defineStartVersion } from '@beonauto/definitions';
+import { echo } from '@beonauto/definitions/testing';
 import { ledgerLayer } from '@beonauto/ledger/sqlite3';
 import type { BrainRequest, Dispatcher, Outcome } from '@beonauto/operations';
-import { defineStartVersion } from '@beonauto/specs';
-import { echo } from '@beonauto/specs/testing';
 import { StartRefused, StartRejected } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -15,7 +15,7 @@ const start = {
   brain: 'alpha',
   workflow: 'close-the-month',
   version: 2,
-  executionId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+  runId: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
   input: [{ type: 'com.acme.ledger.closed' }],
   depth: 3,
   cause: 'record-1',
@@ -49,14 +49,14 @@ describe('a start of a workflow its trigger matched', () => {
         org: 'acme',
         brain: 'alpha',
         input: {
-          primitive: 'orchestration',
+          type: 'workflow',
           name: 'close-the-month',
           version: 2,
           input: start.input,
-          execution_id: start.executionId,
+          run_id: start.runId,
         },
         encoding: 'json',
-        lineage: { causationId: 'record-1', correlationId: start.executionId },
+        lineage: { causationId: 'record-1', correlationId: start.runId },
         depth: 3,
         trigger: { kind: 'event', reference: '/schedule/on' },
       },
@@ -91,7 +91,7 @@ describe('an event a workflow emits', () => {
         type: 'com.acme.ledger.closed',
         time: '2026-10-01T09:00:00.000Z',
       },
-      emitter: { execution_id: start.executionId, workflow: 'announce', version: 1 },
+      emitter: { run_id: start.runId, workflow: 'announce', version: 1 },
       depth: 1,
       by: 'brain:alpha',
       at: '2026-10-01T09:00:00.000Z',
@@ -100,7 +100,7 @@ describe('an event a workflow emits', () => {
     const outcome = await Effect.runPromise(
       reactions.emit({ org: 'acme', brain: 'alpha' }, emission, {
         causationId: null,
-        correlationId: start.executionId,
+        correlationId: start.runId,
       }),
     );
 

@@ -4,14 +4,14 @@ import { staleReasonOf } from '../machine/admission.ts';
 import { inputTimeOf, receiptOf } from '../machine/input-receipt.ts';
 import type { RunDecider } from '../machine/run-decider.ts';
 import { newRun } from '../machine/run-state.ts';
-import { RunEventSchema, withHistoryBytes } from '../run-log/run-event.ts';
+import { RunLogEventSchema, withHistoryBytes } from '../run-log/run-event.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
 import { stateFormat } from '../run-log/state-format.ts';
 
 export const countingDecider: RunDecider = {
   initialState: newRun,
   evolve: evolveRun,
-  eventSchema: RunEventSchema,
+  eventSchema: RunLogEventSchema,
   decide: (input, state) => {
     if (staleReasonOf(state, input) !== undefined) {
       return Result.succeed([]);
@@ -24,7 +24,7 @@ export const countingDecider: RunDecider = {
         receipt: receiptOf(input, at),
         steps: [],
         patch: [
-          { op: 'replace', path: '/executionId', value: input.executionId },
+          { op: 'replace', path: '/runId', value: input.runId },
           { op: 'replace', path: '/status', value: 'running' },
           { op: 'replace', path: '/inputs', value: state.inputs + 1 },
           { op: 'replace', path: '/lastInputAt', value: at },

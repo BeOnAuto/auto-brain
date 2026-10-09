@@ -4,42 +4,64 @@ import { RunOutputSchema } from '../dispatch/run-output.ts';
 import { InputReceiptSchema } from '../machine/input-receipt.ts';
 import { mostEventBytes } from '../machine/limits.ts';
 import { EarlierStepSchema, ResumedSchema, StepSchema } from '../steps/step-entry.ts';
-import { StateFormatSchema } from './state-format.ts';
+import {
+  EventOfFormatsOneToSixSchema,
+  eventNamesOfFormatsOneToSix,
+  FormatsOneToSixSchema,
+} from './formats/format-six-records.ts';
+import { stateFormat, ThisFormatOrNewerSchema, writtenInAnOlderFormat } from './state-format.ts';
 import { PatchOperationSchema } from './state-patch.ts';
 
-export const RunEventSchema = Schema.Struct({
-  type: Schema.Literal('input_applied'),
-  format: StateFormatSchema,
-  receipt: InputReceiptSchema,
-  steps: Schema.Array(Schema.Union([StepSchema, EarlierStepSchema])),
-  resumed: Schema.optionalKey(Schema.NullOr(ResumedSchema)),
-  patch: Schema.Array(PatchOperationSchema),
-  outputs: Schema.Array(RunOutputSchema),
-});
+function eventInFormat<Format extends Schema.Top>(format: Format) {
+  return Schema.Struct({
+    type: Schema.Literal('input_applied'),
+    format,
+    receipt: InputReceiptSchema,
+    steps: Schema.Array(Schema.Union([StepSchema, EarlierStepSchema])),
+    resumed: Schema.optionalKey(Schema.NullOr(ResumedSchema)),
+    patch: Schema.Array(PatchOperationSchema),
+    outputs: Schema.Array(RunOutputSchema),
+  });
+}
 
-export type RunEvent = typeof RunEventSchema.Type;
+export const RunLogEventSchema = Schema.Union([
+  eventInFormat(ThisFormatOrNewerSchema),
+  writtenInAnOlderFormat(
+    EventOfFormatsOneToSixSchema,
+    eventInFormat(FormatsOneToSixSchema),
+    eventNamesOfFormatsOneToSix,
+  ),
+]);
+
+export type RunLogEvent = typeof RunLogEventSchema.Type;
 
 export interface PositionedEvent {
   readonly version: number;
-  readonly event: RunEvent;
+  readonly event: RunLogEvent;
 }
 
 const utf8 = new TextEncoder();
 
-export function eventBytesOf(event: RunEvent): number {
-  return utf8.encode(JSON.stringify(event)).byteLength;
+const writeEvent = Schema.encodeSync(RunLogEventSchema);
+
+function asWritten(event: RunLogEvent): unknown {
+  return event.format < stateFormat ? writeEvent(event) : event;
 }
 
-export function fitsInOneEvent(event: RunEvent): boolean {
+export function eventBytesOf(event: RunLogEvent): number {
+  return utf8.encode(JSON.stringify(asWritten(event))).byteLength;
+}
+
+export function fitsInOneEvent(event: RunLogEvent): boolean {
   return eventBytesOf(event) <= mostEventBytes;
 }
 
-function withHistoryBytesOf(event: RunEvent, historyBytes: number): RunEvent {
+function withHistoryBytesOf(event: RunLogEvent, historyBytes: number): RunLogEvent {
   return { ...event, patch: [...event.patch, { op: 'replace', path: '/historyBytes', value: historyBytes }] };
 }
 
-export function withHistoryBytes(event: RunEvent, before: number): RunEvent {
-  const settled = (guess: number): RunEvent => {
+export function withHistoryBytes(event: RunLogEvent, before: number): RunLogEvent {
+  const settled = (guess: number): RunLogEvent => {
     const counted = withHistoryBytesOf(event, before + guess);
     const bytes = eventBytesOf(counted);
     return bytes === guess ? counted : settled(bytes);

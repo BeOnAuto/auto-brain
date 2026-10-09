@@ -9,7 +9,7 @@ export const kindKeyOfStream = "substring(stream_id FROM '^(?:[^/]*/){4}')";
 
 export const correlationOfMessage = "(message_metadata ->> 'correlationId')";
 
-export const definitionTypeOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}specs/([^/]+)$')";
+export const definitionTypeOfStream = "substring(stream_id FROM '^(?:[^/]*/){3}definitions/([^/]+)$')";
 
 const NameRows = Schema.Array(Schema.Struct({ name: Schema.String }));
 

@@ -22,17 +22,27 @@ export interface MemoryRunOutcomes {
   readonly readRunOutcomes: RunOutcomesReader['readRunOutcomes'];
 }
 
-function isSelected(row: RunOutcome, window: RunOutcomeWindow, { primitive, name }: RunOutcomeSelection): boolean {
+function isSelected(row: RunOutcome, window: RunOutcomeWindow, { definitionType, name }: RunOutcomeSelection): boolean {
   return (
     row.startedDay >= window.from &&
     row.startedDay <= window.to &&
-    (primitive === undefined || row.primitive === primitive) &&
+    (definitionType === undefined || row.definitionType === definitionType) &&
     (name === undefined || row.name === name)
   );
 }
 
-function emptyGroupOf({ startedDay: day, primitive, name, status }: RunOutcome): RunOutcomeGroup {
-  return { day, primitive, name, status, runs: 0, inputTokens: 0, outputTokens: 0, cachedTokens: 0, durations: [] };
+function emptyGroupOf({ startedDay: day, definitionType, name, status }: RunOutcome): RunOutcomeGroup {
+  return {
+    day,
+    definitionType,
+    name,
+    status,
+    runs: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cachedTokens: 0,
+    durations: [],
+  };
 }
 
 function added(group: RunOutcomeGroup, row: RunOutcome): RunOutcomeGroup {
@@ -49,7 +59,7 @@ function added(group: RunOutcomeGroup, row: RunOutcome): RunOutcomeGroup {
 function grouped(rows: readonly RunOutcome[]): readonly RunOutcomeGroup[] {
   const groups = new Map<string, RunOutcomeGroup>();
   for (const row of rows) {
-    const key = JSON.stringify([row.startedDay, row.primitive, row.name, row.status]);
+    const key = JSON.stringify([row.startedDay, row.definitionType, row.name, row.status]);
     groups.set(key, added(groups.get(key) ?? emptyGroupOf(row), row));
   }
   return [...groups.values()];

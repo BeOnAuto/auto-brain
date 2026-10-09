@@ -17,7 +17,7 @@ function rebuildTests(settingsOf: SettingsOf): void {
   it('rebuild the view from the start of the history when a new version is saved, and drop it when it is retired', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('runs', counting);
-    await views.ranEach('inference/runs', [1, 2]);
+    await views.ranEach('reasoning/runs', [1, 2]);
     views.start();
     const first = await views.until('runs', foldedAll(2));
 
@@ -32,7 +32,7 @@ function rebuildTests(settingsOf: SettingsOf): void {
   it('replace an older version that waits, rebuilds or stalled with the newer one', async () => {
     const views = await viewHarness(await settingsOf());
     await views.saved('runs', detailsOf('error("version one")', succeeded, { initial: 0 }));
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     views.start();
     await views.until('runs', isStalled);
 
@@ -51,9 +51,9 @@ function discoveryTests(settingsOf: SettingsOf): void {
     const beta = { org: 'acme', brain: 'beta' };
 
     await views.saved('runs', counting);
-    await views.ran('inference/runs', 1);
+    await views.ran('reasoning/runs', 1);
     await views.saved('runs', counting, beta);
-    await views.ran('inference/runs', 1, { brain: beta });
+    await views.ran('reasoning/runs', 1, { brain: beta });
     const [inAlpha, inBeta] = await Promise.all([
       views.until('runs', foldedAll(1), alpha),
       views.until('runs', foldedAll(1), beta),

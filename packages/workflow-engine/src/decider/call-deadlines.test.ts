@@ -15,7 +15,7 @@ do:
           - slow: { call: notify, with: { to: grace } }
 `);
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000000061';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-000000000061';
 
 const pausingThenAsking = workflow('do:\n  - pause: { wait: PT1M }\n  - ask: { call: notify, with: { to: ada } }');
 
@@ -34,8 +34,8 @@ function waitOf(positioned: PositionedEvent | undefined): string {
 
 function deadlinesOf(limits: Partial<RunLimits>) {
   const driver = memoryDriver({ respond: () => 'never' });
-  driver.start({ executionId, document: twoCalls, limits });
-  const [first] = Effect.runSync(driver.ports.runStore.eventsAfter(executionId, 0));
+  driver.start({ runId, document: twoCalls, limits });
+  const [first] = Effect.runSync(driver.ports.runStore.eventsAfter(runId, 0));
   return (first?.event.outputs ?? []).flatMap((output) =>
     output.kind === 'start_call' ? [{ reference: output.key.reference, longestMs: output.longestMs }] : [],
   );
@@ -57,18 +57,18 @@ describe('the deadline of a call', () => {
   it('is a millisecond at the least, for a call that starts when the run has no time left', () => {
     const driver = memoryDriver({ respond: () => 'never' });
     driver.start({
-      executionId,
+      runId,
       document: pausingThenAsking,
       limits: { mostDurationMs: 60_000, longestCallMs: 600_000 },
     });
-    const [first] = Effect.runSync(driver.ports.runStore.eventsAfter(executionId, 0));
+    const [first] = Effect.runSync(driver.ports.runStore.eventsAfter(runId, 0));
     driver.submit({
       kind: 'timer_fired',
-      executionId,
+      runId,
       at: Number(first?.event.receipt.at) + 90_000,
       timerId: waitOf(first),
     });
-    const [, second] = Effect.runSync(driver.ports.runStore.eventsAfter(executionId, 0));
+    const [, second] = Effect.runSync(driver.ports.runStore.eventsAfter(runId, 0));
 
     expect(startsIn(second)).toEqual([{ reference: '/do/1/ask', longestMs: 1 }]);
   });

@@ -78,7 +78,7 @@ describe('the reads of a projection on PostgreSQL', () => {
     ]);
     expect(asked).toEqual([
       {
-        text: 'SELECT brain_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_1 WHERE brain_key = $1 AND open = $2 AND (began_at, row_key) < ($3, $4) ORDER BY began_at DESC NULLS LAST, row_key DESC NULLS LAST LIMIT $5',
+        text: 'SELECT brain_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_2 WHERE brain_key = $1 AND open = $2 AND (began_at, row_key) < ($3, $4) ORDER BY began_at DESC NULLS LAST, row_key DESC NULLS LAST LIMIT $5',
         values: ['brain/acme/alpha/', true, 2000, 'r9', 20],
       },
     ]);
@@ -103,9 +103,9 @@ describe('the counts and due times of a projection on PostgreSQL', () => {
     ).toMatchObject([{ key: 'r1', row: { open: true } }]);
     expect(await Effect.runPromise(readerOf(soonest.query).nextDueOf('run_tallies', 'due_at', 0))).toBe(61_000);
     expect([...counts.asked, ...due.asked, ...soonest.asked].map(({ text }) => text)).toEqual([
-      'SELECT CAST(count(*) AS INTEGER) AS count FROM run_tallies_1 WHERE brain_key = $1',
-      'SELECT brain_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_1 WHERE due_at IS NOT NULL AND due_at <= $1 ORDER BY due_at, brain_key, row_key LIMIT $2',
-      'SELECT min(due_at)::float8 AS due FROM run_tallies_1 WHERE due_at IS NOT NULL AND due_at > $1',
+      'SELECT CAST(count(*) AS INTEGER) AS count FROM run_tallies_2 WHERE brain_key = $1',
+      'SELECT brain_key, row_key, fn, began_at::float8 AS began_at, status, facts::float8 AS facts, open, due_at::float8 AS due_at, last_message FROM run_tallies_2 WHERE due_at IS NOT NULL AND due_at <= $1 ORDER BY due_at, brain_key, row_key LIMIT $2',
+      'SELECT min(due_at)::float8 AS due FROM run_tallies_2 WHERE due_at IS NOT NULL AND due_at > $1',
     ]);
   });
 
@@ -144,7 +144,7 @@ describe('the advance of a row of a projection on PostgreSQL', () => {
     expect(Exit.isFailure(refused)).toBe(true);
     expect(asked).toEqual([
       {
-        text: 'UPDATE topics_1 SET open = $1, next_at = $2 WHERE brain_key = $3 AND row_key = $4 AND last_message = $5',
+        text: 'UPDATE topics_2 SET open = $1, next_at = $2 WHERE brain_key = $3 AND row_key = $4 AND last_message = $5',
         values: [false, 9000, 'brain/acme/alpha/', 'spring', 'm-1'],
       },
     ]);
@@ -219,9 +219,9 @@ describe('the fill of a projection keyed by its mapping on PostgreSQL', () => {
 
     expect(fill.queries.filter((statement) => statement.includes('ORDER BY m.transaction_id'))).toHaveLength(2);
     expect(fill.queries.find((statement) => statement.includes('split_part("0/0"'))).toContain(
-      `split_part(m.stream_id, '/', 4) IN (SELECT jsonb_array_elements_text("[\\"executions\\",\\"notes\\"]"::jsonb))`,
+      `split_part(m.stream_id, '/', 4) IN (SELECT jsonb_array_elements_text("[\\"runs\\",\\"notes\\"]"::jsonb))`,
     );
-    expect(fill.commands.filter((command) => command.startsWith('INSERT INTO topics_1')).join(' ')).toMatch(
+    expect(fill.commands.filter((command) => command.startsWith('INSERT INTO topics_2')).join(' ')).toMatch(
       /"t0".*"t1".*"t2"/u,
     );
   });

@@ -14,18 +14,18 @@ const child = '0199a3c4-7d2e-7c1a-9b3f-0000000000c1';
 
 const asking = workflow('do:\n  - ask: { call: notify, with: { to: ada } }');
 
-const key = callKeyText({ executionId: parentRun, reference: '/do/0/ask', run: 1 });
+const key = callKeyText({ runId: parentRun, reference: '/do/0/ask', run: 1 });
 
 const ending = {
-  type: 'execution_succeeded',
+  type: 'run_succeeded',
   output: 'checked',
   record: {},
-  primitive: 'orchestration',
+  definition_type: 'workflow',
   name: 'check',
-  spec_version: 1,
+  definition_version: 1,
   by: 'brain:alpha',
   at,
-  called_by: { execution_id: parentId, reference: '/do/0/ask', run: 1 },
+  called_by: { run_id: parentId, reference: '/do/0/ask', run: 1 },
 };
 
 describe('a host that died after it marked a call waiting and before it read the ending of the call’s run', () => {
@@ -36,7 +36,7 @@ describe('a host that died after it marked a call waiting and before it read the
     const first = await hostedOn(settings, { answer: () => Effect.never });
     first.know(parentId);
     await Effect.runPromise(first.host.start(runAt(parentId), startOf(asking)));
-    await recorded(database.store, `${alpha}executions/${child}`, ending);
+    await recorded(database.store, `${alpha}runs/${child}`, ending);
     await followedThroughTheLatest(database);
     await first.host.stop();
     await Effect.runPromise(waitingRow(database, key, child));

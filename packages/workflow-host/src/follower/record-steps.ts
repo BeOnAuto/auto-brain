@@ -1,7 +1,7 @@
 import { streamKindOf, type RecordedEvent } from '@beonauto/operations';
 import { Effect } from 'effect';
 
-import type { ApplySpecRecord } from '../triggers/spec-records.ts';
+import type { ApplyDefinitionRecord } from '../triggers/definition-records.ts';
 import { relativeRecord } from './brain-records.ts';
 import {
   boundTo,
@@ -28,8 +28,8 @@ export interface StepParts {
   readonly consumers: readonly RecordConsumer[];
   readonly registered: readonly Consumer[];
   readonly calls: readonly CallConsumer[];
-  readonly primitive: string;
-  readonly applySpecRecord: ApplySpecRecord;
+  readonly definitionType: string;
+  readonly applyDefinitionRecord: ApplyDefinitionRecord;
   readonly unreadable: (brainKey: string, record: Pick<RecordedEvent, 'id' | 'type'>) => Effect.Effect<void>;
   readonly passedEarly: (brainKey: string, record: RecordedEvent, sweeps: number) => Effect.Effect<void>;
 }
@@ -52,7 +52,7 @@ function passedOver(record: RecordedEvent): Progress {
 }
 
 function followedOf(parts: StepParts, brainKey: string, relative: RecordedEvent): Effect.Effect<FollowedRecord | null> {
-  const event = followedEventOf(relative, parts.primitive);
+  const event = followedEventOf(relative, parts.definitionType);
   if (event === 'unreadable') {
     return Effect.as(parts.unreadable(brainKey, relative), null);
   }
@@ -109,15 +109,15 @@ export function stepOf(
   record: RecordedEvent,
 ): Effect.Effect<Step> {
   const { brainKey, delivers } = stepping;
-  if (streamKindOf(record.stream.slice(brainKey.length)) === 'runs') {
+  if (streamKindOf(record.stream.slice(brainKey.length)) === 'run-logs') {
     return runRecordStep(parts, stepping, progress, record);
   }
   const step: Effect.Effect<Step> = delivers.has(record.type)
     ? deliveredStep(parts, stepping, progress, record)
     : Effect.succeed({ progress: passedOver(record) });
-  if (record.stream === `${brainKey}specs/${parts.primitive}`) {
+  if (record.stream === `${brainKey}definitions/${parts.definitionType}`) {
     const readAgain: Effect.Effect<Step> = Effect.succeed({ progress, end: 'more' });
-    return Effect.flatMap(parts.applySpecRecord(brainKey, record), (applied) =>
+    return Effect.flatMap(parts.applyDefinitionRecord(brainKey, record), (applied) =>
       applied === 'unreadable'
         ? Effect.as(parts.unreadable(brainKey, record), { progress: passedOver(record) })
         : Effect.flatMap(stepping.wantsMore(), (more) => (more ? readAgain : step)),

@@ -40,7 +40,7 @@ const approvalSchema = {
 const ListedSchema = Schema.Struct({
   interactions: Schema.Array(
     Schema.Struct({
-      execution_id: Schema.String,
+      run_id: Schema.String,
       standing: Schema.String,
       attempts: Schema.Int,
       answer_schema: Schema.NullOr(Schema.JsonObject),
@@ -62,7 +62,7 @@ function eachTriedOnce(listed: Listed): boolean {
 
 function answerShapesOf(listed: Listed): Readonly<Record<string, unknown>> {
   return Object.fromEntries(
-    listed.map(({ execution_id: id, attempts, answer_schema: schema }) => [id, { attempts, answer_schema: schema }]),
+    listed.map(({ run_id: id, attempts, answer_schema: schema }) => [id, { attempts, answer_schema: schema }]),
   );
 }
 

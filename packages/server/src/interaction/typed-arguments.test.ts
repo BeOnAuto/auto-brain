@@ -47,9 +47,11 @@ describe('the arguments of a delivery, typed as written, over HTTP', { timeout: 
   it('sends a number, a boolean and an object as written, an expression alone as its value, and other strings as text', async () => {
     const chat = await chatServer();
     const server = await servingInteractions([], chatEnvironment(chat.url));
-    await server.call('POST', `${alpha}/specs/interaction`, { body: { name: 'approve-limit', source: limitApproval } });
+    await server.call('POST', `${alpha}/definitions/interaction`, {
+      body: { name: 'approve-limit', source: limitApproval },
+    });
 
-    await server.call('POST', `${alpha}/specs/interaction/approve-limit/execute`, {
+    await server.call('POST', `${alpha}/definitions/interaction/approve-limit/run`, {
       body: { input: { owner: 'ada', limit: 20 } },
     });
     const [received] = await until(

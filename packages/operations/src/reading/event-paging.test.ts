@@ -13,7 +13,7 @@ function recordOf(position: number, steps: number): RecordedEvent {
     cursor: cursorOfParts(['brain/acme/alpha/', String(position)]),
     causationId: null,
     correlationId: null,
-    stream: 'runs/r1',
+    stream: 'run-logs/r1',
     version: position,
     type: 'moved',
     data: { position, steps },
@@ -37,7 +37,7 @@ function eventsOf({ id, cursor, data }: RecordedEvent): readonly PublicEvent[] {
 }
 
 const presentation = presentationOf([
-  { streamKind: 'runs', publicNames: { moved: ['moved', 'stepped'] }, present: eventsOf },
+  { streamKind: 'run-logs', publicNames: { moved: ['moved', 'stepped'] }, present: eventsOf },
 ]);
 
 function pageOf(records: readonly RecordedEvent[], nextCursor: string | null = null): RecordedPage {
@@ -61,7 +61,7 @@ describe('a page of events', () => {
       true,
       'later',
     ]);
-    expect(page.events.map(({ stream }) => stream)).toEqual(Array.from({ length: 5 }, () => 'runs/r1'));
+    expect(page.events.map(({ stream }) => stream)).toEqual(Array.from({ length: 5 }, () => 'run-logs/r1'));
   });
 
   it('ends inside a record when its limit falls there, with a cursor that reads on from the next event', () => {

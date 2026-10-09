@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { memoryDriver } from './memory-driver.ts';
-import { drivenExecutionId as executionId } from './run-history.ts';
+import { drivenRunId as runId } from './run-history.ts';
 import { workflow } from './workflows.ts';
 
 describe('the memory driver', () => {
   it('answers a call with null when it is given no responder', () => {
     const driver = memoryDriver();
-    driver.start({ executionId, document: workflow('do:\n  - ask: { call: notify, with: { to: ada } }') });
+    driver.start({ runId, document: workflow('do:\n  - ask: { call: notify, with: { to: ada } }') });
 
-    expect(driver.runUntilEnded(executionId).outcome).toEqual({ kind: 'completed', output: null });
+    expect(driver.runUntilEnded(runId).outcome).toEqual({ kind: 'completed', output: null });
   });
 
   it('waits for answers given later, between the steps of its clock', async () => {
@@ -17,11 +17,11 @@ describe('the memory driver', () => {
       respond: () => ({ later: Promise.resolve({ status: 'succeeded', output: 'later' }) }),
     });
     driver.start({
-      executionId,
+      runId,
       document: workflow('do:\n  - pause: { wait: PT1M }\n  - ask: { call: notify, with: { to: ada } }'),
     });
 
-    expect(await driver.outcomeOf(executionId)).toEqual({ kind: 'completed', output: 'later' });
+    expect(await driver.outcomeOf(runId)).toEqual({ kind: 'completed', output: 'later' });
   });
 
   it('says so when a run does not end within the steps of its clock it is given', () => {
@@ -32,36 +32,28 @@ do:
       try: [{ fail: { raise: { error: { type: x, status: 503 } } } }]
       catch: { retry: { delay: PT1S } }
 `);
-    driver.start({ executionId, document: retryingForever });
+    driver.start({ runId, document: retryingForever });
 
-    expect(() => driver.runUntilEnded(executionId)).toThrow(
-      `The run ${executionId} did not end within 5 steps of its clock`,
-    );
+    expect(() => driver.runUntilEnded(runId)).toThrow(`The run ${runId} did not end within 5 steps of its clock`);
   });
 
   it('says so when a run waits for something that never comes', async () => {
     const driver = memoryDriver();
-    driver.start({ executionId, document: workflow('do:\n  - pause: { wait: PT1M }') });
+    driver.start({ runId, document: workflow('do:\n  - pause: { wait: PT1M }') });
     driver.ports.timers.forget();
 
-    await expect(driver.outcomeOf(executionId)).rejects.toThrow(
-      `The run ${executionId} waits for something that never comes`,
-    );
+    await expect(driver.outcomeOf(runId)).rejects.toThrow(`The run ${runId} waits for something that never comes`);
   });
 });
 
 describe('the memory driver as a clock and a log', () => {
   it('keeps every input it was given, applied or not, as the input log of each run', () => {
     const driver = memoryDriver();
-    driver.start({ executionId, document: workflow('do:\n  - pause: { wait: PT1M }') });
-    driver.cancel(executionId);
-    driver.cancel(executionId);
+    driver.start({ runId, document: workflow('do:\n  - pause: { wait: PT1M }') });
+    driver.cancel(runId);
+    driver.cancel(runId);
 
-    expect(driver.inputsOf(executionId).map(({ kind }) => kind)).toEqual([
-      'started',
-      'cancel_requested',
-      'cancel_requested',
-    ]);
+    expect(driver.inputsOf(runId).map(({ kind }) => kind)).toEqual(['started', 'cancel_requested', 'cancel_requested']);
     expect(driver.inputsOf('another')).toEqual([]);
   });
 

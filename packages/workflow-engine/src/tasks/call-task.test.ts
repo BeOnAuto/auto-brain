@@ -6,14 +6,14 @@ import { errorType } from '../dsl/raised-error.ts';
 import { mostCallArgumentsBytes } from '../machine/limits.ts';
 import type { Responder } from '../memory/memory-executor.ts';
 import type { MemoryDriver } from '../testing/memory-driver.ts';
-import { drivenExecutionId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
+import { drivenRunId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 const calling = workflow(
   "do:\n  - ask: { call: notify, with: { to: '${ .name }' } }\n  - after: { set: { answer: '${ . }' } }",
 );
 
-const firstAsk = { executionId: drivenExecutionId, reference: '/do/0/ask', run: 1 };
+const firstAsk = { runId: drivenRunId, reference: '/do/0/ask', run: 1 };
 
 function answeredWith(result: CallResult) {
   return drivenRun(calling, { input: { name: 'ada' }, respond: () => ({ after: 10, result }) });
@@ -35,11 +35,11 @@ function answeringOnlyTheSecondRun(record: (entry: string) => void): Responder {
 }
 
 function answeringTheFirstRunLate(record: (entry: string) => void) {
-  return (driver: MemoryDriver, executionId: string): void => {
+  return (driver: MemoryDriver, runId: string): void => {
     driver.at(1500, () => {
-      const key = { executionId, reference: '/do/0/guarded/try/0/ask', run: 1 };
+      const key = { runId, reference: '/do/0/guarded/try/0/ask', run: 1 };
       const result = { status: 'succeeded', output: 'first' } as const;
-      record(driver.submit({ kind: 'call_answered', executionId, at: driver.clock.now(), key, result }).outcome);
+      record(driver.submit({ kind: 'call_answered', runId, at: driver.clock.now(), key, result }).outcome);
     });
   };
 }
@@ -67,7 +67,7 @@ describe('a call task', () => {
     ['unavailable', 'communication', 503],
   ] as const)('raises a rejection for %s as a %s error, status %d', (reason, kind, status) => {
     expect(answeredWith({ status: 'rejected', reason, detail: 'no' }).outcome).toEqual(
-      raisedBy(kind, status, `The function notify rejected the execution with ${reason}`, 'no'),
+      raisedBy(kind, status, `The function notify rejected the run with ${reason}`, 'no'),
     );
   });
 
@@ -109,7 +109,7 @@ describe('an answer that comes too late', () => {
 
     const late = run.driver.submit({
       kind: 'call_answered',
-      executionId: drivenExecutionId,
+      runId: drivenRunId,
       at: 0,
       key: firstAsk,
       result,
@@ -118,7 +118,7 @@ describe('an answer that comes too late', () => {
     expect(run.outcome).toMatchObject({ kind: 'raised', error: { status: 408 } });
     expect(outputKindsIn(run.events)).toContain('cancel_call');
     expect(late).toEqual({ outcome: 'stale', version: before });
-    expect(run.driver.ports.runStore.events(drivenExecutionId)).toHaveLength(before);
+    expect(run.driver.ports.runStore.events(drivenRunId)).toHaveLength(before);
   });
 
   it('is stale when it answers an earlier attempt of a retried call, and the attempt that runs takes its own', () => {

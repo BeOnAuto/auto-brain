@@ -33,4 +33,4 @@ export const testGuides: readonly Guide[] = [wordsGuide, notebookGuide];
 
 export const testRecipes: readonly Recipe[] = [noteRecipe];
 
-export const testDefinitionTypes: readonly DefinitionType[] = [{ primitive: 'notes', noun: 'note', guide: 'notebook' }];
+export const testDefinitionTypes: readonly DefinitionType[] = [{ type: 'notes', noun: 'note', guide: 'notebook' }];

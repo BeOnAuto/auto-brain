@@ -233,7 +233,7 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
     status,
     title:
       result.status === 'rejected'
-        ? `${capitalized(call.label)} rejected the execution with ${result.reason}`
+        ? `${capitalized(call.label)} rejected the run with ${result.reason}`
         : `${capitalized(call.label)} failed`,
     detail: result.detail,
     instance: call.reference,

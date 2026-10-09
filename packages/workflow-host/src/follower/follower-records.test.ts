@@ -2,7 +2,7 @@ import { messageIdOf } from '@beonauto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { alpha, eventTrigger, published, recorded, specRecorded } from '../reaction-testing/brain-writes.ts';
+import { alpha, eventTrigger, published, recorded, definitionRecorded } from '../reaction-testing/brain-writes.ts';
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
 import { until } from '../reaction-testing/until.ts';
 import type { Consumer } from './consumers.ts';
@@ -34,18 +34,18 @@ function recordingIds(name: string, types: readonly string[], received: (id: str
 }
 
 describe('a record of a brain the follower cannot read', () => {
-  it('is said and passed over, as an event, a fact of a run or a spec, while a workflow of the brain reacts to its type', async () => {
+  it('is said and passed over, as an event, a fact of a run or a definition, while a workflow of the brain reacts to its type', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
     const trigger = eventTrigger(
       { type: 'com.acme.sentinel' },
-      { type: 'execution_started' },
-      { type: 'spec_created' },
+      { type: 'run_started' },
+      { type: 'definition_created' },
     );
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [trigger] });
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [trigger] });
     await recorded(store, `${alpha}events/bad`, { type: 'event_published', event: 'not an event' });
-    await recorded(store, `${alpha}executions/r-bad`, { type: 'execution_started', name: 7 });
-    await recorded(store, `${alpha}specs/orchestration`, { type: 'spec_created', name: 7 });
+    await recorded(store, `${alpha}runs/r-bad`, { type: 'run_started', name: 7 });
+    await recorded(store, `${alpha}definitions/workflow`, { type: 'definition_created', name: 7 });
 
     await published(store, { id: 's1', type: 'com.acme.sentinel' });
     await until(
@@ -55,8 +55,8 @@ describe('a record of a brain the follower cannot read', () => {
 
     expect(reacting.notes()).toMatchObject([
       { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'event_published' },
-      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'execution_started' },
-      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'spec_created' },
+      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'run_started' },
+      { kind: 'record_unreadable', org: 'acme', brain: 'alpha', type: 'definition_created' },
     ]);
   });
 });

@@ -2,12 +2,12 @@ import type { DslError } from '../machine/dsl-error.ts';
 import { inputTimeOf, receiptOf } from '../machine/input-receipt.ts';
 import type { RunInput } from '../machine/run-input.ts';
 import type { RunState } from '../machine/run-state.ts';
-import type { RunEvent } from '../run-log/run-event.ts';
+import type { RunLogEvent } from '../run-log/run-event.ts';
 import type { MachineOptions } from '../runner/run-descriptors.ts';
 import { sessionOf } from '../runner/session.ts';
 import { eventOf } from './run-events.ts';
 
-export function endingEvent(state: RunState, options: MachineOptions, input: RunInput, error: DslError): RunEvent {
+export function endingEvent(state: RunState, options: MachineOptions, input: RunInput, error: DslError): RunLogEvent {
   const at = inputTimeOf(state, input);
   const session = sessionOf(state, at, options);
   if (input.kind === 'started') {

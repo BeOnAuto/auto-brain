@@ -6,9 +6,9 @@ import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
 import { outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const awaiting: CallKey = { executionId, reference: '/do/0/await', run: 1 };
+const awaiting: CallKey = { runId, reference: '/do/0/await', run: 1 };
 
 type Offered = Parameters<MemoryDriver['offer']>[0];
 
@@ -20,11 +20,11 @@ interface Offering {
 
 function offering(to: string, input: JsonObject = {}): Offering {
   const driver = memoryDriver();
-  driver.start({ executionId, document: workflow(`do:\n  - await: { listen: { to: ${to} } }`), input });
+  driver.start({ runId, document: workflow(`do:\n  - await: { listen: { to: ${to} } }`), input });
   return {
     driver,
-    offer: (key, event, listener = awaiting) => driver.offer({ executionId, key, listener, event }),
-    state: () => driver.state(executionId),
+    offer: (key, event, listener = awaiting) => driver.offer({ runId, key, listener, event }),
+    state: () => driver.state(runId),
   };
 }
 
@@ -36,14 +36,14 @@ describe('a listen task whose filter names a type', () => {
 
     expect(submission.outcome).toBe('applied');
     expect(run.state().outcome).toEqual({ kind: 'completed', output: [{ region: 'eu' }] });
-    expect(outputsIn(run.driver.ports.runStore.events(executionId)).map(({ kind }) => kind)).toEqual([
+    expect(outputsIn(run.driver.ports.runStore.events(runId)).map(({ kind }) => kind)).toEqual([
       'arm_timer',
       'arm_listener',
       'cancel_listener',
       'cancel_timer',
       'settle',
     ]);
-    expect(outputsIn(run.driver.ports.runStore.events(executionId))[1]).toEqual({
+    expect(outputsIn(run.driver.ports.runStore.events(runId))[1]).toEqual({
       kind: 'arm_listener',
       key: awaiting,
       filters: [{ type: 'com.acme.closed', data: { region: 'eu' } }],
@@ -57,10 +57,10 @@ describe('a listen task whose filter names a type', () => {
         region: 'eu',
       },
     );
-    const before = run.driver.ports.runStore.events(executionId).length;
+    const before = run.driver.ports.runStore.events(runId).length;
 
     const declined = run.offer('record-1', { id: 'e1', type: 'com.acme.closed', data: { region: 'us' } });
-    const unchanged = run.driver.ports.runStore.events(executionId).length;
+    const unchanged = run.driver.ports.runStore.events(runId).length;
     const accepted = run.offer('record-2', { id: 'e2', type: 'com.acme.closed', data: { region: 'eu' } });
 
     expect([declined.outcome, unchanged - before, accepted.outcome]).toEqual(['stale', 0, 'applied']);
@@ -112,7 +112,7 @@ describe('an offer a listen task does not take', () => {
   it('keeps the keys of offers apart from the ids of events sent to it, so neither blocks the other', () => {
     const run = offering('{ all: [{ with: { type: a } }, { with: { type: b } }] }');
 
-    run.driver.deliver(executionId, { id: 'same', type: 'a' });
+    run.driver.deliver(runId, { id: 'same', type: 'a' });
     const offered = run.offer('same', { id: 'same', type: 'b' });
 
     expect(offered.outcome).toBe('applied');

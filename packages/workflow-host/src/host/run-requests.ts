@@ -4,13 +4,13 @@ import { Data, Effect, Schema } from 'effect';
 
 import { rowsOf, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { ledgerRunStore } from '../runs/ledger-run-store.ts';
-import { runIdOf, type RunAddress } from '../runs/run-address.ts';
+import { ledgerRunLogStore } from '../runs/ledger-run-store.ts';
+import { runKeyOf, type RunAddress } from '../runs/run-address.ts';
 import { backOffLifted } from '../settlement/settle-attempts.ts';
 import { cancelledIfAsked } from '../waiting/pending-cancels.ts';
 import type { HostEngine } from './host-engine.ts';
 
-export type RunStart = Omit<Started, 'kind' | 'executionId' | 'at'>;
+export type RunStart = Omit<Started, 'kind' | 'runId' | 'at'>;
 
 export type StartAnswer = 'started' | 'going' | 'settled';
 
@@ -21,7 +21,7 @@ export class HostElsewhere extends Data.TaggedError('host_elsewhere')<{ readonly
 export interface RunRequests {
   readonly start: (run: RunAddress, start: RunStart) => Effect.Effect<StartAnswer, Conflict | HostElsewhere>;
   readonly deliver: (run: RunAddress, event: ReceivedEvent) => Effect.Effect<DeliveryAnswer, Conflict | HostElsewhere>;
-  readonly stateOf: (runId: string) => Effect.Effect<RunState>;
+  readonly stateOf: (runKey: string) => Effect.Effect<RunState>;
 }
 
 export interface RequestParts {
@@ -37,11 +37,11 @@ const elsewhere = new HostElsewhere({
 
 const SettlementRow = Schema.Struct({ settlement: Schema.NullOr(Schema.String) });
 
-function settledOf(database: HostDatabase, runId: string): Effect.Effect<boolean> {
+function settledOf(database: HostDatabase, runKey: string): Effect.Effect<boolean> {
   return Effect.orDie(
     rowsOf(
       SettlementRow,
-      database.read(statement`SELECT settlement FROM workflow_settlements WHERE run_id = ${runId}`),
+      database.read(statement`SELECT settlement FROM workflow_settlements WHERE run_key = ${runKey}`),
     ),
   ).pipe(Effect.map((rows) => rows.some(({ settlement }) => settlement !== null)));
 }
@@ -53,40 +53,40 @@ function servingIn({ serving }: RequestParts): Effect.Effect<HostEngine, HostEls
   });
 }
 
-function settledAgain(parts: RequestParts, engine: HostEngine, runId: string): Effect.Effect<StartAnswer> {
+function settledAgain(parts: RequestParts, engine: HostEngine, runKey: string): Effect.Effect<StartAnswer> {
   return Effect.gen(function* () {
-    yield* Effect.orDie(backOffLifted(parts.database, runId));
-    yield* engine.engine.wake(runId);
-    if (yield* settledOf(parts.database, runId)) {
+    yield* Effect.orDie(backOffLifted(parts.database, runKey));
+    yield* engine.engine.wake(runKey);
+    if (yield* settledOf(parts.database, runKey)) {
       return 'settled';
     }
-    yield* Effect.orDie(backOffLifted(parts.database, runId));
+    yield* Effect.orDie(backOffLifted(parts.database, runKey));
     return 'going';
   });
 }
 
 export function runRequests(parts: RequestParts): RunRequests {
   const { database, clock } = parts;
-  const runStore = ledgerRunStore(database);
-  const stateOf = (runId: string): Effect.Effect<RunState> =>
-    Effect.map(runStore.load(runId), (stored) => loadedRunOf(stored).state);
+  const runStore = ledgerRunLogStore(database);
+  const stateOf = (runKey: string): Effect.Effect<RunState> =>
+    Effect.map(runStore.load(runKey), (stored) => loadedRunOf(stored).state);
   return {
     stateOf,
     start: (run, start) =>
       Effect.gen(function* () {
         const engine = yield* servingIn(parts);
-        const runId = runIdOf(run);
-        if (yield* settledOf(database, runId)) {
+        const runKey = runKeyOf(run);
+        if (yield* settledOf(database, runKey)) {
           return 'settled';
         }
-        const { status } = yield* stateOf(runId);
+        const { status } = yield* stateOf(runKey);
         if (status === 'ended') {
-          return yield* settledAgain(parts, engine, runId);
+          return yield* settledAgain(parts, engine, runKey);
         }
         if (status !== 'new') {
           return 'going';
         }
-        const { outcome } = yield* engine.submitted({ ...start, kind: 'started', executionId: runId, at: clock.now() });
+        const { outcome } = yield* engine.submitted({ ...start, kind: 'started', runId: runKey, at: clock.now() });
         if (outcome !== 'applied') {
           return 'going';
         }
@@ -96,17 +96,17 @@ export function runRequests(parts: RequestParts): RunRequests {
     deliver: (run, event) =>
       Effect.gen(function* () {
         const engine = yield* servingIn(parts);
-        const runId = runIdOf(run);
+        const runKey = runKeyOf(run);
         const { outcome } = yield* engine.submitted({
           kind: 'event_received',
-          executionId: runId,
+          runId: runKey,
           at: clock.now(),
           event,
         });
         if (outcome !== 'stale') {
           return outcome === 'applied' ? 'delivered' : 'not_started';
         }
-        return (yield* stateOf(runId)).status === 'ended' ? 'ended' : 'delivered';
+        return (yield* stateOf(runKey)).status === 'ended' ? 'ended' : 'delivered';
       }),
   };
 }

@@ -3,7 +3,7 @@ import { articled } from '@beonauto/operations';
 export type McpEndpoint = 'org' | 'brain' | 'own org';
 
 export interface DefinitionType {
-  readonly primitive: string;
+  readonly type: string;
   readonly noun: string;
   readonly guide: string;
 }
@@ -20,7 +20,6 @@ export interface RecipeCalls {
 
 interface Serving {
   readonly endpoint: McpEndpoint;
-  readonly names: readonly string[];
   readonly listed: (name: string) => boolean;
   readonly definitionTypes: readonly DefinitionType[];
   readonly reasoning: DefinitionType | undefined;
@@ -29,15 +28,15 @@ interface Serving {
 
 type Sentences = (serving: Serving) => readonly string[];
 
-const reasoningFunctionType = 'inference';
+const reasoningFunctionType = 'reasoning';
 
 const purposeByType: Readonly<Record<string, string>> = {
-  inference: 'A reasoning function has a prompt and calls a language model.',
+  reasoning: 'A reasoning function has a prompt and calls a language model.',
   interaction: 'An interaction function asks a person or a system and takes the answer later.',
   computation: 'A computation function runs a program on its input and gives the same output every time.',
-  recollection:
+  recall:
     "A recall function answers from what it keeps of the brain's own history: every run's start and end, with its result when it succeeded, the definitions saved and the events published to the brain, never a run's input or its tool calls, so nothing has to write into it.",
-  orchestration: 'A workflow runs functions in steps, waits for input and can start on a schedule or on an event.',
+  workflow: 'A workflow runs functions in steps, waits for input and can start on a schedule or on an event.',
 };
 
 const whatABrainIs = [
@@ -45,9 +44,7 @@ const whatABrainIs = [
   'It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history.',
 ];
 
-const wireWords = /(?:^|_)(?:specs?|executions?)(?:_|$)/u;
-
-const pagedReads = ['list_executions', 'get_execution_history', 'list_brain_events', 'list_interactions'];
+const pagedReads = ['list_runs', 'get_run_history', 'list_brain_events', 'list_interactions'];
 
 const howToAnswer = [
   'When you tell the person what happened, say what was done and what they can do next,',
@@ -84,17 +81,12 @@ const whatTheConnectionDoes: Readonly<Record<McpEndpoint, (serving: Serving) => 
 };
 
 const purposes: Sentences = ({ definitionTypes }) =>
-  definitionTypes.flatMap(({ primitive }) => {
-    const purpose = purposeByType[primitive];
+  definitionTypes.flatMap(({ type }) => {
+    const purpose = purposeByType[type];
     return purpose === undefined ? [] : [purpose];
   });
 
 const connection: Sentences = (serving) => [whatTheConnectionDoes[serving.endpoint](serving)];
-
-const wireNames: Sentences = ({ names }) =>
-  names.some((name) => wireWords.test(name))
-    ? ["The tools call a definition a spec, a run an execution and a definition's type its primitive."]
-    : [];
 
 const modelsBeforeWriting: Sentences = ({ reasoning, listed }) =>
   reasoning !== undefined && listed('list_models') && !listed('list_tool_servers')
@@ -102,7 +94,7 @@ const modelsBeforeWriting: Sentences = ({ reasoning, listed }) =>
     : [];
 
 const guides: Sentences = ({ listed, recipes }) => {
-  if (!listed('create_spec')) {
+  if (!listed('create_definition')) {
     return ['get_guide holds what these words mean and how each kind of definition is written.'];
   }
   const served = recipes.map(({ name }) => name);
@@ -123,14 +115,14 @@ const modelsAndTools: Sentences = ({ reasoning, listed }) => {
   ];
 };
 
-const typesThatFinishLater: ReadonlySet<string> = new Set(['interaction', 'orchestration']);
+const typesThatFinishLater: ReadonlySet<string> = new Set(['interaction', 'workflow']);
 
 const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
   const finishingLater = definitionTypes
-    .filter(({ primitive }) => typesThatFinishLater.has(primitive))
+    .filter(({ type }) => typesThatFinishLater.has(type))
     .map(({ noun }) => articled(noun));
-  return listed('get_execution') && finishingLater.length > 0
-    ? [`A run of ${finishingLater.join(' or ')} answers started; get_execution shows whether it ended or still waits.`]
+  return listed('get_run') && finishingLater.length > 0
+    ? [`A run of ${finishingLater.join(' or ')} answers started; get_run shows whether it ended or still waits.`]
     : [];
 };
 
@@ -153,7 +145,6 @@ const closing: Sentences = () => [howToAnswer, whenAToolCannot];
 const orientation: readonly Sentences[] = [
   purposes,
   connection,
-  wireNames,
   modelsBeforeWriting,
   guides,
   modelsAndTools,
@@ -184,10 +175,9 @@ export function instructionsFor(
   const names = namesOf(tools);
   const serving: Serving = {
     endpoint,
-    names,
     listed: (name) => names.includes(name),
     definitionTypes,
-    reasoning: definitionTypes.find(({ primitive }) => primitive === reasoningFunctionType),
+    reasoning: definitionTypes.find(({ type }) => type === reasoningFunctionType),
     recipes: recipesFollowedWith(tools, recipes),
   };
   return [...whatABrainIs, ...orientation.flatMap((sentences) => sentences(serving))].join(' ');

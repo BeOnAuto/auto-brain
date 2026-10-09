@@ -64,6 +64,10 @@ function isOutsideTheSentenceBound({ description = '' }: ListedTool): boolean {
   return sentencesOf(description) < 3 || sentencesOf(description) > 8;
 }
 
+function descriptionOf(name: string): string {
+  return tools.find((tool) => tool.name === name)?.description ?? '';
+}
+
 function isAddressedToTheAgent({ description = '' }: ListedTool): boolean {
   return addressedToTheAgent.some((pattern: Readonly<RegExp>) => pattern.test(description));
 }
@@ -90,12 +94,16 @@ describe('the descriptions of the tools of /mcp', () => {
     expect(tools.filter((tool) => isAddressedToTheAgent(tool)).map(({ name }) => name)).toEqual([]);
   });
 
-  it('name each type of definition with the kind it is and its guide, in create_spec', () => {
-    const createSpec = tools.find(({ name }) => name === 'create_spec');
+  it('name each type of definition with the kind it is and its guide, in create_definition, the longest description, at 788 characters in five sentences', () => {
+    const description = descriptionOf('create_definition');
 
-    expect(createSpec?.description).toContain(
-      'inference, a reasoning function, guide reasoning-function; interaction, an interaction function, guide interaction-function; computation, a computation function, guide computation-function; recollection, a recall function, guide recall-function; orchestration, a workflow, guide workflow.',
+    expect(description).toContain(
+      'reasoning, a reasoning function, guide reasoning-function; interaction, an interaction function, guide interaction-function; computation, a computation function, guide computation-function; recall, a recall function, guide recall-function; workflow, a workflow, guide workflow.',
     );
+    expect([description.length, sentencesOf(description)]).toEqual([788, 5]);
+    expect(
+      tools.filter((tool) => descriptionOf(tool.name).length > description.length).map(({ name }) => name),
+    ).toEqual([]);
   });
 });
 
@@ -132,16 +140,16 @@ const served: Readonly<Record<string, Hints>> = {
   update_brain: [false, false, true, false],
   retire_brain: [false, true, true, false],
   list_models: [true, false, true, true],
-  create_spec: [false, false, false, false],
-  list_specs: [true, false, true, false],
-  get_spec: [true, false, true, false],
-  update_spec: [false, false, true, false],
-  retire_spec: [false, true, true, false],
-  execute_spec: [false, false, false, true],
-  get_execution: [true, false, true, false],
-  cancel_execution: [false, true, true, false],
-  list_executions: [true, false, true, false],
-  get_execution_history: [true, false, true, false],
+  create_definition: [false, false, false, false],
+  list_definitions: [true, false, true, false],
+  get_definition: [true, false, true, false],
+  update_definition: [false, false, true, false],
+  retire_definition: [false, true, true, false],
+  run_definition: [false, false, false, true],
+  get_run: [true, false, true, false],
+  cancel_run: [false, true, true, false],
+  list_runs: [true, false, true, false],
+  get_run_history: [true, false, true, false],
   get_brain_analytics: [true, false, true, false],
   list_brain_events: [true, false, true, false],
   publish_event: [false, false, false, false],
@@ -149,7 +157,7 @@ const served: Readonly<Record<string, Hints>> = {
   test_tool_call: [false, false, false, true],
   answer_interaction: [false, true, true, false],
   list_interactions: [true, false, true, false],
-  send_execution_event: [false, false, false, false],
+  send_run_event: [false, false, false, false],
   get_guide: [true, false, true, false],
 };
 

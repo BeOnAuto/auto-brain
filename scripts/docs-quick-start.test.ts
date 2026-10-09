@@ -22,7 +22,7 @@ await test('the local quick start connects an agent and runs a first function wi
     'reasoning function called check-brief',
     'ask it to run the saved function on:',
     'Promote our reporting tool to finance teams with a USD 5,000 budget.',
-    'the recorded run, including its execution id',
+    'the recorded run, including its run id',
     'missing measurable goal',
     '## 6. Give your brain tools',
     'Create `auto-brain.yaml` at the root of the repository, which Git ignores, holding exactly this',

@@ -8,9 +8,9 @@ import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
-const run = runAt(executionId);
+const run = runAt(runId);
 
 const ending = workflow('do:\n  - done: { set: { done: true } }');
 
@@ -26,7 +26,7 @@ describe('the host asked to start a run whose settlement is pending', () => {
         ledgerDown: () => ledger.down,
       },
     );
-    hosted.know(executionId);
+    hosted.know(runId);
 
     const first = await Effect.runPromise(hosted.host.start(run, startOf(ending)));
     const whileDown = await Effect.runPromise(hosted.host.start(run, startOf(ending)));
@@ -35,7 +35,7 @@ describe('the host asked to start a run whose settlement is pending', () => {
 
     expect([first, whileDown, once]).toEqual(['started', 'going', 'settled']);
     expect(hosted.settleAttempts()).toBe(3);
-    expect([...hosted.settlements().keys()]).toEqual([executionId]);
+    expect([...hosted.settlements().keys()]).toEqual([runId]);
   });
 
   it('tries it again at the next sweep after a start found it backing off, rather than a minute later', async () => {
@@ -51,7 +51,7 @@ describe('the host asked to start a run whose settlement is pending', () => {
         },
       },
     );
-    hosted.know(executionId);
+    hosted.know(runId);
 
     await Effect.runPromise(hosted.host.start(run, startOf(ending)));
     await eventually(hosted.notes, (notes) => notes.length > 0, 2000);
@@ -59,7 +59,7 @@ describe('the host asked to start a run whose settlement is pending', () => {
     const settled = await eventually(hosted.settlements, (settlements) => settlements.size > 0, 2000);
 
     expect(startedAgain).toBe('going');
-    expect([...settled.keys()]).toEqual([executionId]);
+    expect([...settled.keys()]).toEqual([runId]);
     expect(hosted.settleAttempts()).toBe(attemptOfTheStart + 1);
   }, 30_000);
 });
@@ -76,14 +76,14 @@ describe('the host whose ledger cannot be reached for two minutes', () => {
         ledgerDown: () => clock.now() < outage.endsAt,
       },
     );
-    hosted.know(executionId);
+    hosted.know(runId);
     outage.endsAt = clock.now() + outageMs;
 
     await Effect.runPromise(hosted.host.start(run, startOf(ending)));
     const notes = await eventually(hosted.notes, (noted) => noted.length > 1, 1500);
 
     expect(notes.map(({ kind }) => kind)).toEqual(['settle_backing_off', 'settled_after_back_off']);
-    expect([...hosted.settlements().keys()]).toEqual([executionId]);
+    expect([...hosted.settlements().keys()]).toEqual([runId]);
     expect(hosted.settleAttempts()).toBe(settleAttemptsBeforeBackingOff + Math.ceil(outageMs / settleBackOffMs));
     expect(hosted.troubles()).toEqual([]);
   }, 30_000);

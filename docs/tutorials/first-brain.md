@@ -39,7 +39,7 @@ Give the agent your confirmed model reference, then send this instruction:
 
 Review the proposal. It should use the four criteria above, require `brief`, and produce a text answer. Approve saving it once it matches. If a previous exercise left a different definition under the same name, ask the agent to show the proposed changes and approve them before updating it.
 
-Ask the agent to read back the saved definition. You should see the name `review-campaign-brief` and a version. The MCP tool may call it an `inference` spec; that is the API name for a reasoning function.
+Ask the agent to read back the saved definition. You should see the name `review-campaign-brief`, the type `reasoning` and a version.
 
 ## 3. Run an incomplete brief
 
@@ -72,11 +72,11 @@ The wording can vary between models. The review should identify both gaps withou
 
 Ask:
 
-> Read back the Auto run that produced this review. Show its execution id, function name, definition version, status, recorded prompt and output.
+> Read back the Auto run that produced this review. Show its run id, function name, definition version, status, recorded prompt and output.
 
-The run should name `review-campaign-brief`, have an `execution_id` and `spec_version`, and show `status: succeeded`. A successful run can recommend Revise: the review completed, even though the brief needs work.
+The run should name `review-campaign-brief`, have a `run_id` and a `definition_version`, and show `status: succeeded`. A successful run can recommend Revise: the review completed, even though the brief needs work.
 
-The recorded prompt should contain the sample brief. Keep the execution id so you can return to this result. If the agent cannot produce a recorded run, have it call the saved function and inspect that run before continuing.
+The recorded prompt should contain the sample brief. Keep the run id so you can return to this result. If the agent cannot produce a recorded run, have it call the saved function and inspect that run before continuing.
 
 ## 5. Run the revised brief
 
@@ -91,7 +91,7 @@ Total budget: USD 8,000
 Success measure: 100 trial registrations
 ```
 
-This review should mark all four criteria as met and recommend Ready. Ask your agent to compare the two saved runs. They should have different execution ids, the same function name and the same definition version, with different briefs in the recorded prompts and different results.
+This review should mark all four criteria as met and recommend Ready. Ask your agent to compare the two saved runs. They should have different run ids, the same function name and the same definition version, with different briefs in the recorded prompts and different results.
 
 Ready means the brief meets this exercise's four criteria. It is not approval to launch a campaign or a forecast of its performance.
 

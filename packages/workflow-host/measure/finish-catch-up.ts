@@ -19,12 +19,12 @@ const Places = Schema.Array(Schema.Struct({ cursor: Schema.NullOr(Schema.String)
 
 function finishOf(index: number) {
   return {
-    type: 'execution_succeeded',
+    type: 'run_succeeded',
     output: { index },
     record: {},
-    primitive: 'orchestration',
+    definition_type: 'workflow',
     name: 'measured',
-    spec_version: 1,
+    definition_version: 1,
     by: 'acme-admin',
     at,
   };
@@ -62,7 +62,7 @@ async function untilAt(opened: Opened, cursor: string | null): Promise<void> {
 
 async function finishedInTurn(opened: Opened, count: number, index = 0): Promise<void> {
   if (index < count) {
-    await recorded(opened.store, `${alpha}executions/${runAt(index).executionId}`, finishOf(index));
+    await recorded(opened.store, `${alpha}runs/${runAt(index).runId}`, finishOf(index));
     await finishedInTurn(opened, count, index + 1);
   }
 }

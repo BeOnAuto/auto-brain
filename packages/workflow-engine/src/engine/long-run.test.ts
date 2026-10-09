@@ -9,7 +9,7 @@ import { workflow } from '../testing/workflows.ts';
 
 const inputs = 3000;
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-000000003000';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-000000003000';
 
 const ticking = workflow(`
 do:
@@ -21,10 +21,10 @@ do:
 describe(`a run of ${inputs} inputs`, () => {
   it('resumes from its last snapshot and the events after it alone, to the state its whole stream folds to', () => {
     const driver = memoryDriver();
-    driver.start({ executionId, document: ticking });
-    driver.runUntilEnded(executionId);
-    const events = driver.ports.runStore.events(executionId);
-    const stored = Effect.runSync(driver.ports.runStore.load(executionId));
+    driver.start({ runId, document: ticking });
+    driver.runUntilEnded(runId);
+    const events = driver.ports.runStore.events(runId);
+    const stored = Effect.runSync(driver.ports.runStore.load(runId));
 
     const resumed = loadedRunOf(stored);
 

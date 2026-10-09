@@ -5,7 +5,7 @@ import { Effect, type Layer } from 'effect';
 import { Client } from 'pg';
 
 import {
-  executions,
+  datasetRunStream,
   longRun,
   longRunId,
   othersInPostgreSQL,
@@ -39,8 +39,8 @@ const brain = { org: 'o1', brain: 'big' };
 const brainKey = 'brain/o1/big/';
 
 const needed = [
-  [`${brainKey}executions/00050000`, 1],
-  [`${brainKey}executions/00050015`, 1],
+  [`${brainKey}runs/00050000`, 1],
+  [`${brainKey}runs/00050015`, 1],
   [longRun, 50_000],
 ] as const;
 
@@ -84,7 +84,7 @@ function treeCases(middleOfTheLongRun: string): readonly Case[] {
 }
 
 function cases(pointOf: (stream: string, at: number) => Point): readonly Case[] {
-  const cursor = cursorOf(brainKey, pointOf(executions(50_000), 1));
+  const cursor = cursorOf(brainKey, pointOf(datasetRunStream(50_000), 1));
   const middleOfTheLongRun = cursorOf(brainKey, pointOf(longRun, 50_000));
   const since = timeOf(50_000);
   return [
@@ -96,34 +96,34 @@ function cases(pointOf: (stream: string, at: number) => Point): readonly Case[] 
       ['The brain, deep page of 100, newest first', aPage('desc', 100, { cursor })],
       [
         'The brain, a page holding a run of 1.25 MiB',
-        aPage('desc', 20, { cursor: cursorOf(brainKey, pointOf(executions(50_015), 1)) }),
+        aPage('desc', 20, { cursor: cursorOf(brainKey, pointOf(datasetRunStream(50_015), 1)) }),
       ],
-      ['The brain, of one rare type, newest first', aPage('desc', 20, { types: ['execution_failed'] })],
+      ['The brain, of one rare type, newest first', aPage('desc', 20, { types: ['run_failed'] })],
       ['The brain since a time, oldest first', aPage('asc', 20, { since })],
       ['The brain since a time, newest first', aPage('desc', 20, { since })],
     ]),
-    ...casesOf({ kind: 'run', execution: '00050000' }, [
+    ...casesOf({ kind: 'run', run: '00050000' }, [
       ['One run of 21 messages, oldest first', aPage('asc', 20)],
       ['One run of 21 messages, newest first', aPage('desc', 20)],
     ]),
-    ...casesOf({ kind: 'run', execution: 'long-running' }, [
+    ...casesOf({ kind: 'run', run: 'long-running' }, [
       ['A run of 100,001 messages, first page, oldest first', aPage('asc', 20)],
       ['A run of 100,001 messages, first page, newest first', aPage('desc', 20)],
       ['A run of 100,001 messages, from its middle, oldest first', aPage('asc', 20, { cursor: middleOfTheLongRun })],
       ['A run of 100,001 messages, from its middle, newest first', aPage('desc', 20, { cursor: middleOfTheLongRun })],
     ]),
     ...treeCases(middleOfTheLongRun),
-    ...casesOf({ kind: 'executions' }, [
+    ...casesOf({ kind: 'runs' }, [
       ['Runs, first page, newest first', aPage('desc', 20)],
       ['Runs, first page, oldest first', aPage('asc', 20)],
       ['Runs, deep page, newest first', aPage('desc', 20, { cursor })],
       ['Runs, deep page, oldest first', aPage('asc', 20, { cursor })],
       ['Runs, deep page of 100, newest first', aPage('desc', 100, { cursor })],
-      ['Runs that succeeded, newest first', aPage('desc', 20, { types: ['execution_succeeded'] })],
-      ['Runs that succeeded, deep page, oldest first', aPage('asc', 20, { cursor, types: ['execution_succeeded'] })],
-      ['Runs that failed, newest first', aPage('desc', 20, { types: ['execution_failed'] })],
-      ['Runs that failed, deep page, oldest first', aPage('asc', 20, { cursor, types: ['execution_failed'] })],
-      ['Runs of a status none has, 1,000 examined', aPage('desc', 20, { types: ['execution_unknown'] })],
+      ['Runs that succeeded, newest first', aPage('desc', 20, { types: ['run_succeeded'] })],
+      ['Runs that succeeded, deep page, oldest first', aPage('asc', 20, { cursor, types: ['run_succeeded'] })],
+      ['Runs that failed, newest first', aPage('desc', 20, { types: ['run_failed'] })],
+      ['Runs that failed, deep page, oldest first', aPage('asc', 20, { cursor, types: ['run_failed'] })],
+      ['Runs of a status none has, 1,000 examined', aPage('desc', 20, { types: ['run_unknown'] })],
     ]),
   ];
 }
@@ -132,12 +132,8 @@ const behindOthers = 'behind a million newer messages of other brains';
 
 const quietCases: readonly Case[] = [
   [`The brain, newest first, ${behindOthers}`, { kind: 'everything' }, aPage('desc', 20)],
-  [`Runs, newest first, ${behindOthers}`, { kind: 'executions' }, aPage('desc', 20)],
-  [
-    `A run of 100,001 messages, newest first, ${behindOthers}`,
-    { kind: 'run', execution: 'long-running' },
-    aPage('desc', 20),
-  ],
+  [`Runs, newest first, ${behindOthers}`, { kind: 'runs' }, aPage('desc', 20)],
+  [`A run of 100,001 messages, newest first, ${behindOthers}`, { kind: 'run', run: 'long-running' }, aPage('desc', 20)],
   [
     `The tree of a run of 21 messages, oldest first, ${behindOthers}`,
     { kind: 'correlated', correlation: runIdOf(50_000) },

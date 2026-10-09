@@ -22,13 +22,13 @@ interface Offering {
 }
 
 function listening(database: HostDatabase, run: string, filters: readonly Json[]) {
-  const runId = `acme/alpha/${run}`;
+  const runKey = `acme/alpha/${run}`;
   return Effect.runPromise(
     insertedListener(database, {
-      runId,
-      listener: callKeyText({ executionId: runId, reference: '/do/0/wait', run: 1 }),
+      runKey,
+      listener: callKeyText({ runId: runKey, reference: '/do/0/wait', run: 1 }),
       brainKey,
-      streamId: `${brainKey}runs/${run}`,
+      streamId: `${brainKey}run-logs/${run}`,
       armedBy: 1,
       filters: JSON.stringify(filters),
       workflow: `wf-${run}`,
@@ -37,27 +37,27 @@ function listening(database: HostDatabase, run: string, filters: readonly Json[]
   );
 }
 
-function offering(database: HostDatabase, answer: (runId: string) => Effect.Effect<Submission, Conflict>): Offering {
+function offering(database: HostDatabase, answer: (runKey: string) => Effect.Effect<Submission, Conflict>): Offering {
   const offers: string[] = [];
   const { refusals, said, say } = saidRefusals();
   const consumer = listenerOffers({
     database,
     refusals,
-    offer: ({ runId, key, listener }) =>
+    offer: ({ runKey, key, listener }) =>
       Effect.andThen(
         Effect.sync(() => {
-          offers.push(`${runId} ${key} ${listener.reference}`);
+          offers.push(`${runKey} ${key} ${listener.reference}`);
         }),
-        answer(runId),
+        answer(runKey),
       ),
-    declined: (runId, detail) => say(`${runId} declined: ${detail}`),
+    declined: (runKey, detail) => say(`${runKey} declined: ${detail}`),
     now: () => 0,
   });
   return { offers: () => offers, said, consumer };
 }
 
-function declinedByTheFirst(runId: string): Effect.Effect<Submission, Conflict> {
-  return runId.endsWith('run-a')
+function declinedByTheFirst(runKey: string): Effect.Effect<Submission, Conflict> {
+  return runKey.endsWith('run-a')
     ? Effect.succeed(declinedOffer)
     : Effect.fail(new Conflict({ detail: 'The ledger cannot be reached' }));
 }
@@ -84,7 +84,7 @@ describe('the offers of an event to the runs that listen for its type', () => {
 
     const batch = await deliveredAll(
       consumer,
-      followedRecordOf({ region: 'eu' }, { emitter: { executionId: 'run-c', workflow: 'wf-run-c' } }),
+      followedRecordOf({ region: 'eu' }, { emitter: { runId: 'run-c', workflow: 'wf-run-c' } }),
       100,
     );
 

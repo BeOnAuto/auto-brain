@@ -14,13 +14,13 @@ const root = '0199a3c4-7d2e-7c1a-9b3f-000000000999';
 const attributes = { lineage: { start: 'start-1', correlation: root } };
 
 function runOf(id: string) {
-  return { executionId: `acme/alpha/0199a3c4-7d2e-7c1a-9b3f-00000000000${id}`, attributes };
+  return { runId: `acme/alpha/0199a3c4-7d2e-7c1a-9b3f-00000000000${id}`, attributes };
 }
 
-function callOf(executionId: string): StartCall {
+function callOf(runId: string): StartCall {
   return {
     kind: 'start_call',
-    key: { executionId, reference: '/do/0/ask', run: 1 },
+    key: { runId, reference: '/do/0/ask', run: 1 },
     function: 'notify',
     arguments: { to: 'ada' },
     longestMs: 60_000,
@@ -69,10 +69,7 @@ describe('the open calls of runs of one tree that start at the same moment', () 
 
     await Effect.runPromise(
       Effect.all(
-        [
-          executor.executor.start(callOf(first.executionId), first),
-          executor.executor.start(callOf(second.executionId), second),
-        ],
+        [executor.executor.start(callOf(first.runId), first), executor.executor.start(callOf(second.runId), second)],
         {
           concurrency: 'unbounded',
         },

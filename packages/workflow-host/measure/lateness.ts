@@ -2,9 +2,9 @@ import { Effect, Function } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openHostDatabase } from '../src/database/host-databases.ts';
-import { brainCreated, specRecorded } from '../src/reaction-testing/brain-writes.ts';
-import { ledgerRunStore } from '../src/runs/ledger-run-store.ts';
-import { runIdOf } from '../src/runs/run-address.ts';
+import { brainCreated, definitionRecorded } from '../src/reaction-testing/brain-writes.ts';
+import { ledgerRunLogStore } from '../src/runs/ledger-run-store.ts';
+import { runKeyOf } from '../src/runs/run-address.ts';
 import { header, measuredHost, runAt, startOf } from './measured-host.ts';
 import { anEventTrigger, savedNow, type TriggersOf } from './trigger-sets.ts';
 
@@ -23,12 +23,12 @@ function percentile(sorted: readonly number[], fraction: number): number {
 
 async function latenessOf(database: DatabaseSettings, runs: number): Promise<readonly number[]> {
   const opened = await openHostDatabase(database, Function.constVoid);
-  const runStore = ledgerRunStore(opened);
+  const runStore = ledgerRunLogStore(opened);
   const late = await Effect.runPromise(
     Effect.forEach(
       Array.from({ length: runs }, (_, index) => runAt(index)),
       (run) =>
-        Effect.map(runStore.eventsAfter(runIdOf(run), 0), ([started, fired]) => {
+        Effect.map(runStore.eventsAfter(runKeyOf(run), 0), ([started, fired]) => {
           const armed = started?.event.outputs.find(
             (output) => output.kind === 'arm_timer' && output.purpose === 'wait',
           );
@@ -47,7 +47,7 @@ async function reactingWorkflows(database: DatabaseSettings, count: number, trig
   await Array.from({ length: count }, (_, index) => index).reduce<Promise<void>>(
     (before, index) =>
       before.then(() =>
-        specRecorded(opened.store, {
+        definitionRecorded(opened.store, {
           name: `w${index}`,
           version: 1,
           triggers: triggersOf(`com.measure.t${index}`),

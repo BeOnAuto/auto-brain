@@ -2,7 +2,7 @@ import { Data, Schema } from 'effect';
 
 import { newRun, RunStateSchema, type RunState } from '../machine/run-state.ts';
 import { stateFormats } from './known-formats.ts';
-import { eventBytesOf, type PositionedEvent, type RunEvent } from './run-event.ts';
+import { eventBytesOf, type PositionedEvent, type RunLogEvent } from './run-event.ts';
 import type { StoredRun } from './run-store.ts';
 import type { SinceSnapshot } from './snapshot.ts';
 import type { OlderFormat, StateFormats } from './state-format.ts';
@@ -87,7 +87,7 @@ export function stateInCurrentFormat(format: number, state: unknown, formats: St
   return decodeState(upcastTo(formats, { format, state }, formats.current).state);
 }
 
-export function evolveRun(state: RunState, event: RunEvent): RunState {
+export function evolveRun(state: RunState, event: RunLogEvent): RunState {
   const { state: patched } = upcastTo(stateFormats, { format: stateFormats.current, state }, event.format);
   return decodeState(applyStatePatch(patched, event.patch));
 }

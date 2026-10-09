@@ -4,23 +4,21 @@ import { describe, expect, it } from 'vitest';
 import { workflowMachine } from '../decider/workflow-machine.ts';
 import type { RunInput } from '../machine/run-input.ts';
 import { newRun, type RunState } from '../machine/run-state.ts';
-import type { RunEvent } from '../run-log/run-event.ts';
+import type { RunLogEvent } from '../run-log/run-event.ts';
 import { testMachine } from '../testing/driver-inputs.ts';
 import { testCancel } from '../testing/driver-inputs.ts';
 import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
-import { armedTimerIds, drivenExecutionId, statesAlong } from '../testing/run-history.ts';
+import { armedTimerIds, drivenRunId, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 function cancelAt(at: number): RunInput {
-  return { kind: 'cancel_requested', executionId: drivenExecutionId, at, cancel: testCancel };
+  return { kind: 'cancel_requested', runId: drivenRunId, at, cancel: testCancel };
 }
 
 const elsewhere = { cause: { kind: 'none' as const }, attributes: {} };
 
-function appendedElsewhere(driver: MemoryDriver, events: readonly RunEvent[]): void {
-  Effect.runSync(
-    Effect.forEach(events, (event) => driver.ports.runStore.append(drivenExecutionId, event, 1, elsewhere)),
-  );
+function appendedElsewhere(driver: MemoryDriver, events: readonly RunLogEvent[]): void {
+  Effect.runSync(Effect.forEach(events, (event) => driver.ports.runStore.append(drivenRunId, event, 1, elsewhere)));
 }
 
 function ticking(times: number): ReturnType<typeof workflow> {
@@ -34,7 +32,7 @@ do:
 
 function startedTicking(times: number): MemoryDriver {
   const driver = memoryDriver();
-  driver.start({ executionId: drivenExecutionId, document: ticking(times) });
+  driver.start({ runId: drivenRunId, document: ticking(times) });
   return driver;
 }
 
@@ -46,10 +44,10 @@ function advancedToTheEnd(driver: MemoryDriver): void {
 }
 
 function storedState(driver: MemoryDriver): RunState {
-  return statesAlong(driver.ports.runStore.events(drivenExecutionId)).at(-1) ?? newRun;
+  return statesAlong(driver.ports.runStore.events(drivenRunId)).at(-1) ?? newRun;
 }
 
-function decidedElsewhere(driver: MemoryDriver, input: RunInput): readonly RunEvent[] {
+function decidedElsewhere(driver: MemoryDriver, input: RunInput): readonly RunLogEvent[] {
   return Result.getOrThrow(workflowMachine(testMachine).decide(input, storedState(driver)));
 }
 
@@ -59,18 +57,18 @@ function armedTick(driver: MemoryDriver): string {
 }
 
 function fired(timerId: string, at: number): RunInput {
-  return { kind: 'timer_fired', executionId: drivenExecutionId, at, timerId };
+  return { kind: 'timer_fired', runId: drivenRunId, at, timerId };
 }
 
 describe('an input to a run the engine keeps', () => {
   it('loads neither the snapshot nor the events the inputs before it left', () => {
     const driver = startedTicking(20);
     advancedToTheEnd(driver);
-    const events = driver.ports.runStore.events(drivenExecutionId);
+    const events = driver.ports.runStore.events(drivenRunId);
 
     expect(statesAlong(events).at(-1)?.outcome).toEqual({ kind: 'completed', output: { n: 20 } });
     expect(events).toHaveLength(21);
-    expect(driver.ports.runStore.loads(drivenExecutionId)).toBe(1);
+    expect(driver.ports.runStore.loads(drivenRunId)).toBe(1);
   });
 
   it('loads the run again once its stream moved past the version the engine keeps', () => {
@@ -82,7 +80,7 @@ describe('an input to a run the engine keeps', () => {
     const answer = driver.submit(cancelAt(at + 1));
 
     expect(answer).toEqual({ outcome: 'stale', version: 2 });
-    expect(driver.ports.runStore.loads(drivenExecutionId)).toBe(2);
+    expect(driver.ports.runStore.loads(drivenRunId)).toBe(2);
   });
 
   it('takes an input another host made possible, since its stream moved past the version the engine keeps', () => {
@@ -96,16 +94,16 @@ describe('an input to a run the engine keeps', () => {
 
     expect(secondTick).not.toBe(firstTick);
     expect(answer).toEqual({ outcome: 'applied', version: 3 });
-    expect(driver.ports.runStore.events(drivenExecutionId)).toHaveLength(3);
+    expect(driver.ports.runStore.events(drivenRunId)).toHaveLength(3);
   });
 
   it('loads the run from the store when its append meets a conflict, rather than decide again on what it kept', () => {
     const driver = startedTicking(3);
     driver.ports.runStore.failNextAppend('conflict');
 
-    const answer = driver.cancel(drivenExecutionId);
+    const answer = driver.cancel(drivenRunId);
 
     expect(answer).toEqual({ outcome: 'applied', version: 2 });
-    expect(driver.ports.runStore.loads(drivenExecutionId)).toBe(2);
+    expect(driver.ports.runStore.loads(drivenRunId)).toBe(2);
   });
 });

@@ -5,13 +5,13 @@ import type { StepKey } from '../steps/step-entry.ts';
 import type { RunOutput } from './run-output.ts';
 
 export interface DispatchWatermark {
-  readonly read: (executionId: string) => Effect.Effect<number>;
-  readonly advance: (executionId: string, through: number) => Effect.Effect<void>;
+  readonly read: (runId: string) => Effect.Effect<number>;
+  readonly advance: (runId: string, through: number) => Effect.Effect<void>;
   readonly behindRuns: (limit: number) => Effect.Effect<readonly string[]>;
 }
 
 export interface RunContext {
-  readonly executionId: string;
+  readonly runId: string;
   readonly attributes: Schema.JsonObject;
 }
 

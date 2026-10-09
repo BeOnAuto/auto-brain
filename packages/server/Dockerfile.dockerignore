@@ -11,7 +11,7 @@ packages/server/data
 packages/*/src/testing
 packages/*/src/*-testing
 packages/server/src/development
-primitives/*/src/testing
+capabilities/*/src/testing
 .git
 .github
 .vscode

@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 
 import type { DefinitionType, Guide, Recipe } from '@beonauto/api';
+import type { Capability } from '@beonauto/definitions';
 import { capitalized } from '@beonauto/operations';
-import type { Primitive } from '@beonauto/specs';
 
 import { withLinksResolved } from './page-links.ts';
 import { recipesFor } from './recipes.ts';
@@ -27,7 +27,7 @@ function pageText(page: string): string {
   return readFileSync(new URL(page, documentation), 'utf8');
 }
 
-function typeGuideOf({ noun, guide }: Pick<Primitive, 'noun' | 'guide'>): Guide {
+function typeGuideOf({ noun, guide }: Pick<Capability, 'noun' | 'guide'>): Guide {
   const page = pageOfGuide(guide.name);
   const text = withLinksResolved(withoutSiteMarkup(pageText(page)), page);
   return {
@@ -38,9 +38,9 @@ function typeGuideOf({ noun, guide }: Pick<Primitive, 'noun' | 'guide'>): Guide 
   };
 }
 
-export function servedGuidesOf(primitives: readonly Primitive[]): ServedGuides {
-  const definitionTypes: readonly DefinitionType[] = primitives.map(({ name, noun, guide }) => ({
-    primitive: name,
+export function servedGuidesOf(capabilities: readonly Capability[]): ServedGuides {
+  const definitionTypes: readonly DefinitionType[] = capabilities.map(({ type, noun, guide }) => ({
+    type,
     noun: noun.one,
     guide: guide.name,
   }));
@@ -49,7 +49,7 @@ export function servedGuidesOf(primitives: readonly Primitive[]): ServedGuides {
       pageText(terminologyPage),
       definitionTypes.map(({ noun }) => noun),
     ),
-    ...primitives.map(({ noun, guide }) => typeGuideOf({ noun, guide })),
+    ...capabilities.map(({ noun, guide }) => typeGuideOf({ noun, guide })),
   ];
   return { definitionTypes, guides, recipes: recipesFor(guides) };
 }

@@ -84,9 +84,9 @@ const names = [
   ' org/acme/brains',
   'org/acme-x',
   'org/acme-y',
-  'brain/acme/sales/specs/inference',
-  'brain/acme/sales-specs/inference',
-  'brain/acme/sales_specs/inference',
+  'brain/acme/sales/definitions/reasoning',
+  'brain/acme/sales-definitions/reasoning',
+  'brain/acme/sales_definitions/reasoning',
   'org/café/brains'.normalize('NFC'),
   'org/café/brains'.normalize('NFD'),
 ];

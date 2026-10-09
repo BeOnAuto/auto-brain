@@ -1,12 +1,12 @@
 import type { Environment, FileUse } from '@beonauto/config';
+import { McpSettingsInvalid, readMcpSettings, type McpSettings } from '@beonauto/mcp';
 import {
   ModelSettingsInvalid,
   providerStatus,
   readModelSettings,
   type ModelSettings,
   type SettingProblem,
-} from '@beonauto/inference';
-import { McpSettingsInvalid, readMcpSettings, type McpSettings } from '@beonauto/mcp';
+} from '@beonauto/reasoning';
 import { Effect } from 'effect';
 
 export interface ReasoningSettings {

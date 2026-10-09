@@ -6,7 +6,7 @@ import { runAt, startOf, workflow } from './host-documents.ts';
 import type { SettingsOf } from './host-files.ts';
 import { hostedOn } from './host-runs.ts';
 
-const executionId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 const approval = workflow(`
 do:
@@ -18,10 +18,10 @@ do:
 const approved = { id: 'approved-1', type: 'com.acme.approved', data: { by: 'grace' } };
 
 export function runSuite(settings: SettingsOf): void {
-  it('waits, calls a function, takes an event and ends, settling its execution once', async () => {
+  it('waits, calls a function, takes an event and ends, settling its run once', async () => {
     const hosted = await hostedOn(await settings());
-    hosted.know(executionId);
-    const run = runAt(executionId);
+    hosted.know(runId);
+    const run = runAt(runId);
 
     const started = await Effect.runPromise(hosted.host.start(run, startOf(approval)));
     await eventually(hosted.calls, (calls) => calls.length > 0);
@@ -32,7 +32,7 @@ export function runSuite(settings: SettingsOf): void {
 
     expect([started, delivered, again, startedAgain]).toEqual(['started', 'delivered', 'ended', 'settled']);
     expect(hosted.calls()).toEqual([expect.objectContaining({ function: 'notify', arguments: { to: 'ada' } })]);
-    expect([...settlements]).toEqual([[executionId, { status: 'succeeded', output: [{ by: 'grace' }] }]]);
+    expect([...settlements]).toEqual([[runId, { status: 'succeeded', output: [{ by: 'grace' }] }]]);
     expect(hosted.troubles()).toEqual([]);
   });
 }

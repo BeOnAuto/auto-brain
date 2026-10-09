@@ -135,12 +135,12 @@ export {
   type WaitingEvent,
 } from './machine/run-state.ts';
 export {
-  RunEventSchema,
+  RunLogEventSchema,
   eventBytesOf,
   fitsInOneEvent,
   withHistoryBytes,
   type PositionedEvent,
-  type RunEvent,
+  type RunLogEvent,
 } from './run-log/run-event.ts';
 export {
   StepSchema,
@@ -156,7 +156,7 @@ export {
 } from './steps/step-entry.ts';
 export { stepEventIdOf } from './steps/step-ids.ts';
 export { UnreadableRun, evolveRun, loadedRunOf, stateInCurrentFormat, type LoadedRun } from './run-log/run-fold.ts';
-export type { RecordCause, RecordLineage, RunStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
+export type { RecordCause, RecordLineage, RunLogStore, StoredRun, StoredSnapshot } from './run-log/run-store.ts';
 export {
   SnapshotSchema,
   isSnapshotDue,

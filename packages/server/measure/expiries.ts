@@ -2,7 +2,7 @@ import { Schema } from 'effect';
 
 import type { MeasuredLedger } from './measured-ledgers.ts';
 import { brain, inTurns, measuredServer, percentile, type MeasuredServer } from './measured-server.ts';
-import { executionIdOf, pauseSource, spread, timersMeasured, type TimerPlan } from './timer-runs.ts';
+import { runIdOf, pauseSource, spread, timersMeasured, type TimerPlan } from './timer-runs.ts';
 
 const timers = { count: 20, seconds: 30, spacingMs: 3000 };
 
@@ -20,7 +20,7 @@ const approval = [
 
 const decodePage = Schema.decodeUnknownSync(
   Schema.Struct({
-    executions: Schema.Array(Schema.Struct({ status: Schema.String, finished_at: Schema.optionalKey(Schema.String) })),
+    runs: Schema.Array(Schema.Struct({ status: Schema.String, finished_at: Schema.optionalKey(Schema.String) })),
     next_cursor: Schema.NullOr(Schema.String),
   }),
 );
@@ -29,12 +29,12 @@ type Write = (line: string) => void;
 
 async function askedOn(server: MeasuredServer, requests: number): Promise<number> {
   await server.call('POST', '/v1/orgs/local/brains', { brain: 'measure', name: 'Measure' });
-  await server.call('POST', `${brain}/specs/interaction`, { name: 'approval', source: approval });
-  await server.call('POST', `${brain}/specs/orchestration`, { name: 'pause', source: pauseSource(timers.seconds) });
+  await server.call('POST', `${brain}/definitions/interaction`, { name: 'approval', source: approval });
+  await server.call('POST', `${brain}/definitions/workflow`, { name: 'pause', source: pauseSource(timers.seconds) });
   const from = Date.now();
   await inTurns(requests, 32, async (index) => {
-    executionIdOf(
-      await server.call('POST', `${brain}/specs/interaction/approval/execute`, {
+    runIdOf(
+      await server.call('POST', `${brain}/definitions/interaction/approval/run`, {
         input: { owner: `owner-${index % 100}` },
       }),
     );
@@ -48,8 +48,8 @@ async function expiryLagsOf(
   cursor: string | null = null,
 ): Promise<readonly number[]> {
   const after = cursor === null ? '' : `&cursor=${encodeURIComponent(cursor)}`;
-  const page = decodePage(await server.call('GET', `${brain}/executions?primitive=interaction&limit=100${after}`));
-  const lags = page.executions.flatMap(({ status, finished_at: finishedAt }) =>
+  const page = decodePage(await server.call('GET', `${brain}/runs?type=interaction&limit=100${after}`));
+  const lags = page.runs.flatMap(({ status, finished_at: finishedAt }) =>
     status === 'rejected' && finishedAt !== undefined ? [Date.parse(finishedAt) - dueAt] : [],
   );
   return page.next_cursor === null ? lags : [...lags, ...(await expiryLagsOf(server, dueAt, page.next_cursor))];

@@ -38,7 +38,7 @@ export function startCall(invocation: Invocation): BodyAdvance {
     );
   }
   session.beforeWaiting();
-  const key = { executionId: session.executionId(), reference: entry.reference, run: frame.run };
+  const key = { runId: session.runId(), reference: entry.reference, run: frame.run };
   const deadline = session.calls.startCall({ key, function: name, arguments: given });
   const { reference } = entry;
   const child = session.options.functions.childOf?.({

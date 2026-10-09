@@ -8,14 +8,14 @@ import { workflowSource, workflowTestTimeoutMs } from '../testing/servers/workfl
 
 const decodeRuns = Schema.decodeUnknownSync(
   Schema.Struct({
-    executions: Schema.Array(Schema.Struct({ execution_id: Schema.String, status: Schema.String })),
+    runs: Schema.Array(Schema.Struct({ run_id: Schema.String, status: Schema.String })),
   }),
 );
 
 const onAnApproval = workflowSource(
   'on-approval',
   `schedule:
-  on: { one: { with: { type: execution_succeeded, subject: interaction/approve-brief } } }
+  on: { one: { with: { type: run_succeeded, subject: interaction/approve-brief } } }
 do:
   - noted: { set: { choice: '\${ .[0].data.output.choice }', answered_by: '\${ .[0].data.caller }' } }
 `,
@@ -23,26 +23,24 @@ do:
 
 const hurried = `do:
   - ask:
-      call: execute_spec
-      with: { primitive: interaction, name: approve-brief, input: { campaign: Spring, owner: ada } }
+      call: run_definition
+      with: { type: interaction, name: approve-brief, input: { campaign: Spring, owner: ada } }
       timeout: { after: { milliseconds: 500 } }
 `;
 
 describe('another workflow, triggered by the answer to a request', { timeout: workflowTestTimeoutMs }, () => {
   it('starts on the ending of the interaction function and reads the answer and who gave it', async () => {
     const server = await servingInteractions();
-    await server.call('POST', `${alpha}/specs/orchestration`, { body: { name: 'on-approval', source: onAnApproval } });
+    await server.call('POST', `${alpha}/definitions/workflow`, { body: { name: 'on-approval', source: onAnApproval } });
     const runId = await server.ask('approve-brief');
 
     await server.answer(runId, { answer: { choice: 'approve' } });
     const [reaction] = await until(
-      async () =>
-        decodeRuns((await server.call('GET', `${alpha}/executions?primitive=orchestration&name=on-approval`)).body)
-          .executions,
+      async () => decodeRuns((await server.call('GET', `${alpha}/runs?type=workflow&name=on-approval`)).body).runs,
       (runs) => runs.some(({ status }) => status !== 'started'),
     );
 
-    expect(await server.settled(String(reaction?.execution_id))).toMatchObject({
+    expect(await server.settled(String(reaction?.run_id))).toMatchObject({
       status: 'succeeded',
       output: { choice: 'approve', answered_by: 'local' },
     });

@@ -19,9 +19,9 @@ export function heldStart(): HeldStart {
   const begun = Promise.withResolvers<void>();
   const released = Promise.withResolvers<WorkflowHost>();
   const exits: StartExit[] = [];
-  const startedOn = (host: WorkflowHost, { executionId }: ReactionStart) =>
+  const startedOn = (host: WorkflowHost, { runId }: ReactionStart) =>
     Effect.gen(function* () {
-      exits.push(yield* Effect.exit(host.start(runAt(executionId), startOf(listening))));
+      exits.push(yield* Effect.exit(host.start(runAt(runId), startOf(listening))));
     });
   return {
     start: (start) =>

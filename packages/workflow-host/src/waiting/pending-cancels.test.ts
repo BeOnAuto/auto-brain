@@ -39,8 +39,8 @@ describe('the cancels the follower passed over, given at the first resume after 
 
 describe('the read of the cancels the follower passed over', () => {
   it('goes page after page, a hundred at a time, and again at the next resume when it failed', async () => {
-    const runIds = Array.from({ length: 205 }, (_, index) => `acme/alpha/run-${String(index).padStart(3, '0')}`);
-    const resumed = await resumedWith(onSQLite, runIds);
+    const runKeys = Array.from({ length: 205 }, (_, index) => `acme/alpha/run-${String(index).padStart(3, '0')}`);
+    const resumed = await resumedWith(onSQLite, runKeys);
 
     resumed.database.failing(true);
     await resumed.resume();
@@ -53,7 +53,7 @@ describe('the read of the cancels the follower passed over', () => {
     expect(resumed.troubles()).toEqual([
       'The cancels the follower passed over could not be read; the next sweep reads them again',
     ]);
-    expect([...resumed.given()].toSorted()).toEqual(runIds);
+    expect([...resumed.given()].toSorted()).toEqual(runKeys);
     expect(await resumed.pending()).toEqual([]);
   });
 });

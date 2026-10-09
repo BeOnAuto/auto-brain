@@ -7,10 +7,10 @@ import { matchingOf, preparedFilters, type Matching, type RunTest } from './fold
 
 const dialect = { refused: [{ name: 'now', why: 'reads the clock' }], variables: ['event'] };
 
-const reviewed = { type: 'execution_succeeded', subject: 'inference/review-brief' };
+const reviewed = { type: 'run_succeeded', subject: 'reasoning/review-brief' };
 
 function succeeded(verdict: Json): JsonObject {
-  return { ...reviewed, source: '/executions/run', data: { output: { campaign: 'spring', verdict } } };
+  return { ...reviewed, source: '/runs/run', data: { output: { campaign: 'spring', verdict } } };
 }
 
 const runTest: RunTest = (test, actual) =>
@@ -39,18 +39,18 @@ describe('the filters of a view', () => {
   });
 
   it('never match an event that lacks an attribute a filter names', () => {
-    expect(matched([{ type: 'execution_succeeded', time: '2026-10-01T09:00:00Z' }], succeeded('reject'))).toEqual({
+    expect(matched([{ type: 'run_succeeded', time: '2026-10-01T09:00:00Z' }], succeeded('reject'))).toEqual({
       matched: false,
       work: 0,
     });
   });
 
   it('never match by a filter that names no type', () => {
-    expect(matched([{ subject: 'inference/review-brief' }], succeeded('reject'))).toEqual({ matched: false, work: 0 });
+    expect(matched([{ subject: 'reasoning/review-brief' }], succeeded('reject'))).toEqual({ matched: false, work: 0 });
   });
 
   it('match when any one filter matches, counting the work of every test they ran', () => {
-    const approved = { type: 'execution_succeeded', data: '${ .output.verdict == "approve" }' };
+    const approved = { type: 'run_succeeded', data: '${ .output.verdict == "approve" }' };
 
     const alone = matched(rejected, succeeded('reject'));
     const both = matched([approved, ...rejected], succeeded('reject'));
@@ -60,7 +60,7 @@ describe('the filters of a view', () => {
   });
 
   it('answer the filter that does not compile, without running it', () => {
-    expect(matched([{ type: 'execution_succeeded', data: '${ $x }' }], succeeded('reject'))).toMatchObject({
+    expect(matched([{ type: 'run_succeeded', data: '${ $x }' }], succeeded('reject'))).toMatchObject({
       refused: { issues: [{ detail: unbound }] },
     });
   });

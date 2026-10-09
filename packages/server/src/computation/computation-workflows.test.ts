@@ -1,7 +1,7 @@
 import { withMcpSession } from '@beonauto/api/testing';
 import { campaignPace, campaignRows } from '@beonauto/computation/testing';
-import { jsonResult, textResult, type ScriptedReply } from '@beonauto/inference/testing';
 import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import { jsonResult, textResult, type ScriptedReply } from '@beonauto/reasoning/testing';
 import { scriptedPool, type PoolOutcome } from '@beonauto/workflow-engine/testing';
 import { Effect, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -9,9 +9,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { workerPool, type ProgramPoolOf } from '../composition/served-computation.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
-  executionIdIn,
+  runIdIn,
   servingWorkflows,
-  settledExecution,
+  settledRun,
   settledOverMcp,
   workflowSource,
   workflowTestTimeoutMs,
@@ -49,8 +49,8 @@ const catching = workflowSource(
   - compute:
       try:
         - shout:
-            call: execute_spec
-            with: { primitive: computation, name: shouting, input: '\${ . }' }
+            call: run_definition
+            with: { type: computation, name: shouting, input: '\${ . }' }
       catch:
         errors:
           with: { status: 409 }
@@ -69,15 +69,15 @@ function report(name: string, computation: string): string {
     name,
     `do:
   - read:
-      call: execute_spec
-      with: { primitive: inference, name: read-rows, input: { campaigns: '\${ .campaigns }' } }
+      call: run_definition
+      with: { type: reasoning, name: read-rows, input: { campaigns: '\${ .campaigns }' } }
       output:
         as: '\${ { rows: .rows, period: $input.period } }'
   - compute:
       try:
         - pace:
-            call: execute_spec
-            with: { primitive: computation, name: ${computation}, input: '\${ . }' }
+            call: run_definition
+            with: { type: computation, name: ${computation}, input: '\${ . }' }
       catch:
         errors:
           with: { status: 503 }
@@ -86,8 +86,8 @@ function report(name: string, computation: string): string {
           limit:
             attempt: { count: 2 }
   - write:
-      call: execute_spec
-      with: { primitive: inference, name: summary, input: { total_spend_cents: '\${ .total_spend_cents }' } }
+      call: run_definition
+      with: { type: reasoning, name: summary, input: { total_spend_cents: '\${ .total_spend_cents }' } }
 `,
   );
 }
@@ -136,41 +136,41 @@ async function serving(programPoolOf: ProgramPoolOf, ...replies: readonly Script
   closing.push(server.stop);
   await server.call('POST', '/v1/orgs/acme/brains', { body: { brain: 'alpha', name: 'Alpha' } });
   const definitions = [
-    ['inference', 'read-rows', readRows],
-    ['inference', 'summary', summary],
+    ['reasoning', 'read-rows', readRows],
+    ['reasoning', 'summary', summary],
     ['computation', 'pace', campaignPace],
     ['computation', 'raising', raising],
-    ['orchestration', 'report', report('report', 'pace')],
-    ['orchestration', 'stuck', report('stuck', 'raising')],
+    ['workflow', 'report', report('report', 'pace')],
+    ['workflow', 'stuck', report('stuck', 'raising')],
     ['computation', 'shouting', shouting],
-    ['orchestration', 'catching', catching],
+    ['workflow', 'catching', catching],
   ] as const;
   await definitions.reduce(
-    (created: Promise<unknown>, [primitive, name, source]) =>
-      created.then(() => server.call('POST', `${alpha}/specs/${primitive}`, { body: { name, source } })),
+    (created: Promise<unknown>, [type, name, source]) =>
+      created.then(() => server.call('POST', `${alpha}/definitions/${type}`, { body: { name, source } })),
     Promise.resolve(),
   );
   return server;
 }
 
-async function settledRun(server: ReasoningServer, workflow: string) {
-  const started = await server.call('POST', `${alpha}/specs/orchestration/${workflow}/execute`, {
+async function settledWorkflowRun(server: ReasoningServer, workflow: string) {
+  const started = await server.call('POST', `${alpha}/definitions/workflow/${workflow}/run`, {
     body: { input: workflowInput },
   });
-  return settledExecution(server, `${alpha}/executions/${executionIdIn(started.body)}`);
+  return settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 }
 
 async function computationRuns(server: ReasoningServer) {
-  return (await server.call('GET', `${alpha}/executions?primitive=computation`)).body;
+  return (await server.call('GET', `${alpha}/runs?type=computation`)).body;
 }
 
 const decodeListing = Schema.decodeUnknownSync(
-  Schema.Struct({ executions: Schema.Array(Schema.Struct({ execution_id: Schema.String })) }),
+  Schema.Struct({ runs: Schema.Array(Schema.Struct({ run_id: Schema.String })) }),
 );
 
 async function computedOutput(server: ReasoningServer): Promise<unknown> {
-  const [run] = decodeListing(await computationRuns(server)).executions;
-  const read = await server.call('GET', `${alpha}/executions/${run?.execution_id ?? ''}`);
+  const [run] = decodeListing(await computationRuns(server)).runs;
+  const read = await server.call('GET', `${alpha}/runs/${run?.run_id ?? ''}`);
   return Schema.decodeUnknownSync(Schema.Struct({ output: Schema.Unknown }))(read.body).output;
 }
 
@@ -187,12 +187,12 @@ describe(
         Effect.succeed(textResult('The campaigns spent 2,831.50 in all.')),
       );
 
-      const settled = await settledRun(server, 'report');
+      const settled = await settledWorkflowRun(server, 'report');
 
       expect(settled).toMatchObject({ body: { status: 'succeeded', output: 'The campaigns spent 2,831.50 in all.' } });
       expect(graphs[0]?.received()).toMatchObject([{ tool: 'echo', arguments: { rows: rows['rows'] } }]);
       expect(await computationRuns(server)).toMatchObject({
-        executions: [{ primitive: 'computation', name: 'pace', status: 'succeeded' }],
+        runs: [{ type: 'computation', name: 'pace', status: 'succeeded' }],
       });
       expect(await computedOutput(server)).toMatchObject({ total_spend_cents: 283_150 });
       expect(server.modelCalls()).toBe(2);
@@ -205,11 +205,11 @@ describe(
         () => Effect.succeed(textResult('Spent.')),
       );
 
-      const settled = await settledRun(server, 'report');
+      const settled = await settledWorkflowRun(server, 'report');
 
       expect(settled).toMatchObject({ body: { status: 'succeeded', output: 'Spent.' } });
       expect(await computationRuns(server)).toMatchObject({
-        executions: [
+        runs: [
           { name: 'pace', status: 'succeeded' },
           { name: 'pace', status: 'rejected', rejection: { reason: 'unavailable' } },
         ],
@@ -219,11 +219,11 @@ describe(
     it('does not retry a conflict, since the same input gives the same result, and the workflow ends', async () => {
       const server = await serving(workerPool, readingRowsThroughTheGraph());
 
-      const settled = await settledRun(server, 'stuck');
+      const settled = await settledWorkflowRun(server, 'stuck');
 
       expect(settled).toMatchObject({ body: { status: 'rejected' } });
       expect(await computationRuns(server)).toMatchObject({
-        executions: [{ name: 'raising', status: 'rejected', rejection: { reason: 'conflict', kind: 'unworkable' } }],
+        runs: [{ name: 'raising', status: 'rejected', rejection: { reason: 'conflict', kind: 'unworkable' } }],
       });
       expect(server.modelCalls()).toBe(1);
     });
@@ -234,7 +234,7 @@ describe('a workflow whose computation function raises a long error', { timeout:
   it('catches it as the runtime error of status 409 the format documents, its text cut at 1,024 bytes', async () => {
     const server = await serving(workerPool);
 
-    const settled = await settledRun(server, 'catching');
+    const settled = await settledWorkflowRun(server, 'catching');
     const caught = Schema.decodeUnknownSync(
       Schema.Struct({
         body: Schema.Struct({
@@ -262,12 +262,12 @@ describe('the same workflow over MCP', { timeout: workflowTestTimeoutMs }, () =>
       'current revision',
       { url: `${server.origin}/orgs/acme/brains/alpha/mcp`, headers: {} },
       async (session) => {
-        const started = await session.callTool('execute_spec', {
-          primitive: 'orchestration',
+        const started = await session.callTool('run_definition', {
+          type: 'workflow',
           name: 'report',
           input: workflowInput,
         });
-        return settledOverMcp(session, String(started.structuredContent?.['execution_id']));
+        return settledOverMcp(session, String(started.structuredContent?.['run_id']));
       },
     );
 

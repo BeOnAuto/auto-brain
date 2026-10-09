@@ -4,11 +4,18 @@ import { describe, expect, it } from 'vitest';
 
 import { rowsOf } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { alpha, at, eventTrigger, published, specRecorded, specRetired } from '../reaction-testing/brain-writes.ts';
+import {
+  alpha,
+  at,
+  eventTrigger,
+  published,
+  definitionRecorded,
+  definitionRetired,
+} from '../reaction-testing/brain-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { refusedWhile, rejectedFor } from '../reaction-testing/recorded-reactions.ts';
 import { until } from '../reaction-testing/until.ts';
-import { reactionExecutionIdOf } from '../reactions/reaction-ids.ts';
+import { reactionRunIdOf } from '../reactions/reaction-ids.ts';
 
 const closed = eventTrigger({ type: 'com.acme.closed' });
 
@@ -40,7 +47,7 @@ describe('a workflow whose trigger is an event', () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
     const trigger = eventTrigger({ type: 'com.acme.closed', data: { region: 'eu' } });
-    await specRecorded(store, { name: 'close', version: 1, triggers: [trigger] });
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [trigger] });
 
     await published(store, { id: 'e1', type: 'com.acme.closed', data: { region: 'eu' } });
     await published(store, { id: 'e2', type: 'com.acme.closed', data: { region: 'us' } });
@@ -54,7 +61,7 @@ describe('a workflow whose trigger is an event', () => {
         brain: 'alpha',
         workflow: 'close',
         version: 1,
-        executionId: reactionExecutionIdOf('close', 1, '/schedule/on', cause),
+        runId: reactionRunIdOf('close', 1, '/schedule/on', cause),
         input: [
           { specversion: '1.0', source: '/acme', time: at, id: 'e1', type: 'com.acme.closed', data: { region: 'eu' } },
         ],
@@ -70,11 +77,11 @@ describe('the records a workflow whose trigger is an event reacts to', () => {
   it('are none before the record that activated it, and none after the one that retired it', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
     await published(store, { id: 'early', type: 'com.acme.closed' });
-    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
     await published(store, { id: 'between', type: 'com.acme.closed' });
-    await specRetired(store, 'close');
+    await definitionRetired(store, 'close');
     await published(store, { id: 'late', type: 'com.acme.closed' });
 
     await sentinelPassed(reacting, 's1');
@@ -87,12 +94,16 @@ describe('a new version of a workflow whose trigger is an event', () => {
   it('replaces the trigger of the version before, and a version without a trigger reacts to nothing', async () => {
     const reacting = await reactingHost();
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
-    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
-    await specRecorded(store, { name: 'close', version: 2, triggers: [eventTrigger({ type: 'com.acme.opened' })] });
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+    await definitionRecorded(store, {
+      name: 'close',
+      version: 2,
+      triggers: [eventTrigger({ type: 'com.acme.opened' })],
+    });
     await published(store, { id: 'closed', type: 'com.acme.closed' });
     await published(store, { id: 'opened', type: 'com.acme.opened' });
-    await specRecorded(store, { name: 'close', version: 3, triggers: [] });
+    await definitionRecorded(store, { name: 'close', version: 3, triggers: [] });
     await published(store, { id: 'opened-again', type: 'com.acme.opened' });
 
     await sentinelPassed(reacting, 's1');
@@ -108,8 +119,8 @@ describe('the follower of a brain', () => {
   it('starts nothing again for what it delivered before the host stopped, and goes on after it', async () => {
     const first = await reactingHost();
     const { store } = first.database;
-    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
     await published(store, { id: 'e1', type: 'com.acme.closed' });
     await startsReaching(first, 1);
     await first.host.stop();
@@ -130,7 +141,7 @@ describe('a start the brain keeps refusing', () => {
       const refusing = { now: true };
       const reacting = await reactingHost({ failure: refusedWhile(refusing) });
       const { store } = reacting.database;
-      await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+      await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
       await published(store, { id: 'e1', type: 'com.acme.closed' });
 
       const refusals = await until(
@@ -158,9 +169,9 @@ describe('a start the brain rejects for good', () => {
       failure: rejectedFor('close', 'The input is not what the workflow takes'),
     });
     const { store } = reacting.database;
-    await specRecorded(store, { name: 'close', version: 1, triggers: [closed] });
+    await definitionRecorded(store, { name: 'close', version: 1, triggers: [closed] });
     await published(store, { id: 'e1', type: 'com.acme.closed' });
-    await specRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
+    await definitionRecorded(store, { name: 'watch', version: 1, triggers: [sentinel] });
 
     await sentinelPassed(reacting, 's1');
     const refusals = await Effect.runPromise(

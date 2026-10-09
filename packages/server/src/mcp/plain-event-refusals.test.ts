@@ -19,7 +19,7 @@ async function refusalsOfPublishing(): Promise<readonly ToolResult[]> {
     await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
     await publishing(won);
     return [
-      await publishing({ source: '/executions/1', type: 'execution_succeeded' }),
+      await publishing({ source: '/runs/1', type: 'run_succeeded' }),
       await publishing({ ...won, data: 'lost' }),
       await publishing({ ...won, id: 'deal-2', data: 'x'.repeat(250_000) }),
     ];

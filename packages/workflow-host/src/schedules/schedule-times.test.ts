@@ -1,4 +1,4 @@
-import type { ScheduleTrigger } from '@beonauto/specs';
+import type { ScheduleTrigger } from '@beonauto/definitions';
 import { describe, expect, it } from 'vitest';
 
 import { cronRejectionOf, latestDue, nextAfter } from './schedule-times.ts';

@@ -1,6 +1,6 @@
 import { listedTools, withMcpSession, type ListedTool, type McpSession } from '@beonauto/api/testing';
-import type { ScriptedReply } from '@beonauto/inference/testing';
 import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
+import type { ScriptedReply } from '@beonauto/reasoning/testing';
 
 import { servingReasoning } from './reasoning-server.ts';
 

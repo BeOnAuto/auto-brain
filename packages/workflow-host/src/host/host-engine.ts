@@ -6,7 +6,7 @@ import {
   type MachineOptions,
   type RunCacheBounds,
   type RunInput,
-  type RunStore,
+  type RunLogStore,
   type Submission,
   type WorkflowEngine,
 } from '@beonauto/workflow-engine';
@@ -31,7 +31,7 @@ export interface EngineOptions extends Pick<PortParts, 'settle' | 'reports'> {
 
 export interface HostEngine {
   readonly engine: WorkflowEngine;
-  readonly runStore: RunStore;
+  readonly runStore: RunLogStore;
   readonly timers: TimerTable;
   readonly executor: HostExecutor;
   readonly reacting: ReactionPorts;
@@ -53,8 +53,7 @@ export function hostEngineOn(
   const executor = hostExecutor({
     database,
     perform: options.perform,
-    deliver: (key, result) =>
-      submitted({ kind: 'call_answered', executionId: key.executionId, at: clock.now(), key, result }),
+    deliver: (key, result) => submitted({ kind: 'call_answered', runId: key.runId, at: clock.now(), key, result }),
     trouble: reports.trouble,
     mostAtOnce: options.mostCallsAtOnce,
     ...waiting,

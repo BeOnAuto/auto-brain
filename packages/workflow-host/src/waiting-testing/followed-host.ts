@@ -12,16 +12,13 @@ import { hostedOn, type HostedOptions, type HostedRuns } from '../testing/host-r
 export interface FollowedHost {
   readonly database: HostDatabase;
   readonly hosted: HostedRuns;
-  readonly settled: (executionId: string) => Promise<Settlement | undefined>;
+  readonly settled: (runId: string) => Promise<Settlement | undefined>;
 }
 
-export function settledIn(
-  hosted: HostedRuns,
-  attempts?: number,
-): (executionId: string) => Promise<Settlement | undefined> {
-  return (executionId) =>
+export function settledIn(hosted: HostedRuns, attempts?: number): (runId: string) => Promise<Settlement | undefined> {
+  return (runId) =>
     until(
-      () => Promise.resolve(hosted.settlements().get(executionId)),
+      () => Promise.resolve(hosted.settlements().get(runId)),
       (settlement) => settlement !== undefined,
       attempts,
     );

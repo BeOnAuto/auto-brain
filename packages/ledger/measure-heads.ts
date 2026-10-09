@@ -21,10 +21,10 @@ const warmReads = 3;
 
 const measuredReads = 20;
 
-const specTypes = ['spec_created', 'spec_updated', 'spec_retired'];
+const definitionTypes = ['definition_created', 'definition_updated', 'definition_retired'];
 
 interface Explained {
-  readonly 'Execution Time': number;
+  readonly 'Run Time': number;
   readonly Plan: { readonly 'Shared Hit Blocks': number; readonly 'Shared Read Blocks': number };
 }
 
@@ -35,7 +35,7 @@ interface Examination {
 
 const cases: readonly (readonly [string, StoredPageRequest])[] = [
   ['a page of heads, no data', { order: 'asc', limit: 100, dataOf: [] }],
-  ["the follower's glance, the data of specs alone", { order: 'asc', limit: 100, dataOf: specTypes }],
+  ["the follower's glance, the data of definitions alone", { order: 'asc', limit: 100, dataOf: definitionTypes }],
   ['every record with its data', { order: 'asc', limit: 100 }],
 ];
 
@@ -75,7 +75,7 @@ function explaining(client: Querying, examined: (examination: Examination) => vo
       );
       const [plan] = rows[0]?.['QUERY PLAN'] ?? [];
       examined({
-        milliseconds: plan?.['Execution Time'] ?? 0,
+        milliseconds: plan?.['Run Time'] ?? 0,
         buffers: (plan?.Plan['Shared Hit Blocks'] ?? 0) + (plan?.Plan['Shared Read Blocks'] ?? 0),
       });
     }

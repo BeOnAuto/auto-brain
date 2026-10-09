@@ -54,7 +54,7 @@ function timeOf(second: number): string {
 }
 
 function streamOf(brain: string, run: number): string {
-  return `brain/o1/${brain}/executions/${String(run).padStart(8, '0')}`;
+  return `brain/o1/${brain}/runs/${String(run).padStart(8, '0')}`;
 }
 
 interface Ending {
@@ -64,23 +64,29 @@ interface Ending {
 
 function endingOf(run: number): Ending {
   if (run % 20 === 10) {
-    return { type: 'execution_rejected', rejection: { reason: 'unavailable', detail: 'try again later' } };
+    return { type: 'run_rejected', rejection: { reason: 'unavailable', detail: 'try again later' } };
   }
-  return run % 100 === 7 ? { type: 'execution_failed' } : { type: 'execution_succeeded', output: { text: text(640) } };
+  return run % 100 === 7 ? { type: 'run_failed' } : { type: 'run_succeeded', output: { text: text(640) } };
 }
 
 function rowsOfRun(brain: string, run: number, inputCharacters: number): readonly Row[] {
   const created = timeOf(run);
   const start = {
-    type: 'execution_started',
-    primitive: run % 10 === 0 ? 'orchestration' : 'inference',
-    name: `spec-${run % 10}`,
-    spec_version: 1,
+    type: 'run_started',
+    definition_type: run % 10 === 0 ? 'workflow' : 'reasoning',
+    name: `definition-${run % 10}`,
+    definition_version: 1,
     input: { text: text(inputCharacters) },
     by: 'user-1',
     at: created,
   };
-  const ending = { ...endingOf(run), primitive: start.primitive, name: start.name, by: 'user-1', at: created };
+  const ending = {
+    ...endingOf(run),
+    definition_type: start.definition_type,
+    name: start.name,
+    by: 'user-1',
+    at: created,
+  };
   const stream = streamOf(brain, run);
   return [
     { stream, position: 1, type: start.type, data: JSON.stringify(start), created },
@@ -112,49 +118,49 @@ function aPage(order: 'asc' | 'desc', limit: number, more: Omit<Page, 'order' | 
   return { order, limit, ...more };
 }
 
-const notBeginningWith = ['execution_cancel_requested'];
+const notBeginningWith = ['run_cancel_requested'];
 
-function runsOf(asked: Omit<Extract<Selection, { kind: 'executions' }>, 'kind'>): Selection {
-  return { kind: 'executions', notBeginningWith, ...asked };
+function runsOf(asked: Omit<Extract<Selection, { kind: 'runs' }>, 'kind'>): Selection {
+  return { kind: 'runs', notBeginningWith, ...asked };
 }
 
 function cases(deepCursor: string): readonly Case[] {
   return [
     ['Runs, newest first', 'big', runsOf({}), aPage('desc', 20)],
-    ['Runs that were rejected, newest first', 'big', runsOf({}), aPage('desc', 20, { types: ['execution_rejected'] })],
-    ['Runs of one primitive, newest first', 'big', runsOf({ primitive: 'orchestration' }), aPage('desc', 20)],
-    ['Runs of one name, newest first', 'big', runsOf({ name: 'spec-3' }), aPage('desc', 20)],
+    ['Runs that were rejected, newest first', 'big', runsOf({}), aPage('desc', 20, { types: ['run_rejected'] })],
+    ['Runs of one type, newest first', 'big', runsOf({ definitionType: 'workflow' }), aPage('desc', 20)],
+    ['Runs of one name, newest first', 'big', runsOf({ name: 'definition-3' }), aPage('desc', 20)],
     [
-      'Runs of one primitive and name, newest first',
+      'Runs of one type and name, newest first',
       'big',
-      runsOf({ primitive: 'orchestration', name: 'spec-0' }),
+      runsOf({ definitionType: 'workflow', name: 'definition-0' }),
       aPage('desc', 20),
     ],
     [
-      'Runs of one primitive, deep page, newest first',
+      'Runs of one type, deep page, newest first',
       'big',
-      runsOf({ primitive: 'orchestration' }),
+      runsOf({ definitionType: 'workflow' }),
       aPage('desc', 20, { cursor: deepCursor }),
     ],
-    ['Runs of one primitive, oldest first', 'big', runsOf({ primitive: 'orchestration' }), aPage('asc', 20)],
-    ['Runs of one primitive, page of 100', 'big', runsOf({ primitive: 'orchestration' }), aPage('desc', 100)],
+    ['Runs of one type, oldest first', 'big', runsOf({ definitionType: 'workflow' }), aPage('asc', 20)],
+    ['Runs of one type, page of 100', 'big', runsOf({ definitionType: 'workflow' }), aPage('desc', 100)],
     [
-      'Runs of one primitive that were rejected',
+      'Runs of one type that were rejected',
       'big',
-      runsOf({ primitive: 'orchestration' }),
-      aPage('desc', 20, { types: ['execution_rejected'] }),
+      runsOf({ definitionType: 'workflow' }),
+      aPage('desc', 20, { types: ['run_rejected'] }),
     ],
-    ['Runs of a name none has, 1,000 examined', 'big', runsOf({ name: 'spec-none' }), aPage('desc', 20)],
+    ['Runs of a name none has, 1,000 examined', 'big', runsOf({ name: 'definition-none' }), aPage('desc', 20)],
     [
       'Runs of a name none has, 1,000 examined, each run with an input of 256 KiB',
       'large',
-      runsOf({ name: 'spec-none' }),
+      runsOf({ name: 'definition-none' }),
       aPage('desc', 20),
     ],
     [
-      'Runs of the primitive nine in ten have, 1,000 examined, each run with an input of 256 KiB',
+      'Runs of the type nine in ten have, 1,000 examined, each run with an input of 256 KiB',
       'large',
-      runsOf({ primitive: 'inference' }),
+      runsOf({ definitionType: 'reasoning' }),
       aPage('desc', 20),
     ],
   ];

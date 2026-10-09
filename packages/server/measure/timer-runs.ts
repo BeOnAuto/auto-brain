@@ -17,7 +17,7 @@ export interface Sampling {
   readonly stop: () => void;
 }
 
-const decodeStarted = Schema.decodeUnknownSync(Schema.Struct({ execution_id: Schema.String }));
+const decodeStarted = Schema.decodeUnknownSync(Schema.Struct({ run_id: Schema.String }));
 
 const decodeEnded = Schema.decodeUnknownSync(Schema.Struct({ started_at: Schema.String, finished_at: Schema.String }));
 
@@ -29,8 +29,8 @@ do:
 `;
 }
 
-export function executionIdOf(answer: unknown): string {
-  return decodeStarted(answer).execution_id;
+export function runIdOf(answer: unknown): string {
+  return decodeStarted(answer).run_id;
 }
 
 function loadNow(): string {
@@ -61,8 +61,8 @@ async function timersStarted(server: MeasuredServer, plan: TimerPlan, index = 0)
     return [];
   }
   await sleep(Math.max(0, plan.firstDueAt - plan.seconds * 1000 + index * plan.spacingMs - Date.now()));
-  const started = await server.call('POST', `${brain}/specs/orchestration/pause/execute`, { input: {} });
-  return [executionIdOf(started), ...(await timersStarted(server, plan, index + 1))];
+  const started = await server.call('POST', `${brain}/definitions/workflow/pause/run`, { input: {} });
+  return [runIdOf(started), ...(await timersStarted(server, plan, index + 1))];
 }
 
 async function latenessOf(
@@ -71,7 +71,7 @@ async function latenessOf(
   { seconds }: TimerPlan,
 ): Promise<readonly number[]> {
   const ended = await Promise.all(
-    runs.map(async (run) => decodeEnded(await server.call('GET', `${brain}/executions/${run}`))),
+    runs.map(async (run) => decodeEnded(await server.call('GET', `${brain}/runs/${run}`))),
   );
   return ended.map(
     ({ started_at: startedAt, finished_at: finishedAt }) =>

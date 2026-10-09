@@ -48,18 +48,18 @@ describe('work the workflow host hands to the runtime of the server', () => {
 });
 
 describe('the reports of the workflow host', () => {
-  it('log an execution left started with the reason the host gave, in words', async () => {
+  it('log a run left started with the reason the host gave, in words', async () => {
     const lines = await reportedLines(async (reports) => {
-      const run = { org: 'acme', brain: 'alpha', executionId: 'e-1' };
-      await Effect.runPromise(reports.unsettled({ ...run, receipt: 'unknown_execution' }));
+      const run = { org: 'acme', brain: 'alpha', runId: 'e-1' };
+      await Effect.runPromise(reports.unsettled({ ...run, receipt: 'unknown_run' }));
       await Effect.runPromise(reports.unsettled({ ...run, receipt: 'settled_otherwise' }));
     });
 
     expect(lines).toEqual([
       expect.stringContaining(
-        '"annotations":{"org":"acme","brain":"alpha","execution_id":"e-1","reason":"The ledger has no such execution"}',
+        '"annotations":{"org":"acme","brain":"alpha","run_id":"e-1","reason":"The ledger has no such run"}',
       ),
-      expect.stringContaining('"reason":"The execution was settled otherwise before"'),
+      expect.stringContaining('"reason":"The run was settled otherwise before"'),
     ]);
   });
 
@@ -71,7 +71,7 @@ describe('the reports of the workflow host', () => {
       await Effect.runPromise(
         reports.note({
           kind: 'settled_after_back_off',
-          run: { org: 'acme', brain: 'alpha', executionId: 'e-1' },
+          run: { org: 'acme', brain: 'alpha', runId: 'e-1' },
           attempts: 21,
         }),
       );
@@ -80,7 +80,7 @@ describe('the reports of the workflow host', () => {
     expect(lines).toEqual([
       expect.stringContaining('"message":"A sweep of the runs failed; the next sweep tries again","level":"WARN"'),
       expect.stringContaining('"annotations":{"error":"Connection terminated unexpectedly"}'),
-      expect.stringContaining('"message":"An execution that could not be settled was settled at attempt 21"'),
+      expect.stringContaining('"message":"A run that could not be settled was settled at attempt 21"'),
     ]);
   });
 });

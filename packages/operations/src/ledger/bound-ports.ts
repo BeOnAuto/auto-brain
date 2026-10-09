@@ -58,10 +58,10 @@ export function prefixedWriter(ledger: StreamWriter, prefix: string): StreamWrit
 
 function wellFormedSelection(selection: RecordedSelection): Effect.Effect<RecordedSelection> {
   if (selection.kind === 'run') {
-    return wellFormed(`executions/${selection.execution}`).pipe(Effect.as(selection));
+    return wellFormed(`runs/${selection.run}`).pipe(Effect.as(selection));
   }
   return selection.kind === 'correlated'
-    ? wellFormed(`executions/${selection.correlation}`).pipe(Effect.as(selection))
+    ? wellFormed(`runs/${selection.correlation}`).pipe(Effect.as(selection))
     : Effect.succeed(selection);
 }
 

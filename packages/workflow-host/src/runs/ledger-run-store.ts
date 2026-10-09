@@ -1,68 +1,73 @@
 import { eventAppenderOf, eventCodecOf } from '@beonauto/ledger';
-import { RunEventSchema, type PositionedEvent, type RunEvent, type RunStore } from '@beonauto/workflow-engine';
+import { RunLogEventSchema, type PositionedEvent, type RunLogEvent, type RunLogStore } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { runForgotten } from '../listeners/listener-rows.ts';
-import { streamOfRun } from './run-address.ts';
+import { runLogStreamOf } from './run-address.ts';
 import { lineageOfRecord } from './run-lineage.ts';
 import { latestSnapshotOf, savedSnapshot } from './snapshot-chunks.ts';
 
-const codec = eventCodecOf(RunEventSchema);
+const codec = eventCodecOf(RunLogEventSchema);
 
-function endsTheRun(event: RunEvent): boolean {
+function endsTheRun(event: RunLogEvent): boolean {
   return event.outputs.some(({ kind }) => kind === 'settle');
 }
 
-function positioned(after: number, events: readonly RunEvent[]): readonly PositionedEvent[] {
+function positioned(after: number, events: readonly RunLogEvent[]): readonly PositionedEvent[] {
   return events.map((event, index) => ({ version: after + index + 1, event }));
 }
 
-function knownRun(database: HostDatabase, runId: string): Effect.Effect<void> {
+function knownRun(database: HostDatabase, runKey: string): Effect.Effect<void> {
   return Effect.orDie(
     database.write(
-      statement`INSERT INTO workflow_runs (run_id, stream_id) VALUES (${runId}, ${streamOfRun(runId)})
-        ON CONFLICT (run_id) DO NOTHING`,
+      statement`INSERT INTO workflow_runs (run_key, stream_id) VALUES (${runKey}, ${runLogStreamOf(runKey)})
+        ON CONFLICT (run_key) DO NOTHING`,
     ),
   );
 }
 
-function endedAt(database: HostDatabase, runId: string, version: number): Effect.Effect<void> {
+function endedAt(database: HostDatabase, runKey: string, version: number): Effect.Effect<void> {
   return Effect.orDie(
-    database.write(statement`UPDATE workflow_runs SET ended_at = ${version} WHERE run_id = ${runId}`),
-  ).pipe(Effect.andThen(runForgotten(database, runId)));
+    database.write(statement`UPDATE workflow_runs SET ended_at = ${version} WHERE run_key = ${runKey}`),
+  ).pipe(Effect.andThen(runForgotten(database, runKey)));
 }
 
-export function ledgerRunStore(database: HostDatabase): RunStore {
-  const append = eventAppenderOf(database.store, RunEventSchema);
-  const streamAfter = (runId: string, version: number) =>
-    Effect.promise(() => database.store.read(streamOfRun(runId), version));
-  const eventsAfter = (runId: string, version: number): Effect.Effect<readonly PositionedEvent[]> =>
-    streamAfter(runId, version).pipe(
+export function ledgerRunLogStore(database: HostDatabase): RunLogStore {
+  const append = eventAppenderOf(database.store, RunLogEventSchema);
+  const streamAfter = (runKey: string, version: number) =>
+    Effect.promise(() => database.store.read(runLogStreamOf(runKey), version));
+  const eventsAfter = (runKey: string, version: number): Effect.Effect<readonly PositionedEvent[]> =>
+    streamAfter(runKey, version).pipe(
       Effect.flatMap(({ events }) => Effect.forEach(events, codec.decode)),
-      Effect.map((events: readonly RunEvent[]) => positioned(version, events)),
+      Effect.map((events: readonly RunLogEvent[]) => positioned(version, events)),
     );
   return {
-    load: (runId) =>
+    load: (runKey) =>
       Effect.gen(function* () {
-        const snapshot = yield* latestSnapshotOf(database, runId);
-        const tail = yield* eventsAfter(runId, snapshot?.snapshot.version ?? 0);
+        const snapshot = yield* latestSnapshotOf(database, runKey);
+        const tail = yield* eventsAfter(runKey, snapshot?.snapshot.version ?? 0);
         return { snapshot, tail };
       }),
-    append: (runId, event, expectedVersion, lineage) =>
+    append: (runKey, event, expectedVersion, lineage) =>
       Effect.gen(function* () {
         if (expectedVersion === 0) {
-          yield* knownRun(database, runId);
+          yield* knownRun(database, runKey);
         }
-        yield* append(streamOfRun(runId), [event], expectedVersion, yield* lineageOfRecord(database, runId, lineage));
+        yield* append(
+          runLogStreamOf(runKey),
+          [event],
+          expectedVersion,
+          yield* lineageOfRecord(database, runKey, lineage),
+        );
         if (endsTheRun(event)) {
-          yield* endedAt(database, runId, expectedVersion + 1);
+          yield* endedAt(database, runKey, expectedVersion + 1);
         }
       }),
     eventsAfter,
     saveSnapshot: (snapshot) =>
-      Effect.flatMap(streamAfter(snapshot.executionId, snapshot.version - 1), ({ events, version }) =>
+      Effect.flatMap(streamAfter(snapshot.runId, snapshot.version - 1), ({ events, version }) =>
         events.length > 0
           ? savedSnapshot(database, snapshot)
           : Effect.die(

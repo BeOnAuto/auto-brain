@@ -15,9 +15,9 @@ const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
 const brainKey = 'brain/acme/alpha/';
 
-const runId = 'acme/alpha/r-1';
+const runKey = 'acme/alpha/r-1';
 
-const stream = `${brainKey}runs/r-1`;
+const stream = `${brainKey}run-logs/r-1`;
 
 type RecordedEvent = Parameters<ReturnType<typeof runGateOf>['verdictOn']>[0];
 
@@ -89,14 +89,14 @@ describe.skipIf(server === '')('a listener kept while the gate passes its run ea
       const held = await connected(connectionString);
       await Effect.runPromise(
         database.write(
-          statement`INSERT INTO workflow_runs (run_id, stream_id, dispatched_through) VALUES (${runId}, ${stream}, ${0})`,
+          statement`INSERT INTO workflow_runs (run_key, stream_id, dispatched_through) VALUES (${runKey}, ${stream}, ${0})`,
         ),
       );
       const passing = () => Effect.runPromise(runGateOf(database, brainKey).verdictOn(record, true));
 
       await Effect.runPromise(
         insertedListener(holdingTheInsert(database, { held, insertInto: 'workflow_listeners', meanwhile: passing }), {
-          runId,
+          runKey,
           listener: 'held',
           brainKey,
           streamId: stream,
@@ -125,14 +125,14 @@ describe.skipIf(server === '')('the note of a run passed early while its dispatc
       const held = await connected(connectionString);
       await Effect.runPromise(
         database.write(
-          statement`INSERT INTO workflow_runs (run_id, stream_id, dispatched_through) VALUES (${runId}, ${stream}, ${0})`,
+          statement`INSERT INTO workflow_runs (run_key, stream_id, dispatched_through) VALUES (${runKey}, ${stream}, ${0})`,
         ),
       );
-      const catchingUp = () => Effect.runPromise(sqlWatermark(database).advance(runId, 2));
+      const catchingUp = () => Effect.runPromise(sqlWatermark(database).advance(runKey, 2));
       const holding = holdingTheInsert(database, { held, insertInto: 'workflow_passed_runs', meanwhile: catchingUp });
 
       const verdict = await Effect.runPromise(runGateOf(holding, brainKey).verdictOn(record, true));
-      const left = await Effect.runPromise(database.read(statement`SELECT run_id FROM workflow_passed_runs`));
+      const left = await Effect.runPromise(database.read(statement`SELECT run_key FROM workflow_passed_runs`));
 
       expect([verdict, left]).toEqual(['overdue', []]);
     },

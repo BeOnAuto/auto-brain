@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { logLinesOf, requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { executionIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
 
@@ -58,29 +58,25 @@ describe('a server started again on the ledger of its workflows', { timeout: wor
     const first = workflowProcess(ledger.fileName);
     const firstPort = await first.port;
     await requestTo(firstPort, 'POST', '', { brain: 'gamma', name: 'Gamma' });
-    await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'approval', source: approval });
-    await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'pausing', source: pausing });
-    await requestTo(firstPort, 'POST', '/gamma/specs/orchestration', { name: 'timing', source: timing });
-    const waiting = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/approval/execute', { input: {} });
-    const paused = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/pausing/execute', { input: {} });
-    const timed = await requestTo(firstPort, 'POST', '/gamma/specs/orchestration/timing/execute', { input: {} });
+    await requestTo(firstPort, 'POST', '/gamma/definitions/workflow', { name: 'approval', source: approval });
+    await requestTo(firstPort, 'POST', '/gamma/definitions/workflow', { name: 'pausing', source: pausing });
+    await requestTo(firstPort, 'POST', '/gamma/definitions/workflow', { name: 'timing', source: timing });
+    const waiting = await requestTo(firstPort, 'POST', '/gamma/definitions/workflow/approval/run', { input: {} });
+    const paused = await requestTo(firstPort, 'POST', '/gamma/definitions/workflow/pausing/run', { input: {} });
+    const timed = await requestTo(firstPort, 'POST', '/gamma/definitions/workflow/timing/run', { input: {} });
     first.signal('SIGTERM');
     await first.exited;
     await setTimeout(1500);
 
     const second = workflowProcess(ledger.fileName);
     const port = await second.port;
-    const sent = await requestTo(port, 'POST', `/gamma/executions/${executionIdIn(waiting.body)}/events`, {
+    const sent = await requestTo(port, 'POST', `/gamma/runs/${runIdIn(waiting.body)}/events`, {
       event: { type: 'com.acme.approved', data: { by: 'Ada' } },
     });
-    const approved = await settledOver(port, `/gamma/executions/${executionIdIn(waiting.body)}`);
-    const pausedSettled = await settledOver(port, `/gamma/executions/${executionIdIn(paused.body)}`);
-    await settledOver(port, `/gamma/executions/${executionIdIn(timed.body)}`);
-    const timedHistory = await requestTo(
-      port,
-      'GET',
-      `/gamma/executions/${executionIdIn(timed.body)}/history?limit=100`,
-    );
+    const approved = await settledOver(port, `/gamma/runs/${runIdIn(waiting.body)}`);
+    const pausedSettled = await settledOver(port, `/gamma/runs/${runIdIn(paused.body)}`);
+    await settledOver(port, `/gamma/runs/${runIdIn(timed.body)}`);
+    const timedHistory = await requestTo(port, 'GET', `/gamma/runs/${runIdIn(timed.body)}/history?limit=100`);
     second.signal('SIGTERM');
     const inputs = inputsOf(timedHistory.body).events.filter(({ type }) => type === 'workflow_input_applied');
 

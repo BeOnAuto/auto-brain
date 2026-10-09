@@ -36,7 +36,7 @@ The secrets the file refers to, such as `GATEWAY_API_KEY`, go in `auto-brain.env
 | `LOCAL_MODE`      | `false`                                                                | `true` trusts every request as the local developer; see [Local mode](security.md#local-mode)                                                                                                                              |
 | `LOG_FORMAT`      | `json`                                                                 | `json`, one JSON object per line on stderr, or `pretty`, lines of text for a person at a terminal                                                                                                                         |
 
-The [reasoning function adapter](../reference/reasoning-format.md) calls language models with these settings, all optional; [Configuring a model](configuration.md) says which to set for what. A provider whose settings are absent is not configured, and a spec that names it is rejected as `unavailable` when it runs, naming the providers that are configured; the reasoning function description that the spec tools carry names them too, so an assistant writes the model with one of them. When it starts, the server logs one line naming the providers that are configured, or a warning when none is, and a warning for each provider that has some of its settings but not all it needs. Settings it cannot read stop it at start-up, naming the setting and never its value.
+The [reasoning function adapter](../reference/reasoning-format.md) calls language models with these settings, all optional; [Configuring a model](configuration.md) says which to set for what. A provider whose settings are absent is not configured, and a definition that names it is rejected as `unavailable` when it runs, naming the providers that are configured; the reasoning function description that the definition tools carry names them too, so an assistant writes the model with one of them. When it starts, the server logs one line naming the providers that are configured, or a warning when none is, and a warning for each provider that has some of its settings but not all it needs. Settings it cannot read stop it at start-up, naming the setting and never its value.
 
 | Variable                                                                                         | Purpose                                                                                                                                  |
 | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -50,14 +50,14 @@ The [reasoning function adapter](../reference/reasoning-format.md) calls languag
 | `MODEL_ALIASES`                                                                                  | JSON map from one model reference to another; a trailing `*` on both sides covers every model of a provider; `model_aliases` in the file |
 | `NODE_USE_ENV_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, `NODE_EXTRA_CA_CERTS`                           | Node's own switches for an outbound proxy and a private certificate authority                                                            |
 
-The [workflow adapter](../reference/workflow-format.md) runs workflow specs in the server, keeping them in the ledger's database, with these settings; [Workflow operations](workflows.md) says what an operator must know about them. The server logs at start-up how long a run lasts at most, how many calls run at once and how often the runs are swept.
+The [workflow adapter](../reference/workflow-format.md) runs workflow definitions in the server, keeping them in the ledger's database, with these settings; [Workflow operations](workflows.md) says what an operator must know about them. The server logs at start-up how long a run lasts at most, how many calls run at once and how often the runs are swept.
 
-| Variable                          | Default | Purpose                                                                                 |
-| --------------------------------- | ------- | --------------------------------------------------------------------------------------- |
-| `ORCHESTRATION_MAX_DURATION`      | `P30D`  | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`                |
-| `ORCHESTRATION_NESTED_EXECUTIONS` | `32`    | How many nested executions the server runs at once, from 1 to 1000; shared by every org |
-| `ORCHESTRATION_MAX_OPEN_CALLS`    | `1000`  | How many calls may wait under one run at the top of a tree, from 1 to 9999              |
-| `ORCHESTRATION_SWEEP_INTERVAL`    | `PT1S`  | How often the server sweeps the runs, an ISO 8601 duration from `PT0.01S` to `PT1M`     |
+| Variable                  | Default | Purpose                                                                             |
+| ------------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `WORKFLOW_MAX_DURATION`   | `P30D`  | The most a workflow may run, an ISO 8601 duration from `PT2H` to `P365D`            |
+| `WORKFLOW_NESTED_RUNS`    | `32`    | How many nested runs the server runs at once, from 1 to 1000; shared by every org   |
+| `WORKFLOW_MAX_OPEN_CALLS` | `1000`  | How many calls may wait under one run at the top of a tree, from 1 to 9999          |
+| `WORKFLOW_SWEEP_INTERVAL` | `PT1S`  | How often the server sweeps the runs, an ISO 8601 duration from `PT0.01S` to `PT1M` |
 
 The [computation function adapter](../../reference/computation-format.md) runs each run of a computation function in a worker thread the server keeps between runs, so a run pays for starting a worker only when none is ready, with this setting:
 
@@ -69,11 +69,11 @@ The server never keeps more worker threads alive, idle or busy, than this settin
 
 The [recall function adapter](../../reference/recall-format.md) shares those workers: a run of a recall function answers in one, and the server that runs the workflows keeps the views of recall functions, folding each page of a brain's history in one, using at most half of them at once and at least one. It keeps each view in a table beside the workflows' tables, in the ledger's database, so a view needs no other storage. These settings bound it:
 
-| Variable                      | Default | Purpose                                                                                                                                    |
-| ----------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `RECOLLECTION_MAX_FUNCTIONS`  | `32`    | How many active recall functions a brain may keep, from 1 to 1000; lowering it below what a brain keeps refuses its saves and nothing else |
-| `RECOLLECTION_MAX_REBUILDS`   | `4`     | How many views of one brain are built at once, from 1 to 64; the others wait in the order they were saved                                  |
-| `RECOLLECTION_BRAINS_AT_ONCE` | `4`     | How many brains the server folds at once, from 1 to 64                                                                                     |
+| Variable                | Default | Purpose                                                                                                                                    |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RECALL_MAX_FUNCTIONS`  | `32`    | How many active recall functions a brain may keep, from 1 to 1000; lowering it below what a brain keeps refuses its saves and nothing else |
+| `RECALL_MAX_REBUILDS`   | `4`     | How many views of one brain are built at once, from 1 to 64; the others wait in the order they were saved                                  |
+| `RECALL_BRAINS_AT_ONCE` | `4`     | How many brains the server folds at once, from 1 to 64                                                                                     |
 
 A value outside its range stops the server at start, naming the setting.
 

@@ -121,7 +121,7 @@ function accountOf(event: ConversationCallEvent) {
   if (event.type === 'telling_started') {
     return {
       summary: `The brain told the party how to answer ${throughTheTool(event)}.`,
-      data: { ...startShown(event, toolBounds.shownContentBytes), execution_id: named(event.execution_id) },
+      data: { ...startShown(event, toolBounds.shownContentBytes), run_id: named(event.run_id) },
     };
   }
   return {

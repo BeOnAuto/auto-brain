@@ -34,47 +34,47 @@ async function onAlpha<T>(use: (session: McpSession) => Promise<T>): Promise<T> 
 
 describe('a computation function over MCP, on the endpoint of its brain', { timeout: computationTestTimeoutMs }, () => {
   it('is created, run and read back with its run and the words of its result', async () => {
-    const { created, executed, execution, summed } = await onAlpha(async (session) => {
-      const creating = await session.callTool('create_spec', {
-        primitive: 'computation',
+    const { created, ran, run, summed } = await onAlpha(async (session) => {
+      const creating = await session.callTool('create_definition', {
+        type: 'computation',
         name: 'pace',
         source: campaignPace,
       });
-      const executing = await session.callTool('execute_spec', {
-        primitive: 'computation',
+      const running = await session.callTool('run_definition', {
+        type: 'computation',
         name: 'pace',
         input: campaignRows(4),
       });
-      const reading = await session.callTool('get_execution', {
-        execution_id: String(executing.structuredContent?.['execution_id']),
+      const reading = await session.callTool('get_run', {
+        run_id: String(running.structuredContent?.['run_id']),
       });
-      await session.callTool('create_spec', { primitive: 'computation', name: 'total', source: total });
-      const summing = await session.callTool('execute_spec', {
-        primitive: 'computation',
+      await session.callTool('create_definition', { type: 'computation', name: 'total', source: total });
+      const summing = await session.callTool('run_definition', {
+        type: 'computation',
         name: 'total',
         input: campaignRows(4),
       });
-      return { created: creating, executed: executing, execution: reading, summed: summing };
+      return { created: creating, ran: running, run: reading, summed: summing };
     });
 
-    expect(created.structuredContent).toMatchObject({ primitive: 'computation', name: 'pace', version: 1 });
-    expect(executed.structuredContent).toMatchObject({ status: 'succeeded', output: { total_spend_cents: 4222 } });
-    expect(plainTextIn(executed)).toBe(
+    expect(created.structuredContent).toMatchObject({ type: 'computation', name: 'pace', version: 1 });
+    expect(ran.structuredContent).toMatchObject({ status: 'succeeded', output: { total_spend_cents: 4222 } });
+    expect(plainTextIn(ran)).toBe(
       'Ran the computation function “pace”. Its result is too long to repeat here; the whole of it is in the details below.',
     );
     expect(plainTextIn(summed)).toBe('Ran the computation function “total”. Its result: total spend cents: 4222.');
-    expect(execution.structuredContent).toMatchObject({ record: { language: 'jq' } });
+    expect(run.structuredContent).toMatchObject({ record: { language: 'jq' } });
   });
 });
 
 describe('a computation function that cannot work as written, over MCP', { timeout: computationTestTimeoutMs }, () => {
   it('answers a program that gives two outputs with isError, the conflict and its kind, in plain words', async () => {
-    const executed = await onAlpha(async (session) => {
-      await session.callTool('create_spec', { primitive: 'computation', name: 'twice', source: twice });
-      return session.callTool('execute_spec', { primitive: 'computation', name: 'twice', input: [1, 2] });
+    const ran = await onAlpha(async (session) => {
+      await session.callTool('create_definition', { type: 'computation', name: 'twice', source: twice });
+      return session.callTool('run_definition', { type: 'computation', name: 'twice', input: [1, 2] });
     });
 
-    expect({ isError: executed.isError, problem: problemIn(executed) }).toMatchObject({
+    expect({ isError: ran.isError, problem: problemIn(ran) }).toMatchObject({
       isError: true,
       problem: {
         status: 409,
@@ -83,18 +83,18 @@ describe('a computation function that cannot work as written, over MCP', { timeo
         detail: 'The program gave more than one output; a computation function gives exactly one',
       },
     });
-    expect(plainTextIn(executed)).toContain('it cannot work as it is written');
-    expect(internalTermsIn(plainTextIn(executed))).toEqual([]);
+    expect(plainTextIn(ran)).toContain('it cannot work as it is written');
+    expect(internalTermsIn(plainTextIn(ran))).toEqual([]);
   });
 });
 
-describe('the spec tools an agent sees', { timeout: computationTestTimeoutMs }, () => {
+describe('the definition tools an agent sees', { timeout: computationTestTimeoutMs }, () => {
   it('name the guide to a computation function, which says the language it is written in', async () => {
     const tools = listedTools(await onAlpha((session) => session.listTools()));
-    const createSpec = tools.find(({ name }) => name === 'create_spec');
+    const createDefinition = tools.find(({ name }) => name === 'create_definition');
     const guide = await onAlpha((session) => session.callTool('get_guide', { guide: 'computation-function' }));
 
-    expect(createSpec?.description).toContain('computation, a computation function, guide computation-function');
+    expect(createDefinition?.description).toContain('computation, a computation function, guide computation-function');
     expect(textOf(guide)).toContain('jq');
   });
 });

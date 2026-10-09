@@ -38,7 +38,7 @@ The function receives the supplied values. It does not automatically inherit the
 
 ## 5. Verify the recorded run
 
-Have the agent read the resulting run from Auto and show its execution id, definition version, recorded prompt and output. Confirm that the prompt contains the evidence you approved and that the result addresses the intended review. The current run API returns the rendered prompt, subject to record-size limits, rather than the original input object.
+Have the agent read the resulting run from Auto and show its run id, definition version, recorded prompt and output. Confirm that the prompt contains the evidence you approved and that the result addresses the intended review. The current run API returns the rendered prompt, subject to record-size limits, rather than the original input object.
 
 If a required input is missing, compare the function's input contract with the mapping. If the graph operation is unavailable, check the selected Apollo server and the connection's permissions before changing the function.
 

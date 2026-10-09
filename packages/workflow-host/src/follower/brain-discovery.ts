@@ -3,7 +3,11 @@ import { Effect, Schema } from 'effect';
 
 import { rowsOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
-import { specRecordsIn, type ApplySpecRecord, type SpecRecord } from '../triggers/spec-records.ts';
+import {
+  definitionRecordsIn,
+  type ApplyDefinitionRecord,
+  type DefinitionRecord,
+} from '../triggers/definition-records.ts';
 import type { BrainRecords } from './brain-records.ts';
 import type { FollowedBrains } from './followed-brains.ts';
 import { scannedListeners } from './listener-scan.ts';
@@ -18,9 +22,9 @@ export interface DiscoveryParts {
   readonly database: HostDatabase;
   readonly brains: FollowedBrains;
   readonly records: BrainRecords;
-  readonly applySpecRecord: ApplySpecRecord;
-  readonly unreadable: (brainKey: string, record: SpecRecord) => Effect.Effect<void>;
-  readonly primitive: string;
+  readonly applyDefinitionRecord: ApplyDefinitionRecord;
+  readonly unreadable: (brainKey: string, record: DefinitionRecord) => Effect.Effect<void>;
+  readonly definitionType: string;
 }
 
 const OrgStreamRow = Schema.Struct({ stream_id: Schema.String, stream_position: WholeNumber });
@@ -63,17 +67,24 @@ function brainKeyOf(stream: string, brain: string): string {
   return stream.replace(orgRegistry, (_, org: string) => `brain/${org}/${brain}/`);
 }
 
-function followedAtTailOn({ database, brains, records, applySpecRecord, unreadable, primitive }: DiscoveryParts) {
-  const applied = (brainKey: string, record: SpecRecord) =>
-    Effect.flatMap(applySpecRecord(brainKey, record), (outcome) =>
+function followedAtTailOn({
+  database,
+  brains,
+  records,
+  applyDefinitionRecord,
+  unreadable,
+  definitionType,
+}: DiscoveryParts) {
+  const applied = (brainKey: string, record: DefinitionRecord) =>
+    Effect.flatMap(applyDefinitionRecord(brainKey, record), (outcome) =>
       outcome === 'unreadable' ? unreadable(brainKey, record) : Effect.void,
     );
   return (brainKey: string) =>
     Effect.gen(function* () {
       const [, org = '', brain = ''] = brainKey.split('/');
       yield* brains.follow(brainKey, yield* records.tail({ org, brain }));
-      const recorded = yield* Effect.promise(() => database.store.read(`${brainKey}specs/${primitive}`, 0));
-      yield* Effect.forEach(specRecordsIn(recorded), (record) => applied(brainKey, record), { discard: true });
+      const recorded = yield* Effect.promise(() => database.store.read(`${brainKey}definitions/${definitionType}`, 0));
+      yield* Effect.forEach(definitionRecordsIn(recorded), (record) => applied(brainKey, record), { discard: true });
     });
 }
 

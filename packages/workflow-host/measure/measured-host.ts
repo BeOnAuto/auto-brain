@@ -1,6 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import type { Run, SettleExecution } from '@beonauto/specs';
+import type { Run, SettleRun } from '@beonauto/definitions';
 import { defaultLimits, defaultSeed, testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function, type Schema } from 'effect';
 
@@ -17,11 +17,11 @@ export interface MeasuredHost {
   readonly untilSettled: (count: number) => Promise<void>;
 }
 
-const execution: Run = {
-  execution_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
-  primitive: 'orchestration',
+const run: Run = {
+  run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
+  type: 'workflow',
   name: 'measured',
-  spec_version: 1,
+  definition_version: 1,
   status: 'succeeded',
   started_at: '2026-10-05T09:00:00.000Z',
   started_by: 'acme-admin',
@@ -33,16 +33,16 @@ export function startOf(document: Schema.JsonObject, input: Schema.Json = {}): R
   return { document, input, limits: defaultLimits, attributes: {}, seed: defaultSeed };
 }
 
-export function runAt(index: number): { readonly org: string; readonly brain: string; readonly executionId: string } {
-  return { org: 'acme', brain: 'alpha', executionId: `0199a3c4-7d2e-7c1a-9b3f-${String(index).padStart(12, '0')}` };
+export function runAt(index: number): { readonly org: string; readonly brain: string; readonly runId: string } {
+  return { org: 'acme', brain: 'alpha', runId: `0199a3c4-7d2e-7c1a-9b3f-${String(index).padStart(12, '0')}` };
 }
 
 export async function measuredHost(database: DatabaseSettings, clock?: HostClock): Promise<MeasuredHost> {
   const counts = { settled: 0 };
-  const settle: SettleExecution = () =>
+  const settle: SettleRun = () =>
     Effect.sync(() => {
       counts.settled += 1;
-      return execution;
+      return run;
     });
   const host = await openWorkflowHost({
     database,

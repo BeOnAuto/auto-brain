@@ -1,7 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
 import { toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@beonauto/api/testing';
-import { answers, textResult } from '@beonauto/inference/testing';
+import { answers, textResult } from '@beonauto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -13,8 +13,8 @@ const welcome = workflowSource(
   'welcome',
   `do:
   - greet:
-      call: execute_spec
-      with: { primitive: inference, name: greeting, input: { name: '\${ .name }' } }
+      call: run_definition
+      with: { type: reasoning, name: greeting, input: { name: '\${ .name }' } }
       output:
         as: '\${ { greeting: . } }'
   - await:
@@ -37,37 +37,42 @@ function onMcp<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, use);
 }
 
-async function settled(session: McpSession, executionId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_execution', { brain: 'sales', execution_id: executionId });
+async function settled(session: McpSession, runId: string): Promise<ToolResult> {
+  const reading = await session.callTool('get_run', { brain: 'sales', run_id: runId });
   if (reading.structuredContent?.['status'] !== 'started') {
     return reading;
   }
   await setTimeout(100);
-  return settled(session, executionId);
+  return settled(session, runId);
 }
 
 async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
   await session.callTool('create_brain', { brain: 'sales', name: 'Sales' });
-  await session.callTool('create_spec', { brain: 'sales', primitive: 'inference', name: 'greeting', source: greeting });
-  await session.callTool('create_spec', {
+  await session.callTool('create_definition', {
     brain: 'sales',
-    primitive: 'orchestration',
+    type: 'reasoning',
+    name: 'greeting',
+    source: greeting,
+  });
+  await session.callTool('create_definition', {
+    brain: 'sales',
+    type: 'workflow',
     name: 'welcome',
     source: welcome,
   });
-  const started = await session.callTool('execute_spec', {
+  const started = await session.callTool('run_definition', {
     brain: 'sales',
-    primitive: 'orchestration',
+    type: 'workflow',
     name: 'welcome',
     input: { name: 'Ada' },
   });
-  const executionId = String(started.structuredContent?.['execution_id']);
-  await session.callTool('send_execution_event', {
+  const runId = String(started.structuredContent?.['run_id']);
+  await session.callTool('send_run_event', {
     brain: 'sales',
-    execution_id: executionId,
+    run_id: runId,
     event: { type: 'com.acme.customer.replied', data: 'Thank you!' },
   });
-  return settled(session, executionId);
+  return settled(session, runId);
 }
 
 describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
@@ -80,18 +85,18 @@ describe('/mcp with workflows', { timeout: workflowTestTimeoutMs }, () => {
     }));
 
     expect(served.tools).toHaveLength(25);
-    expect(served.tools.slice(-2)).toEqual(['send_execution_event', 'get_guide']);
+    expect(served.tools.slice(-2)).toEqual(['send_run_event', 'get_guide']);
     expect(served.instructions).toContain(
-      'or a workflow answers started; get_execution shows whether it ended or still waits.',
+      'or a workflow answers started; get_run shows whether it ended or still waits.',
     );
   });
 
   it('runs a workflow in a brain it created and sends it the event it waits for, on one connection', async () => {
     server = await servingWorkflows([answers(textResult('Hello, Ada.'))]);
 
-    const execution = await onMcp(welcomedAfterReply);
+    const run = await onMcp(welcomedAfterReply);
 
-    expect(execution.structuredContent).toMatchObject({
+    expect(run.structuredContent).toMatchObject({
       status: 'succeeded',
       output: { greeting: 'Hello, Ada.', reply: 'Thank you!' },
     });
