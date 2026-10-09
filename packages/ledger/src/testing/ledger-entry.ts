@@ -22,6 +22,7 @@ export interface LedgerEntry {
   readonly outcomeTables: string;
   readonly projectionTables: string;
   readonly projectionIndexes: string;
+  readonly topicTables: string;
 }
 
 export async function aLedger(

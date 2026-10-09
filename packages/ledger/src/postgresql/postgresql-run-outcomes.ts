@@ -10,8 +10,8 @@ import { binding, type Bind, type Query } from '../postgresql-reads/recorded-par
 
 const GroupRows = Schema.Array(Schema.Struct({ ...groupFields, durations: Schema.Array(Schema.Number) }));
 
-function selected(bind: Bind, { definitionType: type, name }: RunOutcomeSelection): string {
-  const ofDefinitionType = type === undefined ? '' : ` AND definition_type = ${bind(type)}`;
+function selected(bind: Bind, { definitionType, name }: RunOutcomeSelection): string {
+  const ofDefinitionType = definitionType === undefined ? '' : ` AND definition_type = ${bind(definitionType)}`;
   return name === undefined ? ofDefinitionType : `${ofDefinitionType} AND name = ${bind(name)}`;
 }
 

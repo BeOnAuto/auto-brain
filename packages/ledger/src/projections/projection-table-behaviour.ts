@@ -31,7 +31,7 @@ function noting(ledger: Awaited<ReturnType<typeof aLedger>>, stream: string, ...
 function anAppendThatBreaksDown(entry: LedgerEntry): void {
   describe('a projection that breaks down inside an append', () => {
     it('fails the append, which keeps nothing, the row it changed before included', async () => {
-      const breaking = tallyRowsOf(1, (row) => row['status'] === 'failed');
+      const breaking = tallyRowsOf(2, (row) => row['status'] === 'failed');
       const ledger = await aLedger(entry, undefined, undefined, [breaking]);
       await noting(ledger, 'brain/acme/alpha/runs/r1', began);
 
@@ -56,22 +56,22 @@ function aTableNotThereYet(entry: LedgerEntry): void {
       await noting(first, 'brain/acme/alpha/runs/r2', ended);
       await noting(first, 'brain/acme/alpha/runs/r3/nested', began);
 
-      const next = await aLedger(entry, database, undefined, [tallyRowsOf(2)]);
+      const next = await aLedger(entry, database, undefined, [tallyRowsOf(3)]);
 
       expect(await Effect.runPromise(next.readProjectedRows('run_tallies', alpha, everyRow))).toMatchObject([
         { key: 'r1', row: { facts: 2, last_message: messageIdOf('brain/acme/alpha/runs/r1', 2) } },
       ]);
-      expect(await entry.queried(database, entry.projectionTables)).toEqual([{ name: 'run_tallies_2' }]);
+      expect(await entry.queried(database, entry.projectionTables)).toEqual([{ name: 'run_tallies_3' }]);
       expect(await entry.queried(database, entry.projectionIndexes)).toEqual([
-        { name: 'run_tallies_2_by_brain_and_status' },
-        { name: 'run_tallies_2_due' },
+        { name: 'run_tallies_3_by_brain_and_status' },
+        { name: 'run_tallies_3_due' },
       ]);
     });
 
     it('is left as it is by a ledger that finds it', async () => {
       const database = await entry.aDatabase();
       await noting(await aLedger(entry, database, undefined, [runTallyRows]), 'brain/acme/alpha/runs/r1', began);
-      await entry.queried(database, "DELETE FROM run_tallies_1 WHERE row_key = 'r1'");
+      await entry.queried(database, "DELETE FROM run_tallies_2 WHERE row_key = 'r1'");
 
       const reopened = await aLedger(entry, database, undefined, [runTallyRows]);
 
@@ -105,7 +105,7 @@ function notedMany(ledger: Awaited<ReturnType<typeof aLedger>>, stream: string) 
 
 function aKeyedTableNotThereYet(entry: LedgerEntry): void {
   describe('the table of a projection keyed by its mapping that is not there yet', () => {
-    it('is filled from the facts of every stream of its kinds in the order they were appended', async () => {
+    it('is filled from the facts of every stream of its kinds in the order they were appended, and earlier versions dropped', async () => {
       const database = await entry.aDatabase();
       const first = await aLedger(entry, database);
       await topics(first, 'brain/acme/alpha/notes/w1', { type: 'topic_noted', topic: 'winter', note: 'never opened' });
@@ -115,6 +115,7 @@ function aKeyedTableNotThereYet(entry: LedgerEntry): void {
       await topics(first, 'brain/acme/alpha/others/o1', { type: 'topic_noted', topic: 'spring', note: 'other' });
       await topics(first, 'brain/acme/alpha/runs/r8', { type: 'topic_opened', topic: 'autumn', at: 2000 });
       await notedMany(first, 'brain/acme/alpha/notes/n1');
+      await entry.queried(database, 'CREATE TABLE topics_1 (brain_key text, row_key text)');
 
       const next = await aLedger(entry, database, undefined, [topicRows]);
 
@@ -122,6 +123,7 @@ function aKeyedTableNotThereYet(entry: LedgerEntry): void {
         ['autumn', `note ${manyNotes - 1}`, true, 7000],
         ['spring', 'second', true, 6000],
       ]);
+      expect(await entry.queried(database, entry.topicTables)).toEqual([{ name: 'topics_2' }]);
     });
   });
 }

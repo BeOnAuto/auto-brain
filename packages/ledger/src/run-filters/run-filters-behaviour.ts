@@ -139,7 +139,7 @@ const awkwardText = {
 function theDefinitionOfAnAwkwardRun(aLedger: LedgerMaker): void {
   it('is read at the top of the first message alone, exactly as recorded, whatever else the message holds', async () => {
     const ledger = await aLedger();
-    const awkward = { type: 'workflow', name: 'qualify-enquiry', text: awkwardText };
+    const awkward = { definition_type: 'workflow', name: 'qualify-enquiry', text: awkwardText };
     const start = { type: 'run_started', definition_type: 'reasoning', name: 'summary', detail: awkward };
     const namedAwkwardly = { ...start, name: awkwardText.escapedNul, detail: 'named awkwardly' };
     await Effect.runPromise(recordedRun(ledger, 'awkward', [start]));
