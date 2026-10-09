@@ -61,7 +61,7 @@ describe('a run whose input the capability rejected', () => {
 });
 
 describe('a run id', () => {
-  it('belongs to one definition and one input: another capability, definition or input meets conflict', async () => {
+  it('belongs to one definition and one input: another type, definition or input meets conflict', async () => {
     const { executing, executingOf, prober } = await withPlain();
     await executing({ who: 'Ada' });
     const taken = {

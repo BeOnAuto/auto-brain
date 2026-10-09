@@ -101,7 +101,7 @@ describe('send_run_event', () => {
 });
 
 describe('send_run_event to no running workflow', () => {
-  it('is rejected as not found for an unknown run or one of another capability', async () => {
+  it('is rejected as not found for an unknown run or one of another type', async () => {
     const greeted = idOf(3);
     await brain.call(brain.runDefinition, { type: 'echo', name: 'greet', run_id: greeted });
     const notFound = { status: 'rejected', reason: 'not_found' };

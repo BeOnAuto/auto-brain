@@ -13,7 +13,7 @@ const { capability, prepared } = reasoningWith();
 
 describe('the reasoning function implementation', () => {
   it('is the reasoning capability, titled Reasoning, whose definitions are Markdown', () => {
-    expect(capability).toMatchObject({ name: 'reasoning', title: 'Reasoning', mediaType: 'text/markdown' });
+    expect(capability).toMatchObject({ type: 'reasoning', title: 'Reasoning', mediaType: 'text/markdown' });
   });
 
   it('calls a saved definition a reasoning function', () => {

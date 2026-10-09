@@ -36,7 +36,7 @@ describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
         record: {
           language: 'jq',
           input_bytes: 30,
-          output_bytes: 76,
+          output_bytes: 70,
           view: {
             version: 1,
             checkpoint: 'YnJhaW4vYWNtZS9hbHBoYS8sNDI',

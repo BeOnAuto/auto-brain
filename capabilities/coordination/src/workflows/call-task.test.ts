@@ -87,12 +87,12 @@ describe('the arguments of run_definition', () => {
     [
       'no name',
       'do:\n  - x: { call: run_definition, with: { type: echo, name: "${ 1 }" } }',
-      'run_definition needs a string capability and a string name',
+      'run_definition needs a string type and a string name',
     ],
     [
-      'no capability',
+      'no type',
       'do:\n  - x: { call: run_definition, with: { type: "${ null }", name: a } }',
-      'run_definition needs a string capability and a string name',
+      'run_definition needs a string type and a string name',
     ],
   ])('are rejected when they evaluate to %s', async (_case, source, title) => {
     const { settlement, commands } = await interpret(workflow(source));

@@ -54,11 +54,11 @@ const run: RunContext = {
 };
 
 describe('a capability', () => {
-  it('keeps its name, title, description, noun, words for an output and media type', () => {
+  it('keeps its type, title, description, noun, words for an output and media type', () => {
     const capability = defineCapability(words);
 
     expect(capability).toMatchObject({
-      name: 'words',
+      type: 'words',
       title: 'Words',
       guide: { name: 'words' },
       noun: { one: 'count', other: 'counts' },

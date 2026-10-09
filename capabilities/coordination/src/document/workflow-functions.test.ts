@@ -42,7 +42,7 @@ describe('a call of run_definition', () => {
 });
 
 describe('the policy of run_definition', () => {
-  it('takes a capability, a name and an input, as expressions or literals', () => {
+  it('takes a type, a name and an input, as expressions or literals', () => {
     expect(
       rejectedIn(`
   - summarize:
@@ -61,7 +61,7 @@ describe('the policy of run_definition', () => {
     ).toEqual([
       '/do/0/nothing/with: run_definition takes with: { type, name, input }',
       '/do/1/partial/with/model: run_definition takes no argument model',
-      '/do/1/partial/with/type: run_definition needs a string capability',
+      '/do/1/partial/with/type: run_definition needs a string type',
       '/do/1/partial/with/name: run_definition needs a string name',
     ]);
   });

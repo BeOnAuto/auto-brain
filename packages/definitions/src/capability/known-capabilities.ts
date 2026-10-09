@@ -72,7 +72,7 @@ export function knownCapabilities(capabilities: readonly Capability[]): KnownCap
     capabilityOfType: (name) => {
       const capability = byName.get(name);
       return capability === undefined
-        ? Effect.fail(new NotFound({ detail: `There is no capability ${name}` }))
+        ? Effect.fail(new NotFound({ detail: `There is no definition type ${name}` }))
         : Effect.succeed(capability);
     },
   };

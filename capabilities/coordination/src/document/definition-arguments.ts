@@ -22,7 +22,7 @@ export function definitionArgumentsOf(arguments_: Json): DefinitionArguments | A
   const type = textField(arguments_, 'type');
   const name = textField(arguments_, 'name');
   if (type === undefined || name === undefined) {
-    return { kind: 'validation', title: `${runDefinitionFunction} needs a string capability and a string name` };
+    return { kind: 'validation', title: `${runDefinitionFunction} needs a string type and a string name` };
   }
   const input = field(arguments_, 'input') ?? {};
   const bytes = jsonBytesOf(input);

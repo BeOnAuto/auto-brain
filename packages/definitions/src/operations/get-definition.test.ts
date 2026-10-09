@@ -68,7 +68,7 @@ describe('get_definition rejecting', () => {
     expect(await call(getDefinition, toAlpha(acmeAdmin, { type: 'reason', name: 'plain' }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no capability reason',
+      detail: 'There is no definition type reason',
     });
   });
 

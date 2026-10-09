@@ -112,7 +112,7 @@ describe('update_definition rejecting', () => {
     expect(await call(updateDefinition, toAlpha(acmeAdmin, { type: 'reason', name: 'greet', source: hello }))).toEqual({
       status: 'rejected',
       reason: 'not_found',
-      detail: 'There is no capability reason',
+      detail: 'There is no definition type reason',
     });
   });
 

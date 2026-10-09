@@ -28,7 +28,7 @@ describe('a recall function', () => {
     const { capability, prepared } = recallWith(poolOf({ workers: 1 }));
 
     expect(capability).toMatchObject({
-      name: 'recall',
+      type: 'recall',
       title: 'Recall',
       noun: { one: 'recall function', other: 'recall functions' },
       mediaType: 'text/markdown',

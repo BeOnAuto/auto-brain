@@ -122,7 +122,7 @@ describe('the summary of a computation function', () => {
     });
     expect(prepared(programDocument('.')).summary).toEqual({});
     expect(capability).toMatchObject({
-      name: 'computation',
+      type: 'computation',
       title: 'Computation',
       noun: { one: 'computation function', other: 'computation functions' },
       mediaType: 'text/markdown',
