@@ -35,7 +35,7 @@ export function moduleRun(
     const fn = context.exported(loaded.kept, request.entry);
     return fn === undefined
       ? { ran: 'refused', issue: { detail: `The program exports no function ${request.entry}`, line: null } }
-      : context.call({ fn, args: request.arguments, form: 'module', keep: false }, request.evaluation).run;
+      : context.call({ fn, args: request.arguments, form: 'module' }, request.evaluation);
   } finally {
     context.close();
     runtime.close();

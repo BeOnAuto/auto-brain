@@ -1,5 +1,7 @@
 import type { QuickJSRuntime, QuickJSWASMModule } from 'quickjs-emscripten-core';
 
+import { mostValueDepth } from '../dsl/json.ts';
+import { tooDeepIn } from './answer-depth.ts';
 import { oversizedBy, type Evaluation, type Form, type ProgramFailure, type ProgramRun } from './program-run.ts';
 import { counterOf, type Counter } from './sandbox-counter.ts';
 import { freezingPreludeSource, preludeSource } from './sandbox-prelude.ts';
@@ -24,12 +26,6 @@ interface Call {
   readonly fn: number;
   readonly args: readonly Argument[];
   readonly form: Form;
-  readonly keep: boolean;
-}
-
-export interface Called {
-  readonly run: ProgramRun;
-  readonly kept?: number;
 }
 
 export type Settled = { readonly kept: number } | { readonly failed: ProgramFailure };
@@ -40,7 +36,8 @@ export interface SandboxContext {
   readonly expression: (javascript: string, evaluation: Evaluation) => Settled;
   readonly freeze: (roots: readonly number[], evaluation: Evaluation) => Settled;
   readonly parsed: (text: string, evaluation: Evaluation) => Settled;
-  readonly call: (call: Call, evaluation: Evaluation) => Called;
+  readonly parsedUncounted: (text: string) => Settled;
+  readonly call: (call: Call, evaluation: Evaluation) => ProgramRun;
   readonly forget: (id: number) => void;
   readonly close: () => void;
 }
@@ -146,6 +143,20 @@ function parsedArguments(session: Session, args: readonly Argument[]): readonly 
   return made;
 }
 
+function checkedDepth(text: string, work: number): ProgramRun {
+  const deep = tooDeepIn(text);
+  return deep === undefined
+    ? { ran: 'answered', text, work }
+    : {
+        ran: 'unfit',
+        issue: {
+          detail: `The answer holds a value deeper than ${mostValueDepth} levels at ${deep}, which JSON cannot carry`,
+          line: null,
+        },
+        work,
+      };
+}
+
 function written(session: Session, value: number, form: Form): ProgramRun {
   const { vm, counter, prelude, mostAnswerBytes } = session;
   const formText = vm.text(form);
@@ -160,23 +171,20 @@ function written(session: Session, value: number, form: Form): ProgramRun {
     vm.forget(outcome.kept);
     return oversizedBy(mostAnswerBytes, counter.checkpoints());
   }
-  return { ran: 'answered', text: vm.takeText(outcome.kept), work: counter.checkpoints() };
+  return checkedDepth(vm.takeText(outcome.kept), counter.checkpoints());
 }
 
-function answered(session: Session, kept: number, { form, keep }: Call): Called {
+function answered(session: Session, kept: number, form: Form): ProgramRun {
   const run = written(session, kept, form);
-  if (keep && run.ran === 'answered') {
-    return { run, kept };
-  }
   session.vm.forget(kept);
-  return { run };
+  return run;
 }
 
-function called(session: Session, call: Call, evaluation: Evaluation): Called {
+function called(session: Session, call: Call, evaluation: Evaluation): ProgramRun {
   begin(session, evaluation);
   const values = parsedArguments(session, call.args);
   if ('ran' in values) {
-    return { run: values };
+    return values;
   }
   const outcome = settled(session, session.vm.call(call.fn, values), 'raised');
   values.forEach((value, index) => {
@@ -184,7 +192,7 @@ function called(session: Session, call: Call, evaluation: Evaluation): Called {
       session.vm.forget(value);
     }
   });
-  return 'failed' in outcome ? { run: outcome.failed } : answered(session, outcome.kept, call);
+  return 'failed' in outcome ? outcome.failed : answered(session, outcome.kept, call.form);
 }
 
 function guarded<Result>(counter: Counter, during: () => Result, failed: (failure: ProgramFailure) => Result): Result {
@@ -199,8 +207,8 @@ function failedSettling(failure: ProgramFailure): Settled {
   return { failed: failure };
 }
 
-function failedCall(failure: ProgramFailure): Called {
-  return { run: failure };
+function failedCall(failure: ProgramFailure): ProgramRun {
+  return failure;
 }
 
 function loaded(session: Session, evaluation: Evaluation, load: () => Outcome): Settled {
@@ -244,6 +252,8 @@ function contextOf(
         },
         failedSettling,
       ),
+    parsedUncounted: (text) =>
+      guarded(counter, () => counter.unbounded(() => parsedArgument(session, text)), failedSettling),
     call: (call, evaluation) => guarded(counter, () => called(session, call, evaluation), failedCall),
     forget: vm.forget,
     close: () => {

@@ -126,6 +126,21 @@ describe('a view that stalls in a page of folds', () => {
 });
 
 describe('a view that stalls on what its fold answers', () => {
+  it('stalls a view at the memory of its sandbox when the view the next fold is handed does not fit beside what the fold kept', async () => {
+    const keeping = [
+      'const kept: unknown[] = [];',
+      'export function fold(): unknown[][] {',
+      '  const next = Array.from({ length: 100_000 }, (): unknown[] => []);',
+      '  kept.push(next);',
+      '  return next;',
+      '}',
+    ].join('\n');
+
+    const page = await folded(pageOf([viewOf(keeping, { view: [] })], { memoryBytes: smallMemoryBytes }));
+
+    expect(page.views[0]?.stall).toMatchObject({ at: 0, kind: 'memory' });
+  });
+
   it('stalls when the view it answers is not what the view schema allows, keeping the view before', async () => {
     const schema = { type: 'object', maxProperties: 1 };
 

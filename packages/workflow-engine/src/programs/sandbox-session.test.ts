@@ -4,7 +4,7 @@ import { freshInstance } from '../instances/fresh-instances.ts';
 import { moduleRun } from './module-runs.ts';
 import type { Evaluation, ProgramRun } from './program-run.ts';
 import { threadStackBytes, unitMemoryBytes, workerStackBytes } from './sandbox-bounds.ts';
-import { sandboxRuntimeOf, type Called, type SandboxSettings, type Settled } from './sandbox-session.ts';
+import { sandboxRuntimeOf, type SandboxSettings, type Settled } from './sandbox-session.ts';
 import { cachedStripping } from './type-stripping.ts';
 
 const evaluation: Evaluation = { budget: 1000, deadlineAt: Number.POSITIVE_INFINITY, moment: 0 };
@@ -40,13 +40,6 @@ function keptOf(settled: Settled): number {
     throw new Error(settled.failed.issue.detail);
   }
   return settled.kept;
-}
-
-function keptAnswerOf(called: Called): number {
-  if (called.kept === undefined) {
-    throw new Error('The call kept no answer');
-  }
-  return called.kept;
 }
 
 const branching = [
@@ -147,8 +140,9 @@ describe('the stack of a program', () => {
       ),
     );
 
-    expect(context.call({ fn, args: [], form: 'expression', keep: false }, evaluation)).toMatchObject({
-      run: { ran: 'exhausted', limit: 'stack' },
+    expect(context.call({ fn, args: [], form: 'expression' }, evaluation)).toMatchObject({
+      ran: 'exhausted',
+      limit: 'stack',
     });
     expect(runtime.broken()).toBe(true);
     context.close();
@@ -189,22 +183,22 @@ describe('what a program throws', () => {
 });
 
 describe('a context of the sandbox', () => {
-  it('keeps the value a call answers when asked to, and lets go of what it is told to forget', async () => {
+  it('calls a function over the values it parsed, and lets go of what it is told to forget', async () => {
     const instance = await freshInstance(unitMemoryBytes);
     const runtime = sandboxRuntimeOf(instance, settings);
     const context = runtime.context();
     const fn = keptOf(context.expression('((value) => (\n[value]\n))', evaluation));
     const value = keptOf(context.parsed('{"a":1}', evaluation));
 
-    const called = context.call({ fn, args: [value], form: 'expression', keep: true }, evaluation);
-    const again = context.call({ fn, args: [keptAnswerOf(called)], form: 'expression', keep: false }, evaluation);
+    const called = context.call({ fn, args: [value], form: 'expression' }, evaluation);
+    const again = context.call({ fn, args: ['[{"a":1}]'], form: 'expression' }, evaluation);
     context.forget(value);
     context.close();
     runtime.close();
 
-    expect([called.run, again]).toEqual([
+    expect([called, again]).toEqual([
       { ran: 'answered', text: '[{"a":1}]', work: 0 },
-      { run: { ran: 'answered', text: '[[{"a":1}]]', work: 0 } },
+      { ran: 'answered', text: '[[{"a":1}]]', work: 0 },
     ]);
   });
 
@@ -220,9 +214,7 @@ describe('a context of the sandbox', () => {
 
     expect(context.exported(fn, 'missing')).toBeUndefined();
     expect(context.parsed('not json', evaluation)).toEqual({ failed: unreadable });
-    expect(context.call({ fn, args: ['1', 'not json'], form: 'expression', keep: false }, evaluation)).toEqual({
-      run: unreadable,
-    });
+    expect(context.call({ fn, args: ['1', 'not json'], form: 'expression' }, evaluation)).toEqual(unreadable);
     context.close();
     runtime.close();
   });
@@ -241,13 +233,8 @@ describe('a context whose instance breaks', () => {
         failed: { ran: 'exhausted', limit: 'memory' },
       });
       expect(
-        context.call(
-          { fn: 0, args: [JSON.stringify('x'.repeat(20_000_000))], form: 'module', keep: false },
-          evaluation,
-        ),
-      ).toMatchObject({
-        run: { ran: 'exhausted', limit: 'memory' },
-      });
+        context.call({ fn: 0, args: [JSON.stringify('x'.repeat(20_000_000))], form: 'module' }, evaluation),
+      ).toMatchObject({ ran: 'exhausted', limit: 'memory' });
       context.close();
       runtime.close();
     },
@@ -259,8 +246,6 @@ describe('a context whose instance breaks', () => {
     const context = runtime.context();
     context.close();
 
-    expect(() => context.call({ fn: 0, args: [], form: 'module', keep: false }, evaluation)).toThrow(
-      'Lifetime not alive',
-    );
+    expect(() => context.call({ fn: 0, args: [], form: 'module' }, evaluation)).toThrow('Lifetime not alive');
   });
 });

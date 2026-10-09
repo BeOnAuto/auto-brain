@@ -56,8 +56,7 @@ function keptOn(context: SandboxContext, preparing: Preparing, roots: readonly n
     }
     defined.push(settled.kept);
     return (value, evaluation) =>
-      state.frozen ??
-      context.call({ fn: settled.kept, args: [value], form: 'expression', keep: false }, evaluation).run;
+      state.frozen ?? context.call({ fn: settled.kept, args: [value], form: 'expression' }, evaluation);
   };
   return {
     define: (source) => {
@@ -106,12 +105,17 @@ function loadedFold(context: SandboxContext, source: string, preparing: Preparin
 function foldingOf(context: SandboxContext, fold: number, view: number): Fold {
   const current = { view };
   return (event, evaluation) => {
-    const called = context.call({ fn: fold, args: [current.view, event], form: 'module', keep: true }, evaluation);
-    if (called.kept !== undefined) {
-      context.forget(current.view);
-      current.view = called.kept;
+    const run = context.call({ fn: fold, args: [current.view, event], form: 'module' }, evaluation);
+    if (run.ran !== 'answered') {
+      return run;
     }
-    return called.run;
+    const next = context.parsedUncounted(run.text);
+    if ('failed' in next) {
+      return next.failed;
+    }
+    context.forget(current.view);
+    current.view = next.kept;
+    return run;
   };
 }
 

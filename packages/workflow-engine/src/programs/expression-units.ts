@@ -65,7 +65,7 @@ export function expressionUnitOf(
         const args = names.map((name) => JSON.stringify(values[name]));
         return 'failed' in loaded
           ? loaded.failed
-          : context.call({ fn: loaded.kept, args, form: 'expression', keep: false }, evaluation).run;
+          : context.call({ fn: loaded.kept, args, form: 'expression' }, evaluation);
       } finally {
         context.close();
       }

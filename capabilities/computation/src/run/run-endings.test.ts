@@ -105,17 +105,20 @@ describe('a run whose program answers what cannot be its output', { timeout: wor
     );
   });
 
-  it('ends in conflict when its output nests deeper than 512 levels', async () => {
-    expect(
-      await ended(
-        'let value: unknown = 0;\n  for (let level = 0; level < 600; level++) value = [value];\n  return value;',
-      ),
-    ).toEqual(
-      unworkable(
-        `The program's output is not JSON: ${`The answer holds a value deeper than 512 levels at $${'[0]'.repeat(512)}, which JSON cannot carry`.slice(0, 1024)}…`,
-      ),
-    );
-  });
+  it.each([600, 100_000])(
+    'ends in conflict when its output nests deeper than 512 levels, %i of them',
+    async (levels) => {
+      expect(
+        await ended(
+          `let value: unknown = 0;\n  for (let level = 0; level < ${levels}; level++) value = [value];\n  return value;`,
+        ),
+      ).toEqual(
+        unworkable(
+          `The program's output is not JSON: ${`The answer holds a value deeper than 512 levels at $${'[0]'.repeat(512)}, which JSON cannot carry`.slice(0, 1024)}…`,
+        ),
+      );
+    },
+  );
 
   it('ends in conflict when its output is not what the output schema allows', async () => {
     expect(

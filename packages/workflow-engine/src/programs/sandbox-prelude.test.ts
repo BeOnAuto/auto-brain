@@ -164,6 +164,38 @@ describe('the names the sandbox removes', () => {
   });
 });
 
+const refusedAnswers: readonly (readonly [string, string, string])[] = [
+  ['a Date', 'return { at: new Date(0) };', 'a Date at $.at'],
+  ['a Map', 'return { kept: new Map([[1, 2]]) };', 'a Map at $.kept'],
+  ['a Set', 'return { list: [1, new Set([1])] };', 'a Set at $.list[1]'],
+  ['a class instance', 'class Point { x = 1 }\n  return { point: new Point() };', 'a Point at $.point'],
+  ['a boxed string', 'return { text: new String("x") };', 'a String at $.text'],
+  ['a typed array', 'return { bytes: new Uint8Array(2) };', 'a Uint8Array at $.bytes'],
+  ['a function', 'return { run() { return 1; } };', 'a function at $.run'],
+  ['a BigInt', 'return { count: 10n };', 'a bigint at $.count'],
+  ['a symbol', 'return { tag: Symbol("x") };', 'a symbol at $.tag'],
+  ['NaN', 'return { values: [0 / 0] };', 'NaN at $.values[0]'],
+  ['Infinity', 'return { "odd key": 1 / 0 };', 'Infinity at $["odd key"]'],
+  ['undefined', 'return { missing: undefined };', 'undefined at $.missing'],
+  ['an empty place', 'return [1, , 3];', 'an empty place in a list at $[1]'],
+  [
+    'a cycle',
+    'const looped: Record<string, unknown> = { inner: {} };\n  Reflect.set(Object(looped.inner), "back", looped);\n  return looped;',
+    'a cycle at $.inner.back',
+  ],
+  [
+    'an object of no named class',
+    'return { made: Object.create(Object.create(null)) };',
+    'an object of a class at $.made',
+  ],
+  ['a member that writes itself with toJSON', 'return { at: { toJSON: () => 1 } };', 'a function at $.at.toJSON'],
+  [
+    'a member that changes as it is read',
+    'return { get fresh(): object { return {}; } };',
+    'a member that changes as it is read',
+  ],
+];
+
 describe('the answer of a program', () => {
   it('is read as JSON in the order its keys were written', async () => {
     expect(await returned('return { b: 1, a: [1, "x", true, null, { c: -0 }] };')).toMatchObject({
@@ -172,31 +204,7 @@ describe('the answer of a program', () => {
     });
   });
 
-  it.each([
-    ['a Date', 'return { at: new Date(0) };', 'a Date at $.at'],
-    ['a Map', 'return { kept: new Map([[1, 2]]) };', 'a Map at $.kept'],
-    ['a Set', 'return { list: [1, new Set([1])] };', 'a Set at $.list[1]'],
-    ['a class instance', 'class Point { x = 1 }\n  return { point: new Point() };', 'a Point at $.point'],
-    ['a boxed string', 'return { text: new String("x") };', 'a String at $.text'],
-    ['a typed array', 'return { bytes: new Uint8Array(2) };', 'a Uint8Array at $.bytes'],
-    ['a function', 'return { run() { return 1; } };', 'a function at $.run'],
-    ['a BigInt', 'return { count: 10n };', 'a bigint at $.count'],
-    ['a symbol', 'return { tag: Symbol("x") };', 'a symbol at $.tag'],
-    ['NaN', 'return { values: [0 / 0] };', 'NaN at $.values[0]'],
-    ['Infinity', 'return { "odd key": 1 / 0 };', 'Infinity at $["odd key"]'],
-    ['undefined', 'return { missing: undefined };', 'undefined at $.missing'],
-    ['an empty place', 'return [1, , 3];', 'an empty place in a list at $[1]'],
-    [
-      'a cycle',
-      'const looped: Record<string, unknown> = { inner: {} };\n  Reflect.set(Object(looped.inner), "back", looped);\n  return looped;',
-      'a cycle at $.inner.back',
-    ],
-    [
-      'an object of no named class',
-      'return { made: Object.create(Object.create(null)) };',
-      'an object of a class at $.made',
-    ],
-  ])('refuses %s, naming where it is', async (_what, body, where) => {
+  it.each(refusedAnswers)('refuses %s, naming where it is', async (_what, body, where) => {
     expect(await returned(body)).toMatchObject({
       ran: 'unfit',
       issue: { detail: `The answer holds ${where}, which JSON cannot carry` },

@@ -71,20 +71,27 @@ const writing = String.raw`
         return false;
     }
   };
-  const rawOf = (holder, key, given) => {
-    const described = getOwnPropertyDescriptor(holder, key);
-    return { present: described !== undefined, raw: described === undefined ? undefined : hasOwn(described, 'value') ? described.value : given };
+  const rawOf = (holder, key) => ({ present: hasOwn(holder, key), raw: holder[key] });
+  const replacerOf = (form) => function (key, given) {
+    if (this[key] !== given) throw refusal;
+    switch (typeof given) {
+      case 'string':
+      case 'boolean':
+        return given;
+      case 'number':
+        if (given !== given || given === Infinity || given === -Infinity) throw refusal;
+        return given;
+      case 'object':
+        if (given === null || isPlain(given)) return given;
+        throw refusal;
+      case 'undefined':
+        if (form === 'expression' && hasOwn(this, key)) return null;
+        throw refusal;
+      default:
+        throw refusal;
+    }
   };
-  const replacerOf = (form, depths) => function (key, given) {
-    const { present, raw } = rawOf(this, key, given);
-    if (!isJsonValue(raw, form, present)) throw refusal;
-    if (raw === undefined) return null;
-    if (typeof raw !== 'object' || raw === null) return raw;
-    const depth = (apply(mapGet, depths, [this]) ?? 0) + 1;
-    if (depth > mostDepth) throw refusal;
-    apply(mapSet, depths, [raw, depth]);
-    return raw;
-  };
+  const isStackOverflow = (error) => error instanceof StackOverflow && error.message === 'stack overflow';
   const kindOf = (raw, present) => {
     if (!present) return 'an empty place in a list';
     if (typeof raw === 'number') return TextOf(raw);
@@ -117,7 +124,7 @@ const writing = String.raw`
     const pending = [{ holder: { '': root }, key: '', path: '$', ancestors: [] }];
     while (pending.length > 0) {
       const entry = apply(pop, pending, []);
-      const { present, raw } = rawOf(entry.holder, entry.key, undefined);
+      const { present, raw } = rawOf(entry.holder, entry.key);
       if (!isJsonValue(raw, form, present)) return kindOf(raw, present) + ' at ' + entry.path;
       if (typeof raw === 'object' && raw !== null && contains(entry.ancestors, raw)) return 'a cycle at ' + entry.path;
       if (typeof raw === 'object' && raw !== null && entry.ancestors.length >= mostDepth) return 'a value deeper than ' + mostDepth + ' levels at ' + entry.path;
@@ -127,10 +134,11 @@ const writing = String.raw`
   };
   const write = (value, form, most) => {
     try {
-      const text = stringify(value, replacerOf(form, new Depths()));
+      const text = stringify(value, replacerOf(form));
       return text.length > most ? text.length : text;
     } catch (error) {
-      const refused = error === refusal || error instanceof Refusal ? refusedIn(value, form) : undefined;
+      const refusing = error === refusal || error instanceof Refusal || isStackOverflow(error);
+      const refused = refusing ? refusedIn(value, form) ?? (error === refusal ? 'a member that changes as it is read' : undefined) : undefined;
       if (refused === undefined) throw error;
       throw new Refusal('The answer holds ' + refused + ', which JSON cannot carry');
     }
@@ -235,9 +243,7 @@ function preludeWith(frozen: string, exported: string): string {
   const setHas = Seen.prototype.has;
   const setAdd = Seen.prototype.add;
   const setSize = getOwnPropertyDescriptor(Seen.prototype, 'size').get;
-  const Depths = Map;
-  const mapGet = Depths.prototype.get;
-  const mapSet = Depths.prototype.set;
+  const StackOverflow = InternalError;
   const push = Array.prototype.push;
   const pop = Array.prototype.pop;
   const slice = String.prototype.slice;

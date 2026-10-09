@@ -85,3 +85,48 @@ describe('a fold in a frozen page', () => {
     ]);
   });
 });
+
+const droppedByJson: readonly (readonly [string, string, Json])[] = [
+  [
+    'two members that are one object',
+    [
+      'export function fold(view: any): any {',
+      '  if (view.a === undefined) {',
+      '    const shared = { n: 0 };',
+      '    return { a: shared, b: shared, aliased: 0 };',
+      '  }',
+      '  view.a.n += 1;',
+      '  return { a: view.a, b: view.b, aliased: view.b.n };',
+      '}',
+    ].join('\n'),
+    { a: { n: 2 }, b: { n: 0 }, aliased: 0 },
+  ],
+  [
+    'a negative zero',
+    [
+      'export function fold(view: any): any {',
+      '  return { zero: -0, sign: view.zero === undefined ? null : String(1 / view.zero) };',
+      '}',
+    ].join('\n'),
+    { zero: 0, sign: 'Infinity' },
+  ],
+  [
+    'a member keyed by a symbol',
+    [
+      'export function fold(view: any): any {',
+      '  const seen = (view[Symbol.for("seen")] ?? 0) + 1;',
+      '  return { [Symbol.for("seen")]: seen, seen };',
+      '}',
+    ].join('\n'),
+    { seen: 1 },
+  ],
+];
+
+describe('the view a fold is handed', () => {
+  it.each(droppedByJson)(
+    'is the JSON the last fold wrote, so %s it answered is gone in pages of one and of three',
+    async (_dropped, fold, view) => {
+      expect([await inPagesOf(1, fold, {}), await inPagesOf(3, fold, {})]).toEqual([{ view }, { view }]);
+    },
+  );
+});
