@@ -108,7 +108,7 @@ describe('a cancel request on a run', () => {
         status: 'rejected',
         reason: 'conflict',
         detail:
-          'The run runs within the call that started it, which no server can interrupt from outside, so it cannot be cancelled; it ends when that call does',
+          'The run takes place within the call that started it, which no server can interrupt from outside, so it cannot be cancelled; it ends when that call does',
       },
     ]);
   });

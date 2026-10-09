@@ -114,7 +114,7 @@ describe('send_run_event to no running workflow', () => {
   });
 
   it.each(['not_started', 'ended'] as const)(
-    'is rejected as not found when the run of the run answers %s',
+    'is rejected as not found when the run on the host answers %s',
     async (answer) => {
       const runId = idOf(5);
       const answering = defineSendRunEvent({ deliver: () => Effect.succeed(answer) });

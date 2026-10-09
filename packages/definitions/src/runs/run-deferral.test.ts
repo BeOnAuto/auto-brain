@@ -226,7 +226,7 @@ describe('cancelling a run', () => {
       Result.fail(
         new Conflict({
           detail:
-            'The run runs within the call that started it, which no server can interrupt from outside, so it cannot be cancelled; it ends when that call does',
+            'The run takes place within the call that started it, which no server can interrupt from outside, so it cannot be cancelled; it ends when that call does',
         }),
       ),
     );
