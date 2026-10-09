@@ -158,8 +158,9 @@ Compression is not part of the format. A run store may compress the events and s
 
 ## State formats
 
-Every event and every snapshot names its state format; `stateFormat` is 6. A change to the state's schema is a new format, and:
+Every event and every snapshot names its state format; `stateFormat` is 7. A change to the state's schema, or to the schema of an event or a snapshot, is a new format, and:
 
+- an event and a snapshot are read with the schemas of the format they name: an older format's are frozen copies, read strictly, and an event of an older format is measured as it was written (`eventBytesOf`), so its bytes are those its history counted;
 - each event is folded under its own format, and a state that crosses to a newer format is read strictly under the old one and upcast by that format's upcaster (`OlderFormat.read`, `OlderFormat.upcast`) before the next event applies;
 - formats never go back within a stream, and a format newer than the code is refused, both when the run loads (`UnreadableRun`);
 - `packages/workflow-engine/corpus/format-<n>.json` holds a committed stream and snapshot of every format, which must load to the state it recorded (`src/run-log/corpus.test.ts`). A new format adds its corpus and keeps every older one loading.
@@ -173,6 +174,8 @@ Format 4 came with the step entries: across inputs the state keeps, in a list wa
 Format 5 came with reactions: the state keeps `listeners`, the listen tasks open with a filter that names a type, by the key of their task run; `emitted`, the count and the bytes of the events the run emitted; `inbox.offeredIds`, the keys of the offers it took, a list apart from `receivedIds`; and a listen for all of several filters keeps its events by filter, `consumed[i]` the event of filter `i` or null, since it takes events in any order. Format 4 is read strictly with its own frozen schema (`src/run-log/format-four.ts`) and upcast: no offers and no emissions, a listener for every open listen whose task names a type in a filter, found in the document the state holds, and its events, taken in filter order, already where format 5 keeps them.
 
 Format 6 came with waiting calls and cancellations: the run's limits may hold `longestCallMsByTask`, the longest a call of each task may take, by its reference, and a cancelled outcome holds `cancel`, who asked, the kind (`requested`, `deadline` or `parent_ended`) and the reason, so the run's settlement says who cancelled it and why. Format 5 is read strictly with its own frozen schema (`src/run-log/format-five.ts`) and upcast: a cancelled outcome gains a cancel by `unknown`, of the kind `requested`, whose reason says it was recorded before a cancel named who asked.
+
+Format 7 came with the one vocabulary: the state, its call keys, the outputs of an event and the envelope of a snapshot name the run `runId`, where formats 1 to 6 named it otherwise. Format 6 is read strictly with its own frozen schema (`src/run-log/format-six.ts`) and upcast by naming the run `runId` in the state, in the keys of its calls and listeners, and in the key of every call frame. The events and snapshots of formats 1 to 6 are read strictly with the frozen schemas of `src/run-log/format-six-records.ts`, which give their outputs and envelope the new name, and are written back and measured with the old. What a run holds as data, its document, its held values and a call's function and arguments, keeps the words it was written with.
 
 Patches are never rewritten: a patch applies only to the format it was written for. `evolve` applies a patch strictly, `add` to a member that exists or `replace` and `remove` of one that does not die with `PatchFailed`, and the result must decode as the state with no member the format does not describe (`onExcessProperty: 'error'`), so a skew between a log and the code that reads it is caught when the run loads, never folded into a wrong state.
 
