@@ -2,8 +2,8 @@ import { Buffer } from 'node:buffer';
 
 import { refusingForbiddenCharacters, type DeliveredAs, type RepliesIn } from '@beonauto/definitions';
 import { parsedTemplate } from '@beonauto/definitions/template';
-import type { CallAnswer } from '@beonauto/mcp';
-import { Option, Result, Schema } from 'effect';
+import { answerDocument, type CallAnswer } from '@beonauto/mcp';
+import { Result, Schema } from 'effect';
 
 import { interactionEngine } from '../document/request-templates.ts';
 import { textAt } from '../route/json-pointers.ts';
@@ -12,16 +12,6 @@ import type { DeliveringRecord } from '../run/request-record.ts';
 import { renderedText } from '../run/text-rendering.ts';
 
 const sentBounds = { partBytes: 256 } as const;
-
-const decodeJson = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Json));
-
-export function documentOf({ content, structuredContent }: CallAnswer): Schema.Json | undefined {
-  if (structuredContent !== undefined) {
-    return structuredContent;
-  }
-  const text = content.find(({ type }) => type === 'text')?.text;
-  return text === undefined ? undefined : Option.getOrUndefined(decodeJson(text));
-}
 
 const isPartText = Schema.is(Schema.String.check(refusingForbiddenCharacters));
 
@@ -85,10 +75,10 @@ export function keptOf(record: DeliveringRecord, answer: CallAnswer): Kept {
   if (sent === undefined) {
     return {};
   }
-  const document = documentOf(answer);
+  const document = answerDocument(answer);
   const kept =
     document === undefined
-      ? Result.fail('The answer of the tool holds no JSON document, in its structured content or its first text')
+      ? Result.fail('The answer of the tool holds neither structured content nor text')
       : Result.flatMap(
           Result.all({
             conversation: partAt(document, sent.conversation, 'conversation'),

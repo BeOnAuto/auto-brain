@@ -79,7 +79,7 @@ Attempts follow `attemptSchedule` (`src/schedule/attempt-schedule.ts`): five, th
 
 ## Words
 
-The capability's run words show the deferral as `interaction_requested`, a type the brain reserves, "A request is waiting for an answer, through the tool post_message of chat, until …", or "… in the inbox …", with the delivery, the party, the answerer where it differs, the size of the message, whether it takes an answer and the expiry, and never the message. An answer is described as the output of any run.
+The capability's run words show the deferral as `interaction_requested`, a type the brain reserves, "A request is waiting for an answer, through the post message tool of chat, until …", or "… in the inbox …", with the delivery, the party, the answerer where it differs, the size of the message, whether it takes an answer and the expiry, and never the message. An answer is described as the output of any run.
 
 ## Bounds
 

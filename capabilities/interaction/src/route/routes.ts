@@ -1,3 +1,4 @@
+import { toolInWords } from '@beonauto/mcp';
 import type { ToolReference } from '@beonauto/mcp/policy';
 
 import type { Replies } from './route-schemas.ts';
@@ -22,9 +23,7 @@ export function routeOf({ deliver, replies }: RecordedBlocks): Route {
 }
 
 export function throughWords(route: Route): string {
-  return route.kind === 'inbox'
-    ? 'in the inbox'
-    : `through the tool ${route.delivery.tool} of ${route.delivery.server}`;
+  return route.kind === 'inbox' ? 'in the inbox' : `through ${toolInWords(route.delivery)}`;
 }
 
 export function toolsOf(route: Route): readonly ToolReference[] {

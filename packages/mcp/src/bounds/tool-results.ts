@@ -58,6 +58,8 @@ export function answerOf(resultJson: string): ToolAnswer {
   return Option.getOrElse(decodeAnswer(resultJson), () => noAnswer);
 }
 
+const decodeJsonText = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Json));
+
 export const decodeToolResult = Schema.decodeUnknownSync(ToolResultSchema);
 
 export const decodeListedTools = Schema.decodeUnknownSync(Schema.Struct({ tools: Schema.Array(ListedToolSchema) }));
@@ -85,6 +87,14 @@ export function resultText({ content, structuredContent }: ToolResult): string {
   const blocks = content.map((block) => (isText(block) ? block.text : placeholderOf(block)));
   const lines = hasText || structuredContent === undefined ? blocks : [JSON.stringify(structuredContent), ...blocks];
   return lines.length === 0 ? nothing : lines.join('\n');
+}
+
+export function answerDocument({ content, structuredContent }: ToolAnswer): Schema.Json | undefined {
+  if (structuredContent !== undefined) {
+    return structuredContent;
+  }
+  const text = content.find((block) => isText(block))?.text;
+  return text === undefined ? undefined : Option.getOrElse(decodeJsonText(text), () => text);
 }
 
 export function errorTextForModel(text: string, scrub: (text: string) => string): string {

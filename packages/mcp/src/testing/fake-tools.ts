@@ -3,6 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import { McpServer, ProtocolError, ProtocolErrorCode, type CallToolResult } from '@modelcontextprotocol/server';
 
 import type { FakeChat } from './fake-chat.ts';
+import { dataTools } from './fake-data-tools.ts';
 
 export interface ReceivedCall {
   readonly tool: string;
@@ -10,11 +11,15 @@ export interface ReceivedCall {
   readonly meta: unknown;
 }
 
+export type FakeHints = Readonly<Record<string, Readonly<Record<string, boolean>>>>;
+
 export interface FakeToolState {
   readonly receive: (call: ReceivedCall) => number;
   readonly isRemoved: (tool: string) => boolean;
   readonly annotated: boolean;
+  readonly hints: FakeHints;
   readonly chat?: FakeChat | undefined;
+  readonly data: boolean;
   readonly exit: () => void;
 }
 
@@ -45,7 +50,7 @@ interface CallContext {
   readonly mcpReq: { readonly signal: Readonly<AbortSignal> };
 }
 
-interface FakeTool {
+export interface FakeTool {
   readonly name: string;
   readonly title?: string;
   readonly description?: string;
@@ -248,8 +253,12 @@ function chatTools(chat: FakeChat): readonly FakeTool[] {
   ];
 }
 
-function toolsOf({ chat }: FakeToolState): readonly FakeTool[] {
-  return chat === undefined ? fakeTools : [...fakeTools, ...chatTools(chat)];
+function toolsOf({ chat, data }: FakeToolState): readonly FakeTool[] {
+  return [...fakeTools, ...(chat === undefined ? [] : chatTools(chat)), ...(data ? dataTools : [])];
+}
+
+function hintsOf({ hints }: FakeToolState, tool: FakeTool) {
+  return hints[tool.name] ?? tool.annotations;
 }
 
 export function fakeToolServer(state: FakeToolState): McpServer {
@@ -268,7 +277,7 @@ export function fakeToolServer(state: FakeToolState): McpServer {
         properties: { ...tool.inputSchema.properties },
         required: [...tool.inputSchema.required],
       },
-      annotations: state.annotated ? tool.annotations : undefined,
+      annotations: state.annotated ? hintsOf(state, tool) : undefined,
     })),
   }));
   mcp.server.setRequestHandler('tools/call', async ({ params }: CallRequest, { mcpReq }: CallContext) => {

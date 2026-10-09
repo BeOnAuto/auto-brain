@@ -2,7 +2,7 @@ import type { Schema } from 'effect';
 
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
 import { callsEnded, cutToDescriptionBound, noCalls } from '../bounds/call-bounds.ts';
-import { isReadOnly, type ToolAnnotations } from '../bounds/result-text.ts';
+import { isReadOnly, type ToolAnnotations } from '../bounds/tool-results.ts';
 import { modelFacingNames } from '../names/model-facing-names.ts';
 import { toolsInWords } from '../names/tool-words.ts';
 import type { CallReply } from './call-replies.ts';

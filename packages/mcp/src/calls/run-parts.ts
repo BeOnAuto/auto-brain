@@ -3,8 +3,8 @@ import type { Effect } from 'effect';
 import type { CallerContext, ServerMessage } from '../access/caller-context.ts';
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
 import type { CallTally, Timing } from '../bounds/call-bounds.ts';
-import type { ListedTool } from '../bounds/result-text.ts';
 import type { Secrets } from '../bounds/secrets.ts';
+import type { ListedTool } from '../bounds/tool-results.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { ServerSlot } from './server-slot.ts';
 

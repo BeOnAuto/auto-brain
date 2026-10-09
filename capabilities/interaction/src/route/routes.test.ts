@@ -40,7 +40,7 @@ describe('the route of a request', () => {
   it('is told in the same words by the capability and by the history of a delivery', () => {
     const through = throughWords(routeOf({ deliver: chat }));
 
-    expect([through, throughWords(routeOf({}))]).toEqual(['through the tool post_message of chat', 'in the inbox']);
+    expect([through, throughWords(routeOf({}))]).toEqual(['through the post message tool of chat', 'in the inbox']);
     expect(throughTheTool(chat)).toBe(through);
     expect(deliveryStarted({ number: 1, ...chat })).toBe(`Delivery attempt 1 of the request started, ${through}.`);
   });

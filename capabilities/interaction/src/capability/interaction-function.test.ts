@@ -90,7 +90,7 @@ describe('the words of an interaction run', () => {
       },
       {
         summary:
-          'A notification is waiting to be delivered, through the tool post_message of chat, until 2026-10-09T09:00:00.000Z.',
+          'A notification is waiting to be delivered, through the post message tool of chat, until 2026-10-09T09:00:00.000Z.',
         data: {
           delivery: { server: 'chat', tool: 'post_message' },
           to: 'a'.repeat(256),

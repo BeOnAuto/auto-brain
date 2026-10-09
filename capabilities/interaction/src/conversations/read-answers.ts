@@ -1,9 +1,9 @@
 import { Buffer } from 'node:buffer';
 
-import { toolBounds, type CalledOnce, type ReadOutcome } from '@beonauto/mcp';
+import { answerDocument, toolBounds, type CalledOnce, type ReadOutcome } from '@beonauto/mcp';
 
 import { endOfCall } from '../delivery/call-ends.ts';
-import { documentOf, isBoundedPart } from '../delivery/sent-messages.ts';
+import { isBoundedPart } from '../delivery/sent-messages.ts';
 import type { Reply } from '../replies/reply-taking.ts';
 import { textAt, valueAt } from '../route/json-pointers.ts';
 import type { Replies } from '../route/route-schemas.ts';
@@ -50,17 +50,19 @@ function listed(replies: Replies, document: unknown): ReadAnswer {
 }
 
 export function readAnswerOf(replies: Replies, called: CalledOnce): ReadAnswer {
-  if (called.kind !== 'answered') {
-    return failedRead(called.kind === 'not_offered' ? 'tool_not_offered' : 'server_failure');
+  if (called.kind === 'unopened') {
+    return failedRead(called.refused === 'tool_not_offered' ? 'tool_not_offered' : 'server_failure');
   }
   const end = endOfCall(called);
   if ('failed' in end) {
     const { because, retryAfterMs } = end.failed;
     return failedRead(because === 'timed_out' || because === 'tool_error' ? because : 'server_failure', retryAfterMs);
   }
-  if (Buffer.byteLength(JSON.stringify(end.answered), 'utf8') > toolBounds.resultBytes) {
-    return failedRead('too_large');
+  const document = answerDocument(end.answered);
+  if (document === undefined) {
+    return failedRead('unreadable');
   }
-  const document = documentOf(end.answered);
-  return document === undefined ? failedRead('unreadable') : listed(replies, document);
+  return Buffer.byteLength(JSON.stringify(document), 'utf8') > toolBounds.resultBytes
+    ? failedRead('too_large')
+    : listed(replies, document);
 }

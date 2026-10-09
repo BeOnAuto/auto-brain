@@ -33,11 +33,13 @@ function endOfAnswer(called: AnsweredOnce, record: DeliveringRecord): AttemptEnd
 }
 
 export function endOf(called: CalledOnce, record: DeliveringRecord): AttemptEnd {
-  if (called.kind === 'not_offered') {
-    return { outcome: 'failed', because: 'tool_not_offered', ...detailOf(called.detail) };
+  if (called.kind === 'answered') {
+    return endOfAnswer(called, record);
   }
-  if (called.kind === 'unopened') {
-    return { outcome: 'failed', because: 'server_failure', ...detailOf(called.detail) };
-  }
-  return endOfAnswer(called, record);
+  const { refused, detail } = called;
+  return {
+    outcome: 'failed',
+    because: refused === 'tool_not_offered' ? 'tool_not_offered' : 'server_failure',
+    ...detailOf(detail),
+  };
 }

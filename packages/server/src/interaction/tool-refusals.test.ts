@@ -12,8 +12,6 @@ const decodeHistory = Schema.decodeUnknownSync(
   Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),
 );
 
-const namingTheTool: unknown = expect.stringContaining('post_message');
-
 function asked(server: Awaited<ReturnType<typeof servingInteractions>>) {
   return server.call('POST', `${alpha}/definitions/interaction/approve-brief/run`, {
     body: { input: brief, run_id: '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a' },
@@ -54,7 +52,7 @@ describe('a delivery through a tool this brain may not use, over HTTP', { timeou
     expect(chat.received()).toEqual([]);
   });
 
-  it('fails an attempt as a tool error when the server no longer lists the tool, and tries again', async () => {
+  it('fails an attempt as a tool no longer offered when the server no longer lists the tool, sending nothing, and tries again', async () => {
     const chat = await chatServer();
     chat.removeTool('post_message');
     const server = await servingInteractions(chatDelivery, chatEnvironment(chat.url));
@@ -65,7 +63,12 @@ describe('a delivery through a tool this brain may not use, over HTTP', { timeou
       (seen) => seen.length >= 2,
     );
 
-    expect(facts.at(-1)).toMatchObject({ outcome: 'failed', because: 'tool_error', detail: namingTheTool });
+    expect(facts.at(-1)).toMatchObject({
+      outcome: 'failed',
+      because: 'tool_not_offered',
+      detail: 'The MCP server chat does not list the tool post_message',
+    });
+    expect(chat.received()).toEqual([]);
     expect((await server.call('GET', `${alpha}/interactions`)).body).toMatchObject({
       interactions: [{ standing: 'retrying' }],
     });

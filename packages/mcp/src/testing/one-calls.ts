@@ -2,8 +2,10 @@ import { Effect } from 'effect';
 import { afterEach } from 'vitest';
 
 import type { ToolAccess } from '../access/tool-access.ts';
-import type { CalledOnce, DeliveryCall } from '../delivery/delivery-bounds.ts';
-import { serveFakeMcp, type FakeMcpServer } from './fake-mcp-server.ts';
+import type { Timing } from '../bounds/call-bounds.ts';
+import type { CalledOnce } from '../one-call/called-once.ts';
+import type { OneCall, RunCall } from '../one-call/one-call.ts';
+import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from './fake-mcp-server.ts';
 import { patientTiming } from './index.ts';
 import { reportingAccess } from './reporting-access.ts';
 
@@ -23,8 +25,8 @@ export function closedAfter(close: () => Promise<void>): void {
   closing.push(close);
 }
 
-export async function deliveryServer(): Promise<FakeMcpServer> {
-  const fake = await serveFakeMcp({ bearer: deliveryKey });
+export async function deliveryServer(options: FakeMcpOptions = {}): Promise<FakeMcpServer> {
+  const fake = await serveFakeMcp({ ...options, bearer: deliveryKey });
   closedAfter(fake.close);
   return fake;
 }
@@ -34,7 +36,7 @@ const delivered = ['echo', 'denied', 'sleep', 'large', 'search', 'gone', 'profil
 export function deliveryAccess(
   url: string,
   changes: Readonly<Record<string, unknown>> = {},
-  callMs = patientTiming.callMs,
+  timing: Partial<Timing> = {},
 ): ToolAccess {
   const { access } = reportingAccess(
     {
@@ -46,13 +48,13 @@ export function deliveryAccess(
         ...changes,
       },
     },
-    { environment: { GRAPH_API_KEY: deliveryKey }, timing: { ...patientTiming, callMs } },
+    { environment: { GRAPH_API_KEY: deliveryKey }, timing: { ...patientTiming, ...timing } },
   );
   closedAfter(access.close);
   return access;
 }
 
-export const delivery: DeliveryCall = {
+export const delivery: OneCall = {
   org: 'acme',
   brain: 'alpha',
   reference: { server: 'graph', tool: 'echo' },
@@ -62,15 +64,16 @@ export const delivery: DeliveryCall = {
 
 export function calledOnce(
   access: Pick<ToolAccess, 'callOnce'>,
-  changes: Readonly<Partial<DeliveryCall>> = {},
+  changes: Readonly<Partial<OneCall>> = {},
+  runCall?: RunCall,
 ): Promise<CalledOnce> {
-  return Effect.runPromise(access.callOnce({ ...delivery, ...changes }));
+  return Effect.runPromise(access.callOnce({ ...delivery, ...changes }, runCall));
 }
 
 export function failedWith(outcome: string, detail: unknown, retryAfterMs: number | null = null) {
   return { kind: 'answered', outcome, detail, retryAfterMs };
 }
 
-export function unopenedWith(detail: string) {
-  return { kind: 'unopened', because: 'mcp_server_failed', detail };
+export function unopenedWith(refused: string, because: string, detail: string) {
+  return { kind: 'unopened', refused, because, detail };
 }

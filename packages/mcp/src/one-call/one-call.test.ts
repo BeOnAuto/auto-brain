@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer';
 
 import { describe, expect, it } from 'vitest';
 
+import { deniedText } from '../testing/index.ts';
 import {
   calledOnce,
   delivery,
@@ -11,8 +12,8 @@ import {
   deliveryKey,
   deliveryServer,
   failedWith,
-} from '../testing/delivery-calls.ts';
-import { deliveryBounds } from './delivery-bounds.ts';
+  unopenedWith,
+} from '../testing/one-calls.ts';
 
 const largeText = '\u{1F600}'.repeat(8 * 256);
 
@@ -24,8 +25,8 @@ const aNumber: unknown = expect.any(Number);
 
 const scrubbed = JSON.stringify({ token: '[redacted]' });
 
-describe('one call of a tool for a delivery', () => {
-  it('calls the tool with its arguments and the metadata its caller gives, and answers the call whole', async () => {
+describe('one call of a tool', () => {
+  it('lists the tools of its server, calls the tool with the metadata its caller gives, and answers the call whole', async () => {
     const fake = await deliveryServer();
     const access = deliveryAccess(fake.url);
 
@@ -37,6 +38,7 @@ describe('one call of a tool for a delivery', () => {
       durationMs: aNumber,
       detail: '',
       retryAfterMs: null,
+      annotations: undefined,
     });
     expect(access.startOf(delivery)).toEqual({
       server: 'graph',
@@ -51,7 +53,25 @@ describe('one call of a tool for a delivery', () => {
         meta: { 'com.beonauto/run_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
       },
     ]);
-    expect(fake.seen().map(({ rpc }) => rpc)).not.toContain('tools/list');
+  });
+
+  it('lists the tools of its server before it calls one', async () => {
+    const fake = await deliveryServer();
+    await calledOnce(deliveryAccess(fake.url));
+    const asked = fake.seen().map(({ rpc }) => rpc);
+
+    expect(asked.indexOf('tools/list')).toBeGreaterThan(-1);
+    expect(asked.indexOf('tools/list')).toBeLessThan(asked.indexOf('tools/call'));
+  });
+});
+
+describe('what one call answers of its tool', () => {
+  it('answers the hints the server gives the tool it listed', async () => {
+    const fake = await deliveryServer();
+
+    expect(
+      await calledOnce(deliveryAccess(fake.url), { reference: { server: 'graph', tool: 'search' } }),
+    ).toMatchObject({ outcome: 'result', annotations: { readOnlyHint: true, openWorldHint: true } });
   });
 
   it('records the arguments and the answer, scrubbed, where the server records its content', async () => {
@@ -74,32 +94,44 @@ describe('one call of a tool for a delivery', () => {
   });
 });
 
-describe('a call for a delivery that fails', () => {
-  it('is a tool error when the tool answers with one, or the server does not have the tool', async () => {
-    const fake = await deliveryServer();
-    const access = deliveryAccess(fake.url);
+describe('a call that fails', () => {
+  it('is a tool error in the words of the tool when it answers with one, and in the words of the server when it refuses the arguments', async () => {
+    const fake = await deliveryServer({ data: true });
+    const access = deliveryAccess(fake.url, { allowed: ['denied', 'strict'] });
 
-    expect(await calledOnce(access, { reference: { server: 'graph', tool: 'denied' } })).toMatchObject(
-      failedWith('tool_error', expect.stringContaining('The field salary is denied by the policy')),
-    );
-    expect(await calledOnce(access, { reference: { server: 'graph', tool: 'gone' } })).toMatchObject(
-      failedWith('tool_error', expect.stringContaining('Tool gone not found')),
-    );
+    expect(await calledOnce(access, { reference: { server: 'graph', tool: 'denied' } })).toMatchObject({
+      ...failedWith('tool_error', deniedText),
+      fields: { result_bytes: aNumber },
+    });
+    expect(
+      await calledOnce(access, { reference: { server: 'graph', tool: 'strict' }, input: { limit: '15' } }),
+    ).toMatchObject({
+      ...failedWith('tool_error', expect.stringContaining('limit must be a whole number')),
+      fields: { result_bytes: null },
+    });
   });
 
-  it('ends at its call bound, waiting no longer than a delivery may', async () => {
+  it('is not opened for a tool its server does not list, and nothing is sent', async () => {
+    const fake = await deliveryServer();
+
+    expect(await calledOnce(deliveryAccess(fake.url), { reference: { server: 'graph', tool: 'gone' } })).toEqual(
+      unopenedWith('tool_not_offered', 'tool_not_listed', 'The MCP server graph does not list the tool gone'),
+    );
+    expect(fake.received()).toEqual([]);
+  });
+
+  it('ends at its call bound', async () => {
     const fake = await deliveryServer();
     const sleeping = { reference: { server: 'graph', tool: 'sleep' }, input: { ms: 5000 } };
 
-    expect(await calledOnce(deliveryAccess(fake.url, {}, 200), sleeping)).toMatchObject({
+    expect(await calledOnce(deliveryAccess(fake.url, {}, { callMs: 200 }), sleeping)).toMatchObject({
       ...failedWith('timed_out', 'The MCP server did not answer within 200 ms'),
       fields: { result_bytes: null, result_sha256: null },
     });
-    expect(deliveryBounds).toMatchObject({ connectionMs: 10_000, callMs: 30_000 });
   });
 });
 
-describe('what a tool answers a delivery', () => {
+describe('what a tool answers', () => {
   it('is carried whole, its content and its structured content, and counted', async () => {
     const fake = await deliveryServer();
     const access = deliveryAccess(fake.url);

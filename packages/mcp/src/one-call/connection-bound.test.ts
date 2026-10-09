@@ -2,13 +2,11 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { describe, expect, it } from 'vitest';
 
-import { defaultTiming } from '../bounds/call-bounds.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { McpConnection } from '../connections/mcp-connection.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { StdioServerSettings } from '../settings/mcp-settings.ts';
-import { boundedSlot, connectionBoundOf, takenWithin } from './connection-bound.ts';
-import { deliveryBounds } from './delivery-bounds.ts';
+import { boundedSlot, takenWithin } from './connection-bound.ts';
 
 const connection: McpConnection = {
   call: () => Promise.reject(new Error('No call is made')),
@@ -53,15 +51,7 @@ function opening(take: () => Promise<McpConnection>): Opening {
   };
 }
 
-describe('the opening of a connection for a delivery', () => {
-  it('waits as long as the shared opening may, but never longer than a delivery may', () => {
-    expect([
-      connectionBoundOf(defaultTiming),
-      connectionBoundOf({ openMs: 60_000 }),
-      connectionBoundOf({ openMs: 250 }),
-    ]).toEqual([deliveryBounds.connectionMs, deliveryBounds.connectionMs, 250]);
-  });
-
+describe('the opening of a connection for one call', () => {
   it('takes a connection that opens in time, and the failure of one that cannot open', async () => {
     const quick = opening(() => Promise.resolve(connection));
     const failing = opening(() => Promise.reject(new Error('connect ECONNREFUSED 127.0.0.1:1')));
@@ -89,7 +79,7 @@ describe('the opening of a connection for a delivery', () => {
   });
 });
 
-describe('the session of a delivery, opened again or its process started again', () => {
+describe('the session of one call, opened again or its process started again', () => {
   const hanging: ServerSlot = {
     settings,
     connection: () => connection,
@@ -103,7 +93,7 @@ describe('the session of a delivery, opened again or its process started again',
     restartIfExited: () => Promise.resolve('restarted'),
   };
 
-  it('waits no longer than the bound of a delivery, and answers as the slot does when it is in time', async () => {
+  it('waits no longer than the open bound, and answers as the slot does when it is in time', async () => {
     const bounded = boundedSlot(hanging, 10);
 
     expect(await bounded.reopenOnce()).toBe(false);

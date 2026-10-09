@@ -1,4 +1,4 @@
-import type { DeliveryCall, StartedFields } from '@beonauto/mcp';
+import type { OneCall, StartedFields } from '@beonauto/mcp';
 import { deliveryIdKey, runIdKey } from '@beonauto/mcp/policy';
 import { Effect, Result, type Schema } from 'effect';
 
@@ -32,7 +32,7 @@ function recordedStart(
   );
 }
 
-function callOf({ request, record }: DeliveryPlan, input: DeliveryCall['input']): DeliveryCall {
+function callOf({ request, record }: DeliveryPlan, input: OneCall['input']): OneCall {
   const { address, row } = request;
   return {
     org: address.org,

@@ -37,7 +37,7 @@ describe('a notification whose attempts fail', () => {
           reason: 'unanswered',
           kind: 'undelivered',
           detail:
-            'The notification could not be delivered through the tool post_message of chat, though every attempt was made',
+            'The notification could not be delivered through the post message tool of chat, though every attempt was made',
         },
       },
     });

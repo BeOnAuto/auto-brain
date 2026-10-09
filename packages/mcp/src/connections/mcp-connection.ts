@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/client';
 import { Predicate } from 'effect';
 
-import { decodeListedTools, decodeToolResult, type ListedTool, type ToolResult } from '../bounds/result-text.ts';
+import { decodeListedTools, decodeToolResult, type ListedTool, type ToolResult } from '../bounds/tool-results.ts';
 import { observations, type Observed, type Observations } from './observed-requests.ts';
 
 interface ToolCalling {

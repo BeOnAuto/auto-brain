@@ -61,6 +61,7 @@ describe('what a call answers beside what the model sees', () => {
         resultBytes: Buffer.byteLength(JSON.stringify({ content: [{ type: 'text', text: 'Found 2 rows for acme.' }] })),
         durationMs: aDuration,
         serverRequestId: 'call-1',
+        answer: 'Found 2 rows for acme.',
       },
       expect.objectContaining({ isError: true, outcome: 'tool_error', serverRequestId: 'call-2' }),
     ]);

@@ -64,7 +64,7 @@ describe('a read the brain made in a conversation, as the brain events show it',
       at: recorded.at,
       type: 'replies_read',
       summary:
-        'The brain looked for new replies in the conversation “C0123/1699.1” through the tool thread_replies of chat and found 2, took 1 as an answer and refused 1.',
+        'The brain looked for new replies in the conversation “C0123/1699.1” through the thread replies tool of chat and found 2, took 1 as an answer and refused 1.',
       data: {
         call_id: 'call-1',
         by: 'brain:alpha',
@@ -103,13 +103,13 @@ describe('a read the brain could not make in a conversation, as the brain events
     });
 
     expect([notOffered?.summary, timedOut?.summary]).toEqual([
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the tool thread_replies of chat: the tool server no longer offers the tool to this brain.',
-      'The brain could not read the replies of the conversation “C0123/1699.1” through the tool thread_replies of chat: the tool server did not answer within 30 seconds.',
+      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server no longer offers the tool to this brain.',
+      'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: the tool server did not answer within 30 seconds.',
     ]);
     expect(notOffered?.data).not.toHaveProperty('duration_ms');
     expect(notSent).toMatchObject({
       summary:
-        'The brain could not read the replies of the conversation “C0123/1699.1” through the tool thread_replies of chat: its arguments could not be rendered, so nothing was sent.',
+        'The brain could not read the replies of the conversation “C0123/1699.1” through the thread replies tool of chat: its arguments could not be rendered, so nothing was sent.',
       data: { detail: 'The argument ts of the read cannot be rendered' },
     });
     expect(notSent?.data).not.toHaveProperty('arguments_bytes');
@@ -139,7 +139,7 @@ describe('a telling the brain made in a conversation, as the brain events show i
     const refused = shown({ type: 'telling_ended', call_id: 'call-3', outcome: 'tool_not_offered', ...recorded });
 
     expect([started?.summary, ended?.summary, refused?.summary]).toEqual([
-      'The brain told the party how to answer through the tool post_message of chat.',
+      'The brain told the party how to answer through the post message tool of chat.',
       'The tool that told the party answered.',
       'The tool that told the party was no longer offered by its server.',
     ]);

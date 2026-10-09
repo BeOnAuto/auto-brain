@@ -1,9 +1,9 @@
 import { Result } from 'effect';
 
 import type { Timing } from '../bounds/call-bounds.ts';
-import type { ListedTool } from '../bounds/result-text.ts';
 import type { Secrets } from '../bounds/secrets.ts';
-import { takenSlot } from '../calls/server-slot.ts';
+import type { ListedTool } from '../bounds/tool-results.ts';
+import { takenSlot, type ServerSlot } from '../calls/server-slot.ts';
 import { failureOf, type FailureKind, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { McpServerSettings } from '../settings/mcp-settings.ts';
@@ -27,35 +27,41 @@ const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
   key_refused: 'key_refused',
 };
 
-function serverFailed(link: ServerLink, { kind, message }: ServerFailure, { scrub }: Secrets): McpServerFailed {
+export function serverFailed(
+  { settings }: Pick<ServerLink, 'settings'>,
+  { kind, message }: ServerFailure,
+  { scrub }: Secrets,
+): McpServerFailed {
   return new McpServerFailed({
     because: failedBecause[kind],
-    detail: `The MCP server ${link.settings.name} could not be used: ${scrub(message)}`,
+    detail: `The MCP server ${settings.name} could not be used: ${scrub(message)}`,
   });
 }
 
-export async function connectedTo(
-  link: ServerLink,
+export function listedThrough(
+  slot: ServerSlot,
   { secrets, timing, toolsListed }: Listing,
 ): Promise<Result.Result<Listed, McpServerFailed>> {
-  const taken = await takenSlot(link);
-  if (Result.isFailure(taken)) {
-    return Result.fail(serverFailed(link, taken.failure, secrets));
-  }
-  const slot = taken.success;
   return slot
     .connection()
     .listTools(timing.openMs)
     .then(
       (tools) => {
-        toolsListed(link.settings, tools);
+        toolsListed(slot.settings, tools);
         return Result.succeed({ slot, tools });
       },
       async (error: unknown) => {
         await slot.release();
-        return Result.fail(serverFailed(link, failureOf(error), secrets));
+        return Result.fail(serverFailed(slot, failureOf(error), secrets));
       },
     );
+}
+
+export async function connectedTo(link: ServerLink, listing: Listing): Promise<Result.Result<Listed, McpServerFailed>> {
+  const taken = await takenSlot(link);
+  return Result.isFailure(taken)
+    ? Result.fail(serverFailed(link, taken.failure, listing.secrets))
+    : listedThrough(taken.success, listing);
 }
 
 export async function released(listed: readonly Listed[]): Promise<void> {

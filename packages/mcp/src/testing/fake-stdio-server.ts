@@ -48,6 +48,8 @@ const server = fakeToolServer({
   receive: (call) => received.push(call),
   isRemoved: () => false,
   annotated: true,
+  hints: {},
+  data: false,
   exit: () => {
     process.exit(exitCode);
   },

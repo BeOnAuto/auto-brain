@@ -52,6 +52,7 @@ export function defineTestToolCall(access: Pick<ToolAccess, 'open' | 'testing'>)
             tool,
             outcome: yield* testedOutcomeOf(reply),
             text: reply.text,
+            ...(reply.answer === undefined ? {} : { answer: reply.answer }),
             result_bytes: reply.resultBytes,
             duration_ms: reply.durationMs,
             ...(reply.serverRequestId === null ? {} : { server_request_id: reply.serverRequestId }),

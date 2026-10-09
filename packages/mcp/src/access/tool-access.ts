@@ -3,9 +3,9 @@ import { Effect } from 'effect';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { RunTools } from '../calls/run-tools.ts';
 import type { LinkOptions } from '../connections/server-links.ts';
-import type { CalledOnce, DeliveryCall } from '../delivery/delivery-bounds.ts';
 import type { ToolServer } from '../listing/tool-server.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
+import type { CallOnce } from '../one-call/one-call.ts';
 import {
   brainsServedBy,
   isListedFor,
@@ -33,7 +33,7 @@ export interface ToolAccess {
   ) => Effect.Effect<RunTools, ToolsNotOpened>;
   readonly named: NamingCheck;
   readonly startOf: StartOf;
-  readonly callOnce: (call: DeliveryCall) => Effect.Effect<CalledOnce>;
+  readonly callOnce: CallOnce;
   readonly listServers: (scope: ServersScope, named?: string) => Effect.Effect<readonly ToolServer[]>;
   readonly brainsServedBy: (server: string) => readonly string[];
   readonly close: () => Promise<void>;
@@ -58,7 +58,7 @@ export function makeToolAccess(settings: McpSettings, options: ToolAccessOptions
     open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
     named: namingOf(settings.servers),
     startOf: startsOf(settings.servers),
-    callOnce: (call) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call)),
+    callOnce: (call, runCall) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call, runCall)),
     listServers: (scope, named) =>
       settings.servers.some((server) => isListedFor(server, scope, named))
         ? Effect.flatMap(Effect.promise(loaded), (access) => access.listServers(scope, named))

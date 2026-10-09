@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { calledOnce, closedAfter, deliveryAccess, deliveryKey } from './delivery-calls.ts';
 import { serveFakeMcp } from './fake-mcp-server.ts';
+import { calledOnce, closedAfter, deliveryAccess, deliveryKey } from './one-calls.ts';
 
 async function chatServer() {
   const fake = await serveFakeMcp({ bearer: deliveryKey, chat: true });
@@ -84,6 +84,6 @@ describe('the chat tools of the fake MCP server', () => {
         ...posting,
         input: { channel: '#approvals', text: 7 },
       }),
-    ).toMatchObject({ outcome: 'tool_error' });
+    ).toMatchObject({ kind: 'unopened', because: 'tool_not_listed' });
   });
 });

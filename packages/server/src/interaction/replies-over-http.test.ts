@@ -51,7 +51,7 @@ describe(
         },
       ]);
       expect(events).toContain(
-        'The brain looked for new replies in the conversation “#approvals-ada/1699.000001” through the tool thread_replies of chat and found 2, took 1 as an answer and refused 0.',
+        'The brain looked for new replies in the conversation “#approvals-ada/1699.000001” through the thread replies tool of chat and found 2, took 1 as an answer and refused 0.',
       );
     });
 

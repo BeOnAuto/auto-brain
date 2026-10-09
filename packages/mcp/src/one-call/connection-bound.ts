@@ -2,19 +2,13 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { Result } from 'effect';
 
-import type { Timing } from '../bounds/call-bounds.ts';
 import { takenSlot, type ServerSlot } from '../calls/server-slot.ts';
 import type { ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import { deliveryBounds } from './delivery-bounds.ts';
 
 export type Taken = { readonly slot: ServerSlot } | { readonly failure: ServerFailure } | { readonly late: true };
 
 const late: Taken = { late: true };
-
-export function connectionBoundOf({ openMs }: Pick<Timing, 'openMs'>): number {
-  return Math.min(openMs, deliveryBounds.connectionMs);
-}
 
 function releasedIfTaken(after: Taken): Promise<void> {
   return 'slot' in after ? after.slot.release() : Promise.resolve();

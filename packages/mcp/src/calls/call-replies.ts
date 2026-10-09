@@ -1,8 +1,16 @@
+import type { Schema } from 'effect';
+
 import type { ServerMessage } from '../access/caller-context.ts';
 import type { CallsEndedBecause } from '../access/mcp-server-failed.ts';
-import { failedOnce, failuresEnded, shownResult, type CallTally } from '../bounds/call-bounds.ts';
-import { errorTextForModel, errorTextForOperator, resultText } from '../bounds/result-text.ts';
+import { failedOnce, failuresEnded, shownResult, toolBounds, type CallTally } from '../bounds/call-bounds.ts';
 import { bytesOf } from '../bounds/text-bytes.ts';
+import {
+  answerDocument,
+  answerOf,
+  errorTextForModel,
+  errorTextForOperator,
+  resultText,
+} from '../bounds/tool-results.ts';
 import type { CallOutcome } from './call-facts.ts';
 import { runIdKey, toolTestIdKey } from './call-meta.ts';
 import type { Forwarded } from './tool-calls.ts';
@@ -19,6 +27,7 @@ export interface CallReply extends ModelWords {
   readonly resultBytes: number | null;
   readonly durationMs: number;
   readonly serverRequestId: string | null;
+  readonly answer?: Schema.Json;
 }
 
 export interface Replying {
@@ -68,13 +77,27 @@ export function replyOf(tally: CallTally, done: Forwarded, replying: Replying): 
   return { tally: shown.tally, value: { text: shown.text, isError: done.outcome === 'tool_error' } };
 }
 
-export function callReplyOf(words: ModelWords, done: Forwarded, durationMs: number): CallReply {
+function answerShown(resultJson: string, scrub: (text: string) => string) {
+  const document = answerDocument(answerOf(scrub(resultJson)));
+  return document === undefined || bytesOf(JSON.stringify(document)) > toolBounds.resultBytes
+    ? {}
+    : { answer: document };
+}
+
+export function callReplyOf(
+  words: ModelWords,
+  done: Forwarded,
+  durationMs: number,
+  scrub: (text: string) => string,
+): CallReply {
+  const { resultJson } = done;
   return {
     ...words,
     outcome: done.outcome,
-    resultBytes: done.resultJson === null ? null : bytesOf(done.resultJson),
+    resultBytes: resultJson === null ? null : bytesOf(resultJson),
     durationMs,
     serverRequestId: done.serverRequestId,
+    ...(resultJson === null ? {} : answerShown(resultJson, scrub)),
   };
 }
 

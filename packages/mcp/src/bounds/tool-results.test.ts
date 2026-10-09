@@ -1,7 +1,10 @@
 import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { secretsOf } from './secrets.ts';
+import { bytesOf, canonicalJson, cutAsStored, cutAtCodePoint } from './text-bytes.ts';
 import {
+  answerDocument,
   answerOf,
   decodeListedTools,
   decodeToolResult,
@@ -9,9 +12,7 @@ import {
   errorTextForOperator,
   metaValueOf,
   resultText,
-} from './result-text.ts';
-import { secretsOf } from './secrets.ts';
-import { bytesOf, canonicalJson, cutAsStored, cutAtCodePoint } from './text-bytes.ts';
+} from './tool-results.ts';
 
 const scrub = secretsOf([Redacted.make('graph-api-key-4f1d9a7c2b')]).scrub;
 
@@ -123,5 +124,53 @@ describe('the answer of a tool as its caller reads it', () => {
       answerOf(JSON.stringify({ content: [{ type: 'text', text: 'Posted.' }], structuredContent: { ts: '1.1' } })),
       answerOf('{[redacted]: []}'),
     ]).toEqual([{ content: [{ type: 'text', text: 'Posted.' }], structuredContent: { ts: '1.1' } }, { content: [] }]);
+  });
+});
+
+const answers: ReadonlyArray<readonly [string, unknown, string, unknown]> = [
+  [
+    'structured content with its JSON text, which the two read alike',
+    { content: [{ type: 'text', text: '{"rows":2}' }], structuredContent: { rows: 2 } },
+    '{"rows":2}',
+    { rows: 2 },
+  ],
+  [
+    'structured content beside a summary, where the model sees the summary and the document is the structure',
+    { content: [{ type: 'text', text: '2 rows.' }], structuredContent: { rows: 2 } },
+    '2 rows.',
+    { rows: 2 },
+  ],
+  [
+    'several text blocks, which the model reads joined and the document reads the first of',
+    {
+      content: [
+        { type: 'text', text: '{"page":1}' },
+        { type: 'text', text: '{"page":2}' },
+      ],
+    },
+    '{"page":1}\n{"page":2}',
+    { page: 1 },
+  ],
+  [
+    'only an image, which the model sees as a placeholder and the document does not have',
+    { content: [{ type: 'image', data: 'AA==', mimeType: 'image/png' }] },
+    '[image content (image/png), not shown]',
+    undefined,
+  ],
+  ['nothing', { content: [] }, '(The tool answered with no content.)', undefined],
+  [
+    'a text that is not JSON, which both read as that text',
+    { content: [{ type: 'text', text: 'Done.' }] },
+    'Done.',
+    'Done.',
+  ],
+];
+
+describe('the two readings of one answer', () => {
+  it.each(answers)('of %s', (_case, answer, seen, document) => {
+    expect([resultText(decodeToolResult(answer)), answerDocument(answerOf(JSON.stringify(answer)))]).toEqual([
+      seen,
+      document,
+    ]);
   });
 });

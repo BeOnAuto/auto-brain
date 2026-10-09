@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-import { ToolAnnotationsSchema } from '../bounds/result-text.ts';
+import { ToolAnnotationsSchema } from '../bounds/tool-results.ts';
 
 const serverFields = {
   name: Schema.String.annotate({

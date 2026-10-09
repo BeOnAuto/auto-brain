@@ -1,4 +1,4 @@
-import { isReadOnly, type ListedTool, type ToolAnnotations } from '../bounds/result-text.ts';
+import { isReadOnly, type ListedTool, type ToolAnnotations } from '../bounds/tool-results.ts';
 import { allowsTool } from '../names/tool-reference.ts';
 import type { McpServerSettings, ToolLists } from '../settings/mcp-settings.ts';
 
