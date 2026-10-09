@@ -130,7 +130,7 @@ The program runs in QuickJS compiled to WebAssembly, the build `@jitl/quickjs-wa
 - Strings compare and sort by UTF-16 code unit: `sort()` without a comparator sorts by code unit, and `localeCompare` reads no locale.
 - The output keeps the order its keys were written in. A program that wants sorted keys sorts them.
 
-The output is the returned value as JSON. A `Date`, a `Map`, a `Set`, a class instance, a boxed primitive, a typed array, a function, a `BigInt`, a symbol, `NaN`, `Infinity`, `undefined`, an empty place in an array and a cycle cannot be one, and the run ends as a [conflict](#how-a-run-ends) naming where it found the first, such as `The answer holds a Date at $.campaigns[0].at, which JSON cannot carry`.
+The output is the returned value as JSON. A `Date`, a `Map`, a `Set`, a class instance, a boxed number, text or boolean, a typed array, a function, a `BigInt`, a symbol, `NaN`, `Infinity`, `undefined`, an empty place in an array and a cycle cannot be one, and the run ends as a [conflict](#how-a-run-ends) naming where it found the first, such as `The answer holds a Date at $.campaigns[0].at, which JSON cannot carry`.
 
 ### Numbers
 

@@ -300,6 +300,7 @@ Given the verdicts this brain reached on the campaign before, {{ input.reviews |
 
 The computation function `tally-verdicts`:
 
+<!-- prettier-ignore -->
 ```markdown
 ---
 description: Counts the approvals and rejections among the reviews, beside the advice
@@ -314,11 +315,11 @@ input:
 ---
 
 export default function (input: Input): Json {
-return {
-approvals: input.reviews.filter((review) => review.verdict === 'approve').length,
-rejections: input.reviews.filter((review) => review.verdict.startsWith('reject')).length,
-approve: input.advice.approve,
-};
+  return {
+    approvals: input.reviews.filter((review) => review.verdict === 'approve').length,
+    rejections: input.reviews.filter((review) => review.verdict.startsWith('reject')).length,
+    approve: input.advice.approve,
+  };
 }
 ```
 

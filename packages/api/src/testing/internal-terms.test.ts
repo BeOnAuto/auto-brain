@@ -14,6 +14,7 @@ const leaks: ReadonlyArray<readonly [string, string]> = [
   ['Its yml is wrong.', 'yml'],
   ['It answered in JSON.', 'JSON'],
   ['Its Liquid template.', 'Liquid'],
+  ['Its jq program.', 'jq'],
   ['The input schema.', 'schema'],
   ['Its front matter.', 'front matter'],
   ['The enum of names.', 'enum'],

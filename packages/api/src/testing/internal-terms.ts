@@ -8,6 +8,7 @@ export const internalTerms: readonly RegExp[] = [
   /\bya?ml\b/iu,
   /\bjson\b/iu,
   /\bliquid\b/iu,
+  /\bjq\b/iu,
   /\bschemas?\b/iu,
   /\bfront matter\b/iu,
   /\benums?\b/iu,

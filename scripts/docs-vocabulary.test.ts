@@ -16,9 +16,12 @@ const oldWords: readonly string[] = [
   'execute_spec',
   String.raw`/execute\b`,
   '[eE]xecuteSpec',
+  'language: jq',
+  String.raw`evaluate\.language: jq`,
+  'jq-ts',
 ];
 
-const keptFolders: readonly string[] = ['docs/decisions/', 'patches/'];
+const keptFolders: readonly string[] = ['docs/decisions/'];
 
 const frozenFormats: readonly string[] = [
   ...['1', '2', '3', '4', '5', '6'].map((format) => `packages/workflow-engine/corpus/format-${format}.json`),
@@ -102,6 +105,10 @@ const allowances: readonly Allowance[] = [
     "['It folds a recollection.', 'recollection']",
   ].map((leak) => ({ text: leak, in: [internalTermsTest] })),
   { text: "**inference** names a model call and its provider's terms", in: ['CLAUDE.md'] },
+  {
+    text: 'toPrimitive',
+    in: ['packages/definitions/lib/sandbox.d.ts.txt', 'packages/workflow-engine/src/programs/sandbox-prelude.ts'],
+  },
 ];
 
 const textOnly = new TextDecoder('utf-8', { fatal: true });
@@ -180,8 +187,20 @@ const allowedButAbsent = allowances
 
 const leftOutButUntracked = keptFiles.filter((path) => !tracked.includes(path));
 
-await test('no tracked file says an old word, outside the records, the lockfile, the patches and the frozen formats, but the texts it allows', () => {
+const pagesOfTheGuides = /^docs\/(?:reference|concepts|tutorials)\/.*\.md$/u;
+
+const oldLanguageOnPages = tracked
+  .filter((path) => pagesOfTheGuides.test(path))
+  .flatMap((path) =>
+    foundIn(textOf(path) ?? '', String.raw`\bjq\b`).map(({ index }) => `${path}:${lineAt(textOf(path) ?? '', index)}`),
+  );
+
+await test('no tracked file says an old word, outside the records, the lockfile and the frozen formats, but the texts it allows', () => {
   assert.deepEqual(findings, []);
+});
+
+await test('no page of the reference, the concepts or the tutorials, the pages the brain serves as its guides, names the language it no longer runs', () => {
+  assert.deepEqual(oldLanguageOnPages, []);
 });
 
 await test('every text the search allows still occurs in each file it is allowed in, and every file it leaves out is still tracked', () => {

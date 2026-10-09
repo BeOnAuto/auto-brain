@@ -96,7 +96,7 @@ function objectOf(schema: JsonObject, named: Named): string {
   return `{ ${[...fields, ...(additional === true ? ['[key: string]: Json;'] : [])].join(' ')} }`;
 }
 
-const primitiveTypes: ReadonlyMap<Json, string> = new Map([
+const simpleTypes: ReadonlyMap<Json, string> = new Map([
   ['null', 'null'],
   ['boolean', 'boolean'],
   ['number', 'number'],
@@ -108,7 +108,7 @@ function kindType(kind: Json, schema: JsonObject, named: Named): string {
   if (kind === 'array') {
     return arrayOf(schema, named);
   }
-  return primitiveTypes.get(kind) ?? objectOf(schema, named);
+  return simpleTypes.get(kind) ?? objectOf(schema, named);
 }
 
 function kindsOf(schema: JsonObject): readonly Json[] {
