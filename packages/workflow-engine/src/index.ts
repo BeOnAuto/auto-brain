@@ -39,8 +39,11 @@ export {
   type JsonObject,
 } from './dsl/json.ts';
 export { nestingRejections } from './dsl/nesting.ts';
-export { policyOf } from './dsl/policy.ts';
-export { forbidden, rejection, templateRejections, type Rejection } from './dsl/policy-checks.ts';
+export { mostInputMs } from './dsl/evaluation.ts';
+export { oneLanguage, policyOf } from './dsl/policy.ts';
+export { forbidden, rejection, type Rejection } from './dsl/policy-checks.ts';
+export { runtimeNames } from './dsl/task-policy.ts';
+export { workflowExpressionsOf, type PlacedExpression } from './dsl/workflow-expressions.ts';
 export { describeError, type ErrorKind } from './dsl/raised-error.ts';
 export { allTaskEntries, pointerTo, taskKinds } from './dsl/tasks.ts';
 export { runCacheBounds, runCacheOf, type RunCache, type RunCacheBounds } from './cache/run-cache.ts';
@@ -55,11 +58,11 @@ export {
   listenFiltersOf,
   listenerFilterOf,
   literalFilterOf,
-  matchEvent,
   type FilterVerdict,
   type LiteralFilter,
   type LiteralFilterReading,
 } from './filters/event-filter.ts';
+export { filterVerdictsOf, type FilterSandbox } from './filters/filter-verdicts.ts';
 export type { CallCancelReceipt, Executor, StartReceipt } from './executor/executor.ts';
 export { ReceivedEventSchema, type ReceivedEvent } from './inbox/received-event.ts';
 export {
@@ -94,6 +97,7 @@ export {
   mostReceivedEvents,
   mostStepsWithoutWaiting,
   mostTasksPerInput,
+  mostValueWork,
   mostWaitingEventBytes,
   mostWaitingEvents,
   mostWorkPerInput,
@@ -177,7 +181,8 @@ export {
   type PatchOperation,
   type StatePatch,
 } from './run-log/state-patch.ts';
-export type { MachineOptions } from './runner/run-descriptors.ts';
+export type { MachineOptions, MachineSettings } from './runner/run-descriptors.ts';
+export { reusedSandbox, type MachineSandbox } from './programs/reserved-instances.ts';
 export type {
   EmitReceipt,
   Emitter,

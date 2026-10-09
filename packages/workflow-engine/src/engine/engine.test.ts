@@ -1,9 +1,10 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { testDriverOf } from '../pool-testing/test-sandbox.ts';
 import { loadedRunOf } from '../run-log/run-fold.ts';
 import { startedOf } from '../testing/driver-inputs.ts';
-import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
+import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { drivenRunId as runId, outputKindsIn, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
@@ -14,7 +15,7 @@ do:
   - each:
       for: { in: '\${ [1, 2, 3, 4, 5, 6, 7, 8] }' }
       do:
-        - ask: { call: notify, with: { to: ada }, output: { as: '\${ { last: . } }' } }
+        - ask: { call: notify, with: { to: ada }, output: { as: '\${ ({ last: $data }) }' } }
   - done: { set: { done: true } }
 `);
 
@@ -30,7 +31,7 @@ function untilTheFirstSnapshot(driver: MemoryDriver): number {
 
 describe('the snapshots of a run', () => {
   it('are saved once the events since the last take as many bytes, and give the state its whole stream gives', () => {
-    const driver = memoryDriver({ respond: answeringLarge });
+    const driver = testDriverOf({ respond: answeringLarge });
     driver.start({ runId, document: callingInALoop });
 
     const ended = driver.runUntilEnded(runId);
@@ -45,7 +46,7 @@ describe('the snapshots of a run', () => {
   });
 
   it('let the input that follows one be decided from it alone', () => {
-    const driver = memoryDriver({ respond: answeringLarge });
+    const driver = testDriverOf({ respond: answeringLarge });
     driver.start({ runId, document: callingInALoop });
     const snapshotAt = untilTheFirstSnapshot(driver);
 
@@ -65,7 +66,7 @@ do:
           - pause: { wait: PT1M }
           - await: { listen: { to: { one: { with: { type: go } } } } }
 `);
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.ports.faults.failNext('arm_timer');
     driver.start({ runId, document });
     const dispatchedBefore = driver.ports.faults.dispatched().length;
@@ -76,7 +77,7 @@ do:
   });
 
   it('settles again, when woken, a settlement whose dispatch failed', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.ports.faults.failNext('settle');
     driver.start({ runId, document: workflow('do:\n  - greet: { set: { done: true } }') });
     const before = driver.ports.recordStore.settlementOf(runId);
@@ -89,7 +90,7 @@ do:
   });
 
   it('reports a settle receipt that troubles, and does not drop it', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.submit(startedOf({ runId, document: workflow('do:\n  - greet: { set: { done: true } }') }, 0));
 
     expect(driver.ports.reporter.reports()).toEqual([{ run: { runId, attributes: {} }, receipt: 'unknown_run' }]);

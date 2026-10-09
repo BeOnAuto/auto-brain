@@ -1,46 +1,26 @@
-import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
-import type { Dialect } from '../programs/program-dialect.ts';
-import type { Deadline, Limit, ProgramLimits, ProgramRun, Variables } from '../programs/program-running.ts';
-import type { ProgramIssue } from '../programs/program-tree.ts';
-import { boundedCacheOf } from './bounded-cache.ts';
-import { mostValueDepth, type Json } from './json.ts';
+import type { Arguments, ExpressionUnit } from '../programs/expression-units.ts';
+import type { Limit, ProgramIssue, ProgramRun } from '../programs/program-run.ts';
+import { cachedStripping, type Stripping } from '../programs/type-stripping.ts';
+import { jsonOfText, type Json } from './json.ts';
 
 export interface Budget {
   readonly now: number;
   readonly mostWork: number;
-  readonly deadline?: Deadline;
+  readonly deadlineAt: number;
 }
 
 export type Evaluation =
   | { readonly value: Json; readonly work: number }
   | { readonly problem: string; readonly work: number; readonly exhausted: false }
-  | { readonly problem: string; readonly work: number; readonly exhausted: true; readonly limit: Limit };
+  | { readonly problem: string; readonly work: number; readonly exhausted: true; readonly limit: Bound };
 
-const hostTimeZone = "reads the host's time zone, so it is not deterministic; use the UTC builtins";
-
-const workflowDialect: Dialect = {
-  refused: [
-    { name: 'localtime', why: hostTimeZone },
-    { name: 'strflocaltime', why: hostTimeZone },
-  ],
-};
-
-const workflowLimits: Omit<ProgramLimits, 'mostWork'> = {
-  mostSteps: 200_000,
-  mostDepth: 200,
-  mostOutputs: 10_000,
-  mostValueDepth,
-};
-
-const raisedLimits: ReadonlySet<Limit> = new Set(['depth', 'value depth', 'stack']);
+export type Bound = Exclude<Limit, 'stack'>;
 
 const enclosedExpression = /^\s*\$\{(?<body>[\s\S]*)\}\s*$/u;
 
 const longestProblem = 1000;
 
-export const mostCompiledCharacters = 262_144;
-
-const compiled = boundedCacheOf<CompiledProgram>(mostCompiledCharacters);
+export const expressionStripping: Stripping = cachedStripping();
 
 export function enclosedBody(value: Json | undefined): string | undefined {
   return typeof value === 'string' ? enclosedExpression.exec(value)?.groups?.['body'] : undefined;
@@ -54,59 +34,30 @@ function shortened(problem: string): string {
   return problem.length > longestProblem ? `${problem.slice(0, longestProblem)}…` : problem;
 }
 
-function problemOf(source: string, { error, detail }: ProgramIssue): string {
-  return shortened(`${source}: ${error === undefined ? '' : `${error}: `}${detail}`);
+function lineIn(source: string, line: number | null): number {
+  return Math.min(line ?? 1, source.split('\n').length);
 }
 
-function compile(source: string): CompiledProgram {
-  const known = compiled.get(source);
-  if (known !== undefined) {
-    return known;
-  }
-  const fresh = compileProgram(source, workflowDialect);
-  compiled.set(source, fresh);
-  return fresh;
+function problemOf(source: string, { detail, line }: ProgramIssue): string {
+  const at = lineIn(source, line);
+  return shortened(`${source.trim()}: ${detail}${at === 1 ? '' : ` (line ${at})`}`);
 }
 
-export function checkExpression(source: string): string | undefined {
-  const program = compile(source);
-  const [issue] = 'issues' in program ? program.issues : [];
-  return issue === undefined ? undefined : problemOf(source, issue);
-}
-
-export function freeVariablesOf(source: string): readonly string[] {
-  const program = compile(source);
-  return 'issues' in program ? [] : program.program.freeVariables;
-}
-
-function evaluationOf(source: string, run: ProgramRun): Evaluation {
+export function evaluationOf(source: string, run: ProgramRun): Evaluation {
   if (run.ran === 'answered') {
-    return { value: run.value, work: run.work };
+    return { value: jsonOfText(run.text), work: run.work };
   }
-  if (run.ran === 'exhausted' && !raisedLimits.has(run.limit)) {
+  if (run.ran === 'exhausted' && run.limit !== 'stack') {
     return { problem: problemOf(source, run.issue), work: run.work, exhausted: true, limit: run.limit };
   }
-  if (run.ran === 'raised' || run.ran === 'exhausted') {
-    return { problem: problemOf(source, run.issue), work: run.work, exhausted: false };
-  }
-  return {
-    problem: shortened(`${source} gave a value that is not JSON or nests more than ${mostValueDepth} levels deep`),
-    work: run.work,
-    exhausted: false,
-  };
+  return { problem: problemOf(source, run.issue), work: run.work, exhausted: false };
 }
 
-export function runExpression(source: string, data: Json, variables: Variables, budget: Budget): Evaluation {
-  const program = compile(source);
-  if ('issues' in program) {
-    return { problem: problemOf(source, program.issues[0]), work: 0, exhausted: false };
-  }
-  const run = program.program.run(data, {
-    limits: { ...workflowLimits, mostWork: budget.mostWork },
-    outputs: 'first',
-    variables,
-    now: budget.now,
-    ...(budget.deadline === undefined ? {} : { deadline: budget.deadline }),
-  });
-  return evaluationOf(source, run);
+export function runExpression(
+  unit: ExpressionUnit,
+  source: string,
+  values: Arguments,
+  { now, mostWork, deadlineAt }: Budget,
+): Evaluation {
+  return evaluationOf(source, unit.evaluate(source, values, { budget: mostWork, deadlineAt, moment: now }));
 }

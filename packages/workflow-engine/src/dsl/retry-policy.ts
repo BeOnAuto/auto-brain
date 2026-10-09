@@ -1,5 +1,4 @@
-import type { Variables } from '../programs/program-running.ts';
-import { holds, millisecondsOf, type Place } from './evaluation.ts';
+import { holds, millisecondsOf, type Place, type Variables } from './evaluation.ts';
 import { field, isObject, objectField, type Json, type JsonObject } from './json.ts';
 import { raised } from './raised-error.ts';
 

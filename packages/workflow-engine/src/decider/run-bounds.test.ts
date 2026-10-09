@@ -42,9 +42,9 @@ function holdingAcross(pause: string, length: number): DrivenRun {
   return drivenRun(
     workflow(`
 do:
-  - make: { set: { s: '\${ "x" * ${length} }' } }
+  - make: { set: { s: '\${ "x".repeat(${length}) }' } }
   - pause: ${pause}
-  - measure: { set: '\${ { length: (.s | length) } }' }
+  - measure: { set: '\${ ({ length: $data.s.length }) }' }
 `),
   );
 }
@@ -58,7 +58,7 @@ function longestHeldAcross(pause: string): number {
 describe('a value a run holds across a wait or a yield', () => {
   it.each([
     ['a wait', '{ wait: PT1S }'],
-    ['a yield', "{ for: { in: '${ [range(0; 120)] }' }, do: [] }"],
+    ['a yield', "{ for: { in: '${ Array.from({ length: 120 }, (_, index) => index) }' }, do: [] }"],
   ])(
     'is kept when the event of the input that made it holds it, and ends the run when it is one byte larger: across %s',
     (_across, pause) => {

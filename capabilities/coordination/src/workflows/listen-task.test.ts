@@ -20,7 +20,7 @@ do:
       listen:
         to:
           one:
-            with: { type: com.acme.approval.decided, data: '\${ .request == "r-1" }' }
+            with: { type: com.acme.approval.decided, data: '\${ $data.request === "r-1" }' }
 `);
 
 describe('listening for one event', () => {
@@ -149,7 +149,9 @@ do:
   });
 
   it('raises an expression error when a filter fails on an event', async () => {
-    const document = workflow("do:\n  - await: { listen: { to: { one: { with: { data: '${ .a + 1 }' } } } } }");
+    const document = workflow(
+      "do:\n  - await: { listen: { to: { one: { with: { data: '${ $data.a.toFixed(1) }' } } } } }",
+    );
 
     const { settlement } = await interpret(document, {
       started: deliveringAt([1, { id: 'x', type: 'x', data: { a: 'text' } }]),

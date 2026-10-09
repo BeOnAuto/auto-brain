@@ -5,7 +5,6 @@ import { Option, Schema } from 'effect';
 import { crashed, stopped, type Ending, type Interrupted } from '../jobs/job-endings.ts';
 import { JobAnswerSchema } from '../jobs/job-envelopes.ts';
 import type { PoolSettings } from '../jobs/pool-contract.ts';
-import { fieldOf, textOf } from '../programs/program-tree.ts';
 import type { Job, Running } from './pool-job.ts';
 
 export const workerStackMegabytes = 64;
@@ -56,9 +55,10 @@ const outOfMemory = 'ERR_WORKER_OUT_OF_MEMORY';
 const notAnAnswer = 'The worker answered with something that is not an answer';
 
 function failedWith(error: unknown): Interrupted {
-  return fieldOf(error, 'code') === outOfMemory
+  const failure = new Object(error);
+  return Reflect.get(failure, 'code') === outOfMemory
     ? stopped('memory')
-    : crashed(`The worker failed: ${textOf(error, 'message')}`);
+    : crashed(`The worker failed: ${String(Reflect.get(failure, 'message'))}`);
 }
 
 function answerIn<Answer>(message: unknown, job: number, { decode }: Job<Answer>): Served<Answer> {

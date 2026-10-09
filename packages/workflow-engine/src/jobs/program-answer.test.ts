@@ -1,62 +1,75 @@
 import { describe, expect, it } from 'vitest';
 
-import { liftedLimits } from '../program-pool/program-pool.ts';
-import { compileProgram } from '../programs/program-compiling.ts';
-import type { Dialect } from '../programs/program-dialect.ts';
+import { freshInstance } from '../instances/fresh-instances.ts';
+import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
+import { cachedStripping, type Stripping } from '../programs/type-stripping.ts';
 import { answerOf, unchecked, type OutputIssue, type ProgramHost } from './program-answer.ts';
 import type { ProgramJob } from './program-messages.ts';
 
-const host: ProgramHost = { now: () => 0, compile: compileProgram, check: unchecked };
+async function hostOf(more: Partial<ProgramHost> = {}): Promise<ProgramHost> {
+  return {
+    now: () => 0,
+    instance: await freshInstance(unitMemoryBytes),
+    stripping: cachedStripping(),
+    check: unchecked,
+    ...more,
+  };
+}
 
 const request: ProgramJob = {
-  source: '[.[] | . + 1]',
-  input: '[1, 2]',
-  variables: '{}',
-  dialect: { refused: [], variables: [] },
-  limits: liftedLimits(64_000_000),
+  source: 'export default function (input: number[]): number[] {\n  return input.map((item) => item + 1);\n}',
+  entry: 'default',
+  arguments: ['[1, 2]'],
+  moment: 0,
+  budget: 500,
+  memoryBytes: unitMemoryBytes,
+  stackBytes: threadStackBytes,
   deadlineAt: 10_000,
   mostOutputBytes: 1000,
   context: null,
 };
 
+function answeringAtMostTen(body: string): ProgramJob {
+  return { ...request, source: `export default function (): string {\n  return ${body};\n}`, mostOutputBytes: 10 };
+}
+
 describe('the answer of a worker', () => {
-  it('runs the program it is given on the input it is given', () => {
-    expect(answerOf(request, host)).toEqual({ ran: 'answered', output: '[2,3]', bytes: 5, work: 1392 });
+  it('runs the program it is given on the arguments it is given', async () => {
+    expect(answerOf(request, await hostOf())).toEqual({ ran: 'answered', output: '[2,3]', bytes: 5, work: 0 });
   });
 
-  it('checks the variables of the program only when its dialect gives the ones it may use', () => {
-    const unbound = { ...request, source: '[.[] | . + $n]' };
-
-    expect(answerOf(unbound, host)).toMatchObject({
+  it('answers a program that does not load as refused, and a failure with its issue cut at 1,024 bytes', async () => {
+    expect(answerOf({ ...request, source: 'export const x = 1;' }, await hostOf())).toEqual({
       ran: 'refused',
-      issues: [{ detail: '$n is not defined; bind it with as, reduce or foreach before using it' }],
+      issue: { detail: 'The program exports no function default', line: null },
     });
-    expect(answerOf({ ...unbound, dialect: { refused: [] } }, host)).toMatchObject({
-      ran: 'raised',
-      issue: { detail: 'Undefined variable: n' },
-    });
+    expect(
+      answerOf(
+        { ...request, source: 'export default function (): never {\n  throw new Error("x".repeat(3000));\n}' },
+        await hostOf(),
+      ),
+    ).toEqual({ ran: 'raised', issue: { detail: `Error: ${'x'.repeat(1017)}…`, line: 2 }, work: 0 });
   });
 
-  it('binds the variables it is given, and reads variables that are not an object as too deep to take', () => {
-    const bound = { ...request, source: '[.[] | . + $n]', dialect: { refused: [], variables: ['n'] } };
-
-    expect(answerOf({ ...bound, variables: '{"n": 10}' }, host)).toMatchObject({ ran: 'answered', output: '[11,12]' });
-    expect(answerOf({ ...bound, variables: '[1]' }, host)).toMatchObject({ ran: 'exhausted', limit: 'value depth' });
+  it('answers an output larger than it may give as oversized, in characters in the sandbox and in bytes outside it', async () => {
+    expect(answerOf(answeringAtMostTen('"x".repeat(20)'), await hostOf())).toEqual({ ran: 'oversized', work: 0 });
+    expect(answerOf(answeringAtMostTen('"é".repeat(5)'), await hostOf())).toEqual({ ran: 'oversized', work: 0 });
   });
 
-  it('compiles the program with the compiler its host gives, so a worker can keep what it compiled', () => {
-    const compiled: string[] = [];
-    const counting: ProgramHost = {
-      ...host,
-      compile: (source: string, dialect: Dialect) => {
-        compiled.push(source);
-        return compileProgram(source, dialect);
+  it('strips the program with the stripping its host gives, so a worker can keep what it stripped', async () => {
+    const stripped: string[] = [];
+    const kept = cachedStripping();
+    const counting: Stripping = {
+      module: (source) => {
+        stripped.push(source);
+        return kept.module(source);
       },
+      expression: kept.expression,
     };
 
-    answerOf(request, counting);
+    answerOf(request, await hostOf({ stripping: counting }));
 
-    expect(compiled).toEqual([request.source]);
+    expect(stripped).toEqual([request.source]);
   });
 });
 
@@ -68,15 +81,15 @@ function refusing(output: unknown): readonly OutputIssue[] {
 }
 
 describe('the answer of a worker that checks the output', () => {
-  it('answers the output when the check finds nothing, and the issues it finds when it does, the pointer and the detail of each cut at 1,024 bytes apart', () => {
-    expect(answerOf(request, host)).toMatchObject({ ran: 'answered', output: '[2,3]' });
-    expect(answerOf(request, { ...host, check: refusing })).toEqual({
+  it('answers the output when the check finds nothing, and the issues it finds when it does, the pointer and the detail of each cut at 1,024 bytes apart', async () => {
+    expect(answerOf(request, await hostOf())).toMatchObject({ ran: 'answered', output: '[2,3]' });
+    expect(answerOf(request, await hostOf({ check: refusing }))).toEqual({
       ran: 'mismatched',
       issues: [
         { pointer: `/${'k'.repeat(1023)}…`, detail: 'Expected no excess property' },
         { pointer: '', detail: `got [2,3] ${'x'.repeat(1014)}…` },
       ],
-      work: 1392,
+      work: 0,
     });
   });
 });

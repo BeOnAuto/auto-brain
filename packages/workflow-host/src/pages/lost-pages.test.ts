@@ -1,6 +1,5 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { liftedLimits } from '@beonauto/workflow-engine/dsl';
 import { describe, expect, it } from 'vitest';
 
 import { eventually } from '../testing/eventually.ts';
@@ -9,6 +8,7 @@ import { busyOnce } from '../views-testing/pool-faults.ts';
 import {
   collecting,
   counting,
+  foldOf,
   foldedAll,
   foldingOf,
   isStalled,
@@ -136,8 +136,14 @@ describe('a page of folds lost twice', { timeout: viewTestTimeoutMs }, () => {
 describe('a projector stopped while it folds', { timeout: viewTestTimeoutMs }, () => {
   it('repeats the page when it starts again, and writes each fold once', async () => {
     const settings = await onSQLite();
-    const slow = { ...collecting, fold: 'reduce range(200000) as $i (0; . + 1) as $n | . + [$event.data.output]' };
-    const lifted = { folding: { ...foldingOf(), limits: liftedLimits(400_000_000) } };
+    const slow = {
+      ...collecting,
+      fold: foldOf(
+        'let spent = 0;\n  for (let index = 0; index < 10_000_000; index++) spent += index;\n  return [...view, event.data.output];',
+        'unknown[]',
+      ),
+    };
+    const lifted = { folding: { ...foldingOf(), budget: 1_000_000 } };
     const first = await viewHarness(settings);
     await first.saved('outputs', slow);
     await first.ranEach('reasoning/runs', [1, 2, 3]);

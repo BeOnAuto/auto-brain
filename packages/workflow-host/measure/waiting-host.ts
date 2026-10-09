@@ -2,13 +2,13 @@ import { setTimeout } from 'node:timers/promises';
 
 import type { SettleRun } from '@beonauto/definitions';
 import { streamSignalOf } from '@beonauto/ledger';
-import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
 import { waitingCallsOf } from '../src/calls/call-rows.ts';
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
 import { openWorkflowHost, type WorkflowHost } from '../src/host/workflow-host.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
+import { testMachine } from '../src/testing/host-documents.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
 
 type Reads = Parameters<typeof waitingCallsOf>[0];

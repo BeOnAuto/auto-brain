@@ -1,13 +1,12 @@
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { workflowMachine } from '../decider/workflow-machine.ts';
 import type { CallKey } from '../executor/call-key.ts';
 import { mostReceivedEvents } from '../machine/limits.ts';
 import type { RunState } from '../machine/run-state.ts';
+import { testDriverOf, testWorkflowMachine } from '../pool-testing/test-sandbox.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
-import { testMachine } from '../testing/driver-inputs.ts';
-import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
+import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { workflow } from '../testing/workflows.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -27,7 +26,7 @@ interface Offering {
 }
 
 function offering(to: string): Offering {
-  const driver = memoryDriver();
+  const driver = testDriverOf();
   driver.start({ runId, document: workflow(`do:\n  - await: { listen: { to: ${to} } }`) });
   return {
     driver,
@@ -70,7 +69,7 @@ describe('a listen task that waits for all of its filters', () => {
 
 describe('a listen task with no filter that names a type', () => {
   it('arms no listener, so it sees only the events sent to its run', () => {
-    const run = offering("{ one: { with: { data: '${ . > 1 }' } } }");
+    const run = offering("{ one: { with: { data: '${ $data > 1 }' } } }");
 
     const offered = run.offer('record-1', { id: 'e1', type: 'go', data: 2 });
 
@@ -81,7 +80,7 @@ describe('a listen task with no filter that names a type', () => {
 
 describe('the listener of a listen task', () => {
   it('is never armed by a listen an event sent before it satisfied at once', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     const document = workflow(`
 do:
   - pause: { wait: PT1S }
@@ -97,14 +96,14 @@ do:
   });
 
   it('is cancelled when the listen times out, and when the run ends while it listens', () => {
-    const timedOut = memoryDriver();
+    const timedOut = testDriverOf();
     timedOut.start({
       runId,
       document: workflow(
         'do:\n  - await: { listen: { to: { one: { with: { type: go } } } }, timeout: { after: PT1M } }',
       ),
     });
-    const cancelled = memoryDriver();
+    const cancelled = testDriverOf();
     cancelled.start({
       runId,
       document: workflow('do:\n  - await: { listen: { to: { one: { with: { type: go } } } } }'),
@@ -128,7 +127,7 @@ describe('the offers a run accepts', () => {
     const offer = { runId, at: waiting.lastInputAt + 1, key: 'record-1', listener: awaiting };
 
     const events = Result.getOrThrow(
-      workflowMachine(testMachine).decide({ ...offer, kind: 'event_offered', event: { id: 'e1', type: 'go' } }, full),
+      testWorkflowMachine.decide({ ...offer, kind: 'event_offered', event: { id: 'e1', type: 'go' } }, full),
     );
 
     expect(events.reduce((state, event) => evolveRun(state, event), full).outcome).toMatchObject({
@@ -140,7 +139,7 @@ describe('the offers a run accepts', () => {
 
 describe('an offer to a listen nested in other tasks', () => {
   it('reaches a listen in a branch of a fork, in a try and in a loop', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.start({
       runId,
       document: workflow(`
@@ -178,7 +177,7 @@ do:
     const offer = { runId, at: waiting.lastInputAt + 1, key: 'record-1', listener: awaiting };
 
     const events = Result.getOrThrow(
-      workflowMachine(testMachine).decide({ ...offer, kind: 'event_offered', event: { id: 'e1', type: 'go' } }, astray),
+      testWorkflowMachine.decide({ ...offer, kind: 'event_offered', event: { id: 'e1', type: 'go' } }, astray),
     );
 
     expect(events).toEqual([]);
@@ -187,7 +186,7 @@ do:
 
 describe('an event no branch of a fork takes', () => {
   it('leaves the fork as it was, while a branch that has finished and a branch that yields are passed over', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.start({
       runId,
       document: workflow(`
@@ -198,7 +197,7 @@ do:
           - await: { listen: { to: { one: { with: { type: go } } } } }
           - done: { set: {} }
           - busy:
-              for: { in: '\${ [range(150)] }' }
+              for: { in: '\${ Array.from({ length: 150 }, (_, index) => index) }' }
               do:
                 - noop: { set: {} }
 `),

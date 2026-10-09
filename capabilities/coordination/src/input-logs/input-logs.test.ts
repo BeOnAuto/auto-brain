@@ -11,11 +11,11 @@ import {
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { workflowMachineOptions } from '../runs/workflow-machine-options.ts';
+import { testWorkflowOptions } from '../testing/test-sandbox.ts';
 import { recordedInputLogs, recordInputLog, type InputLog } from './input-log-corpus.ts';
 import { inputLogOf, inputLogPaths } from './input-log-paths.ts';
 
-const machine = workflowMachine(workflowMachineOptions);
+const machine = workflowMachine(testWorkflowOptions);
 
 function replayed({ inputs }: InputLog): readonly RunLogEvent[] {
   const events: RunLogEvent[] = [];

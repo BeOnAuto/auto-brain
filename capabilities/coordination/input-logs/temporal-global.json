@@ -18,7 +18,7 @@
               "set": {
                 "startedAt": "${ $workflow.startedAt.iso8601 }",
                 "taskStartedAt": "${ $task.startedAt.epoch.milliseconds }",
-                "now": "${ now }"
+                "now": "${ Date.now() }"
               }
             }
           }
@@ -81,7 +81,7 @@
                     "set": {
                       "startedAt": "${ $workflow.startedAt.iso8601 }",
                       "taskStartedAt": "${ $task.startedAt.epoch.milliseconds }",
-                      "now": "${ now }"
+                      "now": "${ Date.now() }"
                     }
                   }
                 }
@@ -133,7 +133,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 232
+          "value": 239
         },
         {
           "op": "replace",
@@ -161,14 +161,14 @@
             "output": {
               "startedAt": "2026-10-01T09:00:00.000Z",
               "taskStartedAt": 1790845200000,
-              "now": 1790845200
+              "now": 1790845200000
             }
           }
         },
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 1794
+          "value": 1807
         }
       ],
       "outputs": [
@@ -180,7 +180,7 @@
             "output": {
               "startedAt": "2026-10-01T09:00:00.000Z",
               "taskStartedAt": 1790845200000,
-              "now": 1790845200
+              "now": 1790845200000
             }
           }
         }

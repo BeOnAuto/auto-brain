@@ -35,7 +35,7 @@ function acceptsBy(filter: Json, invocation: Invocation): EventFilter {
   const properties = isObject(filter) ? (objectField(filter, 'with') ?? {}) : {};
   return (event) =>
     hasAttributes(event, properties, (expression, value) =>
-      evaluate(expression, value, invocation.variables, invocation.machine.session.placeAt(invocation.entry.reference)),
+      evaluate(expression, value, {}, invocation.machine.session.placeAt(invocation.entry.reference)),
     );
 }
 

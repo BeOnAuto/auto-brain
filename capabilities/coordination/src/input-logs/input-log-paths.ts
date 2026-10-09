@@ -7,7 +7,8 @@ import {
   definitionArgumentsOf,
   type DefinitionArguments,
 } from '../document/definition-arguments.ts';
-import { workflowMachineOptions } from '../runs/workflow-machine-options.ts';
+import { workflowMachineSettings } from '../runs/workflow-machine-options.ts';
+import { testSandbox } from '../testing/test-sandbox.ts';
 import { workflow } from '../testing/workflows.ts';
 import type { InputLog } from './input-log-corpus.ts';
 
@@ -75,9 +76,9 @@ do:
 do:
   - summarize:
       call: run_definition
-      with: { type: reasoning, name: summarize, input: { text: '\${ .text }' } }
+      with: { type: reasoning, name: summarize, input: { text: '\${ $data.text }' } }
   - answer:
-      set: { summary: '\${ .summary }', runtime: '\${ $runtime.name }' }
+      set: { summary: '\${ $data.summary }', runtime: '\${ $runtime.name }' }
 `,
     input: { text: 'hello' },
     ends: { kind: 'completed', output: { summary: 'summarize of {"text":"hello"}', runtime: 'auto-brain' } },
@@ -91,7 +92,7 @@ do:
       for: { in: '\${ [1, 2] }' }
       do:
         - pause: { wait: { milliseconds: 200 } }
-        - add: { set: { total: '\${ (.total // 0) + $item }' } }
+        - add: { set: { total: '\${ ($data.total ?? 0) + $item }' } }
 `,
     ends: { kind: 'completed', output: { total: 3 } },
   },
@@ -162,19 +163,19 @@ do:
       set:
         startedAt: '\${ $workflow.startedAt.iso8601 }'
         taskStartedAt: '\${ $task.startedAt.epoch.milliseconds }'
-        now: '\${ now }'
+        now: '\${ Date.now() }'
 `,
     ends: {
       kind: 'completed',
-      output: { startedAt: '2026-10-01T09:00:00.000Z', taskStartedAt: 1_790_845_200_000, now: 1_790_845_200 },
+      output: { startedAt: '2026-10-01T09:00:00.000Z', taskStartedAt: 1_790_845_200_000, now: 1_790_845_200_000 },
     },
   },
   {
     name: 'then-jump-back',
     source: `
 do:
-  - count: { set: { n: '\${ (.n // 0) + 1 }' } }
-  - again: { if: '\${ .n < 3 }', wait: { milliseconds: 100 }, then: count }
+  - count: { set: { n: '\${ ($data.n ?? 0) + 1 }' } }
+  - again: { if: '\${ $data.n < 3 }', wait: { milliseconds: 100 }, then: count }
 `,
     ends: { kind: 'completed', output: { n: 3 } },
   },
@@ -212,7 +213,7 @@ do:
 do:
   - first: { set: { step: first } }
   - pause: { wait: PT2S }
-  - last: { set: { step: '\${ .step + ", then last" }' } }
+  - last: { set: { step: '\${ $data.step + ", then last" }' } }
 `,
     ends: { kind: 'completed', output: { step: 'first, then last' } },
   },
@@ -235,7 +236,11 @@ export function inputLogOf(name: string): InputLog {
     throw new Error(`No input log path is named ${name}`);
   }
   const runId = `0199a3c4-7d2e-7c1a-9b3f-${String(300 + number).padStart(12, '0')}`;
-  const driver = memoryDriver({ machine: workflowMachineOptions, respond: responderOf(path.answer ?? summarizing) });
+  const driver = memoryDriver({
+    sandbox: testSandbox,
+    machine: workflowMachineSettings,
+    respond: responderOf(path.answer ?? summarizing),
+  });
   driver.start({ runId, document: workflow(path.source), input: path.input ?? {} });
   path.meanwhile?.(driver, runId);
   driver.runUntilEnded(runId);

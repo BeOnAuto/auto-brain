@@ -6,7 +6,10 @@ const saved = {
   type: 'definition_created',
   name: 'runs',
   version: 1,
-  content: { source: 'the runs document', details: { fold: '. + 1' } },
+  content: {
+    source: 'the runs document',
+    details: { fold: 'export function fold(view: number): number { return view + 1; }' },
+  },
   by: 'acme-admin',
   at: '2026-10-06T09:00:00.000Z',
 };
@@ -16,6 +19,11 @@ describe('the recall functions a brain keeps', () => {
     const definitions = definitionsAfter(noDefinitions, [saved, { type: 'definition_renamed', name: 'runs' }]);
 
     expect(definitions.version).toBe(2);
-    expect([...definitions.functions]).toEqual([['runs', { version: 1, saved: 1, details: { fold: '. + 1' } }]]);
+    expect([...definitions.functions]).toEqual([
+      [
+        'runs',
+        { version: 1, saved: 1, details: { fold: 'export function fold(view: number): number { return view + 1; }' } },
+      ],
+    ]);
   });
 });

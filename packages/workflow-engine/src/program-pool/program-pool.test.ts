@@ -4,14 +4,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Json } from '../dsl/json.ts';
 import type { PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
-import type { Dialect } from '../programs/program-dialect.ts';
-import { liftedLimits, programPool } from './program-pool.ts';
+import { runMemoryBytes, unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
+import { programPool } from './program-pool.ts';
 
 const poolTestTimeoutMs = 30_000;
 
 const timerSlackMs = 2;
-
-const dialect: Dialect = { refused: [{ name: 'now', why: 'reads the clock' }], variables: [] };
 
 const pools: ProgramPool[] = [];
 
@@ -43,12 +41,19 @@ function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
   return pool;
 }
 
+function program(body: string): string {
+  return `export default function (input: any): unknown {\n  ${body}\n}`;
+}
+
 function request(source: string, input: Json = null, more: Partial<ProgramRequest> = {}): ProgramRequest {
   return {
     source,
-    input,
-    dialect,
-    limits: liftedLimits(64_000_000),
+    entry: 'default',
+    arguments: [input],
+    moment: Date.UTC(2026, 3, 1),
+    budget: 20_000,
+    memoryBytes: runMemoryBytes,
+    stackBytes: workerStackBytes,
     deadlineMs: 10_000,
     mostOutputBytes: 1_048_576,
     ...more,
@@ -59,102 +64,106 @@ afterEach(async () => {
   await Promise.all(pools.splice(0).map((pool) => pool.close()));
 });
 
+const endings: readonly (readonly [string, string, Partial<ProgramRequest>, Readonly<Record<string, unknown>>])[] = [
+  [
+    'raises an error',
+    program('throw new Error("stop");'),
+    {},
+    { ran: 'raised', issue: { detail: 'Error: stop', line: 2 } },
+  ],
+  ['does too much work', program('for (;;) {}'), { budget: 50 }, { ran: 'exhausted', limit: 'work', work: 51 }],
+  [
+    'uses more memory than its sandbox has',
+    program('const kept: string[] = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);'),
+    { memoryBytes: unitMemoryBytes },
+    { ran: 'exhausted', limit: 'memory' },
+  ],
+  [
+    'answers a value too deep',
+    program('let value: unknown = 0;\n  for (let level = 0; level < 600; level++) value = [value];\n  return value;'),
+    {},
+    { ran: 'unfit' },
+  ],
+  ['gives a number JSON cannot carry', program('return 0 / 0;'), {}, { ran: 'unfit' }],
+  [
+    'exports no function the request names',
+    'export function other(): number {\n  return 1;\n}',
+    {},
+    { ran: 'refused', issue: { detail: 'The program exports no function default' } },
+  ],
+  [
+    'does not load',
+    'export default function (input: number) {\n  return input +;\n}',
+    {},
+    { ran: 'refused', issue: { line: 2 } },
+  ],
+];
+
 describe('a program run in a worker of the pool', { timeout: poolTestTimeoutMs }, () => {
   it('answers its output as JSON with its size and the work it did, and how long the run took', async () => {
-    const outcome = await poolOf().run(request('[.rows[] | . * 2]', { rows: [1, 2, 3] }));
+    const outcome = await poolOf().run(
+      request(program('return input.rows.map((row: number) => row * 2);'), { rows: [1, 2, 3] }),
+    );
 
-    expect(outcome).toMatchObject({ ran: 'answered', output: [2, 4, 6], bytes: 7, work: 1952 });
+    expect(outcome).toMatchObject({ ran: 'answered', output: [2, 4, 6], bytes: 7, work: 0 });
     expect(outcome.milliseconds).toBeGreaterThan(0);
   });
 
-  it.each<readonly [string, string, Json, Readonly<Record<string, unknown>>]>([
-    [
-      'raises an error',
-      '.a | error("stop")',
-      { a: 1 },
-      { ran: 'raised', issue: { detail: 'stop', span: { start: 5, end: 18 } } },
-    ],
-    ['does too much work', '"x" * 100000000', null, { ran: 'exhausted', limit: 'work' }],
-    ['nests a value too deep', 'reduce range(600) as $i (null; [.])', null, { ran: 'exhausted', limit: 'value depth' }],
-    ['gives no output', 'empty', null, { ran: 'unanswered', outputs: 0 }],
-    ['gives two outputs', '1, 2', null, { ran: 'unanswered', outputs: 2 }],
-    ['gives a number JSON cannot carry', 'nan', null, { ran: 'unfit' }],
-    ['calls what its dialect refuses', 'now', null, { ran: 'refused', issues: [{ detail: 'now reads the clock' }] }],
-  ])('answers how it ended when it %s', async (_ending, source, input, ended) => {
-    expect(await poolOf().run(request(source, input))).toMatchObject(ended);
+  it('calls the function its entry names with the arguments it is given, at the moment it is given', async () => {
+    const answering =
+      'export function answer(view: number, input: { add: number }) {\n  return [view + input.add, Date.now()];\n}';
+
+    expect(await poolOf().run(request(answering, null, { entry: 'answer', arguments: [1, { add: 2 }] }))).toMatchObject(
+      { ran: 'answered', output: [3, Date.UTC(2026, 3, 1)] },
+    );
   });
 
-  it('recurses as deep as its fixed bound on every host, since its worker has a stack of a fixed size', async () => {
-    const recursion = 'def g: if . == 0 then 0 else (. - 1 | g) end; g';
-    const pool = poolOf();
-
-    expect(await pool.run(request(recursion, 500))).toMatchObject({ ran: 'answered', output: 0 });
-    expect(await pool.run(request(recursion, 1500))).toMatchObject({ ran: 'answered', output: 0 });
-    expect(await pool.run(request(recursion, 3000))).toMatchObject({
-      ran: 'exhausted',
-      limit: 'depth',
-      issue: { detail: 'Max depth exceeded', error: 'RuntimeError' },
-    });
+  it.each(endings)('answers how it ended when it %s', async (_ending, source, more, ended) => {
+    expect(await poolOf().run(request(source, null, more))).toMatchObject(ended);
   });
 });
 
 describe('a program that would depend on the stack of its worker', { timeout: poolTestTimeoutMs }, () => {
-  it('refuses a regular expression whose groups nest past 128 the same way in a worker, and ends a stack overflow as a limit', async () => {
-    const pool = poolOf({ heapMegabytes: 256 });
-    const nested = '"a" | test(("(" * 77354) + "a" + (")" * 77354))';
-    const recursion = 'def g: if . == 0 then 0 else (. - 1 | g) end; try (1000000 | g) catch "caught"';
-    const unbounded = { ...liftedLimits(64_000_000), mostDepth: Number.POSITIVE_INFINITY };
+  it('overflows its stack of a fixed size at the same depth every time, which it may catch', async () => {
+    const pool = poolOf();
+    const deepest = program(
+      'let deepest = 0;\n  const down = (depth: number): number => {\n    deepest = depth;\n    return down(depth + 1);\n  };\n  try {\n    down(0);\n  } catch {\n    return deepest;\n  }\n  return -1;',
+    );
+    const uncaught = program('const down = (depth: number): number => down(depth + 1);\n  return down(0);');
 
-    expect(await pool.run(request(`try (${nested}) catch .`))).toMatchObject({
-      ran: 'answered',
-      output: 'regex too large: groups nested more than 128 deep',
-    });
-    expect(
-      await pool.run(request(recursion, null, { limits: unbounded, deadlineMs: poolTestTimeoutMs })),
-    ).toMatchObject({
-      ran: 'exhausted',
-      limit: 'stack',
+    const first = await pool.run(request(deepest));
+    const second = await pool.run(request(deepest));
+
+    expect(first).toEqual({ ...second, milliseconds: first.milliseconds });
+    expect([first.ran, typeof Reflect.get(first, 'output')]).toEqual(['answered', 'number']);
+    expect(await pool.run(request(uncaught))).toMatchObject({
+      ran: 'raised',
+      issue: { detail: 'InternalError: stack overflow' },
     });
   });
 });
 
 describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, () => {
-  it('refuses a program that nests more than 128 levels as the main thread does, whatever the stack', async () => {
-    expect(await poolOf().run(request(`${'1+'.repeat(5000)}1`))).toMatchObject({
-      ran: 'refused',
-      issues: [{ detail: 'The program nests more than 128 levels deep' }],
-    });
-  });
-
   it('cuts the text of an error the program raised at 1,024 bytes, so a long one never crosses whole', async () => {
-    expect(await poolOf().run(request('error("x" * 30000000)'))).toMatchObject({
+    expect(await poolOf().run(request(program('throw new Error("x".repeat(30000000));')))).toMatchObject({
       ran: 'raised',
-      issue: { detail: `${'x'.repeat(1024)}…` },
+      issue: { detail: `Error: ${'x'.repeat(1017)}…` },
     });
   });
 
-  it('answers that an output is larger than it may give, without the output', async () => {
-    const outcome = await poolOf().run(request('"x" * 100', null, { mostOutputBytes: 50 }));
+  it('answers that an output is larger than it may give, without the output, in characters and in bytes', async () => {
+    const pool = poolOf();
+    const outcome = await pool.run(request(program('return "x".repeat(100);'), null, { mostOutputBytes: 50 }));
 
     expect(outcome).toMatchObject({ ran: 'oversized' });
     expect(outcome).not.toHaveProperty('output');
-  });
-
-  it('measures an output before it writes it, so an output that would take 240 MB as JSON is refused and the worker lives', async () => {
-    const pool = poolOf({ heapMegabytes: 256 });
-
-    expect(
-      await pool.run(request('("\\u0001Ā" * 15000000) | [., .]', null, { mostOutputBytes: 1_048_320 })),
-    ).toMatchObject({
+    expect(await pool.run(request(program('return "é".repeat(40);'), null, { mostOutputBytes: 50 }))).toMatchObject({
       ran: 'oversized',
     });
-    expect(await pool.run(request('[.[] | . + 1]', [1, 2]))).toMatchObject({ ran: 'answered', output: [2, 3] });
-  });
-
-  it('answers that the input nests too deep', async () => {
-    const deep = Array.from({ length: 600 }).reduce<Json>((inner) => [inner], null);
-
-    expect(await poolOf().run(request('.', deep))).toMatchObject({ ran: 'exhausted', limit: 'value depth' });
+    expect(await pool.run(request(program('return input.map((item: number) => item + 1);'), [1, 2]))).toMatchObject({
+      ran: 'answered',
+      output: [2, 3],
+    });
   });
 });
 
@@ -162,13 +171,13 @@ describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs
   it('terminate a worker at the deadline, while the server goes on answering others', async () => {
     const settled = { stuck: false };
     const stuck = poolOf({ worker: blocking })
-      .run(request('.', null, { deadlineMs: 1500 }))
+      .run(request(program('return input;'), null, { deadlineMs: 1500 }))
       .then((outcome) => {
         settled.stuck = true;
         return outcome;
       });
 
-    const meanwhile = await poolOf().run(request('. + 1', 1));
+    const meanwhile = await poolOf().run(request(program('return input + 1;'), 1));
 
     expect(meanwhile).toMatchObject({ ran: 'answered', output: 2 });
     expect(settled.stuck).toBe(false);
@@ -177,8 +186,10 @@ describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs
     expect(ended.milliseconds).toBeGreaterThanOrEqual(1500 - timerSlackMs);
   });
 
-  it('stop a run that takes more memory than its worker has', async () => {
-    expect(await poolOf({ heapMegabytes: 16 }).run(request('[range(1000000) | {a: .}] | length'))).toMatchObject({
+  it('stop a worker whose own heap runs out', async () => {
+    const allocating = workerOf('const kept = []; while (true) { kept.push(new Array(100000).fill(1)); }');
+
+    expect(await poolOf({ heapMegabytes: 16, worker: allocating }).run(request('.'))).toMatchObject({
       ran: 'stopped',
       because: 'memory',
     });
@@ -212,22 +223,7 @@ describe('the worker a request names', { timeout: poolTestTimeoutMs }, () => {
       output: { context, worker: 'named' },
     });
     expect(await pool.run(request('.', null, { worker: echoing }))).toMatchObject({ output: { context: null } });
-    expect(await pool.run(request('[.]', 1))).toMatchObject({ ran: 'answered', output: [1] });
-  });
-});
-
-describe('the environment of a worker', { timeout: poolTestTimeoutMs }, () => {
-  it('is empty unless the pool is given one, so no setting of the server, such as a key, reaches a program or its worker', async () => {
-    const reading = answeringWith('Object.keys(process.env)');
-
-    expect(Object.keys(process.env).length).toBeGreaterThan(1);
-    const unset = programPool({ workers: 1, heapMegabytes: 64, worker: reading });
-    pools.push(unset);
-
-    expect(await unset.run(request('.'))).toMatchObject({ ran: 'answered', output: [] });
-    expect(await poolOf({ worker: reading, environment: { ONLY: 'this' } }).run(request('.'))).toMatchObject({
-      output: ['ONLY'],
-    });
+    expect(await pool.run(request(program('return [input];'), 1))).toMatchObject({ ran: 'answered', output: [1] });
   });
 });
 
@@ -247,7 +243,7 @@ describe('a worker that breaks', { timeout: poolTestTimeoutMs }, () => {
     ],
     [
       'answers a job it was not given',
-      'import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ job }) => { parentPort.postMessage({ job: job + 1, answer: { ran: "unfit", work: 0 }, keep: true }); });',
+      'import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ job }) => { parentPort.postMessage({ job: job + 1, answer: { ran: "oversized", work: 0 }, keep: true }); });',
       'The worker answered job 2 while it ran job 1',
     ],
   ])('is answered as crashed when it %s', async (_crash, source, detail) => {

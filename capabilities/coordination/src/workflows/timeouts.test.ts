@@ -76,7 +76,7 @@ do:
   it('is computed by an expression', async () => {
     const document = workflow(`
 do:
-  - slow: { wait: PT1M, timeout: { after: '\${ .limit }' } }
+  - slow: { wait: PT1M, timeout: { after: '\${ $data.limit }' } }
 `);
 
     expect((await interpret(document, { input: { limit: 'PT3S' } })).settlement).toMatchObject({
@@ -85,7 +85,7 @@ do:
   });
 
   it('raises a configuration error when it is not a duration or not there', async () => {
-    const computed = workflow("do:\n  - slow: { wait: PT1M, timeout: { after: '${ .limit }' } }");
+    const computed = workflow("do:\n  - slow: { wait: PT1M, timeout: { after: '${ $data.limit }' } }");
     const missing = workflow('do:\n  - slow: { wait: PT1M, timeout: nowhere }');
 
     expect((await interpret(computed, { input: { limit: 'soon' } })).settlement).toMatchObject({
@@ -126,7 +126,7 @@ describe('a wait', () => {
 do:
   - iso: { wait: PT1S }
   - units: { wait: { seconds: 2 } }
-  - computed: { wait: '\${ .pause }' }
+  - computed: { wait: '\${ $data.pause }' }
 `);
 
     const { fake } = await interpret(document, { input: { pause: 'PT3S' } });

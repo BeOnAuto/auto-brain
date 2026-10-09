@@ -1,5 +1,5 @@
 import type { Conflict } from '@beonauto/operations';
-import { CallKeySchema, listenerFilterOf, matchEvent, type CallKey, type Submission } from '@beonauto/workflow-engine';
+import { CallKeySchema, listenerFilterOf, type CallKey, type Submission } from '@beonauto/workflow-engine';
 import { Effect, Schema } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
@@ -12,6 +12,7 @@ import {
 } from '../follower/consumers.ts';
 import { listenersOfType, type ListenerPlace, type MatchedListener } from '../listeners/listener-rows.ts';
 import { addressOfRun } from '../runs/run-address.ts';
+import { groupVerdicts, type MatchedFilter, type MatchFilters } from './filter-matching.ts';
 import type { RefuseReaction } from './refusals.ts';
 
 interface Offer {
@@ -26,6 +27,7 @@ export interface OfferParts {
   readonly refusals: RefuseReaction;
   readonly offer: (offer: Offer) => Effect.Effect<Submission, Conflict | Readonly<{ detail: string }>>;
   readonly declined: (runKey: string, detail: string) => Effect.Effect<void>;
+  readonly match: MatchFilters;
   readonly now: () => number;
 }
 
@@ -54,11 +56,22 @@ function listenerKeyOf(text: string): CallKey {
   return Schema.decodeUnknownSync(CallKeySchema)({ runId, reference, run });
 }
 
-function accepts(row: MatchedListener, { event }: FollowedRecord, now: number): boolean {
-  return Schema.decodeUnknownSync(FiltersSchema)(row.filters).some((attributes) => {
+function filtersOf(row: MatchedListener): readonly MatchedFilter[] {
+  return Schema.decodeUnknownSync(FiltersSchema)(row.filters).flatMap((attributes) => {
     const filter = listenerFilterOf(attributes, row.listener);
-    return filter !== undefined && matchEvent(filter, event.event, now) === true;
+    return filter === undefined ? [] : [filter];
   });
+}
+
+function accepting(
+  parts: OfferParts,
+  rows: readonly MatchedListener[],
+  { event }: FollowedRecord,
+): Effect.Effect<readonly boolean[]> {
+  const groups = rows.map((row) => filtersOf(row));
+  return Effect.map(groupVerdicts(parts.match, groups, event.event, parts.now()), (verdicts) =>
+    verdicts.map((each) => each.includes(true)),
+  );
 }
 
 function emittedByTheRun(row: MatchedListener, { event }: FollowedRecord): boolean {
@@ -90,26 +103,23 @@ export function listenerOffers(parts: OfferParts): RecordConsumer {
     name: 'listener_offers',
     skippedAfterSweeps: deliverySweeps,
     batchOf: (followed, after, most) =>
-      Effect.map(
-        listenersOfType(parts.database, {
+      Effect.gen(function* () {
+        const rows = yield* listenersOfType(parts.database, {
           brainKey: followed.brainKey,
           type: followed.event.event.type,
           after: placeOf(after),
           limit: most + 1,
-        }),
-        (rows) => {
-          const taken = rows.slice(0, most);
-          const now = parts.now();
-          const lastTaken = taken.at(-1);
-          return {
-            deliveries: taken
-              .filter((row) => !emittedByTheRun(row, followed) && accepts(row, followed, now))
-              .map((row) => offerOf(parts, row, followed)),
-            through: lastTaken === undefined ? undefined : keyOf(lastTaken),
-            more: rows.length > most,
-          };
-        },
-      ),
+        });
+        const taken = rows.slice(0, most);
+        const others = taken.filter((row) => !emittedByTheRun(row, followed));
+        const accepted = yield* accepting(parts, others, followed);
+        const lastTaken = taken.at(-1);
+        return {
+          deliveries: others.filter((_, index) => accepted[index] === true).map((row) => offerOf(parts, row, followed)),
+          through: lastTaken === undefined ? undefined : keyOf(lastTaken),
+          more: rows.length > most,
+        };
+      }),
     skipped: ({ brainKey }, { workflow }, detail) =>
       parts.refusals.refuse(brainKey, workflow, `An event could not be offered to a run waiting for it: ${detail}`),
   };

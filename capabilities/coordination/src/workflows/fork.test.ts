@@ -18,7 +18,7 @@ do:
               raise:
                 error: { type: https://example.com/broken, status: 500 }
   - after:
-      set: { finished: '\${ . }' }
+      set: { finished: '\${ $data }' }
 `);
 
 describe('a fork', () => {

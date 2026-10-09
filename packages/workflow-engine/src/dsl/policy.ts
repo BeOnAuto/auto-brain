@@ -15,9 +15,7 @@ import {
   forbidden,
   rejection,
   retryPolicyRejections,
-  templateRejections,
   timeoutRejections,
-  transformRejections,
   type Components,
   type Located,
   type Rejection,
@@ -39,6 +37,10 @@ function rejectedComponents(functions: CallFunctions): Readonly<Record<string, s
 
 const flowDirectives = new Set(['continue', 'exit', 'end']);
 
+export const oneLanguage = "The brain's one language is TypeScript; write the program as a TypeScript function";
+
+const strictMode = 'An expression that fails must fail, so evaluate.mode is strict, the default';
+
 export function policyOf(functions: CallFunctions): Policy {
   return (document) => {
     const nesting = nestingRejections(document);
@@ -55,6 +57,7 @@ function walkedRejectionsOf(document: JsonObject, functions: CallFunctions): rea
   };
   const schedule = scheduleRejectionsOf(field(document, 'schedule'), functions);
   return versionRejections(document).concat(
+    evaluateRejections(objectField(document, 'evaluate')),
     componentRejections(use, components, functions),
     schedule,
     workflowDataRejections(document),
@@ -79,6 +82,15 @@ function versionRejections(document: JsonObject): readonly Rejection[] {
     : [forbidden('/document/dsl', `This runtime runs documents of DSL 1.0.x, not ${dsl ?? 'an unnamed version'}`)];
 }
 
+function evaluateRejections(evaluate: JsonObject | undefined): readonly Rejection[] {
+  const language = field(evaluate ?? {}, 'language');
+  const mode = field(evaluate ?? {}, 'mode');
+  return [
+    ...(language === undefined || language === 'typescript' ? [] : [forbidden('/evaluate/language', oneLanguage)]),
+    ...(mode === undefined || mode === 'strict' ? [] : [forbidden('/evaluate/mode', strictMode)]),
+  ];
+}
+
 function componentRejections(use: JsonObject, components: Components, functions: CallFunctions): readonly Rejection[] {
   const rejected = Object.entries(rejectedComponents(functions))
     .filter(([name]: readonly [string, string]) => field(use, name) !== undefined)
@@ -89,18 +101,13 @@ function componentRejections(use: JsonObject, components: Components, functions:
   const timeouts = entriesOf(components.timeouts).flatMap(([name, timeout]: JsonEntry) =>
     isObject(timeout) ? durationRejections(field(timeout, 'after'), `${pointerTo('/use/timeouts', name)}/after`) : [],
   );
-  const errors = entriesOf(components.errors).flatMap(([name, error]: JsonEntry) =>
-    templateRejections(error, pointerTo('/use/errors', name)),
-  );
-  return rejected.concat(retries, timeouts, errors);
+  return rejected.concat(retries, timeouts);
 }
 
 function workflowDataRejections(document: JsonObject): readonly Rejection[] {
   const input = objectField(document, 'input') ?? {};
   const output = objectField(document, 'output') ?? {};
-  return transformRejections(field(input, 'from'), '/input/from').concat(
-    transformRejections(field(output, 'as'), '/output/as'),
-    schemaRejections(objectField(input, 'schema'), '/input/schema'),
+  return schemaRejections(objectField(input, 'schema'), '/input/schema').concat(
     schemaRejections(objectField(output, 'schema'), '/output/schema'),
   );
 }

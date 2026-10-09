@@ -36,14 +36,13 @@ describe('the policy of an emit task', () => {
   it('takes an emit of an event with a type and a source, and rejects one without either, with an id, or with nothing', () => {
     expect(
       rejectedIn(`
-  - announce: { emit: { event: { with: { type: com.acme.done, source: /acme, data: '\${ .total }' } } } }
+  - announce: { emit: { event: { with: { type: com.acme.done, source: /acme, data: '\${ $data.total }' } } } }
   - typeless: { emit: { event: { with: { source: /acme } } } }
   - sourceless: { emit: { event: { with: { type: com.acme.done } } } }
   - named: { emit: { event: { with: { type: com.acme.done, source: /acme, id: e1 } } } }
   - empty: { emit: { event: {} } }
   - plain: { emit: 3 }
   - eventless: { emit: { event: 3 } }
-  - broken: { emit: { event: { with: { type: com.acme.done, source: '\${ .( }' } } } }
 `),
     ).toEqual([
       '/do/1/typeless/emit/event/with/type: The event to emit needs a type',
@@ -52,7 +51,6 @@ describe('the policy of an emit task', () => {
       '/do/4/empty/emit: emit takes event.with, a mapping of the attributes of the event to emit',
       '/do/5/plain/emit: emit takes event.with, a mapping of the attributes of the event to emit',
       '/do/6/eventless/emit: emit takes event.with, a mapping of the attributes of the event to emit',
-      expect.stringMatching(/^\/do\/7\/broken\/emit\/event\/with\/source: /u),
     ]);
   });
 
@@ -90,11 +88,10 @@ describe('the policy of a call', () => {
   it('leaves the arguments of a call to the checks of its function', () => {
     expect(
       rejectedIn(`
-  - fine: { call: notify, with: { to: '\${ .who }' } }
+  - fine: { call: notify, with: { to: '\${ $data.who }' } }
   - bare: { call: notify }
-  - broken: { call: notify, with: { to: '\${ .a + }' } }
 `),
-    ).toEqual(['/do/1/bare/with: notify takes with: { to }', expect.stringMatching(/^\/do\/2\/broken\/with\/to: /u)]);
+    ).toEqual(['/do/1/bare/with: notify takes with: { to }']);
   });
 });
 
@@ -104,24 +101,22 @@ describe('the policy of listen', () => {
       rejectedIn(`
   - one: { listen: { to: { one: { with: { type: approved } } } } }
   - all: { listen: { to: { all: [{ with: { type: a } }, { with: { type: b } }] }, read: envelope } }
-  - any: { listen: { to: { any: [{ with: { data: '\${ .ok }' } }] } } }
+  - any: { listen: { to: { any: [{ with: { data: '\${ $data.ok }' } }] } } }
 `),
     ).toEqual([]);
   });
 
-  it('rejects until, foreach, correlation and broken filters', () => {
+  it('rejects until, foreach and correlation', () => {
     expect(
       rejectedIn(`
-  - until: { listen: { to: { any: [], until: .done } } }
+  - until: { listen: { to: { any: [], until: $data.done } } }
   - each: { listen: { to: { one: { with: { type: a } } } }, foreach: { do: [] } }
-  - correlated: { listen: { to: { all: [{ with: { type: a }, correlate: { id: { from: .id } } }, 3] } } }
-  - broken: { listen: { to: { one: { with: { data: '\${ .a + }' } } } } }
+  - correlated: { listen: { to: { all: [{ with: { type: a }, correlate: { id: { from: $data.id } } }, 3] } } }
 `),
     ).toEqual([
       '/do/0/until/listen/to/until: listen until is not supported in this version',
       '/do/1/each/foreach: listen foreach is not supported in this version',
       '/do/2/correlated/listen/to/all/0/correlate: Correlating events is not supported in this version',
-      expect.stringMatching(/^\/do\/3\/broken\/listen\/to\/one\/with\/data: /u),
     ]);
   });
 });

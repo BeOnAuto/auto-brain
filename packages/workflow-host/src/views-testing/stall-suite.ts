@@ -7,6 +7,7 @@ import {
   collecting,
   counting,
   detailsOf,
+  foldOf,
   foldedAll,
   foldingOf,
   isLive,
@@ -17,35 +18,36 @@ import {
 } from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 
-const raisingWithTheEvent =
-  'if $event.data.output == "bad" then error("cannot take \\($event.data.output)") else . + 1 end';
+const raisingWithTheEvent = foldOf(
+  'if (event.data.output === "bad") throw new Error(`cannot take ${event.data.output}`);\n  return view + 1;',
+  'number',
+);
+
+function badFold(whenBad: string): string {
+  return foldOf(`if (event.data.output === "bad") ${whenBad}\n  return view + 1;`, 'number');
+}
 
 const anyText: unknown = expect.any(String);
 
 const stallingFolds: readonly (readonly [string, string, Readonly<Record<string, unknown>>])[] = [
-  ['raises with the event', raisingWithTheEvent, { kind: 'raised', message: 'cannot take bad', line: 30 }],
+  ['raises with the event', raisingWithTheEvent, { kind: 'raised', message: 'Error: cannot take bad', line: 31 }],
+  ['calls what is not a function', badFold('return view + event.data.output.toFixed();'), { kind: 'raised', line: 31 }],
+  ['answers nothing', badFold('return undefined;'), { kind: 'unfit', line: null }],
+  ['answers what JSON cannot carry', badFold('return Number.NaN;'), { kind: 'unfit', line: null }],
+  ['does too much work', badFold('for (;;) {}'), { kind: 'work', line: null }],
   [
-    'reads event text as a number',
-    'if $event.data.output == "bad" then . + ($event.data.output | tonumber) else . + 1 end',
-    { kind: 'raised', line: 30 },
-  ],
-  ['gives no output', 'if $event.data.output == "bad" then empty else . + 1 end', { kind: 'none', line: null }],
-  ['gives two outputs', 'if $event.data.output == "bad" then (., .) else . + 1 end', { kind: 'several', line: null }],
-  [
-    'does too much work',
-    'if $event.data.output == "bad" then ("x" * 20000000 | length) else . + 1 end',
-    { kind: 'work', line: 30 },
+    'uses more memory than a page may',
+    badFold('{\n    const kept: string[] = [];\n    for (;;) kept.push("y".repeat(1048576) + kept.length);\n  }'),
+    { kind: 'memory', line: null },
   ],
   [
     'nests too deep',
-    'if $event.data.output == "bad" then reduce range(600) as $i (.; [.]) else . + 1 end',
-    { kind: 'depth', line: 30 },
+    badFold(
+      '{\n    let value: unknown = 0;\n    for (let level = 0; level < 600; level++) value = [value];\n    return value;\n  }',
+    ),
+    { kind: 'unfit', line: null },
   ],
-  [
-    'outgrows its bound',
-    'if $event.data.output == "bad" then "x" * 600000 else . + 1 end',
-    { kind: 'size', line: null },
-  ],
+  ['outgrows its bound', badFold('return "x".repeat(600000);'), { kind: 'size', line: null }],
 ];
 
 async function threeRuns(views: ViewHarness): Promise<void> {
@@ -72,7 +74,10 @@ function stoppingTests(settingsOf: SettingsOf): void {
   it('stops when the view it folds is one its schema refuses', async () => {
     const views = await viewHarness(await settingsOf());
     const schema = { type: 'array', maxItems: 1 };
-    await views.saved('runs', detailsOf('. + [$event.data.output]', succeeded, { initial: [], schema }));
+    await views.saved(
+      'runs',
+      detailsOf(foldOf('return [...view, event.data.output];', 'unknown[]'), succeeded, { initial: [], schema }),
+    );
     await threeRuns(views);
     views.start();
 
@@ -101,15 +106,14 @@ function afterTheStallTests(settingsOf: SettingsOf): void {
 
   it('is tried again when its fold runs past its deadline, counting the tries on its row, and stops after twenty', async () => {
     const views = await viewHarness(await settingsOf());
-    const slow = 'if $event.data.output == "bad" then reduce range(3000000) as $i (.; . + 0) else . + 1 end';
-    await views.saved('runs', detailsOf(slow, succeeded, { initial: 0 }));
+    await views.saved('runs', detailsOf(badFold('for (;;) {}'), succeeded, { initial: 0 }));
     await threeRuns(views);
-    views.start({ folding: { ...foldingOf(), foldDeadlineMs: 1 }, sweepEveryMs: 20 });
+    views.start({ folding: { ...foldingOf(), budget: 1_000_000_000, foldDeadlineMs: 50 }, sweepEveryMs: 20 });
 
     const kept = await views.until('runs', isStalled);
 
     expect(kept).toMatchObject({ view: 1, folded: 1, stall: { kind: 'time', line: null } });
-    expect(kept.stall?.message).toBe('The fold was stopped by its deadline of 1 ms 20 times');
+    expect(kept.stall?.message).toBe('The fold was stopped by its deadline of 50 ms 20 times');
   });
 }
 

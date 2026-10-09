@@ -29,7 +29,7 @@
                 {
                   "add": {
                     "set": {
-                      "total": "${ (.total // 0) + $item }"
+                      "total": "${ ($data.total ?? 0) + $item }"
                     }
                   }
                 }
@@ -132,7 +132,7 @@
                       {
                         "add": {
                           "set": {
-                            "total": "${ (.total // 0) + $item }"
+                            "total": "${ ($data.total ?? 0) + $item }"
                           }
                         }
                       }
@@ -212,7 +212,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 12525
+          "value": 12530
         },
         {
           "op": "add",
@@ -325,7 +325,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 3218
+          "value": 3223
         }
       ],
       "outputs": [
@@ -445,7 +445,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 12536
+          "value": 12541
         },
         {
           "op": "remove",
@@ -549,7 +549,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6276
+          "value": 6281
         }
       ],
       "outputs": [
@@ -649,7 +649,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 230
+          "value": 235
         },
         {
           "op": "replace",
@@ -695,7 +695,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 8025
+          "value": 8030
         }
       ],
       "outputs": [

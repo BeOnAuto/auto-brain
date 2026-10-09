@@ -4,10 +4,11 @@ import { setTimeout } from 'node:timers/promises';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
+import type { CheckRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { counting, countingElsewhere } from '../pool-testing/counting-workers.ts';
 import { threadsAlive } from '../pool-testing/threads-alive.ts';
-import { liftedLimits, programPool } from './program-pool.ts';
+import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
+import { checkPermits, programPool } from './program-pool.ts';
 
 interface Ran {
   readonly jobs: number;
@@ -57,8 +58,42 @@ function run(
   worker: Readonly<URL> = counting,
   deadlineMs = 10_000,
 ): Promise<PoolOutcome> {
-  const limits = liftedLimits(64_000_000);
-  return pool.run({ source, input: null, dialect: { refused: [] }, limits, deadlineMs, mostOutputBytes: 1000, worker });
+  return pool.run({
+    source,
+    entry: 'default',
+    arguments: [null],
+    moment: 0,
+    budget: 500,
+    memoryBytes: unitMemoryBytes,
+    stackBytes: workerStackBytes,
+    deadlineMs,
+    mostOutputBytes: 1000,
+    worker,
+  });
+}
+
+const blocking = new URL(`data:text/javascript,${encodeURIComponent('while (true) {}')}`);
+
+const checking = new URL(
+  `data:text/javascript,${encodeURIComponent(
+    [
+      "import { parentPort } from 'node:worker_threads';",
+      'parentPort.on("message", ({ job, kind, request }) => {',
+      "  const issues = kind === 'check' ? request.expressions.map((each, at) => ({ at, line: 1, detail: each.source })) : [];",
+      "  parentPort.postMessage({ job, answer: { ran: 'checked', issues }, keep: true });",
+      '});',
+    ].join('\n'),
+  )}`,
+);
+
+function checkOf(more: Partial<CheckRequest> = {}): CheckRequest {
+  return {
+    schemas: {},
+    expressions: [{ source: '$data.a', names: ['$data'] }],
+    deadlineMs: 2000,
+    worker: checking,
+    ...more,
+  };
 }
 
 function ranOf(outcome: PoolOutcome): Ran {
@@ -140,6 +175,40 @@ describe('the workers of a pool and its permits, while a worker is let go of', {
   });
 });
 
+describe('the permit of the checks of a pool', { timeout: poolTestTimeoutMs }, () => {
+  it('runs on a permit of its own, so it never waits behind the runs that take every worker', async () => {
+    const pool = poolOf({ workers: 2 });
+    const blocked = Array.from({ length: 2 }, () => run(pool, 'block', counting, 5000));
+
+    const checked = await pool.check(checkOf());
+
+    expect(checkPermits).toBe(1);
+    expect(checked).toMatchObject({ ran: 'checked', issues: [{ at: 0, line: 1, detail: '$data.a' }] });
+    await pool.close();
+    expect(await Promise.all(blocked)).toMatchObject([
+      { ran: 'stopped', because: 'closing' },
+      { ran: 'stopped', because: 'closing' },
+    ]);
+  });
+
+  it('waits for its one permit until its deadline, and stops a check that runs past it', async () => {
+    const pool = poolOf();
+    const first = pool.check(checkOf({ worker: blocking, deadlineMs: 2000 }));
+
+    const second = await pool.check(checkOf({ deadlineMs: 300 }));
+
+    expect(second).toMatchObject({ ran: 'stopped', because: 'busy' });
+    expect(await first).toMatchObject({ ran: 'stopped', because: 'deadline' });
+  });
+
+  it('takes no more checks once the pool is closed', async () => {
+    const pool = poolOf();
+    await pool.close();
+
+    expect(await pool.check(checkOf())).toMatchObject({ ran: 'stopped', because: 'closing' });
+  });
+});
+
 describe('the deadline of a warm worker', { timeout: poolTestTimeoutMs }, () => {
   it('terminates a warm worker blocked past its deadline while another worker answers, and the jobs after it go to the worker left and a fresh one', async () => {
     const pool = poolOf({ workers: 2 });
@@ -182,9 +251,10 @@ describe('a pool that closes', { timeout: poolTestTimeoutMs }, () => {
     ['while its workers are idle', ''],
   ])('holds no process open %s', async (_when, closing) => {
     const script = [
-      `const { liftedLimits, programPool } = await import('${new URL('program-pool.ts', import.meta.url).href}');`,
+      `const { programPool } = await import('${new URL('program-pool.ts', import.meta.url).href}');`,
       'const pool = programPool({ workers: 2, heapMegabytes: 64 });',
-      "const outcome = await pool.run({ source: '. + 1', input: 1, dialect: { refused: [] }, limits: liftedLimits(1000000), deadlineMs: 10000, mostOutputBytes: 100 });",
+      "const source = 'export default function (input: number): number { return input + 1; }';",
+      "const outcome = await pool.run({ source, arguments: [1], entry: 'default', moment: 0, budget: 500, memoryBytes: 67108864, stackBytes: 1048576, deadlineMs: 10000, mostOutputBytes: 100 });",
       closing,
       'process.stdout.write(JSON.stringify(outcome));',
     ].join('\n');

@@ -12,7 +12,7 @@ do:
 
 describe('a workflow that emits an event', () => {
   it('hands the event to its brain with an id the runtime gives it, and goes on', async () => {
-    const document = emitting("{ type: com.acme.closed, source: /acme/ledger, data: { month: '${ .month }' } }");
+    const document = emitting("{ type: com.acme.closed, source: /acme/ledger, data: { month: '${ $data.month }' } }");
 
     const { ending, commands } = await interpret(document, { input: { month: 'september' } });
 

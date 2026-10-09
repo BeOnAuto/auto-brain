@@ -6,4 +6,4 @@ export { runPresenter } from './presenting/run-presenter.ts';
 export { makeWorkflowAdapter, type WorkflowAdapterDependencies } from './capability/workflow.ts';
 export type { WorkflowDefinitionDocument } from './document/workflow-document.ts';
 export { callMarginMs } from './runs/call-limits.ts';
-export { workflowMachineOptions } from './runs/workflow-machine-options.ts';
+export { workflowMachineOptionsOf } from './runs/workflow-machine-options.ts';

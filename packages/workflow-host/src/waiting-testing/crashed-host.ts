@@ -1,4 +1,3 @@
-import { testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
@@ -6,6 +5,7 @@ import { hostEngineOn, type HostEngine } from '../host/host-engine.ts';
 import type { RunStart } from '../host/run-requests.ts';
 import { systemClock } from '../loop/host-clock.ts';
 import { recordedReactions } from '../reaction-testing/recorded-reactions.ts';
+import { testMachine } from '../testing/host-documents.ts';
 import { recordingReports, recordingSettlements } from '../testing/recording-reports.ts';
 import { executorWaitingOf } from '../waiting/waiting-parts.ts';
 import { recordedWaiting } from './recorded-waiting.ts';

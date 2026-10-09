@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { CheckJobSchema } from './check-messages.ts';
 import { FoldJobSchema } from './fold-messages.ts';
 import { ProgramJobSchema } from './program-messages.ts';
 
@@ -11,6 +12,7 @@ export const JobSchema = Schema.Union([
     request: FoldJobSchema,
     progress: Schema.instanceOf(SharedArrayBuffer),
   }),
+  Schema.Struct({ job: Schema.Number, kind: Schema.Literal('check'), request: CheckJobSchema }),
 ]);
 
 export type JobEnvelope = typeof JobSchema.Type;

@@ -1,7 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
 import type { Run, SettleRun } from '@beonauto/definitions';
-import { defaultLimits, defaultSeed, testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function, type Schema } from 'effect';
 
 import type { DatabaseSettings } from '../src/database/host-databases.ts';
@@ -9,6 +8,7 @@ import type { RunStart } from '../src/host/run-requests.ts';
 import { openWorkflowHost, type WorkflowHost } from '../src/host/workflow-host.ts';
 import type { HostClock } from '../src/loop/host-clock.ts';
 import { recordedReactions } from '../src/reaction-testing/recorded-reactions.ts';
+import { startOf as testStartOf, testMachine } from '../src/testing/host-documents.ts';
 import { recordedWaiting } from '../src/waiting-testing/recorded-waiting.ts';
 
 export interface MeasuredHost {
@@ -30,7 +30,7 @@ const run: Run = {
 export const header = { dsl: '1.0.3', namespace: 'acme', name: 'measured', version: '1.0.0' };
 
 export function startOf(document: Schema.JsonObject, input: Schema.Json = {}): RunStart {
-  return { document, input, limits: defaultLimits, attributes: {}, seed: defaultSeed };
+  return { ...testStartOf(document), input, attributes: {} };
 }
 
 export function runAt(index: number): { readonly org: string; readonly brain: string; readonly runId: string } {

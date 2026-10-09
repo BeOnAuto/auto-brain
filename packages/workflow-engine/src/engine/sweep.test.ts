@@ -5,8 +5,8 @@ import { DispatchFailed } from '../dispatch/dispatch-watermark.ts';
 import type { RunInput } from '../machine/run-input.ts';
 import { memoryPorts } from '../memory/memory-ports.ts';
 import { virtualClock } from '../memory/virtual-clock.ts';
-import { startedOf, testMachine } from '../testing/driver-inputs.ts';
-import { memoryDriver } from '../testing/memory-driver.ts';
+import { testDriverOf, testMachine } from '../pool-testing/test-sandbox.ts';
+import { startedOf } from '../testing/driver-inputs.ts';
 import { workflow } from '../testing/workflows.ts';
 import { workflowEngineOf } from './engine.ts';
 
@@ -20,7 +20,7 @@ function failingSweep() {
 
 describe('a sweep', () => {
   it('wakes a run whose dispatch fell behind, which dispatches what it missed', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.ports.faults.failNext('arm_timer');
     driver.start({ runId, document: pausing });
 
@@ -29,7 +29,7 @@ describe('a sweep', () => {
   });
 
   it('arms again the timers the timer store lost of a run that is overdue', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.start({ runId, document: pausing });
     driver.ports.timers.forget();
 
@@ -42,7 +42,7 @@ describe('a sweep', () => {
   });
 
   it('wakes no run that is not due', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     driver.start({ runId, document: pausing });
 
     expect(Effect.runSync(driver.engine.sweep(driver.clock.now()))).toEqual({ runs: 0, timersArmedAgain: 0 });
@@ -68,7 +68,7 @@ describe('a sweep', () => {
 
 describe('a sweep after a timer fired', () => {
   it('wakes no run whose last timer fired while it went on to wait for an event', () => {
-    const driver = memoryDriver();
+    const driver = testDriverOf();
     const listening = workflow(
       'do:\n  - pause: { wait: PT1M }\n  - approval: { listen: { to: { one: { with: { type: com.acme.approved } } } } }',
     );

@@ -16,13 +16,13 @@
           {
             "count": {
               "set": {
-                "n": "${ (.n // 0) + 1 }"
+                "n": "${ ($data.n ?? 0) + 1 }"
               }
             }
           },
           {
             "again": {
-              "if": "${ .n < 3 }",
+              "if": "${ $data.n < 3 }",
               "wait": {
                 "milliseconds": 100
               },
@@ -112,13 +112,13 @@
                 {
                   "count": {
                     "set": {
-                      "n": "${ (.n // 0) + 1 }"
+                      "n": "${ ($data.n ?? 0) + 1 }"
                     }
                   }
                 },
                 {
                   "again": {
-                    "if": "${ .n < 3 }",
+                    "if": "${ $data.n < 3 }",
                     "wait": {
                       "milliseconds": 100
                     },
@@ -198,7 +198,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 8408
+          "value": 8418
         },
         {
           "op": "add",
@@ -266,7 +266,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 2692
+          "value": 2702
         }
       ],
       "outputs": [
@@ -435,7 +435,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 4682
+          "value": 4692
         }
       ],
       "outputs": [
@@ -540,7 +540,7 @@
         {
           "op": "replace",
           "path": "/heldBytes",
-          "value": 209
+          "value": 219
         },
         {
           "op": "replace",
@@ -574,7 +574,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6297
+          "value": 6307
         }
       ],
       "outputs": [

@@ -1,7 +1,15 @@
-import { mostExpressionWork, mostWorkPerInput } from '../machine/limits.ts';
-import type { Variables } from '../programs/program-running.ts';
+import { mostExpressionWork, mostValueWork, mostWorkPerInput } from '../machine/limits.ts';
+import type { ExpressionUnit } from '../programs/expression-units.ts';
+import type { ProgramRun } from '../programs/program-run.ts';
 import { readDuration } from './durations.ts';
-import { enclosedBody, expressionSource, runExpression } from './expressions.ts';
+import {
+  enclosedBody,
+  evaluationOf,
+  expressionSource,
+  runExpression,
+  type Bound,
+  type Evaluation,
+} from './expressions.ts';
 import {
   entriesOf,
   isList,
@@ -20,24 +28,49 @@ interface ExpressionMeter {
   readonly record: (work: number) => void;
 }
 
+export type Variables = Readonly<Record<string, Json>>;
+
 export interface Place {
   readonly reference: string;
   readonly now: number;
   readonly meter: ExpressionMeter;
   readonly mostDuration: number;
+  readonly unit: ExpressionUnit;
+  readonly deadlineAt: number;
 }
 
-const mostValueWork = mostExpressionWork;
+export const mostInputMs = 2000;
 
 export function evaluate(source: string, data: Json, variables: Variables, place: Place): Json {
   const mostWork = place.meter.allowance();
-  const evaluation = runExpression(source, data, variables, { now: place.now, mostWork });
+  return answeredOrRaised(
+    runExpression(
+      place.unit,
+      source,
+      { ...variables, data },
+      { now: place.now, mostWork, deadlineAt: place.deadlineAt },
+    ),
+    place,
+    mostWork,
+  );
+}
+
+export function testedOrRaised(
+  source: string,
+  run: ProgramRun,
+  place: Pick<Place, 'reference' | 'meter'>,
+  mostWork: number,
+): Json {
+  return answeredOrRaised(evaluationOf(source, run), place, mostWork);
+}
+
+function answeredOrRaised(evaluation: Evaluation, place: Pick<Place, 'reference' | 'meter'>, mostWork: number): Json {
   place.meter.record(evaluation.work);
   if ('value' in evaluation) {
     return evaluation.value;
   }
   if (evaluation.exhausted) {
-    throw raised('runtime', 500, exhaustionOf(evaluation.problem, mostWork), place.reference);
+    throw raised('runtime', 500, exhaustionOf(evaluation.problem, evaluation.limit, mostWork), place.reference);
   }
   throw new RaisedError({
     type: errorType('expression'),
@@ -48,10 +81,17 @@ export function evaluate(source: string, data: Json, variables: Variables, place
   });
 }
 
-function exhaustionOf(problem: string, mostWork: number): string {
-  return mostWork < mostExpressionWork
-    ? `${problem}: the workflow did ${mostWorkPerInput} units of expression work in one input; it lets other workflows run between tasks, not within one`
-    : `${problem}: an expression may do ${mostExpressionWork} units of work`;
+const boundOf: Readonly<Record<Bound, string>> = {
+  work: `an expression may do ${mostExpressionWork} checkpoints of work`,
+  memory: 'the expressions of one input may use the memory of their sandbox and no more',
+  deadline: `the expressions of one input may take ${mostInputMs} ms`,
+};
+
+function exhaustionOf(problem: string, limit: Bound, mostWork: number): string {
+  if (limit === 'work' && mostWork < mostExpressionWork) {
+    return `${problem}: the workflow did ${mostWorkPerInput} checkpoints of expression work in one input; it lets other workflows run between tasks, not within one`;
+  }
+  return `${problem}: ${boundOf[limit]}`;
 }
 
 export function evaluateExpression(expression: string, data: Json, variables: Variables, place: Place): Json {

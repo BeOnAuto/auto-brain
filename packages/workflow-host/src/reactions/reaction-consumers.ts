@@ -1,6 +1,7 @@
 import type { RecordConsumer } from '../follower/consumers.ts';
 import type { FollowerHost } from '../follower/follower-host.ts';
 import { addressOfRun } from '../runs/run-address.ts';
+import { filterMatchingOf } from './filter-matching.ts';
 import { listenerOffers } from './listener-offers.ts';
 import type { ReactionOptions } from './reaction-options.ts';
 import type { Refusals } from './refusals.ts';
@@ -19,12 +20,14 @@ export function reactionConsumersOf(
   starting: Starting,
 ): readonly RecordConsumer[] {
   const { database, clock, reports } = host;
+  const match = filterMatchingOf();
   const offers = listenerOffers({
     database,
     refusals,
     offer: ({ runKey, key, listener, event }) =>
       host.submitted({ kind: 'event_offered', runId: runKey, at: clock.now(), key, listener, event }),
     declined: (runKey, detail) => reports.note({ kind: 'offer_declined', run: addressOfRun(runKey), detail }),
+    match,
     now: clock.now,
   });
   const starts = subscriptionStarts({
@@ -32,6 +35,7 @@ export function reactionConsumersOf(
     starting,
     refusals,
     workflowOfRun: workflowsOfRuns((stream) => database.store.read(stream, 0), options.definitionType),
+    match,
     now: clock.now,
   });
   return [offers, starts];

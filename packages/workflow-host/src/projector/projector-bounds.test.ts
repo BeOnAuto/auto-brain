@@ -11,8 +11,19 @@ import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts'
 import { brainPass, type PassParts } from './brain-pass.ts';
 import { rowsOfBrain } from './view-reconciling.ts';
 
-const { alpha, alphaKey, counting, detailsOf, foldedAll, foldingOf, isLive, liveWith, succeeded, viewTestTimeoutMs } =
-  documents;
+const {
+  alpha,
+  alphaKey,
+  counting,
+  detailsOf,
+  foldOf,
+  foldedAll,
+  foldingOf,
+  isLive,
+  liveWith,
+  succeeded,
+  viewTestTimeoutMs,
+} = documents;
 
 const brains = [alpha, { org: 'acme', brain: 'beta' }, { org: 'acme', brain: 'gamma' }];
 
@@ -124,12 +135,10 @@ describe('the share of a projector', { timeout: viewTestTimeoutMs }, () => {
 describe('a fold that ran past its deadline', { timeout: viewTestTimeoutMs }, () => {
   it('is tried again at the next sweep, not the next page, while the other views of its brain go on', async () => {
     const views = await viewHarness(await onSQLite());
-    const slowOnce = 'if $event.data.output == "slow" then reduce range(1000000000) as $i (.; . + 0) else . + 1 end';
+    const slowOnce = foldOf('if (event.data.output === "slow") for (;;) {}\n  return view + 1;', 'number');
     await views.saved('slow', detailsOf(slowOnce, succeeded, { initial: 0 }));
     await views.saved('quick', counting);
-    const folding = foldingOf();
-    const limits = { ...folding.limits, mostWork: 10_000_000_000 };
-    views.start({ folding: { ...folding, limits, foldDeadlineMs: 500 }, sweepEveryMs: 10_000 });
+    views.start({ folding: { ...foldingOf(), budget: 1_000_000_000, foldDeadlineMs: 500 }, sweepEveryMs: 10_000 });
     await Promise.all([views.until('slow', isLive), views.until('quick', isLive)]);
 
     await views.ran('reasoning/runs', 'slow');

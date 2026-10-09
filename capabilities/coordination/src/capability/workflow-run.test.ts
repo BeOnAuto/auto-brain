@@ -13,7 +13,7 @@ do:
   - pause: { wait: { milliseconds: 200 } }
   - greet:
       call: run_definition
-      with: { type: echo, name: greet, input: { name: '\${ .name }' } }
+      with: { type: echo, name: greet, input: { name: '\${ $data.name }' } }
 `;
 
 const failing = `document:

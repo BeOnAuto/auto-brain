@@ -10,7 +10,7 @@ do:
   - first:
       set: { count: 1 }
   - second:
-      set: { count: '\${ .count + 1 }' }
+      set: { count: '\${ $data.count + 1 }' }
 `);
 
     expect((await interpret(document)).ending).toEqual({ kind: 'completed', output: { count: 2 } });
@@ -21,10 +21,10 @@ do:
 do:
   - shaped:
       input:
-        from: .order
-      set: { total: '\${ .price * .quantity }' }
+        from: $data.order
+      set: { total: '\${ $data.price * $data.quantity }' }
       output:
-        as: '\${ { total: .total, quantity: $input.quantity } }'
+        as: '\${ ({ total: $data.total, quantity: $input.quantity }) }'
 `);
 
     expect((await interpret(document, { input: { order: { price: 3, quantity: 4 } } })).ending).toEqual({
@@ -37,7 +37,7 @@ do:
     const document = workflow(`
 do:
   - pick:
-      set: .items[1]
+      set: $data.items[1]
 `);
 
     expect((await interpret(document, { input: { items: ['a', 'b'] } })).ending).toEqual({
@@ -54,11 +54,11 @@ do:
   - count:
       set: { seen: 1 }
       export:
-        as: '\${ $context + { first: $output.seen } }'
+        as: '\${ ({ ...$context, first: $output.seen }) }'
   - again:
       set: { seen: 2 }
       export:
-        as: '\${ $context + { second: .seen } }'
+        as: '\${ ({ ...$context, second: $data.seen }) }'
   - report:
       set: '\${ $context }'
 `);
@@ -73,10 +73,10 @@ describe('the descriptors a task sees', () => {
 do:
   - describe:
       input:
-        from: '\${ { wrapped: . } }'
+        from: '\${ ({ wrapped: $data }) }'
       set: { name: '\${ $task.name }', reference: '\${ $task.reference }', raw: '\${ $task.input }' }
       output:
-        as: '\${ . + { output: $task.output.name, at: $task.startedAt.epoch.milliseconds } }'
+        as: '\${ ({ ...$data, output: $task.output.name, at: $task.startedAt.epoch.milliseconds }) }'
 `);
 
     expect((await interpret(document, { input: 5 })).ending).toEqual({
@@ -104,10 +104,10 @@ describe('a task guarded by if', () => {
     const document = workflow(`
 do:
   - large:
-      if: .size > 10
+      if: $data.size > 10
       set: { label: large }
   - small:
-      if: '\${ .size <= 10 }'
+      if: '\${ $data.size <= 10 }'
       set: { label: small }
 `);
 

@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
+import { testDriverOf } from '../pool-testing/test-sandbox.ts';
 import { eventBytesOf, type PositionedEvent } from '../run-log/run-event.ts';
 import { isSnapshotDue, snapshotChunks, snapshotOf } from '../run-log/snapshot.ts';
-import { memoryDriver, type MemoryDriver } from '../testing/memory-driver.ts';
+import type { MemoryDriver } from '../testing/memory-driver.ts';
 import { drivenRunId, statesAlong } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 const holdingMuch = workflow(`
 do:
-  - hold: { set: {}, export: { as: '\${ { much: ("x" * 1200000) } }' } }
+  - hold: { set: {}, export: { as: '\${ ({ much: "x".repeat(1200000) }) }' } }
   - tick: { wait: PT1S }
-  - count: { set: '\${ { n: ((.n // 0) + 1), pad: ("y" * 65536) } }' }
-  - again: { switch: [{ more: { when: '\${ .n < 60 }', then: tick } }] }
+  - count: { set: '\${ ({ n: ($data.n ?? 0) + 1, pad: "y".repeat(65536) }) }' }
+  - again: { switch: [{ more: { when: '\${ $data.n < 60 }', then: tick } }] }
 `);
 
 const utf8 = new TextEncoder();
@@ -33,7 +34,7 @@ function snapshotsDueAlong(events: readonly PositionedEvent[]): readonly number[
 }
 
 function ranToItsEnd(): MemoryDriver {
-  const driver = memoryDriver();
+  const driver = testDriverOf();
   driver.start({ runId: drivenRunId, document: holdingMuch });
   driver.runUntilEnded(drivenRunId);
   return driver;

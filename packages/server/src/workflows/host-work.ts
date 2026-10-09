@@ -3,7 +3,7 @@ import {
   callResultOfEnding,
   definitionCalls,
   definitionRunResultOf,
-  workflowMachineOptions,
+  workflowMachineOptionsOf,
   type RunDefinition,
 } from '@beonauto/coordination';
 import {
@@ -16,6 +16,7 @@ import {
   type SettleRun,
 } from '@beonauto/definitions';
 import { Ledger, type Dispatcher, type DispatcherServices } from '@beonauto/operations';
+import { machineSandboxOf } from '@beonauto/workflow-engine/dsl';
 import type { HostOptions, WaitingOptions } from '@beonauto/workflow-host';
 import { Effect } from 'effect';
 
@@ -83,7 +84,7 @@ export function hostWorkOf(
   { capabilities, startVersion }: WorkParts,
 ): HostWork {
   return {
-    machine: workflowMachineOptions,
+    machine: workflowMachineOptionsOf(machineSandboxOf()),
     perform: definitionCalls(nestedRuns(runtime, dispatcher, defineRunDefinition(capabilities))),
     settle: settlements(runtime),
     reactions: reactionsOf(runtime, dispatcher, startVersion),

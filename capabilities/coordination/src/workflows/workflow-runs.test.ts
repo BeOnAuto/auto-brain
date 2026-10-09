@@ -7,7 +7,7 @@ const greeting = workflow(`
 do:
   - greet:
       set:
-        greeting: \${ "Hello, " + .name }
+        greeting: \${ "Hello, " + $data.name }
 `);
 
 const pausing = workflow(`
@@ -40,13 +40,13 @@ describe('the data of a workflow', () => {
   it('is shaped by input.from and output.as', async () => {
     const document = workflow(`
 input:
-  from: '\${ { name: .person.first } }'
+  from: '\${ ({ name: $data.person.first }) }'
 do:
   - greet:
       set:
-        greeting: \${ "Hello, " + .name }
+        greeting: \${ "Hello, " + $data.name }
 output:
-  as: .greeting
+  as: $data.greeting
 `);
 
     expect((await interpret(document, { input: { person: { first: 'Grace' } } })).ending).toEqual({
@@ -58,7 +58,7 @@ output:
   it('describes the workflow and the runtime to the expressions of its input', async () => {
     const document = workflow(`
 input:
-  from: '\${ { id: $workflow.id, at: $workflow.startedAt.iso8601, runtime: $runtime.name } }'
+  from: '\${ ({ id: $workflow.id, at: $workflow.startedAt.iso8601, runtime: $runtime.name }) }'
 do: []
 `);
 
@@ -109,7 +109,7 @@ do:
 
 describe('a workflow run whose output is too large', () => {
   it('ends rejected as a conflict of the kind oversized, naming the limit', async () => {
-    const document = workflow('do:\n  - grow:\n      set: ${ .big }');
+    const document = workflow('do:\n  - grow:\n      set: ${ $data.big }');
 
     const { ending, settlement } = await interpret(document, { input: { big: 'x'.repeat(1_100_000) } });
 

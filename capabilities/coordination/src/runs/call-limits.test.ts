@@ -17,10 +17,10 @@ const document = workflow(`
 do:
   - classify: { call: run_definition, with: { type: reasoning, name: classify } }
   - each:
-      for: { in: '\${ .items }' }
+      for: { in: '\${ $data.items }' }
       do:
         - review: { call: run_definition, with: { type: workflow, name: review } }
-  - computed: { call: run_definition, with: { type: reasoning, name: '\${ .name }' } }
+  - computed: { call: run_definition, with: { type: reasoning, name: '\${ $data.name }' } }
   - unsaved: { call: run_definition, with: { type: reasoning, name: summarize } }
   - plain: { call: run_definition, with: reasoning }
   - other: { call: notify, with: { type: reasoning, name: classify } }

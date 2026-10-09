@@ -1,9 +1,10 @@
-import { describeError, matchEvent } from '@beonauto/workflow-engine';
+import { describeError, type FilterVerdict } from '@beonauto/workflow-engine';
 import { Effect } from 'effect';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { deliverySweeps, type RecordConsumer, type Delivery, type FollowedRecord } from '../follower/consumers.ts';
 import { eventSubscriptionsOf, type EventSubscription } from '../triggers/trigger-rows.ts';
+import { groupVerdicts, type MatchFilters } from './filter-matching.ts';
 import { reactionRunIdOf } from './reaction-ids.ts';
 import type { RefuseReaction } from './refusals.ts';
 import type { WorkflowOfRun } from './run-workflows.ts';
@@ -16,18 +17,29 @@ export interface StartParts {
   readonly starting: Starting;
   readonly refusals: RefuseReaction;
   readonly workflowOfRun: WorkflowOfRun;
+  readonly match: MatchFilters;
   readonly now: () => number;
 }
 
 type Verdict = 'matched' | 'unmatched' | { readonly error: string };
 
-function verdictOf({ filters }: EventSubscription, { event: { event } }: FollowedRecord, now: number): Verdict {
-  const verdicts = filters.map((filter) => matchEvent(filter, event, now));
+function verdictOf(verdicts: readonly FilterVerdict[]): Verdict {
   if (verdicts.includes(true)) {
     return 'matched';
   }
   const failed = verdicts.find((verdict) => typeof verdict === 'object');
   return typeof failed === 'object' ? { error: describeError(failed.error) } : 'unmatched';
+}
+
+function verdictsOf(
+  parts: StartParts,
+  subscriptions: readonly EventSubscription[],
+  { event: { event } }: FollowedRecord,
+): Effect.Effect<readonly Verdict[]> {
+  const groups = subscriptions.map(({ filters }) => filters);
+  return Effect.map(groupVerdicts(parts.match, groups, event, parts.now()), (verdicts) =>
+    verdicts.map((each) => verdictOf(each)),
+  );
 }
 
 function isOwn(parts: StartParts, workflow: string, { brainKey, event }: FollowedRecord): Effect.Effect<boolean> {
@@ -84,11 +96,10 @@ export function subscriptionStarts(parts: StartParts): RecordConsumer {
     skippedAfterSweeps: deliverySweeps,
     batchOf: (followed, after, most) =>
       Effect.gen(function* () {
-        const now = parts.now();
         const type = followed.event.event.type;
         const candidates = yield* eventSubscriptionsOf(parts.database, followed.brainKey, { type, after, most });
         const taken = candidates.slice(0, most);
-        const verdicts = taken.map((subscription) => verdictOf(subscription, followed, now));
+        const verdicts = yield* verdictsOf(parts, taken, followed);
         yield* Effect.forEach(
           taken,
           (subscription, index) => {

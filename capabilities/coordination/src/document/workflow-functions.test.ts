@@ -47,7 +47,7 @@ describe('the policy of run_definition', () => {
       rejectedIn(`
   - summarize:
       call: run_definition
-      with: { type: reasoning, name: '\${ .definition }', input: { text: '\${ .text }' } }
+      with: { type: reasoning, name: '\${ $data.definition }', input: { text: '\${ $data.text }' } }
 `),
     ).toEqual([]);
   });
@@ -66,11 +66,11 @@ describe('the policy of run_definition', () => {
     ]);
   });
 
-  it('takes a call of another workflow, and rejects broken expressions in its arguments', () => {
+  it('takes a call of another workflow, with expressions in its arguments', () => {
     expect(
       rejectedIn(`
-  - nested: { call: run_definition, with: { type: workflow, name: other, input: ['\${ .a + }'] } }
+  - nested: { call: run_definition, with: { type: workflow, name: other, input: ['\${ $data.a }'] } }
 `),
-    ).toEqual([expect.stringMatching(/^\/do\/0\/nested\/with\/input\/0: /u)]);
+    ).toEqual([]);
   });
 });

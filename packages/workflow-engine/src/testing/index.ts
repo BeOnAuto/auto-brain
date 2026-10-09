@@ -1,4 +1,12 @@
-export { defaultLimits, defaultSeed, startedOf, testMachine, testRuntime, type StartRequest } from './driver-inputs.ts';
+export {
+  defaultLimits,
+  defaultSeed,
+  startedOf,
+  testMachineOf,
+  testRuntime,
+  testSettings,
+  type StartRequest,
+} from './driver-inputs.ts';
 export { memoryDriver, type DriverOptions, type MemoryDriver } from './memory-driver.ts';
 export { memoryExecutor, type CallAnswer, type MemoryExecutor, type Responder } from '../memory/memory-executor.ts';
 export { memoryPorts, type MemoryPorts } from '../memory/memory-ports.ts';

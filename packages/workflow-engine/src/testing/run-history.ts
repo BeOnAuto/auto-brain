@@ -2,18 +2,18 @@ import type { ArmTimer, RunOutput } from '../dispatch/run-output.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import type { RunLimits } from '../machine/run-input.ts';
 import { newRun, type ArmedTimer, type RunOutcome, type RunState } from '../machine/run-state.ts';
-import type { Responder } from '../memory/memory-executor.ts';
+import { testSandbox } from '../pool-testing/test-sandbox.ts';
 import type { PositionedEvent } from '../run-log/run-event.ts';
 import { evolveRun } from '../run-log/run-fold.ts';
 import type { EarlierStep, Step } from '../steps/step-entry.ts';
 import type { TimerPurpose } from '../timers/timer-id.ts';
-import { memoryDriver, type MemoryDriver } from './memory-driver.ts';
+import { memoryDriver, type DriverOptions, type MemoryDriver } from './memory-driver.ts';
 
 export const drivenRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 export interface DriveOptions {
   readonly input?: Json;
-  readonly respond?: Responder;
+  readonly respond?: DriverOptions['respond'];
   readonly limits?: Partial<RunLimits>;
   readonly seed?: number;
   readonly meanwhile?: (driver: MemoryDriver, runId: string) => void;
@@ -28,7 +28,7 @@ export interface DrivenRun {
 
 export function drivenRun(document: JsonObject, options: DriveOptions = {}): DrivenRun {
   const { input, respond, limits, seed, meanwhile } = options;
-  const driver = memoryDriver(respond === undefined ? {} : { respond });
+  const driver = memoryDriver({ sandbox: testSandbox, ...(respond === undefined ? {} : { respond }) });
   const runId = drivenRunId;
   driver.start({
     runId,

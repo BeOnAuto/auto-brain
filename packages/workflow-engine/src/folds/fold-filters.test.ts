@@ -1,32 +1,43 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Json, JsonObject } from '../dsl/json.ts';
-import { liftedLimits } from '../program-pool/program-pool.ts';
-import { compileProgram } from '../programs/program-compiling.ts';
-import { matchingOf, preparedFilters, type Matching, type RunTest } from './fold-filters.ts';
-
-const dialect = { refused: [{ name: 'now', why: 'reads the clock' }], variables: ['event'] };
+import { freshInstance } from '../instances/fresh-instances.ts';
+import { filterContextOf } from '../programs/kept-contexts.ts';
+import type { Evaluation } from '../programs/program-run.ts';
+import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
+import { cachedStripping } from '../programs/type-stripping.ts';
+import { matchingOf, preparedFilters, type Matching } from './fold-filters.ts';
 
 const reviewed = { type: 'run_succeeded', subject: 'reasoning/review-brief' };
+
+const evaluation: Evaluation = { budget: 500, deadlineAt: Number.POSITIVE_INFINITY, moment: 0 };
+
+const context = filterContextOf(
+  await freshInstance(unitMemoryBytes),
+  { stackBytes: threadStackBytes, mostAnswerBytes: 1000, clock: () => 0 },
+  { stripping: cachedStripping(), evaluation },
+);
 
 function succeeded(verdict: Json): JsonObject {
   return { ...reviewed, source: '/runs/run', data: { output: { campaign: 'spring', verdict } } };
 }
 
-const runTest: RunTest = (test, actual) =>
-  test.program.run(actual, { limits: liftedLimits(16_000_000), outputs: 'first' });
-
-function matched(filters: readonly JsonObject[], event: JsonObject): Matching {
-  return matchingOf(preparedFilters(filters, dialect, compileProgram), event, runTest);
+function matched(filters: readonly JsonObject[], event: JsonObject, budget = 500): Matching {
+  return matchingOf(preparedFilters(filters, context.define), event, (test, actual) =>
+    test(JSON.stringify(actual), { ...evaluation, budget }),
+  );
 }
 
 function workOf(matching: Matching): number {
   return 'work' in matching ? matching.work : 0;
 }
 
-const rejected = [{ ...reviewed, data: '${ .output.verdict | ascii_upcase == "REJECT" }' }];
+const rejected = [{ ...reviewed, data: '${ $data.output.verdict.toUpperCase() == "REJECT" }' }];
 
-const unbound: unknown = expect.stringContaining('$x is not defined');
+const busyApproval = {
+  type: 'run_succeeded',
+  data: '${ (() => { let sum = 0; for (let index = 0; index < 100000; index++) sum += index; return sum > 0 && $data.output.verdict == "approve" })() }',
+};
 
 describe('the filters of a view', () => {
   it('match an event by its type, subject and data', () => {
@@ -50,18 +61,16 @@ describe('the filters of a view', () => {
   });
 
   it('match when any one filter matches, counting the work of every test they ran', () => {
-    const approved = { type: 'run_succeeded', data: '${ .output.verdict == "approve" }' };
-
     const alone = matched(rejected, succeeded('reject'));
-    const both = matched([approved, ...rejected], succeeded('reject'));
+    const both = matched([busyApproval, ...rejected], succeeded('reject'));
 
     expect(both).toMatchObject({ matched: true });
     expect(workOf(both)).toBeGreaterThan(workOf(alone));
   });
 
-  it('answer the filter that does not compile, without running it', () => {
-    expect(matched([{ type: 'run_succeeded', data: '${ $x }' }], succeeded('reject'))).toMatchObject({
-      refused: { issues: [{ detail: unbound }] },
+  it('stop at a test that runs out of its budget', () => {
+    expect(matched([busyApproval], succeeded('approve'), 1)).toMatchObject({
+      stopped: { ran: 'exhausted', limit: 'work' },
     });
   });
 });

@@ -4,18 +4,26 @@ import { Option, Schema } from 'effect';
 
 import type { FoldAnswerData } from '../folds/fold-answer.ts';
 import { progressOf } from '../folds/fold-progress.ts';
+import { instanceStock, type Instances } from '../instances/instance-stock.ts';
 import { JobSchema, type JobAnswer, type JobEnvelope } from '../jobs/job-envelopes.ts';
-import { keptFor, type FoldHandler, type JobHandlers, type Kept, type ProgramHandler } from '../jobs/job-kit.ts';
+import { keptFor, type JobHandlers, type Kept } from '../jobs/job-kit.ts';
 import type { ProgramAnswerData } from '../jobs/program-answer.ts';
-import { fieldOf } from '../programs/program-tree.ts';
 
 type ProgramEnvelope = Extract<JobEnvelope, { readonly kind: 'program' }>;
 
 type FoldEnvelope = Extract<JobEnvelope, { readonly kind: 'fold' }>;
 
+type CheckEnvelope = Extract<JobEnvelope, { readonly kind: 'check' }>;
+
+interface Serving {
+  readonly handlers: JobHandlers;
+  readonly kept: Kept;
+  readonly instances: Instances;
+}
+
 const decodeJob = Schema.decodeUnknownOption(JobSchema);
 
-const unreadable: FoldAnswerData = { ran: 'unreadable' };
+const unreadable = { ran: 'unreadable' } as const;
 
 function now(): number {
   return performance.timeOrigin + performance.now();
@@ -29,44 +37,74 @@ function keepsAfterFold(answer: FoldAnswerData): boolean {
   return answer.ran === 'folded' && answer.views.every(({ overtime }) => overtime === undefined);
 }
 
-function programAnswer({ job, request }: ProgramEnvelope, handler: ProgramHandler | undefined, kept: Kept): JobAnswer {
-  if (handler === undefined) {
+async function programAnswer(
+  { job, request }: ProgramEnvelope,
+  { handlers, kept, instances }: Serving,
+): Promise<JobAnswer> {
+  if (handlers.program === undefined) {
     return { job, answer: unreadable, keep: false };
   }
-  const answer = handler(request, { now, compile: kept.compile, check: kept.outputCheck(request.context) });
+  const instance = await instances(request.memoryBytes);
+  const answer = handlers.program(request, {
+    now,
+    instance,
+    stripping: kept.stripping,
+    check: kept.outputCheck(request.context),
+  });
   return { job, answer, keep: keepsAfterProgram(answer) };
 }
 
-function foldAnswer({ job, request, progress }: FoldEnvelope, handler: FoldHandler | undefined, kept: Kept): JobAnswer {
-  if (handler === undefined) {
+async function foldAnswer(
+  { job, request, progress }: FoldEnvelope,
+  { handlers, kept, instances }: Serving,
+): Promise<JobAnswer> {
+  if (handlers.fold === undefined) {
     return { job, answer: unreadable, keep: false };
   }
+  const prepared = await Promise.all(request.views.map(() => instances(request.memoryBytes)));
   const { mark } = progressOf(progress);
-  const answer = handler(request, { now, folding: mark, checkOf: kept.viewCheck, compile: kept.compile });
+  const answer = handlers.fold(request, {
+    now,
+    folding: mark,
+    checkOf: kept.viewCheck,
+    instances: prepared,
+    stripping: kept.stripping,
+  });
   return { job, answer, keep: keepsAfterFold(answer) };
 }
 
+function checkAnswer({ job, request }: CheckEnvelope, { handlers }: Serving): JobAnswer {
+  return handlers.check === undefined
+    ? { job, answer: unreadable, keep: false }
+    : { job, answer: handlers.check(request), keep: true };
+}
+
 function jobNamedIn(message: unknown): number {
-  const job = fieldOf(message, 'job');
+  const job: unknown = Reflect.get(new Object(message), 'job');
   return typeof job === 'number' ? job : -1;
 }
 
-function answerTo(message: unknown, handlers: JobHandlers, kept: Kept): JobAnswer {
+function answerTo(message: unknown, serving: Serving): Promise<JobAnswer> {
   const envelope = decodeJob(message);
   if (Option.isNone(envelope)) {
-    return { job: jobNamedIn(message), answer: unreadable, keep: false };
+    return Promise.resolve({ job: jobNamedIn(message), answer: unreadable, keep: false });
   }
-  return envelope.value.kind === 'program'
-    ? programAnswer(envelope.value, handlers.program, kept)
-    : foldAnswer(envelope.value, handlers.fold, kept);
+  const { value } = envelope;
+  if (value.kind === 'program') {
+    return programAnswer(value, serving);
+  }
+  return value.kind === 'fold' ? foldAnswer(value, serving) : Promise.resolve(checkAnswer(value, serving));
 }
 
 export function serveJobs(handlers: JobHandlers, port: MessagePort | null = parentPort): void {
   if (port === null) {
     return;
   }
-  const kept = keptFor(handlers.checks);
+  const serving: Serving = { handlers, kept: keptFor(handlers.checks), instances: instanceStock() };
   port.on('message', (message: unknown) => {
-    port.postMessage(answerTo(message, handlers, kept), []);
+    void answerTo(message, serving).then((answer) => {
+      port.postMessage(answer, []);
+      return answer;
+    });
   });
 }

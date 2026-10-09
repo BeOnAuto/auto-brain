@@ -1,5 +1,5 @@
 import type { AppendSignal } from '@beonauto/ledger';
-import { liftedLimits, type ProgramPool } from '@beonauto/workflow-engine/dsl';
+import { unitMemoryBytes, workerStackBytes, type ProgramPool } from '@beonauto/workflow-engine/dsl';
 
 import type { FoldingSettings, ProjectorSettings } from '../projector/projector-settings.ts';
 import type { ViewDetails } from '../views/view-details.ts';
@@ -21,23 +21,21 @@ export function brainKeyOf({ org, brain }: Brain): string {
   return `brain/${org}/${brain}/`;
 }
 
-const foldDialect = {
-  refused: [
-    { name: 'now', why: 'reads the clock' },
-    { name: '$ARGS', why: 'reads arguments a fold is never given' },
-  ],
-  variables: ['event'],
-};
-
 export const succeeded = [{ type: 'run_succeeded' }];
 
 export function detailsOf(fold: string, filters: ViewDetails['filters'], more: Partial<ViewDetails> = {}): ViewDetails {
-  return { language: 'jq', fold, foldLine: 30, filters, initial: {}, ...more };
+  return { language: 'typescript', fold, foldLine: 30, filters, initial: {}, ...more };
 }
 
-export const counting = detailsOf('. + 1', succeeded, { initial: 0 });
+export function foldOf(body: string, view = 'unknown'): string {
+  return `export function fold(view: ${view}, event: any): ${view} {\n  ${body}\n}`;
+}
 
-export const collecting = detailsOf('. + [$event.data.output]', succeeded, { initial: [] });
+export const counting = detailsOf(foldOf('return view + 1;', 'number'), succeeded, { initial: 0 });
+
+export const collecting = detailsOf(foldOf('return [...view, event.data.output];', 'unknown[]'), succeeded, {
+  initial: [],
+});
 
 export const measuredEnvironment: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(process.env).flatMap(([key, value]: readonly [string, string | undefined]) =>
@@ -47,9 +45,9 @@ export const measuredEnvironment: Readonly<Record<string, string>> = Object.from
 
 export function foldingOf(): FoldingSettings {
   return {
-    dialect: foldDialect,
-    variable: 'event',
-    limits: liftedLimits(16_000_000),
+    budget: 500,
+    memoryBytes: unitMemoryBytes,
+    stackBytes: workerStackBytes,
     foldDeadlineMs: 10_000,
     pageBudgetMs: 2000,
     mostViewBytes: 524_288,

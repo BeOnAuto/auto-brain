@@ -86,16 +86,13 @@ describe('the events that start a workflow', () => {
     ]);
   });
 
-  it('are neither all of a list, nor none, nor until something, nor matched with the variables of a run', () => {
-    const correlated = { with: { type: 'com.acme.closed', data: '${ .ticket == $workflow.input.ticket }' } };
-
+  it('are neither all of a list, nor none, nor until something', () => {
     expect([
       refused({ on: 'events' }),
       refused({ on: {} }),
       refused({ on: { any: [] } }),
       refused({ on: { all: [typed] } }),
       refused({ on: { one: typed, until: { one: typed } } }),
-      refused({ on: { one: correlated } }),
     ]).toEqual([
       ['/schedule/on: on takes one, a filter of the events that start the workflow, or any, a list of at least one'],
       ['/schedule/on: on takes one, a filter of the events that start the workflow, or any, a list of at least one'],
@@ -105,9 +102,6 @@ describe('the events that start a workflow', () => {
       ],
       [
         '/schedule/on/until: A trigger matches every event of its brain while its version is active, so it takes no until',
-      ],
-      [
-        '/schedule/on/one/with/data: A trigger is matched before any run starts, so its data expression cannot use variables such as $workflow',
       ],
     ]);
   });

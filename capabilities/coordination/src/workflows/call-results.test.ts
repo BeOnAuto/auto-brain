@@ -58,7 +58,7 @@ do:
             call: run_definition
             with: { type: reasoning, name: lookup, input: {} }
       catch:
-        when: '\${ $error.kind == "tool_not_offered" and $error.because == "tool_not_allowed" }'
+        when: '\${ $error.kind === "tool_not_offered" && $error.because === "tool_not_allowed" }'
         do:
           - report:
               set: { offered: false }

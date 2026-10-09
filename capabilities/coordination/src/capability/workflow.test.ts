@@ -25,17 +25,17 @@ do:
         type: echo
         name: greet
         input:
-          name: \${ .name }
+          name: \${ $data.name }
   - decide:
       switch:
         - friend:
-            when: .input.name == "Ada"
+            when: $data.input.name === "Ada"
             then: shout
         - stranger:
             then: end
   - shout:
       set:
-        greeting: \${ .greeting + ", " + .input.name + "!" }
+        greeting: \${ $data.greeting + ", " + $data.input.name + "!" }
 `;
 
 beforeAll(async () => {

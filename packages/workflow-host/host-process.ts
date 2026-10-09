@@ -3,12 +3,12 @@ import { setTimeout } from 'node:timers/promises';
 
 import type { SettleRun } from '@beonauto/definitions';
 import type { CallResult } from '@beonauto/operations';
-import { defaultLimits, defaultSeed, testMachine } from '@beonauto/workflow-engine/testing';
 import { Effect, Function, Schema } from 'effect';
 
 import type { DatabaseSettings } from './src/database/host-databases.ts';
 import { openWorkflowHost, type WorkflowHost } from './src/host/workflow-host.ts';
 import { recordedReactions } from './src/reaction-testing/recorded-reactions.ts';
+import { startOf, testMachine } from './src/testing/host-documents.ts';
 import { recordedWaiting } from './src/waiting-testing/recorded-waiting.ts';
 
 const [settingsText = '', mode = '', settlementsFile = '', sweepEveryMs = '20'] = process.argv.slice(2);
@@ -84,7 +84,5 @@ const host = await openWorkflowHost({
 if (mode === 'finish') {
   await settledIn(host);
 } else {
-  await Effect.runPromise(
-    host.start(run, { document: notifying, input: {}, limits: defaultLimits, attributes: {}, seed: defaultSeed }),
-  );
+  await Effect.runPromise(host.start(run, { ...startOf(notifying), attributes: {} }));
 }

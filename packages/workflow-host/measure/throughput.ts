@@ -22,8 +22,8 @@ function ticking(inputs: number): Schema.JsonObject {
       parse(`
 do:
   - tick: { wait: PT1S }
-  - count: { set: '\${ { n: ((.n // 0) + 1) } }' }
-  - again: { switch: [{ more: { when: '\${ .n < ${inputs - 1} }', then: tick } }] }
+  - count: { set: '\${ ({ n: ($data.n ?? 0) + 1 }) }' }
+  - again: { switch: [{ more: { when: '\${ $data.n < ${inputs - 1} }', then: tick } }] }
 `),
     ),
   };

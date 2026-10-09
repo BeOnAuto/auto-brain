@@ -1,15 +1,41 @@
 import { Function } from 'effect';
 
-import { liftedLimits, programPool, type FoldRequest, type JsonObject, type ProgramPool } from '../src/dsl.ts';
+import {
+  freshInstance,
+  programPool,
+  unitMemoryBytes,
+  workerStackBytes,
+  type FoldRequest,
+  type JsonObject,
+  type ProgramPool,
+} from '../src/dsl.ts';
 import { foldPage } from '../src/folds/fold-page.ts';
-import { compileProgram } from '../src/programs/program-compiling.ts';
+import { cachedStripping } from '../src/programs/type-stripping.ts';
 import { millisecondsOf } from './common.ts';
 
-const reviewsFold = [
-  '($event.data.output | if type == "object" then .campaign else null end | if type == "string" then . else "unknown" end) as $campaign',
-  '| .[$campaign] += [{ at: $event.time, verdict: ($event.data.output.verdict? // "none" | tostring | .[0:200]), run: $event.source }]',
-  '| .[$campaign] |= .[-20:]',
-  '| to_entries | sort_by(.value[-1].at) | .[-50:] | from_entries',
+export const reviewsFold = [
+  'type Review = { at: string; verdict: string; run: string };',
+  'type Reviews = { [campaign: string]: Review[] };',
+  '',
+  'function fieldOf(value: unknown, name: string): unknown {',
+  "  return typeof value === 'object' && value !== null && !Array.isArray(value) ? Reflect.get(value, name) : undefined;",
+  '}',
+  '',
+  'function lastAt(reviews: Review[]): string {',
+  "  return reviews.at(-1)?.at ?? '';",
+  '}',
+  '',
+  'export function fold(view: Reviews, event: { time?: string; source: string; data: unknown }): Reviews {',
+  "  const output = fieldOf(event.data, 'output');",
+  "  const named = fieldOf(output, 'campaign');",
+  "  const campaign = typeof named === 'string' ? named : 'unknown';",
+  "  const verdict = String(fieldOf(output, 'verdict') ?? 'none').slice(0, 200);",
+  "  const reviews = [...(view[campaign] ?? []), { at: event.time ?? '', verdict, run: event.source }].slice(-20);",
+  '  const latest = Object.entries({ ...view, [campaign]: reviews })',
+  '    .toSorted(([, first], [, second]) => (lastAt(first) < lastAt(second) ? -1 : lastAt(first) > lastAt(second) ? 1 : 0))',
+  '    .slice(-50);',
+  '  return Object.fromEntries(latest);',
+  '}',
 ].join('\n');
 
 const events = 1000;
@@ -47,9 +73,9 @@ function pageOf(count: number): FoldRequest {
               events: page.map((_, index) => index),
             },
           ],
-    dialect: { refused: [], variables: ['event'] },
-    variable: 'event',
-    limits: liftedLimits(16_000_000),
+    budget: 500,
+    memoryBytes: unitMemoryBytes,
+    stackBytes: workerStackBytes,
     foldDeadlineMs: 10_000,
     pageBudgetMs: 2000,
     mostViewBytes: 524_288,
@@ -84,13 +110,19 @@ async function onAFreshPool(page: FoldRequest): Promise<number> {
   return milliseconds;
 }
 
-function foldedOnThisThread(page: FoldRequest): { readonly milliseconds: number; readonly views: string } {
+const stripping = cachedStripping();
+
+async function foldedOnThisThread(
+  page: FoldRequest,
+): Promise<{ readonly milliseconds: number; readonly views: string }> {
   const folded = { views: '' };
+  const instances = await Promise.all(page.views.map(() => freshInstance(unitMemoryBytes)));
   const host = {
     now: () => performance.now(),
     folding: Function.constVoid,
     checkOf: () => passing,
-    compile: compileProgram,
+    instances,
+    stripping,
   };
   const milliseconds = millisecondsOf(() => {
     folded.views = JSON.stringify(foldPage(page, host).views);
@@ -116,7 +148,7 @@ function turnsOf(page: FoldRequest, pool: ProgramPool): Promise<readonly Turn[]>
   return inTurn(Array.from({ length: turns }), async () => {
     const cold = await onAFreshPool(page);
     const { milliseconds: warm } = await pool.fold(page);
-    const { milliseconds: folds } = foldedOnThisThread(page);
+    const { milliseconds: folds } = await foldedOnThisThread(page);
     return { cold, warm, folds };
   });
 }
@@ -132,7 +164,7 @@ export async function pagesMeasured(): Promise<readonly string[]> {
   await pool.fold(page);
   const all = await turnsOf(page, pool);
   await pool.close();
-  const { views } = foldedOnThisThread(page);
+  const { views } = await foldedOnThisThread(page);
   const bytes = JSON.stringify(page.events).length + JSON.stringify(page.views).length + views.length;
   const roundTrip = median(Array.from({ length: turns }, () => roundTripOf(page, views)));
   return [

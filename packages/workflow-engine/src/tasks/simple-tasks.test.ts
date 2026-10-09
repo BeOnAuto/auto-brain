@@ -6,7 +6,7 @@ import { workflow } from '../testing/workflows.ts';
 
 describe('a set task', () => {
   it('gives the values it sets, evaluated on its input', () => {
-    const { outcome } = drivenRun(workflow('do:\n  - greet: { set: { greeting: \'${ "Hello, " + .name }\' } }'), {
+    const { outcome } = drivenRun(workflow('do:\n  - greet: { set: { greeting: \'${ "Hello, " + $data.name }\' } }'), {
       input: { name: 'Ada' },
     });
 
@@ -19,7 +19,7 @@ describe('a switch task', () => {
 do:
   - route:
       switch:
-        - big: { when: '\${ .size > 10 }', then: large }
+        - big: { when: '\${ $data.size > 10 }', then: large }
         - other: { then: small }
   - small: { set: { size: small }, then: end }
   - large: { set: { size: large } }
@@ -44,7 +44,7 @@ do:
 do:
   - route:
       switch:
-        - big: { when: '\${ .size > 10 }', then: end }
+        - big: { when: '\${ $data.size > 10 }', then: end }
   - after: { set: { went: on } }
 `);
 
@@ -77,7 +77,7 @@ describe('a raise task', () => {
 do:
   - refuse:
       raise:
-        error: { type: https://example.com/refused, status: 422, title: Refused, detail: '\${ .why }' }
+        error: { type: https://example.com/refused, status: 422, title: Refused, detail: '\${ $data.why }' }
 `);
 
     expect(drivenRun(document, { input: { why: 'too late' } }).outcome).toEqual({
@@ -140,7 +140,7 @@ describe('a raise task that names a kind and a because', () => {
 do:
   - again:
       raise:
-        error: { type: https://example.com/unfinished, status: 503, kind: tools_unfinished, because: '\${ .why }' }
+        error: { type: https://example.com/unfinished, status: 503, kind: tools_unfinished, because: '\${ $data.why }' }
 `);
 
     expect(drivenRun(document, { input: { why: 'run_bound' } }).outcome).toEqual({

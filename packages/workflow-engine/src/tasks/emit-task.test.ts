@@ -4,8 +4,8 @@ import type { EmitEvent } from '../dispatch/run-output.ts';
 import type { JsonObject } from '../dsl/json.ts';
 import { mostEmittedEvents } from '../machine/limits.ts';
 import { isoInstantOf } from '../machine/utc-time.ts';
-import { testMachine } from '../testing/driver-inputs.ts';
-import { memoryDriver } from '../testing/memory-driver.ts';
+import { testDriverOf } from '../pool-testing/test-sandbox.ts';
+import { testSettings } from '../testing/driver-inputs.ts';
 import { drivenRunId, drivenRun, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 import { emittedEventIdOf } from './emit-task.ts';
@@ -26,7 +26,7 @@ do:
   - announce:
       emit:
         event:
-          with: { type: com.acme.closed, source: /acme/ledger, subject: '\${ .month }', data: { total: '\${ .total }' } }
+          with: { type: com.acme.closed, source: /acme/ledger, subject: '\${ $data.month }', data: { total: '\${ $data.total }' } }
 `),
       { input: { month: 'september', total: 12 } },
     );
@@ -75,7 +75,7 @@ describe('an emit task that cannot emit', () => {
       "{ emit: { event: { with: { type: '${ 1 }', source: /a } } } }",
       "{ emit: { event: { with: { type: t, source: ' ' } } } }",
       '{ emit: { event: { with: { type: t, source: /a, id: \'${ "e1" }\' } } } }',
-      '{ emit: { event: { with: { type: t, source: /a, data: \'${ "x" * 250000 }\' } } } }',
+      '{ emit: { event: { with: { type: t, source: /a, data: \'${ "x".repeat(250000) }\' } } } }',
     ];
 
     const outcomes = tasks.map((task) => drivenRun(workflow(`do:\n  - announce: ${task}`)).outcome);
@@ -84,14 +84,8 @@ describe('an emit task that cannot emit', () => {
   });
 
   it('raises the refusal of the functions it is given, for an event they do not take', () => {
-    const driver = memoryDriver({
-      machine: {
-        ...testMachine,
-        functions: {
-          ...testMachine.functions,
-          emitRefusal: refusingReserved,
-        },
-      },
+    const driver = testDriverOf({
+      machine: { ...testSettings, functions: { ...testSettings.functions, emitRefusal: refusingReserved } },
     });
     driver.start({
       runId: drivenRunId,
@@ -111,7 +105,7 @@ describe('the events a run emits', () => {
       workflow(`
 do:
   - each:
-      for: { in: '\${ [range(${mostEmittedEvents + 1})] }' }
+      for: { in: '\${ Array.from({ length: ${mostEmittedEvents + 1} }, (_, index) => index) }' }
       do:
         - announce: { emit: { event: { with: { type: tick, source: /loop } } } }
 `),
@@ -126,9 +120,9 @@ do:
       workflow(`
 do:
   - each:
-      for: { in: '\${ [range(18)] }' }
+      for: { in: '\${ Array.from({ length: 18 }, (_, index) => index) }' }
       do:
-        - announce: { emit: { event: { with: { type: tick, source: /loop, data: '\${ "x" * 240000 }' } } } }
+        - announce: { emit: { event: { with: { type: tick, source: /loop, data: '\${ "x".repeat(240000) }' } } } }
         - pause: { wait: PT1S }
 `),
     );

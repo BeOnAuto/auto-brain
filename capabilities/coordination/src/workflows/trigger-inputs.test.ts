@@ -7,9 +7,9 @@ schedule:
   on: { one: { with: { type: com.example.ledger.closed } } }
   every: PT1H
 input:
-  from: '\${ if type == "array" then { month: .[0].data.month } else { due: .schedule.due } end }'
+  from: '\${ Array.isArray($data) ? { month: $data[0].data.month } : { due: $data.schedule.due } }'
 do:
-  - keep: { set: '\${ . }' }
+  - keep: { set: '\${ $data }' }
 `);
 
 describe('a workflow with an event trigger and a schedule', () => {

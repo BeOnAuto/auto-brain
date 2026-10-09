@@ -1,10 +1,10 @@
 import type { AppendSignal } from '@beonauto/ledger';
-import type { Dialect, ProgramLimits, ProgramPool } from '@beonauto/workflow-engine/dsl';
+import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 
 export interface FoldingSettings {
-  readonly dialect: Dialect;
-  readonly variable: string;
-  readonly limits: ProgramLimits;
+  readonly budget: number;
+  readonly memoryBytes: number;
+  readonly stackBytes: number;
   readonly foldDeadlineMs: number;
   readonly pageBudgetMs: number;
   readonly mostViewBytes: number;

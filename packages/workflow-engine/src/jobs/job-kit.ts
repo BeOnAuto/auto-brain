@@ -1,10 +1,9 @@
 import { boundedCacheOf, type BoundedCache } from '../dsl/bounded-cache.ts';
-import { mostCompiledCharacters } from '../dsl/expressions.ts';
 import type { Json, JsonObject } from '../dsl/json.ts';
 import type { FoldAnswerData } from '../folds/fold-answer.ts';
 import type { FoldHost, ViewCheck } from '../folds/fold-page.ts';
-import { compileProgram, type CompiledProgram } from '../programs/program-compiling.ts';
-import type { Dialect } from '../programs/program-dialect.ts';
+import { cachedStripping, mostStrippedCharacters, type Stripping } from '../programs/type-stripping.ts';
+import type { CheckAnswer, CheckJob } from './check-messages.ts';
 import type { FoldJob } from './fold-messages.ts';
 import { unchecked, type OutputCheck, type ProgramAnswerData, type ProgramHost } from './program-answer.ts';
 import type { ProgramJob } from './program-messages.ts';
@@ -18,14 +17,17 @@ export type ProgramHandler = (request: ProgramJob, host: ProgramHost) => Program
 
 export type FoldHandler = (request: FoldJob, host: FoldHost) => FoldAnswerData;
 
+export type CheckHandler = (request: CheckJob) => CheckAnswer;
+
 export interface JobHandlers {
   readonly program?: ProgramHandler;
   readonly fold?: FoldHandler;
+  readonly check?: CheckHandler;
   readonly checks?: ValueChecks;
 }
 
 export interface Kept {
-  readonly compile: (source: string, dialect: Dialect) => CompiledProgram;
+  readonly stripping: Stripping;
   readonly outputCheck: (schema: Json) => OutputCheck;
   readonly viewCheck: (schema: JsonObject) => ViewCheck;
 }
@@ -43,12 +45,10 @@ function remembered<Value>(cache: BoundedCache<Value>, key: string, make: () => 
 }
 
 export function keptFor(checks: ValueChecks | undefined): Kept {
-  const programs = boundedCacheOf<CompiledProgram>(mostCompiledCharacters);
-  const outputs = boundedCacheOf<OutputCheck>(mostCompiledCharacters);
-  const views = boundedCacheOf<ViewCheck>(mostCompiledCharacters);
+  const outputs = boundedCacheOf<OutputCheck>(mostStrippedCharacters);
+  const views = boundedCacheOf<ViewCheck>(mostStrippedCharacters);
   return {
-    compile: (source, dialect) =>
-      remembered(programs, `${JSON.stringify(dialect)}\n${source}`, () => compileProgram(source, dialect)),
+    stripping: cachedStripping(),
     outputCheck: (schema) =>
       checks === undefined || schema === null
         ? unchecked

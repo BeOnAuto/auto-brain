@@ -7,7 +7,8 @@ import type { FoldingView } from '../folds/fold-page.ts';
 import type { FoldOutcome, FoldRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { counting, countingElsewhere, countingOnTheLoop } from '../pool-testing/counting-workers.ts';
 import { threadsAlive } from '../pool-testing/threads-alive.ts';
-import { liftedLimits, programPool } from './program-pool.ts';
+import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
+import { programPool } from './program-pool.ts';
 
 interface Ran {
   readonly jobs: number;
@@ -32,6 +33,10 @@ const decodeRan = Schema.decodeUnknownSync(Schema.Struct({ jobs: Schema.Number, 
 
 const noted = { type: 'noted' };
 
+const adding = 'export function fold(view: number, event: any): number {\n  return view + event.data.n;\n}';
+
+const endless = 'export default function (): never {\n  for (;;) {}\n}';
+
 afterEach(async () => {
   await Promise.all(pools.splice(0).map((pool) => pool.close()));
 });
@@ -44,9 +49,19 @@ function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
 
 function run(pool: ProgramPool, source: string, running: Running = {}): Promise<PoolOutcome> {
   const { deadlineMs = 10_000, signal, worker = counting } = running;
-  const limits = liftedLimits(64_000_000);
   return pool.run(
-    { source, input: null, dialect: { refused: [] }, limits, deadlineMs, mostOutputBytes: 1_048_576, worker },
+    {
+      source,
+      entry: 'default',
+      arguments: [null],
+      moment: 0,
+      budget: 20_000,
+      memoryBytes: unitMemoryBytes,
+      stackBytes: workerStackBytes,
+      deadlineMs,
+      mostOutputBytes: 1_048_576,
+      worker,
+    },
     signal,
   );
 }
@@ -69,10 +84,10 @@ function foldOf(
       { ...noted, data: { n: 1 } },
       { ...noted, data: { n: 2 } },
     ],
-    views: views.map((view) => ({ fold: '. + $event.data.n', filters: [noted], view: 0, events: [0, 1], ...view })),
-    dialect: { refused: [], variables: ['event'] },
-    variable: 'event',
-    limits: liftedLimits(16_000_000),
+    views: views.map((view) => ({ fold: adding, filters: [noted], view: 0, events: [0, 1], ...view })),
+    budget: 500,
+    memoryBytes: unitMemoryBytes,
+    stackBytes: workerStackBytes,
     foldDeadlineMs: 10_000,
     pageBudgetMs: 2000,
     mostViewBytes: 524_288,
@@ -199,43 +214,62 @@ describe('a worker of the pool after a job whose answer says not to keep it', { 
 
     const ran = [
       await counted(pool, countingOnTheLoop),
-      await run(pool, 'early:reduce range(100000000) as $i (0; . + 1)', { worker: countingOnTheLoop }),
+      await run(pool, `early:${endless}`, { worker: countingOnTheLoop }),
       await counted(pool, countingOnTheLoop),
     ];
 
     expect(ran).toMatchObject([{ jobs: 1 }, { ran: 'exhausted', limit: 'deadline' }, { jobs: 1 }]);
   });
-
-  it.each<readonly [string, Partial<FoldRequest>, Readonly<Record<string, unknown>>]>([
-    ['a view ran past its deadline', { foldDeadlineMs: 1 }, { ran: 'folded', views: [{ overtime: 0 }] }],
-    ['it could not read', { variable: 'unreadable' }, { ran: 'unreadable' }],
-  ])('is let go of after a page %s', async (_why, more, ended) => {
-    const pool = poolOf();
-    const slow = { fold: 'reduce range(1000000) as $i (.; . + 1)' };
-
-    const ran = [
-      await counted(pool, countingOnTheLoop),
-      await foldOf(pool, [slow], more),
-      await counted(pool, countingOnTheLoop),
-    ];
-
-    expect(ran).toMatchObject([{ jobs: 1 }, ended, { jobs: 1 }]);
-  });
-
-  it('keeps its worker after a page that stalled, which then folds the next page as a fresh worker does', async () => {
-    const warm = poolOf({ workers: 1 });
-    const views = [{}, { fold: '[.] + [$event.data.n]', view: [] }];
-
-    const stalled = await foldOf(warm, [{ fold: 'error("stop \\($event.data.n)")' }]);
-    const afterTheStall = await foldOf(warm, views);
-    const ran = await counted(warm, countingOnTheLoop);
-    const cold = await foldOf(poolOf({ workers: 1 }), views);
-
-    expect(stalled).toMatchObject({ ran: 'folded', views: [{ stall: { kind: 'raised', message: 'stop 1' } }] });
-    expect({ ...afterTheStall, milliseconds: 0 }).toEqual({ ...cold, milliseconds: 0 });
-    expect(ran.jobs).toBe(3);
-  });
 });
+
+describe(
+  'a fold worker of the pool after a page whose answer says not to keep it',
+  { timeout: poolTestTimeoutMs },
+  () => {
+    it.each<readonly [string, Partial<FoldRequest>, Readonly<Record<string, unknown>>]>([
+      ['a view ran past its deadline', { foldDeadlineMs: 1 }, { ran: 'folded', views: [{ overtime: 0 }] }],
+      ['it could not read', { mostViewBytes: 0 }, { ran: 'unreadable' }],
+    ])('is let go of after a page %s', async (_why, more, ended) => {
+      const pool = poolOf();
+      const slow = { fold: 'export function fold(view: number): number {\n  for (;;) {}\n}' };
+
+      const ran = [
+        await counted(pool, countingOnTheLoop),
+        await foldOf(pool, [slow], more),
+        await counted(pool, countingOnTheLoop),
+      ];
+
+      expect(ran).toMatchObject([{ jobs: 1 }, ended, { jobs: 1 }]);
+    });
+
+    it('keeps its worker after a page that stalled, which then folds the next page as a fresh worker does', async () => {
+      const warm = poolOf({ workers: 1 });
+      const views = [
+        {},
+        {
+          fold: 'export function fold(view: unknown, event: any): unknown {\n  return [view, event.data.n];\n}',
+          view: [],
+        },
+      ];
+
+      const stalled = await foldOf(warm, [
+        {
+          fold: 'export function fold(view: unknown, event: any): never {\n  throw new Error(`stop ${event.data.n}`);\n}',
+        },
+      ]);
+      const afterTheStall = await foldOf(warm, views);
+      const ran = await counted(warm, countingOnTheLoop);
+      const cold = await foldOf(poolOf({ workers: 1 }), views);
+
+      expect(stalled).toMatchObject({
+        ran: 'folded',
+        views: [{ stall: { kind: 'raised', message: 'Error: stop 1' } }],
+      });
+      expect({ ...afterTheStall, milliseconds: 0 }).toEqual({ ...cold, milliseconds: 0 });
+      expect(ran.jobs).toBe(3);
+    });
+  },
+);
 
 describe('a worker of the pool that, idle, sends a message, fails or ends', { timeout: poolTestTimeoutMs }, () => {
   it.each(['then message', 'then throw', 'then exit'])(

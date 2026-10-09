@@ -7,6 +7,7 @@ import type { HostDatabase } from '../database/host-database.ts';
 import { insertedListener } from '../listeners/listener-rows.ts';
 import { followedRecordOf, saidRefusals } from '../reaction-testing/followed-records.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
+import { filterMatchingOf } from './filter-matching.ts';
 import { listenerOffers } from './listener-offers.ts';
 
 const brainKey = 'brain/acme/alpha/';
@@ -51,6 +52,7 @@ function offering(database: HostDatabase, answer: (runKey: string) => Effect.Eff
         answer(runKey),
       ),
     declined: (runKey, detail) => say(`${runKey} declined: ${detail}`),
+    match: filterMatchingOf(),
     now: () => 0,
   });
   return { offers: () => offers, said, consumer };

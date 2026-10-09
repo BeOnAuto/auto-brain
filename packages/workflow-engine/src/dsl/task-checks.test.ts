@@ -10,32 +10,39 @@ function pointersRejectedIn(tasks: string): readonly string[] {
   return rejectionsOf(workflow(`do:\n${tasks}`)).map(({ pointer }) => pointer);
 }
 
-describe('the expressions and durations of tasks', () => {
-  it('are checked in raise, wait and set', () => {
+describe('the durations and errors of tasks', () => {
+  it('are checked in raise and wait, and an expression is left to the check at save', () => {
     expect(
       pointersRejectedIn(`
   - missing: { raise: { error: nowhere } }
-  - broken: { raise: { error: { type: '\${ .a + }', status: 400 } } }
+  - computed: { raise: { error: { type: '\${ $data.type }', status: 400 } } }
   - pause: { wait: soon }
-  - computed: { wait: '\${ .a + }' }
-  - fixed: { set: [1, { a: '\${ .a + }' }] }
+  - later: { wait: '\${ $data.wait }' }
+  - fixed: { set: [1, { a: '\${ $data.a }' }] }
 `),
-    ).toEqual([
-      '/do/0/missing/raise/error',
-      '/do/1/broken/raise/error/type',
-      '/do/2/pause/wait',
-      '/do/3/computed/wait',
-      '/do/4/fixed/set/1/a',
-    ]);
+    ).toEqual(['/do/0/missing/raise/error', '/do/2/pause/wait']);
   });
+});
 
-  it('are checked in switch and for', () => {
+describe('the names a for and a catch bind', () => {
+  it('are identifiers, none of them a name the runtime gives every expression', () => {
     expect(
       pointersRejectedIn(`
-  - route: { switch: [{ odd: { when: .a +, then: end } }, { plain: { then: end } }, 3] }
-  - loop: { for: { in: .a + }, while: .b +, do: [] }
+  - each: { for: { in: $data.items, each: line, at: place }, do: [] }
+  - spaced: { for: { in: $data.items, each: a line, at: 3 }, do: [] }
+  - taken: { for: { in: $data.items, each: context, at: data }, do: [] }
+  - caught: { try: [], catch: { as: problem } }
+  - shadowing: { try: [], catch: { as: workflow } }
+  - odd: { try: [], catch: { as: 'not-an-identifier' } }
 `),
-    ).toEqual(['/do/0/route/switch/0/odd/when', '/do/1/loop/for/in', '/do/1/loop/while']);
+    ).toEqual([
+      '/do/1/spaced/for/each',
+      '/do/1/spaced/for/at',
+      '/do/2/taken/for/each',
+      '/do/2/taken/for/at',
+      '/do/4/shadowing/catch/as',
+      '/do/5/odd/catch/as',
+    ]);
   });
 });
 
@@ -46,16 +53,13 @@ describe('the catch of a try', () => {
   - guarded:
       try: []
       catch:
-        when: .a +
-        exceptWhen: .b +
-        retry: { delay: soon, limit: { duration: P1M, attempt: { duration: never } }, exceptWhen: .c + }
+        when: $data.a
+        exceptWhen: $data.b
+        retry: { delay: soon, limit: { duration: P1M, attempt: { duration: never } }, exceptWhen: $data.c }
   - reused: { try: [], catch: { retry: nowhere } }
   - shaped: { try: [], catch: { retry: 3 } }
 `),
     ).toEqual([
-      '/do/0/guarded/catch/when',
-      '/do/0/guarded/catch/exceptWhen',
-      '/do/0/guarded/catch/retry/exceptWhen',
       '/do/0/guarded/catch/retry/delay',
       '/do/0/guarded/catch/retry/limit/duration',
       '/do/0/guarded/catch/retry/limit/attempt/duration',
@@ -79,25 +83,21 @@ do:
 });
 
 describe('the parts every task has', () => {
-  it('are checked: guard, data, schemas and timeout', () => {
+  it('are checked: schemas and timeout', () => {
     expect(
       pointersRejectedIn(`
   - shaped:
-      if: .a +
-      input: { from: .b +, schema: { document: {} } }
-      output: { as: { c: '\${ .c + }' } }
-      export: { as: .d +, schema: { document: {} } }
+      if: $data.a
+      input: { from: $data.b, schema: { document: {} } }
+      output: { as: { c: '\${ $data.c }' } }
+      export: { as: $data.d, schema: { document: {} } }
       timeout: { after: never }
       set: {}
   - limited: { set: {}, timeout: nowhere }
 `),
     ).toEqual([
-      '/do/0/shaped/if',
       '/do/0/shaped/input/schema',
-      '/do/0/shaped/input/from',
-      '/do/0/shaped/output/as/c',
       '/do/0/shaped/export/schema',
-      '/do/0/shaped/export/as',
       '/do/0/shaped/timeout/after',
       '/do/1/limited/timeout',
     ]);
@@ -140,7 +140,7 @@ describe('the flow of tasks', () => {
     expect(
       pointersRejectedIn(`
   - block: { do: [{ inner: { run: {} } }] }
-  - loop: { for: { in: .items }, do: [{ inner: { emit: {} } }] }
+  - loop: { for: { in: $data.items }, do: [{ inner: { emit: {} } }] }
   - guarded: { try: [{ inner: { run: {} } }], catch: { do: [{ handler: { run: {} } }] } }
   - parallel:
       fork:

@@ -67,10 +67,10 @@ describe('the cause of a step that a switch moved', () => {
 do:
   - pick:
       switch:
-        - high: { when: '\${ .n > 1 }', then: big }
+        - high: { when: '\${ $data.n > 1 }', then: big }
         - low: { then: small }
   - small: { set: { size: small }, then: end }
-  - big: { if: '\${ .n > 9 }', set: { size: big } }
+  - big: { if: '\${ $data.n > 9 }', set: { size: big } }
   - last: { set: { last: true } }
 `,
       { input: { n: 5 } },
@@ -163,7 +163,9 @@ do:
 describe('the cause of a step after a yield, a timeout or a cancel', () => {
   it('is the step before a yield for the step after it, in the input the yield lets go on', () => {
     const run = drivenRun(
-      workflow("do:\n  - each: { for: { in: '${ [range(0; 120)] }' }, do: [{ one: { set: {} } }] }"),
+      workflow(
+        "do:\n  - each: { for: { in: '${ Array.from({ length: 120 }, (_, index) => index) }' }, do: [{ one: { set: {} } }] }",
+      ),
     );
     const [first, second] = run.events.map(({ event }) => event.steps.filter((step) => isRecordedStep(step)));
 
@@ -209,7 +211,7 @@ describe('the child of a call', () => {
   });
 
   it('is not named when its arguments are too large to call it, which raises in the input it starts', () => {
-    const run = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: \'${ "x" * 300000 }\' } }'));
+    const run = drivenRun(workflow('do:\n  - ask: { call: notify, with: { to: \'${ "x".repeat(300000) }\' } }'));
 
     expect(run.events[0]?.event.steps.map(({ outcome }) => outcome)).toEqual(['raised']);
   });

@@ -6,7 +6,6 @@ RUN apt-get update \
 WORKDIR /app
 RUN npm install --global --no-fund --no-audit pnpm@12.8.1
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY patches patches/
 COPY packages/server/package.json packages/server/
 COPY packages/api/package.json packages/api/
 COPY packages/brains/package.json packages/brains/

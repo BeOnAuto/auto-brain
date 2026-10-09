@@ -5,13 +5,14 @@ import type { CancelOrder, EventOffered, EventReceived, RunInput } from '../mach
 import type { Responder } from '../memory/memory-executor.ts';
 import { memoryPorts, type MemoryPorts } from '../memory/memory-ports.ts';
 import { virtualClock, type VirtualClock } from '../memory/virtual-clock.ts';
-import type { MachineOptions } from '../runner/run-descriptors.ts';
-import { startedOf, testCancel, testMachine, type StartRequest } from './driver-inputs.ts';
+import type { MachineOptions, MachineSettings } from '../runner/run-descriptors.ts';
+import { startedOf, testCancel, testMachineOf, type StartRequest } from './driver-inputs.ts';
 import { engineOfFrozenRuns } from './frozen-runs.ts';
 import { runWatchOf, type RunWatch } from './run-watch.ts';
 
 export interface DriverOptions {
-  readonly machine?: MachineOptions;
+  readonly sandbox: MachineOptions['sandbox'];
+  readonly machine?: MachineSettings;
   readonly respond?: Responder;
   readonly startedAt?: number;
   readonly mostSteps?: number;
@@ -32,7 +33,7 @@ export interface MemoryDriver extends RunWatch {
 
 const succeedWithNull: Responder = () => ({ result: { status: 'succeeded', output: null } });
 
-export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
+export function memoryDriver(options: DriverOptions): MemoryDriver {
   const clock = virtualClock(options.startedAt);
   const ports = memoryPorts(
     clock,
@@ -41,7 +42,7 @@ export function memoryDriver(options: DriverOptions = {}): MemoryDriver {
     },
     options.respond ?? succeedWithNull,
   );
-  const engine = engineOfFrozenRuns(ports, options.machine ?? testMachine);
+  const engine = engineOfFrozenRuns(ports, testMachineOf(options.sandbox, options.machine));
   const given: RunInput[] = [];
   function submit(input: RunInput): Submission {
     given.push(input);

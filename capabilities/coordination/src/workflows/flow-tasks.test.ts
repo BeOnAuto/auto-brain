@@ -12,16 +12,16 @@ do:
   - skipped:
       set: { skipped: true }
   - lap:
-      set: { laps: '\${ .laps + 1 }' }
+      set: { laps: '\${ $data.laps + 1 }' }
   - again:
       switch:
         - more:
-            when: .laps < 3
+            when: $data.laps < 3
             then: lap
         - done:
             then: continue
   - finish:
-      set: { laps: '\${ .laps }', finished: true }
+      set: { laps: '\${ $data.laps }', finished: true }
 `);
 
     expect((await interpret(document)).ending).toEqual({ kind: 'completed', output: { laps: 3, finished: true } });
@@ -57,7 +57,7 @@ do:
         - never:
             set: { left: never }
   - after:
-      set: { left: '\${ .left + ", then after" }' }
+      set: { left: '\${ $data.left + ", then after" }' }
       then: exit
   - never:
       set: { left: never }
@@ -90,7 +90,7 @@ do:
   - route:
       switch:
         - big:
-            when: .size > 10
+            when: $data.size > 10
             then: large
         - fallback:
             then: small
@@ -123,7 +123,7 @@ describe('a switch without a default', () => {
 do:
   - route:
       switch:
-        - big: { when: .size > 10, then: end }
+        - big: { when: $data.size > 10, then: end }
         - odd: 3
   - after:
       set: { continued: true }

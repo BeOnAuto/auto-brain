@@ -2,7 +2,7 @@ import type { StoredPlace } from '@beonauto/ledger';
 import type { FoldedView, FoldStall } from '@beonauto/workflow-engine/dsl';
 import { Struct, type Schema } from 'effect';
 
-import { lineInFold } from '../views/view-details.ts';
+import { lineInDocument } from '../views/view-details.ts';
 import { comparePoints, pointText, type Point } from '../views/view-points.ts';
 import type { FoldedEvent, StallCause, ViewRow, ViewStall } from '../views/view-rows.ts';
 import type { FoldedRow } from '../views/view-statements.ts';
@@ -101,9 +101,13 @@ function triedAgain(row: ViewRow, advance: Advance, place: Place, { page, at, ki
   return { ...nextAt(advance, place), overtimes, phase: 'stalled', stall };
 }
 
-function stalledOf(row: ViewRow, advance: Advance, page: ReadPage, { at, kind, message, span }: FoldStall): FoldedRow {
-  const line = span === null ? null : lineInFold(row.details, span.start);
-  const stall = { event: stalledEventOf(page, at), kind, message, line };
+function stalledOf(row: ViewRow, advance: Advance, page: ReadPage, { at, kind, message, line }: FoldStall): FoldedRow {
+  const stall = {
+    event: stalledEventOf(page, at),
+    kind,
+    message,
+    line: line === null ? null : lineInDocument(row.details, line),
+  };
   return { ...nextAt(advance, before(row, page, at)), overtimes: row.overtimes, phase: 'stalled', stall };
 }
 

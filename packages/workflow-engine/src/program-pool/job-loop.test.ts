@@ -4,11 +4,11 @@ import type { Json, JsonObject } from '../dsl/json.ts';
 import { foldAnswerOf, foldPageData } from '../folds/fold-answer.ts';
 import type { FoldPage } from '../folds/fold-page.ts';
 import { foldProgress, type FoldProgress } from '../folds/fold-progress.ts';
+import type { CheckJob } from '../jobs/check-messages.ts';
 import type { JobHandlers } from '../jobs/job-kit.ts';
 import { answerOf, type OutputCheck, type ProgramAnswerData } from '../jobs/program-answer.ts';
-import type { CompiledProgram } from '../programs/program-compiling.ts';
+import { threadStackBytes, unitMemoryBytes } from '../programs/sandbox-bounds.ts';
 import { serveJobs } from './job-loop.ts';
-import { liftedLimits } from './program-pool.ts';
 
 type Ask = (message: unknown) => Promise<unknown>;
 
@@ -54,16 +54,20 @@ async function keptAfter(ask: Ask, messages: readonly unknown[]): Promise<readon
   return (await inTurn(ask, messages)).map((answer): unknown => Reflect.get(new Object(answer), 'keep'));
 }
 
+function program(body: string): string {
+  return `export default function (input: any): unknown {\n  ${body}\n}`;
+}
+
 function programJob(job: number, source: string, more: Readonly<Record<string, Json>> = {}): unknown {
   const deadlineAt = performance.timeOrigin + performance.now() + 10_000;
-  const limits = liftedLimits(64_000_000);
-  const dialect = { refused: [], variables: [] };
   const request = {
     source,
-    input: '1',
-    variables: '{}',
-    dialect,
-    limits,
+    entry: 'default',
+    arguments: ['1'],
+    moment: 0,
+    budget: 500,
+    memoryBytes: unitMemoryBytes,
+    stackBytes: threadStackBytes,
     mostOutputBytes: 1000,
     deadlineAt,
     context: null,
@@ -71,19 +75,15 @@ function programJob(job: number, source: string, more: Readonly<Record<string, J
   return { job, kind: 'program', request: { ...request, ...more } };
 }
 
+const adding = 'export function fold(view: number, event: { data: number }): number {\n  return view + event.data;\n}';
+
 function foldJob(job: number, views: readonly JsonObject[], parts: FoldJobParts = {}): unknown {
   const request = foldPageData({
     events: [{ type: 'noted', data: 2 }],
-    views: views.map((view) => ({
-      fold: '. + $event.data',
-      filters: [{ type: 'noted' }],
-      view: 1,
-      events: [0],
-      ...view,
-    })),
-    dialect: { refused: [], variables: ['event'] },
-    variable: 'event',
-    limits: liftedLimits(16_000_000),
+    views: views.map((view) => ({ fold: adding, filters: [{ type: 'noted' }], view: 1, events: [0], ...view })),
+    budget: 500,
+    memoryBytes: unitMemoryBytes,
+    stackBytes: threadStackBytes,
     foldDeadlineMs: 10_000,
     pageBudgetMs: 2000,
     mostViewBytes: 1000,
@@ -98,18 +98,48 @@ function foldJob(job: number, views: readonly JsonObject[], parts: FoldJobParts 
   };
 }
 
+const checkRequest: CheckJob = { schemas: {}, expressions: [{ source: '$data', names: ['$data'] }] };
+
+function checkJob(job: number): unknown {
+  return { job, kind: 'check', request: checkRequest };
+}
+
 function refusingEvery(detail: string): OutputCheck {
   return () => [{ pointer: '', detail }];
 }
 
 describe('a loop that serves jobs', () => {
   it('answers each job by its id, with the answer of the handler of its kind and whether the worker may be kept', async () => {
-    const ask = served({ program: answerOf, fold: foldAnswerOf });
+    const ask = served({
+      program: answerOf,
+      fold: foldAnswerOf,
+      check: ({ expressions }) => ({
+        ran: 'checked',
+        issues: expressions.map(({ source }, at) => ({ at, line: 1, detail: source })),
+      }),
+    });
 
-    expect(await inTurn(ask, [programJob(3, '. + 1'), foldJob(4, [{}])])).toMatchObject([
+    expect(
+      await inTurn(ask, [programJob(3, program('return input + 1;')), foldJob(4, [{}]), checkJob(5)]),
+    ).toMatchObject([
       { job: 3, answer: { ran: 'answered', output: '2', bytes: 1 }, keep: true },
       { job: 4, answer: { ran: 'folded', views: [{ view: '3', folded: 1 }] }, keep: true },
+      { job: 5, answer: { ran: 'checked', issues: [{ at: 0, line: 1, detail: '$data' }] }, keep: true },
     ]);
+  });
+
+  it('runs each program in a fresh instance, so nothing one job leaves reaches the next', async () => {
+    const ask = served({ program: answerOf });
+
+    expect(
+      await inTurn(ask, [
+        programJob(
+          1,
+          program('Reflect.set(globalThis, "seen", input);\n  return typeof Reflect.get(globalThis, "seen");'),
+        ),
+        programJob(2, program('return typeof Reflect.get(globalThis, "seen");')),
+      ]),
+    ).toMatchObject([{ answer: { output: '"number"' } }, { answer: { output: '"undefined"' } }]);
   });
 
   it('marks the place of each fold in the memory the envelope shares, so the pool can name the fold that was going', async () => {
@@ -119,22 +149,24 @@ describe('a loop that serves jobs', () => {
 
     expect(progress.last()).toEqual({ event: 0, view: 1 });
   });
+});
 
-  it('keeps its worker after every program but one its deadline ended, and after every page but one with a view past its deadline', async () => {
+describe('the worker of a loop that serves jobs', () => {
+  it('is kept after every program but one its deadline ended, and after every page but one with a view past its deadline', async () => {
     const ask = served({ program: answerOf, fold: foldAnswerOf });
     const pastItsDeadline = { deadlineAt: performance.timeOrigin + performance.now() - 1 };
+    const endless = 'export function fold(view: number): number {\n  for (;;) {}\n}';
 
     expect(
       await keptAfter(ask, [
-        programJob(1, 'error("stop")'),
-        programJob(2, '"x" * 100000000'),
-        programJob(3, 'def g: if . == 0 then 0 else (. - 1 | g) end; 30000 | g'),
-        programJob(4, 'empty'),
-        programJob(5, 'reduce range(100000000) as $i (0; . + 1)', pastItsDeadline),
-        foldJob(6, [{ fold: 'error("stop")' }]),
-        foldJob(7, [{ fold: 'reduce range(1000000) as $i (.; . + 1)' }, {}], { page: { foldDeadlineMs: 1 } }),
+        programJob(1, program('throw new Error("stop");')),
+        programJob(2, program('for (;;) {}')),
+        programJob(3, program('return 0 / 0;')),
+        programJob(4, program('for (;;) {}'), pastItsDeadline),
+        foldJob(5, [{ fold: 'export function fold(): never {\n  throw new Error("stop");\n}' }]),
+        foldJob(6, [{ fold: endless }, {}], { page: { foldDeadlineMs: 1 } }),
       ]),
-    ).toEqual([true, true, true, true, false, true, false]);
+    ).toEqual([true, true, true, false, true, false]);
   });
 });
 
@@ -152,36 +184,33 @@ describe('a loop given a job it cannot serve', () => {
     const folds = served({ fold: foldAnswerOf });
 
     expect([
-      ...(await inTurn(programs, [{ nonsense: true }, { job: 8, kind: 'program' }, foldJob(9, [{}])])),
-      await folds(programJob(10, '.')),
+      ...(await inTurn(programs, [{ nonsense: true }, { job: 8, kind: 'program' }, foldJob(9, [{}]), checkJob(10)])),
+      await folds(programJob(11, program('return input;'))),
     ]).toEqual([
       { job: -1, answer: { ran: 'unreadable' }, keep: false },
       { job: 8, answer: { ran: 'unreadable' }, keep: false },
       { job: 9, answer: { ran: 'unreadable' }, keep: false },
       { job: 10, answer: { ran: 'unreadable' }, keep: false },
+      { job: 11, answer: { ran: 'unreadable' }, keep: false },
     ]);
   });
 });
 
 describe('the programs a loop keeps between jobs', () => {
-  it('compiles a program once for each source and dialect, and gives the same program to every job that runs it', async () => {
-    const seen: CompiledProgram[] = [];
+  it('strips the types of a program once for each source, and gives the same text to every job that runs it', async () => {
+    const seen: unknown[] = [];
     const ask = served({
       program: (request, host): ProgramAnswerData => {
-        seen.push(host.compile(request.source, request.dialect));
+        seen.push(host.stripping.module(request.source));
         return answerOf(request, host);
       },
     });
+    const once = program('return (input as number) + 1;');
 
-    await inTurn(ask, [
-      programJob(1, '. + 1'),
-      programJob(2, '. + 1'),
-      programJob(3, '. + 1', { dialect: { refused: [{ name: 'now', why: 'reads the clock' }] } }),
-      programJob(4, '. + 2'),
-    ]);
+    await inTurn(ask, [programJob(1, once), programJob(2, once), programJob(3, program('return input;'))]);
 
-    const [first, again, otherDialect, otherSource] = seen;
-    expect([again === first, otherDialect === first, otherSource === first]).toEqual([true, false, false]);
+    const [first, again, other] = seen;
+    expect([again === first, other === first]).toEqual([true, false]);
   });
 });
 
@@ -194,16 +223,17 @@ describe('the output checks a loop keeps between jobs', () => {
     };
     const ask = served({ program: answerOf, checks: { output, view: () => () => 'never asked' } });
     const string = { context: { type: 'string' } };
+    const echo = program('return input;');
 
     expect(
-      await inTurn(ask, [programJob(1, '.', string), programJob(2, '.', string), programJob(3, '.')]),
+      await inTurn(ask, [programJob(1, echo, string), programJob(2, echo, string), programJob(3, echo)]),
     ).toMatchObject([
       { answer: { ran: 'mismatched', issues: [{ detail: 'refused by the check' }] } },
       { answer: { ran: 'mismatched' } },
       { answer: { ran: 'answered' } },
     ]);
     expect(compiled).toEqual([{ type: 'string' }]);
-    expect(await served({ program: answerOf })(programJob(4, '.', string))).toMatchObject({
+    expect(await served({ program: answerOf })(programJob(4, echo, string))).toMatchObject({
       answer: { ran: 'answered' },
     });
   });

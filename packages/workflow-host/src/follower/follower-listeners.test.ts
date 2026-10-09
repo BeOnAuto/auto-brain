@@ -38,10 +38,10 @@ describe('a run that waits for an event whose type its filter names', () => {
     expect(state.inbox).toMatchObject({ waiting: [], received: 1 });
   });
 
-  it('correlates through its own variables: the host offers the event, and the run takes only its own', async () => {
+  it('takes only the events its filter takes over their data: the host offers those, and the run takes the first', async () => {
     const reacting = await reactingHost();
-    const filter = "{ type: com.acme.decided, data: '${ .ticket == $workflow.input.ticket }' }";
-    await Effect.runPromise(reacting.host.start(runAt(waiting), listening(filter, { ticket: 't-7' })));
+    const filter = '{ type: com.acme.decided, data: \'${ $data.ticket === "t-7" }\' }';
+    await Effect.runPromise(reacting.host.start(runAt(waiting), listening(filter)));
 
     await published(reacting.database.store, { id: 'e1', type: 'com.acme.decided', data: { ticket: 't-8' } });
     await published(reacting.database.store, { id: 'e2', type: 'com.acme.decided', data: { ticket: 't-7' } });
@@ -53,16 +53,18 @@ describe('a run that waits for an event whose type its filter names', () => {
 });
 
 describe('an offer to a run that waits for an event', () => {
-  it('is said when the filter of the run fails on it, and not taken', async () => {
+  it('is not made of an event the filter of the run fails on, which the run never sees', async () => {
     const reacting = await reactingHost();
-    const filter = "{ type: com.acme.decided, data: '${ .ticket == $workflow.input.ticket }' }";
-    await Effect.runPromise(reacting.host.start(runAt(waiting), listening(filter, { ticket: 't-7' })));
+    const filter = "{ type: com.acme.decided, data: '${ $data.ticket.length > 0 }' }";
+    await Effect.runPromise(reacting.host.start(runAt(waiting), listening(filter)));
 
     await published(reacting.database.store, { id: 'e1', type: 'com.acme.decided', data: 'not a ticket' });
     await published(reacting.database.store, { id: 'e2', type: 'com.acme.decided', data: { ticket: 't-7' } });
-    await ended(reacting);
+    const state = await ended(reacting);
 
-    expect(reacting.notes()).toMatchObject([{ kind: 'offer_declined', run: runAt(waiting) }]);
+    expect(state.outcome).toEqual({ kind: 'completed', output: [{ ticket: 't-7' }] });
+    expect(state.inbox.offeredIds).toHaveLength(1);
+    expect(reacting.notes()).toEqual([]);
   });
 
   it('is not made of an event the run emitted itself', async () => {
