@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-export const IssueSchema = Schema.Struct({ detail: Schema.String, line: Schema.NullOr(Schema.Number) });
+const IssueSchema = Schema.Struct({ detail: Schema.String, line: Schema.NullOr(Schema.Number) });
 
 export const SettingsSchema = Schema.Struct({
   budget: Schema.Number,

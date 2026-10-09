@@ -13,7 +13,7 @@ import { foldPage } from '../src/folds/fold-page.ts';
 import { cachedStripping } from '../src/programs/type-stripping.ts';
 import { millisecondsOf } from './common.ts';
 
-export const reviewsFold = [
+const reviewsFold = [
   'type Review = { at: string; verdict: string; run: string };',
   'type Reviews = { [campaign: string]: Review[] };',
   '',

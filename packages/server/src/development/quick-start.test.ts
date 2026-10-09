@@ -56,16 +56,16 @@ const triage = [
   'do:',
   '  - classify:',
   '      call: run_definition',
-  "      with: {type: reasoning, name: classify-ticket, input: {ticket: '${ .ticket }'}}",
-  "      output: {as: '${ $input + {triage: .} }'}",
+  "      with: {type: reasoning, name: classify-ticket, input: {ticket: '${ $data.ticket }'}}",
+  "      output: {as: '${ ({ ...$input, triage: $data }) }'}",
   '  - escalate:',
-  '      if: .triage.urgency == "high"',
+  '      if: $data.triage.urgency === "high"',
   '      call: run_definition',
   '      with:',
   '        type: reasoning',
   '        name: escalation-note',
-  "        input: {ticket: '${ .ticket }', category: '${ .triage.category }'}",
-  "      output: {as: '${ $input + {note: .} }'}",
+  "        input: {ticket: '${ $data.ticket }', category: '${ $data.triage.category }'}",
+  "      output: {as: '${ ({ ...$input, note: $data }) }'}",
 ].join('\n');
 
 const approval = [
@@ -73,7 +73,7 @@ const approval = [
   'do:',
   '  - wait-for-manager:',
   '      listen: {to: {one: {with: {type: com.acme.refund.approved}}}}',
-  "      output: {as: '${ {refund: $workflow.input.refund, approved_by: .[0].by} }'}",
+  "      output: {as: '${ ({ refund: $workflow.input.refund, approved_by: $data[0].by }) }'}",
 ].join('\n');
 
 const escalationAnswer =

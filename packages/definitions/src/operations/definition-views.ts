@@ -1,10 +1,10 @@
-import type { InvalidInput } from '@beonauto/operations';
+import type { InvalidInput, Unavailable } from '@beonauto/operations';
 import { Effect, Order, Struct } from 'effect';
 
 import type { Capability, DefinitionSummary } from '../capability/capability.ts';
 import type { DefinitionContent } from '../registry/definition-events.ts';
 import type { ListedDefinition, Definition, StoredDefinition } from '../registry/definition.ts';
-import { rejectionOfSource } from './issue-pointers.ts';
+import { rejectionOfSource, type Rejection } from './issue-pointers.ts';
 
 export const byName = Order.mapInput(Order.String, ({ name }: StoredDefinition) => name);
 
@@ -31,9 +31,17 @@ function contentFrom(
   };
 }
 
-export function contentOf(capability: Capability, source: string): Effect.Effect<DefinitionContent, InvalidInput> {
+function refusedSource(rejection: Rejection): Effect.Effect<never, InvalidInput> {
+  return Effect.fail(rejectionOfSource(rejection));
+}
+
+export function contentOf(
+  capability: Capability,
+  source: string,
+): Effect.Effect<DefinitionContent, InvalidInput | Unavailable> {
   return capability.prepare(source).pipe(
-    Effect.mapError(rejectionOfSource),
-    Effect.map(({ summary }) => contentFrom(source, summary)),
+    Effect.flatMap(({ summary, check }) => Effect.as(check, summary)),
+    Effect.catchTag('invalid_input', refusedSource),
+    Effect.map((summary) => contentFrom(source, summary)),
   );
 }

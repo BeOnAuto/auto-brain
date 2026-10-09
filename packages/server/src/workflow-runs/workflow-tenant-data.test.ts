@@ -30,11 +30,11 @@ const definitions: readonly Definition[] = [
   {
     name: 'input',
     steps:
-      "do:\n  - fail: { raise: { error: { type: https://example.com/no, status: 422, title: No, detail: '${ .secret }' } } }\n",
+      "do:\n  - fail: { raise: { error: { type: https://example.com/no, status: 422, title: No, detail: '${ $data.secret }' } } }\n",
   },
   {
     name: 'event',
-    steps: `do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.go } } } } }\n  - fail: { raise: { error: { type: https://example.com/no, status: 422, title: No, detail: '\${ .[0].secret }' } } }\n`,
+    steps: `do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.go } } } } }\n  - fail: { raise: { error: { type: https://example.com/no, status: 422, title: No, detail: '\${ $data[0].secret }' } } }\n`,
   },
   {
     name: 'nested',

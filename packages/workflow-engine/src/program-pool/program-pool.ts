@@ -85,9 +85,8 @@ export function programPool(settings: PoolSettings): ProgramPool {
     check: async (request, signal) => {
       const started = performance.now();
       const until = started + request.deadlineMs;
-      const module = settings.worker ?? request.worker;
       const ending = await admitted(checkSlots, until, signal, () =>
-        checkers.evaluate(checkJob(module, request), { until, signal }),
+        checkers.evaluate(checkJob(request.worker, request), { until, signal }),
       );
       return { ...ending, milliseconds: performance.now() - started };
     },

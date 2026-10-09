@@ -8,7 +8,7 @@ Public documentation explains [workflows and their availability](../../docs/conc
 
 `src/index.ts` exports:
 
-- `makeWorkflowAdapter({ runs, mostDurationMs, longestCallMs })`: the workflow adapter, with `WorkflowAdapterDependencies` as its options type. `runs` is the host that starts runs; `mostDurationMs` is the most a run may last, which `create_definition` checks every duration of a document against and a run is stopped at exactly; `longestCallMs` the most a call of a run may take before its `call_deadline` timer fails the task, when the call's definition is not named as written. The adapter states that its runs finish later and may take `mostDurationMs`.
+- `makeWorkflowAdapter({ runs, check, mostDurationMs, longestCallMs })`: the workflow adapter, with `WorkflowAdapterDependencies` as its options type. `runs` is the host that starts runs; `check`, an `ExpressionCheck`, checks the expressions of a document when it is saved, which the server makes of `checkedAtSave` of `@beonauto/definitions` and its program pool (see [The expressions of a document](#the-expressions-of-a-document)); `mostDurationMs` is the most a run may last, which `create_definition` checks every duration of a document against and a run is stopped at exactly; `longestCallMs` the most a call of a run may take before its `call_deadline` timer fails the task, when the call's definition is not named as written. The adapter states that its runs finish later and may take `mostDurationMs`.
 - `defineSendRunEvent(runs)`: `send_run_event`, which gives a running workflow an event.
 - `workflowMachineOptions`: the machine's options, the functions a workflow may call (`run_definition`) and the runtime its expressions see as `$runtime`.
 - `definitionCalls(runDefinition)`: calls a saved definition from a workflow. This adapter accepts reasoning functions, workflows and custom definition types; it does not classify every extension as a brain function.
@@ -16,6 +16,10 @@ Public documentation explains [workflows and their availability](../../docs/conc
 - `callMarginMs`: the minute a call is given beyond the longest its definition may run.
 - `runPresenter`: the presenter of the run log, for the history of a run and the events of a brain.
 - `definitionRunResultOf`, `RunDefinition`, `DefinitionRunRequest` and `DefinitionRunResult`, for the server, which runs a definition called by a workflow through its operations.
+
+## The expressions of a document
+
+Parsing keeps the document with the locator of its YAML (`readWorkflowDocument`, `src/document/workflow-document.ts`). When a document is created or updated, the capability's `check` (`src/document/expression-check.ts`) takes every expression it holds, with the names each may read, from `workflowExpressionsOf` of the engine, and checks them as one job of the pool's check worker: an expression that is not one TypeScript expression, or that names what its place lacks, is refused at the line and column of its value in the document and under its pointer, in the words of a document this runtime does not run, as `Line 7, column 24: at /do/0/count/set/n: Cannot find name '$nope'.`; an expression of several lines adds its own line to the line of its value. A document without expressions asks for no check, and a check that does not answer within 2 seconds leaves the document unsaved, `unavailable`. The tests check with the real check worker, one pool for each test file (`src/testing/expression-checks.ts`), so every workflow they save is valid TypeScript.
 
 ## A run of a workflow
 

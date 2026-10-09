@@ -48,6 +48,7 @@ describe('a recall function definition', () => {
       input: {},
       output: {},
       answers: false,
+      filterExpressions: [],
       details: {
         language: 'typescript',
         fold: adding,

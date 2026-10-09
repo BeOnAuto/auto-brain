@@ -10,6 +10,7 @@ import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import type { ViewsPort } from '@beonauto/workflow-host';
 import type { Schema } from 'effect';
 
+import { documentCheck } from '../document/document-check.ts';
 import { recallBounds, recallDefinitionType } from '../run/recall-bounds.ts';
 import { recallRun } from '../run/recall-run.ts';
 import { parse, summarize } from './recall-definitions.ts';
@@ -44,6 +45,7 @@ export function makeRecallFunctionAdapter({
     describeOutput: describeResult,
     mediaType: 'text/markdown',
     parse,
+    check: documentCheck(pool),
     summarize,
     run: (document, input, context) => run(document, input, context),
     longestAnyRunMs: deadlineMs,

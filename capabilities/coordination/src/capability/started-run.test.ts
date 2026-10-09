@@ -5,6 +5,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { brainOn } from '../testing/brain.ts';
+import { testExpressionCheck } from '../testing/expression-checks.ts';
 import { acmeCaller } from '../testing/workflows.ts';
 import { makeWorkflowAdapter } from './workflow.ts';
 
@@ -31,12 +32,19 @@ function recordingStarts() {
   return { starts, recording };
 }
 
+function recordingWorkflows(recording: Pick<WorkflowHost, 'start'>) {
+  return makeWorkflowAdapter({
+    runs: recording,
+    check: testExpressionCheck,
+    mostDurationMs: 2_592_000_000,
+    longestCallMs: 1000,
+  });
+}
+
 describe('the run a run of a workflow starts', () => {
   it('is known by its brain, its run, its version, its caller, its reaction depth and its lineage', async () => {
     const { starts, recording } = recordingStarts();
-    const brain = brainOn(memoryLedger(), [
-      makeWorkflowAdapter({ runs: recording, mostDurationMs: 2_592_000_000, longestCallMs: 1000 }),
-    ]);
+    const brain = brainOn(memoryLedger(), [recordingWorkflows(recording)]);
     await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
 
     await brain.call(brain.runDefinition, { type: 'workflow', name: 'flow', run_id: runId });
@@ -57,10 +65,7 @@ describe('the run a run of a workflow starts', () => {
 
   it('waits for each call that names its definition no longer than that definition may run, with a minute more', async () => {
     const { starts, recording } = recordingStarts();
-    const brain = brainOn(memoryLedger(), [
-      makeWorkflowAdapter({ runs: recording, mostDurationMs: 2_592_000_000, longestCallMs: 1000 }),
-      echo,
-    ]);
+    const brain = brainOn(memoryLedger(), [recordingWorkflows(recording), echo]);
     await brain.call(brain.createDefinition, { type: 'echo', name: 'greet', source: '{"greeting": "Hello"}' });
     await brain.call(brain.createDefinition, { type: 'workflow', name: 'flow', source: flow });
     await brain.call(brain.createDefinition, { type: 'workflow', name: 'calling', source: calling });

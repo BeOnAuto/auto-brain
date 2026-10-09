@@ -6,6 +6,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { brainOn } from '../testing/brain.ts';
+import { testExpressionCheck } from '../testing/expression-checks.ts';
 import { makeWorkflowAdapter } from './workflow.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-555555555551';
@@ -26,6 +27,7 @@ describe('a run whose call is cancelled while its workflow starts', () => {
   it('waits for the start and records the run waiting for the workflow it started', async () => {
     const workflow = makeWorkflowAdapter({
       runs: slowlyStarting,
+      check: testExpressionCheck,
       mostDurationMs: 2_592_000_000,
       longestCallMs: 1000,
     });

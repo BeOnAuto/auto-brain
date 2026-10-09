@@ -14,9 +14,23 @@ import { servingReasoning, type ReasoningServer } from '../testing/servers/reaso
 
 const computationTestTimeoutMs = 30_000;
 
-const twice = ['---', 'language: jq', '---', '.[]'].join('\n');
+const dated = [
+  '---',
+  'language: typescript',
+  '---',
+  'export default function (input: any): any {',
+  '  return { at: new Date(0), count: input.length };',
+  '}',
+].join('\n');
 
-const total = ['---', 'language: jq', '---', '{ total_spend_cents: (.rows | map(.cost_cents) | add) }'].join('\n');
+const total = [
+  '---',
+  'language: typescript',
+  '---',
+  'export default function (input: any): Output {',
+  '  return { total_spend_cents: input.rows.reduce((sum: number, row: any) => sum + row.cost_cents, 0) };',
+  '}',
+].join('\n');
 
 let server: ReasoningServer;
 
@@ -63,15 +77,15 @@ describe('a computation function over MCP, on the endpoint of its brain', { time
       'Ran the computation function “pace”. Its result is too long to repeat here; the whole of it is in the details below.',
     );
     expect(plainTextIn(summed)).toBe('Ran the computation function “total”. Its result: total spend cents: 4222.');
-    expect(run.structuredContent).toMatchObject({ record: { language: 'jq' } });
+    expect(run.structuredContent).toMatchObject({ record: { language: 'typescript' } });
   });
 });
 
 describe('a computation function that cannot work as written, over MCP', { timeout: computationTestTimeoutMs }, () => {
-  it('answers a program that gives two outputs with isError, the conflict and its kind, in plain words', async () => {
+  it('answers a program whose output is not JSON with isError, the conflict and its kind, in plain words', async () => {
     const ran = await onAlpha(async (session) => {
-      await session.callTool('create_definition', { type: 'computation', name: 'twice', source: twice });
-      return session.callTool('run_definition', { type: 'computation', name: 'twice', input: [1, 2] });
+      await session.callTool('create_definition', { type: 'computation', name: 'dated', source: dated });
+      return session.callTool('run_definition', { type: 'computation', name: 'dated', input: [1, 2] });
     });
 
     expect({ isError: ran.isError, problem: problemIn(ran) }).toMatchObject({
@@ -80,7 +94,7 @@ describe('a computation function that cannot work as written, over MCP', { timeo
         status: 409,
         reason: 'conflict',
         kind: 'unworkable',
-        detail: 'The program gave more than one output; a computation function gives exactly one',
+        detail: "The program's output is not JSON: The answer holds a Date at $.at, which JSON cannot carry",
       },
     });
     expect(plainTextIn(ran)).toContain('it cannot work as it is written');
@@ -95,6 +109,6 @@ describe('the definition tools an agent sees', { timeout: computationTestTimeout
     const guide = await onAlpha((session) => session.callTool('get_guide', { guide: 'computation-function' }));
 
     expect(createDefinition?.description).toContain('computation, a computation function, guide computation-function');
-    expect(textOf(guide)).toContain('jq');
+    expect(textOf(guide)).toContain('TypeScript');
   });
 });

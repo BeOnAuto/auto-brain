@@ -78,5 +78,5 @@ export function programDocument(program: string, frontMatter = 'language: typesc
 }
 
 export function functionOf(body: string): string {
-  return `export default function (input: any): unknown {\n  ${body}\n}`;
+  return `export default function (input: any): any {\n  ${body}\n}`;
 }

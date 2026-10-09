@@ -24,10 +24,10 @@ describe('the links of a page served as a guide', () => {
   });
 
   it('leave what looks like a link inside a block of code as it is', () => {
-    const page = 'Before [it](http.md).\n\n```jq\n.[$campaign](x)\n```\n\nAfter [it](http.md).\n';
+    const page = 'Before [it](http.md).\n\n```ts\nview[campaign](x)\n```\n\nAfter [it](http.md).\n';
 
     expect(withLinksResolved(page, 'reference/recall-format.md')).toBe(
-      'Before [it](https://on.auto/docs/reference/http).\n\n```jq\n.[$campaign](x)\n```\n\nAfter [it](https://on.auto/docs/reference/http).\n',
+      'Before [it](https://on.auto/docs/reference/http).\n\n```ts\nview[campaign](x)\n```\n\nAfter [it](https://on.auto/docs/reference/http).\n',
     );
   });
 });

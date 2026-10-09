@@ -44,15 +44,10 @@ output:
 ---
 type Review = View[string][number];
 
-function fieldOf(value: Json | undefined, name: string): Json | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value[name] : undefined;
-}
-
-function lastAt(reviews: Review[]): string {
-  return reviews.at(-1)?.at ?? '';
-}
-
 export function fold(view: View, event: Event): View {
+  const fieldOf = (value: Json | undefined, name: string): Json | undefined =>
+    typeof value === 'object' && value !== null && !Array.isArray(value) ? value[name] : undefined;
+  const lastAt = (reviews: Review[]): string => reviews.at(-1)?.at ?? '';
   const output = fieldOf(event.data, 'output');
   const named = fieldOf(output, 'campaign');
   const campaign = typeof named === 'string' ? named : 'unknown';
@@ -140,11 +135,8 @@ view:
   initial: []
   schema: { type: array, maxItems: 50 }
 ---
-function bytesOf(text: string): number {
-  return encodeURIComponent(text).replace(/%[0-9A-F]{2}/gu, '_').length;
-}
-
 export function fold(view: View, event: Event): View {
+  const bytesOf = (text: string): number => encodeURIComponent(text).replace(/%[0-9A-F]{2}/gu, '_').length;
   const data = event.data;
   const output = typeof data === 'object' && data !== null && !Array.isArray(data) ? (data['output'] ?? null) : null;
   const kept = bytesOf(JSON.stringify(output)) <= 8192 ? output : null;
@@ -200,7 +192,7 @@ The body is one TypeScript module, as a [computation function's program](computa
 | `fold(view: View, event: Event): View`     | Required; takes the view and one event and answers the next view                                              |
 | `answer(view: View, input: Input): Output` | Optional; takes the view and the run's input and answers the run's output; without it, a run answers the view |
 
-`View` is `view.schema` as a type, `Json` without one; `Input` and `Output` are the input and output schemas, as for a computation function, and `Event` is the brain's event, with `specversion`, `id`, `type`, `source`, `subject`, `time`, `datacontenttype`, `dataschema`, `data` as `Json`, `causationid` and `correlationid`, each but `id`, `type` and `source` optional, and its extensions. The module may declare types of its own and functions, and nothing else at the top level, since a module that kept state between two folds would make a view depend on where a page of events ends. The document is checked when it is saved, as a computation function's is, each problem refused with its line and the compiler's words, and a module without `fold` is refused with the signature it needs.
+`View` is `view.schema` as a type, `Json` without one; `Input` and `Output` are the input and output schemas, as for a computation function, and `Event` is the brain's event, with `specversion`, `id`, `type`, `source`, `subject`, `time`, `datacontenttype`, `dataschema`, `data` as `Json`, `causationid` and `correlationid`, each but `id`, `type` and `source` optional, and no extension: an extension is read through a type that names it, such as `(event as Event & { region?: string }).region`, so that a misspelt attribute is refused rather than read as an extension. The module may declare types of its own and exported functions, and nothing else at the top level, since a module that kept state between two folds would make a view depend on where a page of events ends; a helper is written inside the function that uses it, or exported. The document is checked when it is saved, as a computation function's is, each problem refused with its line and the compiler's words, and a module without `fold` is refused with the signature it needs.
 
 The module runs in the same sandbox as a computation function, with the same library and the same numbers: see [The sandbox](computation-format.md#the-sandbox) and [Numbers](computation-format.md#numbers). In a fold, `Date.now()` and `new Date()` answer the time of the event being folded, so a fold gives the same view on every server; in an answer, the moment the run started. The view stays inside the fold's sandbox for a whole page of events, so each fold is given the view the one before it answered; its sandbox is frozen once the module is loaded, so nothing a fold writes outside its view, to `Math`, to a prototype or to the module, reaches the next fold.
 

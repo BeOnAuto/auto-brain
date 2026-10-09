@@ -1,6 +1,6 @@
 import { withMcpSession } from '@beonauto/api/testing';
 import { answers, jsonResult, type ScriptedReply } from '@beonauto/reasoning/testing';
-import { recallDocument } from '@beonauto/recall/testing';
+import { foldOf, recallDocument } from '@beonauto/recall/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -29,16 +29,17 @@ const advise = [
 
 const tally = [
   '---',
-  'language: jq',
+  'language: typescript',
   '---',
-  '{ approvals: (.reviews | map(select(.verdict == "approve")) | length),',
-  '  rejections: (.reviews | map(select(.verdict == "reject")) | length),',
-  '  approve: .advice.approve }',
+  'export default function (input: any): Output {',
+  '  const counted = (verdict: string): number => input.reviews.filter((review: any) => review.verdict === verdict).length;',
+  "  return { approvals: counted('approve'), rejections: counted('reject'), approve: input.advice.approve };",
+  '}',
 ].join('\n');
 
 const stalling = recallDocument(
-  'error("cannot fold this")',
-  'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief',
+  foldOf("throw new Error('cannot fold this');"),
+  'language: typescript\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief',
 );
 
 function recallingWorkflow(name: string, recall: string): string {
@@ -49,7 +50,7 @@ function recallingWorkflow(name: string, recall: string): string {
       try:
         - remember:
             call: run_definition
-            with: { type: recall, name: ${recall}, input: { campaign: '\${ .campaign }' } }
+            with: { type: recall, name: ${recall}, input: { campaign: '\${ $data.campaign }' } }
       catch:
         errors:
           with: { status: 503 }
@@ -58,13 +59,13 @@ function recallingWorkflow(name: string, recall: string): string {
           limit:
             attempt: { count: 3 }
       export:
-        as: '\${ { reviews: . } }'
+        as: '\${ ({ reviews: $output }) }'
   - advise:
       call: run_definition
       with: { type: reasoning, name: advise, input: { reviews: '\${ $context.reviews }' } }
   - tally:
       call: run_definition
-      with: { type: computation, name: tally, input: { reviews: '\${ $context.reviews }', advice: '\${ . }' } }
+      with: { type: computation, name: tally, input: { reviews: '\${ $context.reviews }', advice: '\${ $data }' } }
 `,
   );
 }

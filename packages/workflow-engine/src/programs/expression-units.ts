@@ -23,7 +23,7 @@ interface Opened {
 
 const argumentName = /\$[A-Za-z_][\w$]*/gu;
 
-export function namesIn(source: string): ReadonlySet<string> {
+function namesIn(source: string): ReadonlySet<string> {
   return new Set(source.match(argumentName));
 }
 

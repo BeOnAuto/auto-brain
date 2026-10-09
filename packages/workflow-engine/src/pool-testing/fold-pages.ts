@@ -15,7 +15,7 @@ import { cachedStripping } from '../programs/type-stripping.ts';
 
 export type Timing = Pick<FoldHost, 'now' | 'folding'>;
 
-export const reviewed = { type: 'run_succeeded', subject: 'reasoning/review-brief' };
+const reviewed = { type: 'run_succeeded', subject: 'reasoning/review-brief' };
 
 export function succeeded(campaign: Json, verdict: Json, time: string): JsonObject {
   return { ...reviewed, source: '/runs/run', time, data: { output: { campaign, verdict } } };
@@ -23,7 +23,7 @@ export function succeeded(campaign: Json, verdict: Json, time: string): JsonObje
 
 export const springApproved = succeeded('spring', 'approve', '2026-10-01T09:00:00Z');
 
-export const reviewEvents: readonly JsonObject[] = [
+const reviewEvents: readonly JsonObject[] = [
   springApproved,
   { type: 'run_started', subject: 'reasoning/review-brief', time: '2026-10-01T09:00:01Z', data: {} },
   succeeded('summer', 'reject', '2026-10-01T09:00:02Z'),

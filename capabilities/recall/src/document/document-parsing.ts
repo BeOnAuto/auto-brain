@@ -11,13 +11,13 @@ import {
   type SourceLines,
 } from '@beonauto/definitions/document';
 import { oneLanguage } from '@beonauto/workflow-engine';
-import { jsonBytesOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
+import { enclosedBody, jsonBytesOf, mostValueDepth } from '@beonauto/workflow-engine/dsl';
 import type { ViewFilter } from '@beonauto/workflow-host';
 import { Result, type Schema } from 'effect';
 
 import { recallBounds } from '../run/recall-bounds.ts';
 import { decodeFrontMatter, recallFrontMatter, type RecallFrontMatter } from './front-matter.ts';
-import type { RecallFunctionDefinitionDocument, ValueContract } from './recall-document.ts';
+import type { FilterExpression, RecallFunctionDefinitionDocument, ValueContract } from './recall-document.ts';
 import { filtersOf } from './source-filters.ts';
 
 type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
@@ -107,7 +107,19 @@ interface Parts {
   readonly fold: FoldPart;
 }
 
-function assembled(description: string | undefined, parts: Parts): RecallFunctionDefinitionDocument {
+function filterExpressionsOf(filters: readonly ViewFilter[], lines: SourceLines): readonly FilterExpression[] {
+  return filters.flatMap((filter, index) => {
+    const source = enclosedBody(filter['data']);
+    const pointer = `/source/events/${index}/data`;
+    return source === undefined ? [] : [{ source, pointer, line: issueAt(lines, pointer, '').line }];
+  });
+}
+
+function assembled(
+  description: string | undefined,
+  parts: Parts,
+  lines: SourceLines,
+): RecallFunctionDefinitionDocument {
   const { input, output, view, filters, fold } = parts;
   return {
     ...(description === undefined ? {} : { description }),
@@ -115,6 +127,7 @@ function assembled(description: string | undefined, parts: Parts): RecallFunctio
     input,
     output,
     answers: exportedAnswer.test(fold.fold),
+    filterExpressions: filterExpressionsOf(filters, lines),
     details: {
       language,
       ...fold,
@@ -152,7 +165,7 @@ function documentFrom(
   ];
   return found.length > 0
     ? Result.fail(found)
-    : Result.map(Result.all(parts), (checked) => assembled(front.description, checked));
+    : Result.map(Result.all(parts), (checked) => assembled(front.description, checked, lines));
 }
 
 function documentOf(parts: DocumentParts): Checked<RecallFunctionDefinitionDocument> {

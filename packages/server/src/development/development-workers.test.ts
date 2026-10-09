@@ -10,20 +10,36 @@ import { request, type TestResponse } from '../testing/servers/http-client.ts';
 
 const meetings = '/v1/orgs/local/brains/meetings';
 
-const echo = ['---', 'language: jq', 'input:', '  schema: {type: object}', '---', '.'].join('\n');
+const echo = [
+  '---',
+  'language: typescript',
+  'input:',
+  '  schema: {type: object}',
+  '---',
+  'export default function (input: Input): Output {',
+  '  return input;',
+  '}',
+].join('\n');
 
 const saidSoFar = [
   '---',
-  'language: jq',
+  'language: typescript',
   'source:',
   '  events:',
   '    - type: run_succeeded',
   '      subject: computation/echo',
   'view:',
   '  initial: []',
-  "answer: 'map(ascii_upcase)'",
+  '  schema: {type: array, items: {type: string}}',
   '---',
-  '. + [$event.data.output.said]',
+  'export function fold(view: View, event: Event): View {',
+  '  const data = event.data as { output: { said: string } };',
+  '  return [...view, data.output.said];',
+  '}',
+  '',
+  'export function answer(view: View): Output {',
+  '  return view.map((said) => said.toUpperCase());',
+  '}',
 ].join('\n');
 
 describe('the functions pnpm dev serves in worker threads', { timeout: developmentTestTimeoutMs }, () => {

@@ -16,6 +16,11 @@ const thirtyDays = 2_592_000_000;
 
 export type WorkflowDefinitionDocument = JsonObject;
 
+export interface ReadWorkflow {
+  readonly document: WorkflowDefinitionDocument;
+  readonly locate: (pointer: string) => Position;
+}
+
 const workflowYaml: YamlKind = {
   noun: 'a workflow document',
   mapping: 'A workflow document is a YAML mapping, with document and do at its top',
@@ -23,15 +28,17 @@ const workflowYaml: YamlKind = {
   emptyIsMapping: false,
 };
 
-interface LocatedIssue {
+export interface LocatedIssue {
   readonly position: Position;
   readonly detail: string;
 }
 
-export function parseWorkflowDocument(
+export const notRunnable = 'The workflow document is not a workflow this runtime runs';
+
+export function readWorkflowDocument(
   source: string,
   mostDuration = thirtyDays,
-): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> {
+): Effect.Effect<ReadWorkflow, InvalidInput> {
   return Effect.suspend(() => {
     const reading = readYaml(source, workflowYaml);
     if ('problems' in reading) {
@@ -51,9 +58,16 @@ export function parseWorkflowDocument(
       ...(unreadable ? [] : durationLimitRejections(value, mostDuration)),
     ].map(({ pointer, detail }) => ({ position: locate(pointer), detail: `${placeOf(pointer)}${detail}` }));
     return problems.length === 0
-      ? Effect.succeed(value)
-      : Effect.fail(invalidDocument('The workflow document is not a workflow this runtime runs', problems));
+      ? Effect.succeed({ document: value, locate })
+      : Effect.fail(invalidDocument(notRunnable, problems));
   });
+}
+
+export function parseWorkflowDocument(
+  source: string,
+  mostDuration = thirtyDays,
+): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> {
+  return Effect.map(readWorkflowDocument(source, mostDuration), ({ document }) => document);
 }
 
 function isShadowed({ pointer }: Problem, rejections: readonly Rejection[]): boolean {
@@ -65,11 +79,11 @@ function isShadowed({ pointer }: Problem, rejections: readonly Rejection[]): boo
   );
 }
 
-function placeOf(pointer: string): string {
+export function placeOf(pointer: string): string {
   return pointer === '' ? '' : `at ${pointer}: `;
 }
 
-function invalidDocument(detail: string, problems: readonly (LocatedProblem | LocatedIssue)[]): InvalidInput {
+export function invalidDocument(detail: string, problems: readonly (LocatedProblem | LocatedIssue)[]): InvalidInput {
   const issues: readonly Issue[] = problems
     .toSorted((left, right) =>
       left.position.line === right.position.line

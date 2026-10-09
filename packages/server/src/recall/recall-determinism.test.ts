@@ -46,23 +46,44 @@ function secondEnvironment(): Promise<Readonly<Record<string, string>>> {
   return postgresql === '' ? Promise.resolve({}) : onADatabaseOfItsOwn();
 }
 
-const reviewRuns = 'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief';
+const reviewRuns =
+  'language: typescript\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief';
 
 const byCampaign = recallDocument(
   [
-    '($event.data.output | if type == "object" then .campaign else null end | if type == "string" then . else "unknown" end) as $campaign',
-    '| .[$campaign] += [$event.data.output.verdict? // "none" | tostring | .[0:20]]',
+    'export function fold(view: any, event: any): any {',
+    '  const output = event.data.output;',
+    "  const isObject = typeof output === 'object' && output !== null && !Array.isArray(output);",
+    "  const campaign = isObject && typeof output.campaign === 'string' ? output.campaign : 'unknown';",
+    '  const given = isObject ? output.verdict : undefined;',
+    "  const verdict = (typeof given === 'string' ? given : given === undefined ? 'none' : JSON.stringify(given)).slice(0, 20);",
+    '  return { ...view, [campaign]: [...(view[campaign] ?? []), verdict] };',
+    '}',
   ].join('\n'),
   `${reviewRuns}\nview:\n  initial: {}`,
 );
 
 const counted = recallDocument(
-  '.[$event.data.output | tostring] += 1',
-  `${reviewRuns}\nview:\n  initial: {}\nanswer: '[.[]] | add'`,
+  [
+    'export function fold(view: any, event: any): any {',
+    '  const key = JSON.stringify(event.data.output);',
+    '  return { ...view, [key]: (view[key] ?? 0) + 1 };',
+    '}',
+    '',
+    'export function answer(view: any): any {',
+    '  return Object.values(view).reduce((sum: number, count: any) => sum + count, 0);',
+    '}',
+  ].join('\n'),
+  `${reviewRuns}\nview:\n  initial: {}`,
 );
 
 const depths = recallDocument(
-  'def depth: if . == 0 then 0 else (. - 1 | depth) + 1 end; . + [$event.data.output | tostring | length | depth]',
+  [
+    'export function fold(view: any, event: any): any {',
+    '  const depth = (left: number): number => (left === 0 ? 0 : depth(left - 1) + 1);',
+    '  return [...view, depth(JSON.stringify(event.data.output).length)];',
+    '}',
+  ].join('\n'),
   `${reviewRuns}\nview:\n  initial: []`,
 );
 
@@ -127,7 +148,7 @@ describe(
       expect(onSQLite.answers.cold.output).toBe(outputs.length);
       expect(onSQLite).toMatchObject({
         campaigns: { spring: ['approve', 'xxxxxxxxxxxxxxxxxxxx', 'reject'], unknown: ['none', 'none', '3'] },
-        depths: { folded: 4, stalled: { kind: 'depth', line: 10 } },
+        depths: { folded: 4, stalled: { kind: 'raised', line: 11 } },
       });
     });
   },

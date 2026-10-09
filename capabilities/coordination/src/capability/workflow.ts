@@ -3,7 +3,12 @@ import { asSentence, Conflict, type InvalidInput, type Unavailable } from '@beon
 import type { StartAnswer, WorkflowHost } from '@beonauto/workflow-host';
 import { Effect, Random, type Schema } from 'effect';
 
-import { parseWorkflowDocument, type WorkflowDefinitionDocument } from '../document/workflow-document.ts';
+import { checkedExpressions, type ExpressionCheck } from '../document/expression-check.ts';
+import {
+  readWorkflowDocument,
+  type ReadWorkflow,
+  type WorkflowDefinitionDocument,
+} from '../document/workflow-document.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
 import { longestCallsOf } from '../runs/call-limits.ts';
 import { unavailableUnless } from '../runs/host-refusals.ts';
@@ -11,6 +16,7 @@ import type { RunAttributes } from '../runs/run-attributes.ts';
 
 export interface WorkflowAdapterDependencies {
   readonly runs: Pick<WorkflowHost, 'start'>;
+  readonly check: ExpressionCheck;
   readonly mostDurationMs: number;
   readonly longestCallMs: number;
 }
@@ -70,10 +76,11 @@ export function makeWorkflowAdapter(dependencies: WorkflowAdapterDependencies): 
     noun: { one: 'workflow', other: 'workflows' },
     describeOutput: describeResult,
     mediaType: 'application/yaml',
-    parse: (source: string): Effect.Effect<WorkflowDefinitionDocument, InvalidInput> =>
-      parseWorkflowDocument(source, dependencies.mostDurationMs),
-    summarize: summaryOf,
-    run: (document, input, run) => started(dependencies, document, input, run),
+    parse: (source: string): Effect.Effect<ReadWorkflow, InvalidInput> =>
+      readWorkflowDocument(source, dependencies.mostDurationMs),
+    check: checkedExpressions(dependencies.check),
+    summarize: ({ document }) => summaryOf(document),
+    run: ({ document }, input, run) => started(dependencies, document, input, run),
     whenCancelled: 'finish',
     finishesLater: true,
     longestRunOf: () => dependencies.mostDurationMs,

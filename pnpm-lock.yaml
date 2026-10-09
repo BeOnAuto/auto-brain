@@ -536,6 +536,9 @@ importers:
       liquidjs:
         specifier: 10.29.0
         version: 10.29.0
+      typescript6:
+        specifier: npm:typescript@6.0.3
+        version: typescript@6.0.3
       yaml:
         specifier: 2.9.1
         version: 2.9.1

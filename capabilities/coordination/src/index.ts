@@ -5,5 +5,6 @@ export { defineSendRunEvent } from './events/send-run-event.ts';
 export { runPresenter } from './presenting/run-presenter.ts';
 export { makeWorkflowAdapter, type WorkflowAdapterDependencies } from './capability/workflow.ts';
 export type { WorkflowDefinitionDocument } from './document/workflow-document.ts';
+export type { ExpressionCheck } from './document/expression-check.ts';
 export { callMarginMs } from './runs/call-limits.ts';
 export { workflowMachineOptionsOf } from './runs/workflow-machine-options.ts';

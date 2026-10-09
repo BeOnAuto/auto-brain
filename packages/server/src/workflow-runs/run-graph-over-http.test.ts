@@ -27,10 +27,10 @@ const review = workflowSource(
   `do:
   - judge:
       call: run_definition
-      with: { type: reasoning, name: verdict, input: { expense: '\${ .expense }' } }
+      with: { type: reasoning, name: verdict, input: { expense: '\${ $data.expense }' } }
   - route:
       switch:
-        - approved: { when: .approve == true, then: accept }
+        - approved: { when: $data.approve === true, then: accept }
         - declined: { then: decline }
   - accept: { set: { approved: true }, then: end }
   - decline: { set: { approved: false } }

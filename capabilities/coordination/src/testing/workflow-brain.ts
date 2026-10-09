@@ -8,6 +8,7 @@ import { Schema } from 'effect';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
 import { brainOn, type Brain } from './brain.ts';
+import { testExpressionCheck } from './expression-checks.ts';
 import { testHost } from './test-host.ts';
 
 export interface WorkflowBrain extends Brain {
@@ -26,7 +27,10 @@ export async function workflowBrain(): Promise<WorkflowBrain> {
   const ledger = memoryLedger();
   const nested = brainOn(ledger, [echo]);
   const host = await testHost(nested);
-  const brain = brainOn(ledger, [makeWorkflowAdapter({ runs: host, mostDurationMs, longestCallMs: 660_000 }), echo]);
+  const brain = brainOn(ledger, [
+    makeWorkflowAdapter({ runs: host, check: testExpressionCheck, mostDurationMs, longestCallMs: 660_000 }),
+    echo,
+  ]);
   const settled = async (runId: string): Promise<Outcome> => {
     const outcome = await brain.call(brain.getRun, { run_id: runId });
     if (!isStarted(outcome)) {

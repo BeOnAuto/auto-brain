@@ -1,4 +1,4 @@
-import { recallDocument } from '@beonauto/recall/testing';
+import { foldOf, recallDocument } from '@beonauto/recall/testing';
 import type { ProgramPool } from '@beonauto/workflow-engine/dsl';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -15,17 +15,19 @@ import {
   verdicts,
 } from '../testing/servers/recall-server.ts';
 
-const reviewRuns = 'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief';
+const reviewRuns =
+  'language: typescript\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief';
 
-const strings = '---\nlanguage: jq\noutput:\n  schema: {type: array, items: {type: string}}\n---\n[1, 2, 3, 4]';
+const strings =
+  '---\nlanguage: typescript\noutput:\n  schema: {type: array, items: {type: string}}\n---\nexport default function (input: any): any {\n  return [1, 2, 3, 4];\n}';
 
 const answeredWrong = recallDocument(
-  '.',
-  `${reviewRuns}\nview:\n  initial: {}\noutput:\n  schema: {type: string}\nanswer: '[1]'`,
+  foldOf('return view;', 'return [1];'),
+  `${reviewRuns}\nview:\n  initial: {}\noutput:\n  schema: {type: string}`,
 );
 
 const outgrowing = recallDocument(
-  '. + [1]',
+  foldOf('return [...view, 1];'),
   `${reviewRuns}\nview:\n  initial: []\n  schema: {type: array, maxItems: 0}`,
 );
 

@@ -11,11 +11,12 @@ const computationTestTimeoutMs = 30_000;
 
 const raising = [
   '---',
-  'language: jq',
+  'language: typescript',
   '---',
-  '.rows',
-  '| map(.cost_cents)',
-  '| error("no budget for \\(length) rows")',
+  'export default function (input: any): any {',
+  '  const costs = input.rows.map((row: any) => row.cost_cents);',
+  '  throw new Error(`no budget for ${costs.length} rows`);',
+  '}',
 ].join('\n');
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -66,7 +67,7 @@ describe('a computation function over HTTP', { timeout: computationTestTimeoutMs
     });
     expect(read).toMatchObject({
       status: 200,
-      body: { record: { language: 'jq', input_bytes: JSON.stringify(campaignRows(100)).length } },
+      body: { record: { language: 'typescript', input_bytes: JSON.stringify(campaignRows(100)).length } },
     });
     expect(read.body).toHaveProperty('record.work');
     expect(read.body).toHaveProperty('record.duration_ms');
@@ -95,7 +96,7 @@ describe(
   () => {
     it('ends in conflict, unworkable, with the error and its line, recorded, listed and told with its kind', async () => {
       await serving();
-      const detail = 'The program raised an error on line 6: no budget for 2 rows';
+      const detail = 'The program raised an error on line 6: Error: no budget for 2 rows';
 
       const ran = await running('raising', { input: campaignRows(2), run_id: runId });
       const read = await server.call('GET', `${alpha}/runs/${runId}`);
@@ -130,9 +131,17 @@ describe(
 );
 
 describe('an output too large to record, over HTTP', { timeout: computationTestTimeoutMs }, () => {
-  it('ends in conflict for an output that would take 240 MB as JSON, measured before it is written, and the server answers on', async () => {
+  it('ends in conflict for an output larger than a run can record, kept in its sandbox, and the server answers on', async () => {
     await serving();
-    const doubled = ['---', 'language: jq', '---', '("\\u0001Ā" * 15000000) | [., .]'].join('\n');
+    const doubled = [
+      '---',
+      'language: typescript',
+      '---',
+      'export default function (): Json {',
+      "  const text = '\\u0001Ā'.repeat(500_000);",
+      '  return [text, text];',
+      '}',
+    ].join('\n');
     await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'doubled', source: doubled } });
 
     expect(await running('doubled', { input: null })).toMatchObject({
@@ -150,9 +159,16 @@ describe('an output too large to record, over HTTP', { timeout: computationTestT
 describe('a long error, over HTTP', { timeout: computationTestTimeoutMs }, () => {
   it('answers, records and lists the text of the error cut at 1,024 bytes', async () => {
     await serving();
-    const shouting = ['---', 'language: jq', '---', 'error("x" * 30000000)'].join('\n');
+    const shouting = [
+      '---',
+      'language: typescript',
+      '---',
+      'export default function (): Json {',
+      "  throw new Error('x'.repeat(30_000_000));",
+      '}',
+    ].join('\n');
     await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'shouting', source: shouting } });
-    const detail = `The program raised an error on line 4: ${'x'.repeat(1024)}…`;
+    const detail = `The program raised an error on line 5: Error: ${'x'.repeat(1017)}…`;
 
     const ran = await running('shouting', { input: null, run_id: runId });
     const read = await server.call('GET', `${alpha}/runs/${runId}`);
@@ -180,10 +196,12 @@ describe(
 
     it('refuses a definition with each problem and its line, under /source, and a document over 64 KiB', async () => {
       await serving();
-      const refused = ['---', 'language: jq', 'model: anthropic/claude-sonnet-4-5', '---', 'now'].join('\n');
+      const program = 'export default function (): number {\n  return Math.random();\n}';
+      const keyed = ['---', 'language: typescript', 'model: anthropic/claude-sonnet-4-5', '---', program].join('\n');
+      const random = ['---', 'language: typescript', '---', program].join('\n');
 
       expect(
-        await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'clock', source: refused } }),
+        await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'keyed', source: keyed } }),
       ).toMatchObject({
         status: 422,
         body: {
@@ -194,17 +212,21 @@ describe(
               detail:
                 'Line 3, /model: model is not a key of the front matter; it takes description, language, input, output',
             },
-            {
-              pointer: '/source',
-              detail:
-                'Line 5: now reads the clock, so the same input would not give the same output; pass the time in the input',
-            },
           ],
         },
       });
       expect(
+        await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'random', source: random } }),
+      ).toMatchObject({
+        status: 422,
+        body: {
+          reason: 'invalid_input',
+          errors: [{ pointer: '/source', detail: "Line 5: Property 'random' does not exist on type 'Math'." }],
+        },
+      });
+      expect(
         await server.call('POST', `${alpha}/definitions/computation`, {
-          body: { name: 'large', source: `---\nlanguage: jq\n---\n${'.'.repeat(65_536)}` },
+          body: { name: 'large', source: `---\nlanguage: typescript\n---\n${' '.repeat(65_536)}` },
         }),
       ).toMatchObject({ status: 422, body: { reason: 'invalid_input', errors: [{ pointer: '/source' }] } });
     });

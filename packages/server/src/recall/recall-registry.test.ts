@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { recallDocument } from '@beonauto/recall/testing';
+import { foldOf, recallDocument } from '@beonauto/recall/testing';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -17,11 +17,11 @@ import {
   verdicts,
 } from '../testing/servers/recall-server.ts';
 
-const runs = 'language: jq\nsource:\n  events:\n    - type: run_succeeded\nview:\n  initial: 0';
+const runs = 'language: typescript\nsource:\n  events:\n    - type: run_succeeded\nview:\n  initial: 0';
 
-const counting = recallDocument('. + 1', runs);
+const counting = recallDocument(foldOf('return view + 1;'), runs);
 
-const countingTwice = recallDocument('. + 2', runs);
+const countingTwice = recallDocument(foldOf('return view + 2;'), runs);
 
 const closing: (() => Promise<void>)[] = [];
 

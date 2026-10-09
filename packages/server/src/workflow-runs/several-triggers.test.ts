@@ -18,7 +18,7 @@ const closing = workflowSource(
     "  cron: '* * * * *'",
     '  every: PT1M',
     'do:',
-    "  - keep: { set: { input: '${ . }' } }",
+    "  - keep: { set: { input: '${ $data }' } }",
     '',
   ].join('\n'),
 );

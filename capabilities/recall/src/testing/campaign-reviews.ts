@@ -29,15 +29,10 @@ export const campaignReviews = [
   '---',
   'type Review = View[string][number];',
   '',
-  'function fieldOf(value: Json | undefined, name: string): Json | undefined {',
-  "  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value[name] : undefined;",
-  '}',
-  '',
-  'function lastAt(reviews: Review[]): string {',
-  "  return reviews.at(-1)?.at ?? '';",
-  '}',
-  '',
   'export function fold(view: View, event: Event): View {',
+  '  const fieldOf = (value: Json | undefined, name: string): Json | undefined =>',
+  "    typeof value === 'object' && value !== null && !Array.isArray(value) ? value[name] : undefined;",
+  "  const lastAt = (reviews: Review[]): string => reviews.at(-1)?.at ?? '';",
   "  const output = fieldOf(event.data, 'output');",
   "  const named = fieldOf(output, 'campaign');",
   "  const campaign = typeof named === 'string' ? named : 'unknown';",
@@ -76,8 +71,8 @@ export function recallDocument(
 }
 
 export function foldOf(body: string, answerBody?: string): string {
-  const fold = `export function fold(view: any, event: any): unknown {\n  ${body}\n}`;
+  const fold = `export function fold(view: any, event: any): any {\n  ${body}\n}`;
   return answerBody === undefined
     ? fold
-    : `${fold}\n\nexport function answer(view: any, input: any): unknown {\n  ${answerBody}\n}`;
+    : `${fold}\n\nexport function answer(view: any, input: any): any {\n  ${answerBody}\n}`;
 }

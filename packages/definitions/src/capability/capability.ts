@@ -102,6 +102,7 @@ export interface CapabilityDeclaration<Parsed> {
   readonly describeOutput: (output: Schema.Json) => string;
   readonly mediaType: string;
   readonly parse: (source: string) => Effect.Effect<Parsed, InvalidInput>;
+  readonly check?: (parsed: NoInfer<Parsed>, source: string) => Effect.Effect<void, InvalidInput | Unavailable>;
   readonly summarize: (parsed: NoInfer<Parsed>) => DefinitionSummary;
   readonly run: (
     parsed: NoInfer<Parsed>,
@@ -123,6 +124,7 @@ export interface CapabilityDeclaration<Parsed> {
 
 export interface PreparedDefinition {
   readonly summary: DefinitionSummary;
+  readonly check: Effect.Effect<void, InvalidInput | Unavailable>;
   readonly run: (input: Schema.Json, context: RunContext) => Effect.Effect<CapabilityAnswer, CapabilityRejection>;
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
@@ -154,6 +156,10 @@ export function cancelledAsAsked({ kind, reason }: CancelledRun): Settlement {
 
 function standsAsSaved(): Effect.Effect<Schema.JsonObject | undefined> {
   return Effect.undefined;
+}
+
+function needsNoCheck(): Effect.Effect<void> {
+  return Effect.void;
 }
 
 export interface Capability {
@@ -197,6 +203,7 @@ function finishingOf<Parsed>(declared: CapabilityDeclaration<Parsed>['finishesLa
 
 function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longestAnyRunMs: number) {
   return {
+    check: definition.check ?? needsNoCheck,
     whenCancelled: definition.whenCancelled ?? 'stop',
     callsTools: definition.callsTools ?? callsNoTools,
     finishesLater: finishingOf<Parsed>(definition.finishesLater),
@@ -207,7 +214,10 @@ function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longest
 export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parsed>): Capability {
   const { type, title, guide, noun, describeOutput, mediaType, parse, summarize, run } = definition;
   const bounds = declaredBounds(definition);
-  const { whenCancelled, callsTools, finishesLater, longestRunOf } = declaredRuns(definition, bounds.longestAnyRunMs);
+  const { check, whenCancelled, callsTools, finishesLater, longestRunOf } = declaredRuns(
+    definition,
+    bounds.longestAnyRunMs,
+  );
   if (!isDefinitionTypeName(type)) {
     throw new Error(`The type ${type} is malformed`);
   }
@@ -223,6 +233,7 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
       parse(source).pipe(
         Effect.map((parsed) => ({
           summary: summarize(parsed),
+          check: Effect.suspend(() => check(parsed, source)),
           run: (input, context) => run(parsed, input, context),
           whenCancelled,
           callsTools: callsTools(parsed),

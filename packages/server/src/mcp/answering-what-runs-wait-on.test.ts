@@ -51,7 +51,7 @@ const draftingEachMonth = workflowSource(
     'do:',
     '  - approval:',
     '      call: run_definition',
-    "      with: { type: interaction, name: approve-draft, input: '${ . }' }",
+    "      with: { type: interaction, name: approve-draft, input: '${ $data }' }",
     '',
   ].join('\n'),
 );

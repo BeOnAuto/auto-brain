@@ -47,6 +47,7 @@ COPY packages/api/src packages/api/src
 COPY packages/brains/src packages/brains/src
 COPY packages/config/src packages/config/src
 COPY packages/definitions/src packages/definitions/src
+COPY packages/definitions/lib packages/definitions/lib
 COPY packages/identity/src packages/identity/src
 COPY packages/ledger/src packages/ledger/src
 COPY packages/mcp/src packages/mcp/src

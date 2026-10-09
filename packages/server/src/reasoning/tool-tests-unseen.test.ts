@@ -27,7 +27,7 @@ const onAClosing = workflowSource(
 const foldingWhatItSees = [
   '---',
   'description: The types of the events this view folds, oldest first',
-  'language: jq',
+  'language: typescript',
   'source:',
   '  events:',
   '    - type: tool_test_started',
@@ -35,8 +35,11 @@ const foldingWhatItSees = [
   '    - type: com.acme.ledger.closed',
   'view:',
   '  initial: []',
+  '  schema: {type: array, items: {type: string}}',
   '---',
-  '. + [$event.type]',
+  'export function fold(view: View, event: Event): View {',
+  '  return [...view, event.type];',
+  '}',
 ].join('\n');
 
 const RunsSchema = Schema.Struct({ runs: Schema.Array(Schema.Struct({ status: Schema.String })) });

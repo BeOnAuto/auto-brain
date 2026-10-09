@@ -27,7 +27,7 @@ export function defineCreateDefinition(capabilities: readonly Capability[]) {
       successStatus: 201,
       inputSchema: Schema.Struct({ type: known.field, name: DefinitionNameField, source: SourceField }),
       outputSchema: DefinitionSchema,
-      reasons: ['not_found', 'invalid_input', 'conflict'],
+      reasons: ['not_found', 'invalid_input', 'conflict', 'unavailable'],
       handle: Effect.fnUntraced(function* ({ type, name, source }) {
         const capability = yield* known.capabilityOfType(type);
         const content = yield* contentOf(capability, source);

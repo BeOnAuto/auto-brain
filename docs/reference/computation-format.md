@@ -97,7 +97,7 @@ Unknown fields are rejected, among them the fields of a reasoning function that 
 
 ## The program
 
-The program is one TypeScript module whose default export is a function `(input: Input): Output`. It may declare types of its own and other functions, exported or not, and nothing else at the top level, so that two runs share nothing. It reads its input as its argument and answers with the value it returns. It sees nothing else: no network, no files, no environment, no randomness and no time zone, and the clock it reads is the moment the run started.
+The program is one TypeScript module whose default export is a function `(input: Input): Output`. It may declare types of its own and exported functions, and nothing else at the top level, so that two runs share nothing: a helper is written inside the function that uses it, or exported. It reads its input as its argument and answers with the value it returns. It sees nothing else: no network, no files, no environment, no randomness and no time zone, and the clock it reads is the moment the run started.
 
 ### Types
 
@@ -107,17 +107,17 @@ The schemas the document carries are the types the program is checked against. `
 
 The document is checked when it is saved, with the TypeScript compiler, in the strict mode with `exactOptionalPropertyTypes`, against `Input`, `Output` and the sandbox's own library, so a name the sandbox lacks is a name the compiler lacks. Each problem is refused with its line and the compiler's words:
 
-| Written                                                                                                                                | Refused with                                                                                                 |
-| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| A syntax error                                                                                                                         | The compiler's diagnostic at its line                                                                        |
-| A type error against `Input` or `Output`                                                                                               | The compiler's diagnostic, such as `Property 'perod' does not exist on type 'Input'. Did you mean 'period'?` |
-| An `enum`, a `namespace`, a parameter property or a decorator                                                                          | `This syntax is not allowed when 'erasableSyntaxOnly' is enabled`                                            |
-| An `import`, `require`, `eval`, `new Function`, `import()` or `declare global`                                                         | `A program reads nothing but its arguments: it imports no module and builds no code`                         |
-| A top-level statement other than a type or a function                                                                                  | `A module holds its types and its exported functions and nothing else, so that two calls share nothing`      |
-| No default export, or one that is not a function of one argument                                                                       | `The program is a module whose default export is a function (input: Input): Output`                          |
-| `async`, `await` or a generator exported                                                                                               | `The program is a function that answers at once; it awaits nothing`                                          |
-| A name the sandbox lacks: `fetch`, `setTimeout`, `console`, `process`, `Intl`, `Math.random`, `WeakRef`, a local-time method of `Date` | The compiler's `Cannot find name` or `Property does not exist`                                               |
-| `language` other than `typescript`                                                                                                     | `The brain's one language is TypeScript; write the program as a TypeScript function`                         |
+| Written                                                                                                                                | Refused with                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| A syntax error                                                                                                                         | The compiler's diagnostic at its line                                                                         |
+| A type error against `Input` or `Output`                                                                                               | The compiler's diagnostic, such as `Property 'perod' does not exist on type 'Input'. Did you mean 'period'?`  |
+| An `enum`, a `namespace`, a parameter property or a decorator                                                                          | `This syntax is not allowed when 'erasableSyntaxOnly' is enabled`                                             |
+| An `import`, `require`, `eval`, `new Function`, `import()`, `import.meta` or a declared name such as `declare global`                  | `A program reads nothing but its arguments: it imports no module and builds no code`                          |
+| A top-level statement other than a type or an exported function, such as `let`, a class or a function the module does not export       | `A module holds its types and its exported functions and nothing else, so that two calls share nothing`       |
+| No default export, or one whose type is not `(input: Input) => Output`                                                                 | `The program is a module whose default export is a function (input: Input): Output`, and the compiler's words |
+| `async`, `await` or a generator exported                                                                                               | `The program is a function that answers at once; it awaits nothing`                                           |
+| A name the sandbox lacks: `fetch`, `setTimeout`, `console`, `process`, `Intl`, `Math.random`, `WeakRef`, a local-time method of `Date` | The compiler's `Cannot find name` or `Property does not exist`                                                |
+| `language` other than `typescript`                                                                                                     | `The brain's one language is TypeScript; write the program as a TypeScript function`                          |
 
 A program that is checked can still raise an error when it runs, such as `throw new Error("no rows")` or reading a field of `null`; see [How a run ends](#how-a-run-ends). The check runs on a worker of its own beside the runs, and a check that does not answer within 2 seconds leaves the document unsaved, `unavailable`; save it again.
 

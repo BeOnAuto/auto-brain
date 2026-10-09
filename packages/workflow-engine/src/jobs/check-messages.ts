@@ -1,11 +1,11 @@
 import { Schema } from 'effect';
 
-export const CheckedModuleSchema = Schema.Struct({
+const CheckedModuleSchema = Schema.Struct({
   place: Schema.Literals(['computation', 'recall']),
   source: Schema.String,
 });
 
-export const CheckedExpressionSchema = Schema.Struct({
+const CheckedExpressionSchema = Schema.Struct({
   source: Schema.String,
   names: Schema.Array(Schema.String),
 });
@@ -22,7 +22,7 @@ export const CheckJobSchema = Schema.Struct({
 
 export type CheckJob = typeof CheckJobSchema.Type;
 
-export const CheckIssueSchema = Schema.Struct({
+const CheckIssueSchema = Schema.Struct({
   at: Schema.Union([Schema.Literal('module'), Schema.Number]),
   line: Schema.Number,
   detail: Schema.String,

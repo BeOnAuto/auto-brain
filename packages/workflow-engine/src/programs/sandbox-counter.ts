@@ -1,6 +1,6 @@
 import { exhaustedBy, type Limit, type ProgramFailure } from './program-run.ts';
 
-export interface Counted {
+interface Counted {
   readonly budget: number;
   readonly deadlineAt: number;
 }

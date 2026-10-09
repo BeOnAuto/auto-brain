@@ -53,7 +53,14 @@ const summary = [
   'Summarize: {{ input.text }}',
 ].join('\n');
 
-const echoed = ['---', 'language: jq', '---', '.'].join('\n');
+const echoed = [
+  '---',
+  'language: typescript',
+  '---',
+  'export default function (input: Input): Output {',
+  '  return input;',
+  '}',
+].join('\n');
 
 const RunsPageSchema = Schema.Struct({
   runs: Schema.Array(Schema.Struct({ run_id: Schema.String, type: Schema.String })),

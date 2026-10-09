@@ -1,5 +1,11 @@
 import type { AppRuntime } from '@beonauto/api';
-import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, runPresenter } from '@beonauto/coordination';
+import {
+  callMarginMs,
+  defineSendRunEvent,
+  makeWorkflowAdapter,
+  runPresenter,
+  type ExpressionCheck,
+} from '@beonauto/coordination';
 import { defineStartVersion, type BrainOperation, type Capability } from '@beonauto/definitions';
 import { makeCatalog, makeDispatcher, type DispatcherServices, type Registration } from '@beonauto/operations';
 import type { WorkflowHost } from '@beonauto/workflow-host';
@@ -17,6 +23,7 @@ interface OrgOperation {
 export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
   readonly brainOperations: readonly BrainOperation[];
+  readonly check: ExpressionCheck;
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -38,6 +45,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
   const opening = Promise.withResolvers<WorkflowHost>();
   const workflow = makeWorkflowAdapter({
     runs: onceOpened(opening.promise),
+    check: parts.check,
     mostDurationMs: parts.workflows.mostDurationMs,
     longestCallMs: longestCallOf(parts.capabilities),
   });

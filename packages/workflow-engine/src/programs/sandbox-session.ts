@@ -18,9 +18,9 @@ export interface SandboxSettings {
   readonly clock: () => number;
 }
 
-export type Argument = number | string;
+type Argument = number | string;
 
-export interface Call {
+interface Call {
   readonly fn: number;
   readonly args: readonly Argument[];
   readonly form: Form;

@@ -76,7 +76,7 @@ const summary = [
 
 const approval = workflowSource(
   'approval',
-  "do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.approved } } } }, output: { as: '${ .[0] }' } }\n",
+  "do:\n  - wait: { listen: { to: { one: { with: { type: com.acme.approved } } } }, output: { as: '${ $data[0] }' } }\n",
 );
 
 describe.skipIf(skipped)(

@@ -38,21 +38,21 @@ const expenseReview = workflowSource(
       with:
         type: reasoning
         name: verdict
-        input: { expense: '\${ .expense }' }
+        input: { expense: '\${ $data.expense }' }
       output:
-        as: '\${ $input + { approve: .approve } }'
+        as: '\${ ({ ...$input, approve: $data.approve }) }'
   - route:
       switch:
-        - approved: { when: .approve == true, then: describe }
+        - approved: { when: $data.approve === true, then: describe }
         - declined: { then: decline }
   - describe:
       call: run_definition
       with:
         type: reasoning
         name: summary
-        input: { text: '\${ .expense }' }
+        input: { text: '\${ $data.expense }' }
       output:
-        as: '\${ { approved: true, summary: . } }'
+        as: '\${ ({ approved: true, summary: $data }) }'
       then: end
   - decline:
       set: { approved: false }

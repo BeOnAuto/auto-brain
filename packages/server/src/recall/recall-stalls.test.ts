@@ -1,5 +1,5 @@
 import { internalTermsIn, plainTextIn, problemIn, withMcpSession } from '@beonauto/api/testing';
-import { recallDocument } from '@beonauto/recall/testing';
+import { foldOf, recallDocument } from '@beonauto/recall/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -18,11 +18,15 @@ import {
 } from '../testing/servers/recall-server.ts';
 
 const reviewRuns =
-  'language: jq\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief\nview:\n  initial: 0';
+  'language: typescript\nsource:\n  events:\n    - type: run_succeeded\n      subject: reasoning/review-brief\nview:\n  initial: 0';
 
 const takingObjectsOnly = [
-  '. + 1',
-  '| if ($event.data.output | type) == "string" then error("cannot take \\($event.data.output)") else . end',
+  'export function fold(view: any, event: any): any {',
+  "  if (typeof event.data.output === 'string') {",
+  '    throw new Error(`cannot take ${event.data.output}`);',
+  '  }',
+  '  return view + 1;',
+  '}',
 ].join('\n');
 
 const decodeStalled = Schema.decodeUnknownSync(
@@ -68,9 +72,9 @@ describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs 
 
     expect(standing).toMatchObject({
       folded: 1,
-      stalled: { event: { type: 'run_succeeded' }, kind: 'raised', line: 11 },
+      stalled: { event: { type: 'run_succeeded' }, kind: 'raised', line: 12 },
     });
-    expect(standing.stalled.error).toBe('cannot take the secret plan of the spring campaign');
+    expect(standing.stalled.error).toBe('Error: cannot take the secret plan of the spring campaign');
     expect(reviews).toMatchObject({ status: 200, body: { output: [{ verdict: 'none' }] } });
   });
 
@@ -85,7 +89,7 @@ describe('a recall function whose view stalled', { timeout: recallTestTimeoutMs 
       body: {
         reason: 'conflict',
         kind: 'stalled',
-        detail: `The view of the recall function “objects” stopped at the run_succeeded event of ${stalled.event.time}: its fold raised an error on line 11. Save a corrected version to build the view again from the brain's history`,
+        detail: `The view of the recall function “objects” stopped at the run_succeeded event of ${stalled.event.time}: its fold raised an error on line 12. Save a corrected version to build the view again from the brain's history`,
       },
     });
     expect(ran.text).not.toContain('secret');
@@ -99,7 +103,7 @@ describe('a recall function whose view stalled, afterwards', { timeout: recallTe
     await standingUntil(server, 'objects', inState('stalled'));
 
     await server.call('PUT', `${alpha}/definitions/recall/objects`, {
-      body: { source: recallDocument('. + 1', reviewRuns) },
+      body: { source: recallDocument(foldOf('return view + 1;'), reviewRuns) },
     });
     await standingUntil(server, 'objects', liveAt(2));
 

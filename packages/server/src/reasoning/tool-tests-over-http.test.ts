@@ -159,7 +159,14 @@ describe('what a test records in the history of the brain', () => {
 describe('what a test does not record', () => {
   it('is in the history of no run, which shows only what the run recorded', async () => {
     const { server } = await serving();
-    const echo = ['---', 'language: jq', '---', '.'].join('\n');
+    const echo = [
+      '---',
+      'language: typescript',
+      '---',
+      'export default function (input: Input): Output {',
+      '  return input;',
+      '}',
+    ].join('\n');
     await server.call('POST', `${alpha}/definitions/computation`, {
       key: builder.key,
       body: { name: 'echo', source: echo },
