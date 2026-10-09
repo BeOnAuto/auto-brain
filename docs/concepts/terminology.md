@@ -63,13 +63,13 @@ See [Workflows and runs](workflows.md) for the implemented version, retry, waiti
 
 | Term         | Meaning                                                                                                                                        |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Request      | What a run of an interaction function asks: a message, the party it goes to and when it expires.                                               |
+| Request      | What a run of an interaction function that asks a person asks: a message, the party it goes to and when it expires.                            |
 | Inbox        | The brain's own place for requests, where a caller who may write to the brain reads and answers them.                                          |
 | Delivery     | How a request reaches a party outside the brain: one call of a tool of a tool server the brain may use, which the function names in `deliver`. |
-| Answer       | What the party gives back; it must match the function's answer schema and becomes the run's output.                                            |
+| Answer       | What the party or the tool gives back; it must match the function's answer schema and becomes the run's output.                                |
 | Notification | A request that takes no answer; its run succeeds once it is delivered.                                                                         |
 
-An interaction function asks a person or a system and takes the answer later. One run makes one request; the answer settles that run, and a request nobody answers before it expires ends it as unanswered. Answering a request is not sending an event: an event goes to a waiting workflow run, and an answer goes to the run of the interaction function that asked.
+An interaction function asks a system and answers at once, or asks a person and takes the answer later. A run that asks a person makes one request; the answer settles that run, and a request nobody answers before it expires ends it as unanswered. Answering a request is not sending an event: an event goes to a waiting workflow run, and an answer goes to the run of the interaction function that asked.
 
 ## Supporting assets
 

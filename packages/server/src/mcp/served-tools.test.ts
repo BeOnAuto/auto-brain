@@ -105,6 +105,14 @@ describe('the descriptions of the tools of /mcp', () => {
       tools.filter((tool) => descriptionOf(tool.name).length > description.length).map(({ name }) => name),
     ).toEqual([]);
   });
+
+  it('say that a function that calls a tool may change something, in run_definition at 765 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 671', () => {
+    const [running, cancelling] = [descriptionOf('run_definition'), descriptionOf('cancel_run')];
+
+    expect(running).toContain('A function that calls a tool may change something outside the brain');
+    expect(cancelling).toContain('or an interaction function that calls a tool, cannot be cancelled.');
+    expect([running.length, cancelling.length]).toEqual([765, 671]);
+  });
 });
 
 function everyArgument(): readonly Argument[] {
