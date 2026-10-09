@@ -9,6 +9,7 @@ import {
   type ToolResult,
 } from '@beonauto/api/testing';
 import { answers, textResult } from '@beonauto/inference/testing';
+import { Option, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
@@ -42,7 +43,23 @@ function listingOn(path: string): Promise<readonly ListedTool[]> {
   );
 }
 
-async function bytesOfTheListingOn(path: string): Promise<number> {
+interface ListingOnTheWire {
+  readonly status: number;
+  readonly bytes: number;
+  readonly toolCount: number | undefined;
+}
+
+const listingMessageOf = Schema.decodeUnknownOption(
+  Schema.Struct({ result: Schema.Struct({ tools: Schema.Array(Schema.Unknown) }) }),
+);
+
+function toolCountIn(body: string): number | undefined {
+  const data = body.split('\n').find((line) => line.startsWith('data: '));
+  const message: unknown = data === undefined ? undefined : JSON.parse(data.slice('data: '.length));
+  return Option.getOrUndefined(Option.map(listingMessageOf(message), ({ result }) => result.tools.length));
+}
+
+async function listingOnTheWire(path: string): Promise<ListingOnTheWire> {
   const answer = await fetch(`${server.origin}${path}`, {
     method: 'POST',
     headers: {
@@ -52,7 +69,8 @@ async function bytesOfTheListingOn(path: string): Promise<number> {
     },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
   });
-  return Buffer.byteLength(await answer.text());
+  const body = await answer.text();
+  return { status: answer.status, bytes: Buffer.byteLength(body), toolCount: toolCountIn(body) };
 }
 
 interface Endpoint {
@@ -82,9 +100,15 @@ describe('the tools of each endpoint', () => {
 });
 
 describe('the listing of each endpoint', () => {
-  it.each(endpoints)('on $path takes at most $mostBytes bytes on the wire', async ({ path, mostBytes }) => {
-    expect(await bytesOfTheListingOn(path)).toBeLessThanOrEqual(mostBytes);
-  });
+  it.each(endpoints)(
+    'on $path answers 200 with its $tools tools in at most $mostBytes bytes on the wire',
+    async ({ path, tools, mostBytes }) => {
+      const { status, bytes, toolCount } = await listingOnTheWire(path);
+
+      expect({ status, toolCount }).toEqual({ status: 200, toolCount: tools });
+      expect(bytes).toBeLessThanOrEqual(mostBytes);
+    },
+  );
 });
 
 function outputIn(result: ToolResult): unknown {

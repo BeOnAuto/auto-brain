@@ -138,7 +138,7 @@ describe.each(mcpClientKinds)('the %s client listing a tool with an output schem
       async (session) => {
         await session.listTools();
         await expect(session.callTool('count', {})).rejects.toThrow(
-          "Structured content does not match the tool's output schema: The brain advertises no output schema",
+          "Structured content does not match the tool's output schema: A result was checked against an advertised output schema",
         );
         return session.compiledOutputSchemas();
       },

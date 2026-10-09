@@ -85,7 +85,11 @@ function recordingValidator(): RecordingValidator {
     validator: {
       getValidator: (schema: unknown) => {
         compiled.push(schema);
-        return () => ({ valid: false, data: undefined, errorMessage: 'The brain advertises no output schema' });
+        return () => ({
+          valid: false,
+          data: undefined,
+          errorMessage: 'A result was checked against an advertised output schema',
+        });
       },
     },
     compiled: () => [...compiled],
