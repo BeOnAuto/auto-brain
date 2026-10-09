@@ -14,6 +14,8 @@ import { newestFirstReplies, threadRepliesWith } from '../testing/reading-docume
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
+const fitsForTheSampleNotForTheRequest = `${'a'.repeat(16_240)}${'{{ to }}'.repeat(20)}`;
+
 async function deliveredInThread(document?: string) {
   const brain = await chatHarness(document === undefined ? {} : { document });
   await brain.askInThread(runId);
@@ -24,7 +26,7 @@ async function deliveredInThread(document?: string) {
 describe('a conversation read later', () => {
   it('sends no read whose arguments do not fit its request, records why, and rests the conversation', async () => {
     const brain = await deliveredInThread(
-      threadRepliesWith("    ts: '{{ sent.id }}'", "    ts: '{% for i in (1..2000) %}{{ to }}{% endfor %}'"),
+      threadRepliesWith("    ts: '{{ sent.id }}'", `    ts: '${fitsForTheSampleNotForTheRequest}'`),
     );
 
     await brain.performReads(Date.now() + farAhead);
