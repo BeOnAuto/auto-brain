@@ -20,7 +20,6 @@ export interface RecipeCalls {
 
 interface Serving {
   readonly endpoint: McpEndpoint;
-  readonly names: readonly string[];
   readonly listed: (name: string) => boolean;
   readonly definitionTypes: readonly DefinitionType[];
   readonly reasoning: DefinitionType | undefined;
@@ -44,8 +43,6 @@ const whatABrainIs = [
   'A brain is the complete system for a business responsibility.',
   'It holds the functions that do its work and the workflows that coordinate them, and it keeps every run with its result as its history.',
 ];
-
-const wireWords = /(?:^|_)(?:specs?|executions?)(?:_|$)/u;
 
 const pagedReads = ['list_runs', 'get_run_history', 'list_brain_events', 'list_interactions'];
 
@@ -90,11 +87,6 @@ const purposes: Sentences = ({ definitionTypes }) =>
   });
 
 const connection: Sentences = (serving) => [whatTheConnectionDoes[serving.endpoint](serving)];
-
-const wireNames: Sentences = ({ names }) =>
-  names.some((name) => wireWords.test(name))
-    ? ["The tools call a definition a definition, a run a run and a definition's type its capability."]
-    : [];
 
 const modelsBeforeWriting: Sentences = ({ reasoning, listed }) =>
   reasoning !== undefined && listed('list_models') && !listed('list_tool_servers')
@@ -153,7 +145,6 @@ const closing: Sentences = () => [howToAnswer, whenAToolCannot];
 const orientation: readonly Sentences[] = [
   purposes,
   connection,
-  wireNames,
   modelsBeforeWriting,
   guides,
   modelsAndTools,
@@ -184,7 +175,6 @@ export function instructionsFor(
   const names = namesOf(tools);
   const serving: Serving = {
     endpoint,
-    names,
     listed: (name) => names.includes(name),
     definitionTypes,
     reasoning: definitionTypes.find(({ type }) => type === reasoningFunctionType),

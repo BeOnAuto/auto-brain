@@ -4,6 +4,7 @@ export const internalTerms: readonly RegExp[] = [
   /\bexecutions?\b/iu,
   /\binference\b/iu,
   /\borchestration\b/iu,
+  /\brecollection\b/iu,
   /\bya?ml\b/iu,
   /\bjson\b/iu,
   /\bliquid\b/iu,
