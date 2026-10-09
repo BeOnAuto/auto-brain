@@ -2,8 +2,8 @@ import { Effect } from 'effect';
 
 import { rowsOf, type DatabaseFailed, type HostDatabase } from '../database/host-database.ts';
 import type { Statement } from '../database/statement.ts';
-import { viewDetailsOf } from '../views/view-details.ts';
-import type { ViewRow } from '../views/view-rows.ts';
+import { viewDetailsOf, type ViewDetails } from '../views/view-details.ts';
+import type { ViewPhase, ViewRow } from '../views/view-rows.ts';
 import { viewRowOf, ViewRowSchema } from '../views/view-rows.ts';
 import { phaseSet, viewAdded, viewDropped, viewRenewed, viewsOfBrain, type NewView } from '../views/view-statements.ts';
 import {
@@ -38,41 +38,75 @@ function definitionsOf({ database, definitionType, definitions }: Reconciling, b
   );
 }
 
-function newViewOf(brain: string, name: string, kept: KeptFunction): NewView | undefined {
-  const details = viewDetailsOf(kept.details);
-  return details === undefined
-    ? undefined
-    : {
-        brain,
-        name,
-        version: kept.version,
-        saved: kept.saved,
-        details: JSON.stringify(details),
-        phase: 'waiting',
-        view: JSON.stringify(details.initial),
-      };
+interface Saved {
+  readonly name: string;
+  readonly saved: number;
 }
 
-function changesOf(brain: string, rows: readonly ViewRow[], { functions }: BrainDefinitions): readonly Statement[] {
+interface FreshFunction extends Saved {
+  readonly version: number;
+  readonly details: ViewDetails;
+}
+
+function isBuilding({ phase }: ViewRow): boolean {
+  return phase === 'waiting' || phase === 'rebuilding';
+}
+
+function slotsOf(building: readonly Saved[], rebuildsAtOnce: number): ReadonlySet<string> {
+  const inOrderSaved = building.toSorted((one, other) => one.saved - other.saved);
+  return new Set(inOrderSaved.slice(0, rebuildsAtOnce).map(({ name }) => name));
+}
+
+function phaseIn(slots: ReadonlySet<string>, name: string): ViewPhase {
+  return slots.has(name) ? 'rebuilding' : 'waiting';
+}
+
+function freshOf(name: string, kept: KeptFunction, row: ViewRow | undefined): readonly FreshFunction[] {
+  const details = viewDetailsOf(kept.details);
+  return details === undefined || (row !== undefined && row.version >= kept.version)
+    ? []
+    : [{ name, saved: kept.saved, version: kept.version, details }];
+}
+
+function newViewOf(brain: string, { name, saved, version, details }: FreshFunction, phase: ViewPhase): NewView {
+  return {
+    brain,
+    name,
+    version,
+    saved,
+    details: JSON.stringify(details),
+    phase,
+    view: JSON.stringify(details.initial),
+  };
+}
+
+function changesOf(
+  brain: string,
+  rows: readonly ViewRow[],
+  { functions }: BrainDefinitions,
+  rebuildsAtOnce: number,
+): readonly Statement[] {
   const byName = new Map(rows.map((row) => [row.name, row]));
-  const kept = [...functions].flatMap(([name, function_]: readonly [string, KeptFunction]): readonly Statement[] => {
-    const added = newViewOf(brain, name, function_);
-    const row = byName.get(name);
-    if (added === undefined || (row !== undefined && row.version >= added.version)) {
-      return [];
-    }
-    return [row === undefined ? viewAdded(added) : viewRenewed(added)];
-  });
+  const fresh = [...functions].flatMap(([name, kept]: readonly [string, KeptFunction]) =>
+    freshOf(name, kept, byName.get(name)),
+  );
+  const freshNames = new Set(fresh.map(({ name }) => name));
+  const stillBuilding = rows.filter((row) => isBuilding(row) && functions.has(row.name) && !freshNames.has(row.name));
+  const slots = slotsOf([...stillBuilding, ...fresh], rebuildsAtOnce);
   const dropped = rows.filter(({ name }) => !functions.has(name)).map(({ name }) => viewDropped(brain, name));
-  return [...kept, ...dropped];
+  const written = fresh.map((function_) => {
+    const view = newViewOf(brain, function_, phaseIn(slots, function_.name));
+    return byName.has(view.name) ? viewRenewed(view) : viewAdded(view);
+  });
+  return [...dropped, ...written];
 }
 
 function phasesOf(rows: readonly ViewRow[], rebuildsAtOnce: number): readonly ViewRow[] {
-  const building = rows.filter(({ phase }) => phase === 'waiting' || phase === 'rebuilding');
-  const slots = new Set(building.slice(0, rebuildsAtOnce).map(({ name }) => name));
-  return rows.map((row) =>
-    building.includes(row) ? { ...row, phase: slots.has(row.name) ? 'rebuilding' : 'waiting' } : row,
+  const slots = slotsOf(
+    rows.filter((row) => isBuilding(row)),
+    rebuildsAtOnce,
   );
+  return rows.map((row) => (isBuilding(row) ? { ...row, phase: phaseIn(slots, row.name) } : row));
 }
 
 export function reconciled(parts: Reconciling, brain: string): Effect.Effect<readonly ViewRow[], DatabaseFailed> {
@@ -80,7 +114,7 @@ export function reconciled(parts: Reconciling, brain: string): Effect.Effect<rea
   return Effect.gen(function* () {
     const definitions = yield* definitionsOf(parts, brain);
     const before = yield* rowsOfBrain(database, brain);
-    const changes = changesOf(brain, before, definitions);
+    const changes = changesOf(brain, before, definitions, parts.rebuildsAtOnce);
     yield* Effect.forEach(changes, database.write, { discard: true });
     const rows = changes.length === 0 ? before : yield* rowsOfBrain(database, brain);
     const phased = phasesOf(rows, parts.rebuildsAtOnce);

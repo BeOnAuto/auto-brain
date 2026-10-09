@@ -1,7 +1,7 @@
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { oneRowOf, rowsOf } from '../database/host-database.ts';
+import { oneRowOf, rowsOf, type HostDatabase } from '../database/host-database.ts';
 import { reconciled, rowsOfBrain, type Reconciling } from '../projector/view-reconciling.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { viewRowOf, ViewRowSchema, type ViewRow } from '../views/view-rows.ts';
@@ -16,9 +16,13 @@ function phasesOf(rows: readonly ViewRow[]): Readonly<Record<string, string>> {
   return Object.fromEntries(rows.map(({ name, phase }) => [name, phase]));
 }
 
-function reconciling(views: ViewHarness, rebuildsAtOnce: number): () => Promise<readonly ViewRow[]> {
+function reconciling(
+  views: ViewHarness,
+  rebuildsAtOnce: number,
+  database = views.store.database,
+): () => Promise<readonly ViewRow[]> {
   const parts: Reconciling = {
-    database: views.store.database,
+    database,
     definitionType: 'recollection',
     rebuildsAtOnce,
     definitions: new Map(),
@@ -44,6 +48,19 @@ function written(views: ViewHarness, read: ViewRow, folded: Partial<FoldedRow>):
 function rowNamed(views: ViewHarness, name: string): Promise<ViewRow> {
   const read = oneRowOf(ViewRowSchema, views.store.database.read(viewNamed(alphaKey, name)));
   return Effect.runPromise(Effect.map(read, (row) => viewRowOf(row)));
+}
+
+function phasesAfterEachWrite(views: ViewHarness, name: string) {
+  const { database } = views.store;
+  const seen: string[] = [];
+  const phaseRead = Effect.map(rowsOf(ViewRowSchema, database.read(viewNamed(alphaKey, name))), (rows) => {
+    seen.push(...rows.map(({ phase }) => phase));
+  });
+  const watched: HostDatabase = {
+    ...database,
+    write: (statement) => Effect.tap(database.write(statement), () => phaseRead),
+  };
+  return { database: watched, seen: () => seen };
 }
 
 function rowsOfAlpha(views: ViewHarness): Promise<readonly ViewRow[]> {
@@ -93,6 +110,21 @@ function slotTests(settingsOf: SettingsOf): void {
     const rows = await reconciling(views, 4)();
 
     expect(rows.map(({ name }) => name)).toEqual(['runs']);
+  });
+}
+
+function loneViewTests(settingsOf: SettingsOf): void {
+  it('write a view built alone as rebuilding from its first write, new or renewed, and never as waiting', async () => {
+    const views = await viewHarness(await settingsOf());
+    const phases = phasesAfterEachWrite(views, 'runs');
+    const reconcile = reconciling(views, 1, phases.database);
+
+    await views.saved('runs', counting);
+    await reconcile();
+    await views.saved('runs', counting);
+    const [renewed] = await reconcile();
+
+    expect([phases.seen(), renewed?.version]).toEqual([['rebuilding', 'rebuilding'], 2]);
   });
 }
 
@@ -148,6 +180,7 @@ function racingTests(settingsOf: SettingsOf): void {
 export function rowsSuite(settingsOf: SettingsOf): void {
   describe('the rows of the views', { timeout: viewTestTimeoutMs }, () => {
     slotTests(settingsOf);
+    loneViewTests(settingsOf);
     conditionalWriteTests(settingsOf);
     racingTests(settingsOf);
   });
