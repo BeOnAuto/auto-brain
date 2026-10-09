@@ -1,8 +1,8 @@
-import { Result } from 'effect';
+import { Array as Arr, Option, Result } from 'effect';
 
 import { listedThrough, serverFailed, type Listing } from '../access/server-listing.ts';
-import { notListed } from '../access/tool-naming.ts';
-import type { ListedTool } from '../bounds/tool-results.ts';
+import { notListed, offeredOn, unlistedOn } from '../access/tool-naming.ts';
+import { isReadOnly, type ListedTool } from '../bounds/tool-results.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import { failureOf, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
@@ -13,6 +13,7 @@ import { boundedSlot, takenWithin } from './connection-bound.ts';
 export interface Opened {
   readonly slot: ServerSlot;
   readonly tool: ListedTool;
+  readonly readOnly: boolean;
 }
 
 async function restartedIfExited(slot: ServerSlot): Promise<ServerFailure | undefined> {
@@ -44,11 +45,12 @@ export async function openedFor(
   if (Result.isFailure(listed)) {
     return failedToOpenOnce(listed.failure);
   }
-  const { slot, tools } = listed.success;
-  const tool = tools.find(({ name }) => name === reference.tool);
-  if (tool === undefined) {
-    await slot.release();
-    return notOfferedOnce(notListed([reference]));
+  const naming = { references: [reference] };
+  const unlisted = unlistedOn(listed.success, naming);
+  if (unlisted.length > 0) {
+    await listed.success.slot.release();
+    return notOfferedOnce(notListed(unlisted));
   }
-  return { slot, tool };
+  const { slot, tool } = Option.getOrThrow(Arr.head(offeredOn(listed.success, naming)));
+  return { slot, tool, readOnly: isReadOnly(tool.annotations) };
 }

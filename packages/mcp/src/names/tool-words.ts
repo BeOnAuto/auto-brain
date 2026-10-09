@@ -26,7 +26,7 @@ function toolsOfServer(server: string, tools: readonly string[]): string {
 }
 
 export function toolInWords({ server, tool }: ToolReference): string {
-  return `the ${inWords(tool)} tool of ${inWords(server)}`;
+  return toolsOfServer(server, [tool]);
 }
 
 export function toolsInWords(tools: readonly ToolReference[]): string {

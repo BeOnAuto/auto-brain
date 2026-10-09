@@ -2,15 +2,15 @@ import { Buffer } from 'node:buffer';
 
 import { describe, expect, it } from 'vitest';
 
-import { deniedText } from '../testing/index.ts';
+import { brokenPromise, deniedText } from '../testing/index.ts';
 import {
   calledOnce,
-  delivery,
-  deliveredRunId,
-  deliveryAccess,
+  echoCall,
+  callingRunId,
+  oneCallAccess,
   deliveryId,
-  deliveryKey,
-  deliveryServer,
+  oneCallKey,
+  oneCallServer,
   failedWith,
   unopenedWith,
 } from '../testing/one-calls.ts';
@@ -27,20 +27,20 @@ const scrubbed = JSON.stringify({ token: '[redacted]' });
 
 describe('one call of a tool', () => {
   it('lists the tools of its server, calls the tool with the metadata its caller gives, and answers the call whole', async () => {
-    const fake = await deliveryServer();
-    const access = deliveryAccess(fake.url);
+    const fake = await oneCallServer();
+    const access = oneCallAccess(fake.url);
 
     expect(await calledOnce(access)).toEqual({
       kind: 'answered',
       outcome: 'result',
       fields: { result_bytes: 95, result_sha256: aDigest, jsonrpc_id: aNumber },
-      answer: { content: [{ type: 'text', text: JSON.stringify(delivery.input) }] },
+      answer: { content: [{ type: 'text', text: JSON.stringify(echoCall.input) }] },
       durationMs: aNumber,
       detail: '',
       retryAfterMs: null,
       annotations: undefined,
     });
-    expect(access.startOf(delivery)).toEqual({
+    expect(access.startOf(echoCall)).toEqual({
       server: 'graph',
       tool: 'echo',
       arguments_bytes: 48,
@@ -49,15 +49,15 @@ describe('one call of a tool', () => {
     expect(fake.received()).toEqual([
       {
         tool: 'echo',
-        arguments: delivery.input,
-        meta: { 'com.beonauto/run_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
+        arguments: echoCall.input,
+        meta: { 'com.beonauto/run_id': callingRunId, 'com.beonauto/delivery_id': deliveryId },
       },
     ]);
   });
 
   it('lists the tools of its server before it calls one', async () => {
-    const fake = await deliveryServer();
-    await calledOnce(deliveryAccess(fake.url));
+    const fake = await oneCallServer();
+    await calledOnce(oneCallAccess(fake.url));
     const asked = fake.seen().map(({ rpc }) => rpc);
 
     expect(asked.indexOf('tools/list')).toBeGreaterThan(-1);
@@ -67,17 +67,17 @@ describe('one call of a tool', () => {
 
 describe('what one call answers of its tool', () => {
   it('answers the hints the server gives the tool it listed', async () => {
-    const fake = await deliveryServer();
+    const fake = await oneCallServer();
 
-    expect(
-      await calledOnce(deliveryAccess(fake.url), { reference: { server: 'graph', tool: 'search' } }),
-    ).toMatchObject({ outcome: 'result', annotations: { readOnlyHint: true, openWorldHint: true } });
+    expect(await calledOnce(oneCallAccess(fake.url), { reference: { server: 'graph', tool: 'search' } })).toMatchObject(
+      { outcome: 'result', annotations: { readOnlyHint: true, openWorldHint: true } },
+    );
   });
 
   it('records the arguments and the answer, scrubbed, where the server records its content', async () => {
-    const fake = await deliveryServer();
-    const access = deliveryAccess(fake.url, { record_content: true });
-    const call = { ...delivery, input: { token: deliveryKey } };
+    const fake = await oneCallServer();
+    const access = oneCallAccess(fake.url, { record_content: true });
+    const call = { ...echoCall, input: { token: oneCallKey } };
 
     const called = await calledOnce(access, call);
 
@@ -96,8 +96,8 @@ describe('what one call answers of its tool', () => {
 
 describe('a call that fails', () => {
   it('is a tool error in the words of the tool when it answers with one, and in the words of the server when it refuses the arguments', async () => {
-    const fake = await deliveryServer({ data: true });
-    const access = deliveryAccess(fake.url, { allowed: ['denied', 'strict'] });
+    const fake = await oneCallServer({ data: true });
+    const access = oneCallAccess(fake.url, { allowed: ['denied', 'strict'] });
 
     expect(await calledOnce(access, { reference: { server: 'graph', tool: 'denied' } })).toMatchObject({
       ...failedWith('tool_error', deniedText),
@@ -112,19 +112,19 @@ describe('a call that fails', () => {
   });
 
   it('is not opened for a tool its server does not list, and nothing is sent', async () => {
-    const fake = await deliveryServer();
+    const fake = await oneCallServer();
 
-    expect(await calledOnce(deliveryAccess(fake.url), { reference: { server: 'graph', tool: 'gone' } })).toEqual(
+    expect(await calledOnce(oneCallAccess(fake.url), { reference: { server: 'graph', tool: 'gone' } })).toEqual(
       unopenedWith('tool_not_offered', 'tool_not_listed', 'The MCP server graph does not list the tool gone'),
     );
     expect(fake.received()).toEqual([]);
   });
 
   it('ends at its call bound', async () => {
-    const fake = await deliveryServer();
+    const fake = await oneCallServer();
     const sleeping = { reference: { server: 'graph', tool: 'sleep' }, input: { ms: 5000 } };
 
-    expect(await calledOnce(deliveryAccess(fake.url, {}, { callMs: 200 }), sleeping)).toMatchObject({
+    expect(await calledOnce(oneCallAccess(fake.url, {}, { callMs: 200 }), sleeping)).toMatchObject({
       ...failedWith('timed_out', 'The MCP server did not answer within 200 ms'),
       fields: { result_bytes: null, result_sha256: null },
     });
@@ -133,8 +133,8 @@ describe('a call that fails', () => {
 
 describe('what a tool answers', () => {
   it('is carried whole, its content and its structured content, and counted', async () => {
-    const fake = await deliveryServer();
-    const access = deliveryAccess(fake.url);
+    const fake = await oneCallServer();
+    const access = oneCallAccess(fake.url);
 
     const large = await calledOnce(access, { reference: { server: 'graph', tool: 'large' }, input: { kib: 8 } });
     const structured = await calledOnce(access, { reference: { server: 'graph', tool: 'profile' }, input: {} });
@@ -151,11 +151,26 @@ describe('what a tool answers', () => {
   });
 
   it('is scrubbed of the secrets of the server before the caller reads it', async () => {
-    const fake = await deliveryServer();
+    const fake = await oneCallServer();
 
-    expect(await calledOnce(deliveryAccess(fake.url), { input: { token: deliveryKey } })).toMatchObject({
+    expect(await calledOnce(oneCallAccess(fake.url), { input: { token: oneCallKey } })).toMatchObject({
       outcome: 'result',
       answer: { content: [{ type: 'text', text: scrubbed }] },
     });
+  });
+});
+
+describe('one call of a tool that declares an output schema', () => {
+  it('answers what a tool answered against its own output schema, as it answered it', async () => {
+    const fake = await oneCallServer({ data: true });
+
+    expect(
+      await calledOnce(oneCallAccess(fake.url), { reference: { server: 'graph', tool: 'promised' } }),
+    ).toMatchObject({
+      kind: 'answered',
+      outcome: 'result',
+      answer: { structuredContent: brokenPromise },
+    });
+    expect(fake.received()).toHaveLength(1);
   });
 });

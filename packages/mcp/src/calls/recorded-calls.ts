@@ -4,6 +4,7 @@ import type { Effect } from 'effect';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
 import { bytesOf, cutAsStored } from '../bounds/text-bytes.ts';
+import type { McpServerSettings } from '../settings/mcp-settings.ts';
 import type { CallAnswered, CallOutcome, CallStarted } from './call-facts.ts';
 
 export type NumberedAnswer = CallAnswered & { readonly number: number };
@@ -27,6 +28,7 @@ export interface StartingCall {
 
 export interface StartedCall extends StartingCall {
   readonly callId: string;
+  readonly readOnly: boolean;
 }
 
 export interface CallResult {
@@ -45,6 +47,13 @@ export interface Recording {
   readonly content: boolean;
   readonly requestId: boolean;
   readonly scrub: (text: string) => string;
+}
+
+export function recordingOf(
+  settings: Pick<McpServerSettings, 'record_content' | 'request_id'>,
+  scrub: (text: string) => string,
+): Recording {
+  return { content: settings.record_content, requestId: settings.request_id !== null, scrub };
 }
 
 function digestOf(text: string): string {
@@ -66,7 +75,12 @@ export function startedFields(call: StartingCall, recording: Recording): Started
 }
 
 export function callStarted(call: StartedCall, recording: Recording): CallStarted {
-  return { type: 'tool_call_started', call_id: call.callId, ...startedFields(call, recording) };
+  return {
+    type: 'tool_call_started',
+    call_id: call.callId,
+    ...startedFields(call, recording),
+    ...(call.readOnly ? { read_only: true } : {}),
+  };
 }
 
 function resultOf(resultJson: string | null, recording: Recording) {

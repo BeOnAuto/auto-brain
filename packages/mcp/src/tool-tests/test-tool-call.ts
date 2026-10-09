@@ -1,12 +1,12 @@
-import { BrainContext, Unavailable, defineCommand, randomUUIDv7 } from '@beonauto/operations';
+import { Unavailable, defineCommand, randomUUIDv7 } from '@beonauto/operations';
 import { Effect } from 'effect';
 
 import type { ToolsNotOpened } from '../access/caller-context.ts';
 import type { ToolAccess } from '../access/tool-access.ts';
 import { cutToFailureBound } from '../bounds/call-bounds.ts';
-import { toolTestIdKey } from '../calls/call-meta.ts';
 import { calledWhenTestable, stopped, testedOutcomeOf } from './test-calling.ts';
-import { toolTestJournal } from './tool-test-journal.ts';
+import { testedAnswer } from './tested-answer.ts';
+import { toolTestContext } from './tool-test-journal.ts';
 import { TestToolCallInputSchema, ToolTestedSchema } from './tool-test-schemas.ts';
 import { toolTestAttempted, toolTestRemedies, toolTestTask, toolTested } from './tool-test-words.ts';
 
@@ -34,10 +34,8 @@ export function defineTestToolCall(access: Pick<ToolAccess, 'open' | 'testing'>)
     outputSchema: ToolTestedSchema,
     reasons: ['invalid_input', 'unavailable'],
     handle: Effect.fnUntraced(function* ({ server, tool, arguments: input = {} }) {
-      const { org, brain } = yield* BrainContext;
       const testId = randomUUIDv7();
-      const journal = yield* toolTestJournal(testId);
-      const context = { id: testId, org, brain, journal, meta: { [toolTestIdKey]: testId } };
+      const context = yield* toolTestContext(testId);
       const tested = { reference: { server, tool }, testId, input };
       return yield* Effect.uninterruptibleMask((restore) =>
         Effect.gen(function* () {
@@ -52,7 +50,7 @@ export function defineTestToolCall(access: Pick<ToolAccess, 'open' | 'testing'>)
             tool,
             outcome: yield* testedOutcomeOf(reply),
             text: reply.text,
-            ...(reply.answer === undefined ? {} : { answer: reply.answer }),
+            ...testedAnswer(reply),
             result_bytes: reply.resultBytes,
             duration_ms: reply.durationMs,
             ...(reply.serverRequestId === null ? {} : { server_request_id: reply.serverRequestId }),

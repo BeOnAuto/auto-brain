@@ -9,9 +9,9 @@ import { reportingAccess } from '../testing/index.ts';
 import {
   calledOnce,
   closedAfter,
-  deliveryAccess,
-  deliveryKey,
-  deliveryServer,
+  oneCallAccess,
+  oneCallKey,
+  oneCallServer,
   failedWith,
   unopenedWith,
 } from '../testing/one-calls.ts';
@@ -24,8 +24,8 @@ const couldNotBeUsed = 'The MCP server graph could not be used: ';
 
 describe('a server that cannot take one call now', () => {
   it('hands on the wait a 429 asks for to its caller, without waiting it out in the call', async () => {
-    const fake = await deliveryServer();
-    const access = deliveryAccess(fake.url);
+    const fake = await oneCallServer();
+    const access = oneCallAccess(fake.url);
 
     fake.answerNextOf('tools/call', 429, 1, { 'retry-after': '120' });
 
@@ -35,13 +35,13 @@ describe('a server that cannot take one call now', () => {
   });
 
   it('is unopened when the server cannot be reached, or refuses to list its tools, so nothing was sent', async () => {
-    const fake = await deliveryServer();
+    const fake = await oneCallServer();
     fake.answerNextOf('tools/list', 503);
-    const listingRefused = await calledOnce(deliveryAccess(fake.url));
+    const listingRefused = await calledOnce(oneCallAccess(fake.url));
     const { url } = fake;
     await fake.close();
 
-    expect([listingRefused, await calledOnce(deliveryAccess(url))]).toEqual([
+    expect([listingRefused, await calledOnce(oneCallAccess(url))]).toEqual([
       unopenedWith('mcp_server_failed', 'failing', `${couldNotBeUsed}The MCP server answered HTTP 503`),
       unopenedWith('mcp_server_failed', 'unreachable', `${couldNotBeUsed}The MCP server could not be reached`),
     ]);
@@ -49,11 +49,11 @@ describe('a server that cannot take one call now', () => {
   });
 
   it('keeps the words of a failure to 1 KiB, the bound every reader of a failure shares', async () => {
-    const fake = await deliveryServer();
+    const fake = await oneCallServer();
     const refusal = 'The gateway refused the request. '.repeat(100);
     const { access } = reportingAccess(
       { graph: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, org: 'acme' } },
-      { environment: { GRAPH_API_KEY: deliveryKey }, fetch: () => Promise.reject(new Error(refusal)) },
+      { environment: { GRAPH_API_KEY: oneCallKey }, fetch: () => Promise.reject(new Error(refusal)) },
     );
     closedAfter(access.close);
 
@@ -65,12 +65,12 @@ describe('a server that cannot take one call now', () => {
 
 describe('one call through a tool this brain is not offered', () => {
   it('is refused before anything is sent or recorded, for a server it does not have, of another org, or a tool not allowed', async () => {
-    const fake = await deliveryServer();
-    const access = deliveryAccess(fake.url);
+    const fake = await oneCallServer();
+    const access = oneCallAccess(fake.url);
 
     expect([
       await calledOnce(access, { reference: { server: 'wiki', tool: 'echo' } }),
-      await calledOnce(deliveryAccess(fake.url, { org: 'globex' })),
+      await calledOnce(oneCallAccess(fake.url, { org: 'globex' })),
       await calledOnce(access, { reference: { server: 'graph', tool: 'environment' } }),
     ]).toEqual([
       unopenedWith(
@@ -93,8 +93,8 @@ describe('one call through a tool this brain is not offered', () => {
   });
 
   it('is told by name alone, before any connection, as a run asks before it records anything', async () => {
-    const fake = await deliveryServer();
-    const access = deliveryAccess(fake.url);
+    const fake = await oneCallServer();
+    const access = oneCallAccess(fake.url);
 
     expect([
       Result.isSuccess(access.named(alpha, [{ server: 'graph', tool: 'echo' }])),
@@ -117,7 +117,7 @@ describe('one call to a server that opens no connection', () => {
     const startedAt = Date.now();
 
     const ended = await calledOnce(
-      deliveryAccess(`http://127.0.0.1:${String(portOf(silent.address()).port)}/mcp`, {}, { openMs: 300 }),
+      oneCallAccess(`http://127.0.0.1:${String(portOf(silent.address()).port)}/mcp`, {}, { openMs: 300 }),
     );
 
     expect(ended).toEqual(
@@ -128,5 +128,17 @@ describe('one call to a server that opens no connection', () => {
       ),
     );
     expect(Date.now() - startedAt).toBeLessThan(5000);
+  });
+});
+
+describe('one call to a server that does not list its tools in time', () => {
+  it('fails at the open bound, as unreachable, with nothing sent', async () => {
+    const fake = await oneCallServer();
+    fake.holdNextOf('tools/list');
+
+    expect(await calledOnce(oneCallAccess(fake.url, {}, { openMs: 300 }))).toEqual(
+      unopenedWith('mcp_server_failed', 'unreachable', `${couldNotBeUsed}The MCP server did not answer in time`),
+    );
+    expect(fake.received()).toEqual([]);
   });
 });

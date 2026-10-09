@@ -9,9 +9,9 @@ import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from './fake-mc
 import { patientTiming } from './index.ts';
 import { reportingAccess } from './reporting-access.ts';
 
-export const deliveryKey = 'graph-api-key-4f1d9a7c2b';
+export const oneCallKey = 'graph-api-key-4f1d9a7c2b';
 
-export const deliveredRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
+export const callingRunId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
 export const deliveryId = '5d0e9f6a-1b2c-5d3e-8f4a-6b7c8d9e0f1a';
 
@@ -25,15 +25,15 @@ export function closedAfter(close: () => Promise<void>): void {
   closing.push(close);
 }
 
-export async function deliveryServer(options: FakeMcpOptions = {}): Promise<FakeMcpServer> {
-  const fake = await serveFakeMcp({ ...options, bearer: deliveryKey });
+export async function oneCallServer(options: FakeMcpOptions = {}): Promise<FakeMcpServer> {
+  const fake = await serveFakeMcp({ ...options, bearer: oneCallKey });
   closedAfter(fake.close);
   return fake;
 }
 
-const delivered = ['echo', 'denied', 'sleep', 'large', 'search', 'gone', 'profile'];
+const allowedTools = ['echo', 'denied', 'sleep', 'large', 'search', 'gone', 'profile', 'promised'];
 
-export function deliveryAccess(
+export function oneCallAccess(
   url: string,
   changes: Readonly<Record<string, unknown>> = {},
   timing: Partial<Timing> = {},
@@ -44,22 +44,22 @@ export function deliveryAccess(
         url,
         headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' },
         org: 'acme',
-        allowed: delivered,
+        allowed: allowedTools,
         ...changes,
       },
     },
-    { environment: { GRAPH_API_KEY: deliveryKey }, timing: { ...patientTiming, ...timing } },
+    { environment: { GRAPH_API_KEY: oneCallKey }, timing: { ...patientTiming, ...timing } },
   );
   closedAfter(access.close);
   return access;
 }
 
-export const delivery: OneCall = {
+export const echoCall: OneCall = {
   org: 'acme',
   brain: 'alpha',
   reference: { server: 'graph', tool: 'echo' },
   input: { channel: '#approvals', text: 'Please approve' },
-  meta: { 'com.beonauto/run_id': deliveredRunId, 'com.beonauto/delivery_id': deliveryId },
+  meta: { 'com.beonauto/run_id': callingRunId, 'com.beonauto/delivery_id': deliveryId },
 };
 
 export function calledOnce(
@@ -67,7 +67,7 @@ export function calledOnce(
   changes: Readonly<Partial<OneCall>> = {},
   runCall?: RunCall,
 ): Promise<CalledOnce> {
-  return Effect.runPromise(access.callOnce({ ...delivery, ...changes }, runCall));
+  return Effect.runPromise(access.callOnce({ ...echoCall, ...changes }, runCall));
 }
 
 export function failedWith(outcome: string, detail: unknown, retryAfterMs: number | null = null) {

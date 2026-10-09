@@ -11,6 +11,8 @@ const firstPage = { items: [1, 2], next: 'p2' };
 
 const lastPage = { items: [3], next: null };
 
+export const brokenPromise = { count: 'many' };
+
 function argument(input: unknown, name: string): unknown {
   return Reflect.get(new Object(input), name);
 }
@@ -50,6 +52,14 @@ export const dataTools: readonly FakeTool[] = [
     inputSchema: { type: 'object', properties: {}, required: [] },
     annotations: { readOnlyHint: true },
     answer: () => texts('{"page":1}', '{"page":2}'),
+  },
+  {
+    name: 'promised',
+    description: 'Declares an output schema of a count, and answers a count that is not a number.',
+    inputSchema: { type: 'object', properties: {}, required: [] },
+    outputSchema: { type: 'object', properties: { count: { type: 'number' } }, required: ['count'] },
+    annotations: { readOnlyHint: true },
+    answer: () => ({ ...texts(JSON.stringify(brokenPromise)), structuredContent: brokenPromise }),
   },
   {
     name: 'strict',

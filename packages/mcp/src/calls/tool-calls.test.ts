@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Timing } from '../bounds/call-bounds.ts';
-import { deniedText, fakeApiKey, fakeChannels, inTurn, openFakeToolRun, toolRunId } from '../testing/index.ts';
+import {
+  brokenPromise,
+  deniedText,
+  fakeApiKey,
+  fakeChannels,
+  inTurn,
+  openFakeToolRun,
+  toolRunId,
+} from '../testing/index.ts';
 
 const quick: Timing = { callMs: 2000, openMs: 2000, longestRetryWaitMs: 1000 };
 
@@ -52,6 +60,18 @@ describe('the result of a call', () => {
     expect(replies).toMatchObject(Array.from({ length: 6 }, () => ({ text: deniedText, isError: true })));
     expect(tools.ending()).toBeUndefined();
     expect(tools.ended.aborted).toBe(false);
+  });
+
+  it('gives the model what a tool answered against its own output schema, and never says the arguments were refused', async () => {
+    const run = await openFakeToolRun(['promised'], quick, { data: true });
+    closing.push(run.close);
+
+    expect(await run.call('promised', {})).toMatchObject({
+      text: JSON.stringify(brokenPromise),
+      isError: false,
+      outcome: 'result',
+    });
+    expect(run.fake.received()).toHaveLength(1);
   });
 
   it('cuts a result over 64 KiB at a code point, with the note', async () => {

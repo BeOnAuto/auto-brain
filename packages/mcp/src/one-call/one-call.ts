@@ -3,7 +3,7 @@ import { Array as Arr, Effect, Option, Result } from 'effect';
 import type { Listing } from '../access/server-listing.ts';
 import { namedLinks } from '../access/tool-naming.ts';
 import type { ToolNotOffered } from '../access/tool-not-offered.ts';
-import type { CallJournal, Recording } from '../calls/recorded-calls.ts';
+import { recordingOf, type CallJournal } from '../calls/recorded-calls.ts';
 import { journalledCall, type CallJournalling } from '../calls/tool-caller.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
@@ -30,30 +30,28 @@ export interface OneCallAccess extends Listing {
   readonly links: ReadonlyMap<string, ServerLink>;
 }
 
+type Journalling = (readOnly: boolean) => CallJournalling;
+
 interface Calling {
   readonly access: OneCallAccess;
-  readonly journalling: CallJournalling | undefined;
+  readonly journalling: Journalling | undefined;
   readonly signal: Readonly<AbortSignal>;
 }
 
 const notRecorded = 'The start of the call could not be recorded on its run, so the call was not sent';
-
-function recordingOn({ settings }: ServerLink, { secrets }: OneCallAccess): Recording {
-  return { content: settings.record_content, requestId: settings.request_id !== null, scrub: secrets.scrub };
-}
 
 async function calledOnce(call: OneCall, link: ServerLink, { access, journalling, signal }: Calling) {
   const opened = await openedFor(call.reference, link, access);
   if ('kind' in opened) {
     return opened;
   }
-  const { slot, tool } = opened;
-  const recording = recordingOn(link, access);
+  const { slot, tool, readOnly } = opened;
+  const recording = recordingOf(link.settings, access.secrets.scrub);
   const { callMs } = access.timing;
   const longestRetryWaitMs = Math.min(call.longestRetryWaitMs ?? 0, access.timing.longestRetryWaitMs);
   const forwarding = { slot, tool: tool.name, input: call.input, meta: call.meta, callMs, longestRetryWaitMs, signal };
   try {
-    const journey = await journalledCall(forwarding, recording, journalling);
+    const journey = await journalledCall(forwarding, recording, journalling?.(readOnly));
     if (!journey.sent) {
       throw new Error(notRecorded);
     }
@@ -63,18 +61,19 @@ async function calledOnce(call: OneCall, link: ServerLink, { access, journalling
   }
 }
 
-type Run = <A>(effect: Effect.Effect<A>) => Promise<A>;
+type Awaiting = <A>(effect: Effect.Effect<A>) => Promise<A>;
 
-function journallingOf(runCall: RunCall | undefined, run: Run): CallJournalling | undefined {
+function journallingOf(runCall: RunCall | undefined, awaited: Awaiting): Journalling | undefined {
   return runCall === undefined
     ? undefined
-    : {
+    : (readOnly) => ({
         callId: runCall.callId,
-        started: (fact) => run(runCall.journal.started(fact)),
+        readOnly,
+        started: (fact) => awaited(runCall.journal.started(fact)),
         answered: async (fact) => {
-          await run(runCall.journal.answered(fact));
+          await awaited(runCall.journal.answered(fact));
         },
-      };
+      });
 }
 
 function called(call: OneCall, link: ServerLink, access: OneCallAccess, runCall?: RunCall): Effect.Effect<CalledOnce> {

@@ -180,7 +180,7 @@ describe('a server that cannot be used', () => {
     const { access } = accessTo({ graph: graphOf(fake) });
     const holding = await offeredBy(access, 'graph/search');
 
-    fake.answerNextWith(503);
+    fake.answerNextOf('tools/list', 503);
     const failing = await refusalOf(access, 'graph/search');
     const reply = await holding.offered[0]?.call({ callId: 'call-1', input: { query: 'acme' } }, controlledSignals());
 

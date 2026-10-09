@@ -15,7 +15,7 @@ export {
   type FakeHints,
   type ReceivedCall,
 } from './fake-tools.ts';
-export { threadReplies } from './fake-data-tools.ts';
+export { brokenPromise, threadReplies } from './fake-data-tools.ts';
 export { fetchWithDeletion } from './deleting-fetch.ts';
 export { fakeApiKey, openFakeToolRun, type FakeToolRun } from './fake-tool-run.ts';
 export { recordingTimer, type RecordingTimer, type Wait } from './recording-timer.ts';

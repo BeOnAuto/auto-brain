@@ -24,7 +24,7 @@ export interface McpConnection {
 }
 
 interface ToolClient {
-  readonly callTool: Client['callTool'];
+  readonly request: Client['request'];
   readonly listTools: Client['listTools'];
 }
 
@@ -106,8 +106,8 @@ export function connectionOver(
     call: async ({ tool, input, meta, signal, timeoutMs }) => {
       const marker = observed.mark();
       const settled = await client
-        .callTool(
-          { name: tool, arguments: { ...input }, [metaField]: { ...meta } },
+        .request(
+          { method: 'tools/call', params: { name: tool, arguments: { ...input }, [metaField]: { ...meta } } },
           { signal, timeout: timeoutMs, onresumptiontoken: marker },
         )
         .then(settledOf, (error: unknown) => ({ error }));

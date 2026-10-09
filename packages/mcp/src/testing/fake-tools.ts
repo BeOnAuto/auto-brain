@@ -55,6 +55,7 @@ export interface FakeTool {
   readonly title?: string;
   readonly description?: string;
   readonly inputSchema: InputSchema;
+  readonly outputSchema?: Readonly<Record<string, unknown>>;
   readonly annotations?: Readonly<Record<string, boolean | string>>;
   readonly answer: Answer;
 }
@@ -277,6 +278,7 @@ export function fakeToolServer(state: FakeToolState): McpServer {
         properties: { ...tool.inputSchema.properties },
         required: [...tool.inputSchema.required],
       },
+      outputSchema: tool.outputSchema,
       annotations: state.annotated ? hintsOf(state, tool) : undefined,
     })),
   }));
