@@ -206,7 +206,7 @@ describe('a retired brain whose functions called tools, over HTTP', () => {
     await executing(server, 'graph');
     await server.call('POST', `${alpha}/retire`);
 
-    const again = await server.call('POST', `${alpha}/definitions/reasoning/graph/execute`, { body: { input: {} } });
+    const again = await server.call('POST', `${alpha}/definitions/reasoning/graph/run`, { body: { input: {} } });
 
     expect(await historyOf(server)).toEqual(toolRun);
     expect(again).toMatchObject({ status: 409, body: { reason: 'conflict' } });
