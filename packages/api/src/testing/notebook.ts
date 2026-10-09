@@ -196,13 +196,15 @@ const listLabels = defineQuery('org', {
   plainLanguage: plainly('list the labels'),
 });
 
+const Line = Schema.String.annotate({ identifier: 'Line' });
+
 const checkLines = defineCommand('brain', {
   name: 'check_lines',
   title: 'Check lines',
   description:
     'Accepts lines that all start with a capital letter, and rejects every other line. Use it to check lines. `lines` are the lines.',
   route: { method: 'POST', path: '/lines' },
-  inputSchema: Schema.Struct({ lines: Schema.Array(Schema.String) }),
+  inputSchema: Schema.Struct({ lines: Schema.Array(Line) }),
   outputSchema: Schema.Struct({ accepted: Schema.Int }),
   reasons: ['invalid_input'],
   handle: ({ lines }) => {

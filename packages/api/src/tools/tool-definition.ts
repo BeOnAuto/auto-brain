@@ -15,7 +15,6 @@ export interface ToolDefinition {
   readonly title: string;
   readonly description: string;
   readonly inputSchema: StandardSchemaWithJSON;
-  readonly outputSchema: StandardSchemaWithJSON;
   readonly annotations: ToolAnnotations;
 }
 
@@ -52,7 +51,6 @@ function definitionWith(registration: Registration, inputSchema: Readonly<JsonSc
     title: registration.title,
     description: registration.description,
     inputSchema: advertisedSchema(inputSchema),
-    outputSchema: advertisedSchema(selfContainedSchemaOf(registration.output)),
     annotations: annotationsOf(registration),
   };
 }

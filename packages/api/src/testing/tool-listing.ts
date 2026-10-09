@@ -1,4 +1,3 @@
-import { AjvJsonSchemaValidator } from '@modelcontextprotocol/server/validators/ajv';
 import { Schema } from 'effect';
 
 import { withBrainArgument } from '../tools/brain-argument.ts';
@@ -14,8 +13,6 @@ const ListedToolSchema = Schema.Struct({
 export type ListedTool = typeof ListedToolSchema.Type;
 
 const toolsOf = Schema.decodeUnknownSync(Schema.Struct({ tools: Schema.Array(ListedToolSchema) }));
-
-const validator = new AjvJsonSchemaValidator();
 
 export function listedTools(listing: unknown): readonly ListedTool[] {
   return toolsOf(listing).tools;
@@ -33,16 +30,4 @@ export function operationToolsIn(listing: unknown): readonly ListedTool[] {
 
 export function takingBrain({ inputSchema, ...tool }: ListedTool): ListedTool {
   return { ...tool, inputSchema: withBrainArgument(inputSchema) };
-}
-
-export function schemasOf(tools: readonly ListedTool[]): readonly Readonly<Record<string, unknown>>[] {
-  return tools.flatMap(({ inputSchema, outputSchema }) =>
-    outputSchema === undefined ? [inputSchema] : [inputSchema, outputSchema],
-  );
-}
-
-export function outputConformsTo(listing: unknown, name: string, value: unknown): boolean {
-  return listedTools(listing).some(
-    (tool) => tool.name === name && validator.getValidator({ ...tool.outputSchema })(value).valid,
-  );
 }

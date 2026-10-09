@@ -1,4 +1,4 @@
-import { outputConformsTo, problemIn, toolNamesIn, withMcpSession, type McpConnection } from '@beonauto/api/testing';
+import { problemIn, toolNamesIn, withMcpSession, type McpConnection } from '@beonauto/api/testing';
 import { createApiKey } from '@beonauto/identity';
 import { allPermissions } from '@beonauto/operations';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -102,12 +102,11 @@ describe('the org endpoint of the server', () => {
 });
 
 describe('the brain tools of the server', () => {
-  it('create, list, read, update and retire a brain, each output conforming to its schema', async () => {
+  it('create, list, read, update and retire a brain', async () => {
     const outcome = await withMcpSession(
       'previous major',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
       async (session) => ({
-        listing: await session.listTools(),
         created: await session.callTool('create_brain', { brain: 'alpha', name: 'Alpha' }),
         listed: await session.callTool('list_brains', {}),
         read: await session.callTool('get_brain', { brain: 'alpha' }),
@@ -115,20 +114,11 @@ describe('the brain tools of the server', () => {
         retired: await session.callTool('retire_brain', { brain: 'alpha' }),
       }),
     );
-    const { listing } = outcome;
-
     expect(outcome.created.structuredContent).toMatchObject({ id: 'alpha', name: 'Alpha', status: 'active' });
     expect(outcome.listed.structuredContent).toMatchObject({ brains: [{ id: 'alpha' }] });
     expect(outcome.read.structuredContent).toEqual(outcome.created.structuredContent);
     expect(outcome.updated.structuredContent).toMatchObject({ name: 'Alpha prime', description: 'Notes' });
     expect(outcome.retired.structuredContent).toMatchObject({ status: 'retired' });
-    expect([
-      outputConformsTo(listing, 'create_brain', outcome.created.structuredContent),
-      outputConformsTo(listing, 'list_brains', outcome.listed.structuredContent),
-      outputConformsTo(listing, 'get_brain', outcome.read.structuredContent),
-      outputConformsTo(listing, 'update_brain', outcome.updated.structuredContent),
-      outputConformsTo(listing, 'retire_brain', outcome.retired.structuredContent),
-    ]).toEqual([true, true, true, true, true]);
   });
 });
 

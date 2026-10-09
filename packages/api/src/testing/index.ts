@@ -18,8 +18,6 @@ export {
   guideToolName,
   listedTools,
   operationToolsIn,
-  outputConformsTo,
-  schemasOf,
   takingBrain,
   toolNamesIn,
   type ListedTool,

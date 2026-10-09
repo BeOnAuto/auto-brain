@@ -1,13 +1,6 @@
 import { setTimeout } from 'node:timers/promises';
 
-import {
-  listedTools,
-  outputConformsTo,
-  plainTextIn,
-  problemIn,
-  withMcpSession,
-  type McpSession,
-} from '@beonauto/api/testing';
+import { listedTools, plainTextIn, problemIn, withMcpSession, type McpSession } from '@beonauto/api/testing';
 import { createApiKey } from '@beonauto/identity';
 import { serveFakeMcp, type FakeMcpServer } from '@beonauto/mcp/testing';
 import { allPermissions } from '@beonauto/operations';
@@ -69,17 +62,15 @@ describe('test_tool_call over MCP', () => {
   it('is served on /mcp with the brain as an argument and on the brain endpoint, never on the org endpoint', async () => {
     const { server } = await serving();
 
-    const { all, tested } = await on(server, '/mcp', builder.key, async (session) => ({
-      all: await session.listTools(),
-      tested: await session.callTool('test_tool_call', { brain: 'alpha', ...searched }),
-    }));
+    const tested = await on(server, '/mcp', builder.key, (session) =>
+      session.callTool('test_tool_call', { brain: 'alpha', ...searched }),
+    );
     const onTheBrain = await on(server, '/orgs/acme/brains/alpha/mcp', builder.key, (session) =>
       session.callTool('test_tool_call', searched),
     );
     const onTheOrg = await on(server, '/orgs/acme/mcp', builder.key, (session) => session.listTools());
 
     expect([tested.structuredContent, onTheBrain.structuredContent]).toMatchObject([answered, answered]);
-    expect(outputConformsTo(all, 'test_tool_call', tested.structuredContent)).toBe(true);
     expect(plainTextIn(tested)).toMatch(
       /^The tool “search” of “graph” answered in [\d,]+ ms with \d+ bytes; what a reasoning function's model would see is in the details\.$/u,
     );

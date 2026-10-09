@@ -1,7 +1,6 @@
 import {
   internalTermsIn,
   listedTools,
-  outputConformsTo,
   plainTextIn,
   technicalTextIn,
   withMcpSession,
@@ -158,7 +157,6 @@ describe('list_models over MCP', () => {
 
     expect(own.structuredContent).toMatchObject(listedModels);
     expect(org.structuredContent).toEqual(own.structuredContent);
-    expect(outputConformsTo(tools, 'list_models', own.structuredContent)).toBe(true);
     expect(listedTools(tools).find(({ name }) => name === 'list_models')?.annotations).toMatchObject({
       readOnlyHint: true,
       openWorldHint: true,

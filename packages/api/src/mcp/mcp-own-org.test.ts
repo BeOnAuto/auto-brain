@@ -14,14 +14,7 @@ import {
   type OperationServer,
 } from '../testing/operation-server.ts';
 import { danglingReferencesIn } from '../testing/self-contained.ts';
-import {
-  guideToolName,
-  listedTools,
-  schemasOf,
-  takingBrain,
-  toolNamesIn,
-  type ListedTool,
-} from '../testing/tool-listing.ts';
+import { guideToolName, listedTools, takingBrain, toolNamesIn, type ListedTool } from '../testing/tool-listing.ts';
 import { instructionsFor } from './instructions.ts';
 
 const orgTools = ['label_brain', 'list_labels'];
@@ -85,11 +78,13 @@ describe('the tools of /mcp', () => {
     expect([org.at(-1), brain.at(-1)]).toEqual([guide, guide]);
   });
 
-  it('have self-contained schemas with an object root', async () => {
-    const schemas = schemasOf(listedTools(await asKey(acmeAdmin.key, (session) => session.listTools())));
+  it('have self-contained input schemas with an object root, and no output schema', async () => {
+    const tools = listedTools(await asKey(acmeAdmin.key, (session) => session.listTools()));
+    const schemas = tools.map(({ inputSchema }) => inputSchema);
 
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
+    expect(tools.filter(({ outputSchema }) => outputSchema !== undefined)).toEqual([]);
   });
 
   it("carry the instructions of the caller's own org", async () => {

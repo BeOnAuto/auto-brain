@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { advertisedSchemaOf, selfContainedSchemaOf, withoutUnreferencedDefinitions } from './tool-schema.ts';
+import { advertisedSchema, selfContainedSchemaOf, withoutUnreferencedDefinitions } from './tool-schema.ts';
 
 const dialect = 'https://json-schema.org/draft/2020-12/schema';
 
@@ -82,9 +82,9 @@ describe('withoutUnreferencedDefinitions', () => {
   });
 });
 
-describe('advertisedSchemaOf', () => {
-  it('advertises the self-contained schema for input and output, and accepts any value so the operation validates', () => {
-    const { '~standard': standard } = advertisedSchemaOf({ schema: { type: 'object' }, definitions: {} });
+describe('advertisedSchema', () => {
+  it('advertises the schema it is given as its JSON Schema, and accepts any value so the operation validates', () => {
+    const { '~standard': standard } = advertisedSchema({ $schema: dialect, type: 'object' });
     expect({
       vendor: standard.vendor,
       input: standard.jsonSchema.input({ target: 'draft-2020-12' }),

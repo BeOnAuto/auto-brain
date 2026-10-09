@@ -6,7 +6,6 @@ import {
   guideToolName,
   listedTools,
   problemIn,
-  schemasOf,
   takingBrain,
   withMcpSession,
   type ListedTool,
@@ -97,7 +96,7 @@ describe('the brain argument of the spec tools on /mcp', () => {
 });
 
 describe('the tools of /mcp', () => {
-  it('are the brain tools, list_models, list_tool_servers and the spec tools, the spec tools taking a brain, with self-contained schemas', async () => {
+  it('are the brain tools, list_models, list_tool_servers and the spec tools, the spec tools taking a brain, with self-contained input schemas', async () => {
     server = await servingReasoning([]);
     await server.call('POST', '/v1/orgs/local/brains', { body: { brain: 'alpha', name: 'Alpha' } });
 
@@ -106,7 +105,7 @@ describe('the tools of /mcp', () => {
       await listingOn('/orgs/local/mcp'),
       await listingOn('/orgs/local/brains/alpha/mcp'),
     ];
-    const schemas = schemasOf(own);
+    const schemas = own.map(({ inputSchema }) => inputSchema);
     const onlyInBrain = operations(brain).filter(({ name }) => insideABrainAlone.includes(name));
 
     expect(own.map(({ name }) => name)).toEqual([...orgTools, ...insideABrainAlone, guideToolName]);

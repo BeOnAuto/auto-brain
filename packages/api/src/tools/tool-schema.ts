@@ -81,7 +81,3 @@ export function advertisedSchema(jsonSchema: Readonly<JsonSchema>): StandardSche
     },
   };
 }
-
-export function advertisedSchemaOf(document: JsonSchemaDocument): StandardSchemaWithJSON {
-  return advertisedSchema(selfContainedSchemaOf(document));
-}

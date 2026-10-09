@@ -3,7 +3,6 @@ import {
   guideToolName,
   listedTools,
   problemIn,
-  schemasOf,
   textOf,
   withMcpSession,
   type McpSession,
@@ -130,11 +129,11 @@ describe('the spec tools an agent sees on the endpoint of a brain', () => {
     );
   });
 
-  it('have self-contained input and output schemas with an object root', async () => {
+  it('have self-contained input schemas with an object root', async () => {
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
-    const schemas = schemasOf(tools);
+    const schemas = tools.map(({ inputSchema }) => inputSchema);
 
-    expect(schemas).toHaveLength(37);
+    expect(schemas).toHaveLength(19);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

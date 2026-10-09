@@ -1,7 +1,6 @@
 import {
   internalTermsIn,
   listedTools,
-  outputConformsTo,
   plainTextIn,
   problemIn,
   withMcpSession,
@@ -186,7 +185,6 @@ describe('list_tool_servers over MCP', () => {
       openWorldHint: true,
     });
     expect(listed.structuredContent).toEqual(listedForAlpha);
-    expect(outputConformsTo(tools, 'list_tool_servers', listed.structuredContent)).toBe(true);
     expect(plainTextIn(listed)).toBe(listedInWords);
     expect(internalTermsIn(plainTextIn(listed))).toEqual([]);
   });
@@ -234,7 +232,6 @@ function listedOnTheOrgEndpoint(server: ReasoningServer) {
     'current revision',
     { url: `${server.origin}/orgs/acme/mcp`, headers: {} },
     async (session) => ({
-      tools: await session.listTools(),
       inOrg: await session.callTool('list_tool_servers', {}),
       inAlpha: await session.callTool('list_tool_servers', { brain: 'alpha' }),
     }),
@@ -242,16 +239,13 @@ function listedOnTheOrgEndpoint(server: ReasoningServer) {
 }
 
 describe('list_tool_servers on the org endpoint, without a brain and with one', () => {
-  it('answers for the org and for the brain, each answer in the shape the tool lists', async () => {
+  it('answers for the org and for the brain', async () => {
     const { server } = await serving();
 
-    const { tools, inOrg, inAlpha } = await listedOnTheOrgEndpoint(server);
+    const { inOrg, inAlpha } = await listedOnTheOrgEndpoint(server);
 
     expect(inOrg.structuredContent).toMatchObject({ tool_servers: [graphInTheOrg, salesInTheOrg, wikiInTheOrg] });
     expect(inAlpha.structuredContent).toEqual({ tool_servers: [graphInTheOrg, wikiInTheOrg] });
-    expect(
-      [inOrg, inAlpha].map(({ structuredContent }) => outputConformsTo(tools, 'list_tool_servers', structuredContent)),
-    ).toEqual([true, true]);
     expect(plainTextIn(inAlpha)).toBe(listedInWords);
     expect(plainTextIn(inOrg)).toMatch(
       /^The brains of this org may use 3 tool servers\. “graph”, for every brain, offers 2 tools: search and echo;/u,
