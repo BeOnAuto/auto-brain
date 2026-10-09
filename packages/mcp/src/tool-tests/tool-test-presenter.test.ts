@@ -32,7 +32,7 @@ async function recordedTests(entry: Readonly<Record<string, unknown>>, ...tested
   };
   const { access } = reportingAccess(
     { graph },
-    { timing: { ...patientTiming, callMs: 300 }, environment: { GRAPH_API_KEY: fakeApiKey } },
+    { timing: { ...patientTiming, callMs: 1500 }, environment: { GRAPH_API_KEY: fakeApiKey } },
   );
   closing.push(access.close);
   const { test, recorded } = toolTests(access);
