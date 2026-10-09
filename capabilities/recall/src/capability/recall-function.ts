@@ -21,6 +21,8 @@ export interface RecallFunctionAdapterOptions {
   readonly views: ViewsPort;
   readonly mostFunctions?: number;
   readonly deadlineMs?: number;
+  readonly budget?: number;
+  readonly memoryBytes?: number;
 }
 
 function describeResult(output: Schema.Json): string {
@@ -35,8 +37,10 @@ export function makeRecallFunctionAdapter({
   views,
   mostFunctions = recallBounds.mostFunctions,
   deadlineMs = recallBounds.deadlineMs,
+  budget = recallBounds.budget,
+  memoryBytes = recallBounds.answerMemoryBytes,
 }: RecallFunctionAdapterOptions): Capability {
-  const run = recallRun({ pool, views, deadlineMs });
+  const run = recallRun({ pool, views, deadlineMs, budget, memoryBytes });
   return defineCapability({
     type: recallDefinitionType,
     title: functionCategoryLabels.recall,

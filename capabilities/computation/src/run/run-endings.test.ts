@@ -1,4 +1,5 @@
 import { Conflict, Unavailable } from '@beonauto/operations';
+import type { PoolOutcome, ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import { scriptedPool } from '@beonauto/workflow-engine/testing';
 import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -9,6 +10,7 @@ import {
   poolOf,
   programDocument,
   workerTestTimeoutMs,
+  type RunBounds,
 } from '../testing/computation-runs.ts';
 
 function unworkable(detail: string): Exit.Exit<never, Conflict> {
@@ -19,10 +21,48 @@ function ended(body: string, frontMatter?: string) {
   return computationWith().running(programDocument(functionOf(body), frontMatter), null);
 }
 
-function usedAfter(checkpoints: number): Exit.Exit<never, Conflict> {
+const smallWork = { budget: 50 };
+
+const smallMemory = { memoryBytes: 16_777_216 };
+
+function endedWithin(bounds: RunBounds, body: string) {
+  return computationWith(poolOf(), bounds).running(programDocument(functionOf(body)), null);
+}
+
+function usedAfter(checkpoints: number, mebibytes = 16): Exit.Exit<never, Conflict> {
   return unworkable(
-    `The program used more memory than a run may, the 256 MiB of its sandbox, having done ${checkpoints} checkpoints of work`,
+    `The program used more memory than a run may, the ${mebibytes} MiB of its sandbox, having done ${checkpoints} checkpoints of work`,
   );
+}
+
+function reaching(limit: 'work' | 'memory'): PoolOutcome {
+  return {
+    ran: 'exhausted',
+    limit,
+    issue: { detail: 'The program reached a bound', line: null },
+    work: 7,
+    milliseconds: 5,
+  };
+}
+
+interface RecordingPool {
+  readonly pool: ProgramPool;
+  readonly asked: () => readonly (readonly [number, number])[];
+}
+
+function recordingPool(script: readonly PoolOutcome[]): RecordingPool {
+  const scripted = scriptedPool(script, poolOf());
+  const asked: ProgramRequest[] = [];
+  return {
+    pool: {
+      ...scripted,
+      run: (request, signal) => {
+        asked.push(request);
+        return scripted.run(request, signal);
+      },
+    },
+    asked: () => asked.map(({ budget, memoryBytes }) => [budget, memoryBytes]),
+  };
 }
 
 const notJson: readonly (readonly [string, string, string])[] = [
@@ -105,12 +145,14 @@ describe('a run whose program answers what cannot be its output', { timeout: wor
 });
 
 describe('a run that reaches a bound of its sandbox', { timeout: workerTestTimeoutMs }, () => {
-  it('ends in conflict when it does more work than a run may, whatever a try around it does', async () => {
-    const tooMuch = unworkable('The program did more work than a run may, 20000 checkpoints, and was stopped');
+  it('ends in conflict when it does more work than its budget, whatever a try around it does, before any deadline', async () => {
+    const tooMuch = unworkable('The program did more work than a run may, 50 checkpoints, and was stopped');
 
-    expect(await ended('for (;;) {}')).toEqual(tooMuch);
-    expect(await ended('for (;;) {\n    try {\n      for (;;) {}\n    } catch {}\n  }')).toEqual(tooMuch);
-    expect(await ended('return /^(a+)+$/.test("a".repeat(40) + "b");')).toEqual(tooMuch);
+    expect(await endedWithin(smallWork, 'for (;;) {}')).toEqual(tooMuch);
+    expect(await endedWithin(smallWork, 'for (;;) {\n    try {\n      for (;;) {}\n    } catch {}\n  }')).toEqual(
+      tooMuch,
+    );
+    expect(await endedWithin(smallWork, 'return /^(a+)+$/.test("a".repeat(40) + "b");')).toEqual(tooMuch);
   });
 
   it('ends in conflict when it uses more memory than its sandbox, at the same checkpoint twice, and when it catches the refusal', async () => {
@@ -119,9 +161,17 @@ describe('a run that reaches a bound of its sandbox', { timeout: workerTestTimeo
       'const kept: object[] = [];\n  for (let index = 0; ; index++) kept.push({ index, text: "w" + index });';
     const caught = 'try {\n    return "x".repeat(2 ** 29).length;\n  } catch (error) {\n    return String(error);\n  }';
 
-    expect([await ended(strings), await ended(strings)]).toEqual([usedAfter(0), usedAfter(0)]);
-    expect([await ended(objects), await ended(objects)]).toEqual([usedAfter(395), usedAfter(395)]);
-    expect(await ended(caught)).toEqual(usedAfter(0));
+    const objectsUsedAfter = usedAfter(17);
+
+    expect([await endedWithin(smallMemory, strings), await endedWithin(smallMemory, strings)]).toEqual([
+      usedAfter(0),
+      usedAfter(0),
+    ]);
+    expect([await endedWithin(smallMemory, objects), await endedWithin(smallMemory, objects)]).toEqual([
+      objectsUsedAfter,
+      objectsUsedAfter,
+    ]);
+    expect(await endedWithin(smallMemory, caught)).toEqual(usedAfter(0));
   });
 
   it('ends in conflict when the stack of its worker overflows before its own', async () => {
@@ -144,9 +194,38 @@ describe('a run that reaches a bound of its sandbox', { timeout: workerTestTimeo
   });
 });
 
+describe('the bounds a run asks its sandbox for', { timeout: workerTestTimeoutMs }, () => {
+  it('are those its host gives, or 20,000 checkpoints and 256 MiB, named when the run reaches them', async () => {
+    const byDefault = recordingPool([reaching('work'), reaching('memory')]);
+    const given = recordingPool([reaching('work'), reaching('memory')]);
+    const program = programDocument(functionOf('return 1;'));
+    const runs = computationWith(byDefault.pool);
+    const smallRuns = computationWith(given.pool, { budget: 300, memoryBytes: 33_554_432 });
+
+    expect([await runs.running(program, null), await runs.running(program, null)]).toEqual([
+      unworkable('The program did more work than a run may, 20000 checkpoints, and was stopped'),
+      usedAfter(7, 256),
+    ]);
+    expect([await smallRuns.running(program, null), await smallRuns.running(program, null)]).toEqual([
+      unworkable('The program did more work than a run may, 300 checkpoints, and was stopped'),
+      usedAfter(7, 32),
+    ]);
+    expect([byDefault.asked(), given.asked()]).toEqual([
+      [
+        [20_000, 268_435_456],
+        [20_000, 268_435_456],
+      ],
+      [
+        [300, 33_554_432],
+        [300, 33_554_432],
+      ],
+    ]);
+  });
+});
+
 describe('a run of the server that cannot finish', { timeout: workerTestTimeoutMs }, () => {
   it('is unavailable when it runs past its deadline, though its native work spends few checkpoints', async () => {
-    const slow = computationWith(poolOf(), 500);
+    const slow = computationWith(poolOf(), { deadlineMs: 500 });
     const churning = 'const big = ["x".repeat(4000000)];\n  for (;;) JSON.stringify(big);';
 
     expect(await slow.running(programDocument(functionOf(churning)), null)).toEqual(

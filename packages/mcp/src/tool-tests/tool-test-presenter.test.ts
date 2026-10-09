@@ -20,7 +20,9 @@ afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
 });
 
-async function recordedTests(entry: Readonly<Record<string, unknown>>, ...tested: readonly unknown[]) {
+const givenUpAfterMs = 300;
+
+async function recordedTests(entry: Readonly<Record<string, unknown>>, callMs: number, ...tested: readonly unknown[]) {
   const fake = await serveFakeMcp({ bearer: fakeApiKey });
   closing.push(fake.close);
   const graph = {
@@ -32,13 +34,21 @@ async function recordedTests(entry: Readonly<Record<string, unknown>>, ...tested
   };
   const { access } = reportingAccess(
     { graph },
-    { timing: { ...patientTiming, callMs: 1500 }, environment: { GRAPH_API_KEY: fakeApiKey } },
+    { timing: { ...patientTiming, callMs }, environment: { GRAPH_API_KEY: fakeApiKey } },
   );
   closing.push(access.close);
   const { test, recorded } = toolTests(access);
   await inTurn(tested, (input) => test(input));
   return recorded();
 }
+
+const answering = [
+  { server: 'graph', tool: 'search', arguments: { query: 'acme' } },
+  { server: 'graph', tool: 'denied' },
+  { server: 'graph', tool: 'broken' },
+];
+
+const sleeping = { server: 'graph', tool: 'sleep', arguments: { ms: 5000 } };
 
 function shown(records: readonly RecordedEvent[]) {
   return records.flatMap((record) => toolTestPresenter.present(record));
@@ -48,13 +58,9 @@ const fitsTheBound: unknown = expect.toSatisfy((data: unknown) => Buffer.byteLen
 
 describe('the events of a test, as the brain shows them', () => {
   it('say who tested which tool of which server and how it answered, in the words of a run’s calls', async () => {
-    const records = await recordedTests(
-      {},
-      { server: 'graph', tool: 'search', arguments: { query: 'acme' } },
-      { server: 'graph', tool: 'denied' },
-      { server: 'graph', tool: 'broken' },
-      { server: 'graph', tool: 'sleep', arguments: { ms: 5000 } },
-    );
+    const answered = await recordedTests({}, patientTiming.callMs, ...answering);
+    const givenUp = await recordedTests({}, givenUpAfterMs, sleeping);
+    const records = [...answered, ...givenUp];
 
     expect(shown(records).map(({ type, summary }) => `${type}: ${summary}`)).toEqual([
       'tool_test_started: Someone allowed to change the brain tested the search tool of graph.',
@@ -72,10 +78,11 @@ describe('the events of a test, as the brain shows them', () => {
   });
 
   it('show their facts within 4 KiB, recorded content at 2 KiB and the server’s own id of the request', async () => {
-    const records = await recordedTests(
-      { record_content: true, request_id: fakeRequestIdKey },
-      { server: 'graph', tool: 'echo', arguments: { said: 'x'.repeat(6000) } },
-    );
+    const records = await recordedTests({ record_content: true, request_id: fakeRequestIdKey }, patientTiming.callMs, {
+      server: 'graph',
+      tool: 'echo',
+      arguments: { said: 'x'.repeat(6000) },
+    });
     const [started, answered] = shown(records);
 
     expect(started?.data).toMatchObject({

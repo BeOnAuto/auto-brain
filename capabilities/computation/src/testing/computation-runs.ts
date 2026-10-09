@@ -6,7 +6,10 @@ import { Effect, type Exit, type Schema } from 'effect';
 import { TestClock } from 'effect/testing';
 import { afterEach } from 'vitest';
 
-import { makeComputationFunctionAdapter } from '../capability/computation-function.ts';
+import {
+  makeComputationFunctionAdapter,
+  type ComputationFunctionAdapterOptions,
+} from '../capability/computation-function.ts';
 import { computationBounds } from '../run/run-bounds.ts';
 
 export const workerTestTimeoutMs = 30_000;
@@ -58,8 +61,10 @@ export function poolOf(settings: Partial<PoolSettings> = {}): ProgramPool {
   return { ...pool, check: (request, signal) => pool.check({ ...request, deadlineMs: checkDeadlineMs }, signal) };
 }
 
-export function computationWith(pool: ProgramPool = poolOf(), deadlineMs?: number): ComputationRuns {
-  const capability = makeComputationFunctionAdapter({ pool, ...(deadlineMs === undefined ? {} : { deadlineMs }) });
+export type RunBounds = Omit<ComputationFunctionAdapterOptions, 'pool'>;
+
+export function computationWith(pool: ProgramPool = poolOf(), bounds: RunBounds = {}): ComputationRuns {
+  const capability = makeComputationFunctionAdapter({ pool, ...bounds });
   const prepared = (source: string): PreparedDefinition => Effect.runSync(capability.prepare(source));
   return {
     capability,

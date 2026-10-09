@@ -18,6 +18,8 @@ export interface AnswerFacts {
   readonly workers: number;
   readonly heapMegabytes: number;
   readonly deadlineMs: number;
+  readonly budget: number;
+  readonly memoryBytes: number;
 }
 
 type Ending = Effect.Effect<Answered, Conflict | Unavailable>;
@@ -48,17 +50,18 @@ const stoppedBecause: Readonly<Record<Stopped, (facts: AnswerFacts) => string>> 
 };
 
 function exhaustedWith({ limit, work }: Exhausted, facts: AnswerFacts): Ending {
+  const { budget, memoryBytes } = facts;
   if (limit === 'deadline') {
     return Effect.fail(new Unavailable({ detail: stoppedBecause.deadline(facts) }));
   }
   if (limit === 'memory') {
     return unworkable(
-      `The answer used more memory than a run may, the ${recallBounds.answerMemoryBytes / mebibytes} MiB of its sandbox, having done ${work} checkpoints of work`,
+      `The answer used more memory than a run may, the ${memoryBytes / mebibytes} MiB of its sandbox, having done ${work} checkpoints of work`,
     );
   }
   return limit === 'stack'
     ? unworkable(`The answer went deeper than the ${recallBounds.stackBytes / mebibytes} MiB stack of a run allows`)
-    : unworkable(`The answer did more work than a run may, ${recallBounds.budget} checkpoints, and was stopped`);
+    : unworkable(`The answer did more work than a run may, ${budget} checkpoints, and was stopped`);
 }
 
 function unworkableWith(outcome: Unworkable): Ending {

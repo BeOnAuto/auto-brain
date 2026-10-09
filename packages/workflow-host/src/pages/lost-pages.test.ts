@@ -143,7 +143,7 @@ describe('a projector stopped while it folds', { timeout: viewTestTimeoutMs }, (
         'unknown[]',
       ),
     };
-    const lifted = { folding: { ...foldingOf(), budget: 1_000_000 } };
+    const lifted = { folding: { ...foldingOf(), budget: 1_000_000, foldDeadlineMs: 2 * viewTestTimeoutMs } };
     const first = await viewHarness(settings);
     await first.saved('outputs', slow);
     await first.ranEach('reasoning/runs', [1, 2, 3]);

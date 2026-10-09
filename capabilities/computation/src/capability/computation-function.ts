@@ -19,6 +19,8 @@ import { computationBounds } from '../run/run-bounds.ts';
 export interface ComputationFunctionAdapterOptions {
   readonly pool: ProgramPool;
   readonly deadlineMs?: number;
+  readonly budget?: number;
+  readonly memoryBytes?: number;
 }
 
 function parse(source: string): Effect.Effect<ComputationFunctionDefinitionDocument, InvalidInput> {
@@ -46,8 +48,10 @@ function describeResult(output: Schema.Json): string {
 export function makeComputationFunctionAdapter({
   pool,
   deadlineMs = computationBounds.deadlineMs,
+  budget = computationBounds.budget,
+  memoryBytes = computationBounds.memoryBytes,
 }: ComputationFunctionAdapterOptions): Capability {
-  const run = computationRun({ pool, deadlineMs });
+  const run = computationRun({ pool, deadlineMs, budget, memoryBytes });
   return defineCapability({
     type: 'computation',
     title: functionCategoryLabels.computation,

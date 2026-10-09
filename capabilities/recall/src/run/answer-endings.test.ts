@@ -1,11 +1,11 @@
 import { Conflict, Unavailable } from '@beonauto/operations';
-import type { PoolOutcome } from '@beonauto/workflow-engine/dsl';
+import type { PoolOutcome, ProgramPool, ProgramRequest } from '@beonauto/workflow-engine/dsl';
 import { scriptedPool } from '@beonauto/workflow-engine/testing';
 import { Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignReviews, foldOf, recallDocument } from '../testing/campaign-reviews.ts';
-import { liveView, poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { liveView, poolOf, recallWith, workerTestTimeoutMs, type AnswerBounds } from '../testing/recall-runs.ts';
 
 const succeeded = 'language: typescript\nsource:\n  events:\n    - type: run_succeeded';
 
@@ -25,6 +25,48 @@ function ended(source: string, view: Schema.Json = springWithoutReviews, input: 
   const run = recallWith();
   run.keep(liveView(view));
   return run.running(source, input);
+}
+
+function endedWithin(bounds: AnswerBounds, source: string) {
+  const run = recallWith(poolOf(), bounds);
+  run.keep(liveView(springWithoutReviews));
+  return run.running(source, noInput);
+}
+
+function usedAfter(checkpoints: number, mebibytes: number): Exit.Exit<never, Conflict> {
+  return unworkable(
+    `The answer used more memory than a run may, the ${mebibytes} MiB of its sandbox, having done ${checkpoints} checkpoints of work`,
+  );
+}
+
+function reaching(limit: 'work' | 'memory'): PoolOutcome {
+  return {
+    ran: 'exhausted',
+    limit,
+    issue: { detail: 'The answer reached a bound', line: null },
+    work: 7,
+    milliseconds: 5,
+  };
+}
+
+interface RecordingPool {
+  readonly pool: ProgramPool;
+  readonly asked: () => readonly (readonly [number, number])[];
+}
+
+function recordingPool(script: readonly PoolOutcome[]): RecordingPool {
+  const scripted = scriptedPool(script, poolOf());
+  const asked: ProgramRequest[] = [];
+  return {
+    pool: {
+      ...scripted,
+      run: (request, signal) => {
+        asked.push(request);
+        return scripted.run(request, signal);
+      },
+    },
+    asked: () => asked.map(({ budget, memoryBytes }) => [budget, memoryBytes]),
+  };
 }
 
 const stoppedWhen: readonly (readonly [PoolOutcome, string])[] = [
@@ -108,17 +150,16 @@ describe('a run whose answer cannot work as written', { timeout: workerTestTimeo
 });
 
 describe('a run whose answer reaches a bound', { timeout: workerTestTimeoutMs }, () => {
-  it('ends in conflict when it does more work than a run may, or uses more memory', async () => {
-    expect(await ended(answering('for (;;) {}'))).toEqual(
-      unworkable('The answer did more work than a run may, 500 checkpoints, and was stopped'),
+  it('ends in conflict when it does more work than its budget before any deadline, or uses more memory than its sandbox', async () => {
+    expect(await endedWithin({ budget: 50 }, answering('for (;;) {}'))).toEqual(
+      unworkable('The answer did more work than a run may, 50 checkpoints, and was stopped'),
     );
     expect(
-      await ended(answering('const kept: string[] = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);')),
-    ).toEqual(
-      unworkable(
-        'The answer used more memory than a run may, the 256 MiB of its sandbox, having done 0 checkpoints of work',
+      await endedWithin(
+        { memoryBytes: 16_777_216 },
+        answering('const kept: string[] = [];\n  for (;;) kept.push("y".repeat(1048576) + kept.length);'),
       ),
-    );
+    ).toEqual(usedAfter(0, 16));
   });
 
   it('ends in conflict when the stack of its worker overflows before its own', async () => {
@@ -139,9 +180,42 @@ describe('a run whose answer reaches a bound', { timeout: workerTestTimeoutMs },
   });
 });
 
+describe('the bounds an answer asks its sandbox for', { timeout: workerTestTimeoutMs }, () => {
+  it('are those its host gives, or 500 checkpoints and 256 MiB, named when the answer reaches them', async () => {
+    const byDefault = recordingPool([reaching('work'), reaching('memory')]);
+    const given = recordingPool([reaching('work'), reaching('memory')]);
+    const runs = recallWith(byDefault.pool);
+    const smallRuns = recallWith(given.pool, { budget: 40, memoryBytes: 33_554_432 });
+    runs.keep(liveView({}));
+    smallRuns.keep(liveView({}));
+
+    expect([await runs.running(answering('return view;')), await runs.running(answering('return view;'))]).toEqual([
+      unworkable('The answer did more work than a run may, 500 checkpoints, and was stopped'),
+      usedAfter(7, 256),
+    ]);
+    expect([
+      await smallRuns.running(answering('return view;')),
+      await smallRuns.running(answering('return view;')),
+    ]).toEqual([
+      unworkable('The answer did more work than a run may, 40 checkpoints, and was stopped'),
+      usedAfter(7, 32),
+    ]);
+    expect([byDefault.asked(), given.asked()]).toEqual([
+      [
+        [500, 268_435_456],
+        [500, 268_435_456],
+      ],
+      [
+        [40, 33_554_432],
+        [40, 33_554_432],
+      ],
+    ]);
+  });
+});
+
 describe('a run whose answer the server cannot finish', { timeout: workerTestTimeoutMs }, () => {
   it('is unavailable when it runs past its deadline', async () => {
-    const slow = recallWith(poolOf(), 300);
+    const slow = recallWith(poolOf(), { deadlineMs: 300 });
     slow.keep(liveView({}));
 
     expect(

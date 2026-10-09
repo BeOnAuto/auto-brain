@@ -13,6 +13,8 @@ export interface RunFacts {
   readonly workers: number;
   readonly heapMegabytes: number;
   readonly deadlineMs: number;
+  readonly budget: number;
+  readonly memoryBytes: number;
 }
 
 type Ending = Effect.Effect<Finished, Conflict | Unavailable>;
@@ -55,19 +57,20 @@ const stoppedBecause: Readonly<Record<Stopped, (facts: RunFacts) => string>> = {
 };
 
 function exhaustedWith({ limit, work }: Exhausted, facts: RunFacts): Ending {
+  const { budget, memoryBytes } = facts;
   if (limit === 'deadline') {
     return Effect.fail(new Unavailable({ detail: stoppedBecause.deadline(facts) }));
   }
   if (limit === 'memory') {
     return unworkable(
-      `The program used more memory than a run may, the ${computationBounds.memoryBytes / mebibytes} MiB of its sandbox, having done ${work} checkpoints of work`,
+      `The program used more memory than a run may, the ${memoryBytes / mebibytes} MiB of its sandbox, having done ${work} checkpoints of work`,
     );
   }
   return limit === 'stack'
     ? unworkable(
         `The program went deeper than the ${computationBounds.stackBytes / mebibytes} MiB stack of a run allows`,
       )
-    : unworkable(`The program did more work than a run may, ${computationBounds.budget} checkpoints, and was stopped`);
+    : unworkable(`The program did more work than a run may, ${budget} checkpoints, and was stopped`);
 }
 
 type Unworkable = Extract<PoolOutcome, { readonly ran: 'oversized' | 'mismatched' | 'unfit' | 'refused' }>;

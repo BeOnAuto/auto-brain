@@ -8,6 +8,8 @@ import type { FoldingView } from './fold-page.ts';
 
 const poolTestTimeoutMs = 30_000;
 
+const longerThanTheTestMs = 2 * poolTestTimeoutMs;
+
 const timerSlackMs = 2;
 
 const pools: ProgramPool[] = [];
@@ -38,6 +40,10 @@ function markingThen(event: number, view: number, then: string): URL {
 }
 
 const markingThenBlocking = markingThen(1, 0, 'while (true) {}');
+
+const foldingAtOnce = workerOf(
+  'import { parentPort } from "node:worker_threads"; parentPort.on("message", ({ job }) => { parentPort.postMessage({ job, answer: { ran: "folded", early: false, views: [{ view: "3", folded: 2, lastFolded: 1, through: 1, work: 0 }] }, keep: true }); });',
+);
 
 const coverage = process.env['NODE_V8_COVERAGE'];
 
@@ -128,7 +134,7 @@ describe('a page of folds the pool stops', { timeout: poolTestTimeoutMs }, () =>
 
 describe('a page of folds that waits for a worker', { timeout: poolTestTimeoutMs }, () => {
   it('counts its deadline from when a worker takes it, after it waited for one longer than that deadline', async () => {
-    const pool = poolOf({ workers: 1 });
+    const pool = poolOf({ workers: 1, foldWorker: foldingAtOnce });
     const busy = pool.run({
       source: '.',
       entry: 'default',
@@ -151,7 +157,7 @@ describe('a page of folds that waits for a worker', { timeout: poolTestTimeoutMs
 
   it('is turned away when no worker comes free within its wait, and names no fold', async () => {
     const pool = poolOf({ workers: 1, foldWorker: markingThenBlocking });
-    const blocking = pool.fold(request([viewOf(keeping)], { deadlineMs: 5000 }));
+    const blocking = pool.fold(request([viewOf(keeping)], { deadlineMs: longerThanTheTestMs }));
 
     const turnedAway = await pool.fold(request([viewOf(keeping)], { waitMs: 200 }));
 

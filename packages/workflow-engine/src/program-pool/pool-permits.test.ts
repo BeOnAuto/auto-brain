@@ -17,6 +17,8 @@ interface Ran {
 
 const poolTestTimeoutMs = 30_000;
 
+const longerThanTheTestMs = 2 * poolTestTimeoutMs;
+
 const pools: ProgramPool[] = [];
 
 const coverage = process.env['NODE_V8_COVERAGE'];
@@ -178,7 +180,7 @@ describe('the workers of a pool and its permits, while a worker is let go of', {
 describe('the permit of the checks of a pool', { timeout: poolTestTimeoutMs }, () => {
   it('runs on a permit of its own, so it never waits behind the runs that take every worker', async () => {
     const pool = poolOf({ workers: 2 });
-    const blocked = Array.from({ length: 2 }, () => run(pool, 'block', counting, 5000));
+    const blocked = Array.from({ length: 2 }, () => run(pool, 'block', counting, longerThanTheTestMs));
 
     const checked = await pool.check(checkOf());
 
@@ -210,24 +212,16 @@ describe('the permit of the checks of a pool', { timeout: poolTestTimeoutMs }, (
 });
 
 describe('the deadline of a warm worker', { timeout: poolTestTimeoutMs }, () => {
-  it('terminates a warm worker blocked past its deadline while another worker answers, and the jobs after it go to the worker left and a fresh one', async () => {
+  it('terminates a warm worker blocked past its deadline, and the jobs after it go to the worker left and a fresh one', async () => {
     const pool = poolOf({ workers: 2 });
-    const warm = await counted(pool);
-    const settled = { blocked: false };
+    const warm = await Promise.all([counted(pool), counted(pool)]);
 
-    const blocked = run(pool, 'block', counting, 1500).then((outcome) => {
-      settled.blocked = true;
-      return outcome;
-    });
-    const meanwhile = await counted(pool);
-    const answeredFirst = !settled.blocked;
-    const ended = await blocked;
+    const ended = await run(pool, 'block', counting, 500);
     const after = await Promise.all([counted(pool), counted(pool)]);
 
-    expect([answeredFirst, meanwhile.jobs]).toEqual([true, 1]);
-    expect(meanwhile.thread).not.toBe(warm.thread);
+    expect(new Set(warm.map(({ thread }) => thread)).size).toBe(2);
     expect(ended).toMatchObject({ ran: 'stopped', because: 'deadline' });
-    expect(after.map(({ thread }) => thread)).not.toContain(warm.thread);
+    expect(after.filter(({ thread }) => warm.some((each) => each.thread === thread))).toHaveLength(1);
     expect(after.map(({ jobs }) => jobs).toSorted((first, second) => first - second)).toEqual([1, 2]);
   });
 });

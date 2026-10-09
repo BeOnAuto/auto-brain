@@ -8,10 +8,15 @@ import type { RecallFunctionDefinitionDocument } from '../document/recall-docume
 import { answerEndingOf, viewAnswered, type Answered } from './answer-endings.ts';
 import { mostOutputBytes, recallBounds } from './recall-bounds.ts';
 
-export interface RecallRunOptions {
+export interface AnswerBounds {
+  readonly deadlineMs: number;
+  readonly budget: number;
+  readonly memoryBytes: number;
+}
+
+export interface RecallRunOptions extends AnswerBounds {
   readonly pool: ProgramPool;
   readonly views: ViewsPort;
-  readonly deadlineMs: number;
 }
 
 interface Asked {
@@ -25,15 +30,15 @@ type Answering = Effect.Effect<Answered, Conflict | Unavailable>;
 function requestOf(
   document: RecallFunctionDefinitionDocument,
   { view, input, moment }: Asked,
-  deadlineMs: number,
+  { deadlineMs, budget, memoryBytes }: AnswerBounds,
 ): ProgramRequest {
   return {
     source: document.details.fold,
     entry: 'answer',
     arguments: [view, input],
     moment,
-    budget: recallBounds.budget,
-    memoryBytes: recallBounds.answerMemoryBytes,
+    budget,
+    memoryBytes,
     stackBytes: recallBounds.stackBytes,
     deadlineMs,
     mostOutputBytes,
@@ -43,17 +48,18 @@ function requestOf(
 }
 
 function answeredBy(
-  { pool, deadlineMs }: RecallRunOptions,
+  { pool, deadlineMs, budget, memoryBytes }: RecallRunOptions,
   document: RecallFunctionDefinitionDocument,
   asked: Asked,
 ): Answering {
-  return Effect.promise((signal) => pool.run(requestOf(document, asked, deadlineMs), signal)).pipe(
+  const bounds = { deadlineMs, budget, memoryBytes };
+  return Effect.promise((signal) => pool.run(requestOf(document, asked, bounds), signal)).pipe(
     Effect.flatMap((outcome) =>
       answerEndingOf(outcome, {
         foldLine: document.details.foldLine,
         workers: pool.workers,
         heapMegabytes: pool.heapMegabytes,
-        deadlineMs,
+        ...bounds,
       }),
     ),
   );

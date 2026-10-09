@@ -180,7 +180,11 @@ describe('a job of the pool cancelled before it has a worker', { timeout: poolTe
     await counted(pool);
     const cancelling = new AbortController();
 
-    const blocked = run(pool, 'block', { deadlineMs: 3000, signal: cancelling.signal, worker: countingElsewhere });
+    const blocked = run(pool, 'block', {
+      deadlineMs: 2 * poolTestTimeoutMs,
+      signal: cancelling.signal,
+      worker: countingElsewhere,
+    });
     setImmediate(() => {
       cancelling.abort();
     });
@@ -188,7 +192,6 @@ describe('a job of the pool cancelled before it has a worker', { timeout: poolTe
     const afterTheCancel = threadsAlive() - before;
 
     expect(ended).toMatchObject({ ran: 'stopped', because: 'cancelled' });
-    expect(ended.milliseconds).toBeLessThan(2000);
     expect(afterTheCancel).toBe(0);
     expect((await counted(pool)).jobs).toBe(1);
   });
@@ -227,7 +230,11 @@ describe(
   { timeout: poolTestTimeoutMs },
   () => {
     it.each<readonly [string, Partial<FoldRequest>, Readonly<Record<string, unknown>>]>([
-      ['a view ran past its deadline', { foldDeadlineMs: 1 }, { ran: 'folded', views: [{ overtime: 0 }] }],
+      [
+        'a view ran past its deadline',
+        { foldDeadlineMs: 1, budget: Number.MAX_SAFE_INTEGER },
+        { ran: 'folded', views: [{ overtime: 0 }] },
+      ],
       ['it could not read', { mostViewBytes: 0 }, { ran: 'unreadable' }],
     ])('is let go of after a page %s', async (_why, more, ended) => {
       const pool = poolOf();

@@ -9,6 +9,8 @@ import { programPool } from './program-pool.ts';
 
 const poolTestTimeoutMs = 30_000;
 
+const longerThanTheTestMs = 2 * poolTestTimeoutMs;
+
 const timerSlackMs = 2;
 
 const pools: ProgramPool[] = [];
@@ -168,24 +170,11 @@ describe('what a worker of the pool refuses', { timeout: poolTestTimeoutMs }, ()
 });
 
 describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs }, () => {
-  it('terminate a worker at the deadline, while the server goes on answering others', async () => {
-    const answering = poolOf();
-    await answering.run(request(program('return input;'), 0));
-    const settled = { stuck: false };
-    const stuck = poolOf({ worker: blocking })
-      .run(request(program('return input;'), null, { deadlineMs: 1500 }))
-      .then((outcome) => {
-        settled.stuck = true;
-        return outcome;
-      });
+  it('terminate a worker at the deadline', async () => {
+    const ended = await poolOf({ worker: blocking }).run(request('.', null, { deadlineMs: 500 }));
 
-    const meanwhile = await answering.run(request(program('return input + 1;'), 1));
-
-    expect(meanwhile).toMatchObject({ ran: 'answered', output: 2 });
-    expect(settled.stuck).toBe(false);
-    const ended = await stuck;
     expect(ended).toMatchObject({ ran: 'stopped', because: 'deadline' });
-    expect(ended.milliseconds).toBeGreaterThanOrEqual(1500 - timerSlackMs);
+    expect(ended.milliseconds).toBeGreaterThanOrEqual(500 - timerSlackMs);
   });
 
   it('stop a worker whose own heap runs out', async () => {
@@ -199,9 +188,22 @@ describe('the deadline and the memory of a worker', { timeout: poolTestTimeoutMs
 });
 
 describe('the workers of a pool', { timeout: poolTestTimeoutMs }, () => {
+  it('go on answering on the others while one is blocked, however long it takes', async () => {
+    const pool = poolOf();
+    const cancelling = new AbortController();
+    const blockedForLong = request('.', null, { worker: blocking, deadlineMs: longerThanTheTestMs });
+    const stuck = pool.run(blockedForLong, cancelling.signal);
+
+    const meanwhile = await pool.run(request(program('return input + 1;'), 1));
+    cancelling.abort();
+
+    expect(meanwhile).toMatchObject({ ran: 'answered', output: 2 });
+    expect(await stuck).toMatchObject({ ran: 'stopped', because: 'cancelled' });
+  });
+
   it('turn away a fifth run while four take every worker, once it has waited until its deadline', async () => {
     const pool = poolOf({ worker: blocking });
-    const four = Array.from({ length: 4 }, () => pool.run(request('.', null, { deadlineMs: 5000 })));
+    const four = Array.from({ length: 4 }, () => pool.run(request('.', null, { deadlineMs: longerThanTheTestMs })));
 
     const fifth = await pool.run(request('.', null, { deadlineMs: 300 }));
 
@@ -266,7 +268,7 @@ describe('a run of the pool that is cancelled', { timeout: poolTestTimeoutMs }, 
 
   it('starts no worker when it was cancelled before it was admitted', async () => {
     const pool = poolOf({ workers: 1, worker: blocking });
-    const first = pool.run(request('.', null, { deadlineMs: 2000 }));
+    const first = pool.run(request('.', null, { deadlineMs: longerThanTheTestMs }));
     const cancelling = new AbortController();
     const waiting = pool.run(request('.'), cancelling.signal);
 

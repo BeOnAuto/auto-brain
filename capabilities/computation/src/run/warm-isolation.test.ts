@@ -29,9 +29,15 @@ function ran(
   });
 }
 
-function inTurn(pool: ProgramPool, sources: readonly string[]): Promise<readonly PoolOutcome[]> {
+const smallBounds = { budget: 50, memoryBytes: 16_777_216 };
+
+function inTurn(
+  pool: ProgramPool,
+  sources: readonly string[],
+  more: Partial<ProgramRequest> = {},
+): Promise<readonly PoolOutcome[]> {
   return sources.reduce<Promise<readonly PoolOutcome[]>>(
-    async (done, source) => [...(await done), await ran(pool, source)],
+    async (done, source) => [...(await done), await ran(pool, source, null, more)],
     Promise.resolve([]),
   );
 }
@@ -67,7 +73,7 @@ describe('a warm worker after jobs that ended badly', { timeout: workerTestTimeo
     const warm = poolOf({ workers: 1 });
     const input = campaignRows(1000);
 
-    const badly = await inTurn(warm, endingBadly);
+    const badly = await inTurn(warm, endingBadly, smallBounds);
     const first = threadsAlive();
     const writes = await inTurn(warm, writingOutside);
     const seen = await ran(warm, reading);
