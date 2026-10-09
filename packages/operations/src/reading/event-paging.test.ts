@@ -37,7 +37,7 @@ function eventsOf({ id, cursor, data }: RecordedEvent): readonly PublicEvent[] {
 }
 
 const presentation = presentationOf([
-  { streamKind: 'runs', publicNames: { moved: ['moved', 'stepped'] }, present: eventsOf },
+  { streamKind: 'run-logs', publicNames: { moved: ['moved', 'stepped'] }, present: eventsOf },
 ]);
 
 function pageOf(records: readonly RecordedEvent[], nextCursor: string | null = null): RecordedPage {

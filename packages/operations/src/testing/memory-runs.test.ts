@@ -104,7 +104,7 @@ function everyPageOf(
 }
 
 describe('the in-memory read of the runs of one definition', () => {
-  it('fills every page from the runs of the capability or the name asked for, and has no more after the last', async () => {
+  it('fills every page from the runs of the definition type or the name asked for, and has no more after the last', async () => {
     const ledger = memoryLedger();
 
     const pages = await Effect.runPromise(

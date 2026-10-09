@@ -75,7 +75,7 @@ export function tallyRowsOf(version: number, fail?: (row: ProjectedRow) => boole
   };
 }
 
-export const runTallyRows = tallyRowsOf(1);
+export const runTallyRows = tallyRowsOf(2);
 
 export const readTallyRows = defineQuery('brain', {
   name: 'read_tally_rows',
